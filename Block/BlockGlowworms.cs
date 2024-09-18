@@ -44,7 +44,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, IRandom worldGenRand, BlockPatchAttributes attributes = null)
         {
             bool didplace = false;
 
@@ -66,7 +66,7 @@ namespace Vintagestory.GameContent
             return didplace;
         }
 
-        private bool TryGenGlowWorm(IBlockAccessor blockAccessor, BlockPos pos, LCGRandom worldGenRand)
+        private bool TryGenGlowWorm(IBlockAccessor blockAccessor, BlockPos pos, IRandom worldGenRand)
         {
             bool didplace = false;
 
@@ -84,13 +84,13 @@ namespace Vintagestory.GameContent
             return didplace;
         }
 
-        private void GenHere(IBlockAccessor blockAccessor, BlockPos pos, LCGRandom worldGenRand)
+        private void GenHere(IBlockAccessor blockAccessor, BlockPos pos, IRandom worldGenRand)
         {
             int rnd = worldGenRand.NextInt(bases.Length);
 
             Block placeblock = api.World.GetBlock(CodeWithVariant("type", bases[rnd]));
             blockAccessor.SetBlock(placeblock.Id, pos);
-            
+
             if (segments[rnd] != null)
             {
                 placeblock = api.World.GetBlock(CodeWithVariant("type", segments[rnd]));

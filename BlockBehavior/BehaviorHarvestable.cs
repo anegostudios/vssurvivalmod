@@ -64,7 +64,7 @@ namespace Vintagestory.GameContent
 
             if (harvestedStack != null)
             {
-                world.PlaySoundAt(harvestingSound, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, byPlayer);
+                world.PlaySoundAt(harvestingSound, blockSel.Position, 0, byPlayer);
                 return true;
             }
 
@@ -81,7 +81,7 @@ namespace Vintagestory.GameContent
 
             if (world.Rand.NextDouble() < 0.05)
             {
-                world.PlaySoundAt(harvestingSound, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, byPlayer);
+                world.PlaySoundAt(harvestingSound, blockSel.Position, 0, byPlayer);
             }
 
             if (world.Side == EnumAppSide.Client && world.Rand.NextDouble() < 0.25)
@@ -112,7 +112,7 @@ namespace Vintagestory.GameContent
 
                 if (!byPlayer.InventoryManager.TryGiveItemstack(stack))
                 {
-                    world.SpawnItemEntity(stack, blockSel.Position.ToVec3d().Add(0.5, 0.5, 0.5));
+                    world.SpawnItemEntity(stack, blockSel.Position);
                 }
 
                 TreeAttribute tree = new TreeAttribute();
@@ -125,7 +125,7 @@ namespace Vintagestory.GameContent
                     world.BlockAccessor.SetBlock(harvestedBlock.BlockId, blockSel.Position);
                 }
 
-                world.PlaySoundAt(harvestingSound, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, byPlayer);
+                world.PlaySoundAt(harvestingSound, blockSel.Position, 0, byPlayer);
             }
         }
 

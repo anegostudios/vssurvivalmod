@@ -92,7 +92,7 @@ namespace Vintagestory.GameContent
                     }
                 } else
                 {
-                    byEntity.World.PlaySoundAt(new AssetLocation("sounds/block/dirt1"), blockSel.Position.X + 0.5f, blockSel.Position.Y, blockSel.Position.Z + 0.5f, byPlayer);
+                    byEntity.World.PlaySoundAt(new AssetLocation("sounds/block/dirt1"), blockSel.Position.X + 0.5f, blockSel.Position.InternalY, blockSel.Position.Z + 0.5f, byPlayer);
 
                     ((byEntity as EntityPlayer)?.Player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
 

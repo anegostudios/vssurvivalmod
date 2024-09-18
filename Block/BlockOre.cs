@@ -11,27 +11,14 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                string part = FirstCodePart(1);
+                string part = Variant["grade"];
                 if (part == "poor" || part == "medium" || part == "rich" || part == "bountiful") return part;
                 return null;
             }
         }
 
-        public string MotherRock
-        {
-            get
-            {
-                return LastCodePart();
-            }
-        }
-
-        public string OreName
-        {
-            get
-            {
-                return LastCodePart(1);
-            }
-        }
+        public string MotherRock => Variant["rock"];
+        public string OreName => Variant["type"];
 
         public string InfoText
         {
@@ -71,11 +58,11 @@ namespace Vintagestory.GameContent
                 {
                     for (int i = 0; i < drops.Length; i++)
                     {
-                        world.SpawnItemEntity(drops[i], new Vec3d(pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5), null);
+                        world.SpawnItemEntity(drops[i], pos, null);
                     }
                 }
 
-                world.PlaySoundAt(Sounds.GetBreakSound(byPlayer), pos.X, pos.Y, pos.Z, byPlayer);
+                world.PlaySoundAt(Sounds.GetBreakSound(byPlayer), pos, -0.5, byPlayer);
             }
 
             SpawnBlockBrokenParticles(pos);
@@ -85,9 +72,9 @@ namespace Vintagestory.GameContent
             if (byPlayer != null && byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
             {
                 CollectibleObject coll = byPlayer?.InventoryManager.ActiveHotbarSlot.Itemstack?.Collectible;
-                if (LastCodePart(1) == "flint" && (coll == null || coll.ToolTier == 0))
+                if (OreName == "flint" && (coll == null || coll.ToolTier == 0))
                 {
-                    world.BlockAccessor.SetBlock(world.GetBlock(new AssetLocation("rock-" + LastCodePart())).BlockId, pos);
+                    world.BlockAccessor.SetBlock(world.GetBlock(new AssetLocation("rock-" + MotherRock)).BlockId, pos);
                 }
             }
 
@@ -102,7 +89,7 @@ namespace Vintagestory.GameContent
 
         public override string GetPlacedBlockInfo(IWorldAccessor world, BlockPos pos, IPlayer forPlayer)
         {
-            return InfoText + "\n" + (LastCodePart(1) == "flint" ? Lang.Get("Break with bare hands to extract flint") + "\n" : "") + base.GetPlacedBlockInfo(world, pos, forPlayer);
+            return InfoText + "\n" + (OreName == "flint" ? Lang.Get("Break with bare hands to extract flint") + "\n" : "") + base.GetPlacedBlockInfo(world, pos, forPlayer);
         }
 
 
@@ -140,7 +127,7 @@ namespace Vintagestory.GameContent
                             if (stack.Collectible.Code.Path.Contains("crystal")) continue; // Do not drop crystalized ores when the ore is being blown up
 
                             stack.StackSize = 1;
-                            world.SpawnItemEntity(stack, new Vec3d(pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5), null);
+                            world.SpawnItemEntity(stack, pos, null);
                         }
                     }
                 }

@@ -103,7 +103,33 @@ namespace Vintagestory.GameContent
 
                 ItemStack wantStack = jstack.ResolvedItemstack;
                 var slot = FindDesiredItem(controller.PlayerEntity, wantStack);
-                return slot != null;
+                return cond.Invert ? slot == null : slot != null;
+            }
+            if (cond.Variable == "player.heldstack")
+            {
+                if (cond.IsValue == "damagedtool")
+                {
+                    var hotbarslot = controller.PlayerEntity.RightHandItemSlot;
+                    if (hotbarslot.Empty) return false;
+                    var d = hotbarslot.Itemstack.Collectible.GetDurability(hotbarslot.Itemstack);
+                    var max = hotbarslot.Itemstack.Collectible.GetMaxDurability(hotbarslot.Itemstack);
+                    return hotbarslot.Itemstack.Collectible.Tool != null && d < max;
+                }
+                else
+                {
+                    JsonItemStack jstack = JsonItemStack.FromString(cond.IsValue);
+                    if (!jstack.Resolve(controller.NPCEntity.World, Code + "dialogue talk component quest item", true))
+                    {
+                        return false;
+                    }
+
+                    ItemStack wantStack = jstack.ResolvedItemstack;
+                    var hotbarslot = controller.PlayerEntity.RightHandItemSlot;
+                    if (matches(controller.PlayerEntity, wantStack, hotbarslot, getIgnoreAttrs()))
+                    {
+                        return true;
+                    }
+                }
             }
 
             if (IsConditionMet(cond.Variable, cond.IsValue, cond.Invert)) return true;
@@ -114,26 +140,41 @@ namespace Vintagestory.GameContent
         public static ItemSlot FindDesiredItem(EntityAgent eagent, ItemStack wantStack)
         {
             ItemSlot foundSlot = null;
-            string[] ignoredAttrs = GlobalConstants.IgnoredStackAttributes.Append("backpack").Append("condition").Append("durability");
+            string[] ignoredAttrs = getIgnoreAttrs();
 
             eagent.WalkInventory((slot) =>
             {
                 if (slot.Empty) return true;
-                var giveStack = slot.Itemstack;
-
-                if (wantStack.Equals(eagent.World, giveStack, ignoredAttrs) || giveStack.Satisfies(wantStack))
+                if (matches(eagent, wantStack, slot, ignoredAttrs))
                 {
-                    if (giveStack.Collectible.IsReasonablyFresh(eagent.World, giveStack))
-                    {
-                        foundSlot = slot;
-                        return false;
-                    }
+                    foundSlot = slot;
+                    return false;
                 }
 
                 return true;
             });
 
             return foundSlot;
+        }
+
+        private static string[] getIgnoreAttrs()
+        {
+            return GlobalConstants.IgnoredStackAttributes.Append("backpack").Append("condition").Append("durability");
+        }
+
+        private static bool matches(EntityAgent eagent, ItemStack wantStack, ItemSlot slot, string[] ignoredAttrs)
+        {
+            var giveStack = slot.Itemstack;
+
+            if (wantStack.Equals(eagent.World, giveStack, ignoredAttrs) || giveStack.Satisfies(wantStack))
+            {
+                if (giveStack.Collectible.IsReasonablyFresh(eagent.World, giveStack) && giveStack.StackSize >= wantStack.StackSize)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         public void SelectAnswer(int index)

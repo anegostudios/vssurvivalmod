@@ -161,7 +161,7 @@ namespace Vintagestory.GameContent
             }
 
 
-            if (blockSel == null)
+            if (blockSel == null)   // This line cannot be reached, see the if (blockSel?.Position == null) test 23 lines above
             {
                 base.OnHeldAttackStart(slot, byEntity, blockSel, entitySel, ref handling);
                 return;
@@ -423,7 +423,7 @@ namespace Vintagestory.GameContent
                     }
                     else
                     {
-                        be.AddMaterial(mouseslot.Itemstack.Block);
+                        be.AddMaterial(mouseslot.Itemstack.Block, out _, false);
                     }
 
                     be.MarkDirty();

@@ -117,6 +117,11 @@ namespace Vintagestory.ServerMods
             int chunkX = request.ChunkX;
             int chunkZ = request.ChunkZ;
 
+            if (SkipGenerationAt(chunkX * chunksize + chunksize / 2, chunkZ * chunksize + chunksize / 2, SkipCreaturesgHashCode,
+                    out _))
+            {
+                return;
+            }
             wgenBlockAccessor.BeginColumn();
             IntDataMap2D climateMap = chunks[0].MapChunk.MapRegion.ClimateMap;
             ushort[] heightMap = chunks[0].MapChunk.WorldGenTerrainHeightMap;
@@ -239,7 +244,7 @@ namespace Vintagestory.ServerMods
                         zRel = (float)(posAsVec.Z % chunksize) / chunksize;
 
                         climate = GameMath.BiLerpRgbColor(xRel, zRel, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
-                        temp = TerraGenConfig.GetScaledAdjustedTemperatureFloat((climate >> 16) & 0xff, (int)posAsVec.Y - TerraGenConfig.seaLevel);
+                        temp = Climate.GetScaledAdjustedTemperatureFloat((climate >> 16) & 0xff, (int)posAsVec.Y - TerraGenConfig.seaLevel);
                         rain = ((climate >> 8) & 0xff) / 255f;
                         forestDensity = GameMath.BiLerp(forestUpLeft, forestUpRight, forestBotLeft, forestBotRight, xRel, zRel) / 255f;
                         shrubDensity = GameMath.BiLerp(shrubsUpLeft, shrubsUpRight, shrubsBotLeft, shrubsBotRight, xRel, zRel) / 255f;
@@ -293,7 +298,7 @@ namespace Vintagestory.ServerMods
         private Entity CreateEntity(EntityProperties entityType, Vec3d spawnPosition)
         {
             Entity entity = api.ClassRegistry.CreateEntity(entityType);
-            entity.ServerPos.SetPos(spawnPosition);
+            entity.ServerPos.SetPosWithDimension(spawnPosition);
             entity.ServerPos.SetYaw((float)rnd.NextDouble() * GameMath.TWOPI);
             entity.Pos.SetFrom(entity.ServerPos);
             entity.PositionBeforeFalling.Set(entity.ServerPos.X, entity.ServerPos.Y, entity.ServerPos.Z);
@@ -398,7 +403,7 @@ namespace Vintagestory.ServerMods
                     }
                 }
             }
-            
+
             return false;
         }
     }

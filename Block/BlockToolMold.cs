@@ -116,7 +116,7 @@ namespace Vintagestory.GameContent
                         ShouldApply = (wi, bs, es) =>
                         {
                             BlockEntityToolMold betm = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityToolMold;
-                            return betm != null && betm.metalContent == null;
+                            return betm != null && betm.MetalContent == null;
                         }
                     }
                 };
@@ -187,8 +187,7 @@ namespace Vintagestory.GameContent
 
             if (belowBlock.CanAttachBlockAt(world.BlockAccessor, this, blockSel.Position.DownCopy(), BlockFacing.UP))
             {
-                DoPlaceBlock(world, byPlayer, blockSel, itemstack);
-                return true;
+                return base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref failureCode);
             }
 
             failureCode = "requiresolidground";
@@ -206,16 +205,22 @@ namespace Vintagestory.GameContent
         {
             List<ItemStack> stacks = new List<ItemStack>();
 
-            stacks.Add(new ItemStack(this));
 
             BlockEntityToolMold bet = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityToolMold;
-           
+
             if (bet != null)
             {
-                ItemStack[] outstack = bet.GetReadyMoldedStacks();
+                if (!bet.Shattered)
+                {
+                    stacks.Add(new ItemStack(this));
+                }
+                var outstack = bet.GetStateAwareMoldedStacks();
                 if (outstack != null) {
                     stacks.AddRange(outstack);
                 }
+            } else
+            {
+                stacks.Add(new ItemStack(this));
             }
 
 

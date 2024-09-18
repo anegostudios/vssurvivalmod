@@ -1,13 +1,12 @@
-﻿using System;
-using Vintagestory.API.Client;
+﻿using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
+
     public class ModSystemSnowballs : ModSystem
     {
         ICoreAPI api;

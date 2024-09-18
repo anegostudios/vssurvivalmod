@@ -73,7 +73,7 @@ namespace Vintagestory.GameContent
         static Dictionary<EnumItemRenderTarget, string> map = new Dictionary<EnumItemRenderTarget, string>() {
             { EnumItemRenderTarget.Ground, "groundTransform" },
             { EnumItemRenderTarget.HandTp, "tpHandTransform" },
-            { EnumItemRenderTarget.HandFp, "fpHandTransform" },
+            //{ EnumItemRenderTarget.HandFp, "fpHandTransform" },
             { EnumItemRenderTarget.Gui, "guiTransform" },
             { EnumItemRenderTarget.HandTpOff, "tpOffHandTransform" },
         };

@@ -175,9 +175,8 @@ namespace Vintagestory.GameContent
 
             bebarrel.SealBarrel();
 
-            capi.Network.SendBlockEntityPacket(BlockEntityPosition.X, BlockEntityPosition.Y, BlockEntityPosition.Z, 1337);
-            Vec3d pos = BlockEntityPosition.ToVec3d().Add(0.5, 0.5, 0.5);
-            capi.World.PlaySoundAt(new AssetLocation("sounds/player/seal"), pos.X, pos.Y, pos.Z, null);
+            capi.Network.SendBlockEntityPacket(BlockEntityPosition, 1337);
+            capi.World.PlaySoundAt(new AssetLocation("sounds/player/seal"), BlockEntityPosition, 0.4, null);
 
             TryClose();
 

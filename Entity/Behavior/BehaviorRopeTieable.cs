@@ -26,6 +26,27 @@ namespace Vintagestory.GameContent
             base.Initialize(properties, attributes);
         }
 
+        public override void AfterInitialized(bool onFirstSpawn)
+        {
+            base.AfterInitialized(onFirstSpawn);
+            EntityBehaviorTaskAI taskAi = entity.GetBehavior<EntityBehaviorTaskAI>();
+            if (taskAi != null)
+            {
+                taskAi.TaskManager.OnShouldExecuteTask += (t) => (entity as EntityAgent)?.MountedOn == null || (t is AiTaskIdle);
+            }
+
+            var clothids = ClothIds;
+            if (clothids == null || clothids.value.Length == 0) return;
+            foreach (int clothid in clothids.value)
+            {
+                var sys = entity.World.Api.ModLoader.GetModSystem<ClothManager>().GetClothSystem(clothid);
+                if (sys != null)
+                {
+                    sys.OnPinnnedEntityLoaded(entity);
+                }
+            }
+        }
+
 
         public override void OnInteract(EntityAgent byEntity, ItemSlot itemslot, Vec3d hitPosition, EnumInteractMode mode, ref EnumHandling handled)
         {

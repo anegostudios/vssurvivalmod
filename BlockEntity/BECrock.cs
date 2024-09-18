@@ -35,8 +35,14 @@ namespace Vintagestory.GameContent
             base.Initialize(api);
 
             this.ownBlock = Block as BlockCrock;
+
+            inv.OnAcquireTransitionSpeed += Inv_OnAcquireTransitionSpeed;
         }
 
+        private float Inv_OnAcquireTransitionSpeed(EnumTransitionType transType, ItemStack stack, float mulByConfig)
+        {
+            return mulByConfig * (ownBlock?.GetContainingTransitionModifierPlaced(Api.World, Pos, transType) ?? 1);
+        }
 
         public override void OnBlockPlaced(ItemStack byItemStack = null)
         {
@@ -48,14 +54,6 @@ namespace Vintagestory.GameContent
                 QuantityServings = (float)byItemStack.Attributes.GetDecimal("quantityServings");
                 Sealed = byItemStack.Attributes.GetBool("sealed");
             }
-        }
-
-
-        protected override float Inventory_OnAcquireTransitionSpeed(EnumTransitionType transType, ItemStack stack, float baseMul)
-        {
-            float mul = base.Inventory_OnAcquireTransitionSpeed(transType, stack, baseMul);
-            mul *= ownBlock?.GetContainingTransitionModifierPlaced(Api.World, Pos, transType) ?? 1;
-            return mul;
         }
 
         public override void OnBlockBroken(IPlayer byPlayer = null)
@@ -165,7 +163,7 @@ namespace Vintagestory.GameContent
                 slot.TakeOut(1);
                 if (!player.InventoryManager.TryGiveItemstack(mealstack, true))
                 {
-                    Api.World.SpawnItemEntity(mealstack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    Api.World.SpawnItemEntity(mealstack, Pos);
                 }
                 slot.MarkDirty();
             }

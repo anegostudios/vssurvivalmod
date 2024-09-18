@@ -141,7 +141,7 @@ namespace Vintagestory.GameContent
 
                 ((ICoreServerAPI)Api).Network.SendBlockEntityPacket(
                     (IServerPlayer)byPlayer,
-                    Pos.X, Pos.Y, Pos.Z,
+                    Pos,
                     (int)EnumBlockContainerPacketId.OpenInventory,
                     data
                 );

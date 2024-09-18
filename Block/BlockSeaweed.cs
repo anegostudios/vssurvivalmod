@@ -9,8 +9,17 @@ namespace Vintagestory.GameContent
     {
         public override string RemapToLiquidsLayer { get { return "water-still-7"; } }
 
-        Random random = new Random();
-        Block[] blocks;
+        protected Block[] blocks;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+            blocks = new Block[]
+            {
+                api.World.BlockAccessor.GetBlock(CodeWithParts("section")),
+                api.World.BlockAccessor.GetBlock(CodeWithParts("top")),
+            };
+        }
 
         public override bool CanPlantStay(IBlockAccessor blockAccessor, BlockPos pos)
         {
@@ -34,27 +43,26 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
+        public override bool TryPlaceBlockForWorldGenUnderwater(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, IRandom worldGenRand, int minWaterDepth, int maxWaterDepth, BlockPatchAttributes attributes = null)
         {
+            var height = attributes?.Height ?? NatFloat.createGauss(3, 3);
+
             BlockPos belowPos = pos.DownCopy();
 
-            Block block = blockAccessor.GetBlock(belowPos, BlockLayersAccess.Fluid);
-            if (block.LiquidCode != "water") return false;
+            Block block;
 
             int depth = 1;
-            while (depth < 10)
+            while (depth < maxWaterDepth)
             {
                 belowPos.Down();
                 block = blockAccessor.GetBlock(belowPos);
-
+                if (block is BlockWaterPlant) return false;
                 if (block.Fertility > 0)
                 {
-                    PlaceSeaweed(blockAccessor, belowPos, depth);
+                    PlaceSeaweed(blockAccessor, belowPos, depth, worldGenRand, height);
                     return true;
-                } else
-                {
-                    if (block is BlockSeaweed || !block.IsLiquid()) return false;   // Prevent placing seaweed over seaweed (for example might result on a 3-deep plant placed on top of a 5-deep plant's existing position, giving a plant with 2 tops at positions 3 and 5)
                 }
+                if (!block.IsLiquid()) return false;   // Prevent placing seaweed over seaweed (for example might result on a 3-deep plant placed on top of a 5-deep plant's existing position, giving a plant with 2 tops at positions 3 and 5)
 
                 depth++;
             }
@@ -64,26 +72,25 @@ namespace Vintagestory.GameContent
         }
 
 
-        private void PlaceSeaweed(IBlockAccessor blockAccessor, BlockPos pos, int depth)
+        internal void PlaceSeaweed(IBlockAccessor blockAccessor, BlockPos pos, int depth, IRandom random, NatFloat heightNatFloat)
         {
-            int height = Math.Min(depth - 1,  1 + random.Next(3) + random.Next(3));
-
-            if (blocks == null)
-            {
-                blocks = new Block[]
-                {
-                    blockAccessor.GetBlock(CodeWithParts("section")),
-                    blockAccessor.GetBlock(CodeWithParts("top")),
-                };
-            }
-
+            var height = Math.Min(depth, (int)heightNatFloat.nextFloat(1f, random));
             while (height-- > 1)
             {
                 pos.Up();
                 blockAccessor.SetBlock(blocks[0].BlockId, pos);   // section
             }
             pos.Up();
-            blockAccessor.SetBlock(blocks[1].BlockId, pos);   // top
+
+            if (blocks[1] == null)
+            {
+                // spawn section if there is no top, (seegrass)
+                blockAccessor.SetBlock(blocks[0].BlockId, pos);   // top
+            }
+            else
+            {
+                blockAccessor.SetBlock(blocks[1].BlockId, pos);   // top
+            }
         }
     }
 }

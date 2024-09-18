@@ -30,11 +30,11 @@ namespace Vintagestory.GameContent
         public override double DrawOrder => 0.2; // Needs to be same as chest container guis so it can be on top of those dialogs if necessary
 
         protected Dictionary<string, int> pageNumberByPageCode = new Dictionary<string, int>();
-        protected List<GuiHandbookPage> allHandbookPages = new List<GuiHandbookPage>();
+        internal List<GuiHandbookPage> allHandbookPages = new List<GuiHandbookPage>();
         protected List<IFlatListItem> shownHandbookPages = new List<IFlatListItem>();
-        
+
         protected List<string> categoryCodes = new List<string>();
-        
+
         protected Stack<BrowseHistoryElement> browseHistory = new Stack<BrowseHistoryElement>();
         protected string currentSearchText;
         protected GuiComposer overviewGui;
@@ -55,7 +55,7 @@ namespace Vintagestory.GameContent
         public GuiDialogHandbook(ICoreClientAPI capi, OnCreatePagesDelegate createPageHandlerAsync, OnComposePageDelegate composePageHandler) : base(capi)
         {
             this.createPageHandlerAsync = createPageHandlerAsync;
-            this.composePageHandler = composePageHandler;           
+            this.composePageHandler = composePageHandler;
 
             capi.Settings.AddWatcher<float>("guiScale", (float val) =>
             {

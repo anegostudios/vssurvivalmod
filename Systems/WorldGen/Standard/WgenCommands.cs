@@ -11,6 +11,7 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+using Vintagestory.GameContent;
 using Vintagestory.ServerMods.NoObf;
 
 namespace Vintagestory.ServerMods
@@ -45,7 +46,7 @@ namespace Vintagestory.ServerMods
         {
             return side == EnumAppSide.Server;
         }
-        
+
         public override void StartServerSide(ICoreServerAPI api)
         {
             this.api = api;
@@ -62,7 +63,7 @@ namespace Vintagestory.ServerMods
             }
 
             CreateCommands();
-            
+
             this.api.Event.ServerRunPhase(EnumServerRunPhase.RunGame, () =>
             {
                 var parsers = api.ChatCommands.Parsers;
@@ -113,18 +114,24 @@ namespace Vintagestory.ServerMods
                         .HandleWith(OnStructuresList)
                     .EndSubCommand()
                 .EndSubCommand()
+                .BeginSubCommand("resolve-meta")
+                    .WithDescription("Toggle resolve meta blocks mode during Worldgen. Turn it off to spawn structures as they are. For example, in this mode, instead of traders, their meta spawners will spawn")
+                    .WithAlias("rm")
+                    .WithArgs(parsers.OptionalBool("on/off"))
+                    .HandleWith(handleToggleImpresWgen)
+                .EndSubCommand()
                 ;
         }
-        
+
         private void OnGameWorldLoaded()
         {
             _regionSize = api.WorldManager.RegionSize;
         }
 
         private void CreateCommands(){
-            
+
             var parsers = api.ChatCommands.Parsers;
-            api.ChatCommands.Create("wgen")
+            api.ChatCommands.GetOrCreate("wgen")
                 .WithDescription("World generator tools")
                 .RequiresPrivilege(Privilege.controlserver)
                 .BeginSubCommand("decopass")
@@ -210,6 +217,7 @@ namespace Vintagestory.ServerMods
                     .HandleWith(OnCmdTreemap)
                 .EndSubCommand()
                 .BeginSubCommand("testmap")
+                    .WithDescription("Generate a large noise map, to test noise generation")
                     .WithPreCondition(DisallowHosted)
                     .BeginSubCommand("climate")
                         .WithDescription("Print a climate testmap")
@@ -265,6 +273,7 @@ namespace Vintagestory.ServerMods
                     .EndSubCommand()
                 .EndSubCommand()
                 .BeginSubCommand("genmap")
+                    .WithDescription("Generate a large noise map around the players current location")
                     .WithPreCondition(DisallowHosted)
                     .BeginSubCommand("climate")
                         .WithDescription("Generate a climate map")
@@ -315,7 +324,7 @@ namespace Vintagestory.ServerMods
                     .HandleWith(OnCmdStitch)
                 .EndSubCommand()
                 .BeginSubCommand("region")
-                    .WithDescription("Draw a mapreagion map")
+                    .WithDescription("Extract already generated noise map data from the current region")
                     .RequiresPlayer()
                     .WithArgs(parsers.WordRange("sub_command", "climate", "ore", "forest", "upheavel", "ocean", "oretopdistort", "patches", "rockstrata", "gprov", "gprovi", "landform", "landformi"), parsers.OptionalBool("dolerp"), parsers.OptionalWord("orename"))
                     .HandleWith(OnCmdRegion)
@@ -327,7 +336,19 @@ namespace Vintagestory.ServerMods
                         .WithArgs(parsers.OptionalInt("radius",1),parsers.OptionalWord("orename"))
                         .HandleWith(OnCmdRegionsOre)
                     .EndSubCommand()
-                .EndSubCommand()
+                    .BeginSubCommand("upheavel")
+                        .WithDescription("Print a region upheavel map")
+                        .RequiresPlayer()
+                        .WithArgs(parsers.OptionalInt("radius", 1))
+                        .HandleWith(OnCmdRegionsUpheavel)
+                    .EndSubCommand()
+                    .BeginSubCommand("climate")
+                        .WithDescription("Print a region climate map")
+                        .RequiresPlayer()
+                        .WithArgs(parsers.OptionalInt("radius", 1))
+                        .HandleWith(OnCmdRegionsClimate)
+                        .EndSubCommand()
+                    .EndSubCommand()
                 .BeginSubCommand("pos")
                     .WithDescription("Print info for the current position")
                     .RequiresPlayer()
@@ -346,6 +367,18 @@ namespace Vintagestory.ServerMods
                     .HandleWith(OnCmdTestVillage)
                 .EndSubCommand()
             ;
+        }
+
+        private TextCommandResult handleToggleImpresWgen(TextCommandCallingArgs args)
+        {
+            if (args.Parsers[0].IsMissing)
+            {
+                return TextCommandResult.Success("Meta block replacing and Item resolving for worldgen currently " + (GenStructures.ReplaceMetaBlocks ? "on" : "off"));
+            }
+
+            var doReplace = (bool)args[0];
+            GenStructures.ReplaceMetaBlocks = doReplace;
+            return TextCommandResult.Success("Meta block replacing and Item resolving for worldgen now " + (doReplace ? "on" : "off"));
         }
 
         private TextCommandResult OnCmdTestVillage(TextCommandCallingArgs args)
@@ -402,7 +435,7 @@ namespace Vintagestory.ServerMods
             var mapRegion = serverchunk.MapChunk.MapRegion;
             var regionX = pos.X / _regionSize;
             var regionZ = pos.Z / _regionSize;
-            
+
             var subargtype = args[0] as string;
             var dolerp = (bool)args[1];
 
@@ -556,81 +589,81 @@ namespace Vintagestory.ServerMods
             TerraGenConfig.DoDecorationPass = (bool)args[0];
             return TextCommandResult.Success("Decopass now " + (TerraGenConfig.DoDecorationPass ? "on" : "off"));
         }
-        
+
         private TextCommandResult OnCmdAutogen(TextCommandCallingArgs args)
         {
             api.WorldManager.AutoGenerateChunks = (bool)args[0];
             return TextCommandResult.Success("Autogen now " + (api.WorldManager.AutoGenerateChunks ? "on" : "off"));
         }
-        
+
         private TextCommandResult OnCmdGt(TextCommandCallingArgs args)
         {
             TerraGenConfig.GenerateVegetation = (bool)args[0];
             return TextCommandResult.Success("Generate trees now " + (TerraGenConfig.GenerateVegetation ? "on" : "off"));
         }
-        
+
         private TextCommandResult OnCmdRegenk(TextCommandCallingArgs args)
         {
             var range = (int)args[0];
             var landform = args[1] as string;
             return RegenChunks(args.Caller, range, landform, true);
         }
-        
+
         private TextCommandResult OnCmdRegen(TextCommandCallingArgs args)
         {
             var range = (int)args[0];
             var landform = args[1] as string;
             return RegenChunks(args.Caller, range, landform, true, false, true);
         }
-        
+
         private TextCommandResult OnCmdRegenr(TextCommandCallingArgs args)
         {
             var range = (int)args[0];
             var landform = args[1] as string;
             return RegenChunks(args.Caller, range, landform, true, true, true);
         }
-        
+
         private TextCommandResult OnCmdRegenc(TextCommandCallingArgs args)
         {
             var range = (int)args[0];
             var landform = args[1] as string;
             return RegenChunks(args.Caller, range, landform, false, false, true);
         }
-        
+
         private TextCommandResult OnCmdRegenrc(TextCommandCallingArgs args)
         {
             var range = (int)args[0];
             var landform = args[1] as string;
             return RegenChunks(args.Caller, range, landform, false, true, true);
         }
-        
+
         private TextCommandResult OnCmdPregen(TextCommandCallingArgs args)
         {
             var range = (int)args[0];
             return PregenerateChunksAroundPlayer(args.Caller, range);
         }
-        
+
         private TextCommandResult OnCmdDelrock(TextCommandCallingArgs args)
         {
             var range = (int)args[0];
             DelRock(args.Caller, range, true);
-            return TextCommandResult.Success(); 
+            return TextCommandResult.Success();
         }
-        
+
         private TextCommandResult OnCmdDelrockc(TextCommandCallingArgs args)
         {
             var range = (int)args[0];
             DelRock(args.Caller, range, false);
-            return TextCommandResult.Success(); 
+            return TextCommandResult.Success();
         }
-        
+
         private TextCommandResult OnCmdDel(TextCommandCallingArgs args)
         {
             var range = (int)args[0];
             var landform = args[1] as string;
             return Regen(args.Caller, range, true, landform,true);
         }
-        
+
         private TextCommandResult OnCmdDelrange(TextCommandCallingArgs args)
         {
             var xs = (int)args[0];
@@ -639,7 +672,7 @@ namespace Vintagestory.ServerMods
             var ze = (int)args[3];
             return DelChunkRange(new Vec2i(xs,zs), new Vec2i(xe,ze));
         }
-        
+
         private TextCommandResult OnCmdTree(TextCommandCallingArgs args)
         {
             var asset = args[0] as string;
@@ -648,20 +681,20 @@ namespace Vintagestory.ServerMods
             var player = args.Caller.Player as IServerPlayer;
             return TestTree(player, asset, size, aheadoffset);
         }
-        
+
         private TextCommandResult OnCmdTreelineup(TextCommandCallingArgs args)
         {
             var asset = args[0] as string;
             var player = args.Caller.Player as IServerPlayer;
             return TreeLineup(player, asset);
         }
-        
+
         private TextCommandResult OnCmdGenmapClimate(TextCommandCallingArgs args)
         {
             NoiseBase.Debug = true;
             BlockPos pos = args.Caller.Entity.ServerPos.XYZ.AsBlockPos;
             int noiseSizeClimate = api.WorldManager.RegionSize / TerraGenConfig.climateMapScale;
-            
+
             int regionX = pos.X / api.WorldManager.RegionSize;
             int regionZ = pos.Z / api.WorldManager.RegionSize;
             int startX = regionX * noiseSizeClimate - 256;
@@ -674,7 +707,7 @@ namespace Vintagestory.ServerMods
                 float fac = (float)args[0];
                 (((climateGen as MapLayerPerlinWobble).parent as MapLayerClimate).noiseMap as NoiseClimateRealistic).GeologicActivityStrength = fac;
                 climateGen.DebugDrawBitmap(DebugDrawMode.FirstByteGrayscale, startX, startZ, "climatemap-" + fac);
-                
+
                 NoiseBase.Debug = false;
                 return TextCommandResult.Success("Geo activity map generated");
             }
@@ -683,38 +716,38 @@ namespace Vintagestory.ServerMods
             NoiseBase.Debug = false;
             return TextCommandResult.Success("Climate map generated");
         }
-        
+
         private TextCommandResult OnCmdGenmapForest(TextCommandCallingArgs args)
         {
             NoiseBase.Debug = true;
             var genmapsSys = api.ModLoader.GetModSystem<GenMaps>();
             genmapsSys.initWorldGen();
             MapLayerBase forestGen = genmapsSys.forestGen;
-            
+
             BlockPos pos = args.Caller.Entity.ServerPos.XYZ.AsBlockPos;
             int regionX = pos.X / api.WorldManager.RegionSize;
             int regionZ = pos.Z / api.WorldManager.RegionSize;
-            
+
             int noiseSizeForest = api.WorldManager.RegionSize / TerraGenConfig.forestMapScale;
-            
+
             int startX = regionX * noiseSizeForest - 256;
             int startZ = regionZ * noiseSizeForest - 256;
             forestGen.DebugDrawBitmap(DebugDrawMode.FirstByteGrayscale, startX, startZ, "forestmap");
             NoiseBase.Debug = false;
             return TextCommandResult.Success("Forest map generated");
         }
-        
+
         private TextCommandResult OnCmdGenmapUpheavel(TextCommandCallingArgs args)
         {
             NoiseBase.Debug = true;
             var genmapsSys = api.ModLoader.GetModSystem<GenMaps>();
             genmapsSys.initWorldGen();
-            
+
             BlockPos pos = args.Caller.Entity.ServerPos.XYZ.AsBlockPos;
             int regionX = pos.X / api.WorldManager.RegionSize;
             int regionZ = pos.Z / api.WorldManager.RegionSize;
             MapLayerBase upheavelGen = genmapsSys.upheavelGen;
-            
+
             int noiseSizeUpheavel = api.WorldManager.RegionSize / TerraGenConfig.geoUpheavelMapScale;
             int startX = regionX * noiseSizeUpheavel - 256;
             int startZ = regionZ * noiseSizeUpheavel - 256;
@@ -723,17 +756,17 @@ namespace Vintagestory.ServerMods
             NoiseBase.Debug = false;
             return TextCommandResult.Success("Upheavel map generated");
         }
-        
+
         private TextCommandResult OnCmdGenmapMushroom(TextCommandCallingArgs args)
         {
             NoiseBase.Debug = true;
             var genmapsSys = api.ModLoader.GetModSystem<GenMaps>();
             genmapsSys.initWorldGen();
-            
+
             BlockPos pos = args.Caller.Entity.ServerPos.XYZ.AsBlockPos;
             int regionX = pos.X / api.WorldManager.RegionSize;
             int regionZ = pos.Z / api.WorldManager.RegionSize;
-            
+
             int noiseSizeForest = api.WorldManager.RegionSize / TerraGenConfig.forestMapScale;
             int startX = regionX * noiseSizeForest - 256;
             int startZ = regionZ * noiseSizeForest - 256;
@@ -744,19 +777,19 @@ namespace Vintagestory.ServerMods
             NoiseBase.Debug = false;
             return TextCommandResult.Success("Mushroom maps generated");
         }
-        
+
         private TextCommandResult OnCmdGenmapOre(TextCommandCallingArgs args)
         {
             NoiseBase.Debug = true;
             /*NoiseOre noiseOre = new NoiseOre(seed);
             MapLayerBase climate = GenMaps.GetOreMap(seed, noiseOre);
-            
+
             climate.DebugDrawBitmap(0, 0, 0, 1024, "Ore 1 - Ore");
             return TextCommandResult.Success("ore map generated");*/
             NoiseBase.Debug = false;
             return TextCommandResult.Success();
         }
-        
+
         private TextCommandResult OnCmdGenmapGprov(TextCommandCallingArgs args)
         {
             NoiseBase.Debug = true;
@@ -764,7 +797,7 @@ namespace Vintagestory.ServerMods
             var genmapsSys = api.ModLoader.GetModSystem<GenMaps>();
             genmapsSys.initWorldGen();
             MapLayerBase geologicprovinceGen = genmapsSys.geologicprovinceGen;
-            
+
             BlockPos pos = args.Caller.Entity.ServerPos.XYZ.AsBlockPos;
             int regionX = pos.X / api.WorldManager.RegionSize;
             int regionZ = pos.Z / api.WorldManager.RegionSize;
@@ -776,7 +809,7 @@ namespace Vintagestory.ServerMods
             NoiseBase.Debug = false;
             return TextCommandResult.Success("Province map generated");
         }
-        
+
         private TextCommandResult OnCmdGenmapLandform(TextCommandCallingArgs args)
         {
             NoiseBase.Debug = true;
@@ -785,11 +818,11 @@ namespace Vintagestory.ServerMods
             var genmapsSys = api.ModLoader.GetModSystem<GenMaps>();
             genmapsSys.initWorldGen();
             MapLayerBase landformsGen = genmapsSys.landformsGen;
-            
+
             BlockPos pos = args.Caller.Entity.ServerPos.XYZ.AsBlockPos;
             int regionX = pos.X / api.WorldManager.RegionSize;
             int regionZ = pos.Z / api.WorldManager.RegionSize;
-            
+
             int startX = regionX * noiseSizeLandform - 256;
             int startZ = regionZ * noiseSizeLandform - 256;
 
@@ -797,19 +830,19 @@ namespace Vintagestory.ServerMods
             NoiseBase.Debug = false;
             return TextCommandResult.Success("Landforms map generated");
         }
-        
+
         private TextCommandResult OnCmdGenmapOcean(TextCommandCallingArgs args)
         {
             NoiseBase.Debug = true;
-            
+
             var genmapsSys = api.ModLoader.GetModSystem<GenMaps>();
             genmapsSys.initWorldGen();
             MapLayerBase oceanGen = genmapsSys.oceanGen;
-            
+
             BlockPos pos = args.Caller.Entity.ServerPos.XYZ.AsBlockPos;
             int regionX = pos.X / api.WorldManager.RegionSize;
             int regionZ = pos.Z / api.WorldManager.RegionSize;
-            
+
             int noiseSizeOcean = api.WorldManager.RegionSize / TerraGenConfig.oceanMapScale;
             int startX = regionX * noiseSizeOcean - 256;
             int startZ = regionZ * noiseSizeOcean - 256;
@@ -818,7 +851,7 @@ namespace Vintagestory.ServerMods
             NoiseBase.Debug = false;
             return TextCommandResult.Success("Ocean map generated");
         }
-        
+
         private TextCommandResult OnCmdStitch(TextCommandCallingArgs args)
         {
             BlockPos pos = args.Caller.Entity.Pos.AsBlockPos;
@@ -829,7 +862,7 @@ namespace Vintagestory.ServerMods
             }
 
             IMapRegion mapRegion = serverchunk.MapChunk.MapRegion;
-            
+
             int regionX = pos.X / _regionSize;
             int regionZ = pos.Z / _regionSize;
 
@@ -841,7 +874,7 @@ namespace Vintagestory.ServerMods
             int stitchSize = size * 3;
 
             int[] stitchedMap = new int[stitchSize * stitchSize];
-            
+
             for (int dx = -1; dx <= 1; dx++)
             {
                 for (int dz = -1; dz <= 1; dz++)
@@ -865,7 +898,7 @@ namespace Vintagestory.ServerMods
             NoiseBase.Debug = false;
             return TextCommandResult.Success();
         }
-        
+
         private TextCommandResult OnCmdRegionsOre(TextCommandCallingArgs args)
         {
             var pos = args.Caller.Entity.Pos.AsBlockPos;
@@ -876,14 +909,14 @@ namespace Vintagestory.ServerMods
             }
 
             var mapRegion = serverchunk.MapChunk.MapRegion;
-            
+
             var regionX = pos.X / _regionSize;
             var regionZ = pos.Z / _regionSize;
 
             var radius = (int)args[0];
 
             NoiseBase.Debug = false;
-            
+
             var type = args.Parsers[1].IsMissing ? "limonite" : args[1] as string;
 
             if (!mapRegion.OreMaps.ContainsKey(type))
@@ -938,7 +971,117 @@ namespace Vintagestory.ServerMods
             NoiseBase.Debug = false;
             return TextCommandResult.Success(type + " ore map generated.");
         }
-        
+
+        private TextCommandResult OnCmdRegionsClimate(TextCommandCallingArgs args)
+        {
+            var pos = args.Caller.Entity.Pos.AsBlockPos;
+            var serverchunk = api.WorldManager.GetChunk(pos);
+            if (serverchunk == null)
+            {
+                return TextCommandResult.Success("Can't check here, beyond chunk boundaries!");
+            }
+
+            var mapRegion = serverchunk.MapChunk.MapRegion;
+
+            var regionX = pos.X / _regionSize;
+            var regionZ = pos.Z / _regionSize;
+
+            var radius = (int)args[0];
+
+            NoiseBase.Debug = false;
+
+            var oreMapSize = mapRegion.ClimateMap.InnerSize;
+            var len = (2 * radius + 1) * oreMapSize;
+            var outPixels = new int[len * len];
+
+            for (int dx = -radius; dx <= radius; dx++)
+            {
+                for (int dz = -radius; dz <= radius; dz++)
+                {
+                    mapRegion = api.World.BlockAccessor.GetMapRegion(regionX + dx, regionZ + dz);
+                    if (mapRegion == null)
+                    {
+                        continue;
+                    }
+
+                    IntDataMap2D map = mapRegion.ClimateMap;
+
+                    int baseX = (dx + radius) * oreMapSize;
+                    int baseZ = (dz + radius) * oreMapSize;
+
+                    for (int px = 0; px < map.InnerSize; px++)
+                    {
+                        for (int pz = 0; pz < map.InnerSize; pz++)
+                        {
+                            int pixel = map.GetUnpaddedInt(px, pz);
+
+                            outPixels[(pz + baseZ) * len + px + baseX] = pixel;
+                        }
+                    }
+                }
+            }
+
+            NoiseBase.Debug = true;
+            NoiseBase.DebugDrawBitmap(DebugDrawMode.RGB, outPixels, len, "climates-" + regionX + "-" + regionZ + "-" + radius);
+            NoiseBase.Debug = false;
+            return TextCommandResult.Success("climate map generated.");
+        }
+
+        private TextCommandResult OnCmdRegionsUpheavel(TextCommandCallingArgs args)
+        {
+            var pos = args.Caller.Entity.Pos.AsBlockPos;
+            var serverchunk = api.WorldManager.GetChunk(pos);
+            if (serverchunk == null)
+            {
+                return TextCommandResult.Success("Can't check here, beyond chunk boundaries!");
+            }
+
+            var mapRegion = serverchunk.MapChunk.MapRegion;
+
+            var regionX = pos.X / _regionSize;
+            var regionZ = pos.Z / _regionSize;
+
+            var radius = (int)args[0];
+
+            NoiseBase.Debug = false;
+
+            var oreMapSize = mapRegion.UpheavelMap.InnerSize;
+            var len = (2 * radius + 1) * oreMapSize;
+            var outPixels = new int[len * len];
+
+            for (int dx = -radius; dx <= radius; dx++)
+            {
+                for (int dz = -radius; dz <= radius; dz++)
+                {
+                    mapRegion = api.World.BlockAccessor.GetMapRegion(regionX + dx, regionZ + dz);
+                    if (mapRegion == null)
+                    {
+                        continue;
+                    }
+
+                    IntDataMap2D map = mapRegion.UpheavelMap;
+
+                    int baseX = (dx + radius) * oreMapSize;
+                    int baseZ = (dz + radius) * oreMapSize;
+
+                    for (int px = 0; px < map.InnerSize; px++)
+                    {
+                        for (int pz = 0; pz < map.InnerSize; pz++)
+                        {
+                            int pixel = map.GetUnpaddedInt(px, pz);
+
+                            outPixels[(pz + baseZ) * len + px + baseX] = pixel;
+                        }
+                    }
+                }
+            }
+
+            NoiseBase.Debug = true;
+            NoiseBase.DebugDrawBitmap(DebugDrawMode.RGB, outPixels, len, "upheavels-" + regionX + "-" + regionZ + "-" + radius);
+            NoiseBase.Debug = false;
+            return TextCommandResult.Success("upheavel map generated.");
+        }
+
         private TextCommandResult OnCmdPos(TextCommandCallingArgs args)
         {
 
@@ -953,7 +1096,7 @@ namespace Vintagestory.ServerMods
 
             IMapRegion mapRegion = serverchunk.MapChunk.MapRegion;
             IMapChunk mapchunk = serverchunk.MapChunk;
-            
+
             int regionChunkSize = api.WorldManager.RegionSize / chunkSize;
 
             int lx = pos.X % chunkSize;
@@ -1103,7 +1246,7 @@ namespace Vintagestory.ServerMods
                         int rockStrataId = -1;
                         float strataThickness = 0;
                         RockStratum stratum = null;
-                        
+
 
                         OrderedDictionary<int, int> stratathicknesses = new OrderedDictionary<int, int>();
 
@@ -1121,7 +1264,7 @@ namespace Vintagestory.ServerMods
                                 step = (float)rockMap.InnerSize / regionChunkSize;
 
                                 int grp = (int)stratum.RockGroup;
-                                
+
                                 float dist = 1 + GameMath.Clamp((distx + distz) / 30, 0.9f, 1.1f);
                                 strataThickness = Math.Min(rockGroupMaxThickness[grp] * dist, rockMap.GetIntLerpedCorrectly(rdx * step + step * (float)(lx + distx) / chunkSize, rdz * step + step * (float)(lz + distz) / chunkSize));
 
@@ -1150,7 +1293,7 @@ namespace Vintagestory.ServerMods
 
                         foreach (var val in stratathicknesses)
                         {
-                            sb.AppendLine(api.World.Blocks[val.Key].Code.ToShortString() + " : " + val.Value + " blocks"); 
+                            sb.AppendLine(api.World.Blocks[val.Key].Code.ToShortString() + " : " + val.Value + " blocks");
                         }
 
 
@@ -1195,14 +1338,14 @@ namespace Vintagestory.ServerMods
                         ClimateCondition climate = api.World.BlockAccessor.GetClimateAt(pos);
 
                         string text = string.Format(
-                            "Temperature: {0}°C, Year avg: {1}°C, Avg. Rainfall: {2}%, Geologic Activity: {3}%, Fertility: {4}%, Forest: {5}%, Shrub: {6}%, Sealevel dist: {7}%, Season: {8}, Hemisphere: {9}", 
-                            climate.Temperature.ToString("0.#"), 
-                            climate.WorldGenTemperature.ToString("0.#"), 
+                            "Temperature: {0}°C, Year avg: {1}°C, Avg. Rainfall: {2}%, Geologic Activity: {3}%, Fertility: {4}%, Forest: {5}%, Shrub: {6}%, Sealevel dist: {7}%, Season: {8}, Hemisphere: {9}",
+                            climate.Temperature.ToString("0.#"),
+                            climate.WorldGenTemperature.ToString("0.#"),
                             (int)(climate.WorldgenRainfall * 100f),
                             (int)(climate.GeologicActivity * 100),
-                            (int)(climate.Fertility * 100f), 
+                            (int)(climate.Fertility * 100f),
                             (int)(climate.ForestDensity * 100f), (int)(climate.ShrubDensity * 100f), (int)(100f * pos.Y / 255f),
-                            api.World.Calendar.GetSeason(pos), 
+                            api.World.Calendar.GetSeason(pos),
                             api.World.Calendar.GetHemisphere(pos)
                         );
 
@@ -1216,7 +1359,7 @@ namespace Vintagestory.ServerMods
             }
             return TextCommandResult.Success();
         }
-    
+
         private TextCommandResult OnCmdTestnoise(TextCommandCallingArgs args)
         {
             bool use3d = false;
@@ -1266,7 +1409,7 @@ namespace Vintagestory.ServerMods
             // player.SendMessage(groupId, "\nNoise min = " + min.ToString("0.##") +", max= " + max.ToString("0.##"), EnumChatType.CommandSuccess);
             return TextCommandResult.Success(msg);
         }
-        
+
         private TextCommandResult OnCmdClimate(TextCommandCallingArgs args)
         {
             NoiseBase.Debug = true;
@@ -1275,13 +1418,13 @@ namespace Vintagestory.ServerMods
             NoiseBase.Debug = false;
             return TextCommandResult.Success("Patchy climate map generated");
         }
-        
+
         private TextCommandResult OnCmdGeoact(TextCommandCallingArgs args)
         {
-            
+
             var worldConfig = api.WorldManager.SaveGame.WorldConfiguration;
             var polarEquatorDistance = worldConfig.GetString("polarEquatorDistance", "50000").ToInt(50000);
-            
+
             var size = (int)args[0];
             var spawnMinTemp = 6;
             var spawnMaxTemp = 14;
@@ -1293,7 +1436,7 @@ namespace Vintagestory.ServerMods
 
             return TextCommandResult.Success("Geologic activity map generated");
         }
-        
+
         private TextCommandResult OnCmdClimater(TextCommandCallingArgs args)
         {
             var worldConfig = api.WorldManager.SaveGame.WorldConfiguration;
@@ -1332,10 +1475,10 @@ namespace Vintagestory.ServerMods
 
             return TextCommandResult.Success("Realistic climate map generated");
         }
-        
+
         private TextCommandResult OnCmdForest(TextCommandCallingArgs args)
         {
-            
+
             NoiseClimatePatchy noiseClimate = new NoiseClimatePatchy(_seed);
             MapLayerBase climate = GenMaps.GetClimateMapGen(_seed, noiseClimate);
             MapLayerBase forest = GenMaps.GetForestMapGen(_seed + 1, TerraGenConfig.forestMapScale);
@@ -1349,7 +1492,7 @@ namespace Vintagestory.ServerMods
             NoiseBase.Debug = false;
             return TextCommandResult.Success("Forest map generated");
         }
-        
+
         private TextCommandResult OnCmdUpheavel(TextCommandCallingArgs args)
         {
             var size = (int)args[0];
@@ -1359,10 +1502,10 @@ namespace Vintagestory.ServerMods
             NoiseBase.Debug = false;
             return TextCommandResult.Success("Geo upheavel map generated");
         }
-        
+
         private TextCommandResult OnCmdOcean(TextCommandCallingArgs args)
         {
-            
+
             var worldConfig = api.WorldManager.SaveGame.WorldConfiguration;
             var size = (int)args[0];
             float landcover = worldConfig.GetString("landcover", "1").ToFloat(1f);
@@ -1371,7 +1514,7 @@ namespace Vintagestory.ServerMods
             var noiseSizeOcean = api.WorldManager.RegionSize / TerraGenConfig.oceanMapScale;
             int centerRegX = api.WorldManager.MapSizeX / api.WorldManager.RegionSize / 2;
             int centerRegZ = api.WorldManager.MapSizeZ / api.WorldManager.RegionSize / 2;
-            
+
             var list = new List<XZ>();
             list.Add(new XZ(centerRegX * noiseSizeOcean, centerRegZ * noiseSizeOcean));
 
@@ -1381,7 +1524,7 @@ namespace Vintagestory.ServerMods
             NoiseBase.Debug = false;
             return TextCommandResult.Success("Ocean map generated");
         }
-        
+
         private TextCommandResult OnCmdOre(TextCommandCallingArgs args)
         {
             NoiseBase.Debug = true;
@@ -1396,7 +1539,7 @@ namespace Vintagestory.ServerMods
             NoiseBase.Debug = false;
             return TextCommandResult.Success("ore map generated");
         }
-        
+
         private TextCommandResult OnCmdOretopdistort(TextCommandCallingArgs args)
         {
             NoiseBase.Debug = true;
@@ -1404,7 +1547,7 @@ namespace Vintagestory.ServerMods
             NoiseBase.Debug = false;
             return TextCommandResult.Success("Ore top distort map generated");
         }
-        
+
         private TextCommandResult OnCmdWind(TextCommandCallingArgs args)
         {
             NoiseBase.Debug = true;
@@ -1412,7 +1555,7 @@ namespace Vintagestory.ServerMods
             NoiseBase.Debug = false;
             return TextCommandResult.Success("Wind map generated");
         }
-        
+
         private TextCommandResult OnCmdGprov(TextCommandCallingArgs args)
         {
             NoiseBase.Debug = true;
@@ -1421,7 +1564,7 @@ namespace Vintagestory.ServerMods
 
             return TextCommandResult.Success("Province map generated");
         }
-        
+
         private TextCommandResult OnCmdLandform(TextCommandCallingArgs args)
         {
             var worldConfig = api.WorldManager.SaveGame.WorldConfiguration;
@@ -1433,7 +1576,7 @@ namespace Vintagestory.ServerMods
 
             return TextCommandResult.Success("Landforms map generated");
         }
-        
+
         private TextCommandResult OnCmdRockstrata(TextCommandCallingArgs args)
         {
             NoiseBase.Debug = true;
@@ -1483,16 +1626,16 @@ namespace Vintagestory.ServerMods
                 colors[i] = rnd.Next() | (128 << 24);
             }
 
-            /*for (int x = 0; x < size; x++) 
+            /*for (int x = 0; x < size; x++)
             {
                 for (int y = 0; y < size; y++)
                 {
                     int color = 0;
                     int rain = y;
                     int unscaledTemp = x;
-                    int temp = TerraGenConfig.GetScaledAdjustedTemperature(unscaledTemp, 0);
+                    int temp = Climate.GetScaledAdjustedTemperature(unscaledTemp, 0);
                     float heightRel = 0;
-                    int fertility = TerraGenConfig.GetFertility(rain, temp, heightRel);
+                    int fertility = Climate.GetFertility(rain, temp, heightRel);
 
                     float fertDist, rainDist, tempDist, forestDist, heightDist;
 
@@ -1526,7 +1669,7 @@ namespace Vintagestory.ServerMods
                         pixels[(y * 512 + x) * 4 + 0] | (pixels[(y * 512 + x) * 4 + 1] << 8) | (pixels[(y * 512 + x) * 4 + 2] << 16) | (pixels[(y * 512 + x) * 4 + 3] << 24),
                         color
                     );
-                    
+
                     pixels[(y * 512 + x) * 4 + 0] = (byte)(col & 0xff);
                     pixels[(y * 512 + x) * 4 + 1] = (byte)(((col >> 8) & 0xff) << 8);
                     pixels[(y * 512 + x) * 4 + 2] = (byte)(((col >> 16) & 0xff) << 16);
@@ -1574,7 +1717,7 @@ namespace Vintagestory.ServerMods
             }
 
             List<Vec2i> coords = new List<Vec2i>();
-            
+
             for (int x = -rad; x <= rad; x++)
             {
                 for (int z = -rad; z <= rad; z++)
@@ -1625,7 +1768,7 @@ namespace Vintagestory.ServerMods
                 chunkMidX = (int)player.Entity.Pos.X / api.WorldManager.ChunkSize;
                 chunkMidZ = (int)player.Entity.Pos.Z / api.WorldManager.ChunkSize;
             }
-            
+
             List<Vec2i> coords = new List<Vec2i>();
 
 
@@ -1705,6 +1848,7 @@ namespace Vintagestory.ServerMods
                     api.ModLoader.GetModSystem<GenCaves>().initWorldGen();
                     api.ModLoader.GetModSystem<GenDeposits>().reloadWorldGen();
                     api.ModLoader.GetModSystem<GenStructures>().initWorldGen();
+                    api.ModLoader.GetModSystem<GenStoryStructures>().InitWorldGen();
                 }
 
                 msg = Regen(caller, range, false,landform, aroundPlayer, deleteRegion);
@@ -1729,7 +1873,7 @@ namespace Vintagestory.ServerMods
             }
 
             List<Vec2i> coords = new List<Vec2i>();
-            HashSet<Vec2i> regCoords = new HashSet<Vec2i>();                
+            HashSet<Vec2i> regCoords = new HashSet<Vec2i>();
 
             int regionChunkSize = api.WorldManager.RegionSize / api.WorldManager.ChunkSize;
             for (int x = -rad; x <= rad; x++)
@@ -1740,7 +1884,7 @@ namespace Vintagestory.ServerMods
                     regCoords.Add(new Vec2i((chunkMidX + x) / regionChunkSize, (chunkMidZ + z) / regionChunkSize));
                 }
             }
-            
+
             TreeAttribute tree = null;
             if (deleteRegion)
             {
@@ -1750,7 +1894,7 @@ namespace Vintagestory.ServerMods
                 {
                     var regionIndex = api.WorldManager.MapRegionIndex2D(coord.X / regionChunkSize, coord.Y / regionChunkSize);
                     var mapRegion = api.WorldManager.GetMapRegion(regionIndex);
-                    if (mapRegion.GeneratedStructures.Count > 0)
+                    if (mapRegion?.GeneratedStructures.Count > 0)
                     {
                         // only adds the region once
                         regionStructures.TryAdd(regionIndex, mapRegion.GeneratedStructures);
@@ -1763,7 +1907,7 @@ namespace Vintagestory.ServerMods
                     }
                 }
 
-                tree = new TreeAttribute();        
+                tree = new TreeAttribute();
                 tree.SetBytes("GeneratedStructures", SerializerUtil.Serialize(regionStructures));
             }
 
@@ -1845,7 +1989,7 @@ namespace Vintagestory.ServerMods
 
             return TextCommandResult.Success("Reloaded landforms and regenerating " + diam + "x" + diam + " columns" + (deleteRegion ? " and regions" : ""));
         }
-        
+
         TextCommandResult TestTree(IServerPlayer player, string asset,float size, float aheadoffset)
         {
             var loc = new AssetLocation(asset);
@@ -1853,7 +1997,7 @@ namespace Vintagestory.ServerMods
             var pos = player.Entity.Pos.HorizontalAheadCopy(aheadoffset).AsBlockPos;
 
             IBlockAccessor blockAccessor = api.World.GetBlockAccessorBulkUpdate(true, true);
-            
+
             while (blockAccessor.GetBlockId(pos) == 0 && pos.Y > 1)
             {
                 pos.Down();
@@ -1902,7 +2046,7 @@ namespace Vintagestory.ServerMods
             blockAccessor.Commit();
             return TextCommandResult.Success();
         }
-        
+
         private IntDataMap2D OnMapRegionGen(int regionX, int regionZ, MapLayerBase climateGen)
         {
             int pad = 2;
@@ -1919,7 +2063,7 @@ namespace Vintagestory.ServerMods
             map.TopLeftPadding = map.BottomRightPadding = pad;
             return map;
         }
-        
+
         void DrawMapRegion(DebugDrawMode mode, Caller caller, IntDataMap2D map, string prefix, bool lerp, int regionX, int regionZ, int scale)
         {
             var player = caller.Player as IServerPlayer;
@@ -1947,7 +2091,7 @@ namespace Vintagestory.ServerMods
                     sb.AppendLine($"{i}: Name: {structure.Name} - Code: {structure.Code} - Group: {structure.Group}");
                     sb.AppendLine($"     YOff: {structure.OffsetY} - MinGroupDist: {structure.MinGroupDistance}");
                 }
-                
+
                 return TextCommandResult.Success(sb.ToString());
             }
             var structureNum = (int)args[0];
@@ -1959,10 +2103,10 @@ namespace Vintagestory.ServerMods
             for (var i = 0; i < structures.schematicDatas.Length; i++)
             {
                 var schematic = structures.schematicDatas[i];
-                
+
                 sb.AppendLine($"{i}: File: {schematic[0].FromFileName}");
             }
-                
+
             return TextCommandResult.Success(sb.ToString());
         }
 
@@ -1971,22 +2115,22 @@ namespace Vintagestory.ServerMods
             var structureNum = (int)args[0];
             var schematicNum = (int)args[1];
             var schematicRot = (int)args[2];
-            
+
             if (structureNum < 0 || structureNum >= _scfg.Structures.Length)
             {
                 return TextCommandResult.Success($"structureNum is out of range: 0-{_scfg.Structures.Length - 1}");
             }
 
             var struc = _scfg.Structures[structureNum];
-            
+
             if (schematicNum < 0 || schematicNum >= struc.schematicDatas.Length)
             {
                 return TextCommandResult.Success($"schematicNum is out of range: 0-{struc.schematicDatas.Length - 1}");
             }
-            
+
             // take target block if available or own position
             var pos = args.Caller.Player.CurrentBlockSelection?.Position.AddCopy(0,struc.OffsetY ?? 0,0) ?? args.Caller.Pos.AsBlockPos.AddCopy(0,struc.OffsetY ?? 0,0);
-            
+
             var schematic = struc.schematicDatas[schematicNum][schematicRot];
             schematic.Unpack(api);
             var chunkX = pos.X / _chunksize;
@@ -2001,13 +2145,13 @@ namespace Vintagestory.ServerMods
                     var climateMap = chunk.MapChunk.MapRegion.ClimateMap;
                     var rlX = chunkX % _regionChunkSize;
                     var rlZ = chunkZ % _regionChunkSize;
-                    
+
                     var facC = (float)climateMap.InnerSize / _regionChunkSize;
                     var climateUpLeft = climateMap.GetUnpaddedInt((int)(rlX * facC), (int)(rlZ * facC));
                     var climateUpRight = climateMap.GetUnpaddedInt((int)(rlX * facC + facC), (int)(rlZ * facC));
                     var climateBotLeft = climateMap.GetUnpaddedInt((int)(rlX * facC), (int)(rlZ * facC + facC));
                     var climateBotRight = climateMap.GetUnpaddedInt((int)(rlX * facC + facC), (int)(rlZ * facC + facC));
-                    schematic.PlaceRespectingBlockLayers(api.World.BlockAccessor, api.World, pos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, struc.resolvedRockTypeRemaps, struc.replacewithblocklayersBlockids);
+                    schematic.PlaceRespectingBlockLayers(api.World.BlockAccessor, api.World, pos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, struc.resolvedRockTypeRemaps, struc.replacewithblocklayersBlockids, GenStructures.ReplaceMetaBlocks);
                     break;
                 }
                 case EnumStructurePlacement.Underwater:
@@ -2016,18 +2160,18 @@ namespace Vintagestory.ServerMods
                 {
                     if (struc.resolvedRockTypeRemaps != null)
                     {
-                        schematic.PlaceReplacingBlocks(api.World.BlockAccessor, api.World, pos, schematic.ReplaceMode, struc.resolvedRockTypeRemaps, null);
+                        schematic.PlaceReplacingBlocks(api.World.BlockAccessor, api.World, pos, schematic.ReplaceMode, struc.resolvedRockTypeRemaps, null, GenStructures.ReplaceMetaBlocks);
                     }
                     else
                     {
-                        schematic.Place(api.World.BlockAccessor, api.World, pos);
+                        schematic.Place(api.World.BlockAccessor, api.World, pos, GenStructures.ReplaceMetaBlocks);
                     }
                     break;
                 }
                 default:
                     throw new ArgumentOutOfRangeException();
             }
-            
+
             return TextCommandResult.Success($"placing structure: {struc.Name} :: {schematic.FromFileName} placement: {struc.Placement}");
         }
     }

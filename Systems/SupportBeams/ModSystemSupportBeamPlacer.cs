@@ -1,6 +1,7 @@
 ﻿using ProtoBuf;
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -12,7 +13,7 @@ namespace Vintagestory.GameContent
     {
         public override bool ShouldLoad(EnumAppSide forSide) => true;
 
-        protected Dictionary<Block, MeshData> origBeamMeshes = new Dictionary<Block, MeshData>();
+        protected Dictionary<string, MeshData[]> origBeamMeshes = new Dictionary<string, MeshData[]>();
         Dictionary<string, BeamPlacerWorkSpace> workspaceByPlayer = new Dictionary<string, BeamPlacerWorkSpace>();
         
         ICoreAPI api;
@@ -58,7 +59,7 @@ namespace Vintagestory.GameContent
             );
         }
 
-        public void OnInteract(Block block, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel)
+        public void OnInteract(Block block, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, bool partialEnds)
         {
             if (blockSel == null)
             {
@@ -69,7 +70,7 @@ namespace Vintagestory.GameContent
 
             if (!ws.nowBuilding)
             {
-                beginPlace(ws, block, byEntity, blockSel);
+                beginPlace(ws, block, byEntity, blockSel, partialEnds);
             } else
             {
                 completePlace(ws, byEntity, slot);
@@ -77,11 +78,11 @@ namespace Vintagestory.GameContent
         }
 
 
-        private void beginPlace(BeamPlacerWorkSpace ws, Block block, EntityAgent byEntity, BlockSelection blockSel)
+        private void beginPlace(BeamPlacerWorkSpace ws, Block block, EntityAgent byEntity, BlockSelection blockSel, bool partialEnds)
         {
             ws.GridSize = byEntity.Controls.Sprint ? 16 : 4;
 
-            ws.currentMesh = getOrCreateBeamMesh(block);
+            ws.currentMeshes = getOrCreateBeamMeshes(block, (block as BlockSupportBeam)?.PartialEnds ?? false);
 
             var be = api.World.BlockAccessor.GetBlockEntity(blockSel.Position);
             var beh = be?.GetBehavior<BEBehaviorSupportBeam>();
@@ -188,24 +189,40 @@ namespace Vintagestory.GameContent
         }
 
 
-        public MeshData getOrCreateBeamMesh(Block block, ITexPositionSource texSource = null, string texSourceKey = null)
+        public MeshData[] getOrCreateBeamMeshes(Block block, bool partialEnds, ITexPositionSource texSource = null, string texSourceKey = null)
         {
             if (capi == null) return null;
 
             if (texSource != null)
             {
                 capi.Tesselator.TesselateShape(texSourceKey, capi.TesselatorManager.GetCachedShape(block.Shape.Base), out var cmeshData, texSource);
-                return cmeshData;
+                return new MeshData[] { cmeshData };
             }
 
-            if (!origBeamMeshes.TryGetValue(block, out var meshData))
+            string key = block.Code + "-" + partialEnds;
+            MeshData[] meshdatas;
+
+            if (!origBeamMeshes.TryGetValue(key, out meshdatas))
             {
-                capi.Tesselator.TesselateShape(block, capi.TesselatorManager.GetCachedShape(block.Shape.Base), out meshData);
-                origBeamMeshes[block] = meshData;
-                return meshData;
+                if (partialEnds)
+                {
+                    origBeamMeshes[key] = meshdatas = new MeshData[4];
+                    for (int i = 0; i < 4; i++)
+                    {
+                        var loc = block.Shape.Base.Clone().WithFilename("" + ((i+1) * 4));
+                        var shape = capi.Assets.Get(loc.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json")).ToObject<Shape>();
+                        capi.Tesselator.TesselateShape(block, shape, out var meshData);
+                        meshdatas[i] = meshData;
+                    }
+                } else
+                {
+                    origBeamMeshes[key] = meshdatas = new MeshData[1];
+                    capi.Tesselator.TesselateShape(block, capi.TesselatorManager.GetCachedShape(block.Shape.Base), out var meshData);
+                    meshdatas[0] = meshData;
+                }
             }
 
-            return meshData;
+            return meshdatas;
         }
 
         public void OnRenderFrame(float deltaTime, EnumRenderStage stage)
@@ -228,23 +245,20 @@ namespace Vintagestory.GameContent
 
             var prevprog = capi.Render.CurrentActiveShader;
             prevprog?.Stop();
-            var prog = capi.Render.PreparedStandardShader((int)ws.startPos.X, (int)ws.startPos.Y, (int)ws.startPos.Z);
+            var prog = capi.Render.PreparedStandardShader(ws.startPos.X, ws.startPos.InternalY, ws.startPos.Z);
             Vec3d camPos = capi.World.Player.Entity.CameraPos;
 
             prog.Use();
-
-            prog.Tex2D = capi.BlockTextureAtlas.AtlasTextures[0].TextureId;
-
             prog.ModelMatrix = ModelMat
                 .Identity()
-                .Translate(ws.startPos.X - camPos.X, ws.startPos.Y - camPos.Y, ws.startPos.Z - camPos.Z)
+                .Translate(ws.startPos.X - camPos.X, ws.startPos.InternalY - camPos.Y, ws.startPos.Z - camPos.Z)
                 .Values
             ;
 
             prog.ViewMatrix = capi.Render.CameraMatrixOriginf;
             prog.ProjectionMatrix = capi.Render.CurrentProjectionMatrix;
 
-            capi.Render.RenderMesh(ws.currentMeshRef);
+            capi.Render.RenderMultiTextureMesh(ws.currentMeshRef, "tex");
 
             prog.Stop();
             prevprog?.Use();
@@ -306,11 +320,11 @@ namespace Vintagestory.GameContent
             var ws = getWorkSpace(capi.World.Player.PlayerUID);
             ws.currentMeshRef?.Dispose();
 
-            var mesh = generateMesh(ws.startOffset, ws.endOffset, ws.onFacing, ws.currentMesh, ws.block.Attributes?["slumpPerMeter"].AsFloat(0) ?? 0);
-            ws.currentMeshRef = capi.Render.UploadMesh(mesh);
+            var mesh = generateMesh(ws.startOffset, ws.endOffset, ws.onFacing, ws.currentMeshes, ws.block.Attributes?["slumpPerMeter"].AsFloat(0) ?? 0);
+            ws.currentMeshRef = capi.Render.UploadMultiTextureMesh(mesh);
         }
 
-        public static MeshData generateMesh(Vec3f start, Vec3f end, BlockFacing facing, MeshData origMesh, float slumpPerMeter)
+        public static MeshData generateMesh(Vec3f start, Vec3f end, BlockFacing facing, MeshData[] origMeshes, float slumpPerMeter)
         {
             var outMesh = new MeshData(4, 6).WithRenderpasses().WithXyzFaces().WithColorMaps();
 
@@ -339,6 +353,8 @@ namespace Vintagestory.GameContent
             for (float r = -extend; r < len; r++)
             {
                 double sectionLen = Math.Min(1, len - r);
+                if (sectionLen < 0.01) continue;
+
                 var sectionStart = start + r * dir;
 
                 var distance = (float)(r - len / 2);
@@ -346,14 +362,27 @@ namespace Vintagestory.GameContent
 
                 slump += (float)Math.Sin(distance * slumpPerMeter);
 
+                if (origMeshes.Length > 1 && len < 18 / 16f) { sectionLen = len; r += 1; }
+
+                // 4 sections
+                // 4 voxels long: Choose for len until 6 voxels. 6/16 = 0.375   => all until 0.375*4 has to round to 0. Remove to voxels -> 0.375 becomes 0.25. 0.25*4 => 1. 
+                // 8 voxels long: Choose for len until 10 voxels
+                // 12 voxels long: Choose for len until 14 voxels
+                // 16 voxels long: above 14
+                int index = GameMath.Clamp((int)Math.Round((sectionLen - 4 / 16f) * origMeshes.Length), 0, origMeshes.Length - 1);
+
+                float modelLen = (index+1) / 4f;
+                float xscale = origMeshes.Length == 1 ? (float)(sectionLen) : ((float)sectionLen / modelLen);
+
                 Mat4f.Identity(mat);
                 Mat4f.Translate(mat, mat, sectionStart.X, sectionStart.Y + slump, sectionStart.Z);
                 Mat4f.RotateY(mat, mat, yaw);
                 Mat4f.RotateZ(mat, mat, pitch);
-                Mat4f.Scale(mat, mat, new float[] { (float)sectionLen, 1, 1 });
+                Mat4f.Scale(mat, mat, new float[] { xscale, 1, 1 });
                 Mat4f.Translate(mat, mat, -1f, -0.125f, -0.5f);
 
-                var mesh = origMesh.Clone();
+                
+                var mesh = origMeshes[index].Clone();
                 mesh.MatrixTransform(mat);
 
                 outMesh.AddMeshData(mesh);

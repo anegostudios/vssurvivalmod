@@ -103,7 +103,7 @@ namespace Vintagestory.GameContent
 
         public override bool ShouldReceiveClientParticleTicks(IWorldAccessor world, IPlayer byPlayer, BlockPos pos, ref EnumHandling handling)
         {
-            if (WeatherSystemClient.CurrentEnvironmentWetness < 0.05 || wsys.clientClimateCond.Temperature < 2) return false;
+            if (WeatherSystemClient.CurrentEnvironmentWetness4h < 0.05 || wsys.clientClimateCond.Temperature < 2) return false;
 
             int rainHeight = world.BlockAccessor.GetRainMapHeightAt(pos);
             if (rainHeight <= pos.Y || (rainHeight <= pos.Y + 1 && world.BlockAccessor.GetBlock(pos.X, pos.Y + 1, pos.Z).HasBehavior<BlockBehaviorRainDrip>()) || (rainHeight <= pos.Y + 2 && world.BlockAccessor.GetBlock(pos.X, pos.Y + 2, pos.Z).HasBehavior<BlockBehaviorRainDrip>()))
@@ -120,7 +120,7 @@ namespace Vintagestory.GameContent
         {
             double rand = random.NextDouble() * 75;
 
-            if (rand < WeatherSystemClient.CurrentEnvironmentWetness)
+            if (rand < WeatherSystemClient.CurrentEnvironmentWetness4h)
             {
                 accumParticle.WindAffectednes = windAffectednessAtPos / 2f;
                 accumParticle.MinPos.Set(pos.X, pos.Y, pos.Z);

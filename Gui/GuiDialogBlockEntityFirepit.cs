@@ -106,6 +106,7 @@ namespace Vintagestory.GameContent
             if (!capi.Settings.Bool["immersiveMouseMode"])
             {
                 dialogBounds.fixedOffsetY += (stoveBounds.fixedHeight + 65 + (haveCookingContainer ? 25 : 0)) * YOffsetMul(screenPos);
+                dialogBounds.fixedOffsetX += (stoveBounds.fixedWidth + 10) * XOffsetMul(screenPos);
             }
 
 

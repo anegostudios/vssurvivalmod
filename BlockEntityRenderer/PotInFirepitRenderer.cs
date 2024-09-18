@@ -67,7 +67,6 @@ namespace Vintagestory.GameContent
 
             IStandardShaderProgram prog = rpi.PreparedStandardShader(pos.X, pos.Y, pos.Z);
 
-            prog.Tex2D = capi.BlockTextureAtlas.AtlasTextures[0].TextureId;
             prog.DontWarpVertices = 0;
             prog.AddRenderFlags = 0;
             prog.RgbaAmbientIn = rpi.AmbientColor;
@@ -92,7 +91,7 @@ namespace Vintagestory.GameContent
             prog.ViewMatrix = rpi.CameraMatrixOriginf;
             prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
 
-            rpi.RenderMultiTextureMesh(potRef == null ? potWithFoodRef : potRef);
+            rpi.RenderMultiTextureMesh(potRef == null ? potWithFoodRef : potRef, "tex");
 
             if (!isInOutputSlot)
             {
@@ -115,7 +114,7 @@ namespace Vintagestory.GameContent
                 prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
 
 
-                rpi.RenderMultiTextureMesh(lidRef);
+                rpi.RenderMultiTextureMesh(lidRef, "tex");
             }
 
             prog.Stop();

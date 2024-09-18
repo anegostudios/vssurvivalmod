@@ -34,7 +34,7 @@ namespace Vintagestory.GameContent
 
                 if (commands.Length > 0 && caller.Player != null)
                 {
-                    Api.World.PlaySoundAt(new AssetLocation("sounds/toggleswitch"), Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, null, false, 16, 0.5f);
+                    Api.World.PlaySoundAt(new AssetLocation("sounds/toggleswitch"), Pos, 0, null, false, 16, 0.5f);
                 }
             }
         }

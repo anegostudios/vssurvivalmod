@@ -45,6 +45,13 @@ namespace Vintagestory.GameContent
                     if (TryPut(slot, blockSel, byPlayer))
                     {
                         Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
+                        int index = blockSel.SelectionBoxIndex;
+                        Api.World.Logger.Audit("{0} Put {1} into DisplayCase slotid {2} at {3}.", 
+                            byPlayer.PlayerName,
+                            string.Format("1x{0}", inventory[index].Itemstack?.GetName()),
+                            index,
+                            Pos
+                        );
                         return true;
                     }
 
@@ -114,11 +121,17 @@ namespace Vintagestory.GameContent
                 {
                     AssetLocation sound = stack.Block?.Sounds?.Place;
                     Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
+                    Api.World.Logger.Audit("{0} Took {1} from DisplayCase slotid {2} at {3}.", 
+                        byPlayer.PlayerName,
+                        string.Format("1x{0}", stack.GetName()),
+                        index,
+                        Pos
+                    );
                 }
 
                 if (stack.StackSize > 0)
                 {
-                    Api.World.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    Api.World.SpawnItemEntity(stack, Pos);
                 }
 
                 updateMesh(index);

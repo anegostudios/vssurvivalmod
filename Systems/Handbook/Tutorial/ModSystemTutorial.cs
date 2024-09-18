@@ -6,6 +6,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.ServerMods;
 
 namespace Vintagestory.GameContent
 {
@@ -90,6 +91,13 @@ namespace Vintagestory.GameContent
             tutorialModeActiveForPlayers.Remove(capi.World.Player.PlayerUID);
         }
 
+        public float GetTutorialProgress(string code)
+        {
+            var tut = Tutorials[code];
+            tut.Load();
+            return tut.Progress;
+        }
+
         public override void StartClientSide(ICoreClientAPI api)
         {
             this.capi = api;
@@ -168,10 +176,12 @@ namespace Vintagestory.GameContent
             onStateUpdate((step) => step.OnHotkeyPressed(hotkeycode, keyComb));
         }
 
-        public void StartTutorial(string code)
+        public void StartTutorial(string code, bool restart=false)
         {
             currentTutorialInst = Tutorials[code];
-            currentTutorialInst.Load();
+            if (restart) currentTutorialInst.Restart();
+            else currentTutorialInst.Load();
+
             CurrentTutorial = code;
             hud.TryOpen();
             hud.loadHud(currentTutorialInst.PageCode);
@@ -179,6 +189,7 @@ namespace Vintagestory.GameContent
 
             tutorialModeActiveForPlayers.Add(capi.World.Player.PlayerUID);
         }
+
 
         private TextCommandResult ToggleHud(TextCommandCallingArgs args)
         {
@@ -255,6 +266,11 @@ namespace Vintagestory.GameContent
             {
                 reloadTutorialPage();
                 hud.loadHud(currentTutorialInst.PageCode);
+            }
+
+            if (currentTutorialInst.Complete)
+            {
+                StopActiveTutorial();
             }
         }
 

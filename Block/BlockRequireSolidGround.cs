@@ -8,12 +8,12 @@ namespace Vintagestory.GameContent
     {
         BlockPos tmpPos = new BlockPos();
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, IRandom worldGenRand, BlockPatchAttributes attributes = null)
         {
             if (pos.Y < api.World.SeaLevel)
             {
                 // Cave gen
-                int q = 3 + worldGenRand.NextInt(6); 
+                int q = 3 + worldGenRand.NextInt(6);
                 for (int i = 0; i < q; i++)
                 {
                     tmpPos.Set(pos.X + worldGenRand.NextInt(7) - 3, pos.Y, pos.Z + worldGenRand.NextInt(7) - 3);
@@ -25,7 +25,7 @@ namespace Vintagestory.GameContent
             return tryPlace(blockAccessor, pos, worldGenRand);
         }
 
-        private bool tryPlace(IBlockAccessor blockAccessor, BlockPos pos, LCGRandom worldGenRand)
+        private bool tryPlace(IBlockAccessor blockAccessor, BlockPos pos, IRandom worldGenRand)
         {
             for (int i = 0; i < 3; i++)
             {
@@ -54,7 +54,7 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-        protected virtual void generate(IBlockAccessor blockAccessor, Block block, BlockPos pos, LCGRandom worldGenRand)
+        protected virtual void generate(IBlockAccessor blockAccessor, Block block, BlockPos pos, IRandom worldGenRand)
         {
             blockAccessor.SetBlock(block.Id, pos);
         }
@@ -77,11 +77,11 @@ namespace Vintagestory.GameContent
 
     public class BlockRequireSolidGround : Block
     {
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, IRandom worldGenRand, BlockPatchAttributes attributes = null)
         {
             if (HasSolidGround(blockAccessor, pos))
             {
-                return base.TryPlaceBlockForWorldGen(blockAccessor, pos, onBlockFace, worldGenRand);
+                return base.TryPlaceBlockForWorldGen(blockAccessor, pos, onBlockFace, worldGenRand, attributes);
             }
 
             return false;

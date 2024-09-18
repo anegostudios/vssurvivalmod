@@ -37,7 +37,7 @@ namespace Vintagestory.GameContent
             if (byPlayer.InventoryManager.TryGiveItemstack(new ItemStack(this)))
             {
                 world.BlockAccessor.SetBlock(0, blockSel.Position);
-                world.PlaySoundAt(new AssetLocation("sounds/block/planks"), blockSel.Position.X + 0.5, blockSel.Position.Y, blockSel.Position.Z + 0.5, byPlayer, false);
+                world.PlaySoundAt(new AssetLocation("sounds/block/planks"), blockSel.Position, -0.5, byPlayer, false);
 
                 return true;
             }

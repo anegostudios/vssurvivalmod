@@ -6,19 +6,16 @@ namespace Vintagestory.GameContent
 {
     public class BlockCrystal : Block
     {
-        Block[] FacingBlocks;
-        Random rand;
+        private Block[] _facingBlocks;
 
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
 
-            rand = new Random(api.World.Seed + 131);
-
-            FacingBlocks = new Block[6];
+            _facingBlocks = new Block[6];
             for (int i = 0; i < 6; i++)
             {
-                FacingBlocks[i] = api.World.GetBlock(CodeWithPart(BlockFacing.ALLFACES[i].Code, 2));
+                _facingBlocks[i] = api.World.GetBlock(CodeWithPart(BlockFacing.ALLFACES[i].Code, 2));
             }
         }
 
@@ -38,8 +35,9 @@ namespace Vintagestory.GameContent
             {
                 ItemStack stack = new ItemStack(api.World.GetBlock(CodeWithVariant("position", "up")));
                 stack.StackSize = 1;
-                world.SpawnItemEntity(stack, new Vec3d(pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5), null);
-            } else
+                world.SpawnItemEntity(stack, pos, null);
+            }
+            else
             {
                 int startquantity = 3;
                 if (Variant["variant"] == "cluster1" || Variant["variant"] == "cluster2") startquantity = 5;
@@ -47,16 +45,20 @@ namespace Vintagestory.GameContent
 
                 int quantity = (int)(startquantity * Math.Min(1, world.Rand.NextDouble() * 0.31f + 0.7f));
 
-                string type = Variant["type"];
-                if (Variant["type"] == "milkyquartz") type = "clearquartz";
+                var type = Variant["type"] switch
+                {
+                    "milkyquartz" => "clearquartz",
+                    "olivine" => "ore-olivine",
+                    _ => Variant["type"]
+                };
 
                 ItemStack stack = new ItemStack(api.World.GetItem(new AssetLocation(type)));
-                
+
                 for (int k = 0; k < quantity; k++)
                 {
                     ItemStack drop = stack.Clone();
                     drop.StackSize = 1;
-                    world.SpawnItemEntity(drop, new Vec3d(pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5), null);
+                    world.SpawnItemEntity(drop, pos, null);
                 }
             }
 
@@ -68,6 +70,5 @@ namespace Vintagestory.GameContent
         {
             return 0.5;
         }
-
     }
 }

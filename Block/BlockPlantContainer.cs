@@ -120,7 +120,7 @@ namespace Vintagestory.GameContent
             ItemStack contents = GetContents(world, pos);
             if (contents != null)
             {
-                world.SpawnItemEntity(contents, pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                world.SpawnItemEntity(contents, pos);
             }
         }
 

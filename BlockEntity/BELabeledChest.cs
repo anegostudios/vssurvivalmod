@@ -73,7 +73,7 @@ namespace Vintagestory.GameContent
                     {
                         sapi.Network.SendBlockEntityPacket(
                             (IServerPlayer)byPlayer,
-                            Pos.X, Pos.Y, Pos.Z,
+                            Pos,
                             (int)EnumSignPacketId.OpenDialog
                         );
                     }
@@ -133,7 +133,7 @@ namespace Vintagestory.GameContent
                 editDialog.OnCloseCancel = () =>
                 {
                     labelrenderer?.SetNewText(text, color);
-                    (Api as ICoreClientAPI).Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, (int)EnumSignPacketId.CancelEdit, null);
+                    (Api as ICoreClientAPI).Network.SendBlockEntityPacket(Pos, (int)EnumSignPacketId.CancelEdit, null);
                 };
                 editDialog.TryOpen();
             }

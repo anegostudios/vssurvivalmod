@@ -26,7 +26,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, IRandom worldGenRand, BlockPatchAttributes attributes = null)
         {
             blockAccessor.SetBlock(BlockId, pos);
 
@@ -59,7 +59,7 @@ namespace Vintagestory.GameContent
 
             Block grass;
             BlockPos upPos = pos.UpCopy();
-            
+
             bool lowLightLevel = world.BlockAccessor.GetLightLevel(pos, EnumLightLevelType.MaxLight) < growthLightLevel;
             if (lowLightLevel || isSmotheringBlock(world, upPos))
             {

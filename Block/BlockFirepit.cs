@@ -255,7 +255,7 @@ namespace Vintagestory.GameContent
 
                             if (loc != null)
                             {
-                                api.World.PlaySoundAt(loc.WithPathPrefixOnce("sounds/"), blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, byPlayer, 0.88f + (float)api.World.Rand.NextDouble() * 0.24f, 16);
+                                api.World.PlaySoundAt(loc.WithPathPrefixOnce("sounds/"), blockSel.Position.X, blockSel.Position.InternalY, blockSel.Position.Z, byPlayer, 0.88f + (float)api.World.Rand.NextDouble() * 0.24f, 16);
                             }
 
                             return true;
@@ -349,7 +349,7 @@ namespace Vintagestory.GameContent
             Block block = world.GetBlock(CodeWithParts(NextStageCodePart));
             world.BlockAccessor.ExchangeBlock(block.BlockId, pos);
             world.BlockAccessor.MarkBlockDirty(pos);
-            if (block.Sounds != null) world.PlaySoundAt(block.Sounds.Place, pos.X, pos.Y, pos.Z, player);
+            if (block.Sounds != null) world.PlaySoundAt(block.Sounds.Place, pos, -0.5, player);
 
             if (stage == 4)
             {

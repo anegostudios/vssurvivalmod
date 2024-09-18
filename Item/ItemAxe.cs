@@ -169,8 +169,7 @@ namespace Vintagestory.GameContent
 
             if (blocksbroken > 35 && axeHasDurability)
             {
-                Vec3d pos = blockSel.Position.ToVec3d().Add(0.5, 0.5, 0.5);
-                api.World.PlaySoundAt(new AssetLocation("sounds/effect/treefell"), pos.X, pos.Y, pos.Z, byPlayer, false, 32, GameMath.Clamp(blocksbroken / 100f, 0.25f, 1));
+                api.World.PlaySoundAt(new AssetLocation("sounds/effect/treefell"), blockSel.Position, -0.25, byPlayer, false, 32, GameMath.Clamp(blocksbroken / 100f, 0.25f, 1));
             }
             
             return true;

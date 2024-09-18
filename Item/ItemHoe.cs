@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -56,6 +57,13 @@ namespace Vintagestory.GameContent
 
             BlockPos pos = blockSel.Position;
             Block block = byEntity.World.BlockAccessor.GetBlock(pos);
+
+            if (byEntity.World.BlockAccessor.GetBlock(pos.UpCopy()).Id != 0)
+            {
+                (api as ICoreClientAPI)?.TriggerIngameError(this, "covered", Lang.Get("Requires no block above"));
+                handHandling = EnumHandHandling.PreventDefault;
+                return;
+            }
 
             byEntity.Attributes.SetInt("didtill", 0);
 
@@ -136,14 +144,14 @@ namespace Vintagestory.GameContent
 
 
 
-            if (block.Sounds != null) byEntity.World.PlaySoundAt(block.Sounds.Place, pos.X, pos.Y, pos.Z, null);
+            if (block.Sounds != null) byEntity.World.PlaySoundAt(block.Sounds.Place, pos, 0.4, null);
 
             byEntity.World.BlockAccessor.SetBlock(farmland.BlockId, pos);
             slot.Itemstack.Collectible.DamageItem(byEntity.World, byEntity, byPlayer.InventoryManager.ActiveHotbarSlot);
 
             if (slot.Empty)
             {
-                byEntity.World.PlaySoundAt(new AssetLocation("sounds/effect/toolbreak"), byEntity.Pos.X, byEntity.Pos.Y, byEntity.Pos.Z);
+                byEntity.World.PlaySoundAt(new AssetLocation("sounds/effect/toolbreak"), byEntity.Pos.X, byEntity.Pos.InternalY, byEntity.Pos.Z);
             }
 
             BlockEntity be = byEntity.World.BlockAccessor.GetBlockEntity(pos);

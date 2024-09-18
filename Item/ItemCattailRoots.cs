@@ -47,7 +47,7 @@ namespace Vintagestory.GameContent
 
             if (ok)
             {
-                byEntity.World.PlaySoundAt(block.Sounds.GetBreakSound(byPlayer), blockSel.Position.X + 0.5, blockSel.Position.Y + 0.5, blockSel.Position.Z + 0.5, byPlayer);
+                byEntity.World.PlaySoundAt(block.Sounds.GetBreakSound(byPlayer), blockSel.Position, 0, byPlayer);
                 itemslot.TakeOut(1);
                 itemslot.MarkDirty();
                 handHandling = EnumHandHandling.PreventDefaultAction;

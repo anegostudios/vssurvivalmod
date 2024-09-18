@@ -85,6 +85,7 @@ namespace Vintagestory.GameContent
                 Shapes[val.Key] = new FruitTreeShape() { Shape = shape, CShape = val.Value };
             }
 
+            var rnd = new LCGRandom(api.World.Seed);
             foreach (var prop in TypeProps)
             {
                 foreach (var bdstack in prop.Value.FruitStacks)
@@ -92,7 +93,7 @@ namespace Vintagestory.GameContent
                     bdstack.Resolve(api.World, "fruit tree FruitStacks ", Code);
                 }
 
-                (api as ICoreServerAPI)?.RegisterTreeGenerator(new AssetLocation("fruittree-" + prop.Key), (blockAccessor, pos, treegenParams) => GrowTree(blockAccessor, pos, prop.Key, treegenParams.size));
+                (api as ICoreServerAPI)?.RegisterTreeGenerator(new AssetLocation("fruittree-" + prop.Key), (blockAccessor, pos, treegenParams) => GrowTree(blockAccessor, pos, prop.Key, treegenParams.size, rnd));
             }
         }
 
@@ -199,7 +200,7 @@ namespace Vintagestory.GameContent
             var be = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityFruitTreeBranch;
 
             bool alive = be != null && be.FoliageState != EnumFoliageState.Dead;
-            
+
             for (int i = 0; i < stacks.Length; i++)
             {
                 var stack = stacks[i];
@@ -238,7 +239,7 @@ namespace Vintagestory.GameContent
 
         public override Cuboidf[] GetCollisionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
         {
-            var bebranch = blockAccessor.GetBlockEntity(pos) as BlockEntityFruitTreeBranch;           
+            var bebranch = blockAccessor.GetBlockEntity(pos) as BlockEntityFruitTreeBranch;
             return bebranch?.GetColSelBox() ?? base.GetCollisionBoxes(blockAccessor, pos);
         }
 
@@ -251,7 +252,7 @@ namespace Vintagestory.GameContent
         public override string GetPlacedBlockName(IWorldAccessor world, BlockPos pos)
         {
             var bebranch = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityFruitTreeBranch;
-            
+
             if (bebranch != null) {
                 var rootbh = bebranch.GetBehavior<FruitTreeRootBH>();
                 if (rootbh != null && rootbh.IsYoung && bebranch.PartType != EnumTreePartType.Cutting)
@@ -282,11 +283,11 @@ namespace Vintagestory.GameContent
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
         }
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldgenRandom)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, IRandom worldgenRandom, BlockPatchAttributes attributes = null)
         {
             var dBlock = blockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
             if (dBlock.Fertility <= 20) return false;
-            
+
             var climate = blockAccessor.GetClimateAt(pos, EnumGetClimateMode.WorldGenValues);
             int rnd = worldgenRandom.NextInt(WorldGenConds.Length);
 
@@ -299,7 +300,7 @@ namespace Vintagestory.GameContent
                     blockAccessor.SetBlock(BlockId, pos);
                     blockAccessor.SpawnBlockEntity(EntityClass, pos);
                     var be = blockAccessor.GetBlockEntity(pos) as BlockEntityFruitTreeBranch;
-                    
+
                     be.TreeType = conds.Type;
                     be.FastForwardGrowth = worldgenRandom.NextFloat();
 
@@ -310,7 +311,7 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-        public void GrowTree(IBlockAccessor blockAccessor, BlockPos pos, string type, float growthRel)
+        public void GrowTree(IBlockAccessor blockAccessor, BlockPos pos, string type, float growthRel, IRandom random)
         {
             pos = pos.UpCopy();
             blockAccessor.SetBlock(BlockId, pos);
@@ -371,7 +372,7 @@ namespace Vintagestory.GameContent
                     components.Add(new ItemstackTextComponent(capi, stack.ResolvedItemstack, 40, 0, EnumFloat.Inline));
                 }
 
-                
+
             }
         }
     }

@@ -121,7 +121,7 @@ namespace Vintagestory.GameContent
             // React immediately on hurt, otherwise only 1/10 chance of execution
             if (rand.NextDouble() > 0.1f && (whenInEmotionState == null || IsInEmotionState(whenInEmotionState) != true)) return false;
 
-            if (!EmotionStatesSatisifed()) return false;
+            if (!PreconditionsSatisifed()) return false;
             if (lastSearchTotalMs + searchWaitMs > entity.World.ElapsedMilliseconds) return false;
             if (whenInEmotionState == null && rand.NextDouble() > 0.5f) return false;
             if (cooldownUntilMs > entity.World.ElapsedMilliseconds) return false;
@@ -272,7 +272,7 @@ namespace Vintagestory.GameContent
             entitypr.ImpactParticleSize = 1.5f;
             entitypr.ImpactParticleCount = 30;
 
-            entitypr.ServerPos.SetPos(entity.ServerPos.XYZ.Add(dx, dy, dz));
+            entitypr.ServerPos.SetPosWithDimension(entity.ServerPos.XYZ.Add(dx, dy, dz));
             entitypr.Pos.SetFrom(entitypr.ServerPos);
             entitypr.World = entity.World;
             entity.World.SpawnEntity(entitypr);
@@ -282,7 +282,7 @@ namespace Vintagestory.GameContent
         {
             EntityProperties type = entity.World.GetEntityType(creatureCode);
             Entity entitypr = entity.World.ClassRegistry.CreateEntity(type);
-            entitypr.ServerPos.SetPos(entity.ServerPos.XYZ.Add(dx, dy, dz));
+            entitypr.ServerPos.SetPosWithDimension(entity.ServerPos.XYZ.Add(dx, dy, dz));
             entitypr.Pos.SetFrom(entitypr.ServerPos);
             entitypr.World = entity.World;
             entity.World.SpawnEntity(entitypr);

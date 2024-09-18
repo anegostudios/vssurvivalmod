@@ -406,6 +406,7 @@ possible prefilter: start and end position form a cuboid. Check if position X is
         public bool CanChisel(IWorldAccessor world, BlockPos pos, IPlayer player, out string errorCode)
         {
             errorCode = null;
+            if (!Enabled) return true;
 
             if (getInstability(pos) >= 1 && player.WorldData.CurrentGameMode != EnumGameMode.Creative)
             {

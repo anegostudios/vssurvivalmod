@@ -60,7 +60,7 @@ namespace Vintagestory.GameContent
                 {
                     splr.SendLocalisedMessage(GlobalConstants.GeneralChatGroup, "clutter-didshatter", Lang.GetMatchingL(splr.LanguageCode, bec.GetFullCode()));
                 }
-                world.PlaySoundAt(new AssetLocation("sounds/effect/toolbreak"), pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5, null, false, 12);
+                world.PlaySoundAt(new AssetLocation("sounds/effect/toolbreak"), pos, 0, null, false, 12);
                 return new ItemStack[0];
             }
 
@@ -168,9 +168,8 @@ namespace Vintagestory.GameContent
 
                                 if (world.Side == EnumAppSide.Client)
                                 {
-                                    var Pos = blockSel.Position;
                                     var sound = AssetLocation.Create("sounds/player/gluerepair");
-                                    world.PlaySoundAt(sound, Pos.X + 0.5f, Pos.Y + 0.5f, Pos.Z + 0.5f, byPlayer, true, 8);
+                                    world.PlaySoundAt(sound, blockSel.Position, 0, byPlayer, true, 8);
                                 }
                             }
                         }

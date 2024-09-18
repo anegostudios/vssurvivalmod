@@ -70,7 +70,7 @@ namespace Vintagestory.GameContent
             {
                 IPlayer byPlayer = null;
                 if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
-                world.PlaySoundAt(nextblock.Sounds.Place, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, byPlayer);
+                world.PlaySoundAt(nextblock.Sounds.Place, blockSel.Position, -0.4, byPlayer);
             }
 
             handHandling = EnumHandHandling.PreventDefault;

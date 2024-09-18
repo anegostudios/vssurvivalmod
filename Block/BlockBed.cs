@@ -11,7 +11,7 @@ namespace Vintagestory.GameContent
 {
     public class BlockBed : Block
     {
-        public static IMountable GetMountable(IWorldAccessor world, TreeAttribute tree)
+        public static IMountableSeat GetMountable(IWorldAccessor world, TreeAttribute tree)
         {
             BlockPos pos = new BlockPos(tree.GetInt("posx"), tree.GetInt("posy"), tree.GetInt("posz"));
             Block block = world.BlockAccessor.GetBlock(pos);
@@ -181,7 +181,7 @@ namespace Vintagestory.GameContent
             {
                 if (Sounds?.Break != null && System.Math.Abs(collideSpeed.Y) > 0.2)
                 {
-                    world.PlaySoundAt(Sounds.Break, entity.Pos.X, entity.Pos.Y, entity.Pos.Z);
+                    world.PlaySoundAt(Sounds.Break, entity);
                 }
                 entity.Pos.Motion.Y = GameMath.Clamp(-entity.Pos.Motion.Y * 0.8, -0.5, 0.5);
             }

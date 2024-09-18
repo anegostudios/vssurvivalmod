@@ -16,7 +16,7 @@ namespace Vintagestory.ServerMods
         public double verRadiusSq;
     }
 
-    
+
     public class GenHotSprings : ModStdWorldGen
     {
         Block[] decorBlocks;
@@ -49,7 +49,7 @@ namespace Vintagestory.ServerMods
         public void initWorldGen()
         {
             LoadGlobalConfig(api);
-            
+
             decorBlocks = new Block[] {
                 api.World.GetBlock(new AssetLocation("hotspringbacteria-87deg")),
                 api.World.GetBlock(new AssetLocation("hotspringbacteriasmooth-74deg")),
@@ -67,6 +67,8 @@ namespace Vintagestory.ServerMods
         {
             var data = request.Chunks[0].MapChunk.GetModdata<Dictionary<Vec3i, HotSpringGenData>>("hotspringlocations");
             if (data == null) return;
+
+            if (SkipGenerationAt(request.ChunkX * chunksize + chunksize / 2, request.ChunkZ * chunksize + chunksize / 2, SkipHostSpringsgHashCode, out _)) return;
 
             int baseX = request.ChunkX * chunksize;
             int baseZ = request.ChunkZ * chunksize;
@@ -251,7 +253,7 @@ namespace Vintagestory.ServerMods
                     {
                         wgenBlockAccessor.SetDecor(api.World.Blocks[0], npos.DownCopy(), BlockFacing.UP);
                         wgenBlockAccessor.SetBlock(blocksludgygravel.Id, npos, BlockLayersAccess.SolidBlocks);
-                        
+
                         if (sideDecorBlock != null)
                         {
                             wgenBlockAccessor.SetDecor(sideDecorBlock, npos, BlockFacing.UP);

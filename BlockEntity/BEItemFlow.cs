@@ -303,7 +303,7 @@ namespace Vintagestory.GameContent
 
                         if (qmoved > 0 && Api.World.Rand.NextDouble() < 0.2)
                         {
-                            Api.World.PlaySoundAt(hopperTumble, Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, null, true, 8, 0.5f);
+                            Api.World.PlaySoundAt(hopperTumble, Pos, 0, null, true, 8, 0.5f);
 
                             itemFlowAccum -= qmoved;
                         }
@@ -352,7 +352,7 @@ namespace Vintagestory.GameContent
                     {
                         if (Api.World.Rand.NextDouble() < 0.2)
                         {
-                            Api.World.PlaySoundAt(hopperTumble, Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, null, true, 8, 0.5f);
+                            Api.World.PlaySoundAt(hopperTumble, Pos, 0, null, true, 8, 0.5f);
                         }
 
                         if (beFlow != null)
@@ -440,7 +440,7 @@ namespace Vintagestory.GameContent
 
                 ((ICoreServerAPI)Api).Network.SendBlockEntityPacket(
                     (IServerPlayer)byPlayer,
-                    Pos.X, Pos.Y, Pos.Z,
+                    Pos,
                     (int)EnumBlockContainerPacketId.OpenInventory,
                     data
                 );

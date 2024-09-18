@@ -94,7 +94,7 @@ namespace Vintagestory.ServerMods
 
                     int climate = GameMath.BiLerpRgbColor((float)x / chunksize, (float)z / chunksize, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
 
-                    float temp = TerraGenConfig.GetScaledAdjustedTemperatureFloat((climate >> 16) & 0xff, posY - TerraGenConfig.seaLevel);
+                    float temp = Climate.GetScaledAdjustedTemperatureFloat((climate >> 16) & 0xff, posY - TerraGenConfig.seaLevel);
 
                     int prevY = posY;
                     if (PlaceSnowLayer(x, prevY, z, chunks, temp))

@@ -7,7 +7,7 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class ItemLootRandomizer : Item
+    public class ItemLootRandomizer : Item, IResolvableCollectible
     {
         Random rand;
 
@@ -52,7 +52,7 @@ namespace Vintagestory.GameContent
 
         }
 
-        internal void ResolveLoot(ItemSlot slot, IWorldAccessor worldForResolve, bool resolveImports)
+        public void Resolve(ItemSlot slot, IWorldAccessor worldForResolve, bool resolveImports)
         {
             if(!resolveImports) return;
 

@@ -103,7 +103,7 @@ namespace Vintagestory.GameContent
             if (counter % 5 == 0 || resistance <= 0)
             {
                 double posx = blockSel.Position.X + blockSel.HitPosition.X;
-                double posy = blockSel.Position.Y + blockSel.HitPosition.Y;
+                double posy = blockSel.Position.InternalY + blockSel.HitPosition.Y;
                 double posz = blockSel.Position.Z + blockSel.HitPosition.Z;
                 player.Entity.World.PlaySoundAt(resistance > 0 ? Sounds.GetHitSound(player) : Sounds.GetBreakSound(player), posx, posy, posz, player, true, 16, 1);
             }
@@ -136,11 +136,11 @@ namespace Vintagestory.GameContent
                     ItemStack drop = bdrop.GetNextItemStack();
                     if (drop != null)
                     {
-                        world.SpawnItemEntity(drop, new Vec3d(pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5), null);
+                        world.SpawnItemEntity(drop, pos, null);
                     }
                 }
 
-                world.PlaySoundAt(Sounds.GetBreakSound(byPlayer), pos.X, pos.Y, pos.Z, byPlayer);
+                world.PlaySoundAt(Sounds.GetBreakSound(byPlayer), pos, -0.5, byPlayer);
             }
 
             if (byPlayer != null && Variant["state"] == "normal" && (byPlayer.InventoryManager.ActiveTool == EnumTool.Knife || byPlayer.InventoryManager.ActiveTool == EnumTool.Sickle || byPlayer.InventoryManager.ActiveTool == EnumTool.Scythe))
@@ -154,7 +154,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, IRandom worldGenRand, BlockPatchAttributes attributes = null)
         {
             Block block = blockAccessor.GetBlock(pos);
 

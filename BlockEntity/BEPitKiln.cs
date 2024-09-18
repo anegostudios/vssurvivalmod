@@ -170,7 +170,7 @@ namespace Vintagestory.GameContent
                             AssetLocation sound = AssetLocation.Create(stack.Collectible.Attributes["placeSound"].AsString(), stack.Collectible.Code.Domain);
                             if (sound != null)
                             {
-                                Api.World.PlaySoundAt(sound.WithPathPrefixOnce("sounds/"), Pos.X + 0.5, Pos.Y + 0.1, Pos.Z + 0.5, player, true, 12);
+                                Api.World.PlaySoundAt(sound.WithPathPrefixOnce("sounds/"), Pos, -0.4, player, true, 12);
                             }
                         }
                     }
@@ -293,7 +293,7 @@ namespace Vintagestory.GameContent
                 AssetLocation sound = AssetLocation.Create(stack.Collectible.Attributes["placeSound"].AsString(), stack.Collectible.Code.Domain);
                 if (sound != null)
                 {
-                    Api.World.PlaySoundAt(sound.WithPathPrefixOnce("sounds/"), Pos.X + 0.5, Pos.Y + 0.1, Pos.Z + 0.5, byPlayer, true, 12);
+                    Api.World.PlaySoundAt(sound.WithPathPrefixOnce("sounds/"), Pos, -0.4, byPlayer, true, 12);
                 }
             }
 

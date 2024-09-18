@@ -51,10 +51,10 @@ namespace Vintagestory.GameContent
                 foreach (var val in GlobalConstants.IgnoredStackAttributes) tree.RemoveAttribute(val);
                 tree.RemoveAttribute("durability");
 
-                tree = tree.SortedCopy(true);
+                var sortedtree = tree.SortedCopy(true);
                 if (tree.Count != 0)
                 {
-                    string treeStr = tree.ToJsonToken();
+                    string treeStr = TreeAttribute.ToJsonToken(sortedtree);
                     return (stack.Class.Name()) + "-" + stack.Collectible.Code.ToShortString() + "-" + treeStr;
                 }
             }

@@ -41,7 +41,7 @@ namespace Vintagestory.GameContent
         
         protected HashSet<string> PermaBoosts = new HashSet<string>();
         // How many hours this block can retain water before becoming dry
-        protected double totalHoursWaterRetention = 24.5;
+        protected float totalHoursWaterRetention;
         protected BlockPos upPos;
         // Total game hours from where on it can enter the next growth stage
         protected double totalHoursForNextStage;
@@ -101,7 +101,7 @@ namespace Vintagestory.GameContent
 
             capi = api as ICoreClientAPI;
 
-            totalHoursWaterRetention = Api.World.Calendar.HoursPerDay + 0.5;
+            totalHoursWaterRetention = Api.World.Calendar.HoursPerDay * 4; // Water stays for 4 days
             upPos = base.Pos.UpCopy();
             
             allowundergroundfarming = Api.World.Config.GetBool("allowUndergroundFarming", false);
@@ -189,7 +189,7 @@ namespace Vintagestory.GameContent
             byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
 
             (byPlayer as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
-            Api.World.PlaySoundAt(Api.World.BlockAccessor.GetBlock(base.Pos).Sounds.Hit, base.Pos.X + 0.5, base.Pos.Y + 0.75, base.Pos.Z + 0.5, byPlayer, true, 12);
+            Api.World.PlaySoundAt(Api.World.BlockAccessor.GetBlock(base.Pos).Sounds.Hit, base.Pos.X + 0.5, base.Pos.InternalY + 0.75, base.Pos.Z + 0.5, byPlayer, true, 12);
 
             MarkDirty(false);
             return true;
@@ -346,7 +346,7 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            double hoursPassed = Math.Min((totalDays - lastMoistureLevelUpdateTotalDays) * Api.World.Calendar.HoursPerDay, 48);
+            double hoursPassed = Math.Min((totalDays - lastMoistureLevelUpdateTotalDays) * Api.World.Calendar.HoursPerDay, totalHoursWaterRetention);
             if (hoursPassed < 0.03f)
             {
                 // Get wet from a water source
@@ -356,7 +356,7 @@ namespace Vintagestory.GameContent
             }
 
             // Dry out
-            moistureLevel = Math.Max(minMoisture, moistureLevel - (float)hoursPassed / 48f);
+            moistureLevel = Math.Max(minMoisture, moistureLevel - (float)hoursPassed / totalHoursWaterRetention);
 
             // Get wet from all the rainfall since last update
             if (skyExposed)

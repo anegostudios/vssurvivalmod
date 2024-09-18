@@ -25,7 +25,7 @@ namespace Vintagestory.GameContent
         public string Type => type;
         public string Material => material;
 
-        
+
         public BlockEntityAntlerMount()
         {
             inv = new InventoryGeneric(1, "antlermount-0", null, null);
@@ -57,8 +57,8 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockPlaced(byItemStack);
 
-            type = byItemStack?.Attributes.GetString("type");
-            material = byItemStack?.Attributes.GetString("material");
+            type ??= byItemStack?.Attributes.GetString("type");
+            material ??= byItemStack?.Attributes.GetString("material");
 
             init();
         }
@@ -128,7 +128,7 @@ namespace Vintagestory.GameContent
 
                 if (stack.StackSize > 0)
                 {
-                    Api.World.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    Api.World.SpawnItemEntity(stack, Pos);
                 }
 
                 MarkDirty();

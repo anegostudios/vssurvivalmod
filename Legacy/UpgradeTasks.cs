@@ -316,7 +316,7 @@ namespace Vintagestory.ServerMods
             {
                 Block potblock = api.World.GetBlock(new AssetLocation(parts[0] + "-" + parts[1]));
                 ItemStack potStack = new ItemStack(potblock);
-                api.World.SpawnItemEntity(potStack, pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                api.World.SpawnItemEntity(potStack, pos);
 
                 Block plantBlock = null;
 
@@ -336,7 +336,7 @@ namespace Vintagestory.ServerMods
                 if (plantBlock != null)
                 {
                     ItemStack plantStack = new ItemStack(plantBlock);
-                    api.World.SpawnItemEntity(plantStack, pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    api.World.SpawnItemEntity(plantStack, pos);
                 }
             }
         }

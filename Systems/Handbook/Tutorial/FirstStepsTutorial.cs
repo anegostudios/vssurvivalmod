@@ -49,7 +49,7 @@ namespace Vintagestory.GameContent
                 TutorialStepBase.Knap(capi, "knapknife", "tutorial-firststeps-6", (stack) => stack.Collectible.Code.Path.Contains("knifeblade"), 1),
                 TutorialStepBase.Craft(capi, "craftknife", "tutorial-firststeps-7", (stack) => stack.Collectible.Tool == EnumTool.Knife, 1),
                 TutorialStepBase.Collect(capi, "getcattails", "tutorial-firststeps-8", (stack) => stack.Collectible.Code.Path == "papyrustops" || stack.Collectible.Code.Path == "cattailtops", 10),
-                TutorialStepBase.Craft(capi, "craftbasket", "tutorial-firststeps-9", (stack) => CollectibleObject.IsBackPack(stack), 1),
+                TutorialStepBase.Craft(capi, "craftbasket", "tutorial-firststeps-9", (stack) => stack.Collectible.GetCollectibleInterface<IHeldBag>() != null, 1),
                 TutorialStepBase.Collect(capi, "getfood", "tutorial-firststeps-10", (stack) => stack.Collectible.NutritionProps != null, 10),
                 TutorialStepBase.Craft(capi, "knapaxe", "tutorial-firststeps-11", (stack) => stack.Collectible.Tool == EnumTool.Axe, 1),
                 TutorialStepBase.Collect(capi, "getlogs", "tutorial-firststeps-12", (stack) => stack.Collectible is BlockLog, 4),
@@ -69,7 +69,7 @@ namespace Vintagestory.GameContent
                 ),
                 TutorialStepBase.Craft(capi, "maketorch", "tutorial-firststeps-19", (stack) => stack.Collectible is BlockTorch, 1),
                 TutorialStepBase.Grab(capi, "ignitetorch", "tutorial-firststeps-20", (stack) => (stack.Collectible as BlockTorch)?.IsExtinct == false, 1),
-                TutorialStepBase.Collect(capi, "finished", "tutorial-firststeps-21", (stack) => false, 1)
+                TutorialStepBase.Collect(capi, "finished", "tutorial-firststeps-21", (stack) => stack.Collectible.Code.Path == "stick", 1)
             );
         }
 

@@ -1,6 +1,7 @@
 ﻿using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 
 namespace Vintagestory.GameContent
@@ -52,7 +53,7 @@ namespace Vintagestory.GameContent
                 if (unfoldStep != nowUnfoldStep)
                 {
                     unfoldStep = nowUnfoldStep;
-                    (plr.Entity.Properties.Client.Renderer as EntityShapeRenderer)?.MarkShapeModified();
+                    plr.Entity.MarkShapeModified();
                     plr.Entity.Attributes.SetInt("unfoldStep", unfoldStep);
                 }
 
@@ -101,12 +102,12 @@ namespace Vintagestory.GameContent
             {
                 eplr.Controls.Gliding = true;
                 eplr.Controls.IsFlying = true;
-                (eplr.Properties.Client.Renderer as EntityShapeRenderer)?.MarkShapeModified();
+                eplr.MarkShapeModified();
             }
 
             if (action == EnumEntityAction.Glide && !on)
             {
-                (eplr.Properties.Client.Renderer as EntityShapeRenderer)?.MarkShapeModified();
+                eplr.MarkShapeModified();
             }
         }
 
@@ -147,7 +148,7 @@ namespace Vintagestory.GameContent
             }
         }
             
-        public Shape GetShape(ItemStack stack, EntityAgent forEntity, string texturePrefixCode)
+        public Shape GetShape(ItemStack stack, Entity forEntity, string texturePrefixCode)
         {
             if (!subclassed)
             {

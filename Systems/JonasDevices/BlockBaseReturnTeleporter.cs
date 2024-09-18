@@ -69,16 +69,16 @@ namespace Vintagestory.GameContent
             if (spinupAccum > 5)
             {
                 activated = false;
-                var plr = Api.World.NearestPlayer(Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5) as IServerPlayer;
+                var plr = Api.World.NearestPlayer(Pos.X + 0.5, Pos.InternalY + 0.5, Pos.Z + 0.5) as IServerPlayer;
                 if (plr.Entity.Pos.DistanceTo(Pos.ToVec3d().Add(0.5, 0, 0.5)) < 5)
                 {
                     var pos = plr.GetSpawnPosition(false);
                     plr.Entity.TeleportToDouble(pos.X, pos.Y, pos.Z);
 
-                    Api.World.PlaySoundAt(new AssetLocation("sounds/effect/translocate-breakdimension"), plr.Entity.Pos.X, plr.Entity.Pos.Y, plr.Entity.Pos.Z, null, false, 16);
+                    Api.World.PlaySoundAt(new AssetLocation("sounds/effect/translocate-breakdimension"), plr.Entity.Pos.X, plr.Entity.Pos.InternalY, plr.Entity.Pos.Z, null, false, 16);
                 }
 
-                Api.World.PlaySoundAt(new AssetLocation("sounds/effect/translocate-breakdimension"), Pos.X + 0.5f, Pos.Y + 0.5f, Pos.Z + 0.5f, null, false, 16);
+                Api.World.PlaySoundAt(new AssetLocation("sounds/effect/translocate-breakdimension"), Pos.X + 0.5f, Pos.InternalY + 0.5f, Pos.Z + 0.5f, null, false, 16);
 
                 int color = ColorUtil.ToRgba(100, 220, 220, 220);
                 Api.World.SpawnParticles(120, color, Pos.ToVec3d(), Pos.ToVec3d().Add(1, 1, 1), new Vec3f(-1, -1, -1), new Vec3f(1, 1, 1), 2, 0, 1);

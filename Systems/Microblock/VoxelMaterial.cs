@@ -21,10 +21,11 @@ namespace Vintagestory.GameContent
             
             public readonly bool CullBetweenTransparents;
             public readonly byte ClimateMapIndex;
+            public readonly bool Frostable;
             public readonly byte SeasonMapIndex;
 
             public VoxelMaterial(int blockId, TextureAtlasPosition[] texture, TextureAtlasPosition[] textureInside, TextureAtlasPosition textureTopSoil,
-                EnumChunkRenderPass renderPass, int flags, byte climateMapIndex, byte seasonMapIndex, bool cullBetweenTransparents)
+                EnumChunkRenderPass renderPass, int flags, byte climateMapIndex, byte seasonMapIndex, bool frostable, bool cullBetweenTransparents)
             {
                 ClimateMapIndex = climateMapIndex;
                 SeasonMapIndex = seasonMapIndex;
@@ -32,6 +33,7 @@ namespace Vintagestory.GameContent
                 Texture = texture;
                 TextureInside = textureInside;
                 RenderPass = renderPass;
+                Frostable = frostable;
                 Flags = flags;
                 TextureTopSoil = textureTopSoil;
                 CullBetweenTransparents = cullBetweenTransparents;
@@ -86,7 +88,7 @@ namespace Vintagestory.GameContent
                     grasscoverexPos = capi.BlockTextureAtlas[block.Textures["specialSecondTexture"].Baked.BakedName];
                 }
 
-                return new VoxelMaterial(block.Id, texture, textureInside, grasscoverexPos, block.RenderPass, block.VertexFlags.All, climateColorMapId, seasonColorMapId, cullBetweenTransparents);
+                return new VoxelMaterial(block.Id, texture, textureInside, grasscoverexPos, block.RenderPass, block.VertexFlags.All, climateColorMapId, seasonColorMapId, block.Frostable, cullBetweenTransparents);
             }
 
             public static VoxelMaterial FromTexSource(ICoreClientAPI capi, ITexPositionSource texSource, bool cullBetweenTransparents = false)
@@ -99,7 +101,7 @@ namespace Vintagestory.GameContent
                     texture[i] = texSource[facing.Code] ?? capi.BlockTextureAtlas.UnknownTexturePosition;
                     textureInside[i] = texSource["inside-" + facing.Code] ?? texSource[facing.Code] ?? capi.BlockTextureAtlas.UnknownTexturePosition;
                 }
-                return new VoxelMaterial(0, texture, textureInside, null, EnumChunkRenderPass.Opaque, 0, 0, 0, cullBetweenTransparents);
+                return new VoxelMaterial(0, texture, textureInside, null, EnumChunkRenderPass.Opaque, 0, 0, 0, false, cullBetweenTransparents);
             }
         }
 

@@ -156,7 +156,7 @@ namespace Vintagestory.GameContent
 
             if (inv[1].Empty)
             {
-                if (hotbarslot.Itemstack?.Collectible?.Code.Path == "powderedborax")
+                if (hotbarslot.Itemstack?.Collectible?.Attributes?.IsTrue("isFlux") == true)
                 {
                     inv[1].Itemstack = hotbarslot.TakeOut(1);
                     updateMeshRefs();
@@ -176,7 +176,7 @@ namespace Vintagestory.GameContent
             {
                 if (hotbarslot.Itemstack?.Block is BlockAnvilPart && hotbarslot.Itemstack.Block.Variant["part"] == "top")
                 {
-                    Api.World.PlaySoundAt(Block.Sounds.Place, Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, byPlayer);
+                    Api.World.PlaySoundAt(Block.Sounds.Place, Pos, 0, byPlayer);
                     inv[2].Itemstack = hotbarslot.TakeOut(1);
                     updateMeshRefs();
                     return true;

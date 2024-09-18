@@ -102,13 +102,13 @@ namespace Vintagestory.GameContent
                 {
                     if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative) slot.TakeOut(1);
                     hasTempGear = true;
-                    Api.World.PlaySoundAt(new AssetLocation("sounds/effect/latch"), Pos.X + 0.5, Pos.Y, Pos.Z + 0.5, null, true, 16);
+                    Api.World.PlaySoundAt(new AssetLocation("sounds/effect/latch"), Pos, -0.5, null, true, 16);
                 }
                 if (slot.Itemstack?.Collectible.Code.Path == "jonasparts-pumphead" && !hasPumphead)
                 {
                     if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative) slot.TakeOut(1);
                     hasPumphead = true;
-                    Api.World.PlaySoundAt(new AssetLocation("sounds/effect/latch"), Pos.X + 0.5, Pos.Y, Pos.Z + 0.5, null, true, 16);
+                    Api.World.PlaySoundAt(new AssetLocation("sounds/effect/latch"), Pos, -0.5, null, true, 16);
                 }
 
                 on = IsRepaired && ReceivesPower;

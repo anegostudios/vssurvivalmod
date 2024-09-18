@@ -215,7 +215,7 @@ namespace Vintagestory.GameContent
                     slot.TakeOut(1);
                     if (!player.InventoryManager.TryGiveItemstack(mealStack, true))
                     {
-                        Api.World.SpawnItemEntity(mealStack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                        Api.World.SpawnItemEntity(mealStack, Pos);
                     }
                     slot.MarkDirty();
                 }

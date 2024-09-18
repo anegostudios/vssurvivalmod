@@ -28,15 +28,16 @@ namespace Vintagestory.GameContent
             particleQuantity = 0.4f * (api as ICoreClientAPI).Settings.Int["particleLevel"] / 100f;
         }
 
-        public override bool ShouldPlayAmbientSound(IWorldAccessor world, BlockPos pos)
+        public override float GetAmbientSoundStrength(IWorldAccessor world, BlockPos pos)
         {
             Block block = world.BlockAccessor.GetBlock(pos.X, pos.Y + 1, pos.Z);
             if (block.Replaceable >= 6000)   // This is a kind of rough "transparent to sound" test
             {
                 block = world.BlockAccessor.GetBlock(pos.X, pos.Y + 1, pos.Z, BlockLayersAccess.Fluid);
-                if (!block.IsLiquid()) return true;
+                if (!block.IsLiquid()) return 1;
             }
-            return false;
+
+            return 0;
         }
 
 

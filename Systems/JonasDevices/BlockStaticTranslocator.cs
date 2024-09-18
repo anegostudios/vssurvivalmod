@@ -88,7 +88,7 @@ namespace Vintagestory.GameContent
                 if (slot.Itemstack.Collectible.Code.Path == "metal-parts" && slot.StackSize >= 2)
                 {
                     slot.TakeOut(2);
-                    world.PlaySoundAt(new AssetLocation("sounds/effect/latch"), blockSel.Position.X + 0.5, blockSel.Position.Y, blockSel.Position.Z + 0.5, byPlayer, true, 16);
+                    world.PlaySoundAt(new AssetLocation("sounds/effect/latch"), blockSel.Position, -0.25, byPlayer, true, 16);
 
                     Block block = world.GetBlock(CodeWithVariant("state", "normal"));
                     world.BlockAccessor.SetBlock(block.Id, blockSel.Position);
@@ -109,7 +109,7 @@ namespace Vintagestory.GameContent
                 {
                     be.DoRepair(byPlayer);
                     slot.TakeOut(1);
-                    world.PlaySoundAt(new AssetLocation("sounds/effect/latch"), blockSel.Position.X + 0.5, blockSel.Position.Y, blockSel.Position.Z + 0.5, byPlayer, true, 16);
+                    world.PlaySoundAt(new AssetLocation("sounds/effect/latch"), blockSel.Position, -0.25, byPlayer, true, 16);
 
                     return true;
                 }

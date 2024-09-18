@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -160,7 +159,7 @@ namespace Vintagestory.GameContent
             if (beccb.State == EnumCurdsBundleState.BundledStick && beccb.Squuezed)
             {
                 beccb.State = EnumCurdsBundleState.Opened;
-                api.World.PlaySoundAt(Sounds.Place, blockSel.Position.X + 0.5, blockSel.Position.Y, blockSel.Position.Z + 0.5, byPlayer);
+                api.World.PlaySoundAt(Sounds.Place, blockSel.Position, -0.5, byPlayer);
                 return true;
             }
 

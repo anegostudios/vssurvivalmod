@@ -202,7 +202,7 @@ namespace Vintagestory.GameContent
             Vec3d velocity = (aheadPos - pos) * byEntity.Stats.GetBlended("bowDrawingStrength") * 0.8f;
 
             
-            entity.ServerPos.SetPos(byEntity.SidedPos.BehindCopy(0.21).XYZ.Add(0, byEntity.LocalEyePos.Y, 0));
+            entity.ServerPos.SetPosWithDimension(byEntity.SidedPos.BehindCopy(0.21).XYZ.Add(0, byEntity.LocalEyePos.Y, 0));
             entity.ServerPos.Motion.Set(velocity);
 
             

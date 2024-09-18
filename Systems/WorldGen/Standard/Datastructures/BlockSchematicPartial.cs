@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
@@ -15,37 +16,102 @@ namespace Vintagestory.ServerMods
 
         public virtual int PlacePartial(IServerChunk[] chunks, IWorldGenBlockAccessor blockAccessor,
             IWorldAccessor worldForResolve, int chunkX, int chunkZ, BlockPos startPos, EnumReplaceMode mode,
-            bool replaceMeta, bool resolveImports)
+            bool replaceMeta, bool resolveImports, Dictionary<int, Dictionary<int, int>> resolvedRockTypeRemaps = null,
+            int[] replaceWithBlockLayersBlockids = null, Block rockBlock = null)
         {
             const int chunksize = GlobalConstants.ChunkSize;
-            Rectanglei rect = new Rectanglei(chunkX * chunksize, chunkZ * chunksize, chunksize, chunksize);
+            var rect = new Rectanglei(chunkX * chunksize, chunkZ * chunksize, chunksize, chunksize);
 
             if (!rect.IntersectsOrTouches(startPos.X, startPos.Z, startPos.X + SizeX, startPos.Z + SizeZ)) return 0;
+            var placed = 0;
 
-            int placed = 0;
-            BlockPos curPos = new BlockPos();
+            var curPos = new BlockPos();
+
+            int climateUpLeft = 0, climateUpRight = 0, climateBotLeft = 0, climateBotRight = 0;
+            if(replaceWithBlockLayersBlockids != null)
+            {
+                var regionChunkSize = blockAccessor.RegionSize / chunksize;
+                var region = chunks[0].MapChunk.MapRegion;
+                var climateMap = region.ClimateMap;
+                var rlX = chunkX % regionChunkSize;
+                var rlZ = chunkZ % regionChunkSize;
+                var facC = (float)climateMap.InnerSize / regionChunkSize;
+                climateUpLeft = climateMap.GetUnpaddedInt((int)(rlX * facC), (int)(rlZ * facC));
+                climateUpRight = climateMap.GetUnpaddedInt((int)(rlX * facC + facC), (int)(rlZ * facC));
+                climateBotLeft = climateMap.GetUnpaddedInt((int)(rlX * facC), (int)(rlZ * facC + facC));
+                climateBotRight = climateMap.GetUnpaddedInt((int)(rlX * facC + facC), (int)(rlZ * facC + facC));
+            }
+
+            if (genBlockLayers == null) genBlockLayers = worldForResolve.Api.ModLoader.GetModSystem<GenBlockLayers>();
+
+            int climate;
+            var rockblockid = rockBlock?.BlockId ?? chunks[0].MapChunk.TopRockIdMap[15 * chunksize + 15];
+
 
             int i = -1;
+            int dy, dx, dz;
             foreach (uint index in Indices)
             {
                 i++;   // increment i first, because we have various continue statements
 
-                int posX = startPos.X + (int)(index & 0x1ff);
-                int posZ = startPos.Z + (int)((index >> 10) & 0x1ff);
+                dx = (int)(index & 0x1ff);
+                int posX = startPos.X + dx;
+                dz = (int)((index >> 10) & 0x1ff);
+                int posZ = startPos.Z + dz;
 
                 if (!rect.Contains(posX, posZ)) continue;
-                int posY = startPos.Y + (int)((index >> 20) & 0x1ff);
-
+                dy = (int)((index >> 20) & 0x1ff);
+                int posY = startPos.Y + dy;
                 int storedBlockid = BlockIds[i];
                 AssetLocation blockCode = BlockCodes[storedBlockid];
 
                 Block newBlock = blockAccessor.GetBlock(blockCode);
-                if (newBlock == null || (replaceMeta && newBlock == undergroundBlock)) continue;
+                if (newBlock == null || (replaceMeta && (newBlock == undergroundBlock || newBlock == abovegroundBlock))) continue;
 
                 int blockId = replaceMeta && (newBlock == fillerBlock || newBlock == pathwayBlock) ? empty : newBlock.BlockId;
 
                 IChunkBlocks chunkData = chunks[posY / chunksize].Data;
                 int posIndex = ((posY % chunksize) * chunksize + (posZ % chunksize)) * chunksize + (posX % chunksize);
+
+                if (replaceWithBlockLayersBlockids != null && replaceWithBlockLayersBlockids.Contains(blockId))
+                {
+                    curPos.Set(posX, posY, posZ);
+                    climate = GameMath.BiLerpRgbColor(
+                        GameMath.Clamp((posX % chunksize) / (float)chunksize, 0, 1),
+                        GameMath.Clamp((posZ % chunksize) / (float)chunksize, 0, 1),
+                        climateUpLeft, climateUpRight, climateBotLeft, climateBotRight
+                    );
+                    var depth = 0;
+
+                    // if we are not the top block we need to get the layerblock for depth 1 -> soil without grass
+                    if (dy + 1 < SizeY)
+                    {
+                        var aboveBlock = blocksByPos[dx, dy + 1, dz];
+                        if (aboveBlock != null && aboveBlock.SideSolid[BlockFacing.DOWN.Index] &&
+                            aboveBlock.BlockMaterial != EnumBlockMaterial.Wood && aboveBlock.BlockMaterial != EnumBlockMaterial.Snow &&
+                            aboveBlock.BlockMaterial != EnumBlockMaterial.Ice)
+                        {
+                            depth = 1;
+                        }
+                    }
+
+                    var layerBlock = GetBlockLayerBlock((climate >> 8) & 0xff, (climate >> 16) & 0xff, curPos.Y - 1, rockblockid, depth, null,
+                        worldForResolve.Blocks, curPos, -1);
+                    blockId = layerBlock?.Id ?? rockblockid;
+                }
+
+
+                if (resolvedRockTypeRemaps != null)
+                {
+                    Dictionary<int, int> replaceByBlock;
+                    if (resolvedRockTypeRemaps.TryGetValue(blockId, out replaceByBlock))
+                    {
+                        if (replaceByBlock.TryGetValue(rockblockid, out var newBlockId))
+                        {
+                            blockId = newBlockId;
+                        }
+                    }
+                }
 
                 if (newBlock.ForFluidsLayer)
                 {
@@ -84,7 +150,7 @@ namespace Vintagestory.ServerMods
                 BlockEntity be = blockAccessor.GetBlockEntity(curPos);
 
                 // Block entities need to be manually initialized for world gen block access
-                if (be == null && blockAccessor is IWorldGenBlockAccessor)
+                if (be == null && blockAccessor != null)
                 {
                     Block block = blockAccessor.GetBlock(curPos, BlockLayersAccess.Solid);
 
@@ -111,7 +177,7 @@ namespace Vintagestory.ServerMods
 
                     be.FromTreeAttributes(tree, worldForResolve);
                     be.OnLoadCollectibleMappings(worldForResolve, BlockCodes, ItemCodes, schematicSeed, resolveImports);
-                    be.OnPlacementBySchematic(worldForResolve.Api as ICoreServerAPI, blockAccessor, curPos, null, 0, null, resolveImports);
+                    be.OnPlacementBySchematic(worldForResolve.Api as ICoreServerAPI, blockAccessor, curPos, resolvedRockTypeRemaps, rockblockid, null, resolveImports);
                 }
             }
 
@@ -162,21 +228,29 @@ namespace Vintagestory.ServerMods
         {
             BlockSchematicPartial cloned = new BlockSchematicPartial();
 
-            cloned.GameVersion = GameVersion;
             cloned.SizeX = SizeX;
             cloned.SizeY = SizeY;
             cloned.SizeZ = SizeZ;
+            cloned.OffsetY = OffsetY;
+
+            cloned.GameVersion = GameVersion;
+            cloned.FromFileName = FromFileName;
+
             cloned.BlockCodes = new Dictionary<int, AssetLocation>(BlockCodes);
             cloned.ItemCodes = new Dictionary<int, AssetLocation>(ItemCodes);
             cloned.Indices = new List<uint>(Indices);
             cloned.BlockIds = new List<int>(BlockIds);
+
             cloned.BlockEntities = new Dictionary<uint, string>(BlockEntities);
+            cloned.Entities = new List<string>(Entities);
+
+            cloned.DecorIndices = new List<uint>(DecorIndices);
+            cloned.DecorIds = new List<int>(DecorIds);
+
             cloned.ReplaceMode = ReplaceMode;
-            cloned.FromFileName = FromFileName;
+            cloned.EntranceRotation = EntranceRotation;
 
             return cloned;
         }
-
-
     }
 }

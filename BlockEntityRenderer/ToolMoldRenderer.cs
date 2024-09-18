@@ -11,20 +11,11 @@ namespace Vintagestory.GameContent
     {
         BlockPos pos;
         ICoreClientAPI api;
-
-
         MeshRef[] quadModelRefs;
         public Matrixf ModelMat = new Matrixf();
 
-        public double RenderOrder
-        {
-            get { return 0.5; }
-        }
-
-        public int RenderRange
-        {
-            get { return 24; }
-        }
+        public double RenderOrder => 0.5;
+        public int RenderRange => 24;   
 
         /// <summary>
         /// 0..1
@@ -77,7 +68,6 @@ namespace Vintagestory.GameContent
 
             IRenderAPI rpi = api.Render;
             IClientWorldAccessor worldAccess = api.World;
-            EntityPos plrPos = worldAccess.Player.Entity.Pos;
             Vec3d camPos = worldAccess.Player.Entity.CameraPos;
 
             rpi.GlDisableCullFace();
@@ -135,9 +125,7 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < quadModelRefs.Length; i++)
             {
                 quadModelRefs[i]?.Dispose();
-            }
-
-            
+            }            
         }
     }
 }

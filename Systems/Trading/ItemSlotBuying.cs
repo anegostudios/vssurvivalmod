@@ -14,11 +14,9 @@ namespace Vintagestory.GameContent
 
         public override bool CanHold(ItemSlot itemstackFromSourceSlot)
         {
-            return
-                base.CanHold(itemstackFromSourceSlot) &&
-               (!CollectibleObject.IsBackPack(itemstackFromSourceSlot.Itemstack) || CollectibleObject.IsEmptyBackPack(itemstackFromSourceSlot.Itemstack)) &&
-               IsTraderInterested(itemstackFromSourceSlot)
-            ;
+            var bag = itemstackFromSourceSlot.Itemstack?.Collectible.GetCollectibleInterface<IHeldBag>() ?? null;
+
+            return base.CanHold(itemstackFromSourceSlot) && (bag == null || bag.IsEmpty(itemstackFromSourceSlot.Itemstack)) && IsTraderInterested(itemstackFromSourceSlot);
         }
 
         private bool IsTraderInterested(ItemSlot slot)

@@ -109,7 +109,7 @@ namespace Vintagestory.GameContent
         {
             string commands = SingleComposer.GetTextArea("commands").GetText();
             bool latching = SingleComposer.GetSwitch("latchingSwitch").On;
-            capi.Network.SendBlockEntityPacket(BlockEntityPosition.X, BlockEntityPosition.Y, BlockEntityPosition.Z, 12, SerializerUtil.Serialize(new BlockEntityCommandPacket() { Commands = commands, Silent = latching }));
+            capi.Network.SendBlockEntityPacket(BlockEntityPosition, 12, SerializerUtil.Serialize(new BlockEntityCommandPacket() { Commands = commands, Silent = latching }));
             TryClose();
             return true;
         }

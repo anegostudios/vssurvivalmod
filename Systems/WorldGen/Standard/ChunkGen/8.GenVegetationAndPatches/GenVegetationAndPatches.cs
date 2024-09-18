@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -21,6 +22,7 @@ namespace Vintagestory.ServerMods
         int regionChunkSize;
         public Dictionary<string, int> RockBlockIdsByType;
         public BlockPatchConfig bpc;
+        public Dictionary<string, BlockPatchConfig> StoryStructurePatches;
 
         float forestMod;
         float shrubMod = 0f;
@@ -29,6 +31,11 @@ namespace Vintagestory.ServerMods
 
         int noiseSizeDensityMap;
         int regionSize;
+
+        /// <summary>
+        /// Vegetation and BlockPatch sub seed
+        /// </summary>
+        private const int subSeed = 87698;
         public override bool ShouldLoad(EnumAppSide side)
         {
             return side == EnumAppSide.Server;
@@ -42,7 +49,7 @@ namespace Vintagestory.ServerMods
         public override void StartServerSide(ICoreServerAPI api)
         {
             this.sapi = api;
-            
+
 
             if (TerraGenConfig.DoDecorationPass)
             {
@@ -71,15 +78,11 @@ namespace Vintagestory.ServerMods
             }
         }
 
-
         private void OnWorldGenBlockAccessor(IChunkProviderThread chunkProvider)
         {
             treeSupplier = new WgenTreeSupplier(sapi);
             blockAccessor = chunkProvider.GetBlockAccessor(true);
         }
-
-        
-
 
         private void initWorldGenForSuperflat()
         {
@@ -93,7 +96,7 @@ namespace Vintagestory.ServerMods
 
             LoadGlobalConfig(sapi);
 
-            rnd = new LCGRandom(sapi.WorldManager.Seed - 87698);
+            rnd = new LCGRandom(sapi.WorldManager.Seed - subSeed);
 
             treeSupplier.LoadTrees();
 
@@ -111,11 +114,16 @@ namespace Vintagestory.ServerMods
             IAsset asset = sapi.Assets.Get("worldgen/blockpatches.json");
             bpc = asset.ToObject<BlockPatchConfig>();
 
-            var blockpatchesfiles = sapi.Assets.GetMany<BlockPatch[]>(sapi.World.Logger, "worldgen/blockpatches/");
-            foreach (var patches in blockpatchesfiles.Values)
+            var blockpatchesfiles = sapi.Assets.GetMany<BlockPatch[]>(sapi.World.Logger, "worldgen/blockpatches/")
+                .OrderBy(b=>b.Key.ToString());
+            // order the list so when iterating over it for wgen it is always the same
+
+            var allPatches = new List<BlockPatch>();
+            foreach (var patches in blockpatchesfiles)
             {
-                bpc.Patches = bpc.Patches.Append(patches);
+                allPatches.AddRange(patches.Value);
             }
+            bpc.Patches = allPatches.ToArray();
 
             bpc.ResolveBlockIds(sapi, rockstrata, rnd);
             treeSupplier.treeGenerators.forestFloorSystem.SetBlockPatches(bpc);
@@ -131,10 +139,36 @@ namespace Vintagestory.ServerMods
 
                 int hs = patch.MapCode.GetHashCode();
                 int seed = sapi.World.Seed + 112897 + hs;
-                blockPatchMapGens[patch.MapCode] = new MapLayerWobbled(seed, 2, 0.9f, TerraGenConfig.forestMapScale, 4000, -3000);
+                blockPatchMapGens[patch.MapCode] = new MapLayerWobbled(seed, 2, 0.9f, TerraGenConfig.forestMapScale, 4000, -2500);
+            }
+
+            var genStoryStructures = sapi.World.Config.GetAsString("loreContent", "true").ToBool(true);
+            if (!genStoryStructures) return;
+
+            asset = sapi.Assets.Get("worldgen/storystructures.json");
+            var stcfg = asset.ToObject<WorldGenStoryStructuresConfig>();
+            StoryStructurePatches = new Dictionary<string, BlockPatchConfig>();
+            foreach (var storyStructure in stcfg.Structures)
+            {
+                var path = "worldgen/story/" + storyStructure.Code + "/blockpatches/";
+
+                var storyBlockPatches = sapi.Assets.GetMany<BlockPatch[]>(sapi.World.Logger, path)
+                    .OrderBy(b=>b.Key.ToString()).ToList();
+                if (storyBlockPatches?.Count > 0)
+                {
+                    var allLocationPatches = new List<BlockPatch>();
+                    foreach (var patch in storyBlockPatches)
+                    {
+                        allLocationPatches.AddRange(patch.Value);
+                    }
+                    StoryStructurePatches[storyStructure.Code] = new BlockPatchConfig()
+                    {
+                        Patches = allLocationPatches.ToArray()
+                    };
+                    StoryStructurePatches[storyStructure.Code].ResolveBlockIds(sapi, rockstrata, rnd);
+                }
             }
         }
-
 
         ushort[] heightmap;
         int forestUpLeft;
@@ -179,7 +213,7 @@ namespace Vintagestory.ServerMods
             shrubUpRight = shrubMap.GetUnpaddedInt((int)(rlX * facS + facS), (int)(rlZ * facS));
             shrubBotLeft = shrubMap.GetUnpaddedInt((int)(rlX * facS), (int)(rlZ * facS + facS));
             shrubBotRight = shrubMap.GetUnpaddedInt((int)(rlX * facS + facS), (int)(rlZ * facS + facS));
-            
+
             // A region has 16 chunks
             // Size of the forest map is RegionSize / TerraGenConfig.forestMapScale  => 32*16 / 32  = 16 pixel
             // rlX, rlZ goes from 0..16 pixel
@@ -198,7 +232,7 @@ namespace Vintagestory.ServerMods
             climateBotRight = climateMap.GetUnpaddedInt((int)(rlX * facC + facC), (int)(rlZ * facC + facC));
 
             heightmap = chunks[0].MapChunk.RainHeightMap;
-            
+
 
             structuresIntersectingChunk.Clear();
             sapi.World.BlockAccessor.WalkStructures(chunkBase.Set(chunkX * chunksize, 0, chunkZ * chunksize), chunkend.Set(chunkX * chunksize + chunksize, chunkMapSizeY * chunksize, chunkZ * chunksize + chunksize), (struc) =>
@@ -218,26 +252,58 @@ namespace Vintagestory.ServerMods
             }
         }
 
-
         void genPatches(int chunkX, int chunkZ, bool postPass)
         {
             int dx, dz, x, z;
             Block liquidBlock;
             int mapsizeY = blockAccessor.MapSizeY;
 
-            var mapregion = sapi?.WorldManager.GetMapRegion((chunkX * chunksize) / regionSize, (chunkZ * chunksize) / regionSize);
+            var patchIterRandom = new LCGRandom();
+            var blockPatchRandom = new LCGRandom();
 
-            for (int i = 0; i < bpc.PatchesNonTree.Length; i++)
+            // get temp pos to check if we need a story location patch or a regular one
+            patchIterRandom.SetWorldSeed(sapi.WorldManager.Seed - subSeed);
+            patchIterRandom.InitPositionSeed(chunkX, chunkZ);
+            dx = patchIterRandom.NextInt(chunksize);
+            dz = patchIterRandom.NextInt(chunksize);
+            x = dx + chunkX * chunksize;
+            z = dz + chunkZ * chunksize;
+            tmpPos.Set(x, 0, z);
+
+            BlockPatch[] bpcPatchesNonTree;
+            var isStoryPatch = false;
+            if (SkipGenerationAt(tmpPos, SkipPatchesgHashCode, out var locationCode))
             {
-                BlockPatch blockPatch = bpc.PatchesNonTree[i];
+                if (StoryStructurePatches.TryGetValue(locationCode, out var blockPatchConfig))
+                {
+                    bpcPatchesNonTree = blockPatchConfig.PatchesNonTree;
+                    isStoryPatch = true;
+                }
+                else
+                {
+                    return;
+                }
+            }
+            else
+            {
+                bpcPatchesNonTree = bpc.PatchesNonTree;
+            }
+
+            var mapregion = sapi?.WorldManager.GetMapRegion((chunkX * chunksize) / regionSize, (chunkZ * chunksize) / regionSize);
+            for (int i = 0; i < bpcPatchesNonTree.Length; i++)
+            {
+                var blockPatch = bpcPatchesNonTree[i];
                 if (blockPatch.PostPass != postPass) continue;
 
-                float chance = blockPatch.Chance * bpc.ChanceMultiplier.nextFloat();
+                patchIterRandom.SetWorldSeed(sapi.WorldManager.Seed - subSeed + i);
+                patchIterRandom.InitPositionSeed(chunkX, chunkZ);
 
-                while (chance-- > rnd.NextFloat())
+                float chance = blockPatch.Chance * bpc.ChanceMultiplier.nextFloat(1f, patchIterRandom);
+
+                while (chance-- > patchIterRandom.NextFloat())
                 {
-                    dx = rnd.NextInt(chunksize);
-                    dz = rnd.NextInt(chunksize);
+                    dx = patchIterRandom.NextInt(chunksize);
+                    dz = patchIterRandom.NextInt(chunksize);
                     x = dx + chunkX * chunksize;
                     z = dz + chunkZ * chunksize;
 
@@ -259,9 +325,9 @@ namespace Vintagestory.ServerMods
 
                     if (bpc.IsPatchSuitableAt(blockPatch, liquidBlock, mapsizeY, climate, y, forestRel, shrubRel))
                     {
-                        if (SkipGenerationAt(tmpPos, EnumWorldGenPass.Vegetation)) continue;
+                        if (!isStoryPatch && SkipGenerationAt(tmpPos, SkipPatchesgHashCode, out _)) continue;
 
-                        if (blockPatch.MapCode != null && rnd.NextInt(255) > GetPatchDensity(blockPatch.MapCode, x, z, mapregion))
+                        if (blockPatch.MapCode != null && patchIterRandom.NextInt(255) > GetPatchDensity(blockPatch.MapCode, x, z, mapregion))
                         {
                             continue;
                         }
@@ -283,7 +349,9 @@ namespace Vintagestory.ServerMods
 
                         if (found)
                         {
-                            blockPatch.Generate(blockAccessor, rnd, x, y, z, firstBlockId);
+                            blockPatchRandom.SetWorldSeed(sapi.WorldManager.Seed - subSeed + i);
+                            blockPatchRandom.InitPositionSeed(x, z);
+                            blockPatch.Generate(blockAccessor, patchIterRandom, x, y, z, firstBlockId, isStoryPatch);
                         }
                     }
                 }
@@ -292,17 +360,20 @@ namespace Vintagestory.ServerMods
 
         void genShrubs(int chunkX, int chunkZ)
         {
-            int triesShrubs = (int)treeSupplier.treeGenProps.shrubsPerChunk.nextFloat();
-
+            rnd.InitPositionSeed(chunkX, chunkZ);
+            int triesShrubs = (int)treeSupplier.treeGenProps.shrubsPerChunk.nextFloat(1f, rnd);
             int dx, dz, x, z;
             Block block;
+            var shrubTryRandom = new LCGRandom();
 
             while (triesShrubs > 0)
             {
+                shrubTryRandom.SetWorldSeed(sapi.World.Seed - subSeed + triesShrubs);
+                shrubTryRandom.InitPositionSeed(chunkX, chunkZ);
                 triesShrubs--;
 
-                dx = rnd.NextInt(chunksize);
-                dz = rnd.NextInt(chunksize);
+                dx = shrubTryRandom.NextInt(chunksize);
+                dz = shrubTryRandom.NextInt(chunksize);
                 x = dx + chunkX * chunksize;
                 z = dz + chunkZ * chunksize;
 
@@ -319,8 +390,8 @@ namespace Vintagestory.ServerMods
                 float shrubChance = GameMath.BiLerp(shrubUpLeft, shrubUpRight, shrubBotLeft, shrubBotRight, (float)dx / chunksize, (float)dz / chunksize);
                 shrubChance = GameMath.Clamp(shrubChance + 255*forestMod, 0, 255);
 
-                if (rnd.NextFloat() > (shrubChance / 255f) * (shrubChance / 255f)) continue;
-                TreeGenInstance treegenParams = treeSupplier.GetRandomShrubGenForClimate(climate, (int)shrubChance, y);
+                if (shrubTryRandom.NextFloat() > (shrubChance / 255f) * (shrubChance / 255f)) continue;
+                TreeGenInstance treegenParams = treeSupplier.GetRandomShrubGenForClimate(shrubTryRandom, climate, (int)shrubChance, y);
 
                 if (treegenParams != null)
                 {
@@ -330,7 +401,7 @@ namespace Vintagestory.ServerMods
                         if (structuresIntersectingChunk[i].Contains(tmpPos)) { canGen = false; break; }
                     }
                     if (!canGen) continue;
-                    if (SkipGenerationAt(tmpPos, EnumWorldGenPass.Vegetation)) continue;
+                    if (SkipGenerationAt(tmpPos, SkipShurbsgHashCode, out _)) continue;
 
                     if (blockAccessor.GetBlock(tmpPos.X, tmpPos.Y, tmpPos.Z).Replaceable >= 6000)
                     {
@@ -338,35 +409,39 @@ namespace Vintagestory.ServerMods
                     }
 
                     treegenParams.skipForestFloor = true;
-                    treegenParams.GrowTree(blockAccessor, tmpPos);
+
+                    treegenParams.GrowTree(blockAccessor, tmpPos, shrubTryRandom);
                 }
             }
-
         }
 
         void genTrees(int chunkX, int chunkZ)
         {
+            rnd.InitPositionSeed(chunkX, chunkZ);
             int climate = GameMath.BiLerpRgbColor((float)0.5f, (float)0.5f, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
-            float wetrel = TerraGenConfig.GetRainFall((climate >> 8) & 0xff, heightmap[(chunksize / 2) * chunksize + chunksize/2]) / 255f;
+            float wetrel = Climate.GetRainFall((climate >> 8) & 0xff, heightmap[(chunksize / 2) * chunksize + chunksize/2]) / 255f;
             float temprel = ((climate>>16) & 0xff) / 255f;
             float dryrel = 1 - wetrel;
 
             float drypenalty = 1 - GameMath.Clamp(2f * (dryrel - 0.5f + 1.5f*Math.Max(temprel - 0.6f, 0)), 0, 0.8f); // Reduce tree generation by up to 70% in low rain places
             float wetboost = 1 + 3 * Math.Max(0, wetrel - 0.75f);
 
-            int triesTrees = (int)(treeSupplier.treeGenProps.treesPerChunk.nextFloat() * drypenalty * wetboost);
+            int triesTrees = (int)(treeSupplier.treeGenProps.treesPerChunk.nextFloat(1f, rnd) * drypenalty * wetboost);
             int dx, dz, x, z;
             Block block;
             int treesGenerated = 0;
 
             EnumHemisphere hemisphere = sapi.World.Calendar.GetHemisphere(new BlockPos(chunkX * chunksize + chunksize / 2, 0, chunkZ * chunksize + chunksize / 2));
 
+            var treeTryRandom = new LCGRandom();
             while (triesTrees > 0)
             {
+                treeTryRandom.SetWorldSeed(sapi.World.Seed - subSeed + triesTrees);
+                treeTryRandom.InitPositionSeed(chunkX, chunkZ);
                 triesTrees--;
 
-                dx = rnd.NextInt(chunksize);
-                dz = rnd.NextInt(chunksize);
+                dx = treeTryRandom.NextInt(chunksize);
+                dz = treeTryRandom.NextInt(chunksize);
                 x = dx + chunkX * chunksize;
                 z = dz + chunkZ * chunksize;
 
@@ -376,9 +451,8 @@ namespace Vintagestory.ServerMods
                 bool underwater = false;
 
                 tmpPos.Set(x, y, z);
-
                 block = blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid);
-                
+
                 if (block.IsLiquid()) { underwater = true; tmpPos.Y--; block = blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid); if (block.IsLiquid()) tmpPos.Y--; }
 
                 block = blockAccessor.GetBlock(tmpPos);
@@ -392,12 +466,12 @@ namespace Vintagestory.ServerMods
 
                 float treeDensityNormalized = treeDensity / 255f;
 
-                
+
 
                 // 1 in 400 chance to always spawn a tree
                 // otherwise go by tree density using a quadratic drop off to create clearer forest edges
-                if (rnd.NextFloat() > Math.Max(0.0025f, treeDensityNormalized * treeDensityNormalized) || forestMod <= -1) continue;
-                TreeGenInstance treegenParams = treeSupplier.GetRandomTreeGenForClimate(climate, (int)treeDensity, y, underwater);
+                if (treeTryRandom.NextFloat() > Math.Max(0.0025f, treeDensityNormalized * treeDensityNormalized) || forestMod <= -1) continue;
+                TreeGenInstance treegenParams = treeSupplier.GetRandomTreeGenForClimate(treeTryRandom, climate, (int)treeDensity, y, underwater);
 
                 if (treegenParams != null)
                 {
@@ -407,7 +481,7 @@ namespace Vintagestory.ServerMods
                         if (structuresIntersectingChunk[i].Contains(tmpPos)) { canGen = false; break; }
                     }
                     if (!canGen) continue;
-                    if (SkipGenerationAt(tmpPos, EnumWorldGenPass.Vegetation)) continue;
+                    if (SkipGenerationAt(tmpPos, SkipTreesgHashCode, out _)) continue;
 
                     if (blockAccessor.GetBlock(tmpPos.X, tmpPos.Y, tmpPos.Z).Replaceable >= 6000)
                     {
@@ -418,15 +492,12 @@ namespace Vintagestory.ServerMods
                     treegenParams.hemisphere = hemisphere;
                     treegenParams.treesInChunkGenerated = treesGenerated;
 
-                    treegenParams.GrowTree(blockAccessor,tmpPos);
+                    treegenParams.GrowTree(blockAccessor, tmpPos, treeTryRandom);
 
                     treesGenerated++;
                 }
             }
         }
-
-
-
 
         /// <summary>
         /// Returns 0..255
@@ -456,7 +527,5 @@ namespace Vintagestory.ServerMods
 
             return 0;
         }
-
-
     }
 }

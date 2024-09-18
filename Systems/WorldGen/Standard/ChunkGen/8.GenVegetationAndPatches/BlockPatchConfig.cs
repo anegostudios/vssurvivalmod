@@ -54,7 +54,7 @@ namespace Vintagestory.ServerMods.NoObf
                 return false;
             }
 
-            int rain = TerraGenConfig.GetRainFall((climate >> 8) & 0xff, y);
+            int rain = Climate.GetRainFall((climate >> 8) & 0xff, y);
             float rainRel = rain / 255f;
             if (rainRel < patch.MinRain || rainRel > patch.MaxRain)
             {
@@ -62,7 +62,7 @@ namespace Vintagestory.ServerMods.NoObf
                 return false;
             }
 
-            int temp = TerraGenConfig.GetScaledAdjustedTemperature((climate >> 16) & 0xff, y - TerraGenConfig.seaLevel);
+            int temp = Climate.GetScaledAdjustedTemperature((climate >> 16) & 0xff, y - TerraGenConfig.seaLevel);
             if (temp < patch.MinTemp || temp > patch.MaxTemp)
             {
                 // again faster path without needing to fetch sealevel and fertility
@@ -76,7 +76,7 @@ namespace Vintagestory.ServerMods.NoObf
             }
 
             // finally test fertility (the least common blockpatch criterion)
-            float fertilityRel = TerraGenConfig.GetFertility(rain, temp, sealevelDistRel) / 255f;
+            float fertilityRel = Climate.GetFertility(rain, temp, sealevelDistRel) / 255f;
             return fertilityRel >= patch.MinFertility && fertilityRel <= patch.MaxFertility;
         }
 

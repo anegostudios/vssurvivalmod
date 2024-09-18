@@ -3,12 +3,33 @@ using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+
 namespace Vintagestory.GameContent
 {
+
+    public class CollectibleBehaviorBoatableGenericTypedContainer : CollectibleBehaviorHeldBag, IAttachedInteractions
+    {
+        public CollectibleBehaviorBoatableGenericTypedContainer(CollectibleObject collObj) : base(collObj)
+        {
+        }
+
+        public override int GetQuantitySlots(ItemStack bagstack)
+        {
+            string type = bagstack.Attributes.GetString("type");
+            return bagstack.ItemAttributes?["quantitySlots"]?[type]?.AsInt(0) ?? 0;
+        }
+
+        public override EnumItemStorageFlags GetStorageFlags(ItemStack bagstack)
+        {
+            return base.GetStorageFlags(bagstack);
+        }
+    }
+
     public class BlockGenericTypedContainerTrunk : BlockGenericTypedContainer, IMultiBlockColSelBoxes
     {
         Cuboidf[] mirroredColBox;
@@ -48,14 +69,57 @@ namespace Vintagestory.GameContent
         }
     }
 
-    public class BlockGenericTypedContainer : Block
+    public class BlockGenericTypedContainer : Block, IAttachableToEntity, IWearableShapeSupplier
     {
-        string curType;
         string defaultType;
         string variantByGroup;
         string variantByGroupInventory;
 
+        #region IAttachableToEntity
 
+        Shape IWearableShapeSupplier.GetShape(ItemStack stack, Entity forEntity, string texturePrefixCode)
+        {
+            string type = stack.Attributes.GetString("type");
+            string shapename = Attributes["shape"][type].AsString();
+            var shape = GetShape(forEntity.World.Api, shapename);
+
+            shape.SubclassForStepParenting(texturePrefixCode, 0);
+
+
+            return shape;
+        }
+        public int GetProvideSlots(ItemStack stack)
+        {
+            string type = stack.Attributes.GetString("type");
+
+            if (type != null)
+            {
+                return stack.ItemAttributes?["quantitySlots"]?[type]?.AsInt(0) ?? 0;
+            }
+
+            return 0;
+        }
+        public string GetCategoryCode(ItemStack stack)
+        {
+            string type = stack.Attributes?.GetString("type");
+            return Attributes["attachableCategoryCode"][type].AsString("chest");
+        }
+        public CompositeShape GetAttachedShape(ItemStack stack, string slotCode) => null;
+
+        public void CollectTextures(ItemStack stack, Shape shape, string texturePrefixCode, Dictionary<string, CompositeTexture> intoDict) {
+
+            string type = stack.Attributes.GetString("type");
+            foreach (var key in shape.Textures.Keys)
+            {
+                intoDict[texturePrefixCode + key] = this.Textures[type + "-" + key];
+            }
+        }
+
+        public string[] GetDisableElements(ItemStack stack) => null;
+        public string[] GetKeepElements(ItemStack stack) => null;
+
+        public string GetTexturePrefixCode(ItemStack stack) => Code.ToShortString() + "-" + stack.Attributes.GetString("type") + "-";
+        #endregion
 
         public string Subtype
         {
@@ -82,7 +146,7 @@ namespace Vintagestory.GameContent
             variantByGroupInventory = Attributes["variantByGroupInventory"].AsString(null);
         }
 
-
+        
         public string GetType(IBlockAccessor blockAccessor, BlockPos pos)
         {
             BlockEntityGenericTypedContainer be = blockAccessor.GetBlockEntity(pos) as BlockEntityGenericTypedContainer;
@@ -222,15 +286,13 @@ namespace Vintagestory.GameContent
 
         MeshData GenGuiMesh(ICoreClientAPI capi, string type)
         {
-
             string shapename = this.Attributes["shape"][type].AsString();
             return GenMesh(capi, type, shapename);
         }
 
         public Dictionary<string, MeshData> GenGuiMeshes(ICoreClientAPI capi)
         {
-            string[] types = this.Attributes["types"].AsArray<string>();
-            
+            string[] types = this.Attributes["types"].AsArray<string>();            
 
             Dictionary<string, MeshData> meshes = new Dictionary<string, MeshData>();
 
@@ -244,13 +306,10 @@ namespace Vintagestory.GameContent
         }
 
 
-        public Shape GetShape(ICoreClientAPI capi, string type, string shapename, ITesselatorAPI tesselator = null, int altTexNumber = 0)
+        public Shape GetShape(ICoreAPI capi, string shapename)
         {
             if (shapename == null) return null;
-            if (tesselator == null) tesselator = capi.Tesselator;
-
             
-
             AssetLocation shapeloc = AssetLocation.Create(shapename, Code.Domain).WithPathPrefixOnce("shapes/");
             Shape shape = API.Common.Shape.TryGet(capi, shapeloc + ".json");
             if (shape == null)
@@ -258,15 +317,13 @@ namespace Vintagestory.GameContent
                 shape = API.Common.Shape.TryGet(capi, shapeloc + "1.json");
             }
 
-            curType = type;
-
             return shape;
         }
 
 
         public MeshData GenMesh(ICoreClientAPI capi, string type, string shapename, ITesselatorAPI tesselator = null, Vec3f rotation = null, int altTexNumber = 0)
         {
-            Shape shape = GetShape(capi, type, shapename, tesselator, altTexNumber);
+            Shape shape = GetShape(capi, shapename);
             if (tesselator == null) tesselator = capi.Tesselator;
             if (shape == null)
             {
@@ -274,7 +331,6 @@ namespace Vintagestory.GameContent
                 return new MeshData();
             }
 
-            curType = type;
             MeshData mesh;
 
             var texSource = new GenericContainerTextureSource()
@@ -376,11 +432,11 @@ namespace Vintagestory.GameContent
                 {
                     for (int i = 0; i < drops.Length; i++)
                     {
-                        world.SpawnItemEntity(drops[i], new Vec3d(pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5), null);
+                        world.SpawnItemEntity(drops[i], pos, null);
                     }
                 }
 
-                world.PlaySoundAt(Sounds.GetBreakSound(byPlayer), pos.X, pos.Y, pos.Z, byPlayer);
+                world.PlaySoundAt(Sounds.GetBreakSound(byPlayer), pos, -0.5, byPlayer);
             }
 
             if (EntityClass != null)
@@ -476,5 +532,7 @@ namespace Vintagestory.GameContent
                 }
             }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
         }
+
+
     }
 }

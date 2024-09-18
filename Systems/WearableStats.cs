@@ -85,9 +85,11 @@ namespace Vintagestory.GameContent
 
         private void onFootStep(EntityPlayer entity)
         {
-            IInventory gearInv = entity.GearInventory;
-            
-            foreach (var slot in gearInv)
+            //IInventory gearInv = entity.GearInventory;
+            var inv = entity.GetBehavior<EntityBehaviorPlayerInventory>()?.Inventory;
+            if (inv == null) return;
+
+            foreach (var slot in inv)
             {
                 ItemWearable item;
                 if (slot.Empty || (item = slot.Itemstack.Collectible as ItemWearable) == null) continue;
@@ -152,7 +154,8 @@ namespace Vintagestory.GameContent
                 EnumCharacterDressType[] dressTargets = clothingDamageTargetsByAttackTacket[attackTarget];
                 EnumCharacterDressType target = dressTargets[api.World.Rand.Next(dressTargets.Length)];
 
-                ItemSlot targetslot = player.Entity.GearInventory[(int)target];
+                ItemSlot targetslot = inv[(int)target];
+                //ItemSlot targetslot = player.Entity.GearInventory[(int)target];
                 if (!targetslot.Empty)
                 {
                     // Wolf: 10 hp damage = 10% condition loss

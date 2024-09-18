@@ -256,7 +256,7 @@ namespace Vintagestory.GameContent
 
                 UpdateNeighbouringLiquids(pos, world);
                 GenerateSteamParticles(pos, world);
-                world.PlaySoundAt(collisionReplaceSound, pos.X, pos.Y, pos.Z, null, true, 16);
+                world.PlaySoundAt(collisionReplaceSound, pos, 0, null, true, 16);
             }
         }
 

@@ -94,43 +94,30 @@ namespace Vintagestory.GameContent
         /// <param name="world"></param>
         /// <param name="lavaPos"></param>
         /// <returns>The position of the air block next to a combustible block</returns>
-        private FireLocation SearchAreaForAirNextToCombustibleBlock(IWorldAccessor world, BlockPos lavaPos)
+        private FireLocation FindFireLocation(IWorldAccessor world, BlockPos lavaPos)
         {
-            FireLocation combustibleBlockPos = SearchRadiusForAirNextToCombustibleBlock(world, lavaPos, 1, 2);
-            if(combustibleBlockPos == null)
-            {
-                combustibleBlockPos = SearchRadiusForAirNextToCombustibleBlock(world, lavaPos, 2, 3);
-                if(combustibleBlockPos == null)
-                {
-                    combustibleBlockPos = SearchRadiusForAirNextToCombustibleBlock(world, lavaPos, 3, 2);
-                }
-            }
-            return combustibleBlockPos;
-        }
+            var rnd = world.Rand;
+            int tries = 20;
+            // Try twice as often for lava exposed to the surface
+            if (world.BlockAccessor.GetBlock(lavaPos.X, lavaPos.Y + 1, lavaPos.Z).Id == 0) tries = 40;
 
-        /// <summary>
-        /// Searches a given horizontal radius for an air block next to a combustible block
-        /// </summary>
-        /// <param name="world"></param>
-        /// <param name="lavaPos"></param>
-        /// <param name="y">Current y level</param>
-        /// <param name="radius">Horizontal Radius</param>
-        /// <returns></returns>
-        private FireLocation SearchRadiusForAirNextToCombustibleBlock(IWorldAccessor world, BlockPos lavaPos, int y, int radius)
-        {
-            for (int x = -radius; x <= radius; x++)
+            for (int i = 0; i < tries; i++)
             {
-                for (int z = -radius; z <= radius; z++)
+                var pos = lavaPos.AddCopy(rnd.Next(7) - 3, rnd.Next(4), rnd.Next(7) - 3);
+
+                //world.Api.Event.EnqueueMainThreadTask(() => { world.SpawnParticles(1, ColorUtil.WhiteArgb, pos.ToVec3d().Add(0.5, 0.5, 0.5), pos.ToVec3d().Add(0.5, 0.5, 0.5), new Vec3f(), new Vec3f(), 1.5f, 0, 0.25f); }, "bla");
+
+                var block = world.BlockAccessor.GetBlock(pos);
+                if (block.Id == 0)
                 {
-                    BlockPos airBlockPos = lavaPos.AddCopy(x, y, z);
-                    
-                    BlockFacing facing = IsNextToCombustibleBlock(world, lavaPos, airBlockPos);
+                    BlockFacing facing = IsNextToCombustibleBlock(world, lavaPos, pos);
                     if (facing != null)
                     {
-                        return new FireLocation(airBlockPos, facing);
+                        return new FireLocation(pos, facing);
                     }
                 }
             }
+
             return null;
         }
 
@@ -144,20 +131,14 @@ namespace Vintagestory.GameContent
         /// <returns></returns>
         private BlockFacing IsNextToCombustibleBlock(IWorldAccessor world, BlockPos lavaPos, BlockPos airBlockPos)
         {
-            Block airBlock = world.BlockAccessor.GetBlock(airBlockPos);
-            if (airBlock.BlockId == 0)
+            foreach (BlockFacing facing in BlockFacing.ALLFACES)
             {
-                foreach (BlockFacing facing in BlockFacing.ALLFACES)
+                BlockPos npos = airBlockPos.AddCopy(facing);
+                Block block = world.BlockAccessor.GetBlock(npos);
+                
+                if (block.CombustibleProps != null && block.CombustibleProps.BurnTemperature <= GetTemperatureAtLocation(lavaPos, airBlockPos))
                 {
-                    if (facing != BlockFacing.DOWN)
-                    {
-                        BlockPos combustibleBlockPos = airBlockPos.Copy().Add(facing);
-                        Block combustibleBlock = world.BlockAccessor.GetBlock(combustibleBlockPos);
-                        if (combustibleBlock.CombustibleProps != null && combustibleBlock.CombustibleProps.BurnTemperature <= GetTemperatureAtLocation(lavaPos, airBlockPos))
-                        {
-                            return facing;
-                        }
-                    }
+                    return facing;
                 }
             }
             return null;
@@ -178,8 +159,8 @@ namespace Vintagestory.GameContent
         public override bool ShouldReceiveServerGameTicks(IWorldAccessor world, BlockPos pos, Random offThreadRandom, out object extra)
         {
             if (LiquidLevel == 7)
-            {                
-                FireLocation fireLocation = SearchAreaForAirNextToCombustibleBlock(world, pos);
+            {
+                FireLocation fireLocation = FindFireLocation(world, pos);
                 if(fireLocation != null)
                 {
                     extra = fireLocation;

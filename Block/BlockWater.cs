@@ -40,12 +40,10 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool ShouldPlayAmbientSound(IWorldAccessor world, BlockPos pos)
+        public override float GetAmbientSoundStrength(IWorldAccessor world, BlockPos pos)
         {
             // Play water wave sound when above is air and below is a solid block
-            return
-                world.BlockAccessor.GetBlockId(pos.X, pos.Y + 1, pos.Z) == 0 &&
-                world.BlockAccessor.IsSideSolid(pos.X, pos.Y - 1, pos.Z, BlockFacing.UP);
+            return (world.BlockAccessor.GetBlockId(pos.X, pos.Y + 1, pos.Z) == 0 && world.BlockAccessor.IsSideSolid(pos.X, pos.Y - 1, pos.Z, BlockFacing.UP)) ? 1 : 0;
         }
 
         public override void OnAsyncClientParticleTick(IAsyncParticleManager manager, BlockPos pos, float windAffectednessAtPos, float secondsTicking)

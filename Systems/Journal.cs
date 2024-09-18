@@ -9,6 +9,12 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+// Each player has a Journal
+// Each Journal has journal entries
+// Each journal entry has one or more chapters
+
+// Multiple Journal entries can belong to a category
+// Each journal entry has a unique code
 namespace Vintagestory.GameContent
 {
     #region pre v1.14
@@ -49,7 +55,32 @@ namespace Vintagestory.GameContent
     #endregion
 
 
-    #region v1.14
+    #region v1.14+
+
+
+    [ProtoContract]
+    public class Journal
+    {
+        [ProtoMember(1)]
+        public List<JournalEntry> Entries = new List<JournalEntry>();
+    }
+
+
+    [ProtoContract]
+    public class JournalEntry
+    {
+        [ProtoMember(1)]
+        public int EntryId;
+        [ProtoMember(2)]
+        public string LoreCode;
+        [ProtoMember(3)]
+        public string Title;
+        [ProtoMember(4)]
+        public bool Editable;
+        [ProtoMember(5)]
+        public List<JournalChapter> Chapters = new List<JournalChapter>();
+    }
+
     [ProtoContract]
     public class JournalChapter
     {
@@ -68,30 +99,6 @@ namespace Vintagestory.GameContent
         public string Text;
     }
 
-    [ProtoContract]
-    public class JournalEntry
-    {
-        [ProtoMember(1)]
-        public int EntryId;
-        [ProtoMember(2)]
-        public string LoreCode;
-        [ProtoMember(3)]
-        public string Title;
-        [ProtoMember(4)]
-        public bool Editable;
-        [ProtoMember(5)]
-        public List<JournalChapter> Chapters = new List<JournalChapter>();
-    }
-
-
-    [ProtoContract]
-    public class Journal
-    {
-        [ProtoMember(1)]
-        public List<JournalEntry> Entries = new List<JournalEntry>();
-    }
-
-    
     [ProtoContract]
     public class LoreDiscovery
     {
@@ -382,69 +389,36 @@ namespace Vintagestory.GameContent
             ItemSlot itemslot = plr.InventoryManager.ActiveHotbarSlot;
             LoreDiscovery discovery;
 
-            string discCode = itemslot.Itemstack.Attributes.GetString("discoveryCode", null);
-            if (discCode != null)
+            string journalEntryCode = itemslot.Itemstack.Attributes.GetString("discoveryCode", null);
+            if (journalEntryCode != null)
             {
                 var chapters = (itemslot.Itemstack.Attributes["chapterIds"] as IntArrayAttribute).value;
                 discovery = new LoreDiscovery()
                 {
-                    Code = discCode,
+                    Code = journalEntryCode,
                     ChapterIds = new List<int>(chapters)
                 };
-
-                if (DidDiscover(playerUid, discCode, chapters[0]))
-                {
-                    //plr.SendIngameError("alreadydiscovered", Lang.Get("Nothing new in these pages"));
-                    return;
-                }
             }
             else
             {
-                discovery = TryGetRandomLoreDiscovery(sapi.World, plr, category);
+                discovery = getRandomLoreDiscovery(sapi.World, plr, category);
             }
 
             if (discovery == null)
             {
-                //plr.SendIngameError("alreadydiscovered", Lang.Get("Nothing new in these pages"));
+                if (journalEntryCode == null) plr.SendIngameError("alreadydiscovered", Lang.Get("Nothing new in these pages"));
                 return;
             }
 
-
-            itemslot.MarkDirty();
-            plr.Entity.World.PlaySoundAt(new AssetLocation("sounds/effect/writing"), plr.Entity);
-
-            handling = EnumHandling.PreventDefault;
-
-            DiscoverLore(discovery, plr, itemslot);
+            if (TryDiscoverLore(discovery, plr, itemslot))
+            {
+                itemslot.MarkDirty();
+                plr.Entity.World.PlaySoundAt(new AssetLocation("sounds/effect/writing"), plr.Entity);
+                handling = EnumHandling.PreventDefault;
+            }
         }
 
-        public bool DidDiscoverLore(string playerUid, string code, int chapterId)
-        {
-            Journal journal;
-            if (!journalsByPlayerUid.TryGetValue(playerUid, out journal))
-            {
-                return false;
-            }
-
-            for (int i = 0; i < journal.Entries.Count; i++)
-            {
-                if (journal.Entries[i].LoreCode == code)
-                {
-                    JournalEntry entry = journal.Entries[i];
-                    for (int j = 0; j < entry.Chapters.Count; j++)
-                    {
-                        if (entry.Chapters[j].ChapterId == chapterId) return true;
-                    }
-
-                    break;
-                }
-            }
-
-            return false;
-        }
-
-
-        public void DiscoverLore(LoreDiscovery discovery, IServerPlayer plr, ItemSlot slot)
+        public bool TryDiscoverLore(LoreDiscovery newdiscovery, IServerPlayer plr, ItemSlot slot = null)
         {
             string playerUid = plr.PlayerUID;
 
@@ -454,14 +428,13 @@ namespace Vintagestory.GameContent
                 journalsByPlayerUid[playerUid] = journal = new Journal();
             }
 
-
             JournalEntry entry = null;
             ensureJournalAssetsLoaded();
-            JournalAsset asset = journalAssetsByCode[discovery.Code];
+            JournalAsset asset = journalAssetsByCode[newdiscovery.Code];
 
             for (int i = 0; i < journal.Entries.Count; i++)
             {
-                if (journal.Entries[i].LoreCode == discovery.Code)
+                if (journal.Entries[i].LoreCode == newdiscovery.Code)
                 {
                     entry = journal.Entries[i];
                     break;
@@ -472,32 +445,55 @@ namespace Vintagestory.GameContent
 
             if (entry == null)
             {
-                journal.Entries.Add(entry = new JournalEntry() { Editable = false, Title = asset.Title, LoreCode = discovery.Code, EntryId = journal.Entries.Count });
+                journal.Entries.Add(entry = new JournalEntry() { Editable = false, Title = asset.Title, LoreCode = newdiscovery.Code, EntryId = journal.Entries.Count });
                 isNew = true;
             }
 
-            markNextLoreChapterDiscovered(plr, asset);
+            bool anyAdded = false;
+
+            Dictionary<string, LoreDiscovery> discoveredLore;
+            loreDiscoveryiesByPlayerUid.TryGetValue(plr.PlayerUID, out discoveredLore);
+            if (discoveredLore == null)
+            {
+                loreDiscoveryiesByPlayerUid[plr.PlayerUID] = discoveredLore = new Dictionary<string, LoreDiscovery>();
+            }
+            if (discoveredLore.TryGetValue(asset.Code, out var olddisc))
+            {
+                foreach (int newChapterId in newdiscovery.ChapterIds)
+                {
+                    if (!olddisc.ChapterIds.Contains(newChapterId))
+                    {
+                        olddisc.ChapterIds.Add(newChapterId);
+                        anyAdded = true;
+                    }
+                }
+            } else {
+                discoveredLore[asset.Code] = newdiscovery;
+                anyAdded = true;
+            }
+
+            if (!anyAdded) return false;
 
             int partnum = 0;
             int partcount = asset.Pieces.Length;
 
 
 
-            for (int i = 0; i < discovery.ChapterIds.Count; i++)
+            for (int i = 0; i < newdiscovery.ChapterIds.Count; i++)
             {
-                JournalChapter chapter = new JournalChapter() { Text = asset.Pieces[discovery.ChapterIds[i]], EntryId = entry.EntryId, ChapterId = discovery.ChapterIds[i] };
+                JournalChapter chapter = new JournalChapter() { Text = asset.Pieces[newdiscovery.ChapterIds[i]], EntryId = entry.EntryId, ChapterId = newdiscovery.ChapterIds[i] };
                 entry.Chapters.Add(chapter);
                 if (!isNew) serverChannel.SendPacket(chapter, plr);
 
-                partnum = discovery.ChapterIds[i];
+                partnum = newdiscovery.ChapterIds[i];
             }
 
             if (slot != null)
             {
-                slot.Itemstack.Attributes.SetString("discoveryCode", discovery.Code);
-                slot.Itemstack.Attributes["chapterIds"] = new IntArrayAttribute(discovery.ChapterIds.ToArray());
+                slot.Itemstack.Attributes.SetString("discoveryCode", newdiscovery.Code);
+                slot.Itemstack.Attributes["chapterIds"] = new IntArrayAttribute(newdiscovery.ChapterIds.ToArray());
 
-                slot.Itemstack.Attributes["textCodes"] = new StringArrayAttribute(discovery.ChapterIds.Select(id => asset.Pieces[id]).ToArray());
+                slot.Itemstack.Attributes["textCodes"] = new StringArrayAttribute(newdiscovery.ChapterIds.Select(id => asset.Pieces[id]).ToArray());
                 slot.Itemstack.Attributes.SetString("titleCode", entry.Title);
                 slot.MarkDirty();
             }
@@ -507,8 +503,10 @@ namespace Vintagestory.GameContent
                 serverChannel.SendPacket(entry, plr);
             }
 
-            sapi.SendIngameDiscovery(plr, "lore-" + discovery.Code, null, partnum + 1, partcount);
+            sapi.SendIngameDiscovery(plr, "lore-" + newdiscovery.Code, null, partnum + 1, partcount);
             sapi.World.PlaySoundAt(new AssetLocation("sounds/effect/deepbell"), plr.Entity, null, false, 5, 0.5f);
+
+            return true;
         }
 
         protected TextCommandResult DiscoverEverything(TextCommandCallingArgs args)
@@ -541,26 +539,26 @@ namespace Vintagestory.GameContent
         }
 
 
-        LoreDiscovery TryGetRandomLoreDiscovery(IWorldAccessor world, IPlayer serverplayer, string category)
+        LoreDiscovery getRandomLoreDiscovery(IWorldAccessor world, IPlayer serverplayer, string category)
         {
             JournalAsset[] journalAssets;
 
             ensureJournalAssetsLoaded();
             journalAssets = journalAssetsByCode.Values.ToArray();
-
             journalAssets.Shuffle(world.Rand);
-
 
             for (int i = 0; i < journalAssets.Length; i++)
             {
                 JournalAsset journalAsset = journalAssets[i];
                 if (category != null && journalAsset.Category != category) continue;
 
-                return markNextLoreChapterDiscovered(serverplayer, journalAsset);
+                LoreDiscovery dis = getNextUndiscoveredChapter(serverplayer, journalAsset);
+                if (dis != null) return dis;
             }
 
             return null;
         }
+
 
 
         /// <summary>
@@ -569,7 +567,7 @@ namespace Vintagestory.GameContent
         /// <param name="plr"></param>
         /// <param name="asset"></param>
         /// <returns></returns>
-        private LoreDiscovery markNextLoreChapterDiscovered(IPlayer plr, JournalAsset asset)
+        private LoreDiscovery getNextUndiscoveredChapter(IPlayer plr, JournalAsset asset)
         {
             Dictionary<string, LoreDiscovery> discoveredLore;
             loreDiscoveryiesByPlayerUid.TryGetValue(plr.PlayerUID, out discoveredLore);
@@ -580,7 +578,7 @@ namespace Vintagestory.GameContent
 
             if (!discoveredLore.ContainsKey(asset.Code))
             {
-                return discoveredLore[asset.Code] = new LoreDiscovery() { Code = asset.Code, ChapterIds = new List<int>() { 0 } };
+                return new LoreDiscovery() { Code = asset.Code, ChapterIds = new List<int>() { 0 } };
             }
 
             LoreDiscovery ld = discoveredLore[asset.Code];
@@ -590,20 +588,11 @@ namespace Vintagestory.GameContent
                 if (!ld.ChapterIds.Contains(p))
                 {
                     ld.ChapterIds.Add(p);
-                    return new LoreDiscovery() { Code = asset.Code, ChapterIds = new List<int>() { p } };
+                    return ld;
                 }
             }
 
             return null;
-        }
-
-
-        bool DidDiscover(string playerUid, string loreCode, int chapterId)
-        {
-            if (!loreDiscoveryiesByPlayerUid.TryGetValue(playerUid, out var discoveredLore)) return false;
-            if (!discoveredLore.TryGetValue(loreCode, out var discoveredChapters)) return false;
-            if (!discoveredChapters.ChapterIds.Contains(chapterId)) return false;
-            return true;
         }
 
 

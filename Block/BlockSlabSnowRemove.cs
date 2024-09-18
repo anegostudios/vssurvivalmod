@@ -85,10 +85,15 @@ namespace Vintagestory.GameContent
             return nblock.SideSolid[BlockFacing.UP.Index];
         }
 
-        public override bool ShouldPlayAmbientSound(IWorldAccessor world, BlockPos pos)
+        public override float GetAmbientSoundStrength(IWorldAccessor world, BlockPos pos)
         {
             var conds = capi.World.Player.Entity.selfClimateCond;
-            return conds != null && conds.Rainfall > 0.1f && conds.Temperature > 3f && (world.BlockAccessor.GetRainMapHeightAt(pos) <= pos.Y || world.BlockAccessor.GetDistanceToRainFall(pos, 3, 1) <= 2);
+            if (FirstCodePart() == "glassslab" && conds != null && conds.Rainfall > 0.1f && conds.Temperature > 3f && (world.BlockAccessor.GetRainMapHeightAt(pos) <= pos.Y || world.BlockAccessor.GetDistanceToRainFall(pos, 3, 1) <= 2))
+            {
+                return conds.Rainfall;
+            }
+
+            return 0;
         }
     }
 }

@@ -38,7 +38,7 @@ namespace Vintagestory.GameContent
             { "04", 5 }
         };
 
-        
+
 
         public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
@@ -62,7 +62,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, IRandom worldGenRand, BlockPatchAttributes attributes = null)
         {
             bool didplace = false;
 
@@ -71,12 +71,12 @@ namespace Vintagestory.GameContent
             pos = pos.Copy();
 
             ModStdWorldGen modSys = null;
-            if (blockAccessor is IWorldGenBlockAccessor wgba) wgba.WorldgenWorldAccessor.Api.ModLoader.GetModSystem<GenVegetationAndPatches>();
+            if (blockAccessor is IWorldGenBlockAccessor wgba) modSys = wgba.WorldgenWorldAccessor.Api.ModLoader.GetModSystem<GenVegetationAndPatches>();
 
             for (int i = 0; i < 5 + worldGenRand.NextInt(25); i++)
             {
                 if (pos.Y < 15) continue; // Too hot for stalactites
-                if (modSys != null && modSys.SkipGenerationAt(pos, EnumWorldGenPass.Vegetation)) continue;
+                if (modSys != null && modSys.SkipGenerationAt(pos, ModStdWorldGen.SkipStalagHashCode, out _)) continue;
 
                 didplace |= TryGenStalag(blockAccessor, pos, worldGenRand.NextInt(4), worldGenRand);
                 pos.X += worldGenRand.NextInt(9) - 4;
@@ -87,7 +87,7 @@ namespace Vintagestory.GameContent
             return didplace;
         }
 
-        private bool TryGenStalag(IBlockAccessor blockAccessor, BlockPos pos, int thickOff, LCGRandom worldGenRand)
+        private bool TryGenStalag(IBlockAccessor blockAccessor, BlockPos pos, int thickOff, IRandom worldGenRand)
         {
             bool didplace = false;
 
@@ -146,7 +146,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        private void GrowDownFrom(IBlockAccessor blockAccessor, BlockPos pos, string rocktype, int thickOff, LCGRandom worldGenRand)
+        private void GrowDownFrom(IBlockAccessor blockAccessor, BlockPos pos, string rocktype, int thickOff, IRandom worldGenRand)
         {
             for (int i = thicknessIndex[Thickness] + thickOff + worldGenRand.NextInt(2); i < Thicknesses.Length; i++)
             {

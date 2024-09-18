@@ -49,6 +49,8 @@ namespace Vintagestory.GameContent
         public int StackingCapacity = 1;
         public int TransferQuantity = 1;
         public int BulkTransferQuantity = 4;
+        public bool CtrlKey;
+        [Obsolete("Use CtrlKey instead. SprintKey maintained for compatibility with existing JSONs")]
         public bool SprintKey;
         public bool UpSolid = false;
 
@@ -76,7 +78,7 @@ namespace Vintagestory.GameContent
                 SelectionBox = SelectionBox,
                 CbScaleYByLayer = CbScaleYByLayer,
                 MaxFireable = MaxFireable,
-                SprintKey = SprintKey,
+                CtrlKey = CtrlKey,
                 UpSolid = UpSolid
             };
         }
@@ -99,6 +101,7 @@ namespace Vintagestory.GameContent
             base.Initialize(properties);
 
             StorageProps = properties.AsObject<GroundStorageProperties>(null, collObj.Code.Domain);
+            if (StorageProps.SprintKey) StorageProps.CtrlKey = true;
         }
 
 
@@ -115,7 +118,7 @@ namespace Vintagestory.GameContent
             {
                 new WorldInteraction
                 {
-                    HotKeyCodes = StorageProps.SprintKey ? new string[] {"ctrl", "shift" } : new string[] {"shift"},
+                    HotKeyCodes = StorageProps.CtrlKey ? new string[] {"ctrl", "shift" } : new string[] {"shift"},
                     ActionLangCode = "heldhelp-place",
                     MouseButton = EnumMouseButton.Right
                 }

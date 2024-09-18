@@ -78,7 +78,7 @@ namespace Vintagestory.GameContent
                 
                 pile.MarkDirty();
                 world.BlockAccessor.MarkBlockDirty(pos);
-                world.PlaySoundAt(new AssetLocation("sounds/block/ingot"), pos.X, pos.Y, pos.Z, player, false);
+                world.PlaySoundAt(new AssetLocation("sounds/block/ingot"), pos, pile.inventory[0].Itemstack.StackSize / pile.MaxStackSize - 0.5, player, false);
             }
 
 

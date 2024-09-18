@@ -415,7 +415,7 @@ namespace Vintagestory.GameContent
             DummyInventory dummyInv = new DummyInventory(api);
 
             ItemSlot slot = GetDummySlotForFirstPerishableStack(api.World, stacks, null, dummyInv);
-            dummyInv.OnAcquireTransitionSpeed = (transType, stack, mul) =>
+            dummyInv.OnAcquireTransitionSpeed += (transType, stack, mul) =>
             {
                 float val = mul * GetContainingTransitionModifierContained(world, inSlot, transType);
 

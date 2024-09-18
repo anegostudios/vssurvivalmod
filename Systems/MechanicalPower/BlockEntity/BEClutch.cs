@@ -206,7 +206,7 @@ namespace Vintagestory.GameContent.Mechanics
             BEBehaviorMPTransmission be = Api.World.BlockAccessor.GetBlockEntity(transmissionPos)?.GetBehavior<BEBehaviorMPTransmission>();
             if (!Engaged && be != null && be.engaged) return true;
             Engaged = !Engaged;
-            Api.World.PlaySoundAt(new AssetLocation("sounds/effect/woodswitch.ogg"), Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, byPlayer);
+            Api.World.PlaySoundAt(new AssetLocation("sounds/effect/woodswitch.ogg"), Pos, 0, byPlayer);
             if (be != null)
             {
                 be.CheckEngaged(Api.World.BlockAccessor, true);

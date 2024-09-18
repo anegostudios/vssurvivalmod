@@ -107,10 +107,10 @@ namespace Vintagestory.GameContent
 
                 for (int i = 0; i < drops.Length; i++)
                 {
-                    world.SpawnItemEntity(drops[i], new Vec3d(pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5), null);
+                    world.SpawnItemEntity(drops[i], pos, null);
                 }
 
-                world.PlaySoundAt(Sounds.GetBreakSound(byPlayer), pos.X, pos.Y, pos.Z, byPlayer);
+                world.PlaySoundAt(Sounds.GetBreakSound(byPlayer), pos, 0, byPlayer);
             }
 
             if (EntityClass != null)

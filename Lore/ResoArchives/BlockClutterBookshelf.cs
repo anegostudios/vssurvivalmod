@@ -7,7 +7,6 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -47,7 +46,7 @@ namespace Vintagestory.GameContent
             foreach (var variant in variantGroupsByCode)
             {
                 variant.Value.block = this;
-                
+
                 if (variant.Value.DoubleSided)
                 {
                     var jstackd = new JsonItemStack()
@@ -199,16 +198,16 @@ namespace Vintagestory.GameContent
 
         public override MeshData GetOrCreateMesh(IShapeTypeProps cprops, ITexPositionSource overrideTexturesource = null, string overrideTextureCode = null)
         {
-            var cMeshes = ObjectCacheUtil.GetOrCreate(api, ClassType + "Meshes", () => new Dictionary<string, MeshData>());
+            var cMeshes = meshDictionary;
             ICoreClientAPI capi = api as ICoreClientAPI;
 
             var bprops = cprops as BookShelfTypeProps;
-            
+
             if (overrideTexturesource == null && cMeshes.TryGetValue(bprops.HashKey, out var mesh))
             {
                 return mesh;
             }
-            
+
             mesh = new MeshData(4, 3);
             var shape = cprops.ShapeResolved;
             if (shape == null) return mesh;
@@ -232,7 +231,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            capi.Tesselator.TesselateShape(ClassType + "block", shape, out mesh, texSource);
+            capi.Tesselator.TesselateShape(blockForLogging, shape, out mesh, texSource);
 
             if (bprops.Variant == "full" || bprops.group.DoubleSided)
             {
@@ -250,7 +249,7 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-                capi.Tesselator.TesselateShape(ClassType + "block", shape, out var mesh2, texSource);
+                capi.Tesselator.TesselateShape(blockForLogging, shape, out var mesh2, texSource);
 
                 mesh2.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, GameMath.PI, 0).Translate(0, 0, -0.5f);
                 mesh.AddMeshData(mesh2);
@@ -267,7 +266,7 @@ namespace Vintagestory.GameContent
             {
                 cMeshes[bprops.HashKey] = mesh;
             }
-            
+
             return mesh;
         }
 
@@ -298,7 +297,6 @@ namespace Vintagestory.GameContent
             }
             return sb.ToString();
         }
-
 
         //Suppress "bookshelf-" at start of localized name key; it will therefore normally start with "bookshelves-"
         public override string BaseCodeForName()

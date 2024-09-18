@@ -9,6 +9,8 @@ namespace Vintagestory.GameContent
 {
     public interface ITutorial
     {
+        bool Complete { get; }
+        float Progress { get; }
         string PageCode { get; }
         void Restart();
         void Skip(int count);
@@ -59,6 +61,8 @@ namespace Vintagestory.GameContent
                 step.Restart();
                 step.ToJson(StepDataForSaving);
             }
+
+            Save();
         }
 
 
@@ -81,16 +85,20 @@ namespace Vintagestory.GameContent
             if (anyNowCompleted)
             {
                 capi.Gui.PlaySound(new AssetLocation("sounds/tutorialstepsuccess.ogg"), false, 1);
+                Save();
             }
 
             return anyDirty;
         }
 
+        public bool Complete => steps[steps.Count - 1].Complete;
+
+        public float Progress => steps.Sum((t) => t.Complete ? 1 : 0) / (float)steps.Count;
+
         public void addSteps(params TutorialStepBase[] steps)
         {
             for (int i = 0; i < steps.Length; i++)
             {
-                //steps[i].text = (i + 1) + ". " + steps[i].text;
                 steps[i].index = i;
             }
 
@@ -157,12 +165,12 @@ namespace Vintagestory.GameContent
                 step.ToJson(job);
             }
 
-            capi.StoreModConfig(job, "tutorialsteps.json");
+            capi.StoreModConfig(job, "tutorial-"+PageCode+".json");
         }
 
         public void Load()
         {
-            stepData = capi.LoadModConfig("tutorialsteps.json");
+            stepData = capi.LoadModConfig("tutorial-" + PageCode + ".json");
             if (stepData != null)
             {
                 foreach (var step in steps)

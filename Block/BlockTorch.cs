@@ -82,8 +82,8 @@ namespace Vintagestory.GameContent
         {
             if (api.World.Side == EnumAppSide.Server && byEntity.Swimming && !IsExtinct && ExtinctVariant != null)
             {
-                api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), byEntity.Pos.X + 0.5, byEntity.Pos.Y + 0.75, byEntity.Pos.Z + 0.5, null, false, 16);
-                
+                api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), byEntity.Pos.X + 0.5, byEntity.Pos.InternalY + 0.75, byEntity.Pos.Z + 0.5, null, false, 16);
+
                 int q = slot.Itemstack.StackSize;
                 slot.Itemstack = new ItemStack(ExtinctVariant);
                 slot.Itemstack.StackSize = q;
@@ -95,7 +95,7 @@ namespace Vintagestory.GameContent
         {
             if (!IsExtinct && entityItem.Swimming && ExtinctVariant != null)
             {
-                api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), entityItem.Pos.X + 0.5, entityItem.Pos.Y + 0.75, entityItem.Pos.Z + 0.5, null, false, 16);
+                api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), entityItem.Pos.X + 0.5, entityItem.Pos.InternalY + 0.75, entityItem.Pos.Z + 0.5, null, false, 16);
 
                 int q = entityItem.Itemstack.StackSize;
                 entityItem.Itemstack = new ItemStack(ExtinctVariant);
@@ -136,15 +136,6 @@ namespace Vintagestory.GameContent
                 {
                     if (byEntity.World is IClientWorldAccessor)
                     {
-                        ModelTransform tf = new ModelTransform();
-                        tf.EnsureDefaultValues();
-
-                        tf.Translation.Set(0, Math.Min(1.1f / 3, secondsUsed * 4 / 3f) / 2, -Math.Min(1.1f, secondsUsed * 4));
-                        tf.Rotation.X = -Math.Min(30, secondsUsed * 90 * 2f);
-                        tf.Rotation.Z = -Math.Min(20, secondsUsed * 90 * 4f);
-                        byEntity.Controls.UsingHeldItemTransformBefore = tf;
-
-
                         if (secondsUsed > 0.25f && (int)(30 * secondsUsed) % 2 == 1)
                         {
                             Random rand = byEntity.World.Rand;
@@ -167,7 +158,7 @@ namespace Vintagestory.GameContent
                 if (state == EnumIgniteState.IgniteNow)
                 {
                     if (byEntity.World.Side == EnumAppSide.Client) return false;
-                    
+
                     var stack = new ItemStack(byEntity.World.GetBlock(CodeWithVariant("state", "lit")));
 
                     if (slot.StackSize == 1)
@@ -267,9 +258,9 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldgenRandom)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, IRandom worldgenRandom, BlockPatchAttributes attributes = null)
         {
-            if (!base.TryPlaceBlockForWorldGen(blockAccessor, pos, onBlockFace, worldgenRandom)) return false;
+            if (!base.TryPlaceBlockForWorldGen(blockAccessor, pos, onBlockFace, worldgenRandom, attributes)) return false;
             if (isLit) ReplaceWithBurnedOut(blockAccessor, pos);
             return true;
         }

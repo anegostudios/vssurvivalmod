@@ -115,7 +115,7 @@ namespace Vintagestory.GameContent
             if (combusted) return;
             if (nearToClaimedLand())
             {
-                Api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), Pos.X + 0.5, Pos.Y, Pos.Z + 0.5, null, false, 16);
+                Api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), Pos, -0.5, null, false, 16);
                 lit = false;
                 MarkDirty(true);
                 return;

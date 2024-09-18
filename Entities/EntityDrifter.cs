@@ -63,9 +63,9 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void OnAnimationStopped(string code)
+        public override void TriggerAnimationStopped(string code)
         {
-            base.OnAnimationStopped(code);
+            base.TriggerAnimationStopped(code);
 
             if (entity.Alive && ActiveAnimationsByAnimCode.Count == 0)
             {

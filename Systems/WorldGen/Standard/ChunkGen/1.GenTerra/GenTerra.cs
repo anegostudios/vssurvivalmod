@@ -88,6 +88,7 @@ namespace Vintagestory.ServerMods
 
             TerraGenConfig.seaLevel = (int)(0.4313725490196078 * api.WorldManager.MapSizeY);
             api.WorldManager.SetSeaLevel(TerraGenConfig.seaLevel);
+            Climate.Sealevel = TerraGenConfig.seaLevel;
         }
 
         public void initWorldGen()
@@ -163,10 +164,10 @@ namespace Vintagestory.ServerMods
         }
 
 
-       
+
 
         private void OnChunkColumnGen(IChunkColumnGenerateRequest request)
-        {   
+        {
             if (request.RequiresChunkBorderSmoothing)
             {
                 var neibHeightMaps = request.NeighbourTerrainHeight;
@@ -253,7 +254,7 @@ namespace Vintagestory.ServerMods
                                     break;
                             }
 
-                            
+
                             float cardinalWeight = (float)Math.Pow((float)(1 - GameMath.Clamp(distToEdge, 0, 1)), 2);
                             var neibYPos = neibMap[borderIndicesByCardinal[i]] + 0.5f;
 
@@ -297,7 +298,7 @@ namespace Vintagestory.ServerMods
             IntDataMap2D oceanMap = chunks[0].MapChunk.MapRegion.OceanMap;
             int regionChunkSize = api.WorldManager.RegionSize / chunksize;
             float cfac = (float)climateMap.InnerSize / regionChunkSize;
-            
+
             int rlX = chunkX % regionChunkSize;
             int rlZ = chunkZ % regionChunkSize;
 
@@ -340,7 +341,7 @@ namespace Vintagestory.ServerMods
             float baseX = (chunkX % regionChunkSize) * chunkPixelSize;
             float baseZ = (chunkZ % regionChunkSize) * chunkPixelSize;
 
-            LerpedWeightedIndex2DMap landLerpMap = GetOrLoadLerpedLandformMap(chunks[0].MapChunk, chunkX / regionChunkSize, chunkZ / regionChunkSize);
+            LerpedWeightedIndex2DMap landLerpMap = GetOrLoadLerpedLandformMap(mapchunk, chunkX / regionChunkSize, chunkZ / regionChunkSize);
 
             // Terrain octaves
             double[] octNoiseX0, octNoiseX1, octNoiseX2, octNoiseX3;
@@ -521,7 +522,7 @@ namespace Vintagestory.ServerMods
                     {
                         int temp = (GameMath.BiLerpRgbColor(lX * chunkBlockDelta, lZ * chunkBlockDelta, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight) >> 16) & 0xFF;
                         float distort = (float)distort2dx.Noise(chunkX * chunksize + lX, worldZ) / 20f;
-                        float tempf = TerraGenConfig.GetScaledAdjustedTemperatureFloat(temp, 0) + distort;
+                        float tempf = Climate.GetScaledAdjustedTemperatureFloat(temp, 0) + distort;
                         if (tempf < TerraGenConfig.WaterFreezingTempOnGen) surfaceWaterId = GlobalConfig.lakeIceBlockId;
                     }
 

@@ -45,7 +45,7 @@ namespace Vintagestory.GameContent
             bgBounds.BothSizing = ElementSizing.FitToChildren;
             bgBounds.WithChildren(clippingBounds, scrollbarBounds, cancelButtonBounds, saveButtonBounds);*/
 
-            ElementBounds bgBounds = ElementBounds.FixedSize(200, 220).WithFixedPadding(GuiStyle.ElementToDialogPadding);
+            ElementBounds bgBounds = ElementBounds.FixedSize(signConfig.MaxWidth+20, 220).WithFixedPadding(GuiStyle.ElementToDialogPadding);
 
             // 3. Finally Dialog
             ElementBounds dialogBounds = ElementStdBounds.AutosizedMainDialog.WithAlignment(EnumDialogArea.RightMiddle)
@@ -140,7 +140,7 @@ namespace Vintagestory.GameContent
                 FontSize = this.FontSize
             });
 
-            capi.Network.SendBlockEntityPacket(blockEntityPos.X, blockEntityPos.Y, blockEntityPos.Z, (int)EnumSignPacketId.SaveText, data);
+            capi.Network.SendBlockEntityPacket(blockEntityPos, (int)EnumSignPacketId.SaveText, data);
             didSave = true;
             TryClose();
             return true;

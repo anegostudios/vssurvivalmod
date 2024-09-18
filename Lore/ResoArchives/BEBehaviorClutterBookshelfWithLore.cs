@@ -64,6 +64,8 @@ namespace Vintagestory.GameContent
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
         {
+            MaybeInitialiseMesh_OffThread();
+
             if (LoreCode != null)
             {
                 mesher.AddMeshData(genMesh(new AssetLocation("shapes/block/clutter/"+ Type +"-book.json")));

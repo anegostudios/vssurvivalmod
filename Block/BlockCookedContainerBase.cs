@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Linq;
-using System.ServiceModel.Channels;
 using System.Text;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;

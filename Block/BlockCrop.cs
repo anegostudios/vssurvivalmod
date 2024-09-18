@@ -35,7 +35,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        
+
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
@@ -49,7 +49,7 @@ namespace Vintagestory.GameContent
             }
 
             tickGrowthProbability = Attributes?["tickGrowthProbability"] != null ? Attributes["tickGrowthProbability"].AsFloat(defaultGrowthProbability) : defaultGrowthProbability;
-            
+
             if (api.Side == EnumAppSide.Client)
             {
                 onFarmlandVerticalOffset = (float)Attributes?["onFarmlandVerticalOffset"].AsFloat(-0.0625f);
@@ -64,7 +64,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public float AdjustYPosition(Block[] chunkExtBlocks, int extIndex3d)
+        public float AdjustYPosition(BlockPos pos, Block[] chunkExtBlocks, int extIndex3d)
         {
             Block nblock = chunkExtBlocks[extIndex3d + TileSideEnum.MoveIndex[TileSideEnum.Down]];
             return nblock is BlockFarmland ? onFarmlandVerticalOffset : 0f;
@@ -107,7 +107,7 @@ namespace Vintagestory.GameContent
         {
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
 
-            dsc.AppendLine(Lang.Get("Stage: {0}/{1}", CurrentCropStage, CropProps.GrowthStages)); 
+            dsc.AppendLine(Lang.Get("Stage: {0}/{1}", CurrentCropStage, CropProps.GrowthStages));
         }
 
 
@@ -137,7 +137,7 @@ namespace Vintagestory.GameContent
             return base.OnBlockInteractStart(world, byPlayer, blockSel);
         }
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, IRandom worldGenRand, BlockPatchAttributes attributes = null)
         {
             Block block = blockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
             if (block.Fertility == 0) return false;
@@ -186,8 +186,8 @@ namespace Vintagestory.GameContent
 
                 drops = moddrops.ToArray();
             }
-            
-            
+
+
             if (befarmland != null)
             {
                 drops = befarmland.GetDrops(drops);
@@ -241,7 +241,7 @@ namespace Vintagestory.GameContent
                 {
                     ActionLangCode = "blockhelp-crop-breaktoharvest",
                     MouseButton = EnumMouseButton.Left,
-                    ShouldApply = (wi, bs, es) => CropProps.GrowthStages == CurrentCropStage 
+                    ShouldApply = (wi, bs, es) => CropProps.GrowthStages == CurrentCropStage
                 }
             }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
         }

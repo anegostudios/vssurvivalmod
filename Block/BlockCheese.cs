@@ -101,7 +101,7 @@ namespace Vintagestory.GameContent
                 {
                     if (!byPlayer.InventoryManager.TryGiveItemstack(stack, true))
                     {
-                        world.SpawnItemEntity(stack, blockSel.Position.ToVec3d().Add(0.5, 0.5, 0.5));
+                        world.SpawnItemEntity(stack, blockSel.Position);
                     }
                 }
 
@@ -114,7 +114,7 @@ namespace Vintagestory.GameContent
                 {
                     if (!byPlayer.InventoryManager.TryGiveItemstack(stack, true))
                     {
-                        world.SpawnItemEntity(stack, blockSel.Position.ToVec3d().Add(0.5, 0.5, 0.5));
+                        world.SpawnItemEntity(stack, blockSel.Position);
                     }
                 }
 

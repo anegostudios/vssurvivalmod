@@ -54,10 +54,7 @@ namespace Vintagestory.GameContent
             inventory.FromTreeAttributes(byItemStack.Attributes);
         }
 
-        protected override bool HasTransitionables()
-        {
-            return false;
-        }
+        
         protected override void OnTick(float dt)
         {
             // Dont execute base code

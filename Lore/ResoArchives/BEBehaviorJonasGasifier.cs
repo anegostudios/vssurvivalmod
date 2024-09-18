@@ -98,7 +98,7 @@ namespace Vintagestory.GameContent
                 int moved = slot.TryPutInto(Api.World, inventory[0]);
                 if (moved > 0)
                 {
-                    Api.World.PlaySoundAt(new AssetLocation("sounds/block/charcoal"), Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, byPlayer);
+                    Api.World.PlaySoundAt(new AssetLocation("sounds/block/charcoal"), Pos, 0, byPlayer);
                     (byPlayer as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
                     slot.MarkDirty();
                     Blockentity.MarkDirty(true);

@@ -14,9 +14,10 @@ namespace Vintagestory.GameContent
         public double RenderOrder => 0;
         public int RenderRange => 1;
 
-        IInventory gearInv;
+        //IInventory gearInv;
         ICoreClientAPI capi;
         ICoreServerAPI sapi;
+        EntityBehaviorPlayerInventory bh;
 
         public override bool ShouldLoad(EnumAppSide forSide) => true;
 
@@ -61,14 +62,16 @@ namespace Vintagestory.GameContent
 
         private void Event_LevelFinalize()
         {
-            gearInv = capi.World.Player.Entity.GearInventory;
+            //gearInv = capi.World.Player.Entity.GearInventory;
+            bh = capi.World.Player.Entity.GetBehavior<EntityBehaviorPlayerInventory>();
         }
 
         public void OnRenderFrame(float deltaTime, EnumRenderStage stage)
         {
-            if (gearInv == null) return;
+            //if (gearInv == null) return;
+            if (bh?.Inventory == null) return;
 
-            var headSlot = gearInv[(int)EnumCharacterDressType.ArmorHead];
+            var headSlot = bh.Inventory[(int)EnumCharacterDressType.ArmorHead];
             var stack = headSlot?.Itemstack;
             var itemnvd = stack?.Collectible as ItemNightvisiondevice;
             var fuelLeft = itemnvd == null ? 0 : itemnvd.GetFuelHours(stack);

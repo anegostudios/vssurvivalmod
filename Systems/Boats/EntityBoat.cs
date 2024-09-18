@@ -1,6 +1,5 @@
 ﻿using System;
-using System.IO;
-using System.Linq;
+using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -18,11 +17,26 @@ namespace Vintagestory.GameContent
 
         ICoreClientAPI capi;
         bool soundsActive;
+        float accum;
 
         public override void StartClientSide(ICoreClientAPI api)
         {
             capi = api;
             capi.Event.LevelFinalize += Event_LevelFinalize;
+            capi.Event.RegisterGameTickListener(onTick, 0, 123);
+        }
+
+        private void onTick(float dt)
+        {
+            var eplr = capi.World.Player.Entity;
+
+            if (eplr.MountedOn is EntityBoatSeat eboatseat)
+            {
+                NowInMotion((float)eboatseat.Entity.Pos.Motion.Length(), dt); ;
+            } else
+            {
+                NotMounted();
+            }
         }
 
         private void Event_LevelFinalize()
@@ -46,26 +60,34 @@ namespace Vintagestory.GameContent
             });
         }
 
-        public void NowInMotion(float velocity)
+        public void NowInMotion(float velocity, float dt)
         {
+            accum += dt;
+            if (accum < 0.2) return;
+            accum = 0;
+
             if (!soundsActive)
             {
                 idleSound.Start();
                 soundsActive = true;
             }
 
-            if (velocity > 0)
+            if (velocity > 0.01)
             {
-                if (!travelSound.IsPlaying) travelSound.Start();
+                if (!travelSound.IsPlaying)
+                {
+                    travelSound.Start();
+                }
 
                 var volume = GameMath.Clamp((velocity - 0.025f) * 7, 0, 1);
+                
                 travelSound.FadeTo(volume, 0.5f, null);
             }
             else
             {
                 if (travelSound.IsPlaying)
                 {
-                    travelSound.Stop();
+                    travelSound.FadeTo(0, 0.5f, (s) => travelSound.Stop());
                 }
             }
         }
@@ -88,9 +110,15 @@ namespace Vintagestory.GameContent
         }
     }
 
-    public class EntityBoat : Entity, IRenderer, IMountableSupplier
+    public interface ISeatInstSupplier
     {
-        public EntityBoatSeat[] Seats;
+        IMountableSeat CreateSeat(IMountable mountable, string seatId, SeatConfig config = null);
+    }
+
+    public class EntityBoat : Entity, IRenderer, ISeatInstSupplier, IMountableListener
+    {
+        public override double FrustumSphereRadius => base.FrustumSphereRadius * 2;
+        public override bool IsCreature => true; // For RepulseAgents behavior to work
 
         // current forward speed
         public double ForwardSpeed = 0.0;
@@ -116,9 +144,10 @@ namespace Vintagestory.GameContent
             get { return 100f; }
         }
 
+        double swimmingOffsetY;
         public override double SwimmingOffsetY
         {
-            get { return 0.45; }
+            get { return swimmingOffsetY; }
         }
 
         /// <summary>
@@ -129,22 +158,28 @@ namespace Vintagestory.GameContent
         public double RenderOrder => 0;
         public int RenderRange => 999;
 
-        public IMountable[] MountPoints => Seats;
+        
 
-        public Vec3f[] MountOffsets = new Vec3f[] { new Vec3f(-0.6f, 0.2f, 0), new Vec3f(0.7f, 0.2f, 0) };
+        
+        public Dictionary<string, string> MountAnimations = new Dictionary<string, string>();
+        bool requiresPaddlingTool;
+        bool unfurlSails;
 
         ICoreClientAPI capi;
 
-        public EntityBoat()
-        {
-            Seats = new EntityBoatSeat[2];
-            for (int i = 0; i < Seats.Length; i++) Seats[i] = new EntityBoatSeat(this, i, MountOffsets[i]);
-            Seats[0].controllable = true;
-        }
+        public EntityBoat() { }
 
         public override void Initialize(EntityProperties properties, ICoreAPI api, long InChunkIndex3d)
         {
+            swimmingOffsetY = properties.Attributes["swimmingOffsetY"].AsDouble();
+            MountAnimations = properties.Attributes["mountAnimations"].AsObject<Dictionary<string, string>>();
+
+
             base.Initialize(properties, api, InChunkIndex3d);
+
+
+            requiresPaddlingTool = properties.Attributes["requiresPaddlingTool"].AsBool(false);
+            unfurlSails = properties.Attributes["unfurlSails"].AsBool(false);
 
             capi = api as ICoreClientAPI;
             if (capi != null)
@@ -152,23 +187,34 @@ namespace Vintagestory.GameContent
                 capi.Event.RegisterRenderer(this, EnumRenderStage.Before, "boatsim");
                 modsysSounds = api.ModLoader.GetModSystem<ModSystemBoatingSound>();
             }
+        }
 
-            // The mounted entity will try to mount as well, but at that time, the boat might not have been loaded, so we'll try mounting on both ends. 
-            foreach (var seat in Seats)
+        public override void OnTesselation(ref Shape entityShape, string shapePathForLogging)
+        {
+            var shape = entityShape;
+
+            if (unfurlSails)
             {
-                if (seat.PassengerEntityIdForInit != 0 && seat.Passenger == null)
+                var mountable = GetInterface<IMountable>();
+                if (shape == entityShape) entityShape = entityShape.Clone();
+
+                if (mountable != null && mountable.AnyMounted())
                 {
-                    var entity = api.World.GetEntityById(seat.PassengerEntityIdForInit) as EntityAgent;
-                    if (entity != null)
-                    {
-                        entity.TryMount(seat);
-                    }
+                    entityShape.RemoveElementByName("SailFurled");
+                }
+                else
+                {
+                    entityShape.RemoveElementByName("SailUnfurled");
                 }
             }
+
+            base.OnTesselation(ref entityShape, shapePathForLogging);
+
         }
 
 
-        public float xangle = 0, yangle = 0, zangle = 0;
+        float curRotMountAngleZ=0f;
+        public Vec3f mountAngle = new Vec3f();
 
         public virtual void OnRenderFrame(float dt, EnumRenderStage stage)
         {
@@ -178,46 +224,25 @@ namespace Vintagestory.GameContent
             updateBoatAngleAndMotion(dt);
 
             long ellapseMs = capi.InWorldEllapsedMilliseconds;
-            
+            float forwardpitch = 0;
             if (Swimming)
             {
                 float intensity = 0.15f + GlobalConstants.CurrentWindSpeedClient.X * 0.9f;
                 float diff = GameMath.DEG2RAD / 2f * intensity;
-                xangle = GameMath.Sin((float)(ellapseMs / 1000.0 * 2)) * 8 * diff;
-                yangle = GameMath.Cos((float)(ellapseMs / 2000.0 * 2)) * 3 * diff;
-                zangle = -GameMath.Sin((float)(ellapseMs / 3000.0 * 2)) * 8 * diff - (float)AngularVelocity*5 * Math.Sign(ForwardSpeed);
+                mountAngle.X = GameMath.Sin((float)(ellapseMs / 1000.0 * 2)) * 8 * diff;
+                mountAngle.Y = GameMath.Cos((float)(ellapseMs / 2000.0 * 2)) * 3 * diff;
+                mountAngle.Z = -GameMath.Sin((float)(ellapseMs / 3000.0 * 2)) * 8 * diff;
 
-                SidedPos.Pitch = (float)ForwardSpeed * 1.3f;
+                curRotMountAngleZ += ((float)AngularVelocity * 5 * Math.Sign(ForwardSpeed) - curRotMountAngleZ) * dt*5;
+                forwardpitch = -(float)ForwardSpeed * 1.3f;
             }
 
             var esr = Properties.Client.Renderer as EntityShapeRenderer;
             if (esr == null) return;
 
-            esr.xangle = xangle;
-            esr.yangle = yangle;
-            esr.zangle = zangle;
-
-            bool selfSitting = false;
-
-            foreach (var seat in Seats)
-            {
-                selfSitting |= seat.Passenger == capi.World.Player.Entity;
-                var pesr = seat.Passenger?.Properties?.Client.Renderer as EntityShapeRenderer;
-                if (pesr != null)
-                {
-                    pesr.xangle = xangle;
-                    pesr.yangle = yangle;
-                    pesr.zangle = zangle;
-                }
-            }
-
-            if (selfSitting)
-            {
-                modsysSounds.NowInMotion((float)Pos.Motion.Length());
-            } else 
-            {
-                modsysSounds.NotMounted();
-            }
+            esr.xangle = mountAngle.X + curRotMountAngleZ;
+            esr.yangle = mountAngle.Y;
+            esr.zangle = mountAngle.Z + forwardpitch; // Weird. Pitch ought to be xangle. 
         }
 
 
@@ -227,7 +252,7 @@ namespace Vintagestory.GameContent
             {
                 updateBoatAngleAndMotion(dt);
             }
-            
+
             base.OnGameTick(dt);
         }
 
@@ -256,7 +281,7 @@ namespace Vintagestory.GameContent
                     float dx = minx + (float)rnd.NextDouble() * addx;
                     float dz = minz + (float)rnd.NextDouble() * addz;
 
-                    double yaw = Pos.Yaw + Math.Atan2(dx, dz);
+                    double yaw = Pos.Yaw + GameMath.PIHALF + Math.Atan2(dx, dz);
                     double dist = Math.Sqrt(dx * dx + dz * dz);
 
                     SplashParticleProps.BasePos.Set(
@@ -268,18 +293,19 @@ namespace Vintagestory.GameContent
                     manager.Spawn(SplashParticleProps);
                 }
             }
-
         }
+
+        
 
         protected virtual void updateBoatAngleAndMotion(float dt)
         {
-            if (!Swimming) return;
-
             // Ignore lag spikes
             dt = Math.Min(0.5f, dt);
 
             float step = GlobalConstants.PhysicsFrameTime;
             var motion = SeatsToMotion(step);
+
+            if (!Swimming) return;
 
             // Add some easing to it
             ForwardSpeed += (motion.X * SpeedMultiplier - ForwardSpeed) * dt;
@@ -294,14 +320,45 @@ namespace Vintagestory.GameContent
                 pos.Motion.Z = targetmotion.Z;
             }
 
+            var bh = GetBehavior<EntityBehaviorPassivePhysicsMultiBox>();
+            bool canTurn = true;
+
             if (AngularVelocity != 0.0)
             {
-                pos.Yaw += (float)AngularVelocity * dt * 30f;
+                float yawDelta = (float)AngularVelocity * dt * 30f;
+
+                if (bh.AdjustCollisionBoxesToYaw(dt, true, SidedPos.Yaw + yawDelta))
+                {
+                    pos.Yaw += yawDelta;
+                }
+                else canTurn = false;
+            } else
+            {
+                canTurn = bh.AdjustCollisionBoxesToYaw(dt, true, SidedPos.Yaw);
             }
+
+            if (!canTurn)
+            {
+                if (bh.AdjustCollisionBoxesToYaw(dt, true, SidedPos.Yaw - 0.1f))
+                {
+                    pos.Yaw -= 0.0002f;
+                }
+                else if (bh.AdjustCollisionBoxesToYaw(dt, true, SidedPos.Yaw + 0.1f))
+                {
+                    pos.Yaw += 0.0002f;
+                }
+            }
+
+            pos.Roll = 0;
         }
 
-        protected virtual bool HasPaddle(EntityAgent agent)
+        protected virtual bool HasPaddle(Entity entity)
         {
+            if (!requiresPaddlingTool) return true;
+
+            EntityAgent agent = entity as EntityAgent;
+            if (agent == null) return false;
+
             if (agent.RightHandItemSlot == null || agent.RightHandItemSlot.Empty) return false;
             return agent.RightHandItemSlot.Itemstack.Collectible.Attributes?.IsTrue("paddlingTool") == true;
         }
@@ -313,39 +370,71 @@ namespace Vintagestory.GameContent
             double linearMotion = 0;
             double angularMotion = 0;
 
-            foreach (var seat in Seats)
-            {
-                if (seat.Passenger == null || !seat.controllable) continue;
+            var bh = GetBehavior<EntityBehaviorSeatable>();
+            bh.Controller = null;
 
+            foreach (var sseat in bh.Seats)
+            {
+                var seat = sseat as EntityBoatSeat;
+                if (seat.Passenger == null) continue;
+
+                if (!(seat.Passenger is EntityPlayer))
+                {
+                    seat.Passenger.SidedPos.Yaw = SidedPos.Yaw;
+                }
+                if (seat.Config.BodyYawLimit != null && seat.Passenger is EntityPlayer eplr)
+                {
+                    eplr.BodyYawLimits = new AngleConstraint(Pos.Yaw + seat.Config.MountRotation.Y * GameMath.DEG2RAD, 0.2f);
+                    eplr.HeadYawLimits = new AngleConstraint(Pos.Yaw + seat.Config.MountRotation.Y * GameMath.DEG2RAD, GameMath.PIHALF);
+                }
+
+                if (!seat.Config.Controllable || bh.Controller != null) continue;
                 var controls = seat.controls;
+
+                bh.Controller = seat.Passenger;
 
                 if (!HasPaddle(seat.Passenger))
                 {
-                    seat.Passenger.AnimManager?.StopAnimation("crudeOarBackward");
-                    seat.Passenger.AnimManager?.StopAnimation("crudeOarForward");
-                    seat.Passenger.AnimManager?.StopAnimation("crudeOarReady");
+                    seat.Passenger.AnimManager?.StopAnimation(MountAnimations["ready"]);
+                    seat.actionAnim = null;
                     continue;
                 }
 
+                if (controls.Left == controls.Right)
+                {
+                    StopAnimation("turnLeft");
+                    StopAnimation("turnRight");
+                }
+                if (controls.Left && !controls.Right)
+                {
+                    StartAnimation("turnLeft");
+                    StopAnimation("turnRight");
+                }
+                if (controls.Right && !controls.Left)
+                {
+                    StopAnimation("turnLeft");
+                    StartAnimation("turnRight");
+                }
+
+
+
                 if (!controls.TriesToMove)
                 {
-                    seat.Passenger.AnimManager?.StartAnimation("crudeOarReady");
-                    seat.Passenger.AnimManager?.StopAnimation("crudeOarBackward");
-                    seat.Passenger.AnimManager?.StopAnimation("crudeOarForward");
+                    seat.actionAnim = null;
+                    seat.Passenger.AnimManager?.StartAnimation(MountAnimations["ready"]);
                     continue;
                 } else
                 {
                     if (controls.Right && !controls.Backward && !controls.Forward)
                     {
-                        seat.Passenger.AnimManager?.StartAnimation("crudeOarBackward");
-                        seat.Passenger.AnimManager?.StopAnimation("crudeOarForward");
+                        seat.actionAnim = MountAnimations["backwards"];
                     }
                     else
                     {
-                        seat.Passenger.AnimManager?.StartAnimation(controls.Backward ? "crudeOarBackward" : "crudeOarForward");
-                        seat.Passenger.AnimManager?.StopAnimation(!controls.Backward ? "crudeOarBackward" : "crudeOarForward");
+                        seat.actionAnim = MountAnimations[controls.Backward ? "backwards" : "forwards"];
                     }
-                    seat.Passenger.AnimManager?.StopAnimation("crudeOarReady");
+
+                    seat.Passenger.AnimManager?.StopAnimation(MountAnimations["ready"]);
                 }
 
                 float str = ++seatsRowing == 1 ? 1 : 0.5f;
@@ -359,7 +448,7 @@ namespace Vintagestory.GameContent
                 if (controls.Forward || controls.Backward)
                 {
                     float dir = controls.Forward ? 1 : -1;
-                    
+
                     var yawdist = Math.Abs(GameMath.AngleRadDistance(SidedPos.Yaw, seat.Passenger.SidedPos.Yaw));
                     bool isLookingBackwards = yawdist > GameMath.PIHALF;
 
@@ -367,87 +456,57 @@ namespace Vintagestory.GameContent
 
                     linearMotion += str * dir * dt * 2f;
                 }
-
-                // Only the first player can control the boat
-                // Reason: Very difficult to properly smoothly synchronize that over the network
-                break;
             }
 
             return new Vec2d(linearMotion, angularMotion);
         }
 
 
-        public virtual bool IsMountedBy(Entity entity)
-        {
-            foreach (var seat in Seats)
-            {
-                if (seat.Passenger == entity) return true;
-            }
-            return false;
-        }
-
-        public virtual Vec3f GetMountOffset(Entity entity)
-        {
-            foreach (var seat in Seats)
-            {
-                if (seat.Passenger == entity)
-                {
-                    return seat.MountOffset;
-                }
-            }
-            return null;
-        }
-
         public override void OnInteract(EntityAgent byEntity, ItemSlot itemslot, Vec3d hitPosition, EnumInteractMode mode)
         {
-            if (mode != EnumInteractMode.Interact)
+            if (mode == EnumInteractMode.Interact && AllowPickup() && IsEmpty())
             {
-                return;
+                if (tryPickup(byEntity, mode)) return;
             }
+            
 
-            // sneak + click to remove boat
-            if (byEntity.Controls.Sneak && IsEmpty())
+            EnumHandling handled = EnumHandling.PassThrough;
+
+            foreach (EntityBehavior behavior in SidedProperties.Behaviors)
             {
-                foreach (var seat in Seats)
-                {
-                    seat.Passenger?.TryUnmount();
-                }
+                behavior.OnInteract(byEntity, itemslot, hitPosition, mode, ref handled);
+                if (handled == EnumHandling.PreventSubsequent) break;
+            }
+        }
 
+        private bool AllowPickup()
+        {
+            return Properties.Attributes?["rightClickPickup"].AsBool(false) == true;
+        }
+
+        private bool IsEmpty()
+        {
+            var bhs = GetBehavior<EntityBehaviorSeatable>();
+            var bhr = GetBehavior<EntityBehaviorRideableAccessories>();
+            return !bhs.AnyMounted() && (bhr == null || bhr.Inventory.Empty);
+        }
+
+        private bool tryPickup(EntityAgent byEntity, EnumInteractMode mode)
+        {
+            // sneak + click to remove boat
+            if (byEntity.Controls.Sneak)
+            {
                 ItemStack stack = new ItemStack(World.GetItem(Code));
                 if (!byEntity.TryGiveItemStack(stack))
                 {
                     World.SpawnItemEntity(stack, ServerPos.XYZ);
                 }
+
                 Die();
-                return;
+                return true;
             }
 
-            if (World.Side == EnumAppSide.Server)
-            {
-                foreach (var seat in Seats)
-                {
-                    if (byEntity.MountedOn == null && seat.Passenger == null)
-                    {
-                        byEntity.TryMount(seat);
-                    }
-                }
-
-                /*Vec3d boatDirection = Vec3dFromYaw(ServerPos.Yaw);
-                Vec3d hitDirection = hitPosition.Normalize();
-                double hitDotProd = hitDirection.X * boatDirection.X + hitDirection.Z * boatDirection.Z;
-                int seatNumber = hitDotProd > 0.0 ? 1 : 0;
-                if (byEntity.MountedOn == null && Seats[seatNumber].Passenger == null)
-                {
-                    byEntity.TryMount(Seats[seatNumber]);
-                }*/
-
-            }
-        }
-
-
-        public static Vec3d Vec3dFromYaw(float yawRad)
-        {
-            return new Vec3d(Math.Cos(yawRad), 0.0, -Math.Sin(yawRad));
+            return false;
         }
 
         public override bool CanCollect(Entity byEntity)
@@ -455,42 +514,39 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-        public override void ToBytes(BinaryWriter writer, bool forClient)
-        {
-            base.ToBytes(writer, forClient);
-
-            writer.Write(Seats.Length);
-            foreach (var seat in Seats)
-            {
-                writer.Write(seat.Passenger?.EntityId ?? (long)0);
-            }
-        }
-
-        public override void FromBytes(BinaryReader reader, bool fromServer)
-        {
-            base.FromBytes(reader, fromServer);
-
-            int numseats = reader.ReadInt32();
-            for (int i = 0; i < numseats; i++)
-            {
-                long entityId = reader.ReadInt64();
-                Seats[i].PassengerEntityIdForInit = entityId;
-            }
-        }
-
-        public virtual bool IsEmpty()
-        {
-            return !Seats.Any(seat => seat.Passenger != null);
-        }
 
         public override WorldInteraction[] GetInteractionHelp(IClientWorldAccessor world, EntitySelection es, IClientPlayer player)
         {
             return base.GetInteractionHelp(world, es, player);
         }
 
+
+        public override void OnEntityDespawn(EntityDespawnData despawn)
+        {
+            base.OnEntityDespawn(despawn);
+
+            capi?.Event.UnregisterRenderer(this, EnumRenderStage.Before);
+        }
+
+
         public void Dispose()
         {
-            
+
+        }
+
+        public IMountableSeat CreateSeat(IMountable mountable, string seatId, SeatConfig config)
+        {
+            return new EntityBoatSeat(mountable, seatId, config);
+        }
+
+        public void DidUnnmount(EntityAgent entityAgent)
+        {
+            MarkShapeModified();
+        }
+
+        public void DidMount(EntityAgent entityAgent)
+        {
+            MarkShapeModified();
         }
     }
 }

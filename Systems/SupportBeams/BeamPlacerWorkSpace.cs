@@ -9,8 +9,8 @@ namespace Vintagestory.GameContent
         public BlockFacing onFacing;
         public Vec3f startOffset;
         public Vec3f endOffset;
-        public MeshData currentMesh;
-        public MeshRef currentMeshRef;
+        public MeshData[] currentMeshes;
+        public MultiTextureMeshRef currentMeshRef;
         public bool nowBuilding;
         public Block block;
 

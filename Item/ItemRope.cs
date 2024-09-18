@@ -6,7 +6,6 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-
     public enum EnumPinPart
     {
         Start,
@@ -36,139 +35,156 @@ namespace Vintagestory.GameContent
             cm = api.ModLoader.GetModSystem<ClothManager>();
         }
 
+
+        public override SkillItem[] GetToolModes(ItemSlot slot, IClientPlayer forPlayer, BlockSelection blockSel)
+        {
+            return new SkillItem[]
+            {
+                new SkillItem()
+                {
+                    Code = new AssetLocation("shorten"),
+                    Name = Lang.Get("Shorten by 1m")
+                },
+                new SkillItem()
+                {
+                    Code = new AssetLocation("length"),
+                    Name = Lang.Get("Lengthen by 1m")
+                }
+            };
+        }
+        public override int GetToolMode(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSelection)
+        {
+            return 0;
+        }
+
+        public override void SetToolMode(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSelection, int toolMode)
+        {
+            int clothId = slot.Itemstack.Attributes.GetInt("clothId");
+            ClothSystem sys = null;
+            if (clothId != 0)
+            {
+                sys = cm.GetClothSystem(clothId);
+            }
+            if (sys == null) return;
+
+
+            if (toolMode == 0)
+            {
+                if (!sys.ChangeRopeLength(-1))
+                {
+                    (api as ICoreClientAPI)?.TriggerIngameError(this, "tooshort", Lang.Get("Already at minimum length!"));
+                }
+            }
+            if (toolMode == 1)
+            {
+                if (!sys.ChangeRopeLength(1))
+                {
+                    (api as ICoreClientAPI)?.TriggerIngameError(this, "tooshort", Lang.Get("Already at maximum length!"));
+                }
+            }
+        }
+
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
-            // Disabled outside of creative mode because its too broken
-            if ((byEntity as EntityPlayer)?.Player?.WorldData.CurrentGameMode != EnumGameMode.Creative)
-            {
-                base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
-                return;
-            }
-
-            // sneak = attach
-            // non-sneak = detach
-
-            int clothId = slot.Itemstack.Attributes.GetInt("clothId");
             handling = EnumHandHandling.PreventDefault;
-            ClothSystem sys = null;
             
-
+            int clothId = slot.Itemstack.Attributes.GetInt("clothId");
+            ClothSystem sys = null;
             if (clothId != 0)
             {
                 sys = cm.GetClothSystem(clothId);
                 if (sys == null) clothId = 0;
             }
 
+            ClothPoint[] pEnds = sys?.Ends;
 
-            // Detach
-            if (!byEntity.Controls.ShiftKey)
+            // Place new rope
+            if (sys == null)
             {
-                if (clothId != 0)
+                if (blockSel != null && api.World.BlockAccessor.GetBlock(blockSel.Position).HasBehavior<BlockBehaviorRopeTieable>())
                 {
-                    //Console.WriteLine(api.World.Side + ", clothid {0}, detach", clothId);
+                    sys = attachToBlock(byEntity, blockSel.Position, slot, null);
 
-                    detach(sys, slot, byEntity, entitySel?.Entity, blockSel?.Position);
+                } else
+                if (entitySel != null)
+                {
+                    sys = attachToEntity(byEntity, entitySel, slot, null, out bool relayRopeInteractions);
+                    if (relayRopeInteractions) {
+                        handling = EnumHandHandling.NotHandled;
+                        return;
+                    }
                 }
 
-                return;
-            }
 
-
-            // Attach
-            if (clothId == 0)
+            // Modify existing rope
+            } else
             {
-                float xsize = 2;
-
-                sys = ClothSystem.CreateRope(api, cm, byEntity.Pos.AsBlockPos.Add(0, 1, 0), xsize, null);
-                
-                Vec3d lpos = new Vec3d(0, byEntity.LocalEyePos.Y - 0.3f, 0);
-                Vec3d aheadPos = lpos.AheadCopy(0.1f, byEntity.SidedPos.Pitch, byEntity.SidedPos.Yaw).AheadCopy(0.4f, byEntity.SidedPos.Pitch, byEntity.SidedPos.Yaw - GameMath.PIHALF);
-                EntityPos pos = byEntity.SidedPos;
-
-                sys.FirstPoint.PinTo(byEntity, aheadPos.ToVec3f());
-
-                cm.RegisterCloth(sys);
-
-                slot.Itemstack.Attributes.SetLong("ropeHeldByEntityId", byEntity.EntityId);
-                slot.Itemstack.Attributes.SetInt("clothId", sys.ClothId);
-                slot.MarkDirty();
-            }
-
-
-            ClothPoint[] pEnds = sys.Ends;
-
-            if (blockSel != null)
-            {
-                Block block = api.World.BlockAccessor.GetBlock(blockSel.Position);
-
-                if (blockSel.Position.Equals(pEnds[0].PinnedToBlockPos) || blockSel.Position.Equals(pEnds[1].PinnedToBlockPos))
+                // Remove rope from world (looking at block it is currently attached to)
+                if (blockSel != null && (blockSel.Position.Equals(pEnds[0].PinnedToBlockPos) || blockSel.Position.Equals(pEnds[1].PinnedToBlockPos)))
                 {
-                    //Console.WriteLine(api.World.Side + ", clothid {0}, detach from block", sys.ClothId);
-
                     detach(sys, slot, byEntity, null, blockSel.Position);
                     return;
                 }
 
-
-                if (block.HasBehavior<BlockBehaviorRopeTieable>())
+                // Remove rope from world (looking at entity it is currenty attached to)
+                if (entitySel != null && (entitySel.Entity.EntityId == pEnds[0].PinnedToEntity?.EntityId || entitySel.Entity.EntityId == pEnds[1].PinnedToEntity?.EntityId))
                 {
-                    //Console.WriteLine(api.World.Side + ", clothid {0}, attach to block", sys.ClothId);
-
-                    attachToBlock(byEntity, blockSel.Position, sys, slot);
-                }
-
-            }
-
-            if (entitySel != null)
-            {
-                if (entitySel.Entity.EntityId == pEnds[0].PinnedToEntity?.EntityId || entitySel.Entity.EntityId == pEnds[1].PinnedToEntity?.EntityId)
-                {
-                    //Console.WriteLine(api.World.Side + ", clothid {0}, detach from entity", sys.ClothId);
                     detach(sys, slot, byEntity, entitySel.Entity, null);
                     return;
                 }
 
-                //Console.WriteLine(api.World.Side + ", clothid {0}, attach to entity", sys.ClothId);
-                attachToEntity(byEntity, entitySel.Entity, sys, slot);
-                
+                // Connect rope to something else
+                if (blockSel != null && api.World.BlockAccessor.GetBlock(blockSel.Position).HasBehavior<BlockBehaviorRopeTieable>())
+                {
+                    sys = attachToBlock(byEntity, blockSel.Position, slot, sys);
+                    pEnds = sys?.Ends;
+                }
+                else if (entitySel != null)
+                {
+                    attachToEntity(byEntity, entitySel, slot, sys, out bool relayRopeInteractions);
+
+                    if (relayRopeInteractions)
+                    {
+                        handling = EnumHandHandling.NotHandled;
+                        return;
+                    }
+                }
             }
 
 
-            if (clothId == 0)
+            if (clothId == 0 && sys != null)
             {
-                sys.WalkPoints(p => p.update(0));
-
-                Vec3d startPos = sys.FirstPoint.Pos;
-                Vec3d endPos = sys.LastPoint.Pos;
-                
-                double dx = endPos.X - startPos.X;
-                double dy = endPos.Y - startPos.Y;
-                double dz = endPos.Z - startPos.Z;
-
-                sys.WalkPoints(p => {
-                    float f = p.PointIndex / (float)sys.Length;
-
-                    if (!p.Pinned)
-                    {
-                        p.Pos.Set(startPos.X + dx * f, startPos.Y + dy * f, startPos.Z + dz * f);
-                    }
-                });
-
+                sys.WalkPoints(p => p.update(0, api.World));
                 sys.setRenderCenterPos();
             }
 
 
             // No longer pinned to ourselves
-            if (pEnds[0].PinnedToEntity?.EntityId != byEntity.EntityId && pEnds[1].PinnedToEntity?.EntityId != byEntity.EntityId)
+            if (pEnds != null && pEnds[0].PinnedToEntity?.EntityId != byEntity.EntityId && pEnds[1].PinnedToEntity?.EntityId != byEntity.EntityId)
             {
-                //Console.WriteLine(api.World.Side + ", clothid {0}, rope assigned. removed one from inv.", sys.ClothId);
-
                 slot.Itemstack.Attributes.RemoveAttribute("clothId");
                 slot.TakeOut(1);
                 slot.MarkDirty();
             }
+        }
 
+        private ClothSystem createRope(ItemSlot slot, EntityAgent byEntity, Vec3d targetPos)
+        {
+            ClothSystem sys;
 
+            sys = ClothSystem.CreateRope(api, cm, byEntity.Pos.XYZ, targetPos, null);
+
+            Vec3d lpos = new Vec3d(0, byEntity.LocalEyePos.Y - 0.3f, 0);
+            Vec3d aheadPos = lpos.AheadCopy(0.1f, byEntity.SidedPos.Pitch, byEntity.SidedPos.Yaw).AheadCopy(0.4f, byEntity.SidedPos.Pitch, byEntity.SidedPos.Yaw - GameMath.PIHALF);
+            EntityPos pos = byEntity.SidedPos;
+
+            sys.FirstPoint.PinTo(byEntity, aheadPos.ToVec3f());
+            cm.RegisterCloth(sys);
+
+            slot.Itemstack.Attributes.SetLong("ropeHeldByEntityId", byEntity.EntityId);
+            slot.Itemstack.Attributes.SetInt("clothId", sys.ClothId);
+            slot.MarkDirty();
+            return sys;
         }
 
         private void detach(ClothSystem sys, ItemSlot slot, EntityAgent byEntity, Entity toEntity, BlockPos pos)
@@ -190,41 +206,91 @@ namespace Vintagestory.GameContent
             if (!sys.PinnedAnywhere)
             {
                 slot.Itemstack.Attributes.RemoveAttribute("clothId");
+                slot.Itemstack.Attributes.RemoveAttribute("ropeHeldByEntityId");
                 cm.UnregisterCloth(sys.ClothId);
             }
         }
 
 
 
-        private void attachToEntity(EntityAgent byEntity, Entity toEntity, ClothSystem sys, ItemSlot slot)
+        private ClothSystem attachToEntity(EntityAgent byEntity, EntitySelection toEntitySel, ItemSlot slot, ClothSystem sys, out bool relayRopeInteractions)
         {
+            relayRopeInteractions = false;
+            Entity toEntity = toEntitySel.Entity;
+            var icc = toEntity.GetInterface<IRopeTiedCreatureCarrier>();
+            if (sys != null && icc != null)
+            {
+                var pEnds = sys.Ends;
+                ClothPoint elkPoint = pEnds[0].PinnedToEntity?.EntityId == byEntity.EntityId && pEnds[1].Pinned ? pEnds[1] : pEnds[0];
+
+                if (icc.TryMount(elkPoint.PinnedToEntity as EntityAgent))
+                {
+                    cm.UnregisterCloth(sys.ClothId);
+                    return null;
+                }
+
+            }
+
             if (!toEntity.HasBehavior<EntityBehaviorRopeTieable>())
             {
-                if (api.World.Side == EnumAppSide.Client)
+                relayRopeInteractions = toEntity?.Properties.Attributes?["relayRopeInteractions"].AsBool(true) ?? false;
+                if (!relayRopeInteractions)
                 {
-                    (api as ICoreClientAPI).TriggerIngameError(this, "notattachable", Lang.Get("This creature is not tieable"));
+                    if (api.World.Side == EnumAppSide.Client)
+                    {
+                        (api as ICoreClientAPI).TriggerIngameError(this, "notattachable", Lang.Get("This creature is not tieable"));
+                    }
                 }
-                return;
+                return null;
             }
-            
-            var pEnds = sys.Ends;
-            ClothPoint cpoint = pEnds[0].PinnedToEntity?.EntityId == byEntity.EntityId && pEnds[1].Pinned ? pEnds[0] : pEnds[1];
 
-            toEntity.GetBehavior<EntityBehaviorRopeTieable>().Attach(sys, cpoint);
+            if (sys == null)
+            {
+                sys = createRope(slot, byEntity, toEntity.SidedPos.XYZ);
+                toEntity.GetBehavior<EntityBehaviorRopeTieable>().Attach(sys, sys.LastPoint);
+            }
+            else
+            {
+                var pEnds = sys.Ends;
+                ClothPoint cpoint = pEnds[0].PinnedToEntity?.EntityId == byEntity.EntityId && pEnds[1].Pinned ? pEnds[0] : pEnds[1];
+                toEntity.GetBehavior<EntityBehaviorRopeTieable>().Attach(sys, cpoint);
+            }
+            return sys;
         }
 
 
-        private void attachToBlock(EntityAgent byEntity, BlockPos toPosition, ClothSystem sys, ItemSlot slot)
+        private ClothSystem attachToBlock(EntityAgent byEntity, BlockPos toPosition, ItemSlot slot, ClothSystem sys)
         {
-            var pEnds = sys.Ends;
+            if (sys == null)
+            {
+                sys = createRope(slot, byEntity, toPosition.ToVec3d().Add(0.5, 0.5, 0.5));
+                sys.LastPoint.PinTo(toPosition, new Vec3f(0.5f, 0.5f, 0.5f));
+            }
+            else
+            {
+                var pEnds = sys.Ends;
 
-            // 2 possible cases
-            // - We just created a new rope: use pEnds[1] because its unattached
-            // - We already have both ends attached and want to re-attach the player held end
+                ClothPoint cpoint = pEnds[0];
+                if (pEnds[0].PinnedToEntity?.EntityId != byEntity.EntityId) cpoint = pEnds[1];
 
-            ClothPoint cpoint = pEnds[0].PinnedToEntity?.EntityId == byEntity.EntityId && pEnds[1].Pinned ? pEnds[0] : pEnds[1];
+                if (pEnds[0].PinnedToEntity != null || pEnds[1].PinnedToEntity != null)
+                {
+                    var fromEntity = pEnds[0].PinnedToEntity ?? pEnds[1].PinnedToEntity;
+                    if (fromEntity == byEntity) fromEntity = pEnds[1].PinnedToEntity ?? pEnds[0].PinnedToEntity;
 
-            cpoint.PinTo(toPosition, new Vec3f(0.5f, 0.5f, 0.5f));
+                    // Lengthen rope to accomodate
+                    cm.UnregisterCloth(sys.ClothId);
+
+                    sys = createRope(slot, fromEntity as EntityAgent, toPosition.ToVec3d().Add(0.5, 0.5, 0.5));
+                    sys.LastPoint.PinTo(toPosition, new Vec3f(0.5f, 0.5f, 0.5f));
+                }
+                else
+                {
+                    cpoint.PinTo(toPosition, new Vec3f(0.5f, 0.5f, 0.5f));
+                }
+            }            
+
+            return sys;
         }
 
 
@@ -244,7 +310,7 @@ namespace Vintagestory.GameContent
                     ClothSystem sys = cm.GetClothSystem(clothId);
                     if (sys != null)
                     {
-                        //sys.Points[0][0].PinTo(byEntity, aheadPos.ToVec3f());
+                        //if (sys.FirstPoint.PinnedToEntity.EntityId == ropeHeldByEntityId) sys.FirstPoint.PinTo(byEntity, aheadPos.ToVec3f());
                     }
                 }
             }

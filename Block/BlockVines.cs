@@ -111,7 +111,7 @@ namespace Vintagestory.GameContent
             ;
 
             int windDatam1;
-            
+
             if (windData == 3 && api.World.BlockAccessor.GetBlock(pos.X, pos.Y + 4, pos.Z) is BlockVines)
             {
                 windDatam1 = windData << VertexFlags.WindDataBitsPos;
@@ -167,7 +167,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, IRandom worldGenRand, BlockPatchAttributes attributes = null)
         {
             if (!blockAccessor.GetBlock(pos).IsReplacableBy(this))
             {

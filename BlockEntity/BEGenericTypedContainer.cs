@@ -210,7 +210,8 @@ namespace Vintagestory.GameContent
         {
             Inventory.LateInitialize(InventoryClassName + "-" + Pos.X + "/" + Pos.Y + "/" + Pos.Z, Api);
             Inventory.ResolveBlocksOrItems();
-            Inventory.OnAcquireTransitionSpeed = Inventory_OnAcquireTransitionSpeed;
+            container.LateInit();
+            //Inventory.OnAcquireTransitionSpeed = Inventory_OnAcquireTransitionSpeed;
             MarkDirty();
         }
 
@@ -283,7 +284,7 @@ namespace Vintagestory.GameContent
 
                 ((ICoreServerAPI)Api).Network.SendBlockEntityPacket(
                     (IServerPlayer)byPlayer,
-                    Pos.X, Pos.Y, Pos.Z,
+                    Pos,
                     (int)EnumBlockContainerPacketId.OpenInventory,
                     data
                 );
@@ -331,7 +332,7 @@ namespace Vintagestory.GameContent
                 string skey = Block.FirstCodePart() + type + block.Subtype + "-" + "-" + shapename + "-" + rndTexNum;
                 if (!shapes.TryGetValue(skey, out shape))
                 {
-                    shapes[skey] = shape = block.GetShape(Api as ICoreClientAPI, type, shapename, tesselator, rndTexNum);
+                    shapes[skey] = shape = block.GetShape(Api as ICoreClientAPI, shapename);
                 }
             }
 

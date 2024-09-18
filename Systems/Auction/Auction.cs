@@ -49,7 +49,7 @@ namespace Vintagestory.GameContent
         /// <summary>
         /// For modders, change this value if you want to increase auction times, does not affect cost
         /// </summary>
-        public int DurationWeeksMul = 3;
+        public int DurationWeeksMul = 6;
 
         /// <summary>
         /// The % cut the trader takes from the profits (default is 0.1 which is 10%)
@@ -66,8 +66,8 @@ namespace Vintagestory.GameContent
         public int DeliveryCostsByDistance(double distance)
         {
             // x/2000 was too expensive, so we use a nonlinar curve
-            // http://fooplot.com/#W3sidHlwZSI6MCwiZXEiOiI1KmxuKCh4LTIwMCkvMTAwMDArMSkiLCJjb2xvciI6IiMwMDAwMDAifSx7InR5cGUiOjAsImVxIjoieC8yMDAwIiwiY29sb3IiOiIjMDAwMDAwIn0seyJ0eXBlIjoxMDAwLCJ3aW5kb3ciOlsiMCIsIjgwMDAwIiwiMCIsIjE1Il0sInNpemUiOls2NDgsMzk4XX1d
-            return (int)Math.Ceiling(5 * Math.Log((distance-200) / 10000 + 1) * DeliveryPriceMul);
+            // https://pfortuny.net/fooplot.com/#W3sidHlwZSI6MCwiZXEiOiI1KmxuKCh4LTIwMCkvMTAwMDArMSkiLCJjb2xvciI6IiMwMDAwMDAifSx7InR5cGUiOjAsImVxIjoieC8yMDAwIiwiY29sb3IiOiIjMDAwMDAwIn0seyJ0eXBlIjoxMDAwLCJ3aW5kb3ciOlsiMCIsIjgwMDAwIiwiMCIsIjE1Il0sInNpemUiOls2NDgsMzk4XX1d
+            return (int)Math.Ceiling(3.5 * Math.Log((distance-200) / 10000 + 1) * DeliveryPriceMul);
         }
 
         
@@ -121,7 +121,11 @@ namespace Vintagestory.GameContent
 
         private void Event_BlockTexturesLoaded()
         {
-            SingleCurrencyStack = new ItemStack(capi.World.GetItem(new AssetLocation("gear-rusty")));
+            var item = capi.World.GetItem(new AssetLocation("gear-rusty"));
+            if (item != null)
+            {
+                SingleCurrencyStack = new ItemStack(item);
+            }
             loadPricingConfig();
         }
 
@@ -748,7 +752,9 @@ namespace Vintagestory.GameContent
 
         private void Event_SaveGameLoaded()
         {
-            SingleCurrencyStack = new ItemStack(sapi.World.GetItem(new AssetLocation("gear-rusty")));
+            var item = sapi.World.GetItem(new AssetLocation("gear-rusty"));
+            if (item == null) return;
+            SingleCurrencyStack = new ItemStack(item);
 
             byte[] data = sapi.WorldManager.SaveGame.GetData("auctionsData");
             if (data != null)

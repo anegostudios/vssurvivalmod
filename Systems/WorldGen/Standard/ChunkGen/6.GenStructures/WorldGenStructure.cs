@@ -1,6 +1,8 @@
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Security.Cryptography;
+using System.Text;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
@@ -25,24 +27,100 @@ namespace Vintagestory.ServerMods
         [JsonProperty]
         public string RequireLandform;
         [JsonProperty]
-        public int LandformSizeX;
+        public int LandformRadius;
         [JsonProperty]
-        public int LandformSizeZ;
+        public int GenerationRadius;
         [JsonProperty]
-        public int MinSpawnDist;
+        public string DependsOnStructure;
         [JsonProperty]
-        public int MaxSpawnDist;
+        public int MinSpawnDistX;
         [JsonProperty]
-        public float MinY;
+        public int MaxSpawnDistX;
         [JsonProperty]
-        public float MaxY;
+        public int MinSpawnDistZ;
+        [JsonProperty]
+        public int MaxSpawnDistZ;
+        [JsonProperty]
+        public int ExtraLandClaimX;
+        [JsonProperty]
+        public int ExtraLandClaimZ;
+
+        [JsonProperty]
+        public Dictionary<string, int> SkipGenerationCategories;
+        public Dictionary<int, int> SkipGenerationFlags;
+
+        [JsonProperty]
+        public int? ForceRain;
+
+        [JsonProperty]
+        public int? ForceTemperature;
 
         internal BlockSchematicPartial schematicData;
 
-        public void Init(ICoreServerAPI api, LCGRandom rand)
+        [JsonProperty]
+        public AssetLocation[] ReplaceWithBlocklayers;
+        internal int[] replacewithblocklayersBlockids = new int[0];
+
+        internal Dictionary<int, Dictionary<int, int>> resolvedRockTypeRemaps = null;
+
+        public void Init(ICoreServerAPI api, WorldGenStoryStructuresConfig scfg, RockStrataConfig rockstrata, BlockLayerConfig blockLayerConfig)
         {
             schematicData = LoadSchematics<BlockSchematicPartial>(api, Schematics, null)[0];
             schematicData.InitMetaBlocks(api.World.BlockAccessor);
+            schematicData.Init(api.World.BlockAccessor);
+            schematicData.blockLayerConfig = blockLayerConfig;
+
+            scfg.SchematicYOffsets.TryGetValue("story/" + schematicData.FromFileName.Replace(".json", ""), out var offset);
+            schematicData.OffsetY = offset;
+
+            if (SkipGenerationCategories != null)
+            {
+                SkipGenerationFlags = new Dictionary<int, int>();
+                foreach (var category in SkipGenerationCategories)
+                {
+                    SkipGenerationFlags.Add(BitConverter.ToInt32(SHA256.HashData(Encoding.UTF8.GetBytes(category.Key.ToLowerInvariant()))), category.Value);
+                }
+            }
+
+            // For rocktyped structures
+            if (RockTypeRemapGroup != null)
+            {
+                resolvedRockTypeRemaps = scfg.resolvedRocktypeRemapGroups[RockTypeRemapGroup];
+            }
+
+            if (RockTypeRemaps != null)
+            {
+                if (resolvedRockTypeRemaps != null)
+                {
+                    var ownRemaps = WorldGenStructuresConfigBase.ResolveRockTypeRemaps(RockTypeRemaps, rockstrata, api);
+                    foreach (var val in resolvedRockTypeRemaps)
+                    {
+                        ownRemaps[val.Key] = val.Value;
+                    }
+
+                    resolvedRockTypeRemaps = ownRemaps;
+                }
+                else
+                {
+                    resolvedRockTypeRemaps = WorldGenStructuresConfigBase.ResolveRockTypeRemaps(RockTypeRemaps, rockstrata, api);
+                }
+            }
+
+            if (ReplaceWithBlocklayers != null)
+            {
+                replacewithblocklayersBlockids = new int[ReplaceWithBlocklayers.Length];
+                for (var i = 0; i < replacewithblocklayersBlockids.Length; i++)
+                {
+                    var block = api.World.GetBlock(ReplaceWithBlocklayers[i]);
+                    if (block == null)
+                    {
+                        throw new Exception(string.Format("Schematic with code {0} has replace block layer {1} defined, but no such block found!",
+                            Code, ReplaceWithBlocklayers[i]));
+                    }
+
+                    replacewithblocklayersBlockids[i] = block.Id;
+                }
+            }
         }
     }
 
@@ -124,8 +202,8 @@ namespace Vintagestory.ServerMods
 
             unscaledMinRain = (int)(MinRain * 255);
             unscaledMaxRain = (int)(MaxRain * 255);
-            unscaledMinTemp = (int)TerraGenConfig.DescaleTemperature(MinTemp);
-            unscaledMaxTemp = (int)TerraGenConfig.DescaleTemperature(MaxTemp);
+            unscaledMinTemp = Climate.DescaleTemperature(MinTemp);
+            unscaledMaxTemp = Climate.DescaleTemperature(MaxTemp);
 
 
             this.schematicDatas = LoadSchematicsWithRotations<BlockSchematicStructure>(api, Schematics, config, structureConfig, structureConfig.SchematicYOffsets, OffsetY);
@@ -143,7 +221,7 @@ namespace Vintagestory.ServerMods
                     {
                         replacewithblocklayersBlockids[i] = block.Id;
                     }
-                    
+
                 }
             }
 
@@ -184,9 +262,8 @@ namespace Vintagestory.ServerMods
                 {
                     resolvedRockTypeRemaps = WorldGenStructuresConfigBase.ResolveRockTypeRemaps(RockTypeRemaps, rockstrata, api);
                 }
-                
-            }
 
+            }
         }
 
 
@@ -206,17 +283,17 @@ namespace Vintagestory.ServerMods
 
             int climate = GameMath.BiLerpRgbColor((float)(startPos.X % chunksize) / chunksize, (float)(startPos.Z % chunksize) / chunksize, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
 
-            int rain = TerraGenConfig.GetRainFall((climate >> 8) & 0xff, startPos.Y);
+            int rain = Climate.GetRainFall((climate >> 8) & 0xff, startPos.Y);
             int unscaledtempsealevel = (climate >> 16) & 0xff;
 
-            int temp = TerraGenConfig.GetScaledAdjustedTemperature(unscaledtempsealevel, startPos.Y - TerraGenConfig.seaLevel);
-            int unscaledtemp = TerraGenConfig.DescaleTemperature(temp);
+            int temp = Climate.GetScaledAdjustedTemperature(unscaledtempsealevel, startPos.Y - TerraGenConfig.seaLevel);
+            int unscaledtemp = Climate.DescaleTemperature(temp);
 
             if (rain < unscaledMinRain || rain > unscaledMaxRain || unscaledtemp < unscaledMinTemp || unscaledtemp > unscaledMaxTemp) return false;
 
             // Hardcoding crime here. Please don't look. Takes these tasty cookies as a bribe. (Prevent generation of schematics on glaciers)
             if (unscaledtemp < 20 && startPos.Y > worldForCollectibleResolve.SeaLevel + 15) return false;
-            
+
             rand.InitPositionSeed(startPos.X, startPos.Z);
 
             bool generated = Generators[(int)Placement](blockAccessor, worldForCollectibleResolve, startPos);
@@ -287,7 +364,7 @@ namespace Vintagestory.ServerMods
             int weightedHeightW = 1, weightedHeightE = 1, weightedHeightN = 1, weightedHeightS = 1;
             var x = minX;
             int z;
-            
+
             IMapChunk mapchunk;
             int lowSide;
             // entrance is east or west
@@ -325,7 +402,7 @@ namespace Vintagestory.ServerMods
                     weightedHeightS += h;
                 }
             }
-            
+
             // check 2nd rot - rotate the schematic once by 90
             schematic = schematics[1];
             var entranceRot2 = GameMath.Clamp(schematic.EntranceRotation / 90, 0, 3);
@@ -371,7 +448,7 @@ namespace Vintagestory.ServerMods
                     weightedHeightS2 += h;
                 }
             }
-            
+
             // entranceRot E/W
             if (entranceRot == 1 || entranceRot == 3)
             {
@@ -470,11 +547,48 @@ namespace Vintagestory.ServerMods
             tmpPos.Set(startPos.X + wdt, 0, startPos.Z + len);
             int botRightY = blockAccessor.GetTerrainMapheightAt(tmpPos);
 
-
             int maxY = GameMath.Max(centerY, topLeftY, topRightY, botLeftY, botRightY);
             int minY = GameMath.Min(centerY, topLeftY, topRightY, botLeftY, botRightY);
-            int diff = Math.Abs(maxY - minY);
 
+            // improve flatness check for larger structures
+            if (schematic.SizeX >= 30)
+            {
+                var size = schematic.SizeX / (schematic.SizeX / 20 + 1);
+                for (int i = size; i < schematic.SizeX; i+=size)
+                {
+                    tmpPos.Set(startPos.X + i, 0, startPos.Z);
+                    var topSide = blockAccessor.GetTerrainMapheightAt(tmpPos);
+
+                    tmpPos.Set(startPos.X + i, 0, startPos.Z + len);
+                    var botSide = blockAccessor.GetTerrainMapheightAt(tmpPos);
+
+                    tmpPos.Set(startPos.X + i, 0, startPos.Z + len / 2);
+                    var centerSide = blockAccessor.GetTerrainMapheightAt(tmpPos);
+
+                    maxY = GameMath.Max(maxY, topSide, botSide, centerSide);
+                    minY = GameMath.Min(minY, topSide, botSide, centerSide);
+                }
+            }
+            if (schematic.SizeZ >= 30)
+            {
+                var size = schematic.SizeZ / (schematic.SizeZ / 20 + 1);
+                for (int i = size; i < schematic.SizeZ; i+=size)
+                {
+                    tmpPos.Set(startPos.X + wdt, 0, startPos.Z + i);
+                    var rightSide = blockAccessor.GetTerrainMapheightAt(tmpPos);
+
+                    tmpPos.Set(startPos.X, 0, startPos.Z + i);
+                    var leftSide = blockAccessor.GetTerrainMapheightAt(tmpPos);
+
+                    tmpPos.Set(startPos.X + wdt / 2, 0, startPos.Z + i);
+                    var centerSide = blockAccessor.GetTerrainMapheightAt(tmpPos);
+
+                    maxY = GameMath.Max(maxY, rightSide, leftSide, centerSide);
+                    minY = GameMath.Min(minY, rightSide, leftSide, centerSide);
+                }
+            }
+
+            int diff = Math.Abs(maxY - minY);
             if (diff > 3) return false;
 
             startPos.Y = minY + schematic.OffsetY;
@@ -494,10 +608,13 @@ namespace Vintagestory.ServerMods
             tmpPos.Set(startPos.X + wdt, startPos.Y + 1, startPos.Z + len);
             if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
-            // Generating exactly at "TerrainMapheightAt" means we will place it 1 block below ground. 
-            // With a offsetY of 0, the structure should literally be fully above ground. 
+            // Generating exactly at "TerrainMapheightAt" means we will place it 1 block below ground.
+            // With a offsetY of 0, the structure should literally be fully above ground.
             // But offsetY default is -1 so it will be just a block below the surface unless specified otherwise
             startPos.Y++;
+
+            // if we have above ground blocks check if they are above the ground
+            if (!TestAboveGroundCheckPositions(blockAccessor, startPos, schematic.AbovegroundCheckPositions)) return false;
 
             if (!SatisfiesMinDistance(startPos, worldForCollectibleResolve)) return false;
             if (WouldOverlapAt(startPos, schematic, worldForCollectibleResolve)) return false;
@@ -505,7 +622,7 @@ namespace Vintagestory.ServerMods
             LastPlacedSchematicLocation.Set(startPos.X, startPos.Y, startPos.Z, startPos.X + schematic.SizeX, startPos.Y + schematic.SizeY, startPos.Z + schematic.SizeZ);
             LastPlacedSchematic = schematic;
 
-            schematic.PlaceRespectingBlockLayers(blockAccessor, worldForCollectibleResolve, startPos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, resolvedRockTypeRemaps, replacewithblocklayersBlockids);
+            schematic.PlaceRespectingBlockLayers(blockAccessor, worldForCollectibleResolve, startPos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, resolvedRockTypeRemaps, replacewithblocklayersBlockids, GenStructures.ReplaceMetaBlocks);
 
             return true;
         }
@@ -560,7 +677,7 @@ namespace Vintagestory.ServerMods
             tmpPos.Set(startPos.X + wdthalf, startPos.Y - 1, startPos.Z + lenhalf);
             if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
-       
+
             tmpPos.Set(startPos.X, startPos.Y - 1, startPos.Z);
             if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
@@ -610,7 +727,7 @@ namespace Vintagestory.ServerMods
 
             LastPlacedSchematicLocation.Set(startPos.X, startPos.Y, startPos.Z, startPos.X + schematic.SizeX, startPos.Y + schematic.SizeY, startPos.Z + schematic.SizeZ);
             LastPlacedSchematic = schematic;
-            schematic.PlaceRespectingBlockLayers(blockAccessor, worldForCollectibleResolve, startPos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, resolvedRockTypeRemaps, replacewithblocklayersBlockids);
+            schematic.PlaceRespectingBlockLayers(blockAccessor, worldForCollectibleResolve, startPos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, resolvedRockTypeRemaps, replacewithblocklayersBlockids, GenStructures.ReplaceMetaBlocks);
             return true;
         }
 
@@ -654,17 +771,17 @@ namespace Vintagestory.ServerMods
                 for (int i = 0; rockBlock == null && i < 10; i++)
                 {
                     var block = blockAccessor.GetBlock(
-                        placePos.X + rand.NextInt(schematic.SizeX), 
-                        placePos.Y + rand.NextInt(schematic.SizeY), 
-                        placePos.Z + rand.NextInt(schematic.SizeZ), 
+                        placePos.X + rand.NextInt(schematic.SizeX),
+                        placePos.Y + rand.NextInt(schematic.SizeY),
+                        placePos.Z + rand.NextInt(schematic.SizeZ),
                         BlockLayersAccess.Solid
                     );
 
                     if (block.BlockMaterial == EnumBlockMaterial.Stone) rockBlock = block;
                 }
 
-                schematic.PlaceReplacingBlocks(blockAccessor, worldForCollectibleResolve, placePos, schematic.ReplaceMode, resolvedRockTypeRemaps, rockBlock?.Id);
-                
+                schematic.PlaceReplacingBlocks(blockAccessor, worldForCollectibleResolve, placePos, schematic.ReplaceMode, resolvedRockTypeRemaps, rockBlock?.Id, GenStructures.ReplaceMetaBlocks);
+
             } else
             {
                 schematic.Place(blockAccessor, worldForCollectibleResolve, targetPos);
@@ -681,7 +798,7 @@ namespace Vintagestory.ServerMods
             // 4. For every horizontal orientation
             //    - Get the correctly rotated version for this pathway
             //    - Starting at 2 blocks away, move one block closer each iteration
-            //      - Check if 
+            //      - Check if
             //        - at every pathway block pos there is stone or air
             //        - at least one pathway block has an air block facing towards center?
             //      - If yes, remove the blocks that are in the way and place schematic
@@ -750,7 +867,7 @@ namespace Vintagestory.ServerMods
 
             if (resolvedRockTypeRemaps != null)
             {
-                schematic.PlaceReplacingBlocks(blockAccessor, worldForCollectibleResolve, targetPos, schematic.ReplaceMode, resolvedRockTypeRemaps, rockBlock.Id);
+                schematic.PlaceReplacingBlocks(blockAccessor, worldForCollectibleResolve, targetPos, schematic.ReplaceMode, resolvedRockTypeRemaps, rockBlock.Id, GenStructures.ReplaceMetaBlocks);
             }
             else
             {
@@ -788,6 +905,21 @@ namespace Vintagestory.ServerMods
 
                 Block block = blockAccessor.GetBlock(utestPos);
                 if (block.BlockMaterial != EnumBlockMaterial.Stone) return false;
+            }
+
+            return true;
+        }
+
+        private bool TestAboveGroundCheckPositions(IBlockAccessor blockAccessor, BlockPos pos, BlockPos[] testPositionsDelta)
+        {
+            for (int i = 0; i < testPositionsDelta.Length; i++)
+            {
+                BlockPos deltapos = testPositionsDelta[i];
+
+                utestPos.Set(pos.X + deltapos.X, pos.Y + deltapos.Y, pos.Z + deltapos.Z);
+
+                var height = blockAccessor.GetTerrainMapheightAt(utestPos);
+                if (utestPos.Y <= height) return false;
             }
 
             return true;
@@ -838,7 +970,7 @@ namespace Vintagestory.ServerMods
 
             int maxrx = GameMath.Clamp((pos.X + schematic.SizeX) / regSize, 0, mapRegionSizeX);
             int maxrz = GameMath.Clamp((pos.Z + schematic.SizeZ) / regSize, 0, mapRegionSizeZ);
-            
+
 
             tmpLoc.Set(pos.X, pos.Y, pos.Z, pos.X + schematic.SizeX, pos.Y + schematic.SizeY, pos.Z + schematic.SizeZ);
             for (int rx = minrx; rx <= maxrx; rx++)

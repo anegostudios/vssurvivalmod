@@ -5,6 +5,7 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
+
     public class EntityBeeMob : EntityAgent
     {
         ILoadedSound buzzSound;

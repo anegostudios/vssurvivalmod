@@ -20,12 +20,17 @@ namespace Vintagestory.GameContent
         {
             base.FromTreeAttributes(tree, worldAccessForResolve);
             hook = tree.GetString("hook");
+            param = tree.GetString("param");
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
         {
             base.ToTreeAttributes(tree);
             tree.SetString("hook", hook);
+            if (param != null)
+            {
+                tree.SetString("param", param);
+            }
         }
 
         public void SetHook(string hook, string param)
@@ -48,7 +53,7 @@ namespace Vintagestory.GameContent
 
         public static void TriggerWorldgenHook(ICoreServerAPI api, IBlockAccessor blockAccessor, BlockPos target, string hook, string param)
         {
-            api.Event.TriggerWorldgenHook(param == null ? "genHookStructure" : hook, blockAccessor, target, new AssetLocation(param ?? hook));
+            api.Event.TriggerWorldgenHook(param == null ? "genHookStructure" : hook, blockAccessor, target, param ?? hook);
         }
     }
 }

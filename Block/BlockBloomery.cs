@@ -132,7 +132,7 @@ namespace Vintagestory.GameContent
                 if (aboveBlock.IsReplacableBy(hotbarstack.Block))
                 {
                     hotbarstack.Block.DoPlaceBlock(world, byPlayer, new BlockSelection() { Position = blockSel.Position.UpCopy(), Face = BlockFacing.UP }, hotbarstack);
-                    world.PlaySoundAt(Sounds?.Place, blockSel.Position.X, blockSel.Position.Y + 1, blockSel.Position.Z, byPlayer, true, 16, 1);
+                    world.PlaySoundAt(Sounds?.Place, blockSel.Position, 0.5, byPlayer, true, 16, 1);
 
                     if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
                     {

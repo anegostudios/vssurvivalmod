@@ -4,9 +4,11 @@ using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Vintagestory.GameContent
 {
@@ -157,7 +159,127 @@ namespace Vintagestory.GameContent
 
     }
 
-    public class BlockCrate : BlockContainer, ITexPositionSource
+
+    public class CollectibleBehaviorBoatableCrate : CollectibleBehaviorHeldBag, IAttachedInteractions
+    {
+        ICoreAPI Api;
+        public CollectibleBehaviorBoatableCrate(CollectibleObject collObj) : base(collObj)
+        {
+        }
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            this.Api = api;
+            base.OnLoaded(api);
+        }
+
+        public override bool IsEmpty(ItemStack bagstack)
+        {
+            bool empty = base.IsEmpty(bagstack);
+            if (empty)
+            {
+                int a = 1;
+            }
+            return empty;
+        }
+
+        public override int GetQuantitySlots(ItemStack bagstack)
+        {
+            string type = bagstack.Attributes.GetString("type");
+            var cnt = (collObj as BlockCrate).Props[type].QuantitySlots;
+            return cnt;
+        }
+
+        public override void OnInteract(ItemSlot bagSlot, int slotIndex, Entity onEntity, EntityAgent byEntity, Vec3d hitPosition, EnumInteractMode mode, ref EnumHandling handled, Action onRequireSave)
+        {
+            var controls = byEntity.MountedOn?.Controls ?? byEntity.Controls;
+            if (controls.Sprint) return;
+            
+            
+            bool put = byEntity.Controls.ShiftKey;
+            bool take = !put;
+            bool bulk = byEntity.Controls.CtrlKey;
+
+            var byPlayer = (byEntity as EntityPlayer).Player;
+
+            var ws = getOrCreateContainerWorkspace(slotIndex, onEntity, onRequireSave);
+
+            var face = BlockFacing.UP;
+            var Pos = byEntity.Pos.XYZ;
+
+            if (!ws.TryLoadInv(bagSlot, slotIndex, onEntity))
+            {
+                return;
+            }
+
+            ItemSlot ownSlot = ws.WrapperInv.FirstNonEmptySlot;
+            var hotbarslot = byPlayer.InventoryManager.ActiveHotbarSlot;
+
+            if (take && ownSlot != null)
+            {
+                ItemStack stack = bulk ? ownSlot.TakeOutWhole() : ownSlot.TakeOut(1);
+                var quantity = bulk ? stack.StackSize : 1;
+                if (!byPlayer.InventoryManager.TryGiveItemstack(stack, true))
+                {
+                    Api.World.SpawnItemEntity(stack, Pos.Add(0.5f + face.Normalf.X, 0.5f + face.Normalf.Y, 0.5f + face.Normalf.Z));
+                }
+                else
+                {
+                    didMoveItems(stack, byPlayer);
+                }
+
+                ws.BagInventory.SaveSlotIntoBag((ItemSlotBagContent)ownSlot);
+            }
+
+            if (put && !hotbarslot.Empty)
+            {
+                var quantity = bulk ? hotbarslot.StackSize : 1;
+                if (ownSlot == null)
+                {
+                    if (hotbarslot.TryPutInto(Api.World, ws.WrapperInv[0], quantity) > 0)
+                    {
+                        didMoveItems(ws.WrapperInv[0].Itemstack, byPlayer);
+                    }
+
+                    ws.BagInventory.SaveSlotIntoBag((ItemSlotBagContent)ws.WrapperInv[0]);
+                }
+                else
+                {
+                    if (hotbarslot.Itemstack.Equals(Api.World, ownSlot.Itemstack, GlobalConstants.IgnoredStackAttributes))
+                    {
+                        List<ItemSlot> skipSlots = new List<ItemSlot>();
+                        while (hotbarslot.StackSize > 0 && skipSlots.Count < ws.WrapperInv.Count)
+                        {
+                            WeightedSlot wslot = ws.WrapperInv.GetBestSuitedSlot(hotbarslot, null, skipSlots);
+                            if (wslot.slot == null) break;
+
+                            if (hotbarslot.TryPutInto(Api.World, wslot.slot, quantity) > 0)
+                            {
+                                didMoveItems(wslot.slot.Itemstack, byPlayer);
+
+                                ws.BagInventory.SaveSlotIntoBag((ItemSlotBagContent)wslot.slot);
+
+                                if (!bulk) break;
+                            }
+
+                            skipSlots.Add(wslot.slot);
+                        }
+                    }
+                }
+
+                hotbarslot.MarkDirty();
+            }
+        }
+
+        protected void didMoveItems(ItemStack stack, IPlayer byPlayer)
+        {
+            (Api as ICoreClientAPI)?.World.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+            AssetLocation sound = stack?.Block?.Sounds?.Place;
+            Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
+        }
+    }
+
+    public class BlockCrate : BlockContainer, ITexPositionSource, IAttachableToEntity, IWearableShapeSupplier
     {
         public Size2i AtlasSize { get { return tmpTextureSource.AtlasSize; } }
 
@@ -174,6 +296,81 @@ namespace Vintagestory.GameContent
 
 
         private Vec3f origin = new Vec3f(0.5f, 0.5f, 0.5f);
+
+        #region IAttachableToEntity
+
+        public void CollectTextures(ItemStack stack, Shape shape, string texturePrefixCode, Dictionary<string, CompositeTexture> intoDict)
+        {
+            string type = stack.Attributes.GetString("type");
+            foreach (var key in shape.Textures.Keys)
+            {
+                this.Textures.TryGetValue(type + "-" + key, out var ctex);
+                if (ctex != null)
+                {
+                    intoDict[texturePrefixCode + key] = ctex;
+                }
+                else
+                {
+                    Textures.TryGetValue(key, out var ctex2);
+                    intoDict[texturePrefixCode + key] = ctex2;
+                }
+                
+            }
+        }
+
+        public string GetCategoryCode(ItemStack stack)
+        {
+            return "crate";
+        }
+
+        public Shape GetShape(ItemStack stack, Entity forEntity, string texturePrefixCode)
+        {
+            string type = stack.Attributes.GetString("type", Props.DefaultType);
+            string label = stack.Attributes.GetString("label");
+            string lidState = stack.Attributes.GetString("lidState", "closed");
+
+            CompositeShape cshape = Props[type].Shape;
+            var rot = ShapeInventory == null ? null : new Vec3f(ShapeInventory.rotateX, ShapeInventory.rotateY, ShapeInventory.rotateZ);
+
+            var contentStacks = GetNonEmptyContents(api.World, stack);
+            var contentStack = contentStacks == null || contentStacks.Length == 0 ? null : contentStacks[0];
+
+            if (lidState == "opened")
+            {
+                cshape = cshape.Clone();
+                cshape.Base.Path = cshape.Base.Path.Replace("closed", "opened");
+            }
+
+            AssetLocation shapeloc = cshape.Base.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/");
+            Shape shape = API.Common.Shape.TryGet(api, shapeloc);
+
+            shape.SubclassForStepParenting(texturePrefixCode, 0);
+
+            return shape;
+        }
+
+        public CompositeShape GetAttachedShape(ItemStack stack, string slotCode)
+        {
+            return null;
+        }
+
+        public string[] GetDisableElements(ItemStack stack)
+        {
+            return null;
+        }
+
+        public string[] GetKeepElements(ItemStack stack)
+        {
+            return null;
+        }
+
+        public string GetTexturePrefixCode(ItemStack stack)
+        {
+            var key = GetKey(stack);
+            return key;
+        }
+        #endregion
+
 
         public TextureAtlasPosition this[string textureCode]
         {
@@ -271,20 +468,30 @@ namespace Vintagestory.GameContent
             return val;
         }
 
+        public string GetKey(ItemStack itemstack)
+        {
+            string type = itemstack.Attributes.GetString("type", Props.DefaultType);
+            string label = itemstack.Attributes.GetString("label");
+            string lidState = itemstack.Attributes.GetString("lidState", "closed");
+            string key = type + "-" + label + "-" + lidState;
+
+            return key;
+        }
+
 
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
             string cacheKey = "crateMeshRefs" + FirstCodePart() + SubtypeInventory;
             var meshrefs = ObjectCacheUtil.GetOrCreate(capi, cacheKey, () => new Dictionary<string, MultiTextureMeshRef>());
 
-            string type = itemstack.Attributes.GetString("type", Props.DefaultType);
-            string label = itemstack.Attributes.GetString("label");
-            string lidState = itemstack.Attributes.GetString("lidState", "closed");
-
-            string key = type + "-" + label + "-" + lidState;
+            string key = GetKey(itemstack);
 
             if (!meshrefs.TryGetValue(key, out renderinfo.ModelRef))
             {
+                string type = itemstack.Attributes.GetString("type", Props.DefaultType);
+                string label = itemstack.Attributes.GetString("label");
+                string lidState = itemstack.Attributes.GetString("lidState", "closed");
+
                 CompositeShape cshape = Props[type].Shape;
                 var rot = ShapeInventory == null ? null : new Vec3f(ShapeInventory.rotateX, ShapeInventory.rotateY, ShapeInventory.rotateZ);
 

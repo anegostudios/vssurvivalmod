@@ -97,7 +97,7 @@ namespace Vintagestory.GameContent
 
                     if (!byPlayer.InventoryManager.TryGiveItemstack(inventory[1].Itemstack, true))
                     {
-                        Api.World.SpawnItemEntity(inventory[1].Itemstack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                        Api.World.SpawnItemEntity(inventory[1].Itemstack, Pos);
                     }
                     inventory[1].Itemstack = null;
                     MarkDirty(true);

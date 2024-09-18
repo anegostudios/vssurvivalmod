@@ -165,13 +165,13 @@ namespace Vintagestory.ServerMods
                                 JsonUtil.Populate(val.Attributes.Token, val.GeneratorInst);
                             }
 
-                            
+
                             foreach (Block depositblock in placeBlocks)
                             {
                                 (val.GeneratorInst as ChildDepositGenerator).ResolveAdd(depositblock, key, value);
                             }
 
-                            
+
                         }
                     }
 
@@ -201,8 +201,8 @@ namespace Vintagestory.ServerMods
                 Api.Server.LogWarning("Deposit in file {0} has no inblock defined, it will never spawn.", variant.fromFile);
             }
 
-
-            absAvgQuantity = GetAbsAvgQuantity();
+            var rnd = new LCGRandom(Api.World.Seed);
+            absAvgQuantity = GetAbsAvgQuantity(rnd);
         }
 
 
@@ -217,7 +217,7 @@ namespace Vintagestory.ServerMods
             float deform = GameMath.Clamp(DepositRand.NextFloat() - 0.5f, -0.25f, 0.25f);
             radiusX = radius - (int)(radius * deform);
             radiusZ = radius + (int)(radius * deform);
-            
+
             int baseX = chunkX * chunksize;
             int baseZ = chunkZ * chunksize;
 
@@ -319,7 +319,7 @@ namespace Vintagestory.ServerMods
                         if (parentBlockOk && resolvedPlaceBlock.Blocks.Length > 0)
                         {
                             int gradeIndex = Math.Min(resolvedPlaceBlock.Blocks.Length - 1, depositGradeIndex);
-                            
+
                             Block placeblock = resolvedPlaceBlock.Blocks[gradeIndex];
 
                             if (variant.WithBlockCallback || (WithLastLayerBlockCallback && y == hereThickness-1))
@@ -388,7 +388,7 @@ namespace Vintagestory.ServerMods
 
         protected abstract void loadYPosAndThickness(IMapChunk heremapchunk, int lx, int lz, BlockPos pos, double distanceToEdge);
 
-        
+
 
 
         public float getDepositYDistort(BlockPos pos, int lx, int lz, float step, IMapChunk heremapchunk)
@@ -396,14 +396,14 @@ namespace Vintagestory.ServerMods
             int rdx = (pos.X / chunksize) % regionChunkSize;
             int rdz = (pos.Z / chunksize) % regionChunkSize;
 
-            
+
             IMapRegion reg = heremapchunk.MapRegion;
             float yOffTop = reg.OreMapVerticalDistortTop.GetIntLerpedCorrectly(rdx * step + step * ((float)lx / chunksize), rdz * step + step * ((float)lz / chunksize)) - 20;
             float yOffBot = reg.OreMapVerticalDistortBottom.GetIntLerpedCorrectly(rdx * step + step * ((float)lx / chunksize), rdz * step + step * ((float)lz / chunksize)) - 20;
 
             float yRel = (float)pos.Y / worldheight;
             return yOffBot * (1 - yRel) + yOffTop * yRel;
-            
+
         }
 
 
@@ -415,7 +415,7 @@ namespace Vintagestory.ServerMods
 
 
 
-       
+
 
         public override void GetPropickReading(BlockPos pos, int oreDist, int[] blockColumn, out double ppt, out double totalFactor)
         {
@@ -439,7 +439,7 @@ namespace Vintagestory.ServerMods
             HashSet<int> oreBearingBlocks = new HashSet<int>();
 
             if (variant == null) return 0;
-            
+
             int[] blocks = GetBearingBlocks();
             if (blocks == null) return 1;
 
@@ -451,7 +451,7 @@ namespace Vintagestory.ServerMods
             double minYAvg;
             double maxYAvg;
             GetYMinMax(pos, out minYAvg, out maxYAvg);
-            
+
             int q = 0;
             for (int ypos = 0; ypos < blockColumn.Length; ypos++)
             {
@@ -464,15 +464,14 @@ namespace Vintagestory.ServerMods
         }
 
 
-        Random avgQRand = new Random();
-        public float GetAbsAvgQuantity()
+        public float GetAbsAvgQuantity(LCGRandom rnd)
         {
             float radius = 0;
             float thickness = 0;
             for (int j = 0; j < 100; j++)
             {
-                radius += Radius.nextFloat(1, avgQRand);
-                thickness += Thickness.nextFloat(1, avgQRand);
+                radius += Radius.nextFloat(1, rand);
+                thickness += Thickness.nextFloat(1, rand);
             }
             radius /= 100;
             thickness /= 100;

@@ -2,13 +2,14 @@
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class ItemPoultice : Item
+    public class ItemPoultice : Item, ICanHealCreature
     {
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
@@ -23,7 +24,6 @@ namespace Vintagestory.GameContent
                 }
             }, 200);
 
-
             JsonObject attr = slot.Itemstack.Collectible.Attributes;
             if (attr != null && attr["health"].Exists)
             {
@@ -36,26 +36,7 @@ namespace Vintagestory.GameContent
 
         public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
-
-            if (byEntity.World is IClientWorldAccessor)
-            {
-                ModelTransform tf = new ModelTransform();
-
-                tf.EnsureDefaultValues();
-
-                tf.Origin.Set(0f, 0, 0f);
-
-                tf.Translation.X -= Math.Min(1.5f, secondsUsed * 4 * 1.57f);
-
-                //tf.Rotation.X += Math.Min(30f, secondsUsed * 350);
-                tf.Rotation.Y += Math.Min(130f, secondsUsed * 350);
-
-                byEntity.Controls.UsingHeldItemTransformAfter = tf;
-
-                return secondsUsed < 0.75f;
-            }
-
-            return true;
+            return secondsUsed < 0.7f + (byEntity.World.Side == EnumAppSide.Client ? 0.3f : 0);
         }
 
         public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
@@ -64,7 +45,16 @@ namespace Vintagestory.GameContent
             {
                 JsonObject attr = slot.Itemstack.Collectible.Attributes;
                 float health = attr["health"].AsFloat();
-                byEntity.ReceiveDamage(new DamageSource()
+
+                Entity targetEntity = byEntity;
+
+                var ebh = entitySel?.Entity?.GetBehavior<EntityBehaviorHealth>();
+                if (byEntity.Controls.Sprint && !byEntity.Controls.Forward && !byEntity.Controls.Backward && !byEntity.Controls.Left && !byEntity.Controls.Right && ebh?.IsHealable(byEntity) == true)
+                {
+                    targetEntity = entitySel.Entity;
+                }
+
+                targetEntity.ReceiveDamage(new DamageSource()
                 {
                     Source = EnumDamageSource.Internal,
                     Type = health > 0 ? EnumDamageType.Heal : EnumDamageType.Poison
@@ -97,6 +87,25 @@ namespace Vintagestory.GameContent
                     MouseButton = EnumMouseButton.Right,
                 }
             }.Append(base.GetHeldInteractionHelp(inSlot));
+        }
+
+
+        public bool CanHeal(Entity entity)
+        {
+            int mingen = entity.Properties.Attributes?["minGenerationToAllowHealing"].AsInt(-1) ?? -1;
+            return mingen >= 0 && mingen >= entity.WatchedAttributes.GetInt("generation", 0);
+        }
+
+        public WorldInteraction[] GetHealInteractionHelp(IClientWorldAccessor world, EntitySelection es, IClientPlayer player)
+        {
+            return new WorldInteraction[] {
+                new WorldInteraction()
+                {
+                    ActionLangCode = "heldhelp-heal",
+                    HotKeyCode = "sprint",
+                    MouseButton = EnumMouseButton.Right,
+                }
+            };
         }
     }
 

@@ -94,7 +94,7 @@ namespace Vintagestory.GameContent
 
                 if (stack.StackSize > 0)
                 {
-                    Api.World.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    Api.World.SpawnItemEntity(stack, Pos);
                 }
 
                 MarkDirty();

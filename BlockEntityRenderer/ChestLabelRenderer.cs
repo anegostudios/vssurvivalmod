@@ -51,6 +51,7 @@ namespace Vintagestory.GameContent
             prog.SsaoAttn = 0;
             prog.AlphaTest = 0.05f;
             prog.OverlayOpacity = 0;
+            prog.AddRenderFlags = 0;
 
             rpi.RenderMesh(quadModelRef);
             prog.Stop();

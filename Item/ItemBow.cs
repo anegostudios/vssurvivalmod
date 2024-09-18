@@ -159,14 +159,12 @@ namespace Vintagestory.GameContent
             if (arrowSlot == null) return;
 
             float damage = 0;
-            float accuracyBonus = 0f;
 
             // Bow damage
             if (slot.Itemstack.Collectible.Attributes != null)
             {
                 damage += slot.Itemstack.Collectible.Attributes["damage"].AsFloat(0);
 
-                accuracyBonus = 1 - slot.Itemstack.Collectible.Attributes["accuracyBonus"].AsFloat(0);
             }
 
             // Arrow damage
@@ -192,17 +190,16 @@ namespace Vintagestory.GameContent
             entityarrow.ProjectileStack = stack;
             entityarrow.DropOnImpactChance = 1 - breakChance;
 
-            float acc = Math.Max(0.001f, (1 - byEntity.Attributes.GetFloat("aimingAccuracy", 0)));
-            
-            double rndpitch = byEntity.WatchedAttributes.GetDouble("aimingRandPitch", 1) * acc * (0.75 * accuracyBonus);
-            double rndyaw = byEntity.WatchedAttributes.GetDouble("aimingRandYaw", 1) * acc * (0.75 * accuracyBonus);
+            float acc = Math.Max(0.001f, 1 - byEntity.Attributes.GetFloat("aimingAccuracy", 0));
+            double rndpitch = byEntity.WatchedAttributes.GetDouble("aimingRandPitch", 1) * acc * 0.75f;
+            double rndyaw = byEntity.WatchedAttributes.GetDouble("aimingRandYaw", 1) * acc * 0.75f;
             
             Vec3d pos = byEntity.ServerPos.XYZ.Add(0, byEntity.LocalEyePos.Y, 0);
             Vec3d aheadPos = pos.AheadCopy(1, byEntity.SidedPos.Pitch + rndpitch, byEntity.SidedPos.Yaw + rndyaw);
             Vec3d velocity = (aheadPos - pos) * byEntity.Stats.GetBlended("bowDrawingStrength");
 
 
-            entityarrow.ServerPos.SetPos(byEntity.SidedPos.BehindCopy(0.21).XYZ.Add(0, byEntity.LocalEyePos.Y, 0));
+            entityarrow.ServerPos.SetPosWithDimension(byEntity.SidedPos.BehindCopy(0.21).XYZ.Add(0, byEntity.LocalEyePos.Y, 0));
             entityarrow.ServerPos.Motion.Set(velocity);
             entityarrow.Pos.SetFrom(entityarrow.ServerPos);
             entityarrow.World = byEntity.World;
@@ -225,7 +222,7 @@ namespace Vintagestory.GameContent
             float dmg = inSlot.Itemstack.Collectible.Attributes?["damage"].AsFloat(0) ?? 0;
             if (dmg != 0) dsc.AppendLine(Lang.Get("bow-piercingdamage", dmg));
 
-            float accuracyBonus = inSlot.Itemstack.Collectible?.Attributes["accuracyBonus"].AsFloat(0) ?? 0;
+            float accuracyBonus = inSlot.Itemstack.Collectible?.Attributes["statModifier"]["rangedWeaponsAcc"].AsFloat(0) ?? 0;
             if (accuracyBonus != 0) dsc.AppendLine(Lang.Get("bow-accuracybonus", accuracyBonus > 0 ? "+" : "", (int)(100*accuracyBonus)));
         }
 

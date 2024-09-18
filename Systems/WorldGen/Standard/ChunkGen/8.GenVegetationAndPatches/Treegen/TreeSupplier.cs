@@ -20,9 +20,9 @@ namespace Vintagestory.ServerMods
     public class TreeGenInstance : TreeGenParams
     {
         public ITreeGenerator treeGen;
-        public void GrowTree(IBlockAccessor blockAccessor, BlockPos pos)
+        public void GrowTree(IBlockAccessor blockAccessor, BlockPos pos, LCGRandom rnd)
         {
-            treeGen.GrowTree(blockAccessor, pos, this);
+            treeGen.GrowTree(blockAccessor, pos, this, rnd);
         }
     }
 
@@ -34,7 +34,6 @@ namespace Vintagestory.ServerMods
         internal TreeGenProperties treeGenProps;
         internal TreeGeneratorsUtil treeGenerators;
 
-        Random random;
 
         float worldheight;
 
@@ -52,33 +51,31 @@ namespace Vintagestory.ServerMods
         internal void LoadTrees()
         {
             treeGenProps = api.Assets.Get("worldgen/treengenproperties.json").ToObject<TreeGenProperties>();
-            treeGenProps.descVineMinTempRel = TerraGenConfig.DescaleTemperature(treeGenProps.vinesMinTemp) / 255f;
+            treeGenProps.descVineMinTempRel = Climate.DescaleTemperature(treeGenProps.vinesMinTemp) / 255f;
 
             treeGenerators.LoadTreeGenerators();
-
-            random = new Random(api.WorldManager.Seed);
 
             worldheight = api.WorldManager.MapSizeY;
         }
 
 
-        public TreeGenInstance GetRandomTreeGenForClimate(int climate, int forest, int y, bool isUnderwater)
+        public TreeGenInstance GetRandomTreeGenForClimate(LCGRandom rnd, int climate, int forest, int y, bool isUnderwater)
         {
-            return GetRandomGenForClimate(treeGenProps.TreeGens, climate, forest, y, isUnderwater);
+            return GetRandomGenForClimate(rnd, treeGenProps.TreeGens, climate, forest, y, isUnderwater);
         }
 
-        public TreeGenInstance GetRandomShrubGenForClimate(int climate, int forest, int y)
+        public TreeGenInstance GetRandomShrubGenForClimate(LCGRandom rnd, int climate, int forest, int y)
         {
-            return GetRandomGenForClimate(treeGenProps.ShrubGens, climate, forest, y, false);
+            return GetRandomGenForClimate(rnd, treeGenProps.ShrubGens, climate, forest, y, false);
         }
 
-        public TreeGenInstance GetRandomGenForClimate(TreeVariant[] gens, int climate, int forest, int y, bool isUnderwater)
+        public TreeGenInstance GetRandomGenForClimate(LCGRandom rnd, TreeVariant[] gens, int climate, int forest, int y, bool isUnderwater)
         {
-            int rain = TerraGenConfig.GetRainFall((climate >> 8) & 0xff, y);
+            int rain = Climate.GetRainFall((climate >> 8) & 0xff, y);
             int unscaledTemp = (climate >> 16) & 0xff;
-            int temp = TerraGenConfig.GetScaledAdjustedTemperature(unscaledTemp, y - TerraGenConfig.seaLevel);
+            int temp = Climate.GetScaledAdjustedTemperature(unscaledTemp, y - TerraGenConfig.seaLevel);
             float heightRel = ((float)y - TerraGenConfig.seaLevel) / ((float)api.WorldManager.MapSizeY - TerraGenConfig.seaLevel);
-            int fertility = TerraGenConfig.GetFertility(rain, temp, heightRel);
+            int fertility = Climate.GetFertility(rain, temp, heightRel);
 
             float total = 0;
             float fertDist, rainDist, tempDist, forestDist, heightDist;
@@ -107,7 +104,7 @@ namespace Vintagestory.ServerMods
                     Math.Max(0, 1.2f * heightDist * heightDist - 1)
                 ;
 
-                if (random.NextDouble() < distSq) continue;
+                if (rnd.NextDouble() < distSq) continue;
 
                 float distance = GameMath.Clamp(1 - (fertDist + rainDist + tempDist + forestDist + heightDist) / 5f, 0, 1) * variant.Weight / 100f;
 
@@ -116,20 +113,21 @@ namespace Vintagestory.ServerMods
                 total += distance;
             }
 
-            distances = distances.Shuffle(random);
+            distances = distances.Shuffle(rnd);
 
-            double rnd = random.NextDouble() * total;
+            double rng = rnd.NextDouble() * total;
 
             foreach (var val in distances)
             {
-                rnd -= val.Value;
 
-                if (rnd <= 0.001)
+                rng -= val.Value;
+
+                if (rng <= 0.001)
                 {
                     float suitabilityBonus = GameMath.Clamp(0.7f - val.Value, 0f, 0.7f) * 1 / 0.7f * val.Key.SuitabilitySizeBonus;
 
-                    float size = val.Key.MinSize + (float)random.NextDouble() * (val.Key.MaxSize - val.Key.MinSize) + suitabilityBonus;
-                    float descaledTemp = TerraGenConfig.DescaleTemperature(temp);
+                    float size = val.Key.MinSize + (float)rnd.NextDouble() * (val.Key.MaxSize - val.Key.MinSize) + suitabilityBonus;
+                    float descaledTemp = Climate.DescaleTemperature(temp);
 
                     float rainVal = Math.Max(0, (rain / 255f - treeGenProps.vinesMinRain) / (1 - treeGenProps.vinesMinRain));
                     float tempVal = Math.Max(0, (descaledTemp / 255f - treeGenProps.descVineMinTempRel) / (1 - treeGenProps.descVineMinTempRel));
@@ -172,10 +170,18 @@ namespace Vintagestory.ServerMods
 
     public static class DictionaryExtensions
     {
+        /// <summary>
+        /// Be careful when using shuffle on the only copy of the data since that will make it not deterministic which may be wanted for worldgen
+        /// </summary>
+        /// <param name="source"></param>
+        /// <param name="rand"></param>
+        /// <typeparam name="TKey"></typeparam>
+        /// <typeparam name="TValue"></typeparam>
+        /// <returns></returns>
         public static Dictionary<TKey, TValue> Shuffle<TKey, TValue>(
-           this Dictionary<TKey, TValue> source, Random rand)
+           this Dictionary<TKey, TValue> source, IRandom rand)
         {
-            return source.OrderBy(x => rand.Next())
+            return source.OrderBy(x => rand.NextInt())
                .ToDictionary(item => item.Key, item => item.Value);
         }
 

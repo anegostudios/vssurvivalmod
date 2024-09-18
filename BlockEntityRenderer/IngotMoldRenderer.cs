@@ -1,6 +1,5 @@
 ﻿using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -13,15 +12,8 @@ namespace Vintagestory.GameContent
         MeshRef quadModelRef;
         Matrixf ModelMat = new Matrixf();
 
-        public double RenderOrder
-        {
-            get { return 0.5; }
-        }
-
-        public int RenderRange
-        {
-            get { return 24; }
-        }
+        public double RenderOrder => 0.5;
+        public int RenderRange => 24;
 
         /// <summary>
         /// 0..100
@@ -39,6 +31,7 @@ namespace Vintagestory.GameContent
 
         public int QuantityMolds = 1;
 
+
         public IngotMoldRenderer(BlockPos pos, ICoreClientAPI api)
         {
             this.pos = pos;
@@ -47,10 +40,10 @@ namespace Vintagestory.GameContent
             MeshData modeldata = QuadMeshUtil.GetQuad();
             modeldata.Uv = new float[]
             {
-            3/16f, 7/16f,
-            0, 7/16f,
-            0, 0,
-            3/16f, 0
+                3/16f, 7/16f,
+                0, 7/16f,
+                0, 0,
+                3/16f, 0
             };
 
             modeldata.Rgba = new byte[4 * 4];
@@ -67,7 +60,6 @@ namespace Vintagestory.GameContent
 
             IRenderAPI rpi = api.Render;
             IClientWorldAccessor worldAccess = api.World;
-            EntityPos plrPos = worldAccess.Player.Entity.Pos;
             Vec3d camPos = worldAccess.Player.Entity.CameraPos;
 
             rpi.GlDisableCullFace();
@@ -128,18 +120,6 @@ namespace Vintagestory.GameContent
 
                 int texid = api.Render.GetOrLoadTexture(TextureNameRight);
                 rpi.BindTexture2d(texid);
-
-                /*
-                rpi.GlPushMatrix();
-                rpi.GlLoadMatrix(api.Render.CameraMatrixOrigin);
-                rpi.GlTranslate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z);
-                rpi.GlTranslate(11.5f / 16f, 1 / 16f + LevelRight / 850f, 8.5f / 16);
-                rpi.GlRotate(90, 1, 0, 0);
-                rpi.GlScale(0.5f * 3 / 16f, 0.5f * 7 / 16f, 0.5f);
-                prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
-                prog.ModelViewMatrix = rpi.CurrentModelviewMatrix;
-                rpi.GlPopMatrix();
-                */
 
                 prog.ModelMatrix = ModelMat
                     .Identity()

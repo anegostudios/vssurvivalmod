@@ -203,11 +203,17 @@ namespace Vintagestory.GameContent
                     }
                     else
                     {
+                        var stackName = slot.Itemstack?.GetName();
                         if (TryPut(slot))
                         {
                             AssetLocation sound = slot.Itemstack?.Block?.Sounds?.Place;
                             Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/buildhigh"), byPlayer.Entity, byPlayer, true, 16);
                             byPlayer.InventoryManager.BroadcastHotbarSlot();
+                            Api.World.Logger.Audit("{0} Put {1} into Clay oven at {2}.", 
+                                byPlayer.PlayerName,
+                                string.Format("1x{0}", stackName),
+                                Pos
+                            );
                             return true;
                         }
                         else
@@ -317,8 +323,13 @@ namespace Vintagestory.GameContent
 
                     if (stack.StackSize > 0)
                     {
-                        Api.World.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                        Api.World.SpawnItemEntity(stack, Pos);
                     }
+                    Api.World.Logger.Audit("{0} Took {1} from Clay oven at {2}.", 
+                        byPlayer.PlayerName,
+                        string.Format("1x{0}", stack.GetName()),
+                        Pos
+                    );
 
                     bakingData[index].CurHeightMul = 1; // Reset risenLevel to avoid brief render of unwanted size on next item inserted, if server/client not perfectly in sync - note this only really works if the newly inserted item can be assumed to have risenLevel of 0 i.e. dough
                     updateMesh(index);

@@ -1,19 +1,15 @@
-﻿using System.Collections.Generic;
-using System.IO;
-using Vintagestory.API.Client;
+﻿using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
-using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
     public class EntityArmorStand : EntityHumanoid
     {
+        EntityBehaviorArmorStandInventory invbh;
+        float fireDamage;
         public override bool IsCreature { get { return false; } }
-
-        InventoryGeneric gearInv;
-        public override IInventory GearInventory => gearInv;
 
         int CurPose
         {
@@ -23,94 +19,16 @@ namespace Vintagestory.GameContent
 
         public EntityArmorStand() { }
 
-        public override ItemSlot LeftHandItemSlot => gearInv[15];
-        public override ItemSlot RightHandItemSlot => gearInv[16];
+        public override ItemSlot RightHandItemSlot => invbh?.Inventory[15];
+        public override ItemSlot LeftHandItemSlot => invbh?.Inventory[16];
 
 
         public override void Initialize(EntityProperties properties, ICoreAPI api, long InChunkIndex3d)
         {
             base.Initialize(properties, api, InChunkIndex3d);
 
-            if (gearInv == null)
-            {
-                gearInv = new InventoryGeneric(17, "gear-" + EntityId, api, onNewSlot);
-                gearInv.SlotModified += GearInv_SlotModified;
-            } else
-            {
-                gearInv.LateInitialize("gear-" + EntityId, api);
-            }
-
-            if (api.Side == EnumAppSide.Client) {
-                WatchedAttributes.RegisterModifiedListener("inventory", readInventoryFromAttributes);
-            }
-
-            readInventoryFromAttributes();
+            invbh = GetBehavior<EntityBehaviorArmorStandInventory>();
         }
-
-        private void readInventoryFromAttributes()
-        {
-            ITreeAttribute tree = WatchedAttributes["inventory"] as ITreeAttribute;
-            if (gearInv != null && tree != null)
-            {
-                gearInv.FromTreeAttributes(tree);
-            }
-
-            (Properties.Client.Renderer as EntityShapeRenderer)?.MarkShapeModified();
-        }
-
-        private void GearInv_SlotModified(int slotid)
-        {
-            ITreeAttribute tree = new TreeAttribute();
-            WatchedAttributes["inventory"] = tree;
-
-            gearInv.ToTreeAttributes(tree);
-            WatchedAttributes.MarkPathDirty("inventory");
-        }
-
-        private ItemSlot onNewSlot(int slotId, InventoryGeneric self)
-        {
-            if (slotId >= 15) return new ItemSlotSurvival(self);
-
-            EnumCharacterDressType type = (EnumCharacterDressType)slotId;
-            ItemSlotCharacter slot = new ItemSlotCharacter(type, self);
-            iconByDressType.TryGetValue(type, out slot.BackgroundIcon);
-
-            return slot;
-        }
-
-        Dictionary<EnumCharacterDressType, string> iconByDressType = new Dictionary<EnumCharacterDressType, string>()
-        {
-            { EnumCharacterDressType.Foot, "boots" },
-            { EnumCharacterDressType.Hand, "gloves" },
-            { EnumCharacterDressType.Shoulder, "cape" },
-            { EnumCharacterDressType.Head, "hat" },
-            { EnumCharacterDressType.LowerBody, "trousers" },
-            { EnumCharacterDressType.UpperBody, "shirt" },
-            { EnumCharacterDressType.UpperBodyOver, "pullover" },
-            { EnumCharacterDressType.Neck, "necklace" },
-            { EnumCharacterDressType.Arm, "bracers" },
-            { EnumCharacterDressType.Waist, "belt" },
-            { EnumCharacterDressType.Emblem, "medal" },
-            { EnumCharacterDressType.Face, "mask" },
-        };
-
-
-        public override void FromBytes(BinaryReader reader, bool forClient)
-        {
-            base.FromBytes(reader, forClient);
-
-            ITreeAttribute tree = WatchedAttributes["inventory"] as ITreeAttribute;
-            if (tree != null)
-            {
-                if (gearInv == null)
-                {
-                    gearInv = new InventoryGeneric(17, "gear-" + EntityId, Api, onNewSlot);
-                    gearInv.SlotModified += GearInv_SlotModified;
-                }
-                gearInv.FromTreeAttributes(tree);
-            }
-        }
-
 
         string[] poses = new string[] { "idle", "lefthandup", "righthandup", "twohandscross" };
 
@@ -127,7 +45,7 @@ namespace Vintagestory.GameContent
             if (mode == EnumInteractMode.Interact && byEntity.RightHandItemSlot?.Itemstack?.Collectible is ItemWrench)
             {
                 AnimManager.StopAnimation(poses[CurPose]);
-                CurPose = (CurPose + 1) % poses.Length; 
+                CurPose = (CurPose + 1) % poses.Length;
                 AnimManager.StartAnimation(new AnimationMetaData() { Animation = poses[CurPose], Code = poses[CurPose] }.Init());
                 return;
             }
@@ -138,16 +56,16 @@ namespace Vintagestory.GameContent
                 if (handslot.Empty)
                 {
                     // Start from armor slot because it can't wear clothes atm
-                    for (int i = 0; i < GearInventory.Count; i++)
+                    for (int i = 0; i < invbh.Inventory.Count; i++)
                     {
-                        ItemSlot gslot = GearInventory[i];
+                        ItemSlot gslot = invbh.Inventory[i];
                         if (gslot.Empty) continue;
                         if (gslot.Itemstack.Collectible?.Code == null) { gslot.Itemstack = null; continue; }
 
                         if (gslot.TryPutInto(byEntity.World, handslot) > 0)
                         {
                             return;
-                        }   
+                        }
                     }
                 } else
                 {
@@ -169,18 +87,18 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-                
-                WeightedSlot sinkslot = GearInventory.GetBestSuitedSlot(handslot);
+
+                WeightedSlot sinkslot = invbh.Inventory.GetBestSuitedSlot(handslot);
                 if (sinkslot.weight > 0 && sinkslot.slot != null)
                 {
                     handslot.TryPutInto(byEntity.World, sinkslot.slot);
                     return;
                 }
-                
+
                 bool empty = true;
-                for (int i = 0; i < GearInventory.Count; i++)
+                for (int i = 0; i < invbh.Inventory.Count; i++)
                 {
-                    ItemSlot gslot = GearInventory[i];
+                    ItemSlot gslot = invbh.Inventory[i];
                     empty &= gslot.Empty;
                 }
 
@@ -193,7 +111,7 @@ namespace Vintagestory.GameContent
                     }
                     Die();
                     return;
-                }   
+                }
             }
 
 
@@ -208,7 +126,6 @@ namespace Vintagestory.GameContent
         }
 
 
-        float fireDamage;
 
         public override bool ReceiveDamage(DamageSource damageSource, float damage)
         {

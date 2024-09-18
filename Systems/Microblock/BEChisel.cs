@@ -112,7 +112,8 @@ namespace Vintagestory.GameContent
 
                 if (DecorIds != null && DecorIds[rotfaceindex] != 0)
                 {
-                    Api.World.SpawnItemEntity(new ItemStack(Api.World.Blocks[DecorIds[rotfaceindex]]), Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    var block = Api.World.Blocks[DecorIds[rotfaceindex]];
+                    Api.World.SpawnItemEntity(block.OnPickBlock(Api.World, Pos), Pos);
                     DecorIds[rotfaceindex] = 0;
                     MarkDirty(true, byPlayer);
                 }
@@ -160,7 +161,7 @@ namespace Vintagestory.GameContent
             }
 
             double posx = Pos.X + voxelPos.X / 16f;
-            double posy = Pos.Y + voxelPos.Y / 16f;
+            double posy = Pos.InternalY + voxelPos.Y / 16f;
             double posz = Pos.Z + voxelPos.Z / 16f;
             Api.World.PlaySoundAt(new AssetLocation("sounds/player/knap" + (Api.World.Rand.Next(2) > 0 ? 1 : 2)), posx, posy, posz, byPlayer, true, 12, 1);
 
@@ -195,7 +196,7 @@ namespace Vintagestory.GameContent
             }
 
             ((ICoreClientAPI)Api).Network.SendBlockEntityPacket(
-                Pos.X, Pos.Y, Pos.Z,
+                Pos,
                 (int)1010,
                 data
             );
@@ -398,9 +399,10 @@ namespace Vintagestory.GameContent
             selectionBoxesVoxels = boxes.ToArray();
         }
 
-        public int AddMaterial(Block block, out bool isFull)
+
+        public int AddMaterial(Block addblock, out bool isFull, bool compareToPickBlock = true)
         {
-            Cuboidf[] collboxes = block.GetCollisionBoxes(Api.World.BlockAccessor, Pos);
+            Cuboidf[] collboxes = addblock.GetCollisionBoxes(Api.World.BlockAccessor, Pos);
             int sum = 0;
             if (collboxes == null) collboxes = new Cuboidf[] { Cuboidf.Default() };
 
@@ -410,30 +412,29 @@ namespace Vintagestory.GameContent
                 sum += new Cuboidi((int)(16 * box.X1), (int)(16 * box.Y1), (int)(16 * box.Z1), (int)(16 * box.X2), (int)(16 * box.Y2), (int)(16 * box.Z2)).SizeXYZ;
             }
 
-            if (!BlockIds.Contains(block.Id))
+            if (compareToPickBlock && !BlockIds.Contains(addblock.Id))
             {
                 foreach (int blockid in BlockIds)
                 {
                     var matblock = Api.World.Blocks[blockid];
                     var stack = matblock.OnPickBlock(Api.World, Pos);
-                    if (stack.Block?.Id == block.Id)
+                    if (stack.Block?.Id == addblock.Id)
                     {
-                        block = matblock;
+                        addblock = matblock;
                     }
                 }
             }
 
-
-            if (!BlockIds.Contains(block.Id))
+            if (!BlockIds.Contains(addblock.Id))
             {
                 isFull = false;
-                BlockIds = BlockIds.Append(block.Id);
+                BlockIds = BlockIds.Append(addblock.Id);
                 if (AvailMaterialQuantities != null) AvailMaterialQuantities = AvailMaterialQuantities.Append((ushort)sum);
                 return BlockIds.Length - 1;
             }
             else
             {
-                int index = BlockIds.IndexOf(block.Id);
+                int index = BlockIds.IndexOf(addblock.Id);
                 isFull = AvailMaterialQuantities[index] >= 16 * 16 * 16;
                 if (AvailMaterialQuantities != null) AvailMaterialQuantities[index] = (ushort)Math.Min(ushort.MaxValue, AvailMaterialQuantities[index] + sum);
                 return index;

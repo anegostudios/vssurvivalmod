@@ -66,7 +66,7 @@ namespace Vintagestory.GameContent
                         ShouldApply = (wi, bs, es) =>
                         {
                             BlockEntityIngotMold betm = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityIngotMold;
-                            return betm != null && betm.contentsRight == null && betm.contentsLeft == null;
+                            return betm != null && betm.ContentsRight == null && betm.ContentsLeft == null;
                         }
                     },
                     new WorldInteraction()
@@ -78,7 +78,7 @@ namespace Vintagestory.GameContent
                         GetMatchingStacks = (wi, bs, es) =>
                         {
                             BlockEntityIngotMold betm = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityIngotMold;
-                            return (betm != null && betm.quantityMolds < 2) ? wi.Itemstacks : null;
+                            return (betm != null && betm.QuantityMolds < 2) ? wi.Itemstacks : null;
                         }
                     }
                 };
@@ -108,7 +108,7 @@ namespace Vintagestory.GameContent
                         GetMatchingStacks = (wi, bs, es) =>
                         {
                             BlockEntityIngotMold betm = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityIngotMold;
-                            return (betm != null && betm.quantityMolds > 1 && !betm.IsFullRight) ? wi.Itemstacks : null;
+                            return (betm != null && betm.QuantityMolds > 1 && !betm.IsFullRight) ? wi.Itemstacks : null;
                         }
                     },
                     new WorldInteraction()
@@ -119,7 +119,7 @@ namespace Vintagestory.GameContent
                         ShouldApply = (wi, bs, es) =>
                         {
                             BlockEntityIngotMold betm = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityIngotMold;
-                            return betm != null && betm.quantityMolds > 1 && betm.IsFullRight && betm.IsHardenedRight;
+                            return betm != null && betm.QuantityMolds > 1 && betm.IsFullRight && betm.IsHardenedRight;
                         }
                     },
                     new WorldInteraction()
@@ -131,7 +131,7 @@ namespace Vintagestory.GameContent
                         ShouldApply = (wi, bs, es) =>
                         {
                             BlockEntityIngotMold betm = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityIngotMold;
-                            return betm != null && betm.quantityMolds > 1 && betm.contentsRight == null && betm.contentsLeft == null;
+                            return betm != null && betm.QuantityMolds > 1 && betm.ContentsRight == null && betm.ContentsLeft == null;
                         }
                     }
                 };
@@ -152,7 +152,7 @@ namespace Vintagestory.GameContent
         {
             BlockEntityIngotMold betm = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityIngotMold;
 
-            if (betm == null || betm.quantityMolds == 1)
+            if (betm == null || betm.QuantityMolds == 1)
             {
                 return oneMoldBoxes;
             }
@@ -180,7 +180,7 @@ namespace Vintagestory.GameContent
                 {
                     handling = EnumHandHandling.PreventDefault;
                 }
-                
+
             }
         }
 
@@ -242,29 +242,39 @@ namespace Vintagestory.GameContent
         {
             List<ItemStack> stacks = new List<ItemStack>();
 
-            BlockEntityIngotMold bei = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityIngotMold;
+            var bei = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityIngotMold;
             if (bei != null)
             {
-                stacks.Add(new ItemStack(this, bei.quantityMolds));
+                var moldsAmount = bei.QuantityMolds;
+                if (bei.ShatteredLeft)
+                {
+                    moldsAmount--;
+                }
+                if(bei.ShatteredRight)
+                {
+                    moldsAmount--;
+                }
 
-                ItemStack stackl = bei.GetLeftContents();
+                stacks.Add(new ItemStack(this, moldsAmount));
+
+                ItemStack stackl = bei.GetStateAwareContentsLeft();
                 if (stackl != null)
                 {
                     stacks.Add(stackl);
                 }
-                ItemStack stackr = bei.GetRightContents();
+                ItemStack stackr = bei.GetStateAwareContentsRight();
                 if (stackr != null)
                 {
                     stacks.Add(stackr);
                 }
             } else
             {
-                stacks.Add(new ItemStack(this, 1));
+                stacks.Add(new ItemStack(this));
             }
 
             return stacks.ToArray();
         }
-        
+
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
         {

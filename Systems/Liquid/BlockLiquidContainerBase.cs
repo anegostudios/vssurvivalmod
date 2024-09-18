@@ -579,7 +579,7 @@ namespace Vintagestory.GameContent
 
                 if (moved > 0)
                 {
-                    splitStackAndPerformAction(byPlayer.Entity, hotbarSlot, (stack) =>
+                    SplitStackAndPerformAction(byPlayer.Entity, hotbarSlot, (stack) =>
                     {
                         objLso.TryTakeContent(stack, moved);
                         return moved;
@@ -604,7 +604,7 @@ namespace Vintagestory.GameContent
 
                 float litres = singleTake ? objLsi.TransferSizeLitres : objLsi.CapacityLitres;
 
-                int moved = splitStackAndPerformAction(byPlayer.Entity, hotbarSlot, (stack) => objLsi.TryPutLiquid(stack, owncontentStack, litres));
+                int moved = SplitStackAndPerformAction(byPlayer.Entity, hotbarSlot, (stack) => objLsi.TryPutLiquid(stack, owncontentStack, litres));
                 if (moved > 0)
                 {
                     TryTakeContent(blockSel.Position, moved);
@@ -807,7 +807,7 @@ namespace Vintagestory.GameContent
             var cprops = GetContainableProps(contentStack);
             contentStack.StackSize = 999999;
 
-            int moved = splitStackAndPerformAction(byEntity, itemslot, (stack) => TryPutLiquid(stack, contentStack, CapacityLitres));
+            int moved = SplitStackAndPerformAction(byEntity, itemslot, (stack) => TryPutLiquid(stack, contentStack, CapacityLitres));
 
             if (moved > 0) 
             { 
@@ -837,10 +837,10 @@ namespace Vintagestory.GameContent
             if (!canFill) return;
 
             whenFilledStack.StackSize = 999999;
-            int moved = splitStackAndPerformAction(byEntityItem, byEntityItem.Slot, (stack) => TryPutLiquid(stack, whenFilledStack, CapacityLitres));
+            int moved = SplitStackAndPerformAction(byEntityItem, byEntityItem.Slot, (stack) => TryPutLiquid(stack, whenFilledStack, CapacityLitres));
             if (moved > 0)
             {
-                world.PlaySoundAt(props.FillSound, pos.X, pos.Y, pos.Z, null);
+                world.PlaySoundAt(props.FillSound, pos, -0.4, null);
             }
         }
 
@@ -916,7 +916,7 @@ namespace Vintagestory.GameContent
             }
 
 
-            int moved = splitStackAndPerformAction(byEntity, containerSlot, (stack) => { SetContent(stack, null); return contentStack.StackSize; } );
+            int moved = SplitStackAndPerformAction(byEntity, containerSlot, (stack) => { SetContent(stack, null); return contentStack.StackSize; } );
 
             DoLiquidMovedEffects(byPlayer, contentStack, moved, EnumLiquidDirection.Pour);
             return true;
@@ -930,7 +930,7 @@ namespace Vintagestory.GameContent
 
 
 
-        private int splitStackAndPerformAction(Entity byEntity, ItemSlot slot, System.Func<ItemStack, int> action)
+        public int SplitStackAndPerformAction(Entity byEntity, ItemSlot slot, System.Func<ItemStack, int> action)
         {
             if (slot.Itemstack == null) return 0;
             if (slot.Itemstack.StackSize == 1)

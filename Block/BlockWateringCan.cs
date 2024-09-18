@@ -26,7 +26,7 @@ namespace Vintagestory.GameContent
             );
 
             WaterParticles.AddPos = new Vec3d(0.125 / 2, 2 / 16f, 0.125 / 2);
-            WaterParticles.SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.LINEAR, -1f);
+            WaterParticles.SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.LINEAR, -0.7f);
             WaterParticles.ClimateColorMap = "climateWaterTint";
             WaterParticles.AddQuantity = 1;
 
@@ -54,7 +54,7 @@ namespace Vintagestory.GameContent
                 slot.Itemstack.TempAttributes.SetInt("refilled", 1);
                 slot.MarkDirty();
 
-                byEntity.World.PlaySoundAt(new AssetLocation("sounds/block/water"), pos.X, pos.Y, pos.Z, byPlayer);
+                byEntity.World.PlaySoundAt(new AssetLocation("sounds/block/water"), pos, 0.35, byPlayer);
                 handHandling = EnumHandHandling.PreventDefault;
                 return;
             }
@@ -73,7 +73,7 @@ namespace Vintagestory.GameContent
                 slot.Itemstack.TempAttributes.SetInt("refilled", 1);
                 slot.MarkDirty();
 
-                byEntity.World.PlaySoundAt(new AssetLocation("sounds/block/water"), pos.X, pos.Y, pos.Z, byPlayer);
+                byEntity.World.PlaySoundAt(new AssetLocation("sounds/block/water"), pos, 0.35, byPlayer);
                 handHandling = EnumHandHandling.PreventDefault;
                 return;
             }
@@ -194,6 +194,12 @@ namespace Vintagestory.GameContent
                 beburningBh = world.BlockAccessor.GetBlockEntity(blockSel.Position)?.GetBehavior<BEBehaviorBurning>();
                 if (beburningBh != null) beburningBh.KillFire(false);
 
+                var beits = GetBEBehavior<BEBehaviorTemperatureSensitive>(blockSel.Position);
+                if (beits != null)
+                {
+                    beits.OnWatered(secondsUsed - prevsecondsused);
+                }
+
                 Vec3i voxelPos = new Vec3i();
                 for (int dx = -2; dx < 2; dx++)
                 {
@@ -238,18 +244,7 @@ namespace Vintagestory.GameContent
                 be.WaterFarmland(secondsUsed - prevsecondsused);
             }
             
-            float speed = 3f;            
-
-            if (world.Side == EnumAppSide.Client)
-            {
-                ModelTransform tf = new ModelTransform();
-                tf.EnsureDefaultValues();
-
-                tf.Origin.Set(0.5f, 0.2f, 0.5f);
-                tf.Translation.Set(-Math.Min(0.25f, speed * secondsUsed / 2), 0, 0);                
-                tf.Rotation.Z = GameMath.Min(60, secondsUsed * 90 * speed, 120 - remainingwater * 4);
-                byEntity.Controls.UsingHeldItemTransformBefore = tf;
-            }
+            float speed = 3f;
 
             IPlayer byPlayer = null;
             if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
@@ -264,11 +259,6 @@ namespace Vintagestory.GameContent
             }
 
             return true;
-        }
-
-        public override bool OnHeldInteractCancel(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
-        {
-            return base.OnHeldInteractCancel(secondsUsed, slot, byEntity, blockSel, entitySel, cancelReason);
         }
 
 

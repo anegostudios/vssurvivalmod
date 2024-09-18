@@ -124,7 +124,7 @@ namespace Vintagestory.GameContent
             var slot = byPlayer.InventoryManager.ActiveHotbarSlot;
             if (slot.Empty)
             {
-                Api.World.PlaySoundAt(new AssetLocation("sounds/toggleswitch"), Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, byPlayer, false, 16);
+                Api.World.PlaySoundAt(new AssetLocation("sounds/toggleswitch"), Pos, 0, byPlayer, false, 16);
 
                 if (On) Deactivate();
                 else Activate();

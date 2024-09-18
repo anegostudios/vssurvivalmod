@@ -55,7 +55,7 @@ public class NpcControl : ModSystem
                     .WithDescription("Add a goto command that will move then entity from its current position to the new one using specified animation and speed")
                     .RequiresPlayer()
                     .WithArgs(parsers.WorldPosition("position"), parsers.Word("animcode"), parsers.OptionalFloat("speed", 0.02f), parsers.OptionalFloat("animspeed", 1f))
-                    .HandleWith(OnCmdNpcEnqGoto)
+                    .HandleWith((args) => OnCmdNpcEnqGoto(args, false))
                 .EndSubCommand()
             
                 .BeginSubCommand("playanim")
@@ -120,9 +120,17 @@ public class NpcControl : ModSystem
                     .WithDescription("Execute a goto command that will move then entity from its current position to the new one using specified animation and speed")
                     .RequiresPlayer()
                     .WithArgs(parsers.WorldPosition("position"), parsers.Word("animcode"), parsers.OptionalFloat("speed", 0.02f), parsers.OptionalFloat("animspeed", 1f))
-                    .HandleWith(OnCmdNpcEnqGoto)
+                    .HandleWith((args) => OnCmdNpcEnqGoto(args, false))
                 .EndSubCommand()
-                
+
+                .BeginSubCommand("navigate")
+                    .WithAlias("nav")
+                    .WithDescription("Execute a navigate command that will move then entity from its current position using A* pathfinding, to the new one using specified animation and speed")
+                    .RequiresPlayer()
+                    .WithArgs(parsers.WorldPosition("position"), parsers.Word("animcode"), parsers.OptionalFloat("speed", 0.02f), parsers.OptionalFloat("animspeed", 1f))
+                    .HandleWith((args) => OnCmdNpcEnqGoto(args, true))
+                .EndSubCommand()
+
                 .BeginSubCommand("playanim")
                     .WithDescription("Execute a play animation command")
                     .RequiresPlayer()
@@ -319,7 +327,7 @@ public class NpcControl : ModSystem
         return TextCommandResult.Success("Command enqueued");
     }
 
-    private TextCommandResult OnCmdNpcEnqGoto(TextCommandCallingArgs args)
+    private TextCommandResult OnCmdNpcEnqGoto(TextCommandCallingArgs args, bool astar)
     {
         var player = args.Caller.Player;
         if (!TryGetCurrentEntity(player, out var entityNpc,out var msg)) return msg;
@@ -331,11 +339,11 @@ public class NpcControl : ModSystem
 
         if (args.Command.FullName.Contains("exec"))
         {
-            entityNpc.ExecutingCommands.Enqueue(new NpcGotoCommand(entityNpc, target, animcode, speed, animspeed));
+            entityNpc.ExecutingCommands.Enqueue(new NpcGotoCommand(entityNpc, target, astar, animcode, speed, animspeed));
             entityNpc.StartExecuteCommands(false);
             return TextCommandResult.Success("Started executing. " + entityNpc.ExecutingCommands.Count + " commands in queue");
         }
-        entityNpc.Commands.Add(new NpcGotoCommand(entityNpc, target, animcode, speed, animspeed));
+        entityNpc.Commands.Add(new NpcGotoCommand(entityNpc, target, astar, animcode, speed, animspeed));
         return TextCommandResult.Success("Command enqueued");
     }
 

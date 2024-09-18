@@ -105,6 +105,7 @@ namespace Vintagestory.GameContent
                 {
                     QuantityElements = compositeShape.QuantityElements,
                     SelectiveElements = compositeShape.SelectiveElements,
+                    IgnoreElements = compositeShape.IgnoreElements,
                     TexSource = this,
                     WithJointIds = false,
                     WithDamageEffect = true,
@@ -193,11 +194,7 @@ namespace Vintagestory.GameContent
             prog.Uniform("frostAlpha", 0f);
             prog.Uniform("waterWaveCounter", 0f);
 
-            prog.UniformMatrices4x3(
-                "elementTransforms",
-                GlobalConstants.MaxAnimatedElements,
-                entity.AnimManager.Animator.Matrices4x3
-            );
+            prog.UBOs["Animation"].Update(entity.AnimManager.Animator.Matrices, 0, entity.AnimManager.Animator.MaxJointId * 16 * 4);
 
             color[0] = (entity.RenderColor >> 16 & 0xff) / 255f;
             color[1] = ((entity.RenderColor >> 8) & 0xff) / 255f;
@@ -229,7 +226,7 @@ namespace Vintagestory.GameContent
         {
             EntityPlayer entityPlayer = capi.World.Player.Entity;
             Mat4f.Identity(ModelMat);
-            Mat4f.Translate(ModelMat, ModelMat, (float)(entity.Pos.X - entityPlayer.CameraPos.X), (float)(entity.Pos.Y - entityPlayer.CameraPos.Y), (float)(entity.Pos.Z - entityPlayer.CameraPos.Z));
+            Mat4f.Translate(ModelMat, ModelMat, (float)(entity.Pos.X - entityPlayer.CameraPos.X), (float)(entity.Pos.InternalY - entityPlayer.CameraPos.Y), (float)(entity.Pos.Z - entityPlayer.CameraPos.Z));
             float scale = entity.Properties.Client.Size;
             Mat4f.Scale(ModelMat, ModelMat, new float[] { scale, scale, scale });
             Mat4f.Translate(ModelMat, ModelMat, -0.5f, 0, -0.5f);

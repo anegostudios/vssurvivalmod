@@ -103,7 +103,7 @@ namespace Vintagestory.GameContent
 
                 world.BlockAccessor.SetBlock(clayformBlock.BlockId, placePos);
 
-                if (clayformBlock.Sounds != null) world.PlaySoundAt(clayformBlock.Sounds.Place, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z);
+                if (clayformBlock.Sounds != null) world.PlaySoundAt(clayformBlock.Sounds.Place, blockSel.Position, -0.5);
 
                 bec = byEntity.World.BlockAccessor.GetBlockEntity(placePos) as BlockEntityClayForm;
 

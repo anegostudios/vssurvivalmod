@@ -9,6 +9,7 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
+
     public class BEBehaviorDoor : BEBehaviorAnimatable, IInteractable, IRotatable
     {
         public float RotateYRad;
@@ -87,18 +88,18 @@ namespace Vintagestory.GameContent
         {
             if (invertHandles) right = -right;
             return new Vec3i(
-                right * (int)Math.Round(Math.Sin(rotateYRad + 90)) - back * (int)Math.Round(Math.Sin(rotateYRad)),
+                right * (int)Math.Round(Math.Sin(rotateYRad + GameMath.PIHALF)) - back * (int)Math.Round(Math.Sin(rotateYRad)),
                 up,
-                right * (int)Math.Round(Math.Cos(rotateYRad + 90)) - back * (int)Math.Round(Math.Cos(rotateYRad))
+                right * (int)Math.Round(Math.Cos(rotateYRad + GameMath.PIHALF)) - back * (int)Math.Round(Math.Cos(rotateYRad))
             );
         }
 
-        protected void SetupRotationsAndColSelBoxes(bool initalSetup)
+        internal void SetupRotationsAndColSelBoxes(bool initalSetup)
         {
             int width = doorBh.width;
             if (initalSetup)
             {
-                BlockPos leftPos = Blockentity.Pos.AddCopy(width * (int)Math.Round(Math.Sin(RotateYRad - 90)), 0, width * (int)Math.Round(Math.Cos(RotateYRad - 90)));
+                BlockPos leftPos = Blockentity.Pos.AddCopy(width * (int)Math.Round(Math.Sin(RotateYRad - GameMath.PIHALF)), 0, width * (int)Math.Round(Math.Cos(RotateYRad - GameMath.PIHALF)));
                 leftDoor = BlockBehaviorDoor.getDoorAt(Api.World, leftPos);
             }
 
@@ -116,8 +117,8 @@ namespace Vintagestory.GameContent
                     Blockentity.MarkDirty(true);
                 }
 
-                BlockPos rightPos = Blockentity.Pos.AddCopy(width * (int)Math.Round(Math.Sin(RotateYRad + 90)), 0, width * (int)Math.Round(Math.Cos(RotateYRad + 90)));
-                BlockPos rightrightPos = Blockentity.Pos.AddCopy(width * 2 * (int)Math.Round(Math.Sin(RotateYRad + 90)), 0, width * 2 * (int)Math.Round(Math.Cos(RotateYRad + 90)));
+                BlockPos rightPos = Blockentity.Pos.AddCopy(width * (int)Math.Round(Math.Sin(RotateYRad + GameMath.PIHALF)), 0, width * (int)Math.Round(Math.Cos(RotateYRad + GameMath.PIHALF)));
+                BlockPos rightrightPos = Blockentity.Pos.AddCopy(width * 2 * (int)Math.Round(Math.Sin(RotateYRad + GameMath.PIHALF)), 0, width * 2 * (int)Math.Round(Math.Cos(RotateYRad + GameMath.PIHALF)));
                 var rightDoor = BlockBehaviorDoor.getDoorAt(Api.World, rightPos);
                 var rightrightDoor = BlockBehaviorDoor.getDoorAt(Api.World, rightrightPos);
 
@@ -126,7 +127,7 @@ namespace Vintagestory.GameContent
                     if (width > 1 && Api.Side == EnumAppSide.Server)
                     {
                         Api.World.BlockAccessor.SetBlock(0, rightDoor.Blockentity.Pos);
-                        BlockPos rightDoorPos = Blockentity.Pos.AddCopy((2 * width - 1) * (int)Math.Round(Math.Sin(RotateYRad + 90)), 0, (2 * width - 1) * (int)Math.Round(Math.Cos(RotateYRad + 90)));
+                        BlockPos rightDoorPos = Blockentity.Pos.AddCopy((2 * width - 1) * (int)Math.Round(Math.Sin(RotateYRad + GameMath.PIHALF)), 0, (2 * width - 1) * (int)Math.Round(Math.Cos(RotateYRad + GameMath.PIHALF)));
                         Api.World.BlockAccessor.SetBlock(Block.Id, rightDoorPos);
                         rightDoor = Block.GetBEBehavior<BEBehaviorDoor>(rightDoorPos);
                         rightDoor.RotateYRad = RotateYRad;
@@ -240,6 +241,14 @@ namespace Vintagestory.GameContent
 
         public void ToggleDoorState(IPlayer byPlayer, bool opened)
         {
+            float breakChance = Block.Attributes["breakOnTriggerChance"].AsFloat(0);
+            if (Api.Side == EnumAppSide.Server && Api.World.Rand.NextDouble() < breakChance && byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
+            {
+                Api.World.BlockAccessor.BreakBlock(Pos, byPlayer);
+                Api.World.PlaySoundAt(new AssetLocation("sounds/effect/toolbreak"), Pos, 0, null);
+                return;
+            }
+
             this.opened = opened;
             ToggleDoorWing(opened);
 

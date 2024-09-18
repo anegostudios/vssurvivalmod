@@ -15,9 +15,6 @@ namespace Vintagestory.GameContent
         protected IInventory characterInv;
         protected ElementBounds insetSlotBounds;
 
-        Dictionary<EnumCharacterDressType, int> DressPositionByTressType = new Dictionary<EnumCharacterDressType, int>();
-        Dictionary<EnumCharacterDressType, ItemStack[]> DressesByDressType = new Dictionary<EnumCharacterDressType, ItemStack[]>();
-        
         CharacterSystem modSys;
         int currentClassIndex = 0;
 
@@ -59,7 +56,8 @@ namespace Vintagestory.GameContent
               //  new GuiTab() { Name = "Outfit", DataInt = 2 }
             };
 
-            Composers["createcharacter"] =
+            GuiComposer createCharacterComposer;
+            Composers["createcharacter"] = createCharacterComposer =
                 capi.Gui
                 .CreateCompo("createcharacter", dialogBounds)
                 .AddShadedDialogBG(bgBounds, true)
@@ -68,14 +66,18 @@ namespace Vintagestory.GameContent
                 .BeginChildElements(bgBounds)
             ;
 
-            capi.World.Player.Entity.hideClothing = false;
+            //capi.World.Player.Entity.hideClothing = false;
+            var bh = capi.World.Player.Entity.GetBehavior<EntityBehaviorPlayerInventory>();
+            bh.hideClothing = false;
 
             if (curTab == 0)
             {
                 var skinMod = capi.World.Player.Entity.GetBehavior<EntityBehaviorExtraSkinnable>();
 
-                capi.World.Player.Entity.hideClothing = charNaked;
-                var essr = capi.World.Player.Entity.Properties.Client.Renderer as EntitySkinnableShapeRenderer;
+                //capi.World.Player.Entity.hideClothing = charNaked;
+                bh.hideClothing = charNaked;
+
+                var essr = capi.World.Player.Entity.Properties.Client.Renderer as EntityShapeRenderer;
                 essr.TesselateShape();
 
                 CairoFont smallfont = CairoFont.WhiteSmallText();
@@ -108,7 +110,6 @@ namespace Vintagestory.GameContent
 
                     AppliedSkinnablePartVariant appliedVar = skinMod.AppliedSkinParts.FirstOrDefault(sp => sp.PartCode == code);
 
-
                     if (skinpart.Type == EnumSkinnableType.Texture && !skinpart.UseDropDown)
                     {
                         int selectedIndex = 0;
@@ -121,19 +122,19 @@ namespace Vintagestory.GameContent
                             if (appliedVar?.Code == skinpart.Variants[i].Code) selectedIndex = i;
                         }
 
-                        Composers["createcharacter"].AddRichtext(Lang.Get("skinpart-"+code), CairoFont.WhiteSmallText(), bounds = bounds.BelowCopy(0, 10).WithFixedSize(210, 22));
-                        Composers["createcharacter"].AddColorListPicker(colors, (index) => onToggleSkinPartColor(code, index), bounds = bounds.BelowCopy(0, 0).WithFixedSize(colorIconSize, colorIconSize), 180, "picker-" + code);
+                        createCharacterComposer.AddRichtext(Lang.Get("skinpart-"+code), CairoFont.WhiteSmallText(), bounds = bounds.BelowCopy(0, 10).WithFixedSize(210, 22));
+                        createCharacterComposer.AddColorListPicker(colors, (index) => onToggleSkinPartColor(code, index), bounds = bounds.BelowCopy(0, 0).WithFixedSize(colorIconSize, colorIconSize), 180, "picker-" + code);
 
                         for (int i = 0; i < colors.Length; i++)
                         {
-                            var picker = Composers["createcharacter"].GetColorListPicker("picker-" + code + "-" + i);
+                            var picker = createCharacterComposer.GetColorListPicker("picker-" + code + "-" + i);
                             picker.ShowToolTip = true;
                             picker.TooltipText = Lang.Get("color-" + skinpart.Variants[i].Code);
                             
                             //Console.WriteLine("\"" + Lang.Get("color-" + skinpart.Variants[i].Code) + "\": \""+ skinpart.Variants[i].Code + "\"");
                         }
 
-                        Composers["createcharacter"].ColorListPickerSetValue("picker-" + code, selectedIndex);
+                        createCharacterComposer.ColorListPickerSetValue("picker-" + code, selectedIndex);
                     }
                     else
                     {
@@ -153,15 +154,15 @@ namespace Vintagestory.GameContent
                         }
 
 
-                        Composers["createcharacter"].AddRichtext(Lang.Get("skinpart-" + code), CairoFont.WhiteSmallText(), bounds = bounds.BelowCopy(0, 10).WithFixedSize(210, 22));
+                        createCharacterComposer.AddRichtext(Lang.Get("skinpart-" + code), CairoFont.WhiteSmallText(), bounds = bounds.BelowCopy(0, 10).WithFixedSize(210, 22));
 
                         string tooltip = Lang.GetIfExists("skinpartdesc-" + code);
                         if (tooltip != null)
                         {
-                            Composers["createcharacter"].AddHoverText(tooltip, CairoFont.WhiteSmallText(), 300, bounds = bounds.FlatCopy());
+                            createCharacterComposer.AddHoverText(tooltip, CairoFont.WhiteSmallText(), 300, bounds = bounds.FlatCopy());
                         }
 
-                        Composers["createcharacter"].AddDropDown(values, names, selectedIndex, (variantcode, selected) => onToggleSkinPartColor(code, variantcode), bounds = bounds.BelowCopy(0, 0).WithFixedSize(200, 25), "dropdown-" + code);
+                        createCharacterComposer.AddDropDown(values, names, selectedIndex, (variantcode, selected) => onToggleSkinPartColor(code, variantcode), bounds = bounds.BelowCopy(0, 0).WithFixedSize(200, 25), "dropdown-" + code);
                     }
 
                     prevbounds = bounds.FlatCopy();
@@ -173,7 +174,7 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-                Composers["createcharacter"]
+                createCharacterComposer
                     .AddInset(insetSlotBounds, 2)
                     .AddToggleButton(Lang.Get("Show dressed"), smallfont, OnToggleDressOnOff, toggleButtonBounds, "showdressedtoggle")
                     .AddButton(Lang.Get("Randomize"), () => { return OnRandomizeSkin(new Dictionary<string, string>()); }, ElementBounds.Fixed(0, dlgHeight - 25).WithAlignment(EnumDialogArea.LeftFixed).WithFixedPadding(8, 6), CairoFont.WhiteSmallText(), EnumButtonStyle.Small)
@@ -183,12 +184,12 @@ namespace Vintagestory.GameContent
                     .AddSmallButton(Lang.Get("Confirm Skin"), OnNext, ElementBounds.Fixed(0, dlgHeight - 25).WithAlignment(EnumDialogArea.RightFixed).WithFixedPadding(12, 6), EnumButtonStyle.Normal)
                 ;
 
-                Composers["createcharacter"].GetToggleButton("showdressedtoggle").SetValue(!charNaked);
+                createCharacterComposer.GetToggleButton("showdressedtoggle").SetValue(!charNaked);
             }
 
             if (curTab == 1)
             {
-                var essr = capi.World.Player.Entity.Properties.Client.Renderer as EntitySkinnableShapeRenderer;
+                var essr = capi.World.Player.Entity.Properties.Client.Renderer as EntityShapeRenderer;
                 essr.TesselateShape();
                 
                 ypos -= 10;
@@ -209,7 +210,7 @@ namespace Vintagestory.GameContent
 
                 ElementBounds charTextBounds = ElementBounds.Fixed(0, 0, 480, 100).FixedUnder(prevButtonBounds, 20).FixedRightOf(insetSlotBounds, 20);
 
-                Composers["createcharacter"]
+                createCharacterComposer
                     .AddInset(insetSlotBounds, 2)
 
                     .AddIconButton("left", (on) => changeClass(-1), prevButtonBounds.FlatCopy())
@@ -224,19 +225,21 @@ namespace Vintagestory.GameContent
                 changeClass(0);
             }
 
-            var tabElem = Composers["createcharacter"].GetHorizontalTabs("tabs");
+            var tabElem = createCharacterComposer.GetHorizontalTabs("tabs");
             tabElem.unscaledTabSpacing = 20;
             tabElem.unscaledTabPadding = 10;
             tabElem.activeElement = curTab;
 
-            Composers["createcharacter"].Compose();
+            createCharacterComposer.Compose();
         }
 
         private bool OnRandomizeSkin(Dictionary<string, string> preselection)
         {
             var entity = capi.World.Player.Entity;
-            var essr = entity.Properties.Client.Renderer as EntitySkinnableShapeRenderer;
-            essr.doReloadShapeAndSkin = false;
+            
+            //essr.doReloadShapeAndSkin = false;
+            var bh = capi.World.Player.Entity.GetBehavior<EntityBehaviorPlayerInventory>();
+            bh.doReloadShapeAndSkin = false;
 
             modSys.randomizeSkin(entity, preselection);
             var skinMod = entity.GetBehavior<EntityBehaviorExtraSkinnable>();
@@ -258,8 +261,9 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            essr.doReloadShapeAndSkin = true;
-            essr.TesselateShape();
+            //essr.doReloadShapeAndSkin = true;
+            bh.doReloadShapeAndSkin = true;
+            reTesselate();
 
             return true;
         }
@@ -267,9 +271,10 @@ namespace Vintagestory.GameContent
         private void OnToggleDressOnOff(bool on)
         {
             charNaked = !on;
-            capi.World.Player.Entity.hideClothing = charNaked;
-            var essr = capi.World.Player.Entity.Properties.Client.Renderer as EntitySkinnableShapeRenderer;
-            essr.TesselateShape();
+            var bh = capi.World.Player.Entity.GetBehavior<EntityBehaviorPlayerInventory>();
+            bh.hideClothing = charNaked;
+            //capi.World.Player.Entity.hideClothing = charNaked;
+            reTesselate();
         }
 
         private void onToggleSkinPartColor(string partCode, string variantCode)
@@ -312,7 +317,7 @@ namespace Vintagestory.GameContent
             }
 
             ComposeGuis();
-            var essr = capi.World.Player.Entity.Properties.Client.Renderer as EntitySkinnableShapeRenderer;
+            var essr = capi.World.Player.Entity.Properties.Client.Renderer as EntityShapeRenderer;
             essr.TesselateShape();
 
             if (capi.World.Player.WorldData.CurrentGameMode == EnumGameMode.Guest || capi.World.Player.WorldData.CurrentGameMode == EnumGameMode.Survival)
@@ -335,9 +340,10 @@ namespace Vintagestory.GameContent
 
             modSys.ClientSelectionDone(characterInv, chclass.Code, didSelect);
 
-            capi.World.Player.Entity.hideClothing = false;
-            var essr = capi.World.Player.Entity.Properties.Client.Renderer as EntitySkinnableShapeRenderer;
-            essr.TesselateShape();
+            var bh = capi.World.Player.Entity.GetBehavior<EntityBehaviorPlayerInventory>();
+            bh.hideClothing = false;
+            //capi.World.Player.Entity.hideClothing = false;
+            reTesselate();
         }
 
 
@@ -417,50 +423,19 @@ namespace Vintagestory.GameContent
 
             modSys.setCharacterClass(capi.World.Player.Entity, chclass.Code, true);
 
-            var essr = capi.World.Player.Entity.Properties.Client.Renderer as EntitySkinnableShapeRenderer;
-            essr.TesselateShape();
+            reTesselate();
         }
 
+        protected void reTesselate()
+        {
+            var essr = capi.World.Player.Entity.Properties.Client.Renderer as EntityShapeRenderer;
+            essr.TesselateShape();
+        }
         
         public void PrepAndOpen()
         {
-            GatherDresses(EnumCharacterDressType.Foot);
-            GatherDresses(EnumCharacterDressType.Hand);
-            GatherDresses(EnumCharacterDressType.Shoulder);
-            GatherDresses(EnumCharacterDressType.UpperBody);
-            GatherDresses(EnumCharacterDressType.LowerBody);
             TryOpen();
         }
-
-        private void GatherDresses(EnumCharacterDressType type)
-        {
-            List<ItemStack> dresses = new List<ItemStack>();
-            dresses.Add(null);
-
-            string stringtype = type.ToString().ToLowerInvariant();
-
-            IList<Item> items = capi.World.Items;
-
-            for (int i = 0; i < items.Count; i++)
-            {
-                Item item = items[i];
-                if (item == null || item.Code == null || item.Attributes == null) continue;
-
-                string clothcat = item.Attributes["clothescategory"]?.AsString();
-                bool allow = item.Attributes["inCharacterCreationDialog"]?.AsBool() == true;
-
-                if (allow && clothcat?.ToLowerInvariant() == stringtype)
-                {
-                    dresses.Add(new ItemStack(item));
-                }
-            }
-
-            DressesByDressType[type] = dresses.ToArray();
-            DressPositionByTressType[type] = 0;
-        }
-        
-
-
 
         public override bool CaptureAllInputs()
         {

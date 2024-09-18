@@ -23,7 +23,7 @@ namespace Vintagestory.GameContent
         EntityTalkUtil TalkUtil { get; }
     }
 
-    public class EntityTrader : EntityHumanoid, ITalkUtil
+    public class EntityTrader : EntityDressedHumanoid, ITalkUtil
     {
         public static OrderedDictionary<string, TraderPersonality> Personalities = new OrderedDictionary<string, TraderPersonality>()
         {
@@ -52,20 +52,12 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public string[] OutfitCodes
-        {
-            get { return (WatchedAttributes["outfitcodes"] as StringArrayAttribute)?.value; }
-            set {
-                if (value == null) WatchedAttributes.RemoveAttribute("outfitcodes");
-                WatchedAttributes["outfitcodes"] = new StringArrayAttribute(value); 
-            }
-        }
 
         public EntityTalkUtil TalkUtil => talkUtil;
 
         public EntityTrader()
         {
-            AnimManager = new TraderAnimationManager();
+            AnimManager = new PersonalizedAnimationManager();
         }
 
         public override void Initialize(EntityProperties properties, ICoreAPI api, long InChunkIndex3d)
@@ -100,10 +92,6 @@ namespace Vintagestory.GameContent
                     api.World.Logger.VerboseDebug("{0}", Properties.Server.Attributes["tradeProps"].ToJsonToken());
                 }
 
-                if (OutfitCodes == null)
-                {
-                    OutfitCodes = api.ModLoader.GetModSystem<TraderOutfits>().GetRandomOutfit();
-                }
                 
             } else
             {
@@ -126,7 +114,7 @@ namespace Vintagestory.GameContent
                 RefreshBuyingSellingInventory();
             }
 
-            (AnimManager as TraderAnimationManager).Personality = this.Personality;
+            (AnimManager as PersonalizedAnimationManager).Personality = this.Personality;
             this.Personality = this.Personality; // to update the talkutil
         }
 
@@ -150,7 +138,7 @@ namespace Vintagestory.GameContent
                 }
 
                 Personality = Personalities.GetKeyAtIndex(World.Rand.Next(Personalities.Count));
-                (AnimManager as TraderAnimationManager).Personality = this.Personality;
+                (AnimManager as PersonalizedAnimationManager).Personality = this.Personality;
             }
         }
 
@@ -170,90 +158,6 @@ namespace Vintagestory.GameContent
 
             taskAi.TaskManager.OnShouldExecuteTask +=
                (task) => (ConversableBh == null || ConversableBh.ControllerByPlayer.Count == 0 || (task is AiTaskIdle || task is AiTaskSeekEntity || task is AiTaskGotoEntity)) && tradingWithPlayer == null;
-        }
-
-
-        public override void OnTesselation(ref Shape entityShape, string shapePathForLogging)
-        {
-            base.OnTesselation(ref entityShape, shapePathForLogging);
-
-            // Make a copy so we don't mess up the original
-            Shape newShape = entityShape.Clone();
-            newShape.ResolveAndFindJoints(Api.Logger, shapePathForLogging, "head");
-            entityShape = newShape;
-
-            string[] outfitCodes = OutfitCodes;
-            TexturedWeightedCompositeShape[] cshapes = Api.ModLoader.GetModSystem<TraderOutfits>().Outfit2Shapes(OutfitCodes);
-
-            for (int i = 0; i < outfitCodes.Length; i++)
-            {
-                if (cshapes[i].Base == null) continue;
-
-                addGearToShape(outfitCodes[i], cshapes[i], newShape, shapePathForLogging, null, cshapes[i].Textures);
-            }
-        }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="prefixcode">Any unique Identifier</param>
-        /// <param name="cshape"></param>
-        /// <param name="entityShape"></param>
-        /// <param name="shapePathForLogging"></param>
-        /// <param name="disableElements"></param>
-        /// <returns></returns>
-        protected Shape addGearToShape(string prefixcode, CompositeShape cshape, Shape entityShape, string shapePathForLogging, string[] disableElements = null, Dictionary<string, AssetLocation> textureOverrides = null)
-        {
-            AssetLocation shapePath = cshape.Base.CopyWithPath("shapes/" + cshape.Base.Path + ".json");
-
-            if (disableElements != null)
-            {
-                foreach (var val in disableElements)
-                {
-                    entityShape.RemoveElementByName(val);
-                }
-            }
-
-            Shape armorShape = Shape.TryGet(Api, shapePath);
-            if (armorShape == null)
-            {
-                Api.World.Logger.Warning("Compositshape {0} (code: {2}) defined but not found or errored, was supposed to be at {1}. Part will be invisible.", cshape.Base, shapePath, prefixcode);
-                return null;
-            }
-
-            var capi = Api as ICoreClientAPI;
-
-            if (textureOverrides != null)
-            {
-                foreach (var val in textureOverrides)
-                {
-                    armorShape.Textures[prefixcode + "-" + val.Key] = val.Value;
-                }
-            }
-
-            foreach (var val in armorShape.Textures)
-            {
-                entityShape.TextureSizes[prefixcode + "-" + val.Key] = new int[] { armorShape.TextureWidth, armorShape.TextureHeight };
-            }
-
-            var textures = Properties.Client.Textures;
-            entityShape.StepParentShape(armorShape, prefixcode, shapePath.ToShortString(), shapePathForLogging, Api.Logger, (texcode, loc) =>
-            {
-                var cmpt = textures[prefixcode + "-" + texcode] = new CompositeTexture(loc);
-                cmpt.Bake(capi.Assets);
-                capi.EntityTextureAtlas.GetOrInsertTexture(cmpt.Baked.TextureFilenames[0], out int textureSubid, out _);
-                cmpt.Baked.TextureSubId = textureSubid;
-            });
-
-            foreach (var val in entityShape.Textures)
-            {
-                if (!textures.ContainsKey(val.Key))
-                {
-                    textures[val.Key] = new CompositeTexture(val.Value);
-                }
-            }
-
-            return entityShape;
         }
 
         private void RefreshBuyingSellingInventory(float refreshChance = 1.1f)
@@ -557,7 +461,7 @@ namespace Vintagestory.GameContent
 
             Inventory.FromTreeAttributes(GetOrCreateTradeStore());
 
-            (AnimManager as TraderAnimationManager).Personality = this.Personality;
+            (AnimManager as PersonalizedAnimationManager).Personality = this.Personality;
         }
 
         public override void ToBytes(BinaryWriter writer, bool forClient)

@@ -35,10 +35,10 @@ namespace Vintagestory.GameContent
 
         public Entity occupier;
 
-        private int[] parentGenerations = new int[10];
-        private AssetLocation[] chickNames = new AssetLocation[10];
-        private double timeToIncubate;
-        private double occupiedTimeLast;
+        protected int[] parentGenerations = new int[10];
+        protected AssetLocation[] chickNames = new AssetLocation[10];
+        protected double timeToIncubate;
+        protected double occupiedTimeLast;
 
 
         public BlockEntityHenBox()
@@ -82,7 +82,7 @@ namespace Vintagestory.GameContent
             parentGenerations[eggs] = entity.WatchedAttributes.GetInt("generation", 0);
             chickNames[eggs] = chickCode == null ? null : entity.Code.CopyWithPath(chickCode);
             eggs++;
-            Block replacementBlock = Api.World.GetBlock(new AssetLocation(Block.FirstCodePart() + "-" + eggs + (eggs > 1 ? "eggs" : "egg")));
+            Block replacementBlock = Api.World.GetBlock(Block.CodeWithVariant("eggCount", eggs + ((eggs > 1) ? "eggs" : "egg")));
             if (replacementBlock == null)
             {
                 return false;

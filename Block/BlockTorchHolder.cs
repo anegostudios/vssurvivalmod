@@ -26,7 +26,7 @@ namespace Vintagestory.GameContent
 
                     if (Sounds?.Place != null)
                     {
-                        world.PlaySoundAt(Sounds.Place, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, byPlayer);
+                        world.PlaySoundAt(Sounds.Place, blockSel.Position, 0.1, byPlayer);
                     }
 
                     return true;
@@ -41,7 +41,7 @@ namespace Vintagestory.GameContent
 
                     if (Sounds?.Place != null)
                     {
-                        world.PlaySoundAt(Sounds.Place, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, byPlayer);
+                        world.PlaySoundAt(Sounds.Place, blockSel.Position, 0.1, byPlayer);
                     }
 
                     return true;

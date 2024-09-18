@@ -449,6 +449,7 @@ namespace Vintagestory.GameContent
         public TransitionableProperties PerishableProps;
         public bool DirtyPot = false;
         public string DirtyPotOutput = "";
+        public int DirtyPotOutputQuantity = 1;
 
         public static Dictionary<string, ICookingRecipeNamingHelper> NamingRegistry = new Dictionary<string, ICookingRecipeNamingHelper>();
 
@@ -620,6 +621,7 @@ namespace Vintagestory.GameContent
             PerishableProps.ToBytes(writer);
             writer.Write(DirtyPot);
             writer.Write(DirtyPotOutput ?? "");
+            writer.Write(DirtyPotOutputQuantity);
 
             //      CanBeServedInto.ToBytes(writer);
         }
@@ -653,6 +655,14 @@ namespace Vintagestory.GameContent
 
             DirtyPot = reader.ReadBoolean();
             DirtyPotOutput = reader.ReadString();
+            try
+            {
+                DirtyPotOutputQuantity = reader.ReadInt32();
+            }
+            catch (EndOfStreamException)
+            {
+                DirtyPotOutputQuantity = 1;
+            }
        //     CanBeServedInto = new JsonItemStack();
        //     CanBeServedInto.FromBytes(reader, resolver.ClassRegistry);
        //     CanBeServedInto.Resolve(resolver, "[FromBytes]");

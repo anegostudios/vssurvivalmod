@@ -3,18 +3,18 @@ using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
     public class BlockBehaviorCanIgnite : BlockBehavior
     {
-        static List<ItemStack> canIgniteStacks = new List<ItemStack>();
-        static List<ItemStack> canIgniteStacksWithFirestarter = new List<ItemStack>();
-
         static public List<ItemStack> CanIgniteStacks(ICoreAPI api, bool withFirestarter)
         {
-            if (canIgniteStacks.Count == 0)
-            {
+            List<ItemStack> canIgniteStacks = ObjectCacheUtil.GetOrCreate(api, "canIgniteStacks", () => {
+                var canIgniteStacks = new List<ItemStack>();
+                var canIgniteStacksWithFirestarter = new List<ItemStack>();
+
                 foreach (CollectibleObject obj in api.World.Collectibles)
                 {
                     if (obj is Block block)
@@ -35,23 +35,20 @@ namespace Vintagestory.GameContent
                         canIgniteStacksWithFirestarter.AddRange(stacks);
                     }
                 }
-            }
+
+                ObjectCacheUtil.GetOrCreate(api, "canIgniteStacksWithFirestarter", () => canIgniteStacksWithFirestarter);
+
+                return canIgniteStacks;
+            });
+
+            List<ItemStack> canIgniteStacksWithFirestarter = ObjectCacheUtil.GetOrCreate(api, "canIgniteStacksWithFirestarter", () => new List<ItemStack>());
+
+
 
             return withFirestarter ? canIgniteStacksWithFirestarter : canIgniteStacks;
         }
 
-        public override void OnUnloaded(ICoreAPI api)
-        {
-            canIgniteStacks.Clear();
-            canIgniteStacksWithFirestarter.Clear();
-        }
-
-
-        public BlockBehaviorCanIgnite(Block block) : base(block)
-        {
-        }
-
-
+        public BlockBehaviorCanIgnite(Block block) : base(block) { }
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling, ref EnumHandling blockHandling)
         {
@@ -111,32 +108,20 @@ namespace Vintagestory.GameContent
 
             handling = EnumHandling.PreventDefault;
 
-            if (byEntity.World is IClientWorldAccessor)
+            if (byEntity.World is IClientWorldAccessor && secondsUsed > 0.25f && (int)(30 * secondsUsed) % 2 == 1)
             {
-                ModelTransform tf = new ModelTransform();
-                tf.EnsureDefaultValues();
+                Random rand = byEntity.World.Rand;
+                Vec3d pos = blockSel.Position.ToVec3d().Add(blockSel.HitPosition).Add(rand.NextDouble()*0.25 - 0.125, rand.NextDouble() * 0.25 - 0.125, rand.NextDouble() * 0.25 - 0.125);
 
-                tf.Translation.Set(0, Math.Min(1.1f / 3, secondsUsed * 4 / 3f)/2, -Math.Min(1.1f, secondsUsed * 4));
-                tf.Rotation.X = -Math.Min(30, secondsUsed * 90 * 2f);
-                tf.Rotation.Z = -Math.Min(20, secondsUsed * 90 * 4f);
-                byEntity.Controls.UsingHeldItemTransformBefore = tf;
+                Block blockFire = byEntity.World.GetBlock(new AssetLocation("fire"));
 
+                AdvancedParticleProperties props = blockFire.ParticleProperties[blockFire.ParticleProperties.Length - 1].Clone();
+                props.basePos = pos;
+                props.Quantity.avg = 0.5f;
 
-                if (secondsUsed > 0.25f && (int)(30 * secondsUsed) % 2 == 1)
-                {
-                    Random rand = byEntity.World.Rand;
-                    Vec3d pos = blockSel.Position.ToVec3d().Add(blockSel.HitPosition).Add(rand.NextDouble()*0.25 - 0.125, rand.NextDouble() * 0.25 - 0.125, rand.NextDouble() * 0.25 - 0.125);
+                byEntity.World.SpawnParticles(props, byPlayer);
 
-                    Block blockFire = byEntity.World.GetBlock(new AssetLocation("fire"));
-
-                    AdvancedParticleProperties props = blockFire.ParticleProperties[blockFire.ParticleProperties.Length - 1].Clone();
-                    props.basePos = pos;
-                    props.Quantity.avg = 0.5f;
-
-                    byEntity.World.SpawnParticles(props, byPlayer);
-
-                    props.Quantity.avg = 0;
-                }
+                props.Quantity.avg = 0;
             }
 
 
@@ -182,7 +167,7 @@ namespace Vintagestory.GameContent
                 if (block.BlockId == 0)
                 {
                     byEntity.World.BlockAccessor.SetBlock(byEntity.World.GetBlock(new AssetLocation("fire")).BlockId, bpos);
-                    BlockEntity befire = byEntity.World.BlockAccessor.GetBlockEntity(bpos) as BlockEntity;
+                    BlockEntity befire = byEntity.World.BlockAccessor.GetBlockEntity(bpos);
                     befire?.GetBehavior<BEBehaviorBurning>()?.OnFirePlaced(blockSel.Face, (byEntity as EntityPlayer).PlayerUID);
                 }
             }

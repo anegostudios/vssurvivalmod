@@ -145,11 +145,11 @@ namespace Vintagestory.GameContent
                     Entity e = val.Value.Entity;
                     if (e is EntityPlayer)
                     {
-                        Api.World.Logger.Debug("Teleporting player {0} to {1}", (e as EntityPlayer).GetBehavior<EntityBehaviorNameTag>().DisplayName, tpTarget);
+                        Api.World.Logger.Audit("Teleporting player {0} from {1} to {2}", (e as EntityPlayer).GetBehavior<EntityBehaviorNameTag>().DisplayName, e.Pos.AsBlockPos, tpTarget);
                     }
                     else
                     {
-                        Api.World.Logger.Debug("Teleporting entity {0} to {1}", e.Code, tpTarget);
+                        Api.World.Logger.Audit("Teleporting entity {0} from {1} to {2}", e.Code, e.Pos.AsBlockPos, tpTarget);
                     }
 
                     didTeleport(val.Value.Entity);

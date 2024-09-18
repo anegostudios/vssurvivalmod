@@ -263,7 +263,7 @@ namespace Vintagestory.GameContent
                 sourceSlot.TryPutInto(Api.World, OreSlot, moveableq);
                 MarkDirty();
 
-                Api.World.PlaySoundAt(OreSoundLocation, Pos.X, Pos.Y, Pos.Z, byPlayer);
+                Api.World.PlaySoundAt(OreSoundLocation, Pos, 0, byPlayer);
 
                 return prevsize != sourceSlot.StackSize;
             }
@@ -281,7 +281,7 @@ namespace Vintagestory.GameContent
                 sourceSlot.TryPutInto(Api.World, FuelSlot, moveableq);
                 MarkDirty();
 
-                Api.World.PlaySoundAt(FuelSoundLocation, Pos.X, Pos.Y, Pos.Z, byPlayer);
+                Api.World.PlaySoundAt(FuelSoundLocation, Pos, 0, byPlayer);
 
                 return prevsize != sourceSlot.StackSize;
             }

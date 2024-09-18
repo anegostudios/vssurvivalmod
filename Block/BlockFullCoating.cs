@@ -28,8 +28,8 @@ namespace Vintagestory.GameContent
         };
 
         string[] cornerCodes = new string[] { "wn", "ne", "es", "sw" };
-        int[] cornerOffest = new int[] { 
-            -1 * TileSideEnum.MoveIndex[1] -1 * TileSideEnum.MoveIndex[2], 
+        int[] cornerOffest = new int[] {
+            -1 * TileSideEnum.MoveIndex[1] -1 * TileSideEnum.MoveIndex[2],
             1 * TileSideEnum.MoveIndex[1] -1 * TileSideEnum.MoveIndex[2],
             1 * TileSideEnum.MoveIndex[1] + 1 * TileSideEnum.MoveIndex[2],
             -1 * TileSideEnum.MoveIndex[1] + 1 * TileSideEnum.MoveIndex[2]
@@ -163,7 +163,7 @@ namespace Vintagestory.GameContent
                         selectionBoxes[i] = new Cuboidf(0, 0, 0, 1, 0.0625f, 1);
                         break;
                 }
-                
+
             }
         }
 
@@ -178,7 +178,7 @@ namespace Vintagestory.GameContent
             return TryPlaceBlockForWorldGen(world.BlockAccessor, blockSel.Position, blockSel.Face);
         }
 
-        
+
         public override BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)
         {
             return GetHandbookDropsFromBreakDrops(handbookStack, forPlayer);
@@ -225,14 +225,14 @@ namespace Vintagestory.GameContent
             int diff = newFacingLetters.Length - ownFacings.Length;
             for (int i = 0; i < diff; i++)
             {
-                world.SpawnItemEntity(Drops[0].GetNextItemStack(), pos.ToVec3d().AddCopy(0.5, 0.5, 0.5));
+                world.SpawnItemEntity(Drops[0].GetNextItemStack(), pos);
             }
 
             Block newblock = world.GetBlock(CodeWithVariant("coating", newFacingLetters));
             world.BlockAccessor.SetBlock(newblock.BlockId, pos);
         }
 
-        
+
 
 
         public override bool CanAttachBlockAt(IBlockAccessor world, Block block, BlockPos pos, BlockFacing blockFace, Cuboidi attachmentArea = null)
@@ -259,7 +259,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, IRandom worldGenRand, BlockPatchAttributes attributes = null)
         {
             return TryPlaceBlockForWorldGen(blockAccessor, pos, onBlockFace);
         }

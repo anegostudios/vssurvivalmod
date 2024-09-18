@@ -1,4 +1,5 @@
 ﻿using Cairo;
+using System;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -12,38 +13,80 @@ namespace Vintagestory.GameContent
         private ICoreClientAPI capi;
 
         GuiElementTextButton startStopButton;
+        GuiElementTextButton restartButton;
         ElementBounds baseBounds;
         ModSystemTutorial modsys;
 
         bool tutorialActive;
+        float prevProgress;
 
         public GuiHandbookTutorialPage(ICoreClientAPI capi, string pagecode)
         {
             this.pageCode = pagecode;
             this.capi = capi;
-
-            modsys = capi.ModLoader.GetModSystem<ModSystemTutorial>();
-
-            tutorialActive = modsys.CurrentTutorial == pageCode.Substring("tutorial-".Length);
-
             this.Title = Lang.Get("title-" + pagecode);
             this.Text = "";
 
+            modsys = capi.ModLoader.GetModSystem<ModSystemTutorial>();
             recomposeButton();
         }
 
         private void recomposeButton()
         {
+            tutorialActive = modsys.CurrentTutorial == pageCode.Substring("tutorial-".Length);
+
             startStopButton?.Dispose();
+            restartButton?.Dispose();
+
             baseBounds = ElementBounds.Fixed(0, 0, 400, 100).WithParent(capi.Gui.WindowBounds);
             startStopButton = new GuiElementTextButton(capi, Lang.Get("Start"), CairoFont.WhiteSmallText(), CairoFont.WhiteSmallText(), onStartStopTutorial, ElementBounds.Fixed(0, 0).WithFixedPadding(6, 3).WithParent(baseBounds), EnumButtonStyle.Normal);
+            restartButton = null;
 
-            startStopButton.Text = tutorialActive ? Lang.Get("Stop Tutorial") : Lang.Get("Start Tutorial");
+            prevProgress = modsys.GetTutorialProgress(pageCode.Substring("tutorial-".Length));
 
+            if (tutorialActive)
+            {
+                startStopButton.Text = Lang.Get("Stop Tutorial");
+            }
+            else
+            {
+                if (prevProgress >= 1)
+                {
+                    startStopButton = null;
+                }
+                else
+                {
+                    startStopButton.Text = Lang.Get(prevProgress > 0 ? "Resume Tutorial" : "Start Tutorial");
+                }
+            }
+
+            if (startStopButton != null) compose(startStopButton);
+
+            if ((!tutorialActive && prevProgress > 0) || prevProgress >= 1)
+            {
+                var rbounds = ElementBounds.Fixed(0, 0).WithFixedPadding(6, 3).WithParent(baseBounds);
+                restartButton = new GuiElementTextButton(capi, Lang.Get("Restart"), CairoFont.WhiteSmallText(), CairoFont.WhiteSmallText(), onRestartTutorial, rbounds, EnumButtonStyle.Normal);
+                compose(restartButton);
+
+                rbounds.fixedX -= restartButton.Bounds.OuterWidth/RuntimeEnv.GUIScale + 5;
+                rbounds.CalcWorldBounds();
+            }
+        }
+
+        private bool onRestartTutorial()
+        {
+            modsys.StartTutorial(pageCode.Substring("tutorial-".Length), true);
+            capi.Event.EnqueueMainThreadTask(() => capi.Gui.LoadedGuis.FirstOrDefault(dlg => dlg is GuiDialogSurvivalHandbook)?.TryClose(), "closehandbook");
+            recomposeButton();
+            return true;
+        }
+
+        private void compose(GuiElementTextButton button)
+        {
             ImageSurface surface = new ImageSurface(Format.Argb32, 1, 1);
             Context ctx = new Context(surface);
-            startStopButton.BeforeCalcBounds();
-            startStopButton.ComposeElements(ctx, surface);
+            button.BeforeCalcBounds();
+            button.ComposeElements(ctx, surface);
             ctx.Dispose();
             surface.Dispose();
         }
@@ -54,7 +97,6 @@ namespace Vintagestory.GameContent
             {
                 tutorialActive = true;
                 modsys.StartTutorial(pageCode.Substring("tutorial-".Length));
-
                 capi.Event.EnqueueMainThreadTask(() => capi.Gui.LoadedGuis.FirstOrDefault(dlg => dlg is GuiDialogSurvivalHandbook)?.TryClose(), "closehandbook");
             } else
             {
@@ -76,15 +118,23 @@ namespace Vintagestory.GameContent
         {
             base.RenderListEntryTo(capi, dt, x, y, cellWdith, cellHeight);
 
-            if (startStopButton == null)
+            if (startStopButton == null && restartButton == null)
             {
                 recomposeButton();
             }
 
-            baseBounds.absFixedX = x + cellWdith - startStopButton.Bounds.OuterWidth - 10;
+            float p = modsys.GetTutorialProgress(pageCode.Substring("tutorial-".Length));
+            if (p != prevProgress) recomposeButton();
+
+            baseBounds.absFixedX = x + cellWdith - (startStopButton?.Bounds.OuterWidth??0) - 10;
             baseBounds.absFixedY = y;
 
-            startStopButton.RenderInteractiveElements(dt);
+            startStopButton?.RenderInteractiveElements(dt);
+
+            if (restartButton != null)
+            {
+                restartButton?.RenderInteractiveElements(dt);
+            }
 
             if (tutorialActive && "tutorial-" + modsys.CurrentTutorial != pageCode)
             {
@@ -114,21 +164,27 @@ namespace Vintagestory.GameContent
         {
             startStopButton?.Dispose();
             startStopButton = null;
+
+            restartButton?.Dispose();
+            restartButton = null;
         }
 
         public void OnMouseMove(ICoreClientAPI api, MouseEvent args)
         {
             startStopButton?.OnMouseMove(api, args);
+            if (!args.Handled) restartButton?.OnMouseMove(api, args);
         }
 
         public void OnMouseDown(ICoreClientAPI api, MouseEvent args)
         {
             startStopButton?.OnMouseDown(api, args);
+            if (!args.Handled) restartButton?.OnMouseDown(api, args);
         }
 
         public void OnMouseUp(ICoreClientAPI api, MouseEvent args)
         {
             startStopButton?.OnMouseUp(api, args);
+            if (!args.Handled) restartButton?.OnMouseUp(api, args);
         }
     }
 }

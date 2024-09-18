@@ -30,8 +30,8 @@ namespace Vintagestory.GameContent
 
         public int[] UsableSlots {
             get {
-                (block as BlockBookshelf).UsableSlots.TryGetValue(type, out var slots); 
-                return slots; 
+                (block as BlockBookshelf).UsableSlots.TryGetValue(type, out var slots);
+                return slots;
             }
         }
 
@@ -42,19 +42,17 @@ namespace Vintagestory.GameContent
 
         void initShelf()
         {
-            if (Api == null || type == null || !(Block is BlockBookshelf)) return;
+            if (Api == null || type == null || Block is not BlockBookshelf bookshelf) return;
 
             if (Api.Side == EnumAppSide.Client)
             {
-                mesh = (Block as BlockBookshelf).GetOrCreateMesh(type, material);
+                mesh = bookshelf.GetOrCreateMesh(type, material);
                 mat = Matrixf.Create().Translate(0.5f, 0.5f, 0.5f).RotateY(MeshAngleRad).Translate(-0.5f, -0.5f, -0.5f).Values;
             }
 
-            if (!(block is BlockBookshelf)) return;
-
-            if (!(block as BlockBookshelf).UsableSlots.ContainsKey(type))
+            if (!bookshelf.UsableSlots.ContainsKey(type))
             {
-                type = (block as BlockBookshelf).UsableSlots.First().Key;
+                type = bookshelf.UsableSlots.First().Key;
             }
 
             var usableslots = UsableSlots;
@@ -82,8 +80,8 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockPlaced(byItemStack);
 
-            type = byItemStack?.Attributes.GetString("type");
-            material = byItemStack?.Attributes.GetString("material");
+            type ??= byItemStack?.Attributes.GetString("type");
+            material ??= byItemStack?.Attributes.GetString("material");
 
             initShelf();
         }
@@ -112,6 +110,13 @@ namespace Vintagestory.GameContent
                     if (TryPut(slot, blockSel))
                     {
                         Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
+                        var blockSelSelectionBoxIndex = blockSel.SelectionBoxIndex - 5;
+                        Api.World.Logger.Audit("{0} Put {1} into Bookshelf slotid {2} at {3}.",
+                            byPlayer.PlayerName,
+                            string.Format("1x{0}", inv[blockSelSelectionBoxIndex].GetStackName()),
+                            blockSelSelectionBoxIndex,
+                            Pos
+                        );
                         return true;
                     }
 
@@ -156,11 +161,17 @@ namespace Vintagestory.GameContent
                 {
                     AssetLocation sound = stack.Block?.Sounds?.Place;
                     Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
+                    Api.World.Logger.Audit("{0} Took {1} from Bookshelf slotid {2} at {3}.",
+                        byPlayer.PlayerName,
+                        string.Format("1x{0}", stack.GetName()),
+                        index,
+                        Pos
+                    );
                 }
 
                 if (stack.StackSize > 0)
                 {
-                    Api.World.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    Api.World.SpawnItemEntity(stack, Pos);
                 }
 
                 MarkDirty();

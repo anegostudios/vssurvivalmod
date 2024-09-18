@@ -67,7 +67,7 @@ namespace Vintagestory.GameContent
                 bool planted = ((BlockEntityFarmland)be).TryPlant(cropBlock);
                 if (planted)
                 {
-                    byEntity.World.PlaySoundAt(new AssetLocation("sounds/block/plant"), pos.X, pos.Y, pos.Z, byPlayer);
+                    byEntity.World.PlaySoundAt(new AssetLocation("sounds/block/plant"), pos, 0.4375, byPlayer);
 
                     ((byEntity as EntityPlayer)?.Player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
 

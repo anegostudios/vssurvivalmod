@@ -16,34 +16,25 @@ namespace Vintagestory.ServerMods
         TreeGenParams treeGenParams;
         float size;
 
-        [ThreadStatic]
-        private static Random rand;
-
         List<TreeGenBranch> branchesByDepth = new List<TreeGenBranch>();
-        ThreadLocal<LCGRandom> lcgrandTL;
 
         // Tree config
         TreeGenConfig config;
         private readonly ForestFloorSystem forestFloor;
 
-
-
         public TreeGen(TreeGenConfig config, int seed, ForestFloorSystem ffs)
         {
             this.config = config;
-            this.forestFloor = ffs;
-            lcgrandTL = new ThreadLocal<LCGRandom>(() => new LCGRandom(seed));
+            forestFloor = ffs;
         }
 
-        public void GrowTree(IBlockAccessor ba, BlockPos pos, TreeGenParams treeGenParams)
+        public void GrowTree(IBlockAccessor ba, BlockPos pos, TreeGenParams treeGenParams, IRandom random)
         {
-            Random rnd = rand ?? (rand = new Random(Environment.TickCount));
-            int treeSubType = rnd.Next(8);
-            lcgrandTL.Value.InitPositionSeed(pos.X, pos.Z);
+            int treeSubType = random.NextInt(8);
 
             this.blockAccessor = ba;
             this.treeGenParams = treeGenParams;
-            this.size = treeGenParams.size * config.sizeMultiplier + config.sizeVar.nextFloat(1, rnd);
+            this.size = treeGenParams.size * config.sizeMultiplier + config.sizeVar.nextFloat(1, random);
 
             pos.Up(config.yOffset);
 
@@ -56,21 +47,21 @@ namespace Vintagestory.ServerMods
             forestFloor.ClearOutline();
 
             TreeGenTrunk trunk = config.trunks[0];
-            float trunkHeight = Math.Max(0, trunk.dieAt.nextFloat(1, rnd));
-            float trunkWidthLoss = trunk.WidthLoss(rnd);
+            float trunkHeight = Math.Max(0, trunk.dieAt.nextFloat(1, random));
+            float trunkWidthLoss = trunk.WidthLoss(random);
             for (int i = 0; i < trunks.Length; i++)
             {
                 trunk = config.trunks[i];
 
-                if (rnd.NextDouble() <= trunk.probability)
+                if (random.NextDouble() <= trunk.probability)
                 {
                     branchesByDepth[0] = trunk;
 
                     growBranch(
-                        rnd,
+                        random,
                         0, pos, treeSubType, trunk.dx, 0f, trunk.dz,
-                        trunk.angleVert.nextFloat(1, rnd),
-                        trunk.angleHori.nextFloat(1, rnd),
+                        trunk.angleVert.nextFloat(1, random),
+                        trunk.angleHori.nextFloat(1, random),
                         size * trunk.widthMultiplier,
                         trunkHeight, trunkWidthLoss, trunks.Length > 1
                     );
@@ -79,12 +70,12 @@ namespace Vintagestory.ServerMods
 
             if (!treeGenParams.skipForestFloor)
             {
-                forestFloor.CreateForestFloor(ba, config, pos, lcgrandTL.Value, treeGenParams.treesInChunkGenerated);
+                forestFloor.CreateForestFloor(ba, config, pos, random, treeGenParams.treesInChunkGenerated);
             }
         }
 
 
-        private void growBranch(Random rand, int depth, BlockPos basePos, int treeSubType, float dx, float dy, float dz, float angleVerStart, float angleHorStart, float curWidth, float dieAt, float trunkWidthLoss, bool wideTrunk)
+        private void growBranch(IRandom rand, int depth, BlockPos basePos, int treeSubType, float dx, float dy, float dz, float angleVerStart, float angleHorStart, float curWidth, float dieAt, float trunkWidthLoss, bool wideTrunk)
         {
             if (depth > 30) { Console.WriteLine("TreeGen.growBranch() aborted, too many branches!"); return; }
 
@@ -103,7 +94,7 @@ namespace Vintagestory.ServerMods
             int iteration = 0;
             float sequencesPerIteration = 1f / (curWidth / widthloss);
 
-            
+
             float ddrag, angleVer, angleHor;
 
             // we want to place around the trunk/branch => offset the coordinates when growing stuff from the base
@@ -119,7 +110,7 @@ namespace Vintagestory.ServerMods
             {
                 curWidth -= widthloss;
                 if (widthlossCurve + curWidth / 20 < 1f) widthloss *= (widthlossCurve + curWidth / 20);
-                
+
                 currentSequence = sequencesPerIteration * (iteration - 1);
 
                 if (curWidth < dieAt) break;
@@ -140,7 +131,7 @@ namespace Vintagestory.ServerMods
                 dy += Math.Min(1, Math.Max(-1, GameMath.FastCos(angleVer) - ddrag));
                 dz += sinAngleVer * sinAngleHor / Math.Max(1, Math.Abs(ddrag));
 
-                int blockId = branch.getBlockId(curWidth, config.treeBlocks, this, treeSubType);
+                int blockId = branch.getBlockId(rand, curWidth, config.treeBlocks, this, treeSubType);
                 if (blockId == 0) return;
 
                 currentPos.Set(basePos.X + dx, basePos.Y + dy, basePos.Z + dz);
@@ -181,7 +172,7 @@ namespace Vintagestory.ServerMods
             }
         }
 
-        private float GrowBranchesHere(int branchQuantity, TreeGenBranch branch, int newDepth, Random rand, float curWidth, float branchWidthMulitplierStart, float currentSequence, float angleHor, float dx, float dy, float dz, BlockPos basePos, int treeSubType, float trunkWidthLoss)
+        private float GrowBranchesHere(int branchQuantity, TreeGenBranch branch, int newDepth, IRandom rand, float curWidth, float branchWidthMulitplierStart, float currentSequence, float angleHor, float dx, float dy, float dz, BlockPos basePos, int treeSubType, float trunkWidthLoss)
         {
             float branchWidth;
             float prevHorAngle = 0f;
@@ -236,7 +227,7 @@ namespace Vintagestory.ServerMods
         /// <summary>
         /// Place one tree block and any consequentials from that: maybe apply moss; maybe update the canopy outline for forest floor purposes; maybe place vines
         /// </summary>
-        private void PlaceBlockEtc(int blockId, BlockPos currentPos, Random rand, float dx, float dz)
+        private void PlaceBlockEtc(int blockId, BlockPos currentPos, IRandom rand, float dx, float dz)
         {
             blockAccessor.SetBlock(blockId, currentPos);
 
@@ -253,7 +244,7 @@ namespace Vintagestory.ServerMods
                     {
                         blockAccessor.SetDecor(config.treeBlocks.mossDecorBlock, currentPos, face);
                     }
-                    faceIndex += rand.Next(4);
+                    faceIndex += rand.NextInt(4);
                 }
             }
 
@@ -286,12 +277,11 @@ namespace Vintagestory.ServerMods
 
             if (treeGenParams.vinesGrowthChance > 0 && rand.NextDouble() < treeGenParams.vinesGrowthChance && config.treeBlocks.vinesBlock != null)
             {
-                BlockFacing facing = BlockFacing.HORIZONTALS[rand.Next(4)];
+                BlockFacing facing = BlockFacing.HORIZONTALS[rand.NextInt(4)];
 
                 BlockPos vinePos = currentPos.AddCopy(facing);
-                float cnt = 1 + rand.Next(11) * (treeGenParams.vinesGrowthChance + 0.2f);
+                float cnt = 1 + rand.NextInt(11) * (treeGenParams.vinesGrowthChance + 0.2f);
 
-                LCGRandom lcgrand = lcgrandTL.Value;
                 while (blockAccessor.GetBlockId(vinePos) == 0 && cnt-- > 0)
                 {
                     Block block = config.treeBlocks.vinesBlock;
@@ -301,15 +291,15 @@ namespace Vintagestory.ServerMods
                         block = config.treeBlocks.vinesEndBlock;
                     }
 
-                    block.TryPlaceBlockForWorldGen(blockAccessor, vinePos, facing, lcgrand);
+                    block.TryPlaceBlockForWorldGen(blockAccessor, vinePos, facing, rand);
                     vinePos.Down();
                 }
             }
         }
 
-        internal bool TriggerRandomOtherBlock()
+        internal bool TriggerRandomOtherBlock(IRandom lcgRandom)
         {
-            return rand.NextDouble() < treeGenParams.otherBlockChance * config.treeBlocks.otherLogChance;
+            return lcgRandom.NextDouble() < treeGenParams.otherBlockChance * config.treeBlocks.otherLogChance;
         }
 
 
@@ -332,8 +322,6 @@ namespace Vintagestory.ServerMods
 
             return (desiredBock.Replaceable > currentBlock.Replaceable) ? PlaceResumeState.CannotPlace : PlaceResumeState.CanPlace;
         }
-
-
     }
 
     public enum PlaceResumeState

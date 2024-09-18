@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -36,24 +37,24 @@ namespace Vintagestory.GameContent
 
         public virtual ItemStack[] GetContents(IWorldAccessor world, ItemStack itemstack)
         {
-            List<ItemStack> stacks = new List<ItemStack>();
             ITreeAttribute treeAttr = itemstack.Attributes.GetTreeAttribute("contents");
             if (treeAttr == null) return new ItemStack[0];
 
+            ItemStack[] stacks = new ItemStack[treeAttr.Count];
             foreach (var val in treeAttr)
             {
                 ItemStack stack = (val.Value as ItemstackAttribute).value;
                 if (stack != null) stack.ResolveBlockOrItem(world);
 
-                stacks.Add(stack);
+                if (int.TryParse(val.Key, out int index)) stacks[index] = stack;
             }
 
-            return stacks.ToArray();
+            return stacks;
         }
 
         public virtual ItemStack[] GetNonEmptyContents(IWorldAccessor world, ItemStack itemstack)
         {
-            return GetContents(world, itemstack)?.Where(stack => stack != null).ToArray();
+            return GetContents(world, itemstack).Where(stack => stack != null).ToArray();
         }
     }
 }

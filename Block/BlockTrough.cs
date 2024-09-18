@@ -4,7 +4,6 @@ using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -58,6 +57,8 @@ namespace Vintagestory.GameContent
                 }
                 else
                 {
+                    if (val.Content.ResolvedItemstack == null) continue;
+
                     var stack = val.Content.ResolvedItemstack.Clone();
                     stack.StackSize = val.QuantityPerFillLevel;
                     allowedstacks.Add(stack);

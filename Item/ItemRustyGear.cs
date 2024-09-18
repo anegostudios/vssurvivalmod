@@ -32,7 +32,7 @@ namespace Vintagestory.GameContent
                 {
                     Block moregearsblock = byEntity.World.GetBlock(block.CodeWithPart((q + 1) + "", 1));
                     byEntity.World.BlockAccessor.SetBlock(moregearsblock.BlockId, blockSel.Position);
-                    byEntity.World.PlaySoundAt(block.Sounds.Place, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, byPlayer);
+                    byEntity.World.PlaySoundAt(block.Sounds.Place, blockSel.Position, -0.5, byPlayer);
                     slot.TakeOut(1);
                 }
 

@@ -7,6 +7,7 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -19,143 +20,66 @@ namespace Vintagestory.GameContent
         void OnPourOver();
     }
 
-    public class BlockEntityIngotMold : BlockEntity, ILiquidMetalSink
+    public class BlockEntityIngotMold : BlockEntity, ILiquidMetalSink, ITemperatureSensitive, ITexPositionSource
     {
-        internal MeshData[] meshesByQuantity;
+        protected long lastPouringMarkdirtyMs;
+        protected IngotMoldRenderer ingotRenderer;
 
-        IngotMoldRenderer ingotRenderer;
+        public MeshData MoldMesh;
+        public ItemStack ContentsLeft;
+        public ItemStack ContentsRight;
+        public int FillLevelLeft = 0;
+        public int FillLevelRight = 0;
+        public int QuantityMolds = 1;
+        public bool FillSide;
+        public bool ShatteredLeft;
+        public bool ShatteredRight;
 
-        public ItemStack contentsLeft;
-        public ItemStack contentsRight;
+        public int RequiredUnits = 100;
 
-        public int fillLevelLeft = 0;
-        public int fillLevelRight = 0;
+        public float TemperatureLeft => ContentsLeft?.Collectible.GetTemperature(Api.World, ContentsLeft) ?? 0;
+        public float TemperatureRight => ContentsRight?.Collectible.GetTemperature(Api.World, ContentsRight) ?? 0;
+        public bool IsHardenedLeft => TemperatureLeft < 0.3f * ContentsLeft?.Collectible.GetMeltingPoint(Api.World, null, new DummySlot(ContentsLeft));
+        public bool IsHardenedRight => TemperatureRight < 0.3f * ContentsRight?.Collectible.GetMeltingPoint(Api.World, null, new DummySlot(ContentsRight));
+        public bool IsLiquidLeft => TemperatureLeft > 0.8f * ContentsLeft?.Collectible.GetMeltingPoint(Api.World, null, new DummySlot(ContentsLeft));
+        public bool IsLiquidRight => TemperatureRight > 0.8f * ContentsRight?.Collectible.GetMeltingPoint(Api.World, null, new DummySlot(ContentsRight));
+        public bool IsFullLeft => FillLevelLeft >= RequiredUnits;
+        public bool IsFullRight => FillLevelRight >= RequiredUnits;
+        public bool IsHot => TemperatureLeft >= 200 || TemperatureRight >= 200;
+        public bool CanReceiveAny => Block.Code.Path.Contains("burned") && !BothShattered;
 
-        public int quantityMolds = 1;
-        public bool fillSide;
-
-        long lastPouringMarkdirtyMs;
-
-        public float TemperatureLeft
-        {
-            get { return contentsLeft?.Collectible.GetTemperature(Api.World, contentsLeft) ?? 0; }
-        }
-        public float TemperatureRight
-        {
-            get { return contentsRight?.Collectible.GetTemperature(Api.World, contentsRight) ?? 0; }
-        }
-
-        public bool IsHardenedLeft
-        {
-            get {
-                return TemperatureLeft < 0.3f * contentsLeft?.Collectible.GetMeltingPoint(Api.World, null, new DummySlot(contentsLeft));
-            }
-        }
-
-        public bool IsHardenedRight
-        {
-            get
-            {
-                return TemperatureRight < 0.3f * contentsRight?.Collectible.GetMeltingPoint(Api.World, null, new DummySlot(contentsRight));
-            }
-        }
+        bool BothShattered => ShatteredLeft && ShatteredRight;
 
 
-        public bool IsLiquidLeft
-        {
-            get {
-                return TemperatureLeft > 0.8f * contentsLeft?.Collectible.GetMeltingPoint(Api.World, null, new DummySlot(contentsLeft));
-            }
-        }
-
-        public bool IsLiquidRight
-        {
-            get
-            {
-                return TemperatureRight > 0.8f * contentsRight?.Collectible.GetMeltingPoint(Api.World, null, new DummySlot(contentsRight));
-            }
-        }
-
-        public bool IsFullLeft
-        {
-            get
-            {
-                return fillLevelLeft >= 100;
-            }
-        }
-
-        public bool IsFullRight
-        {
-            get
-            {
-                return fillLevelRight >= 100;
-            }
-        }
-
-
-        public bool CanReceiveAny
-        {
-            get { return Block.Code.Path.Contains("burned"); }
-        }
-
-        public bool CanReceive(ItemStack metal)
-        {
-            return 
-                contentsLeft == null 
-                || contentsRight == null
-                || (contentsLeft.Collectible.Equals(contentsLeft, metal, GlobalConstants.IgnoredStackAttributes) && fillLevelLeft < 100)
-                || (contentsRight.Collectible.Equals(contentsRight, metal, GlobalConstants.IgnoredStackAttributes) && fillLevelRight < 100)
-            ;
-        }
-
-        public BlockEntityIngotMold()
-        {
-
-        }
+        ICoreClientAPI capi;
 
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
 
-            if (contentsLeft != null)
+            if (ContentsLeft != null)
             {
-                contentsLeft.ResolveBlockOrItem(api.World);
+                ContentsLeft.ResolveBlockOrItem(api.World);
             }
-            if (contentsRight != null)
+            if (ContentsRight != null)
             {
-                contentsRight.ResolveBlockOrItem(api.World);
+                ContentsRight.ResolveBlockOrItem(api.World);
             }
 
-            if (api is ICoreClientAPI)
+            capi = api as ICoreClientAPI;
+            if (capi != null && !BothShattered)
             {
-                ICoreClientAPI capi = (ICoreClientAPI)api;
                 capi.Event.RegisterRenderer(ingotRenderer = new IngotMoldRenderer(Pos, capi), EnumRenderStage.Opaque, "ingotmold");
 
                 UpdateIngotRenderer();
 
-                if (meshesByQuantity == null)
+                if (MoldMesh == null)
                 {
                     GenMeshes();
                 }
             }
 
-
-            RegisterGameTickListener(OnGameTick, 50);
-        }
-
-
-        private void GenMeshes()
-        {
-            meshesByQuantity = new MeshData[2];
-            
-            ITexPositionSource tmpTextureSource = ((ICoreClientAPI)Api).Tesselator.GetTextureSource(Block);
-            ITesselatorAPI mesher = ((ICoreClientAPI)Api).Tesselator;
-
-            Shape shape = API.Common.Shape.TryGet(Api, "shapes/block/clay/mold/ingot-1middle.json");
-            mesher.TesselateShape("ingotPile", shape, out meshesByQuantity[0], tmpTextureSource);
-
-            shape = API.Common.Shape.TryGet(Api, "shapes/block/clay/mold/ingot-2.json");
-            mesher.TesselateShape("ingotPile", shape, out meshesByQuantity[1], tmpTextureSource);
+            if (!BothShattered) RegisterGameTickListener(OnGameTick, 50);
         }
 
 
@@ -163,36 +87,48 @@ namespace Vintagestory.GameContent
         {
             if (ingotRenderer != null)
             {
-                ingotRenderer.QuantityMolds = quantityMolds;
-                ingotRenderer.LevelLeft = fillLevelLeft;
-                ingotRenderer.LevelRight = fillLevelRight;
+                ingotRenderer.QuantityMolds = QuantityMolds;
+                ingotRenderer.LevelLeft = ShatteredLeft ? 0 : FillLevelLeft;
+                ingotRenderer.LevelRight = ShatteredRight ? 0 : FillLevelRight;
             }
 
-            if (contentsLeft != null && ingotRenderer != null)
+            if (ContentsLeft != null && ingotRenderer != null)
             {
-                ingotRenderer.TemperatureLeft = Math.Min(1300, contentsLeft.Collectible.GetTemperature(Api.World, contentsLeft));
+                ingotRenderer.TemperatureLeft = Math.Min(1300, ContentsLeft.Collectible.GetTemperature(Api.World, ContentsLeft));
             }
 
-            if (contentsRight != null && ingotRenderer != null)
+            if (ContentsRight != null && ingotRenderer != null)
             {
-                ingotRenderer.TemperatureRight = Math.Min(1300, contentsRight.Collectible.GetTemperature(Api.World, contentsRight));
+                ingotRenderer.TemperatureRight = Math.Min(1300, ContentsRight.Collectible.GetTemperature(Api.World, ContentsRight));
             }
         }
 
 
+        public bool CanReceive(ItemStack metal)
+        {
+            return
+                ContentsLeft == null
+                || ContentsRight == null
+                || (ContentsLeft.Collectible.Equals(ContentsLeft, metal, GlobalConstants.IgnoredStackAttributes) && FillLevelLeft < RequiredUnits)
+                || (ContentsRight.Collectible.Equals(ContentsRight, metal, GlobalConstants.IgnoredStackAttributes) && FillLevelRight < RequiredUnits)
+            ;
+        }
 
-        
+
+
         public void BeginFill(Vec3d hitPosition)
         {
-            fillSide = hitPosition.X >= 0.5f;
+            FillSide = hitPosition.X >= 0.5f;
         }
 
 
         public bool OnPlayerInteract(IPlayer byPlayer, BlockFacing onFace, Vec3d hitPosition)
         {
+            if (BothShattered) return false;
+
             bool moldInHands = HasMoldInHands(byPlayer);
             bool sneaking = byPlayer.Entity.Controls.ShiftKey;
-            
+
             if (!sneaking)
             {
                 if (byPlayer.Entity.Controls.HandUse != EnumHandInteract.None) return false;
@@ -215,11 +151,16 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-        public ItemStack GetLeftContents()
+        public ItemStack GetStateAwareContentsLeft()
         {
-            if (contentsLeft != null && fillLevelLeft >= 100 && IsHardenedLeft)
+            if (ContentsLeft != null && FillLevelLeft >= RequiredUnits)
             {
-                ItemStack outstack = contentsLeft.Clone();
+                if (ShatteredLeft)
+                {
+                    return GetShatteredStack(ContentsLeft, FillLevelLeft);
+                }
+
+                ItemStack outstack = ContentsLeft.Clone();
                 (outstack.Attributes["temperature"] as ITreeAttribute)?.RemoveAttribute("cooldownSpeed");
                 return outstack;
             }
@@ -227,11 +168,20 @@ namespace Vintagestory.GameContent
             return null;
         }
 
-        public ItemStack GetRightContents()
+        /// <summary>
+        /// Retrieves the molded ingot, will always return null for incomplete pours. Has a chance of returning metal bits if retrieved while still hot.
+        /// </summary>
+        /// <returns></returns>
+        public ItemStack GetStateAwareContentsRight()
         {
-            if (contentsRight != null && fillLevelRight >= 100 && IsHardenedRight)
+            if (ContentsRight != null && FillLevelRight >= RequiredUnits)
             {
-                ItemStack outstack = contentsRight.Clone();
+                if (ShatteredRight)
+                {
+                    return GetShatteredStack(ContentsRight, FillLevelRight);
+                }
+
+                ItemStack outstack = ContentsRight.Clone();
                 (outstack.Attributes["temperature"] as ITreeAttribute)?.RemoveAttribute("cooldownSpeed");
                 return outstack;
             }
@@ -240,15 +190,32 @@ namespace Vintagestory.GameContent
         }
 
 
+        protected ItemStack GetShatteredStack(ItemStack contents, int fillLevel)
+        {
+            var shatteredStack = contents.Collectible.Attributes?["shatteredStack"].AsObject<JsonItemStack>();
+            if (shatteredStack != null)
+            {
+                shatteredStack.Resolve(Api.World, "shatteredStack for" + contents.Collectible.Code);
+                if (shatteredStack.ResolvedItemstack != null)
+                {
+                    var stack = shatteredStack.ResolvedItemstack;
+                    stack.StackSize = (int)(fillLevel / 5f * (0.7f + Api.World.Rand.NextDouble() * 0.1f));
+                    return stack;
+                }
+            }
 
-        private bool TryTakeIngot(IPlayer byPlayer, Vec3d hitPosition)
+            return null;
+        }
+
+
+        protected bool TryTakeIngot(IPlayer byPlayer, Vec3d hitPosition)
         {
             if (Api is ICoreServerAPI) MarkDirty();
-            
-            ItemStack leftStack = GetLeftContents();
-            if (leftStack != null && (hitPosition.X < 0.5f || quantityMolds == 1))
+
+            ItemStack leftStack = !IsHardenedLeft ? null : GetStateAwareContentsLeft();
+            if (leftStack != null && (hitPosition.X < 0.5f || QuantityMolds == 1) && !ShatteredLeft)
             {
-                Api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), Pos.X, Pos.Y, Pos.Z, byPlayer, false);
+                Api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), Pos, -0.5, byPlayer, false);
                 if (Api is ICoreServerAPI)
                 {
                     if (!byPlayer.InventoryManager.TryGiveItemstack(leftStack))
@@ -256,17 +223,17 @@ namespace Vintagestory.GameContent
                         Api.World.SpawnItemEntity(leftStack, Pos.ToVec3d().Add(0.5, 0.2, 0.5));
                     }
 
-                    contentsLeft = null;
-                    fillLevelLeft = 0;
+                    ContentsLeft = null;
+                    FillLevelLeft = 0;
                 }
 
                 return true;
             }
 
-            ItemStack rightStack = GetRightContents();
-            if (rightStack != null && hitPosition.X >= 0.5f)
+            ItemStack rightStack = !IsHardenedRight ? null : GetStateAwareContentsRight();
+            if (rightStack != null && hitPosition.X >= 0.5f && !ShatteredRight)
             {
-                Api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), Pos.X, Pos.Y, Pos.Z, byPlayer, false);
+                Api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), Pos, -0.5, byPlayer, false);
                 if (Api is ICoreServerAPI)
                 {
                     if (!byPlayer.InventoryManager.TryGiveItemstack(rightStack))
@@ -274,8 +241,8 @@ namespace Vintagestory.GameContent
                         Api.World.SpawnItemEntity(rightStack, Pos.ToVec3d().Add(0.5, 0.2, 0.5));
                     }
 
-                    contentsRight = null;
-                    fillLevelRight = 0;
+                    ContentsRight = null;
+                    FillLevelRight = 0;
                 }
 
                 return true;
@@ -286,50 +253,47 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-
-        private bool TryTakeMold(IPlayer byPlayer, Vec3d hitPosition)
+        protected bool TryTakeMold(IPlayer byPlayer, Vec3d hitPosition)
         {
             ItemSlot activeSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
             if (activeSlot.Itemstack != null && !(activeSlot.Itemstack.Collectible is BlockToolMold)) return false;
-            if (fillLevelLeft != 0 || fillLevelRight != 0) return false;
+            if (FillLevelLeft != 0 || FillLevelRight != 0) return false;
 
-            if (fillLevelLeft == 0)
+            if (FillLevelLeft == 0 && !ShatteredLeft)
             {
-                quantityMolds--;
-                if (ingotRenderer != null) ingotRenderer.QuantityMolds = quantityMolds;
-
-                
+                QuantityMolds--;
+                if (ingotRenderer != null) ingotRenderer.QuantityMolds = QuantityMolds;
 
                 if (!byPlayer.InventoryManager.TryGiveItemstack(new ItemStack(this.Block)))
                 {
-                    Api.World.SpawnItemEntity(new ItemStack(Block), Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    Api.World.SpawnItemEntity(new ItemStack(Block), Pos);
                 }
-                if (quantityMolds == 0)
+                if (QuantityMolds == 0)
                 {
                     Api.World.BlockAccessor.SetBlock(0, Pos);
                 } else
                 {
                     MarkDirty(true);
                 }
-                
+
                 if (Block.Sounds?.Place != null)
                 {
-                    Api.World.PlaySoundAt(Block.Sounds.Place, Pos.X, Pos.Y, Pos.Z, byPlayer, false);
+                    Api.World.PlaySoundAt(Block.Sounds.Place, Pos, -0.5, byPlayer, false);
                 }
 
                 return true;
             }
 
-            if (fillLevelRight == 0)
+            if (FillLevelRight == 0 && !ShatteredRight)
             {
-                quantityMolds--;
-                if (ingotRenderer != null) ingotRenderer.QuantityMolds = quantityMolds;
+                QuantityMolds--;
+                if (ingotRenderer != null) ingotRenderer.QuantityMolds = QuantityMolds;
 
                 if (!byPlayer.InventoryManager.TryGiveItemstack(new ItemStack(Block)))
                 {
-                    Api.World.SpawnItemEntity(new ItemStack(Block), Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    Api.World.SpawnItemEntity(new ItemStack(Block), Pos);
                 }
-                if (quantityMolds == 0)
+                if (QuantityMolds == 0)
                 {
                     Api.World.BlockAccessor.SetBlock(0, Pos);
                 } else
@@ -339,10 +303,8 @@ namespace Vintagestory.GameContent
 
                 if (Block.Sounds?.Place != null)
                 {
-                    Api.World.PlaySoundAt(Block.Sounds.Place, Pos.X, Pos.Y, Pos.Z, byPlayer, false);
+                    Api.World.PlaySoundAt(Block.Sounds.Place, Pos, -0.5, byPlayer, false);
                 }
-
-                
 
                 return true;
             }
@@ -350,12 +312,12 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-        private bool TryPutMold(IPlayer byPlayer)
+        protected bool TryPutMold(IPlayer byPlayer)
         {
-            if (quantityMolds >= 2) return false;
+            if (QuantityMolds >= 2) return false;
 
-            quantityMolds++;
-            if (ingotRenderer != null) ingotRenderer.QuantityMolds = quantityMolds;
+            QuantityMolds++;
+            if (ingotRenderer != null) ingotRenderer.QuantityMolds = QuantityMolds;
 
             if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
             {
@@ -370,7 +332,7 @@ namespace Vintagestory.GameContent
 
             if (Block.Sounds?.Place != null)
             {
-                Api.World.PlaySoundAt(Block.Sounds.Place, Pos.X, Pos.Y, Pos.Z, byPlayer, false);
+                Api.World.PlaySoundAt(Block.Sounds.Place, Pos, -0.5, byPlayer, false);
             }
 
             MarkDirty(true);
@@ -378,7 +340,8 @@ namespace Vintagestory.GameContent
         }
 
 
-        private bool HasMoldInHands(IPlayer byPlayer)
+
+        protected bool HasMoldInHands(IPlayer byPlayer)
         {
             return
                 byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack != null &&
@@ -386,25 +349,30 @@ namespace Vintagestory.GameContent
             ;
         }
 
-        internal void UpdateIngotRenderer()
+        public void UpdateIngotRenderer()
         {
             if (ingotRenderer == null) return;
 
-            ingotRenderer.QuantityMolds = quantityMolds;
-            ingotRenderer.LevelLeft = fillLevelLeft;
-            ingotRenderer.LevelRight = fillLevelRight;
-                    
-
-            if (contentsLeft?.Collectible != null)
+            if (BothShattered)
             {
-                ingotRenderer.TextureNameLeft = new AssetLocation("block/metal/ingot/" + contentsLeft.Collectible.LastCodePart() + ".png");
+                capi.Event.UnregisterRenderer(ingotRenderer, EnumRenderStage.Opaque);
+                return;
+            }
+
+            ingotRenderer.QuantityMolds = QuantityMolds;
+            ingotRenderer.LevelLeft = ShatteredLeft ? 0 : FillLevelLeft;
+            ingotRenderer.LevelRight = ShatteredRight ? 0 : FillLevelRight;
+
+            if (ContentsLeft?.Collectible != null)
+            {
+                ingotRenderer.TextureNameLeft = new AssetLocation("block/metal/ingot/" + ContentsLeft.Collectible.LastCodePart() + ".png");
             } else
             {
                 ingotRenderer.TextureNameLeft = null;
             }
-            if (contentsRight?.Collectible != null)
+            if (ContentsRight?.Collectible != null)
             {
-                ingotRenderer.TextureNameRight = new AssetLocation("block/metal/ingot/" + contentsRight.Collectible.LastCodePart() + ".png");
+                ingotRenderer.TextureNameRight = new AssetLocation("block/metal/ingot/" + ContentsRight.Collectible.LastCodePart() + ".png");
             } else
             {
                 ingotRenderer.TextureNameRight = null;
@@ -419,43 +387,43 @@ namespace Vintagestory.GameContent
                 lastPouringMarkdirtyMs = Api.World.ElapsedMilliseconds + 500;
             }
 
-            if ((quantityMolds == 1 || !fillSide) && fillLevelLeft < 100 && (contentsLeft == null || metal.Collectible.Equals(contentsLeft, metal, GlobalConstants.IgnoredStackAttributes)))
+            if ((QuantityMolds == 1 || !FillSide) && FillLevelLeft < RequiredUnits && (ContentsLeft == null || metal.Collectible.Equals(ContentsLeft, metal, GlobalConstants.IgnoredStackAttributes)))
             {
-                if (contentsLeft == null)
+                if (ContentsLeft == null)
                 {
-                    contentsLeft = metal.Clone();
-                    contentsLeft.ResolveBlockOrItem(Api.World);
-                    contentsLeft.Collectible.SetTemperature(Api.World, contentsLeft, temperature, false);
-                    contentsLeft.StackSize = 1;
-                    (contentsLeft.Attributes["temperature"] as ITreeAttribute)?.SetFloat("cooldownSpeed", 300);
+                    ContentsLeft = metal.Clone();
+                    ContentsLeft.ResolveBlockOrItem(Api.World);
+                    ContentsLeft.Collectible.SetTemperature(Api.World, ContentsLeft, temperature, false);
+                    ContentsLeft.StackSize = 1;
+                    (ContentsLeft.Attributes["temperature"] as ITreeAttribute)?.SetFloat("cooldownSpeed", 300);
                 } else
                 {
-                    contentsLeft.Collectible.SetTemperature(Api.World, contentsLeft, temperature, false);
+                    ContentsLeft.Collectible.SetTemperature(Api.World, ContentsLeft, temperature, false);
                 }
 
-                int amountToFill = Math.Min(amount, 100 - fillLevelLeft);
-                fillLevelLeft += amountToFill;
+                int amountToFill = Math.Min(amount, RequiredUnits - FillLevelLeft);
+                FillLevelLeft += amountToFill;
                 amount -= amountToFill;
                 UpdateIngotRenderer();
                 return;
             }
 
-            if (fillSide && quantityMolds > 1 && fillLevelRight < 100 && (contentsRight == null || metal.Collectible.Equals(contentsRight, metal, GlobalConstants.IgnoredStackAttributes)))
+            if (FillSide && QuantityMolds > 1 && FillLevelRight < RequiredUnits && (ContentsRight == null || metal.Collectible.Equals(ContentsRight, metal, GlobalConstants.IgnoredStackAttributes)))
             {
-                if (contentsRight == null)
+                if (ContentsRight == null)
                 {
-                    contentsRight = metal.Clone();
-                    contentsRight.ResolveBlockOrItem(Api.World);
-                    contentsRight.Collectible.SetTemperature(Api.World, contentsRight, temperature, false);
-                    contentsRight.StackSize = 1;
-                    (contentsRight.Attributes["temperature"] as ITreeAttribute)?.SetFloat("cooldownSpeed", 300);
+                    ContentsRight = metal.Clone();
+                    ContentsRight.ResolveBlockOrItem(Api.World);
+                    ContentsRight.Collectible.SetTemperature(Api.World, ContentsRight, temperature, false);
+                    ContentsRight.StackSize = 1;
+                    (ContentsRight.Attributes["temperature"] as ITreeAttribute)?.SetFloat("cooldownSpeed", 300);
                 } else
                 {
-                    contentsRight.Collectible.SetTemperature(Api.World, contentsRight, temperature, false);
+                    ContentsRight.Collectible.SetTemperature(Api.World, ContentsRight, temperature, false);
                 }
 
-                int amountToFill = Math.Min(amount, 100 - fillLevelRight);
-                fillLevelRight += amountToFill;
+                int amountToFill = Math.Min(amount, RequiredUnits - FillLevelRight);
+                FillLevelRight += amountToFill;
                 amount -= amountToFill;
                 UpdateIngotRenderer();
 
@@ -483,29 +451,120 @@ namespace Vintagestory.GameContent
         }
 
 
+        #region Mesh gen
+        ITexPositionSource tmpTextureSource;
+        AssetLocation metalTexLoc;
+        public Size2i AtlasSize => capi.BlockTextureAtlas.Size;
+        public TextureAtlasPosition this[string textureCode]
+        {
+            get
+            {
+                if (textureCode == "metal")
+                {
+                    return capi.BlockTextureAtlas[metalTexLoc];
+                }
+
+                return tmpTextureSource[textureCode];
+            }
+        }
+
+        MeshData shatteredMeshLeft;
+        MeshData shatteredMeshRight;
+
+        public static float[] shiftLeftTfMat;
+        public static float[] shiftRightTfMat;
+
+        static BlockEntityIngotMold()
+        {
+            shiftLeftTfMat = Mat4f.Create();
+            Mat4f.Translate(shiftLeftTfMat, shiftLeftTfMat, -4 / 16f, 0, 0);
+
+            shiftRightTfMat = Mat4f.Create();
+            Mat4f.Translate(shiftRightTfMat, shiftRightTfMat, 3 / 16f, 0, 0);
+        }
+
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
-            if (quantityMolds == 0) return true;
+            switch (QuantityMolds)
+            {
+                case 0: return true;
+                case 1:
+                    {
+                        if (ShatteredLeft) EnsureShatteredMeshesLoaded();
+                        mesher.AddMeshData(ShatteredLeft ? shatteredMeshLeft : MoldMesh);
+                    }
+                    break;
+                case 2:
+                    {
+                        if (ShatteredLeft || ShatteredRight) EnsureShatteredMeshesLoaded();
 
-            mesher.AddMeshData(meshesByQuantity[quantityMolds - 1]);
+                        mesher.AddMeshData(ShatteredLeft ? shatteredMeshLeft : MoldMesh, shiftLeftTfMat);
+                        mesher.AddMeshData(ShatteredRight ? shatteredMeshRight : MoldMesh, shiftRightTfMat);
+                    }
+                    break;
+            }
 
             return true;
         }
+
+        private void EnsureShatteredMeshesLoaded()
+        {
+            if (ShatteredLeft && shatteredMeshLeft == null)
+            {
+                metalTexLoc = ContentsLeft == null ? new AssetLocation("block/transparent") : new AssetLocation("block/metal/ingot/" + ContentsLeft.Collectible.LastCodePart());
+                capi.Tesselator.TesselateShape("shatteredmold", getShatteredShape(), out shatteredMeshLeft, this);
+            }
+            if (ShatteredRight && shatteredMeshRight == null)
+            {
+                metalTexLoc = ContentsRight == null ? new AssetLocation("block/transparent") : new AssetLocation("block/metal/ingot/" + ContentsRight.Collectible.LastCodePart());
+                capi.Tesselator.TesselateShape("shatteredmold", getShatteredShape(), out shatteredMeshRight, this);
+            }
+        }
+
+        private Shape getShatteredShape()
+        {
+            tmpTextureSource = capi.Tesselator.GetTextureSource(Block);
+            var cshape = Block.Attributes["shatteredShape"].AsObject<CompositeShape>();
+            cshape.Base.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/");
+            return Shape.TryGet(Api, cshape.Base);
+        }
+
+        private void GenMeshes()
+        {
+            MoldMesh = ObjectCacheUtil.GetOrCreate(Api, "ingotmold", () =>
+            {
+                MeshData mesh;
+
+                ITexPositionSource tmpTextureSource = ((ICoreClientAPI)Api).Tesselator.GetTextureSource(Block);
+                ITesselatorAPI mesher = ((ICoreClientAPI)Api).Tesselator;
+
+                var shape = Shape.TryGet(Api, "shapes/block/clay/mold/ingot.json");
+                mesher.TesselateShape("ingotmold", shape, out mesh, tmpTextureSource);
+
+                return mesh;
+            });
+        }
+
+
+        #endregion
 
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
             base.FromTreeAttributes(tree, worldForResolving);
 
-            contentsLeft = tree.GetItemstack("contentsLeft");
-            fillLevelLeft = tree.GetInt("fillLevelLeft");
-            if (Api?.World != null && contentsLeft != null) contentsLeft.ResolveBlockOrItem(Api.World);
+            ContentsLeft = tree.GetItemstack("contentsLeft");
+            FillLevelLeft = tree.GetInt("fillLevelLeft");
+            if (Api?.World != null && ContentsLeft != null) ContentsLeft.ResolveBlockOrItem(Api.World);
 
-            contentsRight = tree.GetItemstack("contentsRight");
-            fillLevelRight = tree.GetInt("fillLevelRight");
-            if (Api?.World != null && contentsRight != null) contentsRight.ResolveBlockOrItem(Api.World);
+            ContentsRight = tree.GetItemstack("contentsRight");
+            FillLevelRight = tree.GetInt("fillLevelRight");
+            if (Api?.World != null && ContentsRight != null) ContentsRight.ResolveBlockOrItem(Api.World);
 
-            quantityMolds = tree.GetInt("quantityMolds");
+            QuantityMolds = tree.GetInt("quantityMolds");
+
+            ShatteredLeft = tree.GetBool("shatteredLeft");
+            ShatteredRight = tree.GetBool("shatteredRight");
 
             UpdateIngotRenderer();
 
@@ -520,13 +579,16 @@ namespace Vintagestory.GameContent
         {
             base.ToTreeAttributes(tree);
 
-            tree.SetItemstack("contentsLeft", contentsLeft);
-            tree.SetInt("fillLevelLeft", fillLevelLeft);
+            tree.SetItemstack("contentsLeft", ContentsLeft);
+            tree.SetInt("fillLevelLeft", FillLevelLeft);
 
-            tree.SetItemstack("contentsRight", contentsRight);
-            tree.SetInt("fillLevelRight", fillLevelRight);
+            tree.SetItemstack("contentsRight", ContentsRight);
+            tree.SetInt("fillLevelRight", FillLevelRight);
 
-            tree.SetInt("quantityMolds", quantityMolds);
+            tree.SetInt("quantityMolds", QuantityMolds);
+
+            tree.SetBool("shatteredLeft", ShatteredLeft);
+            tree.SetBool("shatteredRight", ShatteredRight);
         }
 
 
@@ -534,19 +596,38 @@ namespace Vintagestory.GameContent
         {
             string contents = "";
 
-            if (contentsLeft != null)
+            if (BothShattered)
             {
-                string state = IsLiquidLeft ? Lang.Get("liquid") : (IsHardenedLeft ? Lang.Get("hardened") : Lang.Get("soft"));
-                string temp = TemperatureLeft < 21 ? Lang.Get("Cold") : Lang.Get("{0}°C", (int)TemperatureLeft);
-                contents = Lang.Get("{0} units of {1} {2} ({3})", fillLevelLeft, state, contentsLeft.GetName(), temp) + "\n";
+                dsc.AppendLine(Lang.Get("Has shattered."));
+                return;
             }
 
-            if (contentsRight != null)
+            if (ContentsLeft != null)
             {
-                string state = IsLiquidRight ? Lang.Get("liquid") : (IsHardenedRight ? Lang.Get("hardened") : Lang.Get("soft"));
-                string temp = TemperatureRight < 21 ? Lang.Get("Cold") : Lang.Get("{0}°C", (int)TemperatureRight);
+                if (ShatteredLeft)
+                {
+                    dsc.AppendLine(Lang.Get("Has shattered."));
+                }
+                else
+                {
+                    string state = IsLiquidLeft ? Lang.Get("liquid") : (IsHardenedLeft ? Lang.Get("hardened") : Lang.Get("soft"));
+                    string temp = TemperatureLeft < 21 ? Lang.Get("Cold") : Lang.Get("{0}°C", (int)TemperatureLeft);
+                    contents = Lang.Get("{0} units of {1} {2} ({3})", FillLevelLeft, state, ContentsLeft.GetName(), temp) + "\n";
+                }
+            }
 
-                contents += Lang.Get("{0} units of {1} {2} ({3})", fillLevelRight, state, contentsRight.GetName(), temp) + "\n";
+            if (ContentsRight != null)
+            {
+                if (ShatteredRight)
+                {
+                    dsc.AppendLine(Lang.Get("Has shattered."));
+                }
+                else
+                {
+                    string state = IsLiquidRight ? Lang.Get("liquid") : (IsHardenedRight ? Lang.Get("hardened") : Lang.Get("soft"));
+                    string temp = TemperatureRight < 21 ? Lang.Get("Cold") : Lang.Get("{0}°C", (int)TemperatureRight);
+                    contents += Lang.Get("{0} units of {1} {2} ({3})", FillLevelRight, state, ContentsRight.GetName(), temp) + "\n";
+                }
             }
 
             dsc.AppendLine(contents.Length == 0 ? Lang.Get("Empty") : contents);
@@ -563,22 +644,75 @@ namespace Vintagestory.GameContent
 
         public override void OnStoreCollectibleMappings(Dictionary<int, AssetLocation> blockIdMapping, Dictionary<int, AssetLocation> itemIdMapping)
         {
-            contentsLeft?.Collectible.OnStoreCollectibleMappings(Api.World, new DummySlot(contentsLeft), blockIdMapping, itemIdMapping);
-            contentsRight?.Collectible.OnStoreCollectibleMappings(Api.World, new DummySlot(contentsRight), blockIdMapping, itemIdMapping);
+            ContentsLeft?.Collectible.OnStoreCollectibleMappings(Api.World, new DummySlot(ContentsLeft), blockIdMapping, itemIdMapping);
+            ContentsRight?.Collectible.OnStoreCollectibleMappings(Api.World, new DummySlot(ContentsRight), blockIdMapping, itemIdMapping);
         }
 
         public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed, bool resolveImports)
         {
-            if (contentsLeft?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve) == false)
+            if (ContentsLeft?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve) == false)
             {
-                contentsLeft = null;
+                ContentsLeft = null;
             }
 
-            if (contentsRight?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve) == false)
+            if (ContentsRight?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve) == false)
             {
-                contentsRight = null;
+                ContentsRight = null;
             }
         }
 
+        public void CoolNow(float amountRel)
+        {
+            float leftbreakchance = Math.Max(0, amountRel - 0.6f) * Math.Max(TemperatureLeft - 250f, 0) / 5000f;
+            float rightbreakchance = Math.Max(0, amountRel - 0.6f) * Math.Max(TemperatureRight - 250f, 0) / 5000f;
+
+            if (Api.World.Rand.NextDouble() < leftbreakchance)
+            {
+                Api.World.PlaySoundAt(new AssetLocation("sounds/block/ceramicbreak"), Pos, -0.4);
+                ShatteredLeft = true;
+                ContentsLeft.Collectible.SetTemperature(Api.World, ContentsLeft, 20, false);
+                this.Block.SpawnBlockBrokenParticles(Pos);
+                this.Block.SpawnBlockBrokenParticles(Pos);
+                MarkDirty(true);
+            } else
+            {
+                if (ContentsLeft != null)
+                {
+                    float temp = TemperatureLeft;
+                    if (temp > 120)
+                    {
+                        Api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), Pos, -0.4, null, false, 16);
+                    }
+
+                    ContentsLeft.Collectible.SetTemperature(Api.World, ContentsLeft, Math.Max(20, temp - amountRel * 20), false);
+                    MarkDirty(true);
+                }
+            }
+
+            if (Api.World.Rand.NextDouble() < rightbreakchance)
+            {
+                Api.World.PlaySoundAt(new AssetLocation("sounds/block/ceramicbreak"), Pos, -0.4);
+                ShatteredRight = true;
+                ContentsRight.Collectible.SetTemperature(Api.World, ContentsRight, 20, false);
+                this.Block.SpawnBlockBrokenParticles(Pos);
+                this.Block.SpawnBlockBrokenParticles(Pos);
+                MarkDirty(true);
+            }
+            else
+            {
+                if (ContentsRight != null)
+                {
+                    float temp = TemperatureRight;
+                    if (temp > 120)
+                    {
+                        Api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), Pos, -0.5, null, false, 16);
+                    }
+
+                    ContentsRight.Collectible.SetTemperature(Api.World, ContentsRight, Math.Max(20, temp - amountRel * 20), false);
+                    MarkDirty(true);
+                }
+            }
+
+        }
     }
 }

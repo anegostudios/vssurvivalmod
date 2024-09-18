@@ -114,7 +114,7 @@ namespace Vintagestory.GameContent
 
             FirePos = firePos.Copy();
             FuelPos = fuelPos.Copy();
-            
+
             if (FuelPos == null || !canBurn(FuelPos))
             {
                 foreach (BlockFacing facing in BlockFacing.ALLFACES)
@@ -124,6 +124,7 @@ namespace Vintagestory.GameContent
                     {
                         FuelPos = npos;
                         startDuration = remainingBurnDuration = getBurnDuration(npos);
+                        startBurning();
                         return;
                     }
                 }
@@ -230,9 +231,12 @@ namespace Vintagestory.GameContent
                 // Die on rainfall
                 tmpPos.Set(FirePos.X + 0.5, FirePos.Y + 0.5, FirePos.Z + 0.5);
                 double rain = wsys.GetPrecipitation(tmpPos);
-                if (rain > 0.15)
+                if (rain > 0.05)
                 {
-                    Api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), FirePos.X + 0.5, FirePos.Y, FirePos.Z + 0.5, null, false, 16);
+                    if (rand.NextDouble() < rain / 2)
+                    {
+                        Api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), FirePos, -0.25, null, false, 16);
+                    }
 
                     if (rand.NextDouble() < rain / 2)
                     {
@@ -264,7 +268,7 @@ namespace Vintagestory.GameContent
             {
                 int index = Math.Min(fireBlock.ParticleProperties.Length - 1, Api.World.Rand.Next(fireBlock.ParticleProperties.Length + 1));
                 AdvancedParticleProperties particles = fireBlock.ParticleProperties[index];
-                
+
                 particles.basePos = RandomBlockPos(Api.World.BlockAccessor, FuelPos, fuelBlock, particleFacing);
 
                 particles.Quantity.avg = 0.75f;
@@ -305,11 +309,12 @@ namespace Vintagestory.GameContent
         public bool TrySpreadTo(BlockPos pos)
         {
             // 1. Replaceable test
-            var block = Api.World.BlockAccessor.GetBlock(pos);
-            if (block.Replaceable < 6000) return false;
-
             BlockEntity be = Api.World.BlockAccessor.GetBlockEntity(pos);
-            if (be?.GetBehavior<BEBehaviorBurning>() != null) return false;
+            var block = Api.World.BlockAccessor.GetBlock(pos);
+            if (block.Replaceable < 6000 && be is not BlockEntityGroundStorage) return false;
+
+            var bhbu = be?.GetBehavior<BEBehaviorBurning>();
+            if (bhbu?.IsBurning == true) return false;
 
             // 2. fuel test
             bool hasFuel = false;
@@ -317,36 +322,55 @@ namespace Vintagestory.GameContent
             foreach (BlockFacing firefacing in BlockFacing.ALLFACES)
             {
                 npos = pos.AddCopy(firefacing);
-                block = Api.World.BlockAccessor.GetBlock(npos);
                 if (canBurn(npos) && Api.World.BlockAccessor.GetBlockEntity(npos)?.GetBehavior<BEBehaviorBurning>() == null) {
-                    hasFuel = true; 
-                    break; 
+                    hasFuel = true;
+                    break;
                 }
             }
+
+            var begs = be as BlockEntityGroundStorage;
+            if (hasFuel == false && begs?.IsBurning == false && begs.CanIgnite)
+            {
+                hasFuel = true;
+            }
+
             if (!hasFuel) return false;
 
             // 3. Land claim test
-            IPlayer player = Api.World.PlayerByUid(startedByPlayerUid);            
+            IPlayer player = Api.World.PlayerByUid(startedByPlayerUid);
             if (player != null && (Api.World.Claims.TestAccess(player, pos, EnumBlockAccessFlags.BuildOrBreak) != EnumWorldAccessResponse.Granted || Api.World.Claims.TestAccess(player, npos, EnumBlockAccessFlags.BuildOrBreak) != EnumWorldAccessResponse.Granted)) {
                 return false;
             }
 
-
-            Api.World.BlockAccessor.SetBlock(fireBlock.BlockId, pos);
-
-            //Api.World.Logger.Debug(string.Format("Fire @{0}: Spread to {1}.", FirePos, pos));
-
-            BlockEntity befire = Api.World.BlockAccessor.GetBlockEntity(pos);
-            befire.GetBehavior<BEBehaviorBurning>()?.OnFirePlaced(pos, npos, startedByPlayerUid);
-
+            SpreadTo(pos, npos, begs);
             return true;
+        }
+
+        private void SpreadTo(BlockPos pos, BlockPos npos, BlockEntityGroundStorage begs)
+        {
+            //Api.World.Logger.Debug(string.Format("Fire @{0}: Spread to {1}.", FirePos, pos));
+            if (begs == null)
+            {
+                Api.World.BlockAccessor.SetBlock(fireBlock.BlockId, pos);
+            }
+            var befire = Api.World.BlockAccessor.GetBlockEntity(pos);
+            var buhu = befire?.GetBehavior<BEBehaviorBurning>();
+
+            if (begs?.IsBurning == false && buhu?.IsBurning == false)
+            {
+                begs.TryIgnite();
+            }
+            else
+            {
+                buhu?.OnFirePlaced(pos, npos, startedByPlayerUid);
+            }
         }
 
 
         protected bool canBurn(BlockPos pos)
         {
-            return 
-                OnCanBurn(pos) 
+            return
+                OnCanBurn(pos)
                 && Api.ModLoader.GetModSystem<ModSystemBlockReinforcement>()?.IsReinforced(pos) != true
             ;
         }

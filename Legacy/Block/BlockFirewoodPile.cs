@@ -104,7 +104,7 @@ namespace Vintagestory.GameContent
 
                 pile.MarkDirty();
                 world.BlockAccessor.MarkBlockDirty(pos);
-                world.PlaySoundAt(pile.soundLocation, pos.X, pos.Y, pos.Z, player, true);
+                world.PlaySoundAt(pile.soundLocation, pos, pile.inventory[0].Itemstack.StackSize / pile.MaxStackSize - 0.5, player, true);
             }
 
             return true;

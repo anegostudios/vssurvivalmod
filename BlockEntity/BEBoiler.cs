@@ -168,7 +168,7 @@ namespace Vintagestory.GameContent
                 hotbarSlot.TakeOut(1);
                 (byPlayer as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
                 Block block = Api.World.GetBlock(firepitShapeBlockCodes[firepitStage]);
-                if (block?.Sounds != null) Api.World.PlaySoundAt(block.Sounds.Place, Pos.X, Pos.Y, Pos.Z, byPlayer);
+                if (block?.Sounds != null) Api.World.PlaySoundAt(block.Sounds.Place, Pos, 0, byPlayer);
             }
 
 

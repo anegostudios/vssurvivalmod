@@ -153,7 +153,7 @@ namespace Vintagestory.GameContent
 
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
-            if (target == EnumItemRenderTarget.HandFp)
+            /*if (target == EnumItemRenderTarget.HandFp)
             {
                 bool sneak = capi.World.Player.Entity.Controls.Sneak;
 
@@ -162,7 +162,7 @@ namespace Vintagestory.GameContent
                 renderinfo.Transform.Translation.X = curOffY;
                 renderinfo.Transform.Translation.Y = curOffY * 1.2f;
                 renderinfo.Transform.Translation.Z = curOffY * 1.2f;
-            }
+            }*/
 
             int meshrefid = itemstack.TempAttributes.GetInt("meshRefId");
             if (meshrefid == 0 || !meshrefs.TryGetValue(meshrefid, out renderinfo.ModelRef))
@@ -183,7 +183,7 @@ namespace Vintagestory.GameContent
             string onhand = (byEntity.LeftHandItemSlot == slot) ? "left" : "right";
             string notonhand = (byEntity.LeftHandItemSlot == slot) ? "right" : "left";
 
-            if (byEntity.Controls.Sneak)
+            if (byEntity.Controls.Sneak && !byEntity.Controls.RightMouseDown)
             {
                 if (!byEntity.AnimManager.IsAnimationActive("raiseshield-" + onhand))
                 {

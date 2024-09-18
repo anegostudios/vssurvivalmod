@@ -73,7 +73,7 @@ namespace Vintagestory.GameContent
                 HitPosition = new Vec3d(0.5, 1, 0.5)
             }, ref useless);
 
-            if (ok) entityItem.World.PlaySoundAt(entityItem.Itemstack.Block.Sounds?.Place, pos.X, pos.Y, pos.Z, null);
+            if (ok) entityItem.World.PlaySoundAt(entityItem.Itemstack.Block.Sounds?.Place, bpos, -0.5, null);
             
             return ok;
         }

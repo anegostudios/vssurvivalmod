@@ -92,7 +92,7 @@ namespace Vintagestory.GameContent
 
         public Block NextSegment(IBlockAccessor blockAccess)
         {
-            
+
             string part = LastCodePart();
 
             return Type() == "green" ?
@@ -102,7 +102,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public void GrowTree(IBlockAccessor blockAccessor, BlockPos pos, TreeGenParams treegenParams)
+        public void GrowTree(IBlockAccessor blockAccessor, BlockPos pos, TreeGenParams treegenParams, IRandom random)
         {
             float f = treegenParams.otherBlockChance == 0 ? (3 + (float)rand.NextDouble() * 6) : (3 + (float)rand.NextDouble() * 4) * 3 * 3;
 
@@ -169,7 +169,7 @@ namespace Vintagestory.GameContent
                     }
                 }
             }
-            
+
             if (height < 4)
             {
                 block = ((BlockBamboo)block).NextSegment(blockAccessor);
@@ -306,7 +306,7 @@ namespace Vintagestory.GameContent
                 if (nblock.VertexFlags.WindMode == EnumWindBitMode.NoWind && nblock.SideSolid[TileSideEnum.West]) sideDisableWindWaveDown = true;
             }
 
-            
+
             int groundOffset = 1;
 
             // Disable swaying if would push into a block to the East

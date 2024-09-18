@@ -88,7 +88,7 @@ namespace Vintagestory.GameContent
             if (entity.World.Rand.NextDouble() > 0.05) return false;
             if (cooldownUntilMs > entity.World.ElapsedMilliseconds) return false;
             if (cooldownUntilTotalHours > entity.World.Calendar.TotalHours) return false;
-            if (!EmotionStatesSatisifed()) return false;
+            if (!PreconditionsSatisifed()) return false;
 
             float range = seekingRange;
             bool listening = entity.GetBehavior<EntityBehaviorTaskAI>().TaskManager.IsTaskActive("listen");
@@ -161,7 +161,7 @@ namespace Vintagestory.GameContent
                 spawnAccum = 0;
             }
 
-            if (targetEntity.Pos.SquareDistanceTo(entity.Pos.X, entity.Pos.Y, entity.Pos.Z) > Math.Pow(seekingRange + 5, 2))
+            if (targetEntity.Pos.SquareDistanceTo(entity.Pos) > Math.Pow(seekingRange + 5, 2))
             {
                 return false;
             }
@@ -247,7 +247,7 @@ namespace Vintagestory.GameContent
             EntityAgent agent = entity as EntityAgent;
             if (agent != null) agent.HerdId = herdid;
 
-            entity.ServerPos.SetPos(spawnPosition);
+            entity.ServerPos.SetPosWithDimension(spawnPosition);
             entity.ServerPos.SetYaw((float)sapi.World.Rand.NextDouble() * GameMath.TWOPI);
             entity.Pos.SetFrom(entity.ServerPos);
             entity.PositionBeforeFalling.Set(entity.ServerPos.X, entity.ServerPos.Y, entity.ServerPos.Z);

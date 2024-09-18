@@ -13,12 +13,12 @@ namespace Vintagestory.GameContent
             {
                 world.BlockAccessor.ExchangeBlock(world.GetBlock(CodeWithVariant("state", "opened")).Id, pos);
                 if (world.Side == EnumAppSide.Server) world.BlockAccessor.TriggerNeighbourBlockUpdate(pos);
-                world.PlaySoundAt(new AssetLocation("sounds/block/cokeovendoor-open"), pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5, byPlayer, true);
+                world.PlaySoundAt(new AssetLocation("sounds/block/cokeovendoor-open"), pos, 0, byPlayer, true);
             } else
             {
                 world.BlockAccessor.ExchangeBlock(world.GetBlock(CodeWithVariant("state", "closed")).Id, pos);
                 if (world.Side == EnumAppSide.Server) world.BlockAccessor.TriggerNeighbourBlockUpdate(pos);
-                world.PlaySoundAt(new AssetLocation("sounds/block/cokeovendoor-close"), pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5, byPlayer, true);
+                world.PlaySoundAt(new AssetLocation("sounds/block/cokeovendoor-close"), pos, 0, byPlayer, true);
             }
 
             return true;

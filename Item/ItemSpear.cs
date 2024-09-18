@@ -147,7 +147,7 @@ namespace Vintagestory.GameContent
             Vec3d velocity = (aheadPos - pos) * 0.65;
             Vec3d spawnPos = byEntity.ServerPos.BehindCopy(0.21).XYZ.Add(byEntity.LocalEyePos.X, byEntity.LocalEyePos.Y - 0.2, byEntity.LocalEyePos.Z);
 
-            enpr.ServerPos.SetPos(spawnPos);
+            enpr.ServerPos.SetPosWithDimension(spawnPos);
             enpr.ServerPos.Motion.Set(velocity);
 
 

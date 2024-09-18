@@ -2,9 +2,11 @@ using Vintagestory.API.Client;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using System;
+using System.IO;
 using Vintagestory.API.Server;
 using System.Text;
 using ProtoBuf;
+using Vintagestory.API.Config;
 using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
@@ -193,9 +195,12 @@ namespace Vintagestory.GameContent
     public class ServerCommandsSyntax
     {
         [ProtoMember(1)]
-        public ChatCommandSyntax[] Commands; 
+        public ChatCommandSyntax[] Commands;
     }
 
+
+    // Modders: If you want to open a handbook page through code, you can trigger its link protocol like this:
+    // api.LinkProtocols["commandhandbook"].Invoke(new LinkTextComponent(api, "", CairoFont.TextInput(), null) { Href = "commandhandbook://page-you-want-opened" });
     public class ModSystemCommandHandbook : ModSystem
     {
         ICoreClientAPI capi;
@@ -280,8 +285,25 @@ namespace Vintagestory.GameContent
                 .WithDescription("Opens the command hand book")
                 .RequiresPrivilege(Privilege.chat)
                 .HandleWith(onCommandHandbook)
-                .Validate()
-            ;
+
+                .BeginSubCommand("expcmds")
+                    .WithDescription("")
+                    .HandleWith(onCmd)
+                .EndSubCommand();
+        }
+
+        private TextCommandResult onCmd(TextCommandCallingArgs args)
+        {
+            var sb = new StringBuilder();
+
+            foreach (var page in dialog.allHandbookPages)
+            {
+                sb.Append(((GuiHandbookCommandPage)page).TextCacheAll);
+                sb.Append("<br>");
+            }
+
+            File.WriteAllText(Path.Combine(GamePaths.ModConfig,"cmds.txt"),sb.ToString());
+            return TextCommandResult.Success("exported all cmds");
         }
 
         private void onHandBookLinkClicked(LinkTextComponent comp)
@@ -339,7 +361,7 @@ namespace Vintagestory.GameContent
             {
                 if (capi.IsShuttingDown) break;
                 var cmd = val.Value;
-                
+
                 pages.Add(new GuiHandbookCommandPage(cmd, cmd.CommandPrefix + val.Key, "client", cmd.RootAliases?.Contains(val.Key) == true));
             }
 

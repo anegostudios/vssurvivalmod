@@ -118,7 +118,7 @@ namespace Vintagestory.GameContent
             track = (Api as ICoreClientAPI)?.StartTrack(new AssetLocation(trackstring), 99f, EnumSoundType.MusicGlitchunaffected, onTrackLoaded);
 
             wasStopped = false;
-            Api.World.PlaySoundAt(new AssetLocation("sounds/block/vinyl"), Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, null, false, 32);
+            Api.World.PlaySoundAt(new AssetLocation("sounds/block/vinyl"), Pos, 0, null, false, 32);
             updateMeshesAndRenderer(Api as ICoreClientAPI);
 
             animUtil.StartAnimation(new AnimationMetaData()

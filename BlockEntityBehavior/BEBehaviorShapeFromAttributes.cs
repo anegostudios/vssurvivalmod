@@ -1,23 +1,21 @@
-﻿using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
-using Vintagestory.ServerMods;
 
 namespace Vintagestory.GameContent
 {
 
-    public class BEBehaviorShapeFromAttributes : BlockEntityBehavior, IRotatable
+    public class BEBehaviorShapeFromAttributes : BlockEntityBehavior, IRotatable, IExtraWrenchModes
     {
         public string Type;
         public BlockShapeFromAttributes clutterBlock;
         protected MeshData mesh;
         public float rotateX;
+        public float rotateY { get; internal set; }
         public float rotateZ;
         public bool Collected;
 
@@ -37,11 +35,34 @@ namespace Vintagestory.GameContent
         /// </summary>
         protected static Vec3f Origin = new Vec3f(0.5f, 0.5f, 0.5f);
 
+        public float offsetX, offsetY, offsetZ;
+
+        protected bool meshRequiresInitialisation;
+
         public BEBehaviorShapeFromAttributes(BlockEntity blockentity) : base(blockentity)
         {
         }
 
-        public float rotateY { get; internal set; }
+        #region IExtraWrenchModes
+        public SkillItem[] GetExtraWrenchModes(IPlayer byPlayer, BlockSelection blockSelection)
+        {
+            return clutterBlock?.extraWrenchModes;
+        }
+
+        public void OnWrenchInteract(IPlayer player, BlockSelection blockSel, int mode, int rightmouseBtn)
+        {
+            switch (mode)
+            {
+                case 0: offsetZ += (1 - rightmouseBtn * 2) / 16f; break; // N/S
+                case 1: offsetX += (1 - rightmouseBtn * 2) / 16f; break; // W/E
+                case 2: offsetY += (1 - rightmouseBtn * 2) / 16f; break; // U/D
+            }
+
+            initShape();
+            Blockentity.MarkDirty(true);
+        }
+
+        #endregion
 
 
         public override void Initialize(ICoreAPI api, JsonObject properties)
@@ -52,7 +73,7 @@ namespace Vintagestory.GameContent
 
             if (Type != null)
             {
-                initShape();
+                MaybeInitialiseMesh_OnMainThread();
 
                 var brep = clutterBlock.GetBehavior<BlockBehaviorReparable>();
                 brep?.Initialize(Type, this);
@@ -63,23 +84,24 @@ namespace Vintagestory.GameContent
         {
             if (Type == null || Api == null || Api.Side == EnumAppSide.Server) return;
 
-            
-
             var cprops = clutterBlock?.GetTypeProps(Type, null, this);
-            
+
             if (cprops != null)
             {
+                bool noOffset = offsetX == 0 && offsetY == 0 && offsetZ == 0;
                 float angleY = rotateY + cprops.Rotation.Y * GameMath.DEG2RAD;
                 MeshData baseMesh = clutterBlock.GetOrCreateMesh(cprops, null, overrideTextureCode);
-                if (cprops.Randomize)
+                if (cprops.RandomizeYSize && clutterBlock?.AllowRandomizeDims != false)
                 {
                     mesh = baseMesh.Clone().Rotate(Origin, rotateX, angleY, rotateZ).Scale(Vec3f.Zero, 1, 0.98f + GameMath.MurmurHash3Mod(Pos.X, Pos.Y, Pos.Z, 1000) / 1000f * 0.04f, 1);
                 } else
                 {
-                    if (rotateX == 0 && angleY == 0 && rotateZ == 0) mesh = baseMesh;
+
+                    if (rotateX == 0 && angleY == 0 && rotateZ == 0 && noOffset) mesh = baseMesh;
                     else mesh = baseMesh.Clone().Rotate(Origin, rotateX, angleY, rotateZ);
                 }
-                
+
+                if (!noOffset) mesh.Translate(offsetX, offsetY, offsetZ);
             }
         }
 
@@ -117,6 +139,10 @@ namespace Vintagestory.GameContent
             float prevRotateY = rotateY;
             float prevRotateZ = rotateZ;
 
+            float prevOffsetX = offsetX;
+            float prevOffsetY = offsetY;
+            float prevOffsetZ = offsetZ;
+
             Type = tree.GetString("type");
             if (Type != null) {
                 Type = BlockClutter.Remap(worldAccessForResolve, Type);
@@ -129,9 +155,13 @@ namespace Vintagestory.GameContent
             Collected = tree.GetBool("collected");
             repairState = tree.GetFloat("repairState");
 
-            if ((mesh == null || prevType != Type || prevOverrideTextureCode != overrideTextureCode || rotateX != prevRotateX || rotateY != prevRotateY || rotateZ != prevRotateZ) && Api != null && worldAccessForResolve.Side == EnumAppSide.Client)
+            offsetX = tree.GetFloat("offsetX");
+            offsetY = tree.GetFloat("offsetY");
+            offsetZ = tree.GetFloat("offsetZ");
+
+            if (worldAccessForResolve.Side == EnumAppSide.Client && Api != null && (mesh == null || prevType != Type || prevOverrideTextureCode != overrideTextureCode || rotateX != prevRotateX || rotateY != prevRotateY || rotateZ != prevRotateZ || offsetX != prevOffsetX || offsetY != prevOffsetY || offsetZ != prevOffsetZ))
             {
-                initShape();
+                MaybeInitialiseMesh_OnMainThread();
                 relight(prevType);
                 Blockentity.MarkDirty(true);
             }
@@ -162,14 +192,47 @@ namespace Vintagestory.GameContent
             tree.SetBool("collected", Collected);
             tree.SetFloat("repairState", repairState);
 
+            tree.SetFloat("offsetX", offsetX);
+            tree.SetFloat("offsetY", offsetY);
+            tree.SetFloat("offsetZ", offsetZ);
+
             if (overrideTextureCode!=null) tree.SetString("overrideTextureCode", overrideTextureCode);
             base.ToTreeAttributes(tree);
         }
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
         {
+            MaybeInitialiseMesh_OffThread();
+
             mesher.AddMeshData(mesh);
             return true;
+        }
+
+        protected void MaybeInitialiseMesh_OnMainThread()
+        {
+            if (overrideTextureCode != null || HasVariantTextures())
+            {
+                initShape();
+            }
+            else
+            {
+                meshRequiresInitialisation = true;
+            }
+        }
+
+        protected void MaybeInitialiseMesh_OffThread()
+        {
+            if (meshRequiresInitialisation)
+            {
+                meshRequiresInitialisation = false;
+                initShape();
+            }
+        }
+
+        private bool HasVariantTextures()
+        {
+            var cprops = clutterBlock?.GetTypeProps(Type, null, this);
+            return cprops?.Textures != null;
         }
 
         public void OnTransformed(IWorldAccessor worldAccessor, ITreeAttribute tree, int degreeRotation, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, EnumAxis? flipAxis)
@@ -179,7 +242,7 @@ namespace Vintagestory.GameContent
             float thetaZ = tree.GetFloat("rotateZ");
             var cprops = clutterBlock?.GetTypeProps(Type, null, this);
             if (cprops != null) thetaY += cprops.Rotation.Y * GameMath.DEG2RAD;
-            
+
             float[] m = Mat4f.Create();
             Mat4f.RotateY(m, m, -degreeRotation * GameMath.DEG2RAD);   // apply the new rotation
             Mat4f.RotateX(m, m, thetaX);
@@ -194,6 +257,36 @@ namespace Vintagestory.GameContent
             rotateX = thetaX;
             rotateY = thetaY;
             rotateZ = thetaZ;
+
+            var tmpOffsetX = tree.GetFloat("offsetX");
+            offsetY = tree.GetFloat("offsetY");
+            var tmpOffsetZ = tree.GetFloat("offsetZ");
+
+            switch (degreeRotation)
+            {
+                case 90:
+                {
+                    offsetX = -tmpOffsetZ;
+                    offsetZ = tmpOffsetX;
+                    break;
+                }
+                case 180:
+                {
+                    offsetX = -tmpOffsetX;
+                    offsetZ = -tmpOffsetZ;
+                    break;
+                }
+                case 270:
+                {
+                    offsetX = tmpOffsetZ;
+                    offsetZ = -tmpOffsetX;
+                    break;
+                }
+            }
+
+            tree.SetFloat("offsetX", offsetX);
+            tree.SetFloat("offsetY", offsetY);
+            tree.SetFloat("offsetZ", offsetZ);
         }
 
         public void Rotate(EntityAgent byEntity, BlockSelection blockSel, int dir)

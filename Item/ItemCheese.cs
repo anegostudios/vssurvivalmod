@@ -40,7 +40,7 @@ namespace Vintagestory.GameContent
                         slot.MarkDirty();
                     }
 
-                    api.World.PlaySoundAt(placeblock.Sounds.Place, targetPos.X + 0.5, targetPos.Y, targetPos.Z + 0.5, byPlayer);
+                    api.World.PlaySoundAt(placeblock.Sounds.Place, targetPos.X + 0.5, targetPos.InternalY, targetPos.Z + 0.5, byPlayer);
 
                     handling = EnumHandHandling.PreventDefault;
                 } else

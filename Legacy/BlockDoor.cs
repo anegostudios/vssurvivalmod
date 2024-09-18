@@ -141,7 +141,7 @@ namespace Vintagestory.GameContent
             if (world.Side == EnumAppSide.Server && world.Rand.NextDouble() < breakChance && byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
             {
                 world.BlockAccessor.BreakBlock(position, byPlayer);
-                world.PlaySoundAt(new AssetLocation("sounds/effect/toolbreak"), position.X + 0.5, position.Y + 0.5, position.Z + 0.5, null);
+                world.PlaySoundAt(new AssetLocation("sounds/effect/toolbreak"), position, 0, null);
 
                 return;
             }

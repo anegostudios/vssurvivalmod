@@ -55,7 +55,7 @@ namespace Vintagestory.GameContent
                 while (slot.StackSize > 0)
                 {
                     ItemStack split = slot.TakeOut(GameMath.Clamp(slot.StackSize, 1, System.Math.Max(1, slot.Itemstack.Collectible.MaxStackSize / 4)));
-                    Api.World.SpawnItemEntity(split, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    Api.World.SpawnItemEntity(split, Pos);
                 }
             }
         }
@@ -155,7 +155,7 @@ namespace Vintagestory.GameContent
             {
                 invSlot.Itemstack = hotbarSlot.Itemstack.Clone();
                 invSlot.Itemstack.StackSize = 0;
-                Api.World.PlaySoundAt(SoundLocation, Pos.X, Pos.Y, Pos.Z, null, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
+                Api.World.PlaySoundAt(SoundLocation, Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, null, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
             }
 
             if (invSlot.Itemstack.Equals(Api.World, hotbarSlot.Itemstack, GlobalConstants.IgnoredStackAttributes))
@@ -180,7 +180,7 @@ namespace Vintagestory.GameContent
                     hotbarSlot.OnItemSlotModified(null);
                 }
 
-                Api.World.PlaySoundAt(SoundLocation, Pos.X, Pos.Y, Pos.Z, player, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
+                Api.World.PlaySoundAt(SoundLocation, Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, player, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
 
                 MarkDirty();
 
@@ -210,7 +210,7 @@ namespace Vintagestory.GameContent
 
                 if (stack.StackSize > 0)
                 {
-                    Api.World.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    Api.World.SpawnItemEntity(stack, Pos);
                 }
             }
 
@@ -219,7 +219,7 @@ namespace Vintagestory.GameContent
                 Api.World.BlockAccessor.SetBlock(0, Pos);
             }
 
-            Api.World.PlaySoundAt(SoundLocation, Pos.X, Pos.Y, Pos.Z, player, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
+            Api.World.PlaySoundAt(SoundLocation, Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, player, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
 
             MarkDirty();
 

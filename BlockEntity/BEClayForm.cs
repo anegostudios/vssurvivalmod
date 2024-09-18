@@ -265,7 +265,7 @@ namespace Vintagestory.GameContent
                     }
                     else
                     {
-                        Api.World.SpawnItemEntity(dropStack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                        Api.World.SpawnItemEntity(dropStack, Pos);
                     }
                 }
 
@@ -655,7 +655,7 @@ namespace Vintagestory.GameContent
             }
 
             ((ICoreClientAPI)Api).Network.SendBlockEntityPacket(
-                Pos.X, Pos.Y, Pos.Z,
+                Pos,
                 (int)EnumClayFormingPacket.OnUserOver,
                 data
             );
@@ -668,7 +668,7 @@ namespace Vintagestory.GameContent
             {
                 if (baseMaterial != null)
                 {
-                    Api.World.SpawnItemEntity(baseMaterial, Pos.ToVec3d().Add(0.5));
+                    Api.World.SpawnItemEntity(baseMaterial, Pos);
                 }
                 Api.World.BlockAccessor.SetBlock(0, Pos);
             }
@@ -749,12 +749,12 @@ namespace Vintagestory.GameContent
 
                     selectedRecipe = recipes[selectedIndex];
                     selectedRecipeId = selectedRecipe.RecipeId;
-                    capi.Network.SendBlockEntityPacket(pos.X, pos.Y, pos.Z, (int)EnumClayFormingPacket.SelectRecipe, SerializerUtil.Serialize(recipes[selectedIndex].RecipeId));
+                    capi.Network.SendBlockEntityPacket(pos, (int)EnumClayFormingPacket.SelectRecipe, SerializerUtil.Serialize(recipes[selectedIndex].RecipeId));
 
                     RegenMeshForNextLayer();
                 },
                 () => {
-                    capi.Network.SendBlockEntityPacket(pos.X, pos.Y, pos.Z, (int)EnumClayFormingPacket.CancelSelect);
+                    capi.Network.SendBlockEntityPacket(pos, (int)EnumClayFormingPacket.CancelSelect);
                 },
                 pos, 
                 Api as ICoreClientAPI

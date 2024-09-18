@@ -7,10 +7,11 @@ using Vintagestory.API.Server;
 
 namespace Vintagestory.ServerMods
 {
+
     public class GenBlockLayers : ModStdWorldGen
     {
         private ICoreServerAPI api;
-        
+
         List<int> BlockLayersIds = new List<int>();
         LCGRandom rnd;
         int mapheight;
@@ -80,12 +81,7 @@ namespace Vintagestory.ServerMods
         {
             LoadGlobalConfig(api);
 
-            IAsset asset = api.Assets.Get("worldgen/rockstrata.json");
-            RockStrataConfig rockstrata = asset.ToObject<RockStrataConfig>();
-
-            asset = api.Assets.Get("worldgen/blocklayers.json");
-            blockLayerConfig = asset.ToObject<BlockLayerConfig>();
-            blockLayerConfig.ResolveBlockIds(api, rockstrata);
+            blockLayerConfig = BlockLayerConfig.GetInstance(api);
 
             rnd = new LCGRandom(api.WorldManager.Seed);
             grassDensity = new ClampedSimplexNoise(new double[] { 4 }, new double[] { 0.5 }, rnd.NextInt());
@@ -93,10 +89,10 @@ namespace Vintagestory.ServerMods
 
             mapheight = api.WorldManager.MapSizeY;
 
-            boilingWaterBlockId = api.World.GetBlock(new AssetLocation("boilingwater-still-7")).Id;
+            boilingWaterBlockId = api.World.GetBlock(new AssetLocation("boilingwater-still-7"))?.Id ?? 0;
         }
 
-        
+
 
         private void OnChunkColumnGeneration(IChunkColumnGenerateRequest request)
         {
@@ -154,14 +150,14 @@ namespace Vintagestory.ServerMods
                     if (posY >= mapheight) continue;
 
                     int climate = climateMap.GetUnpaddedColorLerped(
-                        rdx * climateStep + climateStep * (x + (float)distx) / chunksize, 
+                        rdx * climateStep + climateStep * (x + (float)distx) / chunksize,
                         rdz * climateStep + climateStep * (z + (float)distz) / chunksize
                     );
-                    
+
                     int tempUnscaled = (climate >> 16) & 0xff;
-                    float temp = TerraGenConfig.GetScaledAdjustedTemperatureFloat(tempUnscaled, posY - TerraGenConfig.seaLevel + rnd);
-                    float tempRel = TerraGenConfig.GetAdjustedTemperature(tempUnscaled, posY - TerraGenConfig.seaLevel + rnd) / 255f;
-                    float rainRel = TerraGenConfig.GetRainFall((climate >> 8) & 0xff, posY + rnd) / 255f;
+                    float temp = Climate.GetScaledAdjustedTemperatureFloat(tempUnscaled, posY - TerraGenConfig.seaLevel + rnd);
+                    float tempRel = Climate.GetAdjustedTemperature(tempUnscaled, posY - TerraGenConfig.seaLevel + rnd) / 255f;
+                    float rainRel = Climate.GetRainFall((climate >> 8) & 0xff, posY + rnd) / 255f;
                     float forestRel = GameMath.BiLerp(forestUpLeft, forestUpRight, forestBotLeft, forestBotRight, (float)x / chunksize, (float)z / chunksize) / 255f;
 
                     int prevY = posY;
@@ -173,7 +169,7 @@ namespace Vintagestory.ServerMods
 
                     int rockblockID = chunks[chunkY].Data.GetBlockIdUnsafe(index3d);
                     var hereblock = api.World.Blocks[rockblockID];
-                    if (hereblock.BlockMaterial == EnumBlockMaterial.Soil || hereblock.BlockMaterial == EnumBlockMaterial.Gravel)
+                    if (hereblock.BlockMaterial != EnumBlockMaterial.Stone && hereblock.BlockMaterial != EnumBlockMaterial.Liquid)
                     {
                         continue;
                     }
@@ -212,7 +208,7 @@ namespace Vintagestory.ServerMods
 
                     PlaceTallGrass(x, prevY, z, chunks, rainRel, tempRel, temp, forestRel);
 
-                    
+
                     // Try again to put layers if above sealevel and we found over 10 air blocks
                     int foundAir = 0;
                     while (posY >= TerraGenConfig.seaLevel - 1)
@@ -229,22 +225,22 @@ namespace Vintagestory.ServerMods
                         {
                             if (foundAir >= 8)
                             {
-                                //temp = TerraGenConfig.GetScaledAdjustedTemperatureFloat(tempUnscaled, posY - TerraGenConfig.seaLevel);
-                                //rainRel = TerraGenConfig.GetRainFall((climate >> 8) & 0xff, posY) / 255f;
+                                //temp = Climate.GetScaledAdjustedTemperatureFloat(tempUnscaled, posY - TerraGenConfig.seaLevel);
+                                //rainRel = Climate.GetRainFall((climate >> 8) & 0xff, posY) / 255f;
                                 //PutLayers(transitionRand, x, posY, z, chunks, rainRel, temp, tempUnscaled, null);
                                 break;
                             } else
                             {
                                 foundAir = 0;
                             }
-                            
+
                         }
 
                         posY--;
                     }
 
 
-                    
+
                 }
             }
         }
@@ -260,12 +256,12 @@ namespace Vintagestory.ServerMods
         {
             int i = 0;
             int j = 0;
-            
+
             bool underWater = false;
             bool underIce = false;
             bool first = true;
             int startPosY = pos.Y;
-            
+
 
             while (pos.Y > 0)
             {
@@ -359,7 +355,7 @@ namespace Vintagestory.ServerMods
             double extraGrass = Math.Max(0, rainRel * tempRel - 0.25);
 
             if (rndVal <= GameMath.Clamp(forestRel - extraGrass, 0.05, 0.99) || posY >= mapheight - 1 || posY < 1) return;
-            
+
             int blockId = chunks[posY / chunksize].Data[(chunksize * (posY % chunksize) + z) * chunksize + x];
 
             if (api.World.Blocks[blockId].Fertility <= rnd.NextInt(100)) return;
@@ -383,8 +379,8 @@ namespace Vintagestory.ServerMods
         private void LoadBlockLayers(double posRand, float rainRel, float temperature, int unscaledTemp, int posY, BlockPos pos, int firstBlockId)
         {
             float heightRel = ((float)posY - TerraGenConfig.seaLevel) / ((float)mapheight - TerraGenConfig.seaLevel);
-            float fertilityRel = TerraGenConfig.GetFertilityFromUnscaledTemp((int)(rainRel * 255), unscaledTemp, heightRel) / 255f;
-            
+            float fertilityRel = Climate.GetFertilityFromUnscaledTemp((int)(rainRel * 255), unscaledTemp, heightRel) / 255f;
+
             float depthf = TerraGenConfig.SoilThickness(rainRel, temperature, posY - TerraGenConfig.seaLevel, 1f);
             int depth = (int)depthf;
             if (depthf - depth > rnd.NextFloat()) depth++;
@@ -415,12 +411,12 @@ namespace Vintagestory.ServerMods
                         }
 
                         posY--;
-                        temperature = TerraGenConfig.GetScaledAdjustedTemperatureFloat(unscaledTemp, posY - TerraGenConfig.seaLevel);
+                        temperature = Climate.GetScaledAdjustedTemperatureFloat(unscaledTemp, posY - TerraGenConfig.seaLevel);
                         // Would be correct, but doesn't seem to cause noticable problems
                         // so lets not add it for faster chunk gen
-                        //  rainRel = TerraGenConfig.GetRainFall(unscaledRain, posY) / 255f;
+                        //  rainRel = Climate.GetRainFall(unscaledRain, posY) / 255f;
                         heightRel = ((float)posY - TerraGenConfig.seaLevel) / ((float)api.WorldManager.MapSizeY - TerraGenConfig.seaLevel);
-                        fertilityRel = TerraGenConfig.GetFertilityFromUnscaledTemp((int)(rainRel * 255), unscaledTemp, heightRel) / 255f;
+                        fertilityRel = Climate.GetFertilityFromUnscaledTemp((int)(rainRel * 255), unscaledTemp, heightRel) / 255f;
                     }
                 }
 
@@ -433,6 +429,6 @@ namespace Vintagestory.ServerMods
             else layersUnderWater = new int[] { lakeBedId };
         }
 
-     
+
     }
 }

@@ -192,7 +192,7 @@ namespace Vintagestory.GameContent
             var curPagePos = Pages[curPage];
             string pageText = SingleComposer.GetTextArea("text").GetText();
 
-            AllPagesText = AllPagesText.Substring(0, curPagePos.Start) + pageText + AllPagesText.Substring(Math.Min(AllPagesText.Length, curPagePos.Start + curPagePos.Length));
+            AllPagesText = AllPagesText.Substring(0, curPagePos.Start) + pageText + AllPagesText.Substring(Math.Min(AllPagesText.Length, curPagePos.Start + curPagePos.Length)).Replace("\r", "");
             Pages = Pageize(AllPagesText, font, textAreaWidth, maxLines);
             if (curPage >= Pages.Count)
             {

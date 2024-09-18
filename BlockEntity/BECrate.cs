@@ -112,7 +112,8 @@ namespace Vintagestory.GameContent
                     InitInventory(Block, Api);   // We need to replace the inventory with one for the new type (may be a different size). It's OK to delete the existing inventory in a newly placed block, it can't hold anything
                     Inventory.LateInitialize(InventoryClassName + "-" + Pos.X + "/" + Pos.Y + "/" + Pos.Z, Api);
                     Inventory.ResolveBlocksOrItems();
-                    Inventory.OnAcquireTransitionSpeed = Inventory_OnAcquireTransitionSpeed;
+                    //Inventory.OnAcquireTransitionSpeed += Inventory_OnAcquireTransitionSpeed;
+                    container.LateInit();
                     MarkDirty();
                 }
             }
@@ -149,7 +150,7 @@ namespace Vintagestory.GameContent
                     labelStack = inventory.FirstNonEmptySlot.Itemstack.Clone();
                     labelMesh = null;
 
-                    byPlayer.Entity.World.PlaySoundAt(new AssetLocation("sounds/player/chalkdraw"), blockSel.Position.X + blockSel.HitPosition.X, blockSel.Position.Y + blockSel.HitPosition.Y, blockSel.Position.Z + blockSel.HitPosition.Z, byPlayer, true, 8);
+                    byPlayer.Entity.World.PlaySoundAt(new AssetLocation("sounds/player/chalkdraw"), blockSel.Position.X + blockSel.HitPosition.X, blockSel.Position.InternalY + blockSel.HitPosition.Y, blockSel.Position.Z + blockSel.HitPosition.Z, byPlayer, true, 8);
 
                     MarkDirty(true);
                 }
@@ -164,6 +165,7 @@ namespace Vintagestory.GameContent
             if (take && ownSlot != null)
             {
                 ItemStack stack = bulk ? ownSlot.TakeOutWhole() : ownSlot.TakeOut(1);
+                var quantity = bulk ? stack.StackSize : 1; 
                 if (!byPlayer.InventoryManager.TryGiveItemstack(stack, true))
                 {
                     Api.World.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5f + blockSel.Face.Normalf.X, 0.5f + blockSel.Face.Normalf.Y, 0.5f + blockSel.Face.Normalf.Z));
@@ -172,6 +174,11 @@ namespace Vintagestory.GameContent
                 {
                     didMoveItems(stack, byPlayer);
                 }
+                Api.World.Logger.Audit("{0} Took {1} from Crate at {2}.", 
+                    byPlayer.PlayerName,
+                    string.Format("{0}x{1}", quantity, stack?.GetName()),
+                    Pos
+                );
 
                 if (inventory.Empty)
                 {
@@ -186,11 +193,17 @@ namespace Vintagestory.GameContent
 
             if (put && !hotbarslot.Empty)
             {
+                var quantity = bulk ? hotbarslot.StackSize : 1;
                 if (ownSlot == null)
                 {
-                    if (hotbarslot.TryPutInto(Api.World, inventory[0], bulk ? hotbarslot.StackSize : 1) > 0)
+                    if (hotbarslot.TryPutInto(Api.World, inventory[0], quantity) > 0)
                     {
                         didMoveItems(inventory[0].Itemstack, byPlayer);
+                        Api.World.Logger.Audit("{0} Put {1} into Crate at {2}.", 
+                            byPlayer.PlayerName,
+                            string.Format("{0}x{1}", quantity, inventory[0].Itemstack?.GetName()),
+                            Pos
+                        );
                     }
                 }
                 else
@@ -203,9 +216,14 @@ namespace Vintagestory.GameContent
                             var wslot = inventory.GetBestSuitedSlot(hotbarslot, null, skipSlots);
                             if (wslot.slot == null) break;
 
-                            if (hotbarslot.TryPutInto(Api.World, wslot.slot, bulk ? hotbarslot.StackSize : 1) > 0)
+                            if (hotbarslot.TryPutInto(Api.World, wslot.slot, quantity) > 0)
                             {
                                 didMoveItems(wslot.slot.Itemstack, byPlayer);
+                                Api.World.Logger.Audit("{0} Put {1} into Crate at {2}.", 
+                                    byPlayer.PlayerName,
+                                    string.Format("{0}x{1}", quantity, wslot.slot.Itemstack?.GetName()),
+                                    Pos
+                                );
                                 if (!bulk) break;
                             }
 
@@ -463,7 +481,6 @@ namespace Vintagestory.GameContent
                 requested = false;
             });
         }
-
 
 
         static Vec3f origin = new Vec3f(0.5f, 0f, 0.5f);

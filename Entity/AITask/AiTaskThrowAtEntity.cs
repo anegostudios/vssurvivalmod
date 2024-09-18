@@ -51,7 +51,7 @@ namespace Vintagestory.GameContent
             // React immediately on hurt, otherwise only 1/10 chance of execution
             if (rand.NextDouble() > 0.1f && (whenInEmotionState == null || IsInEmotionState(whenInEmotionState) != true)) return false;
 
-            if (!EmotionStatesSatisifed()) return false;
+            if (!PreconditionsSatisifed()) return false;
             if (lastSearchTotalMs + searchWaitMs > entity.World.ElapsedMilliseconds) return false;
             if (whenInEmotionState == null && rand.NextDouble() > 0.5f) return false;
             if (cooldownUntilMs > entity.World.ElapsedMilliseconds) return false;
@@ -154,7 +154,7 @@ namespace Vintagestory.GameContent
                 double distf = Math.Pow(pos.SquareDistanceTo(targetPos), 0.1);
                 Vec3d velocity = (targetPos - pos).Normalize() * GameMath.Clamp(distf - 1f, 0.1f, 1f);
 
-                entitypr.ServerPos.SetPos(
+                entitypr.ServerPos.SetPosWithDimension(
                     entity.ServerPos.BehindCopy(0.21).XYZ.Add(0, entity.LocalEyePos.Y, 0)
                 );
 

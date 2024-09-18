@@ -105,7 +105,7 @@ namespace Vintagestory.GameContent
             Vec3d aheadPos = pos.AheadCopy(1, byEntity.ServerPos.Pitch + rndpitch, byEntity.ServerPos.Yaw + rndyaw);
             Vec3d velocity = (aheadPos - pos) * 0.5;
 
-            entity.ServerPos.SetPos(
+            entity.ServerPos.SetPosWithDimension(
                 byEntity.ServerPos.BehindCopy(0.21).XYZ.Add(0, byEntity.LocalEyePos.Y, 0)
             );
 

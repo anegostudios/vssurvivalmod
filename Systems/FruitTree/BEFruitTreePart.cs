@@ -476,7 +476,7 @@ namespace Vintagestory.GameContent
                     ItemStack stack = drop.GetNextItemStack(1);
                     if (stack == null) continue;
 
-                    Api.World.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    Api.World.SpawnItemEntity(stack, Pos);
                     if (drop.LastDrop) break;
                 }
             }

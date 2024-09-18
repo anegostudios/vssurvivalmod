@@ -21,6 +21,7 @@ namespace Vintagestory.GameContent
         long growListenerId;
         public EnumTreeGrowthStage stage;
         public bool plantedFromSeed;
+        private NormalRandom normalRandom;
 
         MeshData dirtMoundMesh
         {
@@ -40,14 +41,15 @@ namespace Vintagestory.GameContent
                 });
             }
         }
-            
+
 
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
 
             if (api is ICoreServerAPI)
-            {   
+            {
+                normalRandom = new NormalRandom(api.World.Seed);
                 growListenerId = RegisterGameTickListener(CheckGrow, 2000);
             }
         }
@@ -146,7 +148,7 @@ namespace Vintagestory.GameContent
                 mossGrowthChance = 0
             };
 
-            gen.GrowTree(Api.World.BulkBlockAccessor, Pos.DownCopy(), pa);
+            gen.GrowTree(Api.World.BulkBlockAccessor, Pos.DownCopy(), pa, normalRandom);
 
             Api.World.BulkBlockAccessor.Commit();
         }
@@ -243,7 +245,7 @@ namespace Vintagestory.GameContent
             return base.OnTesselation(mesher, tessThreadTesselator);
         }
 
-        
+
 
     }
 }

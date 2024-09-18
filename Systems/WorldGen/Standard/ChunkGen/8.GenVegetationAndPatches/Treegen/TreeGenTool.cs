@@ -18,10 +18,9 @@ namespace Vintagestory.ServerMods
 
     internal class TreeGenTool : ToolBase
     {
-        Random rand = new Random();
-        TreeGeneratorsUtil treeGenerators;
+        private readonly LCGRandom _rand;
+        private TreeGeneratorsUtil _treeGenerators;
 
-        
         public float MinTreeSize
         {
             get { return workspace.FloatValues["std.treeToolMinTreeSize"]; }
@@ -52,8 +51,13 @@ namespace Vintagestory.ServerMods
             set { workspace.FloatValues["std.treeToolVinesGrowthChance"] = value; }
         }
 
+        public TreeGenTool()
+        {
+        }
+
         public TreeGenTool(WorldEditWorkspace workspace, IBlockAccessorRevertable blockAccess) : base(workspace, blockAccess)
         {
+            _rand = new LCGRandom();
             if (!workspace.FloatValues.ContainsKey("std.treeToolMinTreeSize")) MinTreeSize = 0.7f;
             if (!workspace.FloatValues.ContainsKey("std.treeToolMaxTreeSize")) MaxTreeSize = 1.3f;
             if (!workspace.StringValues.ContainsKey("std.treeToolTreeVariant")) TreeVariant = null;
@@ -68,11 +72,13 @@ namespace Vintagestory.ServerMods
         }
 
 
-        public override bool OnWorldEditCommand(WorldEdit.WorldEdit worldEdit, CmdArgs args)
+        public override bool OnWorldEditCommand(WorldEdit.WorldEdit worldEdit, TextCommandCallingArgs callerArgs)
         {
-            if (treeGenerators == null)
+            var player = (IServerPlayer)callerArgs.Caller.Player;
+            var args = callerArgs.RawArgs;
+            if (_treeGenerators == null)
             {
-                treeGenerators = new TreeGeneratorsUtil(worldEdit.sapi);
+                _treeGenerators = new TreeGeneratorsUtil(worldEdit.sapi);
             }
 
             string cmd = args.PopWord();
@@ -84,7 +90,7 @@ namespace Vintagestory.ServerMods
                         if (args.Length > 0) float.TryParse(args[0], NumberStyles.Any, GlobalConstants.DefaultCultureInfo, out size);
                         MinTreeSize = size;
 
-                        worldEdit.Good("Tree Min Size=" + size + " set.");
+                        WorldEdit.WorldEdit.Good(player, "Tree Min Size=" + size + " set.");
 
                         return true;
                     }
@@ -95,7 +101,7 @@ namespace Vintagestory.ServerMods
                         if (args.Length > 0) float.TryParse(args[0], NumberStyles.Any, GlobalConstants.DefaultCultureInfo, out size);
                         MaxTreeSize = size;
 
-                        worldEdit.Good("Tree Max Size=" + size + " set.");
+                        WorldEdit.WorldEdit.Good(player, "Tree Max Size=" + size + " set.");
 
                         return true;
                     }
@@ -110,7 +116,7 @@ namespace Vintagestory.ServerMods
                         if (args.Length > 1) float.TryParse(args[1], NumberStyles.Any, GlobalConstants.DefaultCultureInfo, out max);
                         MaxTreeSize = max;
 
-                        worldEdit.Good("Tree Min Size=" + min + ", max size =" + MaxTreeSize + " set.");
+                        WorldEdit.WorldEdit.Good(player, "Tree Min Size=" + min + ", max size =" + MaxTreeSize + " set.");
 
                         return true;
                     }
@@ -121,13 +127,13 @@ namespace Vintagestory.ServerMods
                 case "tforestfloor":
                     var on = args.PopBool(false);
                     this.WithForestFloor = on==true ? 1 : 0;
-                    worldEdit.Good("Forest floor generation now {0}.", on == true ? "on": "off");
+                    WorldEdit.WorldEdit.Good(player, "Forest floor generation now {0}.", on == true ? "on": "off");
                     return true;
 
                 case "tvines":
                     float chance = (float)args.PopFloat(0);
                     this.VinesGrowthChance = chance;
-                    worldEdit.Good("Vines growth chance now at {0}.", chance);
+                    WorldEdit.WorldEdit.Good(player, "Vines growth chance now at {0}.", chance);
                     return true;
 
 
@@ -138,34 +144,33 @@ namespace Vintagestory.ServerMods
 
                     bool numeric = int.TryParse(variant, NumberStyles.Any, GlobalConstants.DefaultCultureInfo, out index);
 
-                    treeGenerators.ReloadTreeGenerators();
+                    _treeGenerators.ReloadTreeGenerators();
 
                     if (numeric)
                     {
-                        var val = treeGenerators.GetGenerator(index);
+                        var val = _treeGenerators.GetGenerator(index);
                         if (val.Key == null)
                         {
-                            worldEdit.Bad("No such tree variant found.");
+                            WorldEdit.WorldEdit.Bad(player, "No such tree variant found.");
                             return true;
                         }
 
                         TreeVariant = val.Key.ToShortString();
-                        worldEdit.Good("Tree variant " + val.Key + " set.");
-                        
+                        WorldEdit.WorldEdit.Good(player, "Tree variant " + val.Key + " set.");
+
                     } else
                     {
-                        if (variant != null && treeGenerators.GetGenerator(new AssetLocation(variant)) != null)
+                        if (variant != null && _treeGenerators.GetGenerator(new AssetLocation(variant)) != null)
                         {
                             TreeVariant = variant;
-                            worldEdit.Good("Tree variant " + variant + " set.");
+                            WorldEdit.WorldEdit.Good(player, "Tree variant " + variant + " set.");
                         } else
                         {
-                            worldEdit.Bad("No such tree variant found.");
+                            WorldEdit.WorldEdit.Bad(player, "No such tree variant found.");
                         }
                     }
 
                     return true;
-
             }
 
             return false;
@@ -173,14 +178,16 @@ namespace Vintagestory.ServerMods
 
         public override void OnBuild(WorldEdit.WorldEdit worldEdit, int oldBlockId, BlockSelection blockSel, ItemStack withItemStack)
         {
-            if (treeGenerators == null)
+            if (_treeGenerators == null)
             {
-                treeGenerators = new TreeGeneratorsUtil(worldEdit.sapi);
+                _treeGenerators = new TreeGeneratorsUtil(worldEdit.sapi);
             }
+            _rand.SetWorldSeed(worldEdit.sapi.World.Seed);
 
             if (TreeVariant == null)
             {
-                worldEdit.Bad("Please select a tree variant first.");
+                var player = (IServerPlayer)worldEdit.sapi.World.PlayerByUid(workspace.PlayerUID);
+                WorldEdit.WorldEdit.Bad(player, "Please select a tree variant first.");
                 return;
             }
 
@@ -189,21 +196,20 @@ namespace Vintagestory.ServerMods
 
             ba.ReadFromStagedByDefault = true;
 
-            treeGenerators.ReloadTreeGenerators();
-            var gen = treeGenerators.GetGenerator(new AssetLocation(TreeVariant));
+            _treeGenerators.ReloadTreeGenerators();
+            var gen = _treeGenerators.GetGenerator(new AssetLocation(TreeVariant));
 
             var treeParams = new TreeGenParams()
             {
                 skipForestFloor = WithForestFloor == 0,
-                size = MinTreeSize + (float)rand.NextDouble() * (MaxTreeSize - MinTreeSize),
+                size = MinTreeSize + (float)_rand.NextDouble() * (MaxTreeSize - MinTreeSize),
                 vinesGrowthChance = VinesGrowthChance
             };
 
-            gen.GrowTree(ba, blockSel.Position, treeParams);
+            gen.GrowTree(ba, blockSel.Position, treeParams, _rand);
 
             ba.SetHistoryStateBlock(blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, oldBlockId, ba.GetStagedBlockId(blockSel.Position));
             ba.Commit();
         }
-
     }
 }

@@ -231,8 +231,7 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 if (TryAddPart(handslot, byPlayer))
                 {
-                    var pos = Pos.ToVec3d().Add(0.5, 0.25, 0.5);
-                    Api.World.PlaySoundAt(Block.Sounds.Place, pos.X, pos.Y, pos.Z, byPlayer);
+                    Api.World.PlaySoundAt(Block.Sounds.Place, Pos, -0.25, byPlayer);
                     (Api as ICoreClientAPI)?.World.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
                     return true;
                 }
@@ -289,7 +288,7 @@ namespace Vintagestory.GameContent.Mechanics
                     {
                         if (!toPlayer.InventoryManager.TryGiveItemstack(inv[2].Itemstack, true))
                         {
-                            Api.World.SpawnItemEntity(inv[2].Itemstack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                            Api.World.SpawnItemEntity(inv[2].Itemstack, Pos);
                         }
                     }
 

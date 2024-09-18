@@ -11,14 +11,35 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockLantern : Block, ITexPositionSource
+    public class BlockLantern : Block, ITexPositionSource, IAttachableToEntity
     {
-        public Size2i AtlasSize { get; set; }
+        IAttachableToEntity attrAtta;
+        #region IAttachableToEntity
+        string IAttachableToEntity.GetCategoryCode(ItemStack stack) => attrAtta.GetCategoryCode(stack);
+        CompositeShape IAttachableToEntity.GetAttachedShape(ItemStack stack, string slotCode) => attrAtta.GetAttachedShape(stack, slotCode);
+        string[] IAttachableToEntity.GetDisableElements(ItemStack stack) => attrAtta.GetDisableElements(stack);
+        string[] IAttachableToEntity.GetKeepElements(ItemStack stack) => attrAtta.GetKeepElements(stack);
+        string IAttachableToEntity.GetTexturePrefixCode(ItemStack stack) => attrAtta.GetTexturePrefixCode(stack);
 
+        void IAttachableToEntity.CollectTextures(ItemStack itemstack, Shape intoShape, string texturePrefixCode, Dictionary<string, CompositeTexture> intoDict)
+        {
+            string material = itemstack.Attributes.GetString("material");
+            string lining = itemstack.Attributes.GetString("lining");
+            string glassMaterial = itemstack.Attributes.GetString("glass", "quartz");
+
+            Block glassBlock = api.World.GetBlock(new AssetLocation("glass-" + glassMaterial));
+
+            intoShape.Textures["glass"] = glassBlock.Textures["material"].Base;
+            intoShape.Textures["material"] = this.Textures[material].Base;
+            intoShape.Textures["lining"] = this.Textures[lining == "plain" ? material : lining].Base;
+            intoShape.Textures["material-deco"] = this.Textures["deco-" + material].Base;
+        }
+        #endregion
+
+        public Size2i AtlasSize { get; set; }
         string curMat, curLining;
         ITexPositionSource glassTextureSource;
         ITexPositionSource tmpTextureSource;
-
 
         public TextureAtlasPosition this[string textureCode]
         {
@@ -32,6 +53,13 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+
+            attrAtta = IAttachableToEntity.FromAttributes(this);
+        }
+
         public override string GetHeldTpIdleAnimation(ItemSlot activeHotbarSlot, Entity forEntity, EnumHand hand)
         {
             IPlayer player = (forEntity as EntityPlayer)?.Player;
@@ -42,7 +70,7 @@ namespace Vintagestory.GameContent
             }
 
             if (player?.InventoryManager?.ActiveHotbarSlot != null && !player.InventoryManager.ActiveHotbarSlot.Empty && hand == EnumHand.Left)
-            { 
+            {
                 ItemStack stack = player.InventoryManager.ActiveHotbarSlot.Itemstack;
                 if (stack?.Collectible?.GetHeldTpIdleAnimation(player.InventoryManager.ActiveHotbarSlot, forEntity, EnumHand.Right) != null) return null;
 
@@ -89,7 +117,7 @@ namespace Vintagestory.GameContent
             string material = itemstack.Attributes.GetString("material");
             string lining = itemstack.Attributes.GetString("lining");
             string glass = itemstack.Attributes.GetString("glass", "quartz");
-            
+
             string key = material + "-" + lining + "-" + glass;
             MultiTextureMeshRef meshref;
             if (!meshrefs.TryGetValue(key, out meshref))
@@ -100,7 +128,7 @@ namespace Vintagestory.GameContent
                 MeshData mesh = GenMesh(capi, material, lining, glass, shape);
                 meshrefs[key] = meshref = capi.Render.UploadMultiTextureMesh(mesh);
             }
-            
+
             renderinfo.ModelRef = meshref;
             renderinfo.CullFaces = false;
         }
@@ -123,7 +151,7 @@ namespace Vintagestory.GameContent
                 capi.ObjectCache.Remove("blockLanternGuiMeshRefs");
             }
         }
-        
+
 
         public MeshData GenMesh(ICoreClientAPI capi, string material, string lining, string glassMaterial, Shape shape = null, ITesselatorAPI tesselator = null)
         {
@@ -191,7 +219,8 @@ namespace Vintagestory.GameContent
                 stack.Attributes.SetString("material", be.material);
                 stack.Attributes.SetString("lining", be.lining);
                 stack.Attributes.SetString("glass", be.glass);
-            } else
+            }
+            else
             {
                 stack.Attributes.SetString("material", "copper");
                 stack.Attributes.SetString("lining", "plain");
@@ -229,11 +258,11 @@ namespace Vintagestory.GameContent
                 {
                     for (int i = 0; i < drops.Length; i++)
                     {
-                        world.SpawnItemEntity(drops[i], new Vec3d(pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5), null);
+                        world.SpawnItemEntity(drops[i], pos, null);
                     }
                 }
 
-                world.PlaySoundAt(Sounds.GetBreakSound(byPlayer), pos.X, pos.Y, pos.Z, byPlayer);
+                world.PlaySoundAt(Sounds.GetBreakSound(byPlayer), pos, -0.5, byPlayer);
             }
 
             if (EntityClass != null)
@@ -268,7 +297,7 @@ namespace Vintagestory.GameContent
         public override string GetHeldItemName(ItemStack itemStack)
         {
             string material = itemStack.Attributes.GetString("material");
-            
+
             return Lang.GetMatching(Code?.Domain + AssetLocation.LocationSeparator + "block-" + Code?.Path + "-" + material);
         }
 
@@ -331,10 +360,13 @@ namespace Vintagestory.GameContent
                             stacks.Add(otherGlass);
                             ItemStack otherLiningSilver = stack.Clone();
                             ItemStack otherLiningGold = stack.Clone();
+                            ItemStack otherLiningElectrum = stack.Clone();
                             otherLiningSilver.Attributes.SetString("lining", "silver");
                             otherLiningGold.Attributes.SetString("lining", "gold");
+                            otherLiningElectrum.Attributes.SetString("lining", "electrum");
                             stacks.Add(otherLiningSilver);
                             stacks.Add(otherLiningGold);
+                            stacks.Add(otherLiningElectrum);
                         }
                     }
                 }
@@ -346,5 +378,5 @@ namespace Vintagestory.GameContent
 
             return stacks;
         }
-                    }
+    }
 }

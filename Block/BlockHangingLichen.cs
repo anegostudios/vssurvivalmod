@@ -12,11 +12,11 @@ namespace Vintagestory.GameContent
             base.OnLoaded(api);
         }
 
-        
+
         public override void OnJsonTesselation(ref MeshData sourceMesh, ref int[] lightRgbsByCorner, BlockPos pos, Block[] chunkExtBlocks, int extIndex3d)
         {
             if (VertexFlags.WindMode == EnumWindBitMode.NoWind) return;
-            
+
             int sideDisableWindWave = 0;  // Any bit set to 1 means no Wave on that tileSide
 
             // Disable motion if top side touching a solid block
@@ -38,7 +38,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, IRandom worldGenRand, BlockPatchAttributes attributes = null)
         {
             if (!blockAccessor.GetBlock(pos).IsReplacableBy(this))
             {

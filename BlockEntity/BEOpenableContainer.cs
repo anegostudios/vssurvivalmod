@@ -49,13 +49,13 @@ namespace Vintagestory.GameContent
                 invDialog.OnClosed += () =>
                 {
                     invDialog = null;
-                    capi.Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, (int)EnumBlockEntityPacketId.Close, null);
+                    capi.Network.SendBlockEntityPacket(Pos, (int)EnumBlockEntityPacketId.Close, null);
                     capi.Network.SendPacketClient(Inventory.Close(byPlayer));
                 };
 
                 invDialog.TryOpen();
                 capi.Network.SendPacketClient(Inventory.Open(byPlayer));
-                capi.Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, (int)EnumBlockEntityPacketId.Open, null);
+                capi.Network.SendBlockEntityPacket(Pos, (int)EnumBlockEntityPacketId.Open, null);
             }
             else
             {

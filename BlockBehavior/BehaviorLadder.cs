@@ -238,7 +238,7 @@ namespace Vintagestory.GameContent
             ItemStack[] stacks = collectBlock.GetDrops(world, pos, byPlayer);
 
             world.BlockAccessor.SetBlock(0, belowPos);
-            world.PlaySoundAt(collectBlock.Sounds.Break, pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5, byPlayer);
+            world.PlaySoundAt(collectBlock.Sounds.Break, pos, 0, byPlayer);
 
             if (stacks.Length > 0)
             {

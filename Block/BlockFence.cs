@@ -8,16 +8,25 @@ namespace Vintagestory.GameContent
 {
     public class BlockFence : Block
     {
+        BlockBehaviorRopeTieable bbrt;
+
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
 
             CanStep = false;
+
+            bbrt = GetBehavior<BlockBehaviorRopeTieable>();
         }
 
         public override void OnJsonTesselation(ref MeshData sourceMesh, ref int[] lightRgbsByCorner, BlockPos pos, Block[] chunkExtBlocks, int extIndex3d)
         {
             return;  // no windwave for solid fences!
+        }
+
+        public override Cuboidf[] GetSelectionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
+        {
+            return base.GetSelectionBoxes(blockAccessor, pos);
         }
 
         public string GetOrientations(IWorldAccessor world, BlockPos pos)
@@ -110,9 +119,9 @@ namespace Vintagestory.GameContent
                 new RotatableCube(6, 0, 15, 10, 14, 15).ToHitboxCuboidi(0),
                 new RotatableCube(6, 0, 15, 10, 14, 15).ToHitboxCuboidi(90)
             };
-        
+
             Cuboidi attachArea = attachAreaBySide[side.Index];
-            
+
 
             return
                 block is BlockFence ||

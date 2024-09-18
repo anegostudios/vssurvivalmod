@@ -346,8 +346,8 @@ namespace Vintagestory.GameContent
             if (bbh?.harvestedStack != null)
             {
                 ItemStack dropStack = bbh.harvestedStack.GetNextItemStack();
-                Api.World.PlaySoundAt(bbh.harvestingSound, Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5);
-                Api.World.SpawnItemEntity(dropStack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                Api.World.PlaySoundAt(bbh.harvestingSound, Pos, 0);
+                Api.World.SpawnItemEntity(dropStack, Pos);
             }
 
 

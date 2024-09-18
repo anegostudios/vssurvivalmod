@@ -34,7 +34,7 @@ namespace Vintagestory.GameContent
         public BlockEntityPlantContainer()
         {
             inv = new InventoryGeneric(1, null, null, null);
-            inv.OnAcquireTransitionSpeed = slotTransitionSpeed;
+            inv.OnAcquireTransitionSpeed += slotTransitionSpeed;
         }
 
         private float slotTransitionSpeed(EnumTransitionType transType, ItemStack stack, float mulByConfig)
@@ -137,7 +137,7 @@ namespace Vintagestory.GameContent
             {
                 if (Api.Side == EnumAppSide.Server)
                 {
-                    Api.World.PlaySoundAt(new AssetLocation("sounds/block/plant"), Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5);
+                    Api.World.PlaySoundAt(new AssetLocation("sounds/block/plant"), Pos, 0);
                 }
 
                 (player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);

@@ -120,7 +120,7 @@ namespace Vintagestory.GameContent
                 if (splr.ConnectionState != EnumClientState.Playing || splr.WorldData.CurrentGameMode == EnumGameMode.Spectator) continue;
 
                 var bh = splr.Entity.GetBehavior<EntityBehaviorTiredness>();
-                IMountable mount = player.Entity?.MountedOn;
+                IMountableSeat mount = player.Entity?.MountedOn;
                 if (bh?.IsSleeping == true && mount != null)
                 {
                     player.Entity.TryUnmount();

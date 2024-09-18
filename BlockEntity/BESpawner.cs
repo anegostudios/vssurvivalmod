@@ -236,7 +236,7 @@ namespace Vintagestory.GameContent
 
             if (Data.SpawnRangeMode > 0)
             {
-                IPlayer player = Api.World.NearestPlayer(Pos.X, Pos.Y, Pos.Z);
+                IPlayer player = Api.World.NearestPlayer(Pos.X, Pos.InternalY, Pos.Z);
                 if (player?.Entity?.ServerPos == null) return;
                 double distanceSq = player.Entity.ServerPos.SquareDistanceTo(Pos.ToVec3d());
 
@@ -429,7 +429,7 @@ namespace Vintagestory.GameContent
             EntityAgent agent = entity as EntityAgent;
             if (agent != null) agent.HerdId = herdid;
 
-            entity.ServerPos.SetPos(spawnPosition);
+            entity.ServerPos.SetPosWithDimension(spawnPosition);
             entity.ServerPos.SetYaw((float)Api.World.Rand.NextDouble() * GameMath.TWOPI);
             entity.Pos.SetFrom(entity.ServerPos);
             entity.Attributes.SetString("origin", "entityspawner");
@@ -479,7 +479,7 @@ namespace Vintagestory.GameContent
             if (Api.Side == EnumAppSide.Server)
             {
                 ICoreServerAPI sapi = Api as ICoreServerAPI;
-                sapi.Network.SendBlockEntityPacket(byPlayer as IServerPlayer, Pos.X, Pos.Y, Pos.Z, 1000, SerializerUtil.Serialize(Data));
+                sapi.Network.SendBlockEntityPacket(byPlayer as IServerPlayer, Pos, 1000, SerializerUtil.Serialize(Data));
                 return;
             }
 

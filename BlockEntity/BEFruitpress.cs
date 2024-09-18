@@ -234,7 +234,7 @@ namespace Vintagestory.GameContent
 
             if (Api.Side == EnumAppSide.Server && squeezeRel < 1 && !squeezeSoundPlayed && juiceableLitresLeft > 0)
             {
-                Api.World.PlaySoundAt(new AssetLocation("sounds/player/wetclothsqueeze.ogg"), Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, null, false);
+                Api.World.PlaySoundAt(new AssetLocation("sounds/player/wetclothsqueeze.ogg"), Pos, 0, null, false);
                 squeezeSoundPlayed = true;
             }
 
@@ -427,7 +427,7 @@ namespace Vintagestory.GameContent
 
             if (!byPlayer.InventoryManager.TryGiveItemstack(mashStack, true))
             {
-                Api.World.SpawnItemEntity(mashStack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                Api.World.SpawnItemEntity(mashStack, Pos);
             }
 
             MashSlot.Itemstack = null;
@@ -450,10 +450,10 @@ namespace Vintagestory.GameContent
             {
                 if (!byPlayer.InventoryManager.TryGiveItemstack(BucketSlot.Itemstack, true))
                 {
-                    Api.World.SpawnItemEntity(BucketSlot.Itemstack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    Api.World.SpawnItemEntity(BucketSlot.Itemstack, Pos);
                 }
 
-                if (BucketSlot.Itemstack.Block != null) Api.World.PlaySoundAt(BucketSlot.Itemstack.Block.Sounds.Place, Pos.X + 0.5, Pos.Y, Pos.Z + 0.5, byPlayer);
+                if (BucketSlot.Itemstack.Block != null) Api.World.PlaySoundAt(BucketSlot.Itemstack.Block.Sounds.Place, Pos, -0.5, byPlayer);
 
                 BucketSlot.Itemstack = null;
                 MarkDirty(true);
@@ -468,7 +468,7 @@ namespace Vintagestory.GameContent
                     handslot.MarkDirty();
                     MarkDirty(true);
                     genBucketMesh();
-                    Api.World.PlaySoundAt(handStack.Block.Sounds.Place, Pos.X + 0.5, Pos.Y, Pos.Z + 0.5, byPlayer);
+                    Api.World.PlaySoundAt(handStack.Block.Sounds.Place, Pos, -0.5, byPlayer);
                 }
             }
 
@@ -578,7 +578,7 @@ namespace Vintagestory.GameContent
                 {
                     if (!MashSlot.Empty && juiceableLitresLeft > 0 && !CompressAnimActive)
                     {
-                        Api.World.PlaySoundAt(new AssetLocation("sounds/player/wetclothsqueeze.ogg"), Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, null, false);
+                        Api.World.PlaySoundAt(new AssetLocation("sounds/player/wetclothsqueeze.ogg"), Pos, 0, null, false);
                     }
 
                     animUtil.StartAnimation(compressAnimMeta);

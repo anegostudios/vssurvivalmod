@@ -242,7 +242,7 @@ namespace Vintagestory.GameContent
             spawnerData.EntityCodes = SingleComposer.GetDropDown("entityCode").SelectedValues;
 
             byte[] data = SerializerUtil.Serialize(spawnerData);
-            capi.Network.SendBlockEntityPacket(blockEntityPos.X, blockEntityPos.Y, blockEntityPos.Z, 1001, data);
+            capi.Network.SendBlockEntityPacket(blockEntityPos, 1001, data);
             
             return true;
         }

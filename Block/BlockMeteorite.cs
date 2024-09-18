@@ -9,19 +9,19 @@ namespace Vintagestory.GameContent
     {
         BlockPos tmpPos = new BlockPos();
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blAcc, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldgenRand)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blAcc, BlockPos pos, BlockFacing onBlockFace, IRandom worldgenRand, BlockPatchAttributes attributes = null)
         {
             int cnt = 2 + worldgenRand.NextInt(25);
             float depth = GameMath.Sqrt(GameMath.Sqrt(cnt));
             float craterRadius = GameMath.Sqrt(cnt) * 1.25f;
 
             // Look for even or downwards curved ground
-            if (pos.Y > 250 || 
-                !IsSolid(blAcc, pos.X, pos.Y - 3, pos.Z) || 
-                !IsSolid(blAcc, pos.X, pos.Y - (int)depth, pos.Z) || 
-                !IsSolid(blAcc, pos.X + (int)craterRadius, pos.Y - 1, pos.Z) || 
-                !IsSolid(blAcc, pos.X - (int)craterRadius, pos.Y - 1, pos.Z) || 
-                !IsSolid(blAcc, pos.X, pos.Y - 1, pos.Z - (int)craterRadius) || 
+            if (pos.Y > 250 ||
+                !IsSolid(blAcc, pos.X, pos.Y - 3, pos.Z) ||
+                !IsSolid(blAcc, pos.X, pos.Y - (int)depth, pos.Z) ||
+                !IsSolid(blAcc, pos.X + (int)craterRadius, pos.Y - 1, pos.Z) ||
+                !IsSolid(blAcc, pos.X - (int)craterRadius, pos.Y - 1, pos.Z) ||
+                !IsSolid(blAcc, pos.X, pos.Y - 1, pos.Z - (int)craterRadius) ||
                 !IsSolid(blAcc, pos.X, pos.Y - 1, pos.Z + (int)craterRadius)
             )
             {
@@ -35,7 +35,7 @@ namespace Vintagestory.GameContent
 
             if ((GameMath.Max(y1, y2, y3, y4) - GameMath.Min(y1, y2, y3, y4)) > 4) return false;
 
-            
+
 
             tmpPos = tmpPos.Set(pos.X, pos.Y - (int)depth-2, pos.Z);
             while (cnt-- > 0)
@@ -46,7 +46,7 @@ namespace Vintagestory.GameContent
 
                 blAcc.SetBlock(this.BlockId, tmpPos);
             }
-            
+
 
 
             int sueviteBlockId = api.World.GetBlock(new AssetLocation("rock-suevite")).BlockId;
@@ -78,7 +78,7 @@ namespace Vintagestory.GameContent
 
                     float q = 3 * Math.Max(0, 2 * (1-distImpactRockEdge) - 0.2f);
                     tmpPos.Y -= (int)q+1;
-                    
+
 
                     while (q > 0)
                     {
@@ -116,7 +116,7 @@ namespace Vintagestory.GameContent
                     }
 
                     mapchunk.WorldGenTerrainHeightMap[(tmpPos.Z % chunksize) * chunksize + (tmpPos.X % chunksize)] -= (ushort)q;
-                    
+
                     tmpPos.Y = blAcc.GetTerrainMapheightAt(tmpPos) + 1;
 
                     if (abovesurfaceblock.BlockId > 0)
@@ -130,7 +130,7 @@ namespace Vintagestory.GameContent
             int quantityFragments = 0;
             if (worldgenRand.NextInt(10) == 0) quantityFragments = worldgenRand.NextInt(10);
             else if (worldgenRand.NextInt(5) == 0) quantityFragments = worldgenRand.NextInt(5);
-            
+
             while (quantityFragments-- > 0)
             {
                 tmpPos.Set(

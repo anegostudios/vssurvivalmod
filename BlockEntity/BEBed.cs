@@ -1,4 +1,5 @@
 ﻿using System;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
@@ -8,30 +9,30 @@ using Vintagestory.API.Util;
 namespace Vintagestory.GameContent
 {
 
-    public class BlockEntityBed : BlockEntity, IMountable
+    public class BlockEntityBed : BlockEntity, IMountableSeat, IMountable
     {
+        static Vec3f eyePos = new Vec3f(0, 0.3f, 0);
+
         float sleepEfficiency = 0.5f;
         BlockFacing facing;
-        
         float y2 = 0.5f;
-
         double hoursTotal;
-
         public EntityAgent MountedBy;
-
-
         bool blockBroken;
         long mountedByEntityId;
         string mountedByPlayerUid;
-
+        EntityControls controls = new EntityControls();
         EntityPos mountPos = new EntityPos();
-        public EntityPos MountPosition
+
+
+        public EntityPos SeatPosition => Position; // Since we have only one seat, it can be the same as the base position
+        public EntityPos Position
         {
             get {
                 BlockFacing facing = this.facing.Opposite;
 
                 mountPos.SetPos(Pos);
-                mountPos.Yaw = this.facing.HorizontalAngleIndex * GameMath.PIHALF;
+                mountPos.Yaw = this.facing.HorizontalAngleIndex * GameMath.PIHALF + GameMath.PIHALF;
 
                 if (facing == BlockFacing.NORTH) return mountPos.Add(0.5, y2, 1);
                 if (facing == BlockFacing.EAST) return mountPos.Add(0, y2, 0.5);
@@ -41,29 +42,29 @@ namespace Vintagestory.GameContent
                 return null;
             }
         }
-
-        public string SuggestedAnimation
-        {
-            get { return "sleep"; }
-        }
-
-        EntityControls controls = new EntityControls();
-        public EntityControls Controls
-        {
-            get {
-                return controls; 
-            }
-        }
-
-
-        public IMountableSupplier MountSupplier => null;
-        public EnumMountAngleMode AngleMode => EnumMountAngleMode.FixateYaw;
-
-        static Vec3f eyePos = new Vec3f(0, 0.3f, 0);
+        
+        AnimationMetaData meta = new AnimationMetaData() { Code = "sleep", Animation = "lie" }.Init();
+        public AnimationMetaData SuggestedAnimation => meta;
+        public EntityControls Controls => controls;
+        public IMountable MountSupplier => this;
+        public EnumMountAngleMode AngleMode => EnumMountAngleMode.FixateYaw;        
         public Vec3f LocalEyePos => eyePos;
-        Entity IMountable.MountedBy => MountedBy;
-
+        Entity IMountableSeat.Passenger => MountedBy;
         public bool CanControl => false;
+        public Entity Entity => null;
+        public Matrixf RenderTransform => null;
+        public IMountableSeat[] Seats => new IMountableSeat[] { this };
+
+        public bool SkipIdleAnimation => false;
+
+        public float FpHandPitchFollow => 1;
+
+        public string SeatId { get => "bed-0"; set { } }
+
+        public SeatConfig Config { get => null; set {} }
+        public long PassengerEntityIdForInit { get => mountedByEntityId; set => mountedByEntityId=value; }
+
+        public Entity Controller => MountedBy;
 
         public override void Initialize(ICoreAPI api)
         {
@@ -210,7 +211,7 @@ namespace Vintagestory.GameContent
             mountedByPlayerUid = (entityAgent as EntityPlayer)?.PlayerUID;
             mountedByEntityId = MountedBy.EntityId;
 
-            if (Api.Side == EnumAppSide.Server)
+            if (Api?.Side == EnumAppSide.Server)
             {
                 RegisterGameTickListener(RestPlayer, 200);
                 hoursTotal = Api.World.Calendar.TotalHours;
@@ -219,6 +220,12 @@ namespace Vintagestory.GameContent
             EntityBehaviorTiredness ebt = MountedBy?.GetBehavior("tiredness") as EntityBehaviorTiredness;
             if (ebt != null) ebt.IsSleeping = true;
         }
-        
+
+        public bool IsMountedBy(Entity entity) => this.MountedBy == entity;
+        public bool IsBeingControlled() => false;
+        public bool CanUnmount(EntityAgent entityAgent) => true;
+        public bool CanMount(EntityAgent entityAgent) => true;
+
+        public bool AnyMounted() => MountedBy != null;
     }
 }

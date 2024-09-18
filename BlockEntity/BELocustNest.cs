@@ -69,7 +69,7 @@ namespace Vintagestory.GameContent
 
             if (Api.World.Rand.NextDouble() < 0.3)
             {
-                (Api as ICoreClientAPI).Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, 123);
+                (Api as ICoreClientAPI).Network.SendBlockEntityPacket(Pos, 123);
             }
         }
 

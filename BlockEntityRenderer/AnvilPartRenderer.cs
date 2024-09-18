@@ -39,7 +39,6 @@ namespace Vintagestory.GameContent
             rpi.GlToggleBlend(true);
 
             IStandardShaderProgram prog = rpi.PreparedStandardShader(beAnvil.Pos.X, beAnvil.Pos.Y, beAnvil.Pos.Z);
-            prog.Tex2D = capi.BlockTextureAtlas.AtlasTextures[0].TextureId;
 
 
             prog.ModelMatrix = ModelMat
@@ -56,13 +55,13 @@ namespace Vintagestory.GameContent
 
             if (beAnvil.BaseMeshRef != null && !beAnvil.BaseMeshRef.Disposed)
             {
-                rpi.RenderMultiTextureMesh(beAnvil.BaseMeshRef);
+                rpi.RenderMultiTextureMesh(beAnvil.BaseMeshRef, "tex");
             }
 
             if (beAnvil.FluxMeshRef != null && !beAnvil.FluxMeshRef.Disposed)
             {
                 prog.ExtraGlow = 0;
-                rpi.RenderMultiTextureMesh(beAnvil.FluxMeshRef);
+                rpi.RenderMultiTextureMesh(beAnvil.FluxMeshRef, "tex");
             }
 
             if (beAnvil.TopMeshRef != null && !beAnvil.TopMeshRef.Disposed)
@@ -83,7 +82,7 @@ namespace Vintagestory.GameContent
                 prog.ExtraGlow = extraGlow;
 
 
-                rpi.RenderMultiTextureMesh(beAnvil.TopMeshRef);
+                rpi.RenderMultiTextureMesh(beAnvil.TopMeshRef, "tex");
             }
 
             prog.Stop();

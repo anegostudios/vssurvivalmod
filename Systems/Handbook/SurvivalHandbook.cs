@@ -30,6 +30,8 @@ namespace Vintagestory.GameContent
         {
             this.capi = api;
 
+            api.Input.RegisterHotKeyFirst("selectionhandbook", Lang.Get("Show Handbook for current selection"), GlKeys.H, HotkeyType.HelpAndOverlays, false, false, true);
+            api.Input.SetHotKeyHandler("selectionhandbook", OnSelectionHandbookHotkey);
             api.Input.RegisterHotKeyFirst("handbook", Lang.Get("Show Survival handbook"), GlKeys.H, HotkeyType.HelpAndOverlays);
             api.Input.SetHotKeyHandler("handbook", OnSurvivalHandbookHotkey);
 
@@ -147,8 +149,24 @@ namespace Vintagestory.GameContent
                         dialog.OpenDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(new ItemStack(stack.Collectible)));
                     }
                 }
+            }
 
-                if (capi.World.Player.Entity.Controls.ShiftKey && capi.World.Player.CurrentBlockSelection != null)
+            return true;
+        }
+
+        private bool OnSelectionHandbookHotkey(KeyCombination key)
+        {
+            if (dialog.IsOpened())
+            {
+                dialog.TryClose();
+            }
+            else
+            {
+                dialog.TryOpen();
+                // dunno why
+                dialog.ignoreNextKeyPress = true;
+
+                if (capi.World.Player.CurrentBlockSelection != null)
                 {
                     BlockPos pos = capi.World.Player.CurrentBlockSelection.Position;
                     ItemStack stack = capi.World.BlockAccessor.GetBlock(pos).OnPickBlock(capi.World, pos);
@@ -171,6 +189,7 @@ namespace Vintagestory.GameContent
             base.Dispose();
             dialog?.Dispose();
             capi?.Input.HotKeys.Remove("handbook");
+            capi?.Input.HotKeys.Remove("selectionhandbook");
         }
     }
 }

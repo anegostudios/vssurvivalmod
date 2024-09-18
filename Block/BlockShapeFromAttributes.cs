@@ -32,27 +32,28 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                AssetLocation texturePath;
+                TextureAtlasPosition texPos;
 
                 if (textures.TryGetValue(textureCode, out var ctex))
                 {
-                    texturePath = ctex.Baked.BakedName;
+                    capi.BlockTextureAtlas.GetOrInsertTexture(ctex, out _, out texPos);
                 } else {
-                    shape.Textures.TryGetValue(textureCode, out texturePath);
-                }
+                    shape.Textures.TryGetValue(textureCode, out var texturePath);
 
-                if (texturePath == null)
-                {
-                    if (!missingTextures.Contains(texturePath))
+                    if (texturePath == null)
                     {
-                        capi.Logger.Warning("Shape {0} has an element using texture code {1}, but no such texture exists", filenameForLogging, textureCode);
-                        missingTextures.Add(texturePath);
+                        if (!missingTextures.Contains(texturePath))
+                        {
+                            capi.Logger.Warning("Shape {0} has an element using texture code {1}, but no such texture exists", filenameForLogging, textureCode);
+                            missingTextures.Add(texturePath);
+                        }
+
+                        return capi.BlockTextureAtlas.UnknownTexturePosition;
                     }
-                    
-                    return capi.BlockTextureAtlas.UnknownTexturePosition;
+
+                    capi.BlockTextureAtlas.GetOrInsertTexture(texturePath, out _, out texPos);
                 }
 
-                capi.BlockTextureAtlas.GetOrInsertTexture(texturePath, out _, out var texPos);
 
                 if (texPos == null)
                 {
@@ -78,7 +79,7 @@ namespace Vintagestory.GameContent
         Dictionary<string, CompositeTexture> Textures { get; }
         byte[] LightHsv { get; }
         string HashKey { get; }
-        bool Randomize { get; }
+        bool RandomizeYSize { get; }
         string Code { get; }
         Vec3f Rotation { get; }
         Cuboidf[] ColSelBoxes { get; set; }
@@ -94,6 +95,9 @@ namespace Vintagestory.GameContent
         Shape ShapeResolved { get; set; }
 
         BlockDropItemStack[] Drops {get;set;}
+        string HeldIdleAnim { get; set; }
+        string HeldReadyAnim { get; set; }
+
         /// <summary>
         /// The quantity of resources (abstract units, but 1 corresponds to 1 resin) required to fully repair this clutter block, **PLUS ONE**.  0 means unspecified, 1 means no repair necessary, 6 means reparable with the equivalent of 5 resin.  -1 means cannot be repaired.  If unspecified (0), BlockClutter.Attributes["reparability"] will be checked as a general rule for all types
         /// </summary>
@@ -112,13 +116,35 @@ namespace Vintagestory.GameContent
         public abstract void LoadTypes();
         public abstract IShapeTypeProps GetTypeProps(string code, ItemStack stack, BEBehaviorShapeFromAttributes be);
         public Dictionary<string, OrderedDictionary<string, CompositeTexture>> OverrideTextureGroups;
+        protected Dictionary<string, MeshData> meshDictionary;
+        protected string inventoryMeshDictionary;
+        protected string blockForLogging;
+
+        public bool AllowRandomizeDims=true;
+
+        public SkillItem[] extraWrenchModes;
 
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
 
+            extraWrenchModes = new SkillItem[]
+            {
+                new SkillItem() { Code = new AssetLocation("ns"), Name = Lang.Get("Offset 1 Voxel North/South") },
+                new SkillItem() { Code = new AssetLocation("ew"), Name = Lang.Get("Offset 1 Voxel East/West") },
+                new SkillItem() { Code = new AssetLocation("ud"), Name = Lang.Get("Offset 1 Voxel Up/Down") }
+            };
+
             if (api is ICoreClientAPI capi)
             {
+                extraWrenchModes[0].WithIcon(capi, capi.Gui.LoadSvgWithPadding(new AssetLocation("textures/icons/movens.svg"), 48, 48, 5, ColorUtil.WhiteArgb));
+                extraWrenchModes[1].WithIcon(capi, capi.Gui.LoadSvgWithPadding(new AssetLocation("textures/icons/moveew.svg"), 48, 48, 5, ColorUtil.WhiteArgb));
+                extraWrenchModes[2].WithIcon(capi, capi.Gui.LoadSvgWithPadding(new AssetLocation("textures/icons/moveud.svg"), 48, 48, 5, ColorUtil.WhiteArgb));
+
+                meshDictionary = ObjectCacheUtil.GetOrCreate(api, ClassType + "Meshes", () => new Dictionary<string, MeshData>());  // Best to access ObjectCacheUtil on the main thread; it's fine to hold a reference to this for the whole game, it won't change, it's only this Block who accesses it
+                inventoryMeshDictionary = ClassType + "MeshesInventory";
+                blockForLogging = ClassType + "block";
+                
                 capi.Event.RegisterEventBusListener(OnEventBusEvent);
                 foreach (var type in AllTypes)
                 {
@@ -133,19 +159,25 @@ namespace Vintagestory.GameContent
                 LoadTypes();   // Client side types are already loaded in OnCollectTextures - which MUST be implemented!
                 OverrideTextureGroups = Attributes["overrideTextureGroups"].AsObject<Dictionary<string, OrderedDictionary<string, CompositeTexture>>>();
             }
+
+            AllowRandomizeDims = Attributes?["randomizeDimensions"].AsBool(true) == true;
         }
 
         public override void OnUnloaded(ICoreAPI api)
         {
             base.OnUnloaded(api);
 
+            extraWrenchModes[0].Dispose();
+            extraWrenchModes[1].Dispose();
+            extraWrenchModes[2].Dispose();
+
             if (api is ICoreClientAPI capi)
             {
-                Dictionary<string, MultiTextureMeshRef> clutterMeshRefs = ObjectCacheUtil.TryGet<Dictionary<string, MultiTextureMeshRef>>(capi, ClassType + "MeshesInventory");
+                Dictionary<string, MultiTextureMeshRef> clutterMeshRefs = ObjectCacheUtil.TryGet<Dictionary<string, MultiTextureMeshRef>>(capi, inventoryMeshDictionary);
                 if (clutterMeshRefs != null)
                 {
                     foreach (MultiTextureMeshRef mesh in clutterMeshRefs.Values) mesh.Dispose();
-                    ObjectCacheUtil.Delete(capi, ClassType + "MeshesInventory");
+                    ObjectCacheUtil.Delete(capi, inventoryMeshDictionary);
                 }
             }
         }
@@ -388,7 +420,7 @@ namespace Vintagestory.GameContent
             base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
 
             Dictionary<string, MultiTextureMeshRef> clutterMeshRefs;
-            clutterMeshRefs = ObjectCacheUtil.GetOrCreate(capi, ClassType + "MeshesInventory", () => new Dictionary<string, MultiTextureMeshRef>());
+            clutterMeshRefs = ObjectCacheUtil.GetOrCreate(capi, inventoryMeshDictionary, () => new Dictionary<string, MultiTextureMeshRef>());
             MultiTextureMeshRef meshref;
 
             string type = itemstack.Attributes.GetString("type", "");
@@ -422,9 +454,9 @@ namespace Vintagestory.GameContent
                     case EnumItemRenderTarget.Gui:
                         if (cprops.GuiTransform != null) renderinfo.Transform = cprops.GuiTransform;
                         break;
-                    case EnumItemRenderTarget.HandFp:
+                    /*case EnumItemRenderTarget.HandFp:
                         if (cprops.FpTtransform != null) renderinfo.Transform = cprops.FpTtransform;
-                        break;
+                        break;*/
                     case EnumItemRenderTarget.HandTp:
                         if (cprops.TpTransform != null) renderinfo.Transform = cprops.TpTransform;
                         break;
@@ -497,7 +529,7 @@ namespace Vintagestory.GameContent
         }
 
         public virtual MeshData GetOrCreateMesh(IShapeTypeProps cprops, ITexPositionSource overrideTexturesource = null, string overrideTextureCode = null) {
-            var cMeshes = ObjectCacheUtil.GetOrCreate(api, ClassType+"Meshes", () => new Dictionary<string, MeshData>());
+            var cMeshes = meshDictionary;
             ICoreClientAPI capi = api as ICoreClientAPI;
 
             if (overrideTexturesource != null || !cMeshes.TryGetValue(cprops.Code + "-" + overrideTextureCode, out var mesh))
@@ -539,8 +571,8 @@ namespace Vintagestory.GameContent
                     {
                         if (OverrideTextureGroups[cprops.TextureFlipGroupCode].TryGetValue(overrideTextureCode, out var ctex))
                         {
-                            stexSource.textures[cprops.TextureFlipCode] = ctex;
                             ctex.Bake(capi.Assets);
+                            stexSource.textures[cprops.TextureFlipCode] = ctex;
                         }
                     }
                 }
@@ -548,7 +580,7 @@ namespace Vintagestory.GameContent
                 if (shape == null) return mesh;
                 
 
-                capi.Tesselator.TesselateShape(ClassType+"block", shape, out mesh, texSource);
+                capi.Tesselator.TesselateShape(blockForLogging, shape, out mesh, texSource);
                 if (cprops.TexPos == null)
                 {
                     api.Logger.Warning("No texture previously loaded for clutter block " + cprops.Code);
@@ -566,6 +598,7 @@ namespace Vintagestory.GameContent
         }
 
         byte[] noLight = new byte[3];
+        
 
         public override byte[] GetLightHsv(IBlockAccessor blockAccessor, BlockPos pos, ItemStack stack = null)
         {

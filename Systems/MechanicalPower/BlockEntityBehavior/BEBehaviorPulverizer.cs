@@ -154,7 +154,7 @@ namespace Vintagestory.GameContent.Mechanics
             Vec4f offset = right ? rightOffset : leftOffset;
             int slotid = right ? 0 : 1;
 
-            hitPos.Set(Position.X + 0.5f + offset.X, Position.Y + offset.Y, Position.Z + 0.5f + offset.Z);
+            hitPos.Set(Position.X + 0.5f + offset.X, Position.InternalY + offset.Y, Position.Z + 0.5f + offset.Z);
 
             Api.World.PlaySoundAt(hitSound, hitPos.X, hitPos.Y, hitPos.Z, null, true, 8);
 

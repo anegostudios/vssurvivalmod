@@ -8,10 +8,10 @@ namespace Vintagestory.GameContent
 {
     public class BlockPlantDamageOnTouch : BlockDamageOnTouch
     {
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldgenRandom)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, IRandom worldgenRandom, BlockPatchAttributes attributes = null)
         {
             Block block = blockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
-            return block.Fertility > 0 && base.TryPlaceBlockForWorldGen(blockAccessor, pos, onBlockFace, worldgenRandom);
+            return block.Fertility > 0 && base.TryPlaceBlockForWorldGen(blockAccessor, pos, onBlockFace, worldgenRandom, attributes);
         }
     }
 
@@ -35,7 +35,7 @@ namespace Vintagestory.GameContent
             {
                 if (immuneCreatures.Contains(entity.Code)) return;
 
-                if (world.Rand.NextDouble() > 0.05) 
+                if (world.Rand.NextDouble() > 0.05)
                 {
                     entity.ReceiveDamage(new DamageSource() { Source = EnumDamageSource.Block, SourceBlock = this, Type = EnumDamageType.PiercingAttack, SourcePos = pos.ToVec3d() }, sprintIntoDamage);
                     entity.ServerPos.Motion.Set(0, 0, 0);

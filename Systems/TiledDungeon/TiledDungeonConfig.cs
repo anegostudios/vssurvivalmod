@@ -13,7 +13,7 @@ namespace Vintagestory.ServerMods
         {
             DungeonsByCode = new Dictionary<string, TiledDungeon>();
 
-            for (int i = 0; i < Dungeons.Length; i++)
+            for (var i = 0; i < Dungeons.Length; i++)
             {
                 Dungeons[i].Init(api);
                 DungeonsByCode[Dungeons[i].Code] = Dungeons[i];

@@ -3,12 +3,12 @@ using Vintagestory.API.Common;
 
 namespace Vintagestory.GameContent
 {
-    public class TraderAnimationManager : AnimationManager
+    public class PersonalizedAnimationManager : AnimationManager
     {
         public string Personality;
         public HashSet<string> PersonalizedAnimations = new HashSet<string>(new string[] { "welcome", "idle", "walk", "run", "attack", "laugh", "hurt", "nod", "idle2" });
 
-
+        public bool All;
 
         public override bool StartAnimation(string configCode)
         {
@@ -44,7 +44,7 @@ namespace Vintagestory.GameContent
                 StopAnimation(Personality + "idle2");
             }
 
-            if (PersonalizedAnimations.Contains(animdata.Animation.ToLowerInvariant()))
+            if (All | PersonalizedAnimations.Contains(animdata.Animation.ToLowerInvariant()))
             {
                 animdata = animdata.Clone();
                 animdata.Animation = Personality + animdata.Animation;
@@ -62,9 +62,9 @@ namespace Vintagestory.GameContent
             base.StopAnimation(Personality + code);
         }
 
-        public override void OnAnimationStopped(string code)
+        public override void TriggerAnimationStopped(string code)
         {
-            base.OnAnimationStopped(code);
+            base.TriggerAnimationStopped(code);
 
             if (entity.Alive && ActiveAnimationsByAnimCode.Count == 0)
             {

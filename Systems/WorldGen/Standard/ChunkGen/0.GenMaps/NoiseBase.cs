@@ -145,7 +145,7 @@ namespace Vintagestory.ServerMods
             bitmap.Save("map-" + name + ".png");
         }
 
-        public int[] CutMargins(int[] inInts, int sizeX, int sizeZ, int margin)
+        public static int[] CutMargins(int[] inInts, int sizeX, int sizeZ, int margin)
         {
             int[] resultInts = new int[(sizeX - 2 * margin) * (sizeZ - 2 * margin)];
             int j = 0;

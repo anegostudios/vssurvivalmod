@@ -67,7 +67,7 @@ namespace Vintagestory.GameContent
 
         public string HashKey => Code + "-" + Type1 + "-" + Type2 + "-" + Variant;
 
-        public bool Randomize => false;
+        public bool RandomizeYSize => false;
 
         public byte[] LightHsv { get; set; }
 
@@ -77,6 +77,8 @@ namespace Vintagestory.GameContent
 
         public string TextureFlipGroupCode { get; set; }
         BlockDropItemStack[] IShapeTypeProps.Drops { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        public string HeldIdleAnim { get; set; }
+        public string HeldReadyAnim { get; set; }
         public int Reparability { get; set; }
 
         public bool CanAttachBlockAt(Vec3f blockRot, BlockFacing blockFace, Cuboidi attachmentArea = null)

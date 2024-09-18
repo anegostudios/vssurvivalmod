@@ -161,7 +161,7 @@ namespace Vintagestory.ServerMods
                     }
                     else
                     {
-                        blockCode = block.CodeWithVariant("rot", BlockFacing.HorizontalFromAngle(byPlayer.Entity.Pos.Yaw).Code);
+                        blockCode = block.CodeWithVariant("rot", BlockFacing.HorizontalFromYaw(byPlayer.Entity.Pos.Yaw).Code);
                     }
                 }
             }
@@ -173,7 +173,7 @@ namespace Vintagestory.ServerMods
                 if (blockSel.Face.IsVertical)
                 {
                     v = blockSel.Face.Code;
-                    h = BlockFacing.HorizontalFromAngle(byPlayer.Entity.Pos.Yaw).Code;
+                    h = BlockFacing.HorizontalFromYaw(byPlayer.Entity.Pos.Yaw).Code;
                 }
                 else if (rotateV4)
                 {
@@ -184,7 +184,7 @@ namespace Vintagestory.ServerMods
                     else
                     {
                         // Default to player facing.
-                        h = BlockFacing.HorizontalFromAngle(byPlayer.Entity.Pos.Yaw).Code;
+                        h = BlockFacing.HorizontalFromYaw(byPlayer.Entity.Pos.Yaw).Code;
                     }
                     switch (blockSel.Face.Axis)
                     {

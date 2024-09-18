@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
-using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
@@ -85,9 +84,9 @@ namespace Vintagestory.ServerMods
         internal Dictionary<int, Dictionary<int, int>> resolvedRockTypeRemaps = null;
 
         LCGRandom rand;
-        
 
-        
+
+
 
         public void Init(ICoreServerAPI api, BlockLayerConfig blockLayerConfig, WorldGenStructuresConfig structureConfig, Dictionary<string, Dictionary<int, Dictionary<int, int>>> resolvedRocktypeRemapGroups, Dictionary<string, int> schematicYOffsets, int? defaultOffsetY, RockStrataConfig rockstrata, LCGRandom rand)
         {
@@ -153,7 +152,7 @@ namespace Vintagestory.ServerMods
         }
 
 
-        
+
         public bool TryGenerate(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos pos, int climateUpLeft, int climateUpRight, int climateBotLeft, int climateBotRight, DidGenerate didGenerateStructure)
         {
             if (!WorldGenStructure.SatisfiesMinDistance(pos, worldForCollectibleResolve, MinGroupDistance, Group)) return false;
@@ -255,7 +254,7 @@ namespace Vintagestory.ServerMods
             {
                 foreach (var val in generatables)
                 {
-                    val.Structure.PlaceRespectingBlockLayers(blockAccessor, worldForCollectibleResolve, val.StartPos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, resolvedRockTypeRemaps, replaceblockids);
+                    val.Structure.PlaceRespectingBlockLayers(blockAccessor, worldForCollectibleResolve, val.StartPos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, resolvedRockTypeRemaps, replaceblockids, GenStructures.ReplaceMetaBlocks);
                     didGenerateStructure(val.Location, val.Structure);
                 }
 
@@ -295,7 +294,7 @@ namespace Vintagestory.ServerMods
 
             // 1.5. Adjust schematic location to be at the lowest point of all 4 corners, otherwise some corners will float
             // "+1" because using the y-value from GetTerrainMapheightAt() means the structure will already be 1 block sunken into the ground. It is more intuitive for the builder when setting OffsetY=0 means the structure is placed on top of the surface
-            location.Y1 = lowestY + schematic.OffsetY + 1; 
+            location.Y1 = lowestY + schematic.OffsetY + 1;
             location.Y2 = location.Y1 + schematic.SizeY;
 
             // 2. Verify U Blocks are in solid ground

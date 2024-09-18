@@ -85,7 +85,7 @@ namespace Vintagestory.GameContent
                             world.BlockAccessor.SetBlock(0, blockSel.Position);
                             world.BlockAccessor.TriggerNeighbourBlockUpdate(blockSel.Position);
                         }
-                        world.PlaySoundAt(pickupSound ?? block.GetSounds(world.BlockAccessor, blockSel.Position).Place, byPlayer, null);
+                        world.PlaySoundAt(pickupSound ?? block.GetSounds(world.BlockAccessor, blockSel).Place, byPlayer, null);
                     }
                 }
 

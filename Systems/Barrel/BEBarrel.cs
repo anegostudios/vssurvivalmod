@@ -47,6 +47,15 @@ namespace Vintagestory.GameContent
 
 
             inventory.SlotModified += Inventory_SlotModified;
+            inventory.OnAcquireTransitionSpeed += Inventory_OnAcquireTransitionSpeed1;
+        }
+
+        private float Inventory_OnAcquireTransitionSpeed1(EnumTransitionType transType, ItemStack stack, float mul)
+        {
+            // Don't spoil while sealed
+            if (Sealed && CurrentRecipe != null && CurrentRecipe.SealHours > 0) return 0;
+
+            return mul;
         }
 
         private float GetSuitability(ItemSlot sourceSlot, ItemSlot targetSlot, bool isMerge)
@@ -66,13 +75,6 @@ namespace Vintagestory.GameContent
             return (isMerge ? (inventory.BaseWeight + 3) : (inventory.BaseWeight + 1)) + (sourceSlot.Inventory is InventoryBasePlayer ? 1 : 0);
         }
 
-        protected override float Inventory_OnAcquireTransitionSpeed(EnumTransitionType transType, ItemStack stack, float baseMul)
-        {
-            // Don't spoil while sealed
-            if (Sealed && CurrentRecipe != null && CurrentRecipe.SealHours > 0) return 0;
-
-            return base.Inventory_OnAcquireTransitionSpeed(transType, stack, baseMul);
-        }
 
         protected override ItemSlot GetAutoPushIntoSlot(BlockFacing atBlockFace, ItemSlot fromSlot)
         {
@@ -243,7 +245,7 @@ namespace Vintagestory.GameContent
                 invDialog.OnClosed += () =>
                 {
                     invDialog = null;
-                    capi.Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, (int)EnumBlockEntityPacketId.Close, null);
+                    capi.Network.SendBlockEntityPacket(Pos, (int)EnumBlockEntityPacketId.Close, null);
                     capi.Network.SendPacketClient(Inventory.Close(byPlayer));
                 };
                 invDialog.OpenSound = AssetLocation.Create("sounds/block/barrelopen", Block.Code.Domain);
@@ -251,7 +253,7 @@ namespace Vintagestory.GameContent
 
                 invDialog.TryOpen();
                 capi.Network.SendPacketClient(Inventory.Open(byPlayer));
-                capi.Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, (int)EnumBlockEntityPacketId.Open, null);
+                capi.Network.SendBlockEntityPacket(Pos, (int)EnumBlockEntityPacketId.Open, null);
             }
             else
             {

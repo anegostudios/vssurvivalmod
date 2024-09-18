@@ -140,7 +140,7 @@ namespace Vintagestory.GameContent
                     Item outputItem = world.GetItem(new AssetLocation(recipe.DirtyPotOutput));
                     if (outputItem != null)
                     {
-                        stacks = new ItemStack[] { new ItemStack(outputItem, quantityServings) };
+                        stacks = new ItemStack[] { new ItemStack(outputItem, quantityServings * recipe.DirtyPotOutputQuantity) };
                         block = world.GetBlock(new AssetLocation(Attributes["dirtiedBlockCode"].AsString()));
                     }
                 }

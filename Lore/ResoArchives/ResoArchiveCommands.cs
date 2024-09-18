@@ -177,7 +177,7 @@ namespace Vintagestory.GameContent
                 } else
                 {
                     sapi.Logger.Notification(string.Join(", ", foundtypes));
-                    return TextCommandResult.Success(Lang.GetL(args.LanguageCode, "{0} chiseled blocks match your search. Names logged to server-main.txt.", foundtotal));
+                    return TextCommandResult.Success(Lang.GetL(args.LanguageCode, "{0} chiseled blocks match your search. Names logged to server-main.log.", foundtotal));
                 }
             } else
             {

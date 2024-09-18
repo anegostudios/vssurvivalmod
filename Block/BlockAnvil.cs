@@ -151,6 +151,11 @@ namespace Vintagestory.GameContent
             return GetSelectionBoxes(blockAccessor, pos);
         }
 
+        public override Cuboidf[] GetParticleCollisionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
+        {
+            return GetSelectionBoxes(blockAccessor, pos);
+        }
+
         public override bool DoParticalSelection(IWorldAccessor world, BlockPos pos)
         {
             return true;

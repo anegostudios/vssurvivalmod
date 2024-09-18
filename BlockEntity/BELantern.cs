@@ -147,8 +147,7 @@ namespace Vintagestory.GameContent
                 if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative && glass != "quartz") slot.TakeOut(1);
 
                 if (Api.Side == EnumAppSide.Client) (byPlayer as IClientPlayer).TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
-                Vec3d soundpos = Pos.ToVec3d().Add(0.5, 0, 0.5);
-                Api.World.PlaySoundAt(Api.World.GetBlock(new AssetLocation("glass-" + glass)).Sounds.Place, soundpos.X, soundpos.Y, soundpos.Z, byPlayer);
+                Api.World.PlaySoundAt(Api.World.GetBlock(new AssetLocation("glass-" + glass)).Sounds.Place, Pos, -0.4, byPlayer);
 
                 setLightColor(origlightHsv, lightHsv, glass);
                 Api.World.BlockAccessor.ExchangeBlock(Block.Id, Pos); // Forces a lighting update
@@ -157,12 +156,11 @@ namespace Vintagestory.GameContent
                 return true;
             }
 
-            if (lining == null || lining == "plain" && obj is ItemMetalPlate && (obj.Variant["metal"] == "gold" || obj.Variant["metal"] == "silver")) 
+            if (lining == null || lining == "plain" && obj is ItemMetalPlate && (obj.Variant["metal"] == "gold" || obj.Variant["metal"] == "silver" || obj.Variant["metal"] == "electrum")) 
             {
                 lining = obj.Variant["metal"];
                 if (Api.Side == EnumAppSide.Client) (byPlayer as IClientPlayer).TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
-                Vec3d soundpos = Pos.ToVec3d().Add(0.5, 0, 0.5);
-                Api.World.PlaySoundAt(new AssetLocation("sounds/block/plate"), soundpos.X, soundpos.Y, soundpos.Z, byPlayer);
+                Api.World.PlaySoundAt(new AssetLocation("sounds/block/plate"), Pos, -0.4, byPlayer);
 
                 slot.TakeOut(1);
                 MarkDirty(true);

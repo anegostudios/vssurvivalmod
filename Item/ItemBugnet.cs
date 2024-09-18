@@ -37,12 +37,12 @@ namespace Vintagestory.GameContent
         {
             var entity = sapi.World.GetEntityById(packet.entityId);
 
-            if (entity.Pos.DistanceTo(fromPlayer.Entity.Pos.XYZ.Add(fromPlayer.Entity.LocalEyePos)) > fromPlayer.WorldData.PickingRange)
+            if (entity == null || entity.Pos.DistanceTo(fromPlayer.Entity.Pos.XYZ.Add(fromPlayer.Entity.LocalEyePos)) > fromPlayer.WorldData.PickingRange)
             {
                 return;
             }
 
-            if (entity?.Properties.Attributes?["netCaughtItemCode"].Exists == true)
+            if (entity.Properties.Attributes?["netCaughtItemCode"].Exists == true)
             {
                 entity.Die(EnumDespawnReason.Death, new DamageSource() { Source = EnumDamageSource.Entity, SourceEntity = fromPlayer.Entity, Type = EnumDamageType.BluntAttack });
 

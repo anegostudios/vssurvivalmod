@@ -42,7 +42,7 @@ namespace Vintagestory.GameContent
                 if (rotten)
                 {
                     rotLoc = new AssetLocation("block/cloth/tapestryoverlay/rotten" + rotVariant);
-                    cachedPath.Path += "++" + rotLoc.Path;
+                    cachedPath.Path += CompositeTexture.OverlaysSeparator + rotLoc.Path;
                 }
 
                 capi.BlockTextureAtlas.GetOrInsertTexture(cachedPath, out _, out var texpos, () =>
@@ -237,11 +237,9 @@ namespace Vintagestory.GameContent
 
                     if (baseCode == "schematic-c-bloody") baseCode = "schematic-c";
 
-                    if (!jour.DidDiscoverLore(byPlayer.PlayerUID, LoreCode, GetLoreChapterId(baseCode)))
-                    {
-                        var splr = byPlayer as IServerPlayer;
-                        jour.DiscoverLore(new LoreDiscovery() { Code = LoreCode, ChapterIds = new List<int>() { GetLoreChapterId(baseCode) } }, splr, null);
-                    }
+                    var discovery = new LoreDiscovery() { Code = LoreCode, ChapterIds = new List<int>() { GetLoreChapterId(baseCode) } };
+
+                    jour.TryDiscoverLore(discovery, byPlayer as IServerPlayer);
                 }
             }
         }

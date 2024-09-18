@@ -221,35 +221,38 @@ namespace Vintagestory.GameContent
                 {
                     if (!jstack.Resolve(api.World, "character class gear", false))
                     {
-                        api.World.Logger.Warning("Unable to resolve character class gear " + jstack.Type + " with code " + jstack.Code + " item/bloc does not seem to exist. Will ignore.");
+                        api.World.Logger.Warning("Unable to resolve character class gear " + jstack.Type + " with code " + jstack.Code + " item/block does not seem to exist. Will ignore.");
                     }
                 }
             }
         }
 
 
-        public void setCharacterClass(EntityPlayer player, string classCode, bool initializeGear = true)
+        public void setCharacterClass(EntityPlayer eplayer, string classCode, bool initializeGear = true)
         {
             CharacterClass charclass = characterClasses.FirstOrDefault(c => c.Code == classCode);
             if (charclass == null) throw new ArgumentException("Not a valid character class code!");
 
-            player.WatchedAttributes.SetString("characterClass", charclass.Code);
+            eplayer.WatchedAttributes.SetString("characterClass", charclass.Code);
 
             if (initializeGear)
             {
-                var essr = capi?.World.Player.Entity.Properties.Client.Renderer as EntitySkinnableShapeRenderer;
-                if (essr != null) essr.doReloadShapeAndSkin = false;
+                var bh = eplayer.GetBehavior<EntityBehaviorPlayerInventory>();
+                var essr = capi?.World.Player.Entity.Properties.Client.Renderer as EntityShapeRenderer;
+                
+                bh.doReloadShapeAndSkin = false;
 
-                IInventory inv = player.GearInventory;
+                IInventory inv = bh.Inventory;
                 if (inv != null)
                 {
                     for (int i = 0; i < inv.Count; i++)
                     {
                         if (i >= 12) break; // Armor
-                        if (!player.GearInventory[i].Empty)
+                        /*if (!inv.Empty)
                         {
                             api.World.SpawnItemEntity(player.GearInventory[i].TakeOutWhole(), player.Pos.XYZ);
-                        }
+                        }*/
+                        inv[i].Itemstack = null;
                     }
 
 
@@ -258,7 +261,7 @@ namespace Vintagestory.GameContent
                         // no idea why this is needed here, it yields the wrong item otherwise
                         if (!jstack.Resolve(api.World, "character class gear", false))
                         {
-                            api.World.Logger.Warning("Unable to resolve character class gear " + jstack.Type + " with code " + jstack.Code + " item/bloc does not seem to exist. Will ignore.");
+                            api.World.Logger.Warning("Unable to resolve character class gear " + jstack.Type + " with code " + jstack.Code + " item/block does not seem to exist. Will ignore.");
                             continue;
                         }
 
@@ -269,7 +272,7 @@ namespace Vintagestory.GameContent
                         string strdress = stack.ItemAttributes["clothescategory"].AsString();
                         if (!Enum.TryParse(strdress, true, out dresstype))
                         {
-                            player.TryGiveItemStack(stack);
+                            eplayer.TryGiveItemStack(stack);
                         }
                         else
                         {
@@ -280,13 +283,13 @@ namespace Vintagestory.GameContent
 
                     if (essr != null)
                     {
-                        essr.doReloadShapeAndSkin = true;
+                        bh.doReloadShapeAndSkin = true;
                         essr.TesselateShape();
                     }
                 }
             }
 
-            applyTraitAttributes(player);
+            applyTraitAttributes(eplayer);
         }
 
         private void applyTraitAttributes(EntityPlayer eplr)
@@ -439,7 +442,6 @@ namespace Vintagestory.GameContent
 
             if (!didSelect)
             {
-                //randomizeSkin(byPlayer.Entity, getPreviousSelection(), false);
                 setCharacterClass(byPlayer.Entity, characterClasses[0].Code, false);
             }
 

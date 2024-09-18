@@ -200,12 +200,11 @@ namespace Vintagestory.GameContent
                     blockAccess.Begin();
                     blockAccess.WalkBlocks(min, max, (block, x, y, z) =>
                     {
-                        BlockBehavior src;
-                        if ((src = block.GetBehavior(typeof(IHeatSource), true)) != null)
+                        var src = block.GetInterface<IHeatSource>(api.World, tmpPos.Set(x,y,z));
+                        if (src != null)
                         {
-                            tmpPos.Set(x, y, z);
                             float factor = Math.Min(1f, 9 / (8 + (float)Math.Pow(tmpPos.DistanceSqToNearerEdge(px, py, pz), proximityPower)));
-                            nearHeatSourceStrength += (src as IHeatSource).GetHeatStrength(api.World, tmpPos, plrpos) * factor;
+                            nearHeatSourceStrength += src.GetHeatStrength(api.World, tmpPos, plrpos) * factor;
                         }
                     });
                 }
@@ -376,10 +375,11 @@ namespace Vintagestory.GameContent
             // 1296 hours is half a default year
             if (!isStandingStill) conditionloss = -(float)hoursPassed / 1296f;
 
-            IInventory gearWorn = eagent?.GearInventory;
-            if (gearWorn != null)  //can be null when creating a new world and entering for the first time
+            var bh = eagent?.GetBehavior<EntityBehaviorPlayerInventory>();
+            //IInventory gearWorn = eagent?.GearInventory;
+            if (bh?.Inventory != null)  //can be null when creating a new world and entering for the first time
             {
-                foreach (var slot in gearWorn)
+                foreach (var slot in bh.Inventory)
                 {
                     ItemWearable wearableItem = slot.Itemstack?.Collectible as ItemWearable;
 

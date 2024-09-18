@@ -1,4 +1,4 @@
-﻿using ProtoBuf;
+using ProtoBuf;
 using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
@@ -490,7 +490,7 @@ namespace Vintagestory.GameContent
             EntityAgent agent = entity as EntityAgent;
             if (agent != null) agent.HerdId = herdid;
 
-            entity.ServerPos.SetPos(spawnPosition);
+            entity.ServerPos.SetPosWithDimension(spawnPosition);
             entity.ServerPos.SetYaw((float)api.World.Rand.NextDouble() * GameMath.TWOPI);
             entity.Pos.SetFrom(entity.ServerPos);
             entity.PositionBeforeFalling.Set(entity.ServerPos.X, entity.ServerPos.Y, entity.ServerPos.Z);
@@ -502,8 +502,10 @@ namespace Vintagestory.GameContent
             entity.WatchedAttributes.SetDouble("temporalStability", GameMath.Clamp((1 - 1.5f * StormStrength), 0, 1));
             entity.Attributes.SetBool("ignoreDaylightFlee", true);
             var bh = entity.GetBehavior("timeddespawn");   // Gradually despawn the storm-spawned entities after the storm ends - maximum time 2.4 in-game hours for maximum strength storm
-            if (bh is ITimedDespawn bhDespawn) bhDespawn.SetForcedCalendarDespawn(data.stormActiveTotalDays + 0.1 * StormStrength * api.World.Rand.NextDouble());
-
+            if (bh is ITimedDespawn bhDespawn)
+            {
+                bhDespawn.SetDespawnByCalendarDate(data.stormActiveTotalDays + 0.1 * StormStrength * api.World.Rand.NextDouble());
+            }
         }
 
 

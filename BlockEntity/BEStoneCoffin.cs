@@ -131,12 +131,27 @@ namespace Vintagestory.GameContent
                 int wtOpp = 0;
 
                 ic = ms.InCompleteBlockCount(Api.World, Pos,
-                    (haveBlock, wantLoc) => { if (haveBlock.FirstCodePart() == "refractorybricks" && haveBlock.Variant["state"] == "damaged") dt++; else wt++; }
+                    (haveBlock, wantLoc) =>
+                    {
+                        var firstCodePart = haveBlock.FirstCodePart();
+                        if ((firstCodePart == "refractorybricks" || firstCodePart == "refractorybrickgrating") && haveBlock.Variant["state"] == "damaged")
+                        {
+                            dt++;
+                        }
+                        else wt++;
+                    }
                 );
                 if (ic > 0 && blockScs.IsCompleteCoffin(Pos))
                 {
                     icOpp = msOpp.InCompleteBlockCount(Api.World, Pos.AddCopy(blockScs.Orientation.Opposite),
-                        (haveBlock, wantLoc) => { if (haveBlock.FirstCodePart() == "refractorybricks" && haveBlock.Variant["state"] == "damaged") dtOpp++; else wtOpp++; }
+                        (haveBlock, wantLoc) =>
+                        {
+                            var firstCodePart = haveBlock.FirstCodePart();
+                            if ((firstCodePart == "refractorybricks" || firstCodePart == "refractorybrickgrating") && haveBlock.Variant["state"] == "damaged")
+                            {
+                                dt++;
+                            } else wtOpp++;
+                        }
                     );
                 }
 
@@ -177,10 +192,10 @@ namespace Vintagestory.GameContent
                         {
                             capi?.TriggerIngameError(this, "incomplete", Lang.Get("Structure is not complete, {0} tiles are damaged!", damagedTiles));
                         }
-                        
+
                     }
                 }
-                
+
                 if (Api.Side == EnumAppSide.Client)
                 {
                     msHighlighted.HighlightIncompleteParts(Api.World, byPlayer, posMain);
@@ -214,7 +229,7 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        
+
 
         bool AddCoal(ItemSlot slot)
         {
@@ -347,7 +362,14 @@ namespace Vintagestory.GameContent
             receivesHeat = leftHeatHoursLeft > 0 && rightHeatHoursLeft > 0;
 
 
-            if (processComplete || !IsFull || !hasLid()) return;
+            if (processComplete || !IsFull || !hasLid())
+            {
+                if (beforeReceiveHeat != receivesHeat)
+                {
+                    MarkDirty();
+                }
+                return;
+            }
 
             MultiblockStructure msInUse = null;
             BlockPos posInUse = null;
@@ -375,7 +397,7 @@ namespace Vintagestory.GameContent
                 if (!structureComplete) return;
 
                 double hoursPassed = Api.World.Calendar.TotalHours - totalHoursLastUpdate;
-                double heatHoursReceived = Math.Max(0, Math.Min(hoursPassed, Math.Min(leftHeatHoursLeft, rightHeatHoursLeft)));
+                double heatHoursReceived = Math.Max(0, GameMath.Min((float)hoursPassed, leftHeatHoursLeft, rightHeatHoursLeft));
 
                 progress += heatHoursReceived / 160f;
                 totalHoursLastUpdate = Api.World.Calendar.TotalHours;
@@ -437,7 +459,7 @@ namespace Vintagestory.GameContent
 
         private void onClientTick50ms(float dt)
         {
-            if (processComplete || !structureComplete) return;
+            if (!receivesHeat || !structureComplete) return;
 
             receivesHeatSmooth = GameMath.Clamp(receivesHeatSmooth + (receivesHeat ? dt / 10 : -dt / 3), 0, 1);
 
@@ -475,11 +497,11 @@ namespace Vintagestory.GameContent
                         particles.Velocity[2].avg = (float)(rnd.NextDouble() - 0.5);
                     }
 
-                    
+
                     particles.PosOffset[0].var = 0.49f;
                     particles.PosOffset[2].var = 0.49f;
-                    
-                    
+
+
                     Api.World.SpawnParticles(particles);
                 }
             }
@@ -568,7 +590,7 @@ namespace Vintagestory.GameContent
             mesher.AddMeshData(meshdataMain);
             mesher.AddMeshData(meshdataSecondary);
 
-            
+
 
             return false;
         }
@@ -602,7 +624,7 @@ namespace Vintagestory.GameContent
                     {
                         dsc.AppendLine(Lang.Get("Ready to be fired. Ignite a pile of coal below each stone coffin half."));
                     }
-                    
+
                 }
             }
 
@@ -610,7 +632,7 @@ namespace Vintagestory.GameContent
             {
                 dsc.AppendLine(Lang.Get("Carburization: {0}% complete", (int)(progress * 100)));
             }
-            
+
         }
 
     }

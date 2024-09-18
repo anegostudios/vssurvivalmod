@@ -193,7 +193,7 @@ namespace Vintagestory.GameContent.Mechanics
         {
             if (HammerStack != null)
             {
-                Api.World.SpawnItemEntity(HammerStack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                Api.World.SpawnItemEntity(HammerStack, Pos);
             }
             base.OnBlockBroken(byPlayer);
         }

@@ -3,6 +3,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Server;
 using Vintagestory.GameContent;
 
+
 namespace Vintagestory.ServerMods
 {
     /*public class NoNerdPoleSystem : ModSystem
@@ -18,7 +19,7 @@ namespace Vintagestory.ServerMods
     }*/
 
 
-    public class DebugSystem : ModSystem
+    /*public class DebugSystem : ModSystem
     {
         ICoreAPI api;
 
@@ -56,5 +57,5 @@ namespace Vintagestory.ServerMods
             }
             return TextCommandResult.Success();
         }
-    }
+    }*/
 }

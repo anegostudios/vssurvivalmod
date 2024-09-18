@@ -151,7 +151,7 @@ namespace Vintagestory.GameContent
                     dlg.OnCloseCancel = () =>
                     {
                         signRenderer.SetNewText(textByCardinalDirection, color);
-                        (Api as ICoreClientAPI).Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, (int)EnumSignPacketId.CancelEdit, null);
+                        (Api as ICoreClientAPI).Network.SendBlockEntityPacket(Pos, (int)EnumSignPacketId.CancelEdit, null);
                     };
                     dlg.OnClosed += () => { dlg.Dispose(); dlg = null; };
                     dlg.TryOpen();
@@ -223,7 +223,7 @@ namespace Vintagestory.GameContent
 
                         ((ICoreServerAPI)Api).Network.SendBlockEntityPacket(
                             (IServerPlayer)byPlayer,
-                            Pos.X, Pos.Y, Pos.Z,
+                            Pos,
                             (int)EnumSignPacketId.OpenDialog,
                             data
                         );

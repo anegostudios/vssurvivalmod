@@ -79,7 +79,7 @@ namespace Vintagestory.GameContent
             return base.OnGettingBroken(player, blockSel, itemslot, remainingResistance, dt, counter);
         }
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, IRandom worldGenRand, BlockPatchAttributes attributes = null)
         {
             if (blockAccessor.GetBlockId(pos.X, pos.Y, pos.Z) != 0) return false;
 
@@ -119,13 +119,13 @@ namespace Vintagestory.GameContent
                     tryPlaceDecoDown(tmppos.Set(cavepos.X + offX, cavepos.Y + offY, cavepos.Z + offZ), blockAccessor, worldGenRand);
                 }
 
-                
+
             }
 
             return true;
         }
 
-        private void tryPlaceDecoDown(BlockPos blockPos, IBlockAccessor blockAccessor, LCGRandom worldGenRand)
+        private void tryPlaceDecoDown(BlockPos blockPos, IBlockAccessor blockAccessor, IRandom worldGenRand)
         {
             if (blockAccessor.GetBlock(blockPos).Id != 0) return;
 
@@ -143,7 +143,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        private void tryPlaceDecoUp(BlockPos blockPos, IBlockAccessor blockAccessor, LCGRandom worldgenRand)
+        private void tryPlaceDecoUp(BlockPos blockPos, IBlockAccessor blockAccessor, IRandom worldgenRand)
         {
             if (blockAccessor.GetBlock(blockPos).Id != 0) return;
 

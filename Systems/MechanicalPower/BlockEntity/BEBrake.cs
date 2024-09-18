@@ -97,7 +97,7 @@ namespace Vintagestory.GameContent.Mechanics
         public bool OnInteract(IPlayer byPlayer)
         {
             Engaged = !Engaged;
-            Api.World.PlaySoundAt(new AssetLocation("sounds/effect/woodswitch.ogg"), Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, byPlayer);
+            Api.World.PlaySoundAt(new AssetLocation("sounds/effect/woodswitch.ogg"), Pos, 0, byPlayer);
 
             MarkDirty(true);
             return true;

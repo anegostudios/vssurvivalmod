@@ -30,7 +30,7 @@ namespace Vintagestory.GameContent
             base.OnLoaded(api);
         }
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, IRandom worldGenRand, BlockPatchAttributes attributes = null)
         {
             if (!HasSolidGround(blockAccessor, pos)) return false;
 
@@ -51,14 +51,14 @@ namespace Vintagestory.GameContent
             int rockId = blockAccessor.GetMapChunkAtBlockPos(pos).TopRockIdMap[(pos.Z % ch) * ch + (pos.X % ch)];
 
             Block tblock = null;
-            if (islarge) largeTermiteBlockCodeByRockid.TryGetValue(rockId, out tblock); 
+            if (islarge) largeTermiteBlockCodeByRockid.TryGetValue(rockId, out tblock);
             else mediumTermiteBlockCodeByRockid.TryGetValue(rockId, out tblock);
 
             if (tblock != null)
             {
                 blockAccessor.SetBlock(tblock.Id, pos);
             }
-            
+
 
             return true;
         }

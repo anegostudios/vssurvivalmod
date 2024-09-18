@@ -245,7 +245,7 @@ namespace Vintagestory.GameContent
                 slot.MarkDirty();
             }
 
-            byEntity.World.PlaySoundAt(new AssetLocation("sounds/player/chalkdraw"), blockSel.Position.X + blockSel.HitPosition.X, blockSel.Position.Y + blockSel.HitPosition.Y, blockSel.Position.Z + blockSel.HitPosition.Z, byPlayer, true, 8);
+            byEntity.World.PlaySoundAt(new AssetLocation("sounds/player/chalkdraw"), blockSel.Position.X + blockSel.HitPosition.X, blockSel.Position.InternalY + blockSel.HitPosition.Y, blockSel.Position.Z + blockSel.HitPosition.Z, byPlayer, true, 8);
         }
 
         private void DrawCaveArt(BlockSelection blockSel, IBlockAccessor blockAccessor, IPlayer byPlayer)

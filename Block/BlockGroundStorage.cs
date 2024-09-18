@@ -10,7 +10,7 @@ using Vintagestory.API.Util;
 namespace Vintagestory.GameContent
 
 {
-    public class BlockGroundStorage : Block, ICombustible
+    public class BlockGroundStorage : Block, ICombustible, IIgnitable
     {
         ItemStack[] groundStorablesQuadrants;
         ItemStack[] groundStorablesHalves;
@@ -112,8 +112,8 @@ namespace Vintagestory.GameContent
             }
 
             BlockEntity be = world.BlockAccessor.GetBlockEntity(blockSel.Position);
-            if (be is BlockEntityGroundStorage beg) 
-            { 
+            if (be is BlockEntityGroundStorage beg)
+            {
                 return beg.OnPlayerInteractStart(byPlayer, blockSel);
             }
 
@@ -188,19 +188,17 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            BlockPos pos;
-            if (blockSel.Face == null)
+            BlockPos pos = blockSel.Position;
+            if (blockSel.Face != null)
             {
-                pos = blockSel.Position;
-            } else
-            {
-                pos = blockSel.Position.AddCopy(blockSel.Face);
+                pos = pos.AddCopy(blockSel.Face);
             }
-            Block belowBlock = world.BlockAccessor.GetBlock(pos.DownCopy());
-            if (!belowBlock.CanAttachBlockAt(world.BlockAccessor, this, pos.DownCopy(), BlockFacing.UP) && (belowBlock != this || FillLevel(world.BlockAccessor, pos.DownCopy()) != 1)) return false;
+            BlockPos posBelow = pos.DownCopy();
+            Block belowBlock = world.BlockAccessor.GetBlock(posBelow);
+            if (!belowBlock.CanAttachBlockAt(world.BlockAccessor, this, posBelow, BlockFacing.UP) && (belowBlock != this || FillLevel(world.BlockAccessor, posBelow) != 1)) return false;
 
             var storageProps = player.InventoryManager.ActiveHotbarSlot.Itemstack.Collectible.GetBehavior<CollectibleBehaviorGroundStorable>()?.StorageProps;
-            if (storageProps != null && storageProps.SprintKey && !player.Entity.Controls.CtrlKey)
+            if (storageProps != null && storageProps.CtrlKey && !player.Entity.Controls.CtrlKey)
             {
                 return false;
             }
@@ -274,7 +272,7 @@ namespace Vintagestory.GameContent
 
             (player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
 
-            
+
             return true;
         }
 
@@ -295,6 +293,24 @@ namespace Vintagestory.GameContent
                 }
             } else
             {
+
+                var begs = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityGroundStorage;
+                if (begs?.IsBurning == true)
+                {
+                    var belowBlock = world.BlockAccessor.GetBlock(pos.DownCopy());
+                    if (!belowBlock.CanAttachBlockAt(world.BlockAccessor, this, pos.DownCopy(), BlockFacing.UP))
+                    {
+                        world.BlockAccessor.BreakBlock(pos, null);
+                        return;
+                    }
+
+                    var neibBlock = world.BlockAccessor.GetBlock(neibpos);
+                    var neibliqBlock = world.BlockAccessor.GetBlock(neibpos, BlockLayersAccess.Fluid);
+                    if (neibBlock.Attributes?.IsTrue("smothersFire") == true || neibliqBlock.Attributes?.IsTrue("smothersFire") == true)
+                    {
+                        begs?.Extinguish();
+                    }
+                }
                 // Don't run falling behavior for wall halves
                 base.OnNeighbourBlockChange(world, pos, neibpos);
             }
@@ -367,10 +383,27 @@ namespace Vintagestory.GameContent
 
                 if (beg.StorageProps.Layout == EnumGroundStorageLayout.Stacking && !beg.Inventory.Empty)
                 {
+                    var canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(api, true).ToArray();
+
                     var collObj = beg.Inventory[0].Itemstack.Collectible;
 
                     return new WorldInteraction[]
                     {
+                        new WorldInteraction()
+                        {
+                            ActionLangCode = "blockhelp-firepit-ignite",
+                            MouseButton = EnumMouseButton.Right,
+                            HotKeyCode = "shift",
+                            Itemstacks = canIgniteStacks,
+                            GetMatchingStacks = (wi, bs, es) => {
+                                var begs = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityGroundStorage;
+                                if (begs?.IsBurning == false && begs?.CanIgnite == true)
+                                {
+                                    return wi.Itemstacks;
+                                }
+                                return null;
+                            }
+                        },
                         new WorldInteraction()
                         {
                             ActionLangCode = "blockhelp-groundstorage-addone",
@@ -412,7 +445,7 @@ namespace Vintagestory.GameContent
                             MouseButton = EnumMouseButton.Right
                         },
 
-                    }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer)); 
+                    }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
                 }
 
                 if (beg.StorageProps.Layout == EnumGroundStorageLayout.Halves || beg.StorageProps.Layout == EnumGroundStorageLayout.Quadrants)
@@ -457,9 +490,76 @@ namespace Vintagestory.GameContent
 
             return 0;
         }
+
+        public override void OnUnloaded(ICoreAPI api)
+        {
+            base.OnUnloaded(api);
+            var groundStorageMeshRefs = ObjectCacheUtil.TryGet<Dictionary<string, MultiTextureMeshRef>>(api, "groundStorageUMC");
+            if (groundStorageMeshRefs != null)
+            {
+                foreach (var meshRef in groundStorageMeshRefs.Values)
+                {
+                    if(meshRef?.Disposed == false)
+                        meshRef.Dispose();
+                }
+                ObjectCacheUtil.Delete(api, "groundStorageUMC");
+            }
+        }
+
+        EnumIgniteState IIgnitable.OnTryIgniteStack(EntityAgent byEntity, BlockPos pos, ItemSlot slot, float secondsIgniting)
+        {
+            return EnumIgniteState.NotIgnitable;
+        }
+
+
+        public EnumIgniteState OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting)
+        {
+            var bea = byEntity.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityGroundStorage;
+
+            if (bea == null || !bea.CanIgnite)
+            {
+                return EnumIgniteState.NotIgnitablePreventDefault;
+            }
+
+            if (secondsIgniting > 0.25f && (int)(30 * secondsIgniting) % 9 == 1)
+            {
+                Random rand = byEntity.World.Rand;
+                Vec3d dpos = new Vec3d(pos.X + 2 / 8f + 4 / 8f * rand.NextDouble(), pos.Y + 7 / 8f, pos.Z + 2 / 8f + 4 / 8f * rand.NextDouble());
+
+                Block blockFire = byEntity.World.GetBlock(new AssetLocation("fire"));
+
+                AdvancedParticleProperties props = blockFire.ParticleProperties[blockFire.ParticleProperties.Length - 1];
+                props.basePos = dpos;
+                props.Quantity.avg = 1;
+
+                IPlayer byPlayer = null;
+                if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
+
+                byEntity.World.SpawnParticles(props, byPlayer);
+
+                props.Quantity.avg = 0;
+            }
+
+            if (secondsIgniting >= 1.5f)
+            {
+                return EnumIgniteState.IgniteNow;
+            }
+
+            return EnumIgniteState.Ignitable;
+        }
+
+        public void OnTryIgniteBlockOver(EntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)
+        {
+            if (secondsIgniting < 1.45f) return;
+
+            handling = EnumHandling.PreventDefault;
+
+            IPlayer byPlayer = null;
+            if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
+            if (byPlayer == null) return;
+
+            var bea = byEntity.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityGroundStorage;
+            bea?.TryIgnite();
+        }
     }
-
-
-
-
 }

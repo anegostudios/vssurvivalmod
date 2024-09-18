@@ -38,7 +38,18 @@ namespace Vintagestory.GameContent
         public override void Initialize(EntityProperties properties, ICoreAPI api, long InChunkIndex3d)
         {
             base.Initialize(properties, api, InChunkIndex3d);
+            if (Api.Side == EnumAppSide.Server)
+            {
+                if (FiredBy != null)
+                {
+                    WatchedAttributes.SetLong("firedBy", FiredBy.EntityId);
+                }
+            }
 
+            if (Api.Side == EnumAppSide.Client)
+            {
+                FiredBy = Api.World.GetEntityById(WatchedAttributes.GetLong("firedBy"));
+            }
             msLaunch = World.ElapsedMilliseconds;
 
             if (ProjectileStack?.Collectible != null)
@@ -46,7 +57,7 @@ namespace Vintagestory.GameContent
                 ProjectileStack.ResolveBlockOrItem(World);
             }
 
-            GetBehavior<EntityBehaviorPassivePhysics>().collisionYExtra = 0f; // Slightly cheap hax so that stones/arrows don't collid with fences
+            GetBehavior<EntityBehaviorPassivePhysics>().CollisionYExtra = 0f; // Slightly cheap hax so that stones/arrows don't collid with fences
         }
 
         public override void OnGameTick(float dt)
@@ -88,10 +99,10 @@ namespace Vintagestory.GameContent
 
                 if (entity != null)
                 {
-                    bool didDamage = entity.ReceiveDamage(new DamageSource() { 
-                        Source = FiredBy is EntityPlayer ? EnumDamageSource.Player : EnumDamageSource.Entity, 
-                        SourceEntity = this, 
-                        CauseEntity = FiredBy, 
+                    bool didDamage = entity.ReceiveDamage(new DamageSource() {
+                        Source = FiredBy is EntityPlayer ? EnumDamageSource.Player : EnumDamageSource.Entity,
+                        SourceEntity = this,
+                        CauseEntity = FiredBy,
                         Type = EnumDamageType.BluntAttack,
                         DamageTier = DamageTier
                     }, Damage);
@@ -192,7 +203,7 @@ namespace Vintagestory.GameContent
         {
             base.FromBytes(reader, fromServer);
             beforeCollided = reader.ReadBoolean();
-            
+
             ProjectileStack = World == null ? new ItemStack(reader) : new ItemStack(reader, World);
         }
     }

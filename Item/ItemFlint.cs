@@ -61,7 +61,7 @@ namespace Vintagestory.GameContent
 
                 if (knappingBlock.Sounds != null)
                 {
-                    world.PlaySoundAt(knappingBlock.Sounds.Place, pos.X, pos.Y, pos.Z);
+                    world.PlaySoundAt(knappingBlock.Sounds.Place, pos, -0.5);
                 }
 
                 BlockEntityKnappingSurface bec = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityKnappingSurface;

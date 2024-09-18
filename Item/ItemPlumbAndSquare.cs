@@ -114,7 +114,7 @@ namespace Vintagestory.GameContent
             resSlot.MarkDirty();
 
             BlockPos pos = blockSel.Position;
-            byEntity.World.PlaySoundAt(new AssetLocation("sounds/tool/reinforce"), pos.X, pos.Y, pos.Z, null);
+            byEntity.World.PlaySoundAt(new AssetLocation("sounds/tool/reinforce"), pos, 0, null);
 
             handling = EnumHandHandling.PreventDefaultAction;
             if (byEntity.World.Side == EnumAppSide.Client) ((byEntity as EntityPlayer)?.Player as IClientPlayer).TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
@@ -166,7 +166,7 @@ namespace Vintagestory.GameContent
             }
 
             BlockPos pos = blockSel.Position;
-            byEntity.World.PlaySoundAt(new AssetLocation("sounds/tool/reinforce"), pos.X, pos.Y, pos.Z, null);
+            byEntity.World.PlaySoundAt(new AssetLocation("sounds/tool/reinforce"), pos, 0, null);
 
             handling = EnumHandHandling.PreventDefaultAction;
         }

@@ -228,7 +228,7 @@ namespace Vintagestory.GameContent
                 if (counter % 5 == 0 || remainingResistance <= 0)
                 {
                     double posx = blockSel.Position.X + blockSel.HitPosition.X;
-                    double posy = blockSel.Position.Y + blockSel.HitPosition.Y;
+                    double posy = blockSel.Position.InternalY + blockSel.HitPosition.Y;
                     double posz = blockSel.Position.Z + blockSel.HitPosition.Z;
                     player.Entity.World.PlaySoundAt(remainingResistance > 0 ? Sounds.GetHitSound(player) : Sounds.GetBreakSound(player), posx, posy, posz, player, true, 16, 1);
                 }
