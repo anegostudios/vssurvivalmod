@@ -231,7 +231,7 @@ namespace Vintagestory.GameContent
 
         bool DoGrow()
         {
-            if (Pruned && Api.World.Calendar.TotalDays - LastPrunedTotalDays > Api.World.Calendar.DaysPerYear)
+            if (Api.World.Calendar.TotalDays - LastPrunedTotalDays > Api.World.Calendar.DaysPerYear)
             {
                 Pruned = false;
             }
