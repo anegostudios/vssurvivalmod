@@ -176,11 +176,6 @@ namespace Vintagestory.GameContent
                     continue;
                 }
 
-                if (Pruned && Api.World.Calendar.TotalDays - LastPrunedTotalDays > Api.World.Calendar.DaysPerYear)
-                {
-                    Pruned = false;
-                }
-
                 if (transitionHoursLeft <= 0)
                 {
                     if (!DoGrow()) return;
@@ -236,6 +231,11 @@ namespace Vintagestory.GameContent
 
         bool DoGrow()
         {
+            if (Pruned && Api.World.Calendar.TotalDays - LastPrunedTotalDays > Api.World.Calendar.DaysPerYear)
+            {
+                Pruned = false;
+            }
+
             Block block = Api.World.BlockAccessor.GetBlock(Pos);
             string nowCodePart = block.LastCodePart();
             string nextCodePart = (nowCodePart == "empty") ? "flowering" : ((nowCodePart == "flowering") ? "ripe" : "empty");
