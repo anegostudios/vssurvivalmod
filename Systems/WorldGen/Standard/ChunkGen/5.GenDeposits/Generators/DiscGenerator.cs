@@ -201,8 +201,7 @@ namespace Vintagestory.ServerMods
                 Api.Server.LogWarning("Deposit in file {0} has no inblock defined, it will never spawn.", variant.fromFile);
             }
 
-            var rnd = new LCGRandom(Api.World.Seed);
-            absAvgQuantity = GetAbsAvgQuantity(rnd);
+            absAvgQuantity = GetAbsAvgQuantity();
         }
 
 
@@ -463,6 +462,11 @@ namespace Vintagestory.ServerMods
             return (double)q / blockColumn.Length;
         }
 
+        public float GetAbsAvgQuantity()
+        {
+            var rnd = new LCGRandom(Api.World.Seed);
+            return GetAbsAvgQuantity(rnd);
+        }
 
         public float GetAbsAvgQuantity(LCGRandom rnd)
         {
@@ -470,8 +474,8 @@ namespace Vintagestory.ServerMods
             float thickness = 0;
             for (int j = 0; j < 100; j++)
             {
-                radius += Radius.nextFloat(1, rand);
-                thickness += Thickness.nextFloat(1, rand);
+                radius += Radius.nextFloat(1, rnd);
+                thickness += Thickness.nextFloat(1, rnd);
             }
             radius /= 100;
             thickness /= 100;
