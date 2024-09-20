@@ -143,6 +143,12 @@ namespace Vintagestory.GameContent
                 return;
             }
 
+            if (slot.TakeOut(5) == null)
+            {
+                (api as ICoreClientAPI)?.TriggerIngameError(this, "unable", "Could not remove 5 rollers from inventory");
+                return;
+            }
+
             string material = "oak";
             int orient = GetOrient(player);
 
