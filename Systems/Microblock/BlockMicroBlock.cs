@@ -227,7 +227,7 @@ namespace Vintagestory.GameContent
         {
             BlockEntityMicroBlock bemc = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
 
-            if (bemc?.BlockIds != null && (bemc.sideAlmostSolid[facing.Index] || bemc.sideAlmostSolid[facing.Opposite.Index]) && bemc.BlockIds.Length > 0 && bemc.VolumeRel >= 0.5f)
+            if (bemc?.BlockIds != null && bemc.sideAlmostSolid[facing.Index] && bemc.BlockIds.Length > 0 && bemc.VolumeRel >= 0.5f)
             {
                 Block block = api.World.GetBlock(bemc.BlockIds[0]);
                 var mat = block.BlockMaterial;
