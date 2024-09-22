@@ -29,26 +29,26 @@ namespace Vintagestory.GameContent
 
             if (blocksByHeight == null)
             {
-                topFlowering = blockAccessor.GetBlock(CodeWithParts("topflowering"));
-                topRipe = blockAccessor.GetBlock(CodeWithParts("topripe"));
+                topFlowering = blockAccessor.GetBlock(CodeWithVariant("variants", "topflowering"));
+                topRipe = blockAccessor.GetBlock(CodeWithVariant("variants", "topripe"));
 
                 blocksByHeight = new Block[][]
                 {
                     new Block[]
                     {
-                        blockAccessor.GetBlock(CodeWithParts("topempty"))
+                        blockAccessor.GetBlock(CodeWithVariant("variants", "topempty"))
                     },
                     new Block[]
                     {
-                        blockAccessor.GetBlock(CodeWithParts("segment")),
-                        blockAccessor.GetBlock(CodeWithParts("topempty"))
+                        blockAccessor.GetBlock(CodeWithVariant("variants", "segment")),
+                        blockAccessor.GetBlock(CodeWithVariant("variants", "topempty"))
 
                     },
                     new Block[]
                     {
-                        blockAccessor.GetBlock(CodeWithParts("segment")),
-                        blockAccessor.GetBlock(CodeWithParts("branchysegment")),
-                        blockAccessor.GetBlock(CodeWithParts("topempty"))
+                        blockAccessor.GetBlock(CodeWithVariant("variants", "segment")),
+                        blockAccessor.GetBlock(CodeWithVariant("variants", "branchysegment")),
+                        blockAccessor.GetBlock(CodeWithVariant("variants", "topempty"))
                     }
                 };
             }

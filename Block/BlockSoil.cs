@@ -172,7 +172,7 @@ namespace Vintagestory.GameContent
             {
                 int nextStage = GameMath.Clamp(targetStage, currentStage - 1, currentStage + 1);
 
-                return world.GetBlock(CodeWithParts(growthStages[nextStage]));
+                return world.GetBlock(CodeWithVariant("grasscoverage", growthStages[nextStage]));
             }
 
             return null;
@@ -202,7 +202,7 @@ namespace Vintagestory.GameContent
             int nextStage = Math.Max(currentStage - 1, 0);
             if (nextStage != currentStage)
             {
-                return world.GetBlock(CodeWithParts(growthStages[nextStage]));
+                return world.GetBlock(CodeWithVariant("grasscoverage", growthStages[nextStage]));
             }
             
             return null;
