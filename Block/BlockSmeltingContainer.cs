@@ -94,7 +94,7 @@ namespace Vintagestory.GameContent
 
             AlloyRecipe alloy = GetMatchingAlloy(world, stacks);
 
-            Block block = world.GetBlock(CodeWithPath(FirstCodePart() + "-smelted"));
+            Block block = world.GetBlock(CodeWithVariant("type", "smelted"));
             ItemStack outputStack = new ItemStack(block);
 
             if (alloy != null)

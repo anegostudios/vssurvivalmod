@@ -45,7 +45,8 @@ namespace Vintagestory.GameContent.Mechanics
                     if (dx == 1) orient = 'e';
                     else if (dx == -1) orient = 'w';
                     else if (dz == 1) orient = 's';
-                    BlockMPBase toPlaceBlock = world.GetBlock(new AssetLocation("angledgears-" + orient + orient)) as BlockMPBase;
+                    Block smallGearBlock = world.BlockAccessor.GetBlock(smallGear);
+                    BlockMPBase toPlaceBlock = world.GetBlock(smallGearBlock.CodeWithVariant("orientation", orient + orient + "")) as BlockMPBase;
                     BlockFacing bf = BlockFacing.FromFirstLetter(orient);
                     toPlaceBlock.ExchangeBlockAt(world, smallGear);
                     toPlaceBlock.DidConnectAt(world, smallGear, bf.Opposite);

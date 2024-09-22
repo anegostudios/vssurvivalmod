@@ -54,7 +54,7 @@ namespace Vintagestory.GameContent.Mechanics
                 {
                     if (block.HasMechPowerConnectorAt(world, pos, face.Opposite))
                     {
-                        AssetLocation loc = new AssetLocation(FirstCodePart() + "-" + face.GetCCW().Code);
+                        AssetLocation loc = CodeWithVariant("side", face.GetCCW().Code);
                         Block toPlaceBlock = world.GetBlock(loc);
                         if (toPlaceBlock.DoPlaceBlock(world, byPlayer, blockSel, itemstack))
                         {
@@ -137,7 +137,7 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {
-            ItemStack pulvFrame = new ItemStack(world.BlockAccessor.GetBlock(CodeWithParts("north")));
+            ItemStack pulvFrame = new ItemStack(world.BlockAccessor.GetBlock(CodeWithVariant("side", "north")));
             BEPulverizer bep = world.BlockAccessor.GetBlockEntity(pos) as BEPulverizer;
             if (bep != null)
             {

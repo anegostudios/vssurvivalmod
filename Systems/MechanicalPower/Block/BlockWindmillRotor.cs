@@ -42,7 +42,7 @@ namespace Vintagestory.GameContent.Mechanics
                         //Prevent rotor back-to-back placement
                         if (block is IMPPowered) return false;
 
-                        Block toPlaceBlock = world.GetBlock(new AssetLocation(FirstCodePart() + "-" + face.Opposite.Code));
+                        Block toPlaceBlock = world.GetBlock(CodeWithVariant("side", face.Opposite.Code));
                         world.BlockAccessor.SetBlock(toPlaceBlock.BlockId, blockSel.Position);
 
                         block.DidConnectAt(world, pos, face.Opposite);

@@ -37,7 +37,7 @@ namespace Vintagestory.GameContent.Mechanics
                 }
             }
 
-            Block orientedBlock = world.BlockAccessor.GetBlock(CodeWithParts(bestFacing.Code));
+            Block orientedBlock = world.BlockAccessor.GetBlock(CodeWithVariant("side", bestFacing.Code));
             return orientedBlock.DoPlaceBlock(world, byPlayer, blockSel, itemstack);
         }
 

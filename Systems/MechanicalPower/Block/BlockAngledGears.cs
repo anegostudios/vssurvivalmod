@@ -62,7 +62,7 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {
-            return new ItemStack(world.GetBlock(new AssetLocation("angledgears-s")));  
+            return new ItemStack(world.GetBlock(CodeWithVariant("orientation", "s")));  
         }
 
 
@@ -71,15 +71,15 @@ namespace Vintagestory.GameContent.Mechanics
             if (adjFacing == null)
             {
                 char orient = facing.Code[0];
-                return world.GetBlock(new AssetLocation(FirstCodePart() + (cageGear ? "-" + orient + orient : "-" + orient)));
+                return world.GetBlock(CodeWithVariant("orientation", cageGear ? "-" + orient + orient : "-" + orient));
             }
 
-            AssetLocation loc = new AssetLocation(FirstCodePart() + "-" + adjFacing.Code[0] + facing.Code[0]);
+            AssetLocation loc = CodeWithVariant("orientation", adjFacing.Code[0] + facing.Code[0] + "");
             Block toPlaceBlock = world.GetBlock(loc);
 
             if (toPlaceBlock == null)
             {
-                loc = new AssetLocation(FirstCodePart() + "-" + facing.Code[0] + adjFacing.Code[0]);
+                loc = CodeWithVariant("orientation", facing.Code[0] + adjFacing.Code[0] + "");
                 toPlaceBlock = world.GetBlock(loc);
             }
 
@@ -229,7 +229,7 @@ namespace Vintagestory.GameContent.Mechanics
             if (lostFacings.Count > 0)
             {
                 orients = orients.Replace("" + lostFacings[0].Code[0], "");
-                Block toPlaceBlock = world.GetBlock(new AssetLocation(FirstCodePart() + "-" + orients));
+                Block toPlaceBlock = world.GetBlock(CodeWithVariant("orientation", orients));
                 (toPlaceBlock as BlockMPBase).ExchangeBlockAt(world, pos);
                 BlockEntity be = world.BlockAccessor.GetBlockEntity(pos);
                 BEBehaviorMPBase bemp = be.GetBehavior<BEBehaviorMPBase>();
@@ -283,7 +283,7 @@ namespace Vintagestory.GameContent.Mechanics
             string orient = Variant["orientation"];
             if (orient.Length == 2 && orient[1] == orient[0])
             {
-                Block toPlaceBlock = world.GetBlock(new AssetLocation(FirstCodePart() + "-" + orient[0]));
+                Block toPlaceBlock = world.GetBlock(CodeWithVariant("orientation", orient[0] + ""));
                 ((BlockMPBase)toPlaceBlock).ExchangeBlockAt(world, pos);
                 BEBehaviorMPAngledGears beg = world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPAngledGears>();
                 beg?.ClearLargeGear();
