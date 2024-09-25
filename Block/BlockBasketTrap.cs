@@ -54,7 +54,19 @@ namespace Vintagestory.GameContent
             var be = GetBlockEntity<BlockEntityBasketTrap>(pos);
             if (be != null && be.TrapState == EnumTrapState.Destroyed)
             {
-                return new ItemStack[] { new ItemStack(world.GetItem(new AssetLocation("cattailtops")), 6 + world.Rand.Next(8)) };
+                ItemStack dropStack = null;
+                if (Attributes != null && Attributes.KeyExists("drop"))
+                {
+                    JsonItemStack jsonDropStack = Attributes["drop"].AsObject<JsonItemStack>();
+                    if (jsonDropStack != null && jsonDropStack.Resolve(world, ""))
+                    {
+                        ItemStack newStack = jsonDropStack.ResolvedItemstack;
+                        newStack.StackSize = 6 + world.Rand.Next(8);
+                        return new ItemStack[] { newStack };
+                    }
+                }
+
+                return new ItemStack[] { new ItemStack(world.GetItem(AssetLocation.Create("cattailtops")), 6 + world.Rand.Next(8)) };
             }
 
             return base.GetDrops(world, pos, byPlayer, dropQuantityMultiplier);
