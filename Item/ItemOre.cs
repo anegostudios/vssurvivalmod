@@ -17,6 +17,7 @@ namespace Vintagestory.GameContent
                 if (Attributes?["metalUnits"].Exists == true)
                 {
                     float units = Attributes["metalUnits"].AsInt();
+                    float totalUnits = units * inSlot.StackSize;
 
                     string orename = LastCodePart(1);
                     if (orename.Contains("_"))
@@ -29,7 +30,8 @@ namespace Vintagestory.GameContent
                     if (item?.CombustibleProps?.SmeltedStack?.ResolvedItemstack != null)
                     {
                         string metalname = item.CombustibleProps.SmeltedStack.ResolvedItemstack.GetName().Replace(" ingot", "");
-                        dsc.AppendLine(Lang.Get("{0} units of {1}", units.ToString("0.#"), metalname));
+                        dsc.AppendLine(Lang.Get("Single: {0} units of {1}", units.ToString("0.#"), metalname));
+                        dsc.AppendLine(Lang.Get("Total: {0} units of {1}", totalUnits.ToString("0.#"), metalname));
                     }   
 
                     dsc.AppendLine(Lang.Get("Parent Material: {0}", Lang.Get("rock-" + LastCodePart())));
