@@ -106,7 +106,7 @@ namespace Vintagestory.GameContent
         }
 
         #region Interaction help
-        protected WorldInteraction[] interactions;
+        public WorldInteraction[] interactions { get; private set; }
 
         public override void OnLoaded(ICoreAPI api)
         {

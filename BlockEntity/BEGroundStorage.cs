@@ -960,6 +960,61 @@ namespace Vintagestory.GameContent
             }
 
             ItemSlot hotbarSlot = player.InventoryManager.ActiveHotbarSlot;
+
+            if (ourSlot?.Itemstack?.Collectible is ILiquidInterface liquidCnt1 && hotbarSlot?.Itemstack?.Collectible is ILiquidInterface liquidCnt2)
+            {
+                BlockLiquidContainerBase heldLiquidContainer = hotbarSlot.Itemstack.Collectible as BlockLiquidContainerBase;
+
+                CollectibleObject obj = hotbarSlot.Itemstack.Collectible;
+                bool singleTake = player.WorldData.EntityControls.ShiftKey;
+                bool singlePut = player.WorldData.EntityControls.CtrlKey;
+
+
+                if (obj is ILiquidSource liquidSource && liquidSource.AllowHeldLiquidTransfer && !singleTake)
+                {
+                    ItemStack contentStackToMove = liquidSource.GetContent(hotbarSlot.Itemstack);
+
+                    int moved = heldLiquidContainer.TryPutLiquid(
+                        containerStack: ourSlot.Itemstack,
+                        liquidStack: contentStackToMove,
+                        desiredLitres: singlePut ? liquidSource.TransferSizeLitres : liquidSource.CapacityLitres);
+
+                    if (moved > 0)
+                    {
+                        heldLiquidContainer.SplitStackAndPerformAction(player.Entity, hotbarSlot, delegate (ItemStack stack)
+                        {
+                            liquidSource.TryTakeContent(stack, moved);
+                            return moved;
+                        });
+                        heldLiquidContainer.DoLiquidMovedEffects(player, contentStackToMove, moved, BlockLiquidContainerBase.EnumLiquidDirection.Pour);
+
+                        BlockGroundStorage.IsUsingContainedBlock = true;
+                        isUsingSlot = ourSlot;
+                        return true;
+                    }
+                }
+
+                if (obj is ILiquidSink liquidSink && liquidSink.AllowHeldLiquidTransfer && !singlePut)
+                {
+                    ItemStack owncontentStack = heldLiquidContainer.GetContent(ourSlot.Itemstack);
+                    if (owncontentStack != null)
+                    {
+                        ItemStack liquidStackForParticles = owncontentStack.Clone();
+                        float litres = (singleTake ? liquidSink.TransferSizeLitres : liquidSink.CapacityLitres);
+                        int moved = heldLiquidContainer.SplitStackAndPerformAction(player.Entity, hotbarSlot, (ItemStack stack) => liquidSink.TryPutLiquid(stack, owncontentStack, litres));
+                        if (moved > 0)
+                        {
+                            heldLiquidContainer.TryTakeContent(ourSlot.Itemstack, moved);
+                            heldLiquidContainer.DoLiquidMovedEffects(player, liquidStackForParticles, moved, BlockLiquidContainerBase.EnumLiquidDirection.Fill);
+
+                            BlockGroundStorage.IsUsingContainedBlock = true;
+                            isUsingSlot = ourSlot;
+                            return true;
+                        }
+                    }
+                }
+            }
+
             if (!hotbarSlot.Empty && !inventory.Empty)
             {
                 bool layoutEqual = StorageProps.Layout == hotbarSlot.Itemstack.Collectible.GetBehavior<CollectibleBehaviorGroundStorable>()?.StorageProps.Layout;
