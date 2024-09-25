@@ -642,6 +642,15 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
         {
+            if (blockSel != null && api.World.BlockAccessor.GetBlockEntity(blockSel.Position) is BlockEntityGroundStorage begs)
+            {
+                ItemSlot gslot = begs.GetSlotAt(blockSel);
+                if (!gslot.Empty && gslot.Itemstack.Collectible is ILiquidInterface)
+                {
+                    return;
+                }
+            }
+
             if (blockSel == null || byEntity.Controls.ShiftKey)
             {
                 if (byEntity.Controls.ShiftKey) base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
