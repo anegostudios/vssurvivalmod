@@ -264,7 +264,7 @@ namespace Vintagestory.GameContent
                     break;
                 }
 
-                double playerYaw = player.Entity.Pos.Yaw + GameMath.PIHALF;
+                double playerYaw = player.Entity.Pos.Yaw;
                 double playerPitch = player.Entity.Pos.Pitch;
                 double attackYaw = Math.Atan2((double)dx, (double)dz);
                 double a = dy;

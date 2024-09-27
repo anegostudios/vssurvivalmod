@@ -53,9 +53,9 @@ namespace Vintagestory.ServerMods
                 uint index = Indices[i];
                 int storedBlockid = BlockIds[i];
 
-                int dx = (int)(index & 0x1ff);
-                int dy = (int)((index >> 20) & 0x1ff);
-                int dz = (int)((index >> 10) & 0x1ff);
+                int dx = (int)(index & PosBitMask);
+                int dy = (int)((index >> 20) & PosBitMask);
+                int dz = (int)((index >> 10) & PosBitMask);
 
                 Block block = blockAccessor.GetBlock(BlockCodes[storedBlockid]);
                 if (block == null) continue;
@@ -384,9 +384,9 @@ namespace Vintagestory.ServerMods
                 uint index = Indices[i];
                 int storedBlockid = BlockIds[i];
 
-                int dx = (int)(index & 0x1ff);
-                int dy = (int)((index >> 20) & 0x1ff);
-                int dz = (int)((index >> 10) & 0x1ff);
+                int dx = (int)(index & PosBitMask);
+                int dy = (int)((index >> 20) & PosBitMask);
+                int dz = (int)((index >> 10) & PosBitMask);
 
                 AssetLocation blockCode = BlockCodes[storedBlockid];
 
@@ -501,7 +501,7 @@ namespace Vintagestory.ServerMods
             cloned.Entities = new List<string>(Entities);
 
             cloned.DecorIndices = new List<uint>(DecorIndices);
-            cloned.DecorIds = new List<int>(DecorIds);
+            cloned.DecorIds = new List<long>(DecorIds);
 
             cloned.ReplaceMode = ReplaceMode;
             cloned.EntranceRotation = EntranceRotation;

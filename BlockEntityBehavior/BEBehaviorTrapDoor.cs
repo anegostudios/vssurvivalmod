@@ -1,5 +1,4 @@
-﻿using OpenTK.Windowing.Common.Input;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;

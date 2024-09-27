@@ -81,7 +81,7 @@ namespace Vintagestory.GameContent
 
             if (byPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative && byPlayer.InventoryManager.ActiveHotbarSlot.Empty)
             {
-                if (byPlayer.Entity.Controls.Sneak)
+                if (byPlayer.Entity.Controls.ShiftKey)
                 {
                     hasTempGear = false;
                     hasPumphead = false;

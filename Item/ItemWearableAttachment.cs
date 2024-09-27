@@ -11,6 +11,14 @@ namespace Vintagestory.GameContent
 {
     public class ItemWearableAttachment : Item, IContainedMeshSource, ITexPositionSource
     {
+        bool attachableToEntity;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            attachableToEntity = IAttachableToEntity.FromCollectible(this, api.Logger) != null;
+            base.OnLoaded(api);
+        }
+
         #region For ground storable mesh
         ITextureAtlasAPI curAtlas;
         Shape nowTesselatingShape;
@@ -98,8 +106,7 @@ namespace Vintagestory.GameContent
 
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
-            JsonObject attrObj = itemstack.Collectible.Attributes;
-            if (attrObj?["wearableAttachment"].Exists != true) return;
+            if (!attachableToEntity) return;
 
             Dictionary<string, MultiTextureMeshRef> meshrefs = ObjectCacheUtil.GetOrCreate(capi, "wearableAttachmentMeshRefs", () => new Dictionary<string, MultiTextureMeshRef>());
             string key = GetMeshCacheKey(itemstack);
@@ -125,8 +132,8 @@ namespace Vintagestory.GameContent
             AssetLocation shapePathForLogging = props.Client.Shape.Base;
             Shape newShape;
 
-            bool iswearableAttachment = attrObj.IsTrue("wearableAttachment");
-            if (!iswearableAttachment)
+
+            if (!attachableToEntity)
             {
                 // No need to step parent anything if its just a texture on the seraph
                 newShape = entityShape;

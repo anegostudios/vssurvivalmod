@@ -86,7 +86,10 @@ namespace Vintagestory.GameContent
 
         public override void OnUnloaded(ICoreAPI api)
         {
-            foreach (var sk in skillItems) sk.Dispose();
+            if (skillItems != null)
+            {
+                foreach (var sk in skillItems) sk.Dispose();
+            }
         }
 
         private static List<BlockPos> rotateList(List<BlockPos> startlist, int i)

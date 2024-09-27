@@ -167,9 +167,9 @@ namespace Vintagestory.GameContent
         {
             base.OnUnloaded(api);
 
-            extraWrenchModes[0].Dispose();
-            extraWrenchModes[1].Dispose();
-            extraWrenchModes[2].Dispose();
+            extraWrenchModes[0]?.Dispose();
+            extraWrenchModes[1]?.Dispose();
+            extraWrenchModes[2]?.Dispose();
 
             if (api is ICoreClientAPI capi)
             {

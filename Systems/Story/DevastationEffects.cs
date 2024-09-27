@@ -22,6 +22,7 @@ public class DevastationEffects : ModSystem
     public Vec3d DevaLocation;
     public int Radius;
     private ICoreClientAPI capi;
+    private int EffectDist = 5000;
 
     private static SimpleParticleProperties dustParticles;
 
@@ -73,7 +74,7 @@ public class DevastationEffects : ModSystem
 
         Vec3d offsetToTowerCenter = DevaLocation - capi.World.Player.Entity.Pos.XYZ;
         var dist = offsetToTowerCenter.Length();
-        if (dist > 5000)
+        if (dist > EffectDist)
         {
             capi.Render.ShaderUniforms.FogSphereQuantity = 0;
             towerAmbient.FogDensity.Weight = 0;
@@ -83,7 +84,7 @@ public class DevastationEffects : ModSystem
 
         // Goes from 1 = at deva tower
         // to 0 = 5000 blocks away
-        float f = (float)(1 - dist / 5000f);
+        float f = (float)(1 - dist / EffectDist);
         f = GameMath.Clamp(1.5f * (f - 0.25f), 0, 1);
 
         capi.Render.ShaderUniforms.FogSphereQuantity = 1;

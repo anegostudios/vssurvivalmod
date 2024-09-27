@@ -291,7 +291,7 @@ namespace Vintagestory.GameContent
 
         public void Rotate(EntityAgent byEntity, BlockSelection blockSel, int dir)
         {
-            if (byEntity.Controls.Sneak)
+            if (byEntity.Controls.ShiftKey)
             {
                 if (blockSel.Face.Axis == EnumAxis.X)
                 {

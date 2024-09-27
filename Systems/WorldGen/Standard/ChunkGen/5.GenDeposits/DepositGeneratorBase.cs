@@ -15,7 +15,6 @@ namespace Vintagestory.ServerMods
         public NormalizedSimplexNoise DistortNoiseGen;
         protected DepositVariant variant;
 
-        protected Random rand;
 
         public bool blockCallBacks = true;
 
@@ -26,9 +25,8 @@ namespace Vintagestory.ServerMods
             this.DepositRand = depositRand;
             this.DistortNoiseGen = noiseGen;
 
-            rand = new Random(api.World.Seed);
         }
-        
+
         public abstract void GenDeposit(IBlockAccessor blockAccessor, IServerChunk[] chunks, int originChunkX, int originChunkZ, BlockPos pos, ref Dictionary<BlockPos, DepositVariant> subDepositsToPlace);
 
         public virtual void Init() { }

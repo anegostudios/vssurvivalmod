@@ -422,7 +422,7 @@ namespace Vintagestory.GameContent
             }
 
             bool wasBurning = IsBurning;
-            bool nowBurning = tree.GetBool("isBurning", true);
+            bool nowBurning = tree.GetBool("isBurning", false);
 
             if (nowBurning && !wasBurning)
             {

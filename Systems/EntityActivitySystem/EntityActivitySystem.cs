@@ -57,7 +57,7 @@ namespace Vintagestory.GameContent
         public bool CancelAll()
         {
             bool stopped = false;
-            foreach (var val in  ActiveActivitiesBySlot.Values)
+            foreach (var val in ActiveActivitiesBySlot.Values)
             {
                 if (val == null) continue;
                 val.Cancel();
@@ -90,7 +90,7 @@ namespace Vintagestory.GameContent
                 {
                     activity.Finish();
                     Entity.Attributes.SetString("lastActivity", activity.Name);
-                    if (Debug) Entity.World.Logger.Debug("ActivitySystem entity {0} activity {0} has finished", Entity.EntityId, activity.Name);
+                    if (Debug) Entity.World.Logger.Debug("ActivitySystem entity {0} activity {1} has finished", Entity.EntityId, activity.Name);
                     ActiveActivitiesBySlot.Remove(key);
                     continue;
                 }
@@ -130,7 +130,9 @@ namespace Vintagestory.GameContent
 
                     if (execute)
                     {
-                        activeActivity?.Cancel();
+                        ActiveActivitiesBySlot.TryGetValue(slot, out var act);
+                        act?.Cancel();
+
                         ActiveActivitiesBySlot[slot] = activity;
                         activity?.Start();
                     }

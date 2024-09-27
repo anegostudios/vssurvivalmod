@@ -40,6 +40,11 @@ namespace Vintagestory.ServerMods
         [JsonProperty]
         public Dictionary<string, int> OffsetYByCode;
 
+        /// <summary>
+        /// This bitmask for the position in schematics
+        /// </summary>
+        public const uint PosBitMask = 0x3ff;
+
         protected T[][] LoadSchematicsWithRotations<T>(ICoreAPI api, AssetLocation[] locs, BlockLayerConfig config, WorldGenStructuresConfig structureConfig, Dictionary<string, int> schematicYOffsets, int? defaultOffsetY, string pathPrefix = "schematics/", bool isDungeon = false) where T : BlockSchematicStructure
         {
             List<T[]> schematics = new List<T[]>();
@@ -146,9 +151,9 @@ namespace Vintagestory.ServerMods
             for (var i = 0; i < schematic.Indices.Count; i++)
             {
                 var index = schematic.Indices[i];
-                int dx = (int)(index & 0x1ff);
-                int dy = (int)((index >> 20) & 0x1ff);
-                int dz = (int)((index >> 10) & 0x1ff);
+                int dx = (int)(index & PosBitMask);
+                int dy = (int)((index >> 20) & PosBitMask);
+                int dz = (int)((index >> 10) & PosBitMask);
 
                 if (dx == 0)
                 {
@@ -220,9 +225,9 @@ namespace Vintagestory.ServerMods
             {
                 if(!hasX && !hasZ) continue;
                 var index = schematic.Indices[i];
-                int dx = (int)(index & 0x1ff);
-                int dy = (int)((index >> 20) & 0x1ff);
-                int dz = (int)((index >> 10) & 0x1ff);
+                int dx = (int)(index & PosBitMask);
+                int dy = (int)((index >> 20) & PosBitMask);
+                int dz = (int)((index >> 10) & PosBitMask);
                 if (hasX) dx--;
                 if (hasZ) dz--;
 
@@ -233,9 +238,9 @@ namespace Vintagestory.ServerMods
             {
                 if(!hasX && !hasZ) continue;
                 var index = schematic.DecorIndices[i];
-                int dx = (int)(index & 0x1ff);
-                int dy = (int)((index >> 20) & 0x1ff);
-                int dz = (int)((index >> 10) & 0x1ff);
+                int dx = (int)(index & PosBitMask);
+                int dy = (int)((index >> 20) & PosBitMask);
+                int dz = (int)((index >> 10) & PosBitMask);
                 if (hasX) dx--;
                 if (hasZ) dz--;
 
@@ -246,9 +251,9 @@ namespace Vintagestory.ServerMods
             foreach (var (index, data) in schematic.BlockEntities)
             {
                 if(!hasX && !hasZ) continue;
-                int dx = (int)(index & 0x1ff);
-                int dy = (int)((index >> 20) & 0x1ff);
-                int dz = (int)((index >> 10) & 0x1ff);
+                int dx = (int)(index & PosBitMask);
+                int dy = (int)((index >> 20) & PosBitMask);
+                int dz = (int)((index >> 10) & PosBitMask);
                 if (hasX) dx--;
                 if (hasZ) dz--;
 

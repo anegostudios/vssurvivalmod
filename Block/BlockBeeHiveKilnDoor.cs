@@ -34,7 +34,7 @@ public class BlockBeeHiveKilnDoor : BlockGeneric
     {
         BlockPos pos = blockSel.Position;
 
-        if (byPlayer.WorldData.EntityControls.Sprint)
+        if (byPlayer.WorldData.EntityControls.CtrlKey)
         {
             if (world.BlockAccessor.GetBlockEntity(pos) is BlockEntityBeeHiveKiln besc)
             {
@@ -54,5 +54,29 @@ public class BlockBeeHiveKilnDoor : BlockGeneric
         itemStacks[0].Attributes["totalHoursHeatReceived"] = new DoubleAttribute(blockEntityGroundStorage.TotalHoursHeatReceived);
 
         return itemStacks;
+    }
+    public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
+    {
+        var bebk = world.BlockAccessor.GetBlockEntity<BlockEntityBeeHiveKiln>(selection.Position);
+        if (bebk?.StructureComplete == false)
+        {
+            return new WorldInteraction[]
+            {
+                new WorldInteraction()
+                {
+                    ActionLangCode = "blockhelp-mulblock-struc-show",
+                    HotKeyCodes = new string[] {"ctrl" },
+                    MouseButton = EnumMouseButton.Right,
+                },
+                new WorldInteraction()
+                {
+                    ActionLangCode = "blockhelp-mulblock-struc-hide",
+                    HotKeyCodes = new string[] {"ctrl", "shift" },
+                    MouseButton = EnumMouseButton.Right,
+                }
+            };
+        }
+
+        return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer);
     }
 }

@@ -21,15 +21,24 @@ namespace Vintagestory.GameContent
         float searchRange;
         [JsonProperty]
         string activateArgs;
+        [JsonProperty]
+        public double targetX { get { return ExactTarget.X; } set { ExactTarget.X = value; } }
+        [JsonProperty]
+        public double targetY { get { return ExactTarget.Y; } set { ExactTarget.Y = value; } }
+        [JsonProperty]
+        public double targetZ { get { return ExactTarget.Z; } set { ExactTarget.Z = value; } }
+
+        public Vec3d ExactTarget = new Vec3d();
 
         public ActivateBlockAction() { }
 
-        public ActivateBlockAction(EntityActivitySystem vas, AssetLocation targetBlockCode, float searchRange, string activateArgs)
+        public ActivateBlockAction(EntityActivitySystem vas, AssetLocation targetBlockCode, float searchRange, string activateArgs, Vec3d exacttarget)
         {
             this.vas = vas;
             this.targetBlockCode = targetBlockCode;
             this.searchRange = searchRange;
             this.activateArgs = activateArgs;
+            this.ExactTarget = exacttarget;
         }
 
 
@@ -73,6 +82,12 @@ namespace Vintagestory.GameContent
 
         private BlockPos getTarget()
         {
+            if (ExactTarget.Length() > 0)
+            {
+                if (ExactTarget.DistanceTo(vas.Entity.ServerPos.XYZ) < searchRange) return ExactTarget.AsBlockPos;
+                return null;
+            }
+
             var range = GameMath.Clamp(searchRange, -10, 10);
             var api = vas.Entity.Api;
             var minPos = vas.Entity.ServerPos.XYZ.Add(-range, -1, -range).AsBlockPos;
@@ -106,38 +121,66 @@ namespace Vintagestory.GameContent
 
         public override string ToString()
         {
+            if (ExactTarget.Length() > 0) return "Activate block at " + ExactTarget;
             return "Activate nearest block " + targetBlockCode + " within " + searchRange + " blocks";
         }
 
         public void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             var b = ElementBounds.Fixed(0, 0, 300, 25);
-            singleComposer
-                .AddStaticText("Search Range (capped to 10 blocks)", CairoFont.WhiteDetailText(), b)
-                .AddNumberInput(b = b.BelowCopy(0, -5), null, CairoFont.WhiteDetailText(), "searchRange")
+            var bc = ElementBounds.Fixed(0, 0, 65, 20);
 
-                .AddStaticText("Block Code", CairoFont.WhiteDetailText(), b = b.BelowCopy(0, 10))
+            singleComposer
+                .AddStaticText("Block Code", CairoFont.WhiteDetailText(), b)
                 .AddTextInput(b = b.BelowCopy(0, -5), null, CairoFont.WhiteDetailText(), "targetBlockCode")
+
+                .AddStaticText("OR exact x/y/z Pos", CairoFont.WhiteDetailText(), b = b.BelowCopy(0, 5))
+                .AddTextInput(bc = bc.FlatCopy().FixedUnder(b, -3), null, CairoFont.WhiteDetailText(), "x")
+                .AddTextInput(bc = bc.CopyOffsetedSibling(70), null, CairoFont.WhiteDetailText(), "y")
+                .AddTextInput(bc = bc.CopyOffsetedSibling(70), null, CairoFont.WhiteDetailText(), "z")
+                .AddSmallButton("Insert Player Pos", () => onClickPlayerPos(capi, singleComposer), b = b.FlatCopy().WithFixedPosition(0,0).FixedUnder(bc,2), EnumButtonStyle.Small)
+
+
+                .AddStaticText("Within Range (capped to 10 blocks)", CairoFont.WhiteDetailText(), b = b.BelowCopy(0, 30))
+                .AddNumberInput(b = b.BelowCopy(0, -5), null, CairoFont.WhiteDetailText(), "searchRange")
 
                 .AddStaticText("Activation Arguments", CairoFont.WhiteDetailText(), b = b.BelowCopy(0, 10))
                 .AddTextInput(b = b.BelowCopy(0, -5), null, CairoFont.WhiteDetailText(), "activateArgs")
             ;
 
-            singleComposer.GetNumberInput("searchRange").SetValue(searchRange);
-            singleComposer.GetTextInput("targetBlockCode").SetValue(targetBlockCode?.ToShortString());
-            singleComposer.GetTextInput("activateArgs").SetValue(activateArgs);
+            var s = singleComposer;
+            s.GetNumberInput("searchRange").SetValue(searchRange);
+            s.GetTextInput("targetBlockCode").SetValue(targetBlockCode?.ToShortString());
+            s.GetTextInput("activateArgs").SetValue(activateArgs);
+
+            s.GetTextInput("x").SetValue(ExactTarget?.X + "");
+            s.GetTextInput("y").SetValue(ExactTarget?.Y + "");
+            s.GetTextInput("z").SetValue(ExactTarget?.Z + "");
+
+        }
+
+        private bool onClickPlayerPos(ICoreClientAPI capi, GuiComposer singleComposer)
+        {
+            var plrPos = capi.World.Player.Entity.Pos.XYZ;
+            singleComposer.GetTextInput("x").SetValue("" + Math.Round(plrPos.X, 1));
+            singleComposer.GetTextInput("y").SetValue("" + Math.Round(plrPos.Y, 1));
+            singleComposer.GetTextInput("z").SetValue("" + Math.Round(plrPos.Z, 1));
+            return true;
         }
 
         public IEntityAction Clone()
         {
-            return new ActivateBlockAction(vas, targetBlockCode, searchRange, activateArgs);
+            return new ActivateBlockAction(vas, targetBlockCode, searchRange, activateArgs, ExactTarget);
         }
 
         public bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
-            searchRange = singleComposer.GetTextInput("searchRange").GetText().ToFloat();
-            targetBlockCode = new AssetLocation(singleComposer.GetTextInput("targetBlockCode").GetText());
-            activateArgs = singleComposer.GetTextInput("activateArgs").GetText();
+            var s = singleComposer;
+
+            this.ExactTarget = new Vec3d(s.GetTextInput("x").GetText().ToDouble(), s.GetTextInput("y").GetText().ToDouble(), s.GetTextInput("z").GetText().ToDouble());
+            searchRange = s.GetTextInput("searchRange").GetText().ToFloat();
+            targetBlockCode = new AssetLocation(s.GetTextInput("targetBlockCode").GetText());
+            activateArgs = s.GetTextInput("activateArgs").GetText();
             return true;
         }
 

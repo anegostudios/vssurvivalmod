@@ -493,8 +493,8 @@ namespace Vintagestory.GameContent
 
         private bool tryPickup(EntityAgent byEntity, EnumInteractMode mode)
         {
-            // sneak + click to remove boat
-            if (byEntity.Controls.Sneak)
+            // shift + click to remove boat
+            if (byEntity.Controls.ShiftKey)
             {
                 ItemStack stack = new ItemStack(World.GetItem(Code));
                 if (!byEntity.TryGiveItemStack(stack))

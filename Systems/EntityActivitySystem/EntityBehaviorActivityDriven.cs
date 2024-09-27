@@ -54,6 +54,8 @@ namespace Vintagestory.GameContent
         {
             var eagent = entity as EntityAgent;
             EntityBehaviorTaskAI taskAi = entity.GetBehavior<EntityBehaviorTaskAI>();
+            if (taskAi == null) return;
+
             taskAi.TaskManager.OnShouldExecuteTask += (task) =>
             {
                 return eagent.MountedOn == null && ActivitySystem.ActiveActivitiesBySlot.Values.FirstOrDefault(a => a.CurrentAction == null || a.CurrentAction.Type != "standardai") == null;

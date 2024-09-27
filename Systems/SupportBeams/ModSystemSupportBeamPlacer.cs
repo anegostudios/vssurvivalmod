@@ -292,7 +292,7 @@ namespace Vintagestory.GameContent
             float yaw = -GameMath.PIHALF - (float)Math.Atan2(-dX, -dZ);
             float pitch = (float)Math.Atan2(horlen, dY);
 
-            if (player.Entity.Controls.Sneak)
+            if (player.Entity.Controls.ShiftKey)
             {
                 float rotSnap = 15f;
                 yaw = (float)Math.Round(yaw * GameMath.RAD2DEG / rotSnap) * (float)rotSnap * GameMath.DEG2RAD;
@@ -520,7 +520,7 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                sbdata = chunk.GetModdata<SupportBeamsData>("supportbeams");
+                chunk.LiveModData["supportbeams"] = sbdata = chunk.GetModdata<SupportBeamsData>("supportbeams");
             }
 
             if (sbdata == null)

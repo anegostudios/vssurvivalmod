@@ -37,7 +37,14 @@ namespace Vintagestory.GameContent
             var minHourRel = minHour / 24f;
             var maxHourRel = maxHour / 24f;
 
-            return hourRel >= minHourRel && hourRel <= maxHourRel;
+            if (maxHour < minHour)
+            {
+                return hourRel >= minHourRel || hourRel <= maxHourRel;
+            }
+            else
+            {
+                return hourRel >= minHourRel && hourRel <= maxHourRel;
+            }
         }
 
 

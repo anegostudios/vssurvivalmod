@@ -112,7 +112,6 @@ namespace Vintagestory.GameContent
                     InitInventory(Block, Api);   // We need to replace the inventory with one for the new type (may be a different size). It's OK to delete the existing inventory in a newly placed block, it can't hold anything
                     Inventory.LateInitialize(InventoryClassName + "-" + Pos.X + "/" + Pos.Y + "/" + Pos.Z, Api);
                     Inventory.ResolveBlocksOrItems();
-                    //Inventory.OnAcquireTransitionSpeed += Inventory_OnAcquireTransitionSpeed;
                     container.LateInit();
                     MarkDirty();
                 }
@@ -286,6 +285,8 @@ namespace Vintagestory.GameContent
             {
                 inventory.SlotModified += Inventory_SlotModified;
             }
+
+            container.Reset();
         }
 
 

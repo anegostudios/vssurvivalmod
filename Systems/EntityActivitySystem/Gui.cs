@@ -545,7 +545,7 @@ namespace Vintagestory.GameContent
 
             SingleComposer =
                 capi.Gui
-                .CreateCompo("activitycollection-" + this.assetpath.ToShortString(), dialogBounds)
+                .CreateCompo("activitycollection-" + (this.assetpath?.ToShortString() ?? "new"), dialogBounds)
                 .AddShadedDialogBG(bgBounds, true)
                 .AddDialogTitleBar("Create/Modify Activity collection", OnTitleBarClose)
                 .BeginChildElements(bgBounds) 
@@ -861,7 +861,7 @@ namespace Vintagestory.GameContent
 
             ElementBounds vsBounds = ElementBounds.Fixed(0,0,25,25).WithAlignment(EnumDialogArea.RightFixed).FixedUnder(conditionsClipBounds, 10);
 
-            string key = "activityedit-" + guiDialogActivityCollection.assetpath.ToShortString() + "-" + collectionIndex;
+            string key = "activityedit-" + (guiDialogActivityCollection.assetpath?.ToShortString() ?? "new")  + "-" + collectionIndex;
             SingleComposer =
                 capi.Gui
                 .CreateCompo(key, dialogBounds)
@@ -1046,6 +1046,7 @@ namespace Vintagestory.GameContent
                     if (entityAction == null) entityActivity.Actions = entityActivity.Actions.Append(editActionDlg.entityAction);
                     else entityActivity.Actions[selectedActionIndex] = editActionDlg.entityAction;
                     actionListElem.ReloadCells(entityActivity.Actions);
+                    updateScrollbarBoundsActions();
                 }
             };
             return true;

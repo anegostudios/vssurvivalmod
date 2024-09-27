@@ -597,6 +597,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockSlantedRoofingHalf", typeof(BlockSlantedRoofingHalf));
             api.RegisterBlockClass("BlockTileConnector", typeof(BlockTileConnector));
             api.RegisterBlockClass("BlockMetaRemainSelectable", typeof(BlockMetaRemainSelectable));
+            api.RegisterBlockClass("BlockCropProp", typeof(BlockCropProp));
         }
 
 
@@ -687,6 +688,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockEntityBehaviorClass("ClutterBookshelfWithLore", typeof(BEBehaviorClutterBookshelfWithLore));
             api.RegisterBlockEntityBehaviorClass("RockRubbleFromAttributes", typeof(BEBehaviorRockRubbleFromAttributes));
             api.RegisterBlockEntityBehaviorClass("TemperatureSensitive", typeof(BEBehaviorTemperatureSensitive));
+            api.RegisterBlockEntityBehaviorClass("CropProp", typeof(BEBehaviorCropProp));
         }
 
         private void RegisterDefaultCollectibleBehaviors()
@@ -912,6 +914,8 @@ namespace Vintagestory.GameContent
             api.RegisterItemClass("ItemMechHelper", typeof(ItemMechHelper));
             api.RegisterItemClass("ItemNpcGuideStick", typeof(ItemNpcGuideStick));
             api.RegisterItemClass("ItemTongs", typeof(ItemTongs));
+            api.RegisterItemClass("ItemFlute", typeof(ItemFlute));
+            api.RegisterItemClass("ItemMedallion", typeof(ItemMedallion));
         }
 
 
@@ -974,6 +978,7 @@ namespace Vintagestory.GameContent
             api.RegisterEntityBehaviorClass("passivephysicsmultibox", typeof(EntityBehaviorPassivePhysicsMultiBox));
             api.RegisterEntityBehaviorClass("activitydriven", typeof(EntityBehaviorActivityDriven));
             api.RegisterEntityBehaviorClass("villagerinventory", typeof(EntityBehaviorVillagerInv));
+            api.RegisterEntityBehaviorClass("ownable", typeof(EntityBehaviorOwnable));
 
         }
 

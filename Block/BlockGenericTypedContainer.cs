@@ -49,6 +49,11 @@ namespace Vintagestory.GameContent
         {
             return mirroredColBox;
         }
+
+        public override bool IsAttachable(ItemStack itemStack)
+        {
+            return false;
+        }
     }
 
     public class GenericContainerTextureSource : ITexPositionSource
@@ -533,6 +538,9 @@ namespace Vintagestory.GameContent
             }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
         }
 
-
+        public virtual bool IsAttachable(ItemStack itemStack)
+        {
+            return true;
+        }
     }
 }

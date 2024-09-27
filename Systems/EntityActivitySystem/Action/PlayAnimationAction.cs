@@ -1,15 +1,13 @@
 ﻿using Newtonsoft.Json;
-using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
-using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
     [JsonObject(MemberSerialization.OptIn)]
-    public class AnimationAction : IEntityAction
+    public class PlayAnimationAction : IEntityAction
     {
         protected EntityActivitySystem vas;
         [JsonProperty]
@@ -21,14 +19,14 @@ namespace Vintagestory.GameContent
 
         double untilTotalHours;
 
-        public AnimationAction() { }
+        public PlayAnimationAction() { }
 
-        public AnimationAction(EntityActivitySystem vas)
+        public PlayAnimationAction(EntityActivitySystem vas)
         {
             this.vas = vas;
         }
 
-        public AnimationAction(EntityActivitySystem vas, AnimationMetaData meta, float durationHours, int onAnimEnd)
+        public PlayAnimationAction(EntityActivitySystem vas, AnimationMetaData meta, float durationHours, int onAnimEnd)
         {
             this.meta = meta;
             this.DurationHours = durationHours;
@@ -37,13 +35,13 @@ namespace Vintagestory.GameContent
 
         public bool ExecutionHasFailed { get; set; }
 
-        public string Type => "animation";
+        public string Type => "playanimation";
 
         public bool IsFinished()
         {
             if (OnAnimEnd == 0) return vas.Entity.World.Calendar.TotalHours > untilTotalHours;
 
-            return vas.Entity.AnimManager.IsAnimationActive(meta.Animation);
+            return !vas.Entity.AnimManager.IsAnimationActive(meta.Animation);
         }
 
         public void Start(EntityActivity act)
@@ -93,7 +91,7 @@ namespace Vintagestory.GameContent
 
         public IEntityAction Clone()
         {
-            return new AnimationAction(vas, meta, DurationHours, OnAnimEnd);
+            return new PlayAnimationAction(vas, meta, DurationHours, OnAnimEnd);
         }
 
         public bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
@@ -116,7 +114,7 @@ namespace Vintagestory.GameContent
 
         public void OnTick(float dt)
         {
-            if (OnAnimEnd == 1 && !vas.Entity.AnimManager.IsAnimationActive(meta.Animation))
+            if (OnAnimEnd == 0 && !vas.Entity.AnimManager.IsAnimationActive(meta.Animation))
             {
                 vas.Entity.AnimManager.StartAnimation(meta.Init());
             }

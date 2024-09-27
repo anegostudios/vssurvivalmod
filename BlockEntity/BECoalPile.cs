@@ -244,7 +244,7 @@ namespace Vintagestory.GameContent
             bool changed = false;
             while (Api.World.Calendar.TotalHours - burnStartTotalHours > BurnHoursPerLayer / 2)
             {
-                burnStartTotalHours += BurnHoursPerLayer / 2 ;
+                burnStartTotalHours += BurnHoursPerLayer / 2;
                 inventory[0].TakeOut(1);
 
                 if (inventory[0].Empty)

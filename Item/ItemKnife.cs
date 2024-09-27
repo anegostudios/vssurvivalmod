@@ -90,7 +90,7 @@ namespace Vintagestory.GameContent
             }
 
             EntityBehaviorHarvestable bh;
-            if (byEntity.Controls.Sneak && entitySel != null && (bh = entitySel.Entity.GetBehavior<EntityBehaviorHarvestable>()) != null && bh.Harvestable)
+            if (byEntity.Controls.ShiftKey && entitySel != null && (bh = entitySel.Entity.GetBehavior<EntityBehaviorHarvestable>()) != null && bh.Harvestable)
             {
                 byEntity.World.PlaySoundAt(new AssetLocation("sounds/player/scrape"), entitySel.Entity, (byEntity as EntityPlayer)?.Player, false, 12);
                 handling = EnumHandHandling.PreventDefault;

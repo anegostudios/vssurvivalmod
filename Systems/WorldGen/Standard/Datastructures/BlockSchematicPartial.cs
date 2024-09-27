@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Vintagestory.API.Common;
@@ -15,7 +16,7 @@ namespace Vintagestory.ServerMods
         public List<Entity> EntitiesDecoded;
 
         public virtual int PlacePartial(IServerChunk[] chunks, IWorldGenBlockAccessor blockAccessor,
-            IWorldAccessor worldForResolve, int chunkX, int chunkZ, BlockPos startPos, EnumReplaceMode mode,
+            IWorldAccessor worldForResolve, int chunkX, int chunkZ, BlockPos startPos, EnumReplaceMode mode, EnumStructurePlacement? structurePlacement,
             bool replaceMeta, bool resolveImports, Dictionary<int, Dictionary<int, int>> resolvedRockTypeRemaps = null,
             int[] replaceWithBlockLayersBlockids = null, Block rockBlock = null)
         {
@@ -50,17 +51,20 @@ namespace Vintagestory.ServerMods
 
             int i = -1;
             int dy, dx, dz;
+            var rainHeightMap = chunks[0].MapChunk.RainHeightMap;
+            var terrainHeightMap = chunks[0].MapChunk.WorldGenTerrainHeightMap;
+
             foreach (uint index in Indices)
             {
                 i++;   // increment i first, because we have various continue statements
 
-                dx = (int)(index & 0x1ff);
+                dx = (int)(index & PosBitMask);
                 int posX = startPos.X + dx;
-                dz = (int)((index >> 10) & 0x1ff);
+                dz = (int)((index >> 10) & PosBitMask);
                 int posZ = startPos.Z + dz;
 
                 if (!rect.Contains(posX, posZ)) continue;
-                dy = (int)((index >> 20) & 0x1ff);
+                dy = (int)((index >> 20) & PosBitMask);
                 int posY = startPos.Y + dy;
                 int storedBlockid = BlockIds[i];
                 AssetLocation blockCode = BlockCodes[storedBlockid];
@@ -98,6 +102,7 @@ namespace Vintagestory.ServerMods
                     var layerBlock = GetBlockLayerBlock((climate >> 8) & 0xff, (climate >> 16) & 0xff, curPos.Y - 1, rockblockid, depth, null,
                         worldForResolve.Blocks, curPos, -1);
                     blockId = layerBlock?.Id ?? rockblockid;
+                    newBlock = blockAccessor.GetBlock(blockId);
                 }
 
 
@@ -109,10 +114,65 @@ namespace Vintagestory.ServerMods
                         if (replaceByBlock.TryGetValue(rockblockid, out var newBlockId))
                         {
                             blockId = newBlockId;
+                            newBlock = blockAccessor.GetBlock(blockId);
                         }
                     }
                 }
 
+
+                if (structurePlacement == EnumStructurePlacement.Surface)
+                {
+                    var oldBlock = blockAccessor.GetBlock(chunkData[posIndex]);
+                    // this prevents grass from being placed where a solid block was
+                    if(oldBlock.BlockMaterial is EnumBlockMaterial.Soil or EnumBlockMaterial.Sand or EnumBlockMaterial.Stone && newBlock.BlockMaterial == EnumBlockMaterial.Plant) continue;
+
+                    var oldRainPermeable = oldBlock.RainPermeable;
+                    var newRainPermeable = newBlock.RainPermeable;
+                    var posIndexRain = (posZ % chunksize) * chunksize + (posX % chunksize);
+
+                    if (oldRainPermeable && !newRainPermeable)
+                    {
+                        rainHeightMap[posIndexRain] = Math.Max(rainHeightMap[posIndexRain], (ushort)posY);
+                    }
+                    if (!oldRainPermeable && newRainPermeable && rainHeightMap[posIndexRain] == posY)
+                    {
+                        var downY = (ushort)posY;
+                        var posIndexBelow = ((downY % chunksize) * chunksize + (posZ % chunksize)) * chunksize + (posX % chunksize);
+                        while (blockAccessor.GetBlock(chunkData[posIndexBelow]).RainPermeable && downY > 0)
+                        {
+                            downY--;
+                            posIndexBelow = ((downY % chunksize) * chunksize + (posZ % chunksize)) * chunksize + (posX % chunksize);
+                        }
+
+                        rainHeightMap[posIndexRain] = downY;
+                    }
+                    var oldSolid = oldBlock.SideSolid[BlockFacing.UP.Index];
+                    var newSolid = newBlock.SideSolid[BlockFacing.UP.Index];
+
+                    if (!oldSolid && newSolid)
+                    {
+                        terrainHeightMap[posIndexRain] = Math.Max(terrainHeightMap[posIndexRain], (ushort)posY);
+                    }
+                    if (oldSolid && !newSolid && terrainHeightMap[posIndexRain] == posY)
+                    {
+                        var downY = (ushort)(posY - 1);
+                        var posIndexBelow = ((downY % chunksize) * chunksize + (posZ % chunksize)) * chunksize + (posX % chunksize);
+                        while (blockAccessor.GetBlock(chunkData[posIndexBelow]).RainPermeable && downY > 0)
+                        {
+                            downY--;
+                            posIndexBelow = ((downY % chunksize) * chunksize + (posZ % chunksize)) * chunksize + (posX % chunksize);
+                        }
+
+                        terrainHeightMap[posIndexRain] = downY;
+                    }
+                }
+
+                // if we only have a fluid block we need to clear the previous block so we can place fluids
+                // schematics have solid block first and second fluid in the Indices array and the index (pos) is the same
+                if (newBlock.ForFluidsLayer && index != Indices[i-1])
+                {
+                    chunkData[posIndex] = 0;
+                }
                 if (newBlock.ForFluidsLayer)
                 {
                     chunkData.SetFluid(posIndex, blockId);
@@ -126,8 +186,7 @@ namespace Vintagestory.ServerMods
                 if (newBlock.LightHsv[2] > 0)
                 {
                     curPos.Set(posX, posY, posZ);
-                    Block oldBlock = blockAccessor.GetBlock(curPos);
-                    blockAccessor.ScheduleBlockLightUpdate(curPos.Copy(), oldBlock.BlockId, newBlock.BlockId);
+                    blockAccessor.ScheduleBlockLightUpdate(curPos.Copy(), 0, newBlock.BlockId);
                 }
 
                 placed++;
@@ -140,11 +199,11 @@ namespace Vintagestory.ServerMods
             foreach (var val in BlockEntities)
             {
                 uint index = val.Key;
-                int posX = startPos.X + (int)(index & 0x1ff);
-                int posZ = startPos.Z + (int)((index >> 10) & 0x1ff);
+                int posX = startPos.X + (int)(index & PosBitMask);
+                int posZ = startPos.Z + (int)((index >> 10) & PosBitMask);
 
                 if (!rect.Contains(posX, posZ)) continue;
-                int posY = startPos.Y + (int)((index >> 20) & 0x1ff);
+                int posY = startPos.Y + (int)((index >> 20) & PosBitMask);
 
                 curPos.Set(posX, posY, posZ);
                 BlockEntity be = blockAccessor.GetBlockEntity(curPos);
@@ -245,7 +304,7 @@ namespace Vintagestory.ServerMods
             cloned.Entities = new List<string>(Entities);
 
             cloned.DecorIndices = new List<uint>(DecorIndices);
-            cloned.DecorIds = new List<int>(DecorIds);
+            cloned.DecorIds = new List<long>(DecorIds);
 
             cloned.ReplaceMode = ReplaceMode;
             cloned.EntranceRotation = EntranceRotation;

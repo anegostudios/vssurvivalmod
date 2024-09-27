@@ -183,6 +183,8 @@ namespace Vintagestory.GameContent
             return OnEach(args, (edh, pro) =>
             {
                 pro[slot] = wcodes;
+                edh.LoadOutfitCodes();
+
                 return TextCommandResult.Success("ok, slot " + slot + " set to " + values);
             });            
         }
@@ -196,10 +198,11 @@ namespace Vintagestory.GameContent
                 {
                     pro[val.Code] = new WeightedCode[0];
                 }
-                
+
+                edh.LoadOutfitCodes();
+
                 return TextCommandResult.Success("ok, all slots cleared");
             });
-
         }
 
         private TextCommandResult proClear(TextCommandCallingArgs args)
@@ -209,6 +212,8 @@ namespace Vintagestory.GameContent
             return OnEach(args, (edh, pro) =>
             {
                 pro[slot] = new WeightedCode[0];
+                edh.LoadOutfitCodes();
+
                 return TextCommandResult.Success("ok, slot " + slot + " cleared");
             });
         }
@@ -226,6 +231,9 @@ namespace Vintagestory.GameContent
                     return TextCommandResult.Error("Value " + value + " already exists in slot " + slot);
                 }
                 pro[slot] = pro[slot].Append(new WeightedCode() { Code = value });
+
+                edh.LoadOutfitCodes();
+
                 return TextCommandResult.Success("ok, " + value + " added to slot " + slot);
             });
         }
@@ -238,7 +246,10 @@ namespace Vintagestory.GameContent
             return OnEach(args, (edh, pro) =>
             {
                 var filtered = pro[slot].Where(v => v.Code != value).ToArray();
+
                 if (pro[slot].Length != filtered.Length) {
+                    edh.LoadOutfitCodes();
+
                     return TextCommandResult.Success("ok, " + value + " removed from slot " + slot);
                 } else
                 {
@@ -293,7 +304,10 @@ namespace Vintagestory.GameContent
             var edh = entity as EntityDressedHumanoid;
             if (edh.partialRandomOutfitsOverride == null)
             {
-                edh.partialRandomOutfitsOverride = new Dictionary<string, WeightedCode[]>();
+                edh.partialRandomOutfitsOverride = entity.Properties.Attributes["partialRandomOutfits"].AsObject<Dictionary<string, WeightedCode[]>>();
+                if (edh.partialRandomOutfitsOverride == null) {
+                    edh.partialRandomOutfitsOverride = new Dictionary<string, WeightedCode[]>();
+                }
             }
 
             return edh.partialRandomOutfitsOverride;

@@ -185,7 +185,7 @@ namespace Vintagestory.GameContent
             inventory.BaseWeight = 1f;
             inventory.OnGetSuitability = (sourceSlot, targetSlot, isMerge) => (isMerge ? (inventory.BaseWeight + 3) : (inventory.BaseWeight + 1)) + (sourceSlot.Inventory is InventoryBasePlayer ? 1 : 0);
             inventory.OnGetAutoPullFromSlot = GetAutoPullFromSlot;
-
+            container.Reset();
 
             if (block?.Attributes != null)
             {
@@ -211,7 +211,6 @@ namespace Vintagestory.GameContent
             Inventory.LateInitialize(InventoryClassName + "-" + Pos.X + "/" + Pos.Y + "/" + Pos.Z, Api);
             Inventory.ResolveBlocksOrItems();
             container.LateInit();
-            //Inventory.OnAcquireTransitionSpeed = Inventory_OnAcquireTransitionSpeed;
             MarkDirty();
         }
 

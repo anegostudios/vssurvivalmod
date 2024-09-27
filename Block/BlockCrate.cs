@@ -8,7 +8,6 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Vintagestory.GameContent
 {
@@ -299,6 +298,7 @@ namespace Vintagestory.GameContent
 
         #region IAttachableToEntity
 
+        public bool IsAttachable(ItemStack itemStack) => true;
         public void CollectTextures(ItemStack stack, Shape shape, string texturePrefixCode, Dictionary<string, CompositeTexture> intoDict)
         {
             string type = stack.Attributes.GetString("type");

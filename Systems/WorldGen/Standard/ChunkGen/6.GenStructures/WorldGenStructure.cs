@@ -55,6 +55,16 @@ namespace Vintagestory.ServerMods
         [JsonProperty]
         public int? ForceTemperature;
 
+        [JsonProperty]
+        public bool GenerateGrass;
+
+        [JsonProperty]
+        public Cuboidi[] CustomLandClaims;
+
+        [JsonProperty]
+        public bool ExcludeSchematic;
+
+
         internal BlockSchematicPartial schematicData;
 
         [JsonProperty]

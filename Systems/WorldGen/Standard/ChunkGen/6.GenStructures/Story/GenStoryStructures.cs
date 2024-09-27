@@ -15,6 +15,7 @@ namespace Vintagestory.GameContent
     {
         private WorldGenStoryStructuresConfig scfg;
         private LCGRandom strucRand; // Deterministic random
+        private LCGRandom grassRand; // Deterministic random
 
         public OrderedDictionary<string, StoryStructureLocation> storyStructureInstances = new OrderedDictionary<string, StoryStructureLocation>();
         public bool StoryStructureInstancesDirty = false;
@@ -27,6 +28,13 @@ namespace Vintagestory.GameContent
         private bool genStoryStructures;
         private BlockLayerConfig blockLayerConfig;
         private Cuboidi tmpCuboid = new Cuboidi();
+
+        private int mapheight;
+        private ClampedSimplexNoise grassDensity;
+        private ClampedSimplexNoise grassHeight;
+
+        public SimplexNoise distort2dx;
+        public SimplexNoise distort2dz;
 
         public override double ExecuteOrder() { return 0.2; }
 
@@ -81,37 +89,45 @@ namespace Vintagestory.GameContent
 
             if ((bool)args[2] != true)
             {
-                return TextCommandResult.Success("Ok, will move the story structure location to this position. Make sure that there is a lot of unoccupied chunks all around. Add 'true' to the command to confirm. After this is done, you will have to regenerate chunks in this area, e.g. via /wgen regenr 7 to recreate 192x192 blocks in all directions");
+                return TextCommandResult.Success("Ok, will move the story structure location to this position. Make sure that there is a lot of unoccupied chunks all around. Add 'true' to the command to confirm. After this is done, you will have to regenerate chunks in this area, e.g. via /wgen regen 7 to recreate 192x192 blocks in all directions");
             }
 
             var pos = ((Vec3d)args[1]).AsBlockPos;
             pos.Y = 1; // Lets hardcode RA y-pos for now
             GenMaps genmaps = api.ModLoader.GetModSystem<GenMaps>();
 
-            foreach (var val in scfg.Structures)
+            var schem = storyStruc.schematicData;
+            int minX = pos.X - schem.SizeX / 2;
+            int minZ = pos.Z - schem.SizeZ / 2;
+            var cub = new Cuboidi(minX, pos.Y, minZ, minX + schem.SizeX - 1, pos.Y + schem.SizeY - 1, minZ + schem.SizeZ - 1);
+            storyStructureInstances[storyStruc.Code] = new StoryStructureLocation()
             {
-                var schem = val.schematicData;
-                int minX = pos.X - schem.SizeX / 2;
-                int minZ = pos.Z - schem.SizeZ / 2;
-                var cub = new Cuboidi(minX, pos.Y, minZ, minX + schem.SizeX - 1, pos.Y + schem.SizeY - 1, minZ + schem.SizeZ - 1);
-                storyStructureInstances[val.Code] = new StoryStructureLocation()
-                {
-                    Code = val.Code,
-                    CenterPos = pos,
-                    Location = cub,
-                    LandformRadius = val.LandformRadius,
-                    GenerationRadius = val.GenerationRadius
-                };
+                Code = storyStruc.Code,
+                CenterPos = pos,
+                Location = cub,
+                LandformRadius = storyStruc.LandformRadius,
+                GenerationRadius = storyStruc.GenerationRadius,
+                SkipGenerationFlags = storyStruc.SkipGenerationFlags
+            };
 
-                if (val.RequireLandform != null)
+            if (storyStruc.RequireLandform != null)
+            {
+                genmaps.ForceLandformAt(new ForceLandform()
                 {
-                    genmaps.ForceLandformAt(new ForceLandform()
-                    {
-                        CenterPos = pos,
-                        Radius = val.LandformRadius,
-                        LandformCode = val.RequireLandform
-                    });
-                }
+                    CenterPos = pos,
+                    Radius = storyStruc.LandformRadius,
+                    LandformCode = storyStruc.RequireLandform
+                });
+            }
+
+            if (storyStruc.ForceTemperature != null || storyStruc.ForceRain != null)
+            {
+                genmaps.ForceClimateAt(new ForceClimate
+                {
+                    Radius = storyStructureInstances[storyStruc.Code].LandformRadius,
+                    CenterPos = storyStructureInstances[storyStruc.Code].CenterPos,
+                    Climate = (Climate.DescaleTemperature(storyStruc.ForceTemperature ?? 0f) << 16) + ((storyStruc.ForceRain ?? 0) << 8)
+                });
             }
 
             structureLocations = storyStructureInstances.Select(val => val.Value.Location).ToArray();
@@ -127,6 +143,14 @@ namespace Vintagestory.GameContent
             strucRand = new LCGRandom(api.WorldManager.Seed + 1095);
             var asset = api.Assets.Get("worldgen/storystructures.json");
             scfg = asset.ToObject<WorldGenStoryStructuresConfig>();
+
+            grassRand = new LCGRandom(api.WorldManager.Seed);
+            grassDensity = new ClampedSimplexNoise(new double[] { 4 }, new double[] { 0.5 }, grassRand.NextInt());
+            grassHeight = new ClampedSimplexNoise(new double[] { 1.5 }, new double[] { 0.5 }, grassRand.NextInt());
+
+            distort2dx = new SimplexNoise(new double[] { 14, 9, 6, 3 }, new double[] { 1 / 100.0, 1 / 50.0, 1 / 25.0, 1 / 12.5 }, api.World.SeaLevel + 20980);
+            distort2dz = new SimplexNoise(new double[] { 14, 9, 6, 3 }, new double[] { 1 / 100.0, 1 / 50.0, 1 / 25.0, 1 / 12.5 }, api.World.SeaLevel + 20981);
+            mapheight = api.WorldManager.MapSizeY;
 
             blockLayerConfig = BlockLayerConfig.GetInstance(api);
             scfg.Init(api, blockLayerConfig.RockStrata, blockLayerConfig);
@@ -198,6 +222,8 @@ namespace Vintagestory.GameContent
 
             foreach (var (_, loc) in storyStructureInstances)
             {
+                if (loc.SkipGenerationFlags == null) continue;   // radfast 23.9.24: seems .SkipGenerationFlags is null for the Lazaret when loading a pre-1.20 world for the first time
+
                 var hasCategory = loc.SkipGenerationFlags.TryGetValue(skipCategory, out var checkRadius);
                 if (loc.Location.Contains(x, z) && hasCategory)
                 {
@@ -357,7 +383,7 @@ namespace Vintagestory.GameContent
 
         private void OnWorldGenBlockAccessor(IChunkProviderThread chunkProvider)
         {
-            worldgenBlockAccessor = chunkProvider.GetBlockAccessor(true);
+            worldgenBlockAccessor = chunkProvider.GetBlockAccessor(false);
         }
 
         private void OnChunkColumnGen(IChunkColumnGenerateRequest request)
@@ -417,14 +443,24 @@ namespace Vintagestory.GameContent
                         if (string.IsNullOrEmpty(strucInst.RockBlockCode))
                         {
                             strucRand.InitPositionSeed(chunkX, chunkZ);
+
+                            // only get the rock id from the current generating chunk and save it to the story structure
+                            var lx = strucRand.NextInt(chunksize);
+                            var lz = strucRand.NextInt(chunksize);
+                            int posY;
+                            // if we are on the surface we need to go down from worldgen height
+                            if (structure.Placement is EnumStructurePlacement.Surface or EnumStructurePlacement.SurfaceRuin)
+                            {
+                                posY = request.Chunks[0].MapChunk.WorldGenTerrainHeightMap[lz * chunksize + lx];
+                            }
+                            else
+                            {
+                                posY = startPos.Y + structure.schematicData.SizeY / 2 + strucRand.NextInt(structure.schematicData.SizeY / 2);
+                            }
+
                             for (var j = 0; rockBlock == null && j < 10; j++)
                             {
-                                var block = worldgenBlockAccessor.GetBlock(
-                                    startPos.X + strucRand.NextInt(structure.schematicData.SizeX),
-                                    startPos.Y+ structure.schematicData.SizeY/2 + strucRand.NextInt(structure.schematicData.SizeY/2),
-                                    startPos.Z + strucRand.NextInt(structure.schematicData.SizeZ),
-                                    BlockLayersAccess.Solid
-                                );
+                                var block = worldgenBlockAccessor.GetBlock(chunkX * chunksize + lx, posY, chunkZ * chunksize + lz, BlockLayersAccess.Solid);
 
                                 if (block.BlockMaterial == EnumBlockMaterial.Stone)
                                 {
@@ -432,6 +468,20 @@ namespace Vintagestory.GameContent
                                     strucInst.RockBlockCode = block.Code.ToString();
                                     StoryStructureInstancesDirty = true;
                                 }
+
+                                if (structure.Placement is EnumStructurePlacement.Surface or EnumStructurePlacement.SurfaceRuin)
+                                {
+                                    posY--;
+                                }
+                                else
+                                {
+                                    posY = startPos.Y + structure.schematicData.SizeY / 2 + strucRand.NextInt(structure.schematicData.SizeY / 2);
+                                }
+                            }
+
+                            if (string.IsNullOrEmpty(strucInst.RockBlockCode))
+                            {
+                                api.Logger.Warning($"Could not find rock block code for {strucInst.Code}");
                             }
                         }
                         else
@@ -440,9 +490,11 @@ namespace Vintagestory.GameContent
                         }
 
                     }
-
-                    int blocksPlaced = structure.schematicData.PlacePartial(chunks, worldgenBlockAccessor, api.World, chunkX, chunkZ, startPos, EnumReplaceMode.ReplaceAll, true, true,structure.resolvedRockTypeRemaps, structure.replacewithblocklayersBlockids, rockBlock);
-
+                    int blocksPlaced = structure.schematicData.PlacePartial(chunks, worldgenBlockAccessor, api.World, chunkX, chunkZ, startPos, EnumReplaceMode.ReplaceAll, structure.Placement, GenStructures.ReplaceMetaBlocks, GenStructures.ReplaceMetaBlocks,structure.resolvedRockTypeRemaps, structure.replacewithblocklayersBlockids, rockBlock);
+                    if (blocksPlaced > 0 && structure.GenerateGrass)
+                    {
+                        GenerateGrass(request);
+                    }
                     string code = structure.Code + ":" + structure.Schematics[0];
 
                     var region = chunks[0].MapChunk.MapRegion;
@@ -453,23 +505,29 @@ namespace Vintagestory.GameContent
 
                     if (blocksPlaced > 0 && structure.BuildProtected)
                     {
-                        var claims = api.World.Claims.Get(strucloc.Center.AsBlockPos);
-                        if (claims == null || claims.Length == 0)
+                        if (!structure.ExcludeSchematic)
                         {
-                            api.World.Claims.Add(new LandClaim()
+                            var claims = api.World.Claims.Get(strucloc.Center.AsBlockPos);
+                            if (claims == null || claims.Length == 0)
                             {
-                                Areas = new List<Cuboidi>() { strucloc },
-                                Description = structure.BuildProtectionDesc,
-                                ProtectionLevel = 10,
-                                LastKnownOwnerName = structure.BuildProtectionName,
-                                AllowUseEveryone = true
-                            });
-                            if (structure.ExtraLandClaimX > 0 && structure.ExtraLandClaimZ > 0)
+                                api.World.Claims.Add(new LandClaim()
+                                {
+                                    Areas = new List<Cuboidi>() { strucloc },
+                                    Description = structure.BuildProtectionDesc,
+                                    ProtectionLevel = 10,
+                                    LastKnownOwnerName = structure.BuildProtectionName,
+                                    AllowUseEveryone = true
+                                });
+                            }
+                        }
+                        if (structure.ExtraLandClaimX > 0 && structure.ExtraLandClaimZ > 0)
+                        {
+                            var struclocDeva = new Cuboidi(
+                                strucloc.Center.X - structure.ExtraLandClaimX, 0, strucloc.Center.Z - structure.ExtraLandClaimZ,
+                                strucloc.Center.X + structure.ExtraLandClaimX, api.WorldManager.MapSizeY, strucloc.Center.Z + structure.ExtraLandClaimZ);
+                            var claims = api.World.Claims.Get(struclocDeva.Center.AsBlockPos);
+                            if (claims == null || claims.Length == 0)
                             {
-                                var struclocDeva = new Cuboidi(
-                                    strucloc.Center.X - structure.ExtraLandClaimX, 0, strucloc.Center.Z - structure.ExtraLandClaimZ,
-                                    strucloc.Center.X + structure.ExtraLandClaimX, api.WorldManager.MapSizeY, strucloc.Center.Z + structure.ExtraLandClaimZ);
-
                                 api.World.Claims.Add(new LandClaim()
                                 {
                                     Areas = new List<Cuboidi>() { struclocDeva },
@@ -480,7 +538,135 @@ namespace Vintagestory.GameContent
                                 });
                             }
                         }
+                        if (structure.CustomLandClaims != null)
+                        {
+                            foreach (var buildProtect in structure.CustomLandClaims)
+                            {
+                                var cuboidi = buildProtect.Clone();
+                                cuboidi.X1 += strucloc.X1;
+                                cuboidi.X2 += strucloc.X1;
+                                cuboidi.Y1 += strucloc.Y1;
+                                cuboidi.Y2 += strucloc.Y1;
+                                cuboidi.Z1 += strucloc.Z1;
+                                cuboidi.Z2 += strucloc.Z1;
+                                var claims = api.World.Claims.Get(cuboidi.Center.AsBlockPos);
+                                if (claims == null || claims.Length == 0)
+                                {
+                                    api.World.Claims.Add(new LandClaim()
+                                    {
+                                        Areas = new List<Cuboidi>() { cuboidi },
+                                        Description = structure.BuildProtectionDesc,
+                                        ProtectionLevel = 10,
+                                        LastKnownOwnerName = structure.BuildProtectionName,
+                                        AllowUseEveryone = true
+                                    });
+                                }
+                            }
+                        }
                     }
+                }
+            }
+        }
+
+        private void GenerateGrass(IChunkColumnGenerateRequest request)
+        {
+            var chunks = request.Chunks;
+            int chunkX = request.ChunkX;
+            int chunkZ = request.ChunkZ;
+
+            grassRand.InitPositionSeed(chunkX, chunkZ);
+
+            var forestMap = chunks[0].MapChunk.MapRegion.ForestMap;
+            var climateMap = chunks[0].MapChunk.MapRegion.ClimateMap;
+
+            ushort[] heightMap = chunks[0].MapChunk.RainHeightMap;
+
+            int regionChunkSize = api.WorldManager.RegionSize / chunksize;
+            int rdx = chunkX % regionChunkSize;
+            int rdz = chunkZ % regionChunkSize;
+
+            // Amount of data points per chunk
+            float climateStep = (float)climateMap.InnerSize / regionChunkSize;
+            float forestStep = (float)forestMap.InnerSize / regionChunkSize;
+
+            // Retrieves the map data on the chunk edges
+            int forestUpLeft = forestMap.GetUnpaddedInt((int)(rdx * forestStep), (int)(rdz * forestStep));
+            int forestUpRight = forestMap.GetUnpaddedInt((int)(rdx * forestStep + forestStep), (int)(rdz * forestStep));
+            int forestBotLeft = forestMap.GetUnpaddedInt((int)(rdx * forestStep), (int)(rdz * forestStep + forestStep));
+            int forestBotRight = forestMap.GetUnpaddedInt((int)(rdx * forestStep + forestStep), (int)(rdz * forestStep + forestStep));
+
+            var herePos = new BlockPos();
+
+
+            for (int x = 0; x < chunksize; x++)
+            {
+                for (int z = 0; z < chunksize; z++)
+                {
+                    herePos.Set(chunkX * chunksize + x, 1, chunkZ * chunksize + z);
+                    // Some weird randomnes stuff to hide fundamental bugs in the climate transition system :D T_T   (maybe not bugs but just fundamental shortcomings of using lerp on a very low resolution map)
+                    int rnd = RandomlyAdjustPosition(herePos, out double distx, out double distz);
+
+
+                    int posY = heightMap[z * chunksize + x];
+                    if (posY >= mapheight) continue;
+
+                    int climate = climateMap.GetUnpaddedColorLerped(
+                        rdx * climateStep + climateStep * (x + (float)distx) / chunksize,
+                        rdz * climateStep + climateStep * (z + (float)distz) / chunksize
+                    );
+
+                    int tempUnscaled = (climate >> 16) & 0xff;
+                    float temp = Climate.GetScaledAdjustedTemperatureFloat(tempUnscaled, posY - TerraGenConfig.seaLevel + rnd);
+                    float tempRel = Climate.GetAdjustedTemperature(tempUnscaled, posY - TerraGenConfig.seaLevel + rnd) / 255f;
+                    float rainRel = Climate.GetRainFall((climate >> 8) & 0xff, posY + rnd) / 255f;
+                    float forestRel = GameMath.BiLerp(forestUpLeft, forestUpRight, forestBotLeft, forestBotRight, (float)x / chunksize, (float)z / chunksize) / 255f;
+
+                    int rocky = chunks[0].MapChunk.WorldGenTerrainHeightMap[z * chunksize + x];
+                    int chunkY = rocky / chunksize;
+                    int lY = rocky % chunksize;
+                    int index3d = (chunksize * lY + z) * chunksize + x;
+
+                    int rockblockID = chunks[chunkY].Data.GetBlockIdUnsafe(index3d);
+                    var hereblock = api.World.Blocks[rockblockID];
+                    if (hereblock.BlockMaterial != EnumBlockMaterial.Soil)
+                    {
+                        continue;
+                    }
+                    PlaceTallGrass(x, posY, z, chunks, rainRel, tempRel, temp, forestRel);
+                }
+            }
+        }
+
+        public int RandomlyAdjustPosition(BlockPos herePos, out double distx, out double distz)
+        {
+            distx = distort2dx.Noise(herePos.X, herePos.Z);
+            distz = distort2dz.Noise(herePos.X, herePos.Z);
+            return (int)(distx / 5);
+        }
+
+        private void PlaceTallGrass(int x, int posY, int z, IServerChunk[] chunks, float rainRel, float tempRel, float temp, float forestRel)
+        {
+            double rndVal = blockLayerConfig.Tallgrass.RndWeight * grassRand.NextDouble() + blockLayerConfig.Tallgrass.PerlinWeight * grassDensity.Noise(x, z, -0.5f);
+
+            double extraGrass = Math.Max(0, rainRel * tempRel - 0.25);
+
+            if (rndVal <= GameMath.Clamp(forestRel - extraGrass, 0.05, 0.99) || posY >= mapheight - 1 || posY < 1) return;
+
+            int blockId = chunks[posY / chunksize].Data[(chunksize * (posY % chunksize) + z) * chunksize + x];
+
+            if (api.World.Blocks[blockId].Fertility <= grassRand.NextInt(100)) return;
+
+            double gheight = Math.Max(0, grassHeight.Noise(x, z) * blockLayerConfig.Tallgrass.BlockCodeByMin.Length - 1);
+            int start = (int)gheight + (grassRand.NextDouble() < gheight ? 1 : 0);
+
+            for (int i = start; i < blockLayerConfig.Tallgrass.BlockCodeByMin.Length; i++)
+            {
+                TallGrassBlockCodeByMin bcbymin = blockLayerConfig.Tallgrass.BlockCodeByMin[i];
+
+                if (forestRel <= bcbymin.MaxForest && rainRel >= bcbymin.MinRain && temp >= bcbymin.MinTemp)
+                {
+                    chunks[(posY + 1) / chunksize].Data[(chunksize * ((posY + 1) % chunksize) + z) * chunksize + x] = bcbymin.BlockId;
+                    return;
                 }
             }
         }

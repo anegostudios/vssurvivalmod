@@ -68,7 +68,7 @@ namespace Vintagestory.ServerMods
             var data = request.Chunks[0].MapChunk.GetModdata<Dictionary<Vec3i, HotSpringGenData>>("hotspringlocations");
             if (data == null) return;
 
-            if (SkipGenerationAt(request.ChunkX * chunksize + chunksize / 2, request.ChunkZ * chunksize + chunksize / 2, SkipHostSpringsgHashCode, out _)) return;
+            if (SkipGenerationAt(request.ChunkX * chunksize + chunksize / 2, request.ChunkZ * chunksize + chunksize / 2, SkipHotSpringsgHashCode, out _)) return;
 
             int baseX = request.ChunkX * chunksize;
             int baseZ = request.ChunkZ * chunksize;

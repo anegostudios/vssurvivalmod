@@ -172,7 +172,7 @@ namespace Vintagestory.ServerMods
 
                 var rndval = rand2.NextInt(tile.ResolvedSchematic.Length);
                 var schematic = tile.ResolvedSchematic[rndval][placeTask.Rotation];
-                schematic.PlacePartial(chunks, worldgenBlockAccessor, api.World, chunkX, chunkZ, placeTask.Pos, EnumReplaceMode.ReplaceAll, true, true);
+                schematic.PlacePartial(chunks, worldgenBlockAccessor, api.World, chunkX, chunkZ, placeTask.Pos, EnumReplaceMode.ReplaceAll, null, true, true);
 
                 string code = "dungeon/" + tile.Code + (schematic == null ? "" : "/" + schematic.FromFileName);
 

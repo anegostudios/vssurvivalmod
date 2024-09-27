@@ -164,7 +164,7 @@ namespace Vintagestory.GameContent
             foreach (var slot in inv)
             {
                 var targetSlot = GetSlotFromSelectionBoxIndex(index);
-                if (targetSlot != null && TryAttach(sourceslot, index))
+                if (targetSlot != null && TryAttach(sourceslot, index, null))
                 {
                     handling = EnumHandling.PreventDefault;
                     return true;
@@ -215,12 +215,20 @@ namespace Vintagestory.GameContent
             }
 
 
-            if (mode != EnumInteractMode.Interact || !controls.Sprint) return;
+            if (mode != EnumInteractMode.Interact || !controls.Sprint)
+            {
+                handled = EnumHandling.PassThrough; // Can't attack an elk with a falx otherwise
+                /*if (itemslot.Empty && GetSlotFromSelectionBoxIndex(seleBox - 1).Empty) 
+                {
+                    handled = EnumHandling.PassThrough;
+                    return;
+                }*/
+                return;
+            }
 
             if (!itemslot.Empty)
             {
-
-                if (TryAttach(itemslot, seleBox - 1))
+                if (TryAttach(itemslot, seleBox - 1, byEntity))
                 {
                     onAttachmentToggled(byEntity, itemslot);
                     return;
@@ -254,7 +262,7 @@ namespace Vintagestory.GameContent
             
             if (slot.StackSize == 0 || byEntity.TryGiveItemStack(slot.Itemstack))
             {
-                var iai = slot.Itemstack.Collectible.GetCollectibleInterface<IAttachedInteractions>();
+                var iai = slot.Itemstack.Collectible.GetCollectibleInterface<IAttachedListener>();
                 iai?.OnDetached(slot, slotIndex, entity);
 
                 slot.Itemstack = null;
@@ -265,10 +273,10 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-        private bool TryAttach(ItemSlot itemslot, int slotIndex)
+        private bool TryAttach(ItemSlot itemslot, int slotIndex, EntityAgent byEntity)
         {
             var iatta = IAttachableToEntity.FromCollectible(itemslot.Itemstack.Collectible, entity.World.Logger);
-            if (iatta == null) return false;
+            if (iatta == null || !iatta.IsAttachable(itemslot.Itemstack)) return false;
 
             var targetSlot = GetSlotFromSelectionBoxIndex(slotIndex);
 
@@ -280,13 +288,15 @@ namespace Vintagestory.GameContent
 
             var iai = itemslot.Itemstack.Collectible.GetCollectibleInterface<IAttachedInteractions>();
             if (iai?.OnTryAttach(itemslot, slotIndex, entity) == false) return false;
-            
+
+            var ial = itemslot.Itemstack?.Collectible.GetCollectibleInterface<IAttachedListener>();
+
             if (entity.World.Side == EnumAppSide.Server)
             {
                 var moved = itemslot.TryPutInto(entity.World, targetSlot) > 0;
                 if (moved)
                 {
-                    iai?.OnAttached(itemslot, slotIndex, entity);
+                    ial?.OnAttached(itemslot, slotIndex, entity, byEntity);
                     storeInv();
                 }
 

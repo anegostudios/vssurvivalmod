@@ -34,6 +34,7 @@ namespace Vintagestory.GameContent
 
         public bool IsInMidJump;
         public event CanRideDelegate CanRide;
+        public event CanRideDelegate CanTurn;
 
         protected ICoreAPI api;
         // Time the player can walk off an edge before gravity applies.
@@ -215,7 +216,6 @@ namespace Vintagestory.GameContent
             entity.SidedPos.Yaw += (float)motion.Y * dt * 30f;
             entity.SidedPos.Yaw = entity.SidedPos.Yaw % GameMath.TWOPI;
 
-
             if (entity.World.ElapsedMilliseconds - lastJumpMs < 2000 && entity.World.ElapsedMilliseconds - lastJumpMs > 200 && entity.OnGround)
             {
                 eagent.StopAnimation("jump");
@@ -258,6 +258,7 @@ namespace Vintagestory.GameContent
 
                 var controls = seat.Controls;
                 bool canride = true;
+                bool canturn = true;
 
                 if (CanRide != null && (controls.Jump || controls.TriesToMove))
                 {
@@ -270,6 +271,22 @@ namespace Vintagestory.GameContent
                                 capi?.TriggerIngameError(this, "cantride", Lang.Get("cantride-" + errMsg));
                             }
                             canride = false;
+                            break;
+                        }
+                    }
+                }
+
+                if (CanTurn != null && (controls.Left || controls.Right))
+                {
+                    foreach (CanRideDelegate dele in CanTurn.GetInvocationList())
+                    {
+                        if (!dele(seat, out string errMsg))
+                        {
+                            if (seat.Passenger == capi.World.Player.Entity)
+                            {
+                                capi?.TriggerIngameError(this, "cantride", Lang.Get("cantride-" + errMsg));
+                            }
+                            canturn = false;
                             break;
                         }
                     }
@@ -319,7 +336,7 @@ namespace Vintagestory.GameContent
                     shouldSprint = sprint;                
                 }
 
-                if (controls.Left || controls.Right)
+                if (canturn && (controls.Left || controls.Right))
                 {
                     float dir = controls.Left ? 1 : -1;
                     angularMotion += str * dir * dt;
@@ -419,6 +436,11 @@ namespace Vintagestory.GameContent
                 curControlMeta = nowControlMeta;
                 eagent.AnimManager.StartAnimation(nowControlMeta);
             }
+
+            if (api.Side == EnumAppSide.Server)
+            {
+                eagent.Controls.Sprint = false; // Uh, why does the elk speed up 2x with this on?
+            }
         }
 
         public void Stop()
@@ -439,6 +461,11 @@ namespace Vintagestory.GameContent
 
         public override void OnGameTick(float dt)
         {
+            if (api.Side == EnumAppSide.Server)
+            {
+                updateAngleAndMotion(dt);
+            }
+
             updateRidingState();
 
 
@@ -458,6 +485,8 @@ namespace Vintagestory.GameContent
         float notOnGroundAccum;
         private void updateSoundState(float dt)
         {
+            if (capi == null) return;
+
             if (eagent.OnGround) notOnGroundAccum = 0;
             else notOnGroundAccum += dt;
 

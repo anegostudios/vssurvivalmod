@@ -16,14 +16,14 @@ namespace Vintagestory.GameContent
             {
                 if (Personality == "formal" || Personality == "rowdy" || Personality == "lazy")
                 {
-                    StopAnimation(Personality + "idle");
-                    StopAnimation(Personality + "idle2");
+                    StopAnimation(Personality + "-idle");
+                    StopAnimation(Personality + "-idle2");
                 }
 
                 return StartAnimation(new AnimationMetaData()
                 {
-                    Animation = Personality + configCode,
-                    Code = Personality + configCode,
+                    Animation = Personality + "-" + configCode,
+                    Code = Personality + "-" + configCode,
                     BlendMode = EnumAnimationBlendMode.Average,
                     EaseOutSpeed = 10000,
                     EaseInSpeed = 10000
@@ -35,19 +35,19 @@ namespace Vintagestory.GameContent
 
         public override bool StartAnimation(AnimationMetaData animdata)
         {
-            if ((animdata.Code == "idle2" || animdata.Code == "laugh") && ActiveAnimationsByAnimCode.ContainsKey(Personality + "welcome")) return false;
+            if ((animdata.Code == "idle2" || animdata.Code == "laugh") && ActiveAnimationsByAnimCode.ContainsKey(Personality + "-welcome")) return false;
 
             if (Personality == "formal" || Personality == "rowdy" || Personality == "lazy")
             {
-                StopAnimation(Personality + "idle");
-                StopAnimation(Personality + "laugh");
-                StopAnimation(Personality + "idle2");
+                StopAnimation(Personality + "-idle");
+                StopAnimation(Personality + "-laugh");
+                StopAnimation(Personality + "-idle2");
             }
 
             if (All | PersonalizedAnimations.Contains(animdata.Animation.ToLowerInvariant()))
             {
                 animdata = animdata.Clone();
-                animdata.Animation = Personality + animdata.Animation;
+                animdata.Animation = Personality + "-" + animdata.Animation;
                 animdata.Code = animdata.Animation;
                 animdata.CodeCrc32 = AnimationMetaData.GetCrc32(animdata.Code);
 
@@ -59,7 +59,7 @@ namespace Vintagestory.GameContent
         public override void StopAnimation(string code)
         {
             base.StopAnimation(code);
-            base.StopAnimation(Personality + code);
+            base.StopAnimation(Personality + "-" + code);
         }
 
         public override void TriggerAnimationStopped(string code)

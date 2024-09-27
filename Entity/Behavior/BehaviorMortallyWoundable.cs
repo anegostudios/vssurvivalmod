@@ -64,7 +64,7 @@ namespace Vintagestory.GameContent
         {
             this.remainAliveHours = (float)typeAttributes["remainAliveHours"].AsFloat(24);
             this.damageRequiredForFullDeath = (float)typeAttributes["remainingHealth"].AsFloat(10);
-            this.healingRequiredForRescue = (float)typeAttributes["healingRequiredForRescue"].AsFloat(10);
+            this.healingRequiredForRescue = (float)typeAttributes["healingRequiredForRescue"].AsFloat(15);
             whenBelowHealth = (float)typeAttributes["whenBelowHealth"].AsFloat(5);
 
             entity.AnimManager.OnStartAnimation += AnimManager_OnStartAnimation;
@@ -87,9 +87,15 @@ namespace Vintagestory.GameContent
                     setMortallyWounded();
                 }
             }
+
+            entity.GetBehavior<EntityBehaviorSeatable>().CanSit += EntityBehaviorMortallyWoundable_CanSit;
         }
 
-
+        private bool EntityBehaviorMortallyWoundable_CanSit(EntityAgent eagent, out string errorMessage)
+        {
+            errorMessage = null;
+            return HealthState == EnumEntityHealthState.Normal;
+        }
 
         private bool AnimManager_OnAnimationReceived(ref AnimationMetaData animationMeta, ref EnumHandling handling)
         {
@@ -189,7 +195,15 @@ namespace Vintagestory.GameContent
             entity.AnimManager?.StopAnimation("wounded-resthead");
             entity.AnimManager?.StartAnimation("wounded-stand");
             entity.AnimManager?.StartAnimation("idle");
-            entity.WatchedAttributes.SetBool("allowMounting", true);
+            var tasks = entity.GetBehavior<EntityBehaviorTaskAI>()?.TaskManager?.AllTasks;
+            if (tasks != null)
+            {
+                foreach (var task in tasks)
+                {
+                    (task as AiTaskBaseTargetable)?.ClearAttacker();
+                }
+            }
+            entity.GetBehavior<EntityBehaviorEmotionStates>()?.ClearStates();
         }
 
         private void setMortallyWounded()
@@ -198,7 +212,6 @@ namespace Vintagestory.GameContent
             (entity as EntityAgent).Controls.StopAllMovement();
 
             entity.GetBehavior<EntityBehaviorRideable>()?.UnmnountPassengers();
-            entity.WatchedAttributes.SetBool("allowMounting", false);
 
             entity.AnimManager?.StartAnimation("wounded-idle");
 
@@ -214,7 +227,7 @@ namespace Vintagestory.GameContent
 
         public override void GetInfoText(StringBuilder infotext)
         {
-            if (HealthState == EnumEntityHealthState.MortallyWounded)
+            if (HealthState == EnumEntityHealthState.MortallyWounded && entity.Alive)
             {
                 double hoursleft = MortallyWoundedTotalHours + remainAliveHours - entity.World.Calendar.TotalHours;
 

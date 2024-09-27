@@ -17,7 +17,7 @@ namespace Vintagestory.ServerMods
         public static int SkipTreesgHashCode;
         public static int SkipShurbsgHashCode;
         public static int SkipStalagHashCode;
-        public static int SkipHostSpringsgHashCode;
+        public static int SkipHotSpringsgHashCode;
         public static int SkipRivuletsgHashCode;
         public static int SkipPondgHashCode;
         public static int SkipCreaturesgHashCode;
@@ -29,7 +29,7 @@ namespace Vintagestory.ServerMods
             SkipCavesgHashCode = BitConverter.ToInt32(SHA256.HashData("caves"u8.ToArray()));
             SkipTreesgHashCode = BitConverter.ToInt32(SHA256.HashData("trees"u8.ToArray()));
             SkipShurbsgHashCode = BitConverter.ToInt32(SHA256.HashData("shrubs"u8.ToArray()));
-            SkipHostSpringsgHashCode = BitConverter.ToInt32(SHA256.HashData("hostsprings"u8.ToArray()));
+            SkipHotSpringsgHashCode = BitConverter.ToInt32(SHA256.HashData("hotsprings"u8.ToArray()));
             SkipRivuletsgHashCode = BitConverter.ToInt32(SHA256.HashData("rivulets"u8.ToArray()));
             SkipStalagHashCode = BitConverter.ToInt32(SHA256.HashData("stalag"u8.ToArray()));
             SkipPondgHashCode = BitConverter.ToInt32(SHA256.HashData("pond"u8.ToArray()));

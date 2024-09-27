@@ -1020,8 +1020,6 @@ namespace Vintagestory.GameContent
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
-            // needed so the BEBehaviorBurning does not auto ignite on schematics
-            tree.SetBool("isBurning", false);
             base.FromTreeAttributes(tree, worldForResolving);
             clientsideFirstPlacement = false;
 

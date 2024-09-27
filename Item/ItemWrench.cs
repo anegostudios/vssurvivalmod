@@ -32,7 +32,7 @@ namespace Vintagestory.GameContent
 
         public override void OnUnloaded(ICoreAPI api)
         {
-            rotateSk.Dispose();
+            rotateSk?.Dispose();
         }
 
         SkillItem[] GetExtraWrenchModes(IPlayer byPlayer, BlockSelection blockSelection)

@@ -227,7 +227,7 @@ namespace Vintagestory.GameContent
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
-            if (byPlayer.Entity.Controls.Sneak)
+            if (byPlayer.Entity.Controls.ShiftKey)
             {
                 var be = GetBlockEntity<BlockEntityBaseReturnTeleporter>(blockSel.Position);
                 be?.OnInteract(byPlayer);

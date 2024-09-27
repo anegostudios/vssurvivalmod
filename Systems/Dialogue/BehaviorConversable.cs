@@ -187,12 +187,19 @@ namespace Vintagestory.GameContent
                 spawnentity.ServerPos.SetPos(spawnpos);
                 entity.World.SpawnEntity(spawnentity);
 
-                if (cfg.GiveStack != null && cfg.GiveStack.Resolve(entity.World, "spawn entity give stack")) {
-                    entity.Api.Event.EnqueueMainThreadTask(() =>
+                if (cfg.GiveStacks != null)
+                {
+                    foreach (var stack in cfg.GiveStacks)
                     {
-                        spawnentity.TryGiveItemStack(cfg.GiveStack.ResolvedItemstack.Clone());
-                    }, "sddf");
-                }
+                        if (stack.Resolve(entity.World, "spawn entity give stack"))
+                        {
+                            entity.Api.Event.EnqueueMainThreadTask(() =>
+                            {
+                                spawnentity.TryGiveItemStack(stack.ResolvedItemstack.Clone());
+                            }, "tradedlggivestack");
+                        }
+                    }
+                }                
             }
         }
 
@@ -434,6 +441,6 @@ namespace Vintagestory.GameContent
     {
         public WeightedCode[] Codes;
         public float Range;
-        public JsonItemStack GiveStack;
+        public JsonItemStack[] GiveStacks;
     }
 }

@@ -23,7 +23,7 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
     private float receivesHeatSmooth; // 0..1
     public double TotalHoursLastUpdate;
     public double TotalHoursHeatReceived;
-    private bool structureComplete;
+    public bool StructureComplete;
     private int tickCounter;
     private bool wasNotProcessing;
 
@@ -212,7 +212,7 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
 
         var minHeatHours = float.MaxValue;
         var beforeReceiveHeat = receivesHeat;
-        var beforeStructureComplete = structureComplete;
+        var beforeStructureComplete = StructureComplete;
         receivesHeat = true;
         for (int j = 0; j < 9; j++)
         {
@@ -232,15 +232,15 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
             receivesHeat &= heatHours > 0;
         }
 
-        structureComplete = structure.InCompleteBlockCount(Api.World, Pos) == 0;
-        if (beforeReceiveHeat != receivesHeat || beforeStructureComplete != structureComplete)
+        StructureComplete = structure.InCompleteBlockCount(Api.World, Pos) == 0;
+        if (beforeReceiveHeat != receivesHeat || beforeStructureComplete != StructureComplete)
         {
             markDirty = true;
         }
 
         if (receivesHeat)
         {
-            if (!structureComplete || beBehaviorDoor.Opened)
+            if (!StructureComplete || beBehaviorDoor.Opened)
             {
                 wasNotProcessing = true;
                 TotalHoursLastUpdate = Api.World.Calendar.TotalHours;
@@ -276,7 +276,7 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
                 {
                     var nowBlock = Api.World.GetBlock(block.CodeWithVariant("state", "damaged"));
                     Api.World.BlockAccessor.SetBlock(nowBlock.Id, pos);
-                    structureComplete = false;
+                    StructureComplete = false;
                     markDirty = true;
                 }
             });
@@ -395,7 +395,7 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
     {
         if (Api is not ICoreClientAPI capi) return;
 
-        bool sneaking = byPlayer.WorldData.EntityControls.Sneak;
+        bool sneaking = byPlayer.WorldData.EntityControls.ShiftKey;
 
         int damagedTiles = 0;
         int wrongTiles = 0;
@@ -463,7 +463,7 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
 
         receivesHeat = tree.GetBool("receivesHeat");
         TotalHoursLastUpdate = tree.GetDouble("totalHoursLastUpdate");
-        structureComplete = tree.GetBool("structureComplete");
+        StructureComplete = tree.GetBool("structureComplete");
         Orientation = BlockFacing.FromFirstLetter(tree.GetString("orientation"));
         TotalHoursHeatReceived = tree.GetDouble("totalHoursHeatReceived");
     }
@@ -474,7 +474,7 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
 
         tree.SetBool("receivesHeat", receivesHeat);
         tree.SetDouble("totalHoursLastUpdate", TotalHoursLastUpdate);
-        tree.SetBool("structureComplete", structureComplete);
+        tree.SetBool("structureComplete", StructureComplete);
         tree.SetString("orientation", Orientation.Code);
         tree.SetDouble("totalHoursHeatReceived", TotalHoursHeatReceived);
     }
@@ -506,7 +506,7 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
             dsc.AppendLine(Lang.Get("Door must be closed for firing!"));
         }
 
-        if (!structureComplete)
+        if (!StructureComplete)
         {
             dsc.AppendLine(Lang.Get("Structure incomplete! Can't get hot enough, paused."));
             return;

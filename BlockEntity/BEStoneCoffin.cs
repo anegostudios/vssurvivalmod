@@ -39,7 +39,7 @@ namespace Vintagestory.GameContent
         double progress; // 0..1
         double totalHoursLastUpdate;
         bool processComplete;
-        bool structureComplete;
+        public bool StructureComplete;
         int tickCounter;
 
         int tempStoneCoffin;
@@ -347,7 +347,7 @@ namespace Vintagestory.GameContent
             BlockPos othercoalPilePos = coalPilePos.AddCopy(blockScs.Orientation.Opposite);
 
             bool beforeReceiveHeat = receivesHeat;
-            bool beforeStructureComplete = structureComplete;
+            bool beforeStructureComplete = StructureComplete;
 
             if (!receivesHeat)
             {
@@ -361,40 +361,35 @@ namespace Vintagestory.GameContent
 
             receivesHeat = leftHeatHoursLeft > 0 && rightHeatHoursLeft > 0;
 
-
-            if (processComplete || !IsFull || !hasLid())
-            {
-                if (beforeReceiveHeat != receivesHeat)
-                {
-                    MarkDirty();
-                }
-                return;
-            }
-
             MultiblockStructure msInUse = null;
             BlockPos posInUse = null;
-            structureComplete = false;
+            StructureComplete = false;
             if (ms.InCompleteBlockCount(Api.World, Pos) == 0)
             {
                 msInUse = ms;
                 posInUse = Pos;
-                structureComplete = true;
+                StructureComplete = true;
             }
             else if (msOpp.InCompleteBlockCount(Api.World, Pos.AddCopy(blockScs.Orientation.Opposite)) == 0)
             {
                 msInUse = msOpp;
                 posInUse = Pos.AddCopy(blockScs.Orientation.Opposite);
-                structureComplete = true;
+                StructureComplete = true;
             }
 
-            if (beforeReceiveHeat != receivesHeat || beforeStructureComplete != structureComplete)
+            if (beforeReceiveHeat != receivesHeat || beforeStructureComplete != StructureComplete)
             {
                 MarkDirty();
             }
 
+            if (processComplete || !IsFull || !hasLid())
+            {
+                return;
+            }
+
             if (receivesHeat)
             {
-                if (!structureComplete) return;
+                if (!StructureComplete) return;
 
                 double hoursPassed = Api.World.Calendar.TotalHours - totalHoursLastUpdate;
                 double heatHoursReceived = Math.Max(0, GameMath.Min((float)hoursPassed, leftHeatHoursLeft, rightHeatHoursLeft));
@@ -459,7 +454,7 @@ namespace Vintagestory.GameContent
 
         private void onClientTick50ms(float dt)
         {
-            if (!receivesHeat || !structureComplete) return;
+            if (!receivesHeat) return;
 
             receivesHeatSmooth = GameMath.Clamp(receivesHeatSmooth + (receivesHeat ? dt / 10 : -dt / 3), 0, 1);
 
@@ -507,8 +502,6 @@ namespace Vintagestory.GameContent
             }
         }
 
-
-
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
         {
             int coalLevel = inv[0]?.StackSize ?? 0;
@@ -520,7 +513,7 @@ namespace Vintagestory.GameContent
             totalHoursLastUpdate = tree.GetDouble("totalHoursLastUpdate");
             progress = tree.GetDouble("progress");
             processComplete = tree.GetBool("processComplete");
-            structureComplete = tree.GetBool("structureComplete");
+            StructureComplete = tree.GetBool("structureComplete");
             tempStoneCoffin = tree.GetInt("tempStoneCoffin");
 
             if (worldAccessForResolve.Api.Side == EnumAppSide.Client)
@@ -542,7 +535,7 @@ namespace Vintagestory.GameContent
             tree.SetDouble("totalHoursLastUpdate", totalHoursLastUpdate);
             tree.SetDouble("progress", progress);
             tree.SetBool("processComplete", processComplete);
-            tree.SetBool("structureComplete", structureComplete);
+            tree.SetBool("structureComplete", StructureComplete);
             tree.SetInt("tempStoneCoffin", tempStoneCoffin);
         }
 
@@ -595,8 +588,6 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-
-
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
             if (processComplete)
@@ -611,7 +602,7 @@ namespace Vintagestory.GameContent
                     dsc.AppendLine(Lang.Get("Stone coffin lid is missing"));
                 } else
                 {
-                    if (!structureComplete)
+                    if (!StructureComplete)
                     {
                         dsc.AppendLine(Lang.Get("Structure incomplete! Can't get hot enough, carburization paused."));
                         return;

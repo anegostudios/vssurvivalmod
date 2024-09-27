@@ -122,7 +122,7 @@ namespace Vintagestory.GameContent
             if (Api.Side == EnumAppSide.Client) return;
             if (CurrentStage >= stages.Length - 1) return;
 
-            if (CurrentStage == 0 && handslot.Empty && byEntity.Controls.Sneak)
+            if (CurrentStage == 0 && handslot.Empty && byEntity.Controls.ShiftKey)
             {
                 byEntity.TryGiveItemStack(new ItemStack(Api.World.GetItem(new AssetLocation("roller")), 5));
                 Die();
@@ -279,7 +279,7 @@ namespace Vintagestory.GameContent
             if (!skipMatCost && requireIngreds.Count > 0)
             {
                 var ingred = requireIngreds[0];
-                plr.SendIngameError("missingstack", null, ingred.Quantity, ingred.IsWildCard ? ingred.Code : ingred.ResolvedItemstack.GetName());
+                plr.SendIngameError("missingstack", null, ingred.Quantity, ingred.IsWildCard ? Lang.Get(ingred.Name??"") : ingred.ResolvedItemstack.GetName());
                 return false;
             }
 
@@ -361,7 +361,7 @@ namespace Vintagestory.GameContent
             EntityProperties type = World.GetEntityType(new AssetLocation("boat-sailed-" + material));
             var entity = World.ClassRegistry.CreateEntity(type);
 
-            offset.Y = 0;
+            offset.Y = 0.5f;
 
             entity.ServerPos.SetFrom(ServerPos).Add(offset);
             entity.ServerPos.Motion.Add(offset.X / 50.0, 0, offset.Z / 50.0);

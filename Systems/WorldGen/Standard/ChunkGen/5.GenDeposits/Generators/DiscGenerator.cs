@@ -101,7 +101,7 @@ namespace Vintagestory.ServerMods
         protected int depoitThickness;
         protected int hereThickness;
 
-        double absAvgQuantity;
+        public double absAvgQuantity;
 
 
         protected DiscDepositGenerator(ICoreServerAPI api, DepositVariant variant, LCGRandom depositRand, NormalizedSimplexNoise noiseGen) : base(api, variant, depositRand, noiseGen)
@@ -463,6 +463,16 @@ namespace Vintagestory.ServerMods
             return (double)q / blockColumn.Length;
         }
 
+        /// <summary>
+        /// This will always return the same result for the same ore generator if Radius or Thickness have not been changed.
+        /// <see cref="GetAbsAvgQuantity(LCGRandom)"/>
+        /// </summary>
+        /// <returns></returns>
+        [Obsolete("Use GetAbsAvgQuantity(LCGRandom rnd) instead to ensure your code is seed deterministic.")]
+        public float GetAbsAvgQuantity()
+        {
+            return GetAbsAvgQuantity(new LCGRandom(Api.World.Seed));
+        }
 
         public float GetAbsAvgQuantity(LCGRandom rnd)
         {
@@ -470,8 +480,8 @@ namespace Vintagestory.ServerMods
             float thickness = 0;
             for (int j = 0; j < 100; j++)
             {
-                radius += Radius.nextFloat(1, rand);
-                thickness += Thickness.nextFloat(1, rand);
+                radius += Radius.nextFloat(1, rnd);
+                thickness += Thickness.nextFloat(1, rnd);
             }
             radius /= 100;
             thickness /= 100;

@@ -92,30 +92,54 @@ namespace Vintagestory.ServerMods
 
             foreach (var val in rockTypeRemaps)
             {
-                Dictionary<int, int> blockIdByRockId = new Dictionary<int, int>();
-                foreach (var strat in rockstrata.Variants)
+                // handle wildcarded rocktype remaps, we rely on the rock part being last
+                // this is not optimal but does the trick for ore's
+                if (val.Key.Path.Contains("*"))
                 {
-                    Block rockBlock = api.World.GetBlock(strat.BlockCode);
-                    AssetLocation resolvedLoc = val.Value.Clone();
-                    resolvedLoc.Path = resolvedLoc.Path.Replace("{rock}", rockBlock.LastCodePart());
-
-                    Block resolvedBlock = api.World.GetBlock(resolvedLoc);
-                    if (resolvedBlock != null)
+                    Block[] sourceBlocks = api.World.SearchBlocks(val.Key);
+                    foreach (var block in sourceBlocks)
                     {
-                        blockIdByRockId[rockBlock.Id] = resolvedBlock.Id;
-
-                        Block quartzBlock = api.World.GetBlock(new AssetLocation("ore-quartz-" + rockBlock.LastCodePart()));
-                        if (quartzBlock != null)
+                        Dictionary<int, int> blockIdByRockId = new Dictionary<int, int>();
+                        foreach (var strat in rockstrata.Variants)
                         {
-                            blockIdByRockId[quartzBlock.Id] = resolvedBlock.Id;
+                            Block rockBlock = api.World.GetBlock(strat.BlockCode);
+                            AssetLocation resolvedLoc = block.CodeWithVariant("rock", rockBlock.LastCodePart());
+                            Block resolvedBlock = api.World.GetBlock(resolvedLoc);
+                            if (resolvedBlock != null)
+                            {
+                                blockIdByRockId[rockBlock.Id] = resolvedBlock.Id;
+                            }
                         }
+                        resolvedReplaceWithRocktype[block.Id] = blockIdByRockId;
                     }
                 }
-
-                Block[] sourceBlocks = api.World.SearchBlocks(val.Key);
-                foreach (var sourceBlock in sourceBlocks)
+                else
                 {
-                    resolvedReplaceWithRocktype[sourceBlock.Id] = blockIdByRockId;
+                    Dictionary<int, int> blockIdByRockId = new Dictionary<int, int>();
+                    foreach (var strat in rockstrata.Variants)
+                    {
+                        Block rockBlock = api.World.GetBlock(strat.BlockCode);
+                        AssetLocation resolvedLoc = val.Value.Clone();
+                        resolvedLoc.Path = resolvedLoc.Path.Replace("{rock}", rockBlock.LastCodePart());
+
+                        Block resolvedBlock = api.World.GetBlock(resolvedLoc);
+                        if (resolvedBlock != null)
+                        {
+                            blockIdByRockId[rockBlock.Id] = resolvedBlock.Id;
+
+                            Block quartzBlock = api.World.GetBlock(new AssetLocation("ore-quartz-" + rockBlock.LastCodePart()));
+                            if (quartzBlock != null)
+                            {
+                                blockIdByRockId[quartzBlock.Id] = resolvedBlock.Id;
+                            }
+                        }
+                    }
+
+                    Block[] sourceBlocks = api.World.SearchBlocks(val.Key);
+                    foreach (var sourceBlock in sourceBlocks)
+                    {
+                        resolvedReplaceWithRocktype[sourceBlock.Id] = blockIdByRockId;
+                    }
                 }
             }
 

@@ -20,7 +20,8 @@ namespace Vintagestory.GameContent
             ActionTypes["lookatblock"] = typeof(LookatBlockAction);
             ActionTypes["lookatentity"] = typeof(LookatEntityAction);
             ActionTypes["mountblock"] = typeof(MountBlockAction);
-            ActionTypes["animation"] = typeof(AnimationAction);
+            ActionTypes["playanimation"] = typeof(PlayAnimationAction);
+            ActionTypes["stopanimation"] = typeof(StopAnimationAction);
             ActionTypes["standardai"] = typeof(StandardAIAction);
             ActionTypes["triggeremotionstate"] = typeof(TriggerEmotionStateAction);
             ActionTypes["unmount"] = typeof(UnmountAction);
@@ -35,14 +36,15 @@ namespace Vintagestory.GameContent
             ActionTypes["wait"] = typeof(WaitAction);
 
             ConditionTypes["timeofday"] = typeof(TimeOfDayCondition);
-            ConditionTypes["entityvicinity"] = typeof(EntityVicinityCondition);
             ConditionTypes["variable"] = typeof(VariableCondition);
             ConditionTypes["mounted"] = typeof(MountedCondition);
             ConditionTypes["temporalstorm"] = typeof(TemporalStormCondition);
             ConditionTypes["temperature"] = typeof(TemperatureCondition);
             ConditionTypes["afteractivity"] = typeof(AfterActivityCondition);
             ConditionTypes["emotionstate"] = typeof(EmotionStateCondition);
+            ConditionTypes["entityvicinity"] = typeof(EntityVicinityCondition);
             ConditionTypes["blockvicinity"] = typeof(BlockVicinityCondition);
+            ConditionTypes["positionvicinity"] = typeof(PositionVicinityCondition);
             ConditionTypes["random"] = typeof(RandomCondition);
         }
     }

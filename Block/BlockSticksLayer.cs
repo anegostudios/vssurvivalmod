@@ -50,7 +50,7 @@ namespace Vintagestory.GameContent
         {
             BlockFacing[] facings = SuggestedHVOrientation(player, bs);
             BlockFacing suggested = facings.Length > 0 ? facings[0] : null;
-            if (suggested != null && player.Entity.Controls.Sneak) return suggested;
+            if (suggested != null && player.Entity.Controls.ShiftKey) return suggested;
 
             BlockPos pos = bs.Position;
 

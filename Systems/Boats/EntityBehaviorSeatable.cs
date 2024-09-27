@@ -1,19 +1,27 @@
 ﻿using System;
 using System.Linq;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
+    public delegate bool CanSitDelegate(EntityAgent eagent, out string errorMessage);
+
     public class EntityBehaviorSeatable : EntityBehavior, IVariableSeatsMountable, IRopeTiedCreatureCarrier
     {
         public IMountableSeat[] Seats { get; set; }
         public SeatConfig[] SeatConfigs;
         public EntityPos Position => entity.SidedPos;
         ICoreAPI Api => entity.Api;
+
+        bool interactMountAnySeat;
+
+        public event CanSitDelegate CanSit;
 
         public Entity Controller { get; set; }
 
@@ -24,6 +32,8 @@ namespace Vintagestory.GameContent
         public override void Initialize(EntityProperties properties, JsonObject attributes)
         {
             SeatConfigs = attributes["seats"].AsObject<SeatConfig[]>();
+
+            interactMountAnySeat = attributes["interactMountAnySeat"].AsBool(false);
 
             int i = 0;
             foreach (var seatConfig in SeatConfigs)
@@ -91,7 +101,7 @@ namespace Vintagestory.GameContent
         public override void OnInteract(EntityAgent byEntity, ItemSlot itemslot, Vec3d hitPosition, EnumInteractMode mode, ref EnumHandling handled)
         {
             if (mode != EnumInteractMode.Interact || !entity.Alive) return;
-            if (!byEntity.WatchedAttributes.GetBool("allowMounting", true)) return;
+            if (!allowSit(byEntity)) return;
             if (itemslot.Itemstack?.Collectible is ItemRope) return;
 
             int seleBox = (byEntity as EntityPlayer).EntitySelection?.SelectionBoxIndex ?? -1;
@@ -152,10 +162,33 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-                return;
+                if (!interactMountAnySeat || !itemslot.Empty)
+                {
+                    return;
+                }
             }
 
             mountAnySeat(byEntity, out handled);
+        }
+
+        private bool allowSit(EntityAgent byEntity)
+        {
+            if (CanSit == null) return true;
+            
+            ICoreClientAPI capi = Api as ICoreClientAPI;
+            foreach (CanSitDelegate dele in CanSit.GetInvocationList())
+            {
+                if (!dele(byEntity, out string errMsg))
+                {
+                    if (errMsg != null)
+                    {
+                        capi?.TriggerIngameError(this, "cantride", Lang.Get("cantride-" + errMsg));
+                    }
+                    return false;
+                }
+            }
+
+            return true;            
         }
 
         private void mountAnySeat(EntityAgent byEntity, out EnumHandling handled)

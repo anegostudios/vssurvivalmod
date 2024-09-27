@@ -9,10 +9,8 @@ namespace Vintagestory.GameContent
     {
         public static OrderedDictionary<string, TraderPersonality> Personalities = new OrderedDictionary<string, TraderPersonality>()
         {
-            //{ "formal", new TraderPersonality(1 * 1.5f, 1, 0.9f) },
             { "balanced", new TraderPersonality(1.2f * 1.5f, 0.9f, 1.1f) },
-            //{ "lazy", new TraderPersonality(1.65f * 1.5f, 0.7f, 0.9f) },
-            //{ "rowdy", new TraderPersonality(0.75f * 1.5f, 1f, 1.8f) },
+            { "elderbalanced", new TraderPersonality(1.2f * 1.5f, 0.9f, 1.1f) },
         };
 
         public EntityVillager()
@@ -22,7 +20,7 @@ namespace Vintagestory.GameContent
 
         public string Personality
         {
-            get { return WatchedAttributes.GetString("personality", "formal"); }
+            get { return WatchedAttributes.GetString("personality", "balanced"); }
             set
             {
                 WatchedAttributes.SetString("personality", value);

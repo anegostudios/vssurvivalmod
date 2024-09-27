@@ -145,6 +145,7 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < outfitCodes.Length; i++)
             {
                 var twcshape = cshapes[i];
+                if (twcshape == null) continue;
 
                 if (twcshape?.Base == null)
                 {
@@ -158,6 +159,7 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < outfitCodes.Length; i++)
             {
                 var twcshape = cshapes[i];
+                if (twcshape == null) continue;
 
                 if (twcshape.DisableElements != null)
                 {

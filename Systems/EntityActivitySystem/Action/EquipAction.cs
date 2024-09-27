@@ -86,7 +86,7 @@ namespace Vintagestory.GameContent
             try
             {
                 JsonItemStack jstack = JsonItemStack.FromString(Value);
-                if (!jstack.Resolve(vas.Entity.World, vas.Entity.Code + " entity activity system, equip action - could not resolve " + Value + ". Will ignore.", true))
+                if (!jstack.Resolve(capi.World, "Entity activity system, equip action - could not resolve " + Value + ". Will ignore.", true))
                 {
                     capi.TriggerIngameError(this, "cantresolve", "Can't save. Unable to resolve json stack " + Value + ".");
                     return false;
