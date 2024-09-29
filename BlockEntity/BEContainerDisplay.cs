@@ -189,7 +189,7 @@ namespace Vintagestory.GameContent
 
         protected virtual string getMeshCacheKey(ItemStack stack)
         {
-            var meshSource = stack.Collectible as IContainedMeshSource;
+            var meshSource = stack.Collectible.GetCollectibleInterface<IContainedMeshSource>();
             if (meshSource != null)
             {
                 return meshSource.GetMeshCacheKey(stack);
@@ -212,7 +212,7 @@ namespace Vintagestory.GameContent
             MeshData mesh = getMesh(stack);
             if (mesh != null) return mesh;
 
-            var meshSource = stack.Collectible as IContainedMeshSource;
+            var meshSource = stack.Collectible.GetCollectibleInterface<IContainedMeshSource>();
 
             if (meshSource != null)
             {
