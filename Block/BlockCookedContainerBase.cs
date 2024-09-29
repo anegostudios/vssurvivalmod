@@ -209,10 +209,8 @@ namespace Vintagestory.GameContent
             float servingCapacity = bowlSlot.Itemstack.Block.Attributes["servingCapacity"].AsFloat(1);
 
             // Merge existing servings
-            if (bowlSlot.Itemstack.Block is IBlockMealContainer)
+            if (bowlSlot.Itemstack.Collectible.GetCollectibleInterface<IBlockMealContainer>() is IBlockMealContainer mealcont)
             {
-                var mealcont = (bowlSlot.Itemstack.Block as IBlockMealContainer);
-
                 ItemStack[] myStacks = GetNonEmptyContents(api.World, potslot.Itemstack);
 
                 string hisRecipeCode = mealcont.GetRecipeCode(world, bowlSlot.Itemstack);
@@ -271,7 +269,7 @@ namespace Vintagestory.GameContent
             float servingsToTransfer = Math.Min(quantityServings, servingCapacity);
 
             ItemStack stack = new ItemStack(mealblock);
-            (mealblock as IBlockMealContainer).SetContents(ownRecipeCode, stack, stacks, servingsToTransfer);
+            (mealblock.GetCollectibleInterface<IBlockMealContainer>()).SetContents(ownRecipeCode, stack, stacks, servingsToTransfer);
 
             SetServingsMaybeEmpty(world, potslot, quantityServings - servingsToTransfer);
 
@@ -345,7 +343,7 @@ namespace Vintagestory.GameContent
             var targetSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
             if (targetSlot.Empty) return false;
 
-            if ((targetSlot.Itemstack.Collectible.Attributes?.IsTrue("mealContainer") == true || targetSlot.Itemstack.Block is IBlockMealContainer) && GetServings(api.World, slot.Itemstack) > 0)
+            if ((targetSlot.Itemstack.Collectible.Attributes?.IsTrue("mealContainer") == true || targetSlot.Itemstack.Collectible.GetCollectibleInterface<IBlockMealContainer>() is IBlockMealContainer) && GetServings(api.World, slot.Itemstack) > 0)
             {
                 if (targetSlot.StackSize > 1)
                 {
