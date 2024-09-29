@@ -114,7 +114,7 @@ namespace Vintagestory.GameContent
                         Itemstacks = workableStacklist.ToArray(),
                         GetMatchingStacks = (wi, bs, es) => {
                             BlockEntityAnvil bea = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityAnvil;
-                            return bea?.WorkItemStack == null ? null : new ItemStack[] { (bea.WorkItemStack.Collectible as IAnvilWorkable).GetBaseMaterial(bea.WorkItemStack) };
+                            return bea?.WorkItemStack == null ? null : new ItemStack[] { bea.WorkItemStack.Collectible.GetCollectibleInterface<IAnvilWorkable>().GetBaseMaterial(bea.WorkItemStack) };
                         }
                     }
                 };
