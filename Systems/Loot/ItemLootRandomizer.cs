@@ -22,6 +22,11 @@ namespace Vintagestory.GameContent
             IPlayer byPlayer = (byEntity as EntityPlayer).Player;
             if (byPlayer == null) return;
 
+            if (byPlayer.Entity.Controls.ShiftKey || byPlayer.Entity.Controls.CtrlKey)
+            {
+                base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
+                return;
+            }
 
             TreeAttribute tree = new TreeAttribute();
             tree.SetString("inventoryId", slot.Inventory.InventoryID);
