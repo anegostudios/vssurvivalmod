@@ -24,7 +24,7 @@ namespace Vintagestory.GameContent
         {
             if (block.EntityClass != null)
             {
-                var behs = world.BlockAccessor.GetBlockEntity(heatSourcePos) as IHeatSource;
+                var behs = world.BlockAccessor.GetBlock(heatSourcePos).GetInterface<IHeatSource>(world, heatSourcePos);
                 if (behs != null)
                 {
                     return behs.GetHeatStrength(world, heatSourcePos, heatReceiverPos);
