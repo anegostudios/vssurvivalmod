@@ -203,7 +203,7 @@ namespace Vintagestory.GameContent
 
             EnumTreeFellingBehavior bh = EnumTreeFellingBehavior.Chop;
 
-            if (block is ICustomTreeFellingBehavior ctfbh)
+            if (block.GetInterface<ICustomTreeFellingBehavior>(world, startPos) is ICustomTreeFellingBehavior ctfbh)
             {
                 bh = ctfbh.GetTreeFellingBehavior(startPos, null, spreadIndex);
                 if (bh == EnumTreeFellingBehavior.NoChop)
@@ -231,7 +231,7 @@ namespace Vintagestory.GameContent
                 if (foundPositions.Count > 2500) break;
 
                 block = world.BlockAccessor.GetBlock(pos.X, pos.Y, pos.Z, BlockLayersAccess.Solid);
-                if (block is ICustomTreeFellingBehavior ctfbhh)
+                if (block.GetInterface<ICustomTreeFellingBehavior>(world, new BlockPos(pos.X, pos.Y, pos.Z, startPos.dimension)) is ICustomTreeFellingBehavior ctfbhh)
                 {
                     bh = ctfbhh.GetTreeFellingBehavior(startPos, null, spreadIndex);
                 }
