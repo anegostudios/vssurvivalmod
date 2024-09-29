@@ -144,7 +144,7 @@ namespace Vintagestory.GameContent
 
                                 if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
                                 {
-                                    if (slot.Itemstack.Collectible is IBlockMealContainer mc)
+                                    if (slot.Itemstack.Collectible.GetCollectibleInterface<IBlockMealContainer>() is IBlockMealContainer mc)
                                     {
                                         float servingsLeft = mc.GetQuantityServings(world, slot.Itemstack) - 1f;
                                         mc.SetQuantityServings(world, slot.Itemstack, servingsLeft);
@@ -207,7 +207,7 @@ namespace Vintagestory.GameContent
                 return stack.Collectible.Attributes["repairGain"].AsFloat(0.2f);
             }
 
-            if (stack.Collectible is IBlockMealContainer mc)
+            if (stack.Collectible.GetCollectibleInterface<IBlockMealContainer>() is IBlockMealContainer mc)
             {
                 ItemStack[] stacks = mc.GetNonEmptyContents(world, stack);
                 if (stacks.Length > 0 && stacks[0] != null && stacks[0].Collectible.Code.PathStartsWith("glueportion")) return stacks[0].Collectible.Attributes["repairGain"].AsFloat(0.2f);
