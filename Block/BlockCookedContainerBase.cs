@@ -119,7 +119,7 @@ namespace Vintagestory.GameContent
 
             world.BlockAccessor.SetBlock(mealblock.BlockId, pos);
 
-            IBlockEntityMealContainer bemeal = api.World.BlockAccessor.GetBlockEntity(pos) as IBlockEntityMealContainer;
+            IBlockEntityMealContainer bemeal = api.World.BlockAccessor.GetBlock(pos).GetInterface<IBlockEntityMealContainer>(world, pos);
             if (bemeal == null) return;
 
             if (tryMergeServingsIntoBE(bemeal, potslot)) return;
