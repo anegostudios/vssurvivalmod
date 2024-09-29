@@ -355,7 +355,7 @@ namespace Vintagestory.GameContent
 
                 foreach (CollectibleObject obj in api.World.Collectibles)
                 {
-                    if (obj is ILiquidSource || obj is ILiquidSink || obj is BlockWateringCan)
+                    if (obj.GetCollectibleInterface<ILiquidSource>() is ILiquidSource || obj.GetCollectibleInterface<ILiquidSink>() is ILiquidSink || obj is BlockWateringCan)
                     {
                         List<ItemStack> stacks = obj.GetHandBookStacks(capi);
                         if (stacks != null) liquidContainerStacks.AddRange(stacks);

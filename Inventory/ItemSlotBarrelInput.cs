@@ -130,7 +130,7 @@ namespace Vintagestory.API.Common
 
             IWorldAccessor world = inventory.Api.World;
 
-            if (sourceSlot.Itemstack.Collectible is ILiquidSource source && source.AllowHeldLiquidTransfer)
+            if (sourceSlot.Itemstack.Collectible.GetCollectibleInterface<ILiquidSource>() is ILiquidSource source && source.AllowHeldLiquidTransfer)
             {
                 ItemSlotLiquidOnly liquidSlot = inventory[1] as ItemSlotLiquidOnly;
                 
