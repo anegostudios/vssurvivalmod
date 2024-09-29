@@ -474,7 +474,7 @@ namespace Vintagestory.GameContent
             int availItems = liquidStack.StackSize;
 
             ItemStack stack = GetContent(containerStack);
-            ILiquidSink sink = containerStack.Collectible as ILiquidSink;
+            ILiquidSink sink = containerStack.Collectible.GetCollectibleInterface<ILiquidSink>();
 
             if (stack == null)
             {
@@ -592,7 +592,7 @@ namespace Vintagestory.GameContent
             }
 
 
-            if (obj is ILiquidSink objLsi && !singlePut)
+            if (obj.GetCollectibleInterface<ILiquidSink>() is ILiquidSink objLsi && !singlePut)
             {
                 if (!objLsi.AllowHeldLiquidTransfer) return false;
 
