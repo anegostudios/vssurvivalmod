@@ -105,7 +105,7 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
-            if (blockSel != null && byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is IIgnitable ign)
+            if (blockSel != null && blockSel.Block.GetInterface<IIgnitable>(byEntity.World, blockSel.Position) is IIgnitable ign)
             {
                 if (isExtinct)
                 {
@@ -129,7 +129,7 @@ namespace Vintagestory.GameContent
 
         public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
-            if (isExtinct && blockSel != null && byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is IIgnitable ign)
+            if (isExtinct && blockSel != null && blockSel.Block.GetInterface<IIgnitable>(byEntity.World, blockSel.Position) is IIgnitable ign)
             {
                 var state = ign.OnTryIgniteStack(byEntity, blockSel.Position, slot, secondsUsed);
                 if (state == EnumIgniteState.Ignitable)

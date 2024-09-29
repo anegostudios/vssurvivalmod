@@ -30,7 +30,7 @@ namespace Vintagestory.GameContent
             }
 
             EnumIgniteState state = EnumIgniteState.NotIgnitable;
-            if (!(block is IIgnitable ign) || (state = ign.OnTryIgniteBlock(byEntity, blockSel.Position, 0)) != EnumIgniteState.Ignitable)
+            if (blockSel.Block.GetInterface<IIgnitable>(byEntity.World, blockSel.Position) is not IIgnitable ign || (state = ign.OnTryIgniteBlock(byEntity, blockSel.Position, 0)) != EnumIgniteState.Ignitable)
             {
                 if (state == EnumIgniteState.NotIgnitablePreventDefault) handling = EnumHandHandling.PreventDefault;
                 return;
@@ -67,7 +67,7 @@ namespace Vintagestory.GameContent
 
 
             EnumIgniteState igniteState = EnumIgniteState.NotIgnitable;
-            if (block is IIgnitable ign) igniteState = ign.OnTryIgniteBlock(byEntity, blockSel.Position, secondsUsed);
+            if (blockSel.Block.GetInterface<IIgnitable>(byEntity.World, blockSel.Position) is IIgnitable ign) igniteState = ign.OnTryIgniteBlock(byEntity, blockSel.Position, secondsUsed);
 
             if (igniteState == EnumIgniteState.NotIgnitable || igniteState == EnumIgniteState.NotIgnitablePreventDefault)
             {
@@ -127,7 +127,7 @@ namespace Vintagestory.GameContent
             Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
             
             EnumIgniteState igniteState = EnumIgniteState.NotIgnitable;
-            var ign = block as IIgnitable;
+            var ign = blockSel.Block.GetInterface<IIgnitable>(byEntity.World, blockSel.Position);
             if (ign != null) igniteState = ign.OnTryIgniteBlock(byEntity, blockSel.Position, secondsUsed);
 
             if (igniteState != EnumIgniteState.IgniteNow)
