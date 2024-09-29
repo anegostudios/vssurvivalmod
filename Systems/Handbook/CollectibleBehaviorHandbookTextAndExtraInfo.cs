@@ -94,7 +94,7 @@ namespace Vintagestory.GameContent
             addExtraSections(capi, stack, components, marginTop);
             addStorableInfo(capi, stack, components, marginTop);
 
-            if (this.collObj is ICustomHandbookPageContent chp)
+            if (this.collObj.GetCollectibleInterface<ICustomHandbookPageContent>() is ICustomHandbookPageContent chp)
             {
                 chp.OnHandbookPageComposed(components, inSlot, capi, allStacks, openDetailPageFor);
             }
