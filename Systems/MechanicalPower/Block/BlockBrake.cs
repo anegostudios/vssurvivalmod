@@ -38,10 +38,12 @@ namespace Vintagestory.GameContent.Mechanics
             BlockFacing leftFacing = BlockFacing.HORIZONTALS_ANGLEORDER[GameMath.Mod(ownFacing.HorizontalAngleIndex - 1, 4)];
             BlockFacing rightFacing = BlockFacing.HORIZONTALS_ANGLEORDER[GameMath.Mod(ownFacing.HorizontalAngleIndex + 1, 4)];
 
-            IMechanicalPowerBlock leftBlock = world.BlockAccessor.GetBlock(blockSel.Position.AddCopy(leftFacing)) as IMechanicalPowerBlock;
+            BlockPos leftPos = blockSel.Position.AddCopy(leftFacing);
+            IMechanicalPowerBlock leftBlock = world.BlockAccessor.GetBlock(leftPos).GetInterface<IMechanicalPowerBlock>(world, leftPos);
             if (leftBlock != null) return DoPlaceMechBlock(world, byPlayer, itemstack, blockSel, orientedBlock, leftBlock, leftFacing);
 
-            IMechanicalPowerBlock rightBlock = world.BlockAccessor.GetBlock(blockSel.Position.AddCopy(rightFacing)) as IMechanicalPowerBlock;
+            BlockPos rightPos = blockSel.Position.AddCopy(rightFacing);
+            IMechanicalPowerBlock rightBlock = world.BlockAccessor.GetBlock(rightPos).GetInterface<IMechanicalPowerBlock>(world, rightPos);
             if (rightBlock != null) return DoPlaceMechBlock(world, byPlayer, itemstack, blockSel, orientedBlock, rightBlock, rightFacing);
 
 
@@ -49,10 +51,12 @@ namespace Vintagestory.GameContent.Mechanics
             BlockFacing backFacing = ownFacing.Opposite;
             Block rotBlock = world.GetBlock(orientedBlock.CodeWithVariant("side", leftFacing.Code));
 
-            IMechanicalPowerBlock frontBlock = world.BlockAccessor.GetBlock(blockSel.Position.AddCopy(frontFacing)) as IMechanicalPowerBlock;
+            BlockPos frontPos = blockSel.Position.AddCopy(frontFacing);
+            IMechanicalPowerBlock frontBlock = world.BlockAccessor.GetBlock(frontPos).GetInterface<IMechanicalPowerBlock>(world, frontPos);
             if (frontBlock != null) return DoPlaceMechBlock(world, byPlayer, itemstack, blockSel, rotBlock, frontBlock, frontFacing);
 
-            IMechanicalPowerBlock backBlock = world.BlockAccessor.GetBlock(blockSel.Position.AddCopy(backFacing)) as IMechanicalPowerBlock;
+            BlockPos backPos = blockSel.Position.AddCopy(backFacing);
+            IMechanicalPowerBlock backBlock = world.BlockAccessor.GetBlock(backPos).GetInterface<IMechanicalPowerBlock>(world, backPos);
             if (backBlock != null) return DoPlaceMechBlock(world, byPlayer, itemstack, blockSel, rotBlock, backBlock, backFacing);
 
 
