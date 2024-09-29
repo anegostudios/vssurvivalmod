@@ -81,7 +81,7 @@ namespace Vintagestory.API.Common
             ItemSlotLiquidOnly liquidSlot = inventory[1] as ItemSlotLiquidOnly;
             IWorldAccessor world = inventory.Api.World;
 
-            if (sourceSlot?.Itemstack?.Collectible is ILiquidSink sink && !liquidSlot.Empty && sink.AllowHeldLiquidTransfer)
+            if (sourceSlot?.Itemstack?.Collectible.GetCollectibleInterface<ILiquidSink>() is ILiquidSink sink && !liquidSlot.Empty && sink.AllowHeldLiquidTransfer)
             {
                 ItemStack liqSlotStack = liquidSlot.Itemstack;
                 var curTargetLiquidStack = sink.GetContent(sourceSlot.Itemstack);
