@@ -43,9 +43,8 @@ namespace Vintagestory.GameContent
 
             if (be is BlockEntityLabeledChest || be is BlockEntitySignPost || be is BlockEntitySign || be is BlockEntityBloomery || be is BlockEntityFirepit || be is BlockEntityForge || be is BlockEntityCrate || atblock.HasBehavior<BlockBehaviorJonasGasifier>()) return;
 
-            if (be is IBlockEntityItemPile)
+            if (be.Block.GetInterface<IBlockEntityItemPile>(api.World, onBlockPos) is IBlockEntityItemPile pile)
             {
-                IBlockEntityItemPile pile = (IBlockEntityItemPile)be;
                 if (pile.OnPlayerInteract(byPlayer))
                 {
                     handling = EnumHandHandling.PreventDefaultAction;
@@ -60,12 +59,9 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-
-            be = byEntity.World.BlockAccessor.GetBlockEntity(onBlockPos.AddCopy(blockSel.Face));
-            if (be is IBlockEntityItemPile)
+            if (be.Block.GetInterface<IBlockEntityItemPile>(api.World, onBlockPos.AddCopy(blockSel.Face)) is IBlockEntityItemPile pile1)
             {
-                IBlockEntityItemPile pile = (IBlockEntityItemPile)be;
-                if (pile.OnPlayerInteract(byPlayer))
+                if (pile1.OnPlayerInteract(byPlayer))
                 {
                     handling = EnumHandHandling.PreventDefaultAction;
 
