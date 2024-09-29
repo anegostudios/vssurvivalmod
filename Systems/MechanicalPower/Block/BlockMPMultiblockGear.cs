@@ -19,7 +19,7 @@ namespace Vintagestory.GameContent.Mechanics
         {
             BEMPMultiblock be = world.BlockAccessor.GetBlockEntity(pos) as BEMPMultiblock;
             if (be == null || be.Principal == null) return true;
-            IGearAcceptor beg = world.BlockAccessor.GetBlockEntity(be.Principal) as IGearAcceptor;
+            IGearAcceptor beg = world.BlockAccessor.GetBlockEntity(be.Principal).Block.GetInterface<IGearAcceptor>(world, be.Principal);
             return beg == null ? true : beg.CanAcceptGear(pos);
         }
 
@@ -31,7 +31,7 @@ namespace Vintagestory.GameContent.Mechanics
                 return null;
             }
 
-            IGearAcceptor beg = world.BlockAccessor.GetBlockEntity(be.Principal) as IGearAcceptor;
+            IGearAcceptor beg = world.BlockAccessor.GetBlockEntity(be.Principal).Block.GetInterface<IGearAcceptor>(world, be.Principal);
             if (beg == null) world.Logger.Notification("no gear acceptor");
             beg?.AddGear(pos);
             return beg as BlockEntity;
@@ -56,7 +56,7 @@ namespace Vintagestory.GameContent.Mechanics
                     posCenter = pos.SouthCopy();
                     break;
             }
-            if (world.BlockAccessor.GetBlockEntity(posCenter) is IGearAcceptor beg)
+            if (world.BlockAccessor.GetBlockEntity(posCenter).Block.GetInterface<IGearAcceptor>(world, posCenter) is IGearAcceptor beg)
             {
                 beg.RemoveGearAt(pos);
                 Block toPlaceBlock = world.GetBlock(new AssetLocation("mpmultiblockwood"));
