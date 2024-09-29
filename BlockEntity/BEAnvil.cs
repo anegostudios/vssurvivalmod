@@ -149,7 +149,7 @@ namespace Vintagestory.GameContent
 
         public bool CanWorkCurrent
         {
-            get { return workItemStack != null && (workItemStack.Collectible as IAnvilWorkable).CanWork(WorkItemStack); }
+            get { return workItemStack != null && workItemStack.Collectible.GetCollectibleInterface<IAnvilWorkable>().CanWork(WorkItemStack); }
         }
 
         public ItemStack WorkItemStack
@@ -255,7 +255,7 @@ namespace Vintagestory.GameContent
             if (slot.Itemstack == null) return false;
             ItemStack stack = slot.Itemstack;
 
-            IAnvilWorkable workableobj = stack.Collectible as IAnvilWorkable;
+            IAnvilWorkable workableobj = stack.Collectible.GetCollectibleInterface<IAnvilWorkable>();
 
             
 
@@ -439,7 +439,7 @@ namespace Vintagestory.GameContent
             SmithingRecipe recipe = SelectedRecipe;
 
 
-            EnumHelveWorkableMode? mode = (workItemStack?.Collectible as IAnvilWorkable)?.GetHelveWorkableMode(workItemStack, this);
+            EnumHelveWorkableMode? mode = workItemStack?.Collectible.GetCollectibleInterface<IAnvilWorkable>()?.GetHelveWorkableMode(workItemStack, this);
 
             StringBuilder sb = new StringBuilder();
             sb.AppendLine("Workitem: " + workItemStack);
@@ -460,7 +460,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            var mode = (workItemStack.Collectible as IAnvilWorkable).GetHelveWorkableMode(workItemStack, this);
+            var mode = workItemStack.Collectible.GetCollectibleInterface<IAnvilWorkable>().GetHelveWorkableMode(workItemStack, this);
             if (mode == EnumHelveWorkableMode.NotWorkable) return;
 
             rotation = 0;
@@ -611,7 +611,7 @@ namespace Vintagestory.GameContent
             ItemStack ditchedStack;
             if (SelectedRecipe == null)
             {
-                ditchedStack = returnOnCancelStack ?? (workItemStack.Collectible as IAnvilWorkable).GetBaseMaterial(workItemStack);
+                ditchedStack = returnOnCancelStack ?? workItemStack.Collectible.GetCollectibleInterface<IAnvilWorkable>().GetBaseMaterial(workItemStack);
                 float temp = workItemStack.Collectible.GetTemperature(Api.World, workItemStack);
                 ditchedStack.Collectible.SetTemperature(Api.World, ditchedStack, temp);
             }
@@ -1148,7 +1148,7 @@ namespace Vintagestory.GameContent
         
         internal void OpenDialog(ItemStack ingredient)
         {
-            List<SmithingRecipe> recipes = (ingredient.Collectible as IAnvilWorkable).GetMatchingRecipes(ingredient);
+            List<SmithingRecipe> recipes = ingredient.Collectible.GetCollectibleInterface<IAnvilWorkable>().GetMatchingRecipes(ingredient);
 
             List<ItemStack> stacks = recipes
                 .Select(r => r.Output.ResolvedItemstack)

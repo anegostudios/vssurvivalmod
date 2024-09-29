@@ -24,7 +24,7 @@ namespace Vintagestory.GameContent
 
         private void renderSkillItem(AssetLocation code, float dt, double atPosX, double atPosY)
         {
-            var block = api.World.BlockAccessor.GetBlock(pos) as ITextureFlippable;
+            var block = api.World.BlockAccessor.GetBlock(pos).GetInterface<ITextureFlippable>(api.World, pos);
             if (block == null) return;
             var textures = block.GetAvailableTextures(pos);
             if (textures == null) return;
@@ -62,7 +62,7 @@ namespace Vintagestory.GameContent
 
             if (pos != this.pos)
             {
-                var block = api.World.BlockAccessor.GetBlock(pos) as ITextureFlippable;
+                var block = api.World.BlockAccessor.GetBlock(pos).GetInterface<ITextureFlippable>(api.World, pos);
                 if (block == null) return null;
                 var textures = block.GetAvailableTextures(pos);
                 if (textures == null) return null;
@@ -110,7 +110,7 @@ namespace Vintagestory.GameContent
 
             int toolMode = slot.Itemstack.Attributes.GetInt("toolMode");
             var pos = blockSel.Position;
-            var block = api.World.BlockAccessor.GetBlock(pos) as ITextureFlippable;
+            var block = api.World.BlockAccessor.GetBlock(pos).GetInterface<ITextureFlippable>(api.World, pos);
             if (block != null)
             {
                 var textures = block.GetAvailableTextures(pos);

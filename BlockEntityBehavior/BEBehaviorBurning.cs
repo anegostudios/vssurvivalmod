@@ -80,7 +80,7 @@ namespace Vintagestory.GameContent
             Block block = Api.World.BlockAccessor.GetBlock(pos);
             if (block.CombustibleProps != null) return block.CombustibleProps.BurnDuration;
 
-            if (block is ICombustible bic)
+            if (block.GetInterface<ICombustible>(Api.World, pos) is ICombustible bic)
             {
                 return bic.GetBurnDuration(Api.World, pos);
             }

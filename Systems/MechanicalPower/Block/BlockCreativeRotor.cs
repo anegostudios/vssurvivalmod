@@ -35,13 +35,13 @@ namespace Vintagestory.GameContent.Mechanics
             foreach (BlockFacing face in BlockFacing.HORIZONTALS)
             {
                 BlockPos pos = blockSel.Position.AddCopy(face);
-                IMechanicalPowerBlock block = world.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
+                IMechanicalPowerBlock block = world.BlockAccessor.GetBlock(pos).GetInterface<IMechanicalPowerBlock>(world, pos);
                 if (block != null)
                 {
                     if (block.HasMechPowerConnectorAt(world, pos, face.Opposite))
                     {
                         //Prevent rotor back-to-back placement
-                        if (block is IMPPowered) return false;
+                        if (world.BlockAccessor.GetBlock(pos).GetInterface<IMPPowered>(world, pos) is IMPPowered) return false;
 
                         Block toPlaceBlock = world.GetBlock(new AssetLocation(FirstCodePart() + "-" + face.Opposite.Code));
                         world.BlockAccessor.SetBlock(toPlaceBlock.BlockId, blockSel.Position);
