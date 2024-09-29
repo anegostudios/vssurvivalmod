@@ -215,7 +215,7 @@ namespace Vintagestory.GameContent
                 {
                     BlockFacing face = BlockFacing.FromCode(val);
                     Block block = world.BlockAccessor.GetBlock(npos.Set(pos).Add(face));
-                    if (block.CanAttachBlockAt(world.BlockAccessor, this, pos, face) || (block as IBlockItemFlow)?.HasItemFlowConnectorAt(face.Opposite) == true || ba.GetBlock(pos).GetBlockEntity< BlockEntityContainer>(npos) != null) return true;
+                    if (block.CanAttachBlockAt(world.BlockAccessor, this, pos, face) || block.GetInterface<IBlockItemFlow>(world, pos)?.HasItemFlowConnectorAt(face.Opposite) == true || ba.GetBlock(pos).GetBlockEntity< BlockEntityContainer>(npos) != null) return true;
                 }
             }
 
@@ -225,7 +225,7 @@ namespace Vintagestory.GameContent
                 {
                     BlockFacing face = BlockFacing.FromCode(val);
                     Block block = world.BlockAccessor.GetBlock(npos.Set(pos).Add(face));
-                    if (block.CanAttachBlockAt(world.BlockAccessor, this, pos, face) || (block as IBlockItemFlow)?.HasItemFlowConnectorAt(face.Opposite) == true || ba.GetBlock(pos).GetBlockEntity<BlockEntityContainer>(npos) != null) return true;
+                    if (block.CanAttachBlockAt(world.BlockAccessor, this, pos, face) || block.GetInterface<IBlockItemFlow>(world, pos)?.HasItemFlowConnectorAt(face.Opposite) == true || ba.GetBlock(pos).GetBlockEntity<BlockEntityContainer>(npos) != null) return true;
                 }
             }
 
