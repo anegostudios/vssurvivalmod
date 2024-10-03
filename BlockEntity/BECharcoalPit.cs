@@ -184,7 +184,7 @@ namespace Vintagestory.GameContent
                     }
 
                     // Only traverse within an 11x11x11 block cube
-                    bool inCube = Math.Abs(npos.X - Pos.X) <= maxSize / 2 - 1 && Pos.Y - npos.Y <= maxSize && Math.Abs(npos.Z - Pos.Z) <= maxSize / 2 - 1;
+                    bool inCube = Math.Abs(npos.X - Pos.X) <= (maxSize - 1) / 2 && Pos.Y - npos.Y <= maxSize && Math.Abs(npos.Z - Pos.Z) <= (maxSize - 1) / 2;
 
                     if (inCube && !visitedPositions.Contains(npos))
                     {
@@ -272,7 +272,7 @@ namespace Vintagestory.GameContent
                     if (!isFirewoodpile) continue;
 
                     // Only traverse within an 11x11x11 block cube
-                    bool inCube = Math.Abs(npos.X - Pos.X) <= maxSize / 2 - 1 && Pos.Y - npos.Y <= maxSize && Math.Abs(npos.Z - Pos.Z) <= maxSize / 2 - 1;
+                    bool inCube = Math.Abs(npos.X - Pos.X) <= (maxSize - 1) / 2 && Pos.Y - npos.Y <= maxSize && Math.Abs(npos.Z - Pos.Z) <= (maxSize - 1) / 2;
                     
                     if (inCube && !visitedPositions.Contains(npos))
                     {
