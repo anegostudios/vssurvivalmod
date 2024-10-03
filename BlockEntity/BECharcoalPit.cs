@@ -31,6 +31,8 @@ namespace Vintagestory.GameContent
 
         public bool Lit => lit;
 
+        int maxSize = 11;
+
 
         public override void Initialize(ICoreAPI api)
         {
@@ -148,7 +150,6 @@ namespace Vintagestory.GameContent
             Queue<BlockPos> bfsQueue = new Queue<BlockPos>();
             bfsQueue.Enqueue(Pos);
 
-            int maxHalfSize = 6;
             Vec3i curQuantityAndYMinMax;
 
             while (bfsQueue.Count > 0)
@@ -182,8 +183,8 @@ namespace Vintagestory.GameContent
                         continue;
                     }
 
-                    // Only traverse within a 12x12x12 block cube
-                    bool inCube = Math.Abs(npos.X - Pos.X) <= maxHalfSize && Math.Abs(npos.Y - Pos.Y) <= maxHalfSize && Math.Abs(npos.Z - Pos.Z) <= maxHalfSize;
+                    // Only traverse within an 11x11x11 block cube
+                    bool inCube = Math.Abs(npos.X - Pos.X) <= maxSize / 2 - 1 && Pos.Y - npos.Y <= maxSize && Math.Abs(npos.Z - Pos.Z) <= maxSize / 2 - 1;
 
                     if (inCube && !visitedPositions.Contains(npos))
                     {
@@ -241,8 +242,6 @@ namespace Vintagestory.GameContent
 
             int charcoalPitBlockId = Api.World.GetBlock(new AssetLocation("charcoalpit")).BlockId;
 
-            int maxHalfSize = 6;
-
             while (bfsQueue.Count > 0)
             {
                 BlockPos bpos = bfsQueue.Dequeue();
@@ -272,8 +271,8 @@ namespace Vintagestory.GameContent
                     // Only traverse inside the firewood pile
                     if (!isFirewoodpile) continue;
 
-                    // Only traverse within a 12x12x12 block cube
-                    bool inCube = Math.Abs(npos.X - Pos.X) <= maxHalfSize && Math.Abs(npos.Y - Pos.Y) <= maxHalfSize && Math.Abs(npos.Z - Pos.Z) <= maxHalfSize;
+                    // Only traverse within an 11x11x11 block cube
+                    bool inCube = Math.Abs(npos.X - Pos.X) <= maxSize / 2 - 1 && Pos.Y - npos.Y <= maxSize && Math.Abs(npos.Z - Pos.Z) <= maxSize / 2 - 1;
                     
                     if (inCube && !visitedPositions.Contains(npos))
                     {
