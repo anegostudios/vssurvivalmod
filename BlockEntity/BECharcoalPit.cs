@@ -32,7 +32,6 @@ namespace Vintagestory.GameContent
         public bool Lit => lit;
 
         int maxSize = 11;
-        int maxHalfSize = (int)Math.Floor((double)maxSize / 2);
 
         public int MaxPileSize
         {
@@ -43,7 +42,6 @@ namespace Vintagestory.GameContent
             set
             {
                 maxSize = value;
-                maxHalfSize = (int)Math.Floor((double)maxSize / 2);
             }
         }
 
@@ -164,6 +162,7 @@ namespace Vintagestory.GameContent
             Queue<BlockPos> bfsQueue = new Queue<BlockPos>();
             bfsQueue.Enqueue(Pos);
 
+            int minx = Pos.x, minz = Pos.z, maxx = Pos.x, maxz = Pos.z;
             Vec3i curQuantityAndYMinMax;
 
             while (bfsQueue.Count > 0)
@@ -197,13 +196,25 @@ namespace Vintagestory.GameContent
                         continue;
                     }
 
+                    int nminx = minx, nminz = minz, nmaxx = maxx, nmaxz = maxz;
+
+                    if (npos.X < minx) nminx = npos.X;
+                    else if (npos.X > maxx) nmaxx = npos.X;
+
+                    if (npos.Z < minz) nminz = npos.Z;
+                    else if (npos.Z > maxz) nmaxz = npos.Z;
+
                     // Only traverse within maxSize range
-                    bool inCube = Math.Abs(npos.X - Pos.X) <= maxHalfSize && 1 <= Pos.Y - npos.Y && Pos.Y - npos.Y <= maxSize && Math.Abs(npos.Z - Pos.Z) <= maxHalfSize;
+                    bool inCube = nmaxx - nminx + 1 >= maxSize && Pos.Y - npos.Y >=1 && Pos.Y - npos.Y <= maxSize && nmaxz - nminz + 1 >= maxSize;
 
                     if (inCube && !visitedPositions.Contains(npos))
                     {
                         bfsQueue.Enqueue(npos);
                         visitedPositions.Add(npos);
+                        minx = nminx;
+                        minz = nminz;
+                        maxx = nmaxx;
+                        maxz = nmaxz;
                     }
                 }
             }
@@ -256,6 +267,8 @@ namespace Vintagestory.GameContent
 
             int charcoalPitBlockId = Api.World.GetBlock(new AssetLocation("charcoalpit")).BlockId;
 
+            int minx = Pos.x, minz = Pos.z, maxx = Pos.x, maxz = Pos.z;
+
             while (bfsQueue.Count > 0)
             {
                 BlockPos bpos = bfsQueue.Dequeue();
@@ -285,13 +298,25 @@ namespace Vintagestory.GameContent
                     // Only traverse inside the firewood pile
                     if (!isFirewoodpile) continue;
 
+                    int nminx = minx, nminz = minz, nmaxx = maxx, nmaxz = maxz;
+
+                    if (npos.X < minx) nminx = npos.X;
+                    else if (npos.X > maxx) nmaxx = npos.X;
+
+                    if (npos.Z < minz) nminz = npos.Z;
+                    else if (npos.Z > maxz) nmaxz = npos.Z;
+
                     // Only traverse within maxSize range
-                    bool inCube = Math.Abs(npos.X - Pos.X) <= maxHalfSize && 1 <= Pos.Y - npos.Y && Pos.Y - npos.Y <= maxSize && Math.Abs(npos.Z - Pos.Z) <= maxHalfSize;
+                    bool inCube = nmaxx - nminx + 1 >= maxSize && Pos.Y - npos.Y >=1 && Pos.Y - npos.Y <= maxSize && nmaxz - nminz + 1 >= maxSize;
                     
                     if (inCube && !visitedPositions.Contains(npos))
                     {
                         bfsQueue.Enqueue(npos);
                         visitedPositions.Add(npos);
+                        minx = nminx;
+                        minz = nminz;
+                        maxx = nmaxx;
+                        maxz = nmaxz;
                     }
                 }
             }
