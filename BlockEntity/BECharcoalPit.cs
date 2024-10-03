@@ -31,8 +31,21 @@ namespace Vintagestory.GameContent
 
         public bool Lit => lit;
 
-        int maxPileSize = 11;
-        int maxHalfSize = Math.Floor(maxPileSize / 2)
+        int maxSize = 11;
+        int maxHalfSize = Math.Floor((double)maxSize / 2);
+
+        public int MaxPileSize
+        {
+            get
+            {
+                return maxSize;
+            }
+            set
+            {
+                maxSize = value;
+                maxHalfSize = Math.Floor((double)maxSize / 2);
+            }
+        }
 
 
         public override void Initialize(ICoreAPI api)
@@ -184,8 +197,8 @@ namespace Vintagestory.GameContent
                         continue;
                     }
 
-                    // Only traverse within an 11x11x11 block cube
-                    bool inCube = Math.Abs(npos.X - Pos.X) <= maxHalfSize && 1 <= Pos.Y - npos.Y && Pos.Y - npos.Y <= maxPileSize && Math.Abs(npos.Z - Pos.Z) <= maxHalfSize;
+                    // Only traverse within maxSize range
+                    bool inCube = Math.Abs(npos.X - Pos.X) <= maxHalfSize && 1 <= Pos.Y - npos.Y && Pos.Y - npos.Y <= maxSize && Math.Abs(npos.Z - Pos.Z) <= maxHalfSize;
 
                     if (inCube && !visitedPositions.Contains(npos))
                     {
@@ -272,8 +285,8 @@ namespace Vintagestory.GameContent
                     // Only traverse inside the firewood pile
                     if (!isFirewoodpile) continue;
 
-                    // Only traverse within an 11x11x11 block cube
-                    bool inCube = Math.Abs(npos.X - Pos.X) <= maxHalfSize && 1 <= Pos.Y - npos.Y && Pos.Y - npos.Y <= maxPileSize && Math.Abs(npos.Z - Pos.Z) <= maxHalfSize;
+                    // Only traverse within maxSize range
+                    bool inCube = Math.Abs(npos.X - Pos.X) <= maxHalfSize && 1 <= Pos.Y - npos.Y && Pos.Y - npos.Y <= maxSize && Math.Abs(npos.Z - Pos.Z) <= maxHalfSize;
                     
                     if (inCube && !visitedPositions.Contains(npos))
                     {
