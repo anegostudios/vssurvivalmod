@@ -268,7 +268,7 @@ namespace Vintagestory.GameContent
 
             int charcoalPitBlockId = Api.World.GetBlock(new AssetLocation("charcoalpit")).BlockId;
 
-            int minx = Pos.x, minz = Pos.z, maxx = Pos.x, maxz = Pos.z;
+            int minPos = Pos, maxPos = Pos;
 
             while (bfsQueue.Count > 0)
             {
