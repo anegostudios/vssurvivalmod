@@ -32,7 +32,7 @@ namespace Vintagestory.GameContent
         public bool Lit => lit;
 
         int maxSize = 11;
-        int maxHalfSize = Math.Floor((double)maxSize / 2);
+        int maxHalfSize = (int)Math.Floor((double)maxSize / 2);
 
         public int MaxPileSize
         {
@@ -43,7 +43,7 @@ namespace Vintagestory.GameContent
             set
             {
                 maxSize = value;
-                maxHalfSize = Math.Floor((double)maxSize / 2);
+                maxHalfSize = (int)Math.Floor((double)maxSize / 2);
             }
         }
 
