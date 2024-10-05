@@ -155,7 +155,7 @@ namespace Vintagestory.GameContent
                 entity.ServerPos.X = blockSel.Position.X + (blockSel.DidOffset ? 0 : blockSel.Face.Normali.X) + 0.5f;
                 entity.ServerPos.Y = blockSel.Position.Y + (blockSel.DidOffset ? 0 : blockSel.Face.Normali.Y);
                 entity.ServerPos.Z = blockSel.Position.Z + (blockSel.DidOffset ? 0 : blockSel.Face.Normali.Z) + 0.5f;
-                entity.ServerPos.Yaw = byEntity.Pos.Yaw + GameMath.PI + GameMath.PIHALF;
+                entity.ServerPos.Yaw = byEntity.Pos.Yaw + GameMath.PI;
                 entity.ServerPos.Dimension = blockSel.Position.dimension;
 
                 entity.Pos.SetFrom(entity.ServerPos);

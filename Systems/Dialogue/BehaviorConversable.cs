@@ -34,7 +34,7 @@ namespace Vintagestory.GameContent
         DialogueConfig dialogue;
         AssetLocation dialogueLoc;
 
-
+        
         public Action<DialogueController> onControllerCreated;
 
 
@@ -247,7 +247,7 @@ namespace Vintagestory.GameContent
 
             if (world.Side == EnumAppSide.Client && !(entity is ITalkUtil))
             {
-                talkUtilInst = new EntityTalkUtil(world.Api as ICoreClientAPI, entity);
+                talkUtilInst = new EntityTalkUtil(world.Api as ICoreClientAPI, entity, false);
             }
         }
 

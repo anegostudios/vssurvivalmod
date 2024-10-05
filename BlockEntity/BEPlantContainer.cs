@@ -17,7 +17,7 @@ namespace Vintagestory.GameContent
         public bool RandomRotate = true;
     }
 
-    public class BlockEntityPlantContainer : BlockEntityContainer, ITexPositionSource
+    public class BlockEntityPlantContainer : BlockEntityContainer, ITexPositionSource, IRotatable
     {
         InventoryGeneric inv;
         public override InventoryBase Inventory => inv;
@@ -132,7 +132,7 @@ namespace Vintagestory.GameContent
             if (!inv[0].Empty || fromSlot.Empty) return false;
             ItemStack stack = fromSlot.Itemstack;
             if (GetProps(stack) == null) return false;
-            
+
             if (fromSlot.TryPutInto(Api.World, inv[0], 1) > 0)
             {
                 if (Api.Side == EnumAppSide.Server)
@@ -222,7 +222,7 @@ namespace Vintagestory.GameContent
             if (hasSoil && Block.Attributes != null)
             {
                 CompositeShape compshape = Block.Attributes["filledShape"].AsObject<CompositeShape>(null, Block.Code.Domain);
-                Shape shape = null; 
+                Shape shape = null;
                 if (compshape != null)
                 {
                     shape = Shape.TryGet(Api, compshape.Base.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json"));
@@ -244,7 +244,7 @@ namespace Vintagestory.GameContent
             return meshes[key] = mesh;
         }
 
-        private MeshData[] GenContentMeshes(ITesselatorAPI tesselator) 
+        private MeshData[] GenContentMeshes(ITesselatorAPI tesselator)
         {
             ItemStack content = GetContents();
             if (content == null) return null;
@@ -267,7 +267,7 @@ namespace Vintagestory.GameContent
 
             curContProps = PlantContProps;
             if (curContProps == null) return null;
-            
+
             CompositeShape compoShape = curContProps.Shape;
             if (compoShape == null)
             {
@@ -312,11 +312,11 @@ namespace Vintagestory.GameContent
                         tesselator.TesselateShape("plant container content shape", shape, out mesh, this, null, 0, climateColorMapId, seasonColorMapId);
                     }
                     catch (Exception e)
-                    { 
+                    {
                         Api.Logger.Error(e.Message + " (when tesselating " + compoShape.Base.WithPathPrefixOnce("shapes/") + ")");
                         Api.Logger.Error(e);
                         meshwithVariants = null;
-                        break; 
+                        break;
                     }
 
                     mesh.ModelTransform(transform);
@@ -337,7 +337,7 @@ namespace Vintagestory.GameContent
             if (potMesh == null) return false;
 
             mesher.AddMeshData(potMesh);
-            
+
             if (contentMesh != null)
             {
                 mesher.AddMeshData(contentMesh);
@@ -362,5 +362,11 @@ namespace Vintagestory.GameContent
             return stack.Collectible.Attributes?["plantContainable"]?[ContainerSize + "Container"]?.AsObject<PlantContainerProps>(null, stack.Collectible.Code.Domain);
         }
 
+        public void OnTransformed(IWorldAccessor worldAccessor, ITreeAttribute tree, int degreeRotation, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, EnumAxis? flipAxis)
+        {
+            MeshAngle = tree.GetFloat("meshAngle");
+            MeshAngle -= degreeRotation * GameMath.DEG2RAD;
+            tree.SetFloat("meshAngle", MeshAngle);
+        }
     }
 }

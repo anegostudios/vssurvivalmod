@@ -26,6 +26,11 @@ namespace Vintagestory.GameContent
         public float DropOnImpactChance = 0f;
         public bool DamageStackOnImpact = false;
 
+        public bool NonCollectible
+        {
+            get { return Attributes.GetBool("nonCollectible"); }
+            set { Attributes.SetBool("nonCollectible", value); }
+        }
 
         public override bool ApplyGravity
         {
@@ -282,6 +287,17 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public virtual void SetInitialRotation()
+        {
+            var pos = ServerPos;
+            double speed = pos.Motion.Length();
+            if (speed > 0.01)
+            {
+                pos.Pitch = 0;
+                pos.Yaw = GameMath.PI + (float)Math.Atan2(pos.Motion.X / speed, pos.Motion.Z / speed);
+                pos.Roll = -(float)Math.Asin(GameMath.Clamp(-pos.Motion.Y / speed, -1, 1));
+            }
+        }
 
         public virtual void SetRotation()
         {
@@ -306,7 +322,7 @@ namespace Vintagestory.GameContent
 
         public override bool CanCollect(Entity byEntity)
         {
-            return Alive && World.ElapsedMilliseconds - msLaunch > 1000 && ServerPos.Motion.Length() < 0.01;
+            return !NonCollectible && Alive && World.ElapsedMilliseconds - msLaunch > 1000 && ServerPos.Motion.Length() < 0.01;
         }
 
         public override ItemStack OnCollected(Entity byEntity)

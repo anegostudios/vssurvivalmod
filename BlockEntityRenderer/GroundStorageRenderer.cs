@@ -90,7 +90,7 @@ public class GroundStorageRenderer : IRenderer
 
             prog.ModelMatrix = ModelMat.Values;
 
-            prog.TempGlowMode = stack.ItemAttributes?["tempGlowMode"].AsInt() ?? 0;
+            prog.TempGlowMode = 1; // stack.ItemAttributes?["tempGlowMode"].AsInt() ?? 0;
             prog.RgbaLightIn = lightrgbs;
             prog.RgbaGlowIn = new Vec4f(glowColor[0], glowColor[1], glowColor[2], gi / 255f);
             prog.ExtraGlow = gi;

@@ -219,6 +219,8 @@ namespace Vintagestory.GameContent
 
             EntityBehaviorTiredness ebt = MountedBy?.GetBehavior("tiredness") as EntityBehaviorTiredness;
             if (ebt != null) ebt.IsSleeping = true;
+
+            MarkDirty(false);
         }
 
         public bool IsMountedBy(Entity entity) => this.MountedBy == entity;

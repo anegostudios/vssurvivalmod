@@ -49,7 +49,7 @@ namespace Vintagestory.GameContent
                 if (be?.BlockIds != null && be.BlockIds.Length > 0)
                 {
                     Block block = blocks[be.GetMajorityMaterialId()];
-                    return block;
+                    return block.Sounds == null ? defaultBlock : block;
                 }
 
 

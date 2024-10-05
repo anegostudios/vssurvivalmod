@@ -140,10 +140,6 @@ namespace Vintagestory.GameContent
 
             IPlayer byPlayer = (byEntity as EntityPlayer).Player;
             if (farmland == null || byPlayer == null) return;
-
-
-
-
             if (block.Sounds != null) byEntity.World.PlaySoundAt(block.Sounds.Place, pos, 0.4, null);
 
             byEntity.World.BlockAccessor.SetBlock(farmland.BlockId, pos);

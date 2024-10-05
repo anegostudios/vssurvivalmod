@@ -83,6 +83,7 @@ namespace Vintagestory.GameContent
 
             if (MetalContent != null && renderer != null)
             {
+                renderer.stack = MetalContent;
                 renderer.Temperature = Math.Min(1300, MetalContent.Collectible.GetTemperature(Api.World, MetalContent));
             }
 

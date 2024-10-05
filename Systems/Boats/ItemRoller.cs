@@ -146,6 +146,9 @@ namespace Vintagestory.GameContent
                 return;
             }
 
+            slot.TakeOut(5);
+            slot.MarkDirty();
+
             string material = "oak";
             int orient = GetOrient(player);
 

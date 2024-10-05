@@ -121,7 +121,6 @@ namespace Vintagestory.GameContent
             RegisterDefaultBlockEntities();
 
             api.RegisterMountable("bed", BlockBed.GetMountable);
-            AiTaskRegistry.Register("throwatentity", typeof(AiTaskThrowAtEntity));
 
             if (api is ICoreServerAPI sapi)
             {
@@ -208,6 +207,8 @@ namespace Vintagestory.GameContent
 
             AiTaskRegistry.Register<AiTaskBellAlarm>("bellalarm");
             AiTaskRegistry.Register<AiTaskThrowAtEntity>("throwatentity");
+            AiTaskRegistry.Register<AiTaskStayInRange>("stayinrange");
+            AiTaskRegistry.Register<AiTaskTurretMode>("turretmode");
         }
 
         private void Event_PlayerJoin(IServerPlayer byPlayer)

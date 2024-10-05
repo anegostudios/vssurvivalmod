@@ -145,9 +145,11 @@ namespace Vintagestory.GameContent
             byEntity.Attributes.SetInt("aiming", 0);
             byEntity.AnimManager.StopAnimation(aimAnimation);
 
-            if (byEntity.World is IClientWorldAccessor)
+            if (byEntity.World.Side == EnumAppSide.Client)
             {
                 slot.Itemstack.TempAttributes.RemoveAttribute("renderVariant");
+                byEntity.AnimManager.StartAnimation("bowhit");
+                return;
             }
 
             slot.Itemstack.Attributes.SetInt("renderVariant", 0);
@@ -176,9 +178,7 @@ namespace Vintagestory.GameContent
             ItemStack stack = arrowSlot.TakeOut(1);
             arrowSlot.MarkDirty();
 
-            IPlayer byPlayer = null;
-            if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
-            byEntity.World.PlaySoundAt(new AssetLocation("sounds/bow-release"), byEntity, byPlayer, false, 8);
+            byEntity.World.PlaySoundAt(new AssetLocation("sounds/bow-release"), byEntity, null, false, 8);
 
             float breakChance = 0.5f;
             if (stack.ItemAttributes != null) breakChance = stack.ItemAttributes["breakChanceOnImpact"].AsFloat(0.5f);
@@ -208,6 +208,7 @@ namespace Vintagestory.GameContent
             byEntity.World.SpawnEntity(entityarrow);
 
             slot.Itemstack.Collectible.DamageItem(byEntity.World, byEntity, slot);
+            slot.MarkDirty();
 
             byEntity.AnimManager.StartAnimation("bowhit");
         }

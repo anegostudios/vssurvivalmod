@@ -17,7 +17,7 @@ namespace Vintagestory.GameContent
     }
 
     /// <summary>
-    /// When right clicked on a block, this chisel tool will exchange given block into a chiseledblock which 
+    /// When right clicked on a block, this chisel tool will exchange given block into a chiseledblock which
     /// takes on the model of the block the player interacted with in the first place, but with each voxel being selectable and removable
     /// </summary>
     public class ItemChisel : Item
@@ -25,7 +25,15 @@ namespace Vintagestory.GameContent
         public SkillItem[] ToolModes;
         SkillItem addMatItem;
 
-        public static bool carvingTime = DateTime.Now.Month == 10 || DateTime.Now.Month == 11;
+        public bool carvingTime
+        {
+            get
+            {
+                var dateTime = DateTime.UtcNow;
+                return dateTime.Month == 10 || dateTime.Month == 11;
+            }
+        }
+
         public static bool AllowHalloweenEvent = true;
 
         public override void OnLoaded(ICoreAPI api)
@@ -168,13 +176,13 @@ namespace Vintagestory.GameContent
             }
 
             if (block is BlockChisel)
-            {   
+            {
                 OnBlockInteract(byEntity.World, byPlayer, blockSel, true, ref handling);
                 return;
             }
         }
 
-        
+
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
@@ -245,8 +253,8 @@ namespace Vintagestory.GameContent
                 base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
                 return;
             }
-            
-            
+
+
             if (block is BlockChisel)
             {
                 OnBlockInteract(byEntity.World, byPlayer, blockSel, false, ref handling);
@@ -266,7 +274,7 @@ namespace Vintagestory.GameContent
             {
                 be.AddMaterial(api.World.GetBlock(new AssetLocation("creativeglow-35")));
             }
-            
+
             handling = EnumHandHandling.PreventDefaultAction;
         }
 
@@ -330,7 +338,7 @@ namespace Vintagestory.GameContent
 
             return true;
         }
-        
+
 
         public void OnBlockInteract(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, bool isBreak, ref EnumHandHandling handling)
         {
@@ -359,7 +367,7 @@ namespace Vintagestory.GameContent
             if (blockSel == null) return null;
             BlockEntityChisel be = forPlayer.Entity.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityChisel;
             if (be != null)
-            {    
+            {
                 if (be.BlockIds.Length <= 1)
                 {
                     addMatItem.Linebreak = true;

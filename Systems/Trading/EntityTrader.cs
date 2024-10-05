@@ -48,7 +48,7 @@ namespace Vintagestory.GameContent
             get { return WatchedAttributes.GetString("personality", "formal"); }
             set {
                 WatchedAttributes.SetString("personality", value);
-                talkUtil?.SetModifiers(Personalities[value].ChorldDelayMul, Personalities[value].PitchModifier, Personalities[value].VolumneModifier);
+                talkUtil?.SetModifiers(Personalities[value].ChordDelayMul, Personalities[value].PitchModifier, Personalities[value].VolumneModifier);
             }
         }
 
@@ -95,7 +95,7 @@ namespace Vintagestory.GameContent
                 
             } else
             {
-                talkUtil = new EntityTalkUtil(api as ICoreClientAPI, this);
+                talkUtil = new EntityTalkUtil(api as ICoreClientAPI, this, false);
             }
             
             try

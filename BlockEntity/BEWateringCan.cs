@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -8,7 +9,7 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityWateringCan : BlockEntity
+    public class BlockEntityWateringCan : BlockEntity, IRotatable
     {
         public float SecondsWateringLeft;
         BlockWateringCan ownBlock;
@@ -49,6 +50,13 @@ namespace Vintagestory.GameContent
             base.ToTreeAttributes(tree);
 
             tree.SetFloat("secondsWateringLeft", SecondsWateringLeft);
+            tree.SetFloat("meshAngle", MeshAngle);
+        }
+
+        public void OnTransformed(IWorldAccessor worldAccessor, ITreeAttribute tree, int degreeRotation, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, EnumAxis? flipAxis)
+        {
+            MeshAngle = tree.GetFloat("meshAngle");
+            MeshAngle -= degreeRotation * GameMath.DEG2RAD;
             tree.SetFloat("meshAngle", MeshAngle);
         }
 

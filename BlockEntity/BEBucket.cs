@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Collections.Generic;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -7,7 +8,7 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityBucket : BlockEntityLiquidContainer
+    public class BlockEntityBucket : BlockEntityLiquidContainer, IRotatable
     {
         public override string InventoryClassName => "bucket";
 
@@ -51,13 +52,13 @@ namespace Vintagestory.GameContent
             }
         }
 
-        
+
 
 
         internal MeshData GenMesh()
         {
             if (ownBlock == null) return null;
-            
+
             MeshData mesh = ownBlock.GenMesh(Api as ICoreClientAPI, GetContent(), Pos);
 
             if (mesh.CustomInts != null)
@@ -98,6 +99,12 @@ namespace Vintagestory.GameContent
             tree.SetFloat("meshAngle", MeshAngle);
         }
 
+        public void OnTransformed(IWorldAccessor worldAccessor, ITreeAttribute tree, int degreeRotation, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, EnumAxis? flipAxis)
+        {
+            MeshAngle = tree.GetFloat("meshAngle");
+            MeshAngle -= degreeRotation * GameMath.DEG2RAD;
+            tree.SetFloat("meshAngle", MeshAngle);
+        }
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
@@ -106,7 +113,7 @@ namespace Vintagestory.GameContent
             if (slot.Empty)
             {
                 dsc.AppendLine(Lang.Get("Empty"));
-            } else 
+            } else
             {
                 dsc.AppendLine(Lang.Get("Contents: {0}x{1}", slot.Itemstack.StackSize, slot.Itemstack.GetName()));
             }

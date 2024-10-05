@@ -342,7 +342,7 @@ namespace Vintagestory.GameContent
                     .AddCellList(listBounds, createCell, collections.Values, "collections")
                 .EndClip()
                 .AddVerticalScrollbar(OnNewScrollbarValue, scrollbarBounds, "scrollbar")
-                .AddSmallButton(Lang.Get("Modify Activity"), OnModifyCollection, mbBounds, EnumButtonStyle.Small, "modifycollection")
+                .AddSmallButton(Lang.Get("Modify Activity collection"), OnModifyCollection, mbBounds, EnumButtonStyle.Small, "modifycollection")
                 .AddTextInput(textfieldbounds.FlatCopy().WithFixedOffset(-offx, 0), null, CairoFont.WhiteDetailText(), "entityid")
                 .AddSmallButton(Lang.Get("Apply to entity"), ApplyToEntityId, textfieldbounds.FlatCopy().WithFixedPadding(4, 1), EnumButtonStyle.Small, "applytoentityid")
 
@@ -377,6 +377,8 @@ namespace Vintagestory.GameContent
 
         public bool ApplyToEntityId()
         {
+            if (selectedIndex < 0) return true;
+
             capi.Network.GetChannel("activityEditor").SendPacket(new ApplyConfigPacket()
             {
                 ActivityCollectionName = collections.GetValueAtIndex(selectedIndex).Name,
@@ -391,13 +393,15 @@ namespace Vintagestory.GameContent
             SingleComposer.GetButton("applytoentityid").Enabled = selectedIndex >= 0;
         }
 
+
+        GuiDialogActivityCollection editDlg;
         private bool OnModifyCollection()
         {
             if (selectedIndex < 0) return true;
 
             var key = collections.GetKeyAtIndex(selectedIndex);
-            var dlg = new GuiDialogActivityCollection(capi, this, collections[key], vas, key);
-            dlg.TryOpen();
+            editDlg = new GuiDialogActivityCollection(capi, this, collections[key], vas, key);
+            editDlg.TryOpen();
             return true;
         }
 
@@ -417,10 +421,17 @@ namespace Vintagestory.GameContent
             listElem.ReloadCells(collections.Values);
         }
 
+        GuiDialogActivityCollection createDlg;
         private bool OnCreateCollection()
         {
-            var dlg = new GuiDialogActivityCollection(capi, this, null, vas, null);
-            dlg.TryOpen();
+            if (createDlg != null && createDlg.IsOpened())
+            {
+                capi.TriggerIngameError(this, "alreadyopened", Lang.Get("Close the other activity collection dialog first"));
+                return false;
+            }
+
+            createDlg = new GuiDialogActivityCollection(capi, this, null, vas, null);
+            createDlg.TryOpen();
             return true;
         }
 
@@ -479,7 +490,7 @@ namespace Vintagestory.GameContent
     {
         public override string ToggleKeyCombinationCode => null;
         GuiDialogActivityCollections dlg;
-        EntityActivityCollection collection;
+        public EntityActivityCollection collection;
         private EntityActivitySystem vas;
         public AssetLocation assetpath;
         bool isNew = false;
@@ -654,6 +665,11 @@ namespace Vintagestory.GameContent
         private bool OnModifyActivity()
         {
             if (selectedIndex < 0) return true;
+            if (activityDlg != null && activityDlg.IsOpened())
+            {
+                capi.TriggerIngameError(this, "cantsave", "Unable to modify. Close any currently opened activity dialogs first");
+                return false;
+            }
 
             activityDlg = new GuiDialogActivity(capi, this, vas, collection.Activities[selectedIndex], selectedIndex);
             activityDlg.TryOpen();
@@ -930,7 +946,7 @@ namespace Vintagestory.GameContent
             SingleComposer.EndChildElements().Compose();
 
             updateButtonStates();
-            updateScrollbarBoundsActions();
+            updateScrollbarBounds();
 
             SingleComposer.GetTextInput("name").SetValue(entityActivity.Name);
             SingleComposer.GetNumberInput("priority").SetValue((float)entityActivity.Priority);
@@ -1028,6 +1044,7 @@ namespace Vintagestory.GameContent
                     if (condition == null) entityActivity.Conditions = entityActivity.Conditions.Append(editCondDlg.actioncondition);
                     else entityActivity.Conditions[selectedConditionIndex] = editCondDlg.actioncondition;
                     conditionsListElem.ReloadCells(entityActivity.Conditions);
+                    updateScrollbarBounds();
                 }
             };
             return true;
@@ -1046,7 +1063,7 @@ namespace Vintagestory.GameContent
                     if (entityAction == null) entityActivity.Actions = entityActivity.Actions.Append(editActionDlg.entityAction);
                     else entityActivity.Actions[selectedActionIndex] = editActionDlg.entityAction;
                     actionListElem.ReloadCells(entityActivity.Actions);
-                    updateScrollbarBoundsActions();
+                    updateScrollbarBounds();
                 }
             };
             return true;
@@ -1160,7 +1177,7 @@ namespace Vintagestory.GameContent
         {
             TryClose();
         }
-        void updateScrollbarBoundsActions()
+        void updateScrollbarBounds()
         {
             if (actionListElem == null) return;
             SingleComposer.GetScrollbar("actionsScrollbar")?.Bounds.CalcWorldBounds();

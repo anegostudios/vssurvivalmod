@@ -53,6 +53,13 @@ namespace Vintagestory.GameContent
         {
             base.OnGameTick(dt);
 
+            if (!Alive && Api.Side == EnumAppSide.Server && AnimManager.IsAnimationActive("stroke-start", "stroke-idle", "stroke-end", "despair"))
+            {
+                AnimManager.StopAnimation("stroke-start");
+                AnimManager.StopAnimation("stroke-idle");
+                AnimManager.StopAnimation("stroke-end");
+            }
+
             if (Alive && Api.Side == EnumAppSide.Server && Api.World.Rand.NextDouble() < 0.0009 && !AnimManager.IsAnimationActive("stroke-start", "stroke-idle", "stroke-end", "despair"))
             {
                 strokeActive = true;

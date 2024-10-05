@@ -30,12 +30,15 @@ namespace Vintagestory.GameContent
         public AssetLocation TextureNameRight = null;
 
         public int QuantityMolds = 1;
+        private readonly BlockEntityIngotMold entity;
 
+        public ItemStack stack;
 
-        public IngotMoldRenderer(BlockPos pos, ICoreClientAPI api)
+        public IngotMoldRenderer(BlockEntityIngotMold beim, ICoreClientAPI api)
         {
-            this.pos = pos;
+            this.pos = beim.Pos;
             this.api = api;
+            entity = beim;
 
             MeshData modeldata = QuadMeshUtil.GetQuad();
             modeldata.Uv = new float[]
@@ -73,6 +76,13 @@ namespace Vintagestory.GameContent
             prog.DontWarpVertices = 0;
             prog.ExtraGodray = 0;
             prog.AddRenderFlags = 0;
+            if (stack != null)
+            {
+                prog.AverageColor = ColorUtil.ToRGBAVec4f(api.BlockTextureAtlas.GetAverageColor((stack.Item?.FirstTexture ?? stack.Block.FirstTextureInventory).Baked.TextureSubId));
+                prog.TempGlowMode = 1;
+            }
+            
+
 
             if (LevelLeft > 0 && TextureNameLeft != null)
             {
@@ -82,29 +92,35 @@ namespace Vintagestory.GameContent
 
                 prog.RgbaLightIn = lightrgbs;
                 prog.RgbaGlowIn = new Vec4f(glowColor[0], glowColor[1], glowColor[2], extraGlow / 255f);
-                
+
                 prog.ExtraGlow = extraGlow;
                 prog.NormalShaded = 0;
 
                 int texid = api.Render.GetOrLoadTexture(TextureNameLeft);
                 rpi.BindTexture2d(texid);
-         
-                float xzOffset = (QuantityMolds > 1) ? 4.5f : 8.5f;
 
-                prog.ModelMatrix = ModelMat
+                float xzOffset = QuantityMolds > 1 ? 4.5f : 8.5f;
+
+                ModelMat
                     .Identity()
                     .Translate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z)
+
+                    .Translate(0.5f,0f,0.5f)
+                    .RotateY(entity.MeshAngle)
+                    .Translate(-0.5f,0f,-0.5f)
+
                     .Translate(xzOffset / 16f, 1 / 16f + LevelLeft / 850f, 8.5f / 16)
+
                     .RotateX(90 * GameMath.DEG2RAD)
+
                     .Scale(0.5f * 3 / 16f, 0.5f * 7 / 16f, 0.5f)
-                    .Values
                 ;
+                prog.ModelMatrix = ModelMat.Values;
                 prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
                 prog.ViewMatrix = rpi.CameraMatrixOriginf;
 
                 rpi.RenderMesh(quadModelRef);
             }
-            
 
             if (LevelRight > 0 && QuantityMolds > 1 && TextureNameRight != null)
             {
@@ -114,27 +130,31 @@ namespace Vintagestory.GameContent
 
                 prog.RgbaLightIn = lightrgbs;
                 prog.RgbaGlowIn = new Vec4f(glowColor[0], glowColor[1], glowColor[2], extraGlow / 255f);
-                
+
                 prog.ExtraGlow = extraGlow;
                 prog.NormalShaded = 0;
 
                 int texid = api.Render.GetOrLoadTexture(TextureNameRight);
                 rpi.BindTexture2d(texid);
 
-                prog.ModelMatrix = ModelMat
+                ModelMat
                     .Identity()
                     .Translate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z)
+                    .Translate(0.5f,0f,0.5f)
+                    .RotateY(entity.MeshAngle)
+                    .Translate(-0.5f,0f,-0.5f)
                     .Translate(11.5f / 16f, 1 / 16f + LevelRight / 850f, 8.5f / 16)
                     .RotateX(90 * GameMath.DEG2RAD)
+
                     .Scale(0.5f * 3 / 16f, 0.5f * 7 / 16f, 0.5f)
-                    .Values
-                ;
+                    ;
+                prog.ModelMatrix = ModelMat.Values;
                 prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
                 prog.ViewMatrix = rpi.CameraMatrixOriginf;
 
 
                 rpi.RenderMesh(quadModelRef);
-                
+
             }
 
 

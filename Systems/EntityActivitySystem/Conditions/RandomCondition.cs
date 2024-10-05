@@ -41,7 +41,7 @@ namespace Vintagestory.GameContent
         {
             var b = ElementBounds.Fixed(0, 0, 200, 25);
             singleComposer
-                .AddStaticText("Chance", CairoFont.WhiteDetailText(), b)
+                .AddStaticText("Chance (0..1)", CairoFont.WhiteDetailText(), b)
                 .AddTextInput(b = b.BelowCopy(0, -5), null, CairoFont.WhiteDetailText(), "chance")
             ;
 

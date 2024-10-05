@@ -20,7 +20,7 @@ namespace Vintagestory.GameContent
         void OnPourOver();
     }
 
-    public class BlockEntityIngotMold : BlockEntity, ILiquidMetalSink, ITemperatureSensitive, ITexPositionSource
+    public class BlockEntityIngotMold : BlockEntity, ILiquidMetalSink, ITemperatureSensitive, ITexPositionSource, IRotatable
     {
         protected long lastPouringMarkdirtyMs;
         protected IngotMoldRenderer ingotRenderer;
@@ -31,7 +31,7 @@ namespace Vintagestory.GameContent
         public int FillLevelLeft = 0;
         public int FillLevelRight = 0;
         public int QuantityMolds = 1;
-        public bool FillSide;
+        public bool IsRightSideSelected;
         public bool ShatteredLeft;
         public bool ShatteredRight;
 
@@ -52,6 +52,7 @@ namespace Vintagestory.GameContent
 
 
         ICoreClientAPI capi;
+        public float MeshAngle;
 
         public override void Initialize(ICoreAPI api)
         {
@@ -69,7 +70,7 @@ namespace Vintagestory.GameContent
             capi = api as ICoreClientAPI;
             if (capi != null && !BothShattered)
             {
-                capi.Event.RegisterRenderer(ingotRenderer = new IngotMoldRenderer(Pos, capi), EnumRenderStage.Opaque, "ingotmold");
+                capi.Event.RegisterRenderer(ingotRenderer = new IngotMoldRenderer(this, capi), EnumRenderStage.Opaque, "ingotmold");
 
                 UpdateIngotRenderer();
 
@@ -94,11 +95,13 @@ namespace Vintagestory.GameContent
 
             if (ContentsLeft != null && ingotRenderer != null)
             {
+                ingotRenderer.stack = ContentsLeft;
                 ingotRenderer.TemperatureLeft = Math.Min(1300, ContentsLeft.Collectible.GetTemperature(Api.World, ContentsLeft));
             }
 
             if (ContentsRight != null && ingotRenderer != null)
             {
+                ingotRenderer.stack = ContentsRight;
                 ingotRenderer.TemperatureRight = Math.Min(1300, ContentsRight.Collectible.GetTemperature(Api.World, ContentsRight));
             }
         }
@@ -118,7 +121,35 @@ namespace Vintagestory.GameContent
 
         public void BeginFill(Vec3d hitPosition)
         {
-            FillSide = hitPosition.X >= 0.5f;
+            SetSelectedSide(hitPosition);
+        }
+
+        private void SetSelectedSide(Vec3d hitPosition)
+        {
+            var facing = BlockFacing.HorizontalFromAngle(MeshAngle);
+            switch (facing.Index)
+            {
+                case 0:
+                {
+                    IsRightSideSelected = hitPosition.Z < 0.5f;
+                    break;
+                }
+                case 1:
+                {
+                    IsRightSideSelected = hitPosition.X >= 0.5f;
+                    break;
+                }
+                case 2:
+                {
+                    IsRightSideSelected = hitPosition.Z >= 0.5f;
+                    break;
+                }
+                case 3:
+                {
+                    IsRightSideSelected = hitPosition.X < 0.5f;
+                    break;
+                }
+            }
         }
 
 
@@ -213,7 +244,8 @@ namespace Vintagestory.GameContent
             if (Api is ICoreServerAPI) MarkDirty();
 
             ItemStack leftStack = !IsHardenedLeft ? null : GetStateAwareContentsLeft();
-            if (leftStack != null && (hitPosition.X < 0.5f || QuantityMolds == 1) && !ShatteredLeft)
+            SetSelectedSide(hitPosition);
+            if (leftStack != null && (!IsRightSideSelected || QuantityMolds == 1) && !ShatteredLeft)
             {
                 Api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), Pos, -0.5, byPlayer, false);
                 if (Api is ICoreServerAPI)
@@ -231,7 +263,7 @@ namespace Vintagestory.GameContent
             }
 
             ItemStack rightStack = !IsHardenedRight ? null : GetStateAwareContentsRight();
-            if (rightStack != null && hitPosition.X >= 0.5f && !ShatteredRight)
+            if (rightStack != null && IsRightSideSelected && !ShatteredRight)
             {
                 Api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), Pos, -0.5, byPlayer, false);
                 if (Api is ICoreServerAPI)
@@ -387,7 +419,7 @@ namespace Vintagestory.GameContent
                 lastPouringMarkdirtyMs = Api.World.ElapsedMilliseconds + 500;
             }
 
-            if ((QuantityMolds == 1 || !FillSide) && FillLevelLeft < RequiredUnits && (ContentsLeft == null || metal.Collectible.Equals(ContentsLeft, metal, GlobalConstants.IgnoredStackAttributes)))
+            if ((QuantityMolds == 1 || !IsRightSideSelected) && FillLevelLeft < RequiredUnits && (ContentsLeft == null || metal.Collectible.Equals(ContentsLeft, metal, GlobalConstants.IgnoredStackAttributes)))
             {
                 if (ContentsLeft == null)
                 {
@@ -408,7 +440,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            if (FillSide && QuantityMolds > 1 && FillLevelRight < RequiredUnits && (ContentsRight == null || metal.Collectible.Equals(ContentsRight, metal, GlobalConstants.IgnoredStackAttributes)))
+            if (IsRightSideSelected && QuantityMolds > 1 && FillLevelRight < RequiredUnits && (ContentsRight == null || metal.Collectible.Equals(ContentsRight, metal, GlobalConstants.IgnoredStackAttributes)))
             {
                 if (ContentsRight == null)
                 {
@@ -471,17 +503,8 @@ namespace Vintagestory.GameContent
         MeshData shatteredMeshLeft;
         MeshData shatteredMeshRight;
 
-        public static float[] shiftLeftTfMat;
-        public static float[] shiftRightTfMat;
-
-        static BlockEntityIngotMold()
-        {
-            shiftLeftTfMat = Mat4f.Create();
-            Mat4f.Translate(shiftLeftTfMat, shiftLeftTfMat, -4 / 16f, 0, 0);
-
-            shiftRightTfMat = Mat4f.Create();
-            Mat4f.Translate(shiftRightTfMat, shiftRightTfMat, 3 / 16f, 0, 0);
-        }
+        public static Vec3f left = new Vec3f(-4 / 16f, 0, 0);
+        public static Vec3f right = new Vec3f(3 / 16f, 0, 0);
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
@@ -491,15 +514,35 @@ namespace Vintagestory.GameContent
                 case 1:
                     {
                         if (ShatteredLeft) EnsureShatteredMeshesLoaded();
-                        mesher.AddMeshData(ShatteredLeft ? shatteredMeshLeft : MoldMesh);
+                        var leftTfMat = Mat4f.Create();
+                        Mat4f.Translate(leftTfMat, leftTfMat, 0.5f, 0f,0.5f);
+                        Mat4f.RotateY(leftTfMat, leftTfMat, MeshAngle);
+                        Mat4f.Translate(leftTfMat, leftTfMat, -0.5f, -0f,-0.5f);
+                        mesher.AddMeshData(ShatteredLeft ? shatteredMeshLeft : MoldMesh, leftTfMat);
                     }
                     break;
                 case 2:
                     {
                         if (ShatteredLeft || ShatteredRight) EnsureShatteredMeshesLoaded();
 
-                        mesher.AddMeshData(ShatteredLeft ? shatteredMeshLeft : MoldMesh, shiftLeftTfMat);
-                        mesher.AddMeshData(ShatteredRight ? shatteredMeshRight : MoldMesh, shiftRightTfMat);
+                        var matrixfl = new Matrixf().Identity();
+
+                        matrixfl
+                            .Translate(0.5f, 0f,0.5f)
+                            .RotateY(MeshAngle)
+                            .Translate(-0.5f, -0f,-0.5f)
+                            .Translate(left);
+
+                        var matrixfr = new Matrixf().Identity();
+
+                        matrixfr
+                            .Translate(0.5f, 0f,0.5f)
+                            .RotateY(MeshAngle)
+                            .Translate(-0.5f, -0f,-0.5f)
+                            .Translate(right);
+
+                        mesher.AddMeshData(ShatteredLeft ? shatteredMeshLeft : MoldMesh, matrixfl.Values);
+                        mesher.AddMeshData(ShatteredRight ? shatteredMeshRight : MoldMesh, matrixfr.Values);
                     }
                     break;
             }
@@ -565,6 +608,7 @@ namespace Vintagestory.GameContent
 
             ShatteredLeft = tree.GetBool("shatteredLeft");
             ShatteredRight = tree.GetBool("shatteredRight");
+            MeshAngle = tree.GetFloat("meshAngle");
 
             UpdateIngotRenderer();
 
@@ -589,6 +633,7 @@ namespace Vintagestory.GameContent
 
             tree.SetBool("shatteredLeft", ShatteredLeft);
             tree.SetBool("shatteredRight", ShatteredRight);
+            tree.SetFloat("meshAngle", MeshAngle);
         }
 
 
@@ -713,6 +758,13 @@ namespace Vintagestory.GameContent
                 }
             }
 
+        }
+
+        public void OnTransformed(IWorldAccessor worldAccessor, ITreeAttribute tree, int degreeRotation, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, EnumAxis? flipAxis)
+        {
+            MeshAngle = tree.GetFloat("meshAngle");
+            MeshAngle -= degreeRotation * GameMath.DEG2RAD;
+            tree.SetFloat("meshAngle", MeshAngle);
         }
     }
 }

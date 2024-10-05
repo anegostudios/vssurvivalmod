@@ -77,13 +77,13 @@ namespace Vintagestory.GameContent
 
     public class TraderPersonality
     {
-        public float ChorldDelayMul = 1;
+        public float ChordDelayMul = 1;
         public float PitchModifier = 1;
         public float VolumneModifier = 1;
 
         public TraderPersonality(float chordDelayMul, float pitchModifier, float volumneModifier)
         {
-            ChorldDelayMul = chordDelayMul;
+            ChordDelayMul = chordDelayMul;
             PitchModifier = pitchModifier;
             VolumneModifier = volumneModifier;
         }

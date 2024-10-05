@@ -1,8 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
-using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
@@ -19,6 +17,7 @@ namespace Vintagestory.GameContent
             ActionTypes["activateblock"] = typeof(ActivateBlockAction);
             ActionTypes["lookatblock"] = typeof(LookatBlockAction);
             ActionTypes["lookatentity"] = typeof(LookatEntityAction);
+            ActionTypes["turn"] = typeof(TurnAction);
             ActionTypes["mountblock"] = typeof(MountBlockAction);
             ActionTypes["playanimation"] = typeof(PlayAnimationAction);
             ActionTypes["stopanimation"] = typeof(StopAnimationAction);

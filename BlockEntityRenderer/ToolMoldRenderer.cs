@@ -30,6 +30,8 @@ namespace Vintagestory.GameContent
 
         internal Cuboidf[] fillQuadsByLevel;
 
+        public ItemStack stack;
+
         public ToolMoldRenderer(BlockPos pos, ICoreClientAPI api, Cuboidf[] fillQuadsByLevel = null)
         {
             this.pos = pos;
@@ -82,6 +84,12 @@ namespace Vintagestory.GameContent
             prog.AddRenderFlags = 0;
             prog.ExtraGodray = 0;
             prog.NormalShaded = 0;
+            if (stack != null)
+            {
+                prog.AverageColor = ColorUtil.ToRGBAVec4f(api.BlockTextureAtlas.GetAverageColor((stack.Item?.FirstTexture ?? stack.Block.FirstTextureInventory).Baked.TextureSubId));
+                prog.TempGlowMode = 1;
+            }
+            
 
             Vec4f lightrgbs = api.World.BlockAccessor.GetLightRGBs(pos.X, pos.Y, pos.Z);
             float[] glowColor = ColorUtil.GetIncandescenceColorAsColor4f((int)Temperature);

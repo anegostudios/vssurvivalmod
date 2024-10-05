@@ -19,21 +19,18 @@ namespace Vintagestory.GameContent
         public double TargetZ { get; set; }
         [JsonProperty]
         public double Yaw { get; set; }
-        [JsonProperty]
-        public bool Instant;
         public string Type => "teleport";
 
         public bool ExecutionHasFailed { get; set; }
 
         public TeleportAction() { }
-        public TeleportAction(EntityActivitySystem vas, double targetX, double targetY, double targetZ, double yaw, bool instant)
+        public TeleportAction(EntityActivitySystem vas, double targetX, double targetY, double targetZ, double yaw)
         {
             this.vas = vas;
             this.TargetX = targetX;
             this.TargetY = targetY;
             this.TargetZ = targetZ;
             this.Yaw = yaw;
-            this.Instant = instant;
         }
 
         public TeleportAction(EntityActivitySystem vas)
@@ -43,15 +40,7 @@ namespace Vintagestory.GameContent
 
         public void Start(EntityActivity act)
         {
-            if (Instant)
-            {
-                vas.Entity.TeleportToDouble(TargetX, TargetY, TargetZ);
-            } else
-            {
-                //vas.Entity.ServerPos.SetPos(TargetX, TargetY, TargetZ);
-                vas.Entity.TeleportToDouble(TargetX, TargetY, TargetZ);
-            }
-
+            vas.Entity.TeleportToDouble(TargetX, TargetY, TargetZ);
             vas.Entity.Controls.StopAllMovement();
             vas.wppathTraverser.Stop();
             vas.Entity.ServerPos.Yaw = (float)Yaw;
@@ -69,7 +58,7 @@ namespace Vintagestory.GameContent
         public bool IsFinished() => true;
         public override string ToString()
         {
-            return string.Format("Teleport to {0}/{1}/{2} ({3})", TargetX, TargetY, TargetZ, Instant ? "Instant" : "");
+            return string.Format("Teleport to {0}/{1}/{2}", TargetX, TargetY, TargetZ);
         }
 
 
@@ -88,11 +77,8 @@ namespace Vintagestory.GameContent
                 .AddTextInput(bc = bc.CopyOffsetedSibling(70), null, CairoFont.WhiteDetailText(), "z")
                 .AddSmallButton("Insert Player Pos", () => onClickPlayerPos(capi, singleComposer), b = b.FlatCopy().FixedUnder(bc), EnumButtonStyle.Small)
 
-                .AddStaticText("Yaw", CairoFont.WhiteDetailText(), b = b.BelowCopy(0, 15).WithFixedWidth(50))
+                .AddStaticText("Yaw (in radians)", CairoFont.WhiteDetailText(), b = b.BelowCopy(0, 15).WithFixedWidth(120))
                 .AddTextInput(b = b.BelowCopy(0, 5), null, CairoFont.WhiteDetailText(), "yaw")
-
-                .AddSwitch(null, b = b.BelowCopy(0, 15).WithFixedWidth(25), "instant", 25)
-                .AddStaticText("Instant teleport", CairoFont.WhiteDetailText(), b = b.RightCopy(10, 5).WithFixedWidth(100))
             ;
 
             var s = singleComposer;
@@ -100,7 +86,6 @@ namespace Vintagestory.GameContent
             s.GetTextInput("y").SetValue(TargetY + "");
             s.GetTextInput("z").SetValue(TargetZ + "");
             s.GetTextInput("yaw").SetValue(Yaw + "");
-            s.GetSwitch("instant").On = this.Instant;
         }
 
         private bool onClickPlayerPos(ICoreClientAPI capi, GuiComposer singleComposer)
@@ -121,13 +106,12 @@ namespace Vintagestory.GameContent
             this.TargetY = s.GetTextInput("y").GetText().ToDouble();
             this.TargetZ = s.GetTextInput("z").GetText().ToDouble();
             this.Yaw = s.GetTextInput("yaw").GetText().ToDouble();
-            this.Instant = s.GetSwitch("instant").On;
             return true;
         }
 
         public IEntityAction Clone()
         {
-            return new TeleportAction(vas, TargetX, TargetY, TargetZ, Yaw, Instant);
+            return new TeleportAction(vas, TargetX, TargetY, TargetZ, Yaw);
         }
 
         public void OnVisualize(ActivityVisualizer visualizer)

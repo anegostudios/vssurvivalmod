@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -146,7 +147,8 @@ namespace Vintagestory.GameContent
         }
 
         Cuboidf[] oneMoldBoxes = new Cuboidf[] { new Cuboidf(0, 0, 0, 1, 0.1875f, 1)  };
-        Cuboidf[] twoMoldBoxes = new Cuboidf[] { new Cuboidf(0, 0, 0, 0.5f, 0.1875f, 1), new Cuboidf(0.5f, 0, 0, 1, 0.1875f, 1) };
+        Cuboidf[] twoMoldBoxesNS = new Cuboidf[] { new Cuboidf(0, 0, 0, 0.5f, 0.1875f, 1), new Cuboidf(0.5f, 0, 0, 1, 0.1875f, 1) };
+        Cuboidf[] twoMoldBoxesEW = new Cuboidf[] { new Cuboidf(0, 0, 0, 1, 0.1875f, 0.5f), new Cuboidf(0, 0, 0.5f, 1, 0.1875f, 1) };
 
         public override Cuboidf[] GetSelectionBoxes(IBlockAccessor world, BlockPos pos)
         {
@@ -157,7 +159,22 @@ namespace Vintagestory.GameContent
                 return oneMoldBoxes;
             }
 
-            return twoMoldBoxes;
+            var faceing = BlockFacing.HorizontalFromAngle(betm.MeshAngle);
+            switch (faceing.Index)
+            {
+                case 0:
+                case 2:
+                {
+                    return twoMoldBoxesEW;
+                }
+                default:
+                    return twoMoldBoxesNS;
+            }
+        }
+
+        public override Cuboidf[] GetCollisionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
+        {
+            return GetSelectionBoxes(blockAccessor, pos);
         }
 
         public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
@@ -281,5 +298,23 @@ namespace Vintagestory.GameContent
             return (selection.SelectionBoxIndex == 0 ? interactionsLeft : interactionsRight).Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
         }
 
+        public override bool DoPlaceBlock(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ItemStack byItemStack)
+        {
+            bool val = base.DoPlaceBlock(world, byPlayer, blockSel, byItemStack);
+
+            if (val && world.BlockAccessor.GetBlockEntity(blockSel.Position) is BlockEntityIngotMold beim)
+            {
+                var targetPos = blockSel.DidOffset ? blockSel.Position.AddCopy(blockSel.Face.Opposite) : blockSel.Position;
+                var dx = byPlayer.Entity.Pos.X - (targetPos.X + blockSel.HitPosition.X);
+                var dz = byPlayer.Entity.Pos.Z - (targetPos.Z + blockSel.HitPosition.Z);
+                var angleHor = (float)Math.Atan2(dx, dz);
+
+                var roundRad = ((int)Math.Round(angleHor / GameMath.PIHALF)) * GameMath.PIHALF;
+                beim.MeshAngle = roundRad;
+                beim.MarkDirty();
+            }
+
+            return val;
+        }
     }
 }

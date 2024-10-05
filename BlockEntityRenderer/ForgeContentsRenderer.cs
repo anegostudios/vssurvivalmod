@@ -229,6 +229,7 @@ namespace Vintagestory.GameContent
 
                 prog.NormalShaded = 0;
                 prog.RgbaLightIn = lightrgbs;
+                prog.TempGlowMode = 1;
 
                 int glow = 255 - (int)(flicker * 50);
                 

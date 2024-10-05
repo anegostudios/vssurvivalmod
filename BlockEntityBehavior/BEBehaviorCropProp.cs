@@ -90,6 +90,7 @@ namespace Vintagestory.GameContent
         Shape nowTesselatingShape;
         ITexPositionSource defaultSource;
         bool dead;
+        Block cropBlock;
 
         public Size2i AtlasSize => capi.BlockTextureAtlas.Size;
         public TextureAtlasPosition this[string textureCode] {
@@ -169,22 +170,33 @@ namespace Vintagestory.GameContent
             if (Api == null || Api.Side != EnumAppSide.Client) return;
             capi = Api as ICoreClientAPI;
 
-            if (config.Shape == null)
+            var cshape = config.Shape;
+            cropBlock = Api.World.GetBlock(new AssetLocation("crop-" + Type + "-" + Stage));
+
+            if (cshape == null)
+            {   
+                if (cropBlock.Shape.Alternates == null)
+                {
+                    mesh = capi.TesselatorManager.GetDefaultBlockMesh(cropBlock);
+                    return;
+                }
+
+                cshape = cropBlock.Shape;
+            }
+            else
             {
-                var cropblock = Api.World.GetBlock(new AssetLocation("crop-" + Type + "-" + Stage));
-                mesh = capi.TesselatorManager.GetDefaultBlockMesh(cropblock);
-                return;
+                cshape.LoadAlternates(capi.Assets, capi.Logger);
             }
 
-            config.Shape.LoadAlternates(capi.Assets, capi.Logger);
-
-            var cshape = config.Shape;
-            if (config.Shape.BakedAlternates != null) {
-                cshape = config.Shape.BakedAlternates[GameMath.MurmurHash3Mod(Pos.X, Pos.Y, Pos.Z, config.Shape.BakedAlternates.Length)];
+            if (cshape.BakedAlternates != null)
+            {
+                cshape = cshape.BakedAlternates[GameMath.MurmurHash3Mod(Pos.X, Pos.Y, Pos.Z, cshape.BakedAlternates.Length)];
             }
 
             nowTesselatingShape = capi.Assets.TryGet(cshape.Base.Clone().WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json")).ToObject<Shape>();
             capi.Tesselator.TesselateShape("croprop", Block.Code, cshape, out mesh, this);
+
+            mesh.Translate(0, -1 / 16f, 0);
         }
 
         private void onTick8s(float dt)
@@ -237,7 +249,9 @@ namespace Vintagestory.GameContent
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
         {
-            mesher.AddMeshData(mesh);
+            float[] matrix = cropBlock?.RandomizeRotations==true ? TesselationMetaData.randomRotMatrices[GameMath.MurmurHash3Mod(-Pos.X, cropBlock.RandomizeAxes == EnumRandomizeAxes.XYZ ? Pos.Y : 0, Pos.Z, TesselationMetaData.randomRotations.Length)] : null;
+            
+            mesher.AddMeshData(mesh, matrix);
             return true;
         }
     }

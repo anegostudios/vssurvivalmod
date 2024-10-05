@@ -61,7 +61,11 @@ namespace Vintagestory.GameContent
             Finished = false;
             currentActionIndex = 0;
             CurrentAction.Start(this);
-            if (vas.Debug) vas.Entity.World.Logger.Debug("ActivitySystem entity {0}, starting new Activity - {1}", vas.Entity.EntityId, this.Name);
+            if (vas.Debug)
+            {
+                vas.Entity.World.Logger.Debug("ActivitySystem entity {0}, starting new Activity - {1}", vas.Entity.EntityId, this.Name);
+                vas.Entity.World.Logger.Debug("starting next action {0}", CurrentAction.Type);
+            }
         }
 
         public void Finish()

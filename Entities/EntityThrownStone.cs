@@ -21,7 +21,6 @@ namespace Vintagestory.GameContent
         public int DamageTier = 0;
         public ItemStack ProjectileStack;
 
-        public bool NonCollectible;
         public float collidedAccum;
 
         public float VerticalImpactBreakChance = 0f;
@@ -29,6 +28,12 @@ namespace Vintagestory.GameContent
 
         public float ImpactParticleSize = 1f;
         public int ImpactParticleCount = 20;
+
+        public bool NonCollectible
+        {
+            get { return Attributes.GetBool("nonCollectible"); }
+            set { Attributes.SetBool("nonCollectible", value); }
+        }
 
         public override bool IsInteractable
         {

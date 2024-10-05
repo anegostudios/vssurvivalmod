@@ -28,6 +28,8 @@ namespace Vintagestory.GameContent
         public string AnimCode = "walk";
         [JsonProperty]
         public bool Astar = true;
+        [JsonProperty]
+        public float Radius = 0;
         public string Type => "goto";
 
         
@@ -37,7 +39,7 @@ namespace Vintagestory.GameContent
         bool done;
 
         public GotoAction() { }
-        public GotoAction(EntityActivitySystem vas, Vec3d target, bool astar, string animCode = "walk", float walkSpeed = 0.02f, float animSpeed = 1)
+        public GotoAction(EntityActivitySystem vas, Vec3d target, bool astar, string animCode = "walk", float walkSpeed = 0.02f, float animSpeed = 1, float radius = 0)
         {
             this.vas = vas;
             this.Astar = astar;
@@ -45,6 +47,7 @@ namespace Vintagestory.GameContent
             this.AnimSpeed = animSpeed;
             this.AnimCode = animCode;
             this.WalkSpeed = walkSpeed;
+            this.Radius = radius;
         }
 
         public GotoAction(EntityActivitySystem vas)
@@ -56,14 +59,23 @@ namespace Vintagestory.GameContent
         {
             done = false;
             ExecutionHasFailed = false;
+
+            var hereTarget = Target;
+            if (Radius > 0)
+            {
+                float alpha = (float)vas.Entity.World.Rand.NextDouble() * GameMath.TWOPI;
+                Target.X += Math.Sin(alpha) * Radius;
+                Target.Z += Math.Cos(alpha) * Radius;
+            }
+
             if (Astar)
             {
                 int tries = 4;
-                while (tries-- > 0 && !vas.wppathTraverser.NavigateTo(Target, WalkSpeed, OnDone, OnStuck, OnNoPath)) { }
+                while (tries-- > 0 && !vas.wppathTraverser.NavigateTo(hereTarget, WalkSpeed, OnDone, OnStuck, OnNoPath)) { }
             }
             else
             {
-                vas.linepathTraverser.NavigateTo(Target, WalkSpeed, OnDone, OnStuck);
+                vas.linepathTraverser.NavigateTo(hereTarget, WalkSpeed, OnDone, OnStuck);
             }
 
 
@@ -161,7 +173,10 @@ namespace Vintagestory.GameContent
                 .AddNumberInput(b = b.BelowCopy().WithFixedHeight(25), null, CairoFont.WhiteDetailText(), "walkSpeed")
 
                 .AddSwitch(null, b = b.BelowCopy(0, 15).WithFixedWidth(25), "astar", 25)
-                .AddStaticText("A* Pathfinding", CairoFont.WhiteDetailText(), b = b.RightCopy(10, 5).WithFixedWidth(100))                
+                .AddStaticText("A* Pathfinding", CairoFont.WhiteDetailText(), b = b.RightCopy(10, 5).WithFixedWidth(100))
+
+                .AddStaticText("Random target offset radius", CairoFont.WhiteDetailText(), b = b.BelowCopy(0, 10))
+                .AddNumberInput(b = b.BelowCopy().WithFixedHeight(25), null, CairoFont.WhiteDetailText(), "radius")
             ;
 
             var s = singleComposer;
@@ -172,6 +187,7 @@ namespace Vintagestory.GameContent
             s.GetTextInput("animCode").SetValue(AnimCode);
             s.GetNumberInput("animSpeed").SetValue(AnimSpeed + "");
             s.GetNumberInput("walkSpeed").SetValue(WalkSpeed + "");
+            s.GetNumberInput("radius").SetValue(Radius + "");
         }
 
         private bool onClickPlayerPos(ICoreClientAPI capi, GuiComposer singleComposer)
@@ -191,12 +207,13 @@ namespace Vintagestory.GameContent
             this.AnimCode = s.GetTextInput("animCode").GetText();
             this.AnimSpeed = s.GetNumberInput("animSpeed").GetText().ToFloat();
             this.WalkSpeed = s.GetNumberInput("walkSpeed").GetText().ToFloat();
+            this.Radius = s.GetNumberInput("radius").GetText().ToFloat();
             return true;
         }
 
         public IEntityAction Clone()
         {
-            return new GotoAction(vas, Target, Astar, AnimCode, WalkSpeed, AnimSpeed);
+            return new GotoAction(vas, Target, Astar, AnimCode, WalkSpeed, AnimSpeed, Radius);
         }
 
         public void OnVisualize(ActivityVisualizer visualizer)
