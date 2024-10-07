@@ -232,7 +232,7 @@ namespace Vintagestory.GameContent
 
                 if (bef != null && stack != null && byPlayer.Entity.Controls.ShiftKey)
                 {
-                    if (stack.Collectible.CombustibleProps != null && stack.Collectible.CombustibleProps.MeltingPoint > 0)
+                    if ((stack.Collectible.CombustibleProps != null && stack.Collectible.CombustibleProps.MeltingPoint > 0) || stack.Collectible is BlockSmeltingContainer || stack.Collectible is BlockSmeltedContainer)
                     {
                         ItemStackMoveOperation op = new ItemStackMoveOperation(world, EnumMouseButton.Left, 0, EnumMergePriority.DirectMerge, 1);
                         byPlayer.InventoryManager.ActiveHotbarSlot.TryPutInto(bef.inputSlot, ref op);
