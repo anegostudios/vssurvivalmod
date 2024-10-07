@@ -122,7 +122,8 @@ namespace Vintagestory.GameContent
 
                 if (harvestedBlock != null)
                 {
-                    world.BlockAccessor.SetBlock(harvestedBlock.BlockId, blockSel.Position);
+                    if (!properties["exchangeBlock"].AsBool(false)) world.BlockAccessor.SetBlock(harvestedBlock.BlockId, blockSel.Position);
+                    else world.BlockAccessor.ExchangeBlock(harvestedBlock.BlockId, blockSel.Position);
                 }
 
                 world.PlaySoundAt(harvestingSound, blockSel.Position, 0, byPlayer);
