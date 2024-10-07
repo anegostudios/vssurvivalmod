@@ -316,7 +316,7 @@ namespace Vintagestory.GameContent
             dsc.AppendLine();            
 
             double perc = Math.Round(100 * GetRemainingWateringSeconds(inSlot.Itemstack) / CapacitySeconds);
-            string colorn = ColorUtil.Int2Hex(GuiStyle.DamageColorGradient[(int)Math.Min(99, perc)]);
+            string colorn = ColorUtil.Int2Hex(GuiStyle.DamageColorGradient[Math.Clamp((int)Math.Min(99, perc), 0, GuiStyle.DamageColorGradient.Length - 1)]);
 
             if (perc < 1)
             {
