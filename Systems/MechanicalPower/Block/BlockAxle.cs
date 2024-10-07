@@ -9,7 +9,7 @@ namespace Vintagestory.GameContent.Mechanics
     {
         public bool IsOrientedTo(BlockFacing facing)
         {
-            string dirs = LastCodePart();
+            string dirs = Variant["rotation"];
 
             return dirs[0] == facing.Code[0] || (dirs.Length > 1 && dirs[1] == facing.Code[0]);
         }
@@ -37,11 +37,11 @@ namespace Vintagestory.GameContent.Mechanics
                     BlockFacing faceOpposite = face.Opposite;
                     if (block.HasMechPowerConnectorAt(world, pos, faceOpposite))
                     {
-                        AssetLocation loc = new AssetLocation(FirstCodePart() + "-" + faceOpposite.Code[0] + face.Code[0]);
+                        AssetLocation loc = CodeWithVariant("rotation", faceOpposite.Code[0] + face.Code[0] + "");
                         Block toPlaceBlock = world.GetBlock(loc);
                         if (toPlaceBlock == null)
                         {
-                            loc = new AssetLocation(FirstCodePart() + "-" + face.Code[0] + faceOpposite.Code[0]);
+                            loc = CodeWithVariant("rotation", face.Code[0] + faceOpposite.Code[0] + "");
                             toPlaceBlock = world.GetBlock(loc);
                         }
 
