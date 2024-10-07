@@ -241,9 +241,15 @@ namespace Vintagestory.GameContent
             // Furnace is not burning: Cool down furnace and ore also turn of fire
             if (!IsBurning)
             {
-                furnaceTemperature = changeTemperature(furnaceTemperature, enviromentTemperature(), dt);
-            }
+                float shareTemperature = furnaceTemperature / 2;
 
+                furnaceTemperature = changeTemperature(furnaceTemperature, enviromentTemperature(), dt);
+
+                if (shareTemperature >= enviromentTemperature() && Api.World.BlockAccessor.GetBlockEntity(Pos.UpCopy(1)) is BlockEntityOven oven)
+                {
+                    oven.ovenTemperature = oven.ChangeTemperature(oven.ovenTemperature, oven.maxTemperature, dt * oven.fuelitemCapacity / oven.fuelitemCapacity);
+                }
+            }
         }
 
 
