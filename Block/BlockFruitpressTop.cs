@@ -14,6 +14,8 @@ namespace Vintagestory.GameContent
         {
             base.OnLoaded(api);
 
+            PlacedPriorityInteract = true;
+
             interactions = ObjectCacheUtil.GetOrCreate(api, "fruitPressInteractionsTop", () =>
             {
                 List<ItemStack> juiceableStacks = new List<ItemStack>();
@@ -33,6 +35,7 @@ namespace Vintagestory.GameContent
                     new WorldInteraction()
                     {
                         ActionLangCode = "blockhelp-fruitpress-press",
+                        HotKeyCode = "ctrl",
                         MouseButton = EnumMouseButton.Right,
                         ShouldApply = (wi, bs, es) =>
                         {
