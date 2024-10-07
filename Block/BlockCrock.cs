@@ -639,7 +639,138 @@ namespace Vintagestory.GameContent
 
                 capi.ObjectCache.Remove("blockcrockGuiMeshRefs");
             }
+
+            int i = 0;
+            while (modes != null && i < modes.Length)
+            {
+                modes[i]?.Dispose();
+                i++;
+            }
         }
 
+        private SkillItem[] modes;
+    
+        public bool IsCrockEmpty(ItemStack stack)
+        {
+            ItemStack[] nonEmptyContents = GetNonEmptyContents(api.World, stack);
+            if (nonEmptyContents == null || nonEmptyContents.Length == 0)
+            {
+                return true;
+            }
+            return false;
+        }
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            modes = new SkillItem[1]
+            {
+                new SkillItem
+                {
+                    Code = new AssetLocation("crock-seal"),
+                    Name = Lang.Get("crock-seal")
+                }
+            };
+    
+            if (api is ICoreClientAPI capi)
+            {
+                modes[0].WithIcon(capi, "plus");
+                modes[0].TexturePremultipliedAlpha = false;
+            }
+        }
+
+        public override SkillItem[] GetToolModes(ItemSlot slot, IClientPlayer forPlayer, BlockSelection blockSel)
+        {
+            if (!IsCrockEmpty(slot.Itemstack) && !slot.Itemstack.Attributes.GetBool("sealed"))
+            {
+                return modes;
+            }
+            return null;
+        }
+    
+        public override int GetToolMode(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSelection)
+        {
+            return 0;
+        }
+    
+        public override void SetToolMode(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSelection, int toolMode)
+        {
+            ItemSlot mouseslot = byPlayer.InventoryManager.MouseItemSlot;
+    
+            if (!mouseslot.Empty && mouseslot.Itemstack != null && mouseslot.StackSize > 0 && mouseslot.Itemstack.Collectible.Attributes.KeyExists("canSealCrock") && mouseslot.Itemstack.Collectible.Attributes["canSealCrock"].AsBool())
+            {
+                slot.Itemstack.Attributes.SetBool("sealed", true);
+    
+                mouseslot.TakeOut(1);
+                if (mouseslot.StackSize > 0)
+                {
+                    if (!byPlayer.InventoryManager.TryGiveItemstack(mouseslot.Itemstack))
+                    {
+                        byPlayer.InventoryManager.DropMouseSlotItems(true);
+                    }
+                    mouseslot.Itemstack = null;
+                }
+                mouseslot.MarkDirty();
+            }
+        }
+
+        public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot)
+        {
+            WorldInteraction[] extraInteractions = new WorldInteraction[1]
+            {
+                new WorldInteraction
+                {
+                    ActionLangCode = "heldhelp-settoolmode",
+                    HotKeyCode = "toolmodeselect"
+                }
+            };
+    
+            if (!IsCrockEmpty(inSlot.Itemstack) && !inSlot.Itemstack.Attributes.GetBool("sealed"))
+            {
+                return base.GetHeldInteractionHelp(inSlot).Append(extraInteractions);
+            }
+    
+            return base.GetHeldInteractionHelp(inSlot);
+        }
+    }
+
+    public override int GetMergableQuantity(ItemStack sinkStack, ItemStack sourceStack, EnumMergePriority priority)
+    {
+        if (priority == EnumMergePriority.DirectMerge)
+        {
+            if (!IsCrockEmpty(sinkStack)
+                && !sinkStack.Attributes.GetAsBool("sealed")
+                && sourceStack.Collectible.Attributes.KeyExists("canSealCrock")
+                && sourceStack.Collectible.Attributes["canSealCrock"].AsBool())
+            {
+                return 1;
+            }
+            return base.GetMergableQuantity(sinkStack, sourceStack, priority);
+        }
+        return base.GetMergableQuantity(sinkStack, sourceStack, priority);
+    }
+    
+    public override void TryMergeStacks(ItemStackMergeOperation op)
+    {
+        if (op.CurrentPriority == EnumMergePriority.DirectMerge)
+        {
+            if (!IsCrockEmpty(op.SinkSlot.Itemstack)
+                && !op.SinkSlot.Itemstack.Attributes.GetAsBool("sealed")
+                && op.SourceSlot.Itemstack.Collectible.Attributes.KeyExists("canSealCrock")
+                && op.SourceSlot.Itemstack.Collectible.Attributes["canSealCrock"].AsBool())
+            {
+                op.SinkSlot.Itemstack.Attributes.SetBool("sealed", true);
+                op.MovedQuantity = 1;
+                op.SourceSlot.TakeOut(1);
+                op.SinkSlot.MarkDirty();
+                return;
+            }
+            else
+            {
+                if (op.World.Api.Side == EnumAppSide.Client)
+                {
+                    (api as ICoreClientAPI)?.TriggerIngameError(this, "crockemptyorsealed", Lang.Get("ingameerror-crock-empty-or-sealed"));
+                }
+            }
+        }
     }
 }
