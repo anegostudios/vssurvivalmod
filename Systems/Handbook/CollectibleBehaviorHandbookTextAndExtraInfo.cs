@@ -1,4 +1,4 @@
-﻿using Cairo;
+using Cairo;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -1077,7 +1077,7 @@ namespace Vintagestory.GameContent
                     AddSubHeading(components, capi, openDetailPageFor, "Distillation", null);
 
                     int firstPadding = TinyPadding;
-                    while (juiceables.Count > 0)
+                    while (distillables.Count > 0)
                     {
                         ItemStack dstack = distillables[0];
                         distillables.RemoveAt(0);
