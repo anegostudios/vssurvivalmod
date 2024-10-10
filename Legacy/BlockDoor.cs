@@ -201,8 +201,8 @@ namespace Vintagestory.GameContent
             if (!airtight) return 0;
             if (type == EnumRetentionType.Sound) return IsSideSolid(facing) ? 3 : 0;
 
-            if (api.World.Config.GetBool("openDoorsNotSolid", false)) return IsSideSolid(facing) ? 1 : 0;
-            return (IsSideSolid(facing) || IsSideSolid(facing.Opposite)) ? 1 : 3; // Also check opposite so the door can be facing inwards or outwards.
+            if (!api.World.Config.GetBool("openDoorsNotSolid", false)) return IsSideSolid(facing) ? Insulation(pos) : 0;
+            return (IsSideSolid(facing) || IsSideSolid(facing.Opposite)) ? Insulation(pos) : 3; // Also check opposite so the door can be facing inwards or outwards.
         }
 
         public override float GetLiquidBarrierHeightOnSide(BlockFacing face, BlockPos pos)

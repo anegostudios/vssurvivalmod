@@ -349,8 +349,8 @@ namespace Vintagestory.GameContent
             if (type == EnumRetentionType.Sound) return beh.IsSideSolid(facing) ? 3 : 0;
 
             if (!airtight) return 0;
-            if (api.World.Config.GetBool("openDoorsNotSolid", false)) return beh.IsSideSolid(facing) ? 1 : 0;
-            return (beh.IsSideSolid(facing) || beh.IsSideSolid(facing.Opposite)) ? 1 : 3; // Also check opposite so the door can be facing inwards or outwards.
+            if (api.World.Config.GetBool("openDoorsNotSolid", false)) return beh.IsSideSolid(facing) ? beh.Block.Insulation(beh.Pos) : 0;
+            return (beh.IsSideSolid(facing) || beh.IsSideSolid(facing.Opposite)) ? beh.Block.Insulation(beh.Pos) : 3; // Also check opposite so the door can be facing inwards or outwards.
         }
 
 
@@ -361,8 +361,8 @@ namespace Vintagestory.GameContent
             if (type == EnumRetentionType.Sound) return beh.IsSideSolid(facing) ? 3 : 0;
 
             if (!airtight) return 0;
-            if (api.World.Config.GetBool("openDoorsNotSolid", false)) return beh.IsSideSolid(facing) ? 1 : 0;
-            return (beh.IsSideSolid(facing) || beh.IsSideSolid(facing.Opposite)) ? 1 : 3; // Also check opposite so the door can be facing inwards or outwards.
+            if (api.World.Config.GetBool("openDoorsNotSolid", false)) return beh.IsSideSolid(facing) ? beh.Block.Insulation(beh.Pos) : 0;
+            return (beh.IsSideSolid(facing) || beh.IsSideSolid(facing.Opposite)) ? beh.Block.Insulation(beh.Pos) : 3; // Also check opposite so the door can be facing inwards or outwards.
         }
 
         public bool MBCanAttachBlockAt(IBlockAccessor blockAccessor, Block block, BlockPos pos, BlockFacing blockFace, Cuboidi attachmentArea, Vec3i offsetInv)
