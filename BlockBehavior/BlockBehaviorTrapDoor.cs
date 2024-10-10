@@ -140,10 +140,7 @@ namespace Vintagestory.GameContent
             var beh = block.GetBEBehavior<BEBehaviorTrapDoor>(pos);
             if (beh == null) return 0f;
 
-            if (beh.Opened) return 0f;
-            //if (face != beh.facingWhenClosed) return 0f;
-
-            if (block.Variant["style"] == "sleek-windowed") return 1.0f;
+            if (!beh.IsSideSolid(face)) return 0f;
 
             if (!airtight) return 0f;
 
@@ -156,10 +153,11 @@ namespace Vintagestory.GameContent
             var beh = block.GetBEBehavior<BEBehaviorTrapDoor>(pos);
             if (beh == null) return 0;
 
-            if (type == EnumRetentionType.Sound) return beh.Opened ? 0 : 3;
+            if (type == EnumRetentionType.Sound) return beh.IsSideSolid(facing) ? 3 : 0;
 
             if (!airtight) return 0;
-            return beh.Opened ? 3 : 1;
+            if (api.World.Config.GetBool("openDoorsNotSolid", false)) return beh.IsSideSolid(facing) ? 1 : 0;
+            return (beh.IsSideSolid(facing) || beh.IsSideSolid(facing.Opposite)) ? 1 : 3; // Also check opposite so the door can be facing inwards or outwards.
         }
     }
 }

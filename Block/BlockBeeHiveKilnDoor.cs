@@ -9,25 +9,41 @@ public class BlockBeeHiveKilnDoor : BlockGeneric
 {
     public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
     {
-        var placed = base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref failureCode);
-        if (placed)
+        BlockPos pos = blockSel.Position;
+        IBlockAccessor ba = world.BlockAccessor;
+
+        if (ba.GetBlock(pos, BlockLayersAccess.Solid).Id == 0 && CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
         {
-            var blockEntityBeeHiveKiln = world.BlockAccessor.GetBlockEntity<BlockEntityBeeHiveKiln>(blockSel.Position);
-            var behaviorDoor = blockEntityBeeHiveKiln.GetBehavior<BEBehaviorDoor>();
-            // rotate door by 180° so it faces the player, needs to be done here since it uses BEBehaviorDoor which sets up the rotation
-            // and the beehive klin rotates the other way round as other doors
-            behaviorDoor.RotateYRad += GameMath.PI;
-            behaviorDoor.SetupRotationsAndColSelBoxes(false);
-
-            blockEntityBeeHiveKiln.Orientation = BlockFacing.HorizontalFromAngle(behaviorDoor.RotateYRad - GameMath.PIHALF);
-            blockEntityBeeHiveKiln.Init();
-            var totalHoursHeatReceived = itemstack.Attributes.GetDouble("totalHoursHeatReceived");
-
-            blockEntityBeeHiveKiln.TotalHoursHeatReceived = totalHoursHeatReceived;
-            blockEntityBeeHiveKiln.TotalHoursLastUpdate = world.Calendar.TotalHours;
+            return placeDoor(world, byPlayer, itemstack, blockSel, pos, ba);
         }
 
-        return placed;
+        return false;
+    }
+
+    public bool placeDoor(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, BlockPos pos, IBlockAccessor ba)
+    {
+        ba.SetBlock(BlockId, pos);
+        var behaviorDoor = ba.GetBlockEntity(pos)?.GetBehavior<BEBehaviorDoor>();
+        var blockEntityBeeHiveKiln = behaviorDoor.Blockentity as BlockEntityBeeHiveKiln;
+        // rotate door by 180° so it faces the player, needs to be done here since it uses BEBehaviorDoor which sets up the rotation
+        // and the beehive klin rotates the other way round as other doors
+        behaviorDoor.RotateYRad = BEBehaviorDoor.getRotateYRad(byPlayer, blockSel);
+        behaviorDoor.RotateYRad += (behaviorDoor.RotateYRad == -1 * GameMath.PI) ? -1 * GameMath.PI : GameMath.PI;
+        behaviorDoor.SetupRotationsAndColSelBoxes(true);
+
+        blockEntityBeeHiveKiln.Orientation = BlockFacing.HorizontalFromAngle(behaviorDoor.RotateYRad - GameMath.PIHALF);
+        blockEntityBeeHiveKiln.Init();
+        var totalHoursHeatReceived = itemstack.Attributes.GetDouble("totalHoursHeatReceived");
+
+        blockEntityBeeHiveKiln.TotalHoursHeatReceived = totalHoursHeatReceived;
+        blockEntityBeeHiveKiln.TotalHoursLastUpdate = world.Calendar.TotalHours;
+
+        if (world.Side == EnumAppSide.Server)
+        {
+            GetBehavior<BlockBehaviorDoor>().placeMultiblockParts(world, pos);
+        }
+
+        return true;
     }
 
     public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
