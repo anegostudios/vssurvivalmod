@@ -19,6 +19,23 @@ namespace Vintagestory.GameContent
 
         public float RotRad => RotDeg * GameMath.DEG2RAD;
 
+        public BlockFacing facingWhenClosed
+        {
+            get
+            {
+                if (BlockFacing.ALLFACES[AttachedFace].IsVertical) return BlockFacing.ALLFACES[AttachedFace].Opposite;
+                else return BlockFacing.DOWN.FaceWhenRotatedBy(0f, (float)BlockFacing.ALLFACES[AttachedFace].HorizontalAngleIndex * 90f * GameMath.DEG2RAD + 90f * GameMath.DEG2RAD, RotRad);
+            }
+        }
+        public BlockFacing facingWhenOpened
+        {
+            get
+            {
+                if (BlockFacing.ALLFACES[AttachedFace].IsVertical) return BlockFacing.ALLFACES[AttachedFace].Opposite.FaceWhenRotatedBy((BlockFacing.ALLFACES[AttachedFace].Negative ? -90f : 90f) * GameMath.DEG2RAD, 0f, 0).FaceWhenRotatedBy(0f, RotRad, 0);
+                else return BlockFacing.ALLFACES[AttachedFace].Opposite;
+            }
+        }
+
         protected BlockBehaviorTrapDoor doorBh;
 
         public Cuboidf[] ColSelBoxes => opened ? boxesOpened : boxesClosed;
@@ -80,6 +97,7 @@ namespace Vintagestory.GameContent
                 return new Matrixf()
                     .Translate(0.5f, 0.5f, 0.5f)
                     .RotateYDeg(RotDeg)
+                    .RotateZDeg(BlockFacing.ALLFACES[AttachedFace].Negative ? 180 : 0)
                     .Translate(-0.5f, -0.5f, -0.5f)
                 ;
             }
@@ -100,7 +118,6 @@ namespace Vintagestory.GameContent
         protected virtual void UpdateHitBoxes()
         {
             Matrixf mat = getTfMatrix();
-            var face = BlockFacing.ALLFACES[AttachedFace];
 
             boxesClosed = Blockentity.Block.CollisionBoxes;
             var boxes = new Cuboidf[boxesClosed.Length];
@@ -130,14 +147,15 @@ namespace Vintagestory.GameContent
             var hitpos = blockSel.Face.ToAB(blockSel.HitPosition.ToVec3f());
             RotDeg = (int)Math.Round(GameMath.RAD2DEG * (float)Math.Atan2(center.A - hitpos.A, center.B - hitpos.B) / 90) * 90;
 
-            if (blockSel.Face == BlockFacing.WEST || blockSel.Face == BlockFacing.SOUTH || blockSel.Face == BlockFacing.UP) RotDeg *= -1; // Why?
-
-            if (blockSel.Face.IsVertical && (RotDeg == 90 || RotDeg == -90)) RotDeg*= -1; // Why?
+            if (blockSel.Face == BlockFacing.WEST || blockSel.Face == BlockFacing.SOUTH) RotDeg *= -1; // Why?
 
             SetupRotationsAndColSelBoxes(true);
         }
 
-
+        public bool IsSideSolid(BlockFacing facing)
+        {
+            return (!opened && facing == facingWhenClosed) || (opened && facing == facingWhenOpened);
+        }
 
         public bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref EnumHandling handling)
         {
