@@ -224,7 +224,15 @@ namespace Vintagestory.GameContent
             return ((int)Math.Round(angleHor / deg90)) * deg90;
         }
 
-
+        public bool IsSideSolid(BlockFacing facing)
+        { 
+            BlockFacing facingWhenOpened = invertHandles ? facingWhenClosed.GetCW() : facingWhenClosed.GetCCW();
+            
+            if (!opened && facing == facingWhenClosed) return true;
+            else if (opened && facing == facingWhenOpened) return true;
+            
+            return false;
+        }
 
         public bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref EnumHandling handling)
         {

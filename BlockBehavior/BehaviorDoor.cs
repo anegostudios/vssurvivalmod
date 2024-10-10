@@ -317,8 +317,7 @@ namespace Vintagestory.GameContent
             var beh = block.GetBEBehavior<BEBehaviorDoor>(pos);
             if (beh == null) return 0f;
 
-            if (beh.Opened) return 0f;
-            if (face != beh.facingWhenClosed) return 0f;
+            if (!beh.IsSideSolid(face)) return 0f;
 
             if (block.Variant["style"] == "sleek-windowed") return 1.0f;
 
@@ -331,8 +330,7 @@ namespace Vintagestory.GameContent
         {
             var beh = block.GetBEBehavior<BEBehaviorDoor>(pos.AddCopy(offset.X, offset.Y, offset.Z));
             if (beh == null) return 0f;
-            if (beh.Opened) return 0f;
-            if (face != beh.facingWhenClosed) return 0f;
+            if (!beh.IsSideSolid(face)) return 0f;
 
             if (block.Variant["style"] == "sleek-windowed") return offset.Y == -1 ? 0.0f : 1.0f;
 
@@ -347,10 +345,10 @@ namespace Vintagestory.GameContent
             var beh = block.GetBEBehavior<BEBehaviorDoor>(pos);
             if (beh == null) return 0;
 
-            if (type == EnumRetentionType.Sound) return beh.Opened ? 0 : 3;
+            if (type == EnumRetentionType.Sound) return beh.IsSideSolid(facing) ? 3 : 0;
 
             if (!airtight) return 0;
-            return beh.Opened ? 3 : 1;
+            return beh.IsSideSolid(facing) ? 1 : 3;
         }
 
 
@@ -358,10 +356,10 @@ namespace Vintagestory.GameContent
         {
             var beh = block.GetBEBehavior< BEBehaviorDoor>(pos.AddCopy(offset.X, offset.Y, offset.Z));
             if (beh == null) return 0;
-            if (type == EnumRetentionType.Sound) return beh.Opened ? 0 : 3;
+            if (type == EnumRetentionType.Sound) return beh.IsSideSolid(facing) ? 3 : 0;
 
             if (!airtight) return 0;
-            return beh.Opened ? 3 : 1; 
+            return beh.IsSideSolid(facing) ? 1 : 3; 
         }
 
         public bool MBCanAttachBlockAt(IBlockAccessor blockAccessor, Block block, BlockPos pos, BlockFacing blockFace, Cuboidi attachmentArea, Vec3i offsetInv)
