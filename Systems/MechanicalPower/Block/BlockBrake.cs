@@ -29,7 +29,7 @@ namespace Vintagestory.GameContent.Mechanics
             }
 
             BlockFacing[] horVer = Block.SuggestedHVOrientation(byPlayer, blockSel);
-            AssetLocation blockCode = CodeWithParts(horVer[0].Code);
+            AssetLocation blockCode = CodeWithVariant("side", horVer[0].Code);
             Block orientedBlock = world.BlockAccessor.GetBlock(blockCode);
 
 
