@@ -33,6 +33,7 @@ namespace Vintagestory.GameContent
                 }
             }
         }
+        public BlockFacing facingWhenOpened { get { return invertHandles? facingWhenClosed.GetCCW() : facingWhenClosed.GetCW(); } }
 
         BEBehaviorDoor leftDoor
         {
@@ -226,8 +227,6 @@ namespace Vintagestory.GameContent
 
         public bool IsSideSolid(BlockFacing facing)
         { 
-            BlockFacing facingWhenOpened = invertHandles ? facingWhenClosed.GetCW() : facingWhenClosed.GetCCW();
-            
             if (!opened && facing == facingWhenClosed) return true;
             else if (opened && facing == facingWhenOpened) return true;
             
