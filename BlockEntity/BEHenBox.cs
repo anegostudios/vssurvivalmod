@@ -66,7 +66,7 @@ namespace Vintagestory.GameContent
 
         public bool TryAddEgg(Entity entity, string chickCode, double incubationTime)
         {
-            if (Block.LastCodePart() == fullCode)
+            if (Block.Variant["eggCount"] == fullCode)
             {
                 if (timeToIncubate == 0)
                 {
@@ -96,7 +96,7 @@ namespace Vintagestory.GameContent
 
         private int CountEggs()
         {
-            int eggs = Block.LastCodePart()[0];
+            int eggs = Block.Variant["eggCount"][0];
             return eggs <= '9' && eggs >= '0' ? eggs - '0' : 0;
         }
 
@@ -143,7 +143,7 @@ namespace Vintagestory.GameContent
                 }
 
 
-                Block replacementBlock = Api.World.GetBlock(new AssetLocation(Block.FirstCodePart() + "-empty"));
+                Block replacementBlock = Api.World.GetBlock(Block.CodeWithVariant("eggCount", "empty"));
                 Api.World.BlockAccessor.ExchangeBlock(replacementBlock.Id, this.Pos);
                 this.Api.World.SpawnCubeParticles(Pos.ToVec3d().Add(0.5, 0.5, 0.5), new ItemStack(this.Block), 1, 20, 1, null);
                 this.Block = replacementBlock;
@@ -240,7 +240,7 @@ namespace Vintagestory.GameContent
                 else if (timeToIncubate > 0)
                     dsc.AppendLine(Lang.Get("Incubation time remaining: {0:0} hours", timeToIncubate * 24));
 
-                if (occupier == null && Block.LastCodePart() == fullCode)
+                if (occupier == null && Block.Variant["eggCount"] == fullCode)
                     dsc.AppendLine(Lang.Get("A broody hen is needed!"));
             }
             else if (eggCount > 0)
