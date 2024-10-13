@@ -152,7 +152,7 @@ namespace Vintagestory.GameContent
             Queue<BlockPos> bfsQueue = new Queue<BlockPos>();
             bfsQueue.Enqueue(Pos);
 
-            BlockPos minPos = Pos, maxPos = Pos;
+            BlockPos minPos = Pos.Copy(), maxPos = Pos.Copy();
             Vec3i curQuantityAndYMinMax;
 
             while (bfsQueue.Count > 0)
@@ -186,7 +186,7 @@ namespace Vintagestory.GameContent
                         continue;
                     }
 
-                    BlockPos nmin = minPos, nmax = maxPos;
+                    BlockPos nmin = minPos.Copy(), nmax = maxPos.Copy();
 
                     if (npos.X < minPos.X) nmin.X = npos.X;
                     else if (npos.X > maxPos.X) nmax.X = npos.X;
@@ -204,8 +204,8 @@ namespace Vintagestory.GameContent
                     {
                         bfsQueue.Enqueue(npos);
                         visitedPositions.Add(npos);
-                        minPos = nmin;
-                        maxPos = nmax;
+                        minPos = nmin.Copy();
+                        maxPos = nmax.Copy();
                     }
                 }
             }
@@ -258,7 +258,7 @@ namespace Vintagestory.GameContent
 
             int charcoalPitBlockId = Api.World.GetBlock(new AssetLocation("charcoalpit")).BlockId;
 
-            int minPos = Pos, maxPos = Pos;
+            BlockPos minPos = Pos.Copy(), maxPos = Pos.Copy();
 
             while (bfsQueue.Count > 0)
             {
@@ -289,7 +289,7 @@ namespace Vintagestory.GameContent
                     // Only traverse inside the firewood pile
                     if (!isFirewoodpile) continue;
 
-                    BlockPos nmin = minPos, nmax = maxPos;
+                    BlockPos nmin = minPos.Copy(), nmax = maxPos.Copy();
 
                     if (npos.X < minPos.X) nmin.X = npos.X;
                     else if (npos.X > maxPos.X) nmax.X = npos.X;
@@ -307,8 +307,8 @@ namespace Vintagestory.GameContent
                     {
                         bfsQueue.Enqueue(npos);
                         visitedPositions.Add(npos);
-                        minPos = nmin;
-                        maxPos = nmax;
+                        minPos = nmin.Copy();
+                        maxPos = nmax.Copy();
                     }
                 }
             }
