@@ -33,17 +33,7 @@ namespace Vintagestory.GameContent
 
         int maxSize = 11;
 
-        public int MaxPileSize
-        {
-            get
-            {
-                return maxSize;
-            }
-            set
-            {
-                maxSize = value;
-            }
-        }
+        public int MaxPileSize { get { return maxSize; } set { maxSize = value; } }
 
 
         public override void Initialize(ICoreAPI api)
