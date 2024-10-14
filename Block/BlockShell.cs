@@ -72,8 +72,8 @@ namespace Vintagestory.GameContent
 
         internal virtual bool HasBeachyGround(IBlockAccessor blockAccessor, BlockPos pos)
         {
-            Block block = blockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
-            return block.SideSolid[BlockFacing.UP.Index] && (block.BlockMaterial == EnumBlockMaterial.Sand || block.BlockMaterial == EnumBlockMaterial.Gravel);
+            Block blockBelow = blockAccessor.GetBlockBelow(pos);
+            return blockBelow.SideSolid[BlockFacing.UP.Index] && (blockBelow.BlockMaterial == EnumBlockMaterial.Sand || blockBelow.BlockMaterial == EnumBlockMaterial.Gravel);
         }
 
     }

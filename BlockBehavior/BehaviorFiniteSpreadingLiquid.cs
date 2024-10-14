@@ -702,7 +702,7 @@ namespace Vintagestory.GameContent
             // in this method. This will have to do until the properties are honored or this method becomes a separate client behavior.
             if (block.LiquidCode == "lava")
             {
-                int r = world.BlockAccessor.GetBlock(pos.X, pos.Y + 1, pos.Z).Replaceable;
+                int r = world.BlockAccessor.GetBlockAbove(pos).Replaceable;
                 return r > ReplacableThreshold;
             }
             else

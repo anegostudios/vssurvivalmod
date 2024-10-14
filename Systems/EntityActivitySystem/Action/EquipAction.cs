@@ -66,21 +66,42 @@ namespace Vintagestory.GameContent
         public void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             var vals = new string[] { "lefthand", "righthand" };
+            var cclass = new string[] { "item", "block" };
             var b = ElementBounds.Fixed(0, 0, 200, 25);
             singleComposer
                 .AddStaticText("Target", CairoFont.WhiteDetailText(), b)
                 .AddDropDown(vals, vals, vals.IndexOf(this.Target), null, b.BelowCopy(0, -5), "target")
 
-                .AddStaticText("Value (outfit code or item stack in json format)", CairoFont.WhiteDetailText(), b = b.BelowCopy(0, 25).WithFixedWidth(300))
-                .AddTextInput(b = b.BelowCopy(0, -5), null, CairoFont.WhiteDetailText(), "value")
+                .AddStaticText("Class", CairoFont.WhiteDetailText(), b = b.BelowCopy(0, 25))
+                .AddDropDown(cclass, cclass, vals.IndexOf(this.Target), null, b.BelowCopy(0, -5), "cclass")
+
+                .AddStaticText("Block/Item code", CairoFont.WhiteDetailText(), b = b.BelowCopy(0, 25).WithFixedWidth(300))
+                .AddTextInput(b = b.BelowCopy(0, -5), null, CairoFont.WhiteDetailText(), "code")
+
+                .AddStaticText("Attributes", CairoFont.WhiteDetailText(), b = b.BelowCopy(0, 25).WithFixedWidth(300))
+                .AddTextInput(b = b.BelowCopy(0, -5), null, CairoFont.WhiteDetailText(), "attr")
             ;
 
-            singleComposer.GetTextInput("value").SetValue(Value);
+            JsonItemStack jstack = JsonItemStack.FromString(Value);
+            singleComposer.GetDropDown("cclass").SetSelectedIndex(cclass.IndexOf(jstack.Type.ToString().ToLowerInvariant()));
+            singleComposer.GetTextInput("code").SetValue(jstack.Code.ToShortString());
+            singleComposer.GetTextInput("attr").SetValue(jstack.Attributes?.ToString() ?? "");
         }
 
         public bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
-            Value = singleComposer.GetTextInput("value").GetText();
+            string type = singleComposer.GetDropDown("cclass").SelectedValue;
+            string code = singleComposer.GetTextInput("code").GetText();
+            string attr = singleComposer.GetTextInput("attr").GetText();
+
+            if (attr.Length > 0)
+            {
+                Value = string.Format("{{ type: \"{0}\", code: \"{1}\", attributes: {2} }}", type, code, attr);
+            } else
+            {
+                Value = string.Format("{{ type: \"{0}\", code: \"{1}\" }}", type, code);
+            }
+            
             Target = singleComposer.GetDropDown("target").SelectedValue;
 
             try

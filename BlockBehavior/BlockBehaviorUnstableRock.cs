@@ -6,6 +6,7 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
+using System.Linq;
 
 namespace Vintagestory.GameContent
 {
@@ -66,24 +67,22 @@ namespace Vintagestory.GameContent
 
 
     /*
-Tyrons thought cloud on Support beams
+    Tyrons thought cloud on Support beams
     
-- support beams would need to fall off if not supported by anything
-- support beams: the supported block only gets as much stability as the stability of the supporting block 
+    - support beams would need to fall off if not supported by anything
+    - support beams: the supported block only gets as much stability as the stability of the supporting block 
 
-for a given start or end position, we need vice versa.  Ideally: We can get the beam block by probing any block the beam traverses through.
+    for a given start or end position, we need vice versa.  Ideally: We can get the beam block by probing any block the beam traverses through.
 	
-how the fu do we look that up?
-per chunk storage would not be sufficent. beams can reach into neighbouring chunks
+    how the fu do we look that up?
+    per chunk storage would not be sufficent. beams can reach into neighbouring chunks
 
-=> but what if each chunk stores 2 reference per support beam: Its start pos and its end pos. 
-=> but if a beam goes diagonally through a chunk then that chunk will not find the beam :(
+    => but what if each chunk stores 2 reference per support beam: Its start pos and its end pos. 
+    => but if a beam goes diagonally through a chunk then that chunk will not find the beam :(
     
-max length of a beam is 20 blocks. We *could* just check all adjacent chunks, but we would need to somehow walk along each beam to see if position X is supported by a beam 
+    max length of a beam is 20 blocks. We *could* just check all adjacent chunks, but we would need to somehow walk along each beam to see if position X is supported by a beam 
 
-possible prefilter: start and end position form a cuboid. Check if position X is inside that cuboid. 
-
-
+    possible prefilter: start and end position form a cuboid. Check if position X is inside that cuboid. 
 
     Other idea:
     In the same process we add a "custom collisionboxes" api. The beams system registeres collisionboxes for each loaded beam. Each custom collisionbox has a reference back to its owner.
@@ -198,8 +197,23 @@ possible prefilter: start and end position form a cuboid. Check if position X is
         {
             var unstablePositions = getNearestUnstableBlocks(world, supportPositions, startPos);
 
-            foreach (var pos in unstablePositions)
+            var yorderedPositions = unstablePositions.OrderBy(pos => pos.Y);
+            var y = yorderedPositions.First().Y;
+
+            collapseLayer(world, yorderedPositions, y);
+        }
+
+        private void collapseLayer(IWorldAccessor world, IOrderedEnumerable<BlockPos> yorderedPositions, int y)
+        {
+            foreach (var pos in yorderedPositions)
             {
+                if (pos.Y < y) continue;
+                if (pos.Y > y)
+                {
+                    world.Api.Event.RegisterCallback((dt) => collapseLayer(world, yorderedPositions, pos.Y), 200);
+                    return;
+                }
+
                 // Prevents duplication
                 Entity entity = world.GetNearestEntity(pos.ToVec3d().Add(0.5, 0.5, 0.5), 1, 1.5f, (e) =>
                 {
@@ -210,13 +224,19 @@ possible prefilter: start and end position form a cuboid. Check if position X is
                 {
                     var block = world.BlockAccessor.GetBlock(pos, BlockLayersAccess.Solid);
                     var bh = block.GetBehavior<BlockBehaviorUnstableRock>();
+                    if (bh == null) continue;
 
                     EntityBlockFalling entityblock = new EntityBlockFalling(bh.collapsedBlock, world.BlockAccessor.GetBlockEntity(pos), pos, fallSound, impactDamageMul, true, dustIntensity);
                     world.SpawnEntity(entityblock);
                 }
             }
-        }
 
+            var firstpos = yorderedPositions.First();
+            for (int i = 0; i < 3; i++)
+            {
+                checkCollapsibleNeighbours(world, firstpos.AddCopy(world.Rand.Next(17) - 8, 0, world.Rand.Next(17) - 8));
+            }
+        }
 
         private CollapsibleSearchResult searchCollapsible(BlockPos startPos, bool ignoreBeams)
         {
@@ -265,7 +285,8 @@ possible prefilter: start and end position form a cuboid. Check if position X is
 
             List<BlockPos> unstableBlocks = new List<BlockPos>();
 
-            int blocksToCollapse = 2 + world.Rand.Next(30);
+            int blocksToCollapse = 2 + world.Rand.Next(30) + world.Rand.Next(11)*world.Rand.Next(11);
+            int maxy = 1 + world.Rand.Next(3);
 
             while (bfsQueue.Count > 0)
             {
@@ -277,7 +298,8 @@ possible prefilter: start and end position form a cuboid. Check if position X is
                 {
                     var npos = ipos.AddCopy(BlockFacing.ALLFACES[i]);
                     float distSq = npos.HorDistanceSqTo(startPos.X, startPos.Z);
-                    if (distSq > maxSupportSearchDistanceSq) continue;
+                    if (distSq > 12*12) continue;
+                    if (npos.Y - startPos.Y >= maxy) continue;
 
                     var block = world.BlockAccessor.GetBlock(npos, BlockLayersAccess.Solid);
                     bool canbeUnstable = block.HasBehavior<BlockBehaviorUnstableRock>();
@@ -290,7 +312,7 @@ possible prefilter: start and end position form a cuboid. Check if position X is
 
                         for (int dy = 1; dy < 4; dy++)
                         {
-                            block = world.BlockAccessor.GetBlock(npos.X, npos.Y - dy, npos.Z);
+                            block = world.BlockAccessor.GetBlockBelow(npos, dy);
                             if (block.HasBehavior<BlockBehaviorUnstableRock>() && getVerticalSupportStrength(world, npos) == 0)
                             {
                                 unstableBlocks.Add(npos.DownCopy(dy));

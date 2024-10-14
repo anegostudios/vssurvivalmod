@@ -662,6 +662,11 @@ namespace Vintagestory.GameContent
         public override string GetPlacedBlockName(IWorldAccessor world, BlockPos pos)
         {
             var bect = GetBEBehavior<BEBehaviorShapeFromAttributes>(pos);
+            if (bect?.overrideTextureCode != null)
+            {
+                var name = Lang.GetMatchingIfExists(bect.GetFullCode() + "-" + bect.overrideTextureCode);
+                if (name != null) return name;
+            }
             return Lang.GetMatching(bect?.GetFullCode() ?? "Unknown");
         }
 

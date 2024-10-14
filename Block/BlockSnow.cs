@@ -8,7 +8,7 @@ namespace Vintagestory.GameContent
         Cuboidf[] fullBox = new Cuboidf[] { new Cuboidf(0,0,0,1,1,1) };
         public override Cuboidf[] GetCollisionBoxes(IBlockAccessor world, BlockPos pos)
         {
-            if (world.GetBlock(pos.X, pos.Y + 1, pos.Z) is BlockLayered)
+            if (world.GetBlockAbove(pos) is BlockLayered)
             {
                 return fullBox;
             }

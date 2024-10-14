@@ -36,14 +36,14 @@ namespace Vintagestory.GameContent
             }
 
             int windData =
-                ((api.World.BlockAccessor.GetBlock(pos.X, pos.Y + 1, pos.Z) is BlockVines) ? 1 : 0)
-                + ((api.World.BlockAccessor.GetBlock(pos.X, pos.Y + 2, pos.Z) is BlockVines) ? 1 : 0)
-                + ((api.World.BlockAccessor.GetBlock(pos.X, pos.Y + 3, pos.Z) is BlockVines) ? 1 : 0)
+                ((api.World.BlockAccessor.GetBlockAbove(pos, 1) is BlockVines) ? 1 : 0)
+                + ((api.World.BlockAccessor.GetBlockAbove(pos, 2) is BlockVines) ? 1 : 0)
+                + ((api.World.BlockAccessor.GetBlockAbove(pos, 3) is BlockVines) ? 1 : 0)
             ;
 
             int windDatam1;
 
-            if (windData == 3 && api.World.BlockAccessor.GetBlock(pos.X, pos.Y + 4, pos.Z) is BlockVines)
+            if (windData == 3 && api.World.BlockAccessor.GetBlockAbove(pos, 4) is BlockVines)
             {
                 windDatam1 = windData << VertexFlags.WindDataBitsPos;
             }
@@ -105,14 +105,14 @@ namespace Vintagestory.GameContent
             }
 
             int windData =
-                ((api.World.BlockAccessor.GetBlock(pos.X, pos.Y + 1, pos.Z) is BlockVines) ? 1 : 0)
-                + ((api.World.BlockAccessor.GetBlock(pos.X, pos.Y + 2, pos.Z) is BlockVines) ? 1 : 0)
-                + ((api.World.BlockAccessor.GetBlock(pos.X, pos.Y + 3, pos.Z) is BlockVines) ? 1 : 0)
+                ((api.World.BlockAccessor.GetBlockAbove(pos, 1) is BlockVines) ? 1 : 0)
+                + ((api.World.BlockAccessor.GetBlockAbove(pos, 2) is BlockVines) ? 1 : 0)
+                + ((api.World.BlockAccessor.GetBlockAbove(pos, 3) is BlockVines) ? 1 : 0)
             ;
 
             int windDatam1;
 
-            if (windData == 3 && api.World.BlockAccessor.GetBlock(pos.X, pos.Y + 4, pos.Z) is BlockVines)
+            if (windData == 3 && api.World.BlockAccessor.GetBlockAbove(pos, 4) is BlockVines)
             {
                 windDatam1 = windData << VertexFlags.WindDataBitsPos;
             } else
@@ -303,13 +303,13 @@ namespace Vintagestory.GameContent
             for (; i < 5; i++)
             {
                 npos.Y++;
-                var upblock = world.BlockAccessor.GetBlock(npos.X, npos.Y, npos.Z);
+                var upblock = world.BlockAccessor.GetBlock(npos);
 
                 if (upblock is BlockLeaves || upblock.CanAttachBlockAt(world.BlockAccessor, this, npos, BlockFacing.DOWN)) return false;
 
                 if (upblock is BlockVines)
                 {
-                    var ablock = world.BlockAccessor.GetBlock(npos.X + attachFace.Normali.X, npos.Y, npos.Z + attachFace.Normali.Z);
+                    var ablock = world.BlockAccessor.GetBlock(npos.X + attachFace.Normali.X, npos.InternalY, npos.Z + attachFace.Normali.Z);
 
                     if (ablock.CanAttachBlockAt(world.BlockAccessor, this, npos, VineFacing)) return false;
                 }

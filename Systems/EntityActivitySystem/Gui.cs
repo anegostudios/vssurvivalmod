@@ -365,9 +365,9 @@ namespace Vintagestory.GameContent
             listElem.UnscaledCellVerPadding = 0;
             listElem.unscaledCellSpacing = 5;
             SingleComposer.EndChildElements().Compose();
+            ReloadCells();
             updateScrollbarBounds();
             updateButtonStates();
-            ReloadCells();
         }
 
         private void onAutoApply(bool on)
@@ -1060,7 +1060,17 @@ namespace Vintagestory.GameContent
             {
                 if (editActionDlg.Saved)
                 {
-                    if (entityAction == null) entityActivity.Actions = entityActivity.Actions.Append(editActionDlg.entityAction);
+                    if (entityAction == null)
+                    {
+                        if (selectedActionIndex != -1 && selectedActionIndex < entityActivity.Actions.Length-1)
+                        {
+                            entityActivity.Actions = entityActivity.Actions.InsertAt(editActionDlg.entityAction, selectedActionIndex+1);
+                        } else
+                        {
+                            entityActivity.Actions = entityActivity.Actions.Append(editActionDlg.entityAction);
+                        }
+                        
+                    }
                     else entityActivity.Actions[selectedActionIndex] = editActionDlg.entityAction;
                     actionListElem.ReloadCells(entityActivity.Actions);
                     updateScrollbarBounds();

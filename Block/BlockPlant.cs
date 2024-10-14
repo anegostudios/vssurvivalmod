@@ -161,8 +161,8 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                Block block = blockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
-                if (block.Fertility <= 0) return false;
+                Block blockBelow = blockAccessor.GetBlockBelow(pos);
+                if (blockBelow.Fertility <= 0) return false;
                 return true;
             }
         }

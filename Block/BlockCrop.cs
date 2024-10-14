@@ -139,8 +139,8 @@ namespace Vintagestory.GameContent
 
         public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, IRandom worldGenRand, BlockPatchAttributes attributes = null)
         {
-            Block block = blockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
-            if (block.Fertility == 0) return false;
+            Block blockBelow = blockAccessor.GetBlockBelow(pos);
+            if (blockBelow.Fertility == 0) return false;
 
             if (blockAccessor.GetBlock(pos).IsReplacableBy(this))
             {

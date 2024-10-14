@@ -93,7 +93,7 @@ namespace Vintagestory.GameContent
 
             for (int dy = 0; dy < 5; dy++)
             {
-                Block block = blockAccessor.GetBlock(pos.X, pos.Y + dy, pos.Z);
+                Block block = blockAccessor.GetBlockAbove(pos, dy);
                 if (block.SideSolid[BlockFacing.DOWN.Index] && block.BlockMaterial == EnumBlockMaterial.Stone)
                 {
                     string rocktype;
@@ -111,7 +111,7 @@ namespace Vintagestory.GameContent
 
             for (int dy = 0; dy < 12; dy++)
             {
-                Block block = blockAccessor.GetBlock(pos.X, pos.Y - dy, pos.Z);
+                Block block = blockAccessor.GetBlockBelow(pos, dy);
                 if (block.SideSolid[BlockFacing.UP.Index] && block.BlockMaterial == EnumBlockMaterial.Stone)
                 {
                     string rocktype;

@@ -81,7 +81,7 @@ namespace Vintagestory.GameContent
             accum = 0;
             didThrow = false;
 
-            ITreeAttribute pathfinder = entity?.Properties.Server?.Attributes.GetTreeAttribute("pathfinder");
+            ITreeAttribute pathfinder = entity?.Properties.Server?.Attributes?.GetTreeAttribute("pathfinder");
             if (pathfinder != null)
             {
                 minTurnAnglePerSec = pathfinder.GetFloat("minTurnAnglePerSec", 250);

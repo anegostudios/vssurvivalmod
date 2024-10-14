@@ -66,7 +66,10 @@ namespace Vintagestory.GameContent
 
                     Api.World.BlockAccessor.SetBlock(0, FuelPos);
                     Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(FuelPos);
-                    TrySpreadTo(FuelPos);
+                    if (((ICoreServerAPI)Api).Server.Config.AllowFireSpread)
+                    {
+                        TrySpreadTo(FuelPos);
+                    }
                 }
 
                 Api.World.BlockAccessor.SetBlock(0, FirePos);

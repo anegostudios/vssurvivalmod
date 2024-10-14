@@ -214,8 +214,8 @@ namespace Vintagestory.ServerMods
             {
                 prepareHotSpringBase(posx, posy, posz, surfaceY, true, decorBlock);
 
-                var upblock = wgenBlockAccessor.GetBlock(pos.X, pos.Y + 1, pos.Z);
-                var upblock2 = wgenBlockAccessor.GetBlock(pos.X, pos.Y + 2, pos.Z);
+                var upblock = wgenBlockAccessor.GetBlockAbove(pos);
+                var upblock2 = wgenBlockAccessor.GetBlockAbove(pos, 2);
                 if (upblock2.SideSolid[BlockFacing.UP.Index]) pos.Y += 2;
                 else if (upblock.SideSolid[BlockFacing.UP.Index]) pos.Y++;
 

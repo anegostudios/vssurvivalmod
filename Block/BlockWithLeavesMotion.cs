@@ -38,7 +38,7 @@ namespace Vintagestory.GameContent
                 groundOffset = 1;
                 for (; groundOffset < 8; groundOffset++)
                 {
-                    Block block = api.World.BlockAccessor.GetBlock(pos.X, pos.Y - groundOffset, pos.Z);
+                    Block block = api.World.BlockAccessor.GetBlockBelow(pos, groundOffset);
                     if (block.VertexFlags.WindMode == EnumWindBitMode.NoWind && block.SideSolid[BlockFacing.UP.Index])
                     {
                         break;
@@ -95,7 +95,7 @@ namespace Vintagestory.GameContent
                     }
                     else
                     {
-                        block = api.World.BlockAccessor.GetBlock(pos.X, pos.Y - groundOffset, pos.Z);
+                        block = api.World.BlockAccessor.GetBlockBelow(pos, groundOffset);
                     }
 
                     if (block.VertexFlags.WindMode == EnumWindBitMode.NoWind && block.SideSolid[TileSideEnum.Up])
@@ -138,7 +138,7 @@ namespace Vintagestory.GameContent
                     }
                     else
                     {
-                        block = api.World.BlockAccessor.GetBlock(pos.X, pos.Y - groundOffset, pos.Z);
+                        block = api.World.BlockAccessor.GetBlockBelow(pos, groundOffset);
                     }
 
                     if (block.VertexFlags.WindMode == EnumWindBitMode.NoWind && block.SideSolid[TileSideEnum.Up])

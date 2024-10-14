@@ -227,11 +227,12 @@ namespace Vintagestory.GameContent
             float forwardpitch = 0;
             if (Swimming)
             {
+                double gamespeed = capi.World.Calendar.SpeedOfTime / 60f;
                 float intensity = 0.15f + GlobalConstants.CurrentWindSpeedClient.X * 0.9f;
                 float diff = GameMath.DEG2RAD / 2f * intensity;
-                mountAngle.X = GameMath.Sin((float)(ellapseMs / 1000.0 * 2)) * 8 * diff;
-                mountAngle.Y = GameMath.Cos((float)(ellapseMs / 2000.0 * 2)) * 3 * diff;
-                mountAngle.Z = -GameMath.Sin((float)(ellapseMs / 3000.0 * 2)) * 8 * diff;
+                mountAngle.X = GameMath.Sin((float)(ellapseMs / 1000.0 * 2 * gamespeed)) * 8 * diff;
+                mountAngle.Y = GameMath.Cos((float)(ellapseMs / 2000.0 * 2 * gamespeed)) * 3 * diff;
+                mountAngle.Z = -GameMath.Sin((float)(ellapseMs / 3000.0 * 2 * gamespeed)) * 8 * diff;
 
                 curRotMountAngleZ += ((float)AngularVelocity * 5 * Math.Sign(ForwardSpeed) - curRotMountAngleZ) * dt*5;
                 forwardpitch = -(float)ForwardSpeed * 1.3f;
@@ -250,6 +251,13 @@ namespace Vintagestory.GameContent
         {
             if (World.Side == EnumAppSide.Server)
             {
+                var ela = World.ElapsedMilliseconds;
+                if (IsOnFire && (World.ElapsedMilliseconds - OnFireBeginTotalMs > 10000))
+                {
+                    Die();
+                }
+
+
                 updateBoatAngleAndMotion(dt);
             }
 
@@ -294,8 +302,6 @@ namespace Vintagestory.GameContent
                 }
             }
         }
-
-        
 
         protected virtual void updateBoatAngleAndMotion(float dt)
         {
@@ -384,7 +390,7 @@ namespace Vintagestory.GameContent
                 }
                 if (seat.Config.BodyYawLimit != null && seat.Passenger is EntityPlayer eplr)
                 {
-                    eplr.BodyYawLimits = new AngleConstraint(Pos.Yaw + seat.Config.MountRotation.Y * GameMath.DEG2RAD, 0.2f);
+                    eplr.BodyYawLimits = new AngleConstraint(Pos.Yaw + seat.Config.MountRotation.Y * GameMath.DEG2RAD, (float)seat.Config.BodyYawLimit);
                     eplr.HeadYawLimits = new AngleConstraint(Pos.Yaw + seat.Config.MountRotation.Y * GameMath.DEG2RAD, GameMath.PIHALF);
                 }
 
@@ -469,9 +475,7 @@ namespace Vintagestory.GameContent
                 if (tryPickup(byEntity, mode)) return;
             }
             
-
             EnumHandling handled = EnumHandling.PassThrough;
-
             foreach (EntityBehavior behavior in SidedProperties.Behaviors)
             {
                 behavior.OnInteract(byEntity, itemslot, hitPosition, mode, ref handled);

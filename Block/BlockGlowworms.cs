@@ -72,7 +72,7 @@ namespace Vintagestory.GameContent
 
             for (int dy = 0; dy < 5; dy++)
             {
-                Block block = blockAccessor.GetBlock(pos.X, pos.Y + dy, pos.Z);
+                Block block = blockAccessor.GetBlock(pos.X, pos.InternalY + dy, pos.Z);
                 if (block.SideSolid[BlockFacing.DOWN.Index])
                 {
                     GenHere(blockAccessor, pos.AddCopy(0, dy - 1, 0), worldGenRand);

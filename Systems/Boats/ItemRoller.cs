@@ -216,10 +216,10 @@ namespace Vintagestory.GameContent
             var ba = api.World.BlockAccessor;
             int chunksize = ba.ChunkSize;
             int minx = minPos.X;
-            int miny = minPos.Y;
+            int miny = minPos.InternalY;
             int minz = minPos.Z;
             int maxx = maxPos.X;
-            int maxy = maxPos.Y;
+            int maxy = maxPos.InternalY;
             int maxz = maxPos.Z;
 
             for (int x = minx; x <= maxx; x++)

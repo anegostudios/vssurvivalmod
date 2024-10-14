@@ -391,11 +391,13 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < 4; i++)
             {
                 var face = BlockFacing.HORIZONTALS[i];
-                if (Api.World.BlockAccessor.GetBlock(Pos.X + face.Normali.X, Pos.Y, Pos.Z + face.Normali.Z).Id == 0)
+                face.IterateThruFacingOffsets(Pos);
+                if (Api.World.BlockAccessor.GetBlock(Pos).Id == 0)
                 {
                     fruitingSide |= 1 << i;
                 }
             }
+            Pos.East();   // Complete IterateThruFacingOffsets when it ended with West
         }
 
 

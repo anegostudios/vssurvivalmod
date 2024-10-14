@@ -233,6 +233,17 @@ namespace Vintagestory.GameContent
             base.OnEntityCollide(world, entity, pos, facing, collideSpeed, isImpact);
         }
 
+        public override float GetTraversalCost(BlockPos pos, EnumAICreatureType creatureType)
+        {
+            if (creatureType == EnumAICreatureType.LandCreature || creatureType == EnumAICreatureType.Humanoid)
+            {
+                var be = GetBlockEntity<BlockEntityIngotMold>(pos);
+                if (be?.TemperatureLeft > 300 || be.TemperatureRight > 300) return 10000f;
+            }
+
+            return 0;
+        }
+
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
             if (!byPlayer.Entity.Controls.ShiftKey)

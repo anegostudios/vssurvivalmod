@@ -266,9 +266,9 @@ namespace Vintagestory.GameContent
                     {
                         if (!dele(seat, out string errMsg))
                         {
-                            if (seat.Passenger == capi.World.Player.Entity)
+                            if (capi != null && seat.Passenger == capi.World.Player.Entity)
                             {
-                                capi?.TriggerIngameError(this, "cantride", Lang.Get("cantride-" + errMsg));
+                                capi.TriggerIngameError(this, "cantride", Lang.Get("cantride-" + errMsg));
                             }
                             canride = false;
                             break;
@@ -282,9 +282,9 @@ namespace Vintagestory.GameContent
                     {
                         if (!dele(seat, out string errMsg))
                         {
-                            if (seat.Passenger == capi.World.Player.Entity)
+                            if (capi != null && seat.Passenger == capi.World.Player.Entity)
                             {
-                                capi?.TriggerIngameError(this, "cantride", Lang.Get("cantride-" + errMsg));
+                                capi.TriggerIngameError(this, "cantride", Lang.Get("cantride-" + errMsg));
                             }
                             canturn = false;
                             break;
@@ -315,7 +315,7 @@ namespace Vintagestory.GameContent
                 {
                     forward = controls.Forward;
                     backward = controls.Backward;
-                    shouldSprint |= controls.Sprint;
+                    shouldSprint |= controls.Sprint && !entity.Swimming;
                 } else
                 {
                     bool nowForwards = controls.Forward;
@@ -333,7 +333,7 @@ namespace Vintagestory.GameContent
                     prevForwardKey = nowForwards;
                     prevBackwardKey = nowBackwards;
                     prevSprintKey = nowSprint;
-                    shouldSprint = sprint;                
+                    shouldSprint = sprint && !entity.Swimming;
                 }
 
                 if (canturn && (controls.Left || controls.Right))

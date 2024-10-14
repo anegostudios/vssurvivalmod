@@ -1,7 +1,11 @@
-﻿using System;
+﻿using Cairo;
+using System;
 using System.Collections.Generic;
+using System.Linq;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -12,7 +16,8 @@ namespace Vintagestory.GameContent
 
     public interface IRopeTiedCreatureCarrier
     {
-        bool TryMount(EntityAgent pinnedToEntity);
+        bool TryMount(EntityAgent entity);
+
     }
 
     public class ItemSlotWearable : ItemSlot
@@ -259,7 +264,22 @@ namespace Vintagestory.GameContent
             var slot = GetSlotFromSelectionBoxIndex(slotIndex);
 
             if (slot == null || slot.Empty) return false;
-            
+
+            // Don't allow removal of seats where somebody sits on
+            var ebh = entity.GetBehavior<EntityBehaviorSeatable>();
+            if (ebh != null)
+            {
+                var bhs = entity.GetBehavior<EntityBehaviorSelectionBoxes>();
+                var apap = bhs.selectionBoxes[slotIndex];
+                string apname = apap.AttachPoint.Code;
+                var seat = ebh.Seats.FirstOrDefault((seat) => seat.Config.APName == apname || seat.Config.SelectionBox == apname);
+                if (seat?.Passenger != null)
+                {
+                    (entity.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "requiredisembark", Lang.Get("Passenger must disembark first before being able to remove this seat"));
+                    return false;
+                }
+            }
+
             if (slot.StackSize == 0 || byEntity.TryGiveItemStack(slot.Itemstack))
             {
                 var iai = slot.Itemstack.Collectible.GetCollectibleInterface<IAttachedListener>();
@@ -276,7 +296,7 @@ namespace Vintagestory.GameContent
         private bool TryAttach(ItemSlot itemslot, int slotIndex, EntityAgent byEntity)
         {
             var iatta = IAttachableToEntity.FromCollectible(itemslot.Itemstack.Collectible, entity.World.Logger);
-            if (iatta == null || !iatta.IsAttachable(itemslot.Itemstack)) return false;
+            if (iatta == null || !iatta.IsAttachable(entity, itemslot.Itemstack)) return false;
 
             var targetSlot = GetSlotFromSelectionBoxIndex(slotIndex);
 

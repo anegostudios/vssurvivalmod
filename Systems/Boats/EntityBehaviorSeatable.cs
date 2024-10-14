@@ -97,6 +97,7 @@ namespace Vintagestory.GameContent
             return false;
         }
 
+        
 
         public override void OnInteract(EntityAgent byEntity, ItemSlot itemslot, Vec3d hitPosition, EnumInteractMode mode, ref EnumHandling handled)
         {
@@ -107,11 +108,10 @@ namespace Vintagestory.GameContent
             int seleBox = (byEntity as EntityPlayer).EntitySelection?.SelectionBoxIndex ?? -1;
             var bhs = entity.GetBehavior<EntityBehaviorSelectionBoxes>();
 
-            if (byEntity.Controls.Sprint && bhs != null && byEntity.MountedOn == null && seleBox > 0)
+            if (bhs != null && byEntity.MountedOn == null && seleBox > 0)
             {
                 var apap = bhs.selectionBoxes[seleBox - 1];
                 string apname = apap.AttachPoint.Code;
-
                 var seat = Seats.FirstOrDefault((seat) => seat.Config.APName == apname || seat.Config.SelectionBox == apname);
                 if (seat != null && seat.Passenger != null && seat.Passenger.HasBehavior<EntityBehaviorRopeTieable>())
                 {

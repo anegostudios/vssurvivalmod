@@ -320,5 +320,15 @@ namespace Vintagestory.GameContent
         {
             return new ItemStack(this).GetName();
         }
+
+        public override float GetTraversalCost(BlockPos pos, EnumAICreatureType creatureType)
+        {
+            if (creatureType == EnumAICreatureType.LandCreature || creatureType == EnumAICreatureType.Humanoid)
+            {
+                return GetBlockEntity<BlockEntityPitKiln>(pos)?.IsBurning == true ? 10000f : 1f;
+            }
+
+            return base.GetTraversalCost(pos, creatureType);
+        }
     }
 }

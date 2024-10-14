@@ -8,6 +8,7 @@ namespace Vintagestory.GameContent
     public class BlockWaterflowing : BlockForFluidsLayer
     {
         float particleQuantity = 0.2f;
+        bool isBoiling;
 
         public override void OnLoaded(ICoreAPI api)
         {
@@ -21,6 +22,8 @@ namespace Vintagestory.GameContent
             }
 
             ParticleProperties[0].SwimOnLiquid = true;
+
+            isBoiling = HasBehavior<BlockBehaviorSteaming>();
         }
 
         private void OnParticelLevelChanged(int newValue)
@@ -30,11 +33,11 @@ namespace Vintagestory.GameContent
 
         public override float GetAmbientSoundStrength(IWorldAccessor world, BlockPos pos)
         {
-            Block block = world.BlockAccessor.GetBlock(pos.X, pos.Y + 1, pos.Z);
-            if (block.Replaceable >= 6000)   // This is a kind of rough "transparent to sound" test
+            Block blockAbove = world.BlockAccessor.GetBlockAbove(pos);
+            if (blockAbove.Replaceable >= 6000)   // This is a kind of rough "transparent to sound" test
             {
-                block = world.BlockAccessor.GetBlock(pos.X, pos.Y + 1, pos.Z, BlockLayersAccess.Fluid);
-                if (!block.IsLiquid()) return 1;
+                blockAbove = world.BlockAccessor.GetBlock(pos.X, pos.InternalY + 1, pos.Z, BlockLayersAccess.Fluid);
+                if (!blockAbove.IsLiquid()) return 1;
             }
 
             return 0;
@@ -79,5 +82,10 @@ namespace Vintagestory.GameContent
             manager.Spawn(bps);
         }
 
+        public override float GetTraversalCost(BlockPos pos, EnumAICreatureType creatureType)
+        {
+            if (creatureType == EnumAICreatureType.SeaCreature && !isBoiling) return 0;
+            return isBoiling && creatureType != EnumAICreatureType.HeatProofCreature ? 99999f : 5f;
+        }
     }
 }

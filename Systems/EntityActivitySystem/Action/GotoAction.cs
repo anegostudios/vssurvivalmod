@@ -68,14 +68,19 @@ namespace Vintagestory.GameContent
                 Target.Z += Math.Cos(alpha) * Radius;
             }
 
+            EnumAICreatureType ct = EnumAICreatureType.Default;
+            var aicreaturetype = vas.Entity.Properties.Server.Attributes.GetString("aiCreatureType", "Humanoid");
+            if (Enum.TryParse(aicreaturetype, out EnumAICreatureType ect)) ct = ect;
+            
+
             if (Astar)
             {
                 int tries = 4;
-                while (tries-- > 0 && !vas.wppathTraverser.NavigateTo(hereTarget, WalkSpeed, OnDone, OnStuck, OnNoPath)) { }
+                while (tries-- > 0 && !vas.wppathTraverser.NavigateTo(hereTarget, WalkSpeed, OnDone, OnStuck, OnNoPath, 0, ct)) { }
             }
             else
             {
-                vas.linepathTraverser.NavigateTo(hereTarget, WalkSpeed, OnDone, OnStuck);
+                vas.linepathTraverser.NavigateTo(hereTarget, WalkSpeed, OnDone, OnStuck, null, 0, ct);
             }
 
 
@@ -161,6 +166,9 @@ namespace Vintagestory.GameContent
                 .AddTextInput(bc = bc.BelowCopy(0), null, CairoFont.WhiteDetailText(), "x")
                 .AddTextInput(bc = bc.CopyOffsetedSibling(70), null, CairoFont.WhiteDetailText(), "y")
                 .AddTextInput(bc = bc.CopyOffsetedSibling(70), null, CairoFont.WhiteDetailText(), "z")
+
+                .AddSmallButton("Tp to", () => { capi.SendChatMessage(string.Format("/tp ={0} ={1} ={2}", targetX, targetY, targetZ)); return false; }, bc = bc.CopyOffsetedSibling(70), EnumButtonStyle.Small)
+
                 .AddSmallButton("Insert Player Pos", () => onClickPlayerPos(capi, singleComposer), b = b.FlatCopy().FixedUnder(bc), EnumButtonStyle.Small)
 
                 .AddStaticText("Goto animation code", CairoFont.WhiteDetailText(), b = b.BelowCopy(0, 10))
@@ -175,8 +183,8 @@ namespace Vintagestory.GameContent
                 .AddSwitch(null, b = b.BelowCopy(0, 15).WithFixedWidth(25), "astar", 25)
                 .AddStaticText("A* Pathfinding", CairoFont.WhiteDetailText(), b = b.RightCopy(10, 5).WithFixedWidth(100))
 
-                .AddStaticText("Random target offset radius", CairoFont.WhiteDetailText(), b = b.BelowCopy(0, 10))
-                .AddNumberInput(b = b.BelowCopy().WithFixedHeight(25), null, CairoFont.WhiteDetailText(), "radius")
+                .AddStaticText("Random target offset radius", CairoFont.WhiteDetailText(), b = b.BelowCopy(-35, 10).WithFixedWidth(250))
+                .AddNumberInput(b = b.BelowCopy().WithFixedSize(100,25), null, CairoFont.WhiteDetailText(), "radius")
             ;
 
             var s = singleComposer;

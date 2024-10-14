@@ -194,7 +194,7 @@ namespace Vintagestory.GameContent
 
         private bool IsReplacableBeneath(IWorldAccessor world, BlockPos pos)
         {
-            Block bottomBlock = world.BlockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
+            Block bottomBlock = world.BlockAccessor.GetBlockBelow(pos);
             return bottomBlock.Replaceable > 6000;
         }
     }

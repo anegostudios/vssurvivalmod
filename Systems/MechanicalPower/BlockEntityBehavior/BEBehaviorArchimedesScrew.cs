@@ -59,7 +59,7 @@ namespace Vintagestory.GameContent.Mechanics
             for (int i = 0; i < BlockFacing.HORIZONTALS.Length; i++)
             {
                 BlockFacing face = BlockFacing.HORIZONTALS[i];
-                Block block = Api.World.BlockAccessor.GetBlock(Position.X + face.Normali.X, Position.Y + face.Normali.Y, Position.Z + face.Normali.Z);
+                Block block = Api.World.BlockAccessor.GetBlock(Position.X + face.Normali.X, Position.InternalY, Position.Z + face.Normali.Z);
                 if (Block != block && block.SideSolid[face.Opposite.Index])
                 {
                     return true;

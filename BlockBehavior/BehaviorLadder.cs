@@ -63,7 +63,7 @@ namespace Vintagestory.GameContent
             
                 
             // Has ladder above at aimed position?
-            Block aboveBlock = world.BlockAccessor.GetBlock(pos.X, pos.Y + 1, pos.Z);
+            Block aboveBlock = world.BlockAccessor.GetBlock(pos.UpCopy());
             string aboveLadderType = aboveBlock.GetBehavior<BlockBehaviorLadder>()?.LadderType;
 
             if (!isFlexible && aboveLadderType == LadderType && HasSupport(aboveBlock, world.BlockAccessor, pos) && aboveBlock.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
@@ -73,7 +73,7 @@ namespace Vintagestory.GameContent
             }
 
             // Has ladder below at aimed position?
-            Block belowBlock = world.BlockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
+            Block belowBlock = world.BlockAccessor.GetBlock(pos.DownCopy());
             string belowLadderType = belowBlock.GetBehavior<BlockBehaviorLadder>()?.LadderType;
 
             if (belowLadderType == LadderType && HasSupport(belowBlock, world.BlockAccessor, pos) && belowBlock.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
@@ -163,7 +163,7 @@ namespace Vintagestory.GameContent
 
             ladderBlock.DoPlaceBlock(world, byPlayer, new BlockSelection() { Position = abovePos, Face = face }, itemstack);
 
-            BlockPos neibPos = new BlockPos();
+            BlockPos neibPos = new BlockPos(pos.dimension);
             foreach (BlockFacing facing in BlockFacing.ALLFACES)
             {
                 neibPos.Set(abovePos).Offset(facing);
@@ -198,7 +198,7 @@ namespace Vintagestory.GameContent
 
             ladderBlock.DoPlaceBlock(world, byPlayer, new BlockSelection() { Position = belowPos, Face = face }, itemstack);
 
-            BlockPos neibPos = new BlockPos();
+            BlockPos neibPos = new BlockPos(pos.dimension);
             foreach (BlockFacing facing in BlockFacing.ALLFACES)
             {
                 neibPos.Set(belowPos).Offset(facing);
@@ -322,14 +322,14 @@ namespace Vintagestory.GameContent
             // Up: Positive Y
             // Down: Negative Y
 
-            Block block = blockAccess.GetBlock(pos.X + facing.Normali.X, pos.Y, pos.Z + facing.Normali.Z);
+            Block neibBlock = blockAccess.GetBlock(pos.X + facing.Normali.X, pos.InternalY, pos.Z + facing.Normali.Z);
 
             Cuboidi upHalf = new Cuboidi(14, 0, 0, 15, 7, 15).RotatedCopy(0, 90 * facing.HorizontalAngleIndex, 0, new Vec3d(7.5, 0, 7.5));
             Cuboidi downHalf = new Cuboidi(14, 8, 0, 15, 15, 15).RotatedCopy(0, 90 * facing.HorizontalAngleIndex, 0, new Vec3d(7.5, 0, 7.5));
 
             return 
-                block.CanAttachBlockAt(blockAccess, block, pos.AddCopy(facing), facing.Opposite, upHalf) ||
-                block.CanAttachBlockAt(blockAccess, block, pos.AddCopy(facing), facing.Opposite, downHalf)
+                neibBlock.CanAttachBlockAt(blockAccess, neibBlock, pos.AddCopy(facing), facing.Opposite, upHalf) ||
+                neibBlock.CanAttachBlockAt(blockAccess, neibBlock, pos.AddCopy(facing), facing.Opposite, downHalf)
             ;
         }
 

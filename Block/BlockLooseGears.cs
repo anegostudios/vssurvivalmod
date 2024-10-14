@@ -29,7 +29,7 @@ namespace Vintagestory.GameContent
 
             for (int i = 1; i < 5; i++)
             {
-                block = blockAccessor.GetBlock(pos.X, pos.Y - i, pos.Z);
+                block = blockAccessor.GetBlockBelow(pos, i);
 
                 if (block.SideSolid[BlockFacing.UP.Index])
                 {

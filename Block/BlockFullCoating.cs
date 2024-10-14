@@ -206,11 +206,11 @@ namespace Vintagestory.GameContent
             string newFacingLetters = "";
             foreach (BlockFacing facing in ownFacings)
             {
-                Block block = world.BlockAccessor.GetBlock(pos.X + facing.Normali.X, pos.Y + facing.Normali.Y, pos.Z + facing.Normali.Z);
+                Block block = world.BlockAccessor.GetBlock(pos.X + facing.Normali.X, pos.InternalY + facing.Normali.Y, pos.Z + facing.Normali.Z);
 
                 if (block.SideSolid[facing.Opposite.Index])
                 {
-                    newFacingLetters += facing.Code.Substring(0, 1);
+                    newFacingLetters += facing.Code[0];
                 }
             }
 
@@ -247,13 +247,15 @@ namespace Vintagestory.GameContent
 
             foreach (BlockFacing facing in BlockFacing.ALLFACES)
             {
-                Block block = blockAccessor.GetBlock(pos.X + facing.Normali.X, pos.Y + facing.Normali.Y, pos.Z + facing.Normali.Z);
+                facing.IterateThruFacingOffsets(pos);
+                Block block = blockAccessor.GetBlock(pos);
 
                 if (block.SideSolid[facing.Opposite.Index])
                 {
                     facings += facing.Code.Substring(0, 1);
                 }
             }
+            BlockFacing.FinishIteratingAllFaces(pos);  // Finish IterateThruFacingOffsets
 
             return facings;
         }

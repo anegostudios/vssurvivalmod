@@ -56,6 +56,8 @@ namespace Vintagestory.GameContent
         EnumTurretState currentState;
         float currentStateTime;
 
+        bool executing = false;
+
         public AiTaskTurretMode(EntityAgent entity) : base(entity)
         {
         }
@@ -89,6 +91,7 @@ namespace Vintagestory.GameContent
 
         private void AnimManager_OnAnimationStopped(string anim)
         {
+            if (!executing || targetEntity == null) return;
             updateState();
         }
 
@@ -143,6 +146,7 @@ namespace Vintagestory.GameContent
 
             currentState = EnumTurretState.Idle;
             currentStateTime = 0;
+            executing = true;
         }
 
         
@@ -372,6 +376,7 @@ namespace Vintagestory.GameContent
 
             entity.StopAnimation("turret");
             entity.StopAnimation("hold");
+            executing = false;
         }
     }
 }

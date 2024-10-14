@@ -144,6 +144,7 @@ namespace Vintagestory.GameContent
         {
             linepathTraverser = new StraightLineTraverser(Entity);
             wppathTraverser = new WaypointsTraverser(Entity);
+
             AvailableActivities.Clear();
             ActiveActivitiesBySlot.Clear();
 

@@ -318,7 +318,7 @@ namespace Vintagestory.ServerMods
                 int sizex = LastPlacedSchematic.SizeX;
                 int sizey = LastPlacedSchematic.SizeY;
                 int sizez = LastPlacedSchematic.SizeZ;
-                BlockPos tmpPos = new BlockPos();
+                BlockPos tmpPos = new BlockPos(startPos.dimension);
 
                 Block mossDecor = blockAccessor.GetBlock(new AssetLocation("attachingplant-spottymoss"));
 
@@ -336,7 +336,7 @@ namespace Vintagestory.ServerMods
                             var face = BlockFacing.ALLFACES[i];
                             if (!block.SideSolid[i]) continue;
 
-                            var nblock = blockAccessor.GetBlock(tmpPos.X + face.Normali.X, tmpPos.Y + face.Normali.Y, tmpPos.Z + face.Normali.Z);
+                            var nblock = blockAccessor.GetBlock(tmpPos.X + face.Normali.X, tmpPos.InternalY + face.Normali.Y, tmpPos.Z + face.Normali.Z);
                             if (!nblock.SideSolid[face.Opposite.Index])
                             {
                                 blockAccessor.SetDecor(mossDecor, tmpPos, face);

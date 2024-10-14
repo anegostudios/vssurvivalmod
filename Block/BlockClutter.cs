@@ -97,7 +97,7 @@ namespace Vintagestory.GameContent
         }
     }
 
-    public class BlockClutter : BlockShapeFromAttributes
+    public class BlockClutter : BlockShapeFromAttributes, ISearchTextProvider
     {
         public override string ClassType => "clutter";
 
@@ -232,6 +232,16 @@ namespace Vintagestory.GameContent
 
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
+            string type = baseInfo(inSlot, dsc, world, withDebugInfo);
+
+            if ((api as ICoreClientAPI)?.World.Player.WorldData.CurrentGameMode == EnumGameMode.Creative)
+            {
+                dsc.AppendLine(Lang.Get("Clutter type: {0}", type));
+            }
+        }
+
+        private string baseInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
+        {
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
 
             dsc.AppendLine(Lang.Get("Unusable clutter"));
@@ -243,6 +253,19 @@ namespace Vintagestory.GameContent
                 dsc.AppendLine(Lang.Get("Pattern: {0}", Lang.Get("bannerpattern-" + parts[1])));
                 dsc.AppendLine(Lang.Get("Segment: {0}", Lang.Get("bannersegment-" + parts[3])));
             }
+
+            return type;
+        }
+
+        public string GetSearchText(IWorldAccessor world, ItemSlot inSlot)
+        {
+            StringBuilder dsc = new StringBuilder();
+            baseInfo(inSlot, dsc, world, false);
+
+            string type = inSlot.Itemstack.Attributes.GetString("type", "");
+            dsc.AppendLine(Lang.Get("Clutter type: {0}", type));
+
+            return dsc.ToString();
         }
 
     }

@@ -379,6 +379,6 @@ namespace Vintagestory.GameContent
             return stacks;
         }
 
-        public bool IsAttachable(ItemStack itemStack) => true;
+        public bool IsAttachable(Entity toEntity, ItemStack itemStack) => true;
     }
 }

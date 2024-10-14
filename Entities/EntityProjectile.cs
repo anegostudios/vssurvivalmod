@@ -73,9 +73,7 @@ namespace Vintagestory.GameContent
             if (World.ElapsedMilliseconds <= msCollide + 500) return;
 
             var pos = SidedPos;
-
-            if (pos.Motion.X == 0 && pos.Motion.Y == 0 && pos.Motion.Z == 0) return;  // Don't do damage if stuck in ground
-
+            if (pos.Motion.LengthSq() < 0.2*0.2) return;  // Don't do damage if stuck in ground
 
             Cuboidd projectileBox = SelectionBox.ToDouble().Translate(pos.X, pos.Y, pos.Z);
 

@@ -298,7 +298,11 @@ namespace Vintagestory.GameContent
 
         #region IAttachableToEntity
 
-        public bool IsAttachable(ItemStack itemStack) => true;
+        public virtual bool IsAttachable(Entity toEntity, ItemStack itemStack)
+        {
+            if (toEntity is EntityPlayer) return false;
+            return true;
+        }
         public void CollectTextures(ItemStack stack, Shape shape, string texturePrefixCode, Dictionary<string, CompositeTexture> intoDict)
         {
             string type = stack.Attributes.GetString("type");

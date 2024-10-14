@@ -163,15 +163,13 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            int yBelow = pos.Y - 1;
             int depth = 0;
 
-            Block belowBlock = blockAccessor.GetBlock(pos.X, yBelow, pos.Z);
+            Block belowBlock = blockAccessor.GetBlockBelow(pos, depth + 1);
             while (belowBlock.LiquidCode == "water")
             {
                 if (++depth > maxWaterDepth) return false;
-                yBelow--;
-                belowBlock = blockAccessor.GetBlock(pos.X, yBelow, pos.Z);
+                belowBlock = blockAccessor.GetBlockBelow(pos, depth + 1);
             }
 
             if (belowBlock.Fertility > 0)

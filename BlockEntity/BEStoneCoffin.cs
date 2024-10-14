@@ -447,8 +447,8 @@ namespace Vintagestory.GameContent
         bool hasLid()
         {
             return
-                Api.World.BlockAccessor.GetBlock(Pos.X, Pos.Y + 1, Pos.Z).FirstCodePart() == "stonecoffinlid" &&
-                Api.World.BlockAccessor.GetBlock(Pos.X + blockScs.Orientation.Opposite.Normali.X, Pos.Y + 1, Pos.Z + blockScs.Orientation.Opposite.Normali.Z).FirstCodePart() == "stonecoffinlid"
+                Api.World.BlockAccessor.GetBlockAbove(Pos).FirstCodePart() == "stonecoffinlid" &&
+                Api.World.BlockAccessor.GetBlockAbove(Pos.AddCopy(blockScs.Orientation.Opposite)).FirstCodePart() == "stonecoffinlid"
             ;
         }
 

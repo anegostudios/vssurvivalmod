@@ -1,6 +1,8 @@
-﻿using System;
+﻿using Cairo.Freetype;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
@@ -70,6 +72,11 @@ namespace Vintagestory.GameContent
 
             double shortestDistance = 99;
             Vec3d shortestTargetPos = null;
+
+            var entityBoat = this.Entity;
+            /*var ebox = entityBoat.CollisionBox.ToDouble().Translate(entityBoat.ServerPos.XYZ);
+            var passengerBox = Passenger.CollisionBox.ToDouble().Translate(Passenger.ServerPos.XYZ);*/
+             //&& !ebox.Intersects(passengerBox)
 
             for (int dx = -4; dx <= 4; dx++)
             {

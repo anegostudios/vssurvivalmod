@@ -30,7 +30,7 @@ namespace Vintagestory.GameContent
         {
             blockAccessor.SetBlock(BlockId, pos);
 
-            if (soilBlockId > 0 && blockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z).BlockMaterial == EnumBlockMaterial.Stone)
+            if (soilBlockId > 0 && blockAccessor.GetBlockBelow(pos).BlockMaterial == EnumBlockMaterial.Stone)
             {
                 blockAccessor.SetBlock(soilBlockId, pos.DownCopy());
             }
