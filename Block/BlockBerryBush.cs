@@ -13,6 +13,8 @@ namespace Vintagestory.GameContent
         public string State => Variant["state"];
         public string Type => Variant["type"];
 
+        WorldInteraction[] interactions;
+
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
