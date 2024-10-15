@@ -75,7 +75,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        internal void Prune()
+        public void Prune()
         {
             Pruned = true;
             LastPrunedTotalDays = Api.World.Calendar.TotalDays;
@@ -98,8 +98,9 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            // In case this block was imported from another older world. In that case lastCheckAtTotalDays would be a future date.
+            // In case this block was imported from another older world. In that case lastCheckAtTotalDays and LastPrunedTotalDays would be a future date.
             lastCheckAtTotalDays = Math.Min(lastCheckAtTotalDays, Api.World.Calendar.TotalDays);
+            LastPrunedTotalDays = Math.Min(LastPrunedTotalDays, Api.World.Calendar.TotalDays);
 
 
             // We don't need to check more than one year because it just begins to loop then
@@ -178,7 +179,6 @@ namespace Vintagestory.GameContent
                 if (transitionHoursLeft <= 0)
                 {
                     if (!DoGrow()) return;
-                    transitionHoursLeft = GetHoursForNextStage();
                 }
             }
 
@@ -188,6 +188,7 @@ namespace Vintagestory.GameContent
         public override void OnExchanged(Block block)
         {
             base.OnExchanged(block);
+            transitionHoursLeft = GetHoursForNextStage();
             if (Api?.Side == EnumAppSide.Server) UpdateTransitionsFromBlock();
         }
 
