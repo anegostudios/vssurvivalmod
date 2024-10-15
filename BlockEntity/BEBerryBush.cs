@@ -75,7 +75,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        internal void Prune()
+        public void Prune()
         {
             Pruned = true;
             LastPrunedTotalDays = Api.World.Calendar.TotalDays;
