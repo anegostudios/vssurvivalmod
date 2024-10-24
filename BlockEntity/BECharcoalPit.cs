@@ -31,6 +31,10 @@ namespace Vintagestory.GameContent
 
         public bool Lit => lit;
 
+        int maxSize = 11;
+
+        public int MaxPileSize { get { return maxSize; } set { maxSize = value; } }
+
 
         public override void Initialize(ICoreAPI api)
         {
@@ -148,7 +152,7 @@ namespace Vintagestory.GameContent
             Queue<BlockPos> bfsQueue = new Queue<BlockPos>();
             bfsQueue.Enqueue(Pos);
 
-            int maxHalfSize = 6;
+            BlockPos minPos = Pos.Copy(), maxPos = Pos.Copy();
             Vec3i curQuantityAndYMinMax;
 
             while (bfsQueue.Count > 0)
@@ -182,13 +186,26 @@ namespace Vintagestory.GameContent
                         continue;
                     }
 
-                    // Only traverse within a 12x12x12 block cube
-                    bool inCube = Math.Abs(npos.X - Pos.X) <= maxHalfSize && Math.Abs(npos.Y - Pos.Y) <= maxHalfSize && Math.Abs(npos.Z - Pos.Z) <= maxHalfSize;
+                    BlockPos nmin = minPos.Copy(), nmax = maxPos.Copy();
+
+                    if (npos.X < minPos.X) nmin.X = npos.X;
+                    else if (npos.X > maxPos.X) nmax.X = npos.X;
+
+                    if (npos.Y < minPos.Y) nmin.Y = npos.Y;
+                    else if (npos.Y > maxPos.Y) nmax.Y = npos.Y;
+
+                    if (npos.Z < minPos.Z) nmin.Z = npos.Z;
+                    else if (npos.Z > maxPos.Z) nmax.Z = npos.Z;
+
+                    // Only traverse within maxSize range
+                    bool inCube = nmax.X - nmin.X + 1 >= maxSize && nmax.Y - nmin.Y + 1 >= maxSize && nmax.Z - nmin.Z + 1 >= maxSize;
 
                     if (inCube && !visitedPositions.Contains(npos))
                     {
                         bfsQueue.Enqueue(npos);
                         visitedPositions.Add(npos);
+                        minPos = nmin.Copy();
+                        maxPos = nmax.Copy();
                     }
                 }
             }
@@ -241,7 +258,7 @@ namespace Vintagestory.GameContent
 
             int charcoalPitBlockId = Api.World.GetBlock(new AssetLocation("charcoalpit")).BlockId;
 
-            int maxHalfSize = 6;
+            BlockPos minPos = Pos.Copy(), maxPos = Pos.Copy();
 
             while (bfsQueue.Count > 0)
             {
@@ -272,13 +289,26 @@ namespace Vintagestory.GameContent
                     // Only traverse inside the firewood pile
                     if (!isFirewoodpile) continue;
 
-                    // Only traverse within a 12x12x12 block cube
-                    bool inCube = Math.Abs(npos.X - Pos.X) <= maxHalfSize && Math.Abs(npos.Y - Pos.Y) <= maxHalfSize && Math.Abs(npos.Z - Pos.Z) <= maxHalfSize;
+                    BlockPos nmin = minPos.Copy(), nmax = maxPos.Copy();
+
+                    if (npos.X < minPos.X) nmin.X = npos.X;
+                    else if (npos.X > maxPos.X) nmax.X = npos.X;
+
+                    if (npos.Y < minPos.Y) nmin.Y = npos.Y;
+                    else if (npos.Y > maxPos.Y) nmax.Y = npos.Y;
+
+                    if (npos.Z < minPos.Z) nmin.Z = npos.Z;
+                    else if (npos.Z > maxPos.Z) nmax.Z = npos.Z;
+
+                    // Only traverse within maxSize range
+                    bool inCube = nmax.X - nmin.X + 1 >= maxSize && nmax.Y - nmin.Y + 1 >= maxSize && nmax.Z - nmin.Z + 1 >= maxSize;
                     
                     if (inCube && !visitedPositions.Contains(npos))
                     {
                         bfsQueue.Enqueue(npos);
                         visitedPositions.Add(npos);
+                        minPos = nmin.Copy();
+                        maxPos = nmax.Copy();
                     }
                 }
             }
