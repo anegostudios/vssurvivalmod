@@ -7,13 +7,12 @@ using Vintagestory.API.Util;
 namespace Vintagestory.GameContent
 {
     [JsonObject(MemberSerialization.OptIn)]
-    public class PlayAnimationAction : IEntityAction
+    public class PlayAnimationAction : EntityActionBase
     {
-        protected EntityActivitySystem vas;
         [JsonProperty]
         protected AnimationMetaData meta;
         [JsonProperty]
-        protected float DurationHours;
+        protected float DurationHours=-1;
         [JsonProperty]
         protected int OnAnimEnd;
 
@@ -33,42 +32,40 @@ namespace Vintagestory.GameContent
             this.OnAnimEnd = onAnimEnd;
         }
 
-        public bool ExecutionHasFailed { get; set; }
+        public override string Type => "playanimation";
 
-        public string Type => "playanimation";
-
-        public bool IsFinished()
+        public override bool IsFinished()
         {
-            if (OnAnimEnd == 0) return vas.Entity.World.Calendar.TotalHours > untilTotalHours;
+            if (OnAnimEnd == 0 && untilTotalHours >= 0) return vas.Entity.World.Calendar.TotalHours > untilTotalHours;
 
             return !vas.Entity.AnimManager.IsAnimationActive(meta.Animation);
         }
 
-        public void Start(EntityActivity act)
+        public override void Start(EntityActivity act)
         {
             untilTotalHours = vas.Entity.World.Calendar.TotalHours + DurationHours;
             vas.Entity.AnimManager.StartAnimation(meta.Init());
         }
 
-        public void Cancel()
+        public override void Cancel()
         {
             Finish();
         }
-        public void Finish() 
+        public override void Finish() 
         {
             vas.Entity.AnimManager.StopAnimation(meta.Animation);
         }
-        public void LoadState(ITreeAttribute tree) {
+        public override void LoadState(ITreeAttribute tree) {
             untilTotalHours = tree.GetDouble("untilTotalHours");
         }
-        public void StoreState(ITreeAttribute tree) {
+        public override void StoreState(ITreeAttribute tree) {
             tree.SetDouble("untilTotalHours", untilTotalHours);
         }
 
 
-        public void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
+        public override void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
-            var b = ElementBounds.Fixed(0, 0, 200, 25);
+            var b = ElementBounds.Fixed(0, 0, 250, 25);
             singleComposer
                 .AddStaticText("Animation Code", CairoFont.WhiteDetailText(), b)
                 .AddTextInput(b = b.BelowCopy(0, -5), null, CairoFont.WhiteDetailText(), "animation")
@@ -76,7 +73,7 @@ namespace Vintagestory.GameContent
                 .AddStaticText("Animation Speed", CairoFont.WhiteDetailText(), b = b.BelowCopy(0, 10))
                 .AddNumberInput(b = b.BelowCopy(0, -5), null, CairoFont.WhiteDetailText(), "speed")
 
-                .AddStaticText("Duration (ingame hours)", CairoFont.WhiteDetailText(), b = b.BelowCopy(0, 10))
+                .AddStaticText("Duration (ingame hours. -1 to ignore)", CairoFont.WhiteDetailText(), b = b.BelowCopy(0, 10))
                 .AddNumberInput(b = b.BelowCopy(0, -5), null, CairoFont.WhiteDetailText(), "durationHours")
 
                 .AddStaticText("On Animation End", CairoFont.WhiteDetailText(), b = b.BelowCopy(0, 10))
@@ -89,12 +86,12 @@ namespace Vintagestory.GameContent
         }
 
 
-        public IEntityAction Clone()
+        public override IEntityAction Clone()
         {
             return new PlayAnimationAction(vas, meta, DurationHours, OnAnimEnd);
         }
 
-        public bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
+        public override bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             meta = new AnimationMetaData()
             {
@@ -109,24 +106,15 @@ namespace Vintagestory.GameContent
 
         public override string ToString()
         {
-            return "Play animation " + meta?.Animation;
+            return "Play animation " + meta?.Animation + ". " + (OnAnimEnd==0 ? "repeat " + DurationHours + " hours" : "");
         }
 
-        public void OnTick(float dt)
+        public override void OnTick(float dt)
         {
             if (OnAnimEnd == 0 && !vas.Entity.AnimManager.IsAnimationActive(meta.Animation))
             {
                 vas.Entity.AnimManager.StartAnimation(meta.Init());
             }
-        }
-
-        public void OnVisualize(ActivityVisualizer visualizer)
-        {
-
-        }
-        public void OnLoaded(EntityActivitySystem vas)
-        {
-            this.vas = vas;
         }
     }
 }

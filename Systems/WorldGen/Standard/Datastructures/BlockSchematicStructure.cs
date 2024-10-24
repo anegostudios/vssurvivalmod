@@ -426,7 +426,7 @@ namespace Vintagestory.ServerMods
             if (!(blockAccessor is IBlockAccessorRevertable))
             {
                 PlaceDecors(blockAccessor, startPos);
-                PlaceEntitiesAndBlockEntities(blockAccessor, worldForCollectibleResolve, startPos, BlockCodesTmpForRemap, ItemCodes, false, null, centerrockblockid);
+                PlaceEntitiesAndBlockEntities(blockAccessor, worldForCollectibleResolve, startPos, BlockCodesTmpForRemap, ItemCodes, false, null, centerrockblockid, null, GenStructures.ReplaceMetaBlocks);
             }
 
             return placed;

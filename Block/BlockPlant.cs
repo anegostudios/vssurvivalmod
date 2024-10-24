@@ -171,6 +171,21 @@ namespace Vintagestory.GameContent
         public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, IRandom worldGenRand, BlockPatchAttributes attributes = null)
         {
             if (!CanPlantStay(blockAccessor, pos)) return false;
+            var canPlace = true;
+            var tmpPos = pos.Copy();
+            for (int x = -1; x < 2; x++)
+            {
+                for (int z = -1; z < 2; z++)
+                {
+                    tmpPos.Set(pos.X + x, pos.Y, pos.Z + z);
+                    var block = blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Solid);
+                    if (block is BlockWaterLilyGiant)
+                    {
+                        canPlace = false;
+                    }
+                }
+            }
+            if (!canPlace) return false;
             return base.TryPlaceBlockForWorldGen(blockAccessor, pos, onBlockFace, worldGenRand, attributes);
         }
 

@@ -11,6 +11,7 @@ namespace Vintagestory.ServerMods
     {
         private ICoreServerAPI api;
         StoryStructureLocation devastationLocation;
+        public IWorldGenBlockAccessor worldgenBlockAccessor;  // used by the Timeswitch to place the towers
         public SimplexNoise distDistort;
         public NormalizedSimplexNoise devastationDensity;
 
@@ -26,7 +27,6 @@ namespace Vintagestory.ServerMods
         int[] devastationBlockIds;
         int growthBlockId;
 
-
         public override void StartServerSide(ICoreServerAPI api)
         {
             this.api = api;
@@ -37,6 +37,7 @@ namespace Vintagestory.ServerMods
             if (TerraGenConfig.DoDecorationPass)
             {
                 api.Event.ChunkColumnGeneration(OnChunkColumnGeneration, EnumWorldGenPass.Terrain, "standard");
+                api.Event.GetWorldgenBlockAccessor(OnWorldGenBlockAccessor);
             }
 
             distDistort = new SimplexNoise(new double[] { 14, 9, 6, 3 }, new double[] { 1 / 100.0, 1 / 50.0, 1 / 25.0, 1 / 12.5 }, api.World.SeaLevel + 20980);
@@ -52,15 +53,23 @@ namespace Vintagestory.ServerMods
             }
         }
 
+        private void OnWorldGenBlockAccessor(IChunkProviderThread chunkProvider)
+        {
+            worldgenBlockAccessor = chunkProvider.GetBlockAccessor(false);
+        }
+
         private void InitWorldGen()
         {
             distDistort = new SimplexNoise(new double[] { 14, 9, 6, 3 }, new double[] { 1 / 100.0, 1 / 50.0, 1 / 25.0, 1 / 12.5 }, api.World.SeaLevel + 20980);
             devastationDensity = new NormalizedSimplexNoise(new double[] { 14, 9, 6, 3 }, new double[] { 1 / 25.0, 1 / 12.5, 1 / 6.25, 1 / 3.25 }, api.World.SeaLevel + 20981);
 
-            api.ModLoader.GetModSystem<GenStoryStructures>().storyStructureInstances.TryGetValue("devastationarea", out devastationLocation);
+            var genStoryStructures = api.ModLoader.GetModSystem<GenStoryStructures>();
+            genStoryStructures.storyStructureInstances.TryGetValue("devastationarea", out devastationLocation);
             if (devastationLocation != null)
             {
-                api.ModLoader.GetModSystem<Timeswitch>().SetPos(devastationLocation.CenterPos);
+                Timeswitch ts = api.ModLoader.GetModSystem<Timeswitch>();
+                ts.SetPos(devastationLocation.CenterPos);
+                ts.InitPotentialGeneration(devastationLocation, genStoryStructures);
             }
 
             var devastationEffects = api.ModLoader.GetModSystem<DevastationEffects>();
@@ -198,6 +207,8 @@ namespace Vintagestory.ServerMods
                     }
                 }
             }
+
+            api.ModLoader.GetModSystem<Timeswitch>().AttemptGeneration(worldgenBlockAccessor);
         }
     }
 }

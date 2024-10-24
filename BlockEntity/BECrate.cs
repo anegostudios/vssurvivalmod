@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
@@ -31,7 +30,7 @@ namespace Vintagestory.GameContent
         Cuboidf selBoxLabel;
 
         int labelColor;
-        
+
         ItemStack labelStack;
         ModSystemLabelMeshCache labelCacheSys;
 
@@ -164,7 +163,7 @@ namespace Vintagestory.GameContent
             if (take && ownSlot != null)
             {
                 ItemStack stack = bulk ? ownSlot.TakeOutWhole() : ownSlot.TakeOut(1);
-                var quantity = bulk ? stack.StackSize : 1; 
+                var quantity = bulk ? stack.StackSize : 1;
                 if (!byPlayer.InventoryManager.TryGiveItemstack(stack, true))
                 {
                     Api.World.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5f + blockSel.Face.Normalf.X, 0.5f + blockSel.Face.Normalf.Y, 0.5f + blockSel.Face.Normalf.Z));
@@ -173,7 +172,7 @@ namespace Vintagestory.GameContent
                 {
                     didMoveItems(stack, byPlayer);
                 }
-                Api.World.Logger.Audit("{0} Took {1} from Crate at {2}.", 
+                Api.World.Logger.Audit("{0} Took {1} from Crate at {2}.",
                     byPlayer.PlayerName,
                     string.Format("{0}x{1}", quantity, stack?.GetName()),
                     Pos
@@ -198,7 +197,7 @@ namespace Vintagestory.GameContent
                     if (hotbarslot.TryPutInto(Api.World, inventory[0], quantity) > 0)
                     {
                         didMoveItems(inventory[0].Itemstack, byPlayer);
-                        Api.World.Logger.Audit("{0} Put {1} into Crate at {2}.", 
+                        Api.World.Logger.Audit("{0} Put {1} into Crate at {2}.",
                             byPlayer.PlayerName,
                             string.Format("{0}x{1}", quantity, inventory[0].Itemstack?.GetName()),
                             Pos
@@ -218,7 +217,7 @@ namespace Vintagestory.GameContent
                             if (hotbarslot.TryPutInto(Api.World, wslot.slot, quantity) > 0)
                             {
                                 didMoveItems(wslot.slot.Itemstack, byPlayer);
-                                Api.World.Logger.Audit("{0} Put {1} into Crate at {2}.", 
+                                Api.World.Logger.Audit("{0} Put {1} into Crate at {2}.",
                                     byPlayer.PlayerName,
                                     string.Format("{0}x{1}", quantity, wslot.slot.Itemstack?.GetName()),
                                     Pos
@@ -257,7 +256,7 @@ namespace Vintagestory.GameContent
                 quantitySlots = props["quantitySlots"].AsInt(quantitySlots);
                 retrieveOnly = props["retrieveOnly"].AsBool(false);
             }
-            
+
             inventory = new InventoryGeneric(quantitySlots, null, null, null);
             inventory.BaseWeight = 1f;
             inventory.OnGetSuitability = (sourceSlot, targetSlot, isMerge) => (isMerge ? (inventory.BaseWeight + 3) : (inventory.BaseWeight + 1)) + (sourceSlot.Inventory is InventoryBasePlayer ? 1 : 0);
@@ -280,7 +279,7 @@ namespace Vintagestory.GameContent
             inventory.PutLocked = retrieveOnly;
             inventory.OnInventoryClosed += OnInvClosed;
             inventory.OnInventoryOpened += OnInvOpened;
-            
+
             if (api.Side == EnumAppSide.Server)
             {
                 inventory.SlotModified += Inventory_SlotModified;
@@ -471,7 +470,7 @@ namespace Vintagestory.GameContent
         void genLabelMesh()
         {
             if (LabelProps?.EditableShape == null || labelStack == null || requested) return;
-            
+
             if (labelCacheSys == null) labelCacheSys = Api.ModLoader.GetModSystem<ModSystemLabelMeshCache>();
 
             requested = true;
@@ -499,7 +498,7 @@ namespace Vintagestory.GameContent
             bool skipmesh = base.OnTesselation(mesher, tesselator);
             if (skipmesh) return true;
 
-            
+
             if (ownMesh == null)
             {
                 return true;
@@ -523,7 +522,7 @@ namespace Vintagestory.GameContent
         {
             int stacksize = 0;
             foreach (var slot in inventory) stacksize += slot.StackSize;
-            
+
             if (stacksize > 0) {
                 dsc.AppendLine(Lang.Get("Contents: {0}x{1}", stacksize, inventory.FirstNonEmptySlot.GetStackName()));
             } else

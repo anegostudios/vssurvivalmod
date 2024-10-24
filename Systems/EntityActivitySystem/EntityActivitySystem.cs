@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Text;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.Util;
@@ -32,15 +33,17 @@ namespace Vintagestory.GameContent
             Entity = entity;
         }
 
-        public bool StartActivity(string name)
+        public bool StartActivity(string code, float priority=9999f, int slot=-1)
         {
-            var index = AvailableActivities.IndexOf<IEntityActivity>(item => item.Name == name);
+            var index = AvailableActivities.IndexOf<IEntityActivity>(item => item.Code == code);
             if (index < 0) return false;
 
             var activity = AvailableActivities[index];
+            if (slot < 0) slot = activity.Slot;
 
             if (ActiveActivitiesBySlot.TryGetValue(activity.Slot, out var activeAct))
             {
+                if (activeAct.Priority > priority) return false;
                 activeAct.Cancel();
             }
 
@@ -79,7 +82,6 @@ namespace Vintagestory.GameContent
 
             accum += dt;
             if (accum < 0.25) return;
-            accum = 0;
 
             foreach (var key in ActiveActivitiesBySlot.Keys)
             {
@@ -89,14 +91,16 @@ namespace Vintagestory.GameContent
                 if (activity.Finished)
                 {
                     activity.Finish();
-                    Entity.Attributes.SetString("lastActivity", activity.Name);
+                    Entity.Attributes.SetString("lastActivity", activity.Code);
                     if (Debug) Entity.World.Logger.Debug("ActivitySystem entity {0} activity {1} has finished", Entity.EntityId, activity.Name);
                     ActiveActivitiesBySlot.Remove(key);
                     continue;
                 }
 
-                activity.OnTick(dt);
+                activity.OnTick(accum);
             }
+
+            accum = 0;
 
             if (!pauseAutoSelection)
             {
@@ -137,6 +141,17 @@ namespace Vintagestory.GameContent
                         activity?.Start();
                     }
                 }
+            }
+
+
+            if (Entity.World.EntityDebugMode)
+            {
+                StringBuilder sb = new StringBuilder();
+                foreach (var val in ActiveActivitiesBySlot)
+                {
+                    sb.Append(val.Key + ": " + val.Value.Name + "/" + val.Value.CurrentAction?.Type);
+                }
+                Entity.DebugAttributes.SetString("activities", sb.ToString());
             }
         }
 

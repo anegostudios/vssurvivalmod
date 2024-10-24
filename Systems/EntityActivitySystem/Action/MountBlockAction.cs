@@ -10,11 +10,9 @@ namespace Vintagestory.GameContent
 {
 
     [JsonObject(MemberSerialization.OptIn)]
-    public class MountBlockAction : IEntityAction
+    public class MountBlockAction : EntityActionBase
     {
-        protected EntityActivitySystem vas;
-        public string Type => "mountblock";
-        public bool ExecutionHasFailed { get; set; }
+        public override string Type => "mountblock";
 
         [JsonProperty]
         AssetLocation targetBlockCode;
@@ -30,12 +28,12 @@ namespace Vintagestory.GameContent
             this.searchRange = searchRange;
         }
 
-        public bool IsFinished()
+        public override bool IsFinished()
         {
             return vas.Entity.MountedOn != null;
         }
 
-        public void Start(EntityActivity act)
+        public override void Start(EntityActivity act)
         {
             if (vas.Entity.MountedOn != null) return;
 
@@ -77,21 +75,12 @@ namespace Vintagestory.GameContent
             });
         }
 
-        public void OnTick(float dt)
-        {
-
-        }
-        public void Cancel()
+        public override void Cancel()
         {
             vas.Entity.TryUnmount();
         }
-        public void Finish() { }
 
-        public void LoadState(ITreeAttribute tree) { }
-        public void StoreState(ITreeAttribute tree) { }
-
-
-        public void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
+        public override void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             var b = ElementBounds.Fixed(0, 0, 200, 25);
             singleComposer
@@ -106,14 +95,14 @@ namespace Vintagestory.GameContent
             singleComposer.GetTextInput("targetBlockCode").SetValue(targetBlockCode?.ToShortString() ?? "");
         }
 
-        public bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
+        public override bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             searchRange = singleComposer.GetTextInput("searchRange").GetText().ToFloat();
             targetBlockCode = new AssetLocation(singleComposer.GetTextInput("targetBlockCode").GetText());
             return true;
         }
 
-        public IEntityAction Clone()
+        public override IEntityAction Clone()
         {
             return new MountBlockAction(vas, targetBlockCode, searchRange);
         }
@@ -123,7 +112,7 @@ namespace Vintagestory.GameContent
             return "Mount block " + targetBlockCode + " within " + searchRange + " blocks";
         }
 
-        public void OnVisualize(ActivityVisualizer visualizer)
+        public override void OnVisualize(ActivityVisualizer visualizer)
         {
             BlockPos targetPos=null;
             searchBlocks((block, pos) =>
@@ -141,10 +130,6 @@ namespace Vintagestory.GameContent
             {
                 visualizer.LineTo(targetPos.ToVec3d().Add(0.5, 0.5, 0.5));
             }
-        }
-        public void OnLoaded(EntityActivitySystem vas)
-        {
-            this.vas = vas;
         }
     }
 }

@@ -72,7 +72,7 @@ namespace Vintagestory.GameContent
 
             var TimeswitchSys = sapi.ModLoader.GetModSystem<Timeswitch>();
             var serverPlayer = args.Caller.Player as IServerPlayer;
-            TimeswitchSys.CopyBlocksToAltDimension(serverPlayer);
+            TimeswitchSys.CopyBlocksToAltDimension(sapi.World.BlockAccessor, serverPlayer);
 
             return TextCommandResult.Success();
         }

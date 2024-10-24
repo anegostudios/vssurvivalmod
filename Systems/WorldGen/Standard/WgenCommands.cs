@@ -1980,6 +1980,25 @@ namespace Vintagestory.ServerMods
                     });
                 }
             }
+            else
+            {
+                // when only deleting chunks we delete all structures from the mapregion
+                var chunkSize = api.WorldManager.ChunkSize;
+                foreach (Vec2i coord in coords)
+                {
+                    var regionIndex = api.WorldManager.MapRegionIndex2D(coord.X / regionChunkSize, coord.Y / regionChunkSize);
+                    var mapRegion = api.WorldManager.GetMapRegion(regionIndex);
+                    if (mapRegion?.GeneratedStructures.Count > 0)
+                    {
+                        // remove the structures from each chunk that will be deleted
+                        var generatedStructures = mapRegion.GeneratedStructures;
+                        var structures = generatedStructures.Where(s =>
+                            coord.X == s.Location.Start.X / chunkSize &&
+                            coord.Y == s.Location.Start.Z / chunkSize);
+                        generatedStructures.RemoveAll(s => structures.Contains(s));
+                    }
+                }
+            }
 
             int diam = 2 * rad + 1;
             if (onlydelete)

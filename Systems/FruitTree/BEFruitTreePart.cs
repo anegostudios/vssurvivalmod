@@ -160,10 +160,7 @@ namespace Vintagestory.GameContent
 
             if (texpos == null)
             {
-                bool ok = capi.BlockTextureAtlas.GetOrInsertTexture(texturePath, out _, out texpos, () =>
-                {
-                    return capi.BlockTextureAtlas.LoadCompositeBitmap(texturePath);
-                });
+                bool ok = capi.BlockTextureAtlas.GetOrInsertTexture(texturePath, out _, out texpos);
 
                 if (!ok)
                 {

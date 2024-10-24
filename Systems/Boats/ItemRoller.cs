@@ -50,7 +50,7 @@ namespace Vintagestory.GameContent
         public static List<List<BlockPos>> waterEdgeByFacing = new List<List<BlockPos>>();
 
         public static List<BlockPos> siteListN = new List<BlockPos>() { new BlockPos(-5, -1, -2), new BlockPos(3, 2, 2) };
-        public static List<BlockPos> waterEdgeListN = new List<BlockPos>() { new BlockPos(3, -1, -2), new BlockPos(4, 0, 2) };
+        public static List<BlockPos> waterEdgeListN = new List<BlockPos>() { new BlockPos(3, -1, -2), new BlockPos(6, 0, 2) };
 
         public SkillItem[] skillItems;
 
@@ -69,18 +69,18 @@ namespace Vintagestory.GameContent
 
             skillItems = new SkillItem[]
             {
-                new SkillItem() { Code = new AssetLocation("north"), Name = "North" },
                 new SkillItem() { Code = new AssetLocation("east"), Name = "Easth" },
-                new SkillItem() { Code = new AssetLocation("south"), Name = "South" },
+                new SkillItem() { Code = new AssetLocation("north"), Name = "North" },
                 new SkillItem() { Code = new AssetLocation("west"), Name = "West" },
+                new SkillItem() { Code = new AssetLocation("south"), Name = "South" },
             };
 
             if (api is ICoreClientAPI capi)
             {
-                skillItems[0].WithIcon(capi, capi.Gui.LoadSvgWithPadding(new AssetLocation("textures/icons/pointnorth.svg"), 48, 48, 5, ColorUtil.WhiteArgb));
-                skillItems[1].WithIcon(capi, capi.Gui.LoadSvgWithPadding(new AssetLocation("textures/icons/pointeast.svg"), 48, 48, 5, ColorUtil.WhiteArgb));
-                skillItems[2].WithIcon(capi, capi.Gui.LoadSvgWithPadding(new AssetLocation("textures/icons/pointsouth.svg"), 48, 48, 5, ColorUtil.WhiteArgb));
-                skillItems[3].WithIcon(capi, capi.Gui.LoadSvgWithPadding(new AssetLocation("textures/icons/pointwest.svg"), 48, 48, 5, ColorUtil.WhiteArgb));
+                skillItems[0].WithIcon(capi, capi.Gui.LoadSvgWithPadding(new AssetLocation("textures/icons/pointeast.svg"), 48, 48, 5, ColorUtil.WhiteArgb));
+                skillItems[1].WithIcon(capi, capi.Gui.LoadSvgWithPadding(new AssetLocation("textures/icons/pointnorth.svg"), 48, 48, 5, ColorUtil.WhiteArgb));
+                skillItems[2].WithIcon(capi, capi.Gui.LoadSvgWithPadding(new AssetLocation("textures/icons/pointwest.svg"), 48, 48, 5, ColorUtil.WhiteArgb));
+                skillItems[3].WithIcon(capi, capi.Gui.LoadSvgWithPadding(new AssetLocation("textures/icons/pointsouth.svg"), 48, 48, 5, ColorUtil.WhiteArgb));
             }
         }
 
@@ -142,7 +142,7 @@ namespace Vintagestory.GameContent
             }
             if (!suitableLocation(player, blockSel))
             {
-                (api as ICoreClientAPI)?.TriggerIngameError(this, "unsuitableLocation", "Requires a suitable location near water to place a boat construction site");
+                (api as ICoreClientAPI)?.TriggerIngameError(this, "unsuitableLocation", "Requires a suitable location near water to place a boat construction site. Boat will roll towards the blue highlighted area. Use tool mode to rotate");
                 return;
             }
 
@@ -156,6 +156,12 @@ namespace Vintagestory.GameContent
             var entity = byEntity.World.ClassRegistry.CreateEntity(type);
             entity.ServerPos.SetPos(blockSel.Position.ToVec3d().AddCopy(0.5, 1, 0.5));
             entity.ServerPos.Yaw = -GameMath.PIHALF + orient * GameMath.PIHALF;
+            
+            //n-dir
+            if (orient == 1) entity.ServerPos.Z--; // Not sure why
+			//w-dir
+            if (orient == 2) entity.ServerPos.X--; // Not sure why
+
             entity.Pos.SetFrom(entity.ServerPos);
             byEntity.World.SpawnEntity(entity);
 

@@ -175,15 +175,9 @@ namespace Vintagestory.GameContent
 
                         var cmpt = Properties.Client.Textures[val.Key] = new CompositeTexture(loc);
                         cmpt.Bake(capi.Assets);
-                        capi.EntityTextureAtlas.GetOrInsertTexture(cmpt.Baked.TextureFilenames[0], out int textureSubid, out _, () =>
-                        {
-                            var bmp = capi.EntityTextureAtlas.LoadCompositeBitmap(new AssetLocationAndSource(loc, string.Format("Outfit config file {0}, Outfit slot {1}, Outfit type {2}, Override Texture {3}", OutfitConfigFileName, OutfitSlots[i], OutfitCodes[i], val.Key)));
-                            if (bmp.Width == 0 && bmp.Height == 0)
-                            {
-                                capi.Logger.Warning("GetOrInsertTexture() on path {0}: Bitmap width and height is 0! Either missing or corrupt image file. Will use unknown texture.", loc);
-                            }
-                            return bmp;
-                        });
+                        var aloc = new AssetLocationAndSource(cmpt.Baked.TextureFilenames[0], string.Format("Outfit config file {0}, Outfit slot {1}, Outfit type {2}, Override Texture {3}", OutfitConfigFileName, OutfitSlots[i], OutfitCodes[i], val.Key));
+
+                        capi.EntityTextureAtlas.GetOrInsertTexture(aloc, out int textureSubid, out _);
                         cmpt.Baked.TextureSubId = textureSubid;
                     }
                 }
@@ -238,7 +232,7 @@ namespace Vintagestory.GameContent
             {
                 var cmpt = textures[prefixcode + texcode] = new CompositeTexture(loc);
                 cmpt.Bake(capi.Assets);
-                capi.EntityTextureAtlas.GetOrInsertTexture(cmpt.Baked.TextureFilenames[0], out int textureSubid, out _);
+                capi.EntityTextureAtlas.GetOrInsertTexture(new AssetLocationAndSource(cmpt.Baked.TextureFilenames[0], "Humanoid outfit", shapePath), out int textureSubid, out _);
                 cmpt.Baked.TextureSubId = textureSubid;
             });
 

@@ -15,6 +15,9 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+using Vintagestory.ServerMods;
+using static System.Reflection.Metadata.BlobBuilder;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Vintagestory.GameContent
 {
@@ -339,13 +342,15 @@ namespace Vintagestory.GameContent
         }
 
 
-        public void CopyBlocksToAltDimension(IServerPlayer player)
+        public void CopyBlocksToAltDimension(IBlockAccessor sourceblockAccess, IServerPlayer player)
         {
             if (!loreEnabled || !posEnabled) return;
 
             BlockPos start = new BlockPos((baseChunkX - size + 1) * GlobalConstants.ChunkSize, 0, (baseChunkZ - size + 1) * GlobalConstants.ChunkSize);
-            BlockPos end = start.AddCopy(GlobalConstants.ChunkSize * (size * 2 - 1), sapi.WorldManager.MapSizeY, GlobalConstants.ChunkSize * (size * 2 - 1));
-            BlockSchematic blocks = new BlockSchematic(sapi.World, start, end, false);
+            BlockPos end = start.AddCopy(GlobalConstants.ChunkSize * (size * 2 - 1), 0, GlobalConstants.ChunkSize * (size * 2 - 1));
+            start.Y = Math.Max(0, (sapi.World.SeaLevel - 8) / GlobalConstants.ChunkSize * GlobalConstants.ChunkSize);
+            end.Y = Math.Min(sapi.WorldManager.MapSizeY, ((sapi.World.SeaLevel + 8) / GlobalConstants.ChunkSize + 2) * GlobalConstants.ChunkSize);
+            BlockSchematic blocks = new BlockSchematic(sapi.World, sourceblockAccess, start, end, false);
 
             CreateChunkColumns();
 
@@ -355,11 +360,14 @@ namespace Vintagestory.GameContent
             blocks.Place(blockAccess, sapi.World, originPos, EnumReplaceMode.ReplaceAll, true);
             blocks.PlaceDecors(blockAccess, originPos);
 
-            start.dimension = OtherDimension;
-            end.dimension = OtherDimension;
-            sapi.WorldManager.FullRelight(start, end, false);
+            if (player != null)
+            {
+                start.dimension = OtherDimension;
+                end.dimension = OtherDimension;
+                sapi.WorldManager.FullRelight(start, end, false);
 
-            if (player != null) ForceSendChunkColumns(player);
+                ForceSendChunkColumns(player);
+            }
         }
 
 
@@ -434,6 +442,94 @@ namespace Vintagestory.GameContent
             }
         }
 
+        StoryStructureLocation GenStoryStructLoc;
+        GenStoryStructures GenGenStoryStructures;
+        /// <summary>
+        /// Called to set up the devastationLocation 
+        /// </summary>
+        /// <param name="structureLocation"></param>
+        /// <param name="genStoryStructures"></param>
+        public void InitPotentialGeneration(StoryStructureLocation structureLocation, GenStoryStructures genStoryStructures)
+        {
+            GenStoryStructLoc = structureLocation;
+            GenGenStoryStructures = genStoryStructures;
+        }
 
+        public void AttemptGeneration(IWorldGenBlockAccessor worldgenBlockAccessor)
+        {
+            if (GenStoryStructLoc == null || GenStoryStructLoc.DidGenerateAdditional) return;
+
+            if (!AreAllDim0ChunksGenerated()) return;
+
+            CopyBlocksToAltDimension(worldgenBlockAccessor, null);
+
+            PlaceSchematic(worldgenBlockAccessor, Dimensions.NormalWorld, "story/" + GenStoryStructLoc.Code + "-present");
+            PlaceSchematic(sapi.World.BlockAccessor, OtherDimension, "story/" + GenStoryStructLoc.Code + "-past");
+
+            if (size > 1)  // FullRelight extends 1 chunk out in all directions, and fails if null chunks found
+            {
+                BlockPos start = new BlockPos((baseChunkX - size + 2) * GlobalConstants.ChunkSize, 0, (baseChunkZ - size + 2) * GlobalConstants.ChunkSize, OtherDimension);
+                BlockPos end = start.AddCopy(GlobalConstants.ChunkSize * (size * 2 - 3) - 1, sapi.WorldManager.MapSizeY, GlobalConstants.ChunkSize * (size * 2 - 3) - 1);
+                start.Y = (sapi.World.SeaLevel - 8) / GlobalConstants.ChunkSize * GlobalConstants.ChunkSize;
+                sapi.WorldManager.FullRelight(start, end, false);
+            }
+
+            GenStoryStructLoc.DidGenerateAdditional = true;
+            GenGenStoryStructures.StoryStructureInstancesDirty = true;
+
+            //TODO: add protection to dim2
+        }
+
+        private void PlaceSchematic(IBlockAccessor blockAccessor, int dim, string genSchematicName)
+        {
+            BlockSchematicPartial blocks = LoadSchematic(sapi, genSchematicName);
+            if (blocks == null) return;
+
+            blocks.InitMetaBlocks(blockAccessor);
+            blocks.Init(blockAccessor);
+            blocks.blockLayerConfig = GenGenStoryStructures.blockLayerConfig;
+
+            BlockPos start = new BlockPos(baseChunkX * GlobalConstants.ChunkSize + GlobalConstants.ChunkSize / 2, 0, baseChunkZ * GlobalConstants.ChunkSize + GlobalConstants.ChunkSize / 2);
+            start.Y = blockAccessor.GetRainMapHeightAt(start);
+            start.Y += dim * BlockPos.DimensionBoundary;
+
+            blocks.Place(blockAccessor, sapi.World, start, EnumReplaceMode.ReplaceAll, true);
+            blocks.PlaceDecors(blockAccessor, start);
+
+            //start.Sub(GlobalConstants.ChunkSize * (size - 1) + GlobalConstants.ChunkSize / 2, 0, GlobalConstants.ChunkSize * (size - 1) + GlobalConstants.ChunkSize / 2);
+            //BlockPos end = start.AddCopy(GlobalConstants.ChunkSize * (size * 2 - 1), sapi.WorldManager.MapSizeY, GlobalConstants.ChunkSize * (size * 2 - 1));
+            //sapi.WorldManager.FullRelight(start, end, false);
+        }
+
+        private bool AreAllDim0ChunksGenerated()
+        {
+            for (int cx = baseChunkX - size + 1; cx < baseChunkX + size; cx++)
+            {
+                for (int cz = baseChunkZ - size + 1; cz < baseChunkZ + size; cz++)
+                {
+                    IMapChunk mc = sapi.World.BlockAccessor.GetMapChunk(cx, cz);
+                    if (mc == null) return false;
+                    if (mc.CurrentPass <= EnumWorldGenPass.Vegetation) return false;   // Vegetation needs to be complete, as that involves placement of BlockPatches ie. surface clutter
+                }
+            }
+
+            return true;
+        }
+
+        private BlockSchematicPartial LoadSchematic(ICoreServerAPI sapi, string schematicName)
+        {
+            IAsset asset = sapi.Assets.Get(new AssetLocation("worldgen/schematics/" + schematicName + ".json"));
+            if (asset == null) return null;
+
+            BlockSchematicPartial schematic = asset.ToObject<BlockSchematicPartial>();
+            if (schematic == null)
+            {
+                sapi.World.Logger.Warning("Could not load timeswitching schematic {0}", schematicName);
+                return null;
+            }
+
+            schematic.FromFileName = asset.Name;
+            return schematic;
+        }
     }
 }

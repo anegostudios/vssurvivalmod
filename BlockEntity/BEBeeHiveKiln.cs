@@ -358,7 +358,15 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
             if (kiln?.Exists == true && stack.Exists)
             {
                 var item = Api.World.GetItem(new AssetLocation(stack.AsString()));
-                itemSlot.Itemstack = new ItemStack(item, rawStack.StackSize / rawStack.Collectible.CombustibleProps.SmeltedRatio);
+                if (item == null)
+                {
+                    var block = Api.World.GetBlock(new AssetLocation(stack.AsString()));
+                    itemSlot.Itemstack = new ItemStack(block, rawStack.StackSize / rawStack.Collectible.CombustibleProps.SmeltedRatio);
+                }
+                else
+                {
+                    itemSlot.Itemstack = new ItemStack(item, rawStack.StackSize / rawStack.Collectible.CombustibleProps.SmeltedRatio);
+                }
             }
             else if (firedStack != null)
             {

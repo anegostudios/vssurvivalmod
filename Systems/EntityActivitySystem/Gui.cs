@@ -145,7 +145,7 @@ namespace Vintagestory.GameContent
                     }))
                     .EndSub()
                     .BeginSub("runa")
-                        .WithArgs(api.ChatCommands.Parsers.Word("activity name"))
+                        .WithArgs(api.ChatCommands.Parsers.Word("activity code"))
                         .HandleWith((args) => CmdUtil.EntityEach(args, (e) => {
                             var ebh = e.GetBehavior<EntityBehaviorActivityDriven>();
                             if (ebh != null)
@@ -744,7 +744,9 @@ namespace Vintagestory.GameContent
         private IGuiElementCell createCell(EntityActivity collection, ElementBounds bounds)
         {
             bounds.fixedPaddingY = 0;
-            var cellElem = new ActivityCellEntry(capi, bounds, "P" + Math.Round(collection.Priority,2) + "  " + collection.Name, collection.Actions.Length + " actions, " + collection.Conditions.Length + " conditions", didClickCell);
+            var cellElem = new ActivityCellEntry(
+                capi, 
+                bounds, "P" + Math.Round(collection.Priority,2) + "  " + collection.Name, collection.Actions.Length + " actions, " + collection.Conditions.Length + " conditions", didClickCell);
             return cellElem;
         }
 
@@ -832,17 +834,20 @@ namespace Vintagestory.GameContent
 
             var btnFont = CairoFont.SmallButtonText(EnumButtonStyle.Small);
 
-            ElementBounds namelabelBounds = ElementBounds.Fixed(EnumDialogArea.LeftFixed, 0, 20, 200, 20);
-            ElementBounds nameBounds = ElementBounds.Fixed(EnumDialogArea.LeftFixed, 0, 0, 200, 25).FixedUnder(namelabelBounds);
+            ElementBounds namelabelBounds = ElementBounds.Fixed(EnumDialogArea.LeftFixed, 0, 20, 180, 20);
+            ElementBounds nameBounds = ElementBounds.Fixed(EnumDialogArea.LeftFixed, 0, 0, 180, 25).FixedUnder(namelabelBounds);
 
-            ElementBounds prioritylabelBounds = namelabelBounds.RightCopy(15).WithFixedWidth(80);
-            ElementBounds priorityBounds = nameBounds.RightCopy(15).WithFixedWidth(80);
+            ElementBounds codelabelBounds = namelabelBounds.RightCopy(12).WithFixedWidth(103);
+            ElementBounds codeBounds = nameBounds.RightCopy(12).WithFixedWidth(103);
 
-            ElementBounds slotlabelBounds = prioritylabelBounds.RightCopy(15).WithFixedWidth(80);
-            ElementBounds slotBounds = priorityBounds.RightCopy(15).WithFixedWidth(80);
+            ElementBounds prioritylabelBounds = codelabelBounds.RightCopy(12).WithFixedWidth(60);
+            ElementBounds priorityBounds = codeBounds.RightCopy(12).WithFixedWidth(60);
 
-            ElementBounds conditionOplabelBounds = slotlabelBounds.RightCopy(15).WithFixedWidth(100);
-            ElementBounds opDropBounds = slotBounds.RightCopy(15).WithFixedWidth(80);
+            ElementBounds slotlabelBounds = prioritylabelBounds.RightCopy(12).WithFixedWidth(40);
+            ElementBounds slotBounds = priorityBounds.RightCopy(12).WithFixedWidth(40);
+
+            ElementBounds conditionOplabelBounds = slotlabelBounds.RightCopy(12).WithFixedWidth(100);
+            ElementBounds opDropBounds = slotBounds.RightCopy(12).WithFixedWidth(80);
 
             ElementBounds actionsLabelBounds = nameBounds.BelowCopy(0, 15);
 
@@ -850,7 +855,7 @@ namespace Vintagestory.GameContent
             ElementBounds rightButton = ElementBounds.Fixed(EnumDialogArea.RightFixed, 0, 0, 0, 0).WithFixedPadding(8, 5);
 
             
-            ElementBounds actionsListBounds = ElementBounds.Fixed(0, 0, 500, 200);
+            ElementBounds actionsListBounds = ElementBounds.Fixed(0, 0, 500, 280);
             actionsClipBounds = actionsListBounds.ForkBoundingParent().FixedUnder(actionsLabelBounds, -3);
             ElementBounds actionsInsetBounds = actionsListBounds.FlatCopy().FixedGrow(3);
             ElementBounds actionsScrollbarBounds = actionsInsetBounds.CopyOffsetedSibling(3 + actionsListBounds.fixedWidth + 7).WithFixedWidth(20);
@@ -887,6 +892,9 @@ namespace Vintagestory.GameContent
 
                 .AddStaticText("Activity Name", CairoFont.WhiteDetailText(), namelabelBounds)
                 .AddTextInput(nameBounds, onNameChanged, CairoFont.WhiteDetailText(), "name")
+
+                .AddStaticText("Activity Code", CairoFont.WhiteDetailText(), codelabelBounds)
+                .AddTextInput(codeBounds, onCodeChanged, CairoFont.WhiteDetailText(), "code")
 
                 .AddStaticText("Priority", CairoFont.WhiteDetailText(), prioritylabelBounds)
                 .AddNumberInput(priorityBounds, onPrioChanged, CairoFont.WhiteDetailText(), "priority")
@@ -949,6 +957,7 @@ namespace Vintagestory.GameContent
             updateScrollbarBounds();
 
             SingleComposer.GetTextInput("name").SetValue(entityActivity.Name);
+            SingleComposer.GetTextInput("code").SetValue(entityActivity.Code);
             SingleComposer.GetNumberInput("priority").SetValue((float)entityActivity.Priority);
             SingleComposer.GetNumberInput("slot").SetValue(entityActivity.Slot + "");
         }
@@ -1114,6 +1123,12 @@ namespace Vintagestory.GameContent
 
         private bool OnSaveActivity()
         {
+            if (entityActivity.Code == null || entityActivity.Code.Length == 0)
+            {
+                entityActivity.Code = entityActivity.Name;
+                SingleComposer.GetTextInput("code").SetValue(entityActivity.Code);
+            }
+
             entityActivity.Priority = SingleComposer.GetNumberInput("priority").GetValue();
 
             bool canSave = entityActivity.Actions.Length > 0 && entityActivity.Conditions.Length > 0 && entityActivity.Name != null && entityActivity.Name.Length > 0;
@@ -1143,6 +1158,10 @@ namespace Vintagestory.GameContent
         private void onNameChanged(string text)
         {
             entityActivity.Name = text;
+        }
+        private void onCodeChanged(string text)
+        {
+            entityActivity.Code = text;
         }
 
         private IGuiElementCell createActionCell(IEntityAction action, ElementBounds bounds)
@@ -1253,7 +1272,7 @@ namespace Vintagestory.GameContent
             ElementBounds rightButton = ElementBounds.Fixed(EnumDialogArea.RightFixed, 0, 0, 0, 0).WithFixedPadding(8, 5);
 
             var dropDownBounds = ElementBounds.Fixed(0, 30, 160, 25);
-            var chBounds = ElementBounds.Fixed(0, 70, 300, 400);
+            var chBounds = ElementBounds.Fixed(0, 70, 350, 400);
             chBounds.verticalSizing = ElementSizing.FitToChildren;
             chBounds.AllowNoChildren = true;
 

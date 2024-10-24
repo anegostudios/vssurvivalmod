@@ -8,9 +8,8 @@ using Vintagestory.API.Util;
 namespace Vintagestory.GameContent
 {
     [JsonObject(MemberSerialization.OptIn)]
-    public class TeleportAction : IEntityAction
+    public class TeleportAction : EntityActionBase
     {
-        protected EntityActivitySystem vas;
         [JsonProperty]
         public double TargetX { get; set; }
         [JsonProperty]
@@ -19,9 +18,8 @@ namespace Vintagestory.GameContent
         public double TargetZ { get; set; }
         [JsonProperty]
         public double Yaw { get; set; }
-        public string Type => "teleport";
+        public override string Type => "teleport";
 
-        public bool ExecutionHasFailed { get; set; }
 
         public TeleportAction() { }
         public TeleportAction(EntityActivitySystem vas, double targetX, double targetY, double targetZ, double yaw)
@@ -38,7 +36,7 @@ namespace Vintagestory.GameContent
             this.vas = vas;
         }
 
-        public void Start(EntityActivity act)
+        public override void Start(EntityActivity act)
         {
             vas.Entity.TeleportToDouble(TargetX, TargetY, TargetZ);
             vas.Entity.Controls.StopAllMovement();
@@ -49,24 +47,12 @@ namespace Vintagestory.GameContent
             vas.Entity.BodyYawServer = (float)Yaw;
         }
 
-        public void OnTick(float dt)
-        {
-        }
-
-        public void Cancel() { }
-        public void Finish() { }
-        public bool IsFinished() => true;
         public override string ToString()
         {
             return string.Format("Teleport to {0}/{1}/{2}", TargetX, TargetY, TargetZ);
         }
 
-
-        public void LoadState(ITreeAttribute tree) { }
-        public void StoreState(ITreeAttribute tree) { }
-
-
-        public void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
+        public override void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             var bc = ElementBounds.Fixed(0, 0, 65, 20);
             var b = ElementBounds.Fixed(0, 0, 200, 20);
@@ -103,7 +89,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer s)
+        public override bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer s)
         {
             this.TargetX = s.GetTextInput("x").GetText().ToDouble();
             this.TargetY = s.GetTextInput("y").GetText().ToDouble();
@@ -112,18 +98,14 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public IEntityAction Clone()
+        public override IEntityAction Clone()
         {
             return new TeleportAction(vas, TargetX, TargetY, TargetZ, Yaw);
         }
 
-        public void OnVisualize(ActivityVisualizer visualizer)
+        public override void OnVisualize(ActivityVisualizer visualizer)
         {
             visualizer.LineTo(new Vec3d(TargetX, TargetY, TargetZ));
-        }
-        public void OnLoaded(EntityActivitySystem vas)
-        {
-            this.vas = vas;
         }
     }
 }

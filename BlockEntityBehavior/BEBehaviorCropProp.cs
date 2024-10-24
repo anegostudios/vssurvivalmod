@@ -136,8 +136,10 @@ namespace Vintagestory.GameContent
 
         private void loadConfig()
         {
-            config = this.Block.Attributes["types"][dead ? "dead" : Type].AsObject<CropPropConfig>();
+            if (Type == null) return;
 
+            config = this.Block.Attributes["types"][dead ? "dead" : Type].AsObject<CropPropConfig>();
+            
             if (config.Shape != null)
             {
                 config.Shape.Base.Path = config.Shape.Base.Path.Replace("{stage}", "" + Stage).Replace("{type}", Type);
@@ -177,7 +179,8 @@ namespace Vintagestory.GameContent
             {   
                 if (cropBlock.Shape.Alternates == null)
                 {
-                    mesh = capi.TesselatorManager.GetDefaultBlockMesh(cropBlock);
+                    mesh = capi.TesselatorManager.GetDefaultBlockMesh(cropBlock).Clone();
+                    mesh.Translate(0, -1 / 16f, 0);
                     return;
                 }
 
@@ -201,6 +204,7 @@ namespace Vintagestory.GameContent
 
         private void onTick8s(float dt)
         {
+            if (config == null) return;
             var mon = Api.World.Calendar.YearRel;
             var len = (config.MonthEnd - config.MonthStart) / 12f;
             int nextStage = GameMath.Clamp((int)((mon - (config.MonthStart-1)/12f)/len * config.Stages), 1, config.Stages);

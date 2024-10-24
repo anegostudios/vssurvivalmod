@@ -45,7 +45,7 @@ namespace Vintagestory.GameContent
                 beQuern.SetPlayerGrinding(byPlayer, true);
                 return true;
             }
-            
+
             return base.OnBlockInteractStart(world, byPlayer, blockSel);
         }
 
@@ -114,7 +114,7 @@ namespace Vintagestory.GameContent
 
         public override void DidConnectAt(IWorldAccessor world, BlockPos pos, BlockFacing face)
         {
-            
+
         }
 
         public override bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face)
@@ -128,7 +128,7 @@ namespace Vintagestory.GameContent
 
             if (facing == BlockFacing.UP)
             {
-                
+
                 if (entity.World.Side == EnumAppSide.Server)
                 {
                     float frameTime = GlobalConstants.PhysicsFrameTime;

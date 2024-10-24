@@ -455,7 +455,7 @@ namespace Vintagestory.GameContent
 
         public void FilterItems()
         {
-            string text = currentSearchText?.RemoveDiacritics().ToLowerInvariant();
+            string text = currentSearchText?.ToSearchFriendly().ToLowerInvariant();
             string[] texts = text == null ? new string[0] : text.Split(new string[] { " or " }, StringSplitOptions.RemoveEmptyEntries).OrderBy(str => str.Length).ToArray();
 
             List<WeightedHandbookPage> foundPages = new List<WeightedHandbookPage>();

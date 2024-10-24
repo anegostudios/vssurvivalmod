@@ -22,16 +22,19 @@ namespace Vintagestory.GameContent
         public double targetZ { get { return Target.Z; } set { Target.Z = value; } }
         [JsonProperty]
         float range;
+        [JsonProperty]
+        float? yrange = null;
 
         public Vec3d Target = new Vec3d();
 
         protected EntityActivitySystem vas;
         public PositionVicinityCondition() { }
-        public PositionVicinityCondition(EntityActivitySystem vas, Vec3d pos, float range, bool invert = false)
+        public PositionVicinityCondition(EntityActivitySystem vas, Vec3d pos, float range, float? yrange, bool invert = false)
         {
             this.vas = vas;
             this.Target = pos;
             this.range = range;
+            this.yrange = yrange;
             this.Invert = invert;
         }
 
@@ -40,6 +43,10 @@ namespace Vintagestory.GameContent
 
         public virtual bool ConditionSatisfied(Entity e)
         {
+            if (yrange != null)
+            {
+                return e.ServerPos.HorDistanceTo(Target) < range && Math.Abs(e.ServerPos.Y - Target.Y) < yrange;
+            }
             return e.ServerPos.DistanceTo(Target) < range;
         }
 
@@ -63,9 +70,14 @@ namespace Vintagestory.GameContent
 
                 .AddStaticText("Range", CairoFont.WhiteDetailText(), b = b.BelowCopy(0, 10))
                 .AddNumberInput(b = b.BelowCopy(0, -5), null, CairoFont.WhiteDetailText(), "range")
+
+                .AddStaticText("Vertical Range (-1 to ignore)", CairoFont.WhiteDetailText(), b = b.BelowCopy(0, 10))
+                .AddNumberInput(b = b.BelowCopy(0, -5), null, CairoFont.WhiteDetailText(), "vrange")
             ;
 
             singleComposer.GetNumberInput("range").SetValue(range);
+            singleComposer.GetNumberInput("vrange").SetValue(yrange ?? -1);
+
             var s = singleComposer;
             s.GetTextInput("x").SetValue(Target?.X + "");
             s.GetTextInput("y").SetValue(Target?.Y + "");
@@ -86,10 +98,11 @@ namespace Vintagestory.GameContent
         {
             this.Target = new Vec3d(s.GetTextInput("x").GetText().ToDouble(), s.GetTextInput("y").GetText().ToDouble(), s.GetTextInput("z").GetText().ToDouble());
             range = s.GetNumberInput("range").GetValue();
+            yrange = s.GetNumberInput("vrange").GetValue();
         }
         public IActionCondition Clone()
         {
-            return new PositionVicinityCondition(vas, Target, range, Invert);
+            return new PositionVicinityCondition(vas, Target, range, yrange, Invert);
         }
 
         public override string ToString()

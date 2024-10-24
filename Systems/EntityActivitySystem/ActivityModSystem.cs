@@ -32,7 +32,9 @@ namespace Vintagestory.GameContent
             ActionTypes["dress"] = typeof(DressAction);
             ActionTypes["undress"] = typeof(UndressAction);
             ActionTypes["jump"] = typeof(JumpAction);
+            ActionTypes["startactivity"] = typeof(StartActivityAction);
             ActionTypes["wait"] = typeof(WaitAction);
+            ActionTypes["playsong"] = typeof(PlaySongAction);
 
             ConditionTypes["timeofday"] = typeof(TimeOfDayCondition);
             ConditionTypes["variable"] = typeof(VariableCondition);
@@ -44,6 +46,8 @@ namespace Vintagestory.GameContent
             ConditionTypes["entityvicinity"] = typeof(EntityVicinityCondition);
             ConditionTypes["blockvicinity"] = typeof(BlockVicinityCondition);
             ConditionTypes["positionvicinity"] = typeof(PositionVicinityCondition);
+            ConditionTypes["lightlevelCondition"] = typeof(LightLevelCondition);
+            ConditionTypes["monthcondition"] = typeof(MonthCondition);
             ConditionTypes["random"] = typeof(RandomCondition);
         }
     }

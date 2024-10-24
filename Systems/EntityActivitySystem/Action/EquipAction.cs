@@ -7,11 +7,9 @@ using Vintagestory.API.Util;
 namespace Vintagestory.GameContent
 {
     [JsonObject(MemberSerialization.OptIn)]
-    public class EquipAction : IEntityAction
+    public class EquipAction : EntityActionBase
     {
-        protected EntityActivitySystem vas;
-        public string Type => "equip";
-        public bool ExecutionHasFailed { get; set; }
+        public override string Type => "equip";
 
         [JsonProperty]
         string Target;
@@ -27,12 +25,7 @@ namespace Vintagestory.GameContent
             this.Value = value;
         }
 
-        public bool IsFinished()
-        {
-            return true;
-        }
-
-        public void Start(EntityActivity act)
+        public override void Start(EntityActivity act)
         {
             switch (Target)
             {
@@ -53,17 +46,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public void OnTick(float dt) { }
-        public void Cancel() { 
-            // unequip here
-        }
-        public void Finish() { }
-
-        public void LoadState(ITreeAttribute tree) { }
-        public void StoreState(ITreeAttribute tree) { }
-
-
-        public void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
+        public override void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             var vals = new string[] { "lefthand", "righthand" };
             var cclass = new string[] { "item", "block" };
@@ -88,7 +71,7 @@ namespace Vintagestory.GameContent
             singleComposer.GetTextInput("attr").SetValue(jstack.Attributes?.ToString() ?? "");
         }
 
-        public bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
+        public override bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             string type = singleComposer.GetDropDown("cclass").SelectedValue;
             string code = singleComposer.GetTextInput("code").GetText();
@@ -121,7 +104,7 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public IEntityAction Clone()
+        public override IEntityAction Clone()
         {
             return new EquipAction(vas, Target, Value);
         }
@@ -131,13 +114,5 @@ namespace Vintagestory.GameContent
             return "Grab " + Value + " in " + Target;
         }
 
-        public void OnVisualize(ActivityVisualizer visualizer)
-        {
-            
-        }
-        public void OnLoaded(EntityActivitySystem vas)
-        {
-            this.vas = vas;
-        }
     }
 }

@@ -36,7 +36,7 @@ namespace Vintagestory.GameContent
         public InventoryTrader Inventory;
         public TradeProperties TradeProps;
 
-        
+
         public EntityPlayer tradingWithPlayer;
         GuiDialog dlg;
 
@@ -92,12 +92,12 @@ namespace Vintagestory.GameContent
                     api.World.Logger.VerboseDebug("{0}", Properties.Server.Attributes["tradeProps"].ToJsonToken());
                 }
 
-                
+
             } else
             {
                 talkUtil = new EntityTalkUtil(api as ICoreClientAPI, this, false);
             }
-            
+
             try
             {
                 Inventory.LateInitialize("traderInv-" + EntityId, api, this);
@@ -193,7 +193,7 @@ namespace Vintagestory.GameContent
 
                 TradeItem item = TradeProps.Selling.List[i];
                 if (!item.Resolve(World, "tradeItem resolver")) continue;
-                
+
                 bool alreadySelling = sellingSlots.Any((slot) => slot?.Itemstack != null && slot.TradeItem.Stock > 0 && item.ResolvedItemstack?.Equals(World, slot.Itemstack, ignoredAttributes) == true);
 
                 if (!alreadySelling)
@@ -448,7 +448,7 @@ namespace Vintagestory.GameContent
                 if (tradingPlayer != null) Inventory.Close(tradingPlayer);
             }
         }
-        
+
 
         public override void FromBytes(BinaryReader reader, bool forClient)
         {
@@ -518,7 +518,7 @@ namespace Vintagestory.GameContent
             base.PlayEntitySound(type, dualCallByPlayer, randomizePitch, range);
         }
 
-        
+
 
     }
 

@@ -9,12 +9,10 @@ using Vintagestory.API.Util;
 namespace Vintagestory.GameContent
 {
     [JsonObject(MemberSerialization.OptIn)]
-    public class ActivateBlockAction : IEntityAction
+    public class ActivateBlockAction : EntityActionBase
     {
-        public string Type => "activateblock";
-        public bool ExecutionHasFailed { get; set; }
+        public override string Type => "activateblock";
 
-        EntityActivitySystem vas;
         [JsonProperty]
         AssetLocation targetBlockCode;
         [JsonProperty]
@@ -42,12 +40,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public bool IsFinished()
-        {
-            return true;
-        }
-
-        public void Start(EntityActivity act)
+        public override void Start(EntityActivity act)
         {
             BlockPos targetPos = getTarget();
 
@@ -106,26 +99,13 @@ namespace Vintagestory.GameContent
             return targetPos;
         }
 
-        public void OnTick(float dt)
-        {
-
-        }
-
-        public void Cancel()
-        {
-
-        }
-        public void Finish() { }
-        public void LoadState(ITreeAttribute tree) { }
-        public void StoreState(ITreeAttribute tree) { }
-
         public override string ToString()
         {
             if (ExactTarget.Length() > 0) return "Activate block at " + ExactTarget;
             return "Activate nearest block " + targetBlockCode + " within " + searchRange + " blocks";
         }
 
-        public void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
+        public override void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             var b = ElementBounds.Fixed(0, 0, 300, 25);
             var bc = ElementBounds.Fixed(0, 0, 65, 20);
@@ -171,12 +151,12 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public IEntityAction Clone()
+        public override IEntityAction Clone()
         {
             return new ActivateBlockAction(vas, targetBlockCode, searchRange, activateArgs, ExactTarget);
         }
 
-        public bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
+        public override bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             var s = singleComposer;
 
@@ -187,17 +167,13 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public void OnVisualize(ActivityVisualizer visualizer)
+        public override void OnVisualize(ActivityVisualizer visualizer)
         {
             var target = getTarget();
             if (target != null)
             {
                 visualizer.LineTo(target.ToVec3d().Add(0.5, 0.5, 0.5));
             }
-        }
-        public void OnLoaded(EntityActivitySystem vas)
-        {
-            this.vas = vas;
         }
     }
 }

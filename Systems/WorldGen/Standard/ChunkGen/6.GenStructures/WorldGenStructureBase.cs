@@ -361,7 +361,7 @@ namespace Vintagestory.ServerMods
 
                     if (schematic == null)
                     {
-                        api.World.Logger.Warning("Could not load {0}: {1}", Schematics[i], error);
+                        api.World.Logger.Warning("Could not load {0}: {1}", Schematics[i], error);   // error here is unused, it is always ""
                         continue;
                     }
 

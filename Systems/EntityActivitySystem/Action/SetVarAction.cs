@@ -76,11 +76,9 @@ namespace Vintagestory.GameContent
     }
 
     [JsonObject(MemberSerialization.OptIn)]
-    public class SetVarAction : IEntityAction
+    public class SetVarAction : EntityActionBase
     {
-        protected EntityActivitySystem vas;
-        public string Type => "setvariable";
-        public bool ExecutionHasFailed { get; set; }
+        public override string Type => "setvariable";
 
         [JsonProperty]
         EnumActivityVariableScope scope;
@@ -102,12 +100,7 @@ namespace Vintagestory.GameContent
             this.value = value;
         }
 
-        public bool IsFinished()
-        {
-            return true;
-        }
-
-        public void Start(EntityActivity act)
+        public override void Start(EntityActivity act)
         {
             var avs = vas.Entity.Api.ModLoader.GetModSystem<ActivityVariableSystem>();
 
@@ -126,15 +119,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public void OnTick(float dt) { }
-        public void Cancel() { }
-        public void Finish() { }
-
-        public void LoadState(ITreeAttribute tree) { }
-        public void StoreState(ITreeAttribute tree) { }
-
-
-        public void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
+        public override void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             var scope = new string[] { "entity", "group", "global" };
             var ops = new string[] { "set", "incrementby", "decrementby" };
@@ -158,7 +143,7 @@ namespace Vintagestory.GameContent
             singleComposer.GetTextInput("value").SetValue(value);
         }
 
-        public bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
+        public override bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             scope = (EnumActivityVariableScope)singleComposer.GetDropDown("scope").SelectedIndices[0];
             op = singleComposer.GetDropDown("op").SelectedValue;
@@ -167,7 +152,7 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public IEntityAction Clone()
+        public override IEntityAction Clone()
         {
             return new SetVarAction(vas, scope, op, name, value);
         }
@@ -188,13 +173,5 @@ namespace Vintagestory.GameContent
             return string.Format("Set {0} variable {1} to {2}", scope, name, value);
         }
 
-        public void OnVisualize(ActivityVisualizer visualizer)
-        {
-
-        }
-        public void OnLoaded(EntityActivitySystem vas)
-        {
-            this.vas = vas;
-        }
     }
 }

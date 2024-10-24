@@ -13,6 +13,31 @@ namespace Vintagestory.GameContent
         string Type { get; }
     }
 
+    public abstract class EntityActionBase : IEntityAction
+    {
+        protected EntityActivitySystem vas;
+
+        public abstract string Type { get; }
+        public virtual void Start(EntityActivity entityActivity) { }
+        public virtual void Cancel() { }
+        public virtual void Finish() { }
+        public virtual bool IsFinished() { return true; }
+        public virtual void OnLoaded(EntityActivitySystem vas) {
+            this.vas = vas;
+        }
+        public virtual bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer) { return true; }
+        public virtual void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer) { }
+        public abstract IEntityAction Clone();
+
+        public virtual void OnTick(float dt) { }
+        public virtual void StoreState(ITreeAttribute tree) { }
+        public virtual void LoadState(ITreeAttribute tree) { }
+        public virtual bool ExecutionHasFailed { get; set; }
+        public virtual void OnHurt(DamageSource dmgSource, float damage) { }
+        public virtual void OnVisualize(ActivityVisualizer visualizer) { }
+
+    }
+
     public interface IEntityAction : IStorableTypedComponent
     {
         bool ExecutionHasFailed { get; }
@@ -25,6 +50,7 @@ namespace Vintagestory.GameContent
         IEntityAction Clone();
         bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer);
         void OnVisualize(ActivityVisualizer visualizer);
+        void OnHurt(DamageSource dmgSource, float damage);
     }
 
     public interface IActionCondition : IStorableTypedComponent
@@ -41,6 +67,7 @@ namespace Vintagestory.GameContent
         double Priority { get; }
         int Slot { get; set; }
         string Name { get; set; }
+        string Code { get; set; }
         IActionCondition[] Conditions { get; }
         IEntityAction[] Actions { get; }
         IEntityAction CurrentAction { get; }

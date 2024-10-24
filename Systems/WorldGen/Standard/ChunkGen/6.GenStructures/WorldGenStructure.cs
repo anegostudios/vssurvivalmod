@@ -62,7 +62,7 @@ namespace Vintagestory.ServerMods
         public Cuboidi[] CustomLandClaims;
 
         [JsonProperty]
-        public bool ExcludeSchematic;
+        public bool ExcludeSchematicSizeProtect;
 
 
         internal BlockSchematicPartial schematicData;

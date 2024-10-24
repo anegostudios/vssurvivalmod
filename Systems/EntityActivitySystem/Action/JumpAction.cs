@@ -6,11 +6,9 @@ namespace Vintagestory.GameContent
 {
 
     [JsonObject(MemberSerialization.OptIn)]
-    public class JumpAction : IEntityAction
+    public class JumpAction : EntityActionBase
     {
-        protected EntityActivitySystem vas;
-        public string Type => "jump";
-        public bool ExecutionHasFailed { get; set; }
+        public override string Type => "jump";
 
         [JsonProperty]
         int Index;
@@ -35,12 +33,7 @@ namespace Vintagestory.GameContent
             this.MaxRepetitions = maxrepetitions;
         }
 
-        public bool IsFinished()
-        {
-            return true;
-        }
-
-        public void Start(EntityActivity act)
+        public override void Start(EntityActivity act)
         {
             if (hourOfDay >= 0 && vas.Entity.World.Calendar.HourOfDay > hourOfDay)
             {
@@ -64,19 +57,15 @@ namespace Vintagestory.GameContent
         }
 
 
-        public void OnTick(float dt) { }
-        public void Cancel() { }
-        public void Finish() { }
-
-        public void LoadState(ITreeAttribute tree) {
+        public override void LoadState(ITreeAttribute tree) {
             repetitionsLeft = tree.GetInt("repetitionsLeft");
         }
-        public void StoreState(ITreeAttribute tree) {
+        public override void StoreState(ITreeAttribute tree) {
             tree.SetInt("repetitionsLeft", repetitionsLeft);
         }
 
 
-        public void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
+        public override void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             var b = ElementBounds.Fixed(0, 0, 300, 25);
             singleComposer
@@ -98,7 +87,7 @@ namespace Vintagestory.GameContent
             singleComposer.GetNumberInput("maxrepetitions").SetValue(MaxRepetitions);
         }
 
-        public bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
+        public override bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             Index = (int)singleComposer.GetNumberInput("index").GetValue();
             hourOfDay = singleComposer.GetNumberInput("hourOfDay").GetValue();
@@ -107,7 +96,7 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public IEntityAction Clone()
+        public override IEntityAction Clone()
         {
             return new JumpAction(vas, Index, hourOfDay, MinRepetitions, MaxRepetitions);
         }
@@ -125,13 +114,5 @@ namespace Vintagestory.GameContent
             return "Jump to action at index " + Index;
         }
 
-        public void OnVisualize(ActivityVisualizer visualizer)
-        {
-
-        }
-        public void OnLoaded(EntityActivitySystem vas)
-        {
-            this.vas = vas;
-        }
     }
 }

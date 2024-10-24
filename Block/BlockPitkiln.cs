@@ -40,7 +40,7 @@ namespace Vintagestory.GameContent
         public string MatCode;
     }
 
-    public class BlockPitkiln : BlockGroundStorage, IIgnitable
+    public class BlockPitkiln : BlockGroundStorage, IIgnitable, ISmokeEmitter
     {
         public Dictionary<string, BuildStage[]> BuildStagesByBlock = new Dictionary<string, BuildStage[]>();
         public Dictionary<string, Shape> ShapesByBlock = new Dictionary<string, Shape>();
@@ -329,6 +329,12 @@ namespace Vintagestory.GameContent
             }
 
             return base.GetTraversalCost(pos, creatureType);
+        }
+
+        public bool EmitsSmoke(BlockPos pos)
+        {
+            var be = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityPitKiln;
+            return be?.IsBurning == true;
         }
     }
 }
