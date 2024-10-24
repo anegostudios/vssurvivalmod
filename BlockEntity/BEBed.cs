@@ -11,6 +11,8 @@ namespace Vintagestory.GameContent
 
     public class BlockEntityBed : BlockEntity, IMountableSeat, IMountable
     {
+        long restingListener;
+
         static Vec3f eyePos = new Vec3f(0, 0.3f, 0);
 
         float sleepEfficiency = 0.5f;
@@ -28,7 +30,8 @@ namespace Vintagestory.GameContent
         public EntityPos SeatPosition => Position; // Since we have only one seat, it can be the same as the base position
         public EntityPos Position
         {
-            get {
+            get
+            {
                 BlockFacing facing = this.facing.Opposite;
 
                 mountPos.SetPos(Pos);
@@ -42,12 +45,12 @@ namespace Vintagestory.GameContent
                 return null;
             }
         }
-        
+
         AnimationMetaData meta = new AnimationMetaData() { Code = "sleep", Animation = "lie" }.Init();
         public AnimationMetaData SuggestedAnimation => meta;
         public EntityControls Controls => controls;
         public IMountable MountSupplier => this;
-        public EnumMountAngleMode AngleMode => EnumMountAngleMode.FixateYaw;        
+        public EnumMountAngleMode AngleMode => EnumMountAngleMode.FixateYaw;
         public Vec3f LocalEyePos => eyePos;
         Entity IMountableSeat.Passenger => MountedBy;
         public bool CanControl => false;
@@ -61,8 +64,8 @@ namespace Vintagestory.GameContent
 
         public string SeatId { get => "bed-0"; set { } }
 
-        public SeatConfig Config { get => null; set {} }
-        public long PassengerEntityIdForInit { get => mountedByEntityId; set => mountedByEntityId=value; }
+        public SeatConfig Config { get => null; set { } }
+        public long PassengerEntityIdForInit { get => mountedByEntityId; set => mountedByEntityId = value; }
 
         public Entity Controller => MountedBy;
 
@@ -74,7 +77,7 @@ namespace Vintagestory.GameContent
             if (Block.Attributes != null) sleepEfficiency = Block.Attributes["sleepEfficiency"].AsFloat(0.5f);
 
             Cuboidf[] collboxes = Block.GetCollisionBoxes(api.World.BlockAccessor, Pos);
-            if (collboxes!=null && collboxes.Length > 0) y2 = collboxes[0].Y2;
+            if (collboxes != null && collboxes.Length > 0) y2 = collboxes[0].Y2;
 
             facing = BlockFacing.FromCode(Block.LastCodePart());
 
@@ -140,7 +143,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        
+
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
@@ -158,7 +161,7 @@ namespace Vintagestory.GameContent
             tree.SetLong("mountedByEntityId", mountedByEntityId);
             tree.SetString("mountedByPlayerUid", mountedByPlayerUid);
         }
-        
+
 
         public void MountableToTreeAttributes(TreeAttribute tree)
         {
@@ -190,7 +193,7 @@ namespace Vintagestory.GameContent
             mountedByEntityId = 0;
             mountedByPlayerUid = null;
 
-            base.OnBlockRemoved();
+            Api.Event.UnregisterGameTickListener(restingListener);
         }
 
         public void DidMount(EntityAgent entityAgent)
@@ -213,7 +216,7 @@ namespace Vintagestory.GameContent
 
             if (Api?.Side == EnumAppSide.Server)
             {
-                RegisterGameTickListener(RestPlayer, 200);
+                restingListener = RegisterGameTickListener(RestPlayer, 200);
                 hoursTotal = Api.World.Calendar.TotalHours;
             }
 
