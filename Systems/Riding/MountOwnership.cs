@@ -85,7 +85,7 @@ namespace Vintagestory.GameContent
 
         private void Event_SaveGameLoaded()
         {
-            OwnerShipsByPlayerUid = sapi.WorldManager.SaveGame.GetData<Dictionary<string, Dictionary<string, EntityOwnership>>>("entityownership", new Dictionary<string, Dictionary<string, EntityOwnership>>());
+            OwnerShipsByPlayerUid = sapi.WorldManager.SaveGame.GetData("entityownership", new Dictionary<string, Dictionary<string, EntityOwnership>>());
         }
 
         public override void StartClientSide(ICoreClientAPI api)
@@ -116,7 +116,8 @@ namespace Vintagestory.GameContent
 
             Dictionary<string, EntityOwnership> playerShipsByPlayerUid;
 
-            if (!OwnerShipsByPlayerUid.TryGetValue(player.PlayerUID, out playerShipsByPlayerUid))
+            OwnerShipsByPlayerUid.TryGetValue(player.PlayerUID, out playerShipsByPlayerUid);
+            if (playerShipsByPlayerUid == null)
             {
                 OwnerShipsByPlayerUid[player.PlayerUID] = playerShipsByPlayerUid = new Dictionary<string, EntityOwnership>();
             }
@@ -152,9 +153,9 @@ namespace Vintagestory.GameContent
             string groupecode = fromEntity.GetBehavior<EntityBehaviorOwnable>().Group;
             if (OwnerShipsByPlayerUid.TryGetValue(uid, out var ownerships))
             {
-                if (ownerships.TryGetValue(groupecode, out var ownership))
+                if (ownerships?.TryGetValue(groupecode, out var ownership) == true)
                 {
-                    if (ownership.EntityId == fromEntity.EntityId)
+                    if (ownership?.EntityId == fromEntity.EntityId)
                     {
                         ownerships.Remove(groupecode);
                         var player = sapi.World.PlayerByUid(uid);

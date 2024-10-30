@@ -259,6 +259,7 @@ namespace Vintagestory.GameContent
 
         public Vec3d GetCenterPosOfBox(int selectionBoxIndex)
         {
+            if (selectionBoxIndex >= selectionBoxes.Length) return null;
             var apap = selectionBoxes[selectionBoxIndex];
             mvmat.Identity();
             applyBoxTransform(mvmat, apap);

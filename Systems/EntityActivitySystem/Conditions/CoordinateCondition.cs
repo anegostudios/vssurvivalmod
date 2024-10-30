@@ -48,15 +48,16 @@ namespace Vintagestory.GameContent
 
         public void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
-            var bc = ElementBounds.Fixed(0, 0, 65, 20);
-            var b = ElementBounds.Fixed(0, 0, 200, 20);
+            var bc = ElementBounds.Fixed(0, 0, 200, 20);
 
             singleComposer
                 .AddStaticText("When", CairoFont.WhiteDetailText(), bc)
                 .AddDropDown(new string[] { "x", "y", "z" }, new string[] { "X", "Y", "Z" }, Axis, null, bc = bc.BelowCopy(0), "axis")
 
-                .AddStaticText("Is smaller than", CairoFont.WhiteDetailText(), bc)
-                .AddNumberInput(bc = bc.BelowCopy(0), null, CairoFont.WhiteDetailText(), "value")
+                .AddStaticText("Is smaller than", CairoFont.WhiteDetailText(), bc = bc.BelowCopy(0,5).WithFixedWidth(200))
+                .AddNumberInput(bc = bc.BelowCopy(0).WithFixedWidth(200), null, CairoFont.WhiteDetailText(), "value")
+
+                .AddSmallButton("Insert Player Pos", () => onClickPlayerPos(capi, singleComposer), bc = bc.BelowCopy(), EnumButtonStyle.Small)
             ;
 
             singleComposer.GetNumberInput("value").SetValue(Value);
@@ -65,10 +66,17 @@ namespace Vintagestory.GameContent
 
         private bool onClickPlayerPos(ICoreClientAPI capi, GuiComposer singleComposer)
         {
-            var plrPos = capi.World.Player.Entity.Pos.XYZ;
-            singleComposer.GetTextInput("x").SetValue("" + Math.Round(plrPos.X, 1));
-            singleComposer.GetTextInput("y").SetValue("" + Math.Round(plrPos.Y, 1));
-            singleComposer.GetTextInput("z").SetValue("" + Math.Round(plrPos.Z, 1));
+            int index = singleComposer.GetDropDown("axis").SelectedIndices[0];
+            double val = 0;
+            switch (index)
+            {
+                case 0: val = capi.World.Player.Entity.Pos.X; break;
+                case 1: val = capi.World.Player.Entity.Pos.Y; break;
+                case 2: val = capi.World.Player.Entity.Pos.Z; break;
+                default: break;
+            }
+            
+            singleComposer.GetTextInput("value").SetValue("" + Math.Round(val, 1));
             return true;
         }
 
@@ -85,7 +93,7 @@ namespace Vintagestory.GameContent
         public override string ToString()
         {
             string axis = new string[] { "X", "Y", "Z" }[Axis];
-            return string.Format("When {0} {1} {2}", axis, Invert ? ">=" : "<", Value);
+            return string.Format("When {0} {1} {2}", axis, Invert ? "&gt;=" : "&lt;", Value);
         }
 
         public void OnLoaded(EntityActivitySystem vas)

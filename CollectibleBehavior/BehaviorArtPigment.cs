@@ -35,6 +35,7 @@ namespace Vintagestory.GameContent
 
         static int[] quadVertexIndices = { 0, 1, 2,   0, 2, 3 };
 
+        float consumeChance;
         
 
         public CollectibleBehaviorArtPigment(CollectibleObject collObj) : base(collObj)
@@ -42,11 +43,12 @@ namespace Vintagestory.GameContent
             this.collObj = collObj;
         }
 
-
         public override void Initialize(JsonObject properties)
         {
             onmaterialsStrTmp = properties["paintableOnBlockMaterials"].AsArray<string>(new string[0]);
             decorCodesTmp = properties["decorBlockCodes"].AsObject(new AssetLocation[0], collObj.Code.Domain);
+
+            consumeChance = properties["consumeChance"].AsFloat(0.15f);
 
             base.Initialize(properties);
         }
@@ -238,8 +240,7 @@ namespace Vintagestory.GameContent
             handling = EnumHandling.PreventDefault;
             DrawCaveArt(blockSel, blockAccessor, byPlayer);
 
-            // 1/15 chance to consume the item
-            if (byEntity.World.Side == EnumAppSide.Server && byEntity.World.Rand.NextDouble() < 1f/15)
+            if (byEntity.World.Side == EnumAppSide.Server && byEntity.World.Rand.NextDouble() < consumeChance)
             {
                 slot.TakeOut(1);
                 slot.MarkDirty();
