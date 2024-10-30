@@ -124,10 +124,16 @@ namespace Vintagestory.GameContent
                     ItemSlot activeSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
                     if (activeSlot.Itemstack == null || activeSlot.Itemstack.Collectible is BlockToolMold)
                     {
-                        if (!byPlayer.InventoryManager.TryGiveItemstack(new ItemStack(Block)))
+                        var itemStack = new ItemStack(Block);
+                        if (!byPlayer.InventoryManager.TryGiveItemstack(itemStack))
                         {
-                            Api.World.SpawnItemEntity(new ItemStack(Block), Pos.ToVec3d().Add(0.5, 0.2, 0.5));
+                            Api.World.SpawnItemEntity(itemStack, Pos.ToVec3d().Add(0.5, 0.2, 0.5));
                         }
+                        Api.World.Logger.Audit("{0} Took 1x{1} from Tool mold at {2}.",
+                            byPlayer.PlayerName,
+                            itemStack.Collectible.Code,
+                            Pos
+                        );
 
                         Api.World.BlockAccessor.SetBlock(0, Pos);
 
@@ -166,10 +172,17 @@ namespace Vintagestory.GameContent
                     {
                         foreach (ItemStack outstack in outstacks)
                         {
+                            var quantity = outstack.StackSize;
                             if (!byPlayer.InventoryManager.TryGiveItemstack(outstack))
                             {
                                 Api.World.SpawnItemEntity(outstack, Pos.ToVec3d().Add(0.5, 0.2, 0.5));
                             }
+                            Api.World.Logger.Audit("{0} Took {1}x{2} from Tool mold at {3}.",
+                                byPlayer.PlayerName,
+                                quantity,
+                                outstack.Collectible.Code,
+                                Pos
+                            );
                         }
                     }
 

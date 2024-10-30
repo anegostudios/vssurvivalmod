@@ -172,9 +172,10 @@ namespace Vintagestory.GameContent
                 {
                     didMoveItems(stack, byPlayer);
                 }
-                Api.World.Logger.Audit("{0} Took {1} from Crate at {2}.",
+                Api.World.Logger.Audit("{0} Took {1}x{2} from Crate at {3}.",
                     byPlayer.PlayerName,
-                    string.Format("{0}x{1}", quantity, stack?.GetName()),
+                    quantity,
+                    stack?.Collectible.Code,
                     Pos
                 );
 
@@ -197,9 +198,10 @@ namespace Vintagestory.GameContent
                     if (hotbarslot.TryPutInto(Api.World, inventory[0], quantity) > 0)
                     {
                         didMoveItems(inventory[0].Itemstack, byPlayer);
-                        Api.World.Logger.Audit("{0} Put {1} into Crate at {2}.",
+                        Api.World.Logger.Audit("{0} Put {1}x{2} into Crate at {3}.",
                             byPlayer.PlayerName,
-                            string.Format("{0}x{1}", quantity, inventory[0].Itemstack?.GetName()),
+                            quantity,
+                            inventory[0].Itemstack?.Collectible.Code,
                             Pos
                         );
                     }
@@ -217,9 +219,10 @@ namespace Vintagestory.GameContent
                             if (hotbarslot.TryPutInto(Api.World, wslot.slot, quantity) > 0)
                             {
                                 didMoveItems(wslot.slot.Itemstack, byPlayer);
-                                Api.World.Logger.Audit("{0} Put {1} into Crate at {2}.",
+                                Api.World.Logger.Audit("{0} Put {1}x{2} into Crate at {3}.",
                                     byPlayer.PlayerName,
-                                    string.Format("{0}x{1}", quantity, wslot.slot.Itemstack?.GetName()),
+                                    quantity,
+                                    wslot.slot.Itemstack?.Collectible.Code,
                                     Pos
                                 );
                                 if (!bulk) break;

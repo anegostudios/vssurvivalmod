@@ -1,9 +1,16 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using ProtoBuf;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
+using Vintagestory.ServerMods;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+using static Vintagestory.GameContent.MobExtraSpawnsDeva;
 
 namespace Vintagestory.GameContent;
 
@@ -16,18 +23,31 @@ public class DevaLocation
     [ProtoMember(2)]
     public int Radius;
 }
+public class MobExtraSpawnsDeva
+{
+    public DevaAreaMobConfig devastationAreaSpawns;
+
+    public class DevaAreaMobConfig
+    {
+        public Dictionary<string, float> Quantities;
+        public Dictionary<string, AssetLocation[]> VariantGroups;
+
+        public Dictionary<string, EntityProperties[]> ResolvedVariantGroups;
+    }
+}
 
 public class DevastationEffects : ModSystem
 {
+    public DevaAreaMobConfig mobConfig;
     public Vec3d DevaLocation;
-    public int Radius;
+    public int EffectRadius;
     private ICoreClientAPI capi;
     private int EffectDist = 5000;
 
     private static SimpleParticleProperties dustParticles;
 
     private ICoreServerAPI sapi;
-
+    CollisionTester collisionTester = new CollisionTester();
     AmbientModifier towerAmbient;
 
     public override double ExecuteOrder() => 2;
@@ -45,7 +65,7 @@ public class DevastationEffects : ModSystem
         var dist = DevaLocation.DistanceTo(pos.X, pos.Y, pos.Z);
         if (dist > EffectDist) return;
 
-        windSpeed.Mul(GameMath.Clamp(dist/Radius - 0.5f, 0, 1));
+        windSpeed.Mul(GameMath.Clamp(dist/EffectRadius - 0.5f, 0, 1));
     }
 
     public override void StartClientSide(ICoreClientAPI api)
@@ -102,9 +122,9 @@ public class DevastationEffects : ModSystem
             return;
         }
 
-        towerAmbient.FogColor.Weight = (float)GameMath.Clamp((1 - (dist - Radius / 2) / Radius) * 2f, 0, 1f);
+        towerAmbient.FogColor.Weight = (float)GameMath.Clamp((1 - (dist - EffectRadius / 2) / EffectRadius) * 2f, 0, 1f);
         towerAmbient.FogDensity.Value = 0.05f;
-        towerAmbient.FogDensity.Weight = (float)GameMath.Clamp((1 - (dist - Radius / 2) / Radius), 0, 1f);
+        towerAmbient.FogDensity.Weight = (float)GameMath.Clamp((1 - (dist - EffectRadius / 2) / EffectRadius), 0, 1f);
 
 
         // Goes from 1 = at deva tower
@@ -125,7 +145,7 @@ public class DevastationEffects : ModSystem
         capi.Render.ShaderUniforms.FogSpheres[0] = (float)offsetToTowerCenter.X;
         capi.Render.ShaderUniforms.FogSpheres[1] = (float)offsetToTowerCenter.Y - 300;
         capi.Render.ShaderUniforms.FogSpheres[2] = (float)offsetToTowerCenter.Z;
-        capi.Render.ShaderUniforms.FogSpheres[3] = Radius * 1.6f;
+        capi.Render.ShaderUniforms.FogSpheres[3] = EffectRadius * 1.6f;
         capi.Render.ShaderUniforms.FogSpheres[4] = 1/800f * f;
         capi.Render.ShaderUniforms.FogSpheres[5] = GameMath.Lerp(66 / 255f * b, fogColor.R, l);
         capi.Render.ShaderUniforms.FogSpheres[6] = GameMath.Lerp(45 / 255f * b, fogColor.G, l);
@@ -136,7 +156,24 @@ public class DevastationEffects : ModSystem
     public override void StartServerSide(ICoreServerAPI api)
     {
         sapi = api;
+        api.Event.SaveGameLoaded += Event_SaveGameLoaded;
         api.Event.RegisterGameTickListener(OnGameTick, 1000);
+    }
+
+    private void Event_SaveGameLoaded()
+    {
+        mobConfig = sapi.Assets.Get("config/mobextraspawns.json").ToObject<MobExtraSpawnsDeva>().devastationAreaSpawns;
+        var rdi = mobConfig.ResolvedVariantGroups = new Dictionary<string, EntityProperties[]>();
+
+        foreach (var val in mobConfig.VariantGroups)
+        {
+            int i = 0;
+            rdi[val.Key] = new EntityProperties[val.Value.Length];
+            foreach (var code in val.Value)
+            {
+                rdi[val.Key][i++] = sapi.World.GetEntityType(code);
+            }
+        }
     }
 
     private void OnGameTick(float obj)
@@ -145,13 +182,20 @@ public class DevastationEffects : ModSystem
 
         foreach (var player in sapi.World.AllOnlinePlayers)
         {
+            double distance = player.Entity.ServerPos.DistanceTo(DevaLocation);
+            
             var hasEffect = player.Entity.Stats["gliderLiftMax"].ValuesByKey.TryGetValue("deva", out _);
-            if (player.Entity.ServerPos.DistanceTo(DevaLocation) < Radius)
+            if (distance < EffectRadius)
             {
                 if (!hasEffect)
                 {
                     player.Entity.Stats.Set("gliderSpeedMax", "deva", -0.185f);
                     player.Entity.Stats.Set("gliderLiftMax", "deva", -1.01f);
+                }
+
+                if (sapi.World.Rand.NextDouble() < 0.15)
+                {
+                    trySpawnMobsForPlayer(player);
                 }
             }
             else
@@ -165,12 +209,93 @@ public class DevastationEffects : ModSystem
         }
     }
 
+    private void trySpawnMobsForPlayer(IPlayer player)
+    {
+        var part = sapi.ModLoader.GetModSystem<EntityPartitioning>();
+        Dictionary<string, int> spawnCountsByGroup = new Dictionary<string, int>();
+        Vec3d spawnPos = new Vec3d();
+        BlockPos spawnPosi = new BlockPos();
+        int range = 30;
+        var rnd = sapi.World.Rand;
+
+        var plrPos = player.Entity.ServerPos.XYZ;
+        part.WalkEntities(plrPos, range + 5, (e) =>
+        {
+            foreach (var vg in mobConfig.VariantGroups)
+            {
+                if (vg.Value.Contains(e.Code))
+                {
+                    spawnCountsByGroup.TryGetValue(vg.Key, out int cnt);
+                    spawnCountsByGroup[vg.Key] = cnt + 1;
+                    break;
+                }
+            }
+            return true;
+        }, EnumEntitySearchType.Creatures);
+
+        var keys = mobConfig.VariantGroups.Keys.ToArray().Shuffle(rnd);
+
+        foreach (var groupcode in keys)
+        {
+            float allowedCount = mobConfig.Quantities[groupcode];
+            int nowCount = 0;
+            spawnCountsByGroup.TryGetValue(groupcode, out nowCount);
+
+            if (nowCount < allowedCount)
+            {
+                var variantGroup = mobConfig.ResolvedVariantGroups[groupcode];
+                int tries = 15;
+                while (tries-- > 0)
+                {
+                    double typernd = sapi.World.Rand.NextDouble() * variantGroup.Length;
+                    int index = GameMath.RoundRandom(sapi.World.Rand, (float)typernd);
+                    var type = variantGroup[GameMath.Clamp(index, 0, variantGroup.Length - 1)];
+
+                    // Require a min distance of 20 blocks
+                    int rndx = (20 + rnd.Next(range - 10)) * (1 - 2 * rnd.Next(2));
+                    int rndy = (20 + rnd.Next(range - 10)) * (1 - 2 * rnd.Next(2));
+                    int rndz = (20 + rnd.Next(range - 10)) * (1 - 2 * rnd.Next(2));
+
+                    spawnPos.Set((int)plrPos.X + rndx + 0.5, (int)plrPos.Y + rndy + 0.001, (int)plrPos.Z + rndz + 0.5);
+                    spawnPosi.Set((int)spawnPos.X, (int)spawnPos.Y, (int)spawnPos.Z);
+
+                    while (sapi.World.BlockAccessor.GetBlock(spawnPosi.X, spawnPosi.Y - 1, spawnPosi.Z).Id == 0 && spawnPos.Y > 0)
+                    {
+                        spawnPosi.Y--;
+                        spawnPos.Y--;
+                    }
+
+                    if (!sapi.World.BlockAccessor.IsValidPos((int)spawnPos.X, (int)spawnPos.Y, (int)spawnPos.Z)) continue;
+                    Cuboidf collisionBox = type.SpawnCollisionBox.OmniNotDownGrowBy(0.1f);
+                    if (collisionTester.IsColliding(sapi.World.BlockAccessor, collisionBox, spawnPos, false)) continue;
+
+                    DoSpawn(type, spawnPos);
+                    return;
+                }
+            }
+        }
+    }
+
+    private void DoSpawn(EntityProperties entityType, Vec3d spawnPosition)
+    {
+        Entity entity = sapi.ClassRegistry.CreateEntity(entityType);
+        EntityAgent agent = entity as EntityAgent;
+        entity.ServerPos.SetPosWithDimension(spawnPosition);
+        entity.Pos.SetFrom(entity.ServerPos);
+        entity.PositionBeforeFalling.Set(entity.ServerPos.X, entity.ServerPos.Y, entity.ServerPos.Z);
+
+        entity.ServerPos.SetYaw((float)sapi.World.Rand.NextDouble() * GameMath.TWOPI);
+        entity.Attributes.SetString("origin", "devastation");
+        sapi.World.SpawnEntity(entity);
+        entity.Attributes.SetBool("ignoreDaylightFlee", true);
+    }
+
     private bool asyncParticleSpawn(float dt, IAsyncParticleManager manager)
     {
         if (DevaLocation == null) return true;
         var plr = capi.World.Player.Entity;
 
-        float intensity = (float)GameMath.Clamp((1.5 - plr.Pos.DistanceTo(DevaLocation) / Radius)*1.5, 0, 1);
+        float intensity = (float)GameMath.Clamp((1.5 - plr.Pos.DistanceTo(DevaLocation) / EffectRadius)*1.5, 0, 1);
         if (intensity <= 0) return true;
 
         double offsetx = plr.Pos.Motion.X * 200;
@@ -182,7 +307,7 @@ public class DevastationEffects : ModSystem
             {
                 var pos = plr.Pos.XYZ.Add(dx + offsetx, 0, dz + offsetz);
 
-                float hereintensity = (float)GameMath.Clamp((1 - pos.DistanceTo(DevaLocation) / Radius) * 1.5, 0, 1);
+                float hereintensity = (float)GameMath.Clamp((1 - pos.DistanceTo(DevaLocation) / EffectRadius) * 1.5, 0, 1);
                 if (capi.World.Rand.NextDouble() > hereintensity * 0.015) continue;
 
                 pos.Y = capi.World.BlockAccessor.GetRainMapHeightAt((int)pos.X, (int)pos.Z) - 8 + capi.World.Rand.NextDouble() * 25;
@@ -207,6 +332,6 @@ public class DevastationEffects : ModSystem
     private void OnDevaLocation(DevaLocation packet)
     {
         DevaLocation = packet.Pos.ToVec3d();
-        Radius = packet.Radius;
+        EffectRadius = packet.Radius;
     }
 }

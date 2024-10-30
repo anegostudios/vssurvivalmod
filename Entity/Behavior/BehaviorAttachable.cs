@@ -1,5 +1,6 @@
 ﻿using Cairo;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
@@ -51,7 +52,7 @@ namespace Vintagestory.GameContent
         {
             if (itemstack == null) return false;
 
-            var iatta = IAttachableToEntity.FromCollectible(itemstack.Collectible, inventory?.Api.Logger);
+            var iatta = IAttachableToEntity.FromCollectible(itemstack.Collectible);
 
             return iatta != null && slotWearableCodes.IndexOf(iatta.GetCategoryCode(itemstack)) >= 0;
         }
@@ -83,9 +84,72 @@ namespace Vintagestory.GameContent
     }
 
 
+    public class AttachableInteractionHelp
+    {
+
+        public static WorldInteraction[] GetOrCreateInteractionHelp(ICoreAPI api, EntityBehaviorAttachable eba, WearableSlotConfig[] wearableSlots, int slotIndex)
+        {
+            string key = "interactionhelp-" + eba.entity.Code + "-" + slotIndex;
+            return ObjectCacheUtil.GetOrCreate(api, key, () =>
+            {
+                List<ItemStack> stacks = new List<ItemStack>();
+
+                foreach (var collObj in api.World.Collectibles)
+                {
+                    if (collObj.CreativeInventoryTabs.Length == 0 && collObj.CreativeInventoryStacks == null) continue;
+
+                    var iatta = IAttachableToEntity.FromCollectible(collObj);
+                    if (iatta == null) continue;
+
+                    if (collObj.CreativeInventoryStacks != null)
+                    {
+                        foreach (var tabstack in collObj.CreativeInventoryStacks)
+                        {
+                            foreach (var jstack in tabstack.Stacks)
+                            {
+                                if (!iatta.IsAttachable(eba.entity, jstack.ResolvedItemstack)) continue;
+
+                                string code = iatta.GetCategoryCode(jstack.ResolvedItemstack);
+                                var slotConfig = wearableSlots[slotIndex];
+
+                                if (!slotConfig.CanHold(code)) continue;
+
+                                stacks.Add(jstack.ResolvedItemstack);
+                            }
+                        }
+                    } else
+                    {
+                        var stack = new ItemStack(collObj);
+                        if (!iatta.IsAttachable(eba.entity, stack)) continue;
+
+                        string code = iatta.GetCategoryCode(stack);
+                        var slotConfig = wearableSlots[slotIndex];
+
+                        if (!slotConfig.CanHold(code)) continue;
+
+                        stacks.Add(stack);
+                    }
+                }
+
+                if (stacks.Count == 0) return null;
+
+                return new WorldInteraction[]
+                {
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "equip",
+                        Itemstacks = stacks.ToArray(),
+                        MouseButton = EnumMouseButton.Right,
+                        HotKeyCode = "ctrl"
+                    }
+                };
+            });
+        }
+    }
 
 
-    public class EntityBehaviorAttachable : EntityBehaviorContainer
+
+    public class EntityBehaviorAttachable : EntityBehaviorContainer, ICustomInteractionHelpPositioning
     {
         protected WearableSlotConfig[] wearableSlots;
         public override InventoryBase Inventory => inv;
@@ -295,7 +359,7 @@ namespace Vintagestory.GameContent
 
         private bool TryAttach(ItemSlot itemslot, int slotIndex, EntityAgent byEntity)
         {
-            var iatta = IAttachableToEntity.FromCollectible(itemslot.Itemstack.Collectible, entity.World.Logger);
+            var iatta = IAttachableToEntity.FromCollectible(itemslot.Itemstack.Collectible);
             if (iatta == null || !iatta.IsAttachable(entity, itemslot.Itemstack)) return false;
 
             var targetSlot = GetSlotFromSelectionBoxIndex(slotIndex);
@@ -379,10 +443,31 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public override WorldInteraction[] GetInteractionHelp(IClientWorldAccessor world, EntitySelection es, IClientPlayer player, ref EnumHandling handled)
+        {
+            if (es.SelectionBoxIndex > 0)
+            {
+                return AttachableInteractionHelp.GetOrCreateInteractionHelp(world.Api, this, wearableSlots, es.SelectionBoxIndex - 1);
+            }
+
+            return base.GetInteractionHelp(world, es, player, ref handled);
+        }
+
 
         public override string PropertyName() => "dressable";
         public void Dispose() { }
 
-        
+        public Vec3d GetInteractionHelpPosition()
+        {
+            var capi = entity.Api as ICoreClientAPI;
+            if (capi.World.Player.CurrentEntitySelection == null) return null;
+
+            var selebox = capi.World.Player.CurrentEntitySelection.SelectionBoxIndex - 1;
+            if (selebox < 0) return null;
+
+            return entity.GetBehavior<EntityBehaviorSelectionBoxes>().GetCenterPosOfBox(selebox).Add(0, 0.5, 0);
+        }
+
+        public bool TransparentCenter => false;
     }
 }

@@ -40,7 +40,6 @@ namespace Vintagestory.GameContent
     {
         public Dictionary<string, Dictionary<string, EntityOwnership>> OwnerShipsByPlayerUid;
         public Dictionary<string, EntityOwnership> SelfOwnerShips { get; set; } = new Dictionary<string, EntityOwnership>();
-
         public override bool ShouldLoad(EnumAppSide forSide) => true;
 
         ICoreServerAPI sapi;

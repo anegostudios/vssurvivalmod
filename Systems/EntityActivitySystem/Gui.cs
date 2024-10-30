@@ -10,9 +10,7 @@ using System.IO;
 using Newtonsoft.Json;
 using ProtoBuf;
 using Vintagestory.API.Server;
-using System.Reflection;
 using System.Collections.Generic;
-using System.Numerics;
 
 // Requirements:
 // Activity Collections
@@ -67,7 +65,6 @@ namespace Vintagestory.GameContent
                 .RegisterMessageType<ApplyConfigPacket>()
                 .RegisterMessageType<ActivityCollectionsJsonPacket>()
             ;
-
         }
 
         public override void StartClientSide(ICoreClientAPI api)
@@ -145,7 +142,7 @@ namespace Vintagestory.GameContent
                     }))
                     .EndSub()
                     .BeginSub("runa")
-                        .WithArgs(api.ChatCommands.Parsers.Word("activity code"))
+                        .WithArgs(api.ChatCommands.Parsers.All("activity code"))
                         .HandleWith((args) => CmdUtil.EntityEach(args, (e) => {
                             var ebh = e.GetBehavior<EntityBehaviorActivityDriven>();
                             if (ebh != null)
@@ -313,7 +310,6 @@ namespace Vintagestory.GameContent
             ElementBounds dialogBounds = ElementStdBounds
                 .AutosizedMainDialog.WithAlignment(EnumDialogArea.LeftMiddle)
                 .WithFixedAlignmentOffset(GuiStyle.DialogToScreenPadding, 0);
-
 
             ElementBounds leftButton = ElementBounds.Fixed(EnumDialogArea.LeftFixed, 0, 0, 0, 0).WithFixedPadding(8, 5);
             ElementBounds rightButton = ElementBounds.Fixed(EnumDialogArea.RightFixed, 0, 0, 0, 0).WithFixedPadding(8, 5);
@@ -613,7 +609,7 @@ namespace Vintagestory.GameContent
 
         private bool OnExecuteActivity()
         {
-            capi.SendChatMessage("/dev aee e[id="+GuiDialogActivityCollections.EntityId+"] runa " + collection.Activities[selectedIndex].Name);
+            capi.SendChatMessage("/dev aee e[id="+GuiDialogActivityCollections.EntityId+"] runa " + collection.Activities[selectedIndex].Code);
             return true;
         }
 
@@ -870,7 +866,7 @@ namespace Vintagestory.GameContent
 
             ElementBounds conditionsLabelBounds = nameBounds.FlatCopy().FixedUnder(aaBounds, 10);
 
-            ElementBounds conditionsListBounds = ElementBounds.Fixed(0, 0, 500, 100);
+            ElementBounds conditionsListBounds = ElementBounds.Fixed(0, 0, 500, 120);
             conditionsClipBounds = conditionsListBounds.ForkBoundingParent().FixedUnder(conditionsLabelBounds, 0);
             ElementBounds conditionsInsetBounds = conditionsListBounds.FlatCopy().FixedGrow(3);
             ElementBounds conditionsScrollbarBounds = conditionsInsetBounds.CopyOffsetedSibling(3 + conditionsListBounds.fixedWidth + 7).WithFixedWidth(20);

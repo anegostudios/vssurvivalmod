@@ -376,6 +376,12 @@ namespace Vintagestory.GameContent
                             {
                                 sapi.World.SpawnItemEntity(stack, fromPlayer.Entity.Pos.XYZ);
                             }
+
+                            sapi.World.Logger.Audit("{0} Got 1x{1} from Auction at {3}.",
+                                fromPlayer.PlayerName,
+                                stack.Collectible.Code,
+                                fromPlayer.Entity.Pos
+                            );
                         }
                         serverCh.SendPacket(new AuctionActionResponsePacket() { Action = pkt.Action, AuctionId = pkt.AuctionId, ErrorCode = failureCode, MoneyReceived = stack?.Collectible.Attributes?["currency"].Exists == true }, fromPlayer);
 

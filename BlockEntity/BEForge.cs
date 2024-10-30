@@ -35,7 +35,7 @@ namespace Vintagestory.GameContent
             if (api is ICoreClientAPI)
             {
                 ICoreClientAPI capi = (ICoreClientAPI)api;
-                capi.Event.RegisterRenderer(renderer = new ForgeContentsRenderer(Pos, capi), EnumRenderStage.Opaque, "forge");  
+                capi.Event.RegisterRenderer(renderer = new ForgeContentsRenderer(Pos, capi), EnumRenderStage.Opaque, "forge");
                 renderer.SetContents(contents, fuelLevel, burning, true);
 
                 RegisterGameTickListener(OnClientTick, 50);
@@ -153,13 +153,18 @@ namespace Vintagestory.GameContent
                 ItemStack split = contents.Clone();
                 split.StackSize = 1;
                 contents.StackSize--;
-                
+
                 if (contents.StackSize == 0) contents = null;
 
                 if (!byPlayer.InventoryManager.TryGiveItemstack(split))
                 {
                     world.SpawnItemEntity(split, Pos);
                 }
+                Api.World.Logger.Audit("{0} Took 1x{1} from Forge at {2}.",
+                    byPlayer.PlayerName,
+                    split.Collectible.Code,
+                    blockSel.Position
+                );
 
                 renderer?.SetContents(contents, fuelLevel, burning, true);
                 MarkDirty();
@@ -168,7 +173,7 @@ namespace Vintagestory.GameContent
                 return true;
 
             } else
-            {   
+            {
                 if (slot.Itemstack == null) return false;
 
                 // Add fuel
@@ -209,6 +214,11 @@ namespace Vintagestory.GameContent
 
                     slot.TakeOut(1);
                     slot.MarkDirty();
+                    Api.World.Logger.Audit("{0} Put 1x{1} into Forge at {2}.",
+                        byPlayer.PlayerName,
+                        contents.Collectible.Code,
+                        blockSel.Position
+                    );
 
                     renderer?.SetContents(contents, fuelLevel, burning, true);
                     MarkDirty();
@@ -228,6 +238,11 @@ namespace Vintagestory.GameContent
 
                     slot.TakeOut(1);
                     slot.MarkDirty();
+                    Api.World.Logger.Audit("{0} Put 1x{1} into Forge at {2}.",
+                        byPlayer.PlayerName,
+                        contents.Collectible.Code,
+                        blockSel.Position
+                    );
 
                     renderer?.SetContents(contents, fuelLevel, burning, true);
                     Api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), Pos, 0.4375, byPlayer, false);
@@ -306,7 +321,7 @@ namespace Vintagestory.GameContent
                 {
                     dsc.AppendLine(Lang.Get("forge-contentsandtemp", contents.StackSize, contents.GetName(), temp));
                 }
-                
+
             }
         }
 

@@ -14,7 +14,7 @@ namespace Vintagestory.GameContent
         public override InventoryBase Inventory => inv;
 
         public override string InventoryClassName => "shelf";
-        
+
         public override string AttributeTransformCode => "onshelfTransform";
 
         Block block;
@@ -71,13 +71,13 @@ namespace Vintagestory.GameContent
                 if (colObj.Attributes != null && colObj.Attributes["shelvable"].AsBool(false) == true)
                 {
                     AssetLocation sound = slot.Itemstack?.Block?.Sounds?.Place;
-                    var stackName = slot.Itemstack?.GetName();
+                    var stackName = slot.Itemstack?.Collectible.Code;
                     if (TryPut(slot, blockSel))
                     {
                         Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
-                        Api.World.Logger.Audit("{0} Put {1} into Shelf at {2}.", 
+                        Api.World.Logger.Audit("{0} Put 1x{1} into Shelf at {2}.",
                             byPlayer.PlayerName,
-                            string.Format("1x{0}", stackName),
+                            stackName,
                             Pos
                         );
                         MarkDirty();
@@ -137,9 +137,9 @@ namespace Vintagestory.GameContent
                     {
                         Api.World.SpawnItemEntity(stack, Pos);
                     }
-                    Api.World.Logger.Audit("{0} Took {1} from Shelf at {2}.", 
+                    Api.World.Logger.Audit("{0} Took 1x{1} from Shelf at {2}.",
                         byPlayer.PlayerName,
-                        string.Format("1x{0}", stack.GetName()),
+                        stack.Collectible.Code,
                         Pos
                     );
 
@@ -162,7 +162,7 @@ namespace Vintagestory.GameContent
                 float y = index >= 4 ? 10 / 16f : 2 / 16f;
                 float z = (index % 2 == 0) ? 4 / 16f : 10 / 16f;
 
-                tfMatrices[index] = 
+                tfMatrices[index] =
                     new Matrixf()
                     .Translate(0.5f, 0, 0.5f)
                     .RotateYDeg(block.Shape.rotateY)

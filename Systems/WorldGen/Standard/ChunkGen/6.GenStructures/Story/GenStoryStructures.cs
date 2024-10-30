@@ -55,8 +55,6 @@ namespace Vintagestory.GameContent
                 api.Event.WorldgenHook(GenerateHookStructure, "standard", "genHookStructure");
             }
 
-            api.ModLoader.GetModSystem<GenStructures>().OnPreventSchematicPlaceAt += OnPreventSchematicPlaceAt;
-
             api.Event.ServerRunPhase(EnumServerRunPhase.RunGame,() =>
             {
                 if (!genStoryStructures) return;
@@ -200,24 +198,11 @@ namespace Vintagestory.GameContent
 
         }
 
-        private bool OnPreventSchematicPlaceAt(BlockPos pos, Cuboidi schematicLocation)
-        {
-            if (structureLocations == null) return false;
-
-            for (int i = 0; i < structureLocations.Length; i++)
-            {
-                if (structureLocations[i].Intersects(schematicLocation)) return true;
-            }
-
-            return false;
-        }
-
-        public bool IsInStoryStructure(int x, int z, int skipCategory, out string locationCode)
+        public string GetStoryStructureCodeAt(int x, int z, int skipCategory)
         {
             if (structureLocations == null)
             {
-                locationCode = null;
-                return false;
+                return null;
             }
 
             foreach (var (_, loc) in storyStructureInstances)
@@ -227,31 +212,28 @@ namespace Vintagestory.GameContent
                 var hasCategory = loc.SkipGenerationFlags.TryGetValue(skipCategory, out var checkRadius);
                 if (loc.Location.Contains(x, z) && hasCategory)
                 {
-                    locationCode = loc.Code;
-                    return true;
+                    return loc.Code;
                 }
                 if (checkRadius > 0)
                 {
                     if (loc.CenterPos.HorDistanceSqTo(x, z) < checkRadius * checkRadius)
                     {
-                        locationCode = loc.Code;
-                        return true;
+                        return loc.Code;
                     }
                 }
             }
 
-            locationCode = null;
-            return false;
+            return null;
         }
 
-        public bool IsInStoryStructure(Vec3d position, int skipCategory, out string locationCode)
+        public string GetStoryStructureCodeAt(Vec3d position, int skipCategory)
         {
-            return IsInStoryStructure((int)position.X, (int)position.Z, skipCategory, out locationCode);
+            return GetStoryStructureCodeAt((int)position.X, (int)position.Z, skipCategory);
         }
 
-        public bool IsInStoryStructure(BlockPos position, int skipCategory, out string locationCode)
+        public string GetStoryStructureCodeAt(BlockPos position, int skipCategory)
         {
-            return IsInStoryStructure(position.X, position.Z, skipCategory, out locationCode);
+            return GetStoryStructureCodeAt(position.X, position.Z, skipCategory);
         }
 
         protected void DetermineStoryStructures()

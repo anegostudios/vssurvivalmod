@@ -55,6 +55,8 @@ namespace Vintagestory.GameContent
                             }
                         }
 
+                        entity.AlwaysActive = true;
+                        entity.State = EnumEntityState.Active;
 
                         tm.StopTasks();
                         tm.ExecuteTask(aitcto, 0);

@@ -12,12 +12,11 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 using Vintagestory.ServerMods;
-using Vintagestory.ServerMods.NoObf;
 
 namespace Vintagestory.GameContent
 {
     
-    public class MobExtraSpawns
+    public class MobExtraSpawnsTemp
     {
         public TempStormMobConfig temporalStormSpawns;
     }
@@ -713,7 +712,7 @@ namespace Vintagestory.GameContent
 
                 sapi.Event.OnEntityDeath += Event_OnEntityDeath;
 
-                mobConfig = sapi.Assets.Get("config/mobextraspawns.json").ToObject<MobExtraSpawns>().temporalStormSpawns;
+                mobConfig = sapi.Assets.Get("config/mobextraspawns.json").ToObject<MobExtraSpawnsTemp>().temporalStormSpawns;
                 var rdi = mobConfig.spawnsByStormStrength.resolvedVariantGroups = new Dictionary<string, EntityProperties[]>();
 
                 foreach (var val in mobConfig.spawnsByStormStrength.variantGroups)

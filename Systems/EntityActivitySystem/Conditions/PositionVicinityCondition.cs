@@ -1,7 +1,6 @@
 ﻿using Newtonsoft.Json;
 using System;
 using Vintagestory.API.Client;
-using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -23,13 +22,13 @@ namespace Vintagestory.GameContent
         [JsonProperty]
         float range;
         [JsonProperty]
-        float? yrange = null;
+        float yrange = -1;
 
         public Vec3d Target = new Vec3d();
 
         protected EntityActivitySystem vas;
         public PositionVicinityCondition() { }
-        public PositionVicinityCondition(EntityActivitySystem vas, Vec3d pos, float range, float? yrange, bool invert = false)
+        public PositionVicinityCondition(EntityActivitySystem vas, Vec3d pos, float range, float yrange, bool invert = false)
         {
             this.vas = vas;
             this.Target = pos;
@@ -43,7 +42,7 @@ namespace Vintagestory.GameContent
 
         public virtual bool ConditionSatisfied(Entity e)
         {
-            if (yrange != null)
+            if (yrange>=0)
             {
                 return e.ServerPos.HorDistanceTo(Target) < range && Math.Abs(e.ServerPos.Y - Target.Y) < yrange;
             }
@@ -76,7 +75,7 @@ namespace Vintagestory.GameContent
             ;
 
             singleComposer.GetNumberInput("range").SetValue(range);
-            singleComposer.GetNumberInput("vrange").SetValue(yrange ?? -1);
+            singleComposer.GetNumberInput("vrange").SetValue(yrange);
 
             var s = singleComposer;
             s.GetTextInput("x").SetValue(Target?.X + "");

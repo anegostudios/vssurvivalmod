@@ -272,7 +272,8 @@ namespace Vintagestory.ServerMods
 
             BlockPatch[] bpcPatchesNonTree;
             var isStoryPatch = false;
-            if (SkipGenerationAt(tmpPos, SkipPatchesgHashCode, out var locationCode))
+            var locationCode = GetIntersectingStructure(tmpPos, SkipPatchesgHashCode);
+            if (locationCode != null)
             {
                 if (StoryStructurePatches.TryGetValue(locationCode, out var blockPatchConfig))
                 {
@@ -325,7 +326,8 @@ namespace Vintagestory.ServerMods
 
                     if (bpc.IsPatchSuitableAt(blockPatch, liquidBlock, mapsizeY, climate, y, forestRel, shrubRel))
                     {
-                        if (!isStoryPatch && SkipGenerationAt(tmpPos, SkipPatchesgHashCode, out _)) continue;
+                        locationCode = GetIntersectingStructure(tmpPos, SkipPatchesgHashCode);
+                        if (!isStoryPatch && locationCode != null) continue;
 
                         if (blockPatch.MapCode != null && patchIterRandom.NextInt(255) > GetPatchDensity(blockPatch.MapCode, x, z, mapregion))
                         {
@@ -401,7 +403,7 @@ namespace Vintagestory.ServerMods
                         if (structuresIntersectingChunk[i].Contains(tmpPos)) { canGen = false; break; }
                     }
                     if (!canGen) continue;
-                    if (SkipGenerationAt(tmpPos, SkipShurbsgHashCode, out _)) continue;
+                    if (GetIntersectingStructure(tmpPos, SkipShurbsgHashCode) != null) continue;
 
                     if (blockAccessor.GetBlock(tmpPos.X, tmpPos.Y, tmpPos.Z).Replaceable >= 6000)
                     {
@@ -481,7 +483,7 @@ namespace Vintagestory.ServerMods
                         if (structuresIntersectingChunk[i].Contains(tmpPos)) { canGen = false; break; }
                     }
                     if (!canGen) continue;
-                    if (SkipGenerationAt(tmpPos, SkipTreesgHashCode, out _)) continue;
+                    if (GetIntersectingStructure(tmpPos, SkipTreesgHashCode) != null) continue;
 
                     if (blockAccessor.GetBlock(tmpPos.X, tmpPos.Y, tmpPos.Z).Replaceable >= 6000)
                     {

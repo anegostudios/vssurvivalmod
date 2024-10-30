@@ -45,7 +45,7 @@ namespace Vintagestory.GameContent
             if (activityCode.Contains(","))
             {
                 var codes = activityCode.Split(',');
-                code = codes[vas.Entity.World.Rand.Next(codes.Length)];
+                code = codes[vas.Entity.World.Rand.Next(codes.Length)].Trim();
             }
 
             if (target == "other")
@@ -72,6 +72,7 @@ namespace Vintagestory.GameContent
             }
             else
             {
+                vas.Entity.World.Logger.Debug("StartActivity, starting {0}", code);
                 vas.StartActivity(code, priority, slot);
             }
         }

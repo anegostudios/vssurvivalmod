@@ -23,7 +23,7 @@ namespace Vintagestory.ServerMods
         }
     }
 
-    public delegate bool PeventSchematicAtDelegate(BlockPos pos, Cuboidi schematicLocation);
+    public delegate bool PeventSchematicAtDelegate(IBlockAccessor blockAccessor, BlockPos pos, Cuboidi schematicLocation, string locationCode);
 
     public class GenStructures : ModStdWorldGen
     {
@@ -75,14 +75,14 @@ namespace Vintagestory.ServerMods
             worldgenBlockAccessor = chunkProvider.GetBlockAccessor(false);
         }
 
-        public bool WouldSchematicOverlapAt(BlockPos pos, Cuboidi schematicLocation)
+        public bool WouldSchematicOverlapAt(IBlockAccessor blockAccessor, BlockPos pos, Cuboidi schematicLocation, string locationCode)
         {
             if (OnPreventSchematicPlaceAt != null)
             {
                 var deles = OnPreventSchematicPlaceAt.GetInvocationList();
                 foreach (PeventSchematicAtDelegate dele in deles)
                 {
-                    if (dele(pos, schematicLocation)) return true;
+                    if (dele(blockAccessor, pos, schematicLocation, locationCode)) return true;
                 }
             }
 
@@ -93,6 +93,16 @@ namespace Vintagestory.ServerMods
         public void initWorldGen()
         {
             LoadGlobalConfig(api);
+
+            var fillerBlock = api.World.BlockAccessor.GetBlock(new AssetLocation("meta-filler"));
+            var pathwayBlock = api.World.BlockAccessor.GetBlock(new AssetLocation("meta-pathway"));
+            var undergroundBlock = api.World.BlockAccessor.GetBlock(new AssetLocation("meta-underground"));
+            var abovegroundBlock = api.World.BlockAccessor.GetBlock(new AssetLocation("meta-aboveground"));
+            BlockSchematic.FillerBlockId = fillerBlock.Id;
+            BlockSchematic.PathwayBlockId = pathwayBlock.Id;
+            BlockSchematic.UndergroundBlockId = undergroundBlock.Id;
+            BlockSchematic.AbovegroundBlockId = abovegroundBlock.Id;
+
             worldheight = api.WorldManager.MapSizeY;
             regionChunkSize = api.WorldManager.RegionSize / chunksize;
 
@@ -133,8 +143,7 @@ namespace Vintagestory.ServerMods
         {
             if (!TerraGenConfig.GenerateStructures) return;
 
-            SkipGenerationAt(request.ChunkX * chunksize + chunksize / 2, request.ChunkZ * chunksize + chunksize / 2, SkipStructuresgHashCode,
-                out var locationCode);
+            var locationCode = GetIntersectingStructure(request.ChunkX * chunksize + chunksize / 2, request.ChunkZ * chunksize + chunksize / 2, SkipStructuresgHashCode);
 
             var chunks = request.Chunks;
             int chunkX = request.ChunkX;
@@ -152,9 +161,7 @@ namespace Vintagestory.ServerMods
         {
             if (!TerraGenConfig.GenerateStructures) return;
 
-            SkipGenerationAt(request.ChunkX * chunksize + chunksize / 2, request.ChunkZ * chunksize + chunksize / 2, SkipStructuresgHashCode,
-                out var locationCode);
-
+            var locationCode = GetIntersectingStructure(request.ChunkX * chunksize + chunksize / 2, request.ChunkZ * chunksize + chunksize / 2, SkipStructuresgHashCode);
 
             var chunks = request.Chunks;
             int chunkX = request.ChunkX;
@@ -271,7 +278,7 @@ namespace Vintagestory.ServerMods
 
                     if (startPos.Y <= 0) continue;
 
-                    if (struc.TryGenerate(worldgenBlockAccessor, api.World, startPos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight))
+                    if (struc.TryGenerate(worldgenBlockAccessor, api.World, startPos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, locationCode))
                     {
                         Cuboidi loc = struc.LastPlacedSchematicLocation;
 
@@ -349,6 +356,5 @@ namespace Vintagestory.ServerMods
                 }
             });
         }
-
     }
 }

@@ -40,6 +40,7 @@ namespace Vintagestory.GameContent
 
             var activity = AvailableActivities[index];
             if (slot < 0) slot = activity.Slot;
+            if (priority < 0) priority = (float)activity.Priority;
 
             if (ActiveActivitiesBySlot.TryGetValue(activity.Slot, out var activeAct))
             {
@@ -73,6 +74,23 @@ namespace Vintagestory.GameContent
         public void PauseAutoSelection(bool paused)
         {
             pauseAutoSelection = paused;
+        }
+
+
+        public void Pause()
+        {
+            foreach (var val in ActiveActivitiesBySlot.Values)
+            {
+                val?.Pause();
+            }
+        }
+
+        public void Resume()
+        {
+            foreach (var val in ActiveActivitiesBySlot.Values)
+            {
+                val?.Resume();
+            }
         }
 
         public void OnTick(float dt)
@@ -239,7 +257,6 @@ namespace Vintagestory.GameContent
             return activities;
         }
 
-        
     }
 
 }

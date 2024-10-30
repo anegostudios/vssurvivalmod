@@ -53,12 +53,23 @@ namespace Vintagestory.GameContent
             this.vas = vas;
         }
 
+        public override void Pause()
+        {
+            stop();
+        }
+
+        public override void Resume()
+        {
+            navTo(hereTarget);
+        }
+
+        Vec3d hereTarget;
         public override void Start(EntityActivity act)
         {
             done = false;
             ExecutionHasFailed = false;
 
-            var hereTarget = Target.Clone();
+            hereTarget = Target.Clone();
             if (Radius > 0)
             {
                 float alpha = (float)vas.Entity.World.Rand.NextDouble() * GameMath.TWOPI;
@@ -66,10 +77,14 @@ namespace Vintagestory.GameContent
                 hereTarget.Z += Math.Cos(alpha) * Radius;
             }
 
+            navTo(hereTarget);
+        }
+
+        private void navTo(Vec3d hereTarget)
+        {
             EnumAICreatureType ct = EnumAICreatureType.Default;
             var aicreaturetype = vas.Entity.Properties.Server.Attributes.GetString("aiCreatureType", "Humanoid");
             if (Enum.TryParse(aicreaturetype, out EnumAICreatureType ect)) ct = ect;
-            
 
             if (Astar)
             {
@@ -122,6 +137,11 @@ namespace Vintagestory.GameContent
         public override void Finish()
         {
             if (vas.Debug) vas.Entity.World.Logger.Debug("ActivitySystem entity {0} GotoAction, Stop() called", vas.Entity.EntityId);
+            stop();
+        }
+
+        private void stop()
+        {
             vas.linepathTraverser.Stop();
             vas.wppathTraverser.Stop();
             vas.Entity.AnimManager.StopAnimation(AnimCode);

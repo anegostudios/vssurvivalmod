@@ -15,65 +15,10 @@ namespace Vintagestory.GameContent
         /// E.g. for the entire village
         /// </summary>
         Group,
+        Player,
         Global
     }
 
-
-    public class ActivityVariableSystem : ModSystem
-    {
-        protected Dictionary<string, string> variables = new Dictionary<string, string>();
-        public override bool ShouldLoad(EnumAppSide forSide) => true;
-        ICoreServerAPI sapi;
-        public override void StartServerSide(ICoreServerAPI api)
-        {
-            sapi = api;
-            api.Event.SaveGameLoaded += Event_SaveGameLoaded;
-            api.Event.GameWorldSave += Event_GameWorldSave;
-        }
-
-        private void Event_GameWorldSave()
-        {
-            sapi.WorldManager.SaveGame.StoreData("activityVariables", variables);
-        }
-
-        private void Event_SaveGameLoaded()
-        {
-            variables = sapi.WorldManager.SaveGame.GetData<Dictionary<string, string>>("activityVariables") ?? new();
-        }
-
-        public void SetVariable(long callingEntityId, EnumActivityVariableScope scope, string name, string value)
-        {
-            string key = "global-" + name;
-            if (scope == EnumActivityVariableScope.Group)
-            {
-                var groupCode = sapi.World.GetEntityById(callingEntityId).WatchedAttributes.GetString("groupCode");
-                key = "group-"+ groupCode + "-" + name;
-            }
-            if (scope == EnumActivityVariableScope.Entity)
-            {
-                key = "entity-" + callingEntityId + "-" + name;
-            }
-
-            variables[key] = value;
-        }
-
-        public string GetVariable(EnumActivityVariableScope scope, string name, long callingEntityId)
-        {
-            string key = "global-" + name;
-            if (scope == EnumActivityVariableScope.Group)
-            {
-                var groupCode = sapi.World.GetEntityById(callingEntityId).WatchedAttributes.GetString("groupCode");
-                key = "group-" + groupCode + "-" + name;
-            }
-            if (scope == EnumActivityVariableScope.Entity)
-            {
-                key = "entity-" + callingEntityId + "-" + name;
-            }
-
-            variables.TryGetValue(key, out var variable);
-            return variable;
-        }
-    }
 
     [JsonObject(MemberSerialization.OptIn)]
     public class SetVarAction : EntityActionBase
@@ -102,7 +47,7 @@ namespace Vintagestory.GameContent
 
         public override void Start(EntityActivity act)
         {
-            var avs = vas.Entity.Api.ModLoader.GetModSystem<ActivityVariableSystem>();
+            var avs = vas.Entity.Api.ModLoader.GetModSystem<VariablesModSystem>();
 
             switch (op)
             {
@@ -159,7 +104,7 @@ namespace Vintagestory.GameContent
 
         public override string ToString()
         {
-            var avs = vas?.Entity.Api.ModLoader.GetModSystem<ActivityVariableSystem>();
+            var avs = vas?.Entity.Api.ModLoader.GetModSystem<VariablesModSystem>();
             string curvalue=null;
             if (avs != null)
             {

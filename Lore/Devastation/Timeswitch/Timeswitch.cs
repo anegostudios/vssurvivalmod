@@ -373,12 +373,12 @@ namespace Vintagestory.GameContent
 
         private void CreateChunkColumns()
         {
-            for (int x = 0; x < size * 2 - 1; x++)
+            for (int x = 0; x <= size * 2; x++)
             {
-                for (int z = 0; z < size * 2 - 1; z++)
+                for (int z = 0; z <= size * 2; z++)
                 {
-                    int cx = baseChunkX - size + 1 + x;
-                    int cz = baseChunkZ - size + 1 + z;
+                    int cx = baseChunkX - size + x;
+                    int cz = baseChunkZ - size + z;
 
                     sapi.WorldManager.CreateChunkColumnForDimension(cx, cz, OtherDimension);
                 }
@@ -444,15 +444,17 @@ namespace Vintagestory.GameContent
 
         StoryStructureLocation GenStoryStructLoc;
         GenStoryStructures GenGenStoryStructures;
+        ICallback GenGenDevastationLayer;
         /// <summary>
         /// Called to set up the devastationLocation 
         /// </summary>
         /// <param name="structureLocation"></param>
         /// <param name="genStoryStructures"></param>
-        public void InitPotentialGeneration(StoryStructureLocation structureLocation, GenStoryStructures genStoryStructures)
+        public void InitPotentialGeneration(StoryStructureLocation structureLocation, GenStoryStructures genStoryStructures, ICallback genDevastationLayer)
         {
             GenStoryStructLoc = structureLocation;
             GenGenStoryStructures = genStoryStructures;
+            GenGenDevastationLayer = genDevastationLayer;
         }
 
         public void AttemptGeneration(IWorldGenBlockAccessor worldgenBlockAccessor)
@@ -461,44 +463,49 @@ namespace Vintagestory.GameContent
 
             if (!AreAllDim0ChunksGenerated()) return;
 
-            CopyBlocksToAltDimension(worldgenBlockAccessor, null);
+            GenStoryStructLoc.DidGenerateAdditional = true;
+            GenGenStoryStructures.StoryStructureInstancesDirty = true;
 
-            PlaceSchematic(worldgenBlockAccessor, Dimensions.NormalWorld, "story/" + GenStoryStructLoc.Code + "-present");
-            PlaceSchematic(sapi.World.BlockAccessor, OtherDimension, "story/" + GenStoryStructLoc.Code + "-past");
+            CreateChunkColumns();
+            GenGenDevastationLayer.Callback(baseChunkX, baseChunkZ, size);
 
-            if (size > 1)  // FullRelight extends 1 chunk out in all directions, and fails if null chunks found
+            //PlaceSchematic(worldgenBlockAccessor, Dimensions.NormalWorld, "story/" + GenStoryStructLoc.Code + "-present");
+            PlaceSchematic(sapi.World.BlockAccessor, OtherDimension, "story/" + GenStoryStructLoc.Code + "-past", GenStoryStructLoc.CenterPos.Copy());
+
+            if (size > 0)
             {
-                BlockPos start = new BlockPos((baseChunkX - size + 2) * GlobalConstants.ChunkSize, 0, (baseChunkZ - size + 2) * GlobalConstants.ChunkSize, OtherDimension);
-                BlockPos end = start.AddCopy(GlobalConstants.ChunkSize * (size * 2 - 3) - 1, sapi.WorldManager.MapSizeY, GlobalConstants.ChunkSize * (size * 2 - 3) - 1);
+                BlockPos start = new BlockPos((baseChunkX - size) * GlobalConstants.ChunkSize, 0, (baseChunkZ - size) * GlobalConstants.ChunkSize, OtherDimension);
+                BlockPos end = start.AddCopy(GlobalConstants.ChunkSize * (size * 2 + 1) - 1, sapi.WorldManager.MapSizeY, GlobalConstants.ChunkSize * (size * 2 + 1) - 1);
                 start.Y = (sapi.World.SeaLevel - 8) / GlobalConstants.ChunkSize * GlobalConstants.ChunkSize;
                 sapi.WorldManager.FullRelight(start, end, false);
             }
 
-            GenStoryStructLoc.DidGenerateAdditional = true;
-            GenGenStoryStructures.StoryStructureInstancesDirty = true;
-
             //TODO: add protection to dim2
+
+            // Send updates of the newly generated chunks to all players in range, otherwise they may have old copies
+            foreach (IServerPlayer player in sapi.World.AllOnlinePlayers)
+            {
+                if (player.ConnectionState != EnumClientState.Playing) continue;
+
+                if (WithinRange(player.Entity.ServerPos, deactivateRadius + 2))
+                {
+                    ForceSendChunkColumns(player);
+                }
+            }
         }
 
-        private void PlaceSchematic(IBlockAccessor blockAccessor, int dim, string genSchematicName)
+        private void PlaceSchematic(IBlockAccessor blockAccessor, int dim, string genSchematicName, BlockPos start)
         {
             BlockSchematicPartial blocks = LoadSchematic(sapi, genSchematicName);
             if (blocks == null) return;
 
-            blocks.InitMetaBlocks(blockAccessor);
             blocks.Init(blockAccessor);
             blocks.blockLayerConfig = GenGenStoryStructures.blockLayerConfig;
 
-            BlockPos start = new BlockPos(baseChunkX * GlobalConstants.ChunkSize + GlobalConstants.ChunkSize / 2, 0, baseChunkZ * GlobalConstants.ChunkSize + GlobalConstants.ChunkSize / 2);
-            start.Y = blockAccessor.GetRainMapHeightAt(start);
-            start.Y += dim * BlockPos.DimensionBoundary;
+            start.Add(-blocks.SizeX / 2, dim * BlockPos.DimensionBoundary, -blocks.SizeZ / 2);
 
-            blocks.Place(blockAccessor, sapi.World, start, EnumReplaceMode.ReplaceAll, true);
+            blocks.Place(blockAccessor, sapi.World, start, EnumReplaceMode.Replaceable, true);
             blocks.PlaceDecors(blockAccessor, start);
-
-            //start.Sub(GlobalConstants.ChunkSize * (size - 1) + GlobalConstants.ChunkSize / 2, 0, GlobalConstants.ChunkSize * (size - 1) + GlobalConstants.ChunkSize / 2);
-            //BlockPos end = start.AddCopy(GlobalConstants.ChunkSize * (size * 2 - 1), sapi.WorldManager.MapSizeY, GlobalConstants.ChunkSize * (size * 2 - 1));
-            //sapi.WorldManager.FullRelight(start, end, false);
         }
 
         private bool AreAllDim0ChunksGenerated()
@@ -509,7 +516,7 @@ namespace Vintagestory.GameContent
                 {
                     IMapChunk mc = sapi.World.BlockAccessor.GetMapChunk(cx, cz);
                     if (mc == null) return false;
-                    if (mc.CurrentPass <= EnumWorldGenPass.Vegetation) return false;   // Vegetation needs to be complete, as that involves placement of BlockPatches ie. surface clutter
+                    if (mc.CurrentPass <= EnumWorldGenPass.Vegetation) return false;
                 }
             }
 

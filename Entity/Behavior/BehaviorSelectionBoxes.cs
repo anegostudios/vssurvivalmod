@@ -185,7 +185,6 @@ namespace Vintagestory.GameContent
                 mvmat.Translate(0, -entity.SelectionBox.Y2 / 2, 0f);
             }
 
-
             mvmat.Translate(0, 0.7f, 0);
             mvmat.RotateX(esr?.nowSwivelRad ?? 0);
             mvmat.Translate(0, -0.7f, 0);
@@ -256,6 +255,19 @@ namespace Vintagestory.GameContent
             }
 
             return foundIndex;
+        }
+
+        public Vec3d GetCenterPosOfBox(int selectionBoxIndex)
+        {
+            var apap = selectionBoxes[selectionBoxIndex];
+            mvmat.Identity();
+            applyBoxTransform(mvmat, apap);
+
+            var pe = apap.AttachPoint.ParentElement;
+            Vec4d centerPos = new Vec4d((pe.To[0] - pe.From[0]) / 2/16, (pe.To[1] - pe.From[1]) / 2/16, (pe.To[2] - pe.From[2]) / 2/16, 1);
+
+            var ep = entity.ServerPos;
+            return mvmat.TransformVector(centerPos).XYZ.Add(ep.X, ep.Y, ep.Z);
         }
 
         Vec3d hitPositionOBBSpace;

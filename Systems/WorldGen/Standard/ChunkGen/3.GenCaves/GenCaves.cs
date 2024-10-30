@@ -178,8 +178,7 @@ namespace Vintagestory.ServerMods
 
         public override void GeneratePartial(IServerChunk[] chunks, int chunkX, int chunkZ, int cdx, int cdz)
         {
-            if (SkipGenerationAt(chunkX * chunksize + chunksize / 2, chunkZ * chunksize + chunksize / 2, SkipCavesgHashCode,
-                    out _))
+            if (GetIntersectingStructure(chunkX * chunksize + chunksize / 2, chunkZ * chunksize + chunksize / 2, SkipCavesgHashCode) != null)
             {
                 return;
             }

@@ -67,9 +67,9 @@ namespace Vintagestory.ServerMods
                 AssetLocation blockCode = BlockCodes[storedBlockid];
 
                 Block newBlock = blockAccessor.GetBlock(blockCode);
-                if (newBlock == null || (replaceMeta && (newBlock == undergroundBlock || newBlock == abovegroundBlock))) continue;
+                if (newBlock == null || (replaceMeta && (newBlock.Id == UndergroundBlockId || newBlock.Id == AbovegroundBlockId))) continue;
 
-                int blockId = replaceMeta && (newBlock == fillerBlock || newBlock == pathwayBlock) ? empty : newBlock.BlockId;
+                int blockId = replaceMeta && IsFillerOrPath(newBlock) ? empty : newBlock.BlockId;
 
                 IChunkBlocks chunkData = chunks[posY / chunksize].Data;
                 int posIndex = ((posY % chunksize) * chunksize + (posZ % chunksize)) * chunksize + (posX % chunksize);

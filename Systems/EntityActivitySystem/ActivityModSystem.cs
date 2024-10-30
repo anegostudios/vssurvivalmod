@@ -46,6 +46,7 @@ namespace Vintagestory.GameContent
             ConditionTypes["entityvicinity"] = typeof(EntityVicinityCondition);
             ConditionTypes["blockvicinity"] = typeof(BlockVicinityCondition);
             ConditionTypes["positionvicinity"] = typeof(PositionVicinityCondition);
+            ConditionTypes["coordinate"] = typeof(CoordinateCondition);
             ConditionTypes["lightlevelCondition"] = typeof(LightLevelCondition);
             ConditionTypes["monthcondition"] = typeof(MonthCondition);
             ConditionTypes["random"] = typeof(RandomCondition);

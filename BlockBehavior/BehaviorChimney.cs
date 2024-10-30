@@ -18,7 +18,7 @@ namespace Vintagestory.GameContent
         {
             handling = EnumHandling.PreventDefault;
             BlockPos tmpPos = new BlockPos();
-            for (int i = 1; i <= 5; i++)
+            for (int i = 1; i <= 8; i++)
             {
                 tmpPos.Set(pos.X, pos.Y - i, pos.Z);
                 var block = world.BlockAccessor.GetBlock(tmpPos);

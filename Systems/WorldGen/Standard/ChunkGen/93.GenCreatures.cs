@@ -117,8 +117,7 @@ namespace Vintagestory.ServerMods
             int chunkX = request.ChunkX;
             int chunkZ = request.ChunkZ;
 
-            if (SkipGenerationAt(chunkX * chunksize + chunksize / 2, chunkZ * chunksize + chunksize / 2, SkipCreaturesgHashCode,
-                    out _))
+            if (GetIntersectingStructure(chunkX * chunksize + chunksize / 2, chunkZ * chunksize + chunksize / 2, SkipCreaturesgHashCode) != null)
             {
                 return;
             }

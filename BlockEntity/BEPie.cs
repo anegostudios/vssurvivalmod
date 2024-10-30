@@ -27,7 +27,7 @@ namespace Vintagestory.GameContent
     // [0] = base dough
     // [1-4] = filling
     // [5] = crust dough
-    // 
+    //
     // Eliminates the need to convert it to an itemstack once its placed in inventory
     public class BlockEntityPie : BlockEntityContainer
     {
@@ -109,7 +109,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public int SlicesLeft { 
+        public int SlicesLeft {
             get
             {
                 if (inv[0].Empty) return 0;
@@ -145,9 +145,9 @@ namespace Vintagestory.GameContent
 
             stack.Attributes.SetBool("bakeable", false);
 
-            loadMesh(); 
+            loadMesh();
             MarkDirty(true);
-            
+
             return stack;
         }
 
@@ -182,6 +182,11 @@ namespace Vintagestory.GameContent
                         {
                             Api.World.SpawnItemEntity(slicestack, Pos);
                         }
+                        Api.World.Logger.Audit("{0} Took 1x{1} slice from Pie at {2}.",
+                            byPlayer.PlayerName,
+                            slicestack.Collectible.Code,
+                            Pos
+                        );
                     }
 
                 } else
@@ -239,6 +244,11 @@ namespace Vintagestory.GameContent
                     {
                         Api.World.SpawnItemEntity(inv[0].Itemstack, Pos.ToVec3d().Add(0.5, 0.25, 0.5));
                     }
+                    Api.World.Logger.Audit("{0} Took 1x{1} at {2}.",
+                        byPlayer.PlayerName,
+                        inv[0].Itemstack.Collectible.Code,
+                        Pos
+                    );
                     this.inv[0].Itemstack = null;
                 }
 

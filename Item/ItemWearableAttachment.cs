@@ -15,7 +15,7 @@ namespace Vintagestory.GameContent
 
         public override void OnLoaded(ICoreAPI api)
         {
-            attachableToEntity = IAttachableToEntity.FromCollectible(this, api.Logger) != null;
+            attachableToEntity = IAttachableToEntity.FromCollectible(this) != null;
             base.OnLoaded(api);
         }
 

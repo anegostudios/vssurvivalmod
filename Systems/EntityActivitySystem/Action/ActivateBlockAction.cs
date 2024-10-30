@@ -101,8 +101,8 @@ namespace Vintagestory.GameContent
 
         public override string ToString()
         {
-            if (ExactTarget.Length() > 0) return "Activate block at " + ExactTarget;
-            return "Activate nearest block " + targetBlockCode + " within " + searchRange + " blocks";
+            if (ExactTarget.Length() > 0) return "Activate block at " + ExactTarget + ". Args: " + activateArgs;
+            return "Activate nearest block " + targetBlockCode.ToShortString() + " within " + searchRange + " blocks. Args: " + activateArgs;
         }
 
         public override void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)

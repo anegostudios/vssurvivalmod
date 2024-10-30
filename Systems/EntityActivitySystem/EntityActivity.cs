@@ -68,13 +68,23 @@ namespace Vintagestory.GameContent
             if (vas.Debug)
             {
                 vas.Entity.World.Logger.Debug("ActivitySystem entity {0}, starting new Activity - {1}", vas.Entity.EntityId, this.Name);
-                vas.Entity.World.Logger.Debug("starting next action {0}", CurrentAction.Type);
+                vas.Entity.World.Logger.Debug("starting next action {0}", CurrentAction?.Type);
             }
         }
 
         public void Finish()
         {
             CurrentAction?.Finish();
+        }
+
+        public void Pause()
+        {
+            CurrentAction?.Pause();
+        }
+
+        public void Resume()
+        {
+            CurrentAction?.Resume();
         }
 
         public void OnTick(float dt)

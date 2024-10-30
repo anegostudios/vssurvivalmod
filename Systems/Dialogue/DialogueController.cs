@@ -18,12 +18,12 @@ namespace Vintagestory.GameContent
 
         public event DialogueTriggerDelegate DialogTriggers;
 
-        DialogueSystem dlgSys;
-        DialogueData dlgData => dlgSys.DlgData;
+        VariablesModSystem dlgSys;
+        VariableData dlgData => dlgSys.VarData;
 
-        public DialogueVariables GlobalVariables => dlgData.GlobalVariables;
-        public Dictionary<string, DialogueVariables> PlayerVariables => dlgData.PlayerVariables;
-        public Dictionary<long, DialogueVariables> EntityVariables => dlgData.EntityVariables;
+        public EntityVariables GlobalVariables => dlgData.GlobalVariables;
+        public Dictionary<string, EntityVariables> PlayerVariables => dlgData.PlayerVariables;
+        public Dictionary<long, EntityVariables> EntityVariables => dlgData.EntityVariables;
 
 
         
@@ -38,7 +38,7 @@ namespace Vintagestory.GameContent
 
             currentDialogueCmp = dialogue[0];
 
-            dlgSys = api.ModLoader.GetModSystem<DialogueSystem>();
+            dlgSys = api.ModLoader.GetModSystem<VariablesModSystem>();
             dlgSys.OnControllerInit(playerEntity, npcEntity);
         }
 

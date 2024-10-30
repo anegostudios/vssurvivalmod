@@ -66,7 +66,7 @@ namespace Vintagestory.GameContent
             var bh = GetBehavior<EntityBehaviorConversable>();
             if (bh != null)
             {
-                bh.onControllerCreated += (controller) =>
+                bh.OnControllerCreated += (controller) =>
                 {
                     controller.DialogTriggers += Dialog_DialogTriggers;
                 };
@@ -155,9 +155,7 @@ namespace Vintagestory.GameContent
         void setupTaskBlocker()
         {
             EntityBehaviorTaskAI taskAi = GetBehavior<EntityBehaviorTaskAI>();
-
-            taskAi.TaskManager.OnShouldExecuteTask +=
-               (task) => (ConversableBh == null || ConversableBh.ControllerByPlayer.Count == 0 || (task is AiTaskIdle || task is AiTaskSeekEntity || task is AiTaskGotoEntity)) && tradingWithPlayer == null;
+            taskAi.TaskManager.OnShouldExecuteTask += (task) => tradingWithPlayer == null;
         }
 
         private void RefreshBuyingSellingInventory(float refreshChance = 1.1f)
@@ -275,11 +273,6 @@ namespace Vintagestory.GameContent
 
         public override void OnInteract(EntityAgent byEntity, ItemSlot slot, Vec3d hitPosition, EnumInteractMode mode)
         {
-            if (ConversableBh != null)
-            {
-                ConversableBh.GetOrCreateController(byEntity as EntityPlayer);
-            }
-
             base.OnInteract(byEntity, slot, hitPosition, mode);
         }
 

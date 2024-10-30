@@ -21,6 +21,11 @@ namespace Vintagestory.GameContent
         public virtual void Start(EntityActivity entityActivity) { }
         public virtual void Cancel() { }
         public virtual void Finish() { }
+
+
+        public virtual void Pause() { }
+        public virtual void Resume() { }
+
         public virtual bool IsFinished() { return true; }
         public virtual void OnLoaded(EntityActivitySystem vas) {
             this.vas = vas;
@@ -44,6 +49,8 @@ namespace Vintagestory.GameContent
         void Start(EntityActivity entityActivity);
         void Cancel();
         void Finish();
+        void Pause();
+        void Resume();
         void OnTick(float dt);
         bool IsFinished();
         void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer);
@@ -88,6 +95,8 @@ namespace Vintagestory.GameContent
         /// </summary>
         void Start();
         void OnTick(float dt);
+        void Pause();
+        void Resume();
     }
 
 }

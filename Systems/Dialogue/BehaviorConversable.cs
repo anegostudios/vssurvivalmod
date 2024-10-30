@@ -18,6 +18,8 @@ namespace Vintagestory.GameContent
         public DialogueComponent[] components;
     }
 
+    public delegate bool CanConverseDelegate(out string errorMessage);
+
     public class EntityBehaviorConversable : EntityBehavior
     {
         public static int BeginConvoPacketId = 1213;
@@ -35,8 +37,8 @@ namespace Vintagestory.GameContent
         AssetLocation dialogueLoc;
 
         
-        public Action<DialogueController> onControllerCreated;
-
+        public Action<DialogueController> OnControllerCreated;
+        public event CanConverseDelegate CanConverse;
 
         public DialogueController GetOrCreateController(EntityPlayer player)
         {
@@ -58,7 +60,7 @@ namespace Vintagestory.GameContent
 
                 controller = ControllerByPlayer[player.PlayerUID] = new DialogueController(world.Api, player, entity as EntityAgent, dialogue);
                 controller.DialogTriggers += Controller_DialogTriggers;
-                onControllerCreated?.Invoke(controller);
+                OnControllerCreated?.Invoke(controller);
 
                 foreach (var cmp in dialogue.components)
                 {
@@ -263,6 +265,33 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public override void OnEntitySpawn()
+        {
+            setupTaskBlocker();
+        }
+
+        public override void OnEntityLoaded()
+        {
+            setupTaskBlocker();
+        }
+
+
+        void setupTaskBlocker()
+        {
+            if (entity.Api.Side != EnumAppSide.Server) return;
+            var bhtaskAi = entity.GetBehavior<EntityBehaviorTaskAI>();
+            if (bhtaskAi != null)
+            {
+                bhtaskAi.TaskManager.OnShouldExecuteTask += (task) => ControllerByPlayer.Count == 0 || task is AiTaskIdle || task is AiTaskSeekEntity || task is AiTaskGotoEntity;
+            }
+
+            var bhActivityDriven = entity.GetBehavior<EntityBehaviorActivityDriven>();
+            if (bhActivityDriven != null)
+            {
+                bhActivityDriven.OnShouldRunActivitySystem += () => ControllerByPlayer.Count == 0;
+            }
+        }
+
 
         private DialogueConfig loadDialogue(AssetLocation loc, EntityPlayer forPlayer)
         {
@@ -334,6 +363,20 @@ namespace Vintagestory.GameContent
             }
 
             if (!entity.Alive) return;
+
+            if (CanConverse != null)
+            {
+                foreach (CanConverseDelegate act in CanConverse.GetInvocationList())
+                {
+                    if (!act.Invoke(out string errorMsg))
+                    {
+                        ((byEntity as EntityPlayer)?.Player as IServerPlayer)?.SendIngameError("cantconvese", Lang.Get(errorMsg));
+                        return;
+                    }
+                }
+            }
+
+            GetOrCreateController(byEntity as EntityPlayer);
 
             handled = EnumHandling.PreventDefault;
 

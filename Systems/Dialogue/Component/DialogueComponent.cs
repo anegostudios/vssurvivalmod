@@ -107,13 +107,13 @@ namespace Vintagestory.GameContent
             }
             if (parts[0] == "player")
             {
-                if (!controller.PlayerVariables.ContainsKey(controller.PlayerEntity.PlayerUID)) controller.PlayerVariables[controller.PlayerEntity.PlayerUID] = new DialogueVariables();
+                if (!controller.PlayerVariables.ContainsKey(controller.PlayerEntity.PlayerUID)) controller.PlayerVariables[controller.PlayerEntity.PlayerUID] = new EntityVariables();
 
                 curValue = controller.PlayerVariables[controller.PlayerEntity.PlayerUID][parts[1]];
             }
             if (parts[0] == "entity")
             {
-                if (!controller.EntityVariables.ContainsKey(controller.NPCEntity.EntityId)) controller.EntityVariables[controller.NPCEntity.EntityId] = new DialogueVariables();
+                if (!controller.EntityVariables.ContainsKey(controller.NPCEntity.EntityId)) controller.EntityVariables[controller.NPCEntity.EntityId] = new EntityVariables();
 
                 curValue = controller.EntityVariables[controller.NPCEntity.EntityId][controller.PlayerEntity.PlayerUID + "-" + parts[1]];
             }

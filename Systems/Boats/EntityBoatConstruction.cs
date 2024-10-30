@@ -30,6 +30,7 @@ namespace Vintagestory.GameContent
         public string[] AddElements;
         public string[] RemoveElements;
         public ConstructionIgredient[] RequireStacks;
+        public string ActionLangCode = "construct";
     }
 
     public class EntityBoatConstruction : Entity
@@ -115,6 +116,7 @@ namespace Vintagestory.GameContent
             ctex.Baked.TextureSubId = tui;
         }
 
+        EntityAgent launchingEntity;
         public override void OnInteract(EntityAgent byEntity, ItemSlot handslot, Vec3d hitPosition, EnumInteractMode mode)
         {
             base.OnInteract(byEntity, handslot, hitPosition, mode);
@@ -139,6 +141,7 @@ namespace Vintagestory.GameContent
 
             if (CurrentStage >= stages.Length - 2 && !AnimManager.IsAnimationActive("launch"))
             {
+                launchingEntity = byEntity;
                 launchStartPos = getCenterPos();
                 StartAnimation("launch");
             }
@@ -206,9 +209,18 @@ namespace Vintagestory.GameContent
 
                 wis.Add(new WorldInteraction()
                 {
-                    ActionLangCode = "construct",
+                    ActionLangCode = stage.ActionLangCode,
                     Itemstacks = stacks,
                     GetMatchingStacks = (wi, bs, es) => stacks,
+                    MouseButton = EnumMouseButton.Right
+                });
+            }
+
+            if (stage.RequireStacks.Length == 0)
+            {
+                wis.Add(new WorldInteraction()
+                {
+                    ActionLangCode = stage.ActionLangCode,
                     MouseButton = EnumMouseButton.Right
                 });
             }
@@ -250,7 +262,7 @@ namespace Vintagestory.GameContent
                     }
                     ingred.Resolve(Api.World, "Require stack for construction stage "+i+" on entity " + this.Code);
 
-                    if (ingred.SatisfiesAsIngredient(slot.Itemstack, false))
+                    if (!skipMatCost && ingred.SatisfiesAsIngredient(slot.Itemstack, false))
                     {
                         int amountToTake = Math.Min(ingred.Quantity, slot.Itemstack.StackSize);
                         takeFrom.Add(new KeyValuePair<ItemSlot, int>(slot, amountToTake));
@@ -366,6 +378,13 @@ namespace Vintagestory.GameContent
             entity.ServerPos.SetFrom(ServerPos).Add(offset);
             entity.ServerPos.Motion.Add(offset.X / 50.0, 0, offset.Z / 50.0);
 
+            var plr = (launchingEntity as EntityPlayer)?.Player;
+            if (plr != null)
+            {
+                entity.WatchedAttributes.SetString("createdByPlayername", plr.PlayerName);
+                entity.WatchedAttributes.SetString("createdByPlayerUID", plr.PlayerUID);
+            }
+
             entity.Pos.SetFrom(entity.ServerPos);
             World.SpawnEntity(entity);
         }
@@ -430,6 +449,7 @@ namespace Vintagestory.GameContent
             if (storedWildCards.TryGetValue("wood", out var wood))
             {
                 material = wood;
+                if (material == null || material.Length == 0) storedWildCards["wood"] = material = "oak";
             }
         }
     }

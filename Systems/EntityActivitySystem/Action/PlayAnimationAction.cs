@@ -32,6 +32,16 @@ namespace Vintagestory.GameContent
             this.OnAnimEnd = onAnimEnd;
         }
 
+        public override void Pause()
+        {
+            vas.Entity.AnimManager.StopAnimation(meta.Animation);
+        }
+
+        public override void Resume()
+        {
+            vas.Entity.AnimManager.StartAnimation(meta.Init());
+        }
+
         public override string Type => "playanimation";
 
         public override bool IsFinished()

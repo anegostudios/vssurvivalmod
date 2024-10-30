@@ -38,7 +38,7 @@ namespace Vintagestory.GameContent
 
         public virtual bool ConditionSatisfied(Entity e)
         {
-            var avs = vas.Entity.Api.ModLoader.GetModSystem<ActivityVariableSystem>();
+            var avs = vas.Entity.Api.ModLoader.GetModSystem<VariablesModSystem>();
             var nowvalue = avs.GetVariable(scope, Name, e.EntityId);
             var testvalue = this.Value;
 

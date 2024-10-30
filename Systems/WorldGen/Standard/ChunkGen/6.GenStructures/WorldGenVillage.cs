@@ -46,22 +46,6 @@ namespace Vintagestory.ServerMods
         [JsonProperty]
         public float Chance = 0.05f;
         [JsonProperty]
-        public int MinTemp = -30;
-        [JsonProperty]
-        public int MaxTemp = 40;
-        [JsonProperty]
-        public float MinRain = 0;
-        [JsonProperty]
-        public float MaxRain = 1;
-        [JsonProperty]
-        public float MinForest = 0;
-        [JsonProperty]
-        public float MaxForest = 1;
-        [JsonProperty]
-        public float MinY = -0.3f;
-        [JsonProperty]
-        public float MaxY = 1;
-        [JsonProperty]
         public NatFloat QuantityStructures = NatFloat.createGauss(7, 7);
         [JsonProperty]
         public AssetLocation[] ReplaceWithBlocklayers;
@@ -78,7 +62,7 @@ namespace Vintagestory.ServerMods
         [JsonProperty]
         public string RockTypeRemapGroup = null; // For rocktyped ruins
         [JsonProperty]
-        public Dictionary<string, int> OffsetYByCode;
+        public int MaxYDiff = 3;
 
         internal int[] replaceblockids = new int[0];
         internal Dictionary<int, Dictionary<int, int>> resolvedRockTypeRemaps = null;
@@ -109,8 +93,8 @@ namespace Vintagestory.ServerMods
 
                 for (int j = 0; j < assets.Length; j++)
                 {
-                    int offsety = WorldGenStructureBase.getOffsetY(schematicYOffsets, defaultOffsetY, OffsetYByCode, assets[j]);
-                    var sch = WorldGenStructureBase.LoadSchematic<BlockSchematicStructure>(api, assets[j], blockLayerConfig, structureConfig, offsety);
+                    int offsety = WorldGenStructureBase.getOffsetY(schematicYOffsets, defaultOffsetY, assets[j]);
+                    var sch = WorldGenStructureBase.LoadSchematic<BlockSchematicStructure>(api, assets[j], blockLayerConfig, structureConfig, offsety, MaxYDiff);
                     if (sch != null) schematics.AddRange(sch);
                 }
 

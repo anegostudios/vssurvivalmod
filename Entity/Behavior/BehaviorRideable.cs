@@ -359,7 +359,7 @@ namespace Vintagestory.GameContent
             if (!AnyMounted()) return;
 
             bool wasMidJump = IsInMidJump;
-            IsInMidJump &= (entity.World.ElapsedMilliseconds - lastJumpMs < 500 || !entity.OnGround);
+            IsInMidJump &= (entity.World.ElapsedMilliseconds - lastJumpMs < 500 || !entity.OnGround) && !entity.Swimming;
 
             if (wasMidJump && !IsInMidJump)
             {
@@ -390,41 +390,50 @@ namespace Vintagestory.GameContent
                 eagent.StartAnimation((ForwardSpeed == 0 ? "idle-" : "") + (curTurnAnim = nowTurnAnim));
             }
 
+            ControlMeta nowControlMeta;
+
             shouldMove = ForwardSpeed != 0;
             if (!shouldMove && !jumpNow)
             {
                 if (curControlMeta != null) Stop();
-                curAnim = rideableconfig.Controls["idle"].RiderAnim;
-                return;
-            }        
+                curAnim = rideableconfig.Controls[eagent.Swimming ? "swim" : "idle"].RiderAnim;
 
-            var nowControlMeta = rideableconfig.Controls[eagent.Controls.Sprint ? "sprint" : (eagent.Controls.Backward ? "walkback" : "walk")];
-
-            eagent.Controls.Jump = jumpNow;
-
-            if (jumpNow)
-            {
-                IsInMidJump = true;
-                jumpNow = false;
-                var esr = eagent.Properties.Client.Renderer as EntityShapeRenderer;
-                if (esr != null) esr.LastJumpMs = capi.InWorldEllapsedMilliseconds;
-
-                nowControlMeta = rideableconfig.Controls["jump"];
-
-                nowControlMeta.EaseOutSpeed = (ForwardSpeed != 0) ? 30 : 40;
-
-                foreach (var seat in Seats) seat.Passenger?.AnimManager?.StartAnimation(nowControlMeta.RiderAnim);
-
-                // Play jump sound.
-                EntityPlayer entityPlayer = entity as EntityPlayer;
-                IPlayer player = entityPlayer?.World.PlayerByUid(entityPlayer.PlayerUID);
-                entity.PlayEntitySound("jump", player, false);
+                if (eagent.Swimming) nowControlMeta = rideableconfig.Controls["swim"];
+                else nowControlMeta = null;
             }
             else
             {
-                curAnim = nowControlMeta.RiderAnim;
-            }
 
+                string controlCode = eagent.Controls.Backward ? "walkback" : "walk";
+                if (eagent.Controls.Sprint) controlCode = "sprint";
+                if (eagent.Swimming) controlCode = "swim";
+
+                nowControlMeta = rideableconfig.Controls[controlCode];
+
+                eagent.Controls.Jump = jumpNow;
+
+                if (jumpNow)
+                {
+                    IsInMidJump = true;
+                    jumpNow = false;
+                    var esr = eagent.Properties.Client.Renderer as EntityShapeRenderer;
+                    if (esr != null) esr.LastJumpMs = capi.InWorldEllapsedMilliseconds;
+
+                    nowControlMeta = rideableconfig.Controls["jump"];
+
+                    nowControlMeta.EaseOutSpeed = (ForwardSpeed != 0) ? 30 : 40;
+
+                    foreach (var seat in Seats) seat.Passenger?.AnimManager?.StartAnimation(nowControlMeta.RiderAnim);
+
+                    EntityPlayer entityPlayer = entity as EntityPlayer;
+                    IPlayer player = entityPlayer?.World.PlayerByUid(entityPlayer.PlayerUID);
+                    entity.PlayEntitySound("jump", player, false);
+                }
+                else
+                {
+                    curAnim = nowControlMeta.RiderAnim;
+                }
+            }
 
             if (nowControlMeta != curControlMeta)
             {
@@ -477,6 +486,9 @@ namespace Vintagestory.GameContent
             if (shouldMove)
             {                
                 move(dt, eagent.Controls, curControlMeta.MoveSpeed);
+            } else
+            {
+                if (entity.Swimming) eagent.Controls.FlyVector.Y = 0.2;
             }
 
             updateSoundState(dt);
@@ -581,12 +593,14 @@ namespace Vintagestory.GameContent
                 // 1 = completely submerged
                 float swimlineSubmergedness = GameMath.Clamp(bottomSubmergedness - ((float)entity.SwimmingOffsetY), 0, 1);
                 swimlineSubmergedness = Math.Min(1, swimlineSubmergedness + 0.075f);
-                controls.FlyVector.Y = GameMath.Clamp(controls.FlyVector.Y, 0.002f, 0.004f) * swimlineSubmergedness;
+                controls.FlyVector.Y = GameMath.Clamp(controls.FlyVector.Y, 0.002f, 0.004f) * swimlineSubmergedness*3;
 
                 if (entity.CollidedHorizontally)
                 {
                     controls.FlyVector.Y = 0.05f;
                 }
+
+                eagent.Pos.Motion.Y += (swimlineSubmergedness-0.1)/300.0;
             }
         }
 
@@ -608,6 +622,11 @@ namespace Vintagestory.GameContent
                 {
                     entityAgent.StopAnimation(meta.RiderAnim.Animation);
                 }
+            }
+
+            if (eagent.Swimming)
+            {
+                eagent.StartAnimation("swim");
             }
         }
 

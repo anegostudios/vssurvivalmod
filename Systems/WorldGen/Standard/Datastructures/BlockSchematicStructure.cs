@@ -24,6 +24,7 @@ namespace Vintagestory.ServerMods
         internal GenBlockLayers genBlockLayers;
 
         public int OffsetY { get; set; } = -1;
+        public int MaxYDiff = 3;
 
         public override void Init(IBlockAccessor blockAccessor)
         {
@@ -167,7 +168,7 @@ namespace Vintagestory.ServerMods
                         if (block == null) continue;
 
 
-                        if (replaceMetaBlocks && (block == undergroundBlock || block == abovegroundBlock)) continue;
+                        if (replaceMetaBlocks && (block.Id == UndergroundBlockId || block.Id == AbovegroundBlockId)) continue;
 
                         if (block.Replaceable < 1000 && depth >= 0)
                         {
@@ -268,7 +269,7 @@ namespace Vintagestory.ServerMods
 
                             if (!block.RainPermeable)
                             {
-                                if (block == fillerBlock || block == pathwayBlock)
+                                if (IsFillerOrPath(block))
                                 {
                                     int lx = curPos.X % chunksize;
                                     int lz = curPos.Z % chunksize;
@@ -392,7 +393,7 @@ namespace Vintagestory.ServerMods
 
                 Block newBlock = blockAccessor.GetBlock(blockCode);
 
-                if (newBlock == null || (replaceMetaBlocks && (newBlock == undergroundBlock || newBlock == abovegroundBlock))) continue;
+                if (newBlock == null || (replaceMetaBlocks && (newBlock.Id == UndergroundBlockId || newBlock.Id == AbovegroundBlockId))) continue;
 
                 curPos.Set(dx + startPos.X, dy + startPos.Y, dz + startPos.Z);
                 if (!blockAccessor.IsValidPos(curPos)) continue;    // Deal with cases where we are at the map edge
@@ -488,6 +489,7 @@ namespace Vintagestory.ServerMods
             cloned.SizeY = SizeY;
             cloned.SizeZ = SizeZ;
             cloned.OffsetY = OffsetY;
+            cloned.MaxYDiff = MaxYDiff;
 
             cloned.GameVersion = GameVersion;
             cloned.FromFileName = FromFileName;

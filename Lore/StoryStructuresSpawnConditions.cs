@@ -8,8 +8,7 @@ using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
-
-    public class ResoArchivesSpawnConditions : ModSystem
+    public class StoryStructuresSpawnConditions : ModSystem
     {
         ICoreServerAPI sapi;
 

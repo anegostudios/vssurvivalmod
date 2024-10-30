@@ -83,8 +83,7 @@ namespace Vintagestory.ServerMods
             var chunks = request.Chunks;
             int chunkX = request.ChunkX;
             int chunkZ = request.ChunkZ;
-            if (SkipGenerationAt(chunkX * chunksize + chunksize / 2, chunkZ * chunksize + chunksize / 2, SkipPondgHashCode,
-                    out _))
+            if (GetIntersectingStructure(chunkX * chunksize + chunksize / 2, chunkZ * chunksize + chunksize / 2, SkipPondgHashCode) != null)
             {
                 return;
             }

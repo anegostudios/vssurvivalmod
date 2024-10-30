@@ -65,10 +65,13 @@ namespace Vintagestory.GameContent
                 .AddTextInput(b = b.BelowCopy(0, -5), null, CairoFont.WhiteDetailText(), "attr")
             ;
 
-            JsonItemStack jstack = JsonItemStack.FromString(Value);
-            singleComposer.GetDropDown("cclass").SetSelectedIndex(cclass.IndexOf(jstack.Type.ToString().ToLowerInvariant()));
-            singleComposer.GetTextInput("code").SetValue(jstack.Code.ToShortString());
-            singleComposer.GetTextInput("attr").SetValue(jstack.Attributes?.ToString() ?? "");
+            if (Value != null && Value.Length > 0)
+            {
+                JsonItemStack jstack = JsonItemStack.FromString(Value);
+                singleComposer.GetDropDown("cclass").SetSelectedIndex(cclass.IndexOf(jstack.Type.ToString().ToLowerInvariant()));
+                singleComposer.GetTextInput("code").SetValue(jstack.Code.ToShortString());
+                singleComposer.GetTextInput("attr").SetValue(jstack.Attributes?.ToString() ?? "");
+            }
         }
 
         public override bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
