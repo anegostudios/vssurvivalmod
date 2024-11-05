@@ -373,6 +373,10 @@ namespace Vintagestory.GameContent
             EntityProperties type = World.GetEntityType(new AssetLocation("boat-sailed-" + material));
             var entity = World.ClassRegistry.CreateEntity(type);
 
+            if ((int)Math.Abs(ServerPos.Yaw * GameMath.RAD2DEG) == 90 || (int)Math.Abs(ServerPos.Yaw * GameMath.RAD2DEG) == 270) {
+                offset.X *= 1.1f;
+            }
+
             offset.Y = 0.5f;
 
             entity.ServerPos.SetFrom(ServerPos).Add(offset);

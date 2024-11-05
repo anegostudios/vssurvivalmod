@@ -12,6 +12,13 @@ namespace Vintagestory.GameContent
 
         public override bool ShouldExecute()
         {
+            var tree = entity.WatchedAttributes.GetTreeAttribute("ownedby");
+            if (tree == null)
+            {
+                lastExecutedMs = -99999;
+                return false;
+            }
+
             float lastCallDelta = (entity.World.ElapsedMilliseconds - lastExecutedMs) / 1000f;
             if (lastCallDelta < 20) return base.ShouldExecute();
             return false;
@@ -23,6 +30,8 @@ namespace Vintagestory.GameContent
             lastExecutedMs = entity.World.ElapsedMilliseconds;
 
             var tree = entity.WatchedAttributes.GetTreeAttribute("ownedby");
+            if (tree == null) return;
+
             string uid = tree.GetString("uid");
             var plr = entity.World.PlayerByUid(uid);
             targetEntity = plr?.Entity;

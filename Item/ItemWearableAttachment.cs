@@ -19,6 +19,20 @@ namespace Vintagestory.GameContent
             base.OnLoaded(api);
         }
 
+        public override void OnUnloaded(ICoreAPI api)
+        {
+            var meshRefs = ObjectCacheUtil.TryGet<Dictionary<string, MultiTextureMeshRef>>(api, "wearableAttachmentMeshRefs");
+            if (meshRefs?.Count > 0)
+            {
+                foreach (var (_, meshRef) in meshRefs)
+                {
+                    meshRef.Dispose();
+                }
+                ObjectCacheUtil.Delete(api, "wearableAttachmentMeshRefs");
+            }
+            base.OnUnloaded(api);
+        }
+
         #region For ground storable mesh
         ITextureAtlasAPI curAtlas;
         Shape nowTesselatingShape;

@@ -659,6 +659,18 @@ namespace Vintagestory.GameContent
                 }
             }
 
+            foreach (var recipe in capi.GetCookingRecipes())
+            {
+                if (recipe.CooksInto?.ResolvedItemstack == null) continue;
+                foreach (var ingred in recipe.Ingredients)
+                {
+                    if (ingred.GetMatchingStack(stack) != null)
+                    {
+                        recipestacks.Add(recipe.CooksInto.ResolvedItemstack);
+                    }
+                }                
+            }
+
 
 
             if (recipestacks.Count > 0)
@@ -725,6 +737,16 @@ namespace Vintagestory.GameContent
                 if (val.Output.ResolvedItemstack?.Satisfies(stack) ?? false)
                 {
                     grecipes.Add(val);
+                }
+            }
+
+
+            List<CookingRecipe> cookrecipes = new List<CookingRecipe>();
+            foreach (var val in capi.GetCookingRecipes())
+            {
+                if (val.CooksInto?.ResolvedItemstack?.Satisfies(stack) ?? false)
+                {
+                    cookrecipes.Add(val);
                 }
             }
 
@@ -826,7 +848,7 @@ namespace Vintagestory.GameContent
             string customCreatedBy = stack.Collectible.Attributes?["handbook"]?["createdBy"]?.AsString(null);
             string bakingInitialIngredient = collObj.Attributes?["bakingProperties"]?.AsObject<BakingProperties>()?.InitialCode;
 
-            if (grecipes.Count > 0 || smithable || knappable || clayformable || customCreatedBy != null || bakables.Count > 0 || barrelRecipestext.Count > 0 || grindables.Count > 0 || curables.Count > 0 || ripenables.Count > 0 || dryables.Count > 0 || meltables.Count > 0 || crushables.Count > 0 || bakingInitialIngredient != null || juiceables.Count > 0)
+            if (grecipes.Count > 0 || cookrecipes.Count > 0 || smithable || knappable || clayformable || customCreatedBy != null || bakables.Count > 0 || barrelRecipestext.Count > 0 || grindables.Count > 0 || curables.Count > 0 || ripenables.Count > 0 || dryables.Count > 0 || meltables.Count > 0 || crushables.Count > 0 || bakingInitialIngredient != null || juiceables.Count > 0)
             {
                 AddHeading(components, capi, "Created by", ref haveText);
 
@@ -1053,6 +1075,66 @@ namespace Vintagestory.GameContent
                     var comp = new ItemstackTextComponent(capi, new ItemStack(cobj), 40, 10, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
                     comp.PaddingLeft = TinyIndent;
                     components.Add(comp);
+                }
+
+                if (cookrecipes.Count > 0)
+                {
+                    components.Add(verticalSpace);
+                    verticalSpace = verticalSpaceSmall;
+                    AddSubHeading(components, capi, openDetailPageFor, "Cooking (in pot)", null);
+
+                    foreach (var rec in cookrecipes)
+                    {
+                        int firstIndent = TinyIndent;
+                        for (int i = 0; i < rec.Ingredients.Length; i++)
+                        {
+                            var ingred = rec.Ingredients[i];
+                            if (i > 0)
+                            {
+                                RichTextComponent cmp = new RichTextComponent(capi, " + ", CairoFont.WhiteMediumText());
+                                cmp.VerticalAlign = EnumVerticalAlign.Middle;
+                                components.Add(cmp);
+                            }
+
+                            var stacks = ingred.ValidStacks.Select(vs => { 
+                                var rs = vs.ResolvedItemstack.Clone();
+
+                                if (rs.Collectible.Attributes?["waterTightContainerProps"].Exists == true)
+                                {
+                                    var props = BlockLiquidContainerBase.GetContainableProps(rs);
+                                    rs.StackSize = (int)(props.ItemsPerLitre / ingred.PortionSizeLitres);
+                                } else {
+                                    rs.StackSize = 1;
+                                }
+
+
+                                
+                                return rs; 
+                            }).ToArray();
+
+                            for (int j = 0; j < ingred.MinQuantity; j++)
+                            {
+                                if (j > 0)
+                                {
+                                    RichTextComponent cmp = new RichTextComponent(capi, " + ", CairoFont.WhiteMediumText());
+                                    cmp.VerticalAlign = EnumVerticalAlign.Middle;
+                                    components.Add(cmp);
+                                }
+                                var comp = new SlideshowItemstackTextComponent(capi, stacks, 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                                comp.ShowStackSize = true;
+                                comp.PaddingLeft = firstIndent;
+                                components.Add(comp);
+                                firstIndent = 0;
+                            }
+                        }
+
+                        var eqcomp = new RichTextComponent(capi, " = ", CairoFont.WhiteMediumText());
+                        eqcomp.VerticalAlign = EnumVerticalAlign.Middle;
+                        components.Add(eqcomp);
+                        var ocmp = new ItemstackTextComponent(capi, rec.CooksInto.ResolvedItemstack, 40, 10, EnumFloat.Inline);
+                        components.Add(ocmp);
+                        components.Add(new ClearFloatTextComponent(capi, 10));
+                    }
                 }
 
                 if (grecipes.Count > 0)

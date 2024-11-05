@@ -31,7 +31,7 @@ namespace Vintagestory.GameContent
 
         public override void Start(EntityActivity act)
         {
-            Entity targetEntity = getTarget();
+            Entity targetEntity = getTarget(vas.Entity.Api, vas.Entity.ServerPos.XYZ);
 
             ExecutionHasFailed = entity == null;
             if (entity != null)
@@ -48,11 +48,10 @@ namespace Vintagestory.GameContent
             }
         }
 
-        private Entity getTarget()
+        private Entity getTarget(ICoreAPI api, Vec3d fromPos)
         {
-            var api = vas.Entity.Api;
             var ep = api.ModLoader.GetModSystem<EntityPartitioning>();
-            var targetEntity = ep.GetNearestEntity(vas.Entity.ServerPos.XYZ, searchRange, (e) => e.WildCardMatch(targetEntityCode));
+            var targetEntity = ep.GetNearestEntity(fromPos, searchRange, (e) => e.WildCardMatch(targetEntityCode));
             return targetEntity;
         }
 
@@ -87,10 +86,10 @@ namespace Vintagestory.GameContent
 
         public override void OnVisualize(ActivityVisualizer visualizer)
         {
-            var target = getTarget();
+            var target = getTarget(visualizer.Api, visualizer.CurrentPos);
             if (target != null)
             {
-                visualizer.LineTo(target.Pos.XYZ.Add(0, 0.5, 0));
+                visualizer.LineTo(visualizer.CurrentPos, target.Pos.XYZ.Add(0, 0.5, 0), ColorUtil.ColorFromRgba(0, 0, 255, 255));
             }
         }
     }

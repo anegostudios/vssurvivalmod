@@ -105,7 +105,7 @@ namespace Vintagestory.GameContent
 
         public override void OnVisualize(ActivityVisualizer visualizer)
         {
-            visualizer.LineTo(new Vec3d(TargetX, TargetY, TargetZ));
+            visualizer.GoTo(new Vec3d(TargetX, TargetY, TargetZ), ColorUtil.ColorFromRgba(255,255,0,255));
         }
     }
 }

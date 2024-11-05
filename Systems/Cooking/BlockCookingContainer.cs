@@ -134,13 +134,13 @@ namespace Vintagestory.GameContent
             {
                 int quantityServings = recipe.GetQuantityServings(stacks);
 
-                if (recipe.DirtyPot)
+                if (recipe.CooksInto != null)
                 {
-                    // For glue and similar, we destroy the ingredients and place the output item (from the recipe code) in slot 1
-                    Item outputItem = world.GetItem(new AssetLocation(recipe.DirtyPotOutput));
-                    if (outputItem != null)
+                    var outstack = recipe.CooksInto.ResolvedItemstack?.Clone();
+                    if (outstack != null)
                     {
-                        stacks = new ItemStack[] { new ItemStack(outputItem, quantityServings * recipe.DirtyPotOutputQuantity) };
+                        outstack.StackSize *= quantityServings;
+                        stacks = new ItemStack[] { outstack };
                         block = world.GetBlock(new AssetLocation(Attributes["dirtiedBlockCode"].AsString()));
                     }
                 }
@@ -170,21 +170,24 @@ namespace Vintagestory.GameContent
                     stacks[i].StackSize /= quantityServings; // whats this good for? Probably doesn't do anything meaningful
                 }
 
-                
-
-                // Disabled. Let's sacrifice mergability for letting players select how meals should look and be named like
-                //stacks = stacks.OrderBy(stack => stack.Collectible.Code.ToShortString()).ToArray(); // Required so that different arrangments of ingredients still create mergable meal bowls
-
-                ((BlockCookedContainer)block).SetContents(recipe.Code, quantityServings, outputStack, stacks);
-                
-                outputStack.Collectible.SetTemperature(world, outputStack, GetIngredientsTemperature(world, stacks));
-                outputSlot.Itemstack = outputStack;
-                inputSlot.Itemstack = null;
 
                 for (int i = 0; i < cookingSlotsProvider.Slots.Length; i++)
                 {
                     cookingSlotsProvider.Slots[i].Itemstack = null;
                 }
+
+                ((BlockCookedContainer)block).SetContents(recipe.Code, quantityServings, outputStack, stacks);
+                
+                outputStack.Collectible.SetTemperature(world, outputStack, GetIngredientsTemperature(world, stacks));
+                if (recipe.CooksInto != null)
+                {
+                    inputSlot.Itemstack = outputStack;
+                } else
+                {
+                    outputSlot.Itemstack = outputStack;
+                    inputSlot.Itemstack = null;
+                }
+
                 return;
             }
         }
@@ -224,10 +227,11 @@ namespace Vintagestory.GameContent
                 double quantity = recipe.GetQuantityServings(stacks);
                 string message;
                 string outputName = recipe.GetOutputName(world, stacks);
-                if (recipe.DirtyPot)
+
+                if (recipe.CooksInto != null)
                 {
                     message = "mealcreation-nonfood";
-                    outputName = Lang.GetMatching(EnumItemClass.Item.Name() + "-" + recipe.DirtyPotOutput);
+                    outputName = recipe.CooksInto.ResolvedItemstack?.GetName();
                 }
                 else
                 {
@@ -253,7 +257,7 @@ namespace Vintagestory.GameContent
             bool isDirtyPot = Attributes["isDirtyPot"].AsBool(false);
             foreach (var recipe in recipes)
             {
-                if (isDirtyPot && !recipe.DirtyPot) continue;   // Prevent normal food from being cooked in a dirty pot
+                if (isDirtyPot && recipe.CooksInto == null) continue;   // Prevent normal food from being cooked in a dirty pot
                 if (recipe.Matches(stacks))
                 {
                     if (recipe.GetQuantityServings(stacks) > MaxServingSize) continue;

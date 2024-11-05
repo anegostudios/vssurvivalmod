@@ -69,10 +69,10 @@ namespace Vintagestory.GameContent
 
             skillItems = new SkillItem[]
             {
-                new SkillItem() { Code = new AssetLocation("east"), Name = "Easth" },
-                new SkillItem() { Code = new AssetLocation("north"), Name = "North" },
-                new SkillItem() { Code = new AssetLocation("west"), Name = "West" },
-                new SkillItem() { Code = new AssetLocation("south"), Name = "South" },
+                new SkillItem() { Code = new AssetLocation("east"), Name = Lang.Get("facing-east") },
+                new SkillItem() { Code = new AssetLocation("north"), Name = Lang.Get("facing-north") },
+                new SkillItem() { Code = new AssetLocation("west"), Name = Lang.Get("facing-west") },
+                new SkillItem() { Code = new AssetLocation("south"), Name = Lang.Get("facing-south") },
             };
 
             if (api is ICoreClientAPI capi)
@@ -96,6 +96,8 @@ namespace Vintagestory.GameContent
         {
             Matrixf matrixf = new Matrixf();
             matrixf.RotateY(i * GameMath.PIHALF);
+            if (i == 2) matrixf.Translate(0, 0, -1);
+            if (i == 3) matrixf.Translate(1, 0, -1);
 
             List<BlockPos> list = new List<BlockPos>();
             var vec1 = matrixf.TransformVector(new Vec4f(startlist[0].X, startlist[0].Y, startlist[0].Z, 1));
@@ -117,6 +119,18 @@ namespace Vintagestory.GameContent
 
         public static int GetOrient(IPlayer byPlayer)
         {
+            siteListN = new List<BlockPos>() { new BlockPos(-5, -1, -1), new BlockPos(3, 2, 2) };
+            waterEdgeListN = new List<BlockPos>() { new BlockPos(3, -1, -1), new BlockPos(6, 0, 2) };
+            siteListByFacing.Clear();
+            waterEdgeByFacing.Clear();
+            siteListByFacing.Add(siteListN);
+            waterEdgeByFacing.Add(waterEdgeListN);
+            for (int i = 1; i < 4; i++)
+            {
+                siteListByFacing.Add(rotateList(siteListN, i));
+                waterEdgeByFacing.Add(rotateList(waterEdgeListN, i));
+            }
+
             return ObjectCacheUtil.GetOrCreate(byPlayer.Entity.Api, "rollerOrient-" + byPlayer.PlayerUID, () => 0); 
         }
 
@@ -156,11 +170,10 @@ namespace Vintagestory.GameContent
             var entity = byEntity.World.ClassRegistry.CreateEntity(type);
             entity.ServerPos.SetPos(blockSel.Position.ToVec3d().AddCopy(0.5, 1, 0.5));
             entity.ServerPos.Yaw = -GameMath.PIHALF + orient * GameMath.PIHALF;
-            
-            //n-dir
-            if (orient == 1) entity.ServerPos.Z--; // Not sure why
-			//w-dir
-            if (orient == 2) entity.ServerPos.X--; // Not sure why
+
+            if (orient == 1) entity.ServerPos.Z -= 1;
+            if (orient == 2) entity.ServerPos.X -= 1;
+            if (orient == 3) entity.ServerPos.Z += 1;
 
             entity.Pos.SetFrom(entity.ServerPos);
             byEntity.World.SpawnEntity(entity);

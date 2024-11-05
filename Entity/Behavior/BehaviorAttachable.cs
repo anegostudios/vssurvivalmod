@@ -84,68 +84,6 @@ namespace Vintagestory.GameContent
     }
 
 
-    public class AttachableInteractionHelp
-    {
-
-        public static WorldInteraction[] GetOrCreateInteractionHelp(ICoreAPI api, EntityBehaviorAttachable eba, WearableSlotConfig[] wearableSlots, int slotIndex)
-        {
-            string key = "interactionhelp-" + eba.entity.Code + "-" + slotIndex;
-            return ObjectCacheUtil.GetOrCreate(api, key, () =>
-            {
-                List<ItemStack> stacks = new List<ItemStack>();
-
-                foreach (var collObj in api.World.Collectibles)
-                {
-                    if (collObj.CreativeInventoryTabs.Length == 0 && collObj.CreativeInventoryStacks == null) continue;
-
-                    var iatta = IAttachableToEntity.FromCollectible(collObj);
-                    if (iatta == null) continue;
-
-                    if (collObj.CreativeInventoryStacks != null)
-                    {
-                        foreach (var tabstack in collObj.CreativeInventoryStacks)
-                        {
-                            foreach (var jstack in tabstack.Stacks)
-                            {
-                                if (!iatta.IsAttachable(eba.entity, jstack.ResolvedItemstack)) continue;
-
-                                string code = iatta.GetCategoryCode(jstack.ResolvedItemstack);
-                                var slotConfig = wearableSlots[slotIndex];
-
-                                if (!slotConfig.CanHold(code)) continue;
-
-                                stacks.Add(jstack.ResolvedItemstack);
-                            }
-                        }
-                    } else
-                    {
-                        var stack = new ItemStack(collObj);
-                        if (!iatta.IsAttachable(eba.entity, stack)) continue;
-
-                        string code = iatta.GetCategoryCode(stack);
-                        var slotConfig = wearableSlots[slotIndex];
-
-                        if (!slotConfig.CanHold(code)) continue;
-
-                        stacks.Add(stack);
-                    }
-                }
-
-                if (stacks.Count == 0) return null;
-
-                return new WorldInteraction[]
-                {
-                    new WorldInteraction()
-                    {
-                        ActionLangCode = "equip",
-                        Itemstacks = stacks.ToArray(),
-                        MouseButton = EnumMouseButton.Right,
-                        HotKeyCode = "ctrl"
-                    }
-                };
-            });
-        }
-    }
 
 
 
@@ -287,11 +225,6 @@ namespace Vintagestory.GameContent
             if (mode != EnumInteractMode.Interact || !controls.Sprint)
             {
                 handled = EnumHandling.PassThrough; // Can't attack an elk with a falx otherwise
-                /*if (itemslot.Empty && GetSlotFromSelectionBoxIndex(seleBox - 1).Empty) 
-                {
-                    handled = EnumHandling.PassThrough;
-                    return;
-                }*/
                 return;
             }
 
@@ -344,9 +277,14 @@ namespace Vintagestory.GameContent
                 }
             }
 
+            var iai = slot.Itemstack?.Collectible.GetCollectibleInterface<IAttachedInteractions>();
+            if (iai?.OnTryDetach(slot, slotIndex, entity) == false)
+            {
+                return false;
+            }
+
             if (slot.StackSize == 0 || byEntity.TryGiveItemStack(slot.Itemstack))
             {
-                var iai = slot.Itemstack.Collectible.GetCollectibleInterface<IAttachedListener>();
                 iai?.OnDetached(slot, slotIndex, entity);
 
                 slot.Itemstack = null;
@@ -369,6 +307,10 @@ namespace Vintagestory.GameContent
 
             if (!slotConfig.CanHold(code)) return false;
             if (!targetSlot.Empty) return false;
+
+            // Cannot attach something where a player already sits on
+            var bhs = entity.GetBehavior<EntityBehaviorSeatable>();
+            if (bhs?.Seats.FirstOrDefault(s => s.Config.APName == slotConfig.AttachmentPointCode)?.Passenger != null) return false;
 
             var iai = itemslot.Itemstack.Collectible.GetCollectibleInterface<IAttachedInteractions>();
             if (iai?.OnTryAttach(itemslot, slotIndex, entity) == false) return false;
@@ -406,6 +348,14 @@ namespace Vintagestory.GameContent
             string apCode = seleBoxes[seleBoxIndex].AttachPoint.Code;
 
             return wearableSlots.IndexOf(elem => elem.AttachmentPointCode == apCode);
+        }
+
+        public ItemSlot GetSlotConfigFromAPName(string apCode)
+        {
+            var seleBoxes = entity.GetBehavior<EntityBehaviorSelectionBoxes>().selectionBoxes;
+            int index = wearableSlots.IndexOf(elem => elem.AttachmentPointCode == apCode);
+            if (index < 0) return null;
+            return inv[index];
         }
 
 
@@ -447,7 +397,7 @@ namespace Vintagestory.GameContent
         {
             if (es.SelectionBoxIndex > 0)
             {
-                return AttachableInteractionHelp.GetOrCreateInteractionHelp(world.Api, this, wearableSlots, es.SelectionBoxIndex - 1);
+                return AttachableInteractionHelp.GetOrCreateInteractionHelp(world.Api, this, wearableSlots, es.SelectionBoxIndex - 1, GetSlotFromSelectionBoxIndex(es.SelectionBoxIndex - 1));
             }
 
             return base.GetInteractionHelp(world, es, player, ref handled);
@@ -465,9 +415,84 @@ namespace Vintagestory.GameContent
             var selebox = capi.World.Player.CurrentEntitySelection.SelectionBoxIndex - 1;
             if (selebox < 0) return null;
 
-            return entity.GetBehavior<EntityBehaviorSelectionBoxes>().GetCenterPosOfBox(selebox).Add(0, 0.5, 0);
+            return entity.GetBehavior<EntityBehaviorSelectionBoxes>().GetCenterPosOfBox(selebox)?.Add(0, 0.5, 0);
         }
 
+        
+
         public bool TransparentCenter => false;
+    }
+
+
+
+    public class AttachableInteractionHelp
+    {
+
+        public static WorldInteraction[] GetOrCreateInteractionHelp(ICoreAPI api, EntityBehaviorAttachable eba, WearableSlotConfig[] wearableSlots, int slotIndex, ItemSlot slot)
+        {
+            string key = "interactionhelp-attachable-" + eba.entity.Code + "-" + slotIndex;
+            var stacks = ObjectCacheUtil.GetOrCreate(api, key, () =>
+            {
+                List<ItemStack> stacks = new List<ItemStack>();
+
+                foreach (var collObj in api.World.Collectibles)
+                {
+                    if (collObj.CreativeInventoryTabs.Length == 0 && collObj.CreativeInventoryStacks == null) continue;
+
+                    var iatta = IAttachableToEntity.FromCollectible(collObj);
+                    if (iatta == null) continue;
+
+                    if (collObj.CreativeInventoryStacks != null)
+                    {
+                        foreach (var tabstack in collObj.CreativeInventoryStacks)
+                        {
+                            foreach (var jstack in tabstack.Stacks)
+                            {
+                                if (!iatta.IsAttachable(eba.entity, jstack.ResolvedItemstack)) continue;
+
+                                string code = iatta.GetCategoryCode(jstack.ResolvedItemstack);
+                                var slotConfig = wearableSlots[slotIndex];
+
+                                if (!slotConfig.CanHold(code)) continue;
+
+                                stacks.Add(jstack.ResolvedItemstack);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        var stack = new ItemStack(collObj);
+                        if (!iatta.IsAttachable(eba.entity, stack)) continue;
+
+                        string code = iatta.GetCategoryCode(stack);
+                        var slotConfig = wearableSlots[slotIndex];
+
+                        if (!slotConfig.CanHold(code)) continue;
+
+                        stacks.Add(stack);
+                    }
+                }
+
+                stacks.Shuffle(api.World.Rand);
+
+                return stacks;
+            });
+
+            if (stacks.Count == 0) return null;
+
+            
+
+
+            return new WorldInteraction[]
+            {
+                new WorldInteraction()
+                {
+                    ActionLangCode = slot.Empty ? "attachableentity-attach" : "attachableentity-detach",
+                    Itemstacks = slot.Empty ? stacks.ToArray() : null,
+                    MouseButton = EnumMouseButton.Right,
+                    HotKeyCode = "ctrl"
+                }
+            };
+        }
     }
 }

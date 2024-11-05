@@ -20,6 +20,21 @@ namespace Vintagestory.GameContent
             base.OnLoaded(api);
             this.capi = api as ICoreClientAPI;
         }
+
+        public override void OnUnloaded(ICoreAPI api)
+        {
+            var meshRefs = ObjectCacheUtil.TryGet<Dictionary<string, MultiTextureMeshRef>>(api, "croprop-meshes");
+            if (meshRefs?.Count > 0)
+            {
+                foreach (var (_, meshRef) in meshRefs)
+                {
+                    meshRef.Dispose();
+                }
+                ObjectCacheUtil.Delete(api, "croprop-meshes");
+            }
+            base.OnUnloaded(api);
+        }
+
         public Size2i AtlasSize => capi.BlockTextureAtlas.Size;
 
         string nowTesselatingType;
@@ -131,7 +146,7 @@ namespace Vintagestory.GameContent
                     loadConfig();
                     loadMesh();
                 }
-            }            
+            }
         }
 
         private void loadConfig()
@@ -139,7 +154,7 @@ namespace Vintagestory.GameContent
             if (Type == null) return;
 
             config = this.Block.Attributes["types"][dead ? "dead" : Type].AsObject<CropPropConfig>();
-            
+
             if (config.Shape != null)
             {
                 config.Shape.Base.Path = config.Shape.Base.Path.Replace("{stage}", "" + Stage).Replace("{type}", Type);
@@ -176,7 +191,7 @@ namespace Vintagestory.GameContent
             cropBlock = Api.World.GetBlock(new AssetLocation("crop-" + Type + "-" + Stage));
 
             if (cshape == null)
-            {   
+            {
                 if (cropBlock.Shape.Alternates == null)
                 {
                     mesh = capi.TesselatorManager.GetDefaultBlockMesh(cropBlock).Clone();
@@ -254,7 +269,7 @@ namespace Vintagestory.GameContent
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
         {
             float[] matrix = cropBlock?.RandomizeRotations==true ? TesselationMetaData.randomRotMatrices[GameMath.MurmurHash3Mod(-Pos.X, cropBlock.RandomizeAxes == EnumRandomizeAxes.XYZ ? Pos.Y : 0, Pos.Z, TesselationMetaData.randomRotations.Length)] : null;
-            
+
             mesher.AddMeshData(mesh, matrix);
             return true;
         }

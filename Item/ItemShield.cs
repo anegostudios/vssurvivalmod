@@ -56,7 +56,7 @@ namespace Vintagestory.GameContent
         Dictionary<int, MultiTextureMeshRef> meshrefs => ObjectCacheUtil.GetOrCreate(api, "shieldmeshrefs", () => new Dictionary<int, MultiTextureMeshRef>());
         Dictionary<string, Dictionary<string, int>> durabilityGains;
         public string Construction => Variant["construction"];
-               
+
 
 
         public override void OnLoaded(ICoreAPI api)
@@ -69,6 +69,20 @@ namespace Vintagestory.GameContent
             durabilityGains = Attributes["durabilityGains"].AsObject<Dictionary<string, Dictionary<string, int>>>();
 
             AddAllTypesToCreativeInventory();
+        }
+
+        public override void OnUnloaded(ICoreAPI api)
+        {
+            if (meshrefs.Count > 0)
+            {
+                foreach (var (_, meshRef) in meshrefs)
+                {
+                    meshRef.Dispose();
+                }
+
+                ObjectCacheUtil.Delete(api, "shieldmeshrefs");
+            }
+            base.OnUnloaded(api);
         }
 
         public override int GetMaxDurability(ItemStack itemstack)
@@ -120,7 +134,7 @@ namespace Vintagestory.GameContent
 
                         foreach (var color in vg["color"])
                         {
-                            
+
                             if (color != "redblack") stacks.Add(genJstack(string.Format("{{ wood: \"{0}\", metal: \"{1}\", color: \"{2}\", deco: \"ornate\" }}", "generic", metal, color)));
                         }
 
@@ -191,7 +205,7 @@ namespace Vintagestory.GameContent
         public MeshData GenMesh(ItemStack itemstack, ITextureAtlasAPI targetAtlas)
         {
             var cnts = new ContainedTextureSource(api as ICoreClientAPI, targetAtlas, new Dictionary<string, AssetLocation>(), string.Format("For render in shield {0}", Code));
-            
+
             MeshData mesh;
             cnts.Textures.Clear();
 
@@ -262,7 +276,7 @@ namespace Vintagestory.GameContent
             return mesh;
         }
 
-         
+
         public override string GetHeldItemName(ItemStack itemStack)
         {
             bool ornate = itemStack.Attributes.GetString("deco") == "ornate";
@@ -333,7 +347,7 @@ namespace Vintagestory.GameContent
                     break;
             }
 
-            
+
         }
 
         public MeshData GenMesh(ItemStack itemstack, ITextureAtlasAPI targetAtlas, BlockPos atBlockPos)

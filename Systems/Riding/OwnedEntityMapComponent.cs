@@ -76,7 +76,7 @@ namespace Vintagestory.GameContent
                 .Translate(x, y, 60)
                 .Scale(Texture.Width, Texture.Height, 0)
                 .Scale(0.5f, 0.5f, 0)
-                .RotateZ(pos.Yaw + GameMath.PI)
+                .RotateZ(-pos.Yaw + 180 * GameMath.DEG2RAD)
             ;
 
             prog.UniformMatrix("projectionMatrix", api.Render.CurrentProjectionMatrix);

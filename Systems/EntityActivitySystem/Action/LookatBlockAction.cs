@@ -29,7 +29,7 @@ namespace Vintagestory.GameContent
 
         public override void Start(EntityActivity act)
         {
-            BlockPos targetPos = getTarget();
+            BlockPos targetPos = getTarget(vas.Entity.Api, vas.Entity.ServerPos.XYZ);
 
             ExecutionHasFailed = targetPos == null;
 
@@ -47,12 +47,11 @@ namespace Vintagestory.GameContent
             }
         }
 
-        private BlockPos getTarget()
+        private BlockPos getTarget(ICoreAPI api, Vec3d fromPos)
         {
             var range = GameMath.Clamp(searchRange, -10, 10);
-            var api = vas.Entity.Api;
-            var minPos = vas.Entity.ServerPos.XYZ.Add(-range, -1, -range).AsBlockPos;
-            var maxPos = vas.Entity.ServerPos.XYZ.Add(range, 1, range).AsBlockPos;
+            var minPos = fromPos.Clone().Add(-range, -1, -range).AsBlockPos;
+            var maxPos = fromPos.Clone().Add(range, 1, range).AsBlockPos;
 
             BlockPos targetPos = null;
             api.World.BlockAccessor.WalkBlocks(minPos, maxPos, (block, x, y, z) =>
@@ -101,10 +100,10 @@ namespace Vintagestory.GameContent
 
         public override void OnVisualize(ActivityVisualizer visualizer)
         {
-            var target = getTarget();
+            var target = getTarget(visualizer.Api, visualizer.CurrentPos);
             if (target != null)
             {
-                visualizer.LineTo(target.ToVec3d().Add(0.5, 0.5, 0.5));
+                visualizer.LineTo(visualizer.CurrentPos, target.ToVec3d().Add(0.5, 0.5, 0.5), ColorUtil.ColorFromRgba(0, 255, 0, 255));
             }
         }
     }

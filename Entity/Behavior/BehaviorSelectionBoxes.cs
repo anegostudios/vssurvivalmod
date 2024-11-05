@@ -267,8 +267,16 @@ namespace Vintagestory.GameContent
             var pe = apap.AttachPoint.ParentElement;
             Vec4d centerPos = new Vec4d((pe.To[0] - pe.From[0]) / 2/16, (pe.To[1] - pe.From[1]) / 2/16, (pe.To[2] - pe.From[2]) / 2/16, 1);
 
-            var ep = entity.ServerPos;
-            return mvmat.TransformVector(centerPos).XYZ.Add(ep.X, ep.Y, ep.Z);
+            Vec3d basePos = entity.Pos.XYZ;
+
+            var eplr = capi.World.Player.Entity;
+            if (eplr?.MountedOn?.Entity == entity)
+            {
+                var mpos = eplr.MountedOn.SeatPosition.XYZ - entity.Pos.XYZ;
+                basePos = new Vec3d(eplr.CameraPos.X - mpos.X, eplr.CameraPos.Y - mpos.Y, eplr.CameraPos.Z - mpos.Z);
+            }
+
+            return mvmat.TransformVector(centerPos).XYZ.Add(basePos);
         }
 
         Vec3d hitPositionOBBSpace;

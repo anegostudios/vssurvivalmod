@@ -11,6 +11,7 @@ using Newtonsoft.Json;
 using ProtoBuf;
 using Vintagestory.API.Server;
 using System.Collections.Generic;
+using Vintagestory.API.Common.Entities;
 
 // Requirements:
 // Activity Collections
@@ -107,7 +108,7 @@ namespace Vintagestory.GameContent
             api.Event.SaveGameLoaded += Event_SaveGameLoaded;
 
             api.Network.GetChannel("activityEditor")
-                .SetMessageHandler<ApplyConfigPacket>(onPacket)
+                .SetMessageHandler<ApplyConfigPacket>(onClientPacket)
                 .SetMessageHandler<ActivityCollectionsJsonPacket>((player, packet) =>
                 {
                     if (!player.HasPrivilege(Privilege.controlserver))
@@ -242,7 +243,7 @@ namespace Vintagestory.GameContent
             });
         }
 
-        private void onPacket(IServerPlayer fromPlayer, ApplyConfigPacket packet)
+        private void onClientPacket(IServerPlayer fromPlayer, ApplyConfigPacket packet)
         {
             var e = sapi.World.GetEntityById(packet.EntityId);
             if (e==null)
@@ -825,8 +826,8 @@ namespace Vintagestory.GameContent
             ElementBounds bgBounds = ElementBounds.Fill.WithFixedPadding(GuiStyle.ElementToDialogPadding);
             bgBounds.BothSizing = ElementSizing.FitToChildren;
             ElementBounds dialogBounds = ElementStdBounds
-                .AutosizedMainDialog.WithAlignment(EnumDialogArea.LeftMiddle)
-                .WithFixedAlignmentOffset(GuiStyle.DialogToScreenPadding+550, 40);
+                .AutosizedMainDialog.WithAlignment(EnumDialogArea.RightMiddle)
+                .WithFixedAlignmentOffset(-GuiStyle.DialogToScreenPadding, 40);
 
             var btnFont = CairoFont.SmallButtonText(EnumButtonStyle.Small);
 
@@ -956,6 +957,7 @@ namespace Vintagestory.GameContent
             SingleComposer.GetTextInput("code").SetValue(entityActivity.Code);
             SingleComposer.GetNumberInput("priority").SetValue((float)entityActivity.Priority);
             SingleComposer.GetNumberInput("slot").SetValue(entityActivity.Slot + "");
+            SingleComposer.GetToggleButton("visualize").On = visualizer != null;
         }
 
         private bool moveDown()
@@ -1008,19 +1010,24 @@ namespace Vintagestory.GameContent
         public override void OnGuiClosed()
         {
             base.OnGuiClosed();
-            visualizer?.Dispose();
 
             editActionDlg?.TryClose();
             editCondDlg?.TryClose();
         }
 
-        ActivityVisualizer visualizer;
+        static ActivityVisualizer visualizer;
         private void OnVisualize(bool on)
         {
             visualizer?.Dispose();
             if (on)
             {
-                visualizer = new ActivityVisualizer(capi, entityActivity);
+                Entity srcEntity = capi.World.Player.Entity;
+                if (GuiDialogActivityCollections.EntityId != 0)
+                {
+                    srcEntity = capi.World.GetEntityById(GuiDialogActivityCollections.EntityId) ?? capi.World.Player.Entity;
+                }
+
+                visualizer = new ActivityVisualizer(capi, entityActivity, srcEntity);
             }
         }
 
