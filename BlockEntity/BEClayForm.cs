@@ -116,7 +116,7 @@ namespace Vintagestory.GameContent
                 baseMaterial.StackSize = 1;
             }
 
-            AvailableVoxels += 25;
+            AvailableVoxels = 0;
 
             slot.TakeOut(1);
             slot.MarkDirty();
@@ -507,9 +507,9 @@ namespace Vintagestory.GameContent
         {
             Voxels = new bool[16, 16, 16];
 
-            for (int x = 4; x < 12; x++)
+            for (int x = 5; x < 11; x++)
             {
-                for (int z = 4; z < 12; z++)
+                for (int z = 5; z < 11; z++)
                 {
                     Voxels[x, 0, z] = true;
                 }
