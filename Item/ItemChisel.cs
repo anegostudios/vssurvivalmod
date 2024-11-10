@@ -300,7 +300,7 @@ namespace Vintagestory.GameContent
             if (mode == "off") return false;
 
             // 1.5 priority: Disabled by code
-            if (block is IConditionalChiselable icc || (icc = block.BlockBehaviors.FirstOrDefault(bh => bh is IConditionalChiselable) as IConditionalChiselable) != null)
+            if (block.GetInterface<IConditionalChiselable>(api.World, pos) is IConditionalChiselable icc)
             {
                 string errorCode;
                 if (icc?.CanChisel(api.World, pos, player, out errorCode) == false || icc?.CanChisel(api.World, pos, player, out errorCode) == false)

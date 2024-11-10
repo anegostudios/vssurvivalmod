@@ -623,7 +623,7 @@ namespace Vintagestory.GameContent
             bool useOldRenderer =
                 renderer.ContentStack != null &&
                 renderer.contentStackRenderer != null &&
-                contentStack?.Collectible is IInFirepitRendererSupplier &&
+                contentStack?.Collectible.GetCollectibleInterface<IInFirepitRendererSupplier>() is IInFirepitRendererSupplier &&
                 renderer.ContentStack.Equals(Api.World, contentStack, GlobalConstants.IgnoredStackAttributes)
             ;
 
@@ -632,9 +632,9 @@ namespace Vintagestory.GameContent
             renderer.contentStackRenderer?.Dispose();
             renderer.contentStackRenderer = null;
 
-            if (contentStack?.Collectible is IInFirepitRendererSupplier)
+            if (contentStack?.Collectible.GetCollectibleInterface<IInFirepitRendererSupplier>() is IInFirepitRendererSupplier)
             {
-                IInFirepitRenderer childrenderer = (contentStack?.Collectible as IInFirepitRendererSupplier).GetRendererWhenInFirepit(contentStack, this, contentStack == outputStack);
+                IInFirepitRenderer childrenderer = (contentStack?.Collectible.GetCollectibleInterface<IInFirepitRendererSupplier>()).GetRendererWhenInFirepit(contentStack, this, contentStack == outputStack);
                 if (childrenderer != null)
                 {
                     renderer.SetChildRenderer(contentStack, childrenderer);
@@ -643,7 +643,7 @@ namespace Vintagestory.GameContent
             }
 
             InFirePitProps props = GetRenderProps(contentStack);
-            if (contentStack?.Collectible != null && !(contentStack?.Collectible is IInFirepitMeshSupplier) && props != null)
+            if (contentStack?.Collectible != null && !(contentStack?.Collectible.GetCollectibleInterface<IInFirepitMeshSupplier>() is IInFirepitMeshSupplier) && props != null)
             {
                 renderer.SetContents(contentStack, props.Transform);
             }
@@ -867,10 +867,10 @@ namespace Vintagestory.GameContent
 
             if (contentStack == null) return null;
 
-            if (contentStack.Collectible is IInFirepitMeshSupplier)
+            if (contentStack.Collectible.GetCollectibleInterface<IInFirepitMeshSupplier>() is IInFirepitMeshSupplier)
             {
                 EnumFirepitModel model = EnumFirepitModel.Normal;
-                MeshData mesh = (contentStack.Collectible as IInFirepitMeshSupplier).GetMeshWhenInFirepit(contentStack, Api.World, Pos, ref model);
+                MeshData mesh = contentStack.Collectible.GetCollectibleInterface<IInFirepitMeshSupplier>().GetMeshWhenInFirepit(contentStack, Api.World, Pos, ref model);
                 this.CurrentModel = model;
 
                 if (mesh != null)
@@ -880,9 +880,9 @@ namespace Vintagestory.GameContent
 
             }
             
-            if (contentStack.Collectible is IInFirepitRendererSupplier)
+            if (contentStack.Collectible.GetCollectibleInterface<IInFirepitRendererSupplier>() is IInFirepitRendererSupplier)
             {
-                EnumFirepitModel model = (contentStack.Collectible as IInFirepitRendererSupplier).GetDesiredFirepitModel(contentStack, this, contentStack == outputStack);
+                EnumFirepitModel model = (contentStack.Collectible.GetCollectibleInterface<IInFirepitRendererSupplier>()).GetDesiredFirepitModel(contentStack, this, contentStack == outputStack);
                 this.CurrentModel = model;
                 return null;
             }

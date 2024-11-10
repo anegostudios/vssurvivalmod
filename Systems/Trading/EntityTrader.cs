@@ -235,7 +235,7 @@ namespace Vintagestory.GameContent
 
                 TradeItem newTradeItem = newItems.Pop();
 
-                if (newTradeItem.ResolvedItemstack.Collectible is ITradeableCollectible itc)
+                if (newTradeItem.ResolvedItemstack.Collectible.GetCollectibleInterface<ITradeableCollectible>() is ITradeableCollectible itc)
                 {
                     if (!itc.ShouldTrade(this, newTradeItem, tradeDir))
                     {
