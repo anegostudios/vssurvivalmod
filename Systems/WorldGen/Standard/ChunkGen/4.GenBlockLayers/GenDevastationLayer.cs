@@ -12,7 +12,7 @@ using Vintagestory.GameContent;
 
 namespace Vintagestory.ServerMods
 {
-    public class GenDevastationLayer : ModStdWorldGen, ICallback
+    public class GenDevastationLayer : ModStdWorldGen
     {
         private ICoreServerAPI api;
         StoryStructureLocation devastationLocation;
@@ -75,11 +75,12 @@ namespace Vintagestory.ServerMods
             {
                 Timeswitch ts = api.ModLoader.GetModSystem<Timeswitch>();
                 ts.SetPos(devastationLocation.CenterPos);
-                ts.InitPotentialGeneration(devastationLocation, modSys, this);
+                ts.InitPotentialGeneration(devastationLocation, modSys, GenerateDim2Terrain);
             }
 
             var devastationEffects = api.ModLoader.GetModSystem<DevastationEffects>();
-            devastationEffects.DevaLocation = devastationLocation?.CenterPos.ToVec3d();
+            devastationEffects.DevaLocationPresent = devastationLocation?.CenterPos.ToVec3d();
+			devastationEffects.DevaLocationPast = devastationLocation?.CenterPos.Copy().SetDimension(Dimensions.AltWorld).ToVec3d();
             devastationEffects.EffectRadius = devastationLocation?.GenerationRadius ?? 0;
 
             var bmp = BitmapCreateFromPng(api.Assets.TryGet("worldgen/devastationcracks.png"));
@@ -271,20 +272,6 @@ namespace Vintagestory.ServerMods
             DevastationBlockIds = null;
         }
 
-        void ICallback.Callback()
-        {
-            throw new NotImplementedException();
-        }
-
-        void ICallback.Callback(BlockPos pos)
-        {
-            throw new NotImplementedException();
-        }
-
-        void ICallback.Callback(int a, int b, int c)
-        {
-            GenerateDim2Terrain(a, b, c);
-        }
 
         /// <summary>
         /// Used to generate "past" terrain around the tower in dim2

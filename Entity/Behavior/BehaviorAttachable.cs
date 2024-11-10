@@ -277,15 +277,16 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            var iai = slot.Itemstack?.Collectible.GetCollectibleInterface<IAttachedInteractions>();
-            if (iai?.OnTryDetach(slot, slotIndex, entity) == false)
+            IAttachedInteractions attachedInteractable = slot.Itemstack?.Collectible.GetCollectibleInterface<IAttachedInteractions>();
+            if (attachedInteractable?.OnTryDetach(slot, slotIndex, entity) == false)
             {
                 return false;
             }
-
+            
             if (slot.StackSize == 0 || byEntity.TryGiveItemStack(slot.Itemstack))
             {
-                iai?.OnDetached(slot, slotIndex, entity);
+                IAttachedListener attached = slot.Itemstack?.Collectible.GetCollectibleInterface<IAttachedListener>();
+                attached?.OnDetached(slot, slotIndex, entity, byEntity);
 
                 slot.Itemstack = null;
                 storeInv();

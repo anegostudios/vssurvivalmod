@@ -61,6 +61,7 @@ namespace Vintagestory.GameContent
             api.Event.SaveGameLoaded += Event_SaveGameLoaded;
             api.Event.GameWorldSave += Event_GameWorldSave;
             api.Event.PlayerJoin += Event_PlayerJoin;
+            api.Event.OnEntityDeath += Event_EntityDeath;
 
             AiTaskRegistry.Register<AiTaskComeToOwner>("cometoowner");
         }
@@ -86,6 +87,11 @@ namespace Vintagestory.GameContent
         private void Event_SaveGameLoaded()
         {
             OwnerShipsByPlayerUid = sapi.WorldManager.SaveGame.GetData("entityownership", new Dictionary<string, Dictionary<string, EntityOwnership>>());
+        }
+
+        private void Event_EntityDeath(Entity entity, DamageSource damageSource)
+        {
+            RemoveOwnership(entity);
         }
 
         public override void StartClientSide(ICoreClientAPI api)

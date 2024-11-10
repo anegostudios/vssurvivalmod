@@ -507,6 +507,7 @@ namespace Vintagestory.ServerMods
 
             cloned.ReplaceMode = ReplaceMode;
             cloned.EntranceRotation = EntranceRotation;
+            cloned.OriginalPos = OriginalPos;
 
             return cloned;
         }

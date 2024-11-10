@@ -920,6 +920,8 @@ namespace Vintagestory.GameContent
             api.RegisterItemClass("ItemTongs", typeof(ItemTongs));
             api.RegisterItemClass("ItemFlute", typeof(ItemFlute));
             api.RegisterItemClass("ItemMedallion", typeof(ItemMedallion));
+
+            api.RegisterItemClass("ItemSkillTimeswitch", typeof(ItemSkillTimeswitch));
         }
 
 

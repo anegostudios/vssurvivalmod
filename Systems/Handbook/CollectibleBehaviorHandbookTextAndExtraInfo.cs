@@ -1132,6 +1132,7 @@ namespace Vintagestory.GameContent
                         eqcomp.VerticalAlign = EnumVerticalAlign.Middle;
                         components.Add(eqcomp);
                         var ocmp = new ItemstackTextComponent(capi, rec.CooksInto.ResolvedItemstack, 40, 10, EnumFloat.Inline);
+                        ocmp.ShowStacksize= true;
                         components.Add(ocmp);
                         components.Add(new ClearFloatTextComponent(capi, 10));
                     }

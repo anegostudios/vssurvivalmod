@@ -201,7 +201,10 @@ namespace Vintagestory.GameContent
                 var slot = bha.GetSlotConfigFromAPName(seat.Config.APName);
                 if (slot?.Empty == false)
                 {
-                    return slot.Itemstack.ItemAttributes?["isSaddle"].AsBool(false) == true; // Can only sit if in this slot there is a saddle
+                    return 
+                        slot.Itemstack.ItemAttributes?["isSaddle"].AsBool(false) == true ||  // Can only sit if in this slot there is a saddle
+                        slot.Itemstack.ItemAttributes?["attachableToEntity"]["seatConfig"].Exists == true
+                    ;
                 }
             }
 

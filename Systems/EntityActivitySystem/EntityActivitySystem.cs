@@ -1,9 +1,9 @@
 ﻿using Newtonsoft.Json;
-using System;
 using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 using Vintagestory.Essentials;
 
@@ -27,6 +27,25 @@ namespace Vintagestory.GameContent
         public PathTraverserBase wppathTraverser;
         public EntityAgent Entity;
         float accum;
+
+        private BlockPos activityOffset;
+        public BlockPos ActivityOffset
+        {
+            get
+            {
+                if (activityOffset == null)
+                {
+                    activityOffset = Entity.WatchedAttributes.GetBlockPos("importOffset", new BlockPos(Entity.Pos.Dimension));
+                }
+
+                return activityOffset;
+            }
+            set
+            {
+                activityOffset = value;
+                Entity.WatchedAttributes.SetBlockPos("importOffset", activityOffset);
+            }
+        }
 
         public EntityActivitySystem(EntityAgent entity)
         {
@@ -190,7 +209,7 @@ namespace Vintagestory.GameContent
             var file = Entity.Api.Assets.TryGet(activityCollectionPath.WithPathPrefixOnce("config/activitycollections/").WithPathAppendixOnce(".json"));
             if (file == null)
             {
-                Entity.World.Logger.Error("Unable to load activity file " + file + " not such file found");
+                Entity.World.Logger.Error("Unable to load activity file " + activityCollectionPath + " not such file found");
                 return false;
             }
 

@@ -579,7 +579,7 @@ namespace Vintagestory.GameContent
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
             base.FromTreeAttributes(tree, worldForResolving);
-            Inventory.FromTreeAttributes(tree.GetTreeAttribute("inventory"));
+            //Inventory.FromTreeAttributes(tree.GetTreeAttribute("inventory")); - why twice? its already done in the base method Tyron 5.nov 2024
 
             if (Api != null)
             {

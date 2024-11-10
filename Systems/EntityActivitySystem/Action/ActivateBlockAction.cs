@@ -77,7 +77,12 @@ namespace Vintagestory.GameContent
         {
             if (ExactTarget.Length() > 0)
             {
-                if (ExactTarget.DistanceTo(fromPos) < searchRange) return ExactTarget.AsBlockPos;
+                var exactTarget = ExactTarget;
+                if (vas != null)
+                {
+                    exactTarget.Add(vas.ActivityOffset);
+                }
+                if (exactTarget.DistanceTo(fromPos) < searchRange) return exactTarget.AsBlockPos;
                 return null;
             }
 
@@ -100,7 +105,15 @@ namespace Vintagestory.GameContent
 
         public override string ToString()
         {
-            if (ExactTarget.Length() > 0) return "Activate block at " + ExactTarget + ". Args: " + activateArgs;
+            if (ExactTarget.Length() > 0)
+            {
+                var exactTarget = ExactTarget;
+                if (vas != null)
+                {
+                    exactTarget.Add(vas.ActivityOffset);
+                }
+                return "Activate block at " + exactTarget + ". Args: " + activateArgs;
+            }
             return "Activate nearest block " + targetBlockCode.ToShortString() + " within " + searchRange + " blocks. Args: " + activateArgs;
         }
 
@@ -118,7 +131,7 @@ namespace Vintagestory.GameContent
                 .AddTextInput(bc = bc.CopyOffsetedSibling(70), null, CairoFont.WhiteDetailText(), "y")
                 .AddTextInput(bc = bc.CopyOffsetedSibling(70), null, CairoFont.WhiteDetailText(), "z")
 
-                .AddSmallButton("Tp to", () => { capi.SendChatMessage(string.Format("/tp ={0} ={1} ={2}", targetX, targetY, targetZ)); return false; }, bc = bc.CopyOffsetedSibling(70), EnumButtonStyle.Small)
+                .AddSmallButton("Tp to", () => onClickTpTo(capi), bc = bc.CopyOffsetedSibling(70), EnumButtonStyle.Small)
 
                 .AddSmallButton("Insert Player Pos", () => onClickPlayerPos(capi, singleComposer), b = b.FlatCopy().WithFixedPosition(0,0).FixedUnder(bc,2), EnumButtonStyle.Small)
 
@@ -139,6 +152,21 @@ namespace Vintagestory.GameContent
             s.GetTextInput("y").SetValue(ExactTarget?.Y + "");
             s.GetTextInput("z").SetValue(ExactTarget?.Z + "");
 
+        }
+
+        private bool onClickTpTo(ICoreClientAPI capi)
+        {
+            var x = ExactTarget.X;
+            var y = ExactTarget.Y;
+            var z = ExactTarget.Z;
+            if (vas != null)
+            {
+                x += vas.ActivityOffset.X;
+                y += vas.ActivityOffset.Y;
+                z += vas.ActivityOffset.Z;
+            }
+            capi.SendChatMessage(string.Format("/tp ={0} ={1} ={2}", x, y, z));
+            return false;
         }
 
         private bool onClickPlayerPos(ICoreClientAPI capi, GuiComposer singleComposer)

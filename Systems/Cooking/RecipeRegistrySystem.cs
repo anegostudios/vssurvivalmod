@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Server;
+using Newtonsoft.Json.Linq;
 
 namespace Vintagestory.GameContent
 {
@@ -173,18 +174,33 @@ namespace Vintagestory.GameContent
         public override void AssetsLoaded(ICoreAPI api)
         {
             if (!(api is ICoreServerAPI sapi)) return;
-            Dictionary<AssetLocation, CookingRecipe> recipes = sapi.Assets.GetMany<CookingRecipe>(sapi.Server.Logger, "recipes/cooking");
+            Dictionary<AssetLocation, JToken> recipes = sapi.Assets.GetMany<JToken>(sapi.Server.Logger, "recipes/cooking");
 
             foreach (var val in recipes)
             {
-                if (!val.Value.Enabled) continue;
-
-                val.Value.Resolve(sapi.World, "cooking recipe " + val.Key);
-                RegisterCookingRecipe(val.Value);
+                if (val.Value is JObject)
+                {
+                    loadRecipe(sapi, val.Key, val.Value);
+                }
+                if (val.Value is JArray)
+                {
+                    foreach (var token in (val.Value as JArray))
+                    {
+                        loadRecipe(sapi, val.Key, token);
+                    }
+                }
             }
 
             sapi.World.Logger.Event("{0} cooking recipes loaded", recipes.Count);
             sapi.World.Logger.StoryEvent(Lang.Get("Taste and smell..."));
+        }
+
+        private void loadRecipe(ICoreServerAPI sapi, AssetLocation loc, JToken jrec)
+        {
+            var recipe = jrec.ToObject<CookingRecipe>(loc.Domain);
+            if (!recipe.Enabled) return;
+            recipe.Resolve(sapi.World, "cooking recipe " + loc);
+            RegisterCookingRecipe(recipe);
         }
 
 

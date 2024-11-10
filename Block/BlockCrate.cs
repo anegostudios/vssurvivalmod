@@ -184,9 +184,11 @@ namespace Vintagestory.GameContent
 
         public override int GetQuantitySlots(ItemStack bagstack)
         {
-            string type = bagstack.Attributes.GetString("type");
-            var cnt = (collObj as BlockCrate).Props[type].QuantitySlots;
-            return cnt;
+            if (collObj is not BlockCrate crate) return 0;
+            
+            string type = bagstack.Attributes.GetString("type") ?? crate.Props.DefaultType;
+            int quantity = crate.Props[type].QuantitySlots;
+            return quantity;
         }
 
         public override void OnInteract(ItemSlot bagSlot, int slotIndex, Entity onEntity, EntityAgent byEntity, Vec3d hitPosition, EnumInteractMode mode, ref EnumHandling handled, Action onRequireSave)

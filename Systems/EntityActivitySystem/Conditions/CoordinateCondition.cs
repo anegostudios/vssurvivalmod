@@ -32,11 +32,17 @@ namespace Vintagestory.GameContent
         public virtual bool ConditionSatisfied(Entity e)
         {
             var pos = e.ServerPos;
+            var offset = 0;
+
+            if (vas != null)
+            {
+                offset = new int[] { vas.ActivityOffset.X, vas.ActivityOffset.Y, vas.ActivityOffset.Z }[Axis];
+            }
             switch (Axis)
             {
-                case 0: return pos.X < Value;
-                case 1: return pos.Y < Value;
-                case 2: return pos.Z < Value;
+                case 0: return pos.X < (Value + offset);
+                case 1: return pos.Y < (Value + offset);
+                case 2: return pos.Z < (Value + offset);
             }
 
             return false;
@@ -52,7 +58,8 @@ namespace Vintagestory.GameContent
 
             singleComposer
                 .AddStaticText("When", CairoFont.WhiteDetailText(), bc)
-                .AddDropDown(new string[] { "x", "y", "z" }, new string[] { "X", "Y", "Z" }, Axis, null, bc = bc.BelowCopy(0), "axis")
+                .AddDropDown(new string[] { "x", "y", "z" }, new string[] { "X", "Y", "Z" }, Axis, null, bc = bc.BelowCopy(0).WithFixedWidth(100), "axis")
+                .AddSmallButton("Tp to", () => btnTp(singleComposer, capi), bc.CopyOffsetedSibling(110).WithFixedWidth(50), EnumButtonStyle.Small)
 
                 .AddStaticText("Is smaller than", CairoFont.WhiteDetailText(), bc = bc.BelowCopy(0,5).WithFixedWidth(200))
                 .AddNumberInput(bc = bc.BelowCopy(0).WithFixedWidth(200), null, CairoFont.WhiteDetailText(), "value")
@@ -63,6 +70,31 @@ namespace Vintagestory.GameContent
             singleComposer.GetNumberInput("value").SetValue(Value);
         }
 
+        private bool btnTp(GuiComposer s, ICoreClientAPI capi)
+        {
+            int index = s.GetDropDown("axis").SelectedIndices[0];
+            double targetX = capi.World.Player.Entity.Pos.X;
+            double targetY = capi.World.Player.Entity.Pos.Y;
+            double targetZ = capi.World.Player.Entity.Pos.Z;
+            var val = targetX = s.GetNumberInput("value").GetValue();
+
+            var offset = 0;
+
+            if (vas != null)
+            {
+                 offset= new int[] { vas.ActivityOffset.X, vas.ActivityOffset.Y, vas.ActivityOffset.Z }[index];
+            }
+
+            switch (index)
+            {
+                case 0: targetX = val + offset; break;
+                case 1: targetY = val + offset; break;
+                case 2: targetZ = val + offset; break;
+                default: break;
+            }
+            capi.SendChatMessage(string.Format("/tp ={0} ={1} ={2}", targetX, targetY, targetZ));
+            return false;
+        }
 
         private bool onClickPlayerPos(ICoreClientAPI capi, GuiComposer singleComposer)
         {
@@ -75,7 +107,7 @@ namespace Vintagestory.GameContent
                 case 2: val = capi.World.Player.Entity.Pos.Z; break;
                 default: break;
             }
-            
+
             singleComposer.GetTextInput("value").SetValue("" + Math.Round(val, 1));
             return true;
         }
@@ -93,7 +125,12 @@ namespace Vintagestory.GameContent
         public override string ToString()
         {
             string axis = new string[] { "X", "Y", "Z" }[Axis];
-            return string.Format("When {0} {1} {2}", axis, Invert ? "&gt;=" : "&lt;", Value);
+            int offset = 0;
+            if (vas != null)
+            {
+                offset = new int[] { vas.ActivityOffset.X, vas.ActivityOffset.Y, vas.ActivityOffset.Z }[Axis];
+            }
+            return string.Format("When {0} {1} {2}", axis, Invert ? "&gt;=" : "&lt;", Value + offset);
         }
 
         public void OnLoaded(EntityActivitySystem vas)

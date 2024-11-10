@@ -121,9 +121,10 @@ namespace Vintagestory.ServerMods
                 if (structurePlacement is EnumStructurePlacement.Surface)
                 {
                     var oldBlock = blockAccessor.GetBlock(chunkData[posIndex]);
-                    // if(oldBlock.BlockMaterial is EnumBlockMaterial.Soil or EnumBlockMaterial.Sand or EnumBlockMaterial.Stone &&
-                    //    (newBlock.BlockMaterial == EnumBlockMaterial.Plant || newBlock.Replaceable >= 5500) && !newBlock.IsLiquid()) continue;
-                    if(newBlock.Replaceable >= 5500 && oldBlock.Replaceable < newBlock.Replaceable && !newBlock.IsLiquid()) continue;
+                    // if we have solid blocks at the same pos keep the old one to blend in better with the terrain
+                    if((newBlock.Replaceable >= 5500 || newBlock.BlockMaterial == EnumBlockMaterial.Plant) && oldBlock.Replaceable < newBlock.Replaceable && !newBlock.IsLiquid()) continue;
+                    // if a filler block is above a path way to clear grass grow but we are submerged leave the old block here
+                    if(oldBlock.BlockMaterial is EnumBlockMaterial.Soil or EnumBlockMaterial.Stone && newBlock.BlockMaterial == EnumBlockMaterial.Meta) continue;
                 }
 
                 // if we only have a fluid block we need to clear the previous block so we can place fluids
@@ -205,6 +206,11 @@ namespace Vintagestory.ServerMods
             {
                 if (rect.Contains((int)entity.Pos.X, (int)entity.Pos.Z))
                 {
+
+                    if (OriginalPos != null)
+                    {
+                        entity.WatchedAttributes.SetBlockPos("importOffset", startPos - OriginalPos);
+                    }
                     // Not ideal but whatever
                     if (blockAccessor is IWorldGenBlockAccessor)
                     {
@@ -267,6 +273,8 @@ namespace Vintagestory.ServerMods
 
             cloned.ReplaceMode = ReplaceMode;
             cloned.EntranceRotation = EntranceRotation;
+            cloned.OriginalPos = OriginalPos;
+
 
             return cloned;
         }

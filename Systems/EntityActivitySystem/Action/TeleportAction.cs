@@ -38,7 +38,7 @@ namespace Vintagestory.GameContent
 
         public override void Start(EntityActivity act)
         {
-            vas.Entity.TeleportToDouble(TargetX, TargetY, TargetZ);
+            vas.Entity.TeleportToDouble(TargetX + vas.ActivityOffset.X, TargetY + vas.ActivityOffset.Y, TargetZ + vas.ActivityOffset.Z);
             vas.Entity.Controls.StopAllMovement();
             vas.wppathTraverser.Stop();
             vas.Entity.ServerPos.Yaw = (float)Yaw;
@@ -49,7 +49,17 @@ namespace Vintagestory.GameContent
 
         public override string ToString()
         {
-            return string.Format("Teleport to {0}/{1}/{2}", TargetX, TargetY, TargetZ);
+            var x = TargetX;
+            var y = TargetY;
+            var z = TargetZ;
+            if (vas != null)
+            {
+                x += vas.ActivityOffset.X;
+                y += vas.ActivityOffset.Y;
+                z += vas.ActivityOffset.Z;
+            }
+
+            return string.Format("Teleport to {0}/{1}/{2}", x, y, z);
         }
 
         public override void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
@@ -61,7 +71,7 @@ namespace Vintagestory.GameContent
                 .AddTextInput(bc = bc.BelowCopy(0), null, CairoFont.WhiteDetailText(), "x")
                 .AddTextInput(bc = bc.CopyOffsetedSibling(70), null, CairoFont.WhiteDetailText(), "y")
                 .AddTextInput(bc = bc.CopyOffsetedSibling(70), null, CairoFont.WhiteDetailText(), "z")
-                .AddSmallButton("Tp to", () => { capi.SendChatMessage(string.Format("/tp ={0} ={1} ={2}", TargetX, TargetY, TargetZ)); return false; }, bc = bc.CopyOffsetedSibling(70), EnumButtonStyle.Small)
+                .AddSmallButton("Tp to", () => onClickTpTo(capi), bc = bc.CopyOffsetedSibling(70), EnumButtonStyle.Small)
 
                 .AddSmallButton("Insert Player Pos", () => onClickPlayerPos(capi, singleComposer), b = b.FlatCopy().FixedUnder(bc), EnumButtonStyle.Small)
 
@@ -75,6 +85,21 @@ namespace Vintagestory.GameContent
             s.GetTextInput("y").SetValue(TargetY + "");
             s.GetTextInput("z").SetValue(TargetZ + "");
             s.GetTextInput("yaw").SetValue(Yaw + "");
+        }
+
+        private bool onClickTpTo(ICoreClientAPI capi)
+        {
+            var x = TargetX;
+            var y = TargetY;
+            var z = TargetZ;
+            if (vas != null)
+            {
+                x += vas.ActivityOffset.X;
+                y += vas.ActivityOffset.Y;
+                z += vas.ActivityOffset.Z;
+            }
+            capi.SendChatMessage(string.Format("/tp ={0} ={1} ={2}", x, y, z));
+            return false;
         }
 
         private bool onClickPlayerPos(ICoreClientAPI capi, GuiComposer singleComposer)
@@ -105,7 +130,12 @@ namespace Vintagestory.GameContent
 
         public override void OnVisualize(ActivityVisualizer visualizer)
         {
-            visualizer.GoTo(new Vec3d(TargetX, TargetY, TargetZ), ColorUtil.ColorFromRgba(255,255,0,255));
+            var target = new Vec3d(TargetX, TargetY , TargetZ);
+            if (vas != null)
+            {
+                target.Add(vas.ActivityOffset);
+            }
+            visualizer.GoTo(target, ColorUtil.ColorFromRgba(255,255,0,255));
         }
     }
 }

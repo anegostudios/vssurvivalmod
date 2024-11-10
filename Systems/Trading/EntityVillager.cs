@@ -33,7 +33,7 @@ namespace Vintagestory.GameContent
 
         public string VoiceSound
         {
-            get { 
+            get {
                 if (!WatchedAttributes.HasAttribute("voiceSound"))
                 {
                     var sounds = Properties.Attributes["voiceSounds"].AsStringArray();
@@ -44,9 +44,9 @@ namespace Vintagestory.GameContent
                     return sound;
                 }
 
-                return WatchedAttributes.GetString("voiceSound"); 
+                return WatchedAttributes.GetString("voiceSound");
             }
-            set { 
+            set {
                 WatchedAttributes.SetString("voiceSound", value);
                 TalkUtil.soundName = AssetLocation.Create(value, Code.Domain);
             }
@@ -101,7 +101,7 @@ namespace Vintagestory.GameContent
 
                 startLoadingMs = Api.World.ElapsedMilliseconds;
                 wasStopped = false;
-                track = capi.StartTrack(AssetLocation.Create(trackstring), 99f, EnumSoundType.MusicGlitchunaffected, onTrackLoaded);                
+                track = capi.StartTrack(AssetLocation.Create(trackstring), 99f, EnumSoundType.MusicGlitchunaffected, onTrackLoaded);
             }
             if (packetid == (int)EntityServerPacketId.StopMusic)
             {

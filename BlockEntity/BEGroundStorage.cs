@@ -210,9 +210,13 @@ namespace Vintagestory.GameContent
             capi = api as ICoreClientAPI;
             base.Initialize(api);
             var bh = GetBehavior<BEBehaviorBurning>();
-            bh.FirePos = Pos.Copy();
-            bh.FuelPos = Pos.Copy();
-            bh.OnFireDeath = _ => { Extinguish(); };
+            // TODO properly fix this (GenDeposit [halite] /Genstructures issue) , Th3Dilli
+            if (bh != null)
+            {
+                bh.FirePos = Pos.Copy();
+                bh.FuelPos = Pos.Copy();
+                bh.OnFireDeath = _ => { Extinguish(); };
+            }
             UpdateIgnitable();
 
             DetermineStorageProperties(null);

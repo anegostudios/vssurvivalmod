@@ -39,14 +39,15 @@ namespace Vintagestory.GameContent
 
         public string Type => "positionvicinity";
 
-
+        Vec3d tmpPos = new Vec3d();
         public virtual bool ConditionSatisfied(Entity e)
         {
+            tmpPos.Set(Target).Add(vas.ActivityOffset);
             if (yrange>=0)
             {
-                return e.ServerPos.HorDistanceTo(Target) < range && Math.Abs(e.ServerPos.Y - Target.Y) < yrange;
+                return e.ServerPos.HorDistanceTo(tmpPos) < range && Math.Abs(e.ServerPos.Y - tmpPos.Y) < yrange;
             }
-            return e.ServerPos.DistanceTo(Target) < range;
+            return e.ServerPos.DistanceTo(tmpPos) < range;
         }
 
         public void LoadState(ITreeAttribute tree) { }
@@ -63,7 +64,7 @@ namespace Vintagestory.GameContent
                 .AddTextInput(bc = bc.BelowCopy(0), null, CairoFont.WhiteDetailText(), "x")
                 .AddTextInput(bc = bc.CopyOffsetedSibling(70), null, CairoFont.WhiteDetailText(), "y")
                 .AddTextInput(bc = bc.CopyOffsetedSibling(70), null, CairoFont.WhiteDetailText(), "z")
-                .AddSmallButton("Tp to", () => { capi.SendChatMessage(string.Format("/tp ={0} ={1} ={2}", targetX, targetY, targetZ)); return false; }, bc = bc.CopyOffsetedSibling(70), EnumButtonStyle.Small)
+                .AddSmallButton("Tp to", () => onClickTpTo(capi), bc = bc.CopyOffsetedSibling(70), EnumButtonStyle.Small)
 
                 .AddSmallButton("Insert Player Pos", () => onClickPlayerPos(capi, singleComposer), b = b.FlatCopy().FixedUnder(bc), EnumButtonStyle.Small)
 
@@ -83,6 +84,20 @@ namespace Vintagestory.GameContent
             s.GetTextInput("z").SetValue(Target?.Z + "");
         }
 
+        private bool onClickTpTo(ICoreClientAPI capi)
+        {
+            var x = Target.X;
+            var y = Target.Y;
+            var z = Target.Z;
+            if (vas != null)
+            {
+                x += vas.ActivityOffset.X;
+                y += vas.ActivityOffset.Y;
+                z += vas.ActivityOffset.Z;
+            }
+            capi.SendChatMessage(string.Format("/tp ={0} ={1} ={2}", x, y, z));
+            return false;
+        }
 
         private bool onClickPlayerPos(ICoreClientAPI capi, GuiComposer singleComposer)
         {

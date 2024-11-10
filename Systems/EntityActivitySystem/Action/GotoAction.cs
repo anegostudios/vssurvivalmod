@@ -31,7 +31,7 @@ namespace Vintagestory.GameContent
         public float Radius = 0;
         public override string Type => "goto";
 
-        
+
         public Vec3d Target = new Vec3d();
 
         bool done;
@@ -69,7 +69,7 @@ namespace Vintagestory.GameContent
             done = false;
             ExecutionHasFailed = false;
 
-            hereTarget = Target.Clone();
+            hereTarget = Target.Clone().Add(vas.ActivityOffset);
             if (Radius > 0)
             {
                 float alpha = (float)vas.Entity.World.Rand.NextDouble() * GameMath.TWOPI;
@@ -163,7 +163,17 @@ namespace Vintagestory.GameContent
 
         public override string ToString()
         {
-            return string.Format("{0}Goto {1}/{2}/{3} (walkSpeed {4}, animspeed {5})", Astar ? "A* " : "", Target.X, Target.Y, Target.Z, WalkSpeed, AnimSpeed);
+            var x = Target.X;
+            var y = Target.Y;
+            var z = Target.Z;
+            if (vas != null)
+            {
+                x += vas.ActivityOffset.X;
+                y += vas.ActivityOffset.Y;
+                z += vas.ActivityOffset.Z;
+            }
+
+            return string.Format("{0}Goto {1}/{2}/{3} (walkSpeed {4}, animspeed {5})", Astar ? "A* " : "", x, y, z, WalkSpeed, AnimSpeed);
         }
 
 
@@ -177,7 +187,7 @@ namespace Vintagestory.GameContent
                 .AddTextInput(bc = bc.CopyOffsetedSibling(70), null, CairoFont.WhiteDetailText(), "y")
                 .AddTextInput(bc = bc.CopyOffsetedSibling(70), null, CairoFont.WhiteDetailText(), "z")
 
-                .AddSmallButton("Tp to", () => { capi.SendChatMessage(string.Format("/tp ={0} ={1} ={2}", targetX, targetY, targetZ)); return false; }, bc = bc.CopyOffsetedSibling(70), EnumButtonStyle.Small)
+                .AddSmallButton("Tp to", () => onClickTpTo(capi), bc = bc.CopyOffsetedSibling(70), EnumButtonStyle.Small)
 
                 .AddSmallButton("Insert Player Pos", () => onClickPlayerPos(capi, singleComposer), b = b.FlatCopy().FixedUnder(bc), EnumButtonStyle.Small)
 
@@ -208,6 +218,21 @@ namespace Vintagestory.GameContent
             s.GetNumberInput("radius").SetValue(Radius + "");
         }
 
+        private bool onClickTpTo(ICoreClientAPI capi)
+        {
+            var x = Target.X;
+            var y = Target.Y;
+            var z = Target.Z;
+            if (vas != null)
+            {
+                x += vas.ActivityOffset.X;
+                y += vas.ActivityOffset.Y;
+                z += vas.ActivityOffset.Z;
+            }
+            capi.SendChatMessage(string.Format("/tp ={0} ={1} ={2}", x, y, z));
+            return false;
+        }
+
         private bool onClickPlayerPos(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             var plrPos = capi.World.Player.Entity.Pos.XYZ;
@@ -217,7 +242,7 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        
+
         public override bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer s)
         {
             this.Target = new Vec3d(s.GetTextInput("x").GetText().ToDouble(), s.GetTextInput("y").GetText().ToDouble(), s.GetTextInput("z").GetText().ToDouble());
@@ -236,7 +261,12 @@ namespace Vintagestory.GameContent
 
         public override void OnVisualize(ActivityVisualizer visualizer)
         {
-            visualizer.GoTo(Target);
+            var target = Target.Clone();
+            if (vas != null)
+            {
+                target.Add(vas.ActivityOffset);
+            }
+            visualizer.GoTo(target);
         }
     }
 }

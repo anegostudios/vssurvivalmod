@@ -164,7 +164,7 @@ namespace Vintagestory.GameContent
                 if (twcshape.DisableElements != null)
                 {
                     entityShape.RemoveElements(twcshape.DisableElements);
-                }                
+                }
 
                 if (twcshape?.OverrideTextures != null)
                 {

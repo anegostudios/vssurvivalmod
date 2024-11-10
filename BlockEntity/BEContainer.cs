@@ -14,7 +14,6 @@ namespace Vintagestory.GameContent
     {
         public abstract InventoryBase Inventory { get; }
         public abstract string InventoryClassName { get; }
-
         IInventory IBlockEntityContainer.Inventory { get { return Inventory; } }
 
         protected InWorldContainer container;

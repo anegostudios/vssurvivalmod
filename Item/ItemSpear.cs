@@ -144,8 +144,8 @@ namespace Vintagestory.GameContent
             Vec3d pos = byEntity.ServerPos.XYZ.Add(0, byEntity.LocalEyePos.Y - 0.2, 0);
 
             Vec3d aheadPos = pos.AheadCopy(1, byEntity.ServerPos.Pitch + rndpitch, byEntity.ServerPos.Yaw + rndyaw);
-            Vec3d velocity = (aheadPos - pos) * 0.65;
-            Vec3d spawnPos = byEntity.ServerPos.BehindCopy(0.21).XYZ.Add(byEntity.LocalEyePos.X, byEntity.LocalEyePos.Y - 0.2, byEntity.LocalEyePos.Z);
+            Vec3d velocity = (aheadPos - pos) * 0.65 * byEntity.Stats.GetBlended("bowDrawingStrength");
+            Vec3d spawnPos = byEntity.ServerPos.BehindCopy(0.15).XYZ.Add(byEntity.LocalEyePos.X, byEntity.LocalEyePos.Y - 0.2, byEntity.LocalEyePos.Z);
 
             enpr.ServerPos.SetPosWithDimension(spawnPos);
             enpr.ServerPos.Motion.Set(velocity);

@@ -27,18 +27,15 @@ namespace Vintagestory.GameContent
     public class ItemRope : Item
     {
         ClothManager cm;
+        SkillItem[] toolModes;
 
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
 
             cm = api.ModLoader.GetModSystem<ClothManager>();
-        }
 
-
-        public override SkillItem[] GetToolModes(ItemSlot slot, IClientPlayer forPlayer, BlockSelection blockSel)
-        {
-            return new SkillItem[]
+            toolModes = new SkillItem[]
             {
                 new SkillItem()
                 {
@@ -51,6 +48,21 @@ namespace Vintagestory.GameContent
                     Name = Lang.Get("Lengthen by 1m")
                 }
             };
+
+            var capi = api as ICoreClientAPI;
+            if (capi != null)
+            {
+                toolModes[0].WithIcon(capi, capi.Gui.LoadSvgWithPadding(new AssetLocation("textures/icons/shorten.svg"), 48, 48, 5, ColorUtil.WhiteArgb));
+                toolModes[0].TexturePremultipliedAlpha = false;
+                toolModes[1].WithIcon(capi, capi.Gui.LoadSvgWithPadding(new AssetLocation("textures/icons/lengthen.svg"), 48, 48, 5, ColorUtil.WhiteArgb));
+                toolModes[1].TexturePremultipliedAlpha = false;
+            }
+        }
+
+
+        public override SkillItem[] GetToolModes(ItemSlot slot, IClientPlayer forPlayer, BlockSelection blockSel)
+        {
+            return toolModes;
         }
         public override int GetToolMode(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSelection)
         {
@@ -270,18 +282,23 @@ namespace Vintagestory.GameContent
             {
                 var pEnds = sys.Ends;
 
+                // 2 use cases:
+                // Rope is attached to another block and player wants to connect it with a second block
+                // Rope is attached to a creature and player wants to tie creature to this block
+
                 ClothPoint cpoint = pEnds[0];
+
                 if (pEnds[0].PinnedToEntity?.EntityId != byEntity.EntityId) cpoint = pEnds[1];
 
-                if (pEnds[0].PinnedToEntity != null || pEnds[1].PinnedToEntity != null)
+                if ((pEnds[0].PinnedToEntity != null && pEnds[0].PinnedToEntity != byEntity) || (pEnds[1].PinnedToEntity != null && pEnds[1].PinnedToEntity != byEntity))
                 {
                     var fromEntity = pEnds[0].PinnedToEntity ?? pEnds[1].PinnedToEntity;
                     if (fromEntity == byEntity) fromEntity = pEnds[1].PinnedToEntity ?? pEnds[0].PinnedToEntity;
 
                     // Lengthen rope to accomodate
                     cm.UnregisterCloth(sys.ClothId);
-
                     sys = createRope(slot, fromEntity as EntityAgent, toPosition.ToVec3d().Add(0.5, 0.5, 0.5));
+
                     sys.LastPoint.PinTo(toPosition, new Vec3f(0.5f, 0.5f, 0.5f));
                 }
                 else

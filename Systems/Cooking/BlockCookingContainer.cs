@@ -113,7 +113,6 @@ namespace Vintagestory.GameContent
         {
             ItemStack[] stacks = GetCookingStacks(cookingSlotsProvider, false);
 
-            // Got recipe?
             if (GetMatchingCookingRecipe(world, stacks) != null)
             {
                 return true;
@@ -130,65 +129,61 @@ namespace Vintagestory.GameContent
 
             Block block = world.GetBlock(CodeWithVariant("type", "cooked"));
 
-            if (recipe != null)
+            if (recipe == null) return;
+            
+            int quantityServings = recipe.GetQuantityServings(stacks);
+
+            if (recipe.CooksInto != null)
             {
-                int quantityServings = recipe.GetQuantityServings(stacks);
-
-                if (recipe.CooksInto != null)
+                var outstack = recipe.CooksInto.ResolvedItemstack?.Clone();
+                if (outstack != null)
                 {
-                    var outstack = recipe.CooksInto.ResolvedItemstack?.Clone();
-                    if (outstack != null)
-                    {
-                        outstack.StackSize *= quantityServings;
-                        stacks = new ItemStack[] { outstack };
-                        block = world.GetBlock(new AssetLocation(Attributes["dirtiedBlockCode"].AsString()));
-                    }
+                    outstack.StackSize *= quantityServings;
+                    stacks = new ItemStack[] { outstack };
+                    block = world.GetBlock(new AssetLocation(Attributes["dirtiedBlockCode"].AsString()));
                 }
-                else
-                {
-                    for (int i = 0; i < stacks.Length; i++)
-                    {
-                        CookingRecipeIngredient ingred = recipe.GetIngrendientFor(stacks[i]);
-                        ItemStack cookedStack = ingred.GetMatchingStack(stacks[i])?.CookedStack?.ResolvedItemstack.Clone();
-                        if (cookedStack != null)
-                        {
-                            stacks[i] = cookedStack;
-                        }
-                    }
-                }
-
-                ItemStack outputStack = new ItemStack(block);
-
-                // Carry over and set perishable properties
-                TransitionableProperties cookedPerishProps = recipe.PerishableProps.Clone();
-                cookedPerishProps.TransitionedStack.Resolve(world, "cooking container perished stack");
-
-                CarryOverFreshness(api, cookingSlotsProvider.Slots, stacks, cookedPerishProps);
-
+            }
+            else
+            {
                 for (int i = 0; i < stacks.Length; i++)
                 {
-                    stacks[i].StackSize /= quantityServings; // whats this good for? Probably doesn't do anything meaningful
+                    CookingRecipeIngredient ingred = recipe.GetIngrendientFor(stacks[i]);
+                    ItemStack cookedStack = ingred.GetMatchingStack(stacks[i])?.CookedStack?.ResolvedItemstack.Clone();
+                    if (cookedStack != null)
+                    {
+                        stacks[i] = cookedStack;
+                    }
                 }
+            }
 
+            ItemStack outputStack = new ItemStack(block);
+            outputStack.Collectible.SetTemperature(world, outputStack, GetIngredientsTemperature(world, stacks));
 
+            // Carry over and set perishable properties
+            TransitionableProperties cookedPerishProps = recipe.PerishableProps.Clone();
+            cookedPerishProps.TransitionedStack.Resolve(world, "cooking container perished stack");
+
+            CarryOverFreshness(api, cookingSlotsProvider.Slots, stacks, cookedPerishProps);
+
+            
+            if (recipe.CooksInto != null)
+            {
+                for (int i = 0; i < cookingSlotsProvider.Slots.Length; i++)
+                {
+                    cookingSlotsProvider.Slots[i].Itemstack = i == 0 ? stacks[0] : null;
+                }
+                inputSlot.Itemstack = outputStack;
+            }
+            else
+            {
                 for (int i = 0; i < cookingSlotsProvider.Slots.Length; i++)
                 {
                     cookingSlotsProvider.Slots[i].Itemstack = null;
                 }
-
                 ((BlockCookedContainer)block).SetContents(recipe.Code, quantityServings, outputStack, stacks);
-                
-                outputStack.Collectible.SetTemperature(world, outputStack, GetIngredientsTemperature(world, stacks));
-                if (recipe.CooksInto != null)
-                {
-                    inputSlot.Itemstack = outputStack;
-                } else
-                {
-                    outputSlot.Itemstack = outputStack;
-                    inputSlot.Itemstack = null;
-                }
 
-                return;
+                outputSlot.Itemstack = outputStack;
+                inputSlot.Itemstack = null;
             }
         }
 
@@ -231,6 +226,7 @@ namespace Vintagestory.GameContent
                 if (recipe.CooksInto != null)
                 {
                     message = "mealcreation-nonfood";
+                    quantity *= recipe.CooksInto.Quantity;
                     outputName = recipe.CooksInto.ResolvedItemstack?.GetName();
                 }
                 else

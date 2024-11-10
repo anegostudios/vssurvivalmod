@@ -12,6 +12,7 @@ using ProtoBuf;
 using Vintagestory.API.Server;
 using System.Collections.Generic;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.MathTools;
 
 // Requirements:
 // Activity Collections
@@ -236,7 +237,7 @@ namespace Vintagestory.GameContent
                 {
                     ebh.ActivitySystem.PauseAutoSelection(paused);
                     if (paused) ebh.ActivitySystem.CancelAll();
-                    return TextCommandResult.Success(paused ? "Activity selection paused" : "Activity selection resumed");                    
+                    return TextCommandResult.Success(paused ? "Activity selection paused" : "Activity selection resumed");
                 }
 
                 return TextCommandResult.Error("Target entity has no EntityBehaviorActivityDriven");
@@ -301,7 +302,7 @@ namespace Vintagestory.GameContent
         public GuiDialogActivityCollections(ICoreClientAPI capi) : base(capi)
         {
             vas = new EntityActivitySystem(capi.World.Player.Entity);
-            Compose();            
+            Compose();
         }
 
         private void Compose()
@@ -350,7 +351,7 @@ namespace Vintagestory.GameContent
                 .AddSmallButton(Lang.Get("Create collection"), OnCreateCollection, rightButton.FixedUnder(clipBounds, 80), EnumButtonStyle.Normal, "create")
             ;
 
-            
+
             if (EntityId != 0) SingleComposer.GetTextInput("entityid").SetValue(EntityId);
             else SingleComposer.GetTextInput("entityid").SetPlaceHolderText("entity id");
 
@@ -397,6 +398,11 @@ namespace Vintagestory.GameContent
             if (selectedIndex < 0) return true;
 
             var key = collections.GetKeyAtIndex(selectedIndex);
+            if (EntityId > 0)
+            {
+                var selectedEntity = capi.World.GetEntityById(EntityId);
+                vas.ActivityOffset = selectedEntity.WatchedAttributes.GetBlockPos("importOffset", new BlockPos(selectedEntity.Pos.Dimension));
+            }
             editDlg = new GuiDialogActivityCollection(capi, this, collections[key], vas, key);
             editDlg.TryOpen();
             return true;
@@ -556,7 +562,7 @@ namespace Vintagestory.GameContent
                 .CreateCompo("activitycollection-" + (this.assetpath?.ToShortString() ?? "new"), dialogBounds)
                 .AddShadedDialogBG(bgBounds, true)
                 .AddDialogTitleBar("Create/Modify Activity collection", OnTitleBarClose)
-                .BeginChildElements(bgBounds) 
+                .BeginChildElements(bgBounds)
 
                 .AddStaticText("Collection Name", CairoFont.WhiteDetailText(), textlabelBounds)
                 .AddTextInput(textBounds, onNameChanced, CairoFont.WhiteDetailText(), "name")
@@ -630,7 +636,7 @@ namespace Vintagestory.GameContent
             listElem.ReloadCells(collection.Activities);
             OnSave();
 
-            return index < 0 ? collection.Activities.Count - 1 : index;            
+            return index < 0 ? collection.Activities.Count - 1 : index;
         }
 
         private void updateButtonStates()
@@ -723,7 +729,7 @@ namespace Vintagestory.GameContent
             activityDlg = new GuiDialogActivity(capi, this, vas, null, -1);
             activityDlg.TryOpen();
             activityDlg.OnClosed += () => activityDlg = null;
-                
+
             return true;
         }
 
@@ -742,7 +748,7 @@ namespace Vintagestory.GameContent
         {
             bounds.fixedPaddingY = 0;
             var cellElem = new ActivityCellEntry(
-                capi, 
+                capi,
                 bounds, "P" + Math.Round(collection.Priority,2) + "  " + collection.Name, collection.Actions.Length + " actions, " + collection.Conditions.Length + " conditions", didClickCell);
             return cellElem;
         }
@@ -851,7 +857,7 @@ namespace Vintagestory.GameContent
             ElementBounds leftButton = ElementBounds.Fixed(EnumDialogArea.LeftFixed, 0, 0, 0, 0).WithFixedPadding(8, 5);
             ElementBounds rightButton = ElementBounds.Fixed(EnumDialogArea.RightFixed, 0, 0, 0, 0).WithFixedPadding(8, 5);
 
-            
+
             ElementBounds actionsListBounds = ElementBounds.Fixed(0, 0, 500, 280);
             actionsClipBounds = actionsListBounds.ForkBoundingParent().FixedUnder(actionsLabelBounds, -3);
             ElementBounds actionsInsetBounds = actionsListBounds.FlatCopy().FixedGrow(3);
@@ -1081,7 +1087,7 @@ namespace Vintagestory.GameContent
                         {
                             entityActivity.Actions = entityActivity.Actions.Append(editActionDlg.entityAction);
                         }
-                        
+
                     }
                     else entityActivity.Actions[selectedActionIndex] = editActionDlg.entityAction;
                     actionListElem.ReloadCells(entityActivity.Actions);
@@ -1170,7 +1176,7 @@ namespace Vintagestory.GameContent
         private IGuiElementCell createActionCell(IEntityAction action, ElementBounds bounds)
         {
             bounds.fixedPaddingY = 0;
-            var cellElem = new ActivityCellEntry(capi, bounds, action.Type, action.ToString(), didClickActionCell);
+            var cellElem = new ActivityCellEntry(capi, bounds, entityActivity.Actions.IndexOf(action) + ". " + action.Type, action.ToString(), didClickActionCell);
 
             return cellElem;
         }
@@ -1294,7 +1300,7 @@ namespace Vintagestory.GameContent
             ;
 
             if (entityAction != null)
-            {   
+            {
                 entityAction.AddGuiEditFields(capi, SingleComposer);
             }
 

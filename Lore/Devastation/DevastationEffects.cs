@@ -5,6 +5,7 @@ using ProtoBuf;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
@@ -39,7 +40,8 @@ public class MobExtraSpawnsDeva
 public class DevastationEffects : ModSystem
 {
     public DevaAreaMobConfig mobConfig;
-    public Vec3d DevaLocation;
+    public Vec3d DevaLocationPresent;
+    public Vec3d DevaLocationPast;
     public int EffectRadius;
     private ICoreClientAPI capi;
     private int EffectDist = 5000;
@@ -48,7 +50,8 @@ public class DevastationEffects : ModSystem
 
     private ICoreServerAPI sapi;
     CollisionTester collisionTester = new CollisionTester();
-    AmbientModifier towerAmbient;
+    AmbientModifier towerAmbientPresent;
+    AmbientModifier towerAmbientPast;
 
     public override double ExecuteOrder() => 2;
 
@@ -61,8 +64,8 @@ public class DevastationEffects : ModSystem
 
     private void Event_OnGetWindSpeed(Vec3d pos, ref Vec3d windSpeed)
     {
-        if (DevaLocation == null) return;
-        var dist = DevaLocation.DistanceTo(pos.X, pos.Y, pos.Z);
+        if (DevaLocationPresent == null) return;
+        var dist = DevaLocationPresent.DistanceTo(pos.X, pos.Y, pos.Z);
         if (dist > EffectDist) return;
 
         windSpeed.Mul(GameMath.Clamp(dist/EffectRadius - 0.5f, 0, 1));
@@ -99,58 +102,88 @@ public class DevastationEffects : ModSystem
 
         
 
-        towerAmbient = new AmbientModifier()
+        towerAmbientPresent = new AmbientModifier()
         {
             FogColor = new WeightedFloatArray(new float[] { 66/255f, 45 / 255f, 25 / 255f }, 0),
             FogDensity = new WeightedFloat(0.05f, 0)
         }.EnsurePopulated();
 
-        api.Ambient.CurrentModifiers["towerAmbient"] = towerAmbient;
+        api.Ambient.CurrentModifiers["towerAmbientPresent"] = towerAmbientPresent;
+
+        towerAmbientPast = new AmbientModifier()
+        {
+            FogColor = AmbientModifier.DefaultAmbient.FogColor,
+            FogDensity = new WeightedFloat(0.05f, 0)
+        }.EnsurePopulated();
+
+        api.Ambient.CurrentModifiers["towerAmbientPast"] = towerAmbientPast;
     }
 
     private void onClientTick(float dt)
     {
-        if (DevaLocation == null) return;
+        if (DevaLocationPresent == null)
+        {
+            towerAmbientPast.FogDensity.Weight = 0;
+            towerAmbientPast.FogColor.Weight = 0;
+            towerAmbientPresent.FogDensity.Weight = 0;
+            towerAmbientPresent.FogColor.Weight = 0;
+            return;
+        }
 
-        Vec3d offsetToTowerCenter = DevaLocation - capi.World.Player.Entity.Pos.XYZ;
+        Vec3d offsetToTowerCenter = DevaLocationPresent - capi.World.Player.Entity.Pos.XYZ;
         var dist = offsetToTowerCenter.Length();
         if (dist > EffectDist)
         {
             capi.Render.ShaderUniforms.FogSphereQuantity = 0;
-            towerAmbient.FogDensity.Weight = 0;
-            towerAmbient.FogColor.Weight = 0;
+            towerAmbientPresent.FogDensity.Weight = 0;
+            towerAmbientPresent.FogColor.Weight = 0;
+        }
+        else
+        {
+            towerAmbientPresent.FogColor.Weight = (float)GameMath.Clamp((1 - (dist - EffectRadius / 2) / EffectRadius) * 2f, 0, 1f);
+            towerAmbientPresent.FogDensity.Value = 0.05f;
+            towerAmbientPresent.FogDensity.Weight = (float)GameMath.Clamp((1 - (dist - EffectRadius / 2) / EffectRadius), 0, 1f);
+
+            // Goes from 1 = at deva tower
+            // to 0 = 5000 blocks away
+            float f = (float)(1 - dist / EffectDist);
+            f = GameMath.Clamp(1.5f * (f - 0.25f), 0, 1);
+
+            // However, lets blend that fog sphere to ambient fog after some distance
+            var fogColor = capi.Ambient.BlendedFogColor;
+            var fogDense = capi.Ambient.BlendedFogDensity;
+
+            float w = towerAmbientPresent.FogColor.Weight;
+            float l = GameMath.Clamp(fogDense * 100 + (1 - w) - 1, 0, 1);
+
+            var b = capi.Ambient.BlendedFogBrightness * capi.Ambient.BlendedSceneBrightness;
+
+            capi.Render.ShaderUniforms.FogSphereQuantity = 1;
+            capi.Render.ShaderUniforms.FogSpheres[0] = (float)offsetToTowerCenter.X;
+            capi.Render.ShaderUniforms.FogSpheres[1] = (float)offsetToTowerCenter.Y - 300;
+            capi.Render.ShaderUniforms.FogSpheres[2] = (float)offsetToTowerCenter.Z;
+            capi.Render.ShaderUniforms.FogSpheres[3] = EffectRadius * 1.6f;
+            capi.Render.ShaderUniforms.FogSpheres[4] = 1 / 800f * f;
+            capi.Render.ShaderUniforms.FogSpheres[5] = GameMath.Lerp(66 / 255f * b, fogColor.R, l);
+            capi.Render.ShaderUniforms.FogSpheres[6] = GameMath.Lerp(45 / 255f * b, fogColor.G, l);
+            capi.Render.ShaderUniforms.FogSpheres[7] = GameMath.Lerp(25 / 255f * b, fogColor.B, l);
+        }
+
+
+
+
+        Vec3d offsetToTowerCenterPast = DevaLocationPast - capi.World.Player.Entity.Pos.XYZ;
+        var distPast = offsetToTowerCenterPast.Length();
+        if (distPast > EffectDist)
+        {
+            towerAmbientPast.FogDensity.Weight = 0;
+            towerAmbientPast.FogColor.Weight = 0;
             return;
         }
 
-        towerAmbient.FogColor.Weight = (float)GameMath.Clamp((1 - (dist - EffectRadius / 2) / EffectRadius) * 2f, 0, 1f);
-        towerAmbient.FogDensity.Value = 0.05f;
-        towerAmbient.FogDensity.Weight = (float)GameMath.Clamp((1 - (dist - EffectRadius / 2) / EffectRadius), 0, 1f);
-
-
-        // Goes from 1 = at deva tower
-        // to 0 = 5000 blocks away
-        float f = (float)(1 - dist / EffectDist);
-        f = GameMath.Clamp(1.5f * (f - 0.25f), 0, 1);
-
-        // However, lets blend that fog sphere to ambient fog after some distance
-        var fogColor = capi.Ambient.BlendedFogColor;
-        var fogDense = capi.Ambient.BlendedFogDensity;
-
-        float w = towerAmbient.FogColor.Weight;
-        float l = GameMath.Clamp(fogDense*100 + (1-w) - 1, 0, 1);
-
-        var b = capi.Ambient.BlendedFogBrightness * capi.Ambient.BlendedSceneBrightness;
-
-        capi.Render.ShaderUniforms.FogSphereQuantity = 1;
-        capi.Render.ShaderUniforms.FogSpheres[0] = (float)offsetToTowerCenter.X;
-        capi.Render.ShaderUniforms.FogSpheres[1] = (float)offsetToTowerCenter.Y - 300;
-        capi.Render.ShaderUniforms.FogSpheres[2] = (float)offsetToTowerCenter.Z;
-        capi.Render.ShaderUniforms.FogSpheres[3] = EffectRadius * 1.6f;
-        capi.Render.ShaderUniforms.FogSpheres[4] = 1/800f * f;
-        capi.Render.ShaderUniforms.FogSpheres[5] = GameMath.Lerp(66 / 255f * b, fogColor.R, l);
-        capi.Render.ShaderUniforms.FogSpheres[6] = GameMath.Lerp(45 / 255f * b, fogColor.G, l);
-        capi.Render.ShaderUniforms.FogSpheres[7] = GameMath.Lerp(25 / 255f * b, fogColor.B, l);
-
+        towerAmbientPast.FogColor.Weight = (float)GameMath.Clamp((1 - (distPast - EffectRadius / 2) / EffectRadius) * 2f, 0, 1f);
+        towerAmbientPast.FogDensity.Value = 0.05f;
+        towerAmbientPast.FogDensity.Weight = (float)GameMath.Clamp((1 - (distPast - EffectRadius / 2) / EffectRadius), 0, 1f);
     }
 
     public override void StartServerSide(ICoreServerAPI api)
@@ -178,11 +211,11 @@ public class DevastationEffects : ModSystem
 
     private void OnGameTick(float obj)
     {
-        if (DevaLocation == null) return;
+        if (DevaLocationPresent == null) return;
 
         foreach (var player in sapi.World.AllOnlinePlayers)
         {
-            double distance = player.Entity.ServerPos.DistanceTo(DevaLocation);
+            double distance = player.Entity.ServerPos.DistanceTo(DevaLocationPresent);
             
             var hasEffect = player.Entity.Stats["gliderLiftMax"].ValuesByKey.TryGetValue("deva", out _);
             if (distance < EffectRadius)
@@ -292,10 +325,10 @@ public class DevastationEffects : ModSystem
 
     private bool asyncParticleSpawn(float dt, IAsyncParticleManager manager)
     {
-        if (DevaLocation == null) return true;
+        if (DevaLocationPresent == null) return true;
         var plr = capi.World.Player.Entity;
 
-        float intensity = (float)GameMath.Clamp((1.5 - plr.Pos.DistanceTo(DevaLocation) / EffectRadius)*1.5, 0, 1);
+        float intensity = (float)GameMath.Clamp((1.5 - plr.Pos.DistanceTo(DevaLocationPresent) / EffectRadius)*1.5, 0, 1);
         if (intensity <= 0) return true;
 
         double offsetx = plr.Pos.Motion.X * 200;
@@ -307,7 +340,7 @@ public class DevastationEffects : ModSystem
             {
                 var pos = plr.Pos.XYZ.Add(dx + offsetx, 0, dz + offsetz);
 
-                float hereintensity = (float)GameMath.Clamp((1 - pos.DistanceTo(DevaLocation) / EffectRadius) * 1.5, 0, 1);
+                float hereintensity = (float)GameMath.Clamp((1 - pos.DistanceTo(DevaLocationPresent) / EffectRadius) * 1.5, 0, 1);
                 if (capi.World.Rand.NextDouble() > hereintensity * 0.015) continue;
 
                 pos.Y = capi.World.BlockAccessor.GetRainMapHeightAt((int)pos.X, (int)pos.Z) - 8 + capi.World.Rand.NextDouble() * 25;
@@ -315,8 +348,8 @@ public class DevastationEffects : ModSystem
                 Block block = capi.World.BlockAccessor.GetBlock((int)pos.X, (int)pos.Y, (int)pos.Z);
                 if (block.FirstCodePart() != "devastatedsoil") continue;
 
-                Vec3f velocity = DevaLocation.Clone().Sub(pos.X, pos.Y, pos.Z).Normalize().Mul(2f * capi.World.Rand.NextDouble()).ToVec3f() / 2f;
-                velocity.Y = 1 + Math.Max(0, 40 - pos.DistanceTo(DevaLocation)) / 20.0f;
+                Vec3f velocity = DevaLocationPresent.Clone().Sub(pos.X, pos.Y, pos.Z).Normalize().Mul(2f * capi.World.Rand.NextDouble()).ToVec3f() / 2f;
+                velocity.Y = 1 + Math.Max(0, 40 - pos.DistanceTo(DevaLocationPresent)) / 20.0f;
 
 
                 dustParticles.MinPos = pos;
@@ -331,7 +364,9 @@ public class DevastationEffects : ModSystem
 
     private void OnDevaLocation(DevaLocation packet)
     {
-        DevaLocation = packet.Pos.ToVec3d();
+        DevaLocationPresent = packet.Pos.ToVec3d();
         EffectRadius = packet.Radius;
+
+        DevaLocationPast = packet.Pos.SetDimension(Dimensions.AltWorld).ToVec3d();
     }
 }
