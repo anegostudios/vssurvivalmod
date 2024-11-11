@@ -21,6 +21,7 @@ namespace Vintagestory.GameContent
 
         float lactatingDaysAfterBirth = 21;
         float yieldLitres = 10f;
+        ItemStack liquidStack;
 
         long lastIsMilkingStateTotalMs;
 
@@ -36,7 +37,18 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(properties, attributes);
 
+            lactatingDaysAfterBirth = attributes["lactatingDaysAfterBirth"].AsFloat(21)
             yieldLitres = attributes["yieldLitres"].AsFloat(10);
+            JsonItemStack liquidJsonStack = attributes["liquidStack"].AsObject<JsonItemStack>();
+            
+            if (liquidJsonStack == null)
+            {
+                liquidStack = new ItemStack(this.entity.World.GetItem(new AssetLocation("milkportion")));
+            }
+            else if (!liquidJsonStack.Resolve(this.entity.World, "milking liquid stack"))
+            {
+                liquidStack = liquidJsonStack.ResolvedItemstack;
+            }
         }
 
         public override string PropertyName()
@@ -198,7 +210,7 @@ namespace Vintagestory.GameContent
 
             if (entity.World.Side == EnumAppSide.Server)
             {
-                ItemStack contentStack = new ItemStack(byEntity.World.GetItem(new AssetLocation("milkportion")));
+                ItemStack contentStack = liquidStack.Clone();
                 contentStack.StackSize = 999999;
 
                 if (slot.Itemstack.StackSize == 1)
