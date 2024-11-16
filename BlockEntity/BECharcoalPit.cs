@@ -274,8 +274,6 @@ namespace Vintagestory.GameContent
                     {
                         if (IsCombustible(npos)) holes.Add(npos.Copy());
                         else if (!solid) holes.Add(bpos.Copy());
-
-                        if (IsCombustible(npos) || !solid) continue;
                     }
 
                     // Only traverse inside the firewood pile
