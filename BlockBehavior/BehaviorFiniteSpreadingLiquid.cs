@@ -540,17 +540,17 @@ namespace Vintagestory.GameContent
         {
             Block ourSolid = world.BlockAccessor.GetBlock(pos, BlockLayersAccess.SolidBlocks);
 
-            BlockPos npos = pos.Copy();
-            npos.Y++;
+            BlockPos npos = pos.UpCopy();
             Block ublock = world.BlockAccessor.GetBlock(npos, BlockLayersAccess.Fluid);
-            npos.Y--;
-            if (IsSameLiquid(ourblock, ublock) && ourSolid.GetLiquidBarrierHeightOnSide(BlockFacing.UP, pos) == 0.0)
+            Block uSolid = world.BlockAccessor.GetBlock(npos, BlockLayersAccess.SolidBlocks);
+            if (IsSameLiquid(ourblock, ublock) && ourSolid.GetLiquidBarrierHeightOnSide(BlockFacing.UP, pos) == 0.0 && uSolid.GetLiquidBarrierHeightOnSide(BlockFacing.DOWN, npos) == 0.0)
             {
                 return MAXLEVEL;
             }
             else
             {
                 int level = 0;
+                npos.Y--;
                 for (int i = 0; i < BlockFacing.HORIZONTALS.Length; i++)
                 {
                     BlockFacing.HORIZONTALS[i].IterateThruFacingOffsets(npos);
