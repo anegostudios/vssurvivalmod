@@ -92,14 +92,14 @@ namespace Vintagestory.GameContent
 
             List<BlockPos> holes = FindHolesInPit();
 
-            if (holes != null)
+            if (holes.Count > 0)
             {
+                Block fireblock = Api.World.GetBlock(new AssetLocation("fire"));
+                finishedAfterTotalHours = Api.World.Calendar.TotalHours + BurnHours;
+
                 foreach (BlockPos holePos in holes)
                 {
-                    finishedAfterTotalHours = Api.World.Calendar.TotalHours + BurnHours;
-
                     BlockPos firePos = holePos.Copy();
-                    BlockFacing firefacing = null;
 
                     Block block = Api.World.BlockAccessor.GetBlock(holePos);
                     if (block.BlockId != 0 && block.BlockId != Block.BlockId)
@@ -107,20 +107,13 @@ namespace Vintagestory.GameContent
                         foreach (BlockFacing facing in BlockFacing.ALLFACES)
                         {
                             facing.IterateThruFacingOffsets(firePos);  // This must be the first command in the loop, to ensure all facings will be properly looped through regardless of any 'continue;' statements
-                            if (Api.World.BlockAccessor.GetBlock(firePos).BlockId == 0)
+                            if (Api.World.BlockAccessor.GetBlock(firePos).BlockId == 0 && Api.World.Rand.NextDouble() > 0.9f)
                             {
-                                firefacing = facing;
-                                break;
+                                Api.World.BlockAccessor.SetBlock(fireblock.BlockId, firePos);
+                                BlockEntity befire = Api.World.BlockAccessor.GetBlockEntity(firePos);
+                                befire?.GetBehavior<BEBehaviorBurning>()?.OnFirePlaced(facing, startedByPlayerUid);
                             }
                         }
-                    }
-
-                    if (firefacing != null)
-                    {
-                        Block fireblock = Api.World.GetBlock(new AssetLocation("fire"));
-                        Api.World.BlockAccessor.SetBlock(fireblock.BlockId, firePos);
-                        BlockEntity befire = Api.World.BlockAccessor.GetBlockEntity(firePos);
-                        befire?.GetBehavior<BEBehaviorBurning>()?.OnFirePlaced(firefacing, startedByPlayerUid);
                     }
                 }
 
@@ -207,7 +200,7 @@ namespace Vintagestory.GameContent
                 int maxY = val.Value.Z;
                 while (lpos.Y <= maxY)
                 {
-                    if (BlockFirepit.IsFirewoodPile(Api.World, lpos))  // test for the possibility someone had contiguous firewood both above and below a soil block for example
+                    if (BlockFirepit.IsFirewoodPile(Api.World, lpos) || lpos == Pos)  // test for the possibility someone had contiguous firewood both above and below a soil block for example
                     {
                         if (charCoalQuantity > 0)
                         {
@@ -224,8 +217,6 @@ namespace Vintagestory.GameContent
                     lpos.Up();
                 }
             }
-
-            Api.World.BlockAccessor.SetBlock(0, Pos);
         }
 
         internal void Init(IPlayer player)
@@ -267,7 +258,7 @@ namespace Vintagestory.GameContent
 
                     Block nBlock = chunk.GetLocalBlockAtBlockPos(Api.World, npos);
 
-                    bool solid = nBlock.SideSolid[facing.Opposite.Index] || (nBlock is BlockMicroBlock && (chunk.GetLocalBlockEntityAtBlockPos(npos) as BlockEntityMicroBlock).sideAlmostSolid[facing.Opposite.Index]);
+                    bool solid = nBlock.GetLiquidBarrierHeightOnSide(facing.Opposite, npos) == 1 || nBlock.GetLiquidBarrierHeightOnSide(facing, bpos) == 1;
                     bool isFirewoodpile = BlockFirepit.IsFirewoodPile(Api.World, npos);
 
                     if (!isFirewoodpile && nBlock.BlockId != charcoalPitBlockId)
