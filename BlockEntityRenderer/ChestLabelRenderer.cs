@@ -25,9 +25,10 @@ namespace Vintagestory.GameContent
             Vec3d camPos = api.World.Player.Entity.CameraPos;
             Block block = api.World.BlockAccessor.GetBlock(pos);
 
-            float labelOffsetX = block.Code.Path.Contains("labeledtrunk") ? -0.5f : 0;
-            float labelOffsetY = 0;
-            float labelOffsetZ = 0;
+            Vec3f labelOffset = new Vec3f();
+            labelOffset.X = block.Code.Path.Contains("labeledtrunk") ? -0.5f : 0;
+            labelOffset.Y = 0;
+            labelOffset.Z = 0;
 
             if (camPos.SquareDistanceTo(pos.X, pos.Y, pos.Z) > 20 * 20) return;
 
@@ -44,7 +45,7 @@ namespace Vintagestory.GameContent
                 .Translate(0.5f, 0.5f, 0.5f)
                 .RotateY(rotY + GameMath.PI)
                 .Translate(-0.5f, -0.5, -0.5f)
-                .Translate(0.5f + labelOffsetX, 0.35f + labelOffsetY, 1 / 16f + 0.03f + labelOffsetZ)
+                .Translate(0.5f + labelOffset.X, 0.35f + labelOffset.Y, 1 / 16f + 0.03f + labelOffset.Z)
                 .Scale(0.45f * QuadWidth, 0.45f * QuadHeight, 0.45f * QuadWidth)
                 .Values
             ;

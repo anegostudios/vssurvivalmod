@@ -40,11 +40,7 @@ namespace Vintagestory.GameContent
 
             var atblock = byEntity.World.BlockAccessor.GetBlock(onBlockPos);
             BlockEntity be = byEntity.World.BlockAccessor.GetBlockEntity(onBlockPos);
-            var blockMb = byEntity.World.BlockAccessor.GetBlock(onBlockPos) as BlockMultiblock;
-            if (blockMb != null)
-            {
-                be = byEntity.World.BlockAccessor.GetBlockEntity(onBlockPos.AddCopy(blockMb.OffsetInv));
-            }
+            if (atblock as BlockMultiblock != null) be = byEntity.World.BlockAccessor.GetBlockEntity(onBlockPos.AddCopy((atblock as BlockMultiblock).OffsetInv));
 
             if (be is BlockEntityLabeledChest || be is BlockEntitySignPost || be is BlockEntitySign || be is BlockEntityBloomery || be is BlockEntityFirepit || be is BlockEntityForge || be is BlockEntityCrate || atblock.HasBehavior<BlockBehaviorJonasGasifier>()) return;
 
