@@ -20,7 +20,12 @@ namespace Vintagestory.GameContent
                 }
 
                 world.BlockAccessor.SetBlock(nBlock.BlockId, pos);
-                if (uBlock != null) world.BlockAccessor.SetBlock(uBlock.BlockId, pos.UpCopy());
+                world.BlockAccessor.TriggerNeighbourBlockUpdate(pos);
+                if (uBlock != null)
+                {
+                    world.BlockAccessor.SetBlock(uBlock.BlockId, pos.UpCopy());
+                    world.BlockAccessor.TriggerNeighbourBlockUpdate(pos.UpCopy());
+                }
                 return true;
             }
 
@@ -42,7 +47,7 @@ namespace Vintagestory.GameContent
                 abovePos.Up();
             }
 
-            if (abovePos == pos.UpCopy() || aboveBlock == null)
+            if (abovePos == pos.UpCopy() || aboveBlock == null || byPlayer?.WorldData.CurrentGameMode == EnumGameMode.Creative)
             {
                 base.OnBlockBroken(world, pos, byPlayer);
                 world.BlockAccessor.TriggerNeighbourBlockUpdate(pos);
