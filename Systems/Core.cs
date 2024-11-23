@@ -492,6 +492,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockDamageOnTouch", typeof(BlockDamageOnTouch));
             api.RegisterBlockClass("BlockPlantDamageOnTouch", typeof(BlockPlantDamageOnTouch));
             api.RegisterBlockClass("BlockLabeledChest", typeof(BlockLabeledChest));
+            api.RegisterBlockClass("BlockLabeledTrunk", typeof(BlockLabeledTrunk));
             api.RegisterBlockClass("BlockStalagSection", typeof(BlockStalagSection));
             api.RegisterBlockClass("BlockLooseOres", typeof(BlockLooseOres));
             api.RegisterBlockClass("BlockPan", typeof(BlockPan));
