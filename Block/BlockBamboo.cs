@@ -81,19 +81,19 @@ namespace Vintagestory.GameContent
                 if (overrider?.Exists == true) this.RandomDrawOffset = overrider.AsInt(1);
             }
 
-            isSegmentWithLeaves = LastCodePart() == "segment2" || LastCodePart() == "segment3";
+            isSegmentWithLeaves = Variant["part"] == "segment2" || Variant["part"] == "segment3";
         }
 
 
         public string Type()
         {
-            return LastCodePart(1);
+            return Variant["color"];
         }
 
         public Block NextSegment(IBlockAccessor blockAccess)
         {
 
-            string part = LastCodePart();
+            string part = Variant["part"];
 
             return Type() == "green" ?
                 (part == "segment1" ? greenSeg2 : (part == "segment2" ? greenSeg3 : null)) :
@@ -245,7 +245,7 @@ namespace Vintagestory.GameContent
 
         public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing, int rndIndex = -1)
         {
-            if (!this.isSegmentWithLeaves || LastCodePart() != "segment3") return base.GetRandomColor(capi, pos, facing, rndIndex);
+            if (!this.isSegmentWithLeaves || Variant["part"] != "segment3") return base.GetRandomColor(capi, pos, facing, rndIndex);
 
             if (Textures == null || Textures.Count == 0) return 0;
             CompositeTexture tex;

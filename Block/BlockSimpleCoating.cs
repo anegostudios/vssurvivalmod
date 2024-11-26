@@ -54,13 +54,13 @@ namespace Vintagestory.GameContent
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {
-            Block block = world.BlockAccessor.GetBlock(CodeWithParts("down"));
+            Block block = world.BlockAccessor.GetBlock(CodeWithVariant("side", "down"));
             return new ItemStack[] { new ItemStack(block) };
         }
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {
-            Block block = world.BlockAccessor.GetBlock(CodeWithParts("down"));
+            Block block = world.BlockAccessor.GetBlock(CodeWithVariant("side", "down"));
             return new ItemStack(block);
         }
 
@@ -81,7 +81,7 @@ namespace Vintagestory.GameContent
 
             if (block.CanAttachBlockAt(world.BlockAccessor, this, attachingBlockPos, onBlockFace))
             {
-                int blockId = world.BlockAccessor.GetBlock(CodeWithParts(oppositeFace.Code)).BlockId;
+                int blockId = world.BlockAccessor.GetBlock(CodeWithVariant("side", oppositeFace.Code)).BlockId;
                 world.BlockAccessor.SetBlock(blockId, blockpos);
                 return true;
             }
@@ -91,8 +91,7 @@ namespace Vintagestory.GameContent
 
         bool CanBlockStay(IWorldAccessor world, BlockPos pos)
         {
-            string[] parts = Code.Path.Split('-');
-            BlockFacing facing = BlockFacing.FromCode(parts[parts.Length - 1]);
+            BlockFacing facing = BlockFacing.FromCode(Variant["side"]);
             Block block = world.BlockAccessor.GetBlock(pos.AddCopy(facing));
 
             return block.CanAttachBlockAt(world.BlockAccessor, this, pos.AddCopy(facing), facing.Opposite);
@@ -107,23 +106,23 @@ namespace Vintagestory.GameContent
 
         public override AssetLocation GetRotatedBlockCode(int angle)
         {
-            if (LastCodePart() == "up" || LastCodePart() == "down") return Code;
+            if (Variant["side"] == "up" || Variant["side"] == "down") return Code;
 
-            BlockFacing newFacing = BlockFacing.HORIZONTALS_ANGLEORDER[((360 - angle) / 90 + BlockFacing.FromCode(LastCodePart()).HorizontalAngleIndex) % 4];
-            return CodeWithParts(newFacing.Code);
+            BlockFacing newFacing = BlockFacing.HORIZONTALS_ANGLEORDER[((360 - angle) / 90 + BlockFacing.FromCode(Variant["side"]).HorizontalAngleIndex) % 4];
+            return CodeWithVariant("side", newFacing.Code);
         }
 
         public override AssetLocation GetVerticallyFlippedBlockCode()
         {
-            return LastCodePart() == "up" ? CodeWithParts("down") : CodeWithParts("up");
+            return Variant["side"] == "up" ? CodeWithVariant("side", "down") : CodeWithVariant("side", "up");
         }
 
         public override AssetLocation GetHorizontallyFlippedBlockCode(EnumAxis axis)
         {
-            BlockFacing facing = BlockFacing.FromCode(LastCodePart());
+            BlockFacing facing = BlockFacing.FromCode(Variant["side"]);
             if (facing.Axis == axis)
             {
-                return CodeWithParts(facing.Opposite.Code);
+                return CodeWithVariant("side", facing.Opposite.Code);
             }
             return Code;
         }
