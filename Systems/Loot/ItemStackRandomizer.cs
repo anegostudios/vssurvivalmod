@@ -82,6 +82,11 @@ namespace Vintagestory.GameContent
             if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
             if (byPlayer == null) return;
 
+            if (byPlayer.Entity.Controls.ShiftKey || byPlayer.Entity.Controls.CtrlKey)
+            {
+                base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
+                return;
+            }
 
             TreeAttribute tree = new TreeAttribute();
             tree.SetFloat("totalChance", slot.Itemstack.Attributes.GetFloat("totalChance", 1));
