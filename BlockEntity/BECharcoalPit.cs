@@ -31,6 +31,10 @@ namespace Vintagestory.GameContent
 
         public bool Lit => lit;
 
+        int maxSize = 11;
+
+        public int MaxPileSize { get { return maxSize; } set { maxSize = value; } }
+
 
         public override void Initialize(ICoreAPI api)
         {
@@ -47,7 +51,7 @@ namespace Vintagestory.GameContent
 
             if (Lit)
             {
-                FindHoleInPit();
+                FindHolesInPit();
             }
         }
 
@@ -86,36 +90,31 @@ namespace Vintagestory.GameContent
 
             if (state == 0) return;
 
-            BlockPos holePos = FindHoleInPit();
+            List<BlockPos> holes = FindHolesInPit();
 
-            if (holePos != null)
+            if (holes.Count > 0)
             {
+                Block fireblock = Api.World.GetBlock(new AssetLocation("fire"));
                 finishedAfterTotalHours = Api.World.Calendar.TotalHours + BurnHours;
 
-                BlockPos tmpPos = new BlockPos();
-                BlockFacing firefacing = null;
-
-                Block block = Api.World.BlockAccessor.GetBlock(holePos);
-                if (block.BlockId != 0 && block.BlockId != Block.BlockId)
+                foreach (BlockPos holePos in holes)
                 {
-                    foreach (BlockFacing facing in BlockFacing.ALLFACES)
+                    BlockPos firePos = holePos.Copy();
+
+                    Block block = Api.World.BlockAccessor.GetBlock(holePos);
+                    if (block.BlockId != 0 && block.BlockId != Block.BlockId)
                     {
-                        tmpPos.Set(holePos).Add(facing);
-                        if (Api.World.BlockAccessor.GetBlock(tmpPos).BlockId == 0)
+                        foreach (BlockFacing facing in BlockFacing.ALLFACES)
                         {
-                            holePos.Set(tmpPos);
-                            firefacing = facing;
-                            break;
+                            facing.IterateThruFacingOffsets(firePos);  // This must be the first command in the loop, to ensure all facings will be properly looped through regardless of any 'continue;' statements
+                            if (Api.World.BlockAccessor.GetBlock(firePos).BlockId == 0 && Api.World.Rand.NextDouble() > 0.9f)
+                            {
+                                Api.World.BlockAccessor.SetBlock(fireblock.BlockId, firePos);
+                                BlockEntity befire = Api.World.BlockAccessor.GetBlockEntity(firePos);
+                                befire?.GetBehavior<BEBehaviorBurning>()?.OnFirePlaced(facing, startedByPlayerUid);
+                            }
                         }
                     }
-                }
-
-                if (firefacing != null)
-                {
-                    Block fireblock = Api.World.GetBlock(new AssetLocation("fire"));
-                    Api.World.BlockAccessor.SetBlock(fireblock.BlockId, holePos);
-                    BlockEntity befire = Api.World.BlockAccessor.GetBlockEntity(holePos);
-                    befire?.GetBehavior<BEBehaviorBurning>()?.OnFirePlaced(firefacing, startedByPlayerUid);
                 }
 
                 return;
@@ -137,7 +136,7 @@ namespace Vintagestory.GameContent
             MarkDirty(true);
 
             // To popuplate the smokeLocations
-            FindHoleInPit();
+            FindHolesInPit();
         }
 
         void ConvertPit()
@@ -148,12 +147,13 @@ namespace Vintagestory.GameContent
             Queue<BlockPos> bfsQueue = new Queue<BlockPos>();
             bfsQueue.Enqueue(Pos);
 
-            int maxHalfSize = 6;
+            BlockPos minPos = Pos.Copy(), maxPos = Pos.Copy();
             Vec3i curQuantityAndYMinMax;
 
             while (bfsQueue.Count > 0)
             {
                 BlockPos bpos = bfsQueue.Dequeue();
+                BlockPos npos = bpos.Copy();
 
                 BlockPos bposGround = bpos.Copy();
                 bposGround.Y = 0;
@@ -172,7 +172,7 @@ namespace Vintagestory.GameContent
 
                 foreach (BlockFacing facing in BlockFacing.ALLFACES)
                 {
-                    BlockPos npos = bpos.AddCopy(facing);
+                    facing.IterateThruFacingOffsets(npos);  // This must be the first command in the loop, to ensure all facings will be properly looped through regardless of any 'continue;' statements
 
                     // Only traverse inside the firewood pile
                     if (!BlockFirepit.IsFirewoodPile(Api.World, npos))
@@ -182,13 +182,10 @@ namespace Vintagestory.GameContent
                         continue;
                     }
 
-                    // Only traverse within a 12x12x12 block cube
-                    bool inCube = Math.Abs(npos.X - Pos.X) <= maxHalfSize && Math.Abs(npos.Y - Pos.Y) <= maxHalfSize && Math.Abs(npos.Z - Pos.Z) <= maxHalfSize;
-
-                    if (inCube && !visitedPositions.Contains(npos))
+                    if (InCube(npos, ref minPos, ref maxPos) && !visitedPositions.Contains(npos))
                     {
-                        bfsQueue.Enqueue(npos);
-                        visitedPositions.Add(npos);
+                        bfsQueue.Enqueue(npos.Copy());
+                        visitedPositions.Add(npos.Copy());
                     }
                 }
             }
@@ -203,7 +200,7 @@ namespace Vintagestory.GameContent
                 int maxY = val.Value.Z;
                 while (lpos.Y <= maxY)
                 {
-                    if (BlockFirepit.IsFirewoodPile(Api.World, lpos))  // test for the possibility someone had contiguous firewood both above and below a soil block for example
+                    if (BlockFirepit.IsFirewoodPile(Api.World, lpos) || lpos == Pos)  // test for the possibility someone had contiguous firewood both above and below a soil block for example
                     {
                         if (charCoalQuantity > 0)
                         {
@@ -220,8 +217,6 @@ namespace Vintagestory.GameContent
                     lpos.Up();
                 }
             }
-
-            Api.World.BlockAccessor.SetBlock(0, Pos);
         }
 
         internal void Init(IPlayer player)
@@ -231,21 +226,23 @@ namespace Vintagestory.GameContent
 
 
         // Returns the block pos that is adjacent to a hole
-        BlockPos FindHoleInPit()
+        List<BlockPos> FindHolesInPit()
         {
             smokeLocations.Clear();
 
+            List<BlockPos> holes = new List<BlockPos>();
             HashSet<BlockPos> visitedPositions = new HashSet<BlockPos>();
             Queue<BlockPos> bfsQueue = new Queue<BlockPos>();
             bfsQueue.Enqueue(Pos);
 
             int charcoalPitBlockId = Api.World.GetBlock(new AssetLocation("charcoalpit")).BlockId;
 
-            int maxHalfSize = 6;
+            BlockPos minPos = Pos.Copy(), maxPos = Pos.Copy();
 
             while (bfsQueue.Count > 0)
             {
                 BlockPos bpos = bfsQueue.Dequeue();
+                BlockPos npos = bpos.Copy();
                 BlockPos bposGround = bpos.Copy();
                 bposGround.Y = 0;
 
@@ -255,35 +252,70 @@ namespace Vintagestory.GameContent
 
                 foreach (BlockFacing facing in BlockFacing.ALLFACES)
                 {
-                    BlockPos npos = bpos.AddCopy(facing);
+                    facing.IterateThruFacingOffsets(npos);  // This must be the first command in the loop, to ensure all facings will be properly looped through regardless of any 'continue;' statements
                     IWorldChunk chunk = Api.World.BlockAccessor.GetChunkAtBlockPos(npos);
                     if (chunk == null) return null;
 
                     Block nBlock = chunk.GetLocalBlockAtBlockPos(Api.World, npos);
 
-                    bool solid = nBlock.SideSolid[facing.Opposite.Index] || (nBlock is BlockMicroBlock && (chunk.GetLocalBlockEntityAtBlockPos(npos) as BlockEntityMicroBlock).sideAlmostSolid[facing.Opposite.Index]);
+                    bool solid = nBlock.GetLiquidBarrierHeightOnSide(facing.Opposite, npos) == 1 || nBlock.GetLiquidBarrierHeightOnSide(facing, bpos) == 1;
                     bool isFirewoodpile = BlockFirepit.IsFirewoodPile(Api.World, npos);
 
-                    if (!solid && !isFirewoodpile && nBlock.BlockId != charcoalPitBlockId)
+                    if (!isFirewoodpile && nBlock.BlockId != charcoalPitBlockId)
                     {
-                        return bpos;
+                        if (IsCombustible(npos)) holes.Add(npos.Copy());
+                        else if (!solid) holes.Add(bpos.Copy());
                     }
 
                     // Only traverse inside the firewood pile
                     if (!isFirewoodpile) continue;
 
-                    // Only traverse within a 12x12x12 block cube
-                    bool inCube = Math.Abs(npos.X - Pos.X) <= maxHalfSize && Math.Abs(npos.Y - Pos.Y) <= maxHalfSize && Math.Abs(npos.Z - Pos.Z) <= maxHalfSize;
-                    
-                    if (inCube && !visitedPositions.Contains(npos))
+                    if (InCube(npos, ref minPos, ref maxPos) && !visitedPositions.Contains(npos))
                     {
-                        bfsQueue.Enqueue(npos);
-                        visitedPositions.Add(npos);
+                        bfsQueue.Enqueue(npos.Copy());
+                        visitedPositions.Add(npos.Copy());
                     }
                 }
             }
 
-            return null;
+            return holes;
+        }
+
+        private bool InCube(BlockPos npos, ref BlockPos minPos, ref BlockPos maxPos)
+        {
+            BlockPos nmin = minPos.Copy(), nmax = maxPos.Copy();
+
+            if (npos.X < minPos.X) nmin.X = npos.X;
+            else if (npos.X > maxPos.X) nmax.X = npos.X;
+
+            if (npos.Y < minPos.Y) nmin.Y = npos.Y;
+            else if (npos.Y > maxPos.Y) nmax.Y = npos.Y;
+
+            if (npos.Z < minPos.Z) nmin.Z = npos.Z;
+            else if (npos.Z > maxPos.Z) nmax.Z = npos.Z;
+
+            // Only traverse within maxSize range
+            if (nmax.X - nmin.X + 1 <= maxSize && nmax.Y - nmin.Y + 1 <= maxSize && nmax.Z - nmin.Z + 1 <= maxSize)
+            {
+                minPos = nmin.Copy();
+                maxPos = nmax.Copy();
+                return true;
+            }
+
+            return false;
+        }
+
+        private bool IsCombustible(BlockPos pos)
+        {
+            Block block = Api.World.BlockAccessor.GetBlock(pos);
+            if (block.CombustibleProps != null) return block.CombustibleProps.BurnDuration > 0;
+
+            if (block is ICombustible bic)
+            {
+                return bic.GetBurnDuration(Api.World, pos) > 0;
+            }
+
+            return false;
         }
 
 
@@ -303,7 +335,7 @@ namespace Vintagestory.GameContent
 
             if ((beforeState != state || beforeLit != lit) && Api?.Side == EnumAppSide.Client)
             {
-                FindHoleInPit();
+                FindHolesInPit();
             }
         }
 
