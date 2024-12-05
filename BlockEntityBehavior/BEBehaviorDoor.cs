@@ -33,6 +33,7 @@ namespace Vintagestory.GameContent
                 }
             }
         }
+        public BlockFacing facingWhenOpened { get { return invertHandles? facingWhenClosed.GetCCW() : facingWhenClosed.GetCW(); } }
 
         /// <summary>
         /// A rather counter-intuitive property, setting this actually sets up an internal Vec3i giving the offset to the Pos of the supplied door
@@ -230,7 +231,10 @@ namespace Vintagestory.GameContent
             return ((int)Math.Round(angleHor / deg90)) * deg90;
         }
 
-
+        public bool IsSideSolid(BlockFacing facing)
+        {
+            return (!opened && facing == facingWhenClosed) || (opened && facing == facingWhenOpened);
+        }
 
         public bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref EnumHandling handling)
         {
@@ -266,11 +270,24 @@ namespace Vintagestory.GameContent
 
             Api.World.PlaySoundAt(sound, be.Pos.X + 0.5f, be.Pos.InternalY + 0.5f, be.Pos.Z + 0.5f, byPlayer, EnumSoundType.Sound, pitch);
 
-            if (leftDoor != null && invertHandles) leftDoor.ToggleDoorWing(opened);
-            if (rightDoor != null) rightDoor.ToggleDoorWing(opened);
+            if (leftDoor != null && invertHandles)
+            {
+                leftDoor.ToggleDoorWing(opened);
+                leftDoor.UpdateNeighbors();
+            }
+            else if (rightDoor != null)
+            {
+                rightDoor.ToggleDoorWing(opened);
+                rightDoor.UpdateNeighbors();
+            }
 
             be.MarkDirty(true);
 
+            UpdateNeighbors();
+        }
+
+        private void UpdateNeighbors()
+        {
             if (Api.Side == EnumAppSide.Server)
             {
                 BlockPos tempPos = new BlockPos();
@@ -278,27 +295,7 @@ namespace Vintagestory.GameContent
                 for (int y = 0; y < doorBh.height; y++)
                 {
                     tempPos.Set(Pos).Add(0, y, 0);
-                    BlockFacing sideMove;
-                    int face = ((int)(RotateYRad / (GameMath.PIHALF - 0.00001F)) % 4 + 4) % 4;
-                    switch (face)
-                    {
-                        case 0:
-                            sideMove = BlockFacing.EAST;
-                            break;
-                        case 1:
-                            sideMove = BlockFacing.NORTH;
-                            break;
-                        case 2:
-                            sideMove = BlockFacing.WEST;
-                            break;
-                        case 3:
-                            sideMove = BlockFacing.SOUTH;
-                            break;
-                        default:
-                            sideMove = BlockFacing.EAST;
-                            break;
-                    }
-                    if (invertHandles) sideMove = sideMove.Opposite;
+                    BlockFacing sideMove = BlockFacing.ALLFACES[Opened ? facingWhenClosed.HorizontalAngleIndex : facingWhenOpened.HorizontalAngleIndex];
 
                     for (int x = 0; x < doorBh.width; x++)
                     {

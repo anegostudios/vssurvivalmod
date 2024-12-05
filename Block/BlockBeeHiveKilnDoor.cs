@@ -16,7 +16,7 @@ public class BlockBeeHiveKilnDoor : BlockGeneric
             var behaviorDoor = blockEntityBeeHiveKiln.GetBehavior<BEBehaviorDoor>();
             // rotate door by 180° so it faces the player, needs to be done here since it uses BEBehaviorDoor which sets up the rotation
             // and the beehive klin rotates the other way round as other doors
-            behaviorDoor.RotateYRad += GameMath.PI;
+            behaviorDoor.RotateYRad += (behaviorDoor.RotateYRad == -1 * GameMath.PI) ? -1 * GameMath.PI : GameMath.PI;
             behaviorDoor.SetupRotationsAndColSelBoxes(false);
 
             blockEntityBeeHiveKiln.Orientation = BlockFacing.HorizontalFromAngle(behaviorDoor.RotateYRad - GameMath.PIHALF);
