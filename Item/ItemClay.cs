@@ -147,7 +147,7 @@ namespace Vintagestory.GameContent
             {
                 slot.TakeOut(1);
                 slot.MarkDirty();
-                bea.AvailableVoxels += 25;
+                bea.AvailableVoxels += 36;
             }
 
             // The server side call is made using a custom network packet
