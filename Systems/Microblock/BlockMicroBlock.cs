@@ -215,7 +215,10 @@ namespace Vintagestory.GameContent
 
             if (bemc?.BlockIds == null || bemc.BlockIds.Length == 0) return new Vec4f(0, 0, 0, 0.6f);
 
-            Block block = api.World.GetBlock(bemc.BlockIds[0]);
+            var blockIds = BlockEntityMicroBlock.MaterialIdsFromAttributes(tree, world);
+            var voxelCuboids = new List<uint>(BlockEntityMicroBlock.GetVoxelCuboids(tree));
+
+            Block block = api.World.GetBlock(bemc.BlockIds[bemc.getMajorityMaterial(voxelCuboids, blockIds)]);
             int col = block.GetColor(capi, pos);
             float b = ((col & 0xff) + ((col >> 8) & 0xff) + ((col >> 16) & 0xff)) / 3f;
             if (b < 0.4 * 255) return new Vec4f(1, 1, 1, 0.6f);
@@ -228,7 +231,10 @@ namespace Vintagestory.GameContent
 
             if (bemc?.BlockIds != null && (bemc.sideAlmostSolid[facing.Index] || bemc.sideAlmostSolid[facing.Opposite.Index]) && bemc.BlockIds.Length > 0 && bemc.VolumeRel >= 0.5f)
             {
-                Block block = api.World.GetBlock(bemc.BlockIds[0]);
+                var blockIds = BlockEntityMicroBlock.MaterialIdsFromAttributes(tree, world);
+                var voxelCuboids = new List<uint>(BlockEntityMicroBlock.GetVoxelCuboids(tree));
+
+                Block block = api.World.GetBlock(bemc.BlockIds[bemc.getMajorityMaterial(voxelCuboids, blockIds)]);
                 var mat = block.BlockMaterial;
                 if (mat == EnumBlockMaterial.Ore || mat == EnumBlockMaterial.Stone || mat == EnumBlockMaterial.Soil || mat == EnumBlockMaterial.Ceramic)
                 {
@@ -557,7 +563,10 @@ namespace Vintagestory.GameContent
             BlockEntityMicroBlock be = blockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
             if (be?.BlockIds != null && be.BlockIds.Length > 0)
             {
-                Block block = api.World.GetBlock(be.BlockIds[0]);
+                var blockIds = BlockEntityMicroBlock.MaterialIdsFromAttributes(tree, world);
+                var voxelCuboids = new List<uint>(BlockEntityMicroBlock.GetVoxelCuboids(tree));
+
+                Block block = api.World.GetBlock(be.BlockIds[be.getMajorityMaterial(voxelCuboids, blockIds)]);
                 return block.Resistance;
             }
 
@@ -655,7 +664,10 @@ namespace Vintagestory.GameContent
             BlockEntityMicroBlock be = capi.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
             if (be?.BlockIds != null && be.BlockIds.Length > 0)
             {
-                Block block = capi.World.GetBlock(be.BlockIds[0]);
+                var blockIds = BlockEntityMicroBlock.MaterialIdsFromAttributes(tree, world);
+                var voxelCuboids = new List<uint>(BlockEntityMicroBlock.GetVoxelCuboids(tree));
+                
+                Block block = capi.World.GetBlock(be.BlockIds[be.getMajorityMaterial(voxelCuboids, blockIds)]);
                 if (block is BlockMicroBlock) return 0; // Prevent-chisel-ception. Happened to WQP, not sure why
 
                 return block.GetColor(capi, pos);
