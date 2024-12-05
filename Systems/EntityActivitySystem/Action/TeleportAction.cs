@@ -45,6 +45,8 @@ namespace Vintagestory.GameContent
             vas.Entity.Pos.Yaw = (float)Yaw;
             vas.Entity.BodyYaw = (float)Yaw;
             vas.Entity.BodyYawServer = (float)Yaw;
+
+            vas.ClearNextActionDelay();
         }
 
         public override string ToString()

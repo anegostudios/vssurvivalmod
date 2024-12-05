@@ -77,7 +77,7 @@ namespace Vintagestory.GameContent
         {
             if (ExactTarget.Length() > 0)
             {
-                var exactTarget = ExactTarget;
+                var exactTarget = ExactTarget.Clone();
                 if (vas != null)
                 {
                     exactTarget.Add(vas.ActivityOffset);
@@ -107,7 +107,7 @@ namespace Vintagestory.GameContent
         {
             if (ExactTarget.Length() > 0)
             {
-                var exactTarget = ExactTarget;
+                var exactTarget = ExactTarget.Clone();
                 if (vas != null)
                 {
                     exactTarget.Add(vas.ActivityOffset);
@@ -130,9 +130,7 @@ namespace Vintagestory.GameContent
                 .AddTextInput(bc = bc.FlatCopy().FixedUnder(b, -3), null, CairoFont.WhiteDetailText(), "x")
                 .AddTextInput(bc = bc.CopyOffsetedSibling(70), null, CairoFont.WhiteDetailText(), "y")
                 .AddTextInput(bc = bc.CopyOffsetedSibling(70), null, CairoFont.WhiteDetailText(), "z")
-
                 .AddSmallButton("Tp to", () => onClickTpTo(capi), bc = bc.CopyOffsetedSibling(70), EnumButtonStyle.Small)
-
                 .AddSmallButton("Insert Player Pos", () => onClickPlayerPos(capi, singleComposer), b = b.FlatCopy().WithFixedPosition(0,0).FixedUnder(bc,2), EnumButtonStyle.Small)
 
 
@@ -196,6 +194,8 @@ namespace Vintagestory.GameContent
 
         public override void OnVisualize(ActivityVisualizer visualizer)
         {
+            if (visualizer.CurrentPos == null) return;
+
             var target = getTarget(visualizer.Api, visualizer.CurrentPos);
             if (target != null)
             {

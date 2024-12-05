@@ -34,11 +34,17 @@ namespace Vintagestory.GameContent
             }
         }
 
+        /// <summary>
+        /// A rather counter-intuitive property, setting this actually sets up an internal Vec3i giving the offset to the Pos of the supplied door
+        /// </summary>
         BEBehaviorDoor leftDoor
         {
             get { return leftDoorOffset == null ? null : BlockBehaviorDoor.getDoorAt(Api.World, Pos.AddCopy(leftDoorOffset)); }
             set { leftDoorOffset = value == null ? null : value.Pos.SubCopy(Pos).ToVec3i(); }
         }
+        /// <summary>
+        /// A rather counter-intuitive property, setting this actually sets up an internal Vec3i giving the offset to the Pos of the supplied door
+        /// </summary>
         BEBehaviorDoor rightDoor
         {
             get { return rightDoorOffset == null ? null : BlockBehaviorDoor.getDoorAt(Api.World, Pos.AddCopy(rightDoorOffset)); }
@@ -258,7 +264,7 @@ namespace Vintagestory.GameContent
             var bh = Blockentity.Block.GetBehavior<BlockBehaviorDoor>();
             var sound = opened ? bh?.OpenSound : bh?.CloseSound;
 
-            Api.World.PlaySoundAt(sound, be.Pos.X + 0.5f, be.Pos.Y + 0.5f, be.Pos.Z + 0.5f, byPlayer, EnumSoundType.Sound, pitch);
+            Api.World.PlaySoundAt(sound, be.Pos.X + 0.5f, be.Pos.InternalY + 0.5f, be.Pos.Z + 0.5f, byPlayer, EnumSoundType.Sound, pitch);
 
             if (leftDoor != null && invertHandles) leftDoor.ToggleDoorWing(opened);
             if (rightDoor != null) rightDoor.ToggleDoorWing(opened);

@@ -183,7 +183,7 @@ namespace Vintagestory.GameContent
             float breakChance = 0.5f;
             if (stack.ItemAttributes != null) breakChance = stack.ItemAttributes["breakChanceOnImpact"].AsFloat(0.5f);
 
-            EntityProperties type = byEntity.World.GetEntityType(new AssetLocation("arrow-" + stack.Collectible.Variant["material"]));
+            EntityProperties type = byEntity.World.GetEntityType(new AssetLocation(stack.ItemAttributes["arrowEntityCode"].AsString("arrow-" + stack.Collectible.Variant["material"])));
             var entityarrow = byEntity.World.ClassRegistry.CreateEntity(type) as EntityProjectile;
             entityarrow.FiredBy = byEntity;
             entityarrow.Damage = damage;

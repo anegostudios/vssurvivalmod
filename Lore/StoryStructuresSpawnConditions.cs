@@ -11,6 +11,7 @@ namespace Vintagestory.GameContent
     public class StoryStructuresSpawnConditions : ModSystem
     {
         ICoreServerAPI sapi;
+        ICoreAPI api;
 
         Cuboidi[] structureLocations;
 
@@ -22,6 +23,7 @@ namespace Vintagestory.GameContent
         public override void Start(ICoreAPI api)
         {
             api.ModLoader.GetModSystem<SystemTemporalStability>().OnGetTemporalStability += ResoArchivesSpawnConditions_OnGetTemporalStability;
+            this.api = api;
         }
 
         public override void StartClientSide(ICoreClientAPI api)
@@ -123,6 +125,22 @@ namespace Vintagestory.GameContent
             }
 
             return false;
+        }
+
+        public GeneratedStructure GetStoryStructureAt(BlockPos pos)
+        {
+            var mapregion = api.World.BlockAccessor.GetMapRegion(pos.X / api.World.BlockAccessor.RegionSize, pos.Z / api.World.BlockAccessor.RegionSize);
+
+            for (int i = 0; i < mapregion.GeneratedStructures.Count; i++)
+            {
+                var struc = mapregion.GeneratedStructures[i];
+                if (struc.Group == "storystructure")
+                {
+                    if (struc.Location.Contains(pos)) return struc;
+                }
+            }
+
+            return null;
         }
     }
 }

@@ -405,7 +405,7 @@ namespace Vintagestory.ServerMods
                     if (!canGen) continue;
                     if (GetIntersectingStructure(tmpPos, SkipShurbsgHashCode) != null) continue;
 
-                    if (blockAccessor.GetBlock(tmpPos.X, tmpPos.Y, tmpPos.Z).Replaceable >= 6000)
+                    if (blockAccessor.GetBlock(tmpPos).Replaceable >= 6000)
                     {
                         tmpPos.Y--;
                     }
@@ -485,7 +485,7 @@ namespace Vintagestory.ServerMods
                     if (!canGen) continue;
                     if (GetIntersectingStructure(tmpPos, SkipTreesgHashCode) != null) continue;
 
-                    if (blockAccessor.GetBlock(tmpPos.X, tmpPos.Y, tmpPos.Z).Replaceable >= 6000)
+                    if (blockAccessor.GetBlock(tmpPos).Replaceable >= 6000)
                     {
                         tmpPos.Y--;
                     }

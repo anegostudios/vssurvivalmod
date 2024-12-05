@@ -1228,7 +1228,7 @@ namespace Vintagestory.GameContent
             {
                 workItemStack = null;
             }
-            workItemStack?.Collectible.OnLoadCollectibleMappings(Api.World, new DummySlot(workItemStack) ,oldBlockIdMapping, oldItemIdMapping, resolveImports);
+            workItemStack?.Collectible.OnLoadCollectibleMappings(worldForResolve, new DummySlot(workItemStack) ,oldBlockIdMapping, oldItemIdMapping, resolveImports);
         }
 
         public override void OnStoreCollectibleMappings(Dictionary<int, AssetLocation> blockIdMapping, Dictionary<int, AssetLocation> itemIdMapping)

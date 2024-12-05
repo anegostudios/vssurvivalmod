@@ -19,6 +19,7 @@ namespace Vintagestory.GameContent
 
         public Vec3f Rotation => group.Rotation;
         public Cuboidf[] ColSelBoxes { get { return group.ColSelBoxes; } set { group.ColSelBoxes = value; } }
+        public Cuboidf[] SelBoxes { get; set; } = null;
         public ModelTransform GuiTransform { get { return group.GuiTf; } set { group.GuiTf = value; } }
         public ModelTransform FpTtransform { get { return group.FpTf; } set { group.FpTf = value; } }
         public ModelTransform TpTransform { get { return group.TpTf; } set { group.TpTf = value; } }
@@ -27,7 +28,8 @@ namespace Vintagestory.GameContent
 
         public string FirstTexture { get; set; }
         public TextureAtlasPosition TexPos { get; set; }
-        public Dictionary<int, Cuboidf[]> ColSelBoxesByDeg { get { return group.ColSelBoxesByDeg; } set { group.ColSelBoxesByDeg = value; } }
+        public Dictionary<long, Cuboidf[]> ColSelBoxesByHashkey { get { return group.ColSelBoxesByHashkey; } set { group.ColSelBoxesByHashkey = value; } }
+        public Dictionary<long, Cuboidf[]> SelBoxesByHashkey { get; set; }
 
         public AssetLocation ShapePath
         {

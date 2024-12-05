@@ -99,7 +99,7 @@ namespace Vintagestory.GameContent
                 {
                     currentActionIndex++;
                     CurrentAction.Start(this);
-                    if (vas.Debug) vas.Entity.World.Logger.Debug("ActivitySystem entity {0}, starting next Action - {1}", vas.Entity.EntityId, CurrentAction.Type);
+                    if (vas.Debug) vas.Entity.World.Logger.Debug("ActivitySystem entity {0}, starting next Action - {1}", vas.Entity.EntityId, CurrentAction?.Type);
                 }
                 else
                 {

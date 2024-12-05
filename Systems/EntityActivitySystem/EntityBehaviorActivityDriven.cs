@@ -61,7 +61,9 @@ namespace Vintagestory.GameContent
             {
                 taskAi.TaskManager.OnShouldExecuteTask += (task) =>
                 {
-                    return eagent.MountedOn == null && ActivitySystem.ActiveActivitiesBySlot.Values.FirstOrDefault(a => a.CurrentAction == null || a.CurrentAction.Type != "standardai") == null;
+                    if (task is AiTaskGotoEntity) return true;
+                    if (eagent.MountedOn != null) return false;
+                    return ActivitySystem.ActiveActivitiesBySlot.Values.Any(a => a.CurrentAction?.Type == "standardai");
                 };
             }
 
@@ -74,15 +76,27 @@ namespace Vintagestory.GameContent
         private bool Ebc_CanConverse(out string errorMessage)
         {
             var vs = Api.ModLoader.GetModSystem<VariablesModSystem>();
-            bool canTalk = vs.GetVariable(EnumActivityVariableScope.Entity, "tooBusyToTalk", entity.EntityId).ToBool(false) != true;
+            bool canTalk = vs.GetVariable(EnumActivityVariableScope.Entity, "tooBusyToTalk", entity).ToBool(false) != true;
             errorMessage = canTalk ? null : "cantconverse-toobusy";
             return canTalk;
         }
 
         bool active = true;
+        bool wasRunAiActivities;
 
         public override void OnGameTick(float deltaTime)
         {
+            if (!AiRuntimeConfig.RunAiActivities)
+            {
+                if (wasRunAiActivities)
+                {
+                    ActivitySystem.CancelAll();
+                }
+                wasRunAiActivities = false;
+                return;
+            }
+            wasRunAiActivities = AiRuntimeConfig.RunAiActivities;
+
             base.OnGameTick(deltaTime);
 
             if (OnShouldRunActivitySystem != null)
@@ -107,6 +121,8 @@ namespace Vintagestory.GameContent
                     ActivitySystem.Resume();
                 }
             }
+
+            Api.World.FrameProfiler.Mark("behavior-activitydriven-checks");
 
             if (active)
             {

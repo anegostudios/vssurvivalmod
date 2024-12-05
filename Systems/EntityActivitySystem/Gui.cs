@@ -76,9 +76,19 @@ namespace Vintagestory.GameContent
             this.capi = api;
             api.ChatCommands.GetOrCreate("dev")
                 .BeginSub("aedit")
-                .HandleWith(onCmdAedit)
+                    .HandleWith(onCmdAedit)
+                    .BeginSub("cv")
+                        .HandleWith(clearVisualizer)
+                    .EndSub()
                 .EndSub()
             ;
+        }
+
+        private TextCommandResult clearVisualizer(TextCommandCallingArgs args)
+        {
+            GuiDialogActivity.visualizer?.Dispose();
+            GuiDialogActivity.visualizer = null;
+            return TextCommandResult.Success("ok!");
         }
 
         private void storeActivityCollectionPacket(ActivityCollectionsJsonPacket packet)
@@ -316,8 +326,8 @@ namespace Vintagestory.GameContent
             ElementBounds leftButton = ElementBounds.Fixed(EnumDialogArea.LeftFixed, 0, 0, 0, 0).WithFixedPadding(8, 5);
             ElementBounds rightButton = ElementBounds.Fixed(EnumDialogArea.RightFixed, 0, 0, 0, 0).WithFixedPadding(8, 5);
 
-            double listHeight = 200;
-            ElementBounds listBounds = ElementBounds.Fixed(0, 25, 400, listHeight);
+            double listHeight = 400;
+            ElementBounds listBounds = ElementBounds.Fixed(0, 25, 270, listHeight);
             clipBounds = listBounds.ForkBoundingParent();
             ElementBounds insetBounds = listBounds.FlatCopy().FixedGrow(3).WithFixedOffset(0, 0);
 
@@ -340,14 +350,17 @@ namespace Vintagestory.GameContent
                     .AddCellList(listBounds, createCell, collections.Values, "collections")
                 .EndClip()
                 .AddVerticalScrollbar(OnNewScrollbarValue, scrollbarBounds, "scrollbar")
-                .AddSmallButton(Lang.Get("Modify Activity collection"), OnModifyCollection, mbBounds, EnumButtonStyle.Small, "modifycollection")
-                .AddTextInput(textfieldbounds.FlatCopy().WithFixedOffset(-offx, 0), null, CairoFont.WhiteDetailText(), "entityid")
+                .AddSmallButton(Lang.Get("Modify"), OnModifyCollection, mbBounds, EnumButtonStyle.Small, "modifycollection")
+                .AddTextInput(textfieldbounds.FlatCopy().WithFixedOffset(-offx, 2), null, CairoFont.WhiteDetailText(), "entityid")
                 .AddSmallButton(Lang.Get("Apply to entity"), ApplyToEntityId, textfieldbounds.FlatCopy().WithFixedPadding(4, 1), EnumButtonStyle.Small, "applytoentityid")
+
 
                 .AddSwitch(onAutoApply, textfieldbounds.BelowCopy(0,7).WithFixedOffset(-offx - 69, 0), "autocopy", 20)
                 .AddStaticText("Autoapply modifications", CairoFont.WhiteDetailText().WithFontSize(14), textfieldbounds.BelowCopy(0,9).WithFixedOffset(-00, 0).WithFixedWidth(178))
 
                 .AddSmallButton(Lang.Get("Close"), OnClose, leftButton.FixedUnder(clipBounds, 80))
+                .AddIconButton("line", CairoFont.WhiteMediumText().WithColor(GuiStyle.ErrorTextColor), clearVisualize, leftButton.RightCopy(50, 1).WithFixedSize(22, 22).WithFixedPadding(3,3), "clearvisualize")
+
                 .AddSmallButton(Lang.Get("Create collection"), OnCreateCollection, rightButton.FixedUnder(clipBounds, 80), EnumButtonStyle.Normal, "create")
             ;
 
@@ -366,6 +379,12 @@ namespace Vintagestory.GameContent
             ReloadCells();
             updateScrollbarBounds();
             updateButtonStates();
+        }
+
+        private void clearVisualize(bool on)
+        {
+            GuiDialogActivity.visualizer?.Dispose();
+            GuiDialogActivity.visualizer = null;
         }
 
         private void onAutoApply(bool on)
@@ -401,7 +420,10 @@ namespace Vintagestory.GameContent
             if (EntityId > 0)
             {
                 var selectedEntity = capi.World.GetEntityById(EntityId);
-                vas.ActivityOffset = selectedEntity.WatchedAttributes.GetBlockPos("importOffset", new BlockPos(selectedEntity.Pos.Dimension));
+                if (selectedEntity != null)
+                {
+                    vas.ActivityOffset = selectedEntity.WatchedAttributes.GetBlockPos("importOffset", new BlockPos(selectedEntity.Pos.Dimension));
+                }
             }
             editDlg = new GuiDialogActivityCollection(capi, this, collections[key], vas, key);
             editDlg.TryOpen();
@@ -452,7 +474,7 @@ namespace Vintagestory.GameContent
         private IGuiElementCell createCell(EntityActivityCollection collection, ElementBounds bounds)
         {
             bounds.fixedPaddingY = 0;
-            var cellElem = new ActivityCellEntry(capi, bounds, collection.Name, collection.Activities.Count +" activities", didClickCell);
+            var cellElem = new ActivityCellEntry(capi, bounds, collection.Name, collection.Activities.Count +" activities", didClickCell, 160, 200);
             return cellElem;
         }
 
@@ -536,8 +558,8 @@ namespace Vintagestory.GameContent
             ElementBounds leftButton = ElementBounds.Fixed(EnumDialogArea.LeftFixed, 0, 0, 0, 0).WithFixedPadding(8, 5);
             ElementBounds rightButton = ElementBounds.Fixed(EnumDialogArea.RightFixed, 0, 0, 0, 0).WithFixedPadding(8, 5);
 
-            double listHeight = 300;
-            ElementBounds listBounds = ElementBounds.Fixed(0, 0, 400, listHeight).FixedUnder(textBounds, 10);
+            double listHeight = 350;
+            ElementBounds listBounds = ElementBounds.Fixed(0, 0, 350, listHeight).FixedUnder(textBounds, 10);
             clipBounds = listBounds.ForkBoundingParent();
             ElementBounds insetBounds = listBounds.FlatCopy().FixedGrow(3);
 
@@ -749,7 +771,7 @@ namespace Vintagestory.GameContent
             bounds.fixedPaddingY = 0;
             var cellElem = new ActivityCellEntry(
                 capi,
-                bounds, "P" + Math.Round(collection.Priority,2) + "  " + collection.Name, collection.Actions.Length + " actions, " + collection.Conditions.Length + " conditions", didClickCell);
+                bounds, "P" + Math.Round(collection.Priority,2) + "  " + collection.Name, collection.Actions.Length + " actions, " + collection.Conditions.Length + " conds", didClickCell, 210, 200);
             return cellElem;
         }
 
@@ -1021,7 +1043,7 @@ namespace Vintagestory.GameContent
             editCondDlg?.TryClose();
         }
 
-        static ActivityVisualizer visualizer;
+        internal static ActivityVisualizer visualizer;
         private void OnVisualize(bool on)
         {
             visualizer?.Dispose();
@@ -1176,14 +1198,14 @@ namespace Vintagestory.GameContent
         private IGuiElementCell createActionCell(IEntityAction action, ElementBounds bounds)
         {
             bounds.fixedPaddingY = 0;
-            var cellElem = new ActivityCellEntry(capi, bounds, entityActivity.Actions.IndexOf(action) + ". " + action.Type, action.ToString(), didClickActionCell);
+            var cellElem = new ActivityCellEntry(capi, bounds, entityActivity.Actions.IndexOf(action) + ". " + action.Type, action.ToString(), didClickActionCell, 150, 350);
 
             return cellElem;
         }
         private IGuiElementCell createConditionCell(IActionCondition condition, ElementBounds bounds)
         {
             bounds.fixedPaddingY = 0;
-            var cellElem = new ActivityCellEntry(capi, bounds, condition.Type, condition.ToString(), didClickconditionCell);
+            var cellElem = new ActivityCellEntry(capi, bounds, condition.Type, condition.ToString(), didClickconditionCell, 150, 350);
             return cellElem;
         }
 

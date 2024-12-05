@@ -137,14 +137,14 @@ namespace Vintagestory.GameContent
                 {
                     loadConfig();
                     onTick8s(0);
-                    loadMesh();
+                    mesh = null;
                 }
             } else
             {
                 if (Type != null)
                 {
                     loadConfig();
-                    loadMesh();
+                    mesh = null;
                 }
             }
         }
@@ -179,7 +179,7 @@ namespace Vintagestory.GameContent
 
             loadConfig();
             onTick8s(0);
-            loadMesh();
+            mesh = null;
         }
 
         private void loadMesh()
@@ -187,8 +187,21 @@ namespace Vintagestory.GameContent
             if (Api == null || Api.Side != EnumAppSide.Client) return;
             capi = Api as ICoreClientAPI;
 
-            var cshape = config.Shape;
             cropBlock = Api.World.GetBlock(new AssetLocation("crop-" + Type + "-" + Stage));
+
+            var cache = ObjectCacheUtil.GetOrCreate(Api, "croppropmeshes", () => new Dictionary<int, MeshData>());
+            if (cache.TryGetValue(cropBlock.Id, out var meshData))
+            {
+                this.mesh = meshData;
+            } else
+            {
+                this.mesh = cache[cropBlock.Id] = genMesh(cropBlock);
+            }
+        }
+
+        private MeshData genMesh(Block cropBlock)
+        {
+            var cshape = config.Shape;
 
             if (cshape == null)
             {
@@ -196,7 +209,7 @@ namespace Vintagestory.GameContent
                 {
                     mesh = capi.TesselatorManager.GetDefaultBlockMesh(cropBlock).Clone();
                     mesh.Translate(0, -1 / 16f, 0);
-                    return;
+                    return mesh;
                 }
 
                 cshape = cropBlock.Shape;
@@ -215,6 +228,7 @@ namespace Vintagestory.GameContent
             capi.Tesselator.TesselateShape("croprop", Block.Code, cshape, out mesh, this);
 
             mesh.Translate(0, -1 / 16f, 0);
+            return mesh;
         }
 
         private void onTick8s(float dt)
@@ -225,7 +239,7 @@ namespace Vintagestory.GameContent
             int nextStage = GameMath.Clamp((int)((mon - (config.MonthStart-1)/12f)/len * config.Stages), 1, config.Stages);
 
             var temp = Api.World.BlockAccessor.GetClimateAt(Pos, EnumGetClimateMode.ForSuppliedDate_TemperatureOnly, Api.World.Calendar.TotalDays).Temperature;
-            bool nowDead = !dead && temp < -5;
+            bool nowDead = !dead && temp < -2;
             bool nowAlive = dead && temp > 15;
 
             if (nowDead) dead = true;
@@ -268,6 +282,11 @@ namespace Vintagestory.GameContent
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
         {
+            if (mesh == null)
+            {
+                loadMesh();
+            }
+
             float[] matrix = cropBlock?.RandomizeRotations==true ? TesselationMetaData.randomRotMatrices[GameMath.MurmurHash3Mod(-Pos.X, cropBlock.RandomizeAxes == EnumRandomizeAxes.XYZ ? Pos.Y : 0, Pos.Z, TesselationMetaData.randomRotations.Length)] : null;
 
             mesher.AddMeshData(mesh, matrix);

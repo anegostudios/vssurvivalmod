@@ -2,6 +2,7 @@
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -34,10 +35,10 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < BlockFacing.HORIZONTALS.Length; i++)
             {
                 BlockFacing facing = BlockFacing.HORIZONTALS[i];
-                Block block = world.BlockAccessor.GetBlock(pos.X + facing.Normali.X, pos.InternalY, pos.Z + facing.Normali.Z);
+                Block block = world.BlockAccessor.GetBlockOnSide(pos, facing);
                 if (block.Replaceable >= 6000)   // This is a kind of rough "transparent to sound" test
                 {
-                    block = world.BlockAccessor.GetBlock(pos.X + facing.Normali.X, pos.InternalY, pos.Z + facing.Normali.Z, BlockLayersAccess.Fluid);
+                    block = world.BlockAccessor.GetBlockOnSide(pos, facing, BlockLayersAccess.Fluid);
                     if (!block.IsLiquid()) return 1;
                 }
             }
@@ -65,9 +66,9 @@ namespace Vintagestory.GameContent
                     if (api.World.Rand.NextDouble() > particleQuantity) continue;
 
                     BlockFacing facing = BlockFacing.HORIZONTALS[i];
-                    Block block = manager.BlockAccess.GetBlock(pos.X + facing.Normali.X, pos.InternalY, pos.Z + facing.Normali.Z);
+                    Block block = manager.BlockAccess.GetBlockOnSide(pos, facing);
                     if (block.SideSolid[facing.Opposite.Index]) continue;
-                    block = manager.BlockAccess.GetBlock(pos.X + facing.Normali.X, pos.InternalY, pos.Z + facing.Normali.Z, BlockLayersAccess.Fluid);
+                    block = manager.BlockAccess.GetBlockOnSide(pos, facing, BlockLayersAccess.Fluid);
                     if (block.BlockId != 0) continue;   // No particles if neighbouring liquid or ice
 
                     AdvancedParticleProperties bps = ParticleProperties[i];

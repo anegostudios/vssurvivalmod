@@ -40,6 +40,10 @@ namespace Vintagestory.GameContent
         public int baseChunkZ;
         [ProtoMember(6)]
         public int size = 3;
+        [ProtoMember(7)]
+        public int forcedY = 0;
+        [ProtoMember(8)]
+        public string failureReason = "";
 
         public TimeSwitchState() { }  // Parameter-less constructor used by NetworkChannel
 
@@ -55,12 +59,15 @@ namespace Vintagestory.GameContent
         LoadedTexture iconTex;
         ICoreClientAPI capi;
 
+        public static float timeSwitchCooldown;
+
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
-            if (api is ICoreClientAPI capi)
+            if (api is ICoreClientAPI capi && timeSwitchCooldown <= 0)
             {
-                capi.SendChatMessage(string.Format("/timeswitch toggle"));
-                
+                capi.SendChatMessage("/timeswitch toggle");
+                capi.World.AddCameraShake(0.25f);
+                timeSwitchCooldown = Timeswitch.CooldownTime;
             }
         }
 
@@ -82,9 +89,38 @@ namespace Vintagestory.GameContent
             base.OnLoaded(api);
         }
 
+        ElementBounds renderBounds = new ElementBounds();
         public void Render(float dt, float x, float y, float z)
         {
-            capi.Render.Render2DLoadedTexture(iconTex, x, y, z);
+            float shakex = ((float)capi.World.Rand.NextDouble() * 60 - 30) * Math.Max(0, timeSwitchCooldown - Timeswitch.CooldownTime * 0.8f);
+            float shakey = ((float)capi.World.Rand.NextDouble() * 60 - 30) * Math.Max(0, timeSwitchCooldown - Timeswitch.CooldownTime * 0.8f);
+
+            x += shakex;
+            y += shakey;
+
+            float guiscale = 8f / 13f * RuntimeEnv.GUIScale;
+            capi.Render.Render2DTexture(iconTex.TextureId, x, y, iconTex.Width * guiscale, iconTex.Height * guiscale, z);
+
+            double delta = iconTex.Height * 8f / 13f * GameMath.Clamp(timeSwitchCooldown / Timeswitch.CooldownTime * 2.5f, 0, 1);
+
+            renderBounds.ParentBounds = capi.Gui.WindowBounds;
+            renderBounds.fixedX = x / RuntimeEnv.GUIScale;
+            renderBounds.fixedY = y / RuntimeEnv.GUIScale + delta;
+            renderBounds.fixedWidth = iconTex.Width * 8f / 13f;
+            renderBounds.fixedHeight = iconTex.Height * 8f / 13f - delta;
+            renderBounds.CalcWorldBounds();
+
+
+            capi.Render.PushScissor(renderBounds);
+
+            var col = new Vec4f((float)GuiStyle.ColorTime1[0], (float)GuiStyle.ColorTime1[1], (float)GuiStyle.ColorTime1[2], (float)GuiStyle.ColorTime1[3]);
+            capi.Render.Render2DTexture(iconTex.TextureId, x, y, iconTex.Width * guiscale, iconTex.Height * guiscale, z, col);
+
+            timeSwitchCooldown = Math.Max(0, timeSwitchCooldown - dt);
+
+            capi.Render.PopScissor();
+
+            capi.Render.CheckGlError();
         }
     }
 
@@ -94,6 +130,8 @@ namespace Vintagestory.GameContent
     /// </summary>
     public class Timeswitch : ModSystem
     {
+        public const float CooldownTime = 3f;
+
         const GlKeys TimeswitchHotkey = GlKeys.Y;
         const int OtherDimension = Dimensions.AltWorld;
         const double SquareRootOf2 = 1.41421356;
@@ -104,7 +142,7 @@ namespace Vintagestory.GameContent
         IServerNetworkChannel serverChannel;
         Dictionary<string, TimeSwitchState> timeswitchStatesByPlayerUid = new Dictionary<string, TimeSwitchState>();
         bool dim2ChunksLoaded = false;
-        bool loreEnabled = false;
+        bool allowTimeswitch = false;
         bool posEnabled = false;
 
         int baseChunkX;
@@ -113,6 +151,8 @@ namespace Vintagestory.GameContent
         int deactivateRadius = 2;
 
         Vec3d centerpos = new Vec3d();
+
+        CollisionTester collTester;
 
         // Client-side
         ICoreClientAPI capi;
@@ -129,13 +169,13 @@ namespace Vintagestory.GameContent
 
         public override void Start(ICoreAPI api)
         {
-            base.Start(api);
+            allowTimeswitch = api.World.Config.GetBool("loreContent", true) || api.World.Config.GetBool("allowTimeswitch", false);
         }
 
 
         public override void StartClientSide(ICoreClientAPI api)
         {
-            this.capi = api;
+            capi = api;
 
             capi.Input.RegisterHotKey("timeswitch", Lang.Get("Time switch"), TimeswitchHotkey, HotkeyType.CharacterControls);
             capi.Input.SetHotKeyHandler("timeswitch", OnHotkeyTimeswitch);
@@ -151,9 +191,8 @@ namespace Vintagestory.GameContent
         {
             new CmdTimeswitch(api);
 
-            this.sapi = api;
-            loreEnabled = api.World.Config.GetBool("loreContent", true);
-            if (!loreEnabled) return;
+            sapi = api;
+            if (!allowTimeswitch) return;
 
             api.Event.PlayerJoin += OnPlayerJoin;
             api.Event.SaveGameLoaded += OnSaveGameLoaded;
@@ -165,6 +204,8 @@ namespace Vintagestory.GameContent
             ;
 
             api.Event.RegisterGameTickListener(PlayerEntryCheck, 500);
+
+            collTester = new CollisionTester();
         }
 
 
@@ -189,7 +230,7 @@ namespace Vintagestory.GameContent
                         timeswitchStatesByPlayerUid[player.PlayerUID] = state;
                     }
 
-                    if (skillSlot.Empty)
+                    if (skillSlot.Empty && player.Entity.Alive)
                     {
                         skillSlot.Itemstack = skillStack;
                         skillSlot.MarkDirty();
@@ -199,8 +240,8 @@ namespace Vintagestory.GameContent
                     {
                         state.Enabled = true;
                         OnStartCommand(player);
-                        player.SendMessage(GlobalConstants.GeneralChatGroup, "The seraph detects active temporal interference!", EnumChatType.Notification);
-                        player.SendMessage(GlobalConstants.GeneralChatGroup, "You can press Y to activate the timeswitch", EnumChatType.Notification);
+                        player.SendMessage(GlobalConstants.GeneralChatGroup, Lang.GetL(player.LanguageCode, "message-timeswitch-detected"), EnumChatType.Notification);
+                        player.SendMessage(GlobalConstants.GeneralChatGroup, Lang.GetL(player.LanguageCode, "message-timeswitch-controls"), EnumChatType.Notification);
                     }
                 }
                 else if (!WithinRange(player.Entity.ServerPos, deactivateRadius))
@@ -214,8 +255,16 @@ namespace Vintagestory.GameContent
                     if (player.Entity.ServerPos.Dimension == OtherDimension)
                     {
                         // Boot the player from the other dimension if has moved beyond deactivateRadius
-                        ActivateTimeswitchServer(player);
+                        ActivateTimeswitchServer(player, true, out string ignore);
                     }
+
+                    TimeSwitchState state;
+                    if (!timeswitchStatesByPlayerUid.TryGetValue(player.PlayerUID, out state))
+                    {
+                        state = new TimeSwitchState(player.PlayerUID);
+                        timeswitchStatesByPlayerUid[player.PlayerUID] = state;
+                    }
+                    state.Enabled = false;
                 }
             }
         }
@@ -223,14 +272,17 @@ namespace Vintagestory.GameContent
 
         private bool OnHotkeyTimeswitch(KeyCombination comb)
         {
+            if (ItemSkillTimeswitch.timeSwitchCooldown > 0) return true;
+
             capi.SendChatMessage(string.Format("/timeswitch toggle"));
+            capi.World.AddCameraShake(0.25f);
+            ItemSkillTimeswitch.timeSwitchCooldown = CooldownTime;
             return true;
         }
 
 
         private void OnGameGettingSaved()
         {
-            //sapi.WorldManager.SaveGame.StoreData("timeswitchStates", SerializerUtil.Serialize(timeswitchStatesByPlayerUid
             int[] positions = new int[] { baseChunkX, baseChunkZ, size };
             sapi.WorldManager.SaveGame.StoreData("timeswitchPos", SerializerUtil.Serialize(positions));
         }
@@ -238,18 +290,6 @@ namespace Vintagestory.GameContent
 
         private void OnSaveGameLoaded()
         {
-            try
-            {
-                //byte[] data = sapi.WorldManager.SaveGame.GetData("timeswitchStates");
-
-                //if (data != null) timeswitchStatesByPlayerUid = SerializerUtil.Deserialize<Dictionary<string, TimeSwitchState>>(data);
-            }
-            catch (Exception e)
-            {
-                sapi.World.Logger.Error("Failed loading timeswitchStates. Resetting.");
-                sapi.World.Logger.Error(e);
-                timeswitchStatesByPlayerUid = null;
-            }
             if (timeswitchStatesByPlayerUid == null) timeswitchStatesByPlayerUid = new Dictionary<string, TimeSwitchState>();
 
             try
@@ -301,7 +341,7 @@ namespace Vintagestory.GameContent
         /// <param name="player"></param>
         public void OnStartCommand(IServerPlayer player)
         {
-            if (!loreEnabled || !posEnabled) return;
+            if (!allowTimeswitch || !posEnabled) return;
 
             LoadChunkColumns();
             if (player != null) ForceSendChunkColumns(player);
@@ -315,6 +355,7 @@ namespace Vintagestory.GameContent
         private void ActivateTimeswitchClient(TimeSwitchState tsState)
         {
             EntityPlayer player = capi.World.Player.Entity;
+            if (tsState.forcedY != 0) player.SidedPos.Y = tsState.forcedY;
             player.ChangeDimension(tsState.Activated ? OtherDimension : Dimensions.NormalWorld);
         }
 
@@ -328,29 +369,149 @@ namespace Vintagestory.GameContent
         /// <summary>
         /// Server-side switching
         /// </summary>
-        /// <param name="byPlayer"></param>
-        public void ActivateTimeswitchServer(IServerPlayer byPlayer)
+        /// <param name="player"></param>
+        /// <param name="raiseToWorldSurface">If true, ensure the player is lifted up to be on top of a solid block; if false the switching will be disabled if the position in the other dim is impossible</param>
+        /// <param name="failurereason"></param>
+        public bool ActivateTimeswitchServer(IServerPlayer player, bool raiseToWorldSurface, out string failurereason)
         {
-            if (!loreEnabled || !posEnabled) return;
+            bool result = ActivateTimeswitchInternal(player, raiseToWorldSurface, out failurereason);
+
+            if (!result && failurereason != null)
+            {
+                TimeSwitchState tempState = new TimeSwitchState();
+                tempState.failureReason = failurereason;
+                serverChannel.SendPacket(tempState, player);
+            }
+
+            return result;
+        }
+
+        private bool ActivateTimeswitchInternal(IServerPlayer byPlayer, bool forced, out string failurereason)
+        {
+            failurereason = null;
+            if (!allowTimeswitch || !posEnabled) return false;
+
+            if (byPlayer.Entity.MountedOn != null)
+            {
+                failurereason = "mounted";
+                return false;
+            }
 
             if (byPlayer.Entity.ServerPos.Dimension == Dimensions.NormalWorld)
             {
-                // Prevent activation of hotkey if too far from position
-                if (!WithinRange(byPlayer.Entity.ServerPos, deactivateRadius)) return;
+                TimeSwitchState state;
+                if (!timeswitchStatesByPlayerUid.TryGetValue(byPlayer.PlayerUID, out state))
+                {
+                    state = new TimeSwitchState(byPlayer.PlayerUID);
+                    timeswitchStatesByPlayerUid[byPlayer.PlayerUID] = state;
+                }
+                if (!state.Enabled) return false;    // No error message in this case, the player is just a long way from the timeswitch and it has not yet been enabled
+
+                // Prevent activation of hotkey if too far from position (or if dim2 is not yet loaded)
+                if (!WithinRange(byPlayer.Entity.ServerPos, deactivateRadius))
+                {
+                    failurereason = "outofrange";
+                    return false;
+                }
+
+                if (!dim2ChunksLoaded)
+                {
+                    failurereason = "wait";
+                    return false;
+                }
+
+                if (genStoryStructLoc != null && !genStoryStructLoc.DidGenerateAdditional)    // genStoryStructLoc is null in a Creative Flat world
+                {
+                    failurereason = "wait";
+                    return false;   // Not yet finished generating
+                }
             }
+
+            bool forceYToWorldSurface = forced;
+            if (genStoryStructLoc != null)
+            {
+                double distanceFromTowerX = Math.Max(0, Math.Abs(byPlayer.Entity.ServerPos.X - genStoryStructLoc.CenterPos.X - 0.5) - 9.5);
+                double distanceFromTowerZ = Math.Max(0, Math.Abs(byPlayer.Entity.ServerPos.Z - genStoryStructLoc.CenterPos.Z - 0.5) - 9.5);
+                int towerBlocksConeHeightY = storyTowerBaseY + (int)Math.Max(distanceFromTowerX, distanceFromTowerZ) * 3;    // 9.5 and 3 are values based on the 1.20 design of the exploded Devastation Area Tower
+                                                                                                                             // Only raiseToWorldSurface outside the tower: either forced transition (on edge of active area) or player y-height is at or below a certain cone, and player is neither flying, gliding nor falling fast
+                forced |= byPlayer.Entity.ServerPos.Y <= towerBlocksConeHeightY && !byPlayer.Entity.Controls.IsFlying && !byPlayer.Entity.Controls.Gliding && byPlayer.Entity.ServerPos.Motion.Y > EntityBehaviorHealth.FallDamageYMotionThreshold;
+            }
+
+            bool farFromTimeswitch = !WithinRange(byPlayer.Entity.ServerPos, deactivateRadius + 2 * GlobalConstants.ChunkSize);
+            int targetDimension = byPlayer.Entity.Pos.Dimension == Dimensions.NormalWorld ? OtherDimension : Dimensions.NormalWorld;
 
             TimeSwitchState tsState;
             if (timeswitchStatesByPlayerUid.TryGetValue(byPlayer.PlayerUID, out tsState))
             {
-                tsState.Activated = byPlayer.Entity.Pos.Dimension == Dimensions.NormalWorld;
-                byPlayer.Entity.ChangeDimension(tsState.Activated ? OtherDimension : Dimensions.NormalWorld);
+                tsState.forcedY = 0;   // Reset this to 0 before anything else, to prevent perma-falling!
+
+                // First check that the timeswitch can be used just here, and/or move the player (outside the tower) to the surface of the other world
+                // ... but we should not do either of things if the player is already far from the Timeswitch pos (e.g. re-spawning player after death in dim2)
+
+                if (byPlayer.WorldData.CurrentGameMode == EnumGameMode.Survival && !farFromTimeswitch)
+                {
+                    // If feet not on ground: we still force if would otherwise collide
+                    if (forceYToWorldSurface && (byPlayer.Entity.OnGround || OtherDimensionPositionWouldCollide(byPlayer.Entity, targetDimension, false)))
+                    {
+                        RaisePlayerToTerrainSurface(byPlayer.Entity, targetDimension, tsState);
+                    }
+                    else if (OtherDimensionPositionWouldCollide(byPlayer.Entity, targetDimension, true))
+                    {
+                        failurereason = "blocked";
+                        return false;
+                    }
+                }
+
+                tsState.Activated = targetDimension == OtherDimension;
+                byPlayer.Entity.ChangeDimension(targetDimension);
 
                 // Send to client:
                 tsState.baseChunkX = baseChunkX;
                 tsState.baseChunkZ = baseChunkZ;
                 tsState.size = size;
                 serverChannel.BroadcastPacket(tsState);
+
+                spawnTeleportParticles(byPlayer.Entity.ServerPos);
+
+
+                return true;
             }
+
+            return false;
+        }
+
+        private void spawnTeleportParticles(EntityPos pos)
+        {
+            int r = 53;
+            int g = 221;
+            int b = 172;
+
+            var teleportParticles = new SimpleParticleProperties(
+                150, 200,
+                (r << 16) | (g << 8) | (b << 0) | (100 << 24),
+                new Vec3d(pos.X - 0.5, pos.Y, pos.Z - 0.5),
+                new Vec3d(pos.X + 0.5, pos.Y + 1.8, pos.Z + 0.5),
+                new Vec3f(-0.7f, -0.7f, -0.7f),
+                new Vec3f(1.4f, 1.4f, 1.4f),
+                2f,
+                0,
+                0.1f,
+                0.2f,
+                EnumParticleModel.Quad
+            );
+
+            teleportParticles.addLifeLength = 1f;
+            teleportParticles.OpacityEvolve = EvolvingNatFloat.create(EnumTransformFunction.QUADRATIC, -10f);
+
+            int dim = pos.Dimension;
+            // Spawn in dim 1
+            sapi.World.SpawnParticles(teleportParticles);
+            sapi.World.PlaySoundAt(new AssetLocation("sounds/effect/timeswitch"), pos.X, pos.Y, pos.Z, null, false, 16);
+
+            // Spawn in dim 2
+            teleportParticles.MinPos.Y += dim * BlockPos.DimensionBoundary;
+            sapi.World.SpawnParticles(teleportParticles);
+            sapi.World.PlaySoundAt(new AssetLocation("sounds/effect/timeswitch"), pos.X, pos.Y + dim * BlockPos.DimensionBoundary, pos.Z, null, false, 16);
         }
 
 
@@ -358,10 +519,16 @@ namespace Vintagestory.GameContent
         {
             if (capi.World?.Player == null) return;
 
+            if (state.failureReason.Length > 0)
+            {
+                capi.TriggerIngameError(capi.World, state.failureReason, Lang.Get("ingameerror-timeswitch-" + state.failureReason));
+                return;
+            }
+
             if (state.playerUID == capi.World.Player.PlayerUID)
             {
                 ActivateTimeswitchClient(state);
-                MakeChunkColumnsVisible(state.baseChunkX, state.baseChunkZ, state.size, state.Activated ? OtherDimension : Dimensions.NormalWorld);
+                MakeChunkColumnsVisibleClient(state.baseChunkX, state.baseChunkZ, state.size, state.Activated ? OtherDimension : Dimensions.NormalWorld);
             }
             else
             {
@@ -389,14 +556,19 @@ namespace Vintagestory.GameContent
         }
 
 
+        /// <summary>
+        /// Called by '/timeswitch copy' command
+        /// </summary>
+        /// <param name="sourceblockAccess"></param>
+        /// <param name="player"></param>
         public void CopyBlocksToAltDimension(IBlockAccessor sourceblockAccess, IServerPlayer player)
         {
-            if (!loreEnabled || !posEnabled) return;
+            if (!allowTimeswitch || !posEnabled) return;
 
             BlockPos start = new BlockPos((baseChunkX - size + 1) * GlobalConstants.ChunkSize, 0, (baseChunkZ - size + 1) * GlobalConstants.ChunkSize);
             BlockPos end = start.AddCopy(GlobalConstants.ChunkSize * (size * 2 - 1), 0, GlobalConstants.ChunkSize * (size * 2 - 1));
             start.Y = Math.Max(0, (sapi.World.SeaLevel - 8) / GlobalConstants.ChunkSize * GlobalConstants.ChunkSize);
-            end.Y = Math.Min(sapi.WorldManager.MapSizeY, ((sapi.World.SeaLevel + 8) / GlobalConstants.ChunkSize + 2) * GlobalConstants.ChunkSize);
+            end.Y = sapi.WorldManager.MapSizeY;
             BlockSchematic blocks = new BlockSchematic(sapi.World, sourceblockAccess, start, end, false);
 
             CreateChunkColumns();
@@ -435,10 +607,9 @@ namespace Vintagestory.GameContent
 
         public void LoadChunkColumns()
         {
-            if (!loreEnabled || !posEnabled) return;
+            if (!allowTimeswitch || !posEnabled) return;
 
             if (dim2ChunksLoaded) return;
-            dim2ChunksLoaded = true;
 
             for (int x = 0; x < size * 2 - 1; x++)
             {
@@ -447,25 +618,27 @@ namespace Vintagestory.GameContent
                     int cx = baseChunkX - size + 1 + x;
                     int cz = baseChunkZ - size + 1 + z;
 
-                    // Ultimately we may need to add a test here to detect whether the chunk columns in the alt dimension are already loaded, otherwise there can be duplication in a multiplayer game
+                    // Ultimately we may need to add a test here to detect whether the individual chunk columns in the alt dimension are already loaded, otherwise there can be duplication in a multiplayer game
                     sapi.WorldManager.LoadChunkColumnForDimension(cx, cz, OtherDimension);
                 }
             }
+
+            dim2ChunksLoaded = true;
         }
 
 
         private void ForceSendChunkColumns(IServerPlayer player)
         {
-            if (!loreEnabled || !posEnabled) return;
+            if (!allowTimeswitch || !posEnabled) return;
 
-            for (int x = 0; x < size * 2 - 1; x++)
+            int maxSize = size * 2;
+            int czBase = baseChunkZ - size;
+            for (int x = 0; x <= maxSize; x++)
             {
-                for (int z = 0; z < size * 2 - 1; z++)
+                int cx = baseChunkX - size + x;
+                for (int z = 0; z <= maxSize; z++)
                 {
-                    int cx = baseChunkX - size + 1 + x;
-                    int cz = baseChunkZ - size + 1 + z;
-
-                    sapi.WorldManager.ForceSendChunkColumn(player, cx, cz, OtherDimension);
+                    sapi.WorldManager.ForceSendChunkColumn(player, cx, czBase + z, OtherDimension);
                 }
             }
         }
@@ -474,14 +647,14 @@ namespace Vintagestory.GameContent
         /// <summary>
         /// Client-side
         /// </summary>
-        private void MakeChunkColumnsVisible(int baseChunkX, int baseChunkZ, int size, int dimension)
+        private void MakeChunkColumnsVisibleClient(int baseChunkX, int baseChunkZ, int size, int dimension)
         {
-            for (int x = 0; x < size * 2 - 1; x++)
+            for (int x = 0; x <= size * 2; x++)
             {
-                for (int z = 0; z < size * 2 - 1; z++)
+                for (int z = 0; z <= size * 2; z++)
                 {
-                    int cx = baseChunkX - size + 1 + x;
-                    int cz = baseChunkZ - size + 1 + z;
+                    int cx = baseChunkX - size + x;
+                    int cz = baseChunkZ - size + z;
 
                     capi.World.SetChunkColumnVisible(cx, cz, dimension);
                 }
@@ -490,17 +663,18 @@ namespace Vintagestory.GameContent
 
         StoryStructureLocation genStoryStructLoc;
         GenStoryStructures genGenStoryStructures;
-        Action<int,int,int> onGenDevastationLayer;
+        int storyTowerBaseY;
         /// <summary>
-        /// Called to set up the devastationLocation 
+        /// Called to set up the devastationLocation. Returns the size
         /// </summary>
         /// <param name="structureLocation"></param>
         /// <param name="genStoryStructures"></param>
-        public void InitPotentialGeneration(StoryStructureLocation structureLocation, GenStoryStructures genStoryStructures, Action<int, int, int> genDevastationLayer)
+        public int SetupDim2TowerGeneration(StoryStructureLocation structureLocation, GenStoryStructures genStoryStructures)
         {
             genStoryStructLoc = structureLocation;
             genGenStoryStructures = genStoryStructures;
-            onGenDevastationLayer = genDevastationLayer;
+            storyTowerBaseY = structureLocation.CenterPos.Y + 10;   // 10 is hard-coded fudge based on current schematic with a grass mound below the tower, that information is not found in any asset, I guess we could instead look for the lowest non-topsoil non-air block but just as fudgy because it assumes which blocks are in the schematic
+            return size;
         }
 
         public void AttemptGeneration(IWorldGenBlockAccessor worldgenBlockAccessor)
@@ -508,14 +682,12 @@ namespace Vintagestory.GameContent
             if (genStoryStructLoc == null || genStoryStructLoc.DidGenerateAdditional) return;
 
             if (!AreAllDim0ChunksGenerated()) return;
+            sapi.Logger.VerboseDebug("Timeswitch dim 2 generation: finished stage 1");
 
-            genStoryStructLoc.DidGenerateAdditional = true;
-            genGenStoryStructures.StoryStructureInstancesDirty = true;
-
-            CreateChunkColumns();
-            onGenDevastationLayer(baseChunkX, baseChunkZ, size);
-
-            PlaceSchematic(sapi.World.BlockAccessor, OtherDimension, "story/" + genStoryStructLoc.Code + "-past", genStoryStructLoc.CenterPos.Copy());
+            var startPos = genStoryStructLoc.Location.Start.AsBlockPos;
+            startPos.dimension = OtherDimension;
+            PlaceSchematic(sapi.World.BlockAccessor, "story/" + genStoryStructLoc.Code + "-past", startPos);
+            sapi.Logger.VerboseDebug("Timeswitch dim 2 generation: finished stage 2");
 
             if (size > 0)
             {
@@ -525,6 +697,12 @@ namespace Vintagestory.GameContent
                 sapi.WorldManager.FullRelight(start, end, false);
             }
 
+            AddClaimForDim(OtherDimension);
+
+            genStoryStructLoc.DidGenerateAdditional = true;
+            genGenStoryStructures.StoryStructureInstancesDirty = true;      // Mark as done in the savegame only after everything is complete; if there was an exit or crash previously during dim2 tower generation, this may mean code attempts to place dim2 tower twice, but that's better than not at all
+
+            sapi.Logger.VerboseDebug("Timeswitch dim 2 generation: finished stage 3");
             // Send updates of the newly generated chunks to all players in range, otherwise they may have old copies
             foreach (IServerPlayer player in sapi.World.AllOnlinePlayers)
             {
@@ -535,9 +713,34 @@ namespace Vintagestory.GameContent
                     ForceSendChunkColumns(player);
                 }
             }
+            sapi.Logger.VerboseDebug("Timeswitch dim 2 generation: finished stage 4");
         }
 
-        private void PlaceSchematic(IBlockAccessor blockAccessor, int dim, string genSchematicName, BlockPos start)
+        private void AddClaimForDim(int dim)
+        {
+            int centerX = baseChunkX * GlobalConstants.ChunkSize + GlobalConstants.ChunkSize / 2;
+            int centerZ = baseChunkZ * GlobalConstants.ChunkSize + GlobalConstants.ChunkSize / 2;
+            int radius = size * GlobalConstants.ChunkSize + GlobalConstants.ChunkSize / 2;
+            int dimY = dim * BlockPos.DimensionBoundary;
+            var struclocDeva = new Cuboidi(
+                centerX - radius, dimY + 0, centerZ - radius,
+                centerX + radius, dimY + sapi.WorldManager.MapSizeY, centerZ + radius);
+
+            var claims = sapi.World.Claims.Get(struclocDeva.Center.AsBlockPos);
+            if (claims == null || claims.Length == 0)
+            {
+                sapi.World.Claims.Add(new LandClaim()
+                {
+                    Areas = new List<Cuboidi>() { struclocDeva },
+                    Description = "Past Dimension",
+                    ProtectionLevel = 10,
+                    LastKnownOwnerName = "custommessage-thepast",
+                    AllowUseEveryone = true
+                });
+            }
+        }
+
+        private void PlaceSchematic(IBlockAccessor blockAccessor, string genSchematicName, BlockPos start)
         {
             BlockSchematicPartial blocks = LoadSchematic(sapi, genSchematicName);
             if (blocks == null) return;
@@ -545,9 +748,7 @@ namespace Vintagestory.GameContent
             blocks.Init(blockAccessor);
             blocks.blockLayerConfig = genGenStoryStructures.blockLayerConfig;
 
-            start.Add(-blocks.SizeX / 2, dim * BlockPos.DimensionBoundary, -blocks.SizeZ / 2);
-
-            blocks.Place(blockAccessor, sapi.World, start, EnumReplaceMode.Replaceable, true);
+            blocks.Place(blockAccessor, sapi.World, start, EnumReplaceMode.ReplaceAllNoAir, true);
             blocks.PlaceDecors(blockAccessor, start);
         }
 
@@ -580,6 +781,72 @@ namespace Vintagestory.GameContent
 
             schematic.FromFileName = asset.Name;
             return schematic;
+        }
+
+
+        private bool OtherDimensionPositionWouldCollide(EntityPlayer entity, int otherDim, bool allowTolerance)
+        {
+            Vec3d tmpVec = entity.ServerPos.XYZ;
+            tmpVec.Y = entity.ServerPos.Y + otherDim * BlockPos.DimensionBoundary;
+
+            var reducedBox = entity.CollisionBox.Clone();
+            if (allowTolerance)
+            {
+                reducedBox.OmniNotDownGrowBy(-EntityBehaviorPlayerPhysics.ClippingToleranceOnDimensionChange);
+            }
+
+            return collTester.IsColliding(sapi.World.BlockAccessor, reducedBox, tmpVec, false);
+
+            // push out will be handled by BehaviorPlayerPhysics client-side as player physics is client-side only
+        }
+
+
+        private void RaisePlayerToTerrainSurface(EntityPlayer entity, int targetDimension, TimeSwitchState tss)
+        {
+            double px = entity.ServerPos.X;
+            double py = entity.ServerPos.Y;
+            double pz = entity.ServerPos.Z;
+
+            Cuboidd entityBox = entity.CollisionBox.ToDouble().Translate(px, py, pz);
+
+            int minX = (int)entityBox.X1;
+            int minZ = (int)entityBox.Z1;
+            int maxX = (int)entityBox.X2;
+            int maxZ = (int)entityBox.Z2;
+
+            int terrainY = 0;
+            BlockPos bp = new BlockPos(targetDimension);
+            for (int x = minX; x <= maxX; x++)
+            {
+                for (int z = minZ; z <= maxZ; z++)
+                {
+                    bp.Set(x, terrainY, z);
+                    int y;
+                    if (targetDimension == Dimensions.NormalWorld)
+                    {
+                        y = entity.World.BlockAccessor.GetRainMapHeightAt(bp);
+                        if (y > storyTowerBaseY)    // Overcomes the fact that the dim0 tower schematic placement places exploded blocks high in the air above terrain (which raise the rainmapheight)
+                        {
+                            y = getWorldSurfaceHeight(entity.World.BlockAccessor, bp);
+                        }
+                    }
+                    else y = getWorldSurfaceHeight(entity.World.BlockAccessor, bp);
+                    if (y > terrainY) terrainY = y;
+                }
+            }
+
+            if (terrainY > 0) tss.forcedY = terrainY + 1;   // Add 1 because we want to place the player's feet immediately *above* this world surface block
+        }
+
+        private int getWorldSurfaceHeight(IBlockAccessor blockAccessor, BlockPos bp)
+        {
+            while (bp.Y < blockAccessor.MapSizeY)
+            {
+                Block b = blockAccessor.GetBlock(bp, BlockLayersAccess.Solid);
+                if (!b.SideIsSolid(bp, BlockFacing.UP.Index)) return bp.Y - 1;   // Return the block below this air/grass block, i.e. the blockPos.Y of the world surface block
+                bp.Up();
+            }
+            return 0;
         }
     }
 }

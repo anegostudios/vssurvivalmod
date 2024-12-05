@@ -4,14 +4,12 @@ using Vintagestory.API.Datastructures;
 using System.IO;
 using Vintagestory.API.Util;
 using Vintagestory.API.Client;
-using Newtonsoft.Json.Linq;
 using System;
 using Vintagestory.API.MathTools;
-using System.Linq;
 
 namespace Vintagestory.GameContent
 {
-    public class EntityVillager : EntityDressedHumanoid, ITalkUtil
+    public class EntityVillager : EntityTradingHumanoid, ITalkUtil
     {
         public OrderedDictionary<string, TraderPersonality> Personalities => Properties.Attributes["personalities"].AsObject<OrderedDictionary<string, TraderPersonality>>();
 
@@ -52,26 +50,33 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public EntityTalkUtil TalkUtil { get; set; }
+        public EntityTalkUtil talkUtil;
+        public override EntityTalkUtil TalkUtil => talkUtil;
 
         public override void Initialize(EntityProperties properties, ICoreAPI api, long InChunkIndex3d)
         {
             base.Initialize(properties, api, InChunkIndex3d);
 
-            if (!WatchedAttributes.HasAttribute("personality"))
+            if (World.Api.Side == EnumAppSide.Server)
             {
-                var p = Personalities;
-                int index = api.World.Rand.Next(p.Count);
-                this.Personality = p.GetKeyAtIndex(index);
+                if (Properties.Attributes["personality"].Exists)
+                {
+                    Personality = Properties.Attributes["personality"].AsString();
+                }
+                else
+                {
+                    Personality = Personalities.GetKeyAtIndex(World.Rand.Next(Personalities.Count));
+                }
+
+                (AnimManager as PersonalizedAnimationManager).Personality = this.Personality;
             }
 
-            (AnimManager as PersonalizedAnimationManager).Personality = this.Personality;
             (AnimManager as PersonalizedAnimationManager).All = true;
 
             if (api.Side == EnumAppSide.Client)
             {
                 bool isMultiSoundVoice = true;
-                TalkUtil = new EntityTalkUtil(api as ICoreClientAPI, this, isMultiSoundVoice);
+                talkUtil = new EntityTalkUtil(api as ICoreClientAPI, this, isMultiSoundVoice);
                 TalkUtil.soundName = AssetLocation.Create(VoiceSound, Code.Domain);
             }
 
@@ -96,12 +101,12 @@ namespace Vintagestory.GameContent
             {
                 if (track != null) return;
 
-                string trackstring = SerializerUtil.Deserialize<string>(data);
+                var pkt = SerializerUtil.Deserialize<SongPacket>(data);
                 var capi = Api as ICoreClientAPI;
 
                 startLoadingMs = Api.World.ElapsedMilliseconds;
                 wasStopped = false;
-                track = capi.StartTrack(AssetLocation.Create(trackstring), 99f, EnumSoundType.MusicGlitchunaffected, onTrackLoaded);
+                track = capi.StartTrack(AssetLocation.Create(pkt.SoundLocation), 99f, EnumSoundType.MusicGlitchunaffected, (s) => onTrackLoaded(s, pkt.SecondsPassed));
             }
             if (packetid == (int)EntityServerPacketId.StopMusic)
             {
@@ -111,13 +116,17 @@ namespace Vintagestory.GameContent
                 wasStopped = true;
                 TalkUtil.ShouldDoIdleTalk = true;
             }
+            if (packetid == (int)EntityServerPacketId.Talk)
+            {
+                TalkUtil.Talk((EnumTalkType)(SerializerUtil.Deserialize<int>(data)));
+            }
         }
 
         long handlerId;
         long startLoadingMs;
         bool wasStopped = false;
 
-        private void onTrackLoaded(ILoadedSound sound)
+        private void onTrackLoaded(ILoadedSound sound, float secondsPassed)
         {
             if (track == null)
             {
@@ -130,18 +139,21 @@ namespace Vintagestory.GameContent
             TalkUtil.ShouldDoIdleTalk = false;
 
             // Needed so that the music engine does not dispose the sound
-            Api.Event.EnqueueMainThreadTask(() => track.loading = true, "settrackloading");
+            Api.Event.EnqueueMainThreadTask(() => { if (track != null) track.loading = true; }, "settrackloading");
 
             long longMsPassed = Api.World.ElapsedMilliseconds - startLoadingMs;
             handlerId = Api.Event.RegisterCallback((dt) => {
                 if (sound.IsDisposed)
                 {
-                    Api.World.Logger.Notification("Villager track is disposed? o.O");
+                    handlerId = 0;
+                    track = null;
+                    return;
                 }
 
                 if (!wasStopped)
                 {
                     sound.Start();
+                    sound.PlaybackPosition = secondsPassed;
                 }
 
                 track.loading = false;
@@ -149,7 +161,14 @@ namespace Vintagestory.GameContent
             }, (int)Math.Max(0, 500 - longMsPassed));
         }
 
-
+        public override void OnEntityDespawn(EntityDespawnData despawn)
+        {
+            track?.Stop();
+            track = null;
+            Api.Event.UnregisterCallback(handlerId);
+            wasStopped = true;
+            base.OnEntityDespawn(despawn);
+        }
 
 
         public override void OnGameTick(float dt)
@@ -206,12 +225,6 @@ namespace Vintagestory.GameContent
         public override void OnEntitySpawn()
         {
             base.OnEntitySpawn();
-
-            if (World.Api.Side == EnumAppSide.Server)
-            {
-                Personality = Personalities.GetKeyAtIndex(World.Rand.Next(Personalities.Count));
-                (AnimManager as PersonalizedAnimationManager).Personality = this.Personality;
-            }
         }
 
         public override void FromBytes(BinaryReader reader, bool forClient)
@@ -226,10 +239,10 @@ namespace Vintagestory.GameContent
             var text = base.GetInfoText();
 
             var capi = Api as ICoreClientAPI;
-            if (capi != null && capi.World.Player.WorldData.CurrentGameMode == EnumGameMode.Creative)
+            if (capi != null && capi.Settings.Bool["extendedDebugInfo"])
             {
-                text += "\nPersonality: " + Personality;
-                text += "\nVoice: " + VoiceSound;
+                text = text.TrimEnd();
+                text += "\n<font color=\"#bbbbbb\">Personality: " + Personality + "\nVoice: " + VoiceSound + "</font>";
             }
 
             return text;

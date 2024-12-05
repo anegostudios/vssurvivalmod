@@ -97,6 +97,13 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public override void OnEntityDespawn(EntityDespawnData despawn)
+        {
+            base.OnEntityDespawn(despawn);
+
+            capi?.Event.UnregisterRenderer(this, EnumRenderStage.Before);
+        }
+
 
         public void UnmnountPassengers()
         {
@@ -210,8 +217,8 @@ namespace Vintagestory.GameContent
 
             ForwardSpeed = Math.Sign(motion.X);
 
-            AngularVelocity = motion.Y;
-            if (!eagent.Controls.Sprint) AngularVelocity *= 2;
+            AngularVelocity = motion.Y * 1.5;
+            if (!eagent.Controls.Sprint) AngularVelocity *= 3;
 
             entity.SidedPos.Yaw += (float)motion.Y * dt * 30f;
             entity.SidedPos.Yaw = entity.SidedPos.Yaw % GameMath.TWOPI;

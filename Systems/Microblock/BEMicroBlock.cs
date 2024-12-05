@@ -318,15 +318,18 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < voxelCuboids.Count; i++)
             {
                 FromUint(voxelCuboids[i], cwm);
-                var blockid = blockIds[cwm.Material];
 
-                if (volumeByBlockid.ContainsKey(blockid))
+                if (blockIds.Length <= cwm.Material) continue;
+
+                int blockId = blockIds[cwm.Material];
+
+                if (volumeByBlockid.ContainsKey(blockId))
                 {
-                    volumeByBlockid[blockid] += cwm.SizeXYZ;
+                    volumeByBlockid[blockId] += cwm.SizeXYZ;
                 }
                 else
                 {
-                    volumeByBlockid[blockid] = cwm.SizeXYZ;
+                    volumeByBlockid[blockId] = cwm.SizeXYZ;
                 }
             }
 
@@ -1168,6 +1171,7 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < BlockIds.Length; i++)
             {
                 Block block = Api.World.GetBlock(BlockIds[i]);
+                if (block.Code == null) continue;
                 blockIdMapping[BlockIds[i]] = block.Code;
             }
 
@@ -1176,11 +1180,22 @@ namespace Vintagestory.GameContent
                 for (int i = 0; i < DecorIds.Length; i++)
                 {
                     Block block = Api.World.GetBlock(DecorIds[i]);
+                    if (block.Code == null) continue;
                     blockIdMapping[DecorIds[i]] = block.Code;
                 }
             }
         }
 
+        public bool NoVoxelsWithMaterial(uint index)
+        {
+            foreach (uint voxel in VoxelCuboids)
+            {
+                uint material = (voxel >> 24) & 0xFFu;
+                if (index == material) return false;
+            }
+
+            return true;
+        }
 
         public virtual bool RemoveMaterial(Block block)
         {
@@ -1213,7 +1228,7 @@ namespace Vintagestory.GameContent
                 var material = (VoxelCuboids[j] >> 24) & 0xFFu;
                 if (material >= index)
                 {
-                    VoxelCuboids[index] = (uint)((VoxelCuboids[j] & ~(255 << 24)) | ((material-1) << 24));
+                    VoxelCuboids[j] = (uint)((VoxelCuboids[j] & ~(255 << 24)) | ((material-1) << 24));
                 }
             }
         }
@@ -1894,6 +1909,8 @@ namespace Vintagestory.GameContent
                 InitMaterial(blockMat, decorMat);
                 InitUV();
 
+                int zoff1 = 1 << VertexFlags.ZOffsetBitPos;
+
                 int start = (targetMesh.IndicesCount > 0) ? (targetMesh.Indices[targetMesh.IndicesCount - 1] + 1) : 0;
                 int vertOffset = face * 4;
                 for (int i = 0; i < 4; i++)
@@ -1954,7 +1971,7 @@ namespace Vintagestory.GameContent
                             CubeMeshUtil.CubeVertices[ind * 3 + 2] * halfSizeZ * zg + centerZ,
                             decortpos.x1 + u * texWidth - subPixelPaddingx,   // u
                             decortpos.y1 + v * texHeight - subPixelPaddingy,  // v
-                            flags
+                            flags | zoff1
                         );
                     }
 

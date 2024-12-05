@@ -19,7 +19,7 @@ namespace Vintagestory.GameContent
 
     public class InventoryTrader : InventoryBase
     {
-        EntityTrader traderEntity;
+        EntityTradingHumanoid traderEntity;
 
         // Slots 0..15: Selling slots
         // Slots 16..19: Buying cart
@@ -85,7 +85,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        internal void LateInitialize(string id, ICoreAPI api, EntityTrader traderEntity)
+        internal void LateInitialize(string id, ICoreAPI api, EntityTradingHumanoid traderEntity)
         {
             base.LateInitialize(id, api);
             this.traderEntity = traderEntity;
@@ -591,7 +591,7 @@ namespace Vintagestory.GameContent
             GiveOrDrop(eagent, stack, stack.StackSize, traderEntity);
         }
 
-        public static void GiveOrDrop(EntityAgent eagent, ItemStack stack, int quantity, EntityTrader entityTrader)
+        public static void GiveOrDrop(EntityAgent eagent, ItemStack stack, int quantity, EntityTradingHumanoid entityTrader)
         {
             if (stack == null) return;
 

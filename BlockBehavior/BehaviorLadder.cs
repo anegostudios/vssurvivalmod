@@ -322,15 +322,17 @@ namespace Vintagestory.GameContent
             // Up: Positive Y
             // Down: Negative Y
 
-            Block neibBlock = blockAccess.GetBlock(pos.X + facing.Normali.X, pos.InternalY, pos.Z + facing.Normali.Z);
+            BlockPos neibPos = pos.AddCopy(facing);
+            Block neibBlock = blockAccess.GetBlock(neibPos);
 
+            // radfast note 27.11.24: this is very costly for a SideSolid check...
             Cuboidi upHalf = new Cuboidi(14, 0, 0, 15, 7, 15).RotatedCopy(0, 90 * facing.HorizontalAngleIndex, 0, new Vec3d(7.5, 0, 7.5));
-            Cuboidi downHalf = new Cuboidi(14, 8, 0, 15, 15, 15).RotatedCopy(0, 90 * facing.HorizontalAngleIndex, 0, new Vec3d(7.5, 0, 7.5));
+            if (neibBlock.CanAttachBlockAt(blockAccess, neibBlock, neibPos, facing.Opposite, upHalf)) return true;
 
-            return 
-                neibBlock.CanAttachBlockAt(blockAccess, neibBlock, pos.AddCopy(facing), facing.Opposite, upHalf) ||
-                neibBlock.CanAttachBlockAt(blockAccess, neibBlock, pos.AddCopy(facing), facing.Opposite, downHalf)
-            ;
+            Cuboidi downHalf = new Cuboidi(14, 8, 0, 15, 15, 15).RotatedCopy(0, 90 * facing.HorizontalAngleIndex, 0, new Vec3d(7.5, 0, 7.5));
+            if (neibBlock.CanAttachBlockAt(blockAccess, neibBlock, neibPos, facing.Opposite, downHalf)) return true;
+
+            return false;
         }
 
 

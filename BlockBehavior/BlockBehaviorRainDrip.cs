@@ -2,6 +2,7 @@
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -106,7 +107,7 @@ namespace Vintagestory.GameContent
             if (WeatherSystemClient.CurrentEnvironmentWetness4h < 0.05 || wsys.clientClimateCond.Temperature < 2) return false;
 
             int rainHeight = world.BlockAccessor.GetRainMapHeightAt(pos);
-            if (rainHeight <= pos.Y || (rainHeight <= pos.Y + 1 && world.BlockAccessor.GetBlockAbove(pos).HasBehavior<BlockBehaviorRainDrip>()) || (rainHeight <= pos.Y + 2 && world.BlockAccessor.GetBlockAbove(pos, 2).HasBehavior<BlockBehaviorRainDrip>()))
+            if (rainHeight <= pos.Y || (rainHeight <= pos.Y + 1 && world.BlockAccessor.GetBlockAbove(pos, 1, BlockLayersAccess.Solid).HasBehavior<BlockBehaviorRainDrip>()) || (rainHeight <= pos.Y + 2 && world.BlockAccessor.GetBlockAbove(pos, 2, BlockLayersAccess.Solid).HasBehavior<BlockBehaviorRainDrip>()))
             {
                 handling = EnumHandling.Handled;
                 return true;

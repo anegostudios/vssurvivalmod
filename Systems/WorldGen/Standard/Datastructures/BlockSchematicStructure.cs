@@ -25,6 +25,7 @@ namespace Vintagestory.ServerMods
 
         public int OffsetY { get; set; } = -1;
         public int MaxYDiff = 3;
+        public int? StoryLocationMaxAmount;
 
         public override void Init(IBlockAccessor blockAccessor)
         {
@@ -288,7 +289,7 @@ namespace Vintagestory.ServerMods
                         if (lightHsv[2] > 0 && blockAccessor is IWorldGenBlockAccessor)
                         {
                             Block oldBlock = blockAccessor.GetBlock(curPos);
-                            ((IWorldGenBlockAccessor)blockAccessor).ScheduleBlockLightUpdate(curPos.Copy(), oldBlock.BlockId, block.BlockId);
+                            ((IWorldGenBlockAccessor)blockAccessor).ScheduleBlockLightUpdate(curPos, oldBlock.BlockId, block.BlockId);
                         }
                     }
 
@@ -420,7 +421,7 @@ namespace Vintagestory.ServerMods
                 if (newBlock.LightHsv[2] > 0 && blockAccessor is IWorldGenBlockAccessor)
                 {
                     Block oldBlock = blockAccessor.GetBlock(curPos);
-                    ((IWorldGenBlockAccessor)blockAccessor).ScheduleBlockLightUpdate(curPos.Copy(), oldBlock.BlockId, newBlock.BlockId);
+                    ((IWorldGenBlockAccessor)blockAccessor).ScheduleBlockLightUpdate(curPos, oldBlock.BlockId, newBlock.BlockId);
                 }
             }
 

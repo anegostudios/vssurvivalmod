@@ -22,6 +22,7 @@ namespace Vintagestory.GameContent
         public string Code { get; set; }
         public Vec3f Rotation { get; set; } = new Vec3f();
         public Cuboidf[] ColSelBoxes { get; set; }
+        public Cuboidf[] SelBoxes { get; set; }
         public ModelTransform GuiTransform { get; set; }
         public ModelTransform FpTtransform { get; set; }
         public ModelTransform TpTransform { get; set; }
@@ -29,7 +30,8 @@ namespace Vintagestory.GameContent
         public string RotInterval { get; set; } = "22.5deg";
         public string FirstTexture { get; set; }
         public TextureAtlasPosition TexPos { get; set; }
-        public Dictionary<int, Cuboidf[]> ColSelBoxesByDeg { get; set; } = new Dictionary<int, Cuboidf[]>();
+        public Dictionary<long, Cuboidf[]> ColSelBoxesByHashkey { get; set; } = new Dictionary<long, Cuboidf[]>();
+        public Dictionary<long, Cuboidf[]> SelBoxesByHashkey { get; set; } = null;
         public AssetLocation ShapePath { get; set; }
         public Shape ShapeResolved { get; set; }
         public string HashKey => Code;
@@ -81,7 +83,7 @@ namespace Vintagestory.GameContent
                 RotInterval = this.RotInterval,
                 FirstTexture = this.FirstTexture,
                 TexPos = this.TexPos?.Clone(),
-                ColSelBoxesByDeg = this.ColSelBoxesByDeg.ToDictionary(kv => kv.Key, kv => kv.Value?.Select(box => box?.Clone()).ToArray()),
+                ColSelBoxesByHashkey = this.ColSelBoxesByHashkey.ToDictionary(kv => kv.Key, kv => kv.Value?.Select(box => box?.Clone()).ToArray()),
                 ShapePath = this.ShapePath?.Clone(),
                 ShapeResolved = this.ShapeResolved?.Clone(),
                 Randomize = this.Randomize,

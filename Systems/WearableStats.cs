@@ -319,7 +319,7 @@ namespace Vintagestory.GameContent
                     var sloc = AssetLocation.Create(loc, shieldSlot.Itemstack.Collectible.Code.Domain).WithPathPrefixOnce("sounds/").WithPathAppendixOnce(".ogg");
                     api.World.PlaySoundAt(sloc, player, null);
                     
-                    (api as ICoreServerAPI).Network.BroadcastEntityPacket(player.Entity.EntityId, (int)EntityServerPacketId.PlayPlayerAnim, SerializerUtil.Serialize("shieldBlock" + ((i == 0) ? "L" : "R")));
+                    if (rndval < chance) (api as ICoreServerAPI).Network.BroadcastEntityPacket(player.Entity.EntityId, (int)EntityServerPacketId.PlayPlayerAnim, SerializerUtil.Serialize("shieldBlock" + ((i == 0) ? "L" : "R")));
                     
 
                     if (api.Side == EnumAppSide.Server)

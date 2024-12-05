@@ -10,13 +10,26 @@ namespace Vintagestory.GameContent
 {
     public enum EnumActivityVariableScope
     {
+        /// <summary>
+        /// This entity specifically
+        /// </summary>
         Entity,
         /// <summary>
         /// E.g. for the entire village
         /// </summary>
         Group,
+        /// <summary>
+        /// For this player
+        /// </summary>
         Player,
-        Global
+        /// <summary>
+        /// Everywhere
+        /// </summary>
+        Global,
+        /// <summary>
+        /// Per entity, per player
+        /// </summary>
+        EntityPlayer
     }
 
 
@@ -52,13 +65,13 @@ namespace Vintagestory.GameContent
             switch (op)
             {
                 case "set":
-                    avs.SetVariable(vas.Entity.EntityId, scope, name, value);
+                    avs.SetVariable(vas.Entity, scope, name, value);
                     break;
                 case "incrementby":
                 case "decrementby":
-                    var curvalue = avs.GetVariable(scope, name, vas.Entity.EntityId);
+                    var curvalue = avs.GetVariable(scope, name, vas.Entity);
                     int sign = op == "decrementby" ? -1 : 1;
-                    avs.SetVariable(vas.Entity.EntityId, scope, name, "" + (curvalue.ToDouble() + sign*value.ToDouble()));
+                    avs.SetVariable(vas.Entity, scope, name, "" + (curvalue.ToDouble() + sign*value.ToDouble()));
                     break;
             }
         }
@@ -77,11 +90,11 @@ namespace Vintagestory.GameContent
                 .AddStaticText("Operation", CairoFont.WhiteDetailText(), b = b.BelowCopy(0, 15))
                 .AddDropDown(ops, ops, (int)System.Math.Max(0, ops.IndexOf(op)), null, b = b.BelowCopy(0, -5), CairoFont.WhiteDetailText(), "op")
 
-                .AddStaticText("Name", CairoFont.WhiteDetailText(), b = b.BelowCopy(0, 15).WithFixedWidth(50))
-                .AddTextInput(b = b.BelowCopy(0, 5), null, CairoFont.WhiteDetailText(), "name")
+                .AddStaticText("Name", CairoFont.WhiteDetailText(), b = b.BelowCopy(0, 15).WithFixedWidth(150))
+                .AddTextInput(b = b.BelowCopy(0, -5), null, CairoFont.WhiteDetailText(), "name")
 
-                .AddStaticText("Value", CairoFont.WhiteDetailText(), b = b.BelowCopy(0, 15).WithFixedWidth(50))
-                .AddTextInput(b = b.BelowCopy(0, 5), null, CairoFont.WhiteDetailText(), "value")
+                .AddStaticText("Value", CairoFont.WhiteDetailText(), b = b.BelowCopy(0, 15).WithFixedWidth(150))
+                .AddTextInput(b = b.BelowCopy(0, -5), null, CairoFont.WhiteDetailText(), "value")
             ;
 
             singleComposer.GetTextInput("name").SetValue(name);
@@ -108,7 +121,7 @@ namespace Vintagestory.GameContent
             string curvalue=null;
             if (avs != null)
             {
-                curvalue = avs.GetVariable(scope, name, vas.Entity.EntityId);
+                curvalue = avs.GetVariable(scope, name, vas.Entity);
             }
 
             if (op == "incrementby" || op == "decrementby") {

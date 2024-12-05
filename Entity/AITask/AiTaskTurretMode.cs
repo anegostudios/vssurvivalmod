@@ -225,7 +225,7 @@ namespace Vintagestory.GameContent
                 case EnumTurretState.TurretModeHold:
                     if (inFiringRange || inAbortRange)
                     {
-                        if (currentStateTime > 0.5)
+                        if (currentStateTime > 1.25)
                         {
                             fireProjectile();
                             currentState = EnumTurretState.TurretModeFired;

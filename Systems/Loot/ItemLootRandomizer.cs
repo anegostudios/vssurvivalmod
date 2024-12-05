@@ -92,6 +92,27 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)
+        {
+            IAttribute[] attributesValues = handbookStack.Attributes.Values;
+            List<BlockDropItemStack> resolvedDrops = new();
+
+            foreach (IAttribute attributeValue in attributesValues)
+            {
+                if (attributeValue is not TreeAttribute subtree) continue;
+
+                ItemStack dropsStack = subtree.GetItemstack("stack")?.Clone();
+
+                if (dropsStack?.Collectible != null)
+                {
+                    dropsStack.ResolveBlockOrItem(forPlayer.Entity.World);
+                    resolvedDrops.Add(new(dropsStack));
+                }
+            }
+
+            return resolvedDrops.ToArray();
+        }
+
         public override void OnStoreCollectibleMappings(IWorldAccessor world, ItemSlot inSlot, Dictionary<int, AssetLocation> blockIdMapping, Dictionary<int, AssetLocation> itemIdMapping)
         {
             base.OnStoreCollectibleMappings(world, inSlot, blockIdMapping, itemIdMapping);

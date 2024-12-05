@@ -23,6 +23,8 @@ namespace Vintagestory.GameContent
         string[] onmaterialsStrTmp;
         AssetLocation[] decorCodesTmp;
 
+        bool requireSprintKey = true;
+
 
         static int[] quadVertices = {
             -1, -1,  0,
@@ -49,6 +51,8 @@ namespace Vintagestory.GameContent
             decorCodesTmp = properties["decorBlockCodes"].AsObject(new AssetLocation[0], collObj.Code.Domain);
 
             consumeChance = properties["consumeChance"].AsFloat(0.15f);
+
+            requireSprintKey = properties["requireSprintKey"]?.AsBool(true) ?? true;
 
             base.Initialize(properties);
         }
@@ -207,7 +211,7 @@ namespace Vintagestory.GameContent
 
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
             if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak)) return;
-            if (byPlayer == null || !byPlayer.Entity.Controls.CtrlKey) return;
+            if (byPlayer == null || (requireSprintKey && !byPlayer.Entity.Controls.CtrlKey)) return;
             if (!SuitablePosition(byEntity.World.BlockAccessor, blockSel)) return;
 
             handHandling = EnumHandHandling.PreventDefault;
@@ -219,7 +223,7 @@ namespace Vintagestory.GameContent
 
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
             if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak)) return false;
-            if (byPlayer == null || !byPlayer.Entity.Controls.CtrlKey) return false;
+            if (byPlayer == null || (requireSprintKey && !byPlayer.Entity.Controls.CtrlKey)) return false;
             if (!SuitablePosition(byEntity.World.BlockAccessor, blockSel)) return false;
 
             handling = EnumHandling.PreventSubsequent;
@@ -232,7 +236,7 @@ namespace Vintagestory.GameContent
 
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
             if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak)) return;
-            if (byPlayer == null || !byPlayer.Entity.Controls.CtrlKey) return;
+            if (byPlayer == null || (requireSprintKey && !byPlayer.Entity.Controls.CtrlKey)) return;
 
             IBlockAccessor blockAccessor = byEntity.World.BlockAccessor;
             if (!SuitablePosition(blockAccessor, blockSel)) return;
@@ -304,6 +308,8 @@ namespace Vintagestory.GameContent
 
         public override SkillItem[] GetToolModes(ItemSlot slot, IClientPlayer forPlayer, BlockSelection blockSel)
         {
+            if (!requireSprintKey) return toolModes;
+
             if (blockSel == null) return null;
 
             IBlockAccessor blockAccessor = forPlayer.Entity.World.BlockAccessor;

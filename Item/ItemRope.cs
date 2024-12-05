@@ -82,14 +82,14 @@ namespace Vintagestory.GameContent
 
             if (toolMode == 0)
             {
-                if (!sys.ChangeRopeLength(-1))
+                if (!sys.ChangeRopeLength(-0.5))
                 {
                     (api as ICoreClientAPI)?.TriggerIngameError(this, "tooshort", Lang.Get("Already at minimum length!"));
                 }
             }
             if (toolMode == 1)
             {
-                if (!sys.ChangeRopeLength(1))
+                if (!sys.ChangeRopeLength(0.5))
                 {
                     (api as ICoreClientAPI)?.TriggerIngameError(this, "tooshort", Lang.Get("Already at maximum length!"));
                 }

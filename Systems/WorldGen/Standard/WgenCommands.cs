@@ -206,6 +206,12 @@ namespace Vintagestory.ServerMods
                     .WithArgs(parsers.IntRange("chunk_range",1,50), parsers.OptionalWord("landform"))
                     .HandleWith(OnCmdDel)
                 .EndSubCommand()
+                    .BeginSubCommand("delr")
+                    .WithDescription("Delete chunks around the player and the map regions. This will allow that changed terrain can generate for example at story locations.")
+                    .RequiresPlayer()
+                    .WithArgs(parsers.IntRange("chunk_range",1,50))
+                    .HandleWith(OnCmdDelr)
+                .EndSubCommand()
                 .BeginSubCommand("delrange")
                     .WithDescription("Delete a range of chunks. Start and end positions are in chunk coordinates. See CTRL + F3")
                     .RequiresPlayer()
@@ -662,6 +668,12 @@ namespace Vintagestory.ServerMods
             var range = (int)args[0];
             var landform = args[1] as string;
             return Regen(args.Caller, range, true, landform,true);
+        }
+
+        private TextCommandResult OnCmdDelr(TextCommandCallingArgs args)
+        {
+            var range = (int)args[0];
+            return Regen(args.Caller, range, true, null,true, true);
         }
 
         private TextCommandResult OnCmdDelrange(TextCommandCallingArgs args)
@@ -1511,16 +1523,22 @@ namespace Vintagestory.ServerMods
             float landcover = worldConfig.GetString("landcover", "1").ToFloat(1f);
             float oceanscale = worldConfig.GetString("oceanscale", "1").ToFloat(1f);
 
-            var noiseSizeOcean = api.WorldManager.RegionSize / TerraGenConfig.oceanMapScale;
-            int centerRegX = api.WorldManager.MapSizeX / api.WorldManager.RegionSize / 2;
-            int centerRegZ = api.WorldManager.MapSizeZ / api.WorldManager.RegionSize / 2;
+            var chunkSize = api.WorldManager.ChunkSize;
 
-            var list = new List<XZ>();
-            list.Add(new XZ(centerRegX * noiseSizeOcean, centerRegZ * noiseSizeOcean));
+            var modSystem = api.ModLoader.GetModSystem<GenMaps>();
+            var list = modSystem.requireLandAt;
 
-            var map = GenMaps.GetOceanMapGen(_seed + 1873, landcover, TerraGenConfig.oceanMapScale, oceanscale, list);
+            var startX = 0;
+            var startZ = 0;
+            if(args.Caller.Player != null)
+            {
+                startX = (int)args.Caller.Player.Entity.Pos.X / chunkSize;
+                startZ = (int)args.Caller.Player.Entity.Pos.Z / chunkSize;
+            }
+            var requiresSpawnOffset = GameVersion.IsLowerVersionThan(api.WorldManager.SaveGame.CreatedGameVersion, "1.20.0-pre.14");
+            var map = GenMaps.GetOceanMapGen(_seed + 1873, landcover, TerraGenConfig.oceanMapScale, oceanscale, list, requiresSpawnOffset);
             NoiseBase.Debug = true;
-            map.DebugDrawBitmap(DebugDrawMode.FirstByteGrayscale, 0, 0, size, "Ocean 1");
+            map.DebugDrawBitmap(DebugDrawMode.FirstByteGrayscale, startX, startZ, size, "Ocean 1-"+startX+"-"+startZ);
             NoiseBase.Debug = false;
             return TextCommandResult.Success("Ocean map generated");
         }
@@ -1885,8 +1903,10 @@ namespace Vintagestory.ServerMods
                 }
             }
 
+            var modSys = api.ModLoader.GetModSystem<GenStoryStructures>();
+
             TreeAttribute tree = null;
-            if (deleteRegion)
+            if (deleteRegion && !onlydelete)
             {
                 Dictionary<long, List<GeneratedStructure>> regionStructures = new();
                 var chunkSize = api.WorldManager.ChunkSize;
@@ -1901,8 +1921,20 @@ namespace Vintagestory.ServerMods
 
                         // remove the structures from each chunk that will be regenerated
                         var structures = mapRegion.GeneratedStructures.Where(s =>
-                            coord.X == s.Location.Start.X / chunkSize &&
-                            coord.Y == s.Location.Start.Z / chunkSize);
+                            coord.X == s.Location.X1 / chunkSize &&
+                            coord.Y == s.Location.Z1 / chunkSize).ToList();
+
+                        foreach (var structure in structures)
+                        {
+                            var location = modSys.GetStoryStructureAt(structure.Location.X1, structure.Location.Z1);
+                            if (location != null && modSys.storyStructureInstances.TryGetValue(location.Code, out var structureInstance))
+                            {
+                                if (structure.Group != null && structureInstance.SchematicsSpawned?.TryGetValue(structure.Group, out var spawned) == true)
+                                {
+                                    structureInstance.SchematicsSpawned[structure.Group] = Math.Max(0, spawned - 1);
+                                }
+                            }
+                        }
                         regionStructures[regionIndex].RemoveAll(s => structures.Contains(s));
                     }
                 }
@@ -1982,20 +2014,34 @@ namespace Vintagestory.ServerMods
             }
             else
             {
-                // when only deleting chunks we delete all structures from the mapregion
-                var chunkSize = api.WorldManager.ChunkSize;
-                foreach (Vec2i coord in coords)
+                if (!deleteRegion)
                 {
-                    var regionIndex = api.WorldManager.MapRegionIndex2D(coord.X / regionChunkSize, coord.Y / regionChunkSize);
-                    var mapRegion = api.WorldManager.GetMapRegion(regionIndex);
-                    if (mapRegion?.GeneratedStructures.Count > 0)
+                    // when only deleting chunks we delete all structures from the mapregion
+                    var chunkSize = api.WorldManager.ChunkSize;
+                    foreach (Vec2i coord in coords)
                     {
-                        // remove the structures from each chunk that will be deleted
-                        var generatedStructures = mapRegion.GeneratedStructures;
-                        var structures = generatedStructures.Where(s =>
-                            coord.X == s.Location.Start.X / chunkSize &&
-                            coord.Y == s.Location.Start.Z / chunkSize);
-                        generatedStructures.RemoveAll(s => structures.Contains(s));
+                        var regionIndex = api.WorldManager.MapRegionIndex2D(coord.X / regionChunkSize, coord.Y / regionChunkSize);
+                        var mapRegion = api.WorldManager.GetMapRegion(regionIndex);
+                        if (mapRegion?.GeneratedStructures.Count > 0)
+                        {
+                            // remove the structures from each chunk that will be deleted
+                            var generatedStructures = mapRegion.GeneratedStructures;
+                            var structures = generatedStructures.Where(s =>
+                                coord.X == s.Location.X1 / chunkSize &&
+                                coord.Y == s.Location.Z1 / chunkSize).ToList();
+                            foreach (var structure in structures)
+                            {
+                                var location = modSys.GetStoryStructureAt(structure.Location.X1, structure.Location.Z1);
+                                if (location != null && modSys.storyStructureInstances.TryGetValue(location.Code, out var structureInstance))
+                                {
+                                    if (structure.Group != null && structureInstance.SchematicsSpawned?.TryGetValue(structure.Group, out var spawned) == true)
+                                    {
+                                        structureInstance.SchematicsSpawned[structure.Group] = Math.Max(0, spawned - 1);
+                                    }
+                                }
+                            }
+                            generatedStructures.RemoveAll(s => structures.Contains(s));
+                        }
                     }
                 }
             }

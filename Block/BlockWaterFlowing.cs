@@ -2,6 +2,7 @@
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -36,7 +37,7 @@ namespace Vintagestory.GameContent
             Block blockAbove = world.BlockAccessor.GetBlockAbove(pos);
             if (blockAbove.Replaceable >= 6000)   // This is a kind of rough "transparent to sound" test
             {
-                blockAbove = world.BlockAccessor.GetBlock(pos.X, pos.InternalY + 1, pos.Z, BlockLayersAccess.Fluid);
+                blockAbove = world.BlockAccessor.GetBlockAbove(pos, 1, BlockLayersAccess.Fluid);
                 if (!blockAbove.IsLiquid()) return 1;
             }
 

@@ -1,8 +1,10 @@
-﻿using Newtonsoft.Json.Linq;
-using ProtoBuf;
+﻿using ProtoBuf;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
@@ -35,8 +37,6 @@ namespace Vintagestory.GameContent
         public EntityVariables GlobalVariables = new EntityVariables();
         [ProtoMember(2)]
         public Dictionary<string, EntityVariables> PlayerVariables = new Dictionary<string, EntityVariables>();
-        [ProtoMember(3)]
-        public Dictionary<long, EntityVariables> EntityVariables = new Dictionary<long, EntityVariables>();
         [ProtoMember(4)]
         public Dictionary<string, EntityVariables> GroupVariables = new Dictionary<string, EntityVariables>();
     }
@@ -57,22 +57,28 @@ namespace Vintagestory.GameContent
             this.Api = api;
             api.Network.RegisterChannel("variable").RegisterMessageType<VariableData>();
 
+            api.ChatCommands.GetOrCreate("debug").BeginSubCommand("clearvariables").HandleWith(cmdClearVariables);
+
             OnDialogueControllerInit += setDefaultVariables;
         }
 
-        public void SetVariable(long callingEntityId, EnumActivityVariableScope scope, string name, string value)
+        private TextCommandResult cmdClearVariables(TextCommandCallingArgs args)
+        {
+            VarData.GlobalVariables = new EntityVariables();
+            VarData.PlayerVariables = new Dictionary<string, EntityVariables>();
+            VarData.GroupVariables = new Dictionary<string, EntityVariables>();
+            return TextCommandResult.Success("Variables cleared");
+        }
+
+        public void SetVariable(Entity callingEntity, EnumActivityVariableScope scope, string name, string value)
         {
             switch (scope)
             {
                 case EnumActivityVariableScope.Entity:
                     {
-                        EntityVariables variables = null;
-                        if (!VarData.EntityVariables.TryGetValue(callingEntityId, out variables))
-                        {
-                            VarData.EntityVariables[callingEntityId] = variables = new EntityVariables();
-                        }
-
-                        variables[name] = value;
+                        var tree = callingEntity.WatchedAttributes.GetTreeAttribute("variables");
+                        if (tree == null) callingEntity.WatchedAttributes["variables"] = tree = new TreeAttribute();
+                        tree[name] = new StringAttribute(value);
                         break;
                     }
 
@@ -81,7 +87,7 @@ namespace Vintagestory.GameContent
                     break;
                 case EnumActivityVariableScope.Group:
                     {
-                        var groupCode = sapi.World.GetEntityById(callingEntityId).WatchedAttributes.GetString("groupCode");
+                        var groupCode = callingEntity.WatchedAttributes.GetString("groupCode");
                         EntityVariables variables = null;
                         if (!VarData.GroupVariables.TryGetValue(groupCode, out variables))
                         {
@@ -93,7 +99,7 @@ namespace Vintagestory.GameContent
 
                 case EnumActivityVariableScope.Player:
                     {
-                        var uid = (sapi.World.GetEntityById(callingEntityId) as EntityPlayer).Player.PlayerUID;
+                        var uid = (callingEntity as EntityPlayer).Player.PlayerUID;
                         EntityVariables variables = null;
                         if (!VarData.PlayerVariables.TryGetValue(uid, out variables))
                         {
@@ -102,6 +108,17 @@ namespace Vintagestory.GameContent
                         variables[name] = value;
                         break;
                     }
+
+                case EnumActivityVariableScope.EntityPlayer:
+                    {
+                        var uid = (callingEntity as EntityPlayer).Player.PlayerUID;
+
+                        var tree = callingEntity.WatchedAttributes.GetTreeAttribute("variables");
+                        if (tree == null) callingEntity.WatchedAttributes["variables"] = tree = new TreeAttribute();
+                        tree[uid + "-" + name] = new StringAttribute(value);
+                        break;
+                    }
+
             }
         }
 
@@ -116,26 +133,26 @@ namespace Vintagestory.GameContent
         }
 
 
-        public string GetVariable(EnumActivityVariableScope scope, string name, long callingEntityId)
+        public string GetVariable(EnumActivityVariableScope scope, string name, Entity callingEntity)
         {
             switch (scope)
             {
                 case EnumActivityVariableScope.Entity:
                     {
-                        EntityVariables variables = null;
-                        if (!VarData.EntityVariables.TryGetValue(callingEntityId, out variables))
+                        var tree = callingEntity.WatchedAttributes.GetTreeAttribute("variables");
+                        if (tree != null)
                         {
-                            return null;
+                            return (tree[name] as StringAttribute)?.value;
                         }
 
-                        return variables[name];
+                        return null;
                     }
 
                 case EnumActivityVariableScope.Global:
                     return VarData.GlobalVariables[name];
                 case EnumActivityVariableScope.Group:
                     {
-                        var groupCode = sapi.World.GetEntityById(callingEntityId).WatchedAttributes.GetString("groupCode");
+                        var groupCode = callingEntity.WatchedAttributes.GetString("groupCode");
                         EntityVariables variables = null;
                         if (!VarData.GroupVariables.TryGetValue(groupCode, out variables))
                         {
@@ -146,13 +163,25 @@ namespace Vintagestory.GameContent
 
                 case EnumActivityVariableScope.Player:
                     {
-                        var uid = (sapi.World.GetEntityById(callingEntityId) as EntityPlayer).Player.PlayerUID;
+                        var uid = (callingEntity as EntityPlayer).Player.PlayerUID;
                         EntityVariables variables = null;
                         if (!VarData.PlayerVariables.TryGetValue(uid, out variables))
                         {
                             return null;
                         }
                         return variables[name];
+                    }
+
+                case EnumActivityVariableScope.EntityPlayer:
+                    {
+                        var uid = (callingEntity as EntityPlayer).Player.PlayerUID;
+                        var tree = callingEntity.WatchedAttributes.GetTreeAttribute("variables");
+                        if (tree != null)
+                        {
+                            return (tree[uid + "-" + name] as StringAttribute)?.value;
+                        }
+
+                        return null;
                     }
             }
 
@@ -171,7 +200,11 @@ namespace Vintagestory.GameContent
 
         private void setDefaultVariables(VariableData data, EntityPlayer playerEntity, EntityAgent npcEntity)
         {
-            var vars = data.PlayerVariables[playerEntity.PlayerUID] = new EntityVariables();
+            if (!data.PlayerVariables.TryGetValue(playerEntity.PlayerUID, out var vars))
+            {
+                vars = data.PlayerVariables[playerEntity.PlayerUID] = new EntityVariables();
+            }
+
             vars["characterclass"] = playerEntity.WatchedAttributes.GetString("characterClass", null);
         }
 

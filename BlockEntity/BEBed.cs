@@ -23,7 +23,7 @@ namespace Vintagestory.GameContent
         string mountedByPlayerUid;
         EntityControls controls = new EntityControls();
         EntityPos mountPos = new EntityPos();
-
+        public bool DoTeleportOnUnmount { get; set; } = true;
 
         public EntityPos SeatPosition => Position; // Since we have only one seat, it can be the same as the base position
         public EntityPos Position
@@ -42,12 +42,12 @@ namespace Vintagestory.GameContent
                 return null;
             }
         }
-        
+
         AnimationMetaData meta = new AnimationMetaData() { Code = "sleep", Animation = "lie" }.Init();
         public AnimationMetaData SuggestedAnimation => meta;
         public EntityControls Controls => controls;
         public IMountable MountSupplier => this;
-        public EnumMountAngleMode AngleMode => EnumMountAngleMode.FixateYaw;        
+        public EnumMountAngleMode AngleMode => EnumMountAngleMode.FixateYaw;
         public Vec3f LocalEyePos => eyePos;
         Entity IMountableSeat.Passenger => MountedBy;
         public bool CanControl => false;
@@ -140,7 +140,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        
+
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
@@ -158,7 +158,7 @@ namespace Vintagestory.GameContent
             tree.SetLong("mountedByEntityId", mountedByEntityId);
             tree.SetString("mountedByPlayerUid", mountedByPlayerUid);
         }
-        
+
 
         public void MountableToTreeAttributes(TreeAttribute tree)
         {
@@ -226,7 +226,7 @@ namespace Vintagestory.GameContent
         public bool IsMountedBy(Entity entity) => this.MountedBy == entity;
         public bool IsBeingControlled() => false;
         public bool CanUnmount(EntityAgent entityAgent) => true;
-        public bool CanMount(EntityAgent entityAgent) => true;
+        public bool CanMount(EntityAgent entityAgent) => !AnyMounted();
 
         public bool AnyMounted() => MountedBy != null;
     }

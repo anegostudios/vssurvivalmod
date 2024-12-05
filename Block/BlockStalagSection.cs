@@ -4,6 +4,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 using Vintagestory.ServerMods;
 
 namespace Vintagestory.GameContent
@@ -93,7 +94,7 @@ namespace Vintagestory.GameContent
 
             for (int dy = 0; dy < 5; dy++)
             {
-                Block block = blockAccessor.GetBlockAbove(pos, dy);
+                Block block = blockAccessor.GetBlockAbove(pos, dy, BlockLayersAccess.Solid);
                 if (block.SideSolid[BlockFacing.DOWN.Index] && block.BlockMaterial == EnumBlockMaterial.Stone)
                 {
                     string rocktype;
@@ -111,7 +112,7 @@ namespace Vintagestory.GameContent
 
             for (int dy = 0; dy < 12; dy++)
             {
-                Block block = blockAccessor.GetBlockBelow(pos, dy);
+                Block block = blockAccessor.GetBlockBelow(pos, dy, BlockLayersAccess.Solid);
                 if (block.SideSolid[BlockFacing.UP.Index] && block.BlockMaterial == EnumBlockMaterial.Stone)
                 {
                     string rocktype;

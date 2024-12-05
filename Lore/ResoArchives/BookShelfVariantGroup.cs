@@ -24,6 +24,6 @@ namespace Vintagestory.GameContent
         public ModelTransform GroundTf { get; set; }
         public string RotInterval { get; set; } = "22.5deg";
 
-        public Dictionary<int, Cuboidf[]> ColSelBoxesByDeg { get; set; } = new Dictionary<int, Cuboidf[]>();
+        public Dictionary<long, Cuboidf[]> ColSelBoxesByHashkey { get; set; } = new Dictionary<long, Cuboidf[]>();
     }
 }

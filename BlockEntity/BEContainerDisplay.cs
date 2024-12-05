@@ -131,7 +131,10 @@ namespace Vintagestory.GameContent
         {
             if (eventname != "genjsontransform" && eventname != "oncloseedittransforms" &&
                 eventname != "onapplytransforms") return;
-            if (Inventory.Empty) return;
+            if (capi == null || Inventory.Empty) return;
+
+            // This is only used for doing .tfedit on nearby stuff, it creates a lot of lag if we remesh the entire loaded chunk area
+            if (Pos.DistanceTo(capi.World.Player.Entity.Pos.X, capi.World.Player.Entity.Pos.Y, capi.World.Player.Entity.Pos.Z) > 20) return;
 
             for (var i = 0; i < DisplayedItems; i++)
             {

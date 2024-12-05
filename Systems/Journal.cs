@@ -611,6 +611,32 @@ namespace Vintagestory.GameContent
             }
         }
 
+
+
+        public bool DidDiscoverLore(string playerUid, string code, int chapterId)
+        {
+            Journal journal;
+            if (!journalsByPlayerUid.TryGetValue(playerUid, out journal))
+            {
+                return false;
+            }
+
+            for (int i = 0; i < journal.Entries.Count; i++)
+            {
+                if (journal.Entries[i].LoreCode == code)
+                {
+                    JournalEntry entry = journal.Entries[i];
+                    for (int j = 0; j < entry.Chapters.Count; j++)
+                    {
+                        if (entry.Chapters[j].ChapterId == chapterId) return true;
+                    }
+
+                    break;
+                }
+            }
+
+            return false;
+        }
     }
 
 

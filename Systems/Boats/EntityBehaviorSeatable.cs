@@ -15,7 +15,14 @@ namespace Vintagestory.GameContent
 {
     public delegate bool CanSitDelegate(EntityAgent eagent, out string errorMessage);
 
-    public class EntityBehaviorSeatable : EntityBehavior, IVariableSeatsMountable, IRopeTiedCreatureCarrier
+    public class EntityBehaviorCreatureCarrier : EntityBehaviorSeatable, IRopeTiedCreatureCarrier
+    {
+        public EntityBehaviorCreatureCarrier(Entity entity) : base(entity)
+        {
+        }
+    }
+
+    public class EntityBehaviorSeatable : EntityBehavior, IVariableSeatsMountable
     {
         public IMountableSeat[] Seats { get; set; }
         public SeatConfig[] SeatConfigs;
@@ -104,7 +111,7 @@ namespace Vintagestory.GameContent
 
         public override void OnInteract(EntityAgent byEntity, ItemSlot itemslot, Vec3d hitPosition, EnumInteractMode mode, ref EnumHandling handled)
         {
-            if (mode != EnumInteractMode.Interact || !entity.Alive) return;
+            if (mode != EnumInteractMode.Interact || !entity.Alive || !byEntity.Alive) return;
             if (!allowSit(byEntity)) return;
             if (itemslot.Itemstack?.Collectible is ItemRope) return;
 
@@ -124,7 +131,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (byEntity.Controls.Sprint)
+            if (byEntity.Controls.CtrlKey)
             {
                 return;
             }
@@ -306,6 +313,15 @@ namespace Vintagestory.GameContent
             }
 
             return base.GetInteractionHelp(world, es, player, ref handled);
+        }
+
+        public override void OnEntityDeath(DamageSource damageSourceForDeath)
+        {
+            base.OnEntityDeath(damageSourceForDeath);
+
+            foreach (var seat in Seats) {
+                (seat?.Passenger as EntityAgent)?.TryUnmount();
+            }
         }
     }
 

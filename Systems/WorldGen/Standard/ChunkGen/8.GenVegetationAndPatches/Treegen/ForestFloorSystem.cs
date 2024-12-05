@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 using Vintagestory.GameContent;
 using Vintagestory.ServerMods.NoObf;
 
@@ -291,7 +292,7 @@ namespace Vintagestory.ServerMods
                     for (int j = 0; j < 4; j++)
                     {
                         var f = BlockFacing.HORIZONTALS[j];
-                        var nblock = api.GetBlock(tmpPos.X + f.Normali.X, tmpPos.Y, tmpPos.Z + f.Normali.Z);
+                        var nblock = api.GetBlockOnSide(tmpPos, f);
                         if (nblock is BlockLog && nblock.Variant["type"] != "resin")
                         {
                             facing = f;

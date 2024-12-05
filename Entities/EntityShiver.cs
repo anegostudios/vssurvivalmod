@@ -60,7 +60,7 @@ namespace Vintagestory.GameContent
                 AnimManager.StopAnimation("stroke-end");
             }
 
-            if (Alive && Api.Side == EnumAppSide.Server && Api.World.Rand.NextDouble() < 0.0009 && !AnimManager.IsAnimationActive("stroke-start", "stroke-idle", "stroke-end", "despair"))
+            if (Alive && Api.Side == EnumAppSide.Server && Api.World.Rand.NextDouble() < 0.0008 && !AnimManager.IsAnimationActive("stroke-start", "stroke-idle", "stroke-end", "despair"))
             {
                 strokeActive = true;
                 aiTaskManager.StopTasks();
@@ -105,6 +105,15 @@ namespace Vintagestory.GameContent
                 this.AnimManager.StartAnimation(mouthOpen);
                 callbackid = Api.Event.RegisterCallback((dt) => AnimManager.StartAnimation(mouthIdle), (int)(51 * 1000/30f));
             }
+        }
+
+        public override void Die(EnumDespawnReason reason = EnumDespawnReason.Death, DamageSource damageSourceForDeath = null)
+        {
+            base.Die(reason, damageSourceForDeath);
+
+            this.AnimManager.StopAnimation(mouthOpen);
+            this.AnimManager.StopAnimation(mouthIdle);
+            this.AnimManager.StopAnimation(mouthClose);
         }
 
         protected float hitAndRunChance = 0;

@@ -2,13 +2,16 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection.Emit;
 using System.Text;
+using Vintagestory.Common;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using System.Diagnostics;
 
 namespace Vintagestory.GameContent
 {
@@ -144,7 +147,7 @@ namespace Vintagestory.GameContent
         {
             IServerPlayer plr = (byEntity as EntityPlayer).Player as IServerPlayer;
             ICoreServerAPI sapi = api as ICoreServerAPI;
-            
+
             if (HasAnimal(slot.Itemstack))
             {
                 if (blockSel == null)
@@ -166,22 +169,41 @@ namespace Vintagestory.GameContent
 
             if (entitySel != null)
             {
-                if (!(slot is ItemSlotBackpack))
-                {
-                    sapi?.SendIngameError(plr, "canthold", Lang.Get("Must have the container in backpack slot to catch an animal"));
-                    return;
-                }
+                handHandling = EnumHandHandling.PreventDefault;
+                handling = EnumHandling.PreventDefault;
 
                 if (api.Side == EnumAppSide.Server && !IsCatchable(entitySel.Entity))
                 {
                     sapi?.SendIngameError(plr, "notcatchable", Lang.Get("This animal is too large, or too wild to catch with a basket"));
                     return;
                 }
-                
+
+                ItemSlot emptyBackpackSlot = null;
+
+                if (slot is ItemSlotBackpack)
+                {
+                    emptyBackpackSlot = slot;
+                }
+                else
+                {
+                    IInventory backpackInventory = (byEntity as EntityPlayer)?.Player?.InventoryManager.GetOwnInventory(GlobalConstants.backpackInvClassName);
+                    if (backpackInventory != null)
+                    {
+                        emptyBackpackSlot = backpackInventory.Where(slot => slot is ItemSlotBackpack).FirstOrDefault(slot => slot.Empty);
+                    }
+                }
+
+                if (emptyBackpackSlot == null)
+                {
+                    sapi?.SendIngameError(plr, "canthold", Lang.Get("Must have empty backpack slot to catch an animal"));
+                    return;
+                }
+
                 CatchCreature(slot, entitySel.Entity);
-                handHandling = EnumHandHandling.PreventDefault;
-                handling = EnumHandling.PreventDefault;
+                slot.TryFlipWith(emptyBackpackSlot);
                 slot.MarkDirty();
+                emptyBackpackSlot.MarkDirty();
+
                 return;
             }
         }

@@ -8,6 +8,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.ServerMods
 {
@@ -151,8 +152,6 @@ namespace Vintagestory.ServerMods
         [JsonProperty]
         public float MaxRain = 1;
         [JsonProperty]
-        public int? OffsetY = null;
-        [JsonProperty]
         public AssetLocation[] ReplaceWithBlocklayers;
         [JsonProperty]
         public bool PostPass = false;
@@ -160,8 +159,6 @@ namespace Vintagestory.ServerMods
         public bool SuppressTrees = false;
         [JsonProperty]
         public bool SuppressWaterfalls = false;
-        [JsonProperty]
-        public int MaxYDiff = 3;
 
 
         internal BlockSchematicStructure[][] schematicDatas;
@@ -204,7 +201,7 @@ namespace Vintagestory.ServerMods
             unscaledMaxTemp = Climate.DescaleTemperature(MaxTemp);
 
 
-            this.schematicDatas = LoadSchematicsWithRotations<BlockSchematicStructure>(api, Schematics, config, structureConfig, structureConfig.SchematicYOffsets, OffsetY, "schematics/", MaxYDiff);
+            this.schematicDatas = LoadSchematicsWithRotations<BlockSchematicStructure>(api, this, config, structureConfig, structureConfig.SchematicYOffsets);
 
             if (ReplaceWithBlocklayers != null)
             {
@@ -325,7 +322,7 @@ namespace Vintagestory.ServerMods
                             var face = BlockFacing.ALLFACES[i];
                             if (!block.SideSolid[i]) continue;
 
-                            var nblock = blockAccessor.GetBlock(tmpPos.X + face.Normali.X, tmpPos.InternalY + face.Normali.Y, tmpPos.Z + face.Normali.Z);
+                            var nblock = blockAccessor.GetBlockOnSide(tmpPos, face);
                             if (!nblock.SideSolid[face.Opposite.Index])
                             {
                                 blockAccessor.SetDecor(mossDecor, tmpPos, face);

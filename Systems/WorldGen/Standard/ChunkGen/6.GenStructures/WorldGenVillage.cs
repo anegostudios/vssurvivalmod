@@ -94,8 +94,15 @@ namespace Vintagestory.ServerMods
                 for (int j = 0; j < assets.Length; j++)
                 {
                     int offsety = WorldGenStructureBase.getOffsetY(schematicYOffsets, defaultOffsetY, assets[j]);
-                    var sch = WorldGenStructureBase.LoadSchematic<BlockSchematicStructure>(api, assets[j], blockLayerConfig, structureConfig, offsety, MaxYDiff);
-                    if (sch != null) schematics.AddRange(sch);
+                    var sch = WorldGenStructureBase.LoadSchematic<BlockSchematicStructure>(api, assets[j], blockLayerConfig, structureConfig, null, offsety);
+                    if (sch != null)
+                    {
+                        foreach (var s in sch)
+                        {
+                            s.MaxYDiff = MaxYDiff;
+                        }
+                        schematics.AddRange(sch);
+                    }
                 }
 
                 schem.Structures = schematics.ToArray();

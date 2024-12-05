@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.ServerMods
 {
@@ -214,8 +215,8 @@ namespace Vintagestory.ServerMods
             {
                 prepareHotSpringBase(posx, posy, posz, surfaceY, true, decorBlock);
 
-                var upblock = wgenBlockAccessor.GetBlockAbove(pos);
-                var upblock2 = wgenBlockAccessor.GetBlockAbove(pos, 2);
+                var upblock = wgenBlockAccessor.GetBlockAbove(pos, 1, BlockLayersAccess.Solid);
+                var upblock2 = wgenBlockAccessor.GetBlockAbove(pos, 2, BlockLayersAccess.Solid);
                 if (upblock2.SideSolid[BlockFacing.UP.Index]) pos.Y += 2;
                 else if (upblock.SideSolid[BlockFacing.UP.Index]) pos.Y++;
 

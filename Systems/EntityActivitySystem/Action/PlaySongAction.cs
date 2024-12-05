@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using ProtoBuf;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -8,6 +9,15 @@ using static Vintagestory.API.Common.EntityAgent;
 
 namespace Vintagestory.GameContent
 {
+    [ProtoContract]
+    public class SongPacket
+    {
+        [ProtoMember(1)]
+        public string SoundLocation;
+        [ProtoMember(2)]
+        public float SecondsPassed;
+    }
+
     [JsonObject(MemberSerialization.OptIn)]
     public class PlaySongAction : EntityActionBase
     {
@@ -72,7 +82,11 @@ namespace Vintagestory.GameContent
         private void sendSongPacket()
         {
             var sapi = vas.Entity.Api as ICoreServerAPI;
-            sapi.Network.BroadcastEntityPacket(vas.Entity.EntityId, (int)EntityServerPacketId.PlayMusic, SerializerUtil.Serialize(soundLocation));
+            sapi.Network.BroadcastEntityPacket(vas.Entity.EntityId, (int)EntityServerPacketId.PlayMusic, SerializerUtil.Serialize(new SongPacket()
+            {
+                SecondsPassed = secondsPassed,
+                SoundLocation = soundLocation
+            }));
         }
 
         public override void OnHurt(DamageSource dmgSource, float damage)
@@ -80,7 +94,7 @@ namespace Vintagestory.GameContent
             stop = true;
             Cancel();
         }
-
+        
         public override void Cancel()
         {
             var sapi = vas.Entity.Api as ICoreServerAPI;
@@ -89,6 +103,8 @@ namespace Vintagestory.GameContent
         }
         public override void Finish() {
             vas.Entity.AnimManager.StopAnimation(animMeta.Code);
+            var sapi = vas.Entity.Api as ICoreServerAPI;
+            sapi.Network.BroadcastEntityPacket(vas.Entity.EntityId, (int)EntityServerPacketId.StopMusic);
         }
 
         public override void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)

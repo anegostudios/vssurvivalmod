@@ -32,7 +32,7 @@ namespace Vintagestory.GameContent
             {
                 Type = (Block as BlockClutterBookshelf).RandomType(Variant);
                 Type2 = (Block as BlockClutterBookshelf).RandomType(Variant);
-                initShape();
+                loadMesh();
                 Blockentity.MarkDirty(true);
                 return;
             }
@@ -40,7 +40,7 @@ namespace Vintagestory.GameContent
             base.OnBlockPlaced(byItemStack);
         }
 
-        public override void initShape()
+        public override void loadMesh()
         {
             if (Type == null || Api.Side == EnumAppSide.Server || Variant == null) return;
 

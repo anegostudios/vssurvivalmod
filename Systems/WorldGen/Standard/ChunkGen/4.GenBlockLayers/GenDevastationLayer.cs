@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -26,11 +24,18 @@ namespace Vintagestory.ServerMods
         private const float fullHeightDist = 0.3f;
         private const float flatHeightDist = 0.4f;
 
-        public override bool ShouldLoad(EnumAppSide side) => side == EnumAppSide.Server;
+        public override bool ShouldLoad(EnumAppSide side) => true;
         public override double ExecuteOrder() => 0.399;
 
         public static int[] DevastationBlockIds;
         int growthBlockId;
+        int dim2Size;
+        const int Dim2HeightOffset = 9;   // Raises the height of dim2 terrain so that it's not crazy different from devastation above the cracks
+
+        public override void Start(ICoreAPI api)
+        {
+            api.Network.RegisterChannel("devastation").RegisterMessageType<DevaLocation>();
+        }
 
         public override void StartServerSide(ICoreServerAPI api)
         {
@@ -46,8 +51,6 @@ namespace Vintagestory.ServerMods
             }
 
             distDistort = new SimplexNoise(new double[] { 14, 9, 6, 3 }, new double[] { 1 / 100.0, 1 / 50.0, 1 / 25.0, 1 / 12.5 }, api.World.SeaLevel + 20980);
-
-            api.Network.RegisterChannel("devastation").RegisterMessageType<DevaLocation>();
         }
 
         private void Event_PlayerJoin(IServerPlayer byPlayer)
@@ -75,12 +78,12 @@ namespace Vintagestory.ServerMods
             {
                 Timeswitch ts = api.ModLoader.GetModSystem<Timeswitch>();
                 ts.SetPos(devastationLocation.CenterPos);
-                ts.InitPotentialGeneration(devastationLocation, modSys, GenerateDim2Terrain);
+                dim2Size = ts.SetupDim2TowerGeneration(devastationLocation, modSys);
             }
 
-            var devastationEffects = api.ModLoader.GetModSystem<DevastationEffects>();
+            var devastationEffects = api.ModLoader.GetModSystem<ModSystemDevastationEffects>();
             devastationEffects.DevaLocationPresent = devastationLocation?.CenterPos.ToVec3d();
-			devastationEffects.DevaLocationPast = devastationLocation?.CenterPos.Copy().SetDimension(Dimensions.AltWorld).ToVec3d();
+            devastationEffects.DevaLocationPast = devastationLocation?.CenterPos.Copy().SetDimension(Dimensions.AltWorld).ToVec3d();
             devastationEffects.EffectRadius = devastationLocation?.GenerationRadius ?? 0;
 
             var bmp = BitmapCreateFromPng(api.Assets.TryGet("worldgen/devastationcracks.png"));
@@ -137,11 +140,11 @@ namespace Vintagestory.ServerMods
 
             var chunks = request.Chunks;
             var mapchunk = chunks[0].MapChunk;
-            if (heightmaps != null)
+            if (ShouldGenerateDim2Terrain(request.ChunkX, request.ChunkZ))
             {
-                ushort[] heightmapCopy = new ushort[chunksize * chunksize];
-                Array.Copy(mapchunk.WorldGenTerrainHeightMap, heightmapCopy, heightmapCopy.Length);
-                heightmaps[(long)request.ChunkZ * (GlobalConstants.MaxWorldSizeXZ / chunksize) + request.ChunkX] = heightmapCopy;
+                // We generate Dim2 terrain first, before the WorldGenTerrainHeightMap gets altered by the cracks
+                api.WorldManager.CreateChunkColumnForDimension(request.ChunkX, request.ChunkZ, Dimensions.AltWorld);
+                GenerateDim2ChunkColumn(request.ChunkX, request.ChunkZ, mapchunk.WorldGenTerrainHeightMap);
             }
 
             float noiseMax = DevastationBlockIds.Length - 1.01f;
@@ -187,7 +190,7 @@ namespace Vintagestory.ServerMods
                     int dy = 0;
 
                     if (nmapx >= 0 && nmapz >= 0 && nmapx < cellnoiseWidth && nmapz < cellnoiseHeight)
-                        dy = noisemap[(nmapz) * cellnoiseWidth + nmapx];
+                        dy = noisemap[nmapz * cellnoiseWidth + nmapx];
 
                     var height = (int)Math.Round(offset - dy / 30f);
 
@@ -215,10 +218,12 @@ namespace Vintagestory.ServerMods
                         }
                     }
 
-                    mapchunk.WorldGenTerrainHeightMap[index2d] = (ushort)(wgenheight + height);
-                    mapchunk.RainHeightMap[index2d] = (ushort)(wgenheight + height);
+                    var newWgenHeigt = (ushort)(wgenheight + height);
+                    mapchunk.WorldGenTerrainHeightMap[index2d] = newWgenHeigt;
+                    var rainHeight = Math.Max(newWgenHeigt, mapchunk.RainHeightMap[index2d]);
+                    mapchunk.RainHeightMap[index2d] = rainHeight;
 
-                    if (rnd.NextDouble() - 0.1 < density)
+                    if (rnd.NextDouble() - 0.1 < density && rainHeight == newWgenHeigt)
                     {
                         var chunkY = (wgenheight + height + 1) / chunksize;
                         var lY = (wgenheight + height + 1) % chunksize;
@@ -264,6 +269,11 @@ namespace Vintagestory.ServerMods
             height = blockAccessor.GetTerrainMapheightAt(tmpPos);
             tmpPos.Y = height;
             if (!DevastationBlockIds.Contains(blockAccessor.GetBlockId(tmpPos))) return false;
+
+            tmpPos.Set(startPos.X + wdt/2, startPos.Y + 1, startPos.Z + len/2);
+            height = blockAccessor.GetTerrainMapheightAt(tmpPos);
+            tmpPos.Y = height;
+            if (!DevastationBlockIds.Contains(blockAccessor.GetBlockId(tmpPos))) return false;
             return true;
         }
 
@@ -273,34 +283,23 @@ namespace Vintagestory.ServerMods
         }
 
 
+        private bool ShouldGenerateDim2Terrain(int cx, int cz)
+        {
+            int radius = dim2Size;
+            int baseCx = devastationLocation.CenterPos.X / GlobalConstants.ChunkSize;
+            int baseCz = devastationLocation.CenterPos.Z / GlobalConstants.ChunkSize;
+            return (Math.Abs(cx - baseCx) <= radius && Math.Abs(cz - baseCz) <= radius);
+        }
+
+
         /// <summary>
         /// Used to generate "past" terrain around the tower in dim2
         /// </summary>
         /// <param name="cx"></param>
         /// <param name="cz"></param>
-        /// <param name="radius"></param>
-        private void GenerateDim2Terrain(int baseCx, int baseCz, int radius)
+        /// <param name="heightmap">The original world heightmap (before placement of devastation soil and cracks)</param>
+        private void GenerateDim2ChunkColumn(int cx, int cz, ushort[] heightmap)
         {
-            for (int x = -radius; x <= radius; x++)
-            {
-                for (int z = -radius; z <= radius; z++)
-                {
-                    int cx = baseCx + x;
-                    int cz = baseCz + z;
-
-                    GenerateDim2ChunkColumn(cx, cz);
-                }
-            }
-
-            heightmaps.Clear();
-            heightmaps = null;  // release memory
-        }
-
-        Dictionary<long, ushort[]> heightmaps = new Dictionary<long, ushort[]>();
-        private void GenerateDim2ChunkColumn(int cx, int cz)
-        {
-            if (!heightmaps.TryGetValue((long)cz * (GlobalConstants.MaxWorldSizeXZ / chunksize) + cx, out ushort[] heightmap)) return;
-
             int rockId = GlobalConfig.defaultRockId;
             int soilId = GetBlockId("soil-medium-none");
             int topsoilId = GetBlockId("soil-medium-normal");
@@ -311,7 +310,7 @@ namespace Vintagestory.ServerMods
             int yTop = 0;
             for (int i = 0; i < heightmap.Length; i++)
             {
-                int height = heightmap[i] + 4;
+                int height = heightmap[i] + Dim2HeightOffset;
                 if (height < miny) miny = height;
                 if (height > yTop) yTop = height;
             }
@@ -319,6 +318,7 @@ namespace Vintagestory.ServerMods
             int cy = Dimensions.AltWorld * GlobalConstants.DimensionSizeInChunks;
             IWorldChunk chunk = api.World.BlockAccessor.GetChunk(cx, cy, cz);
             if (chunk == null) return;
+            chunk.Unpack();
             IChunkBlocks chunkBlockData = chunk.Data;
 
             // Simplified version of the algorithm in GenTerra
@@ -353,10 +353,9 @@ namespace Vintagestory.ServerMods
 
                 for (int lZ = 0; lZ < chunksize; lZ++)
                 {
-                    int worldZ = cz * chunksize + lZ;
                     for (int lX = 0; lX < chunksize; lX++)
                     {
-                        int terrainY = heightmap[lZ * chunksize + lX] + 4;    /// we add 4 because the devastation soil layer is around 4 blocks thick
+                        int terrainY = heightmap[lZ * chunksize + lX] + Dim2HeightOffset;    /// we add a height offset because the devastation soil layer is several blocks thicker than natural worldgen
                         int lY = posY % chunksize;
 
                         if (posY < terrainY - 2) chunkBlockData[ChunkIndex3D(lX, lY, lZ)] = rockId;

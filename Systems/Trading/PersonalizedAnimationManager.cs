@@ -44,7 +44,7 @@ namespace Vintagestory.GameContent
                 StopAnimation(Personality + "-idle2");
             }
 
-            if (All | PersonalizedAnimations.Contains(animdata.Animation.ToLowerInvariant()))
+            if (All || PersonalizedAnimations.Contains(animdata.Animation.ToLowerInvariant()))
             {
                 animdata = animdata.Clone();
                 animdata.Animation = Personality + "-" + animdata.Animation;

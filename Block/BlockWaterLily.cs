@@ -16,7 +16,7 @@ namespace Vintagestory.GameContent
                 return base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref failureCode);
             }
 
-            failureCode = "requirefullwater";
+            failureCode = "requirefreshwater";
 
             return false;
         }
