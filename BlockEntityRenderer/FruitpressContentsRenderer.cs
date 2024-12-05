@@ -75,8 +75,6 @@ namespace Vintagestory.GameContent
             this.befruitpress = befruitpress;
         }
 
-        public int heightMode = 0;
-
         public void reloadMeshes(JuiceableProperties props, bool mustReload)
         {
             if (befruitpress.Inventory.Empty)
@@ -98,9 +96,10 @@ namespace Vintagestory.GameContent
             int y;
             if (stack.Collectible.Code.Path == "rot")
             {
-                textureLocation = new AssetLocation("block/rot/rot");
-                y = GameMath.Clamp(stack.StackSize / 4, 1, 9);
-            } else
+                textureLocation = new AssetLocation("block/wood/barrel/rot");
+                y = GameMath.Clamp(stack.StackSize / 2, 1, 9);
+            }
+            else
             {
                 var tex = props.PressedStack.ResolvedItemstack.Item.Textures.First();
                 textureLocation = tex.Value.Base;
@@ -109,12 +108,8 @@ namespace Vintagestory.GameContent
                 {
                     float availableLitres = (float)stack.Attributes.GetDecimal("juiceableLitresLeft") + (float)stack.Attributes.GetDecimal("juiceableLitresTransfered");
                     y = (int)GameMath.Clamp(availableLitres, 1, 9);
-                    heightMode = 0;
-                } else
-                {
-                    y = (int)GameMath.Clamp(stack.StackSize, 1, 9);
-                    heightMode = 1;
                 }
+                else y = GameMath.Clamp(stack.StackSize, 1, 9);
             }
 
 
