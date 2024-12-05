@@ -90,9 +90,9 @@ namespace Vintagestory.GameContent
         protected bool hasCombinableLeftDoor(IWorldAccessor world, float RotateYRad, BlockPos pos, int doorWidth)
         {
             int width = doorWidth;
-            BlockPos leftPos = pos.AddCopy(width * (int)Math.Round(Math.Sin(RotateYRad - 90)), 0, width * (int)Math.Round(Math.Cos(RotateYRad - 90)));
+            BlockPos leftPos = pos.AddCopy((int)Math.Round(Math.Sin(RotateYRad - GameMath.PIHALF)), 0, (int)Math.Round(Math.Cos(RotateYRad - GameMath.PIHALF)));
             var leftDoor = getDoorAt(world, leftPos);
-            if (leftDoor != null && !leftDoor.InvertHandles)
+            if (leftDoor != null && !leftDoor.InvertHandles && leftDoor.facingWhenClosed == BlockFacing.HorizontalFromYaw(RotateYRad))
             {
                 return true;
             }
@@ -179,6 +179,7 @@ namespace Vintagestory.GameContent
                 AssetLocation loc = new AssetLocation("multiblock-monolithic-" + sdx + "-" + sdy + "-" + sdz);
                 Block block = world.GetBlock(loc);
                 world.BlockAccessor.SetBlock(block.Id, mpos);
+                if (world.Side == EnumAppSide.Server) world.BlockAccessor.TriggerNeighbourBlockUpdate(mpos);
                 return true;
             });
         }
@@ -198,6 +199,7 @@ namespace Vintagestory.GameContent
                 if (mblock is BlockMultiblock)
                 {
                     world.BlockAccessor.SetBlock(0, mpos);
+                    if (world.Side == EnumAppSide.Server) world.BlockAccessor.TriggerNeighbourBlockUpdate(mpos);
                 }
 
                 return true;
@@ -316,8 +318,7 @@ namespace Vintagestory.GameContent
             var beh = block.GetBEBehavior<BEBehaviorDoor>(pos);
             if (beh == null) return 0f;
 
-            if (beh.Opened) return 0f;
-            if (face != beh.facingWhenClosed) return 0f;
+            if (!beh.IsSideSolid(face)) return 0f;
 
             if (block.Variant["style"] == "sleek-windowed") return 1.0f;
 
@@ -330,8 +331,7 @@ namespace Vintagestory.GameContent
         {
             var beh = block.GetBEBehavior<BEBehaviorDoor>(pos.AddCopy(offset.X, offset.Y, offset.Z));
             if (beh == null) return 0f;
-            if (beh.Opened) return 0f;
-            if (face != beh.facingWhenClosed) return 0f;
+            if (!beh.IsSideSolid(face)) return 0f;
 
             if (block.Variant["style"] == "sleek-windowed") return offset.Y == -1 ? 0.0f : 1.0f;
 
@@ -346,10 +346,11 @@ namespace Vintagestory.GameContent
             var beh = block.GetBEBehavior<BEBehaviorDoor>(pos);
             if (beh == null) return 0;
 
-            if (type == EnumRetentionType.Sound) return beh.Opened ? 0 : 3;
+            if (type == EnumRetentionType.Sound) return beh.IsSideSolid(facing) ? 3 : 0;
 
             if (!airtight) return 0;
-            return beh.Opened ? 3 : 1;
+            if (api.World.Config.GetBool("openDoorsNotSolid", false)) return beh.IsSideSolid(facing) ? 1 : 0;
+            return (beh.IsSideSolid(facing) || beh.IsSideSolid(facing.Opposite)) ? 1 : 3; // Also check opposite so the door can be facing inwards or outwards.
         }
 
 
@@ -357,10 +358,11 @@ namespace Vintagestory.GameContent
         {
             var beh = block.GetBEBehavior< BEBehaviorDoor>(pos.AddCopy(offset.X, offset.Y, offset.Z));
             if (beh == null) return 0;
-            if (type == EnumRetentionType.Sound) return beh.Opened ? 0 : 3;
+            if (type == EnumRetentionType.Sound) return beh.IsSideSolid(facing) ? 3 : 0;
 
             if (!airtight) return 0;
-            return beh.Opened ? 3 : 1; 
+            if (api.World.Config.GetBool("openDoorsNotSolid", false)) return beh.IsSideSolid(facing) ? 1 : 0;
+            return (beh.IsSideSolid(facing) || beh.IsSideSolid(facing.Opposite)) ? 1 : 3; // Also check opposite so the door can be facing inwards or outwards.
         }
 
         public bool MBCanAttachBlockAt(IBlockAccessor blockAccessor, Block block, BlockPos pos, BlockFacing blockFace, Cuboidi attachmentArea, Vec3i offsetInv)

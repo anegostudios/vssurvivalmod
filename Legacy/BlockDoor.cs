@@ -24,6 +24,14 @@ namespace Vintagestory.GameContent
             return BlockFacing.FromCode(Variant["horizontalorientation"]);
         }
 
+        public bool IsSideSolid(BlockFacing facing)
+        {
+            BlockFacing facingWhenClosed = GetDirection().Opposite;
+            BlockFacing facingWhenOpened = GetKnobOrientation() == "left" ? facingWhenClosed.GetCCW() : facingWhenClosed.GetCW();
+
+            return (!open && facingWhenClosed == facing) || (open && facingWhenOpened == facing);
+        }
+
         public string GetKnobOrientation(Block block)
         {
             return Variant["knobOrientation"];
@@ -39,7 +47,7 @@ namespace Vintagestory.GameContent
             BlockPos abovePos = blockSel.Position.AddCopy(0, 1, 0);
             IBlockAccessor ba = world.BlockAccessor;
 
-            if (ba.GetBlock(abovePos).Id == 0 && CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
+            if (CanPlaceBlock(world, byPlayer, blockSel.AddPosCopy(0, 1, 0), ref failureCode) && CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
             {
                 BlockFacing[] horVer = SuggestedHVOrientation(byPlayer, blockSel);
 
@@ -58,7 +66,9 @@ namespace Vintagestory.GameContent
                 Block upBlock = ba.GetBlock(upBlockCode);
 
                 ba.SetBlock(downBlock.BlockId, blockSel.Position);
+                if (world.Side == EnumAppSide.Server) world.BlockAccessor.TriggerNeighbourBlockUpdate(blockSel.Position);
                 ba.SetBlock(upBlock.BlockId, abovePos);
+                if (world.Side == EnumAppSide.Server) world.BlockAccessor.TriggerNeighbourBlockUpdate(abovePos);
                 return true;
             }
 
@@ -102,12 +112,14 @@ namespace Vintagestory.GameContent
             if (otherPart is BlockDoor && ((BlockDoor)otherPart).IsUpperHalf() != IsUpperHalf())
             {
                 world.BlockAccessor.SetBlock(0, otherPos);
+                if (world.Side == EnumAppSide.Server) world.BlockAccessor.TriggerNeighbourBlockUpdate(otherPos);
             }
 
             Block block = world.BlockAccessor.GetBlock(pos);
             if (block is BlockDoor)
             {
                 world.BlockAccessor.SetBlock(0, pos);
+                if (world.Side == EnumAppSide.Server) world.BlockAccessor.TriggerNeighbourBlockUpdate(pos);
             }
         }
 
@@ -164,6 +176,7 @@ namespace Vintagestory.GameContent
             {
                 world.BlockAccessor.ExchangeBlock(world.BlockAccessor.GetBlock(otherNewCode).BlockId, otherPos);
                 world.BlockAccessor.MarkBlockDirty(otherPos);
+                if (world.Side == EnumAppSide.Server) world.BlockAccessor.TriggerNeighbourBlockUpdate(otherPos);
             }
         }
 
@@ -186,13 +199,15 @@ namespace Vintagestory.GameContent
         public override int GetRetention(BlockPos pos, BlockFacing facing, EnumRetentionType type)
         {
             if (!airtight) return 0;
-            return open ? 3 : 1;
+            if (type == EnumRetentionType.Sound) return IsSideSolid(facing) ? 3 : 0;
+
+            if (api.World.Config.GetBool("openDoorsNotSolid", false)) return IsSideSolid(facing) ? 1 : 0;
+            return (IsSideSolid(facing) || IsSideSolid(facing.Opposite)) ? 1 : 3; // Also check opposite so the door can be facing inwards or outwards.
         }
 
         public override float GetLiquidBarrierHeightOnSide(BlockFacing face, BlockPos pos)
         {
-            if (open) return 0f;
-            if (face != GetDirection().Opposite) return 0f;
+            if (!IsSideSolid(face)) return 0f;
 
             if (!airtight) return 0f;
 
