@@ -343,11 +343,15 @@ namespace Vintagestory.GameContent
             if (nextBlock?.Code == null) return 0f;
 
             var bbh = Block.GetBehavior<BlockBehaviorHarvestable>();
-            if (bbh?.harvestedStack != null)
+            if (bbh?.harvestedStacks != null)
             {
-                ItemStack dropStack = bbh.harvestedStack.GetNextItemStack();
-                Api.World.PlaySoundAt(bbh.harvestingSound, Pos, 0);
-                Api.World.SpawnItemEntity(dropStack, Pos);
+                for(int i = 0; i < bbh.harvestedStacks.Length; i++)
+                {
+                    ItemStack dropStack = bbh.harvestedStacks[i].GetNextItemStack();
+                    Api.World.SpawnItemEntity(dropStack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                }
+
+                Api.World.PlaySoundAt(bbh.harvestingSound, Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5);
             }
 
 
