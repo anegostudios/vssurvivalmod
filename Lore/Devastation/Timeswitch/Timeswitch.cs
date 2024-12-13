@@ -331,6 +331,10 @@ namespace Vintagestory.GameContent
             if (byPlayer.Entity.Pos.Dimension == OtherDimension)
             {
                 OnStartCommand(byPlayer);
+                int cx = (int)byPlayer.Entity.Pos.X / GlobalConstants.ChunkSize;
+                int cy = (int)byPlayer.Entity.Pos.Y / GlobalConstants.ChunkSize;
+                int cz = (int)byPlayer.Entity.Pos.Z / GlobalConstants.ChunkSize;
+                sapi.WorldManager.SendChunk(cx, cy, cz, byPlayer, false);   // force send one chunk in the normal world, to send the MapRegion, for the structure permissions check system
             }
         }
 
@@ -590,6 +594,18 @@ namespace Vintagestory.GameContent
         }
 
 
+        /// <summary>
+        /// Called by '/timeswitch relight' command
+        /// </summary>
+        /// <param name="sourceblockAccess"></param>
+        /// <param name="player"></param>
+        public void RelightCommand(IBlockAccessor sourceblockAccess, IServerPlayer player)
+        {
+            RelightAltDimension();
+            ForceSendChunkColumns(player);
+        }
+
+
         private void CreateChunkColumns()
         {
             for (int x = 0; x <= size * 2; x++)
@@ -681,7 +697,7 @@ namespace Vintagestory.GameContent
         {
             if (genStoryStructLoc == null || genStoryStructLoc.DidGenerateAdditional) return;
 
-            if (!AreAllDim0ChunksGenerated()) return;
+            if (!AreAllDim0ChunksGenerated(worldgenBlockAccessor)) return;
             sapi.Logger.VerboseDebug("Timeswitch dim 2 generation: finished stage 1");
 
             var startPos = genStoryStructLoc.Location.Start.AsBlockPos;
@@ -689,13 +705,7 @@ namespace Vintagestory.GameContent
             PlaceSchematic(sapi.World.BlockAccessor, "story/" + genStoryStructLoc.Code + "-past", startPos);
             sapi.Logger.VerboseDebug("Timeswitch dim 2 generation: finished stage 2");
 
-            if (size > 0)
-            {
-                BlockPos start = new BlockPos((baseChunkX - size) * GlobalConstants.ChunkSize, 0, (baseChunkZ - size) * GlobalConstants.ChunkSize, OtherDimension);
-                BlockPos end = start.AddCopy(GlobalConstants.ChunkSize * (size * 2 + 1) - 1, sapi.WorldManager.MapSizeY, GlobalConstants.ChunkSize * (size * 2 + 1) - 1);
-                start.Y = (sapi.World.SeaLevel - 8) / GlobalConstants.ChunkSize * GlobalConstants.ChunkSize;
-                sapi.WorldManager.FullRelight(start, end, false);
-            }
+            RelightAltDimension();
 
             AddClaimForDim(OtherDimension);
 
@@ -714,6 +724,17 @@ namespace Vintagestory.GameContent
                 }
             }
             sapi.Logger.VerboseDebug("Timeswitch dim 2 generation: finished stage 4");
+        }
+
+        private void RelightAltDimension()
+        {
+            if (size > 0)
+            {
+                BlockPos start = new BlockPos((baseChunkX - size) * GlobalConstants.ChunkSize, 0, (baseChunkZ - size) * GlobalConstants.ChunkSize, OtherDimension);
+                BlockPos end = start.AddCopy(GlobalConstants.ChunkSize * (size * 2 + 1) - 1, sapi.WorldManager.MapSizeY - 1, GlobalConstants.ChunkSize * (size * 2 + 1) - 1);
+                start.Y = (sapi.World.SeaLevel - 8) / GlobalConstants.ChunkSize * GlobalConstants.ChunkSize;
+                sapi.WorldManager.FullRelight(start, end, false);
+            }
         }
 
         private void AddClaimForDim(int dim)
@@ -752,15 +773,15 @@ namespace Vintagestory.GameContent
             blocks.PlaceDecors(blockAccessor, start);
         }
 
-        private bool AreAllDim0ChunksGenerated()
+        private bool AreAllDim0ChunksGenerated(IBlockAccessor blockAccessor)
         {
             for (int cx = baseChunkX - size + 1; cx < baseChunkX + size; cx++)
             {
                 for (int cz = baseChunkZ - size + 1; cz < baseChunkZ + size; cz++)
                 {
-                    IMapChunk mc = sapi.World.BlockAccessor.GetMapChunk(cx, cz);
+                    IMapChunk mc = blockAccessor.GetMapChunk(cx, cz);
                     if (mc == null) return false;
-                    if (mc.CurrentPass <= EnumWorldGenPass.Vegetation) return false;
+                    if (mc.CurrentPass < EnumWorldGenPass.Terrain) return false;    
                 }
             }
 

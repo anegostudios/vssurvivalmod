@@ -283,7 +283,7 @@ namespace Vintagestory.GameContent
             bool spawned = false;
             BlockPos tmp = new BlockPos();
             var ba = entity.World.BlockAccessor;
-            int chunksize = ba.ChunkSize;
+            const int chunksize = GlobalConstants.ChunkSize;
             var collisionTester = entity.World.CollisionTester;
             var sapi = entity.Api as ICoreServerAPI;
             Vec3d okspawnpos = null;

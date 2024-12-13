@@ -43,6 +43,17 @@ public class BlockEntityTobiasTeleporter : BlockEntityTeleporterBase
             }
             else if(!string.IsNullOrEmpty(OwnerPlayerUid))
             {
+                // fix tobias tl at cave location
+                sapi.ModLoader.GetModSystem<GenStoryStructures>().storyStructureInstances.TryGetValue("tobiascave", out var location);
+                if (location != null && Pos.DistanceTo(location.CenterPos) < 20)
+                {
+                    IsAtTobiasCave = true;
+                    OwnerPlayerUid = null;
+                    OwnerName = null;
+                    MarkDirty();
+                    return;
+                }
+
                 var ownerName = sapi.PlayerData.GetPlayerDataByUid(OwnerPlayerUid)?.LastKnownPlayername;
                 if(OwnerName != ownerName && !string.IsNullOrEmpty(ownerName))
                 {
@@ -224,6 +235,14 @@ public class BlockEntityTobiasTeleporter : BlockEntityTeleporterBase
         {
             if (translocVolume > 0) translocatingSound.Start();
         }
+    }
+
+    public override void OnBlockRemoved()
+    {
+        translocatingSound?.Stop();
+        translocatingSound?.Dispose();
+
+        base.OnBlockRemoved();
     }
 
     public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)

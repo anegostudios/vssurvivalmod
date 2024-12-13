@@ -238,7 +238,6 @@ using Vintagestory.API.Config;
             { category: ""survivalchallenges"", code: ""loreContent"", dataType: ""bool"", default: ""true"" },
             { category: ""survivalchallenges"", code: ""clutterObtainable"", dataType: ""dropdown"", values: [""ifrepaired"", ""yes"", ""no""], names: [""ifrepaired"", ""yes"", ""no""], default: ""ifrepaired"" },
             { category: ""survivalchallenges"", code: ""lightningFires"", dataType: ""bool"", default: ""false"" },
-            { category: ""survivalchallenges"", code: ""allowTimeswitch"", dataType: ""bool"", default: ""false"" },
 
             { category: ""temporalstability"", code: ""temporalStability"", dataType: ""bool"", default: ""true"" },
             { category: ""temporalstability"", code: ""temporalStorms"", dataType: ""dropdown"", values: [""off"", ""veryrare"", ""rare"", ""sometimes"", ""often"", ""veryoften""], names: [""Off"", ""Every 30-40 days, increase strength/frequency by 2.5% each time, capped at +25%"", ""Approx. every 20-30 days, increase strength/frequency by 5% each time, capped at +50%"", ""Approx. every 10-20 days, increase strength/frequency by +10% each time, capped at 100%"", ""Approx. every 5-10 days, increase strength/frequency by 15% each time, capped at +150%"", ""Approx. every 3-6 days, increase strength/frequency by 20% each time, capped at +200%""], default: ""sometimes"" },

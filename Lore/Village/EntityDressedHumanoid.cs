@@ -159,14 +159,13 @@ namespace Vintagestory.GameContent
                     addGearToShape(slots[i], twcshape, newShape, shapePathForLogging, null, twcshape.Textures);
                 }
 
-                var clientTextures = Properties.Client.Textures;
                 foreach (var val in entityShape.Textures)
                 {
-                    if (!clientTextures.ContainsKey(val.Key))
+                    if (!textDict.ContainsKey(val.Key))
                     {
                         var texture = new CompositeTexture(val.Value);
                         texture.Bake(capi.Assets);
-                        clientTextures[val.Key] = texture;
+                        textDict[val.Key] = texture;
                     }
                 }
             }

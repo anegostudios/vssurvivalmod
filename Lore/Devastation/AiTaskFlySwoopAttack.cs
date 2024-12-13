@@ -138,7 +138,7 @@ namespace Vintagestory.GameContent
         {
             execAccum += dt;
             refreshAccum += dt;
-            if (refreshAccum > 1 && execAccum < 5)
+            if (refreshAccum > 1 && execAccum < 5 && targetEntity.Pos.Dimension == entity.Pos.Dimension)
             {
                 var path = getSwoopPath(targetEntity as EntityAgent, 35, true);
                 if (pathClear(new List<Vec3d>(path)))
@@ -192,7 +192,7 @@ namespace Vintagestory.GameContent
                 }
             }
                         
-            return pathTraverser.Active && targetEntity.Pos.Dimension == entity.Pos.Dimension;
+            return pathTraverser.Active;
         }
 
         public override void FinishExecute(bool cancelled)

@@ -90,7 +90,7 @@ namespace Vintagestory.ServerMods
 
         private void InitWorldGen()
         {
-            _chunksize = api.WorldManager.ChunkSize;
+            _chunksize = GlobalConstants.ChunkSize;
             _regionChunkSize = api.WorldManager.RegionSize / _chunksize;
 
             var asset = api.Assets.Get("worldgen/structures.json");
@@ -1097,7 +1097,7 @@ namespace Vintagestory.ServerMods
         private TextCommandResult OnCmdPos(TextCommandCallingArgs args)
         {
 
-            var chunkSize = api.WorldManager.ChunkSize;
+            var chunkSize = GlobalConstants.ChunkSize;
             var player = args.Caller.Player as IServerPlayer;
             BlockPos pos = args.Caller.Entity.Pos.AsBlockPos;
             IServerChunk serverchunk = api.WorldManager.GetChunk(pos);
@@ -1523,7 +1523,7 @@ namespace Vintagestory.ServerMods
             float landcover = worldConfig.GetString("landcover", "1").ToFloat(1f);
             float oceanscale = worldConfig.GetString("oceanscale", "1").ToFloat(1f);
 
-            var chunkSize = api.WorldManager.ChunkSize;
+            var chunkSize = GlobalConstants.ChunkSize;
 
             var modSystem = api.ModLoader.GetModSystem<GenMaps>();
             var list = modSystem.requireLandAt;
@@ -1725,13 +1725,13 @@ namespace Vintagestory.ServerMods
             var player = caller.Player as IServerPlayer;
             player.SendMessage(caller.FromChatGroupId, "Deleting rock, this may take a while...", EnumChatType.CommandError);
 
-            int chunkMidX = api.WorldManager.MapSizeX / api.WorldManager.ChunkSize / 2;
-            int chunkMidZ = api.WorldManager.MapSizeZ / api.WorldManager.ChunkSize / 2;
+            int chunkMidX = api.WorldManager.MapSizeX / GlobalConstants.ChunkSize / 2;
+            int chunkMidZ = api.WorldManager.MapSizeZ / GlobalConstants.ChunkSize / 2;
 
             if (aroundPlayer)
             {
-                chunkMidX = (int)player.Entity.Pos.X / api.WorldManager.ChunkSize;
-                chunkMidZ = (int)player.Entity.Pos.Z / api.WorldManager.ChunkSize;
+                chunkMidX = (int)player.Entity.Pos.X / GlobalConstants.ChunkSize;
+                chunkMidZ = (int)player.Entity.Pos.Z / GlobalConstants.ChunkSize;
             }
 
             List<Vec2i> coords = new List<Vec2i>();
@@ -1744,7 +1744,7 @@ namespace Vintagestory.ServerMods
                 }
             }
 
-            int chunksize = api.WorldManager.ChunkSize;
+            int chunksize = GlobalConstants.ChunkSize;
 
             IList<Block> blocks = api.World.Blocks;
 
@@ -1778,13 +1778,13 @@ namespace Vintagestory.ServerMods
             var player = caller.Player as IServerPlayer;
             if (player.PlayerUID.Equals("console"))
             {
-                chunkMidX = api.WorldManager.MapSizeX / api.WorldManager.ChunkSize / 2;
-                chunkMidZ = api.WorldManager.MapSizeX / api.WorldManager.ChunkSize / 2;
+                chunkMidX = api.WorldManager.MapSizeX / GlobalConstants.ChunkSize / 2;
+                chunkMidZ = api.WorldManager.MapSizeX / GlobalConstants.ChunkSize / 2;
             }
             else
             {
-                chunkMidX = (int)player.Entity.Pos.X / api.WorldManager.ChunkSize;
-                chunkMidZ = (int)player.Entity.Pos.Z / api.WorldManager.ChunkSize;
+                chunkMidX = (int)player.Entity.Pos.X / GlobalConstants.ChunkSize;
+                chunkMidZ = (int)player.Entity.Pos.Z / GlobalConstants.ChunkSize;
             }
 
             List<Vec2i> coords = new List<Vec2i>();
@@ -1852,7 +1852,11 @@ namespace Vintagestory.ServerMods
 
             if (api.Server.PauseThread("chunkdbthread"))
             {
-                NoiseLandforms.ReloadLandforms(api);
+                api.Assets.Reload(new AssetLocation("worldgen/"));
+                var patchLoader = api.ModLoader.GetModSystem<ModJsonPatchLoader>();
+                patchLoader.ApplyPatches("worldgen/");
+
+                NoiseLandforms.LoadLandforms(api);
 
                 api.ModLoader.GetModSystem<GenTerra>().initWorldGen();
                 api.ModLoader.GetModSystem<GenMaps>().initWorldGen();
@@ -1881,19 +1885,19 @@ namespace Vintagestory.ServerMods
 
         TextCommandResult Regen(Caller caller, int rad, bool onlydelete, string landforms, bool aroundPlayer = false, bool deleteRegion = false)
         {
-            int chunkMidX = api.WorldManager.MapSizeX / api.WorldManager.ChunkSize / 2;
-            int chunkMidZ = api.WorldManager.MapSizeZ / api.WorldManager.ChunkSize / 2;
+            int chunkMidX = api.WorldManager.MapSizeX / GlobalConstants.ChunkSize / 2;
+            int chunkMidZ = api.WorldManager.MapSizeZ / GlobalConstants.ChunkSize / 2;
             var player = caller.Player as IServerPlayer;
             if (aroundPlayer)
             {
-                chunkMidX = (int)player.Entity.Pos.X / api.WorldManager.ChunkSize;
-                chunkMidZ = (int)player.Entity.Pos.Z / api.WorldManager.ChunkSize;
+                chunkMidX = (int)player.Entity.Pos.X / GlobalConstants.ChunkSize;
+                chunkMidZ = (int)player.Entity.Pos.Z / GlobalConstants.ChunkSize;
             }
 
             List<Vec2i> coords = new List<Vec2i>();
             HashSet<Vec2i> regCoords = new HashSet<Vec2i>();
 
-            int regionChunkSize = api.WorldManager.RegionSize / api.WorldManager.ChunkSize;
+            int regionChunkSize = api.WorldManager.RegionSize / GlobalConstants.ChunkSize;
             for (int x = -rad; x <= rad; x++)
             {
                 for (int z = -rad; z <= rad; z++)
@@ -1909,7 +1913,7 @@ namespace Vintagestory.ServerMods
             if (deleteRegion && !onlydelete)
             {
                 Dictionary<long, List<GeneratedStructure>> regionStructures = new();
-                var chunkSize = api.WorldManager.ChunkSize;
+                var chunkSize = GlobalConstants.ChunkSize;
                 foreach (Vec2i coord in coords)
                 {
                     var regionIndex = api.WorldManager.MapRegionIndex2D(coord.X / regionChunkSize, coord.Y / regionChunkSize);
@@ -2001,7 +2005,7 @@ namespace Vintagestory.ServerMods
 
                                 foreach (Vec2i ccoord in coords)
                                 {
-                                    for (int cy = 0; cy < api.WorldManager.MapSizeY / api.WorldManager.ChunkSize; cy++)
+                                    for (int cy = 0; cy < api.WorldManager.MapSizeY / GlobalConstants.ChunkSize; cy++)
                                     {
                                         api.WorldManager.BroadcastChunk(ccoord.X, cy, ccoord.Y, true);
                                     }
@@ -2017,7 +2021,7 @@ namespace Vintagestory.ServerMods
                 if (!deleteRegion)
                 {
                     // when only deleting chunks we delete all structures from the mapregion
-                    var chunkSize = api.WorldManager.ChunkSize;
+                    const int chunkSize = GlobalConstants.ChunkSize;
                     foreach (Vec2i coord in coords)
                     {
                         var regionIndex = api.WorldManager.MapRegionIndex2D(coord.X / regionChunkSize, coord.Y / regionChunkSize);

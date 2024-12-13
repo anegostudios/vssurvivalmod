@@ -21,7 +21,7 @@ namespace Vintagestory.GameContent
         protected float damageRange = 5f;
         protected float moveSpeed = 0.04f;
         protected HashSet<long> didDamageEntity = new HashSet<long>();
-        protected EntityPos targetPos;
+        protected EntityPos targetPos = new EntityPos();
         protected Vec3d beginAttackPos;
 
         protected float diveRange = 20;
@@ -95,7 +95,7 @@ namespace Vintagestory.GameContent
         public override void StartExecute()
         {
             didDamageEntity.Clear();
-            targetPos = targetEntity.ServerPos;
+            targetPos.SetFrom(targetEntity.ServerPos);
             diving = false;
             impact = false;
             base.StartExecute();
@@ -110,7 +110,7 @@ namespace Vintagestory.GameContent
             // Update target position for as long as the target is in the same dimension
             if (targetEntity.Pos.Dimension == entity.Pos.Dimension)
             {
-                targetPos = targetEntity.ServerPos;
+                targetPos.SetFrom(targetEntity.ServerPos);
             }
 
             if (!impact)

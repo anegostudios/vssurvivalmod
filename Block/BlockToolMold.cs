@@ -138,7 +138,8 @@ namespace Vintagestory.GameContent
             if (creatureType == EnumAICreatureType.LandCreature || creatureType == EnumAICreatureType.Humanoid)
             {
                 var be = GetBlockEntity<BlockEntityIngotMold>(pos);
-                if (be?.TemperatureLeft > 300 || be.TemperatureRight > 300) return 10000f;
+                if (be == null) return 0;
+                if (be.TemperatureLeft > 300 || be.TemperatureRight > 300) return 10000f;
             }
 
             return 0;

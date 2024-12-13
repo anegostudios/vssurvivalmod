@@ -261,38 +261,9 @@ namespace Vintagestory.GameContent
         }
 
 
-
-
         public static int BlockSelectionToSubPosition(BlockFacing face, Vec3i voxelPos)
         {
-            int x = voxelPos.X;
-            int y = 15 - voxelPos.Y;
-            int z = voxelPos.Z;
-            int offset = 0;
-
-            switch (face.Index)
-            {
-                case 0:
-                    offset = (15 - x) + y * 16;
-                    break;
-                case 1:
-                    offset = (15 - z) + y * 16;
-                    break;
-                case 2:
-                    offset = x + y * 16;
-                    break;
-                case 3:
-                    offset = z + y * 16;
-                    break;
-                case 4:
-                    offset = x + z * 16;
-                    break;
-                case 5:
-                    offset = x + (15 - z) * 16;
-                    break;
-            }
-
-            return face.Index + 6 * (1 + offset);
+            return (int)new DecorBits(face, voxelPos.X, 15 - voxelPos.Y, voxelPos.Z);
         }
 
         private bool SuitablePosition(IBlockAccessor blockAccessor, BlockSelection blockSel)

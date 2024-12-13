@@ -222,7 +222,7 @@ namespace Vintagestory.GameContent
         {
             if (seatconfig?.SeatId == null) throw new ArgumentNullException("seatConfig.SeatId must be set");
 
-            if (Seats == null) Seats = new EntityBoatSeat[0];
+            if (Seats == null) Seats = new IMountableSeat[0];
 
             int index = Seats.IndexOf(s => s.SeatId == seatconfig.SeatId);
             if (index < 0)

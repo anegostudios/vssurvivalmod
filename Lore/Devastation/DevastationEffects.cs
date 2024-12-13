@@ -583,7 +583,7 @@ public class ModSystemDevastationEffects : ModSystem, IRenderer
 
                     this.entityErel = (EntityErel)entity;
 
-                    int cs = sapi.World.BlockAccessor.ChunkSize;
+                    const int cs = GlobalConstants.ChunkSize;
                     long chunkindex3d = sapi.WorldManager.ChunkIndex3D((int)entity.ServerPos.X / cs, (int)entity.ServerPos.Y / cs, (int)entity.ServerPos.Z / cs);
                     sapi.World.LoadEntity(entityErel, chunkindex3d);
                 }

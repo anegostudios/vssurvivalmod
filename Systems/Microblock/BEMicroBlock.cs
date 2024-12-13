@@ -32,6 +32,7 @@ namespace Vintagestory.GameContent
         // Set up two unmodifiable default values instead of spamming new objects
         private static Cuboidf[] noSelectionBox = new Cuboidf[0];
         private static byte[] singleByte255 = new byte[] { 255 };
+        private static Vec3f centerBase = new Vec3f(0.5f, 0, 0.5f);
 
         // bits 0..3 = xmin
         // bits 4..7 = xmax
@@ -54,6 +55,10 @@ namespace Vintagestory.GameContent
         /// List of decor block ids per block face, i.e. can only ever be null or be a 6 length array
         /// </summary>
         public int[] DecorIds = null;
+        /// <summary>
+        /// Packed extra data bits for decor per block face, signifying rotations
+        /// </summary>
+        public int DecorRotations;
 
         protected int[] BlockIdsRotated;
         protected int[] DecorIdsRotated;
@@ -934,6 +939,7 @@ namespace Vintagestory.GameContent
 
             int rot = tree.GetInt("rotation", 0);
             rotationY = (short)(((rot >> 10) & 0b1111111111) - 360); // 10 bits is enough for -360 .. 360
+            DecorRotations = tree.GetInt("decorRot", 0);
 
             VoxelCuboids = new List<uint>(GetVoxelCuboids(tree));
 
@@ -1067,6 +1073,7 @@ namespace Vintagestory.GameContent
                 tree["decorIds"] = new IntArrayAttribute(DecorIds);
             }
 
+            tree.SetInt("decorRot", DecorRotations);
             tree.SetInt("rotation", (rotationY + 360) << 10);
             tree["cuboids"] = new IntArrayAttribute(VoxelCuboids.ToArray());
             tree.SetBytes("emitSideAo", new byte[] { (byte)emitSideAo });
@@ -1242,7 +1249,7 @@ namespace Vintagestory.GameContent
             if (BlockIds == null) return null;
             GenRotatedMaterialIds();
 
-            var mesh = CreateMesh(Api as ICoreClientAPI, VoxelCuboids, BlockIdsRotated, DecorIdsRotated, OriginalVoxelCuboids, Pos);
+            var mesh = CreateMesh(Api as ICoreClientAPI, VoxelCuboids, BlockIdsRotated, DecorIdsRotated, DecorRotations, OriginalVoxelCuboids, Pos);
 
             foreach (var val in Behaviors)
             {
@@ -1293,7 +1300,7 @@ namespace Vintagestory.GameContent
         public void RegenMesh(ICoreClientAPI capi)
         {
             GenRotatedMaterialIds();
-            Mesh = CreateMesh(capi, VoxelCuboids, BlockIdsRotated, DecorIdsRotated, OriginalVoxelCuboids, Pos);
+            Mesh = CreateMesh(capi, VoxelCuboids, BlockIdsRotated, DecorIdsRotated, DecorRotations, OriginalVoxelCuboids, Pos);
         }
 
 
@@ -1336,12 +1343,12 @@ namespace Vintagestory.GameContent
         }
 
 
-        public static MeshData CreateMesh(ICoreClientAPI capi, List<uint> voxelCuboids, int[] blockIds, int[] decorIds, BlockPos posForRnd = null, uint[] originalCuboids = null)
+        public static MeshData CreateMesh(ICoreClientAPI capi, List<uint> voxelCuboids, int[] blockIds, int[] decorIds, BlockPos posForRnd = null, uint[] originalCuboids = null, int decorRotations = 0)
         {
-            return CreateMesh(capi, voxelCuboids, blockIds, decorIds, originalCuboids ?? defaultOriginalVoxelCuboids, posForRnd);
+            return CreateMesh(capi, voxelCuboids, blockIds, decorIds, decorRotations, originalCuboids ?? defaultOriginalVoxelCuboids, posForRnd);
         }
 
-        public unsafe static MeshData CreateMesh(ICoreClientAPI capi, List<uint> voxelCuboids, int[] blockIds, int[] decorIds, uint[] originalVoxelCuboids, BlockPos pos = null)
+        public unsafe static MeshData CreateMesh(ICoreClientAPI capi, List<uint> voxelCuboids, int[] blockIds, int[] decorIds, int decorRotations, uint[] originalVoxelCuboids, BlockPos pos = null)
         {
             var mesh = new MeshData(24, 36).WithColorMaps().WithRenderpasses().WithXyzFaces();
 
@@ -1378,7 +1385,7 @@ namespace Vintagestory.GameContent
             }
             if (hasTopSoil) mesh.CustomFloats = new CustomMeshDataPartFloat() { InterleaveOffsets = new int[] { 0 }, InterleaveSizes = new int[] { 2 }, InterleaveStride = 8 };
 
-            RefList<VoxelMaterial> decorMatList = loadDecor(capi, voxelCuboids, decorIds, pos, mesh);
+            RefList<VoxelMaterial> decorMatList = loadDecor(capi, voxelCuboids, decorIds, pos, mesh, decorRotations);
 
 
             // stackalloc to force the array onto the stack, not the heap
@@ -1424,7 +1431,7 @@ namespace Vintagestory.GameContent
             return mesh;
         }
 
-        private static unsafe RefList<VoxelMaterial> loadDecor(ICoreClientAPI capi, List<uint> voxelCuboids, int[] decorIds, BlockPos pos, MeshData mesh)
+        private static unsafe RefList<VoxelMaterial> loadDecor(ICoreClientAPI capi, List<uint> voxelCuboids, int[] decorIds, BlockPos pos, MeshData mesh, int decorRotations)
         {
             RefList<VoxelMaterial> decorMatList = null;
 
@@ -1434,20 +1441,24 @@ namespace Vintagestory.GameContent
                 decorMatList.Clear();
                 for (int i = 0; i < decorIds.Length; i++)
                 {
-                    if (decorIds[i] == 0)
+                    int decorId = decorIds[i];
+                    if (decorId == 0)
                     {
                         decorMatList.Add(noMat);
                     }
                     else
                     {
-                        var decoblock = capi.World.GetBlock(decorIds[i]);
+                        var decoblock = capi.World.GetBlock(decorId);
                         if (decoblock.Attributes?["attachas3d"].AsBool() != true)
                         {
-                            decorMatList.Add(VoxelMaterial.FromBlock(capi, decoblock, pos, true));
+                            int rot = ((decorRotations >> (i * 3)) & DecorBits.maskRotationData);
+                            decorMatList.Add(VoxelMaterial.FromBlock(capi, decoblock, pos, true, rot));
                         }
                         else
                         {
+                            int rot = ((decorRotations >> (i * 3)) & DecorBits.maskRotationData) % 4;
                             var decomesh = capi.TesselatorManager.GetDefaultBlockMesh(decoblock).Clone();
+                            if (rot > 0) decomesh.Rotate(centerBase, 0, rot * GameMath.PIHALF, 0);
                             decomesh.Translate(BlockFacing.ALLFACES[i].Normalf * getOutermostVoxelDistanceToCenter(voxelCuboids, i));
                             mesh.AddMeshData(decomesh);
                         }
@@ -1856,23 +1867,28 @@ namespace Vintagestory.GameContent
             public float subPixelPaddingy;
             public int flags;
 
-            public float texWidth;
-            public float texHeight;
-            public TextureAtlasPosition tpos;
-            public TextureAtlasPosition topsoiltpos;
-            public TextureAtlasPosition decortpos;
+            /// <summary>
+            /// The decor material (including decorRotation)
+            /// </summary>
             VoxelMaterial decorMat;
 
             // Locals
-            public XYZ xyz;
-            public float posX, posY, posZ;
-            public float centerX, centerY, centerZ;
-            public float halfSizeX, halfSizeY, halfSizeZ;
-
-            public FastVec3f uScaleByAxis;
-            public FastVec3f vScaleByAxis;
-            public FastVec3f uOffsetByAxis;
-            public FastVec3f vOffsetByAxis;
+            /// <summary>
+            /// The size of this voxel face, relative to an overall block, in the u direction (range 0..1)
+            /// </summary>
+            private float uSize;
+            /// <summary>
+            /// The size of this voxel face, relative to an overall block, in the v direction (range 0..1)
+            /// </summary>
+            private float vSize;
+            /// <summary>
+            /// The offset of this voxel face lower-left corner, relative to an overall block, in the u direction (range 0..1)
+            /// </summary>
+            private float uOffset;
+            /// <summary>
+            /// The offset of this voxel face lower-left corner, relative to an overall block, in the v direction (range 0..1)
+            /// </summary>
+            private float vOffset;
 
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1886,6 +1902,8 @@ namespace Vintagestory.GameContent
 
             public void GenFace(in VoxelMaterial blockMat)
             {
+                var targetMesh = this.targetMesh;
+                XYZ xyz;    // Local variables in this method are more efficient than adding fields to the struct which are then only used locally
                 xyz.Z = posPacked / EXT_VOXELS_SQ;
                 posPacked -= xyz.Z * EXT_VOXELS_SQ;
 
@@ -1896,40 +1914,57 @@ namespace Vintagestory.GameContent
                 xyz.Y--;
                 xyz.X = posPacked - 1;
 
+                float halfSizeX, halfSizeY, halfSizeZ;
                 converter(width, length, out halfSizeX, out halfSizeY, out halfSizeZ);
 
                 const float V2F = 1f / 16f;
-                posX = xyz.X * V2F;
-                posY = xyz.Y * V2F;
-                posZ = xyz.Z * V2F;
-                centerX = posX + halfSizeX;
-                centerY = posY + halfSizeY;
-                centerZ = posZ + halfSizeZ;
+                float posX = xyz.X * V2F;
+                float posY = xyz.Y * V2F;
+                float posZ = xyz.Z * V2F;
+                float centerX = posX + halfSizeX;
+                float centerY = posY + halfSizeY;
+                float centerZ = posZ + halfSizeZ;
+                int axis = (int)facing.Axis;
 
-                InitMaterial(blockMat, decorMat);
-                InitUV();
+                //InitMaterial(blockMat, decorMat);
+                bool isOutside = originalBounds[face] == xyz[axis] + shiftOffsetByFace[face];
+                TextureAtlasPosition tpos = isOutside ? blockMat.Texture[face] : blockMat.TextureInside[face];
+                TextureAtlasPosition topsoiltpos = blockMat.TextureTopSoil;
+                TextureAtlasPosition decortpos = decorMat.Texture?[face] ?? null;
+
+                //InitUV();
+                uSize = 2f * (axis == 0 ? halfSizeZ : halfSizeX);
+                vSize = 2f * (axis == 1 ? halfSizeZ : halfSizeY);
+                uOffset = axis == 0 ? posZ : posX;
+                vOffset = axis == 1 ? posZ : posY;
+
+                float texWidth = tpos.x2 - tpos.x1;
+                float texHeight = tpos.y2 - tpos.y1;
+                float uBase = tpos.x1 - subPixelPaddingx;
+                float vBase = tpos.y1 - subPixelPaddingy;
 
                 int zoff1 = 1 << VertexFlags.ZOffsetBitPos;
+                int[] CubeVertices = CubeMeshUtil.CubeVertices;
 
                 int start = (targetMesh.IndicesCount > 0) ? (targetMesh.Indices[targetMesh.IndicesCount - 1] + 1) : 0;
                 int vertOffset = face * 4;
                 for (int i = 0; i < 4; i++)
                 {
                     int ind = vertOffset + i;
-                    GetScaledUV(ind * 2, out float u, out float v);
+                    GetRelativeUV(ind * 2, out float uRel, out float vRel);
                     targetMesh.AddVertexWithFlagsSkipColor(
-                        CubeMeshUtil.CubeVertices[ind * 3] * halfSizeX + centerX,
-                        CubeMeshUtil.CubeVertices[ind * 3 + 1] * halfSizeY + centerY,
-                        CubeMeshUtil.CubeVertices[ind * 3 + 2] * halfSizeZ + centerZ,
-                        tpos.x1 + u * texWidth - subPixelPaddingx,   // u
-                        tpos.y1 + v * texHeight - subPixelPaddingy,  // v
+                        CubeVertices[ind * 3] * halfSizeX + centerX,
+                        CubeVertices[ind * 3 + 1] * halfSizeY + centerY,
+                        CubeVertices[ind * 3 + 2] * halfSizeZ + centerZ,
+                        uBase + uRel * texWidth,   // u
+                        vBase + vRel * texHeight,  // v
                         flags
                     );
 
                     if (targetMesh.CustomFloats != null)
                     {
                         if (topsoiltpos == null) targetMesh.CustomFloats.Add(0, 0);
-                        else targetMesh.CustomFloats.Add(topsoiltpos.x1 + u * texWidth - subPixelPaddingx, topsoiltpos.y1 + v * texHeight - subPixelPaddingy);
+                        else targetMesh.CustomFloats.Add(topsoiltpos.x1 + uRel * texWidth - subPixelPaddingx, topsoiltpos.y1 + vRel * texHeight - subPixelPaddingy);
                     }
                 }
 
@@ -1956,21 +1991,52 @@ namespace Vintagestory.GameContent
                     vertOffset = face * 4;
                     texWidth = decortpos.x2 - decortpos.x1;
                     texHeight = decortpos.y2 - decortpos.y1;
+                    uBase = decortpos.x1 - subPixelPaddingx;
+                    vBase = decortpos.y1 - subPixelPaddingy;
 
-                    float xg = 1 + Math.Abs(BlockFacing.ALLNORMALI[face].X * 0.01f);
-                    float yg = 1 + Math.Abs(BlockFacing.ALLNORMALI[face].Y * 0.01f);
-                    float zg = 1 + Math.Abs(BlockFacing.ALLNORMALI[face].Z * 0.01f);
+                    Vec3i faceNormal = BlockFacing.ALLNORMALI[face];
+                    float xg = (1 + Math.Abs(faceNormal.X * 0.01f)) * halfSizeX;
+                    float yg = (1 + Math.Abs(faceNormal.Y * 0.01f)) * halfSizeY;
+                    float zg = (1 + Math.Abs(faceNormal.Z * 0.01f)) * halfSizeZ;
 
+                    int decorRotation = decorMat.TextureRotation;
                     for (int i = 0; i < 4; i++)
                     {
                         int ind = vertOffset + i;
-                        GetScaledUV(ind * 2, out float u, out float v);
+
+                        GetRelativeUV(ind * 2, out float u, out float v);
+                        float vtmp;
+                        if ((decorRotation & 4) == 0) u = 1f - u;     // x-mirror image; we actually change the u to the mirror when rotation bits say *no* mirror image, because all decor textures were drawn inverted on chiselled blocks before now
+                        switch (decorRotation % 8)   // If rotated, we now move the uvs we found to other relative locations within the decor texture, rotating them around the midpoint
+                        {
+                            case 0:
+                            case 4:
+                                break;
+                            case 3:
+                            case 5:
+                                vtmp = v;
+                                v = 1f - u;
+                                u = vtmp;
+                                break;
+                            case 2:
+                            case 6:
+                                u = 1f - u;
+                                v = 1f - v;
+                                break;
+                            case 1:
+                            case 7:
+                                vtmp = v;
+                                v = u;
+                                u = 1f - vtmp;
+                                break;
+                        }
+
                         targetMesh.AddVertexWithFlagsSkipColor(
-                            CubeMeshUtil.CubeVertices[ind * 3] * halfSizeX * xg + centerX,
-                            CubeMeshUtil.CubeVertices[ind * 3 + 1] * halfSizeY * yg + centerY,
-                            CubeMeshUtil.CubeVertices[ind * 3 + 2] * halfSizeZ * zg + centerZ,
-                            decortpos.x1 + u * texWidth - subPixelPaddingx,   // u
-                            decortpos.y1 + v * texHeight - subPixelPaddingy,  // v
+                            CubeVertices[ind * 3 + 0] * xg + centerX,
+                            CubeVertices[ind * 3 + 1] * yg + centerY,
+                            CubeVertices[ind * 3 + 2] * zg + centerZ,
+                            uBase + u * texWidth,   // u
+                            vBase + v * texHeight,  // v
                             flags | zoff1
                         );
                     }
@@ -1993,79 +2059,54 @@ namespace Vintagestory.GameContent
 
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            private void InitMaterial(in VoxelMaterial material, in VoxelMaterial decorMat)
+            /// <summary>
+            /// Produces u and v relative to (internal to) the block texture, as appropriate for this specific voxel.
+            /// So both the output u and the output v are always in the range 0..1
+            /// </summary>
+            /// <param name="vIndex">The index of this face vertex among 24 on a cube, multiplied by 2 as the CubeUvCoords is a single array of coords for both u and v</param>
+            /// <param name="u">Outputs the relative u</param>
+            /// <param name="v">Outputs the relative v</param>
+            /// <exception cref="Exception"></exception>
+            private void GetRelativeUV(int vIndex, out float u, out float v)
             {
-                bool isOutside = originalBounds[face] == xyz[(int)facing.Axis] + shiftOffsetByFace[face];
-                tpos = isOutside ? material.Texture[face] : material.TextureInside[face];
-                topsoiltpos = material.TextureTopSoil;
-
-                decortpos = decorMat.Texture?[face] ?? null;
-
-                texWidth = tpos.x2 - tpos.x1;
-                texHeight = tpos.y2 - tpos.y1;
-            }
-
-            [MethodImpl]
-            private void InitUV()
-            {
-                uScaleByAxis[0] = halfSizeZ;
-                uScaleByAxis[1] = halfSizeX;
-                uScaleByAxis[2] = halfSizeX;
-
-                vScaleByAxis[0] = halfSizeY;
-                vScaleByAxis[1] = halfSizeZ;
-                vScaleByAxis[2] = halfSizeY;
-
-                uOffsetByAxis[0] = posZ;
-                uOffsetByAxis[1] = posX;
-                uOffsetByAxis[2] = posX;
-
-                vOffsetByAxis[0] = posY;
-                vOffsetByAxis[1] = posZ;
-                vOffsetByAxis[2] = posY;
-            }
-
-            private void GetScaledUV(int fIndex, out float u, out float v)
-            {
-                int axis = (int)facing.Axis;
-                float uScaleX2 = 2f * uScaleByAxis[axis];
-                float vScaleX2 = 2f * vScaleByAxis[axis];
+                float uc = CubeMeshUtil.CubeUvCoords[vIndex];
+                float vc = CubeMeshUtil.CubeUvCoords[vIndex + 1];
                 switch (facing.Index)
                 {
                     case 0:
-                        u = CubeMeshUtil.CubeUvCoords[fIndex] * uScaleX2 + (1f - uScaleX2) - uOffsetByAxis[axis];
-                        v = (1f - CubeMeshUtil.CubeUvCoords[fIndex + 1]) * vScaleX2 + (1f - vScaleX2) - vOffsetByAxis[axis];
+                        u = (uc - 1f) * uSize + 1f - uOffset;
+                        v =       -vc * vSize + 1f - vOffset;
                         break;
                     case 1:
-                        u = CubeMeshUtil.CubeUvCoords[fIndex] * uScaleX2 + (1f - uScaleX2) - uOffsetByAxis[axis];
-                        v = (1f - CubeMeshUtil.CubeUvCoords[fIndex + 1]) * vScaleX2 + (1f - vScaleX2) - vOffsetByAxis[axis];
+                        u = (uc - 1f) * uSize + 1f - uOffset;
+                        v =       -vc * vSize + 1f - vOffset;
                         break;
                     case 2:
-                        u = CubeMeshUtil.CubeUvCoords[fIndex] * uScaleX2 + uOffsetByAxis[axis];
-                        v = (1f - CubeMeshUtil.CubeUvCoords[fIndex + 1]) * vScaleX2 + (1f - vScaleX2) - vOffsetByAxis[axis];
+                        u =  uc * uSize + uOffset;
+                        v = -vc * vSize + 1f - vOffset;
                         break;
                     case 3:
-                        u = CubeMeshUtil.CubeUvCoords[fIndex] * uScaleX2 + uOffsetByAxis[axis];
-                        v = (1f - CubeMeshUtil.CubeUvCoords[fIndex + 1]) * vScaleX2 + (1f - vScaleX2) - vOffsetByAxis[axis];
+                        u =  uc * uSize + uOffset;
+                        v = -vc * vSize + 1f - vOffset;
                         break;
                     case 4:
-                        u = (1f - CubeMeshUtil.CubeUvCoords[fIndex]) * uScaleX2 + (1f - uScaleX2) - uOffsetByAxis[axis];
-                        v = CubeMeshUtil.CubeUvCoords[fIndex + 1] * vScaleX2 + (1f - vScaleX2) - vOffsetByAxis[axis];
+                        u =       -uc * uSize + 1f - uOffset;
+                        v = (vc - 1f) * vSize + 1f - vOffset;
                         break;
                     case 5:
-                        u = CubeMeshUtil.CubeUvCoords[fIndex] * uScaleX2 + (1f - uScaleX2) - uOffsetByAxis[axis];
-                        v = (1f - CubeMeshUtil.CubeUvCoords[fIndex + 1]) * vScaleX2 + vOffsetByAxis[axis];
+                        u = (uc - 1f) * uSize + 1f - uOffset;
+                        v = (1f - vc) * vSize + vOffset;
                         break;
                     default: throw new Exception();
                 }
             }
+
         }
 
-        /// <summary>
-        /// Is coordinate agnostic, can iterate over any of the 6 planes
-        /// </summary>
-        public unsafe ref struct GenPlaneInfo
+    /// <summary>
+    /// Is coordinate agnostic, can iterate over any of the 6 planes
+    /// </summary>
+    public unsafe ref struct GenPlaneInfo
         {
             public RefList<VoxelMaterial> blockMaterials;
             public RefList<VoxelMaterial> decorMaterials;

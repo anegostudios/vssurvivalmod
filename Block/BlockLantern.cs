@@ -31,7 +31,7 @@ namespace Vintagestory.GameContent
 
             intoShape.Textures["glass"] = glassBlock.Textures["material"].Base;
             intoShape.Textures["material"] = this.Textures[material].Base;
-            intoShape.Textures["lining"] = this.Textures[lining == "plain" ? material : lining].Base;
+            intoShape.Textures["lining"] = this.Textures[(lining == null || lining == "plain") ? material : lining].Base;
             intoShape.Textures["material-deco"] = this.Textures["deco-" + material].Base;
         }
         #endregion

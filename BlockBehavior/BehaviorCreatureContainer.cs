@@ -169,14 +169,18 @@ namespace Vintagestory.GameContent
 
             if (entitySel != null)
             {
-                handHandling = EnumHandHandling.PreventDefault;
-                handling = EnumHandling.PreventDefault;
-
-                if (api.Side == EnumAppSide.Server && !IsCatchable(entitySel.Entity))
+                if (!IsCatchable(entitySel.Entity))
                 {
-                    sapi?.SendIngameError(plr, "notcatchable", Lang.Get("This animal is too large, or too wild to catch with a basket"));
+                    if (entitySel.Entity is not EntityBoat)
+                    {
+                        (byEntity.Api as ICoreClientAPI)?.TriggerIngameError(this, "notcatchable", Lang.Get("This animal is too large, or too wild to catch with a basket"));
+                    }
+                    
                     return;
                 }
+
+                handHandling = EnumHandHandling.PreventDefault;
+                handling = EnumHandling.PreventDefault;
 
                 ItemSlot emptyBackpackSlot = null;
 

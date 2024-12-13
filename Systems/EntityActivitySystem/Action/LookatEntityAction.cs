@@ -33,8 +33,8 @@ namespace Vintagestory.GameContent
         {
             Entity targetEntity = getTarget(vas.Entity.Api, vas.Entity.ServerPos.XYZ);
 
-            ExecutionHasFailed = entity == null;
-            if (entity != null)
+            ExecutionHasFailed = targetEntity == null;
+            if (targetEntity != null)
             {
                 Vec3f targetVec = new Vec3f();
 
@@ -44,7 +44,7 @@ namespace Vintagestory.GameContent
                     (float)(targetEntity.ServerPos.Z - vas.Entity.ServerPos.Z)
                 );
 
-                entity.ServerPos.Yaw = (float)Math.Atan2(targetVec.X, targetVec.Z);
+                vas.Entity.ServerPos.Yaw = (float)Math.Atan2(targetVec.X, targetVec.Z);
             }
         }
 
@@ -57,7 +57,7 @@ namespace Vintagestory.GameContent
 
         public override string ToString()
         {
-            return "Look at nearest entity " + targetEntityCode + " within " + searchRange + " blocks";
+            return "Look at nearest entity " + targetEntityCode.ToShortString() + " within " + searchRange + " blocks";
         }
 
         public override void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
@@ -70,6 +70,9 @@ namespace Vintagestory.GameContent
                 .AddStaticText("Entity Code", CairoFont.WhiteDetailText(), b = b.BelowCopy(0, 10))
                 .AddTextInput(b = b.BelowCopy(0, -5), null, CairoFont.WhiteDetailText(), "targetEntityCode")
             ;
+
+            singleComposer.GetTextInput("searchRange").SetValue(searchRange);
+            singleComposer.GetTextInput("targetEntityCode").SetValue(targetEntityCode);
         }
 
         public override IEntityAction Clone()

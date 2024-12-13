@@ -288,7 +288,13 @@ namespace Vintagestory.ServerMods
             int radius = dim2Size;
             int baseCx = devastationLocation.CenterPos.X / GlobalConstants.ChunkSize;
             int baseCz = devastationLocation.CenterPos.Z / GlobalConstants.ChunkSize;
-            return (Math.Abs(cx - baseCx) <= radius && Math.Abs(cz - baseCz) <= radius);
+            int dx = Math.Abs(cx - baseCx);
+            int dz = Math.Abs(cz - baseCz);
+            if (dx + dz == 0)   // Tower center chunk: if we are generating/regenerating it, then we must have destroyed any previous tower
+            {
+                devastationLocation.DidGenerateAdditional = false;
+            }
+            return (dx <= radius && dz <= radius);
         }
 
 

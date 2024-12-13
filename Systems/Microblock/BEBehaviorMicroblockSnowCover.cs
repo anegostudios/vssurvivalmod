@@ -171,13 +171,13 @@ namespace Vintagestory.GameContent
 
             if (SnowCuboids.Count > 0 && SnowLevel > 0)
             {
-                SnowMesh = BlockEntityMicroBlock.CreateMesh(Api as ICoreClientAPI, SnowCuboids, new int[] { snowLayerBlockId }, null, beMicroBlock.OriginalVoxelCuboids, Pos);
+                SnowMesh = BlockEntityMicroBlock.CreateMesh(Api as ICoreClientAPI, SnowCuboids, new int[] { snowLayerBlockId }, null, 0, beMicroBlock.OriginalVoxelCuboids, Pos);
                 SnowMesh.Translate(0, 1 / 16f, 0);
                 SnowMesh.Scale(new Vec3f(0.5f, 0, 0.5f), 0.999f, 1, 0.999f);
 
                 if (Api.World.BlockAccessor.IsSideSolid(Pos.X, Pos.Y - 1, Pos.Z, BlockFacing.UP))
                 {
-                    SnowMesh.AddMeshData(BlockEntityMicroBlock.CreateMesh(Api as ICoreClientAPI, GroundSnowCuboids, new int[] { snowLayerBlockId }, null, beMicroBlock.OriginalVoxelCuboids, Pos));
+                    SnowMesh.AddMeshData(BlockEntityMicroBlock.CreateMesh(Api as ICoreClientAPI, GroundSnowCuboids, new int[] { snowLayerBlockId }, null, 0, beMicroBlock.OriginalVoxelCuboids, Pos));
                 }
             }
             else

@@ -187,6 +187,7 @@ namespace Vintagestory.GameContent
             var entityarrow = byEntity.World.ClassRegistry.CreateEntity(type) as EntityProjectile;
             entityarrow.FiredBy = byEntity;
             entityarrow.Damage = damage;
+            entityarrow.DamageTier = Attributes["damageTier"].AsInt(0);
             entityarrow.ProjectileStack = stack;
             entityarrow.DropOnImpactChance = 1 - breakChance;
 

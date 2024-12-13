@@ -78,7 +78,7 @@ namespace Vintagestory.GameContent
                             })
                     .EndSubCommand()
                 .EndSubCommand()
-                ;
+            ;
         }
     }
 }

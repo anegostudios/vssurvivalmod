@@ -73,7 +73,7 @@ namespace Vintagestory.GameContent
 
         public override void OnUnloaded(ICoreAPI api)
         {
-            if (meshrefs.Count > 0)
+            if (api.ObjectCache.ContainsKey("shieldmeshrefs") && meshrefs.Count > 0)
             {
                 foreach (var (_, meshRef) in meshrefs)
                 {

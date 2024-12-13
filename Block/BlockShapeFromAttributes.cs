@@ -176,7 +176,7 @@ namespace Vintagestory.GameContent
                 extraWrenchModes[2].Dispose();
             }
 
-            if (api is ICoreClientAPI capi)
+            if (api is ICoreClientAPI capi && inventoryMeshDictionary != null)
             {
                 Dictionary<string, MultiTextureMeshRef> clutterMeshRefs = ObjectCacheUtil.TryGet<Dictionary<string, MultiTextureMeshRef>>(capi, inventoryMeshDictionary);
                 if (clutterMeshRefs != null)

@@ -12,6 +12,8 @@ namespace Vintagestory.GameContent
 
     public class ItemSpear : Item
     {
+        bool isHackingSpear;
+
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
@@ -27,6 +29,8 @@ namespace Vintagestory.GameContent
             }
 
             bh.OnBeginHitEntity += ItemSpear_OnBeginHitEntity;
+
+            isHackingSpear = Attributes.IsTrue("hacking") == true;
         }
 
         private void ItemSpear_OnBeginHitEntity(EntityAgent byEntity, ref EnumHandling handling)
@@ -46,8 +50,10 @@ namespace Vintagestory.GameContent
 
                 bool canhackEntity =
                     entitySel.Entity.Properties.Attributes?["hackedEntity"].Exists == true
-                    && slot.Itemstack.ItemAttributes.IsTrue("hacking") == true && api.ModLoader.GetModSystem<CharacterSystem>().HasTrait((byEntity as EntityPlayer).Player, "technical")
+                    && isHackingSpear 
+                    && api.ModLoader.GetModSystem<CharacterSystem>().HasTrait((byEntity as EntityPlayer).Player, "technical")
                 ;
+
                 ICoreServerAPI sapi = api as ICoreServerAPI;
 
                 if (canhackEntity)
@@ -131,6 +137,7 @@ namespace Vintagestory.GameContent
             EntityProjectile enpr = byEntity.World.ClassRegistry.CreateEntity(type) as EntityProjectile;
             enpr.FiredBy = byEntity;
             enpr.Damage = damage;
+            enpr.DamageTier = Attributes["damageTier"].AsInt(0);
             enpr.ProjectileStack = stack;
             enpr.DropOnImpactChance = 1.1f;
             enpr.DamageStackOnImpact = true;

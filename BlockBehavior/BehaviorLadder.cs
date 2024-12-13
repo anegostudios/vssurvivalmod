@@ -305,8 +305,8 @@ namespace Vintagestory.GameContent
 
             return
                 SideSolid(blockAccess, pos, ownFacing)
-                || (!isFlexible && SideSolid(blockAccess, downPos, BlockFacing.DOWN))
-                || SideSolid(blockAccess, upPos, BlockFacing.UP)
+                || (!isFlexible && SideSolid(blockAccess, pos, BlockFacing.DOWN))
+                || SideSolid(blockAccess, pos, BlockFacing.UP)
                 || (pos.Y < blockAccess.MapSizeY - 1 && blockAccess.GetBlock(upPos) == forBlock && HasSupportUp(forBlock, blockAccess, upPos))
                 || (!isFlexible && pos.Y > 0 && blockAccess.GetBlock(downPos) == forBlock && HasSupportDown(forBlock, blockAccess, downPos))
             ;
@@ -314,16 +314,9 @@ namespace Vintagestory.GameContent
 
         public bool SideSolid(IBlockAccessor blockAccess, BlockPos pos, BlockFacing facing)
         {
-            //public static readonly BlockFacing[] HORIZONTALS_ANGLEORDER = new BlockFacing[] { EAST, NORTH, WEST, SOUTH };
-            // North: Negative Z
-            // East: Positive X
-            // South: Positive Z
-            // West: Negative X
-            // Up: Positive Y
-            // Down: Negative Y
-
             BlockPos neibPos = pos.AddCopy(facing);
             Block neibBlock = blockAccess.GetBlock(neibPos);
+            if (neibBlock.Id == 0) return false;
 
             // radfast note 27.11.24: this is very costly for a SideSolid check...
             Cuboidi upHalf = new Cuboidi(14, 0, 0, 15, 7, 15).RotatedCopy(0, 90 * facing.HorizontalAngleIndex, 0, new Vec3d(7.5, 0, 7.5));

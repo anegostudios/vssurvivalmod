@@ -104,8 +104,6 @@ namespace Vintagestory.ServerMods
                     var oldBlock = blockAccessor.GetBlock(chunkData[posIndex]);
                     // if we have solid blocks at the same pos keep the old one to blend in better with the terrain
                     if((newBlock.Replaceable >= 5500 || newBlock.BlockMaterial == EnumBlockMaterial.Plant) && oldBlock.Replaceable < newBlock.Replaceable && !newBlock.IsLiquid()) continue;
-                    // if a filler block is above a path way to clear grass grow but we are submerged leave the old block here
-                    if(oldBlock.BlockMaterial is EnumBlockMaterial.Soil or EnumBlockMaterial.Stone && newBlock.BlockMaterial == EnumBlockMaterial.Meta) continue;
                 }
 
                 // if we only have a fluid block we need to clear the previous block so we can place fluids

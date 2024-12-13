@@ -19,7 +19,7 @@ public class EntityBehaviorPassivePhysicsMultiBox : EntityBehaviorPassivePhysics
 
     public EntityBehaviorPassivePhysicsMultiBox(Entity entity) : base(entity)
     {
-        mcollisionTester = new MultiCollisionTester();
+        mcollisionTester ??= new MultiCollisionTester();
     }
 
     public double RenderOrder => 0.5;

@@ -587,8 +587,11 @@ namespace Vintagestory.GameContent
             {
                 if (!ld.ChapterIds.Contains(p))
                 {
-                    ld.ChapterIds.Add(p);
-                    return ld;
+                    return new LoreDiscovery()
+                    {
+                        ChapterIds = new List<int>() { p },
+                        Code = ld.Code
+                    };
                 }
             }
 

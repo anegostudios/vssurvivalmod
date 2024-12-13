@@ -54,7 +54,7 @@ namespace Vintagestory.GameContent
 
         public bool StartActivity(string code, float priority=9999f, int slot=-1)
         {
-            var index = AvailableActivities.IndexOf<IEntityActivity>(item => item.Code == code);
+            int index = AvailableActivities.IndexOf(item => item.Code == code);
             if (index < 0) return false;
 
             var activity = AvailableActivities[index];
@@ -68,6 +68,7 @@ namespace Vintagestory.GameContent
             }
 
             ActiveActivitiesBySlot[activity.Slot] = activity;
+            activity.Priority = priority;
             activity.Start();
 
             return true;

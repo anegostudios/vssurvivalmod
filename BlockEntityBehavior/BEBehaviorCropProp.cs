@@ -85,12 +85,14 @@ namespace Vintagestory.GameContent
 
     public class CropPropConfig
     {
-        public bool RandomizeRotations;
+        public bool RandomizeRotations = true;
         public float MonthStart;
         public float MonthEnd;
         public int Stages;
         public CompositeShape Shape;
         public Dictionary<string, CompositeTexture> Textures;
+        
+        public int BakedAlternatesLength = -1; // Set during runtime
     }
 
     public class BEBehaviorCropProp : BlockEntityBehavior, ITexPositionSource
@@ -186,17 +188,30 @@ namespace Vintagestory.GameContent
         {
             if (Api == null || Api.Side != EnumAppSide.Client) return;
             capi = Api as ICoreClientAPI;
+            if (Type == null) return;
 
             cropBlock = Api.World.GetBlock(new AssetLocation("crop-" + Type + "-" + Stage));
+            string key = getCacheKey();
 
-            var cache = ObjectCacheUtil.GetOrCreate(Api, "croppropmeshes", () => new Dictionary<int, MeshData>());
-            if (cache.TryGetValue(cropBlock.Id, out var meshData))
+            var cache = ObjectCacheUtil.GetOrCreate(Api, "croppropmeshes", () => new Dictionary<string, MeshData>());
+            if (cache.TryGetValue(key, out var meshData))
             {
                 this.mesh = meshData;
-            } else
-            {
-                this.mesh = cache[cropBlock.Id] = genMesh(cropBlock);
             }
+            else
+            {
+                var mesh = genMesh(cropBlock);
+                key = getCacheKey();
+                this.mesh = cache[key] = mesh;
+            }
+        }
+
+        private string getCacheKey()
+        {
+            if (config.BakedAlternatesLength < 0) return cropBlock.Id + "--1";
+            int rndIndex = GameMath.MurmurHash3Mod(Pos.X, Pos.Y, Pos.Z, config.BakedAlternatesLength);
+            var key = cropBlock.Id + "-" + rndIndex;
+            return key;
         }
 
         private MeshData genMesh(Block cropBlock)
@@ -221,6 +236,7 @@ namespace Vintagestory.GameContent
 
             if (cshape.BakedAlternates != null)
             {
+                config.BakedAlternatesLength = cshape.BakedAlternates.Length;
                 cshape = cshape.BakedAlternates[GameMath.MurmurHash3Mod(Pos.X, Pos.Y, Pos.Z, cshape.BakedAlternates.Length)];
             }
 

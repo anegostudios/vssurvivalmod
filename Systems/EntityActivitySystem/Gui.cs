@@ -75,6 +75,13 @@ namespace Vintagestory.GameContent
 
             this.capi = api;
             api.ChatCommands.GetOrCreate("dev")
+                .WithPreCondition((args) =>
+                {
+                    if (api.World.Player.WorldData.CurrentGameMode != EnumGameMode.Creative)
+                        return TextCommandResult.Error("Only available in creative mode");
+                    else
+                        return TextCommandResult.Success();
+                })
                 .BeginSub("aedit")
                     .HandleWith(onCmdAedit)
                     .BeginSub("cv")

@@ -131,7 +131,8 @@ namespace Vintagestory.GameContent
             track?.FadeOut(3, () =>
             {
                 nowFadingOut = false;
-                track.ForceActive = false;
+                var trackTmp = track;                  // we need a further track==null test as this lambda expression will not be processed until some time later (LoadedSound.cs line 669 enqueues it as a main thread task). By that time, track could be null. Use of the local variable guards against race conditions, in case something other than the main thread set this track to null
+                if (trackTmp != null) trackTmp.ForceActive = false;
                 track = null;
             });            
         }

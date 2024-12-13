@@ -36,6 +36,7 @@ namespace Vintagestory.GameContent
 
         public int currentActionIndex=-1;
         EntityActivitySystem vas;
+        public double origPriority;
 
         public EntityActivity() { }
         public EntityActivity(EntityActivitySystem vas)
@@ -50,6 +51,8 @@ namespace Vintagestory.GameContent
 
             if (Actions != null) foreach (var act in Actions) act.OnLoaded(vas);
             if (Conditions != null) foreach (var tri in Conditions) tri.OnLoaded(vas);
+
+            origPriority = Priority;
         }
 
 
@@ -58,6 +61,7 @@ namespace Vintagestory.GameContent
             CurrentAction?.Cancel();
             currentActionIndex = -1;
             Finished = true;
+            Priority = origPriority;
         }
 
         public void Start()
@@ -75,6 +79,8 @@ namespace Vintagestory.GameContent
         public void Finish()
         {
             CurrentAction?.Finish();
+            // Setting priority is only valid for one full execution
+            Priority = origPriority;
         }
 
         public void Pause()

@@ -24,6 +24,8 @@ namespace Vintagestory.GameContent
         {
             if (accessType == EnumBlockAccessFlags.Use && response == EnumWorldAccessResponse.Granted)
             {
+                if (blockSel.Position.dimension != 0) return response;   // If in dim2 (e.g. Devastation Tower) do not use this system, as there may be no MapRegion loaded
+
                 var ba = api.World.BlockAccessor;
 
                 var struc = ssys.GetStoryStructureAt(blockSel.Position);
@@ -31,11 +33,18 @@ namespace Vintagestory.GameContent
 
                 if (struc.Code == "village:game:story/village" || struc.Code == "tobiascave:game:story/tobiascave")
                 {
+                    // Disallow yoinking of armor stand armor
+                    if (player.CurrentEntitySelection != null && player.CurrentEntitySelection.Entity is EntityArmorStand)
+                    {
+                        claimant = struc.Code == "tobiascave:game:story/tobiascave" ? "custommessage-tobias" : "custommessage-nadiya";
+                        return EnumWorldAccessResponse.NoPrivilege;
+                    }
+
                     // Allow use of doors and trapdoors
                     var block = ba.GetBlock(blockSel.Position);
                     if (block.GetBEBehavior<BEBehaviorDoor>(blockSel.Position) != null || block.GetBEBehavior<BEBehaviorTrapDoor>(blockSel.Position) != null) return response;
 
-                    // Lets not spam the use message everywhere the player right clicks. Anything that is not a block entity is fine to interact wi th
+                    // Lets not spam the use message everywhere the player right clicks. Anything that is not a block entity is fine to interact with
                     var be = ba.GetBlockEntity(blockSel.Position);
                     if (be == null || be is BlockEntityMicroBlock) return response;
 

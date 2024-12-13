@@ -50,6 +50,10 @@ namespace Vintagestory.GameContent
                         .WithArgs(parsers.OptionalWord("confirmation"))
                         .HandleWith(CopyBlocks)
                 .EndSubCommand()
+                .BeginSubCommand("relight")
+                        .WithDescription("Relight the alternate dimension")
+                        .HandleWith(Relight)
+                .EndSubCommand()
             ;
         }
 
@@ -75,6 +79,16 @@ namespace Vintagestory.GameContent
             var TimeswitchSys = sapi.ModLoader.GetModSystem<Timeswitch>();
             var serverPlayer = args.Caller.Player as IServerPlayer;
             TimeswitchSys.CopyBlocksToAltDimension(sapi.World.BlockAccessor, serverPlayer);
+
+            return TextCommandResult.Success();
+        }
+
+
+        private TextCommandResult Relight(TextCommandCallingArgs args)
+        {
+            var TimeswitchSys = sapi.ModLoader.GetModSystem<Timeswitch>();
+            var serverPlayer = args.Caller.Player as IServerPlayer;
+            TimeswitchSys.RelightCommand(sapi.World.BlockAccessor, serverPlayer);
 
             return TextCommandResult.Success();
         }

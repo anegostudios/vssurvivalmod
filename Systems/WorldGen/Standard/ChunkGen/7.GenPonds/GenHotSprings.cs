@@ -172,7 +172,7 @@ namespace Vintagestory.ServerMods
 
             BlockPos pos = new BlockPos(posx, posy, posz);
             var hereFluid = wgenBlockAccessor.GetBlock(pos, BlockLayersAccess.Fluid);
-            var heredecorBlock = wgenBlockAccessor.GetDecor(pos, BlockFacing.UP.Index);
+            var heredecorBlock = wgenBlockAccessor.GetDecor(pos, new DecorBits(BlockFacing.UP));
 
             int decorBlockIndex = (int)Math.Max(1, xzdist * 10);
             var decorBlock = decorBlockIndex < decorBlocks.Length ? decorBlocks[decorBlockIndex] : null;
