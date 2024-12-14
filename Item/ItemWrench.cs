@@ -136,30 +136,6 @@ namespace Vintagestory.GameContent
             if (handling == EnumHandHandling.PreventDefault) return;
             if (blockSel == null) return;
 
-            var decors = api.World.BlockAccessor.GetSubDecors(blockSel.Position);
-            if (decors != null)
-            {
-                int targetSubPos = blockSel.ToDecorIndex() / 6;
-                foreach (var decorAndPos in decors)
-                {
-                    DecorBits decorPosition = new DecorBits(decorAndPos.Key);
-                    if (decorPosition.Face == blockSel.Face.Index)   // Found a decor on the face we are looking at
-                    {
-                        int subPos = decorPosition.SubPosition;
-                        if (subPos != 0 && subPos != targetSubPos) continue;
-                        int newRotation = (decorPosition.Rotation + 1) % 8;
-
-                        // Remove the decor from the old faceAndSubposition, and add it back with the new rotation
-                        api.World.BlockAccessor.SetDecor(api.World.BlockAccessor.GetBlock(0), blockSel.Position, decorPosition);
-                        decorPosition.Rotation = newRotation;
-                        api.World.BlockAccessor.SetDecor(decorAndPos.Value, blockSel.Position, decorPosition);
-
-                        handling = EnumHandHandling.PreventDefault;
-                        return;
-                    }
-                }
-            }
-
             var player = (byEntity as EntityPlayer)?.Player;
 
             if (handleModedInteract(slot, blockSel, player, 0))

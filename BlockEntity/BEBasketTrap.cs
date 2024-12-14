@@ -47,7 +47,7 @@ namespace Vintagestory.GameContent
         public float RotationYDeg
         {
             get { return rotationYDeg; }
-            set {
+            set { 
                 rotationYDeg = value;
                 rotMat = Matrixf.Create().Translate(0.5f, 0, 0.5f).RotateYDeg(rotationYDeg - 90).Translate(-0.5f, 0, -0.5f).Values;
             }
@@ -75,7 +75,7 @@ namespace Vintagestory.GameContent
                 {
                     animUtil?.StartAnimation(new AnimationMetaData() { Animation = "triggered", Code = "triggered" });
                 }
-
+                
             } else
             {
                 sapi.ModLoader.GetModSystem<POIRegistry>().AddPOI(this);
@@ -96,7 +96,7 @@ namespace Vintagestory.GameContent
         public bool Interact(IPlayer player, BlockSelection blockSel)
         {
             if (TrapState == EnumTrapState.Ready || TrapState == EnumTrapState.Destroyed) return true;
-
+            
             if (inv[0].Empty)
             {
                 var stack = new ItemStack(Block);
@@ -110,13 +110,8 @@ namespace Vintagestory.GameContent
                     {
                         Api.World.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5, 0.2, 0.5));
                     }
-                    Api.World.BlockAccessor.SetBlock(0, Pos);
 
-                    Api.World.Logger.Audit("{0} Took 1x{1} at {2}.",
-                        player.PlayerName,
-                        stack.Collectible.Code,
-                        blockSel.Position
-                    );
+                    Api.World.BlockAccessor.SetBlock(0, Pos);
                 }
             } else
             {
@@ -124,16 +119,11 @@ namespace Vintagestory.GameContent
                 {
                     Api.World.SpawnItemEntity(inv[0].Itemstack, Pos.ToVec3d().Add(0.5, 0.2, 0.5));
                 }
-                Api.World.BlockAccessor.SetBlock(0, Pos);
 
-                Api.World.Logger.Audit("{0} Took 1x{1} with {2} at {3}.",
-                    player.PlayerName,
-                    inv[0].Itemstack.Collectible.Code,
-                    inv[0].Itemstack.Attributes.GetString("creaturecode"),
-                    blockSel.Position
-                );
+                Api.World.BlockAccessor.SetBlock(0, Pos);
             }
 
+            
             return true;
         }
 

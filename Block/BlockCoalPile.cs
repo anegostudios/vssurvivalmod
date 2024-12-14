@@ -337,14 +337,5 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override float GetTraversalCost(BlockPos pos, EnumAICreatureType creatureType)
-        {
-            if (creatureType == EnumAICreatureType.LandCreature || creatureType == EnumAICreatureType.Humanoid)
-            {
-                return GetBlockEntity<BlockEntityCoalPile>(pos)?.IsBurning == true ? 10000f : 1f;
-            }
-
-            return base.GetTraversalCost(pos, creatureType);
-        }
     }
 }

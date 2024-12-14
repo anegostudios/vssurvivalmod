@@ -4,7 +4,6 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Client.Tesselation;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -207,11 +206,11 @@ namespace Vintagestory.GameContent
             string newFacingLetters = "";
             foreach (BlockFacing facing in ownFacings)
             {
-                Block block = world.BlockAccessor.GetBlockOnSide(pos, facing);
+                Block block = world.BlockAccessor.GetBlock(pos.X + facing.Normali.X, pos.Y + facing.Normali.Y, pos.Z + facing.Normali.Z);
 
                 if (block.SideSolid[facing.Opposite.Index])
                 {
-                    newFacingLetters += facing.Code[0];
+                    newFacingLetters += facing.Code.Substring(0, 1);
                 }
             }
 
@@ -248,15 +247,13 @@ namespace Vintagestory.GameContent
 
             foreach (BlockFacing facing in BlockFacing.ALLFACES)
             {
-                facing.IterateThruFacingOffsets(pos);
-                Block block = blockAccessor.GetBlock(pos);
+                Block block = blockAccessor.GetBlock(pos.X + facing.Normali.X, pos.Y + facing.Normali.Y, pos.Z + facing.Normali.Z);
 
                 if (block.SideSolid[facing.Opposite.Index])
                 {
                     facings += facing.Code.Substring(0, 1);
                 }
             }
-            BlockFacing.FinishIteratingAllFaces(pos);  // Finish IterateThruFacingOffsets
 
             return facings;
         }

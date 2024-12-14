@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using System;
 using Vintagestory.API.Client;
+using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -21,33 +22,25 @@ namespace Vintagestory.GameContent
         public double targetZ { get { return Target.Z; } set { Target.Z = value; } }
         [JsonProperty]
         float range;
-        [JsonProperty]
-        float yrange = -1;
 
         public Vec3d Target = new Vec3d();
 
         protected EntityActivitySystem vas;
         public PositionVicinityCondition() { }
-        public PositionVicinityCondition(EntityActivitySystem vas, Vec3d pos, float range, float yrange, bool invert = false)
+        public PositionVicinityCondition(EntityActivitySystem vas, Vec3d pos, float range, bool invert = false)
         {
             this.vas = vas;
             this.Target = pos;
             this.range = range;
-            this.yrange = yrange;
             this.Invert = invert;
         }
 
         public string Type => "positionvicinity";
 
-        Vec3d tmpPos = new Vec3d();
+
         public virtual bool ConditionSatisfied(Entity e)
         {
-            tmpPos.Set(Target).Add(vas.ActivityOffset);
-            if (yrange>=0)
-            {
-                return e.ServerPos.HorDistanceTo(tmpPos) < range && Math.Abs(e.ServerPos.Y - tmpPos.Y) < yrange;
-            }
-            return e.ServerPos.DistanceTo(tmpPos) < range;
+            return e.ServerPos.DistanceTo(Target) < range;
         }
 
         public void LoadState(ITreeAttribute tree) { }
@@ -64,40 +57,19 @@ namespace Vintagestory.GameContent
                 .AddTextInput(bc = bc.BelowCopy(0), null, CairoFont.WhiteDetailText(), "x")
                 .AddTextInput(bc = bc.CopyOffsetedSibling(70), null, CairoFont.WhiteDetailText(), "y")
                 .AddTextInput(bc = bc.CopyOffsetedSibling(70), null, CairoFont.WhiteDetailText(), "z")
-                .AddSmallButton("Tp to", () => onClickTpTo(capi), bc = bc.CopyOffsetedSibling(70), EnumButtonStyle.Small)
-
                 .AddSmallButton("Insert Player Pos", () => onClickPlayerPos(capi, singleComposer), b = b.FlatCopy().FixedUnder(bc), EnumButtonStyle.Small)
 
                 .AddStaticText("Range", CairoFont.WhiteDetailText(), b = b.BelowCopy(0, 10))
                 .AddNumberInput(b = b.BelowCopy(0, -5), null, CairoFont.WhiteDetailText(), "range")
-
-                .AddStaticText("Vertical Range (-1 to ignore)", CairoFont.WhiteDetailText(), b = b.BelowCopy(0, 10))
-                .AddNumberInput(b = b.BelowCopy(0, -5), null, CairoFont.WhiteDetailText(), "vrange")
             ;
 
             singleComposer.GetNumberInput("range").SetValue(range);
-            singleComposer.GetNumberInput("vrange").SetValue(yrange);
-
             var s = singleComposer;
             s.GetTextInput("x").SetValue(Target?.X + "");
             s.GetTextInput("y").SetValue(Target?.Y + "");
             s.GetTextInput("z").SetValue(Target?.Z + "");
         }
 
-        private bool onClickTpTo(ICoreClientAPI capi)
-        {
-            var x = Target.X;
-            var y = Target.Y;
-            var z = Target.Z;
-            if (vas != null)
-            {
-                x += vas.ActivityOffset.X;
-                y += vas.ActivityOffset.Y;
-                z += vas.ActivityOffset.Z;
-            }
-            capi.SendChatMessage(string.Format("/tp ={0} ={1} ={2}", x, y, z));
-            return false;
-        }
 
         private bool onClickPlayerPos(ICoreClientAPI capi, GuiComposer singleComposer)
         {
@@ -112,11 +84,10 @@ namespace Vintagestory.GameContent
         {
             this.Target = new Vec3d(s.GetTextInput("x").GetText().ToDouble(), s.GetTextInput("y").GetText().ToDouble(), s.GetTextInput("z").GetText().ToDouble());
             range = s.GetNumberInput("range").GetValue();
-            yrange = s.GetNumberInput("vrange").GetValue();
         }
         public IActionCondition Clone()
         {
-            return new PositionVicinityCondition(vas, Target, range, yrange, Invert);
+            return new PositionVicinityCondition(vas, Target, range, Invert);
         }
 
         public override string ToString()

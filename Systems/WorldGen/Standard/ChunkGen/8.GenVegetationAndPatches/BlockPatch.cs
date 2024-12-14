@@ -235,7 +235,7 @@ namespace Vintagestory.ServerMods.NoObf
 
                 pos.X = posX + (int)OffsetX.nextFloat(1f, rnd);
                 pos.Z = posZ + (int)OffsetZ.nextFloat(1f, rnd);
-                if (modSys != null && !isStoryPatch && modSys.GetIntersectingStructure(pos, ModStdWorldGen.SkipPatchesgHashCode) != null) continue;
+                if (modSys != null && !isStoryPatch && modSys.SkipGenerationAt(pos, ModStdWorldGen.SkipPatchesgHashCode, out _)) continue;
 
                 int index = GameMath.Mod((int)BlockCodeIndex.nextFloat(1f, rnd), blocks.Length);
 

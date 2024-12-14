@@ -1,9 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
-using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
@@ -28,7 +26,6 @@ namespace Vintagestory.GameContent
 
         AiTaskEidolonSlam slamTask;
         EntityBehaviorHealth bhHealth;
-        HashSet<string> hurtByPlayerUids = new HashSet<string>();
 
         static EntityEidolon()
         {
@@ -134,23 +131,6 @@ namespace Vintagestory.GameContent
             activeSound?.Dispose();
         }
 
-        public override void Revive()
-        {
-            base.Revive();
-            hurtByPlayerUids.Clear();
-        }
-
-        public override bool ShouldReceiveDamage(DamageSource damageSource, float damage)
-        {
-            if (World.Side == EnumAppSide.Server)
-            {
-                var uid = (damageSource.CauseEntity as EntityPlayer)?.PlayerUID;
-                if (uid != null) hurtByPlayerUids.Add(uid);
-            }
-
-            return base.ShouldReceiveDamage(damageSource, damage);
-        }
-
         public override bool ReceiveDamage(DamageSource damageSource, float damage)
         {
             // Invulnerable to his own boulders
@@ -173,13 +153,6 @@ namespace Vintagestory.GameContent
 
             damageSource.KnockbackStrength = 0;
             return base.ReceiveDamage(damageSource, damage);
-        }
-
-        public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer)
-        {
-            var drops = base.GetDrops(world, pos, byPlayer);
-            drops[0].StackSize = Math.Max(1, hurtByPlayerUids.Count);
-            return drops;
         }
 
         private int nearbyPlayerCount()

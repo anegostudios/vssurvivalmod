@@ -1,10 +1,10 @@
 ﻿using System;
+using System.Xml.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.Client.NoObf;
-using Vintagestory.GameContent;
 
 namespace Vintagestory.API.Common;
 
@@ -19,7 +19,7 @@ public class EntityBehaviorPassivePhysicsMultiBox : EntityBehaviorPassivePhysics
 
     public EntityBehaviorPassivePhysicsMultiBox(Entity entity) : base(entity)
     {
-        mcollisionTester ??= new MultiCollisionTester();
+        mcollisionTester = new MultiCollisionTester();
     }
 
     public double RenderOrder => 0.5;
@@ -129,9 +129,10 @@ public class EntityBehaviorPassivePhysicsMultiBox : EntityBehaviorPassivePhysics
             float x = ocollbox.MidX;
             float y = ocollbox.MidY;
             float z = ocollbox.MidZ;
+            float yaw = newYaw; // entity.SidedPos.Yaw;
 
             mat.Identity();
-            mat.RotateY(newYaw + GameMath.PI);
+            mat.RotateY(yaw + GameMath.PI);
             var newMid = mat.TransformVector(new Vec4d(x, y, z, 1));
 
             var collbox = CollisionBoxes[i];
@@ -212,5 +213,4 @@ public class EntityBehaviorPassivePhysicsMultiBox : EntityBehaviorPassivePhysics
 
         return true;
     }
-
 }

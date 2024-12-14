@@ -50,7 +50,7 @@ namespace Vintagestory.GameContent
             get { return Api.GetCookingRecipe(RecipeCode); }
         }
 
-
+        
 
         public BlockEntityCookedContainer()
         {
@@ -111,7 +111,7 @@ namespace Vintagestory.GameContent
                     ItemStack stack = stacks[i].Clone();
                     Inventory[i].Itemstack = stack;
 
-                    // Clone temp attribute
+                    // Clone temp attribute    
                     if (tempTree != null) stack.Attributes["temperature"] = tempTree.Clone();
                 }
 
@@ -217,12 +217,6 @@ namespace Vintagestory.GameContent
                     {
                         Api.World.SpawnItemEntity(mealStack, Pos);
                     }
-                    Api.World.Logger.Audit("{0} Took 1x{1} Meal from {2} at {3}.",
-                        player.PlayerName,
-                        mealStack.Collectible.Code,
-                        Block.Code,
-                        Pos
-                    );
                     slot.MarkDirty();
                 }
 
@@ -248,7 +242,7 @@ namespace Vintagestory.GameContent
                 Api.World.Logger.Error("NRE in BECookedContainer.");
                 Api.World.Logger.Error("slot: " + slot?.Itemstack?.GetName());
                 Api.World.Logger.Error("slot cap: " + slot?.Itemstack?.Collectible?.Attributes?["servingCapacity"]);
-
+                
                 throw;
             }
 
@@ -266,7 +260,7 @@ namespace Vintagestory.GameContent
         }
 
 
-
+        
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
             if (currentMesh == null)
@@ -293,11 +287,11 @@ namespace Vintagestory.GameContent
             int temp = GetTemperature();
             string temppretty = Lang.Get("{0}°C", temp);
             if (temp < 20) temppretty = Lang.Get("Cold");
-
+    
             BlockMeal mealblock = Api.World.GetBlock(new AssetLocation("bowl-meal")) as BlockMeal;
             string nutriFacts = mealblock.GetContentNutritionFacts(Api.World, inventory[0], contentStacks, forPlayer.Entity);
 
-
+            
             if (servings == 1)
             {
                 dsc.Append(Lang.Get("cookedcontainer-servingstemp-singular", Math.Round(servings, 1), recipe.GetOutputName(forPlayer.Entity.World, contentStacks), temppretty, nutriFacts != null ? "\n" : "", nutriFacts));
@@ -320,6 +314,6 @@ namespace Vintagestory.GameContent
                 }
             }
         }
-
+        
     }
 }

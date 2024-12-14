@@ -254,11 +254,6 @@ namespace Vintagestory.GameContent
                     {
                         Api.World.SpawnItemEntity(leftStack, Pos.ToVec3d().Add(0.5, 0.2, 0.5));
                     }
-                    Api.World.Logger.Audit("{0} Took 1x{1} from Ingot mold at {2}.",
-                        byPlayer.PlayerName,
-                        leftStack.Collectible.Code,
-                        Pos
-                    );
 
                     ContentsLeft = null;
                     FillLevelLeft = 0;
@@ -277,11 +272,6 @@ namespace Vintagestory.GameContent
                     {
                         Api.World.SpawnItemEntity(rightStack, Pos.ToVec3d().Add(0.5, 0.2, 0.5));
                     }
-                    Api.World.Logger.Audit("{0} Took 1x{1} from Ingot mold at {2}.",
-                        byPlayer.PlayerName,
-                        rightStack.Collectible.Code,
-                        Pos
-                    );
 
                     ContentsRight = null;
                     FillLevelRight = 0;
@@ -301,21 +291,15 @@ namespace Vintagestory.GameContent
             if (activeSlot.Itemstack != null && !(activeSlot.Itemstack.Collectible is BlockToolMold)) return false;
             if (FillLevelLeft != 0 || FillLevelRight != 0) return false;
 
-            var itemStack = new ItemStack(Block);
             if (FillLevelLeft == 0 && !ShatteredLeft)
             {
                 QuantityMolds--;
                 if (ingotRenderer != null) ingotRenderer.QuantityMolds = QuantityMolds;
 
-                if (!byPlayer.InventoryManager.TryGiveItemstack(itemStack))
+                if (!byPlayer.InventoryManager.TryGiveItemstack(new ItemStack(this.Block)))
                 {
-                    Api.World.SpawnItemEntity(itemStack, Pos);
+                    Api.World.SpawnItemEntity(new ItemStack(Block), Pos);
                 }
-                Api.World.Logger.Audit("{0} Took 1x{1} from Ingot mold at {2}.",
-                    byPlayer.PlayerName,
-                    itemStack.Collectible.Code,
-                    Pos
-                );
                 if (QuantityMolds == 0)
                 {
                     Api.World.BlockAccessor.SetBlock(0, Pos);
@@ -337,15 +321,10 @@ namespace Vintagestory.GameContent
                 QuantityMolds--;
                 if (ingotRenderer != null) ingotRenderer.QuantityMolds = QuantityMolds;
 
-                if (!byPlayer.InventoryManager.TryGiveItemstack(itemStack))
+                if (!byPlayer.InventoryManager.TryGiveItemstack(new ItemStack(Block)))
                 {
-                    Api.World.SpawnItemEntity(itemStack, Pos);
+                    Api.World.SpawnItemEntity(new ItemStack(Block), Pos);
                 }
-                Api.World.Logger.Audit("{0} Took 1x{1} from Ingot mold at {2}.",
-                    byPlayer.PlayerName,
-                    itemStack.Collectible.Code,
-                    Pos
-                );
                 if (QuantityMolds == 0)
                 {
                     Api.World.BlockAccessor.SetBlock(0, Pos);

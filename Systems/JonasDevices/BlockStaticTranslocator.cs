@@ -209,13 +209,6 @@ namespace Vintagestory.GameContent
             return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer);
         }
 
-        public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
-        {
-            if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative) return;
-
-            base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier);
-        }
-
 
         public override AssetLocation GetRotatedBlockCode(int angle)
         {

@@ -80,7 +80,7 @@ namespace Vintagestory.GameContent
                 }
 
                 var volume = GameMath.Clamp((velocity - 0.025f) * 7, 0, 1);
-
+                
                 travelSound.FadeTo(volume, 0.5f, null);
             }
             else
@@ -158,12 +158,9 @@ namespace Vintagestory.GameContent
         public double RenderOrder => 0;
         public int RenderRange => 999;
 
+        
 
-        public string CreatedByPlayername => WatchedAttributes.GetString("createdByPlayername");
-        public string CreatedByPlayerUID => WatchedAttributes.GetString("createdByPlayerUID");
-
-
-
+        
         public Dictionary<string, string> MountAnimations = new Dictionary<string, string>();
         bool requiresPaddlingTool;
         bool unfurlSails;
@@ -230,12 +227,11 @@ namespace Vintagestory.GameContent
             float forwardpitch = 0;
             if (Swimming)
             {
-                double gamespeed = capi.World.Calendar.SpeedOfTime / 60f;
                 float intensity = 0.15f + GlobalConstants.CurrentWindSpeedClient.X * 0.9f;
                 float diff = GameMath.DEG2RAD / 2f * intensity;
-                mountAngle.X = GameMath.Sin((float)(ellapseMs / 1000.0 * 2 * gamespeed)) * 8 * diff;
-                mountAngle.Y = GameMath.Cos((float)(ellapseMs / 2000.0 * 2 * gamespeed)) * 3 * diff;
-                mountAngle.Z = -GameMath.Sin((float)(ellapseMs / 3000.0 * 2 * gamespeed)) * 8 * diff;
+                mountAngle.X = GameMath.Sin((float)(ellapseMs / 1000.0 * 2)) * 8 * diff;
+                mountAngle.Y = GameMath.Cos((float)(ellapseMs / 2000.0 * 2)) * 3 * diff;
+                mountAngle.Z = -GameMath.Sin((float)(ellapseMs / 3000.0 * 2)) * 8 * diff;
 
                 curRotMountAngleZ += ((float)AngularVelocity * 5 * Math.Sign(ForwardSpeed) - curRotMountAngleZ) * dt*5;
                 forwardpitch = -(float)ForwardSpeed * 1.3f;
@@ -246,7 +242,7 @@ namespace Vintagestory.GameContent
 
             esr.xangle = mountAngle.X + curRotMountAngleZ;
             esr.yangle = mountAngle.Y;
-            esr.zangle = mountAngle.Z + forwardpitch; // Weird. Pitch ought to be xangle.
+            esr.zangle = mountAngle.Z + forwardpitch; // Weird. Pitch ought to be xangle. 
         }
 
 
@@ -254,13 +250,6 @@ namespace Vintagestory.GameContent
         {
             if (World.Side == EnumAppSide.Server)
             {
-                var ela = World.ElapsedMilliseconds;
-                if (IsOnFire && (World.ElapsedMilliseconds - OnFireBeginTotalMs > 10000))
-                {
-                    Die();
-                }
-
-
                 updateBoatAngleAndMotion(dt);
             }
 
@@ -305,6 +294,8 @@ namespace Vintagestory.GameContent
                 }
             }
         }
+
+        
 
         protected virtual void updateBoatAngleAndMotion(float dt)
         {
@@ -393,7 +384,7 @@ namespace Vintagestory.GameContent
                 }
                 if (seat.Config.BodyYawLimit != null && seat.Passenger is EntityPlayer eplr)
                 {
-                    eplr.BodyYawLimits = new AngleConstraint(Pos.Yaw + seat.Config.MountRotation.Y * GameMath.DEG2RAD, (float)seat.Config.BodyYawLimit);
+                    eplr.BodyYawLimits = new AngleConstraint(Pos.Yaw + seat.Config.MountRotation.Y * GameMath.DEG2RAD, 0.2f);
                     eplr.HeadYawLimits = new AngleConstraint(Pos.Yaw + seat.Config.MountRotation.Y * GameMath.DEG2RAD, GameMath.PIHALF);
                 }
 
@@ -477,8 +468,10 @@ namespace Vintagestory.GameContent
             {
                 if (tryPickup(byEntity, mode)) return;
             }
+            
 
             EnumHandling handled = EnumHandling.PassThrough;
+
             foreach (EntityBehavior behavior in SidedProperties.Behaviors)
             {
                 behavior.OnInteract(byEntity, itemslot, hitPosition, mode, ref handled);
@@ -508,12 +501,6 @@ namespace Vintagestory.GameContent
                 {
                     World.SpawnItemEntity(stack, ServerPos.XYZ);
                 }
-
-                Api.World.Logger.Audit("{0} Picked up 1x{1} at {2}.",
-                    byEntity.GetName(),
-                    stack.Collectible.Code,
-                    Pos
-                );
 
                 Die();
                 return true;
@@ -560,16 +547,6 @@ namespace Vintagestory.GameContent
         public void DidMount(EntityAgent entityAgent)
         {
             MarkShapeModified();
-        }
-
-        public override string GetInfoText()
-        {
-            string text = base.GetInfoText();
-            if (CreatedByPlayername != null)
-            {
-                text += "\n" + Lang.Get("entity-createdbyplayer", CreatedByPlayername);
-            }
-            return text;
         }
     }
 }

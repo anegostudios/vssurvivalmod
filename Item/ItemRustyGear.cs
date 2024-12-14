@@ -50,7 +50,7 @@ namespace Vintagestory.GameContent
             block = byEntity.World.BlockAccessor.GetBlock(placePos);
             Block gearBlock = byEntity.World.GetBlock(new AssetLocation("loosegears-1"));
             placePos.Y--;
-            if (block.IsReplacableBy(gearBlock) && byEntity.World.BlockAccessor.GetMostSolidBlock(placePos).CanAttachBlockAt(byEntity.World.BlockAccessor, gearBlock, placePos, BlockFacing.UP))
+            if (block.IsReplacableBy(gearBlock) && byEntity.World.BlockAccessor.GetMostSolidBlock(placePos.X, placePos.Y, placePos.Z).CanAttachBlockAt(byEntity.World.BlockAccessor, gearBlock, placePos, BlockFacing.UP))
             {
                 placePos.Y++;
                 byEntity.World.BlockAccessor.SetBlock(gearBlock.BlockId, placePos);

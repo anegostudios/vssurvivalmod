@@ -15,8 +15,6 @@ namespace Vintagestory.GameContent
         [JsonProperty]
         string activity;
 
-        string[] activities;
-
         protected EntityActivitySystem vas;
         public AfterActivityCondition() { }
         public AfterActivityCondition(EntityActivitySystem vas, string activity, bool invert=false)
@@ -30,21 +28,11 @@ namespace Vintagestory.GameContent
 
         public virtual bool ConditionSatisfied(Entity e)
         {
-            var lastActivity = e.Attributes.GetString("lastActivity");
-            if (lastActivity == null) return false;
-
-            if (activities != null)
-            {
-                return activities.Contains(lastActivity);
-            }
-            return lastActivity == activity;
+            return e.Attributes.GetString("lastActivity") == activity;
         }
 
 
-        public void LoadState(ITreeAttribute tree) {
-            if (activity.Contains(",")) activities = activity.Split(',');
-            else activities = null;
-        }
+        public void LoadState(ITreeAttribute tree) { }
         public void StoreState(ITreeAttribute tree) { }
 
 
@@ -62,9 +50,6 @@ namespace Vintagestory.GameContent
         public void StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             activity = singleComposer.GetTextInput("activity").GetText();
-
-            if (activity.Contains(",")) activities = activity.Split(',');
-            else activities = null;
         }
         public IActionCondition Clone()
         {
@@ -79,8 +64,6 @@ namespace Vintagestory.GameContent
         public void OnLoaded(EntityActivitySystem vas)
         {
             this.vas = vas;
-            if (activity.Contains(",")) activities = activity.Split(',');
-            else activities = null;
         }
     }
 }

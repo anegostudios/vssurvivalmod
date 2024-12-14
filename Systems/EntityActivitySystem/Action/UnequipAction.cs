@@ -6,10 +6,12 @@ using Vintagestory.API.Util;
 namespace Vintagestory.GameContent
 {
     [JsonObject(MemberSerialization.OptIn)]
-    public class UnequipAction : EntityActionBase
+    public class UnequipAction : IEntityAction
     {
-        public override string Type => "unequip";
-        
+        protected EntityActivitySystem vas;
+        public string Type => "unequip";
+        public bool ExecutionHasFailed { get; set; }
+
         [JsonProperty]
         string Target;
 
@@ -21,8 +23,12 @@ namespace Vintagestory.GameContent
             this.Target = target;
         }
 
+        public bool IsFinished()
+        {
+            return true;
+        }
 
-        public override void Start(EntityActivity act)
+        public void Start(EntityActivity act)
         {
             switch (Target)
             {
@@ -37,8 +43,18 @@ namespace Vintagestory.GameContent
         }
 
 
+        public void OnTick(float dt) { }
+        public void Cancel()
+        {
+            // re-equip here
+        }
+        public void Finish() { }
 
-        public override void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
+        public void LoadState(ITreeAttribute tree) { }
+        public void StoreState(ITreeAttribute tree) { }
+
+
+        public void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             var vals = new string[] { "lefthand", "righthand" };
             var b = ElementBounds.Fixed(0, 0, 300, 25);
@@ -48,13 +64,13 @@ namespace Vintagestory.GameContent
             ;
         }
 
-        public override bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
+        public bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             Target = singleComposer.GetDropDown("target").SelectedValue;
             return true;
         }
 
-        public override IEntityAction Clone()
+        public IEntityAction Clone()
         {
             return new UnequipAction(vas, Target);
         }
@@ -62,6 +78,15 @@ namespace Vintagestory.GameContent
         public override string ToString()
         {
             return "Remove item from " + Target;
+        }
+
+        public void OnVisualize(ActivityVisualizer visualizer)
+        {
+
+        }
+        public void OnLoaded(EntityActivitySystem vas)
+        {
+            this.vas = vas;
         }
     }
 }

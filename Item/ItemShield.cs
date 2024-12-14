@@ -54,8 +54,10 @@ namespace Vintagestory.GameContent
         ICoreClientAPI capi;
 
         Dictionary<int, MultiTextureMeshRef> meshrefs => ObjectCacheUtil.GetOrCreate(api, "shieldmeshrefs", () => new Dictionary<int, MultiTextureMeshRef>());
-        Dictionary<string, Dictionary<string, int>> durabilityGains;
+
         public string Construction => Variant["construction"];
+
+        Dictionary<string, Dictionary<string, int>> durabilityGains;
 
 
 
@@ -69,20 +71,6 @@ namespace Vintagestory.GameContent
             durabilityGains = Attributes["durabilityGains"].AsObject<Dictionary<string, Dictionary<string, int>>>();
 
             AddAllTypesToCreativeInventory();
-        }
-
-        public override void OnUnloaded(ICoreAPI api)
-        {
-            if (api.ObjectCache.ContainsKey("shieldmeshrefs") && meshrefs.Count > 0)
-            {
-                foreach (var (_, meshRef) in meshrefs)
-                {
-                    meshRef.Dispose();
-                }
-
-                ObjectCacheUtil.Delete(api, "shieldmeshrefs");
-            }
-            base.OnUnloaded(api);
         }
 
         public override int GetMaxDurability(ItemStack itemstack)
@@ -134,7 +122,7 @@ namespace Vintagestory.GameContent
 
                         foreach (var color in vg["color"])
                         {
-
+                            
                             if (color != "redblack") stacks.Add(genJstack(string.Format("{{ wood: \"{0}\", metal: \"{1}\", color: \"{2}\", deco: \"ornate\" }}", "generic", metal, color)));
                         }
 
@@ -165,6 +153,17 @@ namespace Vintagestory.GameContent
 
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
+            /*if (target == EnumItemRenderTarget.HandFp)
+            {
+                bool sneak = capi.World.Player.Entity.Controls.Sneak;
+
+                curOffY += ((sneak ? 0.4f : offY) - curOffY) * renderinfo.dt * 8;
+
+                renderinfo.Transform.Translation.X = curOffY;
+                renderinfo.Transform.Translation.Y = curOffY * 1.2f;
+                renderinfo.Transform.Translation.Z = curOffY * 1.2f;
+            }*/
+
             int meshrefid = itemstack.TempAttributes.GetInt("meshRefId");
             if (meshrefid == 0 || !meshrefs.TryGetValue(meshrefid, out renderinfo.ModelRef))
             {
@@ -205,7 +204,7 @@ namespace Vintagestory.GameContent
         public MeshData GenMesh(ItemStack itemstack, ITextureAtlasAPI targetAtlas)
         {
             var cnts = new ContainedTextureSource(api as ICoreClientAPI, targetAtlas, new Dictionary<string, AssetLocation>(), string.Format("For render in shield {0}", Code));
-
+            
             MeshData mesh;
             cnts.Textures.Clear();
 
@@ -213,6 +212,7 @@ namespace Vintagestory.GameContent
             string metal = itemstack.Attributes.GetString("metal");
             string color = itemstack.Attributes.GetString("color");
             string deco = itemstack.Attributes.GetString("deco");
+
 
             if (wood == null && metal == null && Construction != "crude" && Construction != "blackguard") return new MeshData();
 
@@ -276,7 +276,7 @@ namespace Vintagestory.GameContent
             return mesh;
         }
 
-
+         
         public override string GetHeldItemName(ItemStack itemStack)
         {
             bool ornate = itemStack.Attributes.GetString("deco") == "ornate";
@@ -317,23 +317,13 @@ namespace Vintagestory.GameContent
             var attr = inSlot.Itemstack?.ItemAttributes?["shield"];
             if (attr == null || !attr.Exists) return;
 
-            if (attr["protectionChance"]["active-projectile"].Exists)
-            {
-                float pacchance = attr["protectionChance"]["active-projectile"].AsFloat(0);
-                float ppachance = attr["protectionChance"]["passive-projectile"].AsFloat(0);
-                float pflatdmgabsorb = attr["projectileDamageAbsorption"].AsFloat(0);
-                dsc.AppendLine("<strong>" + Lang.Get("Projectile protection") + "</strong>");
-                dsc.AppendLine(Lang.Get("shield-stats", (int)(100 * pacchance), (int)(100 * ppachance), pflatdmgabsorb));
-                dsc.AppendLine();
-            }
-
-            float flatdmgabsorb = attr["damageAbsorption"].AsFloat(0);
+            float acdmgabsorb = attr["damageAbsorption"]["active"].AsFloat(0);
             float acchance = attr["protectionChance"]["active"].AsFloat(0);
+
+            float padmgabsorb = attr["damageAbsorption"]["passive"].AsFloat(0);
             float pachance = attr["protectionChance"]["passive"].AsFloat(0);
 
-            dsc.AppendLine("<strong>" + Lang.Get("Melee attack protection") + "</strong>");
-            dsc.AppendLine(Lang.Get("shield-stats", (int)(100 * acchance), (int)(100 * pachance), flatdmgabsorb));
-            dsc.AppendLine();
+            dsc.AppendLine(Lang.Get("shield-stats", (int)(100*acchance), (int)(100*pachance), acdmgabsorb, padmgabsorb));
 
             switch (Construction)
             {
@@ -347,7 +337,7 @@ namespace Vintagestory.GameContent
                     break;
             }
 
-
+            
         }
 
         public MeshData GenMesh(ItemStack itemstack, ITextureAtlasAPI targetAtlas, BlockPos atBlockPos)

@@ -7,10 +7,12 @@ using Vintagestory.API.Util;
 namespace Vintagestory.GameContent
 {
     [JsonObject(MemberSerialization.OptIn)]
-    public class PlaySoundAction : EntityActionBase
+    public class PlaySoundAction : IEntityAction
     {
-        public override string Type => "playsound";
+        public bool ExecutionHasFailed => false;
+        public string Type => "playsound";
 
+        EntityActivitySystem vas;
         [JsonProperty]
         public float delaySeconds = 0;
         [JsonProperty]
@@ -32,9 +34,21 @@ namespace Vintagestory.GameContent
             this.volume = volume;
         }
 
-        public PlaySoundAction() { }
+        public PlaySoundAction()
+        {
+        }
 
-        public override void Start(EntityActivity act)
+        public void OnTick(float dt)
+        {
+            
+        }
+
+        public bool IsFinished()
+        {
+            return true;
+        }
+
+        public void Start(EntityActivity act)
         {
             if (delaySeconds > 0)
             {
@@ -52,7 +66,12 @@ namespace Vintagestory.GameContent
             vas.Entity.World.PlaySoundAt(loc, vas.Entity, null, randomizePitch, range, volume);
         }
 
-        public override void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
+        public void Cancel()
+        {
+        }
+        public void Finish() { }
+
+        public void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             var b = ElementBounds.Fixed(0, 0, 200, 25);
             singleComposer
@@ -80,7 +99,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
+        public bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             soundLocation = singleComposer.GetTextInput("soundlocation").GetText();
             delaySeconds = singleComposer.GetNumberInput("delay").GetValue();
@@ -91,7 +110,12 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override IEntityAction Clone()
+
+        public void LoadState(ITreeAttribute tree) { }
+        public void StoreState(ITreeAttribute tree) { }
+
+
+        public IEntityAction Clone()
         {
             return new PlaySoundAction(vas, delaySeconds, soundLocation, randomizePitch, range, volume);
         }
@@ -99,6 +123,15 @@ namespace Vintagestory.GameContent
         public override string ToString()
         {
             return string.Format("Play sound {0} after {1} seconds", soundLocation, delaySeconds);
+        }
+
+        public void OnVisualize(ActivityVisualizer visualizer)
+        {
+
+        }
+        public void OnLoaded(EntityActivitySystem vas)
+        {
+            this.vas = vas;
         }
     }
 }

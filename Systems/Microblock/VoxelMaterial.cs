@@ -23,10 +23,9 @@ namespace Vintagestory.GameContent
             public readonly byte ClimateMapIndex;
             public readonly bool Frostable;
             public readonly byte SeasonMapIndex;
-            public readonly int TextureRotation;
 
             public VoxelMaterial(int blockId, TextureAtlasPosition[] texture, TextureAtlasPosition[] textureInside, TextureAtlasPosition textureTopSoil,
-                EnumChunkRenderPass renderPass, int flags, byte climateMapIndex, byte seasonMapIndex, bool frostable, bool cullBetweenTransparents, int textureRotation)
+                EnumChunkRenderPass renderPass, int flags, byte climateMapIndex, byte seasonMapIndex, bool frostable, bool cullBetweenTransparents)
             {
                 ClimateMapIndex = climateMapIndex;
                 SeasonMapIndex = seasonMapIndex;
@@ -38,14 +37,9 @@ namespace Vintagestory.GameContent
                 Flags = flags;
                 TextureTopSoil = textureTopSoil;
                 CullBetweenTransparents = cullBetweenTransparents;
-                TextureRotation = textureRotation;
             }
 
-            public VoxelMaterial(int blockId, TextureAtlasPosition[] texture, TextureAtlasPosition[] textureInside, TextureAtlasPosition textureTopSoil,
-                EnumChunkRenderPass renderPass, int flags, byte climateMapIndex, byte seasonMapIndex, bool frostable, bool cullBetweenTransparents) : this(blockId, texture, textureInside, textureTopSoil, renderPass, flags, climateMapIndex, seasonMapIndex, frostable, cullBetweenTransparents, 0)
-            { }
-
-            public static VoxelMaterial FromBlock(ICoreClientAPI capi, Block block, BlockPos posForRnd = null, bool cullBetweenTransparents = false, int decorRotation = 0)
+            public static VoxelMaterial FromBlock(ICoreClientAPI capi, Block block, BlockPos posForRnd = null, bool cullBetweenTransparents = false)
             {
                 int altNum = 0;
                 if (block.HasAlternates && posForRnd != null)
@@ -94,7 +88,7 @@ namespace Vintagestory.GameContent
                     grasscoverexPos = capi.BlockTextureAtlas[block.Textures["specialSecondTexture"].Baked.BakedName];
                 }
 
-                return new VoxelMaterial(block.Id, texture, textureInside, grasscoverexPos, block.RenderPass, block.VertexFlags.All, climateColorMapId, seasonColorMapId, block.Frostable, cullBetweenTransparents, decorRotation);
+                return new VoxelMaterial(block.Id, texture, textureInside, grasscoverexPos, block.RenderPass, block.VertexFlags.All, climateColorMapId, seasonColorMapId, block.Frostable, cullBetweenTransparents);
             }
 
             public static VoxelMaterial FromTexSource(ICoreClientAPI capi, ITexPositionSource texSource, bool cullBetweenTransparents = false)
@@ -107,7 +101,7 @@ namespace Vintagestory.GameContent
                     texture[i] = texSource[facing.Code] ?? capi.BlockTextureAtlas.UnknownTexturePosition;
                     textureInside[i] = texSource["inside-" + facing.Code] ?? texSource[facing.Code] ?? capi.BlockTextureAtlas.UnknownTexturePosition;
                 }
-                return new VoxelMaterial(0, texture, textureInside, null, EnumChunkRenderPass.Opaque, 0, 0, 0, false, cullBetweenTransparents, 0);
+                return new VoxelMaterial(0, texture, textureInside, null, EnumChunkRenderPass.Opaque, 0, 0, 0, false, cullBetweenTransparents);
             }
         }
 

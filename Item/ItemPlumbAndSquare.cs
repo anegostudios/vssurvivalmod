@@ -78,25 +78,19 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            IServerPlayer byPlayer = (byEntity as EntityPlayer).Player as IServerPlayer;
-            if (byPlayer == null) return;
-
-            if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
-            {
-                return;
-            }
-
             ModSystemBlockReinforcement bre = byEntity.Api.ModLoader.GetModSystem<ModSystemBlockReinforcement>();
 
+            IPlayer player = (byEntity as EntityPlayer).Player;
+            if (player == null) return;
 
-            ItemSlot resSlot = bre.FindResourceForReinforcing(byPlayer);
+            ItemSlot resSlot = bre.FindResourceForReinforcing(player);
             if (resSlot == null) return;
 
             int strength = resSlot.Itemstack.ItemAttributes["reinforcementStrength"].AsInt(0);
 
             int toolMode = slot.Itemstack.Attributes.GetInt("toolMode");
             int groupUid = 0;
-            var groups = byPlayer.GetGroups();
+            var groups = player.GetGroups();
             if (toolMode > 0 && toolMode - 1 < groups.Length)
             {
                 groupUid = groups[toolMode - 1].GroupUid;
@@ -104,15 +98,15 @@ namespace Vintagestory.GameContent
 
             if (!api.World.BlockAccessor.GetBlock(blockSel.Position).HasBehavior<BlockBehaviorReinforcable>())
             {
-                (byPlayer as IServerPlayer).SendIngameError("notreinforcable", "This block can not be reinforced!");
+                (player as IServerPlayer).SendIngameError("notreinforcable", "This block can not be reinforced!");
                 return;
             }
 
-            bool didStrengthen = groupUid > 0 ? bre.StrengthenBlock(blockSel.Position, byPlayer, strength, groupUid) : bre.StrengthenBlock(blockSel.Position, byPlayer, strength);
+            bool didStrengthen = groupUid > 0 ? bre.StrengthenBlock(blockSel.Position, player, strength, groupUid) : bre.StrengthenBlock(blockSel.Position, player, strength);
 
             if (!didStrengthen)
             {
-                (byPlayer as IServerPlayer).SendIngameError("alreadyreinforced", "Cannot reinforce block, it's already reinforced!");
+                (player as IServerPlayer).SendIngameError("alreadyreinforced", "Cannot reinforce block, it's already reinforced!");
                 return;
             }
 

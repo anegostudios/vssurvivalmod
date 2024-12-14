@@ -117,7 +117,7 @@ namespace Vintagestory.GameContent
         public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
             pos.Y--;
-            if (!world.BlockAccessor.GetMostSolidBlock(pos).CanAttachBlockAt(world.BlockAccessor, this, pos, BlockFacing.UP))
+            if (!world.BlockAccessor.GetMostSolidBlock(pos.X, pos.Y, pos.Z).CanAttachBlockAt(world.BlockAccessor, this, pos, BlockFacing.UP))
             {
                 pos.Y++;
                 world.BlockAccessor.BreakBlock(pos, null);

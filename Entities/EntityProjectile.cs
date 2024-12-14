@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -19,19 +18,13 @@ namespace Vintagestory.GameContent
         protected CollisionTester collTester = new CollisionTester();
         protected Cuboidf collisionTestBox;
         protected EntityPartitioning ep;
-        protected List<long> entitiesHit = new();
-        protected long FiredByMountEntityId;
 
         public Entity FiredBy;
         public float Weight = 0.1f;
         public float Damage;
-        public EnumDamageType DamageType = EnumDamageType.PiercingAttack;
-        public int DamageTier = 0;
         public ItemStack ProjectileStack;
         public float DropOnImpactChance = 0f;
         public bool DamageStackOnImpact = false;
-
-        public bool EntityHit { get; protected set; }
 
         public bool NonCollectible
         {
@@ -66,17 +59,12 @@ namespace Vintagestory.GameContent
             }
             msLaunch = World.ElapsedMilliseconds;
 
-            if (FiredBy != null && FiredBy is EntityAgent firedByAgent && firedByAgent.MountedOn?.Entity != null)
-            {
-                FiredByMountEntityId = firedByAgent.MountedOn.Entity.EntityId;
-            }
-
             collisionTestBox = SelectionBox.Clone().OmniGrowBy(0.05f);
 
             GetBehavior<EntityBehaviorPassivePhysics>().OnPhysicsTickCallback = onPhysicsTickCallback;
             ep = api.ModLoader.GetModSystem<EntityPartitioning>();
 
-            GetBehavior<EntityBehaviorPassivePhysics>().CollisionYExtra = 0f; // Slightly cheap hax so that stones/arrows don't collide with fences
+            GetBehavior<EntityBehaviorPassivePhysics>().CollisionYExtra = 0f; // Slightly cheap hax so that stones/arrows don't collid with fences
         }
 
         private void onPhysicsTickCallback(float dtFac)
@@ -85,7 +73,9 @@ namespace Vintagestory.GameContent
             if (World.ElapsedMilliseconds <= msCollide + 500) return;
 
             var pos = SidedPos;
-            if (pos.Motion.LengthSq() < 0.2*0.2) return;  // Don't do damage if stuck in ground
+
+            if (pos.Motion.X == 0 && pos.Motion.Y == 0 && pos.Motion.Z == 0) return;  // Don't do damage if stuck in ground
+
 
             Cuboidd projectileBox = SelectionBox.ToDouble().Translate(pos.X, pos.Y, pos.Z);
 
@@ -98,13 +88,6 @@ namespace Vintagestory.GameContent
 
             ep.WalkEntities(pos.XYZ, 5f, (e) => {
                 if (e.EntityId == this.EntityId || (FiredBy != null && e.EntityId == FiredBy.EntityId && World.ElapsedMilliseconds - msLaunch < 500) || !e.IsInteractable) return true;
-
-                if (entitiesHit.Contains(e.EntityId)) return false;
-
-                if (e.EntityId == FiredByMountEntityId && World.ElapsedMilliseconds - msLaunch < 500)
-                {
-                    return true;
-                }
 
                 Cuboidd eBox = e.SelectionBox.ToDouble().Translate(e.ServerPos.X, e.ServerPos.Y, e.ServerPos.Z);
 
@@ -135,7 +118,6 @@ namespace Vintagestory.GameContent
             {
                 if (Api.Side == EnumAppSide.Client) ServerPos.SetFrom(Pos);
                 IsColliding(pos, impactSpeed);
-                entitiesHit.Clear(); // to enable falling projectile to hit same entities second time if it was stuck and then released
                 return;
             } else
             {
@@ -216,15 +198,7 @@ namespace Vintagestory.GameContent
             Entity entity = World.GetNearestEntity(ServerPos.XYZ, 5f, 5f, (e) => {
                 if (e.EntityId == this.EntityId || !e.IsInteractable) return false;
 
-                // So projectile does not damage same entity twice
-                if (entitiesHit.Contains(e.EntityId)) return false;
-
                 if (FiredBy != null && e.EntityId == FiredBy.EntityId && World.ElapsedMilliseconds - msLaunch < 500)
-                {
-                    return false;
-                }
-
-                if (e.EntityId == FiredByMountEntityId && World.ElapsedMilliseconds - msLaunch < 500)
                 {
                     return false;
                 }
@@ -236,7 +210,6 @@ namespace Vintagestory.GameContent
 
             if (entity != null)
             {
-                entitiesHit.Add(entity.EntityId);
                 impactOnEntity(entity);
                 return true;
             }
@@ -249,8 +222,6 @@ namespace Vintagestory.GameContent
         protected virtual void impactOnEntity(Entity entity)
         {
             if (!Alive) return;
-
-            EntityHit = true;
 
             EntityPos pos = SidedPos;
 
@@ -273,6 +244,8 @@ namespace Vintagestory.GameContent
 
             msCollide = World.ElapsedMilliseconds;
 
+            pos.Motion.Set(0, 0, 0);
+
             if (canDamage && World.Side == EnumAppSide.Server)
             {
                 World.PlaySoundAt(new AssetLocation("sounds/arrow-impact"), this, null, false, 24);
@@ -285,8 +258,7 @@ namespace Vintagestory.GameContent
                     Source = fromPlayer != null ? EnumDamageSource.Player : EnumDamageSource.Entity,
                     SourceEntity = this,
                     CauseEntity = FiredBy,
-                    Type = DamageType,
-                    DamageTier = DamageTier
+                    Type = EnumDamageType.PiercingAttack
                 }, dmg);
 
                 float kbresist = entity.Properties.KnockbackResistance;
@@ -313,8 +285,6 @@ namespace Vintagestory.GameContent
                     World.PlaySoundFor(new AssetLocation("sounds/player/projectilehit"), (FiredBy as EntityPlayer).Player, false, 24);
                 }
             }
-
-            pos.Motion.Set(0, 0, 0);
         }
 
         public virtual void SetInitialRotation()

@@ -99,12 +99,6 @@ namespace Vintagestory.GameContent
                     {
                         Api.World.SpawnItemEntity(inventory[1].Itemstack, Pos);
                     }
-
-                    Api.World.Logger.Audit("{0} Took 1x{1} from Condenser at {2}.",
-                        byPlayer.PlayerName,
-                        inventory[1].Itemstack?.Collectible.Code,
-                        blockSel.Position
-                    );
                     inventory[1].Itemstack = null;
                     MarkDirty(true);
                     bucketMesh?.Clear();

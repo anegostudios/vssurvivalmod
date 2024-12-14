@@ -94,9 +94,9 @@ namespace Vintagestory.GameContent
 
             switch (receiveType)
             {
-                //case EnumReceiveType.Clayform: vtmlCode = Lang.Get(text, stats); break; 
-                //case EnumReceiveType.Knap: vtmlCode = Lang.Get(text, stats); break;
-                //case EnumReceiveType.Craft: vtmlCode = Lang.Get(text, stats); break;   // Commented out because "0/4 collected" looks wrong for crafting items, and crafting is usually all or nothing
+                case EnumReceiveType.Clayform: vtmlCode = Lang.Get(text, stats); break; 
+                case EnumReceiveType.Knap: vtmlCode = Lang.Get(text, stats); break;
+                case EnumReceiveType.Craft: vtmlCode = Lang.Get(text, stats); break;
                 default: vtmlCode = Lang.Get(text, rwatcher.QuantityAchieved >= rwatcher.QuantityGoal ? rwatcher.QuantityGoal : rwatcher.QuantityGoal - rwatcher.QuantityAchieved); break;
             }
 

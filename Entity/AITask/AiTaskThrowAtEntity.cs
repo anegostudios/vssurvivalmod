@@ -20,7 +20,6 @@ namespace Vintagestory.GameContent
         float maxTurnAnglePerSec;
         float curTurnRadPerSec;
         float projectileDamage;
-        int projectileDamageTier;
         AssetLocation projectileCode;
         float maxTurnAngleRad;
         float maxOffAngleThrowRad;
@@ -36,7 +35,6 @@ namespace Vintagestory.GameContent
             this.durationMs = taskConfig["durationMs"].AsInt(1500);
             this.releaseAtMs = taskConfig["releaseAtMs"].AsInt(1000);
             this.projectileDamage = taskConfig["projectileDamage"].AsFloat(1f);
-            this.projectileDamageTier = taskConfig["projectileDamageTier"].AsInt(0);
             this.maxDist = taskConfig["maxDist"].AsFloat(15f);
             this.yawInaccuracy = taskConfig["yawInaccuracy"].AsFloat(0f);
 
@@ -83,7 +81,7 @@ namespace Vintagestory.GameContent
             accum = 0;
             didThrow = false;
 
-            ITreeAttribute pathfinder = entity?.Properties.Server?.Attributes?.GetTreeAttribute("pathfinder");
+            ITreeAttribute pathfinder = entity?.Properties.Server?.Attributes.GetTreeAttribute("pathfinder");
             if (pathfinder != null)
             {
                 minTurnAnglePerSec = pathfinder.GetFloat("minTurnAnglePerSec", 250);
@@ -145,7 +143,6 @@ namespace Vintagestory.GameContent
                 var entitypr = entity.World.ClassRegistry.CreateEntity(type) as EntityThrownStone;
                 entitypr.FiredBy = entity;
                 entitypr.Damage = projectileDamage;
-                entitypr.DamageTier = projectileDamageTier;
                 entitypr.ProjectileStack = new ItemStack(entity.World.GetItem(new AssetLocation("stone-granite")));
                 entitypr.NonCollectible = true;
 

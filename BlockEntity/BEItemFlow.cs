@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Linq;
 using System.Text;
 using Vintagestory.API.Common;
@@ -7,7 +8,6 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.GameContent.Mechanics;
-using SerializerUtil = Vintagestory.API.Util.SerializerUtil;
 
 namespace Vintagestory.GameContent
 {
@@ -183,7 +183,7 @@ namespace Vintagestory.GameContent
                 BlockFacing outputFace = PushFaces[Api.World.Rand.Next(PushFaces.Length)];
                 int dir = stack.Attributes.GetInt("chuteDir", -1);
                 BlockFacing desiredDir = dir >= 0 && PushFaces.Contains(BlockFacing.ALLFACES[dir]) ? BlockFacing.ALLFACES[dir] : null;
-
+                
                 // If we have a desired dir, try to go there
                 if (desiredDir != null)
                 {
@@ -245,7 +245,7 @@ namespace Vintagestory.GameContent
                 }
 
             }
-
+            
             if (PullFaces != null && PullFaces.Length > 0 && inventory.Empty)
             {
                 BlockFacing inputFace = PullFaces[Api.World.Rand.Next(PullFaces.Length)];
@@ -318,7 +318,7 @@ namespace Vintagestory.GameContent
             BlockPos OutputPosition = Pos.AddCopy(outputFace);
 
             var ba = Api.World.BlockAccessor;
-
+            
             // Retrieve the block first to handle the possibility of it being a multiblock,
             // as this overrides GetBlockEntity on the block to ensure the associated block entity is obtained.
             var beContainer = ba.GetBlock(OutputPosition).GetBlockEntity<BlockEntityContainer>(OutputPosition);
@@ -424,7 +424,19 @@ namespace Vintagestory.GameContent
         {
             if (Api.World is IServerWorldAccessor)
             {
-                var data = BlockEntityContainerOpen.ToBytes("BlockEntityItemFlowDialog", Lang.Get(ItemFlowObjectLangCode), 4, inventory);
+                byte[] data;
+
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    BinaryWriter writer = new BinaryWriter(ms);
+                    writer.Write("BlockEntityItemFlowDialog");
+                    writer.Write(Lang.Get(ItemFlowObjectLangCode));
+                    writer.Write((byte)4); // Quantity columns
+                    TreeAttribute tree = new TreeAttribute();
+                    inventory.ToTreeAttributes(tree);
+                    tree.ToBytes(writer);
+                    data = ms.ToArray();
+                }
 
                 ((ICoreServerAPI)Api).Network.SendBlockEntityPacket(
                     (IServerPlayer)byPlayer,

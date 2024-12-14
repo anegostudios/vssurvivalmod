@@ -193,7 +193,7 @@ namespace Vintagestory.GameContent
         {
             Vec3d centerPos = entity.Pos.XYZ;
             Vec3d spawnPos = new Vec3d();
-            BlockPos spawnPosi = new BlockPos();    // Omit dimension, because dimension will come from the InternalY being used in centerPos and spawnPos
+            BlockPos spawnPosi = new BlockPos();
 
             for (int i = 0; i < spawnedEntities.Count; i++)
             {
@@ -223,7 +223,7 @@ namespace Vintagestory.GameContent
 
                     spawnPosi.Set((int)spawnPos.X, (int)spawnPos.Y, (int)spawnPos.Z);
 
-                    while (sapi.World.BlockAccessor.GetBlockBelow(spawnPosi).Id == 0 && spawnPos.Y > 0)
+                    while (sapi.World.BlockAccessor.GetBlock(spawnPosi.X, spawnPosi.Y - 1, spawnPosi.Z).Id == 0 && spawnPos.Y > 0)
                     {
                         spawnPosi.Y--;
                         spawnPos.Y--;

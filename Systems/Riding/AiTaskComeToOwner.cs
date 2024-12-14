@@ -1,5 +1,4 @@
 ﻿using Vintagestory.API.Common;
-using Vintagestory.API.Datastructures;
 
 namespace Vintagestory.GameContent
 {
@@ -11,21 +10,8 @@ namespace Vintagestory.GameContent
         {
         }
 
-        public override void LoadConfig(JsonObject taskConfig, JsonObject aiConfig)
-        {
-            base.LoadConfig(taskConfig, aiConfig);
-            minSeekSeconds = 10f;
-        }
-
         public override bool ShouldExecute()
         {
-            var tree = entity.WatchedAttributes.GetTreeAttribute("ownedby");
-            if (tree == null)
-            {
-                lastExecutedMs = -99999;
-                return false;
-            }
-
             float lastCallDelta = (entity.World.ElapsedMilliseconds - lastExecutedMs) / 1000f;
             if (lastCallDelta < 20) return base.ShouldExecute();
             return false;
@@ -37,8 +23,6 @@ namespace Vintagestory.GameContent
             lastExecutedMs = entity.World.ElapsedMilliseconds;
 
             var tree = entity.WatchedAttributes.GetTreeAttribute("ownedby");
-            if (tree == null) return;
-
             string uid = tree.GetString("uid");
             var plr = entity.World.PlayerByUid(uid);
             targetEntity = plr?.Entity;
@@ -46,7 +30,7 @@ namespace Vintagestory.GameContent
             if (targetEntity != null)
             {
                 float size = targetEntity.SelectionBox.XSize;
-                pathTraverser.NavigateTo_Async(targetEntity.ServerPos.XYZ, moveSpeed, size + 0.2f, OnGoalReached, OnStuck, null, 1000, 1);
+                pathTraverser.NavigateTo_Async(targetEntity.ServerPos.XYZ, moveSpeed, size + 0.2f, OnGoalReached, OnStuck, tryTeleport, 1000, 1);
                 targetOffset.Set(entity.World.Rand.NextDouble() * 2 - 1, 0, entity.World.Rand.NextDouble() * 2 - 1);
                 stuck = false;
             }

@@ -5,9 +5,11 @@ using Vintagestory.API.Datastructures;
 namespace Vintagestory.GameContent
 {
     [JsonObject(MemberSerialization.OptIn)]
-    public class WaitAction : EntityActionBase
+    public class WaitAction : IEntityAction
     {
-        public override string Type => "wait";
+        protected EntityActivitySystem vas;
+        public string Type => "wait";
+        public bool ExecutionHasFailed { get; set; }
 
         [JsonProperty]
         float durationSeconds;
@@ -22,22 +24,31 @@ namespace Vintagestory.GameContent
             this.durationSeconds = durationSeconds;
         }
 
-        public override bool IsFinished()
+        public bool IsFinished()
         {
             return waitLeftSeconds < 0;
         }
 
-        public override void Start(EntityActivity act)
+        public void Start(EntityActivity act)
         {
             waitLeftSeconds = durationSeconds;
         }
 
 
-        public override void OnTick(float dt) {
+        public void OnTick(float dt) {
             waitLeftSeconds -= dt;
         }
+        public void Cancel()
+        {
+            // re-equip here
+        }
+        public void Finish() { }
 
-        public override void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
+        public void LoadState(ITreeAttribute tree) { }
+        public void StoreState(ITreeAttribute tree) { }
+
+
+        public void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             var b = ElementBounds.Fixed(0, 0, 300, 25);
             singleComposer
@@ -48,13 +59,13 @@ namespace Vintagestory.GameContent
             singleComposer.GetTextInput("wait").SetValue(durationSeconds);
         }
 
-        public override bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
+        public bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             durationSeconds = singleComposer.GetNumberInput("wait").GetValue();
             return true;
         }
 
-        public override IEntityAction Clone()
+        public IEntityAction Clone()
         {
             return new WaitAction(vas, durationSeconds);
         }
@@ -64,5 +75,13 @@ namespace Vintagestory.GameContent
             return "Wait for " + durationSeconds + " IRL seconds";
         }
 
+        public void OnVisualize(ActivityVisualizer visualizer)
+        {
+
+        }
+        public void OnLoaded(EntityActivitySystem vas)
+        {
+            this.vas = vas;
+        }
     }
 }

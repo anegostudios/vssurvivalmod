@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
@@ -38,7 +37,6 @@ namespace Vintagestory.GameContent
     public class EntityDressedHumanoid : EntityHumanoid
     {
         EntityBehaviorVillagerInv ebhv;
-        private HumanoidOutfits humanoidOutfits;
 
         public override ItemSlot RightHandItemSlot => ebhv?.Inventory[0];
         public override ItemSlot LeftHandItemSlot => ebhv?.Inventory[1];
@@ -91,7 +89,7 @@ namespace Vintagestory.GameContent
             {
                 if (partialRandomOutfitsOverride == null) partialRandomOutfitsOverride = Properties.Attributes["partialRandomOutfits"].AsObject<Dictionary<string, WeightedCode[]>>();
                 
-                var outfit = humanoidOutfits.GetRandomOutfit(OutfitConfigFileName, partialRandomOutfitsOverride);
+                var outfit = Api.ModLoader.GetModSystem<HumanoidOutfits>().GetRandomOutfit(OutfitConfigFileName, partialRandomOutfitsOverride);
                 OutfitSlots = outfit.Keys.ToArray();
                 OutfitCodes = outfit.Values.ToArray();
             }
@@ -100,7 +98,6 @@ namespace Vintagestory.GameContent
         public override void Initialize(EntityProperties properties, ICoreAPI api, long InChunkIndex3d)
         {
             base.Initialize(properties, api, InChunkIndex3d);
-            humanoidOutfits = Api.ModLoader.GetModSystem<HumanoidOutfits>();
 
             if (api.Side == EnumAppSide.Server)
             {
@@ -123,54 +120,41 @@ namespace Vintagestory.GameContent
 
         public override void OnTesselation(ref Shape entityShape, string shapePathForLogging)
         {
-            var sw = new System.Diagnostics.Stopwatch();
-            sw.Start();
             var capi = Api as ICoreClientAPI;
 
             // Reset textures to default    
-            var textDict = new FastSmallDictionary<string, CompositeTexture>(0);
-            Properties.Client.Textures = textDict;
+            Properties.Client.Textures = new FastSmallDictionary<string, CompositeTexture>(0);
             foreach (var val in Api.World.GetEntityType(this.Code).Client.Textures)
             {
-                textDict[val.Key] = val.Value;
+                Properties.Client.Textures[val.Key] = val.Value;
                 val.Value.Bake(capi.Assets);
             }
 
-            long time1 = sw.ElapsedMilliseconds;
+
+            base.OnTesselation(ref entityShape, shapePathForLogging);
 
             // Make a copy so we don't mess up the original
             Shape newShape = entityShape.Clone();
             entityShape = newShape;
 
             string[] outfitCodes = OutfitCodes;
-            TexturedWeightedCompositeShape[] cshapes = humanoidOutfits.Outfit2Shapes(OutfitConfigFileName, OutfitCodes);
+            TexturedWeightedCompositeShape[] cshapes = Api.ModLoader.GetModSystem<HumanoidOutfits>().Outfit2Shapes(OutfitConfigFileName, OutfitCodes);
 
-            long time2 = sw.ElapsedMilliseconds;
             var slots = OutfitSlots;
 
-            if (slots != null)
+            for (int i = 0; i < outfitCodes.Length; i++)
             {
-                for (int i = 0; i < slots.Length; i++)
-                {
-                    if (i >= cshapes.Length) break;
-                    var twcshape = cshapes[i];
-                    if (twcshape == null || twcshape.Base == null) continue;
+                var twcshape = cshapes[i];
+                if (twcshape == null) continue;
 
-                    addGearToShape(slots[i], twcshape, newShape, shapePathForLogging, null, twcshape.Textures);
-                }
-
-                foreach (var val in entityShape.Textures)
+                if (twcshape?.Base == null)
                 {
-                    if (!textDict.ContainsKey(val.Key))
-                    {
-                        var texture = new CompositeTexture(val.Value);
-                        texture.Bake(capi.Assets);
-                        textDict[val.Key] = texture;
-                    }
+                    continue;
                 }
+                if (slots == null || slots.Length <= i) continue; 
+
+                addGearToShape(OutfitSlots[i], twcshape, newShape, shapePathForLogging, null, twcshape.Textures);
             }
-
-            long time3 = sw.ElapsedMilliseconds;
 
             for (int i = 0; i < outfitCodes.Length; i++)
             {
@@ -180,45 +164,32 @@ namespace Vintagestory.GameContent
                 if (twcshape.DisableElements != null)
                 {
                     entityShape.RemoveElements(twcshape.DisableElements);
-                }
+                }                
 
-                if (twcshape.OverrideTextures != null)
+                if (twcshape?.OverrideTextures != null)
                 {
                     foreach (var val in twcshape.OverrideTextures)
                     {
                         var loc = val.Value;
                         entityShape.Textures[val.Key] = loc;
 
-                        textDict[val.Key] = CreateCompositeTexture(loc, capi, new SourceStringComponents("Outfit config file {0}, Outfit slot {1}, Outfit type {2}, Override Texture {3}", OutfitConfigFileName, OutfitSlots[i], OutfitCodes[i], val.Key));
+                        var cmpt = Properties.Client.Textures[val.Key] = new CompositeTexture(loc);
+                        cmpt.Bake(capi.Assets);
+                        capi.EntityTextureAtlas.GetOrInsertTexture(cmpt.Baked.TextureFilenames[0], out int textureSubid, out _, () =>
+                        {
+                            var bmp = capi.EntityTextureAtlas.LoadCompositeBitmap(new AssetLocationAndSource(loc, string.Format("Outfit config file {0}, Outfit slot {1}, Outfit type {2}, Override Texture {3}", OutfitConfigFileName, OutfitSlots[i], OutfitCodes[i], val.Key)));
+                            if (bmp.Width == 0 && bmp.Height == 0)
+                            {
+                                capi.Logger.Warning("GetOrInsertTexture() on path {0}: Bitmap width and height is 0! Either missing or corrupt image file. Will use unknown texture.", loc);
+                            }
+                            return bmp;
+                        });
+                        cmpt.Baked.TextureSubId = textureSubid;
                     }
                 }
             }
 
-            long time4 = sw.ElapsedMilliseconds;
-
-            //entityShape.InitForAnimations(Api.Logger, shapePathForLogging, "head");   // unnecessary to InitForAnimations here as animations will be initialized, for "head", in the base.OnTesselation() call below, as cloned is true
-
-            bool cloned = true;
-            base.OnTesselation(ref entityShape, shapePathForLogging, ref cloned);
-            long time5 = sw.ElapsedMilliseconds;
-            Api.Logger.VerboseDebug("Villager tesselation " + time5 + "ms : " + time1 + "," + (time2 - time1) + "," + (time3 - time2) + "," + (time4 - time3) + "," + (time5 - time4));
-        }
-
-
-        /// <summary>
-        /// Costly: baking a composite texture and fetching its existing subTextureId from the texture atlas is slightly costly, for a new texture reading it from disk and inserting in the texture atlas during runtime is very costly (and will likely require re-mipmapping of the texture atlas in a subsequent frame, creating a GPU-side lagspike)
-        /// </summary>
-        /// <param name="loc"></param>
-        /// <param name="capi"></param>
-        /// <param name="sourceForLogging"></param>
-        /// <returns></returns>
-        private CompositeTexture CreateCompositeTexture(AssetLocation loc, ICoreClientAPI capi, SourceStringComponents sourceForLogging)
-        {
-            var cmpt = new CompositeTexture(loc);
-            cmpt.Bake(capi.Assets);
-            capi.EntityTextureAtlas.GetOrInsertTexture(new AssetLocationAndSource(cmpt.Baked.TextureFilenames[0], sourceForLogging), out int textureSubid, out _);
-            cmpt.Baked.TextureSubId = textureSubid;
-            return cmpt;
+            entityShape.InitForAnimations(Api.Logger, shapePathForLogging, "head");
         }
 
 
@@ -231,46 +202,56 @@ namespace Vintagestory.GameContent
         /// <param name="entityShape"></param>
         /// <param name="shapePathForLogging"></param>
         /// <param name="disableElements"></param>
-        protected void addGearToShape(string prefixcode, CompositeShape cshape, Shape entityShape, string shapePathForLogging, string[] disableElements = null, Dictionary<string, AssetLocation> textureOverrides = null)
+        /// <returns></returns>
+        protected Shape addGearToShape(string prefixcode, CompositeShape cshape, Shape entityShape, string shapePathForLogging, string[] disableElements = null, Dictionary<string, AssetLocation> textureOverrides = null)
         {
-            if (disableElements != null) entityShape.RemoveElements(disableElements);
-
             AssetLocation shapePath = cshape.Base.CopyWithPath("shapes/" + cshape.Base.Path + ".json");
-            Shape gearshape = Shape.TryGet(Api, shapePath);
-            if (gearshape == null)
+
+            entityShape.RemoveElements(disableElements);
+
+            Shape armorShape = Shape.TryGet(Api, shapePath);
+            if (armorShape == null)
             {
                 Api.World.Logger.Warning("Compositshape {0} (code: {2}) defined but not found or errored, was supposed to be at {1}. Part will be invisible.", cshape.Base, shapePath, prefixcode);
-                return;
+                return null;
             }
 
             if (prefixcode != null && prefixcode.Length > 0) prefixcode += "-";
+
+            var capi = Api as ICoreClientAPI;
 
             if (textureOverrides != null)
             {
                 foreach (var val in textureOverrides)
                 {
-                    gearshape.Textures[prefixcode + val.Key] = val.Value;
+                    armorShape.Textures[prefixcode + val.Key] = val.Value;
                 }
             }
 
-            foreach (var val in gearshape.Textures)
+            foreach (var val in armorShape.Textures)
             {
-                entityShape.TextureSizes[prefixcode + val.Key] = new int[] { gearshape.TextureWidth, gearshape.TextureHeight };
+                entityShape.TextureSizes[prefixcode + val.Key] = new int[] { armorShape.TextureWidth, armorShape.TextureHeight };
             }
 
-            var capi = Api as ICoreClientAPI;
-            var clientTextures = Properties.Client.Textures;
-
-            gearshape.SubclassForStepParenting(prefixcode, 0);
-            gearshape.ResolveReferences(Api.Logger, shapePath);
-            entityShape.StepParentShape(gearshape, shapePath.ToShortString(), shapePathForLogging, Api.Logger, (texcode, loc) =>
+            var textures = Properties.Client.Textures;
+            entityShape.StepParentShape(armorShape, prefixcode, shapePath.ToShortString(), shapePathForLogging, Api.Logger, (texcode, loc) =>
             {
-                string texName = prefixcode + texcode;
-                if (!clientTextures.ContainsKey(texName))
-                {
-                    clientTextures[texName] = CreateCompositeTexture(loc, capi, new SourceStringComponents("Humanoid outfit", shapePath));
-                }
+                var cmpt = textures[prefixcode + texcode] = new CompositeTexture(loc);
+                cmpt.Bake(capi.Assets);
+                capi.EntityTextureAtlas.GetOrInsertTexture(cmpt.Baked.TextureFilenames[0], out int textureSubid, out _);
+                cmpt.Baked.TextureSubId = textureSubid;
             });
+
+            foreach (var val in entityShape.Textures)
+            {
+                if (!textures.ContainsKey(val.Key))
+                {
+                    textures[val.Key] = new CompositeTexture(val.Value);
+                    textures[val.Key].Bake(capi.Assets);
+                }
+            }
+
+            return entityShape;
         }
 
     }

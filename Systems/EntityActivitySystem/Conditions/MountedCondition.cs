@@ -12,7 +12,7 @@ namespace Vintagestory.GameContent
         [JsonProperty]
         public bool Invert { get; set; }
         [JsonProperty]
-        string mountCode = "*";
+        string mountCode;
 
         protected EntityActivitySystem vas;
         public MountedCondition() { }

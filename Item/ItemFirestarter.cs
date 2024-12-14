@@ -18,9 +18,7 @@ namespace Vintagestory.GameContent
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
             base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
-            
-            // Commented out cause GroundStorable behavior was preventing animations and sound when using on pitkiln
-            //if (handling == EnumHandHandling.PreventDefault) return;
+            if (handling == EnumHandHandling.PreventDefault) return;
 
             if (blockSel == null) return;
             Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);

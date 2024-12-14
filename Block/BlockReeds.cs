@@ -163,34 +163,15 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            var canPlace = true;
-            var tmpPos = pos.Copy();
-            for (int x = -1; x < 2; x++)
-            {
-                for (int z = -1; z < 2; z++)
-                {
-                    tmpPos.Set(pos.X + x, pos.Y, pos.Z + z);
-                    block = blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Solid);
-                    if (block is BlockWaterLilyGiant)
-                    {
-                        canPlace = false;
-                    }
-                }
-            }
-            block = blockAccessor.GetBlock(pos, BlockLayersAccess.Solid);
-            if (block is BlockPlant)
-            {
-                canPlace = false;
-            }
-            if (!canPlace) return false;
-
+            int yBelow = pos.Y - 1;
             int depth = 0;
 
-            Block belowBlock = blockAccessor.GetBlockBelow(pos);
+            Block belowBlock = blockAccessor.GetBlock(pos.X, yBelow, pos.Z);
             while (belowBlock.LiquidCode == "water")
             {
                 if (++depth > maxWaterDepth) return false;
-                belowBlock = blockAccessor.GetBlockBelow(pos, depth + 1);
+                yBelow--;
+                belowBlock = blockAccessor.GetBlock(pos.X, yBelow, pos.Z);
             }
 
             if (belowBlock.Fertility > 0)

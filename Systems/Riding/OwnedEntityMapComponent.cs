@@ -28,12 +28,12 @@ namespace Vintagestory.GameContent
         {
             bool pinned = true;
 
-            var nowpos = capi.World.GetEntityById(entity.EntityId)?.Pos;
-            var pos = nowpos ?? entity.Pos;
+            var nowpos = capi.World.GetEntityById(entity.EntityId)?.Pos?.XYZ;
+            var pos = nowpos ?? entity.Pos.XYZ;
 
             if (pos.DistanceTo(capi.World.Player.Entity.Pos.XYZ) < 2) return;
 
-            map.TranslateWorldPosToViewPos(pos.XYZ, ref viewPos);
+            map.TranslateWorldPosToViewPos(pos, ref viewPos);
             if (pinned)
             {
                 map.Api.Render.PushScissor(null);
@@ -76,7 +76,7 @@ namespace Vintagestory.GameContent
                 .Translate(x, y, 60)
                 .Scale(Texture.Width, Texture.Height, 0)
                 .Scale(0.5f, 0.5f, 0)
-                .RotateZ(-pos.Yaw + 180 * GameMath.DEG2RAD)
+                .RotateZ(entity.Pos.Yaw + GameMath.PI)
             ;
 
             prog.UniformMatrix("projectionMatrix", api.Render.CurrentProjectionMatrix);

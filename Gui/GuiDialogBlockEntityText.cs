@@ -151,10 +151,7 @@ namespace Vintagestory.GameContent
     public class GuiDialogBlockEntityTextInput : GuiDialogTextInput
     {
         BlockPos blockEntityPos;
-        public GuiDialogBlockEntityTextInput(string DialogTitle, BlockPos blockEntityPos, string text, ICoreClientAPI capi, TextAreaConfig signConfig) : base(DialogTitle, text, capi, signConfig)
-        {
-            this.blockEntityPos = blockEntityPos;
-        }
+        public GuiDialogBlockEntityTextInput(string DialogTitle, BlockPos blockEntityPos, string text, ICoreClientAPI capi, TextAreaConfig signConfig) : base(DialogTitle, text, capi, signConfig) { }
 
         public override void OnSave(string text)
         {

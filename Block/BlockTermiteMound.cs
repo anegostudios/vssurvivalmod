@@ -37,14 +37,14 @@ namespace Vintagestory.GameContent
             // This needs a 3x3 flat area, looks weird otherwise
             if (islarge)
             {
-                if (!blockAccessor.GetBlockRaw(pos.X - 1, pos.InternalY - 1, pos.Z - 1, BlockLayersAccess.Solid).SideSolid[BlockFacing.UP.Index]) return false;
-                if (!blockAccessor.GetBlockRaw(pos.X + 0, pos.InternalY - 1, pos.Z - 1, BlockLayersAccess.Solid).SideSolid[BlockFacing.UP.Index]) return false;
-                if (!blockAccessor.GetBlockRaw(pos.X + 1, pos.InternalY - 1, pos.Z - 1, BlockLayersAccess.Solid).SideSolid[BlockFacing.UP.Index]) return false;
-                if (!blockAccessor.GetBlockRaw(pos.X + 1, pos.InternalY - 1, pos.Z + 0, BlockLayersAccess.Solid).SideSolid[BlockFacing.UP.Index]) return false;
-                if (!blockAccessor.GetBlockRaw(pos.X + 1, pos.InternalY - 1, pos.Z + 1, BlockLayersAccess.Solid).SideSolid[BlockFacing.UP.Index]) return false;
-                if (!blockAccessor.GetBlockRaw(pos.X + 0, pos.InternalY - 1, pos.Z + 1, BlockLayersAccess.Solid).SideSolid[BlockFacing.UP.Index]) return false;
-                if (!blockAccessor.GetBlockRaw(pos.X - 1, pos.InternalY - 1, pos.Z + 1, BlockLayersAccess.Solid).SideSolid[BlockFacing.UP.Index]) return false;
-                if (!blockAccessor.GetBlockRaw(pos.X - 1, pos.InternalY - 1, pos.Z - 0, BlockLayersAccess.Solid).SideSolid[BlockFacing.UP.Index]) return false;
+                if (!blockAccessor.GetBlock(pos.X - 1, pos.Y - 1, pos.Z - 1).SideSolid[BlockFacing.UP.Index]) return false;
+                if (!blockAccessor.GetBlock(pos.X + 0, pos.Y - 1, pos.Z - 1).SideSolid[BlockFacing.UP.Index]) return false;
+                if (!blockAccessor.GetBlock(pos.X + 1, pos.Y - 1, pos.Z - 1).SideSolid[BlockFacing.UP.Index]) return false;
+                if (!blockAccessor.GetBlock(pos.X + 1, pos.Y - 1, pos.Z + 0).SideSolid[BlockFacing.UP.Index]) return false;
+                if (!blockAccessor.GetBlock(pos.X + 1, pos.Y - 1, pos.Z + 1).SideSolid[BlockFacing.UP.Index]) return false;
+                if (!blockAccessor.GetBlock(pos.X + 0, pos.Y - 1, pos.Z + 1).SideSolid[BlockFacing.UP.Index]) return false;
+                if (!blockAccessor.GetBlock(pos.X - 1, pos.Y - 1, pos.Z + 1).SideSolid[BlockFacing.UP.Index]) return false;
+                if (!blockAccessor.GetBlock(pos.X - 1, pos.Y - 1, pos.Z - 0).SideSolid[BlockFacing.UP.Index]) return false;
             }
 
             var ch = GlobalConstants.ChunkSize;

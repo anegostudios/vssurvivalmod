@@ -73,7 +73,7 @@ namespace Vintagestory.GameContent
         float maxDist = 15f;
 
         float projectileDamage;
-        int projectileDamageTier;
+        int damageTier;
         AssetLocation projectileCode;
 
         public float creatureSpawnChance = 0f;
@@ -102,7 +102,7 @@ namespace Vintagestory.GameContent
             this.durationMs = taskConfig["durationMs"].AsInt(1500);
             this.releaseAtMs = taskConfig["releaseAtMs"].AsInt(1000);
             this.projectileDamage = taskConfig["projectileDamage"].AsFloat(1f);
-            this.projectileDamageTier = taskConfig["projectileDamageTier"].AsInt(0);
+            this.damageTier = taskConfig["damageTier"].AsInt(0);
             this.projectileCode = AssetLocation.Create(taskConfig["projectileCode"].AsString("thrownstone-{rock}"), entity.Code.Domain);
             if (taskConfig["creatureCode"].Exists)
             {
@@ -265,7 +265,7 @@ namespace Vintagestory.GameContent
 
             entitypr.FiredBy = entity;
             entitypr.Damage = projectileDamage;
-            entitypr.DamageTier = projectileDamageTier;
+            entitypr.DamageTier = damageTier;
             entitypr.ProjectileStack = new ItemStack(entity.World.GetItem(new AssetLocation("stone-" + rocktype)));
             entitypr.NonCollectible = true;
             entitypr.VerticalImpactBreakChance = 1f;

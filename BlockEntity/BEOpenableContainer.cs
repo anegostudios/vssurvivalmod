@@ -1,82 +1,21 @@
-﻿using System.Collections.Generic;
-using System.IO;
+﻿using System.IO;
 using System.Text;
-using ProtoBuf;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Server;
-using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
     public enum EnumBlockContainerPacketId
     {
-        OpenInventory = 5000,
-        OpenLidOthers = 5001
-    }
-
-    [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
-    public class OpenContainerLidPacket
-    {
-        [ProtoMember(1)]
-        public long EntityId;
-        [ProtoMember(2)]
-        public bool Opened;
-
-        public OpenContainerLidPacket()
-        {
-        }
-
-        public OpenContainerLidPacket(long entityId, bool opened)
-        {
-            EntityId = entityId;
-            Opened = opened;
-        }
-    }
-
-    public class BlockEntityContainerOpen
-    {
-        public string BlockEntity;
-        public string DialogTitle;
-        public byte Columns;
-        public TreeAttribute Tree;
-
-        public static byte[] ToBytes(string entityName, string dialogTitle, byte columns, InventoryBase inventory)
-        {
-            using var ms = new MemoryStream();
-            var writer = new BinaryWriter(ms);
-            writer.Write(entityName);
-            writer.Write(dialogTitle);
-            writer.Write(columns);
-            var tree = new TreeAttribute();
-            inventory.ToTreeAttributes(tree);
-            tree.ToBytes(writer);
-
-            return ms.ToArray();
-        }
-
-        public static BlockEntityContainerOpen FromBytes(byte[] data)
-        {
-            var inst = new BlockEntityContainerOpen();
-
-            using var ms = new MemoryStream(data);
-            var reader = new BinaryReader(ms);
-            inst.BlockEntity = reader.ReadString();
-            inst.DialogTitle = reader.ReadString();
-            inst.Columns = reader.ReadByte();
-            inst.Tree = new TreeAttribute();
-            inst.Tree.FromBytes(reader);
-
-            return inst;
-        }
+        OpenInventory = 5000
     }
 
     public delegate GuiDialogBlockEntity CreateDialogDelegate();
 
 
-    public abstract class BlockEntityOpenableContainer : BlockEntityContainer
+    public abstract class BlockEntityOpenableContainer : BlockEntityContainer, IBlockEntityContainer
     {
         protected GuiDialogBlockEntity invDialog;
 
@@ -85,19 +24,12 @@ namespace Vintagestory.GameContent
 
         public abstract bool OnPlayerRightClick(IPlayer byPlayer, BlockSelection blockSel);
 
-        /// <summary>
-        /// The Entity's that keep this containers lid open.
-        /// </summary>
-        public HashSet<long> LidOpenEntityId;
-
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
-            LidOpenEntityId = new HashSet<long>();
+
             Inventory.LateInitialize(InventoryClassName + "-" + Pos.X + "/" + Pos.Y + "/" + Pos.Z, api);
             Inventory.ResolveBlocksOrItems();
-            Inventory.OnInventoryOpened += OnInventoryOpened;  
-            Inventory.OnInventoryClosed += OnInventoryClosed; 
 
             string os = Block.Attributes?["openSound"]?.AsString();
             string cs = Block.Attributes?["closeSound"]?.AsString();
@@ -106,16 +38,6 @@ namespace Vintagestory.GameContent
 
             OpenSound = opensound ?? this.OpenSound;
             CloseSound = closesound ?? this.CloseSound;
-        }
-
-        private void OnInventoryOpened(IPlayer player)
-        {
-            LidOpenEntityId.Add(player.Entity.EntityId);
-        }
-
-        private void OnInventoryClosed(IPlayer player)
-        {
-            LidOpenEntityId.Remove(player.Entity.EntityId);
         }
 
         protected void toggleInventoryDialogClient(IPlayer byPlayer, CreateDialogDelegate onCreateDialog)
@@ -141,6 +63,8 @@ namespace Vintagestory.GameContent
             }
         }
 
+
+
         public override void OnReceivedClientPacket(IPlayer player, int packetid, byte[] data)
         {
             if (packetid < 1000)
@@ -156,25 +80,11 @@ namespace Vintagestory.GameContent
             if (packetid == (int)EnumBlockEntityPacketId.Close)
             {
                 player.InventoryManager?.CloseInventory(Inventory);
-                data = SerializerUtil.Serialize(new OpenContainerLidPacket(player.Entity.EntityId, false));
-                ((ICoreServerAPI)Api).Network.BroadcastBlockEntityPacket(
-                    Pos,
-                    (int)EnumBlockContainerPacketId.OpenLidOthers,
-                    data,
-                    (IServerPlayer)player
-                );
             }
 
             if (packetid == (int)EnumBlockEntityPacketId.Open)
             {
                 player.InventoryManager?.OpenInventory(Inventory);
-                data = SerializerUtil.Serialize(new OpenContainerLidPacket(player.Entity.EntityId, true));
-                ((ICoreServerAPI)Api).Network.BroadcastBlockEntityPacket(
-                    Pos,
-                    (int)EnumBlockContainerPacketId.OpenLidOthers,
-                    data,
-                    (IServerPlayer)player
-                );
             }
 
         }
@@ -193,11 +103,24 @@ namespace Vintagestory.GameContent
                     return;
                 }
 
-                var blockContainer = BlockEntityContainerOpen.FromBytes(data);
-                Inventory.FromTreeAttributes(blockContainer.Tree);
-                Inventory.ResolveBlocksOrItems();
+                string dialogClassName;
+                string dialogTitle;
+                int cols;
+                TreeAttribute tree = new TreeAttribute();
 
-                invDialog = new GuiDialogBlockEntityInventory(blockContainer.DialogTitle, Inventory, Pos, blockContainer.Columns, Api as ICoreClientAPI);
+                using (MemoryStream ms = new MemoryStream(data))
+                {
+                    BinaryReader reader = new BinaryReader(ms);
+                    dialogClassName = reader.ReadString();
+                    dialogTitle = reader.ReadString();
+                    cols = reader.ReadByte();    
+                    tree.FromBytes(reader);
+                }
+
+                Inventory.FromTreeAttributes(tree);
+                Inventory.ResolveBlocksOrItems();
+                    
+                invDialog = new GuiDialogBlockEntityInventory(dialogTitle, Inventory, Pos, cols, Api as ICoreClientAPI);
 
                 Block block = Api.World.BlockAccessor.GetBlock(Pos);
                 string os = block.Attributes?["openSound"]?.AsString();
@@ -209,28 +132,6 @@ namespace Vintagestory.GameContent
                 invDialog.CloseSound = closesound ?? this.CloseSound;
 
                 invDialog.TryOpen();
-            }
-
-            if (packetid == (int)EnumBlockContainerPacketId.OpenLidOthers)
-            {
-                var containerPacket = SerializerUtil.Deserialize<OpenContainerLidPacket>(data);
-
-                if(this is BlockEntityGenericTypedContainer genericContainer)
-                {
-                    if (containerPacket.Opened)
-                    {
-                        LidOpenEntityId.Add(containerPacket.EntityId);
-                        genericContainer.OpenLid();
-                    }
-                    else
-                    {
-                        LidOpenEntityId.Remove(containerPacket.EntityId);
-                        if (LidOpenEntityId.Count == 0)
-                        {
-                            genericContainer.CloseLid();
-                        }
-                    }
-                }
             }
 
             if (packetid == (int)EnumBlockEntityPacketId.Close)
@@ -246,17 +147,15 @@ namespace Vintagestory.GameContent
         public override void OnBlockUnloaded()
         {
             base.OnBlockUnloaded();
-            Dispose();
+
+            if (invDialog?.IsOpened() == true) invDialog?.TryClose();
+            invDialog?.Dispose();
         }
 
         public override void OnBlockRemoved()
         {
             base.OnBlockRemoved();
-            Dispose();
-        }
 
-        public virtual void Dispose()
-        {
             if (invDialog?.IsOpened() == true) invDialog?.TryClose();
             invDialog?.Dispose();
         }

@@ -18,8 +18,14 @@ namespace Vintagestory.ServerMods
             this.scale = scale;
         }
 
-        public static void LoadLandforms(ICoreServerAPI api)
+        public static void ReloadLandforms(ICoreServerAPI api)
         {
+            api.Assets.Reload(new AssetLocation("worldgen/"));
+            LoadLandforms(api);
+        }
+
+        public static void LoadLandforms(ICoreServerAPI api)
+        { 
             IAsset asset = api.Assets.Get("worldgen/landforms.json");
             landforms = asset.ToObject<LandformsWorldProperty>();
 
@@ -38,7 +44,7 @@ namespace Vintagestory.ServerMods
             }
 
             landforms.LandFormsByIndex = new LandformVariant[quantityMutations + landforms.Variants.Length];
-
+            
             // Mutations get indices after the parent ones
             for (int i = 0; i < landforms.Variants.Length; i++)
             {

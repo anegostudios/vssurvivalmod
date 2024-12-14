@@ -29,13 +29,21 @@ namespace Vintagestory.ServerMods
             if (stairs != null)
             {
                 var asset = api.Assets.Get("worldgen/dungeontiles/" + stairs + ".json");
-                Stairs = WorldGenStructureBase.LoadSchematic<BlockSchematicPartial>(api, asset, blockLayerConfig, null, null,0);
+                Stairs = WorldGenStructureBase.LoadSchematic<BlockSchematicPartial>(api, asset, blockLayerConfig, null, 0);
+                foreach (var blockSchematicPartial in Stairs)
+                {
+                    blockSchematicPartial.InitMetaBlocks(api.World.BlockAccessor);
+                }
             }
 
             if (start != null)
             {
                 var assetStart = api.Assets.Get("worldgen/dungeontiles/" + start + ".json");
-                Start = WorldGenStructureBase.LoadSchematic<BlockSchematicPartial>(api, assetStart, blockLayerConfig, null, null, 0,true);
+                Start = WorldGenStructureBase.LoadSchematic<BlockSchematicPartial>(api, assetStart, blockLayerConfig, null, 0, true);
+                foreach (var blockSchematicPartial in Start)
+                {
+                    blockSchematicPartial.InitMetaBlocks(api.World.BlockAccessor);
+                }
                 TilesByCode[start] = new DungeonTile() { ResolvedSchematic = new[] { Start } };
             }
 

@@ -253,7 +253,7 @@ namespace Vintagestory.GameContent
                 pos.Y = mapChunk.WorldGenTerrainHeightMap[lz * GlobalConstants.ChunkSize + lx] + 1;
 
                 Block hereBlock = blockAccessor.GetBlock(pos);
-                Block belowBlock = blockAccessor.GetBlockBelow(pos);
+                Block belowBlock = blockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
 
                 if (belowBlock.Fertility < 10 || hereBlock.LiquidCode != null) continue;
 

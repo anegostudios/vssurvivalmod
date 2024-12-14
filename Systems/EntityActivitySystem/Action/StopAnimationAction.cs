@@ -5,8 +5,9 @@ using Vintagestory.API.Datastructures;
 namespace Vintagestory.GameContent
 {
     [JsonObject(MemberSerialization.OptIn)]
-    public class StopAnimationAction : EntityActionBase
+    public class StopAnimationAction : IEntityAction
     {
+        protected EntityActivitySystem vas;
         [JsonProperty]
         protected string Animation;
 
@@ -22,20 +23,36 @@ namespace Vintagestory.GameContent
             this.Animation = anim;
         }
 
+        public bool ExecutionHasFailed { get; set; }
 
-        public override string Type => "stopanimation";
+        public string Type => "stopanimation";
 
-        public override bool IsFinished()
+        public bool IsFinished()
         {
             return true;
         }
 
-        public override void Start(EntityActivity act)
+        public void Start(EntityActivity act)
         {
             vas.Entity.AnimManager.StopAnimation(Animation);
         }
 
-        public override void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
+        public void Cancel()
+        {
+            Finish();
+        }
+        public void Finish()
+        {
+        }
+        public void LoadState(ITreeAttribute tree)
+        {
+        }
+        public void StoreState(ITreeAttribute tree)
+        {
+        }
+
+
+        public void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             var b = ElementBounds.Fixed(0, 0, 200, 25);
             singleComposer
@@ -47,12 +64,12 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override IEntityAction Clone()
+        public IEntityAction Clone()
         {
             return new StopAnimationAction(vas, Animation);
         }
 
-        public override bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
+        public bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             Animation = singleComposer.GetTextInput("animation").GetText();
             return true;
@@ -61,6 +78,20 @@ namespace Vintagestory.GameContent
         public override string ToString()
         {
             return "Stop animation " + Animation;
+        }
+
+        public void OnTick(float dt)
+        {
+            
+        }
+
+        public void OnVisualize(ActivityVisualizer visualizer)
+        {
+
+        }
+        public void OnLoaded(EntityActivitySystem vas)
+        {
+            this.vas = vas;
         }
     }
 }

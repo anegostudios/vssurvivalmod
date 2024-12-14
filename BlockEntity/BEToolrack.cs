@@ -14,7 +14,7 @@ namespace Vintagestory.GameContent
         public InventoryGeneric inventory;
 
         MeshData[] toolMeshes = new MeshData[4];
-
+        
 
         public Size2i AtlasSize
         {
@@ -68,7 +68,7 @@ namespace Vintagestory.GameContent
         {
             if (eventname != "genjsontransform" && eventname != "oncloseedittransforms" &&
                 eventname != "onapplytransforms") return;
-
+            
             loadToolMeshes();
             MarkDirty(true);
         }
@@ -125,8 +125,8 @@ namespace Vintagestory.GameContent
                 {
                     toolMeshes[i].Scale(origin, 0.33f, 0.33f, 0.33f);
                     toolMeshes[i].Translate(
-                        (((i % 2) == 0) ? 0.23f : -0.3f),
-                        ((i > 1) ? 0.2f : -0.3f) + yOff,
+                        (((i % 2) == 0) ? 0.23f : -0.3f), 
+                        ((i > 1) ? 0.2f : -0.3f) + yOff, 
                         0.433f * ((facing.Axis == EnumAxis.X) ? -1 : 1)
                     );
                     toolMeshes[i].Rotate(origin, 0, facing.HorizontalAngleIndex * 90 * GameMath.DEG2RAD, 0);
@@ -147,7 +147,7 @@ namespace Vintagestory.GameContent
 
             }
         }
-
+        
         internal bool OnPlayerInteract(IPlayer byPlayer, Vec3d hit)
         {
             BlockFacing facing = getFacing();
@@ -175,11 +175,11 @@ namespace Vintagestory.GameContent
             IItemStack stack = player.InventoryManager.ActiveHotbarSlot.Itemstack;
             if (stack == null || (stack.Collectible.Tool == null && stack.Collectible.Attributes?["rackable"].AsBool() != true)) return false;
 
-            var stackName = player.InventoryManager.ActiveHotbarSlot.Itemstack?.Collectible.Code;
+            var stackName = player.InventoryManager.ActiveHotbarSlot.Itemstack?.GetName();
             player.InventoryManager.ActiveHotbarSlot.TryPutInto(Api.World, inventory[slot]);
-            Api.World.Logger.Audit("{0} Put 1x{1} into Tool rack at {2}.",
+            Api.World.Logger.Audit("{0} Put {1} into Tool rack at {2}.", 
                 player.PlayerName,
-                stackName,
+                string.Format("1x{0}", stackName),
                 Pos
             );
             didInteract(player);
@@ -189,15 +189,15 @@ namespace Vintagestory.GameContent
         bool TakeFromSlot(IPlayer player, int slot)
         {
             ItemStack stack = inventory[slot].TakeOutWhole();
-
+            
             if (!player.InventoryManager.TryGiveItemstack(stack))
             {
                 Api.World.SpawnItemEntity(stack, Pos);
             }
-            var stackName = stack?.Collectible.Code;
-            Api.World.Logger.Audit("{0} Took 1x{1} from Tool rack at {2}.",
+            var stackName = stack?.GetName();
+            Api.World.Logger.Audit("{0} Took {1} from Tool rack at {2}.", 
                 player.PlayerName,
-                stackName,
+                string.Format("1x{0}", stackName),
                 Pos
             );
 
@@ -214,7 +214,7 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockRemoved()
         {
-
+            
         }
 
         public override void OnBlockBroken(IPlayer byPlayer = null)
@@ -315,7 +315,7 @@ namespace Vintagestory.GameContent
         {
             int i = 0;
 
-            // The item meshes are drawn first on the right, then on the left: BlockInfo text description should match item positions i.e. 1, 0, 3, 2
+            // The item meshes are drawn first on the right, then on the left: BlockInfo text description should match item positions i.e. 1, 0, 3, 2 
             ItemStack slotsReverserLeftRight = null;
             foreach (var slot in inventory)
             {

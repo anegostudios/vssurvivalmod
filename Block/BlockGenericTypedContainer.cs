@@ -20,8 +20,6 @@ namespace Vintagestory.GameContent
 
         public override int GetQuantitySlots(ItemStack bagstack)
         {
-            if (bagstack.Attributes?.HasAttribute("animalSerialized") == true) return 0;
-
             string type = bagstack.Attributes.GetString("type");
             return bagstack.ItemAttributes?["quantitySlots"]?[type]?.AsInt(0) ?? 0;
         }
@@ -52,7 +50,7 @@ namespace Vintagestory.GameContent
             return mirroredColBox;
         }
 
-        public override bool IsAttachable(Entity toEntity, ItemStack itemStack)
+        public override bool IsAttachable(ItemStack itemStack)
         {
             return false;
         }
@@ -95,7 +93,6 @@ namespace Vintagestory.GameContent
 
             return shape;
         }
-
         public int GetProvideSlots(ItemStack stack)
         {
             string type = stack.Attributes.GetString("type");
@@ -237,9 +234,9 @@ namespace Vintagestory.GameContent
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
             Dictionary<string, MultiTextureMeshRef> meshrefs = new Dictionary<string, MultiTextureMeshRef>();
+
             string key = "genericTypedContainerMeshRefs" + FirstCodePart() + SubtypeInventory;
 
-            
             meshrefs = ObjectCacheUtil.GetOrCreate(capi, key, () =>
             {
                 Dictionary<string, MeshData> meshes = GenGuiMeshes(capi);
@@ -541,10 +538,8 @@ namespace Vintagestory.GameContent
             }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
         }
 
-        public virtual bool IsAttachable(Entity toEntity, ItemStack itemStack)
+        public virtual bool IsAttachable(ItemStack itemStack)
         {
-            if (toEntity is EntityPlayer) return false;
-            if (itemStack.Attributes?.HasAttribute("animalSerialized") == true) return false;
             return true;
         }
     }

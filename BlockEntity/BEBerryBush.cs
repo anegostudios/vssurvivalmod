@@ -87,11 +87,14 @@ namespace Vintagestory.GameContent
             if (!(Api as ICoreServerAPI).World.IsFullyLoadedChunk(Pos)) return;
 
             if (Block.Attributes == null)
-            {
+                {
 #if DEBUG
                 Api.World.Logger.Notification("Ghost berry bush block entity at {0}. Block.Attributes is null, will remove game tick listener", Pos);
+                if (TickHandlers != null) foreach (long handlerId in TickHandlers)
+                {
+                    Api.Event.UnregisterGameTickListener(handlerId);
+                }
 #endif
-                UnregisterAllTickListeners();
                 return;
             }
 

@@ -102,17 +102,6 @@ namespace Vintagestory.GameContent
             mealtextureSourceBlock = capi.World.GetBlock(new AssetLocation("claypot-cooked"));
         }
 
-        public override void Dispose()
-        {
-            if (capi.ObjectCache.TryGetValue("pieMeshRefs", out var objPi) && objPi is Dictionary<int, MultiTextureMeshRef> meshRefs)
-            {
-                foreach (var (_, meshRef) in meshRefs)
-                {
-                    meshRef.Dispose();
-                }
-                capi.ObjectCache.Remove("pieMeshRefs");
-            }
-        }
 
         public MultiTextureMeshRef GetOrCreatePieMeshRef(ItemStack pieStack)
         {
@@ -256,10 +245,10 @@ namespace Vintagestory.GameContent
 
         public AssetLocation[] pieMixedFillingTextures = new AssetLocation[] {
             new AssetLocation("block/food/pie/fill-mixedfruit"),
-            new AssetLocation("block/food/pie/fill-mixedvegetable"),
+            new AssetLocation("block/food/pie/fill-mixedvegetable"), 
             new AssetLocation("block/food/pie/fill-mixedmeat"),
             new AssetLocation("grain-unused-placeholder"),
-            new AssetLocation("block/food/pie/fill-mixedcheese")
+            new AssetLocation("block/food/pie/fill-mixedcheese") 
         };
 
         public MultiTextureMeshRef GetOrCreateMealInContainerMeshRef(Block containerBlock, CookingRecipe forRecipe, ItemStack[] contentStacks, Vec3f foodTranslate = null)
@@ -285,7 +274,7 @@ namespace Vintagestory.GameContent
             if (!meshrefs.TryGetValue(mealhashcode, out mealMeshRef))
             {
                 MeshData mesh = GenMealInContainerMesh(containerBlock, forRecipe, contentStacks, foodTranslate);
-
+                
                 meshrefs[mealhashcode] = mealMeshRef = capi.Render.UploadMultiTextureMesh(mesh);
             }
 
@@ -313,7 +302,7 @@ namespace Vintagestory.GameContent
         public MeshData GenMealMesh(CookingRecipe forRecipe, ItemStack[] contentStacks, Vec3f foodTranslate = null)
         {
             MealTextureSource source = new MealTextureSource(capi, mealtextureSourceBlock);
-
+            
             if (forRecipe != null)
             {
                 MeshData foodMesh = GenFoodMixMesh(contentStacks, forRecipe, foodTranslate);
@@ -359,7 +348,7 @@ namespace Vintagestory.GameContent
                     }
                 }
             }
-
+            
             return null;
         }
 
@@ -460,7 +449,7 @@ namespace Vintagestory.GameContent
             return mergedmesh;
         }
 
-
+        
 
 
 

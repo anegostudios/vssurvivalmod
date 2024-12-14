@@ -113,9 +113,9 @@ namespace Vintagestory.GameContent
                     {
                         Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
                         var blockSelSelectionBoxIndex = blockSel.SelectionBoxIndex - 5;
-                        Api.World.Logger.Audit("{0} Put 1x{1} into Bookshelf slotid {2} at {3}.",
+                        Api.World.Logger.Audit("{0} Put {1} into Bookshelf slotid {2} at {3}.",
                             byPlayer.PlayerName,
-                            inv[blockSelSelectionBoxIndex].Itemstack.Collectible.Code,
+                            string.Format("1x{0}", inv[blockSelSelectionBoxIndex].GetStackName()),
                             blockSelSelectionBoxIndex,
                             Pos
                         );
@@ -163,13 +163,13 @@ namespace Vintagestory.GameContent
                 {
                     AssetLocation sound = stack.Block?.Sounds?.Place;
                     Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
+                    Api.World.Logger.Audit("{0} Took {1} from Bookshelf slotid {2} at {3}.",
+                        byPlayer.PlayerName,
+                        string.Format("1x{0}", stack.GetName()),
+                        index,
+                        Pos
+                    );
                 }
-                Api.World.Logger.Audit("{0} Took 1x{1} from Bookshelf slotid {2} at {3}.",
-                    byPlayer.PlayerName,
-                    stack.Collectible.Code,
-                    index,
-                    Pos
-                );
 
                 if (stack.StackSize > 0)
                 {

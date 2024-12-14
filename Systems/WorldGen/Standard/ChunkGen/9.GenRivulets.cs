@@ -167,7 +167,7 @@ namespace Vintagestory.ServerMods
             {
                 if (structuresIntersectingChunk[i].Contains(pos)) return;
             }
-            if (GetIntersectingStructure(pos, SkipRivuletsgHashCode) != null) return;
+            if (SkipGenerationAt(pos, SkipRivuletsgHashCode, out _)) return;
 
             var chunk = chunks[y / chunksize];
             var index = (chunksize * (y % chunksize) + dz) * chunksize + dx;

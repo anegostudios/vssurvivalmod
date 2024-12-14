@@ -39,16 +39,9 @@ namespace Vintagestory.GameContent
             if (player?.InventoryManager?.ActiveHotbarSlot != null && !player.InventoryManager.ActiveHotbarSlot.Empty && hand == EnumHand.Left)
             {
                 ItemStack stack = player.InventoryManager.ActiveHotbarSlot.Itemstack;
-                if (stack?.Collectible?.GetHeldTpIdleAnimation(player.InventoryManager.ActiveHotbarSlot, forEntity, EnumHand.Right) != null)
-                {
-                    return null;
-                }
+                if (stack?.Collectible?.GetHeldTpIdleAnimation(player.InventoryManager.ActiveHotbarSlot, forEntity, EnumHand.Right) != null) return null;
 
-                if (player?.Entity?.Controls.LeftMouseDown == true)
-                {
-                    var anim = stack?.Collectible?.GetHeldTpHitAnimation(player.InventoryManager.ActiveHotbarSlot, forEntity);
-                    if (anim != null && anim != "knap") return null;
-                }
+                if (player?.Entity?.Controls.LeftMouseDown == true && stack?.Collectible?.GetHeldTpHitAnimation(player.InventoryManager.ActiveHotbarSlot, forEntity) != null) return null;
             }
 
             return hand == EnumHand.Left ? "holdinglanternlefthand" : "holdinglanternrighthand";

@@ -58,7 +58,7 @@ namespace Vintagestory.GameContent
 
         public override string ToString()
         {
-            return Invert ? "When above temperature " + belowTemperature : "When below temperature" + belowTemperature;
+            return Invert ? "When below temperature " + belowTemperature : "When above temperature" + belowTemperature;
         }
 
         public void OnLoaded(EntityActivitySystem vas)

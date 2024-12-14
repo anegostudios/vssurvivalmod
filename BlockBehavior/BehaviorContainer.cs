@@ -1,8 +1,5 @@
 ﻿using Vintagestory.API.Common;
-using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Server;
-using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -30,7 +27,7 @@ namespace Vintagestory.GameContent
         public override void OnBlockRemoved(IWorldAccessor world, BlockPos pos, ref EnumHandling handling)
         {
             handling = EnumHandling.PassThrough;
-
+        
             BlockEntity entity = world.BlockAccessor.GetBlockEntity(pos);
 
             if (entity is BlockEntityOpenableContainer)
@@ -45,33 +42,6 @@ namespace Vintagestory.GameContent
                         players[i].InventoryManager.CloseInventory(container.Inventory);
                     }
                 }
-            }
-        }
-
-        public override void Activate(IWorldAccessor world, Caller caller, BlockSelection blockSel, ITreeAttribute activationArgs, ref EnumHandling handled)
-        {
-            base.Activate(world, caller, blockSel, activationArgs, ref handled);
-            BlockEntity entity = world.BlockAccessor.GetBlockEntity(blockSel.Position);
-            int timeOut = (int)(activationArgs.TryGetLong("close") ?? 2000);
-            if (entity is BlockEntityOpenableContainer container)
-            {
-                var open = SerializerUtil.Serialize(new OpenContainerLidPacket(caller.Entity.EntityId, true));
-                ((ICoreServerAPI)world.Api).Network.BroadcastBlockEntityPacket(
-                    blockSel.Position,
-                    (int)EnumBlockContainerPacketId.OpenLidOthers,
-                    open
-                );
-                (world.Api as ICoreServerAPI).World.PlaySoundAt(container.OpenSound, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z);
-                world.Api.Event.RegisterCallback((d) =>
-                {
-                    var close = SerializerUtil.Serialize(new OpenContainerLidPacket(caller.Entity.EntityId, false));
-                    ((ICoreServerAPI)world.Api).Network.BroadcastBlockEntityPacket(
-                        blockSel.Position,
-                        (int)EnumBlockContainerPacketId.OpenLidOthers,
-                        close
-                    );
-                    (world.Api as ICoreServerAPI).World.PlaySoundAt(container.CloseSound, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z);
-                }, timeOut);
             }
         }
     }

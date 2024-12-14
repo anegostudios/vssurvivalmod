@@ -5,7 +5,6 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
-using Vintagestory.API.Util;
 using Vintagestory.ServerMods.NoObf;
 
 namespace Vintagestory.ServerMods
@@ -101,7 +100,7 @@ namespace Vintagestory.ServerMods
             // we want to place around the trunk/branch => offset the coordinates when growing stuff from the base
             float trunkOffsetX, trunkOffsetZ;
 
-            BlockPos currentPos = new BlockPos(basePos.dimension);
+            BlockPos currentPos = new BlockPos();
 
             float sinAngleVer, cosAnglerHor, sinAngleHor;
 
@@ -240,7 +239,7 @@ namespace Vintagestory.ServerMods
                 {
                     if (rnd > treeGenParams.mossGrowthChance * i) break;
                     var face = BlockFacing.HORIZONTALS[faceIndex % 4];
-                    var block = blockAccessor.GetBlockOnSide(currentPos, face);
+                    var block = blockAccessor.GetBlock(currentPos.X + face.Normali.X, currentPos.Y, currentPos.Z + face.Normali.Z);
                     if (!block.SideSolid[face.Opposite.Index])
                     {
                         blockAccessor.SetDecor(config.treeBlocks.mossDecorBlock, currentPos, face);

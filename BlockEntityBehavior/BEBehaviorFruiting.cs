@@ -450,12 +450,6 @@ namespace Vintagestory.GameContent
                         {
                             Api.World.SpawnItemEntity(stack, Blockentity.Pos.ToVec3d().Add(0.5, 0.25, 0.5));
                         }
-                        Api.World.Logger.Audit("{0} Took 1x{1} from {2} at {3}.",
-                            player.PlayerName,
-                            stack.Collectible.Code,
-                            Blockentity.Block.Code,
-                            Blockentity.Pos
-                        );
                     }
                     Blockentity.MarkDirty();
                     break;

@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -11,8 +10,8 @@ namespace Vintagestory.GameContent
     {
         public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, IRandom worldgenRandom, BlockPatchAttributes attributes = null)
         {
-            Block blockBelow = blockAccessor.GetBlockBelow(pos);
-            return blockBelow.Fertility > 0 && base.TryPlaceBlockForWorldGen(blockAccessor, pos, onBlockFace, worldgenRandom, attributes);
+            Block block = blockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
+            return block.Fertility > 0 && base.TryPlaceBlockForWorldGen(blockAccessor, pos, onBlockFace, worldgenRandom, attributes);
         }
     }
 

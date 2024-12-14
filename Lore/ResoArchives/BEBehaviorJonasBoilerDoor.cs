@@ -44,7 +44,7 @@ namespace Vintagestory.GameContent
             cp.Trigger();   
         }
 
-        private EnumWorldAccessResponse Event_OnTestBlockAccess(IPlayer player, BlockSelection blockSel, EnumBlockAccessFlags accessType, ref string claimant, EnumWorldAccessResponse response)
+        private EnumWorldAccessResponse Event_OnTestBlockAccess(IPlayer player, BlockSelection blockSel, EnumBlockAccessFlags accessType, string claimant, EnumWorldAccessResponse response)
         {
             var facing = BlockFacing.FromCode(this.Block.Variant["side"]);
             var a = Pos.AddCopy(facing);

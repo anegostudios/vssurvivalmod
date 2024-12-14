@@ -116,8 +116,7 @@ namespace Vintagestory.GameContent
                 }
 
                 // Prio 1: Config
-                DynFoliageProperties props = null;
-                blockFoliage.foliageProps?.TryGetValue(TreeType, out props);
+                blockFoliage.foliageProps.TryGetValue(TreeType, out var props);
                 if (props != null)
                 {
                     string key = textureCode + "-" + FoliageUtil.FoliageStates[(int)FoliageState];
@@ -161,7 +160,10 @@ namespace Vintagestory.GameContent
 
             if (texpos == null)
             {
-                bool ok = capi.BlockTextureAtlas.GetOrInsertTexture(texturePath, out _, out texpos);
+                bool ok = capi.BlockTextureAtlas.GetOrInsertTexture(texturePath, out _, out texpos, () =>
+                {
+                    return capi.BlockTextureAtlas.LoadCompositeBitmap(texturePath);
+                });
 
                 if (!ok)
                 {
@@ -389,13 +391,11 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < 4; i++)
             {
                 var face = BlockFacing.HORIZONTALS[i];
-                face.IterateThruFacingOffsets(Pos);
-                if (Api.World.BlockAccessor.GetBlock(Pos).Id == 0)
+                if (Api.World.BlockAccessor.GetBlock(Pos.X + face.Normali.X, Pos.Y, Pos.Z + face.Normali.Z).Id == 0)
                 {
                     fruitingSide |= 1 << i;
                 }
             }
-            Pos.East();   // Complete IterateThruFacingOffsets when it ended with West
         }
 
 

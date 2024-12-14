@@ -272,8 +272,7 @@ namespace Vintagestory.ServerMods
 
             BlockPatch[] bpcPatchesNonTree;
             var isStoryPatch = false;
-            var locationCode = GetIntersectingStructure(tmpPos, SkipPatchesgHashCode);
-            if (locationCode != null)
+            if (SkipGenerationAt(tmpPos, SkipPatchesgHashCode, out var locationCode))
             {
                 if (StoryStructurePatches.TryGetValue(locationCode, out var blockPatchConfig))
                 {
@@ -326,8 +325,7 @@ namespace Vintagestory.ServerMods
 
                     if (bpc.IsPatchSuitableAt(blockPatch, liquidBlock, mapsizeY, climate, y, forestRel, shrubRel))
                     {
-                        locationCode = GetIntersectingStructure(tmpPos, SkipPatchesgHashCode);
-                        if (!isStoryPatch && locationCode != null) continue;
+                        if (!isStoryPatch && SkipGenerationAt(tmpPos, SkipPatchesgHashCode, out _)) continue;
 
                         if (blockPatch.MapCode != null && patchIterRandom.NextInt(255) > GetPatchDensity(blockPatch.MapCode, x, z, mapregion))
                         {
@@ -403,9 +401,9 @@ namespace Vintagestory.ServerMods
                         if (structuresIntersectingChunk[i].Contains(tmpPos)) { canGen = false; break; }
                     }
                     if (!canGen) continue;
-                    if (GetIntersectingStructure(tmpPos, SkipShurbsgHashCode) != null) continue;
+                    if (SkipGenerationAt(tmpPos, SkipShurbsgHashCode, out _)) continue;
 
-                    if (blockAccessor.GetBlock(tmpPos).Replaceable >= 6000)
+                    if (blockAccessor.GetBlock(tmpPos.X, tmpPos.Y, tmpPos.Z).Replaceable >= 6000)
                     {
                         tmpPos.Y--;
                     }
@@ -483,9 +481,9 @@ namespace Vintagestory.ServerMods
                         if (structuresIntersectingChunk[i].Contains(tmpPos)) { canGen = false; break; }
                     }
                     if (!canGen) continue;
-                    if (GetIntersectingStructure(tmpPos, SkipTreesgHashCode) != null) continue;
+                    if (SkipGenerationAt(tmpPos, SkipTreesgHashCode, out _)) continue;
 
-                    if (blockAccessor.GetBlock(tmpPos).Replaceable >= 6000)
+                    if (blockAccessor.GetBlock(tmpPos.X, tmpPos.Y, tmpPos.Z).Replaceable >= 6000)
                     {
                         tmpPos.Y--;
                     }

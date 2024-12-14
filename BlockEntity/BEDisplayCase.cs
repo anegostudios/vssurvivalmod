@@ -46,9 +46,9 @@ namespace Vintagestory.GameContent
                     {
                         Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
                         int index = blockSel.SelectionBoxIndex;
-                        Api.World.Logger.Audit("{0} Put 1x{1} into DisplayCase slotid {2} at {3}.",
+                        Api.World.Logger.Audit("{0} Put {1} into DisplayCase slotid {2} at {3}.", 
                             byPlayer.PlayerName,
-                            inventory[index].Itemstack?.Collectible.Code,
+                            string.Format("1x{0}", inventory[index].Itemstack?.GetName()),
                             index,
                             Pos
                         );
@@ -96,7 +96,7 @@ namespace Vintagestory.GameContent
 
                     MarkDirty();
                 }
-
+                
                 return moved > 0;
             }
 
@@ -121,9 +121,9 @@ namespace Vintagestory.GameContent
                 {
                     AssetLocation sound = stack.Block?.Sounds?.Place;
                     Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
-                    Api.World.Logger.Audit("{0} Took 1x{1} from DisplayCase slotid {2} at {3}.",
+                    Api.World.Logger.Audit("{0} Took {1} from DisplayCase slotid {2} at {3}.", 
                         byPlayer.PlayerName,
-                        stack.Collectible.Code,
+                        string.Format("1x{0}", stack.GetName()),
                         index,
                         Pos
                     );
@@ -142,7 +142,7 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-
+        
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
         {
@@ -186,7 +186,7 @@ namespace Vintagestory.GameContent
                     z = 8 / 16f;
                 }
 
-                tfMatrices[index] =
+                tfMatrices[index] = 
                     new Matrixf()
                     .Translate(0.5f, 0, 0.5f)
                     .Translate(x - 0.5f, y, z - 0.5f)
@@ -243,7 +243,7 @@ namespace Vintagestory.GameContent
                 rots[i] = tree.GetFloat("rotation" + i);
                 inv[i] = inventory[i];
             }
-
+            
             for (var i = 0; i < 4; i++)
             {
                 var index = GameMath.Mod(i - start, 4);

@@ -25,30 +25,6 @@ namespace Vintagestory.GameContent
             LoadTypes();
         }
 
-        public override void OnUnloaded(ICoreAPI api)
-        {
-            var antlerMeshes = ObjectCacheUtil.TryGet<Dictionary<string, MeshData>>(api, "AntlerMountMeshes");
-            if (antlerMeshes?.Count > 0)
-            {
-                foreach (var (_, meshref) in antlerMeshes)
-                {
-                    meshref.Dispose();
-                }
-                ObjectCacheUtil.Delete(api, "AntlerMountMeshes");
-            }
-            var antlerInvMeshes = ObjectCacheUtil.TryGet<Dictionary<string, MultiTextureMeshRef>>(api, "AntlerMountMeshesInventory");
-            if (antlerInvMeshes?.Count > 0)
-            {
-                foreach (var (_, meshref) in antlerInvMeshes)
-                {
-                    meshref.Dispose();
-                }
-                ObjectCacheUtil.Delete(api, "AntlerMountMeshesInventory");
-            }
-
-            base.OnUnloaded(api);
-        }
-
         public void LoadTypes()
         {
             types = Attributes["types"].AsArray<string>();

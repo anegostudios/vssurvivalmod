@@ -48,17 +48,7 @@ namespace Vintagestory.GameContent
         public void Rotate(EntityAgent byEntity, BlockSelection blockSel, int dir)
         {
             var bechisel = api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityChisel;
-            if (byEntity.Controls.CtrlKey)
-            {
-                int rot = bechisel.DecorRotations;
-                int bitshift = blockSel.Face.Index * 3;
-                int facerot = rot >> bitshift & DecorBits.maskRotationData;
-                rot &= ~(DecorBits.maskRotationData << bitshift);
-                rot += ((facerot + 1) & DecorBits.maskRotationData) << bitshift;
-                bechisel.DecorRotations = rot;
-            }
-            else bechisel.RotateModel(dir > 0 ? 90 : -90, null);
-
+            bechisel.RotateModel(dir > 0 ? 90 : -90, null);
             bechisel.MarkDirty(true);
         }
 

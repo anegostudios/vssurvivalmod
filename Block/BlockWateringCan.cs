@@ -200,22 +200,26 @@ namespace Vintagestory.GameContent
                     beits.OnWatered(secondsUsed - prevsecondsused);
                 }
 
+                Vec3i voxelPos = new Vec3i();
                 for (int dx = -2; dx < 2; dx++)
                 {
                     for (int dy = -2; dy < 2; dy++)
                     {
                         for (int dz = -2; dz < 2; dz++)
                         {
-                            int x = (int)(blockSel.HitPosition.X * 16) + dx;
-                            int y = (int)(blockSel.HitPosition.Y * 16) + dy;
-                            int z = (int)(blockSel.HitPosition.Z * 16) + dz;
-                            if (x < 0 || x > 15 || y < 0 || y > 15 || z < 0 || z > 15) continue;
+                            int x = (int)(blockSel.HitPosition.X * 16);
+                            int y = (int)(blockSel.HitPosition.Y * 16);
+                            int z = (int)(blockSel.HitPosition.Z * 16);
+                            if (x + dx < 0 || x + dx > 15 || y + dy < 0 || y + dy > 15 || z + dz < 0 || z + dz > 15) continue;
 
-                            DecorBits decorPosition = new DecorBits(blockSel.Face, x, 15 - y, z);
-                            Block decorblock = world.BlockAccessor.GetDecor(blockSel.Position, decorPosition);
+                            voxelPos.Set(x + dx, y + dy, z + dz);
+
+                            int faceAndSubPosition = CollectibleBehaviorArtPigment.BlockSelectionToSubPosition(blockSel.Face, voxelPos);
+                            Block decorblock = world.BlockAccessor.GetDecor(blockSel.Position, faceAndSubPosition);
+
                             if (decorblock?.FirstCodePart() == "caveart")
                             {
-                                world.BlockAccessor.BreakDecor(blockSel.Position, blockSel.Face, decorPosition);
+                                world.BlockAccessor.BreakDecor(blockSel.Position, blockSel.Face, faceAndSubPosition);
                             }
                         }
                     }
@@ -312,7 +316,7 @@ namespace Vintagestory.GameContent
             dsc.AppendLine();            
 
             double perc = Math.Round(100 * GetRemainingWateringSeconds(inSlot.Itemstack) / CapacitySeconds);
-            string colorn = ColorUtil.Int2Hex(GuiStyle.DamageColorGradient[(int)GameMath.Clamp(perc, 0, 99)]);
+            string colorn = ColorUtil.Int2Hex(GuiStyle.DamageColorGradient[(int)Math.Min(99, perc)]);
 
             if (perc < 1)
             {

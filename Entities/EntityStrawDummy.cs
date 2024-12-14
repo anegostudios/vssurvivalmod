@@ -23,11 +23,6 @@ namespace Vintagestory.GameContent
                 {
                     byEntity.World.SpawnItemEntity(stack, ServerPos.XYZ);
                 }
-                byEntity.World.Logger.Audit("{0} Took 1x{1} at {2}.",
-                    byEntity.GetName(),
-                    stack.Collectible.Code,
-                    ServerPos.AsBlockPos
-                );
                 Die();
                 return;
             }

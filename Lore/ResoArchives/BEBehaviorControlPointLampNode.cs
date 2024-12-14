@@ -69,7 +69,7 @@ namespace Vintagestory.GameContent
                 var oldType = Type;
                 this.Type = newType;
                 Blockentity.MarkDirty(true);
-                loadMesh();
+                initShape();
                 relight(oldType);   // Possible performance issue, this will duplicate relighting on the client because the Blockentity.MarkDirty will also cause a full update client-side
             }
         }
@@ -106,7 +106,7 @@ namespace Vintagestory.GameContent
             {
                 if (blockAccessor is IWorldGenBlockAccessor wgen)
                 {
-                    wgen.ScheduleBlockLightUpdate(pos, 0, Block.BlockId);
+                    wgen.ScheduleBlockLightUpdate(pos.Copy(), 0, Block.BlockId);
                 }
             }
         }

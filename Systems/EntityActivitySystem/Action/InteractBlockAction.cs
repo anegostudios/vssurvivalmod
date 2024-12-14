@@ -9,10 +9,12 @@ using Vintagestory.API.Util;
 namespace Vintagestory.GameContent
 {
     [JsonObject(MemberSerialization.OptIn)]
-    public class ActivateBlockAction : EntityActionBase
+    public class ActivateBlockAction : IEntityAction
     {
-        public override string Type => "activateblock";
+        public string Type => "activateblock";
+        public bool ExecutionHasFailed { get; set; }
 
+        EntityActivitySystem vas;
         [JsonProperty]
         AssetLocation targetBlockCode;
         [JsonProperty]
@@ -40,9 +42,14 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void Start(EntityActivity act)
+        public bool IsFinished()
         {
-            BlockPos targetPos = getTarget(vas.Entity.Api, vas.Entity.ServerPos.XYZ);
+            return true;
+        }
+
+        public void Start(EntityActivity act)
+        {
+            BlockPos targetPos = getTarget();
 
             ExecutionHasFailed = targetPos == null;
 
@@ -73,22 +80,18 @@ namespace Vintagestory.GameContent
             }
         }
 
-        private BlockPos getTarget(ICoreAPI api, Vec3d fromPos)
+        private BlockPos getTarget()
         {
             if (ExactTarget.Length() > 0)
             {
-                var exactTarget = ExactTarget.Clone();
-                if (vas != null)
-                {
-                    exactTarget.Add(vas.ActivityOffset);
-                }
-                if (exactTarget.DistanceTo(fromPos) < searchRange) return exactTarget.AsBlockPos;
+                if (ExactTarget.DistanceTo(vas.Entity.ServerPos.XYZ) < searchRange) return ExactTarget.AsBlockPos;
                 return null;
             }
 
             var range = GameMath.Clamp(searchRange, -10, 10);
-            var minPos = fromPos.Clone().Add(-range, -1, -range).AsBlockPos;
-            var maxPos = fromPos.Clone().Add(range, 1, range).AsBlockPos;
+            var api = vas.Entity.Api;
+            var minPos = vas.Entity.ServerPos.XYZ.Add(-range, -1, -range).AsBlockPos;
+            var maxPos = vas.Entity.ServerPos.XYZ.Add(range, 1, range).AsBlockPos;
 
             BlockPos targetPos = null;
             api.World.BlockAccessor.WalkBlocks(minPos, maxPos, (block, x, y, z) =>
@@ -103,21 +106,26 @@ namespace Vintagestory.GameContent
             return targetPos;
         }
 
-        public override string ToString()
+        public void OnTick(float dt)
         {
-            if (ExactTarget.Length() > 0)
-            {
-                var exactTarget = ExactTarget.Clone();
-                if (vas != null)
-                {
-                    exactTarget.Add(vas.ActivityOffset);
-                }
-                return "Activate block at " + exactTarget + ". Args: " + activateArgs;
-            }
-            return "Activate nearest block " + targetBlockCode.ToShortString() + " within " + searchRange + " blocks. Args: " + activateArgs;
+
         }
 
-        public override void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
+        public void Cancel()
+        {
+
+        }
+        public void Finish() { }
+        public void LoadState(ITreeAttribute tree) { }
+        public void StoreState(ITreeAttribute tree) { }
+
+        public override string ToString()
+        {
+            if (ExactTarget.Length() > 0) return "Activate block at " + ExactTarget;
+            return "Activate nearest block " + targetBlockCode + " within " + searchRange + " blocks";
+        }
+
+        public void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             var b = ElementBounds.Fixed(0, 0, 300, 25);
             var bc = ElementBounds.Fixed(0, 0, 65, 20);
@@ -130,7 +138,6 @@ namespace Vintagestory.GameContent
                 .AddTextInput(bc = bc.FlatCopy().FixedUnder(b, -3), null, CairoFont.WhiteDetailText(), "x")
                 .AddTextInput(bc = bc.CopyOffsetedSibling(70), null, CairoFont.WhiteDetailText(), "y")
                 .AddTextInput(bc = bc.CopyOffsetedSibling(70), null, CairoFont.WhiteDetailText(), "z")
-                .AddSmallButton("Tp to", () => onClickTpTo(capi), bc = bc.CopyOffsetedSibling(70), EnumButtonStyle.Small)
                 .AddSmallButton("Insert Player Pos", () => onClickPlayerPos(capi, singleComposer), b = b.FlatCopy().WithFixedPosition(0,0).FixedUnder(bc,2), EnumButtonStyle.Small)
 
 
@@ -152,21 +159,6 @@ namespace Vintagestory.GameContent
 
         }
 
-        private bool onClickTpTo(ICoreClientAPI capi)
-        {
-            var x = ExactTarget.X;
-            var y = ExactTarget.Y;
-            var z = ExactTarget.Z;
-            if (vas != null)
-            {
-                x += vas.ActivityOffset.X;
-                y += vas.ActivityOffset.Y;
-                z += vas.ActivityOffset.Z;
-            }
-            capi.SendChatMessage(string.Format("/tp ={0} ={1} ={2}", x, y, z));
-            return false;
-        }
-
         private bool onClickPlayerPos(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             var plrPos = capi.World.Player.Entity.Pos.XYZ;
@@ -176,12 +168,12 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public override IEntityAction Clone()
+        public IEntityAction Clone()
         {
             return new ActivateBlockAction(vas, targetBlockCode, searchRange, activateArgs, ExactTarget);
         }
 
-        public override bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
+        public bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             var s = singleComposer;
 
@@ -192,15 +184,17 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public override void OnVisualize(ActivityVisualizer visualizer)
+        public void OnVisualize(ActivityVisualizer visualizer)
         {
-            if (visualizer.CurrentPos == null) return;
-
-            var target = getTarget(visualizer.Api, visualizer.CurrentPos);
+            var target = getTarget();
             if (target != null)
             {
-                visualizer.LineTo(visualizer.CurrentPos, target.ToVec3d().Add(0.5, 0.5, 0.5), ColorUtil.ColorFromRgba(255, 0, 0, 255));
+                visualizer.LineTo(target.ToVec3d().Add(0.5, 0.5, 0.5));
             }
+        }
+        public void OnLoaded(EntityActivitySystem vas)
+        {
+            this.vas = vas;
         }
     }
 }

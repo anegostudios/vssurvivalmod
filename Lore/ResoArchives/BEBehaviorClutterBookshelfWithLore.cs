@@ -48,13 +48,6 @@ namespace Vintagestory.GameContent
                 Api.World.SpawnItemEntity(stack, plrpos.XYZ);
             }
 
-            Api.World.Logger.Audit("{0} Took 1x{1} from {2} at {3}.",
-                byPlayer.PlayerName,
-                stack.Collectible.Code,
-                Block.Code,
-                Pos
-            );
-
             LoreCode = null;
             Blockentity.MarkDirty(true);
 

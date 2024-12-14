@@ -1,6 +1,5 @@
 ﻿using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -73,7 +72,7 @@ namespace Vintagestory.GameContent
 
             for (int dy = 0; dy < 5; dy++)
             {
-                Block block = blockAccessor.GetBlockAbove(pos, dy, BlockLayersAccess.Solid);
+                Block block = blockAccessor.GetBlock(pos.X, pos.Y + dy, pos.Z);
                 if (block.SideSolid[BlockFacing.DOWN.Index])
                 {
                     GenHere(blockAccessor, pos.AddCopy(0, dy - 1, 0), worldGenRand);

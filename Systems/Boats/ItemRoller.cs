@@ -50,7 +50,7 @@ namespace Vintagestory.GameContent
         public static List<List<BlockPos>> waterEdgeByFacing = new List<List<BlockPos>>();
 
         public static List<BlockPos> siteListN = new List<BlockPos>() { new BlockPos(-5, -1, -2), new BlockPos(3, 2, 2) };
-        public static List<BlockPos> waterEdgeListN = new List<BlockPos>() { new BlockPos(3, -1, -2), new BlockPos(6, 0, 2) };
+        public static List<BlockPos> waterEdgeListN = new List<BlockPos>() { new BlockPos(3, -1, -2), new BlockPos(4, 0, 2) };
 
         public SkillItem[] skillItems;
 
@@ -69,18 +69,18 @@ namespace Vintagestory.GameContent
 
             skillItems = new SkillItem[]
             {
-                new SkillItem() { Code = new AssetLocation("east"), Name = Lang.Get("facing-east") },
-                new SkillItem() { Code = new AssetLocation("north"), Name = Lang.Get("facing-north") },
-                new SkillItem() { Code = new AssetLocation("west"), Name = Lang.Get("facing-west") },
-                new SkillItem() { Code = new AssetLocation("south"), Name = Lang.Get("facing-south") },
+                new SkillItem() { Code = new AssetLocation("north"), Name = "North" },
+                new SkillItem() { Code = new AssetLocation("east"), Name = "Easth" },
+                new SkillItem() { Code = new AssetLocation("south"), Name = "South" },
+                new SkillItem() { Code = new AssetLocation("west"), Name = "West" },
             };
 
             if (api is ICoreClientAPI capi)
             {
-                skillItems[0].WithIcon(capi, capi.Gui.LoadSvgWithPadding(new AssetLocation("textures/icons/pointeast.svg"), 48, 48, 5, ColorUtil.WhiteArgb));
-                skillItems[1].WithIcon(capi, capi.Gui.LoadSvgWithPadding(new AssetLocation("textures/icons/pointnorth.svg"), 48, 48, 5, ColorUtil.WhiteArgb));
-                skillItems[2].WithIcon(capi, capi.Gui.LoadSvgWithPadding(new AssetLocation("textures/icons/pointwest.svg"), 48, 48, 5, ColorUtil.WhiteArgb));
-                skillItems[3].WithIcon(capi, capi.Gui.LoadSvgWithPadding(new AssetLocation("textures/icons/pointsouth.svg"), 48, 48, 5, ColorUtil.WhiteArgb));
+                skillItems[0].WithIcon(capi, capi.Gui.LoadSvgWithPadding(new AssetLocation("textures/icons/pointnorth.svg"), 48, 48, 5, ColorUtil.WhiteArgb));
+                skillItems[1].WithIcon(capi, capi.Gui.LoadSvgWithPadding(new AssetLocation("textures/icons/pointeast.svg"), 48, 48, 5, ColorUtil.WhiteArgb));
+                skillItems[2].WithIcon(capi, capi.Gui.LoadSvgWithPadding(new AssetLocation("textures/icons/pointsouth.svg"), 48, 48, 5, ColorUtil.WhiteArgb));
+                skillItems[3].WithIcon(capi, capi.Gui.LoadSvgWithPadding(new AssetLocation("textures/icons/pointwest.svg"), 48, 48, 5, ColorUtil.WhiteArgb));
             }
         }
 
@@ -96,8 +96,6 @@ namespace Vintagestory.GameContent
         {
             Matrixf matrixf = new Matrixf();
             matrixf.RotateY(i * GameMath.PIHALF);
-            if (i == 2) matrixf.Translate(0, 0, -1);
-            if (i == 3) matrixf.Translate(1, 0, -1);
 
             List<BlockPos> list = new List<BlockPos>();
             var vec1 = matrixf.TransformVector(new Vec4f(startlist[0].X, startlist[0].Y, startlist[0].Z, 1));
@@ -119,18 +117,6 @@ namespace Vintagestory.GameContent
 
         public static int GetOrient(IPlayer byPlayer)
         {
-            siteListN = new List<BlockPos>() { new BlockPos(-5, -1, -1), new BlockPos(3, 2, 2) };
-            waterEdgeListN = new List<BlockPos>() { new BlockPos(3, -1, -1), new BlockPos(6, 0, 2) };
-            siteListByFacing.Clear();
-            waterEdgeByFacing.Clear();
-            siteListByFacing.Add(siteListN);
-            waterEdgeByFacing.Add(waterEdgeListN);
-            for (int i = 1; i < 4; i++)
-            {
-                siteListByFacing.Add(rotateList(siteListN, i));
-                waterEdgeByFacing.Add(rotateList(waterEdgeListN, i));
-            }
-
             return ObjectCacheUtil.GetOrCreate(byPlayer.Entity.Api, "rollerOrient-" + byPlayer.PlayerUID, () => 0); 
         }
 
@@ -151,12 +137,12 @@ namespace Vintagestory.GameContent
 
             if (slot.StackSize < 5)
             {
-                (api as ICoreClientAPI)?.TriggerIngameError(this, "need5", Lang.Get("Need 5 rolles to place a boat construction site"));
+                (api as ICoreClientAPI)?.TriggerIngameError(this, "need5", "Need 5 rolles to place a boat construction site");
                 return;
             }
             if (!suitableLocation(player, blockSel))
             {
-                (api as ICoreClientAPI)?.TriggerIngameError(this, "unsuitableLocation", Lang.Get("Requires a suitable location near water to place a boat construction site. Boat will roll towards the blue highlighted area. Use tool mode to rotate"));
+                (api as ICoreClientAPI)?.TriggerIngameError(this, "unsuitableLocation", "Requires a suitable location near water to place a boat construction site");
                 return;
             }
 
@@ -170,11 +156,6 @@ namespace Vintagestory.GameContent
             var entity = byEntity.World.ClassRegistry.CreateEntity(type);
             entity.ServerPos.SetPos(blockSel.Position.ToVec3d().AddCopy(0.5, 1, 0.5));
             entity.ServerPos.Yaw = -GameMath.PIHALF + orient * GameMath.PIHALF;
-
-            if (orient == 1) entity.ServerPos.Z -= 1;
-            if (orient == 2) entity.ServerPos.X -= 1;
-            if (orient == 3) entity.ServerPos.Z += 1;
-
             entity.Pos.SetFrom(entity.ServerPos);
             byEntity.World.SpawnEntity(entity);
 
@@ -233,11 +214,12 @@ namespace Vintagestory.GameContent
         public void WalkBlocks(BlockPos minPos, BlockPos maxPos, Action<Block, int, int, int> onBlock, int layer)
         {
             var ba = api.World.BlockAccessor;
+            int chunksize = ba.ChunkSize;
             int minx = minPos.X;
-            int miny = minPos.InternalY;
+            int miny = minPos.Y;
             int minz = minPos.Z;
             int maxx = maxPos.X;
-            int maxy = maxPos.InternalY;
+            int maxy = maxPos.Y;
             int maxz = maxPos.Z;
 
             for (int x = minx; x <= maxx; x++)

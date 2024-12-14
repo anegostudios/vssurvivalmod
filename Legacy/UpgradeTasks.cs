@@ -146,7 +146,7 @@ namespace Vintagestory.ServerMods
             int endy = Math.Max(workspace.StartMarker.Y, workspace.EndMarker.Y);
             int startz = Math.Min(workspace.StartMarker.Z, workspace.EndMarker.Z);
             int endZ = Math.Max(workspace.StartMarker.Z, workspace.EndMarker.Z);
-            BlockPos pos = new BlockPos(player.Entity.Pos.Dimension);
+            BlockPos pos = new BlockPos();
 
             IBulkBlockAccessor ba = api.World.BulkBlockAccessor;
 
@@ -160,7 +160,7 @@ namespace Vintagestory.ServerMods
                     {
                         pos.Set(x, y, z);
 
-                        Block block = ba.GetBlock(pos);
+                        Block block = ba.GetBlock(x, y, z);
                         if (block is BlockMicroBlock && block.Id != targetBlock.Id)
                         {
                             cnt++;
@@ -206,7 +206,7 @@ namespace Vintagestory.ServerMods
             int endy = Math.Max(workspace.StartMarker.Y, workspace.EndMarker.Y);
             int startz = Math.Min(workspace.StartMarker.Z, workspace.EndMarker.Z);
             int endZ = Math.Max(workspace.StartMarker.Z, workspace.EndMarker.Z);
-            BlockPos pos = new BlockPos(textCommandCallingArgs.Caller.Player.Entity.Pos.Dimension);
+            BlockPos pos = new BlockPos();
 
             Dictionary<string, Block> blocksByName = new Dictionary<string, Block>();
             foreach (var block in api.World.Blocks)
@@ -225,7 +225,7 @@ namespace Vintagestory.ServerMods
                     {
                         pos.Set(x, y, z);
 
-                        Block block = api.World.BlockAccessor.GetBlock(pos);
+                        Block block = api.World.BlockAccessor.GetBlock(x, y, z);
                         if (block is BlockChisel)
                         {
                             BlockEntityChisel bechisel = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityChisel;

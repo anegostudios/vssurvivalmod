@@ -1,7 +1,6 @@
 ﻿using System;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -31,7 +30,7 @@ namespace Vintagestory.GameContent
         {
             blockAccessor.SetBlock(BlockId, pos);
 
-            if (soilBlockId > 0 && blockAccessor.GetBlockBelow(pos, 1, BlockLayersAccess.Solid).BlockMaterial == EnumBlockMaterial.Stone)
+            if (soilBlockId > 0 && blockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z).BlockMaterial == EnumBlockMaterial.Stone)
             {
                 blockAccessor.SetBlock(soilBlockId, pos.DownCopy());
             }

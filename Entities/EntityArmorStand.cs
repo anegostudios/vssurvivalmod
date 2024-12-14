@@ -64,11 +64,6 @@ namespace Vintagestory.GameContent
 
                         if (gslot.TryPutInto(byEntity.World, handslot) > 0)
                         {
-                            byEntity.World.Logger.Audit("{0} Took 1x{1} from Armor Stand at {2}.",
-                                byEntity.GetName(),
-                                handslot.Itemstack.Collectible.Code,
-                                 ServerPos.AsBlockPos
-                            );
                             return;
                         }
                     }
@@ -76,17 +71,10 @@ namespace Vintagestory.GameContent
                 {
                     if (slot.Itemstack.Collectible.Tool != null || slot.Itemstack.ItemAttributes?["toolrackTransform"].Exists == true)
                     {
-                        var collectibleCode = handslot.Itemstack.Collectible.Code;
                         if (handslot.TryPutInto(byEntity.World, RightHandItemSlot) == 0)
                         {
                             handslot.TryPutInto(byEntity.World, LeftHandItemSlot);
                         }
-
-                        byEntity.World.Logger.Audit("{0} Put 1x{1} onto Armor Stand at {2}.",
-                            byEntity.GetName(),
-                            collectibleCode,
-                             ServerPos.AsBlockPos
-                        );
 
                         return;
                     }
@@ -103,14 +91,7 @@ namespace Vintagestory.GameContent
                 WeightedSlot sinkslot = invbh.Inventory.GetBestSuitedSlot(handslot);
                 if (sinkslot.weight > 0 && sinkslot.slot != null)
                 {
-                    var collectibleCode = handslot.Itemstack.Collectible.Code;
                     handslot.TryPutInto(byEntity.World, sinkslot.slot);
-
-                    byEntity.World.Logger.Audit("{0} Put 1x{1} onto Armor Stand at {2}.",
-                        byEntity.GetName(),
-                        collectibleCode,
-                         ServerPos.AsBlockPos
-                    );
                     return;
                 }
 
@@ -128,11 +109,6 @@ namespace Vintagestory.GameContent
                     {
                         byEntity.World.SpawnItemEntity(stack, ServerPos.XYZ);
                     }
-                    byEntity.World.Logger.Audit("{0} Took 1x{1} from Armor Stand at {2}.",
-                        byEntity.GetName(),
-                        stack.Collectible.Code,
-                         ServerPos.AsBlockPos
-                    );
                     Die();
                     return;
                 }

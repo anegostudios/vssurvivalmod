@@ -38,7 +38,7 @@ namespace Vintagestory.ServerMods
         {
             blockAccessor.BeginColumn();
             api.WorldManager.SunFloodChunkColumnForWorldGen(request.Chunks, request.ChunkX, request.ChunkZ);
-            blockAccessor.RunScheduledBlockLightUpdates(request.ChunkX, request.ChunkZ);
+            blockAccessor.RunScheduledBlockLightUpdates();
         }
 
         private void OnChunkColumnGenerationFlood(IChunkColumnGenerateRequest request)

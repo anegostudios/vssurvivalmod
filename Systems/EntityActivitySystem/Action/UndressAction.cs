@@ -6,10 +6,11 @@ using Vintagestory.API.Util;
 namespace Vintagestory.GameContent
 {
     [JsonObject(MemberSerialization.OptIn)]
-    public class UndressAction : EntityActionBase
+    public class UndressAction : IEntityAction
     {
-
-        public override string Type => "undress";
+        protected EntityActivitySystem vas;
+        public string Type => "undress";
+        public bool ExecutionHasFailed { get; set; }
 
         [JsonProperty]
         string Slot;
@@ -22,8 +23,12 @@ namespace Vintagestory.GameContent
             this.Slot = slot;
         }
 
+        public bool IsFinished()
+        {
+            return true;
+        }
 
-        public override void Start(EntityActivity act)
+        public void Start(EntityActivity act)
         {
             var edh = vas.Entity as EntityDressedHumanoid;
             if (edh == null) return;
@@ -36,7 +41,19 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
+
+        public void OnTick(float dt) { }
+        public void Cancel()
+        {
+            // re-equip here
+        }
+        public void Finish() { }
+
+        public void LoadState(ITreeAttribute tree) { }
+        public void StoreState(ITreeAttribute tree) { }
+
+
+        public void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             var b = ElementBounds.Fixed(0, 0, 200, 25);
             singleComposer
@@ -47,13 +64,13 @@ namespace Vintagestory.GameContent
             singleComposer.GetTextInput("slot").SetValue(Slot);
         }
 
-        public override bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
+        public bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             Slot = singleComposer.GetTextInput("slot").GetText();
             return true;
         }
 
-        public override IEntityAction Clone()
+        public IEntityAction Clone()
         {
             return new UndressAction(vas, Slot);
         }
@@ -63,5 +80,13 @@ namespace Vintagestory.GameContent
             return "Remove outfit in slot " + Slot;
         }
 
+        public void OnVisualize(ActivityVisualizer visualizer)
+        {
+
+        }
+        public void OnLoaded(EntityActivitySystem vas)
+        {
+            this.vas = vas;
+        }
     }
 }

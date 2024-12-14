@@ -3,7 +3,6 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Client.Tesselation;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -23,11 +22,11 @@ namespace Vintagestory.GameContent
         public override void OnDecalTesselation(IWorldAccessor world, MeshData decalMesh, BlockPos pos)
         {
             int verticesCount = decalMesh.VerticesCount;
-            var ba = api.World.BlockAccessor;
+            bool enableWind = true; // (lightRgbsByCorner[24] >> 24 & 0xff) >= 159;  //corresponds with a sunlight level of less than 14
 
             // Are we fully attached? => No wave
-            Block ablock = ba.GetBlockOnSide(pos, VineFacing.Opposite);
-            if (ablock.Id != 0 && ablock.CanAttachBlockAt(ba, this, tmpPos.Set(pos).Add(VineFacing.Opposite), VineFacing) && !(ablock is BlockLeaves))
+            Block ablock = world.BlockAccessor.GetBlock(pos.AddCopy(VineFacing.Opposite));
+            if (!enableWind || (ablock.Id != 0 && ablock.CanAttachBlockAt(api.World.BlockAccessor, this, tmpPos.Set(pos).Add(VineFacing.Opposite), VineFacing) && !(ablock is BlockLeaves)))
             {
                 for (int i = 0; i < verticesCount; i++)
                 {
@@ -37,31 +36,30 @@ namespace Vintagestory.GameContent
             }
 
             int windData =
-                ((ba.GetBlockAbove(pos, 1, BlockLayersAccess.Solid) is BlockVines) ? 1 : 0)
-                + ((ba.GetBlockAbove(pos, 2, BlockLayersAccess.Solid) is BlockVines) ? 1 : 0)
-                + ((ba.GetBlockAbove(pos, 3, BlockLayersAccess.Solid) is BlockVines) ? 1 : 0)
+                ((api.World.BlockAccessor.GetBlock(pos.X, pos.Y + 1, pos.Z) is BlockVines) ? 1 : 0)
+                + ((api.World.BlockAccessor.GetBlock(pos.X, pos.Y + 2, pos.Z) is BlockVines) ? 1 : 0)
+                + ((api.World.BlockAccessor.GetBlock(pos.X, pos.Y + 3, pos.Z) is BlockVines) ? 1 : 0)
             ;
 
             int windDatam1;
 
-            if (windData == 3 && ba.GetBlockAbove(pos, 4, BlockLayersAccess.Solid) is BlockVines)
+            if (windData == 3 && api.World.BlockAccessor.GetBlock(pos.X, pos.Y + 4, pos.Z) is BlockVines)
             {
                 windDatam1 = windData << VertexFlags.WindDataBitsPos;
             }
             else
             {
-                windDatam1 = Math.Max(0, windData - 1) << VertexFlags.WindDataBitsPos;
+                windDatam1 = (Math.Max(0, windData - 1) << VertexFlags.WindDataBitsPos);
             }
 
             windData = windData << VertexFlags.WindDataBitsPos;
 
             // Is there a vine above thats attached? => Wave for the bottom half
-            Block ublock = ba.GetBlockAbove(pos, 1, BlockLayersAccess.Solid);
+            Block ublock = world.BlockAccessor.GetBlock(pos.UpCopy());
             if (ublock is BlockVines)
             {
-                tmpPos.Set(pos, pos.dimension).Up().Add(VineFacing.Opposite);
-                Block uablock = ba.GetBlock(tmpPos);
-                if (uablock.Id != 0 && uablock.CanAttachBlockAt(ba, this, tmpPos, VineFacing) && !(ablock is BlockLeaves))
+                Block uablock = world.BlockAccessor.GetBlock(pos.AddCopy(VineFacing.Opposite).Up());
+                if (uablock.Id != 0 && uablock.CanAttachBlockAt(api.World.BlockAccessor, this, tmpPos.Set(pos).Up().Add(VineFacing.Opposite), VineFacing) && !(ablock is BlockLeaves))
                 {
                     for (int i = 0; i < verticesCount; i++)
                     {
@@ -97,7 +95,7 @@ namespace Vintagestory.GameContent
 
             // Are we fully attached? => No wave
             Block ablock = chunkExtBlocks[extIndex3d + TileSideEnum.MoveIndex[VineFacing.Opposite.Index]];
-            if (!enableWind || (ablock.Id != 0 && ablock.CanAttachBlockAt(api.World.BlockAccessor, this, tmpPos.Set(pos, pos.dimension).Add(VineFacing.Opposite), VineFacing) && !(ablock is BlockLeaves)))
+            if (!enableWind || (ablock.Id != 0 && ablock.CanAttachBlockAt(api.World.BlockAccessor, this, tmpPos.Set(pos).Add(VineFacing.Opposite), VineFacing) && !(ablock is BlockLeaves)))
             {
                 for (int i = 0; i < verticesCount; i++)
                 {
@@ -107,14 +105,14 @@ namespace Vintagestory.GameContent
             }
 
             int windData =
-                ((api.World.BlockAccessor.GetBlockAbove(pos, 1, BlockLayersAccess.Solid) is BlockVines) ? 1 : 0)
-                + ((api.World.BlockAccessor.GetBlockAbove(pos, 2, BlockLayersAccess.Solid) is BlockVines) ? 1 : 0)
-                + ((api.World.BlockAccessor.GetBlockAbove(pos, 3, BlockLayersAccess.Solid) is BlockVines) ? 1 : 0)
+                ((api.World.BlockAccessor.GetBlock(pos.X, pos.Y + 1, pos.Z) is BlockVines) ? 1 : 0)
+                + ((api.World.BlockAccessor.GetBlock(pos.X, pos.Y + 2, pos.Z) is BlockVines) ? 1 : 0)
+                + ((api.World.BlockAccessor.GetBlock(pos.X, pos.Y + 3, pos.Z) is BlockVines) ? 1 : 0)
             ;
 
             int windDatam1;
 
-            if (windData == 3 && api.World.BlockAccessor.GetBlockAbove(pos, 4, BlockLayersAccess.Solid) is BlockVines)
+            if (windData == 3 && api.World.BlockAccessor.GetBlock(pos.X, pos.Y + 4, pos.Z) is BlockVines)
             {
                 windDatam1 = windData << VertexFlags.WindDataBitsPos;
             } else
@@ -129,7 +127,7 @@ namespace Vintagestory.GameContent
             if (ublock is BlockVines)
             {
                 Block uablock = chunkExtBlocks[extIndex3d + TileSideEnum.MoveIndex[VineFacing.Opposite.Index] + TileSideEnum.MoveIndex[BlockFacing.UP.Index]];
-                if (uablock.Id != 0 && uablock.CanAttachBlockAt(api.World.BlockAccessor, this, tmpPos.Set(pos, pos.dimension).Up().Add(VineFacing.Opposite), VineFacing) && !(ablock is BlockLeaves))
+                if (uablock.Id != 0 && uablock.CanAttachBlockAt(api.World.BlockAccessor, this, tmpPos.Set(pos).Up().Add(VineFacing.Opposite), VineFacing) && !(ablock is BlockLeaves))
                 {
                     for (int i = 0; i < verticesCount; i++)
                     {
@@ -181,7 +179,7 @@ namespace Vintagestory.GameContent
                 if (TryAttachTo(blockAccessor, pos, onBlockFace)) return true;
             }
 
-            Block upBlock = blockAccessor.GetBlockAbove(pos, 1, BlockLayersAccess.Solid);
+            Block upBlock = blockAccessor.GetBlock(pos.UpCopy());
             if (upBlock is BlockVines)
             {
                 BlockFacing facing = ((BlockVines)upBlock).VineFacing;
@@ -211,7 +209,7 @@ namespace Vintagestory.GameContent
                 if (TryAttachTo(world.BlockAccessor, blockSel.Position, blockSel.Face)) return true;
             }
 
-            Block upBlock = world.BlockAccessor.GetBlockAbove(blockSel.Position, 1, BlockLayersAccess.Solid);
+            Block upBlock = world.BlockAccessor.GetBlock(blockSel.Position.UpCopy());
             if (upBlock is BlockVines)
             {
                 BlockFacing facing = ((BlockVines)upBlock).VineFacing;
@@ -305,13 +303,13 @@ namespace Vintagestory.GameContent
             for (; i < 5; i++)
             {
                 npos.Y++;
-                var upblock = world.BlockAccessor.GetBlock(npos);
+                var upblock = world.BlockAccessor.GetBlock(npos.X, npos.Y, npos.Z);
 
                 if (upblock is BlockLeaves || upblock.CanAttachBlockAt(world.BlockAccessor, this, npos, BlockFacing.DOWN)) return false;
 
                 if (upblock is BlockVines)
                 {
-                    var ablock = world.BlockAccessor.GetBlockOnSide(npos, attachFace);
+                    var ablock = world.BlockAccessor.GetBlock(npos.X + attachFace.Normali.X, npos.Y, npos.Z + attachFace.Normali.Z);
 
                     if (ablock.CanAttachBlockAt(world.BlockAccessor, this, npos, VineFacing)) return false;
                 }

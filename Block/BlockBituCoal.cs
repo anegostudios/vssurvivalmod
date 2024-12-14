@@ -8,7 +8,7 @@ namespace Vintagestory.GameContent;
 
 public class BlockBituCoal: BlockOre
 {
-    private Block clay;
+    private static Block clay;
     private static RockStrataConfig rockStrata;
     private static LCGRandom rand;
     private const int chunksize = GlobalConstants.ChunkSize;
@@ -17,12 +17,12 @@ public class BlockBituCoal: BlockOre
     public override void OnLoaded(ICoreAPI api)
     {
         base.OnLoaded(api);
-        clay = api.World.BlockAccessor.GetBlock(new AssetLocation("rawclay-fire-none"));
 
-        if (rockStrata == null && api is ICoreServerAPI sapi)
+        if (clay == null && api is ICoreServerAPI sapi)
         {
             regionChunkSize = sapi.WorldManager.RegionSize / chunksize;
             rockStrata= BlockLayerConfig.GetInstance(sapi).RockStrata;
+            clay = api.World.BlockAccessor.GetBlock(new AssetLocation("rawclay-fire-none"));
             rand = new LCGRandom(api.World.Seed);
         }
     }

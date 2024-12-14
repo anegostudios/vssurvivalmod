@@ -49,7 +49,7 @@ namespace Vintagestory.GameContent
                 Entity targetEntity = byEntity;
 
                 var ebh = entitySel?.Entity?.GetBehavior<EntityBehaviorHealth>();
-                if (byEntity.Controls.CtrlKey && !byEntity.Controls.Forward && !byEntity.Controls.Backward && !byEntity.Controls.Left && !byEntity.Controls.Right && ebh?.IsHealable(byEntity) == true)
+                if (byEntity.Controls.Sprint && !byEntity.Controls.Forward && !byEntity.Controls.Backward && !byEntity.Controls.Left && !byEntity.Controls.Right && ebh?.IsHealable(byEntity) == true)
                 {
                     targetEntity = entitySel.Entity;
                 }

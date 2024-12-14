@@ -22,7 +22,6 @@ namespace Vintagestory.GameContent
         public string Code { get; set; }
         public Vec3f Rotation { get; set; } = new Vec3f();
         public Cuboidf[] ColSelBoxes { get; set; }
-        public Cuboidf[] SelBoxes { get; set; }
         public ModelTransform GuiTransform { get; set; }
         public ModelTransform FpTtransform { get; set; }
         public ModelTransform TpTransform { get; set; }
@@ -30,8 +29,7 @@ namespace Vintagestory.GameContent
         public string RotInterval { get; set; } = "22.5deg";
         public string FirstTexture { get; set; }
         public TextureAtlasPosition TexPos { get; set; }
-        public Dictionary<long, Cuboidf[]> ColSelBoxesByHashkey { get; set; } = new Dictionary<long, Cuboidf[]>();
-        public Dictionary<long, Cuboidf[]> SelBoxesByHashkey { get; set; } = null;
+        public Dictionary<int, Cuboidf[]> ColSelBoxesByDeg { get; set; } = new Dictionary<int, Cuboidf[]>();
         public AssetLocation ShapePath { get; set; }
         public Shape ShapeResolved { get; set; }
         public string HashKey => Code;
@@ -83,7 +81,7 @@ namespace Vintagestory.GameContent
                 RotInterval = this.RotInterval,
                 FirstTexture = this.FirstTexture,
                 TexPos = this.TexPos?.Clone(),
-                ColSelBoxesByHashkey = this.ColSelBoxesByHashkey.ToDictionary(kv => kv.Key, kv => kv.Value?.Select(box => box?.Clone()).ToArray()),
+                ColSelBoxesByDeg = this.ColSelBoxesByDeg.ToDictionary(kv => kv.Key, kv => kv.Value?.Select(box => box?.Clone()).ToArray()),
                 ShapePath = this.ShapePath?.Clone(),
                 ShapeResolved = this.ShapeResolved?.Clone(),
                 Randomize = this.Randomize,
@@ -99,7 +97,7 @@ namespace Vintagestory.GameContent
         }
     }
 
-    public class BlockClutter : BlockShapeFromAttributes, ISearchTextProvider
+    public class BlockClutter : BlockShapeFromAttributes
     {
         public override string ClassType => "clutter";
 
@@ -234,16 +232,6 @@ namespace Vintagestory.GameContent
 
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
-            string type = baseInfo(inSlot, dsc, world, withDebugInfo);
-
-            if ((api as ICoreClientAPI)?.World.Player.WorldData.CurrentGameMode == EnumGameMode.Creative)
-            {
-                dsc.AppendLine(Lang.Get("Clutter type: {0}", type));
-            }
-        }
-
-        private string baseInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
-        {
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
 
             dsc.AppendLine(Lang.Get("Unusable clutter"));
@@ -255,19 +243,6 @@ namespace Vintagestory.GameContent
                 dsc.AppendLine(Lang.Get("Pattern: {0}", Lang.Get("bannerpattern-" + parts[1])));
                 dsc.AppendLine(Lang.Get("Segment: {0}", Lang.Get("bannersegment-" + parts[3])));
             }
-
-            return type;
-        }
-
-        public string GetSearchText(IWorldAccessor world, ItemSlot inSlot)
-        {
-            StringBuilder dsc = new StringBuilder();
-            baseInfo(inSlot, dsc, world, false);
-
-            string type = inSlot.Itemstack.Attributes.GetString("type", "");
-            dsc.AppendLine(Lang.Get("Clutter type: {0}", type));
-
-            return dsc.ToString();
         }
 
     }

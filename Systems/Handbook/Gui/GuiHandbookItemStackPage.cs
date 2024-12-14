@@ -36,7 +36,7 @@ namespace Vintagestory.GameContent
             unspoilableInventory = new CreativeInventoryTab(1, "not-used", null);
             dummySlot = new DummySlot(stack, unspoilableInventory);
 
-            TextCacheTitle = stack.GetName().ToSearchFriendly();
+            TextCacheTitle = stack.GetName().RemoveDiacritics();
             TextCacheAll = stack.GetName() + " " + stack.GetDescription(capi.World, dummySlot, false);
             isDuplicate = stack.Collectible.Attributes?["handbook"]?["isDuplicate"].AsBool(false) == true;
 

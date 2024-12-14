@@ -11,8 +11,9 @@ namespace Vintagestory.GameContent
 
 
     [JsonObject(MemberSerialization.OptIn)]
-    public class GotoAction : EntityActionBase
+    public class GotoAction : IEntityAction
     {
+        protected EntityActivitySystem vas;
         [JsonProperty]
         public double targetX { get { return Target.X; } set { Target.X = value; } }
         [JsonProperty]
@@ -29,11 +30,12 @@ namespace Vintagestory.GameContent
         public bool Astar = true;
         [JsonProperty]
         public float Radius = 0;
-        public override string Type => "goto";
+        public string Type => "goto";
 
-
+        
         public Vec3d Target = new Vec3d();
 
+        public bool ExecutionHasFailed { get; set; }
         bool done;
 
         public GotoAction() { }
@@ -53,94 +55,59 @@ namespace Vintagestory.GameContent
             this.vas = vas;
         }
 
-        public override void Pause()
-        {
-            stop();
-        }
-
-        public override void Resume()
-        {
-            navTo(hereTarget);
-        }
-
-        Vec3d hereTarget;
-        public override void Start(EntityActivity act)
+        public void Start(EntityActivity act)
         {
             done = false;
             ExecutionHasFailed = false;
 
-            hereTarget = Target.Clone().Add(vas.ActivityOffset);
+            var hereTarget = Target;
             if (Radius > 0)
             {
                 float alpha = (float)vas.Entity.World.Rand.NextDouble() * GameMath.TWOPI;
-                hereTarget.X += Math.Sin(alpha) * Radius;
-                hereTarget.Z += Math.Cos(alpha) * Radius;
+                Target.X += Math.Sin(alpha) * Radius;
+                Target.Z += Math.Cos(alpha) * Radius;
             }
-
-            astarTries = 4;
-            navTo(hereTarget);
-        }
-
-        int astarTries;
-        EnumAICreatureType ct;
-        private void navTo(Vec3d hereTarget)
-        {
-            ct = EnumAICreatureType.Default;
-            var aicreaturetype = vas.Entity.Properties.Server.Attributes.GetString("aiCreatureType", "Humanoid");
-            if (Enum.TryParse(aicreaturetype, out EnumAICreatureType ect)) ct = ect;
 
             if (Astar)
             {
-                vas.wppathTraverser.OnFoundPath = onFoundPath;
-                vas.wppathTraverser.NavigateTo_Async(hereTarget, WalkSpeed, 0.15f, OnDone, OnStuck, OnNoPath, 10000, 0, ct);
+                int tries = 4;
+                while (tries-- > 0 && !vas.wppathTraverser.NavigateTo(hereTarget, WalkSpeed, OnDone, OnStuck, OnNoPath)) { }
             }
             else
             {
-                vas.linepathTraverser.NavigateTo(hereTarget, WalkSpeed, OnDone, OnStuck, null, 0, ct);
-                setAnimation();
-            }            
-        }
+                vas.linepathTraverser.NavigateTo(hereTarget, WalkSpeed, OnDone, OnStuck);
+            }
 
 
-        private void setAnimation()
-        {
             if (AnimSpeed != 0.02f)
             {
-                vas.Entity.AnimManager.StartAnimation(new AnimationMetaData() { Animation = AnimCode, Code = AnimCode, AnimationSpeed = AnimSpeed, BlendMode = EnumAnimationBlendMode.Average }.Init());
+                vas.Entity.AnimManager.StartAnimation(new AnimationMetaData() { Animation = AnimCode, Code = AnimCode, AnimationSpeed = AnimSpeed }.Init());
             }
             else
             {
+
                 if (!vas.Entity.AnimManager.StartAnimation(AnimCode))
                 {
-                    vas.Entity.AnimManager.StartAnimation(new AnimationMetaData() { Animation = AnimCode, Code = AnimCode, AnimationSpeed = AnimSpeed, BlendMode = EnumAnimationBlendMode.Average }.Init());
+                    vas.Entity.AnimManager.StartAnimation(new AnimationMetaData() { Animation = AnimCode, Code = AnimCode, AnimationSpeed = AnimSpeed }.Init());
                 }
+
             }
 
             vas.Entity.Controls.Sprint = AnimCode == "run" || AnimCode == "sprint";
         }
 
-
-        private void onFoundPath()
-        {
-            setAnimation();
-        }
-
-
         private void OnNoPath()
         {
-            if (Astar && astarTries > 0)
-            {
-                astarTries--;
-                vas.wppathTraverser.NavigateTo_Async(hereTarget, WalkSpeed, 0.15f, OnDone, OnStuck, OnNoPath, 10000, 0, ct);
-                return;
-            }
-
             var pos = vas.Entity.ServerPos;
             if (vas.Debug) vas.Entity.World.Logger.Debug("ActivitySystem entity {0} action goto from {1}/{2}/{3} to {4}/{5}/{6} failed, found no A* path to target.", vas.Entity.EntityId, pos.X, pos.Y, pos.Z, targetX, targetY, targetZ);
             ExecutionHasFailed = true;
             Finish();
         }
 
+        public void OnTick(float dt)
+        {
+            //vas.Entity.ServerControls.WalkVector.Set(-0.01, 0, 0.01);
+        }
 
         private void OnStuck()
         {
@@ -148,19 +115,14 @@ namespace Vintagestory.GameContent
             ExecutionHasFailed = true;
             Finish();
         }
-        public override void Cancel()
+        public void Cancel()
         {
             Finish();
         }
 
-        public override void Finish()
+        public void Finish()
         {
             if (vas.Debug) vas.Entity.World.Logger.Debug("ActivitySystem entity {0} GotoAction, Stop() called", vas.Entity.EntityId);
-            stop();
-        }
-
-        private void stop()
-        {
             vas.linepathTraverser.Stop();
             vas.wppathTraverser.Stop();
             vas.Entity.AnimManager.StopAnimation(AnimCode);
@@ -175,33 +137,22 @@ namespace Vintagestory.GameContent
             done = true;
         }
 
-        public override bool IsFinished()
+        public bool IsFinished()
         {
             return done || ExecutionHasFailed;
         }
 
         public override string ToString()
         {
-            var x = Target.X;
-            var y = Target.Y;
-            var z = Target.Z;
-            if (vas != null)
-            {
-                x += vas.ActivityOffset.X;
-                y += vas.ActivityOffset.Y;
-                z += vas.ActivityOffset.Z;
-            }
-
-            if (Radius > 0)
-            {
-                return string.Format("{0}Goto {1}/{2}/{3} (walkSpeed {4}, animspeed {5}), radius {6}", Astar ? "A* " : "", x, y, z, WalkSpeed, AnimSpeed, Radius);
-            }
-
-            return string.Format("{0}Goto {1}/{2}/{3} (walkSpeed {4}, animspeed {5})", Astar ? "A* " : "", x, y, z, WalkSpeed, AnimSpeed);
+            return string.Format("Goto {0}/{1}/{2} (walkSpeed {3}, animspeed {4})", Target.X, Target.Y, Target.Z, WalkSpeed, AnimSpeed);
         }
 
 
-        public override void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
+        public void LoadState(ITreeAttribute tree) { }
+        public void StoreState(ITreeAttribute tree) { }
+
+
+        public void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             var bc = ElementBounds.Fixed(0, 0, 65, 20);
             var b = ElementBounds.Fixed(0, 0, 200, 20);
@@ -210,9 +161,6 @@ namespace Vintagestory.GameContent
                 .AddTextInput(bc = bc.BelowCopy(0), null, CairoFont.WhiteDetailText(), "x")
                 .AddTextInput(bc = bc.CopyOffsetedSibling(70), null, CairoFont.WhiteDetailText(), "y")
                 .AddTextInput(bc = bc.CopyOffsetedSibling(70), null, CairoFont.WhiteDetailText(), "z")
-
-                .AddSmallButton("Tp to", () => onClickTpTo(capi), bc = bc.CopyOffsetedSibling(70), EnumButtonStyle.Small)
-
                 .AddSmallButton("Insert Player Pos", () => onClickPlayerPos(capi, singleComposer), b = b.FlatCopy().FixedUnder(bc), EnumButtonStyle.Small)
 
                 .AddStaticText("Goto animation code", CairoFont.WhiteDetailText(), b = b.BelowCopy(0, 10))
@@ -227,8 +175,8 @@ namespace Vintagestory.GameContent
                 .AddSwitch(null, b = b.BelowCopy(0, 15).WithFixedWidth(25), "astar", 25)
                 .AddStaticText("A* Pathfinding", CairoFont.WhiteDetailText(), b = b.RightCopy(10, 5).WithFixedWidth(100))
 
-                .AddStaticText("Random target offset radius", CairoFont.WhiteDetailText(), b = b.BelowCopy(-35, 10).WithFixedWidth(250))
-                .AddNumberInput(b = b.BelowCopy().WithFixedSize(100,25), null, CairoFont.WhiteDetailText(), "radius")
+                .AddStaticText("Random target offset radius", CairoFont.WhiteDetailText(), b = b.BelowCopy(0, 10))
+                .AddNumberInput(b = b.BelowCopy().WithFixedHeight(25), null, CairoFont.WhiteDetailText(), "radius")
             ;
 
             var s = singleComposer;
@@ -242,21 +190,6 @@ namespace Vintagestory.GameContent
             s.GetNumberInput("radius").SetValue(Radius + "");
         }
 
-        private bool onClickTpTo(ICoreClientAPI capi)
-        {
-            var x = Target.X;
-            var y = Target.Y;
-            var z = Target.Z;
-            if (vas != null)
-            {
-                x += vas.ActivityOffset.X;
-                y += vas.ActivityOffset.Y;
-                z += vas.ActivityOffset.Z;
-            }
-            capi.SendChatMessage(string.Format("/tp ={0} ={1} ={2}", x, y, z));
-            return false;
-        }
-
         private bool onClickPlayerPos(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             var plrPos = capi.World.Player.Entity.Pos.XYZ;
@@ -266,8 +199,8 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-
-        public override bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer s)
+        
+        public bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer s)
         {
             this.Target = new Vec3d(s.GetTextInput("x").GetText().ToDouble(), s.GetTextInput("y").GetText().ToDouble(), s.GetTextInput("z").GetText().ToDouble());
             this.Astar = s.GetSwitch("astar").On;
@@ -278,19 +211,18 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public override IEntityAction Clone()
+        public IEntityAction Clone()
         {
             return new GotoAction(vas, Target, Astar, AnimCode, WalkSpeed, AnimSpeed, Radius);
         }
 
-        public override void OnVisualize(ActivityVisualizer visualizer)
+        public void OnVisualize(ActivityVisualizer visualizer)
         {
-            var target = Target.Clone();
-            if (vas != null)
-            {
-                target.Add(vas.ActivityOffset);
-            }
-            visualizer.GoTo(target);
+            visualizer.GoTo(Target);
+        }
+        public void OnLoaded(EntityActivitySystem vas)
+        {
+            this.vas = vas;
         }
     }
 }

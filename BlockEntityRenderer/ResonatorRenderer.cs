@@ -41,7 +41,7 @@ namespace Vintagestory.GameContent
         {
             if (cylinderMeshRef == null) return;
 
-            long ellapsedMs = api.InWorldEllapsedMilliseconds;
+            long ellapsedMs = api.World.ElapsedMilliseconds;
 
             IRenderAPI rpi = api.Render;
             IClientWorldAccessor worldAccess = api.World;
@@ -73,10 +73,10 @@ namespace Vintagestory.GameContent
 
             discPos.X = -4f / 16f;
             discPos.Y = 10.3f / 16f;
-            discPos.Z = 2.2f / 16f;
+            discPos.Z = 2f / 16f;
 
             discRotRad.X = 0;
-            discRotRad.Y = (ellapsedMs - updatedTotalMs) / 500f * GameMath.PI;
+            discRotRad.Y = Math.Max(0, (ellapsedMs - updatedTotalMs) / 500f - 0.5f);
             discRotRad.Z = 0;
 
             prog.NormalShaded = 0;
@@ -106,7 +106,7 @@ namespace Vintagestory.GameContent
                 cylinderMeshRef = api.Render.UploadMesh(cylinderMesh);                
             }
 
-            updatedTotalMs = api.InWorldEllapsedMilliseconds;
+            updatedTotalMs = api.World.ElapsedMilliseconds;
         }
 
         public void Dispose()

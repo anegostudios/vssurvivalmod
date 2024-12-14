@@ -15,12 +15,12 @@ namespace Vintagestory.GameContent
         public string lining = "plain";
         public string glass = "quartz";
 
-
+        
         public float MeshAngle;
 
         byte[] origlightHsv = new byte[] { 7, 4, 18 };
         byte[] lightHsv = new byte[] { 7, 4, 18 };
-
+        
 
         public override void Initialize(ICoreAPI api)
         {
@@ -72,7 +72,7 @@ namespace Vintagestory.GameContent
         private MeshData getMesh(ITesselatorAPI tesselator)
         {
             Dictionary<string, MeshData> lanternMeshes = ObjectCacheUtil.GetOrCreate(Api, "blockLanternBlockMeshes", () => new Dictionary<string, MeshData>());
-
+            
             MeshData mesh = null;
             BlockLantern block = Api.World.BlockAccessor.GetBlock(Pos) as BlockLantern;
             if (block == null) return null;
@@ -99,7 +99,7 @@ namespace Vintagestory.GameContent
 
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
-        {
+        { 
             MeshData mesh = getMesh(tesselator);
 
             if (mesh == null) return false;
@@ -141,12 +141,6 @@ namespace Vintagestory.GameContent
                     {
                         Api.World.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5, 0, 0.5));
                     }
-                    Api.World.Logger.Audit("{0} Replaced glass {1} with {2} for Lantern at {3}.",
-                        byPlayer.PlayerName,
-                        stack.Collectible.Code,
-                        obj.Code,
-                        Pos
-                    );
                 }
 
                 this.glass = obj.Variant["color"];
@@ -162,7 +156,7 @@ namespace Vintagestory.GameContent
                 return true;
             }
 
-            if (lining == null || lining == "plain" && obj is ItemMetalPlate && (obj.Variant["metal"] == "gold" || obj.Variant["metal"] == "silver" || obj.Variant["metal"] == "electrum"))
+            if (lining == null || lining == "plain" && obj is ItemMetalPlate && (obj.Variant["metal"] == "gold" || obj.Variant["metal"] == "silver" || obj.Variant["metal"] == "electrum")) 
             {
                 lining = obj.Variant["metal"];
                 if (Api.Side == EnumAppSide.Client) (byPlayer as IClientPlayer).TriggerFpAnimation(EnumHandInteract.HeldItemInteract);

@@ -15,8 +15,6 @@ namespace Vintagestory.ServerMods
     {
         public List<Entity> EntitiesDecoded;
 
-        static BlockPos Zero = new BlockPos(0, 0, 0);
-
         public virtual int PlacePartial(IServerChunk[] chunks, IWorldGenBlockAccessor blockAccessor,
             IWorldAccessor worldForResolve, int chunkX, int chunkZ, BlockPos startPos, EnumReplaceMode mode, EnumStructurePlacement? structurePlacement,
             bool replaceMeta, bool resolveImports, Dictionary<int, Dictionary<int, int>> resolvedRockTypeRemaps = null,
@@ -47,11 +45,15 @@ namespace Vintagestory.ServerMods
 
             if (genBlockLayers == null) genBlockLayers = worldForResolve.Api.ModLoader.GetModSystem<GenBlockLayers>();
 
+            int climate;
             var rockblockid = rockBlock?.BlockId ?? chunks[0].MapChunk.TopRockIdMap[15 * chunksize + 15];
 
 
             int i = -1;
             int dy, dx, dz;
+            var rainHeightMap = chunks[0].MapChunk.RainHeightMap;
+            var terrainHeightMap = chunks[0].MapChunk.WorldGenTerrainHeightMap;
+
             foreach (uint index in Indices)
             {
                 i++;   // increment i first, because we have various continue statements
@@ -68,42 +70,101 @@ namespace Vintagestory.ServerMods
                 AssetLocation blockCode = BlockCodes[storedBlockid];
 
                 Block newBlock = blockAccessor.GetBlock(blockCode);
-                if (newBlock == null || (replaceMeta && (newBlock.Id == UndergroundBlockId || newBlock.Id == AbovegroundBlockId))) continue;
+                if (newBlock == null || (replaceMeta && (newBlock == undergroundBlock || newBlock == abovegroundBlock))) continue;
 
-                int blockId = replaceMeta && IsFillerOrPath(newBlock) ? empty : newBlock.BlockId;
+                int blockId = replaceMeta && (newBlock == fillerBlock || newBlock == pathwayBlock) ? empty : newBlock.BlockId;
 
                 IChunkBlocks chunkData = chunks[posY / chunksize].Data;
                 int posIndex = ((posY % chunksize) * chunksize + (posZ % chunksize)) * chunksize + (posX % chunksize);
 
-                // update blocks that will be exposed to air to their top surface variant ex soil with grass
-                if (structurePlacement is EnumStructurePlacement.SurfaceRuin && newBlock.Id == FillerBlockId)
+                if (replaceWithBlockLayersBlockids != null && replaceWithBlockLayersBlockids.Contains(blockId))
                 {
-                    var belowIndex = (uint)(((dy-1) << 20) | (dz << 10) | dx);
-                    if (!Indices.Contains(belowIndex))
+                    curPos.Set(posX, posY, posZ);
+                    climate = GameMath.BiLerpRgbColor(
+                        GameMath.Clamp((posX % chunksize) / (float)chunksize, 0, 1),
+                        GameMath.Clamp((posZ % chunksize) / (float)chunksize, 0, 1),
+                        climateUpLeft, climateUpRight, climateBotLeft, climateBotRight
+                    );
+                    var depth = 0;
+
+                    // if we are not the top block we need to get the layerblock for depth 1 -> soil without grass
+                    if (dy + 1 < SizeY)
                     {
-                        var belowPos = (((posY - 1) % chunksize) * chunksize + (posZ % chunksize)) * chunksize + (posX % chunksize);
-                        var belowBlock = blockAccessor.GetBlock(chunkData[belowPos]);
-
-                        if (belowBlock.BlockMaterial == EnumBlockMaterial.Soil)
+                        var aboveBlock = blocksByPos[dx, dy + 1, dz];
+                        if (aboveBlock != null && aboveBlock.SideSolid[BlockFacing.DOWN.Index] &&
+                            aboveBlock.BlockMaterial != EnumBlockMaterial.Wood && aboveBlock.BlockMaterial != EnumBlockMaterial.Snow &&
+                            aboveBlock.BlockMaterial != EnumBlockMaterial.Ice)
                         {
-                            var belowBlockId = GetReplaceLayerBlockId(blockAccessor, worldForResolve, replaceWithBlockLayersBlockids, belowBlock.Id, curPos, posX, posY, posZ, chunksize, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, dy, dx, dz, rockblockid, ref belowBlock, true);
+                            depth = 1;
+                        }
+                    }
 
-                            chunkData[belowPos] = belowBlockId;
+                    var layerBlock = GetBlockLayerBlock((climate >> 8) & 0xff, (climate >> 16) & 0xff, curPos.Y - 1, rockblockid, depth, null,
+                        worldForResolve.Blocks, curPos, -1);
+                    blockId = layerBlock?.Id ?? rockblockid;
+                    newBlock = blockAccessor.GetBlock(blockId);
+                }
+
+
+                if (resolvedRockTypeRemaps != null)
+                {
+                    Dictionary<int, int> replaceByBlock;
+                    if (resolvedRockTypeRemaps.TryGetValue(blockId, out replaceByBlock))
+                    {
+                        if (replaceByBlock.TryGetValue(rockblockid, out var newBlockId))
+                        {
+                            blockId = newBlockId;
+                            newBlock = blockAccessor.GetBlock(blockId);
                         }
                     }
                 }
 
-                blockId = GetReplaceLayerBlockId(blockAccessor, worldForResolve, replaceWithBlockLayersBlockids, blockId, curPos, posX, posY, posZ, chunksize, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, dy, dx, dz, rockblockid, ref newBlock);
 
-                blockId = GetRocktypeBlockId(blockAccessor, resolvedRockTypeRemaps, blockId, rockblockid, ref newBlock);
-
-                // surface sits on top of terrain and so needs to blend with existing one better
-                // do not place grass or loose rocks below terrain if there was a solid blocks
-                if (structurePlacement is EnumStructurePlacement.Surface)
+                if (structurePlacement == EnumStructurePlacement.Surface)
                 {
                     var oldBlock = blockAccessor.GetBlock(chunkData[posIndex]);
-                    // if we have solid blocks at the same pos keep the old one to blend in better with the terrain
-                    if((newBlock.Replaceable >= 5500 || newBlock.BlockMaterial == EnumBlockMaterial.Plant) && oldBlock.Replaceable < newBlock.Replaceable && !newBlock.IsLiquid()) continue;
+                    // this prevents grass from being placed where a solid block was
+                    if(oldBlock.BlockMaterial is EnumBlockMaterial.Soil or EnumBlockMaterial.Sand or EnumBlockMaterial.Stone && newBlock.BlockMaterial == EnumBlockMaterial.Plant) continue;
+
+                    var oldRainPermeable = oldBlock.RainPermeable;
+                    var newRainPermeable = newBlock.RainPermeable;
+                    var posIndexRain = (posZ % chunksize) * chunksize + (posX % chunksize);
+
+                    if (oldRainPermeable && !newRainPermeable)
+                    {
+                        rainHeightMap[posIndexRain] = Math.Max(rainHeightMap[posIndexRain], (ushort)posY);
+                    }
+                    if (!oldRainPermeable && newRainPermeable && rainHeightMap[posIndexRain] == posY)
+                    {
+                        var downY = (ushort)posY;
+                        var posIndexBelow = ((downY % chunksize) * chunksize + (posZ % chunksize)) * chunksize + (posX % chunksize);
+                        while (blockAccessor.GetBlock(chunkData[posIndexBelow]).RainPermeable && downY > 0)
+                        {
+                            downY--;
+                            posIndexBelow = ((downY % chunksize) * chunksize + (posZ % chunksize)) * chunksize + (posX % chunksize);
+                        }
+
+                        rainHeightMap[posIndexRain] = downY;
+                    }
+                    var oldSolid = oldBlock.SideSolid[BlockFacing.UP.Index];
+                    var newSolid = newBlock.SideSolid[BlockFacing.UP.Index];
+
+                    if (!oldSolid && newSolid)
+                    {
+                        terrainHeightMap[posIndexRain] = Math.Max(terrainHeightMap[posIndexRain], (ushort)posY);
+                    }
+                    if (oldSolid && !newSolid && terrainHeightMap[posIndexRain] == posY)
+                    {
+                        var downY = (ushort)(posY - 1);
+                        var posIndexBelow = ((downY % chunksize) * chunksize + (posZ % chunksize)) * chunksize + (posX % chunksize);
+                        while (blockAccessor.GetBlock(chunkData[posIndexBelow]).RainPermeable && downY > 0)
+                        {
+                            downY--;
+                            posIndexBelow = ((downY % chunksize) * chunksize + (posZ % chunksize)) * chunksize + (posX % chunksize);
+                        }
+
+                        terrainHeightMap[posIndexRain] = downY;
+                    }
                 }
 
                 // if we only have a fluid block we need to clear the previous block so we can place fluids
@@ -125,7 +186,7 @@ namespace Vintagestory.ServerMods
                 if (newBlock.LightHsv[2] > 0)
                 {
                     curPos.Set(posX, posY, posZ);
-                    blockAccessor.ScheduleBlockLightUpdate(curPos, 0, newBlock.BlockId);
+                    blockAccessor.ScheduleBlockLightUpdate(curPos.Copy(), 0, newBlock.BlockId);
                 }
 
                 placed++;
@@ -173,17 +234,9 @@ namespace Vintagestory.ServerMods
                     tree.SetInt("posy", curPos.Y);
                     tree.SetInt("posz", curPos.Z);
 
-                    var climate = GameMath.BiLerpRgbColor(
-                        GameMath.Clamp((posX % chunksize) / (float)chunksize, 0, 1),
-                        GameMath.Clamp((posZ % chunksize) / (float)chunksize, 0, 1),
-                        climateUpLeft, climateUpRight, climateBotLeft, climateBotRight
-                    );
-                    var layerBlock = GetBlockLayerBlock((climate >> 8) & 0xff, (climate >> 16) & 0xff, curPos.Y, rockblockid, 0, null,
-                        worldForResolve.Blocks, curPos, -1);
-
                     be.FromTreeAttributes(tree, worldForResolve);
                     be.OnLoadCollectibleMappings(worldForResolve, BlockCodes, ItemCodes, schematicSeed, resolveImports);
-                    be.OnPlacementBySchematic(worldForResolve.Api as ICoreServerAPI, blockAccessor, curPos, resolvedRockTypeRemaps, rockblockid, layerBlock, resolveImports);
+                    be.OnPlacementBySchematic(worldForResolve.Api as ICoreServerAPI, blockAccessor, curPos, resolvedRockTypeRemaps, rockblockid, null, resolveImports);
                 }
             }
 
@@ -193,11 +246,6 @@ namespace Vintagestory.ServerMods
             {
                 if (rect.Contains((int)entity.Pos.X, (int)entity.Pos.Z))
                 {
-                    if (OriginalPos != null)
-                    {
-                        var prevOffset = entity.WatchedAttributes.GetBlockPos("importOffset", Zero);
-                        entity.WatchedAttributes.SetBlockPos("importOffset", startPos - OriginalPos + prevOffset);
-                    }
                     // Not ideal but whatever
                     if (blockAccessor is IWorldGenBlockAccessor)
                     {
@@ -213,60 +261,6 @@ namespace Vintagestory.ServerMods
             }
 
             return placed;
-        }
-
-        private int GetReplaceLayerBlockId(IWorldGenBlockAccessor blockAccessor, IWorldAccessor worldForResolve, int[] replaceWithBlockLayersBlockids,
-            int blockId, BlockPos curPos, int posX, int posY, int posZ, int chunksize, int climateUpLeft, int climateUpRight, int climateBotLeft,
-            int climateBotRight, int dy, int dx, int dz, int rockblockid, ref Block newBlock, bool topBlockOnly = false)
-        {
-            if (replaceWithBlockLayersBlockids != null && replaceWithBlockLayersBlockids.Contains(blockId))
-            {
-                curPos.Set(posX, posY, posZ);
-                var climate = GameMath.BiLerpRgbColor(
-                    GameMath.Clamp((posX % chunksize) / (float)chunksize, 0, 1),
-                    GameMath.Clamp((posZ % chunksize) / (float)chunksize, 0, 1),
-                    climateUpLeft, climateUpRight, climateBotLeft, climateBotRight
-                );
-                var depth = 0;
-
-                // if we are not the top block we need to get the layerblock for depth 1 -> soil without grass
-                if (dy + 1 < SizeY && !topBlockOnly)
-                {
-                    var aboveBlock = blocksByPos[dx, dy + 1, dz];
-                    if (aboveBlock != null && aboveBlock.SideSolid[BlockFacing.DOWN.Index] &&
-                        aboveBlock.BlockMaterial != EnumBlockMaterial.Wood && aboveBlock.BlockMaterial != EnumBlockMaterial.Snow &&
-                        aboveBlock.BlockMaterial != EnumBlockMaterial.Ice)
-                    {
-                        depth = 1;
-                    }
-                }
-
-                var layerBlock = GetBlockLayerBlock((climate >> 8) & 0xff, (climate >> 16) & 0xff, curPos.Y - 1, rockblockid, depth, null,
-                    worldForResolve.Blocks, curPos, -1);
-                blockId = layerBlock?.Id ?? rockblockid;
-                newBlock = blockAccessor.GetBlock(blockId);
-            }
-
-            return blockId;
-        }
-
-        private static int GetRocktypeBlockId(IWorldGenBlockAccessor blockAccessor, Dictionary<int, Dictionary<int, int>> resolvedRockTypeRemaps, int blockId, int rockblockid,
-            ref Block newBlock)
-        {
-            if (resolvedRockTypeRemaps != null)
-            {
-                Dictionary<int, int> replaceByBlock;
-                if (resolvedRockTypeRemaps.TryGetValue(blockId, out replaceByBlock))
-                {
-                    if (replaceByBlock.TryGetValue(rockblockid, out var newBlockId))
-                    {
-                        blockId = newBlockId;
-                        newBlock = blockAccessor.GetBlock(blockId);
-                    }
-                }
-            }
-
-            return blockId;
         }
 
         private void DecodeEntities(IWorldAccessor worldForResolve, BlockPos startPos, IServerWorldAccessor serverWorldAccessor)
@@ -314,8 +308,6 @@ namespace Vintagestory.ServerMods
 
             cloned.ReplaceMode = ReplaceMode;
             cloned.EntranceRotation = EntranceRotation;
-            cloned.OriginalPos = OriginalPos;
-
 
             return cloned;
         }

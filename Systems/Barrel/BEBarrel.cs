@@ -11,7 +11,7 @@ namespace Vintagestory.GameContent
         public int CapacityLitres { get; set; } = 50;
 
         GuiDialogBarrel invDialog;
-
+        
         // Slot 0: Input/Item slot
         // Slot 1: Liquid slot
         public override string InventoryClassName => "barrel";
@@ -101,7 +101,7 @@ namespace Vintagestory.GameContent
             }
             if (api.Side == EnumAppSide.Server)
             {
-                RegisterGameTickListener(OnEvery3Second, 3000);
+                RegisterGameTickListener(OnEvery3Second, 3000); 
             }
 
             FindMatchingRecipe();
@@ -155,7 +155,7 @@ namespace Vintagestory.GameContent
                             Api.World.BlockAccessor.MarkBlockEntityDirty(Pos);
                         }
                     }
-
+                    
 
                     invDialog?.UpdateContents();
                     if (Api?.Side == EnumAppSide.Client)

@@ -73,10 +73,10 @@ namespace Vintagestory.GameContent
 
                 if (chance > diceRoll)
                 {
-                    ItemStack cstack = subtree.GetItemstack("stack")?.Clone();
+                    ItemStack cstack = subtree.GetItemstack("stack").Clone();
 
                     // A items and blocks ItemStackAttributes already has the FixMapping applied to them during Collectible.OnLoadCollectibleMappings(), so we only need to check if the collectible is set or not
-                    if (cstack?.Collectible != null)
+                    if (cstack.Collectible != null)
                     {
                         cstack.ResolveBlockOrItem(worldForResolve);
                         slot.Itemstack = cstack;
@@ -92,31 +92,10 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)
-        {
-            IAttribute[] attributesValues = handbookStack.Attributes.Values;
-            List<BlockDropItemStack> resolvedDrops = new();
-
-            foreach (IAttribute attributeValue in attributesValues)
-            {
-                if (attributeValue is not TreeAttribute subtree) continue;
-
-                ItemStack dropsStack = subtree.GetItemstack("stack")?.Clone();
-
-                if (dropsStack?.Collectible != null)
-                {
-                    dropsStack.ResolveBlockOrItem(forPlayer.Entity.World);
-                    resolvedDrops.Add(new(dropsStack));
-                }
-            }
-
-            return resolvedDrops.ToArray();
-        }
-
         public override void OnStoreCollectibleMappings(IWorldAccessor world, ItemSlot inSlot, Dictionary<int, AssetLocation> blockIdMapping, Dictionary<int, AssetLocation> itemIdMapping)
         {
             base.OnStoreCollectibleMappings(world, inSlot, blockIdMapping, itemIdMapping);
-
+            
             foreach (var val in inSlot.Itemstack.Attributes)
             {
                 if (!val.Key.StartsWithOrdinal("stack") || !(val.Value is TreeAttribute)) continue;

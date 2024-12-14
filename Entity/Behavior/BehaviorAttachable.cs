@@ -1,12 +1,7 @@
-﻿using Cairo;
-using System;
-using System.Collections;
+﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
-using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -17,8 +12,7 @@ namespace Vintagestory.GameContent
 
     public interface IRopeTiedCreatureCarrier
     {
-        bool TryMount(EntityAgent entity);
-
+        bool TryMount(EntityAgent pinnedToEntity);
     }
 
     public class ItemSlotWearable : ItemSlot
@@ -52,7 +46,7 @@ namespace Vintagestory.GameContent
         {
             if (itemstack == null) return false;
 
-            var iatta = IAttachableToEntity.FromCollectible(itemstack.Collectible);
+            var iatta = IAttachableToEntity.FromCollectible(itemstack.Collectible, inventory?.Api.Logger);
 
             return iatta != null && slotWearableCodes.IndexOf(iatta.GetCategoryCode(itemstack)) >= 0;
         }
@@ -86,8 +80,7 @@ namespace Vintagestory.GameContent
 
 
 
-
-    public class EntityBehaviorAttachable : EntityBehaviorContainer, ICustomInteractionHelpPositioning
+    public class EntityBehaviorAttachable : EntityBehaviorContainer
     {
         protected WearableSlotConfig[] wearableSlots;
         public override InventoryBase Inventory => inv;
@@ -194,7 +187,7 @@ namespace Vintagestory.GameContent
 
             var controls = byEntity.MountedOn?.Controls ?? byEntity.Controls;
 
-            if (mode == EnumInteractMode.Interact && !controls.CtrlKey)
+            if (mode == EnumInteractMode.Interact && !controls.Sprint)
             {
                 if (slot.Itemstack?.Collectible.Attributes?.IsTrue("interactPassthrough") == true)
                 {
@@ -222,9 +215,14 @@ namespace Vintagestory.GameContent
             }
 
 
-            if (mode != EnumInteractMode.Interact || !controls.CtrlKey)
+            if (mode != EnumInteractMode.Interact || !controls.Sprint)
             {
                 handled = EnumHandling.PassThrough; // Can't attack an elk with a falx otherwise
+                /*if (itemslot.Empty && GetSlotFromSelectionBoxIndex(seleBox - 1).Empty) 
+                {
+                    handled = EnumHandling.PassThrough;
+                    return;
+                }*/
                 return;
             }
 
@@ -261,32 +259,11 @@ namespace Vintagestory.GameContent
             var slot = GetSlotFromSelectionBoxIndex(slotIndex);
 
             if (slot == null || slot.Empty) return false;
-
-            // Don't allow removal of seats where somebody sits on
-            var ebh = entity.GetBehavior<EntityBehaviorSeatable>();
-            if (ebh != null)
-            {
-                var bhs = entity.GetBehavior<EntityBehaviorSelectionBoxes>();
-                var apap = bhs.selectionBoxes[slotIndex];
-                string apname = apap.AttachPoint.Code;
-                var seat = ebh.Seats.FirstOrDefault((seat) => seat.Config.APName == apname || seat.Config.SelectionBox == apname);
-                if (seat?.Passenger != null)
-                {
-                    (entity.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "requiredisembark", Lang.Get("Passenger must disembark first before being able to remove this seat"));
-                    return false;
-                }
-            }
-
-            IAttachedInteractions attachedInteractable = slot.Itemstack?.Collectible.GetCollectibleInterface<IAttachedInteractions>();
-            if (attachedInteractable?.OnTryDetach(slot, slotIndex, entity) == false)
-            {
-                return false;
-            }
             
             if (slot.StackSize == 0 || byEntity.TryGiveItemStack(slot.Itemstack))
             {
-                IAttachedListener attached = slot.Itemstack?.Collectible.GetCollectibleInterface<IAttachedListener>();
-                attached?.OnDetached(slot, slotIndex, entity, byEntity);
+                var iai = slot.Itemstack.Collectible.GetCollectibleInterface<IAttachedListener>();
+                iai?.OnDetached(slot, slotIndex, entity);
 
                 slot.Itemstack = null;
                 storeInv();
@@ -298,8 +275,8 @@ namespace Vintagestory.GameContent
 
         private bool TryAttach(ItemSlot itemslot, int slotIndex, EntityAgent byEntity)
         {
-            var iatta = IAttachableToEntity.FromCollectible(itemslot.Itemstack.Collectible);
-            if (iatta == null || !iatta.IsAttachable(entity, itemslot.Itemstack)) return false;
+            var iatta = IAttachableToEntity.FromCollectible(itemslot.Itemstack.Collectible, entity.World.Logger);
+            if (iatta == null || !iatta.IsAttachable(itemslot.Itemstack)) return false;
 
             var targetSlot = GetSlotFromSelectionBoxIndex(slotIndex);
 
@@ -308,10 +285,6 @@ namespace Vintagestory.GameContent
 
             if (!slotConfig.CanHold(code)) return false;
             if (!targetSlot.Empty) return false;
-
-            // Cannot attach something where a player already sits on
-            var bhs = entity.GetBehavior<EntityBehaviorSeatable>();
-            if (bhs?.Seats.FirstOrDefault(s => s.Config.APName == slotConfig.AttachmentPointCode)?.Passenger != null) return false;
 
             var iai = itemslot.Itemstack.Collectible.GetCollectibleInterface<IAttachedInteractions>();
             if (iai?.OnTryAttach(itemslot, slotIndex, entity) == false) return false;
@@ -351,14 +324,6 @@ namespace Vintagestory.GameContent
             return wearableSlots.IndexOf(elem => elem.AttachmentPointCode == apCode);
         }
 
-        public ItemSlot GetSlotConfigFromAPName(string apCode)
-        {
-            var seleBoxes = entity.GetBehavior<EntityBehaviorSelectionBoxes>().selectionBoxes;
-            int index = wearableSlots.IndexOf(elem => elem.AttachmentPointCode == apCode);
-            if (index < 0) return null;
-            return inv[index];
-        }
-
 
         protected override Shape addGearToShape(Shape entityShape, ItemSlot gearslot, string slotCode, string shapePathForLogging, ref bool shapeIsCloned, ref string[] willDeleteElements, Dictionary<string, StepParentElementTo> overrideStepParent = null)
         {
@@ -394,117 +359,10 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override WorldInteraction[] GetInteractionHelp(IClientWorldAccessor world, EntitySelection es, IClientPlayer player, ref EnumHandling handled)
-        {
-            if (es.SelectionBoxIndex > 0)
-            {
-                return AttachableInteractionHelp.GetOrCreateInteractionHelp(world.Api, this, wearableSlots, es.SelectionBoxIndex - 1, GetSlotFromSelectionBoxIndex(es.SelectionBoxIndex - 1));
-            }
-
-            return base.GetInteractionHelp(world, es, player, ref handled);
-        }
-
 
         public override string PropertyName() => "dressable";
         public void Dispose() { }
 
-        public Vec3d GetInteractionHelpPosition()
-        {
-            var capi = entity.Api as ICoreClientAPI;
-            if (capi.World.Player.CurrentEntitySelection == null) return null;
-
-            var selebox = capi.World.Player.CurrentEntitySelection.SelectionBoxIndex - 1;
-            if (selebox < 0) return null;
-
-            return entity.GetBehavior<EntityBehaviorSelectionBoxes>().GetCenterPosOfBox(selebox)?.Add(0, 0.5, 0);
-        }
-
-        public override void OnEntityDeath(DamageSource damageSourceForDeath)
-        {
-            int i = 0;
-            foreach (var slot in inv)
-            {
-                var iai = slot.Itemstack?.Collectible.GetCollectibleInterface<IAttachedInteractions>();
-                iai?.OnEntityDeath(slot, i++, entity, damageSourceForDeath);
-            }
-
-            base.OnEntityDeath(damageSourceForDeath);
-        }
-
-
-        public bool TransparentCenter => false;
-    }
-
-
-
-    public class AttachableInteractionHelp
-    {
-
-        public static WorldInteraction[] GetOrCreateInteractionHelp(ICoreAPI api, EntityBehaviorAttachable eba, WearableSlotConfig[] wearableSlots, int slotIndex, ItemSlot slot)
-        {
-            string key = "interactionhelp-attachable-" + eba.entity.Code + "-" + slotIndex;
-            var stacks = ObjectCacheUtil.GetOrCreate(api, key, () =>
-            {
-                List<ItemStack> stacks = new List<ItemStack>();
-
-                foreach (var collObj in api.World.Collectibles)
-                {
-                    if (collObj.CreativeInventoryTabs.Length == 0 && collObj.CreativeInventoryStacks == null) continue;
-
-                    var iatta = IAttachableToEntity.FromCollectible(collObj);
-                    if (iatta == null) continue;
-
-                    if (collObj.CreativeInventoryStacks != null)
-                    {
-                        foreach (var tabstack in collObj.CreativeInventoryStacks)
-                        {
-                            foreach (var jstack in tabstack.Stacks)
-                            {
-                                if (!iatta.IsAttachable(eba.entity, jstack.ResolvedItemstack)) continue;
-
-                                string code = iatta.GetCategoryCode(jstack.ResolvedItemstack);
-                                var slotConfig = wearableSlots[slotIndex];
-
-                                if (!slotConfig.CanHold(code)) continue;
-
-                                stacks.Add(jstack.ResolvedItemstack);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        var stack = new ItemStack(collObj);
-                        if (!iatta.IsAttachable(eba.entity, stack)) continue;
-
-                        string code = iatta.GetCategoryCode(stack);
-                        var slotConfig = wearableSlots[slotIndex];
-
-                        if (!slotConfig.CanHold(code)) continue;
-
-                        stacks.Add(stack);
-                    }
-                }
-
-                stacks.Shuffle(api.World.Rand);
-
-                return stacks;
-            });
-
-            if (stacks.Count == 0) return null;
-
-            
-
-
-            return new WorldInteraction[]
-            {
-                new WorldInteraction()
-                {
-                    ActionLangCode = slot.Empty ? "attachableentity-attach" : "attachableentity-detach",
-                    Itemstacks = slot.Empty ? stacks.ToArray() : null,
-                    MouseButton = EnumMouseButton.Right,
-                    HotKeyCode = "ctrl"
-                }
-            };
-        }
+        
     }
 }

@@ -44,7 +44,7 @@ namespace Vintagestory.GameContent
                 StopAnimation(Personality + "-idle2");
             }
 
-            if (All || PersonalizedAnimations.Contains(animdata.Animation.ToLowerInvariant()))
+            if (All | PersonalizedAnimations.Contains(animdata.Animation.ToLowerInvariant()))
             {
                 animdata = animdata.Clone();
                 animdata.Animation = Personality + "-" + animdata.Animation;
@@ -72,15 +72,6 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override bool IsAnimationActive(params string[] anims)
-        {
-            foreach (var anim in anims)
-            {
-                if (base.IsAnimationActive(anim, Personality + "-" + anim)) return true;
-            }
-
-            return false;
-        }
     }
 
 

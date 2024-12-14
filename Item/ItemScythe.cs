@@ -162,7 +162,7 @@ namespace Vintagestory.GameContent
             {
                 if (byEntity.World.Side == EnumAppSide.Server && byEntity.World.Claims.TryAccess(byPlayer, blockSelection.Position, EnumBlockAccessFlags.BuildOrBreak))
                 {
-                    trimMode = slot.Itemstack.Attributes.GetInt("toolMode", 0) == 0;
+                    trimMode = block.Variant["tallgrass"] != null && block.Variant["tallgrass"] != "eaten" && slot.Itemstack.Attributes.GetInt("toolMode", 0) == 0;
 
                     OnBlockBrokenWith(byEntity.World, byEntity, slot, blockSelection);
                 }
@@ -178,10 +178,9 @@ namespace Vintagestory.GameContent
             {
                 var block = api.World.BlockAccessor.GetBlock(pos);
                 var trimmedBlock = api.World.GetBlock(block.CodeWithVariant("tallgrass", "eaten"));
-                bool blockIsTallgrass = block.Variant.ContainsKey("tallgrass");
-                if (blockIsTallgrass && block == trimmedBlock) return;
+                if (block == trimmedBlock) return;
 
-                if (blockIsTallgrass && trimmedBlock != null)
+                if (trimmedBlock != null)
                 {
                     api.World.BlockAccessor.BreakBlock(pos, plr);
                     api.World.BlockAccessor.MarkBlockDirty(pos);

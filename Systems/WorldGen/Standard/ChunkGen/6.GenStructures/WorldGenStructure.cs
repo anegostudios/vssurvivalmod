@@ -1,18 +1,16 @@
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
-using Vintagestory.API.Util;
 
 namespace Vintagestory.ServerMods
 {
-    public delegate bool TryGenerateHandler(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos pos, string locationCode);
+    public delegate bool TryGenerateHandler(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos pos);
 
     public enum EnumStructurePlacement
     {
@@ -64,7 +62,7 @@ namespace Vintagestory.ServerMods
         public Cuboidi[] CustomLandClaims;
 
         [JsonProperty]
-        public bool ExcludeSchematicSizeProtect;
+        public bool ExcludeSchematic;
 
 
         internal BlockSchematicPartial schematicData;
@@ -78,6 +76,7 @@ namespace Vintagestory.ServerMods
         public void Init(ICoreServerAPI api, WorldGenStoryStructuresConfig scfg, RockStrataConfig rockstrata, BlockLayerConfig blockLayerConfig)
         {
             schematicData = LoadSchematics<BlockSchematicPartial>(api, Schematics, null)[0];
+            schematicData.InitMetaBlocks(api.World.BlockAccessor);
             schematicData.Init(api.World.BlockAccessor);
             schematicData.blockLayerConfig = blockLayerConfig;
 
@@ -152,6 +151,22 @@ namespace Vintagestory.ServerMods
         [JsonProperty]
         public float MaxRain = 1;
         [JsonProperty]
+        public float MinForest = 0;
+        [JsonProperty]
+        public float MaxForest = 1;
+        [JsonProperty]
+        public float MinY = -0.3f;
+        [JsonProperty]
+        public float MaxY = 1;
+        [JsonProperty]
+        public NatFloat OffsetX = NatFloat.createGauss(0, 5);
+        [JsonProperty]
+        public int? OffsetY = null;
+        [JsonProperty]
+        public NatFloat OffsetZ = NatFloat.createGauss(0, 5);
+        [JsonProperty]
+        public NatFloat BlockCodeIndex = null;
+        [JsonProperty]
         public AssetLocation[] ReplaceWithBlocklayers;
         [JsonProperty]
         public bool PostPass = false;
@@ -201,7 +216,7 @@ namespace Vintagestory.ServerMods
             unscaledMaxTemp = Climate.DescaleTemperature(MaxTemp);
 
 
-            this.schematicDatas = LoadSchematicsWithRotations<BlockSchematicStructure>(api, this, config, structureConfig, structureConfig.SchematicYOffsets);
+            this.schematicDatas = LoadSchematicsWithRotations<BlockSchematicStructure>(api, Schematics, config, structureConfig, structureConfig.SchematicYOffsets, OffsetY);
 
             if (ReplaceWithBlocklayers != null)
             {
@@ -268,8 +283,7 @@ namespace Vintagestory.ServerMods
         public BlockSchematicStructure LastPlacedSchematic;
         int climateUpLeft, climateUpRight, climateBotLeft, climateBotRight;
 
-        internal bool TryGenerate(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos startPos, int climateUpLeft,
-            int climateUpRight, int climateBotLeft, int climateBotRight, string locationCode)
+        internal bool TryGenerate(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos startPos, int climateUpLeft, int climateUpRight, int climateBotLeft, int climateBotRight)
         {
             this.climateUpLeft = climateUpLeft;
             this.climateUpRight = climateUpRight;
@@ -292,7 +306,7 @@ namespace Vintagestory.ServerMods
 
             rand.InitPositionSeed(startPos.X, startPos.Z);
 
-            bool generated = Generators[(int)Placement](blockAccessor, worldForCollectibleResolve, startPos, locationCode);
+            bool generated = Generators[(int)Placement](blockAccessor, worldForCollectibleResolve, startPos);
 
             if (generated && Placement == EnumStructurePlacement.SurfaceRuin)
             {
@@ -304,7 +318,7 @@ namespace Vintagestory.ServerMods
                 int sizex = LastPlacedSchematic.SizeX;
                 int sizey = LastPlacedSchematic.SizeY;
                 int sizez = LastPlacedSchematic.SizeZ;
-                BlockPos tmpPos = new BlockPos(startPos.dimension);
+                BlockPos tmpPos = new BlockPos();
 
                 Block mossDecor = blockAccessor.GetBlock(new AssetLocation("attachingplant-spottymoss"));
 
@@ -322,7 +336,7 @@ namespace Vintagestory.ServerMods
                             var face = BlockFacing.ALLFACES[i];
                             if (!block.SideSolid[i]) continue;
 
-                            var nblock = blockAccessor.GetBlockOnSide(tmpPos, face);
+                            var nblock = blockAccessor.GetBlock(tmpPos.X + face.Normali.X, tmpPos.Y + face.Normali.Y, tmpPos.Z + face.Normali.Z);
                             if (!nblock.SideSolid[face.Opposite.Index])
                             {
                                 blockAccessor.SetDecor(mossDecor, tmpPos, face);
@@ -503,7 +517,7 @@ namespace Vintagestory.ServerMods
             return (4 + lowSide - entranceRot) % 4;
         }
 
-        internal bool TryGenerateRuinAtSurface(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos startPos, string locationCode)
+        internal bool TryGenerateRuinAtSurface(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos startPos)
         {
             if (schematicDatas.Length == 0) return false;
             int num = rand.NextInt(schematicDatas.Length);
@@ -549,7 +563,7 @@ namespace Vintagestory.ServerMods
             // improve flatness check for larger structures
             if (schematic.SizeX >= 30)
             {
-                var size = (int)(schematic.SizeX * 0.15 + 8);
+                var size = schematic.SizeX / (schematic.SizeX / 20 + 1);
                 for (int i = size; i < schematic.SizeX; i+=size)
                 {
                     tmpPos.Set(startPos.X + i, 0, startPos.Z);
@@ -565,24 +579,9 @@ namespace Vintagestory.ServerMods
                     minY = GameMath.Min(minY, topSide, botSide, centerSide);
                 }
             }
-            else if (schematic.SizeX >= 15) // check center on X
-            {
-                var size = schematic.SizeX / 2;
-                tmpPos.Set(startPos.X + size, 0, startPos.Z);
-                var topSide = blockAccessor.GetTerrainMapheightAt(tmpPos);
-
-                tmpPos.Set(startPos.X + size, 0, startPos.Z + len);
-                var botSide = blockAccessor.GetTerrainMapheightAt(tmpPos);
-
-                tmpPos.Set(startPos.X + size, 0, startPos.Z + len / 2);
-                var centerSide = blockAccessor.GetTerrainMapheightAt(tmpPos);
-
-                maxY = GameMath.Max(maxY, topSide, botSide, centerSide);
-                minY = GameMath.Min(minY, topSide, botSide, centerSide);
-            }
             if (schematic.SizeZ >= 30)
             {
-                var size = (int)(schematic.SizeZ * 0.15 + 8);
+                var size = schematic.SizeZ / (schematic.SizeZ / 20 + 1);
                 for (int i = size; i < schematic.SizeZ; i+=size)
                 {
                     tmpPos.Set(startPos.X + wdt, 0, startPos.Z + i);
@@ -598,24 +597,9 @@ namespace Vintagestory.ServerMods
                     minY = GameMath.Min(minY, rightSide, leftSide, centerSide);
                 }
             }
-            else if (schematic.SizeZ >= 15) // check center on Z
-            {
-                var size = schematic.SizeZ / 2;
-                tmpPos.Set(startPos.X + wdt, 0, startPos.Z + size);
-                var rightSide = blockAccessor.GetTerrainMapheightAt(tmpPos);
-
-                tmpPos.Set(startPos.X, 0, startPos.Z + size);
-                var leftSide = blockAccessor.GetTerrainMapheightAt(tmpPos);
-
-                tmpPos.Set(startPos.X + wdt / 2, 0, startPos.Z + size);
-                var centerSide = blockAccessor.GetTerrainMapheightAt(tmpPos);
-
-                maxY = GameMath.Max(maxY, rightSide, leftSide, centerSide);
-                minY = GameMath.Min(minY, rightSide, leftSide, centerSide);
-            }
 
             int diff = Math.Abs(maxY - minY);
-            if (diff > schematic.MaxYDiff) return false;
+            if (diff > 3) return false;
 
             startPos.Y = minY + schematic.OffsetY;
 
@@ -643,7 +627,7 @@ namespace Vintagestory.ServerMods
             if (!TestAboveGroundCheckPositions(blockAccessor, startPos, schematic.AbovegroundCheckPositions)) return false;
 
             if (!SatisfiesMinDistance(startPos, worldForCollectibleResolve)) return false;
-            if (WouldOverlapAt(blockAccessor,startPos, schematic, locationCode)) return false;
+            if (WouldOverlapAt(startPos, schematic, worldForCollectibleResolve)) return false;
 
             LastPlacedSchematicLocation.Set(startPos.X, startPos.Y, startPos.Z, startPos.X + schematic.SizeX, startPos.Y + schematic.SizeY, startPos.Z + schematic.SizeZ);
             LastPlacedSchematic = schematic;
@@ -653,7 +637,8 @@ namespace Vintagestory.ServerMods
             return true;
         }
 
-        internal bool TryGenerateAtSurface(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos startPos, string locationCode)
+
+        internal bool TryGenerateAtSurface(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos startPos)
         {
             int num = rand.NextInt(schematicDatas.Length);
             int orient = rand.NextInt(4);
@@ -702,6 +687,7 @@ namespace Vintagestory.ServerMods
             tmpPos.Set(startPos.X + wdthalf, startPos.Y - 1, startPos.Z + lenhalf);
             if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
+
             tmpPos.Set(startPos.X, startPos.Y - 1, startPos.Z);
             if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
@@ -747,7 +733,7 @@ namespace Vintagestory.ServerMods
 
 
             if (!SatisfiesMinDistance(startPos, worldForCollectibleResolve)) return false;
-            if (WouldOverlapAt(blockAccessor, startPos, schematic, locationCode)) return false;
+            if (WouldOverlapAt(startPos, schematic, worldForCollectibleResolve)) return false;
 
             LastPlacedSchematicLocation.Set(startPos.X, startPos.Y, startPos.Z, startPos.X + schematic.SizeX, startPos.Y + schematic.SizeY, startPos.Z + schematic.SizeZ);
             LastPlacedSchematic = schematic;
@@ -757,12 +743,12 @@ namespace Vintagestory.ServerMods
 
 
 
-        internal bool TryGenerateUnderwater(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos pos, string locationCode)
+        internal bool TryGenerateUnderwater(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos pos)
         {
             return false;
         }
 
-        internal bool TryGenerateUnderground(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos pos, string locationCode)
+        internal bool TryGenerateUnderground(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos pos)
         {
             int num = rand.NextInt(schematicDatas.Length);
 
@@ -772,7 +758,7 @@ namespace Vintagestory.ServerMods
 
             if (schematicStruc[0].PathwayStarts.Length > 0)
             {
-                return tryGenerateAttachedToCave(blockAccessor, worldForCollectibleResolve, schematicStruc, targetPos, locationCode);
+                return tryGenerateAttachedToCave(blockAccessor, worldForCollectibleResolve, schematicStruc, targetPos);
             }
 
             BlockSchematicStructure schematic = schematicStruc[rand.NextInt(4)];
@@ -786,7 +772,7 @@ namespace Vintagestory.ServerMods
             if (insideblockids.Count > 0 && !insideblockids.Contains(blockAccessor.GetBlock(targetPos).Id)) return false;
             if (!TestUndergroundCheckPositions(blockAccessor, placePos, schematic.UndergroundCheckPositions)) return false;
             if (!SatisfiesMinDistance(pos, worldForCollectibleResolve)) return false;
-            if (WouldOverlapAt(blockAccessor, pos, schematic, locationCode)) return false;
+            if (WouldOverlapAt(pos, schematic, worldForCollectibleResolve)) return false;
 
             if (resolvedRockTypeRemaps != null)
             {
@@ -814,7 +800,7 @@ namespace Vintagestory.ServerMods
             return true;
         }
 
-        private bool tryGenerateAttachedToCave(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockSchematicStructure[] schematicStruc, BlockPos targetPos, string locationCode)
+        private bool tryGenerateAttachedToCave(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockSchematicStructure[] schematicStruc, BlockPos targetPos)
         {
             // 1. Give up if non air block or mapheight is not at least 4 blocks higher
             // 2. Search up to 4 blocks downwards. Give up if no stone is found.
@@ -884,7 +870,7 @@ namespace Vintagestory.ServerMods
 
             if (targetPos.Y <= 0) return false;
             if (!TestUndergroundCheckPositions(blockAccessor, targetPos, schematic.UndergroundCheckPositions)) return false;
-            if (WouldOverlapAt(blockAccessor, targetPos, schematic, locationCode)) return false;
+            if (WouldOverlapAt(targetPos, schematic, worldForCollectibleResolve)) return false;
 
             LastPlacedSchematicLocation.Set(targetPos.X, targetPos.Y, targetPos.Z, targetPos.X + schematic.SizeX, targetPos.Y + schematic.SizeY, targetPos.Z + schematic.SizeZ);
             LastPlacedSchematic = schematic;
@@ -982,12 +968,12 @@ namespace Vintagestory.ServerMods
 
         static Cuboidi tmpLoc = new Cuboidi();
 
-        private bool WouldOverlapAt(IBlockAccessor blockAccessor, BlockPos pos, BlockSchematicStructure schematic, string locationCode)
+        public bool WouldOverlapAt(BlockPos pos, BlockSchematic schematic, IWorldAccessor world)
         {
-            int regSize = blockAccessor.RegionSize;
+            int regSize = world.BlockAccessor.RegionSize;
 
-            int mapRegionSizeX = blockAccessor.MapSizeX / regSize;
-            int mapRegionSizeZ = blockAccessor.MapSizeZ / regSize;
+            int mapRegionSizeX = world.BlockAccessor.MapSizeX / regSize;
+            int mapRegionSizeZ = world.BlockAccessor.MapSizeZ / regSize;
 
             int minrx = GameMath.Clamp(pos.X / regSize, 0, mapRegionSizeX);
             int minrz = GameMath.Clamp(pos.Z / regSize, 0, mapRegionSizeZ);
@@ -1001,7 +987,7 @@ namespace Vintagestory.ServerMods
             {
                 for (int rz = minrz; rz <= maxrz; rz++)
                 {
-                    IMapRegion mapregion = blockAccessor.GetMapRegion(rx, rz);
+                    IMapRegion mapregion = world.BlockAccessor.GetMapRegion(rx, rz);
                     if (mapregion == null) continue;
                     foreach (var val in mapregion.GeneratedStructures)
                     {
@@ -1013,7 +999,7 @@ namespace Vintagestory.ServerMods
                 }
             }
 
-            if (genStructuresSys.WouldSchematicOverlapAt(blockAccessor, pos, tmpLoc, locationCode)) return true;
+            if (!genStructuresSys.WouldSchematicOverlapAt(pos, tmpLoc)) return false;
 
             return false;
         }

@@ -7,9 +7,11 @@ using Vintagestory.API.Util;
 namespace Vintagestory.GameContent
 {
     [JsonObject(MemberSerialization.OptIn)]
-    public class DressAction : EntityActionBase
+    public class DressAction : IEntityAction
     {
-        public override string Type => "dress";
+        protected EntityActivitySystem vas;
+        public string Type => "dress";
+        public bool ExecutionHasFailed { get; set; }
 
         [JsonProperty]
         string Code;
@@ -25,12 +27,12 @@ namespace Vintagestory.GameContent
             this.Slot = slot;
         }
 
-        public override bool IsFinished()
+        public bool IsFinished()
         {
             return true;
         }
 
-        public override void Start(EntityActivity act)
+        public void Start(EntityActivity act)
         {
             var edh = vas.Entity as EntityDressedHumanoid;
             if (edh == null) return;
@@ -48,7 +50,17 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
+        public void OnTick(float dt) { }
+        public void Cancel() { 
+            // unequip here
+        }
+        public void Finish() { }
+
+        public void LoadState(ITreeAttribute tree) { }
+        public void StoreState(ITreeAttribute tree) { }
+
+
+        public void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             var b = ElementBounds.Fixed(0, 0, 200, 25);
             singleComposer
@@ -63,14 +75,14 @@ namespace Vintagestory.GameContent
             singleComposer.GetTextInput("code").SetValue(Code);
         }
 
-        public override bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
+        public bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             Slot = singleComposer.GetTextInput("slot").GetText();
             Code = singleComposer.GetTextInput("code").GetText();
             return true;
         }
 
-        public override IEntityAction Clone()
+        public IEntityAction Clone()
         {
             return new DressAction(vas, Code, Slot);
         }
@@ -78,6 +90,15 @@ namespace Vintagestory.GameContent
         public override string ToString()
         {
             return "Dress outfit " + Code + " in slot" + Slot;
+        }
+
+        public void OnVisualize(ActivityVisualizer visualizer)
+        {
+            
+        }
+        public void OnLoaded(EntityActivitySystem vas)
+        {
+            this.vas = vas;
         }
     }
 }

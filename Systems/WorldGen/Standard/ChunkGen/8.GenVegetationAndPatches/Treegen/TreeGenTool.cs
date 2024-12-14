@@ -176,7 +176,7 @@ namespace Vintagestory.ServerMods
             return false;
         }
 
-        public override void OnInteractStart(WorldEdit.WorldEdit worldEdit, BlockSelection blockSelection)
+        public override void OnBuild(WorldEdit.WorldEdit worldEdit, int oldBlockId, BlockSelection blockSel, ItemStack withItemStack)
         {
             if (_treeGenerators == null)
             {
@@ -191,7 +191,8 @@ namespace Vintagestory.ServerMods
                 return;
             }
 
-            blockSelection.Position.Add(blockSelection.Face.Opposite); // - prevented trees from growing o.O   - seems to work again and with this disabled trees float in the air 0.O
+            worldEdit.sapi.World.BlockAccessor.SetBlock(oldBlockId, blockSel.Position);
+            blockSel.Position.Add(blockSel.Face.Opposite); // - prevented trees from growing o.O   - seems to work again and with this disabled trees float in the air 0.O
 
             ba.ReadFromStagedByDefault = true;
 
@@ -205,8 +206,9 @@ namespace Vintagestory.ServerMods
                 vinesGrowthChance = VinesGrowthChance
             };
 
-            gen.GrowTree(ba, blockSelection.Position, treeParams, _rand);
+            gen.GrowTree(ba, blockSel.Position, treeParams, _rand);
 
+            ba.SetHistoryStateBlock(blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, oldBlockId, ba.GetStagedBlockId(blockSel.Position));
             ba.Commit();
         }
     }

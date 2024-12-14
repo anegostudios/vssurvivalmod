@@ -353,12 +353,12 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
             var rawStack = itemSlot.Itemstack;
             var firedStack = rawStack.Collectible.CombustibleProps?.SmeltedStack?.ResolvedItemstack;
             var kiln = rawStack.Collectible.Attributes?["beehivekiln"];
-            var stack = kiln?[doorOpen.ToString()]?.AsObject<JsonItemStack>();
+            var stack = kiln?[doorOpen.ToString()];
             var temp = itemSlot.Itemstack.Collectible.GetTemperature(Api.World, itemSlot.Itemstack);
-            if (kiln?.Exists == true && stack?.Resolve(Api.World, "beehivekiln-burn") == true)
+            if (kiln?.Exists == true && stack.Exists)
             {
-                itemSlot.Itemstack = stack.ResolvedItemstack.Clone();
-                itemSlot.Itemstack.StackSize = rawStack.StackSize / rawStack.Collectible.CombustibleProps.SmeltedRatio;
+                var item = Api.World.GetItem(new AssetLocation(stack.AsString()));
+                itemSlot.Itemstack = new ItemStack(item, rawStack.StackSize / rawStack.Collectible.CombustibleProps.SmeltedRatio);
             }
             else if (firedStack != null)
             {

@@ -2,14 +2,12 @@
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
     public class BlockWaterfall : BlockForFluidsLayer
     {
         float particleQuantity = 0.2f;
-        bool isBoiling;
 
         public override void OnLoaded(ICoreAPI api)
         {
@@ -21,8 +19,6 @@ namespace Vintagestory.GameContent
                 capi.Settings.Int.AddWatcher("particleLevel", OnParticleLevelChanged);
                 OnParticleLevelChanged(0);
             }
-
-            isBoiling = HasBehavior<BlockBehaviorSteaming>();
         }
 
         private void OnParticleLevelChanged(int newValue)
@@ -35,10 +31,10 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < BlockFacing.HORIZONTALS.Length; i++)
             {
                 BlockFacing facing = BlockFacing.HORIZONTALS[i];
-                Block block = world.BlockAccessor.GetBlockOnSide(pos, facing);
+                Block block = world.BlockAccessor.GetBlock(pos.X + facing.Normali.X, pos.Y, pos.Z + facing.Normali.Z);
                 if (block.Replaceable >= 6000)   // This is a kind of rough "transparent to sound" test
                 {
-                    block = world.BlockAccessor.GetBlockOnSide(pos, facing, BlockLayersAccess.Fluid);
+                    block = world.BlockAccessor.GetBlock(pos.X + facing.Normali.X, pos.Y, pos.Z + facing.Normali.Z, BlockLayersAccess.Fluid);
                     if (!block.IsLiquid()) return 1;
                 }
             }
@@ -53,7 +49,7 @@ namespace Vintagestory.GameContent
 
             return
                     pos.Y >= 2 &&
-                    world.BlockAccessor.GetBlockBelow(pos).Replaceable >= ReplacableThreshold
+                    world.BlockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z).Replaceable >= ReplacableThreshold
                 ;
         }
 
@@ -66,9 +62,9 @@ namespace Vintagestory.GameContent
                     if (api.World.Rand.NextDouble() > particleQuantity) continue;
 
                     BlockFacing facing = BlockFacing.HORIZONTALS[i];
-                    Block block = manager.BlockAccess.GetBlockOnSide(pos, facing);
+                    Block block = manager.BlockAccess.GetBlock(pos.X + facing.Normali.X, pos.Y, pos.Z + facing.Normali.Z);
                     if (block.SideSolid[facing.Opposite.Index]) continue;
-                    block = manager.BlockAccess.GetBlockOnSide(pos, facing, BlockLayersAccess.Fluid);
+                    block = manager.BlockAccess.GetBlock(pos.X + facing.Normali.X, pos.Y, pos.Z + facing.Normali.Z, BlockLayersAccess.Fluid);
                     if (block.BlockId != 0) continue;   // No particles if neighbouring liquid or ice
 
                     AdvancedParticleProperties bps = ParticleProperties[i];
@@ -90,12 +86,6 @@ namespace Vintagestory.GameContent
                     manager.Spawn(bps);
                 }
             }
-        }
-
-        public override float GetTraversalCost(BlockPos pos, EnumAICreatureType creatureType)
-        {
-            if (creatureType == EnumAICreatureType.SeaCreature && !isBoiling) return 0;
-            return isBoiling && creatureType != EnumAICreatureType.HeatProofCreature ? 99999f : 5f;
         }
 
     }

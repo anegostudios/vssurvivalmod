@@ -283,7 +283,7 @@ namespace Vintagestory.GameContent
             if (recipe != null) {
                 string message;
                 string outputName = recipe.GetOutputName(world, stacks);
-                if (recipe.CooksInto != null)
+                if (recipe.DirtyPot)
                 {
                     message = "nonfood-portions";
                 }
@@ -297,7 +297,7 @@ namespace Vintagestory.GameContent
             BlockMeal mealblock = api.World.GetBlock(new AssetLocation("bowl-meal")) as BlockMeal;
             string nutriFacts = mealblock.GetContentNutritionFacts(api.World, inSlot, stacks, null);
 
-            if (nutriFacts != null && recipe?.CooksInto == null) dsc.AppendLine(nutriFacts);
+            if (nutriFacts != null && recipe?.DirtyPot != true) dsc.AppendLine(nutriFacts);
 
             ItemSlot slot = BlockCrock.GetDummySlotForFirstPerishableStack(api.World, stacks, null, inSlot.Inventory);
             slot.Itemstack?.Collectible.AppendPerishableInfoText(slot, dsc, world);

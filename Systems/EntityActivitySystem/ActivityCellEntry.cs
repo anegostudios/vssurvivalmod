@@ -44,15 +44,15 @@ namespace Vintagestory.GameContent
         float accum1Sec;
         string prevExpireText;
 
-        public ActivityCellEntry(ICoreClientAPI capi, ElementBounds bounds, string name, string detail, Action<int> onClick, float leftColWidth=200, float rightColWidth=300) : base(capi, bounds)
+        public ActivityCellEntry(ICoreClientAPI capi, ElementBounds bounds, string name, string detail, Action<int> onClick) : base(capi, bounds)
         {
             this.onClick = onClick;
 
             CairoFont font = CairoFont.WhiteDetailText();
             double offY = (unScaledCellHeight - font.UnscaledFontsize) / 2;
 
-            var nameTextBounds = ElementBounds.Fixed(0, offY, leftColWidth, 25).WithParent(Bounds);
-            var activitiesBounds = ElementBounds.Fixed(0, offY, rightColWidth, 25).WithParent(Bounds).FixedRightOf(nameTextBounds, 10);
+            var nameTextBounds = ElementBounds.Fixed(0, offY, 200, 25).WithParent(Bounds);
+            var activitiesBounds = ElementBounds.Fixed(0, offY, 300, 25).WithParent(Bounds).FixedRightOf(nameTextBounds, 10);
 
             nameTextElem = new GuiElementRichtext(capi, VtmlUtil.Richtextify(capi, name, font), nameTextBounds);
             detailTextElem = new GuiElementRichtext(capi, VtmlUtil.Richtextify(capi, detail, font), activitiesBounds);

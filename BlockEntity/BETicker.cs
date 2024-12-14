@@ -39,7 +39,7 @@ namespace Vintagestory.GameContent
 
         private void TryInteract(BlockFacing facing)
         {
-            Block block = Api.World.BlockAccessor.GetBlockOnSide(Pos, facing);
+            Block block = Api.World.BlockAccessor.GetBlock(Pos.X + facing.Normali.X, Pos.Y + facing.Normali.Y, Pos.Z + facing.Normali.Z);
             if (block != null)
             {
                 try

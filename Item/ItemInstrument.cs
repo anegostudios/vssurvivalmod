@@ -36,45 +36,31 @@ namespace Vintagestory.GameContent
         {
             var plr = (byEntity as EntityPlayer).Player;
             var mseo = api.ModLoader.GetModSystem<ModSystemEntityOwnership>();
-            if (!mseo.OwnerShipsByPlayerUid.TryGetValue(plr.PlayerUID, out var ownerships) || !ownerships.TryGetValue(GroupCode, out var ownership))
+            if (mseo.OwnerShipsByPlayerUid.TryGetValue(plr.PlayerUID, out var ownerships) && ownerships.TryGetValue(GroupCode, out var ownership))
             {
-                return;
-            }
-
-            var entity = api.World.GetEntityById(ownership.EntityId);
-            if (entity == null)
-            {
-                return;
-            }
-
-            var mw = entity.GetBehavior<EntityBehaviorMortallyWoundable>();
-            if (mw?.HealthState == EnumEntityHealthState.MortallyWounded || mw?.HealthState == EnumEntityHealthState.Dead)
-            {
-                return;
-            }
-
-            var tm = entity.GetBehavior<EntityBehaviorTaskAI>().TaskManager;
-            var aitcto = tm.AllTasks.FirstOrDefault(t => t is AiTaskComeToOwner) as AiTaskComeToOwner;
-            if (entity.ServerPos.DistanceTo(byEntity.ServerPos) > aitcto.TeleportMaxRange) // Do nothing outside max teleport range
-            {
-                return;
-            }
-
-            var mount = entity?.GetInterface<IMountable>();
-            if (mount != null)
-            {
-                if (mount.IsMountedBy(plr.Entity)) return;
-                if (mount.AnyMounted())
+                var entity = api.World.GetEntityById(ownership.EntityId);
+                if (entity != null)
                 {
-                    entity.GetBehavior<EntityBehaviorRideable>()?.UnmnountPassengers(); // You are not my owner, get lost!
+                    var tm = entity.GetBehavior<EntityBehaviorTaskAI>().TaskManager;
+                    var aitcto = tm.AllTasks.FirstOrDefault(t => t is AiTaskComeToOwner) as AiTaskComeToOwner;
+                    if (entity.ServerPos.DistanceTo(byEntity.ServerPos) <= aitcto.TeleportMaxRange) // Do nothing outside max teleport range
+                    {
+                        var mount = entity?.GetInterface<IMountable>();
+                        if (mount != null)
+                        {
+                            if (mount.IsMountedBy(plr.Entity)) return;
+                            if (mount.AnyMounted())
+                            {
+                                entity.GetBehavior<EntityBehaviorRideable>()?.UnmnountPassengers(); // You are not my owner, get lost!
+                            }
+                        }
+
+
+                        tm.StopTasks();
+                        tm.ExecuteTask(aitcto, 0);
+                    }
                 }
             }
-
-            entity.AlwaysActive = true;
-            entity.State = EnumEntityState.Active;
-            aitcto.allowTeleportCount=1;
-            tm.StopTasks();
-            tm.ExecuteTask(aitcto, 0);
         }
     }
 }

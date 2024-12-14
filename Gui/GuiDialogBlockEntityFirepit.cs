@@ -22,7 +22,9 @@ namespace Vintagestory.GameContent
 
         public override double DrawOrder => 0.2;
 
-        public GuiDialogBlockEntityFirepit(string dlgTitle, InventoryBase Inventory, BlockPos bePos, SyncedTreeAttribute tree, ICoreClientAPI capi) : base(dlgTitle, Inventory, bePos, capi)
+        public GuiDialogBlockEntityFirepit(string dialogTitle, InventoryBase Inventory, BlockPos BlockEntityPosition,
+                                           SyncedTreeAttribute tree, ICoreClientAPI capi)
+            : base(dialogTitle, Inventory, BlockEntityPosition, capi)
         {
             if (IsDuplicate) return;
             tree.OnModified.Add(new TreeModifiedListener() { listener = OnAttributesModified } );

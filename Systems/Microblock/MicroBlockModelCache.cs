@@ -105,7 +105,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            MeshData mesh = BlockEntityMicroBlock.CreateMesh(capi, voxelCuboids, materials, null, null, originalCuboids, 0);
+            MeshData mesh = BlockEntityMicroBlock.CreateMesh(capi, voxelCuboids, materials, null, null, originalCuboids);
             mesh.Rgba.Fill((byte)255);
 
             return capi.Render.UploadMultiTextureMesh(mesh);

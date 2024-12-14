@@ -9,10 +9,12 @@ using Vintagestory.API.Util;
 namespace Vintagestory.GameContent
 {
     [JsonObject(MemberSerialization.OptIn)]
-    public class LookatBlockAction : EntityActionBase
+    public class LookatBlockAction : IEntityAction
     {
-        public override string Type => "lookatblock";
+        public string Type => "lookatblock";
+        public bool ExecutionHasFailed { get; set; }
 
+        EntityActivitySystem vas;
         [JsonProperty]
         AssetLocation targetBlockCode;
         [JsonProperty]
@@ -27,9 +29,15 @@ namespace Vintagestory.GameContent
             this.searchRange = searchRange;
         }
 
-        public override void Start(EntityActivity act)
+
+        public bool IsFinished()
         {
-            BlockPos targetPos = getTarget(vas.Entity.Api, vas.Entity.ServerPos.XYZ);
+            return true;
+        }
+
+        public void Start(EntityActivity act)
+        {
+            BlockPos targetPos = getTarget();
 
             ExecutionHasFailed = targetPos == null;
 
@@ -47,11 +55,12 @@ namespace Vintagestory.GameContent
             }
         }
 
-        private BlockPos getTarget(ICoreAPI api, Vec3d fromPos)
+        private BlockPos getTarget()
         {
             var range = GameMath.Clamp(searchRange, -10, 10);
-            var minPos = fromPos.Clone().Add(-range, -1, -range).AsBlockPos;
-            var maxPos = fromPos.Clone().Add(range, 1, range).AsBlockPos;
+            var api = vas.Entity.Api;
+            var minPos = vas.Entity.ServerPos.XYZ.Add(-range, -1, -range).AsBlockPos;
+            var maxPos = vas.Entity.ServerPos.XYZ.Add(range, 1, range).AsBlockPos;
 
             BlockPos targetPos = null;
             api.World.BlockAccessor.WalkBlocks(minPos, maxPos, (block, x, y, z) =>
@@ -66,12 +75,25 @@ namespace Vintagestory.GameContent
             return targetPos;
         }
 
+        public void OnTick(float dt)
+        {
+
+        }
+
+        public void Cancel()
+        {
+
+        }
+        public void Finish() { }
+        public void LoadState(ITreeAttribute tree) { }
+        public void StoreState(ITreeAttribute tree) { }
+
         public override string ToString()
         {
             return "Look at nearest block " + targetBlockCode + " within " + searchRange + " blocks";
         }
 
-        public override void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
+        public void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             var b = ElementBounds.Fixed(0, 0, 300, 25);
             singleComposer
@@ -86,25 +108,29 @@ namespace Vintagestory.GameContent
             singleComposer.GetTextInput("targetBlockCode").SetValue(targetBlockCode?.ToShortString());
         }
 
-        public override IEntityAction Clone()
+        public IEntityAction Clone()
         {
             return new LookatBlockAction(vas, targetBlockCode, searchRange);
         }
 
-        public override bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
+        public bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             searchRange = singleComposer.GetTextInput("searchRange").GetText().ToFloat();
             targetBlockCode = new AssetLocation(singleComposer.GetTextInput("targetBlockCode").GetText());
             return true;
         }
 
-        public override void OnVisualize(ActivityVisualizer visualizer)
+        public void OnVisualize(ActivityVisualizer visualizer)
         {
-            var target = getTarget(visualizer.Api, visualizer.CurrentPos);
+            var target = getTarget();
             if (target != null)
             {
-                visualizer.LineTo(visualizer.CurrentPos, target.ToVec3d().Add(0.5, 0.5, 0.5), ColorUtil.ColorFromRgba(0, 255, 0, 255));
+                visualizer.LineTo(target.ToVec3d().Add(0.5, 0.5, 0.5));
             }
+        }
+        public void OnLoaded(EntityActivitySystem vas)
+        {
+            this.vas = vas;
         }
     }
 }

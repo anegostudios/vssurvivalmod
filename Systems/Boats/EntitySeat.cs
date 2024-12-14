@@ -10,10 +10,9 @@ namespace Vintagestory.GameContent
     {
         public EntityControls controls = new EntityControls();
         public Entity Passenger { get; set; }
-
+        
         public long PassengerEntityIdForInit { get; set; }
         private string SeatIdForInit;
-        public bool DoTeleportOnUnmount { get; set; } = true;
         public string SeatId
         {
             get { return config?.SeatId ?? SeatIdForInit; }
@@ -73,19 +72,16 @@ namespace Vintagestory.GameContent
 
         public virtual void DidUnmount(EntityAgent entityAgent)
         {
-            if (Passenger != null)
+            var pesr = Passenger?.Properties?.Client.Renderer as EntityShapeRenderer;
+            if (pesr != null)
             {
-                var pesr = Passenger.Properties?.Client.Renderer as EntityShapeRenderer;
-                if (pesr != null)
-                {
-                    pesr.xangle = 0;
-                    pesr.yangle = 0;
-                    pesr.zangle = 0;
-                }
-
-                Passenger.Pos.Roll = 0;
+                pesr.xangle = 0;
+                pesr.yangle = 0;
+                pesr.zangle = 0;
             }
-            Passenger = null;
+
+            this.Passenger.Pos.Roll = 0;
+            this.Passenger = null;
         }
 
 
@@ -102,5 +98,10 @@ namespace Vintagestory.GameContent
                 controls.StopAllMovement();
             }
         }
+
+        
     }
+
+
+
 }

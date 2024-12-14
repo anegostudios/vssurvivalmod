@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.IO;
 using System.Text;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -32,7 +33,7 @@ namespace Vintagestory.GameContent
 
         public override void Initialize(ICoreAPI api)
         {
-            // Newly placed
+            // Newly placed 
             if (inventory == null)
             {
                 InitInventory(Block);
@@ -64,7 +65,7 @@ namespace Vintagestory.GameContent
                     InitInventory(null);
                 }
             }
-
+            
 
             base.FromTreeAttributes(tree, worldForResolving);
         }
@@ -97,7 +98,7 @@ namespace Vintagestory.GameContent
             {
                 inventory.TransitionableSpeedMulByType = Block.Attributes["transitionSpeedMul"].AsObject<Dictionary<EnumTransitionType, float>>();
             }
-
+            
             inventory.OnInventoryClosed += OnInvClosed;
             inventory.OnInventoryOpened += OnInvOpened;
             inventory.SlotModified += OnSlotModifid;
@@ -124,7 +125,20 @@ namespace Vintagestory.GameContent
         {
             if (Api.World is IServerWorldAccessor)
             {
-                var data = BlockEntityContainerOpen.ToBytes("BlockEntityInventory", Lang.Get(dialogTitleLangCode), 4, inventory);
+                byte[] data;
+
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    BinaryWriter writer = new BinaryWriter(ms);
+                    writer.Write("BlockEntityInventory");
+                    writer.Write(Lang.Get(dialogTitleLangCode));
+                    writer.Write((byte)4);
+                    TreeAttribute tree = new TreeAttribute();
+                    inventory.ToTreeAttributes(tree);
+                    tree.ToBytes(writer);
+                    data = ms.ToArray();
+                }
+
                 ((ICoreServerAPI)Api).Network.SendBlockEntityPacket(
                     (IServerPlayer)byPlayer,
                     Pos,

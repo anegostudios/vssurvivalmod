@@ -24,8 +24,6 @@ namespace Vintagestory.ServerMods
         internal GenBlockLayers genBlockLayers;
 
         public int OffsetY { get; set; } = -1;
-        public int MaxYDiff = 3;
-        public int? StoryLocationMaxAmount;
 
         public override void Init(IBlockAccessor blockAccessor)
         {
@@ -169,7 +167,7 @@ namespace Vintagestory.ServerMods
                         if (block == null) continue;
 
 
-                        if (replaceMetaBlocks && (block.Id == UndergroundBlockId || block.Id == AbovegroundBlockId)) continue;
+                        if (replaceMetaBlocks && (block == undergroundBlock || block == abovegroundBlock)) continue;
 
                         if (block.Replaceable < 1000 && depth >= 0)
                         {
@@ -270,7 +268,7 @@ namespace Vintagestory.ServerMods
 
                             if (!block.RainPermeable)
                             {
-                                if (IsFillerOrPath(block))
+                                if (block == fillerBlock || block == pathwayBlock)
                                 {
                                     int lx = curPos.X % chunksize;
                                     int lz = curPos.Z % chunksize;
@@ -289,7 +287,7 @@ namespace Vintagestory.ServerMods
                         if (lightHsv[2] > 0 && blockAccessor is IWorldGenBlockAccessor)
                         {
                             Block oldBlock = blockAccessor.GetBlock(curPos);
-                            ((IWorldGenBlockAccessor)blockAccessor).ScheduleBlockLightUpdate(curPos, oldBlock.BlockId, block.BlockId);
+                            ((IWorldGenBlockAccessor)blockAccessor).ScheduleBlockLightUpdate(curPos.Copy(), oldBlock.BlockId, block.BlockId);
                         }
                     }
 
@@ -394,7 +392,7 @@ namespace Vintagestory.ServerMods
 
                 Block newBlock = blockAccessor.GetBlock(blockCode);
 
-                if (newBlock == null || (replaceMetaBlocks && (newBlock.Id == UndergroundBlockId || newBlock.Id == AbovegroundBlockId))) continue;
+                if (newBlock == null || (replaceMetaBlocks && (newBlock == undergroundBlock || newBlock == abovegroundBlock))) continue;
 
                 curPos.Set(dx + startPos.X, dy + startPos.Y, dz + startPos.Z);
                 if (!blockAccessor.IsValidPos(curPos)) continue;    // Deal with cases where we are at the map edge
@@ -421,14 +419,14 @@ namespace Vintagestory.ServerMods
                 if (newBlock.LightHsv[2] > 0 && blockAccessor is IWorldGenBlockAccessor)
                 {
                     Block oldBlock = blockAccessor.GetBlock(curPos);
-                    ((IWorldGenBlockAccessor)blockAccessor).ScheduleBlockLightUpdate(curPos, oldBlock.BlockId, newBlock.BlockId);
+                    ((IWorldGenBlockAccessor)blockAccessor).ScheduleBlockLightUpdate(curPos.Copy(), oldBlock.BlockId, newBlock.BlockId);
                 }
             }
 
             if (!(blockAccessor is IBlockAccessorRevertable))
             {
                 PlaceDecors(blockAccessor, startPos);
-                PlaceEntitiesAndBlockEntities(blockAccessor, worldForCollectibleResolve, startPos, BlockCodesTmpForRemap, ItemCodes, false, null, centerrockblockid, null, GenStructures.ReplaceMetaBlocks);
+                PlaceEntitiesAndBlockEntities(blockAccessor, worldForCollectibleResolve, startPos, BlockCodesTmpForRemap, ItemCodes, false, null, centerrockblockid);
             }
 
             return placed;
@@ -490,7 +488,6 @@ namespace Vintagestory.ServerMods
             cloned.SizeY = SizeY;
             cloned.SizeZ = SizeZ;
             cloned.OffsetY = OffsetY;
-            cloned.MaxYDiff = MaxYDiff;
 
             cloned.GameVersion = GameVersion;
             cloned.FromFileName = FromFileName;
@@ -508,7 +505,6 @@ namespace Vintagestory.ServerMods
 
             cloned.ReplaceMode = ReplaceMode;
             cloned.EntranceRotation = EntranceRotation;
-            cloned.OriginalPos = OriginalPos;
 
             return cloned;
         }

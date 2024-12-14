@@ -94,47 +94,34 @@ namespace Vintagestory.GameContent
         MusicTrack track;
         long startLoadingMs;
         long handlerId;
-        bool nowFadingOut;
+        bool wasStopped;
 
         void StartMusic()
         {
-            if (capi == null || musicTrackLocation == null) return;
-            if (nowFadingOut && track?.Sound != null)
+            if (track != null || capi == null || musicTrackLocation == null)
             {
-                track.Sound.FadeIn(1, null); // FadeIn will cancel the FadeOut
-                nowFadingOut = false;
+                if (track != null && !track.IsActive)
+                {
+                    track.Sound?.Dispose();
+                    track = null;
+                }
                 return;
             }
-            if (track?.loading==true || track?.Sound?.IsPlaying==true)
-            {
-                return;
-            }
-            nowFadingOut = false;
 
             startLoadingMs = capi.World.ElapsedMilliseconds;
             track = capi.StartTrack(musicTrackLocation, 99f, EnumSoundType.Music, onTrackLoaded);
-            track.ForceActive = true;
             track.Priority = priority;
+            wasStopped = false;
         }
 
         void StopMusic()
         {
             if (capi == null) return;
 
-            if (handlerId != 0)
-            {
-                capi.Event.UnregisterCallback(handlerId);
-                return;
-            }
-
-            if (track?.Sound != null) nowFadingOut = true;
-            track?.FadeOut(3, () =>
-            {
-                nowFadingOut = false;
-                var trackTmp = track;                  // we need a further track==null test as this lambda expression will not be processed until some time later (LoadedSound.cs line 669 enqueues it as a main thread task). By that time, track could be null. Use of the local variable guards against race conditions, in case something other than the main thread set this track to null
-                if (trackTmp != null) trackTmp.ForceActive = false;
-                track = null;
-            });            
+            track?.FadeOut(4);
+            track = null;
+            capi.Event.UnregisterCallback(handlerId);
+            wasStopped = true;
         }
 
         private void onTrackLoaded(ILoadedSound sound)
@@ -142,7 +129,7 @@ namespace Vintagestory.GameContent
             if (track == null)
             {
                 sound?.Dispose();
-                return; 
+                return;
             }
             if (sound == null) return;
 
@@ -155,11 +142,16 @@ namespace Vintagestory.GameContent
             long longMsPassed = capi.World.ElapsedMilliseconds - startLoadingMs;
             handlerId = capi.Event.RegisterCallback((dt) => {
                 if (sound.IsDisposed) { return; }
-                sound.Start();
-                sound.FadeIn(fadeInDuration, null);
-                track.loading = false;                
-                handlerId = 0;
-            }, (int)Math.Max(0, 500 - longMsPassed), true);
+
+                if (!wasStopped)
+                {
+                    sound.Start();
+                    sound.FadeIn(fadeInDuration, null);
+                }
+
+                track.loading = false;
+
+            }, (int)Math.Max(0, 500 - longMsPassed));
         }
 
 

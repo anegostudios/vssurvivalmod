@@ -28,7 +28,6 @@ namespace Vintagestory.GameContent
 
         MeshData potMesh;
         MeshData contentMesh;
-        RoomRegistry roomReg;
 
         bool hasSoil => !inv[0].Empty;
 
@@ -125,8 +124,6 @@ namespace Vintagestory.GameContent
             {
                 genMeshes();
                 MarkDirty(true);
-
-                roomReg = api.ModLoader.GetModSystem<RoomRegistry>();
             }
         }
 
@@ -343,17 +340,7 @@ namespace Vintagestory.GameContent
 
             if (contentMesh != null)
             {
-                bool enableWind = Api.World.BlockAccessor.GetDistanceToRainFall(Pos, 6, 2) < 20;
-                if (!enableWind)
-                {
-                    var cloned = contentMesh.Clone();
-                    cloned.ClearWindFlags();
-                    mesher.AddMeshData(cloned);
-                }
-                else
-                {
-                    mesher.AddMeshData(contentMesh);
-                }
+                mesher.AddMeshData(contentMesh);
             }
 
             return true;

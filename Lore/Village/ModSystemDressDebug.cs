@@ -15,7 +15,7 @@ namespace Vintagestory.GameContent
 {
     public delegate TextCommandResult DressedEntityEachDelegate(EntityDressedHumanoid entity, Dictionary<string, WeightedCode[]> pro);
 
-    public class ModSystemVillagerDebug : ModSystem
+    public class ModSystemDressDebug : ModSystem
     {
         ICoreServerAPI sapi;
         ICoreClientAPI capi;
@@ -25,36 +25,8 @@ namespace Vintagestory.GameContent
         {
             this.capi = api;
             var parsers = api.ChatCommands.Parsers;
-            api.ChatCommands.GetOrCreate("dev")
-
-                .BeginSub("talk")
-                    .WithArgs(parsers.Entities("entity"), parsers.OptionalWord("talk type"))
-                    .HandleWith((args) => CmdUtil.EntityEach(args, (e) =>
-                    {
-                        if (e == args.Caller.Entity) return TextCommandResult.Success("Ignoring removal of caller");
-                        var ebh = e.GetBehavior<EntityBehaviorConversable>();
-                        if (ebh != null)
-                        {
-                            if (args.Parsers[1].IsMissing)
-                            {
-                                StringBuilder sbt = new StringBuilder();
-                                foreach (var talktype in Enum.GetValues(typeof(EnumTalkType)))
-                                {
-                                    if (sbt.Length > 0) sbt.Append(", ");
-                                    sbt.Append(talktype);
-                                }
-
-                                return TextCommandResult.Success(sbt.ToString());
-                            }
-
-                            if (Enum.TryParse<EnumTalkType>(args[1] as string, true, out var tt))
-                            {
-                                ebh.TalkUtil.Talk(tt);
-                            }
-                        }
-                        return TextCommandResult.Success("Ok, executed");
-                    }))
-                .EndSub()
+            api.ChatCommands
+                .GetOrCreate("dev")
                 .BeginSub("pro")
                     .WithArgs(parsers.Entities("entity"))
                     .BeginSub("reload")
@@ -82,21 +54,6 @@ namespace Vintagestory.GameContent
             var parsers = api.ChatCommands.Parsers;
             api.ChatCommands
                 .GetOrCreate("dev")
-                .BeginSub("astardebug")
-                    .WithArgs(api.ChatCommands.Parsers.Entities("entity"))
-                    .HandleWith((args) => CmdUtil.EntityEach(args, (e) =>
-                    {
-                        if (e == args.Caller.Entity) return TextCommandResult.Success("Ignoring removal of caller");
-                        var ebh = e.GetBehavior<EntityBehaviorActivityDriven>();
-                        if (ebh != null)
-                        {
-                            var on = !(ebh.ActivitySystem.wppathTraverser as WaypointsTraverser).PathFindDebug;
-                            (ebh.ActivitySystem.wppathTraverser as WaypointsTraverser).PathFindDebug = on;
-                            return TextCommandResult.Success("Astar debug now " + (on ? "on" : "off"));
-                        }
-                        return TextCommandResult.Success("Entity is lacking EntityBehaviorActivityDriven");
-                    }))
-                .EndSub()
                 .BeginSub("pro")
                     .WithArgs(parsers.Entities("entity"))
 
@@ -160,7 +117,21 @@ namespace Vintagestory.GameContent
                     }))
                 .EndSub()
 
-              
+                .BeginSub("astardebug")
+                    .WithArgs(api.ChatCommands.Parsers.Entities("entity"))
+                    .HandleWith((args) => CmdUtil.EntityEach(args, (e) =>
+                    {
+                        if (e == args.Caller.Entity) return TextCommandResult.Success("Ignoring removal of caller");
+                        var ebh = e.GetBehavior<EntityBehaviorActivityDriven>();
+                        if (ebh != null)
+                        {
+                            var on = !(ebh.ActivitySystem.wppathTraverser as WaypointsTraverser).PathFindDebug;
+                            (ebh.ActivitySystem.wppathTraverser as WaypointsTraverser).PathFindDebug = on;
+                            return TextCommandResult.Success("Astar debug now " + (on ? "on":"off"));
+                        }
+                        return TextCommandResult.Success("Entity is lacking EntityBehaviorActivityDriven");
+                    }))
+                .EndSub()
             ;
         }
 

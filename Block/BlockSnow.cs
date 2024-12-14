@@ -1,6 +1,5 @@
 ﻿using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -9,7 +8,7 @@ namespace Vintagestory.GameContent
         Cuboidf[] fullBox = new Cuboidf[] { new Cuboidf(0,0,0,1,1,1) };
         public override Cuboidf[] GetCollisionBoxes(IBlockAccessor world, BlockPos pos)
         {
-            if (world.GetBlockAbove(pos) is BlockLayered)
+            if (world.GetBlock(pos.X, pos.Y + 1, pos.Z) is BlockLayered)
             {
                 return fullBox;
             }

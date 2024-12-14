@@ -19,7 +19,7 @@ namespace Vintagestory.GameContent
         public abstract string BlockCode { get; }
         public abstract int MaxStackSize { get; }
 
-
+        
 
         public virtual int DefaultTakeQuantity { get { return 1; } }
         public virtual int BulkTakeQuantity { get { return 4; } }
@@ -98,7 +98,7 @@ namespace Vintagestory.GameContent
 
             bool sneaking = byPlayer.Entity.Controls.ShiftKey;
 
-
+          
             ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
             bool equalStack = hotbarSlot.Itemstack != null && hotbarSlot.Itemstack.Equals(Api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes);
@@ -174,13 +174,6 @@ namespace Vintagestory.GameContent
                     invSlot.Itemstack.Collectible.SetTemperature(Api.World, invSlot.Itemstack, (tempPile * oldSize + tempAdded * q) / (oldSize + q), false);
                 }
 
-                Api.World.Logger.Audit("{0} Put {1}x{2} into {3} at {4}.",
-                    player.PlayerName,
-                    q,
-                    hotbarSlot.Itemstack.Collectible.Code,
-                    Block.Code,
-                    Pos
-                );
                 if (player.WorldData.CurrentGameMode != EnumGameMode.Creative)
                 {
                     hotbarSlot.TakeOut(q);
@@ -219,13 +212,6 @@ namespace Vintagestory.GameContent
                 {
                     Api.World.SpawnItemEntity(stack, Pos);
                 }
-                Api.World.Logger.Audit("{0} Took {1}x{2} from {3} at {4}.",
-                    player.PlayerName,
-                    q,
-                    stack.Collectible.Code,
-                    Block.Code,
-                    Pos
-                );
             }
 
             if (OwnStackSize == 0)

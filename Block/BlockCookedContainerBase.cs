@@ -309,7 +309,7 @@ namespace Vintagestory.GameContent
             {
                 string message;
                 string outputName = recipe.GetOutputName(world, stacks);
-                if (recipe.CooksInto != null)
+                if (recipe.DirtyPot)
                 {
                     message = "contained-nonfood-portions";
                     int index = outputName.IndexOf('\n');

@@ -129,7 +129,7 @@ namespace Vintagestory.GameContent
                 ElementBounds playerMoneyBounds = costTextBounds.FlatCopy().WithFixedOffset(0, costTextBounds.fixedHeight);
 
 
-                double daysLeft = (owningEntity as EntityTradingHumanoid).NextRefreshTotalDays();
+                double daysLeft = (owningEntity as EntityTrader).NextRefreshTotalDays();
                 string daysLeftString = daysLeft < 1 ? Lang.Get("Delievery of new goods in less than 1 day") : Lang.Get("Delievery of new goods in {0} days", (int)daysLeft);
 
                 CairoFont deliveryTextFont = CairoFont.WhiteDetailText();
@@ -386,12 +386,12 @@ namespace Vintagestory.GameContent
             if (result == EnumTransactionResult.Success)
             {
                 capi.Gui.PlaySound(new AssetLocation("sounds/effect/cashregister"), false, 0.25f);
-                (owningEntity as EntityTradingHumanoid).TalkUtil?.Talk(EnumTalkType.Purchase);
+                (owningEntity as EntityTrader).talkUtil.Talk(EnumTalkType.Purchase);
             } 
 
             if (result == EnumTransactionResult.PlayerNotEnoughAssets)
             {
-                (owningEntity as EntityTradingHumanoid).TalkUtil?.Talk(EnumTalkType.Complain);
+                (owningEntity as EntityTrader).talkUtil.Talk(EnumTalkType.Complain);
                 if (notifyPlayerMoneyTextSeconds <= 0)
                 {
                     prevPlrAbsFixedX = SingleComposer.GetDynamicText("playerMoneyText").Bounds.absFixedX;
@@ -402,7 +402,7 @@ namespace Vintagestory.GameContent
 
             if (result == EnumTransactionResult.TraderNotEnoughAssets)
             {
-                (owningEntity as EntityTradingHumanoid).TalkUtil?.Talk(EnumTalkType.Complain);
+                (owningEntity as EntityTrader).talkUtil.Talk(EnumTalkType.Complain);
                 if (notifyTraderMoneyTextSeconds <= 0)
                 {
                     prevTdrAbsFixedX = SingleComposer.GetDynamicText("traderMoneyText").Bounds.absFixedX;
@@ -413,7 +413,7 @@ namespace Vintagestory.GameContent
 
             if (result == EnumTransactionResult.TraderNotEnoughSupplyOrDemand)
             {
-                (owningEntity as EntityTradingHumanoid).TalkUtil?.Talk(EnumTalkType.Complain);
+                (owningEntity as EntityTrader).talkUtil.Talk(EnumTalkType.Complain);
             }
 
             capi.Network.SendEntityPacket(owningEntity.EntityId, 1000, null);
@@ -454,7 +454,7 @@ namespace Vintagestory.GameContent
 
             traderInventory.SlotModified -= TraderInventory_SlotModified;
 
-            (owningEntity as EntityTradingHumanoid).TalkUtil?.Talk(EnumTalkType.Goodbye);
+            (owningEntity as EntityTrader).talkUtil.Talk(EnumTalkType.Goodbye);
 
             capi.Network.SendPacketClient(capi.World.Player.InventoryManager.CloseInventory(traderInventory));
 

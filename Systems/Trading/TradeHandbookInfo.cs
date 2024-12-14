@@ -6,7 +6,6 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.Util;
-using Vintagestory.ServerMods;
 
 namespace Vintagestory.GameContent
 {
@@ -37,22 +36,11 @@ namespace Vintagestory.GameContent
             {
                 TradeProperties tradeProps = null;
 
-                var stringpath = entitytype.Attributes?["tradePropsFile"].AsString();
-                AssetLocation filepath=null;
-
-                if (entitytype.Attributes?["tradeProps"].Exists == true || stringpath != null)
+                if (entitytype.Attributes?["tradeProps"].Exists == true)
                 {
                     try
                     {
-                        filepath = stringpath == null ? null : AssetLocation.Create(stringpath, entitytype.Code.Domain);
-                        if (filepath != null)
-                        {
-                            tradeProps = capi.Assets.Get(filepath.WithPathAppendixOnce(".json")).ToObject<TradeProperties>();
-                        }
-                        else
-                        {
-                            tradeProps = entitytype.Attributes["tradeProps"].AsObject<TradeProperties>(null, entitytype.Code.Domain);
-                        }
+                        tradeProps = entitytype.Attributes["tradeProps"].AsObject<TradeProperties>(null, entitytype.Code.Domain);
                     }
                     catch (Exception e)
                     {
@@ -61,7 +49,6 @@ namespace Vintagestory.GameContent
                         capi.World.Logger.VerboseDebug("Failed deserializing TradeProperties:");
                         capi.World.Logger.VerboseDebug("=================");
                         capi.World.Logger.VerboseDebug("Tradeprops json:");
-                        if (filepath != null) capi.World.Logger.VerboseDebug("File path {0}:", filepath);
                         capi.World.Logger.VerboseDebug("{0}", entitytype.Server?.Attributes["tradeProps"].ToJsonToken());
                     }
                 }

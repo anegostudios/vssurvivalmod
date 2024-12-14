@@ -40,6 +40,7 @@ namespace Vintagestory.GameContent
     {
         public Dictionary<string, Dictionary<string, EntityOwnership>> OwnerShipsByPlayerUid;
         public Dictionary<string, EntityOwnership> SelfOwnerShips { get; set; } = new Dictionary<string, EntityOwnership>();
+
         public override bool ShouldLoad(EnumAppSide forSide) => true;
 
         ICoreServerAPI sapi;
@@ -61,7 +62,6 @@ namespace Vintagestory.GameContent
             api.Event.SaveGameLoaded += Event_SaveGameLoaded;
             api.Event.GameWorldSave += Event_GameWorldSave;
             api.Event.PlayerJoin += Event_PlayerJoin;
-            api.Event.OnEntityDeath += Event_EntityDeath;
 
             AiTaskRegistry.Register<AiTaskComeToOwner>("cometoowner");
         }
@@ -86,12 +86,7 @@ namespace Vintagestory.GameContent
 
         private void Event_SaveGameLoaded()
         {
-            OwnerShipsByPlayerUid = sapi.WorldManager.SaveGame.GetData("entityownership", new Dictionary<string, Dictionary<string, EntityOwnership>>());
-        }
-
-        private void Event_EntityDeath(Entity entity, DamageSource damageSource)
-        {
-            RemoveOwnership(entity);
+            OwnerShipsByPlayerUid = sapi.WorldManager.SaveGame.GetData<Dictionary<string, Dictionary<string, EntityOwnership>>>("entityownership", new Dictionary<string, Dictionary<string, EntityOwnership>>());
         }
 
         public override void StartClientSide(ICoreClientAPI api)
@@ -122,8 +117,7 @@ namespace Vintagestory.GameContent
 
             Dictionary<string, EntityOwnership> playerShipsByPlayerUid;
 
-            OwnerShipsByPlayerUid.TryGetValue(player.PlayerUID, out playerShipsByPlayerUid);
-            if (playerShipsByPlayerUid == null)
+            if (!OwnerShipsByPlayerUid.TryGetValue(player.PlayerUID, out playerShipsByPlayerUid))
             {
                 OwnerShipsByPlayerUid[player.PlayerUID] = playerShipsByPlayerUid = new Dictionary<string, EntityOwnership>();
             }
@@ -159,9 +153,9 @@ namespace Vintagestory.GameContent
             string groupecode = fromEntity.GetBehavior<EntityBehaviorOwnable>().Group;
             if (OwnerShipsByPlayerUid.TryGetValue(uid, out var ownerships))
             {
-                if (ownerships?.TryGetValue(groupecode, out var ownership) == true)
+                if (ownerships.TryGetValue(groupecode, out var ownership))
                 {
-                    if (ownership?.EntityId == fromEntity.EntityId)
+                    if (ownership.EntityId == fromEntity.EntityId)
                     {
                         ownerships.Remove(groupecode);
                         var player = sapi.World.PlayerByUid(uid);

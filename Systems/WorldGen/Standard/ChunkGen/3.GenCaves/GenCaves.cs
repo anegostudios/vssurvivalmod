@@ -178,7 +178,8 @@ namespace Vintagestory.ServerMods
 
         public override void GeneratePartial(IServerChunk[] chunks, int chunkX, int chunkZ, int cdx, int cdz)
         {
-            if (GetIntersectingStructure(chunkX * chunksize + chunksize / 2, chunkZ * chunksize + chunksize / 2, SkipCavesgHashCode) != null)
+            if (SkipGenerationAt(chunkX * chunksize + chunksize / 2, chunkZ * chunksize + chunksize / 2, SkipCavesgHashCode,
+                    out _))
             {
                 return;
             }
@@ -481,8 +482,8 @@ namespace Vintagestory.ServerMods
                             chunkX,
                             chunkZ,
                             posX, posY, posZ,
-                            caveRand.NextFloat() * GameMath.TWOPI,
-                            (caveRand.NextFloat() - 0.5f) * 0.25f,
+                            chunkRand.NextFloat() * GameMath.TWOPI,
+                            (chunkRand.NextFloat() - 0.5f) * 0.25f,
                             horizontalSize + 1,
                             verticalSize,
                             caveCurrentIteration,
