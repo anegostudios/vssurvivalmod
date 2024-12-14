@@ -33,6 +33,8 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public float BossHpbarRange { get; set; }
+
         public EntityBehaviorBoss(Entity entity) : base(entity)
         {
         }
@@ -45,6 +47,8 @@ namespace Vintagestory.GameContent
             {
                 musicTrackLocation = AssetLocation.Create(attributes["musicTrack"].AsString(), entity.Code.Domain);
             }
+
+            BossHpbarRange = attributes["bossHpBarRange"].AsFloat(30);
         }
  
 

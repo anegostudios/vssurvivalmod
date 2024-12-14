@@ -23,7 +23,7 @@ namespace Vintagestory.GameContent
         EntityTalkUtil TalkUtil { get; }
     }
 
-    public class EntityTrader : EntityDressedHumanoid, ITalkUtil
+    public class EntityTrader : EntityTradingHumanoid, ITalkUtil
     {
         public static OrderedDictionary<string, TraderPersonality> Personalities = new OrderedDictionary<string, TraderPersonality>()
         {
@@ -33,15 +33,9 @@ namespace Vintagestory.GameContent
             { "rowdy", new TraderPersonality(0.75f * 1.5f, 1f, 1.8f) },
         };
 
-        public InventoryTrader Inventory;
-        public TradeProperties TradeProps;
-
-
-        public EntityPlayer tradingWithPlayer;
-        GuiDialog dlg;
-
         public EntityTalkUtil talkUtil;
         EntityBehaviorConversable ConversableBh => GetBehavior<EntityBehaviorConversable>();
+
 
         public string Personality
         {
@@ -53,7 +47,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public EntityTalkUtil TalkUtil => talkUtil;
+        public override EntityTalkUtil TalkUtil => talkUtil;
 
         public EntityTrader()
         {
@@ -63,55 +57,10 @@ namespace Vintagestory.GameContent
         public override void Initialize(EntityProperties properties, ICoreAPI api, long InChunkIndex3d)
         {
             base.Initialize(properties, api, InChunkIndex3d);
-            var bh = GetBehavior<EntityBehaviorConversable>();
-            if (bh != null)
-            {
-                bh.OnControllerCreated += (controller) =>
-                {
-                    controller.DialogTriggers += Dialog_DialogTriggers;
-                };
-            }
 
-            if (Inventory == null)
-            {
-                Inventory = new InventoryTrader("traderInv", "" + EntityId, api);
-            }
-
-            if (api.Side == EnumAppSide.Server)
-            {
-                try
-                {
-                    TradeProps = Properties.Attributes["tradeProps"].AsObject<TradeProperties>();
-                } catch (Exception e)
-                {
-                    api.World.Logger.Error("Failed deserializing TradeProperties for trader {0}, exception logged to verbose debug", properties.Code);
-                    api.World.Logger.Error(e);
-                    api.World.Logger.VerboseDebug("Failed deserializing TradeProperties:");
-                    api.World.Logger.VerboseDebug("=================");
-                    api.World.Logger.VerboseDebug("Tradeprops json:");
-                    api.World.Logger.VerboseDebug("{0}", Properties.Server.Attributes["tradeProps"].ToJsonToken());
-                }
-
-
-            } else
+            if (api.Side == EnumAppSide.Client)
             {
                 talkUtil = new EntityTalkUtil(api as ICoreClientAPI, this, false);
-            }
-
-            try
-            {
-                Inventory.LateInitialize("traderInv-" + EntityId, api, this);
-            } catch (Exception e)
-            {
-                api.World.Logger.Error("Failed initializing trader inventory. Will recreate. Exception logged to verbose debug");
-                api.World.Logger.Error(e);
-                api.World.Logger.VerboseDebug("Failed initializing trader inventory. Will recreate.");
-
-                WatchedAttributes.RemoveAttribute("traderInventory");
-                Inventory = new InventoryTrader("traderInv", "" + EntityId, api);
-                Inventory.LateInitialize("traderInv-" + EntityId, api, this);
-
-                RefreshBuyingSellingInventory();
             }
 
             (AnimManager as PersonalizedAnimationManager).Personality = this.Personality;
@@ -125,22 +74,11 @@ namespace Vintagestory.GameContent
 
             if (World.Api.Side == EnumAppSide.Server)
             {
-                setupTaskBlocker();
-
-                if (TradeProps != null)
-                {
-                    RefreshBuyingSellingInventory();
-                    WatchedAttributes.SetDouble("lastRefreshTotalDays", World.Calendar.TotalDays - World.Rand.NextDouble() * 6);
-                    Inventory.GiveToTrader((int)TradeProps.Money.nextFloat(1f, World.Rand));
-                } else
-                {
-                    World.Logger.Warning("Trader TradeProps not set during trader entity spawn. Won't have any items for sale/purchase.");
-                }
-
                 Personality = Personalities.GetKeyAtIndex(World.Rand.Next(Personalities.Count));
                 (AnimManager as PersonalizedAnimationManager).Personality = this.Personality;
             }
         }
+
 
         public override void OnEntityLoaded()
         {
@@ -355,6 +293,7 @@ namespace Vintagestory.GameContent
             }
         }
 
+
         public override void OnReceivedServerPacket(int packetid, byte[] data)
         {
             base.OnReceivedServerPacket(packetid, data);
@@ -368,27 +307,9 @@ namespace Vintagestory.GameContent
             {
                 talkUtil.Talk(EnumTalkType.Death);
             }
-            if (packetid == 1234)
-            {
-                TreeAttribute tree = new TreeAttribute();
-                tree.FromBytes(data);
-                Inventory.FromTreeAttributes(tree);
-            }
         }
 
 
-
-        int tickCount = 0;
-
-
-        protected double doubleRefreshIntervalDays = 7;
-
-        public double NextRefreshTotalDays()
-        {
-            double lastRefreshTotalDays = WatchedAttributes.GetDouble("lastRefreshTotalDays", World.Calendar.TotalDays - 10);
-
-            return doubleRefreshIntervalDays - (World.Calendar.TotalDays - lastRefreshTotalDays);
-        }
 
         public override void OnGameTick(float dt)
         {
@@ -402,43 +323,6 @@ namespace Vintagestory.GameContent
 
             if (World.Side == EnumAppSide.Client) {
                 talkUtil.OnGameTick(dt);
-            } else
-            {
-                if (tickCount++ > 200)
-                {
-                    double lastRefreshTotalDays = WatchedAttributes.GetDouble("lastRefreshTotalDays", World.Calendar.TotalDays - 10);
-                    int maxRefreshes = 10;
-
-                    while (World.Calendar.TotalDays - lastRefreshTotalDays > doubleRefreshIntervalDays && tradingWithPlayer == null && maxRefreshes-- > 0)
-                    {
-                        int traderAssets = Inventory.GetTraderAssets();
-                        double giveRel = 0.07 + World.Rand.NextDouble() * 0.21;
-
-                        float nowWealth = TradeProps.Money.nextFloat(1f, World.Rand);
-
-                        int toGive = (int)Math.Max(-3, Math.Min(nowWealth, traderAssets + giveRel * (int)nowWealth) - traderAssets);
-                        Inventory.GiveToTrader(toGive);
-
-                        RefreshBuyingSellingInventory(0.5f);
-
-                        lastRefreshTotalDays += doubleRefreshIntervalDays;
-                        WatchedAttributes.SetDouble("lastRefreshTotalDays", lastRefreshTotalDays);
-
-                        tickCount = 1;
-                    }
-
-                    if (maxRefreshes <= 0)
-                    {
-                        WatchedAttributes.SetDouble("lastRefreshTotalDays", World.Calendar.TotalDays + 1 + World.Rand.NextDouble() * 5);
-                    }
-                }
-            }
-
-            if (tradingWithPlayer != null && (tradingWithPlayer.Pos.SquareDistanceTo(Pos) > 5 || Inventory.openedByPlayerGUIds.Count == 0 || !Alive))
-            {
-                dlg?.TryClose();
-                IPlayer tradingPlayer = tradingWithPlayer?.Player;
-                if (tradingPlayer != null) Inventory.Close(tradingPlayer);
             }
         }
 
@@ -446,22 +330,7 @@ namespace Vintagestory.GameContent
         public override void FromBytes(BinaryReader reader, bool forClient)
         {
             base.FromBytes(reader, forClient);
-
-            if (Inventory == null)
-            {
-                Inventory = new InventoryTrader("traderInv", "" + EntityId, null);
-            }
-
-            Inventory.FromTreeAttributes(GetOrCreateTradeStore());
-
             (AnimManager as PersonalizedAnimationManager).Personality = this.Personality;
-        }
-
-        public override void ToBytes(BinaryWriter writer, bool forClient)
-        {
-            Inventory.ToTreeAttributes(GetOrCreateTradeStore());
-
-            base.ToBytes(writer, forClient);
         }
 
 
@@ -475,24 +344,6 @@ namespace Vintagestory.GameContent
                 ServerPos.Y = Attributes.GetDouble("spawnY");
                 ServerPos.Z = Attributes.GetDouble("spawnZ");
             }
-        }
-
-        public override void Die(EnumDespawnReason reason = EnumDespawnReason.Death, DamageSource damageSourceForDeath = null)
-        {
-            base.Die(reason, damageSourceForDeath);
-        }
-
-        ITreeAttribute GetOrCreateTradeStore()
-        {
-            if (!WatchedAttributes.HasAttribute("traderInventory"))
-            {
-                ITreeAttribute tree = new TreeAttribute();
-                Inventory.ToTreeAttributes(tree);
-
-                WatchedAttributes["traderInventory"] = tree;
-            }
-
-            return WatchedAttributes["traderInventory"] as ITreeAttribute;
         }
 
         public override void PlayEntitySound(string type, IPlayer dualCallByPlayer = null, bool randomizePitch = true, float range = 24)
@@ -510,9 +361,5 @@ namespace Vintagestory.GameContent
 
             base.PlayEntitySound(type, dualCallByPlayer, randomizePitch, range);
         }
-
-
-
     }
-
 }

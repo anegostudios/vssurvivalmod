@@ -75,6 +75,8 @@ namespace Vintagestory.GameContent
             BEBehaviorShapeFromAttributes bec = block.GetBEBehavior<BEBehaviorShapeFromAttributes>(pos);
             if (bec == null || bec.Collected) return base.GetPlacedBlockInfo(world, pos, forPlayer);
 
+            if (world.Claims.TestAccess(forPlayer, pos, EnumBlockAccessFlags.BuildOrBreak) != EnumWorldAccessResponse.Granted) return ""; 
+
             EnumClutterDropRule rule = GetRule(world);
             if (rule == EnumClutterDropRule.Reparable)
             {

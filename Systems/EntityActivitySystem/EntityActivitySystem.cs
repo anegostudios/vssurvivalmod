@@ -20,11 +20,11 @@ namespace Vintagestory.GameContent
 
         public string Code { get; set; }
 
-        public bool Debug { get; set; } = true;
+        public bool Debug { get; set; } = ActivityModSystem.Debug;
 
 
         public PathTraverserBase linepathTraverser;
-        public PathTraverserBase wppathTraverser;
+        public WaypointsTraverser wppathTraverser;
         public EntityAgent Entity;
         float accum;
 
@@ -54,7 +54,7 @@ namespace Vintagestory.GameContent
 
         public bool StartActivity(string code, float priority=9999f, int slot=-1)
         {
-            var index = AvailableActivities.IndexOf<IEntityActivity>(item => item.Code == code);
+            int index = AvailableActivities.IndexOf(item => item.Code == code);
             if (index < 0) return false;
 
             var activity = AvailableActivities[index];
@@ -68,6 +68,7 @@ namespace Vintagestory.GameContent
             }
 
             ActiveActivitiesBySlot[activity.Slot] = activity;
+            activity.Priority = priority;
             activity.Start();
 
             return true;
@@ -112,13 +113,20 @@ namespace Vintagestory.GameContent
             }
         }
 
+        bool clearDelay = false;
+        public void ClearNextActionDelay()
+        {
+            clearDelay = true;
+        }
+
         public void OnTick(float dt)
         {
             linepathTraverser.OnGameTick(dt);
             wppathTraverser.OnGameTick(dt);
 
             accum += dt;
-            if (accum < 0.25) return;
+            if (accum < 0.25 && !clearDelay) return;
+            clearDelay = false;
 
             foreach (var key in ActiveActivitiesBySlot.Keys)
             {
@@ -135,6 +143,8 @@ namespace Vintagestory.GameContent
                 }
 
                 activity.OnTick(accum);
+
+                Entity.World.FrameProfiler.Mark("behavior-activitydriven-tick-" + activity.Code);
             }
 
             accum = 0;
@@ -151,7 +161,7 @@ namespace Vintagestory.GameContent
 
                     bool execute = activity.ConditionsOp == EnumConditionLogicOp.AND;
 
-                    for (int i = 0; i < activity.Conditions.Length; i++)
+                    for (int i = 0; i < activity.Conditions.Length && (execute || activity.ConditionsOp == EnumConditionLogicOp.OR); i++)
                     {
                         var cond = activity.Conditions[i];
                         var ok = cond.ConditionSatisfied(Entity);

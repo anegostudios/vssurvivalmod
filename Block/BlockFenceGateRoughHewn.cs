@@ -1,5 +1,6 @@
 ﻿using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
@@ -83,6 +84,15 @@ namespace Vintagestory.GameContent
             }
 
             return CodeWithVariant("type", type);
+        }
+
+        public override void Activate(IWorldAccessor world, Caller caller, BlockSelection blockSel, ITreeAttribute activationArgs)
+        {
+            if (activationArgs != null && activationArgs.HasAttribute("opened"))
+            {
+                if (activationArgs.GetBool("opened") == IsOpened()) return;   // do nothing if already in the required state
+            }
+            Open(world, caller.Player, blockSel.Position);
         }
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)

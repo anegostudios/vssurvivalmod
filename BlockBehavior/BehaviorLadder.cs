@@ -305,8 +305,8 @@ namespace Vintagestory.GameContent
 
             return
                 SideSolid(blockAccess, pos, ownFacing)
-                || (!isFlexible && SideSolid(blockAccess, downPos, BlockFacing.DOWN))
-                || SideSolid(blockAccess, upPos, BlockFacing.UP)
+                || (!isFlexible && SideSolid(blockAccess, pos, BlockFacing.DOWN))
+                || SideSolid(blockAccess, pos, BlockFacing.UP)
                 || (pos.Y < blockAccess.MapSizeY - 1 && blockAccess.GetBlock(upPos) == forBlock && HasSupportUp(forBlock, blockAccess, upPos))
                 || (!isFlexible && pos.Y > 0 && blockAccess.GetBlock(downPos) == forBlock && HasSupportDown(forBlock, blockAccess, downPos))
             ;
@@ -314,23 +314,18 @@ namespace Vintagestory.GameContent
 
         public bool SideSolid(IBlockAccessor blockAccess, BlockPos pos, BlockFacing facing)
         {
-            //public static readonly BlockFacing[] HORIZONTALS_ANGLEORDER = new BlockFacing[] { EAST, NORTH, WEST, SOUTH };
-            // North: Negative Z
-            // East: Positive X
-            // South: Positive Z
-            // West: Negative X
-            // Up: Positive Y
-            // Down: Negative Y
+            BlockPos neibPos = pos.AddCopy(facing);
+            Block neibBlock = blockAccess.GetBlock(neibPos);
+            if (neibBlock.Id == 0) return false;
 
-            Block neibBlock = blockAccess.GetBlock(pos.X + facing.Normali.X, pos.InternalY, pos.Z + facing.Normali.Z);
-
+            // radfast note 27.11.24: this is very costly for a SideSolid check...
             Cuboidi upHalf = new Cuboidi(14, 0, 0, 15, 7, 15).RotatedCopy(0, 90 * facing.HorizontalAngleIndex, 0, new Vec3d(7.5, 0, 7.5));
-            Cuboidi downHalf = new Cuboidi(14, 8, 0, 15, 15, 15).RotatedCopy(0, 90 * facing.HorizontalAngleIndex, 0, new Vec3d(7.5, 0, 7.5));
+            if (neibBlock.CanAttachBlockAt(blockAccess, neibBlock, neibPos, facing.Opposite, upHalf)) return true;
 
-            return 
-                neibBlock.CanAttachBlockAt(blockAccess, neibBlock, pos.AddCopy(facing), facing.Opposite, upHalf) ||
-                neibBlock.CanAttachBlockAt(blockAccess, neibBlock, pos.AddCopy(facing), facing.Opposite, downHalf)
-            ;
+            Cuboidi downHalf = new Cuboidi(14, 8, 0, 15, 15, 15).RotatedCopy(0, 90 * facing.HorizontalAngleIndex, 0, new Vec3d(7.5, 0, 7.5));
+            if (neibBlock.CanAttachBlockAt(blockAccess, neibBlock, neibPos, facing.Opposite, downHalf)) return true;
+
+            return false;
         }
 
 

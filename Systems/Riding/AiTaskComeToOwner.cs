@@ -1,4 +1,5 @@
 ﻿using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 
 namespace Vintagestory.GameContent
 {
@@ -8,6 +9,12 @@ namespace Vintagestory.GameContent
 
         public AiTaskComeToOwner(EntityAgent entity) : base(entity)
         {
+        }
+
+        public override void LoadConfig(JsonObject taskConfig, JsonObject aiConfig)
+        {
+            base.LoadConfig(taskConfig, aiConfig);
+            minSeekSeconds = 10f;
         }
 
         public override bool ShouldExecute()
@@ -39,7 +46,7 @@ namespace Vintagestory.GameContent
             if (targetEntity != null)
             {
                 float size = targetEntity.SelectionBox.XSize;
-                pathTraverser.NavigateTo_Async(targetEntity.ServerPos.XYZ, moveSpeed, size + 0.2f, OnGoalReached, OnStuck, tryTeleport, 1000, 1);
+                pathTraverser.NavigateTo_Async(targetEntity.ServerPos.XYZ, moveSpeed, size + 0.2f, OnGoalReached, OnStuck, null, 1000, 1);
                 targetOffset.Set(entity.World.Rand.NextDouble() * 2 - 1, 0, entity.World.Rand.NextDouble() * 2 - 1);
                 stuck = false;
             }

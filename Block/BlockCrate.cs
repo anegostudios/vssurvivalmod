@@ -194,7 +194,7 @@ namespace Vintagestory.GameContent
         public override void OnInteract(ItemSlot bagSlot, int slotIndex, Entity onEntity, EntityAgent byEntity, Vec3d hitPosition, EnumInteractMode mode, ref EnumHandling handled, Action onRequireSave)
         {
             var controls = byEntity.MountedOn?.Controls ?? byEntity.Controls;
-            if (controls.Sprint) return;
+            if (controls.Sprint) return;   // This is a weird test, as for players whose Sprint key is the CtrlKey, they then cannot use bulk operations?
 
 
             bool put = byEntity.Controls.ShiftKey;

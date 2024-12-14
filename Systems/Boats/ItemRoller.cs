@@ -151,12 +151,12 @@ namespace Vintagestory.GameContent
 
             if (slot.StackSize < 5)
             {
-                (api as ICoreClientAPI)?.TriggerIngameError(this, "need5", "Need 5 rolles to place a boat construction site");
+                (api as ICoreClientAPI)?.TriggerIngameError(this, "need5", Lang.Get("Need 5 rolles to place a boat construction site"));
                 return;
             }
             if (!suitableLocation(player, blockSel))
             {
-                (api as ICoreClientAPI)?.TriggerIngameError(this, "unsuitableLocation", "Requires a suitable location near water to place a boat construction site. Boat will roll towards the blue highlighted area. Use tool mode to rotate");
+                (api as ICoreClientAPI)?.TriggerIngameError(this, "unsuitableLocation", Lang.Get("Requires a suitable location near water to place a boat construction site. Boat will roll towards the blue highlighted area. Use tool mode to rotate"));
                 return;
             }
 
@@ -233,7 +233,6 @@ namespace Vintagestory.GameContent
         public void WalkBlocks(BlockPos minPos, BlockPos maxPos, Action<Block, int, int, int> onBlock, int layer)
         {
             var ba = api.World.BlockAccessor;
-            int chunksize = ba.ChunkSize;
             int minx = minPos.X;
             int miny = minPos.InternalY;
             int minz = minPos.Z;

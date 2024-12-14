@@ -5,6 +5,7 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+using Vintagestory.GameContent;
 
 namespace Vintagestory.ServerMods
 {
@@ -221,6 +222,7 @@ namespace Vintagestory.ServerMods
 
             ITreeAttribute chanceModTree = null;
             ITreeAttribute maxQuantityModTree = null;
+            StoryStructureLocation location = null;
             if (chunkGenParams?["structureChanceModifier"] != null)
             {
                 chanceModTree = chunkGenParams["structureChanceModifier"] as TreeAttribute;
@@ -278,8 +280,30 @@ namespace Vintagestory.ServerMods
 
                     if (startPos.Y <= 0) continue;
 
+                    // check if in storylocation and if we can still generate this structure
+                    if (locationCode != null)
+                    {
+                        location = GetIntersectingStructure(chunkX * chunksize + chunksize / 2, chunkZ * chunksize + chunksize / 2);
+                        if (location.SchematicsSpawned?.TryGetValue(struc.Group, out var spawnedSchematics) == true && spawnedSchematics >= struc.StoryLocationMaxAmount)
+                        {
+                            continue;
+                        }
+                    }
+
                     if (struc.TryGenerate(worldgenBlockAccessor, api.World, startPos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, locationCode))
                     {
+                        if(locationCode != null && location != null)
+                        {
+                            if (location.SchematicsSpawned?.TryGetValue(struc.Group, out var spawnedSchematics) == true)
+                            {
+                                location.SchematicsSpawned[struc.Group] = spawnedSchematics + 1;
+                            }
+                            else
+                            {
+                                location.SchematicsSpawned ??= new Dictionary<string, int>();
+                                location.SchematicsSpawned[struc.Group] = 1;
+                            }
+                        }
                         Cuboidi loc = struc.LastPlacedSchematicLocation;
 
                         string code = struc.Code + (struc.LastPlacedSchematic == null ? "" : "/" + struc.LastPlacedSchematic.FromFileName);

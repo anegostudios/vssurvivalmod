@@ -61,7 +61,7 @@ namespace Vintagestory.GameContent
                 foreach (CollectibleObject obj in api.World.Collectibles)
                 {
                     // we test firewood first because LazyWarlock's mod adds a wood baking recipe, which we don't want to be treated as a bakeable item here
-                    if (obj.Attributes?.IsTrue("isFirewood") == true)
+                    if (obj.Attributes?.IsTrue("isClayOvenFuel") == true)
                     {
                         List<ItemStack> stacks = obj.GetHandBookStacks(capi);
                         if (stacks != null) fuelStacklist.AddRange(stacks);

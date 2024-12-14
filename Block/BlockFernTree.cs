@@ -2,6 +2,7 @@
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -80,8 +81,8 @@ namespace Vintagestory.GameContent
                 bool foundSuitableBlock = false;
                 for (int y = 2; y >= -2; y--)
                 {
-                    Block block = blockAccessor.GetBlock(pos.X, pos.InternalY + y, pos.Z);
-                    if (block.Fertility > 0 && !blockAccessor.GetBlock(pos.X, pos.InternalY + y + 1, pos.Z, BlockLayersAccess.Fluid).IsLiquid())
+                    Block block = blockAccessor.GetBlockAbove(pos, y);
+                    if (block.Fertility > 0 && !blockAccessor.GetBlockAbove(pos, y + 1, BlockLayersAccess.Fluid).IsLiquid())
                     {
                         pos.Y = pos.Y + y;
                         foundSuitableBlock = true;
@@ -107,7 +108,7 @@ namespace Vintagestory.GameContent
                 if (i == height - 1) toplaceblock = foliage;
                 if (i == height - 2) toplaceblock = trunkTop;
 
-                if (!blockAccessor.GetBlock(upos.X, upos.InternalY + i, upos.Z).IsReplacableBy(toplaceblock)) return;
+                if (!blockAccessor.GetBlockAbove(upos, i).IsReplacableBy(toplaceblock)) return;
             }
 
             for (int i = 0; i < height; i++)

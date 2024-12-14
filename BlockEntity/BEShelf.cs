@@ -40,15 +40,10 @@ namespace Vintagestory.GameContent
             if (transType == EnumTransitionType.Dry || transType == EnumTransitionType.Melt) return container.Room?.ExitCount == 0 ? 2f : 0.5f;
             if (Api == null) return 0;
 
-            if (transType == EnumTransitionType.Perish || transType == EnumTransitionType.Ripen)
+            if (transType == EnumTransitionType.Ripen)
             {
                 float perishRate = container.GetPerishRate();
-                if (transType == EnumTransitionType.Ripen)
-                {
-                    return GameMath.Clamp((1 - perishRate - 0.5f) * 3, 0, 1);
-                }
-
-                return baseMul * perishRate;
+                return GameMath.Clamp((1 - perishRate - 0.5f) * 3, 0, 1);
             }
 
             return 1;

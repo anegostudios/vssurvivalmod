@@ -77,45 +77,64 @@ namespace Vintagestory.GameContent
                 hereTarget.Z += Math.Cos(alpha) * Radius;
             }
 
+            astarTries = 4;
             navTo(hereTarget);
         }
 
+        int astarTries;
+        EnumAICreatureType ct;
         private void navTo(Vec3d hereTarget)
         {
-            EnumAICreatureType ct = EnumAICreatureType.Default;
+            ct = EnumAICreatureType.Default;
             var aicreaturetype = vas.Entity.Properties.Server.Attributes.GetString("aiCreatureType", "Humanoid");
             if (Enum.TryParse(aicreaturetype, out EnumAICreatureType ect)) ct = ect;
 
             if (Astar)
             {
-                int tries = 4;
-                while (tries-- > 0 && !vas.wppathTraverser.NavigateTo(hereTarget, WalkSpeed, OnDone, OnStuck, OnNoPath, 0, ct)) { }
+                vas.wppathTraverser.OnFoundPath = onFoundPath;
+                vas.wppathTraverser.NavigateTo_Async(hereTarget, WalkSpeed, 0.15f, OnDone, OnStuck, OnNoPath, 10000, 0, ct);
             }
             else
             {
                 vas.linepathTraverser.NavigateTo(hereTarget, WalkSpeed, OnDone, OnStuck, null, 0, ct);
-            }
+                setAnimation();
+            }            
+        }
 
 
+        private void setAnimation()
+        {
             if (AnimSpeed != 0.02f)
             {
-                vas.Entity.AnimManager.StartAnimation(new AnimationMetaData() { Animation = AnimCode, Code = AnimCode, AnimationSpeed = AnimSpeed }.Init());
+                vas.Entity.AnimManager.StartAnimation(new AnimationMetaData() { Animation = AnimCode, Code = AnimCode, AnimationSpeed = AnimSpeed, BlendMode = EnumAnimationBlendMode.Average }.Init());
             }
             else
             {
-
                 if (!vas.Entity.AnimManager.StartAnimation(AnimCode))
                 {
-                    vas.Entity.AnimManager.StartAnimation(new AnimationMetaData() { Animation = AnimCode, Code = AnimCode, AnimationSpeed = AnimSpeed }.Init());
+                    vas.Entity.AnimManager.StartAnimation(new AnimationMetaData() { Animation = AnimCode, Code = AnimCode, AnimationSpeed = AnimSpeed, BlendMode = EnumAnimationBlendMode.Average }.Init());
                 }
-
             }
 
             vas.Entity.Controls.Sprint = AnimCode == "run" || AnimCode == "sprint";
         }
 
+
+        private void onFoundPath()
+        {
+            setAnimation();
+        }
+
+
         private void OnNoPath()
         {
+            if (Astar && astarTries > 0)
+            {
+                astarTries--;
+                vas.wppathTraverser.NavigateTo_Async(hereTarget, WalkSpeed, 0.15f, OnDone, OnStuck, OnNoPath, 10000, 0, ct);
+                return;
+            }
+
             var pos = vas.Entity.ServerPos;
             if (vas.Debug) vas.Entity.World.Logger.Debug("ActivitySystem entity {0} action goto from {1}/{2}/{3} to {4}/{5}/{6} failed, found no A* path to target.", vas.Entity.EntityId, pos.X, pos.Y, pos.Z, targetX, targetY, targetZ);
             ExecutionHasFailed = true;
@@ -171,6 +190,11 @@ namespace Vintagestory.GameContent
                 x += vas.ActivityOffset.X;
                 y += vas.ActivityOffset.Y;
                 z += vas.ActivityOffset.Z;
+            }
+
+            if (Radius > 0)
+            {
+                return string.Format("{0}Goto {1}/{2}/{3} (walkSpeed {4}, animspeed {5}), radius {6}", Astar ? "A* " : "", x, y, z, WalkSpeed, AnimSpeed, Radius);
             }
 
             return string.Format("{0}Goto {1}/{2}/{3} (walkSpeed {4}, animspeed {5})", Astar ? "A* " : "", x, y, z, WalkSpeed, AnimSpeed);

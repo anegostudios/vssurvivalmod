@@ -80,7 +80,7 @@ namespace Vintagestory.GameContent
 
         private void beginPlace(BeamPlacerWorkSpace ws, Block block, EntityAgent byEntity, BlockSelection blockSel, bool partialEnds)
         {
-            ws.GridSize = byEntity.Controls.Sprint ? 16 : 4;
+            ws.GridSize = byEntity.Controls.CtrlKey ? 16 : 4;
 
             ws.currentMeshes = getOrCreateBeamMeshes(block, (block as BlockSupportBeam)?.PartialEnds ?? false);
 

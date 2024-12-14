@@ -6,6 +6,7 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
+using Vintagestory.API.Util;
 using System.Linq;
 
 namespace Vintagestory.GameContent
@@ -197,7 +198,10 @@ namespace Vintagestory.GameContent
         {
             var unstablePositions = getNearestUnstableBlocks(world, supportPositions, startPos);
 
+            if (!unstablePositions.Any()) return;
+
             var yorderedPositions = unstablePositions.OrderBy(pos => pos.Y);
+
             var y = yorderedPositions.First().Y;
 
             collapseLayer(world, yorderedPositions, y);
@@ -312,7 +316,7 @@ namespace Vintagestory.GameContent
 
                         for (int dy = 1; dy < 4; dy++)
                         {
-                            block = world.BlockAccessor.GetBlockBelow(npos, dy);
+                            block = world.BlockAccessor.GetBlockBelow(npos, dy, BlockLayersAccess.Solid);
                             if (block.HasBehavior<BlockBehaviorUnstableRock>() && getVerticalSupportStrength(world, npos) == 0)
                             {
                                 unstableBlocks.Add(npos.DownCopy(dy));
@@ -399,7 +403,8 @@ namespace Vintagestory.GameContent
             IBlockAccessor blockAccessor = world.BlockAccessor;
             for (int i = 1; i < 5; i++)
             {
-                tmppos.Set(npos.X, npos.Y - i, npos.Z);
+                int y = GameMath.Clamp(npos.Y - i, 0, npos.Y);
+                tmppos.Set(npos.X, y, npos.Z);
                 var block = blockAccessor.GetBlock(tmppos);
                 int stab = block.Attributes?["unstableRockStabilization"].AsInt(0) ?? 0;
                 if (stab > 0) return stab;

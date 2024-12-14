@@ -272,7 +272,9 @@ namespace Vintagestory.GameContent
 
         public string RandomType(string variant)
         {
+            if (variantGroupsByCode == null) return null;
             var vgroup = variantGroupsByCode[variant];
+
             int rndindex = api.World.Rand.Next(vgroup.typesByCode.Count);
             return vgroup.typesByCode.GetKeyAtIndex(rndindex);
         }

@@ -56,6 +56,7 @@ namespace Vintagestory.GameContent
         public class RareStormSpawnsVariant
         {
             public AssetLocation Code;
+            public string GroupCode;
             public float ChancePerStorm;
 
             public EntityProperties ResolvedCode;
@@ -473,7 +474,7 @@ namespace Vintagestory.GameContent
         long spawnBreakUntilMs;
         int nobreakSpawns = 0;
 
-        Dictionary<AssetLocation, Dictionary<string, int>> rareSpawnsCountByCodeByPlayer = new Dictionary<AssetLocation, Dictionary<string, int>>();
+        Dictionary<string, Dictionary<string, int>> rareSpawnsCountByCodeByPlayer = new Dictionary<string, Dictionary<string, int>>();
 
         private void trySpawnMobs()
         {
@@ -502,15 +503,15 @@ namespace Vintagestory.GameContent
             Vec3d spawnPos = new Vec3d();
             BlockPos spawnPosi = new BlockPos();
 
-            var rareSpawns = mobConfig.rareSpawns.Variants;
+            var rareSpawns = mobConfig.rareSpawns.Variants.Shuffle(api.World.Rand);
             var spawnPattern = mobConfig.spawnsByStormStrength.spawnPatterns[data.spawnPatternCode];
             var variantGroups = mobConfig.spawnsByStormStrength.variantGroups;
             var resovariantGroups = mobConfig.spawnsByStormStrength.resolvedVariantGroups;
-            Dictionary<AssetLocation, int> rareSpawnCounts = new Dictionary<AssetLocation, int>();
+            Dictionary<string, int> rareSpawnCounts = new Dictionary<string, int>();
             Dictionary<string, int> mainSpawnCountsByGroup = new Dictionary<string, int>();
 
             var plrPos = plr.Entity.ServerPos.XYZ;
-            part.WalkEntities(plrPos, range + 5, (e) =>
+            part.WalkEntities(plrPos, range + 12, (e) =>
             {
                 foreach (var vg in variantGroups)
                 {
@@ -524,8 +525,8 @@ namespace Vintagestory.GameContent
                 for (int i = 0; i < rareSpawns.Length; i++)
                 {
                     if (rareSpawns[i].Code.Equals(e.Code)) {
-                        rareSpawnCounts.TryGetValue(e.Code, out int cnt);
-                        rareSpawnCounts[e.Code] = cnt + 1; 
+                        rareSpawnCounts.TryGetValue(rareSpawns[i].GroupCode, out int cnt);
+                        rareSpawnCounts[rareSpawns[i].GroupCode] = cnt + 1; 
                         break; 
                     }
                 }
@@ -538,7 +539,7 @@ namespace Vintagestory.GameContent
             }
 
             foreach (var rspc in rareSpawnCounts)
-            {
+            {   
                 int prevcnt = 0;
                 plrdict.TryGetValue(rspc.Key, out prevcnt);
                 rareSpawnCounts.TryGetValue(rspc.Key, out int cnt);
@@ -554,7 +555,7 @@ namespace Vintagestory.GameContent
                 if (nowCount < allowedCount)
                 {
                     var variantGroup = resovariantGroups[group.Key];
-                    int tries = 15;
+                    int tries = 10;
                     int spawned = 0;
                     while (tries-- > 0 && spawned < 2)
                     {
@@ -566,7 +567,7 @@ namespace Vintagestory.GameContent
                         {
                             for (int i = 0; i < rareSpawns.Length; i++)
                             {
-                                plrdict.TryGetValue(rareSpawns[i].Code, out int cnt);
+                                plrdict.TryGetValue(rareSpawns[i].GroupCode, out int cnt);
                                 if (cnt == 0)
                                 {
                                     type = rareSpawns[i].ResolvedCode;

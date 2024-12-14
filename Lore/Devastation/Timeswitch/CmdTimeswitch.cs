@@ -12,6 +12,7 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+using Vintagestory.ServerMods;
 
 namespace Vintagestory.GameContent
 {
@@ -49,6 +50,10 @@ namespace Vintagestory.GameContent
                         .WithArgs(parsers.OptionalWord("confirmation"))
                         .HandleWith(CopyBlocks)
                 .EndSubCommand()
+                .BeginSubCommand("relight")
+                        .WithDescription("Relight the alternate dimension")
+                        .HandleWith(Relight)
+                .EndSubCommand()
             ;
         }
 
@@ -59,9 +64,10 @@ namespace Vintagestory.GameContent
             if (serverPlayer == null) return TextCommandResult.Error("The toggle command must be called by a currently active player");
 
             var TimeswitchSys = sapi.ModLoader.GetModSystem<Timeswitch>();
-            TimeswitchSys.ActivateTimeswitchServer(serverPlayer);
+            bool result = TimeswitchSys.ActivateTimeswitchServer(serverPlayer, false, out string failureReason);
 
             return TextCommandResult.Success();
+            //result ? TextCommandResult.Success() : failureReason == null ? TextCommandResult.Error("Timeswitch system not available on this server") : TextCommandResult.Success();
         }
 
 
@@ -73,6 +79,16 @@ namespace Vintagestory.GameContent
             var TimeswitchSys = sapi.ModLoader.GetModSystem<Timeswitch>();
             var serverPlayer = args.Caller.Player as IServerPlayer;
             TimeswitchSys.CopyBlocksToAltDimension(sapi.World.BlockAccessor, serverPlayer);
+
+            return TextCommandResult.Success();
+        }
+
+
+        private TextCommandResult Relight(TextCommandCallingArgs args)
+        {
+            var TimeswitchSys = sapi.ModLoader.GetModSystem<Timeswitch>();
+            var serverPlayer = args.Caller.Player as IServerPlayer;
+            TimeswitchSys.RelightCommand(sapi.World.BlockAccessor, serverPlayer);
 
             return TextCommandResult.Success();
         }

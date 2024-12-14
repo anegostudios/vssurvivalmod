@@ -70,7 +70,7 @@ namespace Vintagestory.GameContent
                 beh.Type2 = vgroup.typesByCode.GetKeyAtIndex(index);
             }
 
-            beh.initShape();
+            beh.loadMesh();
             beh.Blockentity.MarkDirty(true);
             
             return TextCommandResult.Success("type " + (type == 1 ? beh.Type : beh.Type2) + " set.");

@@ -133,7 +133,7 @@ namespace Vintagestory.GameContent
 
         public override void DidUnmount(EntityAgent entityAgent)
         {
-            if (entityAgent.World.Side == EnumAppSide.Server)
+            if (entityAgent.World.Side == EnumAppSide.Server && DoTeleportOnUnmount)
             {
                 tryTeleportToFreeLocation();
             }
@@ -142,7 +142,7 @@ namespace Vintagestory.GameContent
                 eplr.BodyYawLimits = null;
                 eplr.HeadYawLimits = null;
             }
-            
+
             base.DidUnmount(entityAgent);
 
             var ebh = mountedEntity as IMountableListener;

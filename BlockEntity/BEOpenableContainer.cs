@@ -246,15 +246,17 @@ namespace Vintagestory.GameContent
         public override void OnBlockUnloaded()
         {
             base.OnBlockUnloaded();
-
-            if (invDialog?.IsOpened() == true) invDialog?.TryClose();
-            invDialog?.Dispose();
+            Dispose();
         }
 
         public override void OnBlockRemoved()
         {
             base.OnBlockRemoved();
+            Dispose();
+        }
 
+        public virtual void Dispose()
+        {
             if (invDialog?.IsOpened() == true) invDialog?.TryClose();
             invDialog?.Dispose();
         }

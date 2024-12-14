@@ -31,11 +31,12 @@ namespace Vintagestory.GameContent
 
             if (byEntity.World.Side == EnumAppSide.Server) return true;
 
-            return secondsUsed < 4;
+            return secondsUsed < 6;
         }
 
         public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandling handling)
         {
+            if (secondsUsed < 6) return;
             if (entitySel == null)
             {
                 byEntity.StopAnimation("saw");

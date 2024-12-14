@@ -208,8 +208,7 @@ namespace Vintagestory.GameContent
 
         public void IterateOverEach(BlockPos pos, float yRotRad, bool invertHandle, ActionConsumable<BlockPos> onBlock)
         {
-            BlockPos tmpPos = new BlockPos();
-            tmpPos.dimension = pos.dimension;
+            BlockPos tmpPos = new BlockPos(pos.dimension);
 
             for (int dx = 0; dx < width; dx++)
             {

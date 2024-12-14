@@ -823,7 +823,8 @@ namespace Vintagestory.GameContent
         {
             base.OnLoadCollectibleMappings(worldForResolve, oldBlockIdMapping, oldItemIdMapping, schematicSeed, resolveImports);
 
-            foreach (ItemSlot slot in inventory.CookingSlots)
+            // Why is this here? The base method already does this
+            /*foreach (ItemSlot slot in inventory.CookingSlots)
             {
                 if (slot.Itemstack == null) continue;
                 if (!slot.Itemstack.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve))
@@ -834,7 +835,7 @@ namespace Vintagestory.GameContent
                 {
                     slot.Itemstack.Collectible.OnLoadCollectibleMappings(worldForResolve, slot, oldBlockIdMapping, oldItemIdMapping, resolveImports);
                 }
-            }
+            }*/
         }
 
         public EnumFirepitModel CurrentModel { get; private set; }

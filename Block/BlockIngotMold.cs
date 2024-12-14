@@ -225,7 +225,7 @@ namespace Vintagestory.GameContent
             }
 
             var be = GetBlockEntity<BlockEntityIngotMold>(pos);
-            if (be?.TemperatureLeft > 300 || be.TemperatureRight > 300)
+            if (be?.TemperatureLeft > 300 || be?.TemperatureRight > 300)
             {
                 entity.ReceiveDamage(new DamageSource() { Source = EnumDamageSource.Block, SourceBlock = this, Type = EnumDamageType.Fire, SourcePos = pos.ToVec3d() }, 0.5f);
             }

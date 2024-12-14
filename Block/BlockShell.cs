@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -72,7 +73,7 @@ namespace Vintagestory.GameContent
 
         internal virtual bool HasBeachyGround(IBlockAccessor blockAccessor, BlockPos pos)
         {
-            Block blockBelow = blockAccessor.GetBlockBelow(pos);
+            Block blockBelow = blockAccessor.GetBlockBelow(pos, 1, BlockLayersAccess.Solid);
             return blockBelow.SideSolid[BlockFacing.UP.Index] && (blockBelow.BlockMaterial == EnumBlockMaterial.Sand || blockBelow.BlockMaterial == EnumBlockMaterial.Gravel);
         }
 

@@ -62,7 +62,7 @@ namespace Vintagestory.GameContent
                     var entities = parser.GetValue() as Entity[];
                     foreach (var entity in entities)
                     {
-                        if (entity.EntityId == vas.Entity.EntityId) continue;  
+                        if (entity.EntityId == vas.Entity.EntityId) continue;
                         entity.GetBehavior<EntityBehaviorActivityDriven>()?.ActivitySystem.StartActivity(code, priority, slot);
                     }
                 } else
@@ -72,7 +72,8 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                vas.Entity.World.Logger.Debug("StartActivity, starting {0}", code);
+                if(vas.Debug)
+                    vas.Entity.World.Logger.Debug("StartActivity, starting {0}", code);
                 vas.StartActivity(code, priority, slot);
             }
         }

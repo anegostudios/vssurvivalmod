@@ -33,7 +33,7 @@ namespace Vintagestory.GameContent
             props = Attributes["locatorProps"].AsObject<LocatorProps>();
         }
 
-        public bool OnDidTrade(EntityTrader trader, ItemStack stack, EnumTradeDirection tradeDir)
+        public bool OnDidTrade(EntityTradingHumanoid trader, ItemStack stack, EnumTradeDirection tradeDir)
         {
             var loc = strucLocSys.FindFreshStructureLocation(props.SchematicCode, trader.SidedPos.AsBlockPos, 350);
             stack.Attributes.SetInt("structureIndex", loc.StructureIndex);
@@ -45,7 +45,7 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public EnumTransactionResult OnTryTrade(EntityTrader eTrader, ItemSlot tradeSlot, EnumTradeDirection tradeDir)
+        public EnumTransactionResult OnTryTrade(EntityTradingHumanoid eTrader, ItemSlot tradeSlot, EnumTradeDirection tradeDir)
         {
             if (tradeSlot is ItemSlotTrade slottrade)
             {
@@ -59,7 +59,7 @@ namespace Vintagestory.GameContent
             return EnumTransactionResult.Success;
         }
 
-        public bool ShouldTrade(EntityTrader trader, TradeItem tradeIdem, EnumTradeDirection tradeDir)
+        public bool ShouldTrade(EntityTradingHumanoid trader, TradeItem tradeIdem, EnumTradeDirection tradeDir)
         {
             return strucLocSys.FindFreshStructureLocation(props.SchematicCode, trader.SidedPos.AsBlockPos, 350) != null;
         }

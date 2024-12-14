@@ -245,7 +245,7 @@ namespace Vintagestory.GameContent
             Dictionary<string, string> storeWildCard = new();
 
 
-            bool skipMatCost = plr?.WorldData.CurrentGameMode == EnumGameMode.Creative && byEntity.Controls.Sprint;
+            bool skipMatCost = plr?.WorldData.CurrentGameMode == EnumGameMode.Creative && byEntity.Controls.CtrlKey;
 
 
             foreach (var slot in hotbarinv)

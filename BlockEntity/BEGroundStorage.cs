@@ -1319,7 +1319,7 @@ namespace Vintagestory.GameContent
             {
                 var key = getMeshCacheKey(stack);
                 var mesh = getMesh(stack);
-                UploadedMeshCache.TryGetValue(key, out MeshRefs[index]);
+                
 
                 if (mesh != null) return mesh;
 
@@ -1336,7 +1336,9 @@ namespace Vintagestory.GameContent
                 capi.Tesselator.TesselateShape("storagePile", nowTesselatingShape, out mesh, this, null, 0, 0, 0, (int)Math.Ceiling(StorageProps.ModelItemsToStackSizeRatio * stack.StackSize));
 
                 MeshCache[key] = mesh;
-                UploadedMeshCache[key]= capi.Render.UploadMultiTextureMesh(mesh);
+
+                if (UploadedMeshCache.TryGetValue(key, out var mr)) mr.Dispose();
+                UploadedMeshCache[key] = capi.Render.UploadMultiTextureMesh(mesh);
                 MeshRefs[index] = UploadedMeshCache[key];
                 return mesh;
             }

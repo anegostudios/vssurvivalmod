@@ -71,7 +71,7 @@ namespace Vintagestory.GameContent
 
     public interface IEntityActivity
     {
-        double Priority { get; }
+        double Priority { get; set; }
         int Slot { get; set; }
         string Name { get; set; }
         string Code { get; set; }

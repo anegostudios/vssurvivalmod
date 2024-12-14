@@ -13,11 +13,11 @@ namespace Vintagestory.GameContent
         [JsonProperty]
         public bool Invert { get; set; }
         [JsonProperty]
-        int month;
+        string month;
 
         protected EntityActivitySystem vas;
         public MonthCondition() { }
-        public MonthCondition(EntityActivitySystem vas, int month, bool invert=false)
+        public MonthCondition(EntityActivitySystem vas, string month, bool invert=false)
         {
             this.vas = vas;
             this.month = month;
@@ -29,7 +29,18 @@ namespace Vintagestory.GameContent
         public virtual bool ConditionSatisfied(Entity e)
         {
             var api = vas.Entity.Api;
-            return api.World.Calendar.Month == month;
+            if (month.Contains(","))
+            {
+                var months = month.Split(",");
+                foreach (var m in months)
+                {
+                    if (m.ToInt() == api.World.Calendar.Month) return true;
+                }
+
+                return false;
+            }
+
+            return api.World.Calendar.Month == month.ToInt();
         }
 
 
@@ -42,15 +53,15 @@ namespace Vintagestory.GameContent
             var b = ElementBounds.Fixed(0, 0, 200, 25);
             singleComposer
                 .AddStaticText("Month (1..12)", CairoFont.WhiteDetailText(), b)
-                .AddNumberInput(b = b.BelowCopy(0, -5), null, CairoFont.WhiteDetailText(), "month")
+                .AddTextInput(b = b.BelowCopy(0, -5), null, CairoFont.WhiteDetailText(), "month")
             ;
 
-            singleComposer.GetNumberInput("month").SetValue(month + "");
+            singleComposer.GetTextInput("month").SetValue(month);
         }
 
         public void StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
-            month = (int)singleComposer.GetNumberInput("month").GetValue();
+            month = singleComposer.GetTextInput("month").GetText();
         }
         public IActionCondition Clone()
         {

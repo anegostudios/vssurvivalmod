@@ -2,6 +2,7 @@
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -23,17 +24,17 @@ namespace Vintagestory.GameContent
 
         public override bool CanPlantStay(IBlockAccessor blockAccessor, BlockPos pos)
         {
-            Block blockBelow = blockAccessor.GetBlockBelow(pos);
+            Block blockBelow = blockAccessor.GetBlockBelow(pos, 1, BlockLayersAccess.Solid);
             return (blockBelow.Fertility > 0) || (blockBelow is BlockSeaweed && blockBelow.Variant["part"] == "section");
         }
 
         public override void OnJsonTesselation(ref MeshData sourceMesh, ref int[] lightRgbsByCorner, BlockPos pos, Block[] chunkExtBlocks, int extIndex3d)
         {
             int windData =
-                ((api.World.BlockAccessor.GetBlockBelow(pos, 1) is BlockSeaweed) ? 1 : 0)
-                + ((api.World.BlockAccessor.GetBlockBelow(pos, 2) is BlockSeaweed) ? 1 : 0)
-                + ((api.World.BlockAccessor.GetBlockBelow(pos, 3) is BlockSeaweed) ? 1 : 0)
-                + ((api.World.BlockAccessor.GetBlockBelow(pos, 4) is BlockSeaweed) ? 1 : 0)
+                ((api.World.BlockAccessor.GetBlockBelow(pos, 1, BlockLayersAccess.Solid) is BlockSeaweed) ? 1 : 0)
+                + ((api.World.BlockAccessor.GetBlockBelow(pos, 2, BlockLayersAccess.Solid) is BlockSeaweed) ? 1 : 0)
+                + ((api.World.BlockAccessor.GetBlockBelow(pos, 3, BlockLayersAccess.Solid) is BlockSeaweed) ? 1 : 0)
+                + ((api.World.BlockAccessor.GetBlockBelow(pos, 4, BlockLayersAccess.Solid) is BlockSeaweed) ? 1 : 0)
             ;
 
             for (int i = 0; i < sourceMesh.FlagsCount; i++)

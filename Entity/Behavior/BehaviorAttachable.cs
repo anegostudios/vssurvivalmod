@@ -194,7 +194,7 @@ namespace Vintagestory.GameContent
 
             var controls = byEntity.MountedOn?.Controls ?? byEntity.Controls;
 
-            if (mode == EnumInteractMode.Interact && !controls.Sprint)
+            if (mode == EnumInteractMode.Interact && !controls.CtrlKey)
             {
                 if (slot.Itemstack?.Collectible.Attributes?.IsTrue("interactPassthrough") == true)
                 {
@@ -222,7 +222,7 @@ namespace Vintagestory.GameContent
             }
 
 
-            if (mode != EnumInteractMode.Interact || !controls.Sprint)
+            if (mode != EnumInteractMode.Interact || !controls.CtrlKey)
             {
                 handled = EnumHandling.PassThrough; // Can't attack an elk with a falx otherwise
                 return;
@@ -419,7 +419,18 @@ namespace Vintagestory.GameContent
             return entity.GetBehavior<EntityBehaviorSelectionBoxes>().GetCenterPosOfBox(selebox)?.Add(0, 0.5, 0);
         }
 
-        
+        public override void OnEntityDeath(DamageSource damageSourceForDeath)
+        {
+            int i = 0;
+            foreach (var slot in inv)
+            {
+                var iai = slot.Itemstack?.Collectible.GetCollectibleInterface<IAttachedInteractions>();
+                iai?.OnEntityDeath(slot, i++, entity, damageSourceForDeath);
+            }
+
+            base.OnEntityDeath(damageSourceForDeath);
+        }
+
 
         public bool TransparentCenter => false;
     }

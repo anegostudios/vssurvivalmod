@@ -29,4 +29,7 @@ public class StoryStructureLocation
     public Dictionary<int, int> SkipGenerationFlags;
     [ProtoMember(11)]
     public bool DidGenerateAdditional;    // Used for any additional hard-coded generation, e.g. for the Devastation Area, the past (intact) version of the tower
+
+    [ProtoMember(12)]
+    public Dictionary<string, int> SchematicsSpawned;
 }
