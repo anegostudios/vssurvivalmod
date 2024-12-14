@@ -261,22 +261,30 @@ namespace Vintagestory.GameContent.Mechanics
 
                 bool obst = collboxes != null && collboxes.Length > 0;
 
-                if (obst && i == 0)
+                if (obst && i <= 1)
                 {
                     obst = false;
                     for (int j = 0; j < collboxes.Length; j++)
                     {
-                        var b = collboxes[j].Y1 < 0.2f;
-                        switch(facing.Index)
+                        if (i == 1)
                         {
-                            case 0: b = b && collboxes[j].Z1 < 0.5; break;
-                            case 1: b = b && collboxes[j].X2 > 0.5; break;
-                            case 2: b = b && collboxes[j].Z2 > 0.5; break;
-                            case 3: b = b && collboxes[j].X1 < 0.5; break;
-
+                            obst |= collboxes[j].Y1 < 0.375f;
                         }
+                        else
+                        {
+                            var hereObs = collboxes[j].Y1 < 0.2f;
 
-                        obst |= b;
+                            switch (facing.Index)
+                            {
+                                case 0: hereObs = hereObs && collboxes[j].Z1 < 0.5; break;
+                                case 1: hereObs = hereObs && collboxes[j].X2 > 0.5; break;
+                                case 2: hereObs = hereObs && collboxes[j].Z2 > 0.5; break;
+                                case 3: hereObs = hereObs && collboxes[j].X1 < 0.5; break;
+
+                            }
+
+                            obst |= hereObs;
+                        }
                     }
                 }
 

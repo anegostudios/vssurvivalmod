@@ -1,13 +1,65 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
+    public class MSShapeFromAttrCacheHelper : ModSystem
+    {
+        public override bool ShouldLoad(EnumAppSide forSide) => forSide == EnumAppSide.Client;
+
+        public static bool IsInCache(ICoreClientAPI capi, Block block, IShapeTypeProps cprops, string overrideTextureCode)
+        {
+            var blockTextures = (block as BlockShapeFromAttributes).blockTextures;
+
+            // Prio 0: Shape textures
+            var shape = cprops.ShapeResolved;
+            if (shape == null) return false;
+            if (shape.Textures != null)
+            {
+                foreach (var val in shape.Textures)
+                {
+                    if (capi.BlockTextureAtlas[val.Value] == null) return false;
+                }
+            }
+
+            // Prio 1: Block wide custom textures
+            if (blockTextures != null)
+            {
+                foreach (var val in blockTextures)
+                {
+                    if (val.Value.Baked == null) val.Value.Bake(capi.Assets);
+                    if (capi.BlockTextureAtlas[val.Value.Baked.BakedName] == null) return false;
+                }
+            }
+
+            // Prio 2: Variant textures
+            if (cprops.Textures != null)
+            {
+                foreach (var val in cprops.Textures)
+                {
+                    var baked = val.Value.Baked ?? CompositeTexture.Bake(capi.Assets, val.Value);
+                    if (capi.BlockTextureAtlas[baked.BakedName] == null) return false;
+                }
+            }
+
+            // Prio 3: Override texture
+            if (overrideTextureCode != null && cprops.TextureFlipCode != null)
+            {
+                if ((block as BlockShapeFromAttributes).OverrideTextureGroups[cprops.TextureFlipGroupCode].TryGetValue(overrideTextureCode, out var ctex))
+                {
+                    if (ctex.Baked == null) ctex.Bake(capi.Assets);
+                    if (capi.BlockTextureAtlas[ctex.Baked.BakedName] == null) return false;
+                }
+            }
+
+            return true;
+        }
+    }
 
     public class BEBehaviorShapeFromAttributes : BlockEntityBehavior, IRotatable, IExtraWrenchModes
     {
@@ -37,7 +89,7 @@ namespace Vintagestory.GameContent
 
         public float offsetX, offsetY, offsetZ;
 
-        protected bool meshRequiresInitialisation;
+        protected bool loadMeshDuringTesselation;
 
         public BEBehaviorShapeFromAttributes(BlockEntity blockentity) : base(blockentity)
         {
@@ -58,7 +110,7 @@ namespace Vintagestory.GameContent
                 case 2: offsetY += (1 - rightmouseBtn * 2) / 16f; break; // U/D
             }
 
-            initShape();
+            loadMesh();
             Blockentity.MarkDirty(true);
         }
 
@@ -80,7 +132,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public virtual void initShape()
+        public virtual void loadMesh()
         {
             if (Type == null || Api == null || Api.Side == EnumAppSide.Server) return;
 
@@ -90,6 +142,7 @@ namespace Vintagestory.GameContent
             {
                 bool noOffset = offsetX == 0 && offsetY == 0 && offsetZ == 0;
                 float angleY = rotateY + cprops.Rotation.Y * GameMath.DEG2RAD;
+
                 MeshData baseMesh = clutterBlock.GetOrCreateMesh(cprops, null, overrideTextureCode);
                 if (cprops.RandomizeYSize && clutterBlock?.AllowRandomizeDims != false)
                 {
@@ -115,7 +168,7 @@ namespace Vintagestory.GameContent
                 Collected = byItemStack.Attributes.GetBool("collected");
             }
 
-            initShape();
+            loadMesh();
             var brep = clutterBlock.GetBehavior<BlockBehaviorReparable>();
             brep?.Initialize(Type, this);
         }
@@ -210,29 +263,36 @@ namespace Vintagestory.GameContent
 
         protected void MaybeInitialiseMesh_OnMainThread()
         {
-            if (overrideTextureCode != null || HasVariantTextures())
+            if (Api.Side == EnumAppSide.Server) return;
+            if (RequiresTextureUploads())
             {
-                initShape();
+                loadMesh();
             }
             else
             {
-                meshRequiresInitialisation = true;
+                loadMeshDuringTesselation = true;
             }
         }
 
         protected void MaybeInitialiseMesh_OffThread()
         {
-            if (meshRequiresInitialisation)
+            if (loadMeshDuringTesselation)
             {
-                meshRequiresInitialisation = false;
-                initShape();
+                loadMeshDuringTesselation = false;
+                loadMesh();
             }
         }
 
-        private bool HasVariantTextures()
+        private bool RequiresTextureUploads()
         {
             var cprops = clutterBlock?.GetTypeProps(Type, null, this);
-            return cprops?.Textures != null;
+            if (cprops?.Textures == null)
+            {
+                if (overrideTextureCode == null) return false;
+            }
+
+            bool isInCache = MSShapeFromAttrCacheHelper.IsInCache(this.Api as ICoreClientAPI, Block, cprops, overrideTextureCode);
+            return !isInCache;
         }
 
         public void OnTransformed(IWorldAccessor worldAccessor, ITreeAttribute tree, int degreeRotation, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, EnumAxis? flipAxis)
@@ -312,7 +372,7 @@ namespace Vintagestory.GameContent
                 rotateY += deg22dot5rad * dir;
             }
 
-            initShape();
+            loadMesh();
             Blockentity.MarkDirty(true);
         }
 

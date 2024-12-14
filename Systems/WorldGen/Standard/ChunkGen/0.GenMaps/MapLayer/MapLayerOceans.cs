@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.ServerMods
@@ -10,21 +11,28 @@ namespace Vintagestory.ServerMods
         float wobbleIntensity;
         NoiseOcean noiseOcean;
 
-        int spawnOffsX, spawnOffsZ;
-
         public float landFormHorizontalScale = 1f;
+        private List<XZ> requireLandAt;
 
-        public MapLayerOceans(long seed, float scale, float landCoverRate, List<XZ> requireLandAt) : base(seed)
+        int spawnOffsX, spawnOffsZ;
+        private float scale;
+        /// <summary>
+        /// This is related to ServerSystemSupplyChunks.LoadWorldgenHandlerAndSpawnChunks
+        /// </summary>
+        private readonly bool requiresSpawnOffset;
+
+        public MapLayerOceans(long seed, float scale, float landCoverRate, List<XZ> requireLandAt, bool requiresSpawnOffset) : base(seed)
         {
-            noiseOcean = new NoiseOcean(seed, scale, requireLandAt, landCoverRate);
-
+            noiseOcean = new NoiseOcean(seed, scale, landCoverRate);
+            this.requireLandAt = requireLandAt;
+            this.scale = scale;
             int woctaves = 4;
             float wscale = 2f * TerraGenConfig.oceanMapScale;
             float wpersistence = 0.9f;
             wobbleIntensity = TerraGenConfig.oceanMapScale * 1.5f * 1.2f;
             noisegenX = NormalizedSimplexNoise.FromDefaultOctaves(woctaves, 1 / wscale, wpersistence, seed + 2);
             noisegenY = NormalizedSimplexNoise.FromDefaultOctaves(woctaves, 1 / wscale, wpersistence, seed + 1231296);
-
+            this.requiresSpawnOffset = requiresSpawnOffset;
             var spawnCoord = requireLandAt[0];
             var offs = GetNoiseOffsetAt(spawnCoord.X, spawnCoord.Z);
             spawnOffsX = -offs.X;
@@ -40,29 +48,59 @@ namespace Vintagestory.ServerMods
 
         public override int[] GenLayer(int xCoord, int zCoord, int sizeX, int sizeZ)
         {
-            xCoord += spawnOffsX;
-            zCoord += spawnOffsZ;
-
-            int[] result = new int[sizeX * sizeZ];
-
-            for (int x = 0; x < sizeX; x++)
+            if (requiresSpawnOffset)
             {
-                for (int z = 0; z < sizeZ; z++)
+                xCoord += spawnOffsX;
+                zCoord += spawnOffsZ;
+            }
+            var result = new int[sizeX * sizeZ];
+            for (var x = 0; x < sizeX; x++)
+            {
+                for (var z = 0; z < sizeZ; z++)
                 {
                     var nx = xCoord + x;
                     var nz = zCoord + z;
+                    var offsetX = (int)(wobbleIntensity * noisegenX.Noise(nx, nz));
+                    var offsetZ = (int)(wobbleIntensity * noisegenY.Noise(nx, nz));
+                    var unscaledXpos = nx + offsetX;
+                    var unscaledZpos = nz + offsetZ;
+                    var oceanicity = noiseOcean.GetOceanIndexAt(unscaledXpos, unscaledZpos);
 
-                    int offsetX = (int)(wobbleIntensity * noisegenX.Noise(nx, nz));
-                    int offsetZ = (int)(wobbleIntensity * noisegenY.Noise(nx, nz));
+                    // if we have ocean check if we need to force land in case of story locations
+                    if (oceanicity == 255)
+                    {
+                        if (requiresSpawnOffset)
+                        {
+                            var scaled = scale / 2;
+                            for (var i = 0; i < requireLandAt.Count; i++)
+                            {
+                                var xz = requireLandAt[i];
+                                if (Math.Abs(xz.X - unscaledXpos) <= scaled && Math.Abs(xz.Z - unscaledZpos) <= scaled)
+                                {
+                                    oceanicity = 0;
+                                    break;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            for (var i = 0; i < requireLandAt.Count; i++)
+                            {
+                                var xz = requireLandAt[i];
+                                if (xz.X == nx && xz.Z == nz)
+                                {
+                                    oceanicity = 0;
+                                    break;
+                                }
+                            }
+                        }
+                    }
 
-                    result[z * sizeX + x] = noiseOcean.GetOceanIndexAt(nx + offsetX, nz + offsetZ);
+                    result[z * sizeX + x] = oceanicity;
                 }
             }
 
             return result;
         }
-
-
-
     }
 }

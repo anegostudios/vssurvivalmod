@@ -17,6 +17,7 @@ namespace Vintagestory.GameContent
         bool freezable;
         Block iceBlock;
         float freezingPoint = -4;
+        bool isBoiling;
 
         public override void OnLoaded(ICoreAPI api)
         {
@@ -37,6 +38,8 @@ namespace Vintagestory.GameContent
             {
                 iceBlock = api.World.GetBlock(AssetLocation.Create("lakeice", Code.Domain));
             }
+
+            isBoiling = HasBehavior<BlockBehaviorSteaming>();
         }
 
 
@@ -158,6 +161,13 @@ namespace Vintagestory.GameContent
             if (preventDefault) return result;
 
             return true;
+        }
+
+
+        public override float GetTraversalCost(BlockPos pos, EnumAICreatureType creatureType)
+        {
+            if (creatureType == EnumAICreatureType.SeaCreature && !isBoiling) return 0;
+            return isBoiling && creatureType != EnumAICreatureType.HeatProofCreature ? 99999f : 5f;
         }
     }
 }

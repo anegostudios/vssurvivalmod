@@ -23,6 +23,8 @@ namespace Vintagestory.GameContent
         string[] onmaterialsStrTmp;
         AssetLocation[] decorCodesTmp;
 
+        bool requireSprintKey = true;
+
 
         static int[] quadVertices = {
             -1, -1,  0,
@@ -35,6 +37,7 @@ namespace Vintagestory.GameContent
 
         static int[] quadVertexIndices = { 0, 1, 2,   0, 2, 3 };
 
+        float consumeChance;
         
 
         public CollectibleBehaviorArtPigment(CollectibleObject collObj) : base(collObj)
@@ -42,11 +45,14 @@ namespace Vintagestory.GameContent
             this.collObj = collObj;
         }
 
-
         public override void Initialize(JsonObject properties)
         {
             onmaterialsStrTmp = properties["paintableOnBlockMaterials"].AsArray<string>(new string[0]);
             decorCodesTmp = properties["decorBlockCodes"].AsObject(new AssetLocation[0], collObj.Code.Domain);
+
+            consumeChance = properties["consumeChance"].AsFloat(0.15f);
+
+            requireSprintKey = properties["requireSprintKey"]?.AsBool(true) ?? true;
 
             base.Initialize(properties);
         }
@@ -205,7 +211,7 @@ namespace Vintagestory.GameContent
 
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
             if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak)) return;
-            if (byPlayer == null || !byPlayer.Entity.Controls.CtrlKey) return;
+            if (byPlayer == null || (requireSprintKey && !byPlayer.Entity.Controls.CtrlKey)) return;
             if (!SuitablePosition(byEntity.World.BlockAccessor, blockSel)) return;
 
             handHandling = EnumHandHandling.PreventDefault;
@@ -217,7 +223,7 @@ namespace Vintagestory.GameContent
 
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
             if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak)) return false;
-            if (byPlayer == null || !byPlayer.Entity.Controls.CtrlKey) return false;
+            if (byPlayer == null || (requireSprintKey && !byPlayer.Entity.Controls.CtrlKey)) return false;
             if (!SuitablePosition(byEntity.World.BlockAccessor, blockSel)) return false;
 
             handling = EnumHandling.PreventSubsequent;
@@ -230,7 +236,7 @@ namespace Vintagestory.GameContent
 
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
             if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak)) return;
-            if (byPlayer == null || !byPlayer.Entity.Controls.CtrlKey) return;
+            if (byPlayer == null || (requireSprintKey && !byPlayer.Entity.Controls.CtrlKey)) return;
 
             IBlockAccessor blockAccessor = byEntity.World.BlockAccessor;
             if (!SuitablePosition(blockAccessor, blockSel)) return;
@@ -238,8 +244,7 @@ namespace Vintagestory.GameContent
             handling = EnumHandling.PreventDefault;
             DrawCaveArt(blockSel, blockAccessor, byPlayer);
 
-            // 1/15 chance to consume the item
-            if (byEntity.World.Side == EnumAppSide.Server && byEntity.World.Rand.NextDouble() < 1f/15)
+            if (byEntity.World.Side == EnumAppSide.Server && byEntity.World.Rand.NextDouble() < consumeChance)
             {
                 slot.TakeOut(1);
                 slot.MarkDirty();
@@ -256,38 +261,9 @@ namespace Vintagestory.GameContent
         }
 
 
-
-
         public static int BlockSelectionToSubPosition(BlockFacing face, Vec3i voxelPos)
         {
-            int x = voxelPos.X;
-            int y = 15 - voxelPos.Y;
-            int z = voxelPos.Z;
-            int offset = 0;
-
-            switch (face.Index)
-            {
-                case 0:
-                    offset = (15 - x) + y * 16;
-                    break;
-                case 1:
-                    offset = (15 - z) + y * 16;
-                    break;
-                case 2:
-                    offset = x + y * 16;
-                    break;
-                case 3:
-                    offset = z + y * 16;
-                    break;
-                case 4:
-                    offset = x + z * 16;
-                    break;
-                case 5:
-                    offset = x + (15 - z) * 16;
-                    break;
-            }
-
-            return face.Index + 6 * (1 + offset);
+            return (int)new DecorBits(face, voxelPos.X, 15 - voxelPos.Y, voxelPos.Z);
         }
 
         private bool SuitablePosition(IBlockAccessor blockAccessor, BlockSelection blockSel)
@@ -303,6 +279,8 @@ namespace Vintagestory.GameContent
 
         public override SkillItem[] GetToolModes(ItemSlot slot, IClientPlayer forPlayer, BlockSelection blockSel)
         {
+            if (!requireSprintKey) return toolModes;
+
             if (blockSel == null) return null;
 
             IBlockAccessor blockAccessor = forPlayer.Entity.World.BlockAccessor;

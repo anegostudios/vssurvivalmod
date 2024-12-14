@@ -7,8 +7,9 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockFirepit : Block, IIgnitable
+    public class BlockFirepit : Block, IIgnitable, ISmokeEmitter
     {
+
         public int Stage { get {
             switch (LastCodePart())
                 {
@@ -380,6 +381,22 @@ namespace Vintagestory.GameContent
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
         {
             return interactions.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
+        }
+
+        public override float GetTraversalCost(BlockPos pos, EnumAICreatureType creatureType)
+        {
+            if (creatureType == EnumAICreatureType.LandCreature || creatureType == EnumAICreatureType.Humanoid)
+            {
+                return GetBlockEntity<BlockEntityFirepit>(pos)?.IsBurning == true ? 10000f : 1f;
+            }
+
+            return base.GetTraversalCost(pos, creatureType);
+        }
+
+        public bool EmitsSmoke(BlockPos pos)
+        {
+            var befirepit = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityFirepit;
+            return befirepit?.IsBurning == true;
         }
     }
 }

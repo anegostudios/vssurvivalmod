@@ -30,6 +30,20 @@ namespace Vintagestory.GameContent
             LoadTypes();
         }
 
+        public override void OnUnloaded(ICoreAPI api)
+        {
+            var meshRefs = ObjectCacheUtil.TryGet<Dictionary<string, MultiTextureMeshRef>>(api, "ScrollrackMeshesInventory");
+            if (meshRefs?.Count > 0)
+            {
+                foreach (var (_, meshRef) in meshRefs)
+                {
+                    meshRef.Dispose();
+                }
+                ObjectCacheUtil.Delete(api, "ScrollrackMeshesInventory");
+            }
+            base.OnUnloaded(api);
+        }
+
         public void LoadTypes()
         {
             types = Attributes["types"].AsArray<string>();
@@ -182,7 +196,7 @@ namespace Vintagestory.GameContent
         public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
             var beb = GetBlockEntity<BlockEntityScrollRack>(pos);
-            beb.clearUsableSlots();
+            beb?.clearUsableSlots();
 
             base.OnNeighbourBlockChange(world, pos, neibpos);
         }

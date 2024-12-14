@@ -7,11 +7,9 @@ using Vintagestory.API.Util;
 namespace Vintagestory.GameContent
 {
     [JsonObject(MemberSerialization.OptIn)]
-    public class EquipAction : IEntityAction
+    public class EquipAction : EntityActionBase
     {
-        protected EntityActivitySystem vas;
-        public string Type => "equip";
-        public bool ExecutionHasFailed { get; set; }
+        public override string Type => "equip";
 
         [JsonProperty]
         string Target;
@@ -27,12 +25,7 @@ namespace Vintagestory.GameContent
             this.Value = value;
         }
 
-        public bool IsFinished()
-        {
-            return true;
-        }
-
-        public void Start(EntityActivity act)
+        public override void Start(EntityActivity act)
         {
             switch (Target)
             {
@@ -53,34 +46,48 @@ namespace Vintagestory.GameContent
         }
 
 
-        public void OnTick(float dt) { }
-        public void Cancel() { 
-            // unequip here
-        }
-        public void Finish() { }
-
-        public void LoadState(ITreeAttribute tree) { }
-        public void StoreState(ITreeAttribute tree) { }
-
-
-        public void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
+        public override void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             var vals = new string[] { "lefthand", "righthand" };
+            var cclass = new string[] { "item", "block" };
             var b = ElementBounds.Fixed(0, 0, 200, 25);
             singleComposer
                 .AddStaticText("Target", CairoFont.WhiteDetailText(), b)
                 .AddDropDown(vals, vals, vals.IndexOf(this.Target), null, b.BelowCopy(0, -5), "target")
 
-                .AddStaticText("Value (outfit code or item stack in json format)", CairoFont.WhiteDetailText(), b = b.BelowCopy(0, 25).WithFixedWidth(300))
-                .AddTextInput(b = b.BelowCopy(0, -5), null, CairoFont.WhiteDetailText(), "value")
+                .AddStaticText("Class", CairoFont.WhiteDetailText(), b = b.BelowCopy(0, 25))
+                .AddDropDown(cclass, cclass, vals.IndexOf(this.Target), null, b.BelowCopy(0, -5), "cclass")
+
+                .AddStaticText("Block/Item code", CairoFont.WhiteDetailText(), b = b.BelowCopy(0, 25).WithFixedWidth(300))
+                .AddTextInput(b = b.BelowCopy(0, -5), null, CairoFont.WhiteDetailText(), "code")
+
+                .AddStaticText("Attributes", CairoFont.WhiteDetailText(), b = b.BelowCopy(0, 25).WithFixedWidth(300))
+                .AddTextInput(b = b.BelowCopy(0, -5), null, CairoFont.WhiteDetailText(), "attr")
             ;
 
-            singleComposer.GetTextInput("value").SetValue(Value);
+            if (Value != null && Value.Length > 0)
+            {
+                JsonItemStack jstack = JsonItemStack.FromString(Value);
+                singleComposer.GetDropDown("cclass").SetSelectedIndex(cclass.IndexOf(jstack.Type.ToString().ToLowerInvariant()));
+                singleComposer.GetTextInput("code").SetValue(jstack.Code.ToShortString());
+                singleComposer.GetTextInput("attr").SetValue(jstack.Attributes?.ToString() ?? "");
+            }
         }
 
-        public bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
+        public override bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
-            Value = singleComposer.GetTextInput("value").GetText();
+            string type = singleComposer.GetDropDown("cclass").SelectedValue;
+            string code = singleComposer.GetTextInput("code").GetText();
+            string attr = singleComposer.GetTextInput("attr").GetText();
+
+            if (attr.Length > 0)
+            {
+                Value = string.Format("{{ type: \"{0}\", code: \"{1}\", attributes: {2} }}", type, code, attr);
+            } else
+            {
+                Value = string.Format("{{ type: \"{0}\", code: \"{1}\" }}", type, code);
+            }
+            
             Target = singleComposer.GetDropDown("target").SelectedValue;
 
             try
@@ -100,7 +107,7 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public IEntityAction Clone()
+        public override IEntityAction Clone()
         {
             return new EquipAction(vas, Target, Value);
         }
@@ -110,13 +117,5 @@ namespace Vintagestory.GameContent
             return "Grab " + Value + " in " + Target;
         }
 
-        public void OnVisualize(ActivityVisualizer visualizer)
-        {
-            
-        }
-        public void OnLoaded(EntityActivitySystem vas)
-        {
-            this.vas = vas;
-        }
     }
 }

@@ -8,6 +8,7 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -321,7 +322,7 @@ namespace Vintagestory.GameContent
                 Block blockInWindDir;
                 for (; groundOffset < 8; groundOffset++)
                 {
-                    block = api.World.BlockAccessor.GetBlock(pos.X, pos.Y - groundOffset, pos.Z);
+                    block = api.World.BlockAccessor.GetBlockBelow(pos, groundOffset);
                     blockInWindDir = (block is BlockBamboo) ? api.World.BlockAccessor.GetBlock(pos.X + windDir.X, pos.Y - groundOffset, pos.Z + windDir.Z) : null;
 
                     if (block.VertexFlags.WindMode == EnumWindBitMode.NoWind && block.SideSolid[TileSideEnum.Up]) break;

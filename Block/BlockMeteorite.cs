@@ -101,7 +101,9 @@ namespace Vintagestory.GameContent
 
                     tmpPos.Y = surfaceY;
                     Block surfaceblock = blAcc.GetBlock(tmpPos);
-                    Block abovesurfaceblock = blAcc.GetBlock(tmpPos.X, tmpPos.Y + 1, tmpPos.Z);
+                    tmpPos.Up();
+                    Block abovesurfaceblock = blAcc.GetBlock(tmpPos);
+                    //No need for tmpPos.Down() here, tmpPos.Y will be set again by the lines below, under all code paths
 
                     for (int i = -1; i <= (int)q; i++)
                     {

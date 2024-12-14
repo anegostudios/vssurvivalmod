@@ -83,6 +83,7 @@ namespace Vintagestory.GameContent
         string Code { get; }
         Vec3f Rotation { get; }
         Cuboidf[] ColSelBoxes { get; set; }
+        Cuboidf[] SelBoxes { get; set; }
         ModelTransform GuiTransform { get; set; }
         ModelTransform FpTtransform { get; set; }
         ModelTransform TpTransform { get; set; }
@@ -90,7 +91,8 @@ namespace Vintagestory.GameContent
         string RotInterval { get; }
         string FirstTexture { get; set; }
         TextureAtlasPosition TexPos { get; set; }
-        Dictionary<int, Cuboidf[]> ColSelBoxesByDeg { get; }
+        Dictionary<long, Cuboidf[]> ColSelBoxesByHashkey { get; }
+        Dictionary<long, Cuboidf[]> SelBoxesByHashkey { get; set; }
         AssetLocation ShapePath { get; }
         Shape ShapeResolved { get; set; }
 
@@ -110,7 +112,7 @@ namespace Vintagestory.GameContent
         protected bool colSelBoxEditMode;
         protected bool transformEditMode;
         protected float rotInterval = GameMath.PIHALF / 4;
-        protected IDictionary<string, CompositeTexture> blockTextures;
+        public IDictionary<string, CompositeTexture> blockTextures;
         public abstract string ClassType { get; }
         public abstract IEnumerable<IShapeTypeProps> AllTypes { get; }
         public abstract void LoadTypes();
@@ -167,11 +169,14 @@ namespace Vintagestory.GameContent
         {
             base.OnUnloaded(api);
 
-            extraWrenchModes[0]?.Dispose();
-            extraWrenchModes[1]?.Dispose();
-            extraWrenchModes[2]?.Dispose();
+            if (extraWrenchModes != null)
+            {
+                extraWrenchModes[0].Dispose();
+                extraWrenchModes[1].Dispose();
+                extraWrenchModes[2].Dispose();
+            }
 
-            if (api is ICoreClientAPI capi)
+            if (api is ICoreClientAPI capi && inventoryMeshDictionary != null)
             {
                 Dictionary<string, MultiTextureMeshRef> clutterMeshRefs = ObjectCacheUtil.TryGet<Dictionary<string, MultiTextureMeshRef>>(capi, inventoryMeshDictionary);
                 if (clutterMeshRefs != null)
@@ -387,6 +392,11 @@ namespace Vintagestory.GameContent
             if (bect == null) return base.GetCollisionBoxes(blockAccessor, pos);
 
             var cprops = GetTypeProps(bect.Type, null, bect);
+            return getCollisionBoxes(blockAccessor, pos, bect, cprops);
+        }
+
+        private Cuboidf[] getCollisionBoxes(IBlockAccessor blockAccessor, BlockPos pos, BEBehaviorShapeFromAttributes bect, IShapeTypeProps cprops)
+        {
             if (cprops?.ColSelBoxes == null) return base.GetCollisionBoxes(blockAccessor, pos);
 
             if (colSelBoxEditMode)
@@ -394,17 +404,28 @@ namespace Vintagestory.GameContent
                 return cprops.ColSelBoxes;
             }
 
-            int hashkey = ((int)(bect.rotateY * GameMath.RAD2DEG) * 360 + (int)(bect.rotateZ * GameMath.RAD2DEG)) * 360 + (int)(bect.rotateX * GameMath.RAD2DEG);
+            long hashkey =
+                  (long)(bect.offsetX * 255 + 255) << 45
+                | (long)(bect.offsetY * 255 + 255) << 36
+                | (long)(bect.offsetZ * 255 + 255) << 27
+                | (long)((bect.rotateY + (bect.rotateY < 0 ? GameMath.TWOPI : 0)) * GameMath.RAD2DEG) << 18
+                | (long)((bect.rotateX + (bect.rotateX < 0 ? GameMath.TWOPI : 0)) * GameMath.RAD2DEG) << 9
+                | (long)((bect.rotateZ + (bect.rotateZ < 0 ? GameMath.TWOPI : 0)) * GameMath.RAD2DEG)
+            ;
 
-            if (cprops.ColSelBoxesByDeg.TryGetValue(hashkey, out var cuboids))
+            if (cprops.ColSelBoxesByHashkey.TryGetValue(hashkey, out var cuboids))
             {
                 return cuboids;
             }
 
-            cprops.ColSelBoxesByDeg[hashkey] = cuboids = new Cuboidf[cprops.ColSelBoxes.Length];
+            cprops.ColSelBoxesByHashkey[hashkey] = cuboids = new Cuboidf[cprops.ColSelBoxes.Length];
             for (int i = 0; i < cuboids.Length; i++)
             {
-                cuboids[i] = cprops.ColSelBoxes[i].RotatedCopy(bect.rotateX * GameMath.RAD2DEG, bect.rotateY * GameMath.RAD2DEG, bect.rotateZ * GameMath.RAD2DEG, new Vec3d(0.5, 0.5, 0.5)).ClampTo(Vec3f.Zero, Vec3f.One);
+                cuboids[i] = cprops
+                    .ColSelBoxes[i]
+                    .RotatedCopy(bect.rotateX * GameMath.RAD2DEG, bect.rotateY * GameMath.RAD2DEG, bect.rotateZ * GameMath.RAD2DEG, new Vec3d(0.5, 0.5, 0.5)).ClampTo(Vec3f.Zero, Vec3f.One)
+                    .OffsetCopy(bect.offsetX, bect.offsetY, bect.offsetZ)
+                ;
             }
 
             return cuboids;
@@ -412,7 +433,43 @@ namespace Vintagestory.GameContent
 
         public override Cuboidf[] GetSelectionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
         {
-            return GetCollisionBoxes(blockAccessor, pos);
+            var bect = GetBEBehavior<BEBehaviorShapeFromAttributes>(pos);
+            if (bect == null) return base.GetCollisionBoxes(blockAccessor, pos);
+
+            var cprops = GetTypeProps(bect.Type, null, bect);
+            if (cprops?.SelBoxes == null) return getCollisionBoxes(blockAccessor, pos, bect, cprops);
+
+            if (colSelBoxEditMode)
+            {
+                return cprops.ColSelBoxes ?? cprops.SelBoxes;
+            }
+
+            long hashkey =
+                  (long)(bect.offsetX * 255 + 255) << 45
+                | (long)(bect.offsetY * 255 + 255) << 36
+                | (long)(bect.offsetZ * 255 + 255) << 27
+                | (long)((bect.rotateY + (bect.rotateY < 0 ? GameMath.TWOPI : 0)) * GameMath.RAD2DEG) << 18
+                | (long)((bect.rotateX + (bect.rotateX < 0 ? GameMath.TWOPI : 0)) * GameMath.RAD2DEG) << 9
+                | (long)((bect.rotateZ + (bect.rotateZ < 0 ? GameMath.TWOPI : 0)) * GameMath.RAD2DEG)
+            ;
+
+            if (cprops.SelBoxesByHashkey == null) cprops.SelBoxesByHashkey = new Dictionary<long, Cuboidf[]>();
+            if (cprops.SelBoxesByHashkey.TryGetValue(hashkey, out var cuboids))
+            {
+                return cuboids;
+            }
+
+            cprops.SelBoxesByHashkey[hashkey] = cuboids = new Cuboidf[cprops.SelBoxes.Length];
+            for (int i = 0; i < cuboids.Length; i++)
+            {
+                cuboids[i] = cprops
+                    .SelBoxes[i]
+                    .RotatedCopy(bect.rotateX * GameMath.RAD2DEG, bect.rotateY * GameMath.RAD2DEG, bect.rotateZ * GameMath.RAD2DEG, new Vec3d(0.5, 0.5, 0.5)).ClampTo(Vec3f.Zero, Vec3f.One)
+                    .OffsetCopy(bect.offsetX, bect.offsetY, bect.offsetZ)
+                ;
+            }
+
+            return cuboids;
         }
 
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
@@ -536,7 +593,6 @@ namespace Vintagestory.GameContent
             {
                 mesh = new MeshData(4, 3);
                 var shape = cprops.ShapeResolved;
-
                 ITexPositionSource texSource = overrideTexturesource;
 
                 // Prio 0: Shape textures
@@ -662,6 +718,11 @@ namespace Vintagestory.GameContent
         public override string GetPlacedBlockName(IWorldAccessor world, BlockPos pos)
         {
             var bect = GetBEBehavior<BEBehaviorShapeFromAttributes>(pos);
+            if (bect?.overrideTextureCode != null)
+            {
+                var name = Lang.GetMatchingIfExists(bect.GetFullCode() + "-" + bect.overrideTextureCode);
+                if (name != null) return name;
+            }
             return Lang.GetMatching(bect?.GetFullCode() ?? "Unknown");
         }
 
@@ -690,7 +751,7 @@ namespace Vintagestory.GameContent
         {
             var bect = GetBEBehavior<BEBehaviorShapeFromAttributes>(pos);
             bect.overrideTextureCode = newTextureCode;
-            bect.initShape();
+            bect.loadMesh();
             bect.Blockentity.MarkDirty(true);
         }
 

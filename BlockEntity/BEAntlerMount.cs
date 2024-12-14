@@ -83,10 +83,16 @@ namespace Vintagestory.GameContent
                 if (shelvable)
                 {
                     AssetLocation sound = slot.Itemstack?.Block?.Sounds?.Place;
-
+                    var stackCode = slot.Itemstack?.Collectible.Code;
                     if (TryPut(slot, blockSel))
                     {
                         Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
+
+                        Api.World.Logger.Audit("{0} Put 1x{1} on to AntlerMount at {2}.",
+                            byPlayer.PlayerName,
+                            stackCode,
+                            blockSel.Position
+                        );
                         return true;
                     }
 
@@ -130,6 +136,11 @@ namespace Vintagestory.GameContent
                 {
                     Api.World.SpawnItemEntity(stack, Pos);
                 }
+                Api.World.Logger.Audit("{0} Took 1x{1} from AntlerMount at {2}.",
+                    byPlayer.PlayerName,
+                    stack.Collectible.Code,
+                    blockSel.Position
+                );
 
                 MarkDirty();
                 return true;

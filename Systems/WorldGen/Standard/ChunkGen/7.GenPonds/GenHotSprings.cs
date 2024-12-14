@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.ServerMods
 {
@@ -68,7 +69,7 @@ namespace Vintagestory.ServerMods
             var data = request.Chunks[0].MapChunk.GetModdata<Dictionary<Vec3i, HotSpringGenData>>("hotspringlocations");
             if (data == null) return;
 
-            if (SkipGenerationAt(request.ChunkX * chunksize + chunksize / 2, request.ChunkZ * chunksize + chunksize / 2, SkipHotSpringsgHashCode, out _)) return;
+            if (GetIntersectingStructure(request.ChunkX * chunksize + chunksize / 2, request.ChunkZ * chunksize + chunksize / 2, SkipHotSpringsgHashCode) != null) return;
 
             int baseX = request.ChunkX * chunksize;
             int baseZ = request.ChunkZ * chunksize;
@@ -171,7 +172,7 @@ namespace Vintagestory.ServerMods
 
             BlockPos pos = new BlockPos(posx, posy, posz);
             var hereFluid = wgenBlockAccessor.GetBlock(pos, BlockLayersAccess.Fluid);
-            var heredecorBlock = wgenBlockAccessor.GetDecor(pos, BlockFacing.UP.Index);
+            var heredecorBlock = wgenBlockAccessor.GetDecor(pos, new DecorBits(BlockFacing.UP));
 
             int decorBlockIndex = (int)Math.Max(1, xzdist * 10);
             var decorBlock = decorBlockIndex < decorBlocks.Length ? decorBlocks[decorBlockIndex] : null;
@@ -214,8 +215,8 @@ namespace Vintagestory.ServerMods
             {
                 prepareHotSpringBase(posx, posy, posz, surfaceY, true, decorBlock);
 
-                var upblock = wgenBlockAccessor.GetBlock(pos.X, pos.Y + 1, pos.Z);
-                var upblock2 = wgenBlockAccessor.GetBlock(pos.X, pos.Y + 2, pos.Z);
+                var upblock = wgenBlockAccessor.GetBlockAbove(pos, 1, BlockLayersAccess.Solid);
+                var upblock2 = wgenBlockAccessor.GetBlockAbove(pos, 2, BlockLayersAccess.Solid);
                 if (upblock2.SideSolid[BlockFacing.UP.Index]) pos.Y += 2;
                 else if (upblock.SideSolid[BlockFacing.UP.Index]) pos.Y++;
 

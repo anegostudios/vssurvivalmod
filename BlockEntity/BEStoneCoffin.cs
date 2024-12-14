@@ -7,6 +7,7 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -447,8 +448,8 @@ namespace Vintagestory.GameContent
         bool hasLid()
         {
             return
-                Api.World.BlockAccessor.GetBlock(Pos.X, Pos.Y + 1, Pos.Z).FirstCodePart() == "stonecoffinlid" &&
-                Api.World.BlockAccessor.GetBlock(Pos.X + blockScs.Orientation.Opposite.Normali.X, Pos.Y + 1, Pos.Z + blockScs.Orientation.Opposite.Normali.Z).FirstCodePart() == "stonecoffinlid"
+                Api.World.BlockAccessor.GetBlockAbove(Pos, 1, BlockLayersAccess.Solid).FirstCodePart() == "stonecoffinlid" &&
+                Api.World.BlockAccessor.GetBlockAbove(Pos.AddCopy(blockScs.Orientation.Opposite), 1, BlockLayersAccess.Solid).FirstCodePart() == "stonecoffinlid"
             ;
         }
 

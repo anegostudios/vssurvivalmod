@@ -10,12 +10,10 @@ using Vintagestory.API.Util;
 namespace Vintagestory.GameContent
 {
     [JsonObject(MemberSerialization.OptIn)]
-    public class LookatEntityAction : IEntityAction
+    public class LookatEntityAction : EntityActionBase
     {
-        public string Type => "lookatentity";
-        public bool ExecutionHasFailed { get; set; }
-
-        EntityActivitySystem vas;
+        public override string Type => "lookatentity";
+     
         [JsonProperty]
         AssetLocation targetEntityCode;
         [JsonProperty]
@@ -31,18 +29,12 @@ namespace Vintagestory.GameContent
             this.searchRange = searchRange;
         }
 
-
-        public bool IsFinished()
+        public override void Start(EntityActivity act)
         {
-            return true;
-        }
+            Entity targetEntity = getTarget(vas.Entity.Api, vas.Entity.ServerPos.XYZ);
 
-        public void Start(EntityActivity act)
-        {
-            Entity targetEntity = getTarget();
-
-            ExecutionHasFailed = entity == null;
-            if (entity != null)
+            ExecutionHasFailed = targetEntity == null;
+            if (targetEntity != null)
             {
                 Vec3f targetVec = new Vec3f();
 
@@ -52,38 +44,23 @@ namespace Vintagestory.GameContent
                     (float)(targetEntity.ServerPos.Z - vas.Entity.ServerPos.Z)
                 );
 
-                entity.ServerPos.Yaw = (float)Math.Atan2(targetVec.X, targetVec.Z);
+                vas.Entity.ServerPos.Yaw = (float)Math.Atan2(targetVec.X, targetVec.Z);
             }
         }
 
-        private Entity getTarget()
+        private Entity getTarget(ICoreAPI api, Vec3d fromPos)
         {
-            var api = vas.Entity.Api;
             var ep = api.ModLoader.GetModSystem<EntityPartitioning>();
-            var targetEntity = ep.GetNearestEntity(vas.Entity.ServerPos.XYZ, searchRange, (e) => e.WildCardMatch(targetEntityCode));
+            var targetEntity = ep.GetNearestEntity(fromPos, searchRange, (e) => e.WildCardMatch(targetEntityCode));
             return targetEntity;
         }
 
-        public void OnTick(float dt)
-        {
-
-        }
-
-        public void Cancel()
-        {
-
-        }
-        public void Finish() { }
-        public void LoadState(ITreeAttribute tree) { }
-        public void StoreState(ITreeAttribute tree) { }
-
-
         public override string ToString()
         {
-            return "Look at nearest entity " + targetEntityCode + " within " + searchRange + " blocks";
+            return "Look at nearest entity " + targetEntityCode.ToShortString() + " within " + searchRange + " blocks";
         }
 
-        public void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
+        public override void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             var b = ElementBounds.Fixed(0, 0, 200, 25);
             singleComposer
@@ -93,31 +70,30 @@ namespace Vintagestory.GameContent
                 .AddStaticText("Entity Code", CairoFont.WhiteDetailText(), b = b.BelowCopy(0, 10))
                 .AddTextInput(b = b.BelowCopy(0, -5), null, CairoFont.WhiteDetailText(), "targetEntityCode")
             ;
+
+            singleComposer.GetTextInput("searchRange").SetValue(searchRange);
+            singleComposer.GetTextInput("targetEntityCode").SetValue(targetEntityCode);
         }
 
-        public IEntityAction Clone()
+        public override IEntityAction Clone()
         {
             return new LookatEntityAction(vas, targetEntityCode, searchRange);
         }
 
-        public bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
+        public override bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             searchRange = singleComposer.GetTextInput("searchRange").GetText().ToFloat();
             targetEntityCode = new AssetLocation(singleComposer.GetTextInput("targetEntityCode").GetText());
             return true;
         }
 
-        public void OnVisualize(ActivityVisualizer visualizer)
+        public override void OnVisualize(ActivityVisualizer visualizer)
         {
-            var target = getTarget();
+            var target = getTarget(visualizer.Api, visualizer.CurrentPos);
             if (target != null)
             {
-                visualizer.LineTo(target.Pos.XYZ.Add(0, 0.5, 0));
+                visualizer.LineTo(visualizer.CurrentPos, target.Pos.XYZ.Add(0, 0.5, 0), ColorUtil.ColorFromRgba(0, 0, 255, 255));
             }
-        }
-        public void OnLoaded(EntityActivitySystem vas)
-        {
-            this.vas = vas;
         }
     }
 }

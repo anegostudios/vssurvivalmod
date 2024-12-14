@@ -225,12 +225,23 @@ namespace Vintagestory.GameContent
             }
 
             var be = GetBlockEntity<BlockEntityIngotMold>(pos);
-            if (be?.TemperatureLeft > 300 || be.TemperatureRight > 300)
+            if (be?.TemperatureLeft > 300 || be?.TemperatureRight > 300)
             {
                 entity.ReceiveDamage(new DamageSource() { Source = EnumDamageSource.Block, SourceBlock = this, Type = EnumDamageType.Fire, SourcePos = pos.ToVec3d() }, 0.5f);
             }
 
             base.OnEntityCollide(world, entity, pos, facing, collideSpeed, isImpact);
+        }
+
+        public override float GetTraversalCost(BlockPos pos, EnumAICreatureType creatureType)
+        {
+            if (creatureType == EnumAICreatureType.LandCreature || creatureType == EnumAICreatureType.Humanoid)
+            {
+                var be = GetBlockEntity<BlockEntityIngotMold>(pos);
+                if (be?.TemperatureLeft > 300 || be.TemperatureRight > 300) return 10000f;
+            }
+
+            return 0;
         }
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)

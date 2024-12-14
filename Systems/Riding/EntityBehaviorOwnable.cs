@@ -36,7 +36,7 @@ namespace Vintagestory.GameContent
 
                 if (mseo.OwnerShipsByPlayerUid.TryGetValue(tree.GetString("uid", ""), out var ownerships))
                 {
-                    if (ownerships.TryGetValue(Group, out var ownership))
+                    if (ownerships != null && ownerships.TryGetValue(Group, out var ownership))
                     {
                         found = ownership.EntityId == entity.EntityId;
                     }

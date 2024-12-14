@@ -22,6 +22,8 @@ namespace Vintagestory.GameContent
         [JsonProperty]
         public string Name { get; set; }
         [JsonProperty]
+        public string Code { get; set; }
+        [JsonProperty]
         public IActionCondition[] Conditions { get; set; } = new IActionCondition[0];
         [JsonProperty]
         public IEntityAction[] Actions { get; set; } = new IEntityAction[0];
@@ -34,6 +36,7 @@ namespace Vintagestory.GameContent
 
         public int currentActionIndex=-1;
         EntityActivitySystem vas;
+        public double origPriority;
 
         public EntityActivity() { }
         public EntityActivity(EntityActivitySystem vas)
@@ -44,8 +47,12 @@ namespace Vintagestory.GameContent
         public void OnLoaded(EntityActivitySystem vas)
         {
             this.vas = vas;
+            if (Code == null || Code.Length == 0) Code = Name;
+
             if (Actions != null) foreach (var act in Actions) act.OnLoaded(vas);
             if (Conditions != null) foreach (var tri in Conditions) tri.OnLoaded(vas);
+
+            origPriority = Priority;
         }
 
 
@@ -54,6 +61,7 @@ namespace Vintagestory.GameContent
             CurrentAction?.Cancel();
             currentActionIndex = -1;
             Finished = true;
+            Priority = origPriority;
         }
 
         public void Start()
@@ -64,13 +72,25 @@ namespace Vintagestory.GameContent
             if (vas.Debug)
             {
                 vas.Entity.World.Logger.Debug("ActivitySystem entity {0}, starting new Activity - {1}", vas.Entity.EntityId, this.Name);
-                vas.Entity.World.Logger.Debug("starting next action {0}", CurrentAction.Type);
+                vas.Entity.World.Logger.Debug("starting next action {0}", CurrentAction?.Type);
             }
         }
 
         public void Finish()
         {
             CurrentAction?.Finish();
+            // Setting priority is only valid for one full execution
+            Priority = origPriority;
+        }
+
+        public void Pause()
+        {
+            CurrentAction?.Pause();
+        }
+
+        public void Resume()
+        {
+            CurrentAction?.Resume();
         }
 
         public void OnTick(float dt)
@@ -85,7 +105,7 @@ namespace Vintagestory.GameContent
                 {
                     currentActionIndex++;
                     CurrentAction.Start(this);
-                    if (vas.Debug) vas.Entity.World.Logger.Debug("ActivitySystem entity {0}, starting next Action - {1}", vas.Entity.EntityId, CurrentAction.Type);
+                    if (vas.Debug) vas.Entity.World.Logger.Debug("ActivitySystem entity {0}, starting next Action - {1}", vas.Entity.EntityId, CurrentAction?.Type);
                 }
                 else
                 {

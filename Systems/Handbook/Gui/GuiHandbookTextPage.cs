@@ -39,7 +39,7 @@ namespace Vintagestory.GameContent
             
             comps = VtmlUtil.Richtextify(capi, Text, CairoFont.WhiteSmallText().WithLineHeightMultiplier(1.2));
 
-            titleCached = Lang.Get(Title).RemoveDiacritics();
+            titleCached = Lang.Get(Title).ToSearchFriendly();
         }
 
         public override void ComposePage(GuiComposer detailViewGui, ElementBounds textBounds, ItemStack[] allstacks, ActionConsumable<string> openDetailPageFor)

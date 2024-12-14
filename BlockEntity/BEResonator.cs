@@ -30,7 +30,7 @@ namespace Vintagestory.GameContent
             inventory = new InventoryGeneric(1, null, null);
         }
 
-        
+
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
@@ -77,6 +77,11 @@ namespace Vintagestory.GameContent
                 {
                     world.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5, 1, 0.5));
                 }
+                Api.World.Logger.Audit("{0} Took 1x{1} from Resonator at {2}.",
+                    byPlayer.PlayerName,
+                    stack.Collectible.Code,
+                    Pos
+                );
 
                 StopMusic();
                 IsPlaying = false;
@@ -93,12 +98,18 @@ namespace Vintagestory.GameContent
                 if (track == null) return;
 
                 inventory[0].Itemstack = slot.TakeOut(1);
+
+                Api.World.Logger.Audit("{0} Put 1x{1} into Resonator at {2}.",
+                    byPlayer.PlayerName,
+                    inventory[0].Itemstack.Collectible.Code,
+                    Pos
+                );
                 slot.MarkDirty();
                 StartMusic();
                 IsPlaying = true;
                 MarkDirty(true);
-                
-            }   
+
+            }
         }
 
         #region Music start/stop
@@ -179,7 +190,7 @@ namespace Vintagestory.GameContent
         }
 
         #endregion
-        
+
         #region mesh stuff
 
         private void updateMeshesAndRenderer(ICoreClientAPI capi)
@@ -289,7 +300,7 @@ namespace Vintagestory.GameContent
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
             // Remove perish rate thing
-            
+
         }
 
     }

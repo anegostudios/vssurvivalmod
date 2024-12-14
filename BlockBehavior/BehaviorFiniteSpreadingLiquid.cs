@@ -4,6 +4,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -102,7 +103,7 @@ namespace Vintagestory.GameContent
                 {
                     pos.Y--;
                     // nasty slow check, but supports chiselled blocks for good physics
-                    var block = world.BlockAccessor.GetMostSolidBlock(pos.X, pos.Y, pos.Z);
+                    var block = world.BlockAccessor.GetMostSolidBlock(pos);
                     
                     bool onSolidGround = block.CanAttachBlockAt(world.BlockAccessor, ourBlock, pos, BlockFacing.UP);
                     pos.Y++;
@@ -612,7 +613,7 @@ namespace Vintagestory.GameContent
             Queue<BlockPos> uncheckedPositions = new Queue<BlockPos>();
             int shortestPath = 99;
 
-            BlockPos npos = new BlockPos();
+            BlockPos npos = new BlockPos(pos.dimension);
             for (int i = 0; i < downPaths.Length; i++)
             {
                 Vec2i offset = downPaths[i];
@@ -626,7 +627,7 @@ namespace Vintagestory.GameContent
                 // This needs rewriting :<
                 if (aboveliquid.LiquidLevel < ourBlock.LiquidLevel && block.Replaceable >= ReplacableThreshold && aboveblock.Replaceable >= ReplacableThreshold)
                 {
-                    uncheckedPositions.Enqueue(new BlockPos(pos.X + offset.X, pos.Y, pos.Z + offset.Y));
+                    uncheckedPositions.Enqueue(new BlockPos(pos.X + offset.X, pos.Y, pos.Z + offset.Y, pos.dimension));
 
                     BlockPos foundPos = BfsSearchPath(world, uncheckedPositions, pos, ourBlock);
                     if (foundPos != null)
@@ -662,7 +663,7 @@ namespace Vintagestory.GameContent
 
         private BlockPos BfsSearchPath(IWorldAccessor world, Queue<BlockPos> uncheckedPositions, BlockPos target, Block ourBlock)
         {
-            BlockPos npos = new BlockPos();
+            BlockPos npos = new BlockPos(target.dimension);
             BlockPos pos;
             BlockPos origin = null;
             while (uncheckedPositions.Count > 0)
@@ -679,7 +680,7 @@ namespace Vintagestory.GameContent
 
                     if (npos.Equals(target)) return pos;
 
-                    Block b = world.BlockAccessor.GetMostSolidBlock(npos.X, npos.Y, npos.Z);
+                    Block b = world.BlockAccessor.GetMostSolidBlock(npos);
                     if (b.GetLiquidBarrierHeightOnSide(BlockFacing.HORIZONTALS[i].Opposite, npos) >= (ourBlock.LiquidLevel - pos.ManhattenDistance(origin)) / MAXLEVEL_float) continue;
                     // TODO:  check this adjustment to liquidLevel is appropriate
 
@@ -702,7 +703,7 @@ namespace Vintagestory.GameContent
             // in this method. This will have to do until the properties are honored or this method becomes a separate client behavior.
             if (block.LiquidCode == "lava")
             {
-                int r = world.BlockAccessor.GetBlock(pos.X, pos.Y + 1, pos.Z).Replaceable;
+                int r = world.BlockAccessor.GetBlockAbove(pos).Replaceable;
                 return r > ReplacableThreshold;
             }
             else

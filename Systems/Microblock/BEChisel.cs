@@ -243,7 +243,7 @@ namespace Vintagestory.GameContent
 
         public override Cuboidf[] GetSelectionBoxes(IBlockAccessor world, BlockPos pos, IPlayer forPlayer = null)
         {
-            if (Api.Side == EnumAppSide.Client && DetailingMode)
+            if (Api?.Side == EnumAppSide.Client && DetailingMode)
             {
                 if (forPlayer == null) forPlayer = (Api.World as IClientWorldAccessor).Player;
 

@@ -9,12 +9,9 @@ namespace Vintagestory.GameContent
 
 
     [JsonObject(MemberSerialization.OptIn)]
-    public class StandardAIAction : IEntityAction
+    public class StandardAIAction : EntityActionBase
     {
-        public bool ExecutionHasFailed => false;
-        public string Type => "standardai";
-
-        EntityActivitySystem vas;
+        public override string Type => "standardai";
         [JsonProperty]
         public float durationSeconds;
 
@@ -30,28 +27,28 @@ namespace Vintagestory.GameContent
         {
         }
 
-        public void OnTick(float dt)
+        public override void OnTick(float dt)
         {
             secondsLeft -= dt;
         }
 
-        public bool IsFinished()
+        public override bool IsFinished()
         {
             return secondsLeft <= 0;
         }
 
-        public void Start(EntityActivity act)
+        public override void Start(EntityActivity act)
         {
             secondsLeft = durationSeconds;
         }
 
-        public void Cancel()
+        public override void Cancel()
         {
             secondsLeft = 0;
         }
-        public void Finish() { secondsLeft = 0; }
+        public override void Finish() { secondsLeft = 0; }
 
-        public void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
+        public override void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             var b = ElementBounds.Fixed(0, 0, 200, 25);
             singleComposer
@@ -62,18 +59,13 @@ namespace Vintagestory.GameContent
             singleComposer.GetTextInput("duration").SetValue(durationSeconds);
         }
 
-        public bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
+        public override bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             durationSeconds = singleComposer.GetTextInput("duration").GetText().ToFloat();
             return true;
         }
 
-
-        public void LoadState(ITreeAttribute tree) { }
-        public void StoreState(ITreeAttribute tree) { }
-
-
-        public IEntityAction Clone()
+        public override IEntityAction Clone()
         {
             return new StandardAIAction(vas, durationSeconds);
         }
@@ -83,13 +75,5 @@ namespace Vintagestory.GameContent
             return "Run standard AI for " + durationSeconds +"s";
         }
 
-        public void OnVisualize(ActivityVisualizer visualizer)
-        {
-            
-        }
-        public void OnLoaded(EntityActivitySystem vas)
-        {
-            this.vas = vas;
-        }
     }
 }

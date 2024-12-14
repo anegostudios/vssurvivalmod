@@ -8,11 +8,9 @@ using Vintagestory.API.Util;
 namespace Vintagestory.GameContent
 {
     [JsonObject(MemberSerialization.OptIn)]
-    public class UnmountAction : IEntityAction
+    public class UnmountAction : EntityActionBase
     {
-        protected EntityActivitySystem vas;
-        public string Type => "unmount";
-        public bool ExecutionHasFailed { get; set; }
+        public override string Type => "unmount";
 
         public UnmountAction() { }
 
@@ -21,12 +19,12 @@ namespace Vintagestory.GameContent
             this.vas = vas;
         }
 
-        public bool IsFinished()
+        public override bool IsFinished()
         {
             return vas.Entity.MountedOn == null;
         }
 
-        public void Start(EntityActivity act)
+        public override void Start(EntityActivity act)
         {
             if (vas.Entity.MountedOn == null) return;
 
@@ -34,21 +32,7 @@ namespace Vintagestory.GameContent
             ExecutionHasFailed = vas.Entity.MountedOn != null;
         }
 
-        public void OnTick(float dt)
-        {
-
-        }
-        public void Cancel()
-        {
-        }
-
-        public void Finish() { }
-        public void LoadState(ITreeAttribute tree) { }
-        public void StoreState(ITreeAttribute tree) { }
-
-
-
-        public IEntityAction Clone()
+        public override IEntityAction Clone()
         {
             return new UnmountAction(vas);
         }
@@ -58,20 +42,12 @@ namespace Vintagestory.GameContent
             return "Unmount from block/entity";
         }
 
-        public void OnVisualize(ActivityVisualizer visualizer)
-        {
-            
-        }
-        public void OnLoaded(EntityActivitySystem vas)
-        {
-            this.vas = vas;
-        }
 
-        public void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
+        public override void AddGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
         }
 
-        public bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
+        public override bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
         {
             return true;
         }

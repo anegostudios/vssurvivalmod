@@ -5,6 +5,7 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+using Vintagestory.GameContent;
 
 namespace Vintagestory.ServerMods
 {
@@ -23,7 +24,7 @@ namespace Vintagestory.ServerMods
         }
     }
 
-    public delegate bool PeventSchematicAtDelegate(BlockPos pos, Cuboidi schematicLocation);
+    public delegate bool PeventSchematicAtDelegate(IBlockAccessor blockAccessor, BlockPos pos, Cuboidi schematicLocation, string locationCode);
 
     public class GenStructures : ModStdWorldGen
     {
@@ -75,14 +76,14 @@ namespace Vintagestory.ServerMods
             worldgenBlockAccessor = chunkProvider.GetBlockAccessor(false);
         }
 
-        public bool WouldSchematicOverlapAt(BlockPos pos, Cuboidi schematicLocation)
+        public bool WouldSchematicOverlapAt(IBlockAccessor blockAccessor, BlockPos pos, Cuboidi schematicLocation, string locationCode)
         {
             if (OnPreventSchematicPlaceAt != null)
             {
                 var deles = OnPreventSchematicPlaceAt.GetInvocationList();
                 foreach (PeventSchematicAtDelegate dele in deles)
                 {
-                    if (dele(pos, schematicLocation)) return true;
+                    if (dele(blockAccessor, pos, schematicLocation, locationCode)) return true;
                 }
             }
 
@@ -93,6 +94,16 @@ namespace Vintagestory.ServerMods
         public void initWorldGen()
         {
             LoadGlobalConfig(api);
+
+            var fillerBlock = api.World.BlockAccessor.GetBlock(new AssetLocation("meta-filler"));
+            var pathwayBlock = api.World.BlockAccessor.GetBlock(new AssetLocation("meta-pathway"));
+            var undergroundBlock = api.World.BlockAccessor.GetBlock(new AssetLocation("meta-underground"));
+            var abovegroundBlock = api.World.BlockAccessor.GetBlock(new AssetLocation("meta-aboveground"));
+            BlockSchematic.FillerBlockId = fillerBlock.Id;
+            BlockSchematic.PathwayBlockId = pathwayBlock.Id;
+            BlockSchematic.UndergroundBlockId = undergroundBlock.Id;
+            BlockSchematic.AbovegroundBlockId = abovegroundBlock.Id;
+
             worldheight = api.WorldManager.MapSizeY;
             regionChunkSize = api.WorldManager.RegionSize / chunksize;
 
@@ -133,8 +144,7 @@ namespace Vintagestory.ServerMods
         {
             if (!TerraGenConfig.GenerateStructures) return;
 
-            SkipGenerationAt(request.ChunkX * chunksize + chunksize / 2, request.ChunkZ * chunksize + chunksize / 2, SkipStructuresgHashCode,
-                out var locationCode);
+            var locationCode = GetIntersectingStructure(request.ChunkX * chunksize + chunksize / 2, request.ChunkZ * chunksize + chunksize / 2, SkipStructuresgHashCode);
 
             var chunks = request.Chunks;
             int chunkX = request.ChunkX;
@@ -152,9 +162,7 @@ namespace Vintagestory.ServerMods
         {
             if (!TerraGenConfig.GenerateStructures) return;
 
-            SkipGenerationAt(request.ChunkX * chunksize + chunksize / 2, request.ChunkZ * chunksize + chunksize / 2, SkipStructuresgHashCode,
-                out var locationCode);
-
+            var locationCode = GetIntersectingStructure(request.ChunkX * chunksize + chunksize / 2, request.ChunkZ * chunksize + chunksize / 2, SkipStructuresgHashCode);
 
             var chunks = request.Chunks;
             int chunkX = request.ChunkX;
@@ -214,6 +222,7 @@ namespace Vintagestory.ServerMods
 
             ITreeAttribute chanceModTree = null;
             ITreeAttribute maxQuantityModTree = null;
+            StoryStructureLocation location = null;
             if (chunkGenParams?["structureChanceModifier"] != null)
             {
                 chanceModTree = chunkGenParams["structureChanceModifier"] as TreeAttribute;
@@ -271,8 +280,30 @@ namespace Vintagestory.ServerMods
 
                     if (startPos.Y <= 0) continue;
 
-                    if (struc.TryGenerate(worldgenBlockAccessor, api.World, startPos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight))
+                    // check if in storylocation and if we can still generate this structure
+                    if (locationCode != null)
                     {
+                        location = GetIntersectingStructure(chunkX * chunksize + chunksize / 2, chunkZ * chunksize + chunksize / 2);
+                        if (location.SchematicsSpawned?.TryGetValue(struc.Group, out var spawnedSchematics) == true && spawnedSchematics >= struc.StoryLocationMaxAmount)
+                        {
+                            continue;
+                        }
+                    }
+
+                    if (struc.TryGenerate(worldgenBlockAccessor, api.World, startPos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, locationCode))
+                    {
+                        if(locationCode != null && location != null)
+                        {
+                            if (location.SchematicsSpawned?.TryGetValue(struc.Group, out var spawnedSchematics) == true)
+                            {
+                                location.SchematicsSpawned[struc.Group] = spawnedSchematics + 1;
+                            }
+                            else
+                            {
+                                location.SchematicsSpawned ??= new Dictionary<string, int>();
+                                location.SchematicsSpawned[struc.Group] = 1;
+                            }
+                        }
                         Cuboidi loc = struc.LastPlacedSchematicLocation;
 
                         string code = struc.Code + (struc.LastPlacedSchematic == null ? "" : "/" + struc.LastPlacedSchematic.FromFileName);
@@ -349,6 +380,5 @@ namespace Vintagestory.ServerMods
                 }
             });
         }
-
     }
 }

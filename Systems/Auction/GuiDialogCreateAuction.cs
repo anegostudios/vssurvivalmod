@@ -86,7 +86,7 @@ namespace Vintagestory.GameContent
                         .AddDropDown(codes, values, 0, onDurationChanged, dropDownBounds, CairoFont.WhiteSmallText(), "duration")
 
                         .AddRichtext(Lang.Get("Deposit: {0}", 1) + " " + gearIcon, CairoFont.WhiteSmallText(), costLabelBounds, "depositText")
-                        .AddRichtext(Lang.Get("Trader cut on sale (10%): {0}" + " " + gearIcon, 1), CairoFont.WhiteSmallText(), cutLabelBounds, "cutText")
+                        .AddRichtext(Lang.Get("Trader cut on sale (10%): {0}", 1) + " " + gearIcon, CairoFont.WhiteSmallText(), cutLabelBounds, "cutText")
 
                         .AddSmallButton(Lang.Get("Cancel"), OnCancelAuctionClose, leftButton.FixedUnder(cutLabelBounds, 20).WithFixedPadding(8, 5))
                         .AddSmallButton(Lang.Get("Create Auction"), OnCreateAuctionConfirm, rightButton.FixedUnder(cutLabelBounds, 20).WithFixedPadding(8, 5), EnumButtonStyle.Normal, "buysellButton")
@@ -101,13 +101,13 @@ namespace Vintagestory.GameContent
         {
             int cost = Composers["tradercreateauction"].GetNumberInput("price").GetText().ToInt(1);
             float gearcut = cost * auctionSys.SalesCutRate + auctionSys.debtClient;
-            Composers["tradercreateauction"].GetRichtext("cutText").SetNewText(Lang.Get("Trader cut on sale (10%): {0}" + " " + gearIcon, (int)gearcut), CairoFont.WhiteSmallText());
+            Composers["tradercreateauction"].GetRichtext("cutText").SetNewText(Lang.Get("Trader cut on sale (10%): {0}", (int)gearcut) + " " + gearIcon, CairoFont.WhiteSmallText());
         }
 
         private void onDurationChanged(string code, bool selected)
         {
             int cost = code.ToInt(1) / auctionSys.DurationWeeksMul;
-            Composers["tradercreateauction"].GetRichtext("depositText").SetNewText(Lang.Get("Deposit: {0}x", cost) + " " + gearIcon, CairoFont.WhiteSmallText());
+            Composers["tradercreateauction"].GetRichtext("depositText").SetNewText(Lang.Get("Deposit: {0}", cost) + " " + gearIcon, CairoFont.WhiteSmallText());
         }
 
         private bool OnCancelAuctionClose()

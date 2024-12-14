@@ -26,11 +26,13 @@ namespace Vintagestory.Client.NoObf
         {
             List<EntityAgent> foundBosses = new List<EntityAgent>();
 
-            partUtil.WalkEntities(capi.World.Player.Entity.Pos.XYZ, 30, (e) => {
+            var plrpos = capi.World.Player.Entity.Pos.XYZ;
+            partUtil.WalkEntities(plrpos, 60, (e) => {
                 EntityBehaviorBoss bh;
                 if (e.Alive && e.IsInteractable && (bh = e.GetBehavior<EntityBehaviorBoss>()) != null)
                 {
-                    if (bh.ShowHealthBar) foundBosses.Add(e as EntityAgent);
+                    var dist = e.Pos.DistanceTo(plrpos);
+                    if (bh.ShowHealthBar && dist <= bh.BossHpbarRange) foundBosses.Add(e as EntityAgent);
                 }
                 return true;
             }, EnumEntitySearchType.Creatures);
@@ -130,7 +132,7 @@ namespace Vintagestory.Client.NoObf
                 fixedY = 10 + barIndex * 25
             }.WithFixedAlignmentOffset(0, 5);
 
-            ElementBounds healthBarBounds = ElementBounds.Fixed(0, 17, width, 14);
+            ElementBounds healthBarBounds = ElementBounds.Fixed(0, 18, width, 14);
 
             ITreeAttribute healthTree = TargetEntity.WatchedAttributes.GetTreeAttribute("health");
             string key = "bosshealthbar-" + TargetEntity.EntityId;

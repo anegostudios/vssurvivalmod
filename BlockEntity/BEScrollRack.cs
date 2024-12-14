@@ -162,13 +162,13 @@ namespace Vintagestory.GameContent
                 {
                     AssetLocation sound = slot.Itemstack?.Block?.Sounds?.Place;
 
-                    var stackName = slot.Itemstack?.GetName();
+                    var stackName = slot.Itemstack?.Collectible.Code;
                     if (TryPut(slot, blockSel))
                     {
                         Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
-                        Api.World.Logger.Audit("{0} Put {1} into Scroll rack at {2}.",
+                        Api.World.Logger.Audit("{0} Put 1x{1} into Scroll rack at {2}.",
                             byPlayer.PlayerName,
-                            string.Format("1x{0}", stackName),
+                            stackName,
                             Pos
                         );
                         return true;
@@ -221,9 +221,9 @@ namespace Vintagestory.GameContent
                 {
                     Api.World.SpawnItemEntity(stack, Pos);
                 }
-                Api.World.Logger.Audit("{0} Took {1} from Scroll rack at {2}.",
+                Api.World.Logger.Audit("{0} Took 1x{1} from Scroll rack at {2}.",
                     byPlayer.PlayerName,
-                    string.Format("1x{0}", stack.GetName()),
+                    stack.Collectible.Code,
                     Pos
                 );
 

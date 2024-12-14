@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Vintagestory.API.Common;
@@ -131,6 +132,17 @@ namespace Vintagestory.GameContent
                 diceRoll -= Stacks[i].Chance;
 
             }
+        }
+
+        public BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)
+        {
+            List<BlockDropItemStack> resolvedDrops = new();
+            foreach (var randomStack in Stacks)
+            {
+                resolvedDrops.Add(new(randomStack.ResolvedStack.Clone()));
+            }
+
+            return resolvedDrops.ToArray();
         }
 
 

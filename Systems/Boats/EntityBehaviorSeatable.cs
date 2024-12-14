@@ -1,5 +1,8 @@
-﻿using System;
+﻿using Cairo;
+using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Reflection.Metadata;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -12,7 +15,14 @@ namespace Vintagestory.GameContent
 {
     public delegate bool CanSitDelegate(EntityAgent eagent, out string errorMessage);
 
-    public class EntityBehaviorSeatable : EntityBehavior, IVariableSeatsMountable, IRopeTiedCreatureCarrier
+    public class EntityBehaviorCreatureCarrier : EntityBehaviorSeatable, IRopeTiedCreatureCarrier
+    {
+        public EntityBehaviorCreatureCarrier(Entity entity) : base(entity)
+        {
+        }
+    }
+
+    public class EntityBehaviorSeatable : EntityBehavior, IVariableSeatsMountable
     {
         public IMountableSeat[] Seats { get; set; }
         public SeatConfig[] SeatConfigs;
@@ -97,21 +107,21 @@ namespace Vintagestory.GameContent
             return false;
         }
 
+        
 
         public override void OnInteract(EntityAgent byEntity, ItemSlot itemslot, Vec3d hitPosition, EnumInteractMode mode, ref EnumHandling handled)
         {
-            if (mode != EnumInteractMode.Interact || !entity.Alive) return;
+            if (mode != EnumInteractMode.Interact || !entity.Alive || !byEntity.Alive) return;
             if (!allowSit(byEntity)) return;
             if (itemslot.Itemstack?.Collectible is ItemRope) return;
 
             int seleBox = (byEntity as EntityPlayer).EntitySelection?.SelectionBoxIndex ?? -1;
             var bhs = entity.GetBehavior<EntityBehaviorSelectionBoxes>();
 
-            if (byEntity.Controls.Sprint && bhs != null && byEntity.MountedOn == null && seleBox > 0)
+            if (bhs != null && byEntity.MountedOn == null && seleBox > 0)
             {
                 var apap = bhs.selectionBoxes[seleBox - 1];
                 string apname = apap.AttachPoint.Code;
-
                 var seat = Seats.FirstOrDefault((seat) => seat.Config.APName == apname || seat.Config.SelectionBox == apname);
                 if (seat != null && seat.Passenger != null && seat.Passenger.HasBehavior<EntityBehaviorRopeTieable>())
                 {
@@ -121,7 +131,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (byEntity.Controls.Sprint)
+            if (byEntity.Controls.CtrlKey)
             {
                 return;
             }
@@ -129,37 +139,14 @@ namespace Vintagestory.GameContent
             // If we have the selection boxes behavior, use that
             if (seleBox > 0 && bhs != null)
             {
-                // This slot is occupied, and its not a seat
-                var bha = entity.GetBehavior<EntityBehaviorAttachable>();
-                if (bha != null)
-                {
-                    var slot = bha.GetSlotFromSelectionBoxIndex(seleBox - 1);
-                    if (slot != null && !slot.Empty)
-                    {
-                        var attrseatconfig = slot.Itemstack?.ItemAttributes?["attachableToEntity"]?["seatConfig"]?.AsObject<SeatConfig>();
-                        if (attrseatconfig == null)
-                        {
-                            if (slot.Itemstack.ItemAttributes?["isSaddle"].AsBool(false) == true)
-                            {
-                                mountAnySeat(byEntity, out handled);
-                            }
-
-                            return;
-                        }
-                    }
-                };
-
                 var apap = bhs.selectionBoxes[seleBox - 1];
                 string apname = apap.AttachPoint.Code;
 
                 var seat = Seats.FirstOrDefault((seat) => seat.Config.APName == apname || seat.Config.SelectionBox == apname);
-                if (seat != null)
+                if (seat != null && CanSitOn(seat) && byEntity.TryMount(seat))
                 {
-                    if (byEntity.TryMount(seat))
-                    {
-                        handled = EnumHandling.PreventSubsequent;
-                        return;
-                    }
+                    handled = EnumHandling.PreventSubsequent;
+                    return;
                 }
 
                 if (!interactMountAnySeat || !itemslot.Empty)
@@ -195,26 +182,47 @@ namespace Vintagestory.GameContent
         {
             handled = EnumHandling.PreventSubsequent;
 
-            // Otherwise just get on the first available controllable seat
+            // Get on the first available controllable seat
             foreach (var seat in Seats)
             {
-                if (seat.Passenger != null || !seat.CanControl) continue;
+                if (!CanSitOn(seat)) continue;
+                if (!seat.CanControl) continue;
                 if (byEntity.TryMount(seat)) return;
             }
 
             // Otherwise just any seat
             foreach (var seat in Seats)
             {
-                if (seat.Passenger != null) continue;
+                if (!CanSitOn(seat)) continue;
                 if (byEntity.TryMount(seat)) return;
             }
+        }
+
+        public bool CanSitOn(IMountableSeat seat)
+        {
+            if (seat.Passenger != null) return false;
+
+            var bha = entity.GetBehavior<EntityBehaviorAttachable>();
+            if (bha != null)
+            {
+                var slot = bha.GetSlotConfigFromAPName(seat.Config.APName);
+                if (slot?.Empty == false)
+                {
+                    return 
+                        slot.Itemstack.ItemAttributes?["isSaddle"].AsBool(false) == true ||  // Can only sit if in this slot there is a saddle
+                        slot.Itemstack.ItemAttributes?["attachableToEntity"]["seatConfig"].Exists == true
+                    ;
+                }
+            }
+
+            return true;
         }
 
         public void RegisterSeat(SeatConfig seatconfig)
         {
             if (seatconfig?.SeatId == null) throw new ArgumentNullException("seatConfig.SeatId must be set");
 
-            if (Seats == null) Seats = new EntityBoatSeat[0];
+            if (Seats == null) Seats = new IMountableSeat[0];
 
             int index = Seats.IndexOf(s => s.SeatId == seatconfig.SeatId);
             if (index < 0)
@@ -294,5 +302,111 @@ namespace Vintagestory.GameContent
         }
 
         public override string PropertyName() => "seatable";
+
+
+
+        public override WorldInteraction[] GetInteractionHelp(IClientWorldAccessor world, EntitySelection es, IClientPlayer player, ref EnumHandling handled)
+        {
+            if (es.SelectionBoxIndex > 0)
+            {
+                return SeatableInteractionHelp.GetOrCreateInteractionHelp(world.Api, this, Seats, es.SelectionBoxIndex - 1);
+            }
+
+            return base.GetInteractionHelp(world, es, player, ref handled);
+        }
+
+        public override void OnEntityDeath(DamageSource damageSourceForDeath)
+        {
+            base.OnEntityDeath(damageSourceForDeath);
+
+            foreach (var seat in Seats) {
+                (seat?.Passenger as EntityAgent)?.TryUnmount();
+            }
+        }
+    }
+
+
+
+    public class SeatableInteractionHelp
+    {
+        public static WorldInteraction[] GetOrCreateInteractionHelp(ICoreAPI api, EntityBehaviorSeatable eba, IMountableSeat[] seats, int slotIndex)
+        {
+            IMountableSeat seat = getSeat(eba, seats, slotIndex);
+            if (seat == null) return null;
+
+            if (seat.Config.Attributes?["ropeTieablesOnly"].AsBool(false) == true)
+            {
+                List<ItemStack> ropetiableStacks = ObjectCacheUtil.GetOrCreate(api, "interactionhelp-ropetiablestacks", () =>
+                {
+                    List<ItemStack> ropetiableStacks = new List<ItemStack>();
+
+                    foreach (var etype in api.World.EntityTypes)
+                    {
+                        foreach (var val in etype.Client.BehaviorsAsJsonObj)
+                        {
+                            if (val["code"].AsString() == "ropetieable")
+                            {
+                                var invitem = api.World.GetItem(AssetLocation.Create("creature-" + etype.Code.Path, etype.Code.Domain));
+                                if (invitem != null)
+                                {
+                                    ropetiableStacks.Add(new ItemStack(invitem));
+                                }
+                            }
+                        }
+                    }
+
+                    return ropetiableStacks;
+                });
+
+                return new WorldInteraction[]
+                {
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = seat.Passenger != null ? "seatableentity-dismountcreature" : "seatableentity-mountcreature",
+                        Itemstacks = ropetiableStacks.ToArray(),
+                        MouseButton = EnumMouseButton.Right,
+                    }
+                };
+            }
+
+            if (eba.CanSitOn(seat))
+            {
+                return new WorldInteraction[]
+                {
+                new WorldInteraction()
+                {
+                    ActionLangCode = "seatableentity-mount",
+                    MouseButton = EnumMouseButton.Right,
+                }
+                };
+            }
+
+            return null;
+        }
+
+        private static bool canSit(EntityBehaviorSeatable eba, IMountableSeat[] seats, int slotIndex)
+        {
+            if (slotIndex >= 0)
+            {
+                IMountableSeat seat = getSeat(eba, seats, slotIndex);
+                if (seat != null && eba.CanSitOn(seat))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static IMountableSeat getSeat(EntityBehaviorSeatable eba, IMountableSeat[] seats, int slotIndex)
+        {
+            var bhs = eba.entity.GetBehavior<EntityBehaviorSelectionBoxes>();
+            if (bhs == null) return null;
+
+            var apap = bhs.selectionBoxes[slotIndex];
+            string apname = apap.AttachPoint.Code;
+
+            return seats.FirstOrDefault((seat) => seat.Config.APName == apname || seat.Config.SelectionBox == apname);
+        }
     }
 }

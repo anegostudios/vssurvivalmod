@@ -192,7 +192,7 @@ namespace Vintagestory.GameContent
                 BlockFacing face = BlockFacing.HORIZONTALS[i];
 
                 liquidParticles.Color = capi.BlockTextureAtlas.GetRandomColor(renderer.juiceTexPos, rand.Next(TextureAtlasPosition.RndColorsLength));
-                
+
                 Vec3d minPos = face.Plane.Startd.Add(-0.5, 0, -0.5);
                 Vec3d maxPos = face.Plane.Endd.Add(-0.5, 0, -0.5);
 
@@ -327,7 +327,7 @@ namespace Vintagestory.GameContent
                 compressAnimMeta.AnimationSpeed = 0.5f;
                 animUtil.StartAnimation(compressAnimMeta);
                 squeezeSoundPlayed = false;
-                
+
                 (Api as ICoreClientAPI).Network.SendBlockEntityPacket(Pos, PacketIdScrewStart);
 
                 if (listenerId == 0)
@@ -401,15 +401,25 @@ namespace Vintagestory.GameContent
                     // so we only remove one item and add the liters for one
                     removeItems = 1;
                 } else
-                {  
+                {
                     float desiredTransferSizeLitres = byPlayer.Entity.Controls.ShiftKey ? (float)hprops.LitresPerItem : Math.Min(handStack.StackSize, 4) * (float)hprops.LitresPerItem;
                     transferableLitres = (float)Math.Min(desiredTransferSizeLitres, juiceableLitresCapacity - juiceableLitresLeft);
 
                     removeItems = (int)(transferableLitres / hprops.LitresPerItem);
                 }
 
-                if (transferableLitres > 0) {
+                if (transferableLitres > 0)
+                {
+                    var stackCode = handslot.Itemstack.Collectible.Code;
                     handslot.TakeOut(removeItems);
+
+
+                    Api.World.Logger.Audit("{0} Put {1}x{2} into Fruitpress at {3}.",
+                        byPlayer.PlayerName,
+                        removeItems,
+                        stackCode,
+                        blockSel.Position
+                    );
 
                     mashStack.Attributes.SetDouble("juiceableLitresLeft", juiceableLitresLeft += transferableLitres);
                     mashStack.StackSize = 1;
@@ -429,6 +439,11 @@ namespace Vintagestory.GameContent
             {
                 Api.World.SpawnItemEntity(mashStack, Pos);
             }
+            Api.World.Logger.Audit("{0} Took 1x{1} from Fruitpress at {2}.",
+                byPlayer.PlayerName,
+                mashStack.Collectible.Code,
+                blockSel.Position
+            );
 
             MashSlot.Itemstack = null;
             renderer?.reloadMeshes(null, true);
@@ -452,6 +467,11 @@ namespace Vintagestory.GameContent
                 {
                     Api.World.SpawnItemEntity(BucketSlot.Itemstack, Pos);
                 }
+                Api.World.Logger.Audit("{0} Took 1x{1} from Fruitpress at {2}.",
+                    byPlayer.PlayerName,
+                    BucketSlot.Itemstack.Collectible.Code,
+                    blockSel.Position
+                );
 
                 if (BucketSlot.Itemstack.Block != null) Api.World.PlaySoundAt(BucketSlot.Itemstack.Block.Sounds.Place, Pos, -0.5, byPlayer);
 
@@ -465,6 +485,11 @@ namespace Vintagestory.GameContent
                 bool moved = handslot.TryPutInto(Api.World, BucketSlot, 1) > 0;
                 if (moved)
                 {
+                    Api.World.Logger.Audit("{0} Put 1x{1} into Fruitpress at {2}.",
+                        byPlayer.PlayerName,
+                        BucketSlot.Itemstack.Collectible.Code,
+                        blockSel.Position
+                    );
                     handslot.MarkDirty();
                     MarkDirty(true);
                     genBucketMesh();
@@ -712,4 +737,3 @@ namespace Vintagestory.GameContent
         }
     }
 }
-    

@@ -12,7 +12,6 @@ namespace Vintagestory.ServerMods
         [JsonProperty]
         public WorldGenStoryStructure[] Structures;
 
-
         public void Init(ICoreServerAPI api, RockStrataConfig rockstrata, BlockLayerConfig blockLayerConfig)
         {
             ResolveRemaps(api, rockstrata);

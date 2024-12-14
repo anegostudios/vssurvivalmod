@@ -1,8 +1,9 @@
 ﻿using Newtonsoft.Json;
-using System;
 using System.Collections.Generic;
+using System.Text;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 using Vintagestory.Essentials;
 
@@ -19,32 +20,55 @@ namespace Vintagestory.GameContent
 
         public string Code { get; set; }
 
-        public bool Debug { get; set; } = true;
+        public bool Debug { get; set; } = ActivityModSystem.Debug;
 
 
         public PathTraverserBase linepathTraverser;
-        public PathTraverserBase wppathTraverser;
+        public WaypointsTraverser wppathTraverser;
         public EntityAgent Entity;
         float accum;
+
+        private BlockPos activityOffset;
+        public BlockPos ActivityOffset
+        {
+            get
+            {
+                if (activityOffset == null)
+                {
+                    activityOffset = Entity.WatchedAttributes.GetBlockPos("importOffset", new BlockPos(Entity.Pos.Dimension));
+                }
+
+                return activityOffset;
+            }
+            set
+            {
+                activityOffset = value;
+                Entity.WatchedAttributes.SetBlockPos("importOffset", activityOffset);
+            }
+        }
 
         public EntityActivitySystem(EntityAgent entity)
         {
             Entity = entity;
         }
 
-        public bool StartActivity(string name)
+        public bool StartActivity(string code, float priority=9999f, int slot=-1)
         {
-            var index = AvailableActivities.IndexOf<IEntityActivity>(item => item.Name == name);
+            int index = AvailableActivities.IndexOf(item => item.Code == code);
             if (index < 0) return false;
 
             var activity = AvailableActivities[index];
+            if (slot < 0) slot = activity.Slot;
+            if (priority < 0) priority = (float)activity.Priority;
 
             if (ActiveActivitiesBySlot.TryGetValue(activity.Slot, out var activeAct))
             {
+                if (activeAct.Priority > priority) return false;
                 activeAct.Cancel();
             }
 
             ActiveActivitiesBySlot[activity.Slot] = activity;
+            activity.Priority = priority;
             activity.Start();
 
             return true;
@@ -72,14 +96,37 @@ namespace Vintagestory.GameContent
             pauseAutoSelection = paused;
         }
 
+
+        public void Pause()
+        {
+            foreach (var val in ActiveActivitiesBySlot.Values)
+            {
+                val?.Pause();
+            }
+        }
+
+        public void Resume()
+        {
+            foreach (var val in ActiveActivitiesBySlot.Values)
+            {
+                val?.Resume();
+            }
+        }
+
+        bool clearDelay = false;
+        public void ClearNextActionDelay()
+        {
+            clearDelay = true;
+        }
+
         public void OnTick(float dt)
         {
             linepathTraverser.OnGameTick(dt);
             wppathTraverser.OnGameTick(dt);
 
             accum += dt;
-            if (accum < 0.25) return;
-            accum = 0;
+            if (accum < 0.25 && !clearDelay) return;
+            clearDelay = false;
 
             foreach (var key in ActiveActivitiesBySlot.Keys)
             {
@@ -89,14 +136,18 @@ namespace Vintagestory.GameContent
                 if (activity.Finished)
                 {
                     activity.Finish();
-                    Entity.Attributes.SetString("lastActivity", activity.Name);
+                    Entity.Attributes.SetString("lastActivity", activity.Code);
                     if (Debug) Entity.World.Logger.Debug("ActivitySystem entity {0} activity {1} has finished", Entity.EntityId, activity.Name);
                     ActiveActivitiesBySlot.Remove(key);
                     continue;
                 }
 
-                activity.OnTick(dt);
+                activity.OnTick(accum);
+
+                Entity.World.FrameProfiler.Mark("behavior-activitydriven-tick-" + activity.Code);
             }
+
+            accum = 0;
 
             if (!pauseAutoSelection)
             {
@@ -110,7 +161,7 @@ namespace Vintagestory.GameContent
 
                     bool execute = activity.ConditionsOp == EnumConditionLogicOp.AND;
 
-                    for (int i = 0; i < activity.Conditions.Length; i++)
+                    for (int i = 0; i < activity.Conditions.Length && (execute || activity.ConditionsOp == EnumConditionLogicOp.OR); i++)
                     {
                         var cond = activity.Conditions[i];
                         var ok = cond.ConditionSatisfied(Entity);
@@ -138,12 +189,24 @@ namespace Vintagestory.GameContent
                     }
                 }
             }
+
+
+            if (Entity.World.EntityDebugMode)
+            {
+                StringBuilder sb = new StringBuilder();
+                foreach (var val in ActiveActivitiesBySlot)
+                {
+                    sb.Append(val.Key + ": " + val.Value.Name + "/" + val.Value.CurrentAction?.Type);
+                }
+                Entity.DebugAttributes.SetString("activities", sb.ToString());
+            }
         }
 
         public bool Load(AssetLocation activityCollectionPath)
         {
             linepathTraverser = new StraightLineTraverser(Entity);
             wppathTraverser = new WaypointsTraverser(Entity);
+
             AvailableActivities.Clear();
             ActiveActivitiesBySlot.Clear();
 
@@ -156,7 +219,7 @@ namespace Vintagestory.GameContent
             var file = Entity.Api.Assets.TryGet(activityCollectionPath.WithPathPrefixOnce("config/activitycollections/").WithPathAppendixOnce(".json"));
             if (file == null)
             {
-                Entity.World.Logger.Error("Unable to load activity file " + file + " not such file found");
+                Entity.World.Logger.Error("Unable to load activity file " + activityCollectionPath + " not such file found");
                 return false;
             }
 
@@ -223,7 +286,6 @@ namespace Vintagestory.GameContent
             return activities;
         }
 
-        
     }
 
 }

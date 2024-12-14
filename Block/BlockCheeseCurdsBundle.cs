@@ -19,7 +19,7 @@ namespace Vintagestory.GameContent
             ItemStack[] stickStack = new ItemStack[] { new ItemStack(api.World.GetItem(new AssetLocation("stick"))) };
             ItemStack[] saltStack = new ItemStack[] { new ItemStack(api.World.GetItem(new AssetLocation("salt")), 5) };
 
-            interactions = new WorldInteraction[] { 
+            interactions = new WorldInteraction[] {
                 new WorldInteraction() {
                     ActionLangCode = "blockhelp-curdbundle-addstick",
                     MouseButton = EnumMouseButton.Right,
@@ -53,7 +53,7 @@ namespace Vintagestory.GameContent
                 new WorldInteraction() {
                     ActionLangCode = "blockhelp-curdbundle-addsalt",
                     MouseButton = EnumMouseButton.Right,
-                    
+
                     Itemstacks = saltStack,
                     GetMatchingStacks = (WorldInteraction wi, BlockSelection blockSelection, EntitySelection entitySelection) =>
                     {
@@ -144,7 +144,7 @@ namespace Vintagestory.GameContent
                 return true;
             }
 
-            if (beccb.State == EnumCurdsBundleState.BundledStick && !beccb.Squuezed) { 
+            if (beccb.State == EnumCurdsBundleState.BundledStick && !beccb.Squuezed) {
                 beccb.StartSqueeze(byPlayer);
                 return true;
             }
@@ -178,12 +178,17 @@ namespace Vintagestory.GameContent
             if (beccb.State == EnumCurdsBundleState.OpenedSalted)
             {
                 ItemStack cheeseRoll = new ItemStack(api.World.GetItem(new AssetLocation("rawcheese-salted")));
-                
+
 
                 if (!byPlayer.InventoryManager.TryGiveItemstack(cheeseRoll, true))
                 {
                     api.World.SpawnItemEntity(cheeseRoll, byPlayer.Entity.Pos.XYZ.Add(0, 0.5, 0));
                 }
+                api.World.Logger.Audit("{0} Took 1x{1} at {2}.",
+                    byPlayer.PlayerName,
+                    cheeseRoll.Collectible.Code,
+                    blockSel.Position
+                );
 
                 api.World.BlockAccessor.SetBlock(api.World.GetBlock(new AssetLocation("linen-normal-down")).Id, blockSel.Position);
                 return true;

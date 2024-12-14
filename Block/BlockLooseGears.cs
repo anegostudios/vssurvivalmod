@@ -1,6 +1,7 @@
 ﻿using System;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -29,7 +30,7 @@ namespace Vintagestory.GameContent
 
             for (int i = 1; i < 5; i++)
             {
-                block = blockAccessor.GetBlock(pos.X, pos.Y - i, pos.Z);
+                block = blockAccessor.GetBlockBelow(pos, i, BlockLayersAccess.Solid);
 
                 if (block.SideSolid[BlockFacing.UP.Index])
                 {

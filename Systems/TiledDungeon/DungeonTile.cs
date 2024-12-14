@@ -11,15 +11,7 @@ namespace Vintagestory.ServerMods
 
         public void Init(ICoreServerAPI api, BlockLayerConfig blockLayerConfig)
         {
-            ResolvedSchematic = LoadSchematicsWithRotations<BlockSchematicPartial>(api, Schematics, blockLayerConfig, null, null, 0, "dungeontiles/", true);
-
-            foreach (var schematicPartial in ResolvedSchematic)
-            {
-                foreach (var blockSchematicPartial in schematicPartial)
-                {
-                    blockSchematicPartial.InitMetaBlocks(api.World.BlockAccessor);
-                }
-            }
+            ResolvedSchematic = LoadSchematicsWithRotations<BlockSchematicPartial>(api, this, blockLayerConfig, null, null, "dungeontiles/", true);
         }
     }
 }

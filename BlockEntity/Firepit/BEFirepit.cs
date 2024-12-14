@@ -579,7 +579,7 @@ namespace Vintagestory.GameContent
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
             base.FromTreeAttributes(tree, worldForResolving);
-            Inventory.FromTreeAttributes(tree.GetTreeAttribute("inventory"));
+            //Inventory.FromTreeAttributes(tree.GetTreeAttribute("inventory")); - why twice? its already done in the base method Tyron 5.nov 2024
 
             if (Api != null)
             {
@@ -823,7 +823,8 @@ namespace Vintagestory.GameContent
         {
             base.OnLoadCollectibleMappings(worldForResolve, oldBlockIdMapping, oldItemIdMapping, schematicSeed, resolveImports);
 
-            foreach (ItemSlot slot in inventory.CookingSlots)
+            // Why is this here? The base method already does this
+            /*foreach (ItemSlot slot in inventory.CookingSlots)
             {
                 if (slot.Itemstack == null) continue;
                 if (!slot.Itemstack.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve))
@@ -834,7 +835,7 @@ namespace Vintagestory.GameContent
                 {
                     slot.Itemstack.Collectible.OnLoadCollectibleMappings(worldForResolve, slot, oldBlockIdMapping, oldItemIdMapping, resolveImports);
                 }
-            }
+            }*/
         }
 
         public EnumFirepitModel CurrentModel { get; private set; }

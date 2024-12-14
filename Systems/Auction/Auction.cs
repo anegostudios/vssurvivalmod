@@ -70,7 +70,7 @@ namespace Vintagestory.GameContent
             return (int)Math.Ceiling(3.5 * Math.Log((distance-200) / 10000 + 1) * DeliveryPriceMul);
         }
 
-        
+
 
         public ItemStack SingleCurrencyStack;
 
@@ -139,7 +139,7 @@ namespace Vintagestory.GameContent
             {
                 if (pkt.Action == EnumAuctionAction.PurchaseAuction || (pkt.Action == EnumAuctionAction.RetrieveAuction && pkt.MoneyReceived))
                 {
-                    capi.Gui.PlaySound(new AssetLocation("sounds/effect/cashregister"), false, 0.25f);  
+                    capi.Gui.PlaySound(new AssetLocation("sounds/effect/cashregister"), false, 0.25f);
                 }
 
                 curTraderClient?.talkUtil.Talk(EnumTalkType.Purchase);
@@ -172,7 +172,7 @@ namespace Vintagestory.GameContent
                         remove(activeAuctions, auction);
                     }
                     if (
-                        (auction.SellerUid == capi.World.Player.PlayerUID) || 
+                        (auction.SellerUid == capi.World.Player.PlayerUID) ||
                         (auction.State == EnumAuctionState.Sold && auction.BuyerUid == capi.World.Player.PlayerUID)
                     )
                     {
@@ -181,7 +181,7 @@ namespace Vintagestory.GameContent
                     {
                         remove(ownAuctions, auction);
                     }
-                    
+
                 }
             }
 
@@ -342,7 +342,7 @@ namespace Vintagestory.GameContent
             switch (pkt.Action)
             {
                 case EnumAuctionAction.EnterAuctionHouse:
-                    
+
                     if (!createAuctionSlotByPlayer.ContainsKey(fromPlayer.PlayerUID))
                     {
                         var ainv = createAuctionSlotByPlayer[fromPlayer.PlayerUID] = new InventoryGeneric(1, "auctionslot-" + fromPlayer.PlayerUID, sapi);
@@ -376,10 +376,16 @@ namespace Vintagestory.GameContent
                             {
                                 sapi.World.SpawnItemEntity(stack, fromPlayer.Entity.Pos.XYZ);
                             }
+
+                            sapi.World.Logger.Audit("{0} Got 1x{1} from Auction at {2}.",
+                                fromPlayer.PlayerName,
+                                stack.Collectible.Code,
+                                fromPlayer.Entity.Pos
+                            );
                         }
                         serverCh.SendPacket(new AuctionActionResponsePacket() { Action = pkt.Action, AuctionId = pkt.AuctionId, ErrorCode = failureCode, MoneyReceived = stack?.Collectible.Attributes?["currency"].Exists == true }, fromPlayer);
 
-                        
+
 
                         break;
                     }
@@ -700,7 +706,7 @@ namespace Vintagestory.GameContent
                     auction.MoneyCollected = true;
 
                     var stack = SingleCurrencyStack.Clone();
-                    
+
                     stack.StackSize = auction.Price - auction.TraderCut;
 
                     return stack;

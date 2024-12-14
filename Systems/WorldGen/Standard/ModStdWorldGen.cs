@@ -49,16 +49,7 @@ namespace Vintagestory.ServerMods
         {
             modSys = api.ModLoader.GetModSystem<GenStoryStructures>();
 
-            IAsset asset = api.Assets.Get("worldgen/global.json");
-            GlobalConfig = asset.ToObject<GlobalConfig>();
-
-            GlobalConfig.defaultRockId = api.World.GetBlock(GlobalConfig.defaultRockCode)?.BlockId ?? 0;
-            GlobalConfig.waterBlockId = api.World.GetBlock(GlobalConfig.waterBlockCode)?.BlockId ?? 0;
-            GlobalConfig.saltWaterBlockId = api.World.GetBlock(GlobalConfig.saltWaterBlockCode)?.BlockId ?? 0;
-            GlobalConfig.lakeIceBlockId = api.World.GetBlock(GlobalConfig.lakeIceBlockCode)?.BlockId ?? 0;
-            GlobalConfig.lavaBlockId = api.World.GetBlock(GlobalConfig.lavaBlockCode)?.BlockId ?? 0;
-            GlobalConfig.basaltBlockId = api.World.GetBlock(GlobalConfig.basaltBlockCode)?.BlockId ?? 0;
-            GlobalConfig.mantleBlockId = api.World.GetBlock(GlobalConfig.mantleBlockCode)?.BlockId ?? 0;
+            GlobalConfig = GlobalConfig.GetInstance(api);
         }
 
         /// <summary>
@@ -67,36 +58,38 @@ namespace Vintagestory.ServerMods
         /// If the Radius at skipGenerationCategories is 0 then only the structures cuboid is checked.
         /// </summary>
         /// <param name="position"></param>
-        /// <param name="skipCategory">The hash of the string category from storystructure.json skipGenerationCategories. The strings from storystructure.json are first converted to lowercase before getting the hash. A Dictionary of the hashes and radius is stored with the story location in the savegame when a location is generated. See the <see cref="ModStdWorldGen"/> static constructor how to compute your own.</param>
-        /// <param name="locationCode"></param>
+        /// <param name="category">The hash of the string category from storystructure.json skipGenerationCategories. The strings from storystructure.json are first converted to lowercase before getting the hash. A Dictionary of the hashes and radius is stored with the story location in the savegame when a location is generated. See the <see cref="ModStdWorldGen"/> static constructor how to compute your own.</param>
         /// <returns></returns>
-        public bool SkipGenerationAt(Vec3d position, int skipCategory, out string locationCode)
+        public string GetIntersectingStructure(Vec3d position, int category)
         {
-            return modSys.IsInStoryStructure(position, skipCategory, out locationCode);
+            return modSys.GetStoryStructureCodeAt(position, category);
         }
 
         /// <summary>
-        /// <inheritdoc cref="SkipGenerationAt(Vintagestory.API.MathTools.Vec3d,int,out string)"/>
+        /// <inheritdoc cref="GetIntersectingStructure(Vintagestory.API.MathTools.Vec3d,int)"/>
         /// </summary>
         /// <param name="x"></param>
         /// <param name="z"></param>
-        /// <param name="skipCategory">The hashcode of the string category from storystructure.json skipGenerationCategories. The strings from storystructure.json are first converted to lowercase before getting the hash code.</param>
-        /// <param name="locationCode"></param>
+        /// <param name="category">The hashcode of the string category from storystructure.json skipGenerationCategories. The strings from storystructure.json are first converted to lowercase before getting the hash code.</param>
         /// <returns></returns>
-        public bool SkipGenerationAt(int x, int z, int skipCategory, out string locationCode)
+        public string GetIntersectingStructure(int x, int z, int category)
         {
-            return modSys.IsInStoryStructure(x, z,skipCategory, out locationCode);
+            return modSys.GetStoryStructureCodeAt(x, z,category);
+        }
+
+        public StoryStructureLocation GetIntersectingStructure(int x, int z)
+        {
+            return modSys.GetStoryStructureAt(x, z);
         }
 
         /// <summary>
-        /// <inheritdoc cref="SkipGenerationAt(Vintagestory.API.MathTools.Vec3d,int,out string)"/>
+        /// <inheritdoc cref="GetIntersectingStructure(Vintagestory.API.MathTools.Vec3d,int)"/>
         /// </summary>
         /// <param name="position"></param>
-        /// <param name="skipCategory">The hashcode of the string category from storystructure.json skipGenerationCategories. The strings from storystructure.json are first converted to lowercase before getting the hash code.</param>
-        /// <param name="locationCode"></param>
-        public bool SkipGenerationAt(BlockPos position, int skipCategory, out string locationCode)
+        /// <param name="category">The hashcode of the string category from storystructure.json skipGenerationCategories. The strings from storystructure.json are first converted to lowercase before getting the hash code.</param>
+        public string GetIntersectingStructure(BlockPos position, int category)
         {
-            return modSys.IsInStoryStructure(position, skipCategory, out locationCode);
+            return modSys.GetStoryStructureCodeAt(position, category);
         }
     }
 }

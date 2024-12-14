@@ -102,6 +102,7 @@ namespace Vintagestory.GameContent
     {
         ICoreClientAPI capi;
         BlockFacing orientation;
+        bool noLoreEvent;
 
         static Vec2i left = new Vec2i(-1, 0);
         static Vec2i right = new Vec2i(1, 0);
@@ -157,6 +158,8 @@ namespace Vintagestory.GameContent
             base.OnLoaded(api);
             capi = api as ICoreClientAPI;
             orientation = BlockFacing.FromCode(Variant["side"]);
+
+            noLoreEvent = Attributes?.IsTrue("noLoreEvent") == true;
         }
 
 
@@ -195,12 +198,17 @@ namespace Vintagestory.GameContent
 
         public override void OnBeingLookedAt(IPlayer byPlayer, BlockSelection blockSel, bool firstTick)
         {
+            if (noLoreEvent) return;
+
             if (firstTick && api.Side == EnumAppSide.Server)
             {
                 BlockEntityTapestry beTas = api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityTapestry;
                 if (beTas.Rotten || beTas.Type == null) return;
 
                 string baseCode = GetBaseCode(beTas.Type);
+                var id = GetLoreChapterId(baseCode);
+                if (id < 0) return;
+
                 string size = Attributes["sizes"][baseCode].AsString();
                 Dictionary<string, TVec2i[]> neighbours;
 
@@ -237,7 +245,7 @@ namespace Vintagestory.GameContent
 
                     if (baseCode == "schematic-c-bloody") baseCode = "schematic-c";
 
-                    var discovery = new LoreDiscovery() { Code = LoreCode, ChapterIds = new List<int>() { GetLoreChapterId(baseCode) } };
+                    var discovery = new LoreDiscovery() { Code = LoreCode, ChapterIds = new List<int>() { id } };
 
                     jour.TryDiscoverLore(discovery, byPlayer as IServerPlayer);
                 }

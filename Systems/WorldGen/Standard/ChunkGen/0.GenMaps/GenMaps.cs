@@ -3,10 +3,12 @@ using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+using Vintagestory.Datastructures;
 
 namespace Vintagestory.ServerMods
 {
@@ -110,21 +112,55 @@ namespace Vintagestory.ServerMods
 
         public void ForceLandAt(ForceLandform fl)
         {
-            int regSize = sapi.WorldManager.RegionSize;
-
-            var flRadius = fl.Radius;
-            int minx = ((fl.CenterPos.X - flRadius) * noiseSizeOcean) / regSize;
-            int minz = ((fl.CenterPos.Z - flRadius) * noiseSizeOcean) / regSize;
-            int maxx = ((fl.CenterPos.X + flRadius) * noiseSizeOcean) / regSize;
-            int maxz = ((fl.CenterPos.Z + flRadius) * noiseSizeOcean) / regSize;
-
-            for (int x = minx; x <= maxx; x++)
+            // this is related to the requiresSpawnOffset in MapLayerOceans
+            if (GameVersion.IsLowerVersionThan(sapi.WorldManager.SaveGame.CreatedGameVersion, "1.20.0-pre.14"))
             {
-                for (int z = minz; z < maxz; z++)
+                int regSize = sapi.WorldManager.RegionSize;
+
+                var flRadius = fl.Radius;
+                int minx = ((fl.CenterPos.X - flRadius) * noiseSizeOcean) / regSize;
+                int minz = ((fl.CenterPos.Z - flRadius) * noiseSizeOcean) / regSize;
+                int maxx = ((fl.CenterPos.X + flRadius) * noiseSizeOcean) / regSize;
+                int maxz = ((fl.CenterPos.Z + flRadius) * noiseSizeOcean) / regSize;
+
+                for (int x = minx; x <= maxx; x++)
                 {
-                    requireLandAt.Add(new XZ(x, z));
+                    for (int z = minz; z < maxz; z++)
+                    {
+                        requireLandAt.Add(new XZ(x, z));
+                    }
                 }
             }
+            else
+            {
+                // add extra chunk size so when blurred we still have enough land for the story locations
+                var radius = fl.Radius + sapi.WorldManager.ChunkSize;
+                ForceRandomLandArea(fl.CenterPos.X, fl.CenterPos.Z, radius);
+            }
+        }
+
+        private void ForceRandomLandArea(int positionX, int positionZ, int radius)
+        {
+            var regionSize = sapi.WorldManager.RegionSize;
+            var minx = (positionX - radius) * noiseSizeOcean / regionSize;
+            var minz = (positionZ - radius) * noiseSizeOcean / regionSize;
+            var maxx = (positionX + radius) * noiseSizeOcean / regionSize;
+            var maxz = (positionZ + radius) * noiseSizeOcean / regionSize;
+
+            // randomly grow the square into a more natural looking shape if all surroundings are ocean
+            var lcgRandom = new LCGRandom(sapi.World.Seed);
+            lcgRandom.InitPositionSeed(positionX, positionZ);
+            var naturalShape = new NaturalShape(lcgRandom);
+            var sizeX = maxx - minx;
+            var sizeZ = maxz - minz;
+            naturalShape.InitSquare(sizeX, sizeZ);
+            naturalShape.Grow(sizeX * sizeZ);
+
+            foreach (var pos in naturalShape.GetPositions())
+            {
+                requireLandAt.Add(new XZ(minx + pos.X, minz + pos.Y));
+            }
+
         }
 
         public override void StartClientSide(ICoreClientAPI api)
@@ -230,13 +266,26 @@ namespace Vintagestory.ServerMods
             noiseClimate.rainMul = rainModifier;
             noiseClimate.tempMul = tempModifier;
 
-            int centerRegX = sapi.WorldManager.MapSizeX / sapi.WorldManager.RegionSize / 2;
-            int centerRegZ = sapi.WorldManager.MapSizeZ / sapi.WorldManager.RegionSize / 2;
-            requireLandAt.Add(new XZ(centerRegX * noiseSizeOcean, centerRegZ * noiseSizeOcean));
+            // this is related to the requiresSpawnOffset in MapLayerOceans
+            var requiresSpawnOffset = GameVersion.IsLowerVersionThan(sapi.WorldManager.SaveGame.CreatedGameVersion, "1.20.0-pre.14");
+            if (requiresSpawnOffset)
+            {
+                int centerRegX = sapi.WorldManager.MapSizeX / sapi.WorldManager.RegionSize / 2;
+                int centerRegZ = sapi.WorldManager.MapSizeZ / sapi.WorldManager.RegionSize / 2;
+                requireLandAt.Add(new XZ(centerRegX * noiseSizeOcean, centerRegZ * noiseSizeOcean));
+            }
+            else
+            {
+                var chunkSize = sapi.WorldManager.ChunkSize;
+                var radius = 4 * chunkSize;
+                var spawnPosX = (sapi.WorldManager.MapSizeX + chunkSize) / 2;
+                var spawnPosZ = (sapi.WorldManager.MapSizeZ + chunkSize) / 2;
+                ForceRandomLandArea(spawnPosX, spawnPosZ, radius);
+            }
 
             climateGen = GetClimateMapGen(seed + 1, noiseClimate);
             upheavelGen = GetGeoUpheavelMapGen(seed + 873, TerraGenConfig.geoUpheavelMapScale);
-            oceanGen = GetOceanMapGen(seed + 1873, landcover, TerraGenConfig.oceanMapScale, oceanscale, requireLandAt);
+            oceanGen = GetOceanMapGen(seed + 1873, landcover, TerraGenConfig.oceanMapScale, oceanscale, requireLandAt, requiresSpawnOffset);
             forestGen = GetForestMapGen(seed + 2, TerraGenConfig.forestMapScale);
             bushGen = GetForestMapGen(seed + 109, TerraGenConfig.shrubMapScale);
             flowerGen = GetForestMapGen(seed + 223, TerraGenConfig.forestMapScale);
@@ -245,8 +294,6 @@ namespace Vintagestory.ServerMods
             landformsGen = GetLandformMapGen(seed + 4, noiseClimate, sapi, landformScale);
 
             sapi.World.Calendar.OnGetLatitude = getLatitude;
-
-
 
             int woctaves = 2;
             float wscale = 2f * TerraGenConfig.landformMapScale;
@@ -632,9 +679,9 @@ namespace Vintagestory.ServerMods
             return blurred;
         }
 
-        public static MapLayerBase GetOceanMapGen(long seed, float landcover, int oceanMapScale, float oceanScaleMul, List<XZ> requireLandAt)
+        public static MapLayerBase GetOceanMapGen(long seed, float landcover, int oceanMapScale, float oceanScaleMul, List<XZ> requireLandAt, bool requiresSpawnOffset)
         {
-            var map = new MapLayerOceans(seed, oceanMapScale * oceanScaleMul, landcover, requireLandAt);
+            var map = new MapLayerOceans(seed, oceanMapScale * oceanScaleMul, landcover, requireLandAt, requiresSpawnOffset);
             var blurred = new MapLayerBlur(0, map, 5);
             return blurred;
         }

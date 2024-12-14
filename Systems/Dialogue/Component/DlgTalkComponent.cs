@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -16,25 +17,22 @@ namespace Vintagestory.GameContent
         {
             setVars();
 
-            var comps = genText();
+            var comps = genText(!IsPlayer);
+            if (comps.Length > 0) dialog?.EmitDialogue(comps);
 
             if (IsPlayer)
             {
-                if (comps.Length > 0) dialog?.EmitDialogue(comps);
                 return null;
             }
             else
             {
-                var rnd = controller.NPCEntity.World.Rand;
-
-                if (comps.Length > 0) dialog?.EmitDialogue(new RichTextComponent[] { comps[rnd.Next(comps.Length)] });
                 return JumpTo != null ? JumpTo : "next";
             }
         }
 
-        protected RichTextComponent[] genText()
+        protected RichTextComponentBase[] genText(bool selectRandom)
         {
-            List<RichTextComponent> comps = new List<RichTextComponent>();
+            List<RichTextComponentBase> comps = new List<RichTextComponentBase>();
             var api = controller.NPCEntity.Api;
 
             if (api.Side != EnumAppSide.Client) return comps.ToArray();
@@ -48,11 +46,22 @@ namespace Vintagestory.GameContent
 
             int answerNumber = 1;
 
+            List<DialogeTextElement> elems = new List<DialogeTextElement>();
             for (int i = 0; i < Text.Length; i++)
             {
-                if (!conditionsMet(Text[i].Conditions)) continue;
+                if (!selectRandom || conditionsMet(Text[i].Conditions)) {
+                    elems.Add(Text[i]);
+                }
+            }
 
-                var text = Lang.Get(Text[i].Value)
+            int rnd = api.World.Rand.Next(elems.Count);
+
+            for (int i = 0; i < elems.Count; i++)
+            {
+                if (!selectRandom && !conditionsMet(Text[i].Conditions)) continue;
+                if (selectRandom && i != rnd) continue;
+
+                var text = Lang.Get(elems[i].Value)
                     .Replace("{characterclass}", Lang.Get("characterclass-" + controller.PlayerEntity.WatchedAttributes.GetString("characterClass", null)))
                     .Replace("{playername}", controller.PlayerEntity.GetBehavior<EntityBehaviorNameTag>()?.DisplayName)
                     .Replace("{npcname}", controller.NPCEntity.GetBehavior<EntityBehaviorNameTag>()?.DisplayName)
@@ -60,17 +69,17 @@ namespace Vintagestory.GameContent
 
                 if (IsPlayer)
                 {
-                    int index = i;
-                    var lcomp = new LinkTextComponent(api as ICoreClientAPI, answerNumber + ". " + text, font, (comp) => SelectAnswer(index));
+                    int id = elems[i].Id;
+                    var lcomp = new LinkTextComponent(api as ICoreClientAPI, answerNumber + ". " + text, font, (comp) => SelectAnswerById(id));
                     comps.Add(lcomp);
                     comps.Add(new RichTextComponent(api as ICoreClientAPI, "\r\n", font));
 
-                    lcomp.Font.WithColor(GuiStyle.ColorTime1).WithOrientation(EnumTextOrientation.Right);
+                    lcomp.Font.WithColor(usedAnswers?.Contains(id) == true ? GuiStyle.ColorParchment : GuiStyle.ColorTime1).WithOrientation(EnumTextOrientation.Right);
                     answerNumber++;
                 }
                 else
                 {
-                    comps.Add(new RichTextComponent(api as ICoreClientAPI, text + "\r\n", font));
+                    comps.AddRange(VtmlUtil.Richtextify(api as ICoreClientAPI, text + "\r\n", font));
                 }
             }
 
@@ -80,7 +89,7 @@ namespace Vintagestory.GameContent
         private bool conditionsMet(ConditionElement[] conds)
         {
             if (conds == null) return true;
-            
+
             foreach (var cond in conds)
             {
                 if (!isConditionMet(cond))
@@ -93,105 +102,52 @@ namespace Vintagestory.GameContent
 
         private bool isConditionMet(ConditionElement cond)
         {
-            if (cond.Variable == "player.inventory")
-            {
-                JsonItemStack jstack = JsonItemStack.FromString(cond.IsValue);
-                if (!jstack.Resolve(controller.NPCEntity.World, Code + "dialogue talk component quest item", true))
-                {
-                    return false;
-                }
-
-                ItemStack wantStack = jstack.ResolvedItemstack;
-                var slot = FindDesiredItem(controller.PlayerEntity, wantStack);
-                return cond.Invert ? slot == null : slot != null;
-            }
-            if (cond.Variable == "player.heldstack")
-            {
-                if (cond.IsValue == "damagedtool")
-                {
-                    var hotbarslot = controller.PlayerEntity.RightHandItemSlot;
-                    if (hotbarslot.Empty) return false;
-                    var d = hotbarslot.Itemstack.Collectible.GetDurability(hotbarslot.Itemstack);
-                    var max = hotbarslot.Itemstack.Collectible.GetMaxDurability(hotbarslot.Itemstack);
-                    return hotbarslot.Itemstack.Collectible.Tool != null && d < max;
-                }
-                else
-                {
-                    JsonItemStack jstack = JsonItemStack.FromString(cond.IsValue);
-                    if (!jstack.Resolve(controller.NPCEntity.World, Code + "dialogue talk component quest item", true))
-                    {
-                        return false;
-                    }
-
-                    ItemStack wantStack = jstack.ResolvedItemstack;
-                    var hotbarslot = controller.PlayerEntity.RightHandItemSlot;
-                    if (matches(controller.PlayerEntity, wantStack, hotbarslot, getIgnoreAttrs()))
-                    {
-                        return true;
-                    }
-                }
-            }
-
             if (IsConditionMet(cond.Variable, cond.IsValue, cond.Invert)) return true;
             return false;
         }
 
 
-        public static ItemSlot FindDesiredItem(EntityAgent eagent, ItemStack wantStack)
-        {
-            ItemSlot foundSlot = null;
-            string[] ignoredAttrs = getIgnoreAttrs();
 
-            eagent.WalkInventory((slot) =>
-            {
-                if (slot.Empty) return true;
-                if (matches(eagent, wantStack, slot, ignoredAttrs))
-                {
-                    foundSlot = slot;
-                    return false;
-                }
-
-                return true;
-            });
-
-            return foundSlot;
-        }
-
-        private static string[] getIgnoreAttrs()
-        {
-            return GlobalConstants.IgnoredStackAttributes.Append("backpack").Append("condition").Append("durability");
-        }
-
-        private static bool matches(EntityAgent eagent, ItemStack wantStack, ItemSlot slot, string[] ignoredAttrs)
-        {
-            var giveStack = slot.Itemstack;
-
-            if (wantStack.Equals(eagent.World, giveStack, ignoredAttrs) || giveStack.Satisfies(wantStack))
-            {
-                if (giveStack.Collectible.IsReasonablyFresh(eagent.World, giveStack) && giveStack.StackSize >= wantStack.StackSize)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        public void SelectAnswer(int index)
+        public void SelectAnswerById(int id)
         {
             var api = controller.NPCEntity.Api;
+
+            var answer = Text.FirstOrDefault(elem => elem.Id == id);
+
+            if (answer == null)
+            {
+                api.Logger.Warning($"Got invalid answer index: {id} for {controller.NPCEntity.Code}");
+                return;
+            }
+            if (IsPlayer)
+            {
+                if (usedAnswers == null) usedAnswers = new();
+                usedAnswers.Add(id);
+            }
+
             if (api is ICoreClientAPI capi)
             {
-                capi.Network.SendEntityPacket(controller.NPCEntity.EntityId, EntityBehaviorConversable.SelectAnswerPacketId, SerializerUtil.Serialize(index));
+                capi.Network.SendEntityPacket(controller.NPCEntity.EntityId, EntityBehaviorConversable.SelectAnswerPacketId, SerializerUtil.Serialize(id));
             }
 
             dialog?.ClearDialogue();
-            jumpTo(Text[index].JumpTo);
+            jumpTo(answer.JumpTo);
         }
 
+
+        HashSet<int> usedAnswers;
         private void jumpTo(string code)
         {
             controller.JumpTo(code);
+        }
+
+
+        public override void Init(ref int uniqueIdCounter)
+        {
+            foreach (var val in Text)
+            {
+                val.Id = uniqueIdCounter++;
+            }
         }
     }
 

@@ -17,17 +17,7 @@ namespace Vintagestory.GameContent
         ICoreAPI api;
 
         public event DialogueTriggerDelegate DialogTriggers;
-
-        DialogueSystem dlgSys;
-        DialogueData dlgData => dlgSys.DlgData;
-
-        public DialogueVariables GlobalVariables => dlgData.GlobalVariables;
-        public Dictionary<string, DialogueVariables> PlayerVariables => dlgData.PlayerVariables;
-        public Dictionary<long, DialogueVariables> EntityVariables => dlgData.EntityVariables;
-
-
-        
-
+        public VariablesModSystem VarSys;
 
         public DialogueController(ICoreAPI api, EntityPlayer playerEntity, EntityAgent npcEntity, DialogueConfig dialogueConfig)
         {
@@ -38,8 +28,8 @@ namespace Vintagestory.GameContent
 
             currentDialogueCmp = dialogue[0];
 
-            dlgSys = api.ModLoader.GetModSystem<DialogueSystem>();
-            dlgSys.OnControllerInit(playerEntity, npcEntity);
+            VarSys = api.ModLoader.GetModSystem<VariablesModSystem>();
+            VarSys.OnControllerInit(playerEntity, npcEntity);
         }
 
 
@@ -62,11 +52,11 @@ namespace Vintagestory.GameContent
             ContinueExecute();
         }
 
-        public void PlayerSelectAnswer(int index)
+        public void PlayerSelectAnswerById(int id)
         {
             if (currentDialogueCmp is DlgTalkComponent dlgTalkCompo)
             {
-                dlgTalkCompo.SelectAnswer(index);
+                dlgTalkCompo.SelectAnswerById(id);
             }
         }
 

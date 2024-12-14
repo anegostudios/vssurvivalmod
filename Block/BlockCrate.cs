@@ -31,7 +31,7 @@ namespace Vintagestory.GameContent
     {
         public Dictionary<string, CrateTypeProperties> Properties;
         public string[] Types;
-        public Dictionary<string, LabelProps> Labels; 
+        public Dictionary<string, LabelProps> Labels;
         public string DefaultType = "wood-aged";
         public string VariantByGroup;
         public string VariantByGroupInventory;
@@ -102,7 +102,7 @@ namespace Vintagestory.GameContent
                 if (itemStackRenders.TryGetValue(hashCode, out var val))
                 {
                     val.TextureSubId = texSubid;
-                    
+
                     foreach (var cb in val.onLabelTextureReady)
                     {
                         cb.Invoke(texSubid);
@@ -127,7 +127,7 @@ namespace Vintagestory.GameContent
             {
                 return;
             }
-            
+
 
             mipmapRegenQueued[atlasNumber] = true;
 
@@ -141,7 +141,7 @@ namespace Vintagestory.GameContent
         public void FreeLabelTexture(ItemStack labelStack, int labelColor, BlockPos pos)
         {
             if (labelStack == null) return;
-            
+
             int hashCode = labelStack.GetHashCode(GlobalConstants.IgnoredStackAttributes) + 23 * labelColor.GetHashCode();
 
             if (itemStackRenders.TryGetValue(hashCode, out var val))
@@ -184,17 +184,19 @@ namespace Vintagestory.GameContent
 
         public override int GetQuantitySlots(ItemStack bagstack)
         {
-            string type = bagstack.Attributes.GetString("type");
-            var cnt = (collObj as BlockCrate).Props[type].QuantitySlots;
-            return cnt;
+            if (collObj is not BlockCrate crate) return 0;
+            
+            string type = bagstack.Attributes.GetString("type") ?? crate.Props.DefaultType;
+            int quantity = crate.Props[type].QuantitySlots;
+            return quantity;
         }
 
         public override void OnInteract(ItemSlot bagSlot, int slotIndex, Entity onEntity, EntityAgent byEntity, Vec3d hitPosition, EnumInteractMode mode, ref EnumHandling handled, Action onRequireSave)
         {
             var controls = byEntity.MountedOn?.Controls ?? byEntity.Controls;
-            if (controls.Sprint) return;
-            
-            
+            if (controls.Sprint) return;   // This is a weird test, as for players whose Sprint key is the CtrlKey, they then cannot use bulk operations?
+
+
             bool put = byEntity.Controls.ShiftKey;
             bool take = !put;
             bool bulk = byEntity.Controls.CtrlKey;
@@ -226,7 +228,12 @@ namespace Vintagestory.GameContent
                 {
                     didMoveItems(stack, byPlayer);
                 }
-
+                Api.World.Logger.Audit("{0} Took {1}x{2} from Boat crate at {3}.",
+                    byPlayer.PlayerName,
+                    quantity,
+                    stack.Collectible.Code,
+                    Pos
+                );
                 ws.BagInventory.SaveSlotIntoBag((ItemSlotBagContent)ownSlot);
             }
 
@@ -238,6 +245,12 @@ namespace Vintagestory.GameContent
                     if (hotbarslot.TryPutInto(Api.World, ws.WrapperInv[0], quantity) > 0)
                     {
                         didMoveItems(ws.WrapperInv[0].Itemstack, byPlayer);
+                        Api.World.Logger.Audit("{0} Put {1}x{2} into Boat crate at {3}.",
+                            byPlayer.PlayerName,
+                            quantity,
+                            ws.WrapperInv[0].Itemstack.Collectible.Code,
+                            Pos
+                        );
                     }
 
                     ws.BagInventory.SaveSlotIntoBag((ItemSlotBagContent)ws.WrapperInv[0]);
@@ -258,6 +271,12 @@ namespace Vintagestory.GameContent
 
                                 ws.BagInventory.SaveSlotIntoBag((ItemSlotBagContent)wslot.slot);
 
+                                Api.World.Logger.Audit("{0} Put {1}x{2} into Boat crate at {3}.",
+                                    byPlayer.PlayerName,
+                                    quantity,
+                                    wslot.slot.Itemstack.Collectible.Code,
+                                    Pos
+                                );
                                 if (!bulk) break;
                             }
 
@@ -287,7 +306,7 @@ namespace Vintagestory.GameContent
         ITexPositionSource tmpTextureSource;
 
         TextureAtlasPosition labelTexturePos;
-        
+
         public CrateProperties Props;
 
         public string Subtype => Props.VariantByGroup == null ? "" : Variant[Props.VariantByGroup];
@@ -298,7 +317,11 @@ namespace Vintagestory.GameContent
 
         #region IAttachableToEntity
 
-        public bool IsAttachable(ItemStack itemStack) => true;
+        public virtual bool IsAttachable(Entity toEntity, ItemStack itemStack)
+        {
+            if (toEntity is EntityPlayer) return false;
+            return true;
+        }
         public void CollectTextures(ItemStack stack, Shape shape, string texturePrefixCode, Dictionary<string, CompositeTexture> intoDict)
         {
             string type = stack.Attributes.GetString("type");
@@ -314,7 +337,7 @@ namespace Vintagestory.GameContent
                     Textures.TryGetValue(key, out var ctex2);
                     intoDict[texturePrefixCode + key] = ctex2;
                 }
-                
+
             }
         }
 
@@ -398,7 +421,7 @@ namespace Vintagestory.GameContent
         {
             BlockEntityCrate be = blockAccessor.GetBlockEntity(pos) as BlockEntityCrate;
             if (be != null) return be.GetSelectionBoxes();
-            
+
 
             return base.GetSelectionBoxes(blockAccessor, pos);
         }

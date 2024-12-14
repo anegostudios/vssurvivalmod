@@ -15,7 +15,7 @@ namespace Vintagestory.GameContent
     {
         IAttachableToEntity attrAtta;
         #region IAttachableToEntity
-        string IAttachableToEntity.GetCategoryCode(ItemStack stack) => attrAtta.GetCategoryCode(stack);
+        string IAttachableToEntity.GetCategoryCode(ItemStack stack) => attrAtta?.GetCategoryCode(stack);
         CompositeShape IAttachableToEntity.GetAttachedShape(ItemStack stack, string slotCode) => attrAtta.GetAttachedShape(stack, slotCode);
         string[] IAttachableToEntity.GetDisableElements(ItemStack stack) => attrAtta.GetDisableElements(stack);
         string[] IAttachableToEntity.GetKeepElements(ItemStack stack) => attrAtta.GetKeepElements(stack);
@@ -31,7 +31,7 @@ namespace Vintagestory.GameContent
 
             intoShape.Textures["glass"] = glassBlock.Textures["material"].Base;
             intoShape.Textures["material"] = this.Textures[material].Base;
-            intoShape.Textures["lining"] = this.Textures[lining == "plain" ? material : lining].Base;
+            intoShape.Textures["lining"] = this.Textures[(lining == null || lining == "plain") ? material : lining].Base;
             intoShape.Textures["material-deco"] = this.Textures["deco-" + material].Base;
         }
         #endregion
@@ -379,6 +379,6 @@ namespace Vintagestory.GameContent
             return stacks;
         }
 
-        public bool IsAttachable(ItemStack itemStack) => true;
+        public bool IsAttachable(Entity toEntity, ItemStack itemStack) => true;
     }
 }

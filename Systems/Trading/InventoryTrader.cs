@@ -19,7 +19,7 @@ namespace Vintagestory.GameContent
 
     public class InventoryTrader : InventoryBase
     {
-        EntityTrader traderEntity;
+        EntityTradingHumanoid traderEntity;
 
         // Slots 0..15: Selling slots
         // Slots 16..19: Buying cart
@@ -85,7 +85,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        internal void LateInitialize(string id, ICoreAPI api, EntityTrader traderEntity)
+        internal void LateInitialize(string id, ICoreAPI api, EntityTradingHumanoid traderEntity)
         {
             base.LateInitialize(id, api);
             this.traderEntity = traderEntity;
@@ -102,8 +102,8 @@ namespace Vintagestory.GameContent
                     ItemSlotTrade tradeSlot = (slots[slotId] as ItemSlotTrade);
 
                     if (tradeSlot.TradeItem != null) continue;
-                    
-                    tradeSlot.TradeItem = GetTradeItemByName(name, slotId < 20 ? traderEntity.TradeProps.Selling : traderEntity.TradeProps.Buying); 
+
+                    tradeSlot.TradeItem = GetTradeItemByName(name, slotId < 20 ? traderEntity.TradeProps.Selling : traderEntity.TradeProps.Buying);
                 }
             }*/
         }
@@ -124,7 +124,7 @@ namespace Vintagestory.GameContent
 
                 if (op.MouseButton == EnumMouseButton.Right)
                 {
-                    // Just remove one batch on right mouse    
+                    // Just remove one batch on right mouse
                     if (cartSlot.TradeItem?.Stack != null)
                     {
                         cartSlot.TakeOut(cartSlot.TradeItem.Stack.StackSize);
@@ -239,7 +239,7 @@ namespace Vintagestory.GameContent
                 ItemSlotTrade tradeSlot = (slots[slotId] as ItemSlotTrade);
 
                 tradeSlot.TradeItem = new ResolvedTradeItem(tradeItems.GetTreeAttribute(slotId + ""));
-                
+
             }
         }
 
@@ -430,7 +430,7 @@ namespace Vintagestory.GameContent
             return tradeItem.Stock > 0;
         }
 
-    
+
 
 
         public bool HasPlayerEnoughAssets(IPlayer buyingPlayer)
@@ -577,7 +577,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            // ...and return single value gears 
+            // ...and return single value gears
             if (totalUnitsToDeduct < 0)
             {
                 GiveOrDrop(eagent, new ItemStack(api.World.GetItem(new AssetLocation("gear-rusty"))), -totalUnitsToDeduct, null);
@@ -591,7 +591,7 @@ namespace Vintagestory.GameContent
             GiveOrDrop(eagent, stack, stack.StackSize, traderEntity);
         }
 
-        public static void GiveOrDrop(EntityAgent eagent, ItemStack stack, int quantity, EntityTrader entityTrader)
+        public static void GiveOrDrop(EntityAgent eagent, ItemStack stack, int quantity, EntityTradingHumanoid entityTrader)
         {
             if (stack == null) return;
 

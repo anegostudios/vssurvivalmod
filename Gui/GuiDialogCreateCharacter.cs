@@ -42,7 +42,7 @@ namespace Vintagestory.GameContent
 
             double ypos = 20 + pad;
 
-            
+
 
             ElementBounds bgBounds = ElementBounds.FixedSize(717, dlgHeight).WithFixedPadding(GuiStyle.ElementToDialogPadding);
 
@@ -50,7 +50,7 @@ namespace Vintagestory.GameContent
                 .WithFixedAlignmentOffset(GuiStyle.DialogToScreenPadding, 0);
 
 
-            GuiTab[] tabs = new GuiTab[] { 
+            GuiTab[] tabs = new GuiTab[] {
                 new GuiTab() { Name = Lang.Get("tab-skinandvoice"), DataInt = 0 },
                 new GuiTab() { Name = Lang.Get("tab-charclass"), DataInt = 1 },
               //  new GuiTab() { Name = "Outfit", DataInt = 2 }
@@ -89,7 +89,7 @@ namespace Vintagestory.GameContent
                 insetSlotBounds = ElementBounds.Fixed(0, ypos + 2, 265, leftColBounds.fixedHeight - 2 * pad - 10).FixedRightOf(leftColBounds, 10);
                 ElementBounds rightColBounds = ElementBounds.Fixed(0, ypos, 54, dlgHeight - 59).FixedGrow(2 * pad, 2 * pad).FixedRightOf(insetSlotBounds, 10);
                 ElementBounds toggleButtonBounds = ElementBounds.Fixed(
-                        (int)insetSlotBounds.fixedX + insetSlotBounds.fixedWidth / 2 - textExt.Width / RuntimeEnv.GUIScale / 2 - 12, 
+                        (int)insetSlotBounds.fixedX + insetSlotBounds.fixedWidth / 2 - textExt.Width / RuntimeEnv.GUIScale / 2 - 12,
                         0,
                         textExt.Width / RuntimeEnv.GUIScale + 1,
                         textExt.Height / RuntimeEnv.GUIScale
@@ -130,7 +130,7 @@ namespace Vintagestory.GameContent
                             var picker = createCharacterComposer.GetColorListPicker("picker-" + code + "-" + i);
                             picker.ShowToolTip = true;
                             picker.TooltipText = Lang.Get("color-" + skinpart.Variants[i].Code);
-                            
+
                             //Console.WriteLine("\"" + Lang.Get("color-" + skinpart.Variants[i].Code) + "\": \""+ skinpart.Variants[i].Code + "\"");
                         }
 
@@ -191,7 +191,7 @@ namespace Vintagestory.GameContent
             {
                 var essr = capi.World.Player.Entity.Properties.Client.Renderer as EntityShapeRenderer;
                 essr.TesselateShape();
-                
+
                 ypos -= 10;
 
                 ElementBounds leftColBounds = ElementBounds.Fixed(0, ypos, 0, dlgHeight - 47).FixedGrow(2 * pad, 2 * pad);
@@ -236,7 +236,7 @@ namespace Vintagestory.GameContent
         private bool OnRandomizeSkin(Dictionary<string, string> preselection)
         {
             var entity = capi.World.Player.Entity;
-            
+
             //essr.doReloadShapeAndSkin = false;
             var bh = capi.World.Player.Entity.GetBehavior<EntityBehaviorPlayerInventory>();
             bh.doReloadShapeAndSkin = false;
@@ -311,7 +311,7 @@ namespace Vintagestory.GameContent
             if (charclass != null)
             {
                 modSys.setCharacterClass(capi.World.Player.Entity, charclass, true);
-            } else 
+            } else
             {
                 modSys.setCharacterClass(capi.World.Player.Entity, modSys.characterClasses[0].Code, true);
             }
@@ -365,7 +365,7 @@ namespace Vintagestory.GameContent
             capi.Network.SendPacketClient(packet);
         }
 
-     
+
 
 
 
@@ -387,7 +387,7 @@ namespace Vintagestory.GameContent
 
             var chartraits = chclass.Traits.Select(code => modSys.TraitsByCode[code]).OrderBy(trait => (int)trait.Type);
 
-            foreach (var trait in chartraits) 
+            foreach (var trait in chartraits)
             {
                 attributes.Clear();
                 foreach (var val in trait.Attributes)
@@ -410,7 +410,7 @@ namespace Vintagestory.GameContent
                         fulldesc.AppendLine(Lang.Get("trait-" + trait.Code));
                     }
 
-                    
+
                 }
             }
 
@@ -431,7 +431,7 @@ namespace Vintagestory.GameContent
             var essr = capi.World.Player.Entity.Properties.Client.Renderer as EntityShapeRenderer;
             essr.TesselateShape();
         }
-        
+
         public void PrepAndOpen()
         {
             TryOpen();
@@ -448,7 +448,7 @@ namespace Vintagestory.GameContent
             get { return null; }
         }
 
-        
+
 
         public override void OnMouseWheel(MouseWheelEventArgs args)
         {
@@ -463,7 +463,7 @@ namespace Vintagestory.GameContent
         public override bool PrefersUngrabbedMouse => true;
 
 
-        #region Character render 
+        #region Character render
         protected float yaw = -GameMath.PIHALF + 0.3f;
         protected bool rotateCharacter;
         public override void OnMouseDown(MouseEvent args)
@@ -499,7 +499,7 @@ namespace Vintagestory.GameContent
             {
                 capi.World.Player.Entity.talkUtil.OnGameTick(deltaTime);
             }
-            
+
             capi.Render.GlPushMatrix();
 
             if (focused) { capi.Render.GlTranslate(0, 0, 150); }

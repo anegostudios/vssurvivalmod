@@ -16,7 +16,7 @@ namespace Vintagestory.GameContent
 
             InteractionHelpYOffset = 0.375f;
 
-            
+
 
             interactions = ObjectCacheUtil.GetOrCreate(api, "cheeseInteractions-", () =>
             {
@@ -47,7 +47,7 @@ namespace Vintagestory.GameContent
             if (bec != null)
             {
                 var shape = capi.TesselatorManager.GetCachedShape(bec.Inventory[0].Itemstack.Item.Shape.Base);
-                
+
                 capi.Tesselator.TesselateShape(this, shape, out blockModelData);
                 blockModelData.Scale(new Vec3f(0.5f, 0, 0.5f), 0.75f, 0.75f, 0.75f);
 
@@ -103,6 +103,11 @@ namespace Vintagestory.GameContent
                     {
                         world.SpawnItemEntity(stack, blockSel.Position);
                     }
+                    world.Logger.Audit("{0} Took 1x{1} from Cheese at {2}.",
+                        byPlayer.PlayerName,
+                        stack.Collectible.Code,
+                        blockSel.Position
+                    );
                 }
 
                 return true;
@@ -116,6 +121,11 @@ namespace Vintagestory.GameContent
                     {
                         world.SpawnItemEntity(stack, blockSel.Position);
                     }
+                    world.Logger.Audit("{0} Took 1x{1} from Cheese at {2}.",
+                        byPlayer.PlayerName,
+                        stack.Collectible.Code,
+                        blockSel.Position
+                    );
                 }
 
                 world.BlockAccessor.SetBlock(0, blockSel.Position);

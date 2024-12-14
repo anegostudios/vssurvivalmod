@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -65,8 +64,7 @@ namespace Vintagestory.GameContent
         {
             defaultType = Block.Attributes?["defaultType"]?.AsString("normal-generic");
             if (defaultType == null) defaultType = "normal-generic";
-
-            // Newly placed 
+            // Newly placed
             if (inventory == null)
             {
                 InitInventory(Block);
@@ -85,14 +83,14 @@ namespace Vintagestory.GameContent
                 {
                     this.type = nowType;
                     InitInventory(Block);
-                    LateInitInventory(); 
+                    LateInitInventory();
                 }
             }
 
             base.OnBlockPlaced();
         }
-       
-        
+
+
 
 
 
@@ -229,8 +227,15 @@ namespace Vintagestory.GameContent
         {
             inventory.PutLocked = retrieveOnly && player.WorldData.CurrentGameMode != EnumGameMode.Creative;
 
-
             if (Api.Side == EnumAppSide.Client)
+            {
+                OpenLid();
+            }
+        }
+
+        public void OpenLid()
+        {
+            if (animUtil?.activeAnimationsByAnimCode.ContainsKey("lidopen") == false)
             {
                 animUtil?.StartAnimation(new AnimationMetaData()
                 {
@@ -243,10 +248,20 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public void CloseLid()
+        {
+            if (animUtil?.activeAnimationsByAnimCode.ContainsKey("lidopen") == true)
+            {
+                animUtil?.StopAnimation("lidopen");
+            }
+        }
+
         protected virtual void OnInvClosed(IPlayer player)
         {
-            animUtil?.StopAnimation("lidopen");
-
+            if (LidOpenEntityId.Count == 0)
+            {
+                CloseLid();
+            }
             inventory.PutLocked = retrieveOnly;
 
             // This is already handled elsewhere and also causes a stackoverflowexception, but seems needed somehow?
@@ -267,20 +282,7 @@ namespace Vintagestory.GameContent
 
             if (Api.World is IServerWorldAccessor)
             {
-                byte[] data;
-
-                using (MemoryStream ms = new MemoryStream())
-                {
-                    BinaryWriter writer = new BinaryWriter(ms);
-                    writer.Write("BlockEntityInventory");
-                    writer.Write(DialogTitle);
-                    writer.Write((byte)quantityColumns);
-                    TreeAttribute tree = new TreeAttribute();
-                    inventory.ToTreeAttributes(tree);
-                    tree.ToBytes(writer);
-                    data = ms.ToArray();
-                }
-
+                var data = BlockEntityContainerOpen.ToBytes("BlockEntityInventory", Lang.Get(dialogTitleLangCode), (byte)quantityColumns, inventory);
                 ((ICoreServerAPI)Api).Network.SendBlockEntityPacket(
                     (IServerPlayer)byPlayer,
                     Pos,
@@ -289,12 +291,17 @@ namespace Vintagestory.GameContent
                 );
 
                 byPlayer.InventoryManager.OpenInventory(inventory);
+                data = SerializerUtil.Serialize(new OpenContainerLidPacket(byPlayer.Entity.EntityId, LidOpenEntityId.Count > 0));
+                ((ICoreServerAPI)Api).Network.BroadcastBlockEntityPacket(
+                    Pos,
+                    (int)EnumBlockContainerPacketId.OpenLidOthers,
+                    data,
+                    (IServerPlayer)byPlayer
+                );
             }
 
             return true;
         }
-
-        
 
         private MeshData GenMesh(ITesselatorAPI tesselator)
         {
@@ -351,7 +358,7 @@ namespace Vintagestory.GameContent
 
             if (animUtil != null)
             {
-                if (animUtil.renderer == null) 
+                if (animUtil.renderer == null)
                 {
                     var texSource = new GenericContainerTextureSource()
                     {

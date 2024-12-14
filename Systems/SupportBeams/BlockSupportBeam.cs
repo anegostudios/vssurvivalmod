@@ -115,5 +115,10 @@ namespace Vintagestory.GameContent
                 },
             };
         }
+
+        public override bool DisplacesLiquids(IBlockAccessor blockAccess, BlockPos pos)
+        {
+            return false;
+        }
     }
 }

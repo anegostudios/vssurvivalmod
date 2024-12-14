@@ -140,12 +140,9 @@ namespace Vintagestory.GameContent
         {
             base.OnLoaded(api);
 
-            if (api.Side == EnumAppSide.Client)
-            {
-                gliderShape_unfoldStep1 = API.Common.Shape.TryGet(api, Attributes["unfoldShapeStep1"].AsObject<CompositeShape>().Base.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/"));
-                gliderShape_unfoldStep2 = API.Common.Shape.TryGet(api, Attributes["unfoldShapeStep2"].AsObject<CompositeShape>().Base.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/"));
-                gliderShape_unfolded = API.Common.Shape.TryGet(api, Attributes["unfoldedShape"].AsObject<CompositeShape>().Base.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/"));
-            }
+            gliderShape_unfoldStep1 = API.Common.Shape.TryGet(api, Attributes["unfoldShapeStep1"].AsObject<CompositeShape>().Base.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/"));
+            gliderShape_unfoldStep2 = API.Common.Shape.TryGet(api, Attributes["unfoldShapeStep2"].AsObject<CompositeShape>().Base.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/"));
+            gliderShape_unfolded = API.Common.Shape.TryGet(api, Attributes["unfoldedShape"].AsObject<CompositeShape>().Base.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/"));
         }
             
         public Shape GetShape(ItemStack stack, Entity forEntity, string texturePrefixCode)
@@ -159,7 +156,7 @@ namespace Vintagestory.GameContent
             }
 
             int unfoldStep = forEntity.Attributes.GetInt("unfoldStep");
-
+            
             if (unfoldStep == 1) return gliderShape_unfoldStep1;
             if (unfoldStep == 2) return gliderShape_unfoldStep2;
             if (unfoldStep == 3) return gliderShape_unfolded;

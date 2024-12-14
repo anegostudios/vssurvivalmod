@@ -27,4 +27,9 @@ public class StoryStructureLocation
     public string RockBlockCode;
     [ProtoMember(10)]
     public Dictionary<int, int> SkipGenerationFlags;
+    [ProtoMember(11)]
+    public bool DidGenerateAdditional;    // Used for any additional hard-coded generation, e.g. for the Devastation Area, the past (intact) version of the tower
+
+    [ProtoMember(12)]
+    public Dictionary<string, int> SchematicsSpawned;
 }

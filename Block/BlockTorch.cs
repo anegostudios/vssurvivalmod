@@ -224,6 +224,7 @@ namespace Vintagestory.GameContent
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
         {
+            if (Variant["state"] == "burnedout") return new WorldInteraction[0];
             return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer).Append(interactions);
         }
 

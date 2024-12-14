@@ -285,7 +285,7 @@ namespace Vintagestory.GameContent
 
         public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, IRandom worldgenRandom, BlockPatchAttributes attributes = null)
         {
-            var dBlock = blockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
+            var dBlock = blockAccessor.GetBlockBelow(pos);
             if (dBlock.Fertility <= 20) return false;
 
             var climate = blockAccessor.GetClimateAt(pos, EnumGetClimateMode.WorldGenValues);

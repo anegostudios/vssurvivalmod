@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 
-// General Information about an assembly is controlled through the following 
+// General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("Vintage Story Default Server Mods")]
@@ -16,8 +16,8 @@ using Vintagestory.API.Config;
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
-// Setting ComVisible to false makes the types in this assembly not visible 
-// to COM components.  If you need to access a type in this assembly from 
+// Setting ComVisible to false makes the types in this assembly not visible
+// to COM components.  If you need to access a type in this assembly from
 // COM, set the ComVisible attribute to true on that type.
 [assembly: ComVisible(false)]
 
@@ -27,11 +27,11 @@ using Vintagestory.API.Config;
 // Version information for an assembly consists of the following four values:
 //
 //      Major Version
-//      Minor Version 
+//      Minor Version
 //      Build Number
 //      Revision
 //
-// You can specify all the values or you can default the Build and Revision Numbers 
+// You can specify all the values or you can default the Build and Revision Numbers
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
 [assembly: AssemblyVersion(GameVersion.AssemblyVersion)]
@@ -229,7 +229,7 @@ using Vintagestory.API.Config;
             { category: ""survivalchallenges"", code: ""foodSpoilSpeed"", dataType: ""dropdown"", values: [""4"", ""3"", ""2"", ""1.5"", ""1.25"", ""1"", ""0.75"", ""0.5"", ""0.25""], names: [""400%"", ""300%"", ""200%"", ""150%"", ""125%"", ""100%"", ""75%"", ""50%"", ""25%""], default: ""1"" },
             { category: ""survivalchallenges"", code: ""saplingGrowthRate"", dataType: ""dropdown"", values: [""16"", ""8"", ""4"", ""2"", ""1.5"", ""1"", ""0.75"", ""0.5"", ""0.25""], names: [""Extremely slow (16x)"", ""Much slower (8x)"", ""Slower (4x)"", ""Somewhat slower (2x)"", ""Slightly slower (1.5x)"", ""Normal (1x)"", ""Slightly faster (0.75x)"", ""Faster (0.5x)"", ""Much faster (0.25x)""], default: ""1"" },
             { category: ""survivalchallenges"", code: ""toolDurability"", dataType: ""dropdown"", values: [""4"", ""3"", ""2"", ""1.5"", ""1.25"", ""1"", ""0.75"", ""0.5""], names: [""400%"", ""300%"", ""200%"", ""150%"", ""125%"", ""100%"", ""75%"", ""50%""], default: ""1"" },
-            { category: ""survivalchallenges"", code: ""toolMiningSpeed"", dataType: ""dropdown"", values: [""3"", ""2"", ""1.5"", ""1.25"", ""1"", ""0.75"", ""0.5"", ""0.25""], names: [""300%"", ""200%"", ""150%"", ""125%"", ""100%"", ""75%"", ""50%"", ""25%""], default: ""1"" },           
+            { category: ""survivalchallenges"", code: ""toolMiningSpeed"", dataType: ""dropdown"", values: [""3"", ""2"", ""1.5"", ""1.25"", ""1"", ""0.75"", ""0.5"", ""0.25""], names: [""300%"", ""200%"", ""150%"", ""125%"", ""100%"", ""75%"", ""50%"", ""25%""], default: ""1"" },
             { category: ""survivalchallenges"", code: ""propickNodeSearchRadius"", dataType: ""dropdown"", values: [""0"", ""2"", ""4"", ""6"", ""8""], names: [""Disabled"", ""2 blocks"", ""4 blocks"", ""6 blocks"", ""8 blocks""], default: ""0"" },
             { category: ""survivalchallenges"", code: ""microblockChiseling"", dataType: ""dropdown"", values: [""off"", ""stonewood"", ""all""], names: [""Off"", ""Stone and Wood"", ""Most cubic blocks""], default: ""stonewood"" },
             { category: ""survivalchallenges"", code: ""allowCoordinateHud"", dataType: ""bool"", default: ""true"" },
@@ -238,7 +238,7 @@ using Vintagestory.API.Config;
             { category: ""survivalchallenges"", code: ""loreContent"", dataType: ""bool"", default: ""true"" },
             { category: ""survivalchallenges"", code: ""clutterObtainable"", dataType: ""dropdown"", values: [""ifrepaired"", ""yes"", ""no""], names: [""ifrepaired"", ""yes"", ""no""], default: ""ifrepaired"" },
             { category: ""survivalchallenges"", code: ""lightningFires"", dataType: ""bool"", default: ""false"" },
-            
+
             { category: ""temporalstability"", code: ""temporalStability"", dataType: ""bool"", default: ""true"" },
             { category: ""temporalstability"", code: ""temporalStorms"", dataType: ""dropdown"", values: [""off"", ""veryrare"", ""rare"", ""sometimes"", ""often"", ""veryoften""], names: [""Off"", ""Every 30-40 days, increase strength/frequency by 2.5% each time, capped at +25%"", ""Approx. every 20-30 days, increase strength/frequency by 5% each time, capped at +50%"", ""Approx. every 10-20 days, increase strength/frequency by +10% each time, capped at 100%"", ""Approx. every 5-10 days, increase strength/frequency by 15% each time, capped at +150%"", ""Approx. every 3-6 days, increase strength/frequency by 20% each time, capped at +200%""], default: ""sometimes"" },
             { category: ""temporalstability"", code: ""tempstormDurationMul"", dataType: ""dropdown"", values: [""2"", ""1.5"", ""1.25"", ""1"", ""0.75"", ""0.5"", ""0.25""], names: [""Much longer (200%)"", ""Longer (150%)"", ""Slightly longer (125%)"", ""Normal (100%)"", ""Slightly shorter (75%)"", ""Shorter (50%)"", ""Much Shorter (25%)""], default: ""1"" },
@@ -265,7 +265,7 @@ using Vintagestory.API.Config;
             { category: ""worldgen"", code: ""surfaceCopperDeposits"", dataType: ""dropdown"", values: [""1"", ""0.5"", ""0.2"", ""0.12"", ""0.05"", ""0.015"", ""0""], names: [""Very common"", ""Common"", ""Uncommon"", ""Rare"", ""Very Rare"", ""Extremly rare"", ""Never""], default: ""0.12"" },
             { category: ""worldgen"", code: ""surfaceTinDeposits"", dataType: ""dropdown"", values: [""0.5"", ""0.25"", ""0.12"", ""0.03"", ""0.014"", ""0.007"", ""0""], names: [""Very common"", ""Common"", ""Uncommon"", ""Rare"", ""Very Rare"", ""Extremly rare"", ""Never""], default: ""0.007"" },
             { category: ""worldgen"", code: ""snowAccum"", dataType: ""dropdown"", values: [""true"", ""false""], names: [""Enabled"", ""Disabled""], default: ""true"" },
-            
+
 
             { category: ""multiplayer"", code: ""allowLandClaiming"", dataType: ""bool"", default: ""true"" },
             { category: ""multiplayer"", code: ""classExclusiveRecipes"", dataType: ""bool"", default: ""true"" },

@@ -7,7 +7,6 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
-using Vintagestory.ServerMods;
 
 namespace Vintagestory.GameContent
 {
@@ -193,8 +192,6 @@ namespace Vintagestory.GameContent
                         break;
                     }
 
-
-
                 case "scrambledeggs":
                     {
                         max = 0;
@@ -215,7 +212,6 @@ namespace Vintagestory.GameContent
                         recipeCode = "scrambledeggs";
                         break;
                     }
-
 
                 case "jam":
                     {
@@ -250,8 +246,8 @@ namespace Vintagestory.GameContent
                         ItemStack stack = stacks[0];
                         if (stack == null) return Lang.Get("unknown");
                         if (stack.Collectible.Code.PathStartsWith("glueportion")) return stack.Collectible.GetHeldItemName(stack) + "\n\n" + stack.Collectible.GetItemDescText();  // Special case for Hardened pitch glue
-                        Item outputItem = worldForResolve.GetItem(new AssetLocation(recipe.DirtyPotOutput));
-                        if (outputItem != null) return outputItem.GetHeldItemName(new ItemStack(outputItem));
+                        var outstack = recipe.CooksInto?.ResolvedItemstack;
+                        if (outstack != null) return outstack.Collectible.GetHeldItemName(outstack);
                         return Lang.Get("unknown");
                     }
             }
@@ -447,9 +443,10 @@ namespace Vintagestory.GameContent
         public bool Enabled = true;
         public CompositeShape Shape;
         public TransitionableProperties PerishableProps;
-        public bool DirtyPot = false;
-        public string DirtyPotOutput = "";
-        public int DirtyPotOutputQuantity = 1;
+        /// <summary>
+        /// If set, will treat the recipe not as a meal with its ingredients retained but convert the ingredients into supplied itemstack
+        /// </summary>
+        public JsonItemStack CooksInto;
 
         public static Dictionary<string, ICookingRecipeNamingHelper> NamingRegistry = new Dictionary<string, ICookingRecipeNamingHelper>();
 
@@ -567,9 +564,7 @@ namespace Vintagestory.GameContent
 
             return true;
         }
-
-        
-        
+       
 
         public CookingRecipeIngredient GetIngrendientFor(ItemStack stack, params CookingRecipeIngredient[] ingredsToskip)
         {
@@ -584,8 +579,6 @@ namespace Vintagestory.GameContent
         }
 
 
-
-
         public void Resolve(IServerWorldAccessor world, string sourceForErrorLogging)
         {
             for (int i = 0; i < Ingredients.Length; i++)
@@ -593,11 +586,8 @@ namespace Vintagestory.GameContent
                 Ingredients[i].Resolve(world, sourceForErrorLogging);
             }
 
-          //  CanBeServedInto.Resolve(world, sourceForErrorLogging);
+            CooksInto?.Resolve(world, sourceForErrorLogging);
         }
-
-
-
 
 
 
@@ -613,17 +603,14 @@ namespace Vintagestory.GameContent
             {
                 Ingredients[i].ToBytes(writer);
             }
-            //writer.WriteArray(NameComponentOrder);
 
             writer.Write(Shape == null);
             if (Shape != null) writer.Write(Shape.Base.ToString());
 
             PerishableProps.ToBytes(writer);
-            writer.Write(DirtyPot);
-            writer.Write(DirtyPotOutput ?? "");
-            writer.Write(DirtyPotOutputQuantity);
 
-            //      CanBeServedInto.ToBytes(writer);
+            writer.Write(CooksInto != null);
+            if (CooksInto != null) CooksInto.ToBytes(writer);
         }
 
         /// <summary>
@@ -643,8 +630,6 @@ namespace Vintagestory.GameContent
                 Ingredients[i].Resolve(resolver, "[FromBytes]");
             }
 
-            //NameComponentOrder = reader.ReadIntArray();
-
             if (!reader.ReadBoolean())
             {
                 Shape = new CompositeShape() { Base = new AssetLocation(reader.ReadString()) };
@@ -653,19 +638,12 @@ namespace Vintagestory.GameContent
             PerishableProps = new TransitionableProperties();
             PerishableProps.FromBytes(reader, resolver.ClassRegistry);
 
-            DirtyPot = reader.ReadBoolean();
-            DirtyPotOutput = reader.ReadString();
-            try
+            if (reader.ReadBoolean())
             {
-                DirtyPotOutputQuantity = reader.ReadInt32();
+                CooksInto = new JsonItemStack();
+                CooksInto.FromBytes(reader, resolver.ClassRegistry);
+                CooksInto.Resolve(resolver, "[FromBytes]");
             }
-            catch (EndOfStreamException)
-            {
-                DirtyPotOutputQuantity = 1;
-            }
-       //     CanBeServedInto = new JsonItemStack();
-       //     CanBeServedInto.FromBytes(reader, resolver.ClassRegistry);
-       //     CanBeServedInto.Resolve(resolver, "[FromBytes]");
         }
 
     }

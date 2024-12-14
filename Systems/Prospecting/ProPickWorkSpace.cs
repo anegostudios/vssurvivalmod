@@ -469,6 +469,11 @@ namespace Vintagestory.GameContent
                 throw new NotImplementedException();
             }
 
+            public void Dispose()
+            {
+
+            }
+
             #endregion
         }
     }

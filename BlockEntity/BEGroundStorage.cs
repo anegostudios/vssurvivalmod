@@ -210,9 +210,13 @@ namespace Vintagestory.GameContent
             capi = api as ICoreClientAPI;
             base.Initialize(api);
             var bh = GetBehavior<BEBehaviorBurning>();
-            bh.FirePos = Pos.Copy();
-            bh.FuelPos = Pos.Copy();
-            bh.OnFireDeath = _ => { Extinguish(); };
+            // TODO properly fix this (GenDeposit [halite] /Genstructures issue) , Th3Dilli
+            if (bh != null)
+            {
+                bh.FirePos = Pos.Copy();
+                bh.FuelPos = Pos.Copy();
+                bh.OnFireDeath = _ => { Extinguish(); };
+            }
             UpdateIgnitable();
 
             DetermineStorageProperties(null);
@@ -860,9 +864,10 @@ namespace Vintagestory.GameContent
                 {
                     Api.World.PlaySoundAt(StorageProps.PlaceRemoveSound.WithPathPrefixOnce("sounds/"), Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, null, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
                 }
-                Api.World.Logger.Audit("{0} Put {1} into new Ground storage at {2}.",
+                Api.World.Logger.Audit("{0} Put {1}x{2} into new Ground storage at {3}.",
                     player.PlayerName,
-                    string.Format("{0}x{1}", TransferQuantity, invSlot.Itemstack.GetName()),
+                    TransferQuantity,
+                    invSlot.Itemstack.Collectible.Code,
                     Pos
                 );
                 return true;
@@ -892,9 +897,10 @@ namespace Vintagestory.GameContent
 
                 Api.World.PlaySoundAt(StorageProps.PlaceRemoveSound.WithPathPrefixOnce("sounds/"), Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, null, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
 
-                Api.World.Logger.Audit("{0} Put {1} into Ground storage at {2}.",
+                Api.World.Logger.Audit("{0} Put {1}x{2} into Ground storage at {3}.",
                     player.PlayerName,
-                    string.Format("{0}x{1}", q, invSlot.Itemstack.GetName()),
+                    q,
+                    invSlot.Itemstack.Collectible.Code,
                     Pos
                 );
                 MarkDirty();
@@ -925,9 +931,10 @@ namespace Vintagestory.GameContent
                 {
                     Api.World.SpawnItemEntity(stack, Pos);
                 }
-                Api.World.Logger.Audit("{0} Took {1} from Scroll rack at {2}.",
+                Api.World.Logger.Audit("{0} Took {1}x{2} from Ground storage at {3}.",
                     player.PlayerName,
-                    string.Format("{0}x{1}", q, stack.GetName()),
+                    q,
+                    stack.Collectible.Code,
                     Pos
                 );
             }
@@ -978,9 +985,9 @@ namespace Vintagestory.GameContent
                         stack.StackSize = 1;
                         if (new DummySlot(stack).TryPutInto(Api.World, ourSlot, TransferQuantity) > 0) {
                             Api.World.PlaySoundAt(StorageProps.PlaceRemoveSound, Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, player, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
-                            Api.World.Logger.Audit("{0} Put {1} into Ground storage at {2}.",
+                            Api.World.Logger.Audit("{0} Put 1x{1} into Ground storage at {2}.",
                                 player.PlayerName,
-                                string.Format("1x{0}", ourSlot.Itemstack.GetName()),
+                                ourSlot.Itemstack.Collectible.Code,
                                 Pos
                             );
                         }
@@ -988,9 +995,9 @@ namespace Vintagestory.GameContent
                         if (hotbarSlot.TryPutInto(Api.World, ourSlot, TransferQuantity) > 0)
                         {
                             Api.World.PlaySoundAt(StorageProps.PlaceRemoveSound, Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, player, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
-                            Api.World.Logger.Audit("{0} Put {1} into Ground storage at {2}.",
+                            Api.World.Logger.Audit("{0} Put 1x{1} into Ground storage at {2}.",
                                 player.PlayerName,
-                                string.Format("1x{0}", ourSlot.Itemstack.GetName()),
+                                ourSlot.Itemstack.Collectible.Code,
                                 Pos
                             );
                         }
@@ -1005,9 +1012,9 @@ namespace Vintagestory.GameContent
 
                     Api.World.PlaySoundAt(StorageProps.PlaceRemoveSound, Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, player, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
 
-                    Api.World.Logger.Audit("{0} Took {1} from Scroll rack at {2}.",
+                    Api.World.Logger.Audit("{0} Took 1x{1} from Ground storage at {2}.",
                         player.PlayerName,
-                        string.Format("1x{0}", ourSlot.Itemstack?.GetName()),
+                        ourSlot.Itemstack?.Collectible.Code,
                         Pos
                     );
                     ourSlot.Itemstack = null;
@@ -1312,7 +1319,7 @@ namespace Vintagestory.GameContent
             {
                 var key = getMeshCacheKey(stack);
                 var mesh = getMesh(stack);
-                UploadedMeshCache.TryGetValue(key, out MeshRefs[index]);
+                
 
                 if (mesh != null) return mesh;
 
@@ -1329,7 +1336,9 @@ namespace Vintagestory.GameContent
                 capi.Tesselator.TesselateShape("storagePile", nowTesselatingShape, out mesh, this, null, 0, 0, 0, (int)Math.Ceiling(StorageProps.ModelItemsToStackSizeRatio * stack.StackSize));
 
                 MeshCache[key] = mesh;
-                UploadedMeshCache[key]= capi.Render.UploadMultiTextureMesh(mesh);
+
+                if (UploadedMeshCache.TryGetValue(key, out var mr)) mr.Dispose();
+                UploadedMeshCache[key] = capi.Render.UploadMultiTextureMesh(mesh);
                 MeshRefs[index] = UploadedMeshCache[key];
                 return mesh;
             }
