@@ -516,6 +516,13 @@ namespace Vintagestory.GameContent
                 ItemStack inputStack = inputStacksList[0];
                 inputStacksList.RemoveAt(0);
                 if (inputStack == null) continue;
+                int stackPortion = inputStack.StackSize;
+
+                if (inputStack.Collectible.Attributes?["waterTightContainerProps"].Exists == true)
+                {
+                    var props = BlockLiquidContainerBase.GetContainableProps(stack);
+                    stackPortion = (int)(stack.StackSize / props.ItemsPerLitre / GetIngrendientFor(stack).PortionSizeLitres);
+                }
 
                 bool found = false;
                 for (int i = 0; i < ingredientList.Count; i++)
@@ -526,7 +533,7 @@ namespace Vintagestory.GameContent
                     {
                         if (curQuantities[i] >= ingred.MaxQuantity) continue;
 
-                        totalOutputQuantity = Math.Min(totalOutputQuantity, inputStack.StackSize);
+                        totalOutputQuantity = Math.Min(totalOutputQuantity, stackPortion);
                         curQuantities[i]++;
                         found = true;
                         break;
@@ -551,15 +558,12 @@ namespace Vintagestory.GameContent
                 var stack = inputStacks[i];
                 if (stack == null) continue;
 
-                int qportions = stack.StackSize;
-
                 if (stack.Collectible.Attributes?["waterTightContainerProps"].Exists == true)
                 {
                     var props = BlockLiquidContainerBase.GetContainableProps(stack);
-                    qportions = (int)(stack.StackSize / props.ItemsPerLitre / GetIngrendientFor(stack).PortionSizeLitres);
+                    if (stack.StackSize != (int)(quantityServings * props.ItemsPerLitre * GetIngrendientFor(stack).PortionSizeLitres)) return false;
                 }
-
-                if (qportions != quantityServings) return false;
+                else if (stack.StackSize != quantityServings) return false;
             }
 
             return true;
