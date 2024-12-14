@@ -26,7 +26,7 @@ namespace Vintagestory.GameContent
 
             CookingRecipe recipe = worldForResolve.Api.GetCookingRecipe(recipeCode);
 
-            if (recipeCode == null || recipe == null || quantitiesByStack.Count == 0) return "unknown";
+            if (recipeCode == null || recipe == null || quantitiesByStack.Count == 0) return Lang.Get("unknown");
 
             int max = 1;
             string MealFormat = "meal";
@@ -228,14 +228,20 @@ namespace Vintagestory.GameContent
 
                         if (fruits[1] != null)
                         {
-                            return Lang.Get("mealname-mixedjam", fruits[0].GetName(), fruits[1].GetName());
+                            string jamName = fruits[0].Collectible.LastCodePart() + "-" + fruits[1].Collectible.LastCodePart() + "-jam";
+                            if (Lang.HasTranslation(jamName)) return Lang.Get(jamName);
+
+                            string firstFruitInJam = (fruits[0].Collectible.Code.Domain == "game" ? "" : fruits[0].Collectible.Code.Domain + ":") + fruits[0].Collectible.LastCodePart() + "-in-jam-name";
+                            string secondFruitInJam = (fruits[1].Collectible.Code.Domain == "game" ? "" : fruits[1].Collectible.Code.Domain + ":") + fruits[1].Collectible.LastCodePart() + "-in-jam-name";
+                            return Lang.Get("mealname-mixedjam", Lang.HasTranslation(firstFruitInJam) ? Lang.Get(firstFruitInJam) : fruits[0].GetName(), Lang.HasTranslation(secondFruitInJam) ? Lang.Get(secondFruitInJam) : fruits[1].GetName());
                         }
                         else if (fruits[0] != null)
                         {
                             string jamName = fruits[0].Collectible.LastCodePart() + "-jam";
-                            string jamNameLocalised = Lang.Get(jamName);
-                            if (jamName != jamNameLocalised) return jamNameLocalised;
-                            return Lang.Get("mealname-singlejam", fruits[0].GetName());
+                            if (Lang.HasTranslation(jamName)) return Lang.Get(jamName);
+
+                            string fruitInJam = (fruits[0].Collectible.Code.Domain == "game" ? "" : fruits[0].Collectible.Code.Domain + ":") + fruits[0].Collectible.Code.Domain + ":" + fruits[0].Collectible.LastCodePart() + "-in-jam-name";
+                            return Lang.Get("mealname-singlejam", Lang.HasTranslation(fruitInJam) ? Lang.Get(fruitInJam) : fruits[0].GetName());
                         }
                         else return Lang.Get("unknown");
                     }

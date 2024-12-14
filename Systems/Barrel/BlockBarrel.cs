@@ -14,7 +14,12 @@ namespace Vintagestory.GameContent
     public class BlockBarrel : BlockLiquidContainerBase
     {
         public override bool AllowHeldLiquidTransfer => false;
-        protected string shapesBasePath => "shapes/block/wood/barrel/";
+
+        public AssetLocation emptyShape { get; protected set; } = AssetLocation.Create("block/wood/barrel/empty");
+        public AssetLocation sealedShape { get; protected set; } = AssetLocation.Create("block/wood/barrel/closed");
+        public AssetLocation contentsShape { get; protected set; } = AssetLocation.Create("block/wood/barrel/contents");
+        public AssetLocation opaqueLiquidContentsShape { get; protected set; } = AssetLocation.Create("block/wood/barrel/opaqueliquidcontents");
+        public AssetLocation liquidContentsShape { get; protected set; } = AssetLocation.Create("block/wood/barrel/liquidcontents");
 
         public override int GetContainerSlotId(BlockPos pos) => 1;
 
@@ -155,7 +160,7 @@ namespace Vintagestory.GameContent
         {
             ICoreClientAPI capi = api as ICoreClientAPI;
 
-            Shape shape = API.Common.Shape.TryGet(capi, shapesBasePath + (issealed ? "closed" : "empty") + ".json");
+            Shape shape = API.Common.Shape.TryGet(capi, issealed ? sealedShape : emptyShape);
             MeshData barrelMesh;
             capi.Tesselator.TesselateShape(this, shape, out barrelMesh);
 
@@ -166,7 +171,7 @@ namespace Vintagestory.GameContent
                 MeshData contentMesh =
                     getContentMeshFromAttributes(contentStack, liquidContentStack, forBlockPos) ??
                     getContentMeshLiquids(contentStack, liquidContentStack, forBlockPos, containerProps) ??
-                    getContentMesh(contentStack, forBlockPos, shapesBasePath + "contents.json")
+                    getContentMesh(contentStack, forBlockPos, contentsShape)
                 ;
 
                 if (contentMesh != null)
@@ -196,10 +201,10 @@ namespace Vintagestory.GameContent
             bool isliquid = containerProps?.Exists == true;
             if (liquidContentStack != null && (isliquid || contentStack == null))
             {
-                string shapefilename = "contents.json";
-                if (isliquid) shapefilename = isopaque ? "opaqueliquidcontents.json" : "liquidcontents.json";
+                AssetLocation shapefilepath = contentsShape;
+                if (isliquid) shapefilepath = isopaque ? opaqueLiquidContentsShape : liquidContentsShape;
 
-                return getContentMesh(liquidContentStack, forBlockPos, shapesBasePath + shapefilename);
+                return getContentMesh(liquidContentStack, forBlockPos, shapefilepath);
             }
 
             return null;
@@ -210,14 +215,14 @@ namespace Vintagestory.GameContent
             if (liquidContentStack?.ItemAttributes?["inBarrelShape"].Exists == true)
             {
                 var loc = AssetLocation.Create(liquidContentStack.ItemAttributes?["inBarrelShape"].AsString(), contentStack.Collectible.Code.Domain).WithPathPrefixOnce("shapes").WithPathAppendixOnce(".json");
-                return getContentMesh(contentStack, forBlockPos, loc.ToString());
+                return getContentMesh(contentStack, forBlockPos, loc);
             }
 
             return null;
         }
 
 
-        protected MeshData getContentMesh(ItemStack stack, BlockPos forBlockPos, string shapefilepath)
+        protected MeshData getContentMesh(ItemStack stack, BlockPos forBlockPos, AssetLocation shapefilepath)
         {
             ICoreClientAPI capi = api as ICoreClientAPI;
 
@@ -340,10 +345,21 @@ namespace Vintagestory.GameContent
         {
             base.OnLoaded(api);
 
-            if (Attributes?["capacityLitres"].Exists == true)
+            if (Attributes != null)
             {
                 capacityLitresFromAttributes = Attributes["capacityLitres"].AsInt(50);
+                emptyShape = AssetLocation.Create(Attributes["emptyShape"].AsString(emptyShape), Code.Domain);
+                sealedShape = AssetLocation.Create(Attributes["sealedShape"].AsString(sealedShape), Code.Domain);
+                contentsShape = AssetLocation.Create(Attributes["contentsShape"].AsString(contentsShape), Code.Domain);
+                opaqueLiquidContentsShape = AssetLocation.Create(Attributes["opaqueLiquidContentsShape"].AsString(opaqueLiquidContentsShape), Code.Domain);
+                liquidContentsShape = AssetLocation.Create(Attributes["liquidContentsShape"].AsString(liquidContentsShape), Code.Domain);
             }
+
+            emptyShape.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
+            sealedShape.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
+            contentsShape.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
+            opaqueLiquidContentsShape.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
+            liquidContentsShape.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
 
 
             if (api.Side != EnumAppSide.Client) return;

@@ -11,6 +11,8 @@ namespace Vintagestory.GameContent
 
     public class BlockEntityBed : BlockEntity, IMountableSeat, IMountable
     {
+        long restingListener;
+
         static Vec3f eyePos = new Vec3f(0, 0.3f, 0);
 
         float sleepEfficiency = 0.5f;
@@ -28,7 +30,8 @@ namespace Vintagestory.GameContent
         public EntityPos SeatPosition => Position; // Since we have only one seat, it can be the same as the base position
         public EntityPos Position
         {
-            get {
+            get
+            {
                 BlockFacing facing = this.facing.Opposite;
 
                 mountPos.SetPos(Pos);
@@ -61,8 +64,8 @@ namespace Vintagestory.GameContent
 
         public string SeatId { get => "bed-0"; set { } }
 
-        public SeatConfig Config { get => null; set {} }
-        public long PassengerEntityIdForInit { get => mountedByEntityId; set => mountedByEntityId=value; }
+        public SeatConfig Config { get => null; set { } }
+        public long PassengerEntityIdForInit { get => mountedByEntityId; set => mountedByEntityId = value; }
 
         public Entity Controller => MountedBy;
 
@@ -74,7 +77,7 @@ namespace Vintagestory.GameContent
             if (Block.Attributes != null) sleepEfficiency = Block.Attributes["sleepEfficiency"].AsFloat(0.5f);
 
             Cuboidf[] collboxes = Block.GetCollisionBoxes(api.World.BlockAccessor, Pos);
-            if (collboxes!=null && collboxes.Length > 0) y2 = collboxes[0].Y2;
+            if (collboxes != null && collboxes.Length > 0) y2 = collboxes[0].Y2;
 
             facing = BlockFacing.FromCode(Block.LastCodePart());
 
@@ -190,7 +193,8 @@ namespace Vintagestory.GameContent
             mountedByEntityId = 0;
             mountedByPlayerUid = null;
 
-            base.OnBlockRemoved();
+            Api.Event.UnregisterGameTickListener(restingListener);
+            restingListener = 0;
         }
 
         public void DidMount(EntityAgent entityAgent)
@@ -213,7 +217,10 @@ namespace Vintagestory.GameContent
 
             if (Api?.Side == EnumAppSide.Server)
             {
-                RegisterGameTickListener(RestPlayer, 200);
+                if (restingListener == 0)
+                {
+                    restingListener = RegisterGameTickListener(RestPlayer, 200);
+                }
                 hoursTotal = Api.World.Calendar.TotalHours;
             }
 
