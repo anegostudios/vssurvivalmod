@@ -477,16 +477,21 @@ namespace Vintagestory.GameContent
             }
 
             // Fires into in beehive kiln
+
             if (collObj.Attributes?["beehivekiln"].Exists == true)
             {
-                Dictionary<string, JsonItemStack> beehivekilnProps = attributes?["beehivekiln"].AsObject<Dictionary<string, JsonItemStack>>();
+                Dictionary<string, JsonItemStack> beehivekilnProps = collObj.Attributes["beehivekiln"].AsObject<Dictionary<string, JsonItemStack>>();
                 list.AddMarginAndTitle(capi, marginTop: 7, titletext: Lang.Get("game:smeltdesc-beehivekiln-title"));
 
-                foreach (JsonItemStack firesIntoStack in beehivekilnProps.Values)
+                foreach ((string doorOpen, JsonItemStack firesIntoStack) in beehivekilnProps)
                 {
                     if (firesIntoStack != null && firesIntoStack.Resolve(capi.World, "beehivekiln-burn"))
                     {
-                        components.Add(new ItemstackTextComponent(capi, firesIntoStack.ResolvedItemstack.Clone(), 40, 0, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs))));
+                        list.AddStack(capi, openDetailPageFor, firesIntoStack.ResolvedItemstack.Clone());
+                        list.AddEqualSign(capi);
+                        list.Add(new RichTextComponent(capi, Lang.Get("{0} doors open", doorOpen), CairoFont.WhiteSmallText().WithWeight(Cairo.FontWeight.Bold)) { VerticalAlign = EnumVerticalAlign.Middle });
+                        list.AddStack(capi, openDetailPageFor, new ItemStack(capi.World.GetBlock("cokeovendoor-closed-north")));
+                        list.Add(new RichTextComponent(capi, "\n", CairoFont.WhiteSmallText()) { VerticalAlign = EnumVerticalAlign.Middle });
                     }
                 }
             }
