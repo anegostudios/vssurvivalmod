@@ -476,6 +476,21 @@ namespace Vintagestory.GameContent
                 components.Add(new ClearFloatTextComponent(capi, marginBottom));  //nice margin below the item graphic
             }
 
+            // Fires into in beehive kiln
+            if (collObj.Attributes?["beehivekiln"].Exists == true)
+            {
+                Dictionary<string, JsonItemStack> beehivekilnProps = attributes?["beehivekiln"].AsObject<Dictionary<string, JsonItemStack>>();
+                list.AddMarginAndTitle(capi, marginTop: 7, titletext: Lang.Get("game:smeltdesc-beehivekiln-title"));
+
+                foreach (JsonItemStack firesIntoStack in beehivekilnProps.Values)
+                {
+                    if (firesIntoStack != null && firesIntoStack.Resolve(capi.World, "beehivekiln-burn"))
+                    {
+                        components.Add(new ItemstackTextComponent(capi, firesIntoStack.ResolvedItemstack.Clone(), 40, 0, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs))));
+                    }
+                }
+            }
+
             // Pulverizes into
             if (collObj.CrushingProps?.CrushedStack?.ResolvedItemstack != null && !collObj.CrushingProps.CrushedStack.ResolvedItemstack.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes))
             {
