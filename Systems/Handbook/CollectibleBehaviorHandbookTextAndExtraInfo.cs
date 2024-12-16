@@ -481,16 +481,18 @@ namespace Vintagestory.GameContent
             if (collObj.Attributes?["beehivekiln"].Exists == true)
             {
                 Dictionary<string, JsonItemStack> beehivekilnProps = collObj.Attributes["beehivekiln"].AsObject<Dictionary<string, JsonItemStack>>();
-                components.AddMarginAndTitle(capi, marginTop: 7, titletext: Lang.Get("game:smeltdesc-beehivekiln-title"));
+
+                components.Add(new ClearFloatTextComponent(capi, 7));
+                components.Add(new RichTextComponent(capi, Lang.Get("game:smeltdesc-beehivekiln-title") + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
 
                 foreach ((string doorOpen, JsonItemStack firesIntoStack) in beehivekilnProps)
                 {
                     if (firesIntoStack != null && firesIntoStack.Resolve(capi.World, "beehivekiln-burn"))
                     {
-                        components.AddStack(capi, openDetailPageFor, firesIntoStack.ResolvedItemstack.Clone());
-                        components.AddEqualSign(capi);
+                        components.Add(new ItemstackTextComponent(capi, firesIntoStack.ResolvedItemstack.Clone(), 40, 0, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs))));
+                        components.Add(new RichTextComponent(capi, " = ", CairoFont.WhiteMediumText()) { VerticalAlign = EnumVerticalAlign.Middle });
                         components.Add(new RichTextComponent(capi, Lang.Get("{0} doors open", doorOpen), CairoFont.WhiteSmallText().WithWeight(Cairo.FontWeight.Bold)) { VerticalAlign = EnumVerticalAlign.Middle });
-                        components.AddStack(capi, openDetailPageFor, new ItemStack(capi.World.GetBlock("cokeovendoor-closed-north")));
+                        components.Add(new ItemstackTextComponent(capi, new ItemStack(capi.World.GetBlock("cokeovendoor-closed-north")), 40, 0, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs))));
                         components.Add(new RichTextComponent(capi, "\n", CairoFont.WhiteSmallText()) { VerticalAlign = EnumVerticalAlign.Middle });
                     }
                 }
