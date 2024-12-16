@@ -481,17 +481,17 @@ namespace Vintagestory.GameContent
             if (collObj.Attributes?["beehivekiln"].Exists == true)
             {
                 Dictionary<string, JsonItemStack> beehivekilnProps = collObj.Attributes["beehivekiln"].AsObject<Dictionary<string, JsonItemStack>>();
-                list.AddMarginAndTitle(capi, marginTop: 7, titletext: Lang.Get("game:smeltdesc-beehivekiln-title"));
+                components.AddMarginAndTitle(capi, marginTop: 7, titletext: Lang.Get("game:smeltdesc-beehivekiln-title"));
 
                 foreach ((string doorOpen, JsonItemStack firesIntoStack) in beehivekilnProps)
                 {
                     if (firesIntoStack != null && firesIntoStack.Resolve(capi.World, "beehivekiln-burn"))
                     {
-                        list.AddStack(capi, openDetailPageFor, firesIntoStack.ResolvedItemstack.Clone());
-                        list.AddEqualSign(capi);
-                        list.Add(new RichTextComponent(capi, Lang.Get("{0} doors open", doorOpen), CairoFont.WhiteSmallText().WithWeight(Cairo.FontWeight.Bold)) { VerticalAlign = EnumVerticalAlign.Middle });
-                        list.AddStack(capi, openDetailPageFor, new ItemStack(capi.World.GetBlock("cokeovendoor-closed-north")));
-                        list.Add(new RichTextComponent(capi, "\n", CairoFont.WhiteSmallText()) { VerticalAlign = EnumVerticalAlign.Middle });
+                        components.AddStack(capi, openDetailPageFor, firesIntoStack.ResolvedItemstack.Clone());
+                        components.AddEqualSign(capi);
+                        components.Add(new RichTextComponent(capi, Lang.Get("{0} doors open", doorOpen), CairoFont.WhiteSmallText().WithWeight(Cairo.FontWeight.Bold)) { VerticalAlign = EnumVerticalAlign.Middle });
+                        components.AddStack(capi, openDetailPageFor, new ItemStack(capi.World.GetBlock("cokeovendoor-closed-north")));
+                        components.Add(new RichTextComponent(capi, "\n", CairoFont.WhiteSmallText()) { VerticalAlign = EnumVerticalAlign.Middle });
                     }
                 }
             }
