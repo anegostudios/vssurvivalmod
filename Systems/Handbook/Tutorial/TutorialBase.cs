@@ -93,7 +93,7 @@ namespace Vintagestory.GameContent
 
         public bool Complete => steps[steps.Count - 1].Complete;
 
-        public float Progress => steps.Sum((t) => t.Complete ? 1 : 0) / (float)steps.Count;
+        public float Progress => steps.Count == 0 ? 0f : steps.Sum((t) => t.Complete ? 1 : 0) / (float)steps.Count;
 
         public void addSteps(params TutorialStepBase[] steps)
         {

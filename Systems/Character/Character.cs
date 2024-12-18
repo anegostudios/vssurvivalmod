@@ -38,8 +38,6 @@ namespace Vintagestory.GameContent
         public string VoicePitch;
     }
 
-
-
     public class SeraphRandomizerConstraints
     {
         public Dictionary<string, Dictionary<string, Dictionary<string, RandomizerConstraint>>> Constraints;
@@ -445,6 +443,17 @@ namespace Vintagestory.GameContent
                 setCharacterClass(byPlayer.Entity, characterClasses[0].Code, false);
             }
 
+            var classChangeMonths = sapi.World.Config.GetDecimal("allowClassChangeAfterMonths", -1);
+            if (classChangeMonths >= 0)
+            {
+                var lastDateChange = byPlayer.ServerData.LastCharacterSelectionDate ?? byPlayer.ServerData.FirstJoinDate ?? "1/1/1970 00:00 AM";
+                var daysPassed = DateTime.UtcNow.Subtract(DateTimeOffset.Parse(lastDateChange).UtcDateTime).TotalDays;
+                if (classChangeMonths < daysPassed / 30.0)
+                {
+                    byPlayer.Entity.WatchedAttributes.SetBool("allowcharselonce", true);
+                }
+            }
+
             sapi.Network.GetChannel("charselection").SendPacket(new CharacterSelectedState() { DidSelect = didSelect }, byPlayer);
         }
 
@@ -507,8 +516,10 @@ namespace Vintagestory.GameContent
 
         private void onCharacterSelection(IServerPlayer fromPlayer, CharacterSelectionPacket p)
         {
-            bool didSelectBefore = SerializerUtil.Deserialize(fromPlayer.GetModdata("createCharacter"), false);
-            if (didSelectBefore && (fromPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative))
+            bool didSelectBefore = fromPlayer.GetModData<bool>("createCharacter", false);
+            bool allowSelect = !didSelectBefore || fromPlayer.Entity.WatchedAttributes.GetBool("allowcharselonce") || fromPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative;
+
+            if (!allowSelect)
             {
                 fromPlayer.Entity.WatchedAttributes.MarkPathDirty("skinConfig");
                 fromPlayer.BroadcastPlayerData(true);
@@ -517,7 +528,7 @@ namespace Vintagestory.GameContent
 
             if (p.DidSelect)
             {
-                fromPlayer.SetModdata("createCharacter", SerializerUtil.Serialize(true));
+                fromPlayer.SetModData<bool>("createCharacter", true);
                 fromPlayer.Entity.WatchedAttributes.RemoveAttribute("allowcharselonce");
 
                 setCharacterClass(fromPlayer.Entity, p.CharacterClass, !didSelectBefore || fromPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative);
@@ -531,6 +542,14 @@ namespace Vintagestory.GameContent
                 }
             }
 
+            var date = DateTime.UtcNow;
+            if (!didSelectBefore)
+            {
+                var selectionOffset = sapi.World.Config.GetDecimal("firstClassChangeOffsetMonths", 0);
+                date = DateTime.UtcNow.AddDays(-30 * selectionOffset);
+            }
+
+            fromPlayer.ServerData.LastCharacterSelectionDate = date.ToShortDateString() + " " + date.ToShortTimeString();
             fromPlayer.Entity.WatchedAttributes.MarkPathDirty("skinConfig");
             fromPlayer.BroadcastPlayerData(true);
         }

@@ -1997,6 +1997,7 @@ namespace Vintagestory.ServerMods
 
                             if (leftToLoad <= 0 && !sent)
                             {
+                                modSys.FinalizeRegeneration(chunkMidX, chunkMidZ);
                                 sent = true;
                                 player.SendMessage(caller.FromChatGroupId, "Regen complete", EnumChatType.CommandSuccess);
 

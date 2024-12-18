@@ -476,6 +476,29 @@ namespace Vintagestory.GameContent
                 components.Add(new ClearFloatTextComponent(capi, marginBottom));  //nice margin below the item graphic
             }
 
+            // Fires into in beehive kiln
+
+            if (collObj.Attributes?["beehivekiln"].Exists == true)
+            {
+                Dictionary<string, JsonItemStack> beehivekilnProps = collObj.Attributes["beehivekiln"].AsObject<Dictionary<string, JsonItemStack>>();
+
+                components.Add(new ClearFloatTextComponent(capi, 7));
+                components.Add(new RichTextComponent(capi, Lang.Get("game:smeltdesc-beehivekiln-title") + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
+
+                foreach ((string doorOpen, JsonItemStack firesIntoStack) in beehivekilnProps)
+                {
+                    if (firesIntoStack != null && firesIntoStack.Resolve(capi.World, "beehivekiln-burn"))
+                    {
+                        components.Add(new ItemstackTextComponent(capi, firesIntoStack.ResolvedItemstack.Clone(), 40, 0, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs))));
+                        components.Add(new RichTextComponent(capi, " = ", CairoFont.WhiteMediumText()) { VerticalAlign = EnumVerticalAlign.Middle });
+                        components.Add(new RichTextComponent(capi, Lang.Get("{0} doors open", doorOpen), CairoFont.WhiteSmallText().WithWeight(Cairo.FontWeight.Bold)) { VerticalAlign = EnumVerticalAlign.Middle });
+                        components.Add(new ItemstackTextComponent(capi, new ItemStack(capi.World.GetBlock("cokeovendoor-closed-north")), 40, 0, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs))));
+                        components.Add(new RichTextComponent(capi, "\n", CairoFont.WhiteSmallText()) { VerticalAlign = EnumVerticalAlign.Middle });
+                    }
+                }
+            }
+
+
             // Pulverizes into
             if (collObj.CrushingProps?.CrushedStack?.ResolvedItemstack != null && !collObj.CrushingProps.CrushedStack.ResolvedItemstack.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes))
             {

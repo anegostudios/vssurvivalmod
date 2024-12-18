@@ -409,7 +409,7 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
                 (haveBlock, wantLoc) =>
                 {
                     var firstCodePart = haveBlock.FirstCodePart();
-                    if ((firstCodePart == "refractorybricks" ||firstCodePart == "refractorybrickgrating") && haveBlock.Variant["state"] == "damaged")
+                    if ((firstCodePart == "refractorybricks" || firstCodePart == "claybricks" || firstCodePart == "refractorybrickgrating") && haveBlock.Variant["state"] == "damaged")
                     {
                         damagedTiles++;
                     }

@@ -206,6 +206,8 @@ namespace Vintagestory.GameContent
             AiTaskRegistry.Register<AiTaskThrowAtEntity>("throwatentity");
             AiTaskRegistry.Register<AiTaskStayInRange>("stayinrange");
             AiTaskRegistry.Register<AiTaskTurretMode>("turretmode");
+
+            EntityBehaviorPassivePhysicsMultiBox.InitServer(api);   // Needed to guarantee registration to the OnPhysicsThreadStart event before that event is fired, even if no entities with this behavior (i.e. boats) are yet loaded in the early game - it might be hours before we see one of these entities
         }
 
         private void Event_PlayerJoin(IServerPlayer byPlayer)

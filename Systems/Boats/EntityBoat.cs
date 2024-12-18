@@ -260,7 +260,6 @@ namespace Vintagestory.GameContent
                     Die();
                 }
 
-
                 updateBoatAngleAndMotion(dt);
             }
 
@@ -461,7 +460,7 @@ namespace Vintagestory.GameContent
                     var yawdist = Math.Abs(GameMath.AngleRadDistance(SidedPos.Yaw, seat.Passenger.SidedPos.Yaw));
                     bool isLookingBackwards = yawdist > GameMath.PIHALF;
 
-                    if (isLookingBackwards) dir *= -1;
+                    if (isLookingBackwards && requiresPaddlingTool) dir *= -1;
 
                     linearMotion += str * dir * dt * 2f;
                 }

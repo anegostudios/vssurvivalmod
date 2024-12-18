@@ -781,7 +781,7 @@ namespace Vintagestory.GameContent
                 {
                     IMapChunk mc = blockAccessor.GetMapChunk(cx, cz);
                     if (mc == null) return false;
-                    if (mc.CurrentPass < EnumWorldGenPass.Terrain) return false;    
+                    if (mc.CurrentPass <= EnumWorldGenPass.Vegetation) return false;
                 }
             }
 

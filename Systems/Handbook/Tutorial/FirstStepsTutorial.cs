@@ -69,7 +69,7 @@ namespace Vintagestory.GameContent
                 ),
                 TutorialStepBase.Craft(capi, "maketorch", "tutorial-firststeps-19", (stack) => stack.Collectible.Code.Path.Contains("torch-basic-extinct"), 1),
                 TutorialStepBase.Grab(capi, "ignitetorch", "tutorial-firststeps-20", (stack) => (stack.Collectible as BlockTorch)?.IsExtinct == false, 1),
-                TutorialStepBase.Place(capi, "finished", "tutorial-firststeps-21", (pos, block, stack) => block is BlockTorch, 1)
+                TutorialStepBase.Place(capi, "finished", "tutorial-firststeps-21", (pos, block, stack) => block is BlockTorch bt && !bt.IsExtinct, 1)
             );
         }
 

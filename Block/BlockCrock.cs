@@ -414,12 +414,12 @@ namespace Vintagestory.GameContent
 
             DummyInventory dummyInv = new DummyInventory(api);
 
-            ItemSlot slot = GetDummySlotForFirstPerishableStack(api.World, stacks, null, dummyInv);
+            ItemSlot mealSlot = GetDummySlotForFirstPerishableStack(api.World, stacks, null, dummyInv);
             dummyInv.OnAcquireTransitionSpeed += (transType, stack, mul) =>
             {
                 float val = mul * GetContainingTransitionModifierContained(world, inSlot, transType);
 
-                val *= inSlot.Inventory.GetTransitionSpeedMul(transType, inSlot.Itemstack);
+                if (inSlot.Inventory != null) val *= inSlot.Inventory.GetTransitionSpeedMul(transType, inSlot.Itemstack);
 
                 return val;
             };
@@ -469,7 +469,7 @@ namespace Vintagestory.GameContent
             }
 
 
-            slot.Itemstack?.Collectible.AppendPerishableInfoText(slot, dsc, world);
+            mealSlot.Itemstack?.Collectible.AppendPerishableInfoText(mealSlot, dsc, world);
 
             if (inSlot.Itemstack.Attributes.GetBool("sealed"))
             {

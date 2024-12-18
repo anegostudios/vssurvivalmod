@@ -273,7 +273,7 @@ namespace Vintagestory.GameContent
             {
                 float val = mul * GetContainingTransitionModifierContained(world, inSlot, transType);
 
-                val *= inSlot.Inventory.GetTransitionSpeedMul(transType, inSlot.Itemstack);
+                if (inSlot.Inventory != null) val *= inSlot.Inventory.GetTransitionSpeedMul(transType, inSlot.Itemstack);
 
                 return val;
             };

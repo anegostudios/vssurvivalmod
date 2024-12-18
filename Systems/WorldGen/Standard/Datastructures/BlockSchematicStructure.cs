@@ -13,7 +13,6 @@ namespace Vintagestory.ServerMods
         public Dictionary<int, AssetLocation> BlockCodesTmpForRemap = new();
 
         public string FromFileName;
-        public Dictionary<AssetLocation, AssetLocation> Remaps;
 
         public Block[,,] blocksByPos;
         public Dictionary<BlockPos, Block> FluidBlocksByPos;
@@ -35,20 +34,6 @@ namespace Vintagestory.ServerMods
 
             blocksByPos = new Block[SizeX + 1, SizeY + 1, SizeZ + 1];
             FluidBlocksByPos = new Dictionary<BlockPos, Block>();
-
-            if (Remaps != null && Remaps.Count > 0)
-            {
-                foreach (var storedId in BlockCodes.Keys.ToArray())
-                {
-                    foreach (var remap in Remaps)
-                    {
-                        if (remap.Equals(BlockCodes[storedId].Path))
-                        {
-                            BlockCodes[storedId] = remap.Value;
-                        }
-                    }
-                }
-            }
 
             for (int i = 0; i < Indices.Count; i++)
             {

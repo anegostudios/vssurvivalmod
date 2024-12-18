@@ -99,6 +99,8 @@ namespace Vintagestory.ServerMods
 
             T schematic = asset.ToObject<T>();
 
+            schematic.Remap();
+
             if (isDungeon)
             {
                 InitDungeonData(api, schematic);

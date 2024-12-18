@@ -62,7 +62,8 @@ namespace Vintagestory.GameContent
             {
                 if (invslot is ItemSlotCreative) return true;
 
-                if (invslot.Itemstack != null && invslot.Itemstack.Collectible.Code.PathStartsWith("arrow-"))
+                ItemStack stack = invslot.Itemstack;
+                if (stack != null && stack.Collectible != null && stack.Collectible.Code.PathStartsWith("arrow-") && stack.StackSize > 0)
                 {
                     slot = invslot;
                     return false;

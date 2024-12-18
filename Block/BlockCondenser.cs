@@ -43,7 +43,7 @@ namespace Vintagestory.GameContent
             if (be?.Inventory[1].Empty == false)
             {
                 BlockLiquidContainerBase block = be.Inventory[1].Itemstack.Collectible as BlockLiquidContainerBase;
-                dsc.Append(Lang.Get("Container: "));
+                dsc.Append(Lang.Get("Container:") + " ");
                 block.GetContentInfo(be.Inventory[1], dsc, world);
             }
 

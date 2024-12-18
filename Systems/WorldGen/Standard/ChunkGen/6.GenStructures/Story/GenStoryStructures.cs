@@ -1191,5 +1191,13 @@ namespace Vintagestory.GameContent
             });
             // do not protect/land claim the top room since it rarely requires players to dig up some blocks
         }
+
+        public void FinalizeRegeneration(int chunkMidX, int chunkMidZ)
+        {
+            // We need to hard-code finalizing the Devastation Tower in dim2 at the end of a /wgen regen command
+            // because the normal condition for it to be generated (i.e. generate a DevastationLayer chunk column after all the columns in the dim2 land area around the tower are already generated) may not be met
+
+            api.ModLoader.GetModSystem<Timeswitch>().AttemptGeneration(worldgenBlockAccessor);
+        }
     }
 }
