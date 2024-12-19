@@ -123,7 +123,7 @@ namespace Vintagestory.GameContent
         {
             if (blockSel == null) return;
 
-            ILiquidMetalSink be = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position) as ILiquidMetalSink;
+            ILiquidMetalSink be = blockSel.Block.GetInterface<ILiquidMetalSink>(byEntity.World, blockSel.Position);
 
             if (be != null)
             {
@@ -180,7 +180,7 @@ namespace Vintagestory.GameContent
         {
             if (blockSel == null) return false;
 
-            ILiquidMetalSink be = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position) as ILiquidMetalSink; 
+            ILiquidMetalSink be = blockSel.Block.GetInterface<ILiquidMetalSink>(byEntity.World, blockSel.Position); 
             if (be == null) return false;
 
             if (!be.CanReceiveAny) return false;
@@ -381,7 +381,7 @@ namespace Vintagestory.GameContent
 
             if (blockSel == null) return;
                  
-            ILiquidMetalSink be = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position) as ILiquidMetalSink;
+            ILiquidMetalSink be = blockSel.Block.GetInterface<ILiquidMetalSink>(byEntity.World, blockSel.Position);
             be?.OnPourOver();
         }
 

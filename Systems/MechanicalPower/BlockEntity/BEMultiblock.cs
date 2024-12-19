@@ -33,7 +33,7 @@ namespace Vintagestory.GameContent.Mechanics
             else
             {
                 Principal = new BlockPos(cx, cy, cz);
-                if (world.BlockAccessor.GetBlockEntity(Principal) is IGearAcceptor beg) beg.RemoveGearAt(this.Pos);
+                if (world.BlockAccessor.GetBlock(Principal).GetInterface<IGearAcceptor>(world, Principal) is IGearAcceptor beg) beg.RemoveGearAt(this.Pos);
             }
         }
 

@@ -28,7 +28,7 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 BlockPos pos = blockSel.Position.AddCopy(face);
 
-                IMechanicalPowerBlock block = world.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
+                IMechanicalPowerBlock block = world.BlockAccessor.GetBlock(pos).GetInterface<IMechanicalPowerBlock>(world, pos);
                 if (block != null)
                 {
                     BlockFacing faceOpposite = face.Opposite;
@@ -52,7 +52,7 @@ namespace Vintagestory.GameContent.Mechanics
 
                             //Test for connection on opposite side as well
                             pos = blockSel.Position.AddCopy(faceOpposite);
-                            block = world.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
+                            block = world.BlockAccessor.GetBlock(pos).GetInterface<IMechanicalPowerBlock>(world, pos);
                             if (block != null && block.HasMechPowerConnectorAt(world, pos, face))
                             {
                                 block.DidConnectAt(world, pos, face);

@@ -152,7 +152,7 @@ namespace Vintagestory.GameContent
             ItemStack mealstack = new ItemStack(block);
             mealstack.StackSize = 1;
 
-            (block as IBlockMealContainer).SetContents(RecipeCode, mealstack, GetNonEmptyContentStacks(), servings);
+            (block.GetCollectibleInterface<IBlockMealContainer>()).SetContents(RecipeCode, mealstack, GetNonEmptyContentStacks(), servings);
 
             if (slot.StackSize == 1)
             {
