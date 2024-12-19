@@ -211,7 +211,7 @@ namespace Vintagestory.GameContent
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {
-            ItemStack stack = new ItemStack(world.GetBlock(CodeWithParts("up")));
+            ItemStack stack = new ItemStack(world.GetBlock(CodeWithVariant("position", "up")));
 
             BELantern be = world.BlockAccessor.GetBlockEntity(pos) as BELantern;
             if (be != null)

@@ -7,7 +7,7 @@ namespace Vintagestory.GameContent.Mechanics
     {
         public bool IsOrientedTo(BlockFacing facing)
         {
-            string dirs = LastCodePart();
+            string dirs = Variant["orientation"];
 
             return dirs[0] == facing.Code[0] || (dirs.Length > 1 && dirs[1] == facing.Code[0]);
         }
@@ -37,11 +37,11 @@ namespace Vintagestory.GameContent.Mechanics
                         AssetLocation loc;
                         if (face == BlockFacing.EAST || face == BlockFacing.WEST)
                         {
-                            loc = new AssetLocation(FirstCodePart() + "-we");
+                            loc = CodeWithVariant("orientation", "we");
                         }
                         else
                         {
-                            loc = new AssetLocation(FirstCodePart() + "-ns");
+                            loc = CodeWithVariant("orientation", "ns");
                         }
                         Block toPlaceBlock = world.GetBlock(loc);
 
