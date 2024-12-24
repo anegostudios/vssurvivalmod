@@ -67,5 +67,9 @@ namespace Vintagestory.GameContent
 
             return base.GetSuitability(sourceSlot, targetSlot, isMerge);
         }
+        public override ItemSlot GetAutoPushIntoSlot(BlockFacing atBlockFace, ItemSlot fromSlot)
+        {
+            return null;
+        }
     }
 }

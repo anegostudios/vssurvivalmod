@@ -197,7 +197,22 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public override void OnBlockPlaced(ItemStack byItemStack = null)
+        {
+            base.OnBlockPlaced(byItemStack);
 
+            // Deal with situation where the itemStack had some liquid contents, and BEContainer.OnBlockPlaced() placed this into the inputSlot not the liquidSlot
+            ItemSlot inputSlot = Inventory[0];
+            ItemSlot liquidSlot = Inventory[1];
+            if (!inputSlot.Empty && liquidSlot.Empty)
+            {
+                var liqProps = BlockLiquidContainerBase.GetContainableProps(inputSlot.Itemstack);
+                if (liqProps != null)
+                {
+                    Inventory.TryFlipItems(1, inputSlot);
+                }
+            }
+        }
 
         public override void OnBlockBroken(IPlayer byPlayer = null)
         {

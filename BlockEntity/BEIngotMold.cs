@@ -676,9 +676,11 @@ namespace Vintagestory.GameContent
                 }
                 else
                 {
+                    string mat = ContentsLeft.Collectible?.Variant["metal"];
+                    string contentsLocalized = mat == null ? ContentsLeft.GetName() : Lang.Get("material-" + mat);
                     string state = IsLiquidLeft ? Lang.Get("liquid") : (IsHardenedLeft ? Lang.Get("hardened") : Lang.Get("soft"));
                     string temp = TemperatureLeft < 21 ? Lang.Get("Cold") : Lang.Get("{0}°C", (int)TemperatureLeft);
-                    contents = Lang.Get("{0} units of {1} {2} ({3})", FillLevelLeft, state, ContentsLeft.GetName(), temp) + "\n";
+                    contents = Lang.Get("{0} units of {1} {2} ({3})", FillLevelLeft, state, contentsLocalized, temp) + "\n";
                 }
             }
 
@@ -690,9 +692,11 @@ namespace Vintagestory.GameContent
                 }
                 else
                 {
+                    string mat = ContentsRight.Collectible?.Variant["metal"];
+                    string contentsLocalized = mat == null ? ContentsRight.GetName() : Lang.Get("material-" + mat);
                     string state = IsLiquidRight ? Lang.Get("liquid") : (IsHardenedRight ? Lang.Get("hardened") : Lang.Get("soft"));
                     string temp = TemperatureRight < 21 ? Lang.Get("Cold") : Lang.Get("{0}°C", (int)TemperatureRight);
-                    contents += Lang.Get("{0} units of {1} {2} ({3})", FillLevelRight, state, ContentsRight.GetName(), temp) + "\n";
+                    contents += Lang.Get("{0} units of {1} {2} ({3})", FillLevelRight, state, contentsLocalized, temp) + "\n";
                 }
             }
 

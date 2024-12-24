@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Common;
@@ -25,6 +26,16 @@ namespace Vintagestory.ServerMods
         public int OffsetY { get; set; } = -1;
         public int MaxYDiff = 3;
         public int? StoryLocationMaxAmount;
+
+        [JsonProperty]
+        public int MinSpawnDistance = 0;
+
+        public static bool SatisfiesMinSpawnDistance(int minSpawnDistance, BlockPos pos, BlockPos spawnPos)
+        {
+            if (minSpawnDistance <= 0) return true;
+            return spawnPos.HorDistanceSqTo(pos.X, pos.Z) > minSpawnDistance * minSpawnDistance;
+        }
+
 
         public override void Init(IBlockAccessor blockAccessor)
         {

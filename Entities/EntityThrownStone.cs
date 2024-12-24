@@ -109,7 +109,8 @@ namespace Vintagestory.GameContent
                         SourceEntity = this,
                         CauseEntity = FiredBy,
                         Type = EnumDamageType.BluntAttack,
-                        DamageTier = DamageTier
+                        DamageTier = DamageTier,
+                        YDirKnockbackDiv = 3
                     }, Damage);
                     World.PlaySoundAt(new AssetLocation("sounds/thud"), this, null, false, 32);
                     World.SpawnCubeParticles(entity.SidedPos.XYZ.OffsetCopy(0, 0.2, 0), ProjectileStack, 0.2f, ImpactParticleCount, ImpactParticleSize);

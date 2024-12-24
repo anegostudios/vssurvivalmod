@@ -134,7 +134,7 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < mapregion.GeneratedStructures.Count; i++)
             {
                 var struc = mapregion.GeneratedStructures[i];
-                if (struc.Group == "storystructure")
+                if (struc.Location != null && struc?.Group == "storystructure")
                 {
                     if (struc.Location.Contains(pos)) return struc;
                 }

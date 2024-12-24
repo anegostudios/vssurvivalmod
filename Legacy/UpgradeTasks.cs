@@ -79,12 +79,6 @@ namespace Vintagestory.ServerMods
                         .WithDescription("Sets the material of a currently looked at chisel block to the material in the active hands")
                         .HandleWith(OnSetChiselMat)
                     .EndSubCommand()
-                    
-                    .BeginSubCommand("setchiseleditable")
-                        .WithDescription("Upgrade/Downgrade chiseled blocks to an editable/non-editable state in given area")
-                        .WithArgs(parsers.Bool("editable"), parsers.Bool("resetName"))
-                        .HandleWith(OnSetChiselEditable)
-                    .EndSubCommand()
                 .EndSubCommand();
         }
 
@@ -119,73 +113,7 @@ namespace Vintagestory.ServerMods
             return TextCommandResult.Success("Ok material set");
         }
 
-        private TextCommandResult OnSetChiselEditable(TextCommandCallingArgs args)
-        {
-            var player = args.Caller.Player;
-            var wmod = api.ModLoader.GetModSystem<WorldEdit.WorldEdit>();
-
-            var workspace = wmod.GetWorkSpace(player.PlayerUID);
-
-            if (workspace == null || workspace.StartMarker == null || workspace.EndMarker == null)
-            {
-                return TextCommandResult.Success("Select an area with worldedit first");
-            }
-
-            var editable = (bool)args.Parsers[0].GetValue();
-            var resetName = (bool)args.Parsers[1].GetValue();
-            
-            
-            Block chiselBlock = api.World.GetBlock(new AssetLocation("chiseledblock"));
-            Block microblock = api.World.GetBlock(new AssetLocation("microblock"));
-
-            Block targetBlock = editable ? chiselBlock : microblock;
-
-            int startx = Math.Min(workspace.StartMarker.X, workspace.EndMarker.X);
-            int endx = Math.Max(workspace.StartMarker.X, workspace.EndMarker.X);
-            int starty = Math.Min(workspace.StartMarker.Y, workspace.EndMarker.Y);
-            int endy = Math.Max(workspace.StartMarker.Y, workspace.EndMarker.Y);
-            int startz = Math.Min(workspace.StartMarker.Z, workspace.EndMarker.Z);
-            int endZ = Math.Max(workspace.StartMarker.Z, workspace.EndMarker.Z);
-            BlockPos pos = new BlockPos(player.Entity.Pos.Dimension);
-
-            IBulkBlockAccessor ba = api.World.BulkBlockAccessor;
-
-            int cnt = 0;
-
-            for (int x = startx; x < endx; x++)
-            {
-                for (int y = starty; y < endy; y++)
-                {
-                    for (int z = startz; z < endZ; z++)
-                    {
-                        pos.Set(x, y, z);
-
-                        Block block = ba.GetBlock(pos);
-                        if (block is BlockMicroBlock && block.Id != targetBlock.Id)
-                        {
-                            cnt++;
-
-                            TreeAttribute tree = new TreeAttribute();
-                            BlockEntityMicroBlock be = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
-                            be.ToTreeAttributes(tree);
-
-                            api.World.BlockAccessor.SetBlock(targetBlock.Id, pos);
-
-                            be = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
-                            be.FromTreeAttributes(tree, api.World);
-
-                            if (resetName)
-                            {
-                                be.BlockName = api.World.BlockAccessor.GetBlock(be.BlockIds[0]).GetPlacedBlockName(api.World, pos);
-                            }
-                        }
-                    }
-                }
-            }
-
-            return TextCommandResult.Success(string.Format("Ok. {0} Chisel blocks exchanged", cnt));
-        }
-
+       
 
 
 

@@ -275,7 +275,7 @@ namespace Vintagestory.GameContent
         {
             base.GetBlockInfo(forPlayer, dsc);
 
-            dsc.AppendLine(GetPlacedBlockName());
+            dsc.AppendLine(Lang.Get("block-chiseledblock"));
 
             if (forPlayer?.CurrentBlockSelection?.Face != null && BlockIds != null)
             {
@@ -2274,6 +2274,8 @@ namespace Vintagestory.GameContent
                 }
             }
 
+            if (!resolveImports) return;
+            
             int newMatIndex = -1;
             int len = BlockIds.Length;
             for (int i = 0; i < len; i++)

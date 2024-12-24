@@ -249,46 +249,20 @@ namespace Vintagestory.GameContent
                     flatdmgabsorb = attr["damageAbsorption"].AsFloat(2);
                 }
 
-                double dx;
-                double dy;
-                double dz;
-                if (dmgSource.HitPosition != null)
-                {
-                    dx = dmgSource.HitPosition.X;
-                    dy = dmgSource.HitPosition.Y;
-                    dz = dmgSource.HitPosition.Z;
-                }
-                else if (dmgSource.SourceEntity != null)
-                {
-                    dx = dmgSource.SourceEntity.Pos.X - player.Entity.Pos.X;
-                    dy = dmgSource.SourceEntity.Pos.Y - player.Entity.Pos.Y;
-                    dz = dmgSource.SourceEntity.Pos.Z - player.Entity.Pos.Z;
-                }
-                else if (dmgSource.SourcePos != null)
-                {
-                    dx = dmgSource.SourcePos.X - player.Entity.Pos.X;
-                    dy = dmgSource.SourcePos.Y - player.Entity.Pos.Y;
-                    dz = dmgSource.SourcePos.Z - player.Entity.Pos.Z;
-                }
-                else
+                if (!dmgSource.GetAttackAngle(player.Entity.Pos.XYZ, out var attackYaw, out var attackPitch))
                 {
                     break;
                 }
 
+                bool verticalAttack = Math.Abs(attackPitch) > 65 * GameMath.DEG2RAD;
                 double playerYaw = player.Entity.Pos.Yaw;
                 double playerPitch = player.Entity.Pos.Pitch;
-                double attackYaw = Math.Atan2((double)dx, (double)dz);
-                double a = dy;
-                float b = (float)Math.Sqrt(dx * dx + dz * dz);
-                float attackPitch = (float)Math.Atan2(a, b);
-
-                bool verticalAttack = Math.Abs(attackPitch) > 65 * GameMath.DEG2RAD;
 
                 if (projectile)
                 {
-                    dx = dmgSource.SourceEntity.SidedPos.Motion.X;
-                    dy = dmgSource.SourceEntity.SidedPos.Motion.Y;
-                    dz = dmgSource.SourceEntity.SidedPos.Motion.Z;
+                    var dx = dmgSource.SourceEntity.SidedPos.Motion.X;
+                    var dy = dmgSource.SourceEntity.SidedPos.Motion.Y;
+                    var dz = dmgSource.SourceEntity.SidedPos.Motion.Z;
                     verticalAttack = Math.Sqrt(dx * dx + dz * dz) < Math.Abs(dy);
                 }
 

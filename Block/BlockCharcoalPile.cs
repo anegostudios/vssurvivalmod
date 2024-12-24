@@ -8,28 +8,47 @@ namespace Vintagestory.GameContent
     {
         public override bool OnFallOnto(IWorldAccessor world, BlockPos pos, Block block, TreeAttribute blockEntityAttributes)
         {
-            Block nBlock = (BlockCharcoalPile)world.BlockAccessor.GetMostSolidBlock(pos);
-            if (block is BlockCharcoalPile && nBlock is BlockCharcoalPile)
+            BlockCharcoalPile nBlock = (BlockCharcoalPile)world.BlockAccessor.GetMostSolidBlock(pos);
+            if (nBlock.CountLayers() < 8)
             {
-
-                Block uBlock = block;
-                while (((BlockCharcoalPile)nBlock).CountLayers() < 8 && uBlock != null)
+                BlockCharcoalPile uBlock = (BlockCharcoalPile)block;
+                while (nBlock.CountLayers() < 8 && uBlock != null)
                 {
-                    nBlock = ((BlockCharcoalPile)nBlock).GetNextLayer(world);
-                    uBlock = ((BlockCharcoalPile)uBlock).GetPrevLayer(world);
+                    nBlock = (BlockCharcoalPile)nBlock.GetNextLayer(world);
+                    uBlock = (BlockCharcoalPile)uBlock.GetPrevLayer(world);
+                }
+
+                int downId = 0;
+                while (downId == 0)
+                {
+                    downId = world.BlockAccessor.GetMostSolidBlock(pos.Down()).BlockId;
+                    if (downId != 0) pos.Up();
                 }
 
                 world.BlockAccessor.SetBlock(nBlock.BlockId, pos);
-                world.BlockAccessor.TriggerNeighbourBlockUpdate(pos);
+
                 if (uBlock != null)
                 {
-                    world.BlockAccessor.SetBlock(uBlock.BlockId, pos.UpCopy());
-                    world.BlockAccessor.TriggerNeighbourBlockUpdate(pos.UpCopy());
+                    BlockPos upos = pos.UpCopy();
+                    Block aboveBlock = world.BlockAccessor.GetMostSolidBlock(upos);
+                    if (aboveBlock.BlockId == 0) world.BlockAccessor.SetBlock(uBlock.BlockId, upos);
+                    else aboveBlock.OnFallOnto(world, pos, uBlock, blockEntityAttributes);
                 }
+
+                world.BlockAccessor.TriggerNeighbourBlockUpdate(pos);
+
                 return true;
             }
 
             return base.OnFallOnto(world, pos, block, blockEntityAttributes);
+        }
+
+        public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
+        {
+            BlockPos upos = pos.UpCopy();
+            world.BlockAccessor.GetBlock(upos).OnNeighbourBlockChange(world, upos, pos.Copy());
+
+            base.OnNeighbourBlockChange(world, pos, neibpos);
         }
 
         public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)

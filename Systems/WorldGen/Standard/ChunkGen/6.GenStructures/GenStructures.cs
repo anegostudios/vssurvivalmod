@@ -91,6 +91,8 @@ namespace Vintagestory.ServerMods
         }
 
 
+        BlockPos spawnPos;
+
         public void initWorldGen()
         {
             LoadGlobalConfig(api);
@@ -132,11 +134,20 @@ namespace Vintagestory.ServerMods
                 if(api.Assets.Exists(new AssetLocation(path)))
                 {
                     asset = api.Assets.Get(path);
-
                     var storyStructuresConfig = asset.ToObject<WorldGenStructuresConfig>();
                     storyStructuresConfig.Init(api);
                     StoryStructures[storyStructure.Code] = storyStructuresConfig.Structures;
                 }
+            }
+
+
+            var df = api.WorldManager.SaveGame.DefaultSpawn;
+            if (df != null)
+            {
+                spawnPos = new BlockPos(df.x, df.y ?? 0, df.z);
+            } else
+            {
+                spawnPos = api.World.BlockAccessor.MapSize.AsBlockPos / 2;
             }
         }
 
@@ -378,7 +389,7 @@ namespace Vintagestory.ServerMods
                         AllowUseEveryone = true
                     });
                 }
-            });
+            }, spawnPos);
         }
     }
 }

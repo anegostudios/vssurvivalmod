@@ -29,16 +29,16 @@ namespace Vintagestory.GameContent
         #region Render
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
-            Dictionary<int, MultiTextureMeshRef> meshrefs;
+            Dictionary<string, MultiTextureMeshRef> meshrefs;
 
             object obj;
-            if (capi.ObjectCache.TryGetValue("barrelMeshRefs", out obj))
+            if (capi.ObjectCache.TryGetValue("barrelMeshRefs" + Code, out obj))
             {
-                meshrefs = obj as Dictionary<int, MultiTextureMeshRef>;
+                meshrefs = obj as Dictionary<string, MultiTextureMeshRef>;
             }
             else
             {
-                capi.ObjectCache["barrelMeshRefs"] = meshrefs = new Dictionary<int, MultiTextureMeshRef>();
+                capi.ObjectCache["barrelMeshRefs" + Code] = meshrefs = new Dictionary<string, MultiTextureMeshRef>();
             }
 
             ItemStack[] contentStacks = GetContents(capi.World, itemstack);
@@ -46,26 +46,25 @@ namespace Vintagestory.GameContent
 
             bool issealed = itemstack.Attributes.GetBool("sealed");
 
-            int hashcode = GetBarrelHashCode(contentStacks[0], contentStacks.Length > 1 ? contentStacks[1] : null);
+            string meshkey = GetBarrelMeshkey(contentStacks[0], contentStacks.Length > 1 ? contentStacks[1] : null);
 
             MultiTextureMeshRef meshRef;
 
-            if (!meshrefs.TryGetValue(hashcode, out meshRef))
+            if (!meshrefs.TryGetValue(meshkey, out meshRef))
             {
                 MeshData meshdata = GenMesh(contentStacks[0], contentStacks.Length > 1 ? contentStacks[1] : null, issealed);
-                meshrefs[hashcode] = meshRef = capi.Render.UploadMultiTextureMesh(meshdata);
+                meshrefs[meshkey] = meshRef = capi.Render.UploadMultiTextureMesh(meshdata);
             }
 
             renderinfo.ModelRef = meshRef;
         }
 
 
-
-        public int GetBarrelHashCode(ItemStack contentStack, ItemStack liquidStack)
+        public string GetBarrelMeshkey(ItemStack contentStack, ItemStack liquidStack)
         {
             string s = contentStack?.StackSize + "x" + contentStack?.GetHashCode();
             s += liquidStack?.StackSize + "x" + liquidStack?.GetHashCode();
-            return s.GetHashCode();
+            return s;
         }
 
 

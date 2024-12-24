@@ -59,7 +59,7 @@ namespace Vintagestory.GameContent
 
                     .AddSmallButton(Lang.Get("Cancel"), OnButtonCancel, cancelButtonBounds)
                     .AddSmallButton(Lang.Get("editablebook-sign"), OnButtonSign, signButtonBounds)
-                    .AddSmallButton(Lang.Get("Save"), OnButtonSave, saveButtonBounds)
+                    .AddSmallButton(Lang.Get("editablebook-save"), OnButtonSave, saveButtonBounds)
                 .EndChildElements()
                 .Compose()
             ;

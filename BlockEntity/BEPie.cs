@@ -122,6 +122,7 @@ namespace Vintagestory.GameContent
             if (inv[0].Empty) return null;
 
             int size = inv[0].Itemstack.Attributes.GetAsInt("pieSize");
+            float servings = inv[0].Itemstack.Attributes.GetFloat("quantityServings");
             MarkDirty(true);
 
             ItemStack stack = inv[0].Itemstack.Clone();
@@ -138,6 +139,10 @@ namespace Vintagestory.GameContent
             else
             {
                 inv[0].Itemstack.Attributes.SetInt("pieSize", size - 1);
+                if (inv[0].Itemstack.Attributes.HasAttribute("quantityServings"))
+                {
+                    inv[0].Itemstack.Attributes.SetFloat("quantityServings", servings - 0.25f);
+                }
 
                 stack.Attributes.SetInt("pieSize", 1);
                 stack.Attributes.SetFloat("quantityServings", 0.25f);
@@ -160,6 +165,10 @@ namespace Vintagestory.GameContent
             (inv[0].Itemstack.Block as BlockPie).SetContents(inv[0].Itemstack, new ItemStack[6] { doughStack, null, null, null, null, null });
             inv[0].Itemstack.Attributes.SetInt("pieSize", 4);
             inv[0].Itemstack.Attributes.SetBool("bakeable", false);
+            if ((inv[0].Itemstack.Block as BlockPie).State != "raw" && !inv[0].Itemstack.Attributes.HasAttribute("quantityServings"))
+            {
+                inv[0].Itemstack.Attributes.SetFloat("quantityServings", inv[0].Itemstack.Attributes.GetAsInt("pieSize") * 0.25f);
+            }
 
             loadMesh();
         }
@@ -204,12 +213,6 @@ namespace Vintagestory.GameContent
                 return true;
             }
 
-
-            if (pieBlock.State != "raw")
-            {
-                return false;
-            }
-
             // Filling rules:
             // 1. get inPieProperties
             // 2. any filing there yet? if not, all good
@@ -218,7 +221,7 @@ namespace Vintagestory.GameContent
             //    a.) be of same foodcat
             //    b.) have props.AllowMixing set to true
 
-            if (!hotbarSlot.Empty)
+            if (!hotbarSlot.Empty && pieBlock.State == "raw")
             {
                 bool added = TryAddIngredientFrom(hotbarSlot, byPlayer);
                 if (added)

@@ -310,16 +310,15 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (expiredAuctions > 0 || activeAuctions > 0 || readyPurchasedAuctions > 0 || enroutePurchasedAuctions > 0 || soldAuctions > 0)
+            if (expiredAuctions + activeAuctions + readyPurchasedAuctions + enroutePurchasedAuctions + soldAuctions > 0)
             {
                 StringBuilder sb = new StringBuilder();
-                sb.Append(Lang.Get("Auction House: You have "));
-                bool comma = false;
-                if (soldAuctions > 0) { sb.Append(comma ? ", " : ""); sb.Append(Lang.Get("{0} sold auctions", soldAuctions)); comma = true; }
-                if (expiredAuctions > 0) { sb.Append(comma ? ", " : ""); sb.Append(Lang.Get("{0} expired auctions", expiredAuctions)); comma = true; }
-                if (activeAuctions > 0) { sb.Append(comma ? ", " : ""); sb.Append(Lang.Get("{0} active auctions", activeAuctions)); comma = true; }
-                if (enroutePurchasedAuctions > 0) { sb.Append(comma ? ", " : ""); sb.Append(Lang.Get("{0} purchased auctions en-route", readyPurchasedAuctions)); comma = true; }
-                if (readyPurchasedAuctions > 0) { sb.Append(comma ? ", " : ""); sb.Append(Lang.Get("{0} purchased auctions ready for pick-up", readyPurchasedAuctions)); comma = true; }
+                sb.Append(Lang.Get("Auction House: You have") + " ");
+                if (activeAuctions > 0) { sb.AppendLine(Lang.Get("{0} active auctions", activeAuctions)); }
+                if (soldAuctions > 0) { sb.AppendLine(Lang.Get("{0} sold auctions", soldAuctions)); }
+                if (expiredAuctions > 0) { sb.AppendLine(Lang.Get("{0} expired auctions", expiredAuctions)); }
+                if (enroutePurchasedAuctions > 0) { sb.AppendLine(Lang.Get("{0} purchased auctions en-route", readyPurchasedAuctions)); }
+                if (readyPurchasedAuctions > 0) { sb.AppendLine(Lang.Get("{0} purchased auctions ready for pick-up", readyPurchasedAuctions)); }
 
                 byPlayer.SendMessage(GlobalConstants.GeneralChatGroup, sb.ToString(), EnumChatType.Notification);
             }

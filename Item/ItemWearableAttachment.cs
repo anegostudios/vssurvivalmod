@@ -157,7 +157,7 @@ namespace Vintagestory.GameContent
                 newShape = new Shape()
                 {
                     Elements = entityShape.CloneElements(),
-                    Animations = entityShape.Animations,
+                    Animations = entityShape.CloneAnimations(),
                     AnimationsByCrc32 = entityShape.AnimationsByCrc32,
                     JointsById = entityShape.JointsById,
                     TextureWidth = entityShape.TextureWidth,

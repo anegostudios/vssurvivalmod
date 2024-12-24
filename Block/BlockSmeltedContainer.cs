@@ -426,13 +426,14 @@ namespace Vintagestory.GameContent
             KeyValuePair<ItemStack, int> contents = GetContents(api.World, itemStack);
 
             string mat = contents.Key?.Collectible?.Variant["metal"];
+            string contentsLocalized = mat == null ? contents.Key?.GetName() : Lang.Get("material-" + mat);
 
             if (HasSolidifed(itemStack, contents.Key, api.World))
             {
-                return Lang.Get("Crucible (Contains solidified {0})", mat == null ? contents.Key?.GetName() : Lang.Get("material-" + mat));
+                return Lang.Get("Crucible (Contains solidified {0})", contentsLocalized);
             } else
             {
-                return Lang.Get("Crucible (Contains molten {0})", mat == null ? contents.Key?.GetName() : Lang.Get("material-" + mat));
+                return Lang.Get("Crucible (Contains molten {0})", contentsLocalized);
             }
         }
 

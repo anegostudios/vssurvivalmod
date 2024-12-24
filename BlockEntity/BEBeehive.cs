@@ -498,6 +498,11 @@ namespace Vintagestory.GameContent
                 }
             }
 
+            if (roomness > 0)
+            {
+                str += "\n" + Lang.Get("greenhousetempbonus");
+            }
+
             dsc.AppendLine(str);
         }
 

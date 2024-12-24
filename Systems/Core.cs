@@ -145,12 +145,15 @@ namespace Vintagestory.GameContent
         public override void AssetsLoaded(ICoreAPI api)
         {
             metalsByCode = new Dictionary<string, MetalPropertyVariant>();
-            MetalProperty metals = api.Assets.TryGet("worldproperties/block/metal.json").ToObject<MetalProperty>();
-            for (int i = 0; i < metals.Variants.Length; i++)
+            var metalAssets = api.Assets.GetMany<MetalProperty>(api.Logger, "worldproperties/block/metal.json"); 
+            foreach (var metals in metalAssets.Values)
             {
-                // Metals currently don't have a domain
-                var metal = metals.Variants[i];
-                metalsByCode[metal.Code.Path] = metal;
+                for (int i = 0; i < metals.Variants.Length; i++)
+                {
+                    // Metals currently don't have a domain
+                    var metal = metals.Variants[i];
+                    metalsByCode[metal.Code.Path] = metal;
+                }
             }
 
             if (api is ICoreClientAPI capi)

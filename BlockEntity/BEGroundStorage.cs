@@ -1153,7 +1153,7 @@ namespace Vintagestory.GameContent
                     if (temperature > 20)
                     {
                         var f = slot.Itemstack?.Attributes.GetFloat("hoursHeatReceived") ?? 0;
-                        dsc.AppendLine(Lang.Get("Temperature: {0:0.##}°C", temperature));
+                        dsc.AppendLine(Lang.Get("temperature-precise", temperature));
                         if (f > 0) dsc.AppendLine(Lang.Get("Fired for {0:0.##} hours", f));
                     }
                 }
@@ -1319,9 +1319,12 @@ namespace Vintagestory.GameContent
             {
                 var key = getMeshCacheKey(stack);
                 var mesh = getMesh(stack);
-                
 
-                if (mesh != null) return mesh;
+                if (mesh != null)
+                {
+                    UploadedMeshCache.TryGetValue(key, out MeshRefs[index]);
+                    return mesh;
+                }
 
                 var loc = StorageProps.StackingModel.Clone().WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
                 nowTesselatingShape = Shape.TryGet(capi, loc);

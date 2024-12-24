@@ -673,6 +673,10 @@ namespace Vintagestory.GameContent
             if (ovenTemperature <= 25)
             {
                 sb.AppendLine(Lang.Get("Temperature: {0}", Lang.Get("Cold")));
+                if (!IsBurning)
+                {
+                    sb.AppendLine(Lang.Get("clayoven-preheat-warning"));
+                }
             }
             else
             {
@@ -691,7 +695,7 @@ namespace Vintagestory.GameContent
                 {
                     ItemStack stack = ovenInv[index].Itemstack;
                     sb.Append(stack.GetName());
-                    sb.AppendLine(string.Format(" ({0}°C)", (int)bakingData[index].temp));
+                    sb.AppendLine(" (" + Lang.Get("{0}°C", (int)bakingData[index].temp) + ")");
                 }
             }
         }

@@ -669,7 +669,8 @@ namespace Vintagestory.GameContent
         {
             if (itemStack.Attributes.HasAttribute("blockName"))
             {
-                return itemStack.Attributes.GetString("blockName", "").Split('\n')[0];
+                string blockName = itemStack.Attributes.GetString("blockName");
+                if (blockName != "") return blockName.Split('\n')[0];
             }
 
             return base.GetHeldItemName(itemStack);

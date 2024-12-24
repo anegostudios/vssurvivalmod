@@ -76,7 +76,7 @@ namespace Vintagestory.GameContent
             if (track?.IsActive == true) return;
 
             startLoadingMs = capi.World.ElapsedMilliseconds;
-            track = capi.StartTrack(musicTrackLocation, 99f, EnumSoundType.AmbientGlitchunaffected, onTrackLoaded);
+            track = capi.StartTrack(musicTrackLocation, 99f, EnumSoundType.MusicGlitchunaffected, onTrackLoaded);
             track.Priority = 5;
             wasStopped = false;
         }

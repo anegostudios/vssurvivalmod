@@ -1,6 +1,7 @@
 ﻿using System;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
+using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
@@ -15,6 +16,14 @@ namespace Vintagestory.GameContent
             return Lang.GetMatching(Code?.Domain + AssetLocation.LocationSeparator + type + "-" + Code?.Path + "-" + ap);
         }
 
+        public override ItemStack OnTransitionNow(ItemSlot slot, TransitionableProperties props)
+        {
+            float pressedDryRatio = slot.Itemstack.ItemAttributes["juiceableProperties"]["pressedDryRatio"].AsFloat(1);
+            double juiceableLitresTotal = slot.Itemstack.Attributes.GetDouble("juiceableLitresLeft") + slot.Itemstack.Attributes.GetDouble("juiceableLitresTransfered");
 
+            if (juiceableLitresTotal > 0) props.TransitionRatio = (int)(GameMath.RoundRandom(api.World.Rand, (float)juiceableLitresTotal) * pressedDryRatio);
+
+            return base.OnTransitionNow(slot, props);
+        }
     }
 }

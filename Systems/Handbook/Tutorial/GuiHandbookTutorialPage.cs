@@ -56,7 +56,7 @@ namespace Vintagestory.GameContent
                 }
                 else
                 {
-                    startStopButton.Text = Lang.Get(prevProgress > 0 ? "Resume Tutorial" : "Start Tutorial");
+                    startStopButton.Text = Lang.Get(prevProgress > 0 ? "button-tutorial-resume" : "Start Tutorial");
                 }
             }
 

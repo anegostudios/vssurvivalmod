@@ -1,12 +1,37 @@
 ﻿using System.IO;
+using Vintagestory.API;
 using Vintagestory.API.Common;
 
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Defines an ingredient for a <see cref="AlloyRecipe"/> recipe.
+    /// </summary>
+    /// <example>
+    /// <code language="json">
+    ///{
+    ///	"type": "item",
+    ///	"code": "ingot-copper",
+    ///	"minratio": 0.5,
+    ///	"maxratio": 0.7
+    ///}
+    /// </code>
+    /// </example>
+    [DocumentAsJson]
     public class MetalAlloyIngredient : JsonItemStack
     {
-        public float MinRatio;
-        public float MaxRatio;
+
+        /// <summary>
+        /// <!--<jsonoptional>Required</jsonoptional>-->
+        /// The minimum ratio of this metal to be used in the alloy, between 0 and 1.
+        /// </summary>
+        [DocumentAsJson] public float MinRatio;
+
+        /// <summary>
+        /// <!--<jsonoptional>Required</jsonoptional>-->
+        /// The maximum ratio of this metal to be used in the alloy, between 0 and 1.
+        /// </summary>
+        [DocumentAsJson] public float MaxRatio;
 
         public override void FromBytes(BinaryReader reader, IClassRegistryAPI instancer)
         {

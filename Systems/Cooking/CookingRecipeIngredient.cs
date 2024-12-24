@@ -1,16 +1,35 @@
 ﻿using System.Collections.Generic;
 using System.IO;
+using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// An itemstack specific for a <see cref="CookingRecipeIngredient"/>.
+    /// Most properties are extended from <see cref="JsonItemStack"/>.
+    /// </summary>
+    [DocumentAsJson]
     public class CookingRecipeStack : JsonItemStack
     {
-        public string ShapeElement;
-        public string[] TextureMapping;
+        /// <summary>
+        /// <!--<jsonoptional>Optional</jsonoptional><jsondefault>None</jsondefault>-->
+        /// The hierachy/path of the shape element inside the recipe's shape file. Will be enabled/disabled in the final meal if this itemstack is used.
+        /// </summary>
+        [DocumentAsJson] public string ShapeElement;
 
-        public JsonItemStack CookedStack;
+        /// <summary>
+        /// <!--<jsonoptional>Optional</jsonoptional><jsondefault>None</jsondefault>-->
+        /// Overrides a texture mapping for the shape element. Uses two strings, the first being the original texture code, and the second being a new texture code.
+        /// </summary>
+        [DocumentAsJson] public string[] TextureMapping;
+
+        /// <summary>
+        /// <!--<jsonoptional>Optional</jsonoptional><jsondefault>None</jsondefault>-->
+        /// A cooked version of the ingredient stack that also satisfies this recipe.
+        /// </summary>
+        [DocumentAsJson] public JsonItemStack CookedStack;
 
         public override void FromBytes(BinaryReader reader, IClassRegistryAPI instancer)
         {
@@ -68,32 +87,63 @@ namespace Vintagestory.GameContent
         
     }
 
+    /// <summary>
+    /// An ingredient for a <see cref="CookingRecipe"/>.
+    /// Note that each ingredient can have multiple valid itemstacks that satisfy the ingredient.
+    /// </summary>
+    /// <example> <code language="json">
+    ///{
+    ///	"code": "water",
+    ///	"validStacks": [
+    ///		{
+    ///			"type": "item",
+    ///			"code": "waterportion",
+    ///			"shapeElement": "bowl/water"
+    ///		}
+    ///	],
+    ///	"minQuantity": 1,
+    ///	"maxQuantity": 1,
+    ///	"portionSizeLitres": 1
+    ///}
+    /// </code></example>
+    [DocumentAsJson]
     public class CookingRecipeIngredient
     {
         /// <summary>
-        /// The code for the recipe ingredient.
+        /// <!--<jsonoptional>Required</jsonoptional>-->
+        /// The code for the recipe ingredient. Should be unique in the recipe, but isn't specifically used for anything.
         /// </summary>
-        public string Code;
+        [DocumentAsJson] public string Code;
 
         /// <summary>
+        /// <!--<jsonoptional>Required</jsonoptional>-->
         /// The minimum quantity required for the given ingredient.
         /// </summary>
-        public int MinQuantity;
+        [DocumentAsJson] public int MinQuantity;
 
         /// <summary>
+        /// <!--<jsonoptional>Required</jsonoptional>-->
         /// The maximum quantity required for the given ingredient.
         /// </summary>
-        public int MaxQuantity;
+        [DocumentAsJson] public int MaxQuantity;
 
+        /// <summary>
+        /// <!--<jsonoptional>Optional</jsonoptional><jsondefault>0</jsondefault>-->
+        /// If this ingredient is a liquid, how many litres of it do we need for it to be a valid ingredient?
+        /// </summary>
+        [DocumentAsJson] public float PortionSizeLitres;
 
-        public float PortionSizeLitres;
+        /// <summary>
+        /// <!--<jsonoptional>Required</jsonoptional>-->
+        /// A list of item stacks that satisfy this ingredient.
+        /// </summary>
+        [DocumentAsJson] public CookingRecipeStack[] ValidStacks;
 
         /// <summary>
         /// The world accessor for the ingredient.
         /// </summary>
         public IWorldAccessor world;
         
-        public CookingRecipeStack[] ValidStacks;
 
         public virtual void FromBytes(BinaryReader reader, IClassRegistryAPI instancer)
         {

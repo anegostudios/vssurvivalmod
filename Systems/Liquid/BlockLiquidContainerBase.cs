@@ -394,7 +394,7 @@ namespace Vintagestory.GameContent
         }
 
         /// <summary>
-        /// Tries to take out as much items/liquid as possible and returns it
+        /// Tries to take out as much items/liquid as possible and returns it. Note, returns the amount taken out of ONE container, if containerStack has StackSize > 1 then you may want to multiply the result by the StackSize
         /// </summary>
         /// <param name="world"></param>
         /// <param name="containerStack"></param>
@@ -470,7 +470,8 @@ namespace Vintagestory.GameContent
             var props = GetContainableProps(liquidStack);
             if (props == null) return 0;
 
-            int desiredItems = (int)(props.ItemsPerLitre * desiredLitres);
+            float epsilon = 0.00001f;
+            int desiredItems = (int)(props.ItemsPerLitre * desiredLitres + epsilon);
             int availItems = liquidStack.StackSize;
 
             ItemStack stack = GetContent(containerStack);
@@ -480,7 +481,7 @@ namespace Vintagestory.GameContent
             {
                 if (!props.Containable) return 0;
 
-                int placeableItems = (int)(sink.CapacityLitres * props.ItemsPerLitre);
+                int placeableItems = (int)(sink.CapacityLitres * props.ItemsPerLitre + epsilon);
 
                 ItemStack placedstack = liquidStack.Clone();
                 placedstack.StackSize = GameMath.Min(availItems, desiredItems, placeableItems);
@@ -495,8 +496,9 @@ namespace Vintagestory.GameContent
                 float maxItems = sink.CapacityLitres * props.ItemsPerLitre;
                 int placeableItems = (int)(maxItems - (float)stack.StackSize);
 
-                stack.StackSize += GameMath.Min(availItems, placeableItems, desiredItems);
-                return GameMath.Min(availItems, placeableItems, desiredItems);
+                int moved = GameMath.Min(availItems, placeableItems, desiredItems);
+                stack.StackSize += moved;
+                return moved;
             }
         }
 
@@ -1134,10 +1136,11 @@ namespace Vintagestory.GameContent
             if (op.CurrentPriority == EnumMergePriority.DirectMerge)
             {
                 float movableLitres = Math.Min(sinkCapLitres - sinkLitres, sourceLitres);
-                int moved = TryPutLiquid(op.SinkSlot.Itemstack, sinkContent, movableLitres / op.SinkSlot.StackSize);
+                int moved = TryPutLiquid(op.SinkSlot.Itemstack, sourceContent, movableLitres / op.SinkSlot.StackSize);
                 DoLiquidMovedEffects(op.ActingPlayer, sinkContent, moved, EnumLiquidDirection.Pour);
 
-                TryTakeContent(op.SourceSlot.Itemstack, moved / op.SourceSlot.StackSize);
+                moved *= op.SinkSlot.StackSize;   // We multiply by stacksize because the TryPutLiquid() method returned the amount moved into a *single* SinkSlot itemstack
+                TryTakeContent(op.SourceSlot.Itemstack, (int)(0.51f + (float)moved / op.SourceSlot.StackSize));  // We add the 0.51f for a bit of rounding up, otherwising rounding errors can slowly duplicate liquids by 1 portion (0.01 litres), better to lose liquid sometimes by rounding up the amount taken out, call it spillage
                 op.SourceSlot.MarkDirty();
                 op.SinkSlot.MarkDirty();
             }

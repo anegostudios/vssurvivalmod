@@ -79,7 +79,7 @@ namespace Vintagestory.GameContent
             }
 
             string[] values = new string[] { null }.Append(orecodes.ToArray());
-            string[] names = new string[] { "Everything" }.Append(orecodes.Select(code => Lang.Get("ore-"+code)).ToArray());
+            string[] names = new string[] { Lang.Get("worldmap-ores-everything") }.Append(orecodes.Select(code => Lang.Get("ore-"+code)).ToArray());
 
             ElementBounds dlgBounds =
                 ElementStdBounds.AutosizedMainDialog

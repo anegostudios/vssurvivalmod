@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
@@ -442,17 +443,96 @@ namespace Vintagestory.GameContent
         string GetNameForIngredients(IWorldAccessor worldForResolve, string recipeCode, ItemStack[] stacks);
     }
 
+    /// <summary>
+    /// Defines a recipe to be made using a cooking pot.
+    /// Creating a new recipe for a cooking pot will automatically register the new meal item, unless using <see cref="CooksInto"/>.
+    /// </summary>
+    /// <example> 
+    /// <code langauge="json">
+    ///{
+    ///	"code": "jam",
+    ///	"perishableProps": {
+    ///		"freshHours": { "avg": 1080 },
+    ///		"transitionHours": { "avg": 180 },
+    ///		"transitionRatio": 1,
+    ///		"transitionedStack": {
+    ///			"type": "item",
+    ///			"code": "rot"
+    ///		}
+    ///	},
+    ///	"shape": { "base": "block/food/meal/jam" },
+    ///	"ingredients": [
+    ///		{
+    ///			"code": "honey",
+    ///			"validStacks": [
+    ///				{
+    ///					"type": "item",
+    ///					"code": "honeyportion",
+    ///					"shapeElement": "bowl/honey",
+    ///					"cookedStack": {
+    ///						"type": "item",
+    ///						"code": "jamhoneyportion"
+    ///					}
+    ///				}
+    ///			],
+    ///			"minQuantity": 2,
+    ///			"maxQuantity": 2,
+    ///			"portionSizeLitres": 0.2
+    ///		},
+    ///		{
+    ///			"code": "fruit",
+    ///			"validStacks": [
+    ///				{
+    ///					"type": "item",
+    ///					"code": "fruit-*",
+    ///					"shapeElement": "bowl/fruit"
+    ///				}
+    ///			],
+    ///			"minQuantity": 2,
+    ///			"maxQuantity": 2
+    ///		}
+    ///	]
+    ///}
+    /// </code>
+    /// </example>
+    [DocumentAsJson]
     public class CookingRecipe : IByteSerializable
     {
-        public string Code;
-        public CookingRecipeIngredient[] Ingredients;
-        public bool Enabled = true;
-        public CompositeShape Shape;
-        public TransitionableProperties PerishableProps;
         /// <summary>
-        /// If set, will treat the recipe not as a meal with its ingredients retained but convert the ingredients into supplied itemstack
+        /// <!--<jsonoptional>Required</jsonoptional>-->
+        /// A unique code for the recipe and meal created.
         /// </summary>
-        public JsonItemStack CooksInto;
+        [DocumentAsJson] public string Code;
+
+        /// <summary>
+        /// <!--<jsonoptional>Required</jsonoptional>-->
+        /// A list of ingredients for the recipe. Although cooking pots have a maximum of 4 unique entries, there is no limit on the number of potential ingredients.
+        /// </summary>
+        [DocumentAsJson] public CookingRecipeIngredient[] Ingredients;
+
+        /// <summary>
+        /// <!--<jsonoptional>Optional</jsonoptional><jsondefault>True</jsondefault>-->
+        /// Should this recipe be loaded by the game?
+        /// </summary>
+        [DocumentAsJson] public bool Enabled = true;
+
+        /// <summary>
+        /// <!--<jsonoptional>Required</jsonoptional>-->
+        /// A path to the shape file for this meal when inside a cooking pot. Specific ingredient-based elements can be enabled using the <see cref="CookingRecipeStack.ShapeElement"/> in the ingredient stacks.
+        /// </summary>
+        [DocumentAsJson] public CompositeShape Shape;
+
+        /// <summary>
+        /// <!--<jsonoptional>Required</jsonoptional>-->
+        /// The transitionable properties for the meal item. Usually controls meal expiry.
+        /// </summary>
+        [DocumentAsJson] public TransitionableProperties PerishableProps;
+
+        /// <summary>
+        /// <!--<jsonoptional>Optional</jsonoptional><jsondefault>None</jsondefault>-->
+        /// If set, will treat the recipe not as a meal with its ingredients retained but convert the ingredients into supplied itemstack.
+        /// </summary>
+        [DocumentAsJson] public JsonItemStack CooksInto;
 
         public static Dictionary<string, ICookingRecipeNamingHelper> NamingRegistry = new Dictionary<string, ICookingRecipeNamingHelper>();
 
@@ -502,7 +582,7 @@ namespace Vintagestory.GameContent
                 return namer.GetNameForIngredients(worldForResolve, Code, inputStacks);
             }
 
-            return Lang.Get("unknown");
+            return Lang.Get("meal-"+Code);
         }
 
 
@@ -531,8 +611,16 @@ namespace Vintagestory.GameContent
                     if (ingred.Matches(inputStack))
                     {
                         if (curQuantities[i] >= ingred.MaxQuantity) continue;
+                        int stackPortion = inputStack.StackSize;
 
-                        totalOutputQuantity = Math.Min(totalOutputQuantity, inputStack.StackSize);
+                        if (inputStack.Collectible.Attributes?["waterTightContainerProps"].Exists == true)
+                        {
+                            var props = BlockLiquidContainerBase.GetContainableProps(inputStack);
+                            var temp = GetIngrendientFor(inputStack);
+                            stackPortion = (int)(inputStack.StackSize / props.ItemsPerLitre / GetIngrendientFor(inputStack).PortionSizeLitres);
+                        }
+
+                        totalOutputQuantity = Math.Min(totalOutputQuantity, stackPortion);
                         curQuantities[i]++;
                         found = true;
                         break;
@@ -557,15 +645,13 @@ namespace Vintagestory.GameContent
                 var stack = inputStacks[i];
                 if (stack == null) continue;
 
-                int qportions = stack.StackSize;
-
                 if (stack.Collectible.Attributes?["waterTightContainerProps"].Exists == true)
                 {
                     var props = BlockLiquidContainerBase.GetContainableProps(stack);
-                    qportions = (int)(stack.StackSize / props.ItemsPerLitre / GetIngrendientFor(stack).PortionSizeLitres);
+                    var temp = GetIngrendientFor(stack);
+                    if (stack.StackSize != (int)(quantityServings * props.ItemsPerLitre * GetIngrendientFor(stack).PortionSizeLitres)) return false;
                 }
-
-                if (qportions != quantityServings) return false;
+                else if (stack.StackSize != quantityServings) return false;
             }
 
             return true;

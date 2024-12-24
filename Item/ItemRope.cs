@@ -1,4 +1,5 @@
-﻿using Vintagestory.API.Client;
+﻿using System;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
@@ -28,6 +29,20 @@ namespace Vintagestory.GameContent
     {
         ClothManager cm;
         SkillItem[] toolModes;
+
+        public override void TryMergeStacks(ItemStackMergeOperation op)
+        {
+            var sinkId = op.SinkSlot.Itemstack.Attributes.GetInt("clothId");
+            var srcId = op.SourceSlot.Itemstack.Attributes.GetInt("clothId");
+
+            if (sinkId != 0 || srcId != 0)
+            {
+                op.MovableQuantity = 0;
+                return;
+            }
+
+            base.TryMergeStacks(op);
+        }
 
         public override void OnLoaded(ICoreAPI api)
         {
@@ -116,16 +131,19 @@ namespace Vintagestory.GameContent
                 if (blockSel != null && api.World.BlockAccessor.GetBlock(blockSel.Position).HasBehavior<BlockBehaviorRopeTieable>())
                 {
                     sys = attachToBlock(byEntity, blockSel.Position, slot, null);
-
                 } else
                 if (entitySel != null)
                 {
                     sys = attachToEntity(byEntity, entitySel, slot, null, out bool relayRopeInteractions);
                     if (relayRopeInteractions) {
                         handling = EnumHandHandling.NotHandled;
+                        if (sys != null) splitStack(slot, byEntity);
                         return;
                     }
+                    
                 }
+
+                if (sys != null) splitStack(slot, byEntity);
 
 
             // Modify existing rope
@@ -177,6 +195,21 @@ namespace Vintagestory.GameContent
                 slot.Itemstack.Attributes.RemoveAttribute("clothId");
                 slot.TakeOut(1);
                 slot.MarkDirty();
+            }
+        }
+
+        private void splitStack(ItemSlot slot, EntityAgent byEntity)
+        {
+            if (slot.StackSize > 1)
+            {
+                var split = slot.TakeOut(slot.StackSize - 1);
+                split.Attributes.RemoveAttribute("clothId");
+                split.Attributes.RemoveAttribute("ropeHeldByEntityId");
+
+                if (!byEntity.TryGiveItemStack(split))
+                {
+                    api.World.SpawnItemEntity(split, byEntity.ServerPos.XYZ);
+                }
             }
         }
 

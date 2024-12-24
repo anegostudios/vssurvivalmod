@@ -356,7 +356,7 @@ namespace Vintagestory.GameContent
                 }
 
                 sb.AppendLine();
-                sb.AppendLine("Values are averages, as they can vary slightly for each tree.");
+                sb.AppendLine(Lang.Get("handbook-fruittree-note-averages"));
 
                 float marginTop = 7;
 

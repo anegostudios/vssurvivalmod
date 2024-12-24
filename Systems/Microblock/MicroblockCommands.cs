@@ -8,6 +8,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 using System.Collections.Generic;
 using System;
+using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 
 namespace Vintagestory.ServerMods
 {
@@ -18,6 +20,8 @@ namespace Vintagestory.ServerMods
         public void Start(ICoreServerAPI api)
         {
             sapi = api;
+            var parsers = sapi.ChatCommands.Parsers;
+
             api.ChatCommands.GetOrCreate("we")
                 .BeginSub("microblock")
                     .WithDesc("Microblock operations")
@@ -31,7 +35,7 @@ namespace Vintagestory.ServerMods
                     .EndSub()
                     .BeginSub("setname")
                         .WithDesc("Set multiple block names")
-                        .WithArgs(api.ChatCommands.Parsers.All("name"))
+                        .WithArgs(parsers.All("name"))
                         .HandleWith((args) => onCmdSetName(args, false))
                     .EndSub()
                     .BeginSub("delete")
@@ -40,13 +44,20 @@ namespace Vintagestory.ServerMods
                     .EndSub()
                     .BeginSub("deletemat")
                         .WithDesc("Delete a named material from microblocks")
-                        .WithArgs(sapi.ChatCommands.Parsers.Word("material code"))
+                        .WithArgs(parsers.Word("material code"))
                         .HandleWith(onCmdDeleteMat)
                     .EndSub()
                     .BeginSub("removeunused")
                         .WithDesc("Remove any unused materials from microblocks")
                         .HandleWith(onCmdRemoveUnused)
                     .EndSub()
+
+                    .BeginSubCommand("editable")
+                        .WithDescription("Upgrade/Downgrade chiseled blocks to an editable/non-editable state in given area")
+                        .WithArgs(parsers.Bool("editable"))
+                        .HandleWith(onCmdEditable)
+                    .EndSubCommand()
+
                 .EndSub()
             ;
         }
@@ -322,6 +333,48 @@ namespace Vintagestory.ServerMods
 
             if (edited) be.MarkDirty(true);
             return edited;
+        }
+
+
+
+
+        private TextCommandResult onCmdEditable(TextCommandCallingArgs args)
+        {
+            GetMarkedArea(args.Caller, out BlockPos startPos, out BlockPos endPos);
+            if (startPos == null || endPos == null)
+            {
+                return TextCommandResult.Error("Please mark area with world edit");
+            }
+
+            var editable = (bool)args.Parsers[0].GetValue();
+
+            Block chiselBlock = sapi.World.GetBlock(new AssetLocation("chiseledblock"));
+            Block microblock = sapi.World.GetBlock(new AssetLocation("microblock"));
+            Block targetBlock = editable ? chiselBlock : microblock;
+
+            var ba = sapi.World.BlockAccessor;
+
+
+            int cnt = WalkMicroBlocks(startPos, endPos, (be) =>
+            {
+                var pos = be.Pos;
+                Block block = ba.GetBlock(pos);
+                if (block is BlockMicroBlock && block.Id != targetBlock.Id)
+                {
+                    TreeAttribute tree = new TreeAttribute();
+                    be.ToTreeAttributes(tree);
+                    sapi.World.BlockAccessor.SetBlock(targetBlock.Id, pos);
+
+                    be = sapi.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
+                    be.FromTreeAttributes(tree, sapi.World);
+
+                    return true;
+                }
+
+                return false;
+            });
+
+            return TextCommandResult.Success(cnt + " microblocks modified");
         }
     }
 }

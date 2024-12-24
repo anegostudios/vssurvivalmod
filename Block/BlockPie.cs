@@ -396,9 +396,10 @@ namespace Vintagestory.GameContent
 
             float[] nmul = GetNutritionHealthMul(pos, null, forPlayer.Entity);
 
-            sb.AppendLine(mealblock.GetContentNutritionFacts(api.World, bep.Inventory[0], stacks, null, true, nmul[0] * servingsLeft, nmul[1] * servingsLeft));
-            
-            return sb.ToString();
+            string str = sb.ToString();
+            str += mealblock.GetContentNutritionFacts(api.World, bep.Inventory[0], stacks, null, true, nmul[0] * servingsLeft, nmul[1] * servingsLeft);
+
+            return str;
         }
 
         protected override TransitionState[] UpdateAndGetTransitionStatesNative(IWorldAccessor world, ItemSlot inslot)

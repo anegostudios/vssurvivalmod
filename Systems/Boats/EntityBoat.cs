@@ -429,7 +429,10 @@ namespace Vintagestory.GameContent
                 if (!controls.TriesToMove)
                 {
                     seat.actionAnim = null;
-                    seat.Passenger.AnimManager?.StartAnimation(MountAnimations["ready"]);
+                    if (seat.Passenger.AnimManager != null && !seat.Passenger.AnimManager.IsAnimationActive(MountAnimations["ready"]))
+                    {
+                        seat.Passenger.AnimManager.StartAnimation(MountAnimations["ready"]);
+                    }
                     continue;
                 } else
                 {

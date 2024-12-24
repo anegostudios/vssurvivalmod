@@ -93,7 +93,8 @@ namespace Vintagestory.GameContent
                         SourceEntity = this,
                         CauseEntity = FiredBy,
                         Type = Damage > 0.01 ? EnumDamageType.BluntAttack : EnumDamageType.Frost,
-                        DamageTier = DamageTier
+                        DamageTier = DamageTier,
+                        YDirKnockbackDiv = 3
                     }, Damage);
 
                     World.PlaySoundAt(new AssetLocation("sounds/block/snow"), this, null, false, 32);

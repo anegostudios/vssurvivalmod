@@ -350,6 +350,13 @@ namespace Vintagestory.GameContent
                     storyStruc.LandformRadius = storyStructure.LandformRadius;
                     storyStruc.GenerationRadius = storyStructure.GenerationRadius;
                     storyStruc.SkipGenerationFlags = storyStructure.SkipGenerationFlags;
+
+                    var schem = storyStructure.schematicData;
+                    var minX = storyStruc.CenterPos.X - schem.SizeX / 2;
+                    var minZ = storyStruc.CenterPos.Z - schem.SizeZ / 2;
+                    var cuboidi = new Cuboidi(minX, storyStruc.CenterPos.Y, minZ, minX + schem.SizeX, storyStruc.CenterPos.Y + schem.SizeY, minZ + schem.SizeZ);
+                    storyStruc.Location = cuboidi;
+
                     occupiedLocations.Add(storyStruc.Location);
                 }
                 else

@@ -240,13 +240,8 @@ namespace Vintagestory.GameContent
                 TVec2i[] vecs = neighbours[intComp];
 
                 if (isComplete(blockSel.Position, baseCode, vecs)) {
-
                     ModJournal jour = api.ModLoader.GetModSystem<ModJournal>();
-
-                    if (baseCode == "schematic-c-bloody") baseCode = "schematic-c";
-
                     var discovery = new LoreDiscovery() { Code = LoreCode, ChapterIds = new List<int>() { id } };
-
                     jour.TryDiscoverLore(discovery, byPlayer as IServerPlayer);
                 }
             }
@@ -380,6 +375,8 @@ namespace Vintagestory.GameContent
 
             switch (size)
             {
+                case "1x1":
+                    return "";
                 case "2x1":
                     switch (intComp)
                     {
