@@ -222,7 +222,7 @@ namespace Vintagestory.GameContent.Mechanics
             foreach (var nnode in nnodes)
             {
                 if (!(nnode is IMechanicalPowerDevice)) continue;
-                IMechanicalPowerDevice newnode = Api.World.BlockAccessor.GetBlockEntity((nnode as IMechanicalPowerDevice).Position)?.GetBehavior<BEBehaviorMPBase>() as IMechanicalPowerDevice;
+                IMechanicalPowerDevice newnode = Api.World.BlockAccessor.GetBlock((nnode as IMechanicalPowerDevice).Position).GetInterface<IMechanicalPowerDevice>(Api.World, (nnode as IMechanicalPowerDevice).Position);
                 if (newnode == null) continue;
                 BlockFacing oldTurnDir = newnode.GetPropagationDirection();
 

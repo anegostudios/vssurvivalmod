@@ -132,7 +132,7 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 if (validLargeGear && (face == BlockFacing.UP || face == BlockFacing.DOWN)) continue;
                 BlockPos pos = blockSel.Position.AddCopy(face);
-                IMechanicalPowerBlock block = world.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
+                IMechanicalPowerBlock block = world.BlockAccessor.GetBlock(pos).GetInterface<IMechanicalPowerBlock>(world, pos);
                 if (block != null && block.HasMechPowerConnectorAt(world, pos, face.Opposite))
                 {
                     if (firstFace == null)
@@ -153,7 +153,7 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 BlockPos firstPos = blockSel.Position.AddCopy(firstFace);
                 BlockEntity be = world.BlockAccessor.GetBlockEntity(firstPos);
-                IMechanicalPowerBlock neighbour = be?.Block as IMechanicalPowerBlock;
+                IMechanicalPowerBlock neighbour = be?.Block.GetInterface<IMechanicalPowerBlock>(world, firstPos);
 
                 BEBehaviorMPAxle bempaxle = be?.GetBehavior<BEBehaviorMPAxle>();
                 if (bempaxle != null && !BEBehaviorMPAxle.IsAttachedToBlock(world.BlockAccessor, neighbour as Block, firstPos))
@@ -171,7 +171,7 @@ namespace Vintagestory.GameContent.Mechanics
                 if (secondFace != null)
                 {
                     BlockPos secondPos = blockSel.Position.AddCopy(secondFace);
-                    IMechanicalPowerBlock neighbour2 = world.BlockAccessor.GetBlock(secondPos) as IMechanicalPowerBlock;
+                    IMechanicalPowerBlock neighbour2 = world.BlockAccessor.GetBlock(secondPos).GetInterface<IMechanicalPowerBlock>(world, secondPos);
                     neighbour2?.DidConnectAt(world, secondPos, secondFace.Opposite);
                 }
 
@@ -212,7 +212,7 @@ namespace Vintagestory.GameContent.Mechanics
             foreach (BlockFacing facing in facings)
             {
                 BlockPos npos = pos.AddCopy(facing);
-                IMechanicalPowerBlock nblock = world.BlockAccessor.GetBlock(npos) as IMechanicalPowerBlock;
+                IMechanicalPowerBlock nblock = world.BlockAccessor.GetBlock(npos).GetInterface<IMechanicalPowerBlock>(world, npos);
 
                 if (nblock == null || !nblock.HasMechPowerConnectorAt(world, npos, facing.Opposite) || world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPBase>()?.disconnected == true)
                 {
@@ -240,7 +240,7 @@ namespace Vintagestory.GameContent.Mechanics
                 BlockFacing firstFace = BlockFacing.FromFirstLetter(orients[0]);
                 BlockPos firstPos = pos.AddCopy(firstFace);
                 BlockEntity beNeib = world.BlockAccessor.GetBlockEntity(firstPos);
-                IMechanicalPowerBlock neighbour = beNeib?.Block as IMechanicalPowerBlock;
+                IMechanicalPowerBlock neighbour = beNeib?.Block.GetInterface<IMechanicalPowerBlock>(world, firstPos);
 
                 BEBehaviorMPAxle bempaxle = beNeib?.GetBehavior<BEBehaviorMPAxle>();
                 if (bempaxle != null && !BEBehaviorMPAxle.IsAttachedToBlock(world.BlockAccessor, neighbour as Block, firstPos))

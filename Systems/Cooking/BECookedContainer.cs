@@ -165,7 +165,7 @@ namespace Vintagestory.GameContent
                 float servings = Math.Min(QuantityServings, capacity);
 
                 ItemStack mealStack;
-                IBlockMealContainer ibm = (slot.Itemstack.Collectible as IBlockMealContainer);
+                IBlockMealContainer ibm = (slot.Itemstack.Collectible.GetCollectibleInterface<IBlockMealContainer>());
 
                 if (ibm != null && ibm.GetQuantityServings(Api.World, slot.Itemstack) > 0)
                 {
@@ -201,7 +201,7 @@ namespace Vintagestory.GameContent
                 {
                     mealStack = new ItemStack(Api.World.GetBlock(AssetLocation.Create(slot.Itemstack.Collectible.Attributes["mealBlockCode"].AsString(), slot.Itemstack.Collectible.Code.Domain)));
                     mealStack.StackSize = 1;
-                    (mealStack.Collectible as IBlockMealContainer).SetContents(RecipeCode, mealStack, GetNonEmptyContentStacks(), servings);
+                    mealStack.Collectible.GetCollectibleInterface<IBlockMealContainer>().SetContents(RecipeCode, mealStack, GetNonEmptyContentStacks(), servings);
                 }
 
 

@@ -25,7 +25,7 @@ namespace Vintagestory.GameContent
         public BEBehaviorFirepitAmbient(BlockEntity blockentity) : base(blockentity)
         {
             be = blockentity;
-            befirepit = blockentity as IFirePit;
+            befirepit = blockentity.Block.GetInterface<IFirePit>(blockentity.Api.World, blockentity.Pos);
         }
 
 

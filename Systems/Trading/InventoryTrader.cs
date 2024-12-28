@@ -281,7 +281,7 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < 4; i++)
             {
                 ItemSlotTrade slot = GetBuyingCartSlot(i);
-                if (slot.Itemstack?.Collectible is ITradeableCollectible itc)
+                if (slot.Itemstack?.Collectible.GetCollectibleInterface<ITradeableCollectible>() is ITradeableCollectible itc)
                 {
                     var result = itc.OnTryTrade(traderEntity, slot, EnumTradeDirection.Buy);
                     if (result != EnumTransactionResult.Success) return result;
@@ -292,7 +292,7 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < 4; i++)
             {
                 ItemSlot slot = GetSellingCartSlot(i);
-                if (slot.Itemstack?.Collectible is ITradeableCollectible itc)
+                if (slot.Itemstack?.Collectible.GetCollectibleInterface<ITradeableCollectible>() is ITradeableCollectible itc)
                 {
                     var result = itc.OnTryTrade(traderEntity, slot, EnumTradeDirection.Sell);
                     if (result != EnumTransactionResult.Success) return result;
@@ -331,7 +331,7 @@ namespace Vintagestory.GameContent
                 tradeItem.Stock -= q;
                 var stack = slot.TakeOut(q * tradeItem.Stack.StackSize);
 
-                if (stack.Collectible is ITradeableCollectible itc) itc.OnDidTrade(traderEntity, stack, EnumTradeDirection.Buy);
+                if (stack.Collectible.GetCollectibleInterface<ITradeableCollectible>() is ITradeableCollectible itc) itc.OnDidTrade(traderEntity, stack, EnumTradeDirection.Buy);
 
                 slot.MarkDirty();
             }
@@ -603,7 +603,7 @@ namespace Vintagestory.GameContent
                 ItemStack stackPart = stack.Clone();
                 stackPart.StackSize = stacksize;
 
-                if (entityTrader != null && stackPart.Collectible is ITradeableCollectible itc) itc.OnDidTrade(entityTrader, stackPart, EnumTradeDirection.Sell);
+                if (entityTrader != null && stackPart.Collectible.GetCollectibleInterface<ITradeableCollectible>() is ITradeableCollectible itc) itc.OnDidTrade(entityTrader, stackPart, EnumTradeDirection.Sell);
 
                 if (!eagent.TryGiveItemStack(stackPart))
                 {

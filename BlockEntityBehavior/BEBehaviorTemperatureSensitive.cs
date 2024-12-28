@@ -29,9 +29,9 @@ namespace Vintagestory.GameContent
 
             Blockentity.RegisterGameTickListener(onTick, 1900 + Api.World.Rand.Next(200), Api.World.Rand.Next(500));
 
-            its = Blockentity as ITemperatureSensitive;
+            its = Blockentity.Block.GetInterface<ITemperatureSensitive>(api.World, Pos);
 
-            if (!(Blockentity is ITemperatureSensitive))
+            if (its == null)
             {
                 throw new InvalidOperationException("Applying BehaviorTemperatureSensitive to a block entity requires that block entity class to implement ITemperatureSensitive");
             }
