@@ -34,11 +34,11 @@ namespace Vintagestory.GameContent
 
                 if (targetFacing.Axis == EnumAxis.Z)
                 {
-                    blockToPlace = world.GetBlock(CodeWithParts("flat_ns"));
+                    blockToPlace = world.GetBlock(CodeWithVariant("type", "flat_ns"));
                 }
                 else
                 {
-                    blockToPlace = world.GetBlock(CodeWithParts("flat_we"));
+                    blockToPlace = world.GetBlock(CodeWithVariant("type", "flat_we"));
                 }
             }
 

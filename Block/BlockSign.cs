@@ -4,6 +4,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 using System;
+using System.Net.Mail;
 
 namespace Vintagestory.GameContent
 {
@@ -110,7 +111,7 @@ namespace Vintagestory.GameContent
 
             if (bs.Face.IsHorizontal && (supportingBlock.CanAttachBlockAt(world.BlockAccessor, this, supportingPos, bs.Face) || supportingBlock.GetAttributes(world.BlockAccessor, supportingPos)?.IsTrue("partialAttachable") == true))
             {
-                Block wallblock = world.BlockAccessor.GetBlock(CodeWithParts("wall", bs.Face.Opposite.Code));
+                Block wallblock = world.BlockAccessor.GetBlock(CodeWithVariants(new string[] { "attachment", "side" }, new string[] { "wall", bs.Face.Opposite.Code }));
 
                 if (!wallblock.CanPlaceBlock(world, byPlayer, bs, ref failureCode))
                 {
@@ -130,7 +131,7 @@ namespace Vintagestory.GameContent
 
             BlockFacing[] horVer = SuggestedHVOrientation(byPlayer, bs);
 
-            AssetLocation blockCode = CodeWithParts(horVer[0].Code);
+            AssetLocation blockCode = CodeWithVariant("side", horVer[0].Code);
             Block block = world.BlockAccessor.GetBlock(blockCode);
             world.BlockAccessor.SetBlock(block.BlockId, bs.Position);
 
@@ -154,15 +155,15 @@ namespace Vintagestory.GameContent
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {
-            Block block = world.BlockAccessor.GetBlock(CodeWithParts("ground", "north"));
-            if (block == null) block = world.BlockAccessor.GetBlock(CodeWithParts("wall", "north"));
+            Block block = world.BlockAccessor.GetBlock(CodeWithVariants(new string[] { "attachment", "side" }, new string[] { "ground", "north" }));
+            if (block == null) block = world.BlockAccessor.GetBlock(CodeWithVariants(new string[] { "attachment", "side" }, new string[] { "wall", "north" }));
             return new ItemStack[] { new ItemStack(block) };
         }
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {
-            Block block = world.BlockAccessor.GetBlock(CodeWithParts("ground", "north"));
-            if (block == null) block = world.BlockAccessor.GetBlock(CodeWithParts("wall", "north"));
+            Block block = world.BlockAccessor.GetBlock(CodeWithVariants(new string[] { "attachment", "side" }, new string[] { "ground", "north" }));
+            if (block == null) block = world.BlockAccessor.GetBlock(CodeWithVariants(new string[] { "attachment", "side" }, new string[] { "wall", "north" }));
             return new ItemStack(block);
         }
 
@@ -189,10 +190,10 @@ namespace Vintagestory.GameContent
 
         public override AssetLocation GetHorizontallyFlippedBlockCode(EnumAxis axis)
         {
-            BlockFacing facing = BlockFacing.FromCode(LastCodePart());
+            BlockFacing facing = BlockFacing.FromCode(Variant["side"]);
             if (facing.Axis == axis)
             {
-                return CodeWithParts(facing.Opposite.Code);
+                return CodeWithVariant("side", facing.Opposite.Code);
             }
             return Code;
         }
@@ -204,11 +205,11 @@ namespace Vintagestory.GameContent
 
         public override AssetLocation GetRotatedBlockCode(int angle)
         {
-            BlockFacing beforeFacing = BlockFacing.FromCode(LastCodePart());
+            BlockFacing beforeFacing = BlockFacing.FromCode(Variant["side"]);
             int rotatedIndex = GameMath.Mod(beforeFacing.HorizontalAngleIndex - angle / 90, 4);
             BlockFacing nowFacing = BlockFacing.HORIZONTALS_ANGLEORDER[rotatedIndex];
 
-            return CodeWithParts(nowFacing.Code);
+            return CodeWithVariant("side", nowFacing.Code);
         }
     }
 }

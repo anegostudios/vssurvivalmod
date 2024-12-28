@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Drawing;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -16,8 +17,8 @@ namespace Vintagestory.GameContent
             BlockPos pos = new BlockPos(tree.GetInt("posx"), tree.GetInt("posy"), tree.GetInt("posz"));
             Block block = world.BlockAccessor.GetBlock(pos);
 
-            BlockFacing facing = BlockFacing.FromCode(block.LastCodePart());
-            BlockEntityBed beBed = world.BlockAccessor.GetBlockEntity(block.LastCodePart(1) == "feet" ? pos.AddCopy(facing) : pos) as BlockEntityBed;
+            BlockFacing facing = BlockFacing.FromCode(block.Variant["side"]);
+            BlockEntityBed beBed = world.BlockAccessor.GetBlockEntity(block.Variant["part"] == "feet" ? pos.AddCopy(facing) : pos) as BlockEntityBed;
 
             return beBed;
         }
@@ -41,10 +42,10 @@ namespace Vintagestory.GameContent
 
                 string code = horVer[0].Opposite.Code;
 
-                Block orientedBlock = world.BlockAccessor.GetBlock(CodeWithParts("head", code));
+                Block orientedBlock = world.BlockAccessor.GetBlock(CodeWithVariants(new string[] { "part", "side" }, new string[] { "head", code }));
                 orientedBlock.DoPlaceBlock(world, byPlayer, secondBlockSel, itemstack);
 
-                AssetLocation feetCode = CodeWithParts("feet", code);
+                AssetLocation feetCode = CodeWithVariants(new string[] { "part", "side" }, new string [] { "feet", code });
                 orientedBlock = world.BlockAccessor.GetBlock(feetCode);
                 orientedBlock.DoPlaceBlock(world, byPlayer, blockSel, itemstack);
                 return true;
@@ -60,8 +61,8 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            BlockFacing facing = BlockFacing.FromCode(LastCodePart()).Opposite;
-            BlockEntityBed beBed = world.BlockAccessor.GetBlockEntity(LastCodePart(1) == "feet" ? blockSel.Position.AddCopy(facing) : blockSel.Position) as BlockEntityBed;
+            BlockFacing facing = BlockFacing.FromCode(Variant["side"]).Opposite;
+            BlockEntityBed beBed = world.BlockAccessor.GetBlockEntity(Variant["part"] == "feet" ? blockSel.Position.AddCopy(facing) : blockSel.Position) as BlockEntityBed;
 
             if (beBed == null) return false;
             if (beBed.MountedBy != null) return false;
@@ -90,10 +91,10 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockRemoved(IWorldAccessor world, BlockPos pos)
         {
-            string headfoot = LastCodePart(1);
+            string headfoot = Variant["part"];
 
-            BlockFacing facing = BlockFacing.FromCode(LastCodePart());
-            if (LastCodePart(1) == "feet") facing = facing.Opposite;
+            BlockFacing facing = BlockFacing.FromCode(Variant["side"]);
+            if (headfoot == "feet") facing = facing.Opposite;
             else
             {
                 BlockEntityBed beBed = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityBed;
@@ -102,7 +103,7 @@ namespace Vintagestory.GameContent
 
             Block secondPlock = world.BlockAccessor.GetBlock(pos.AddCopy(facing));
 
-            if (secondPlock is BlockBed && secondPlock.LastCodePart(1) != headfoot)
+            if (secondPlock is BlockBed && secondPlock.Variant["part"] != headfoot)
             {
                 world.BlockAccessor.SetBlock(0, pos.AddCopy(facing));
             }
@@ -117,30 +118,30 @@ namespace Vintagestory.GameContent
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {
-            return new ItemStack[] { new ItemStack(world.BlockAccessor.GetBlock(CodeWithParts("head", "north"))) };
+            return new ItemStack[] { new ItemStack(world.BlockAccessor.GetBlock(CodeWithVariants(new string[] { "part", "side" }, new string[] { "head", "north" }))) };
         }
 
 
         public override AssetLocation GetRotatedBlockCode(int angle)
         {
-            BlockFacing beforeFacing = BlockFacing.FromCode(LastCodePart());
+            BlockFacing beforeFacing = BlockFacing.FromCode(Variant["side"]);
             int rotatedIndex = GameMath.Mod(beforeFacing.HorizontalAngleIndex - angle / 90, 4);
             BlockFacing nowFacing = BlockFacing.HORIZONTALS_ANGLEORDER[rotatedIndex];
 
-            return CodeWithParts(nowFacing.Code);
+            return CodeWithVariant("side", nowFacing.Code);
         }
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {
-            return new ItemStack(world.BlockAccessor.GetBlock(CodeWithParts("head", "north")));
+            return new ItemStack(world.BlockAccessor.GetBlock(CodeWithVariants(new string[] { "part", "side" }, new string [] { "head", "north" })));
         }
 
         public override AssetLocation GetHorizontallyFlippedBlockCode(EnumAxis axis)
         {
-            BlockFacing facing = BlockFacing.FromCode(LastCodePart());
+            BlockFacing facing = BlockFacing.FromCode(Variant["side"]);
             if (facing.Axis == axis)
             {
-                return CodeWithParts(facing.Opposite.Code);
+                return CodeWithVariant("side", facing.Opposite.Code);
             }
             return Code;
         }
