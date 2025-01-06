@@ -7,7 +7,7 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class EntityBehaviorAntlerGrowth : EntityBehaviorContainer
+    public class EntityBehaviorAntlerGrowth : EntityBehaviorContainer, IHarvestableDrops
     {
         InventoryGeneric creatureInv;
         Item[] variants;
@@ -152,27 +152,15 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                if (shedNow)
-                {
-                    var lastShed = LastShedTotalDays;
-                    double shedDaysAgo = entity.World.Calendar.TotalDays - lastShed;
-
-                    if (lastShed >= 0 && shedDaysAgo / entity.World.Calendar.DaysPerMonth < 3)
-                    {
-                        // Recently shed. No need to grow, no need to shed
-                        return;
-                    }
-
-                    if (!creatureInv[0].Empty)
-                    {
-                        if (!noItemDrop) entity.World.SpawnItemEntity(creatureInv[0].Itemstack, entity.Pos.XYZ);
-                        SetCreatureItemStack(null);
-                        LastShedTotalDays = entity.World.Calendar.TotalDays;
-                    }
-                }
-                else
+                if (!shedNow)
                 {
                     SetAntler(stage);
+                }
+                else if (!creatureInv[0].Empty)
+                {
+                    if (!noItemDrop) entity.World.SpawnItemEntity(creatureInv[0].Itemstack, entity.Pos.XYZ);
+                    SetCreatureItemStack(null);
+                    LastShedTotalDays = entity.World.Calendar.TotalDays;
                 }
             }
         }
@@ -192,11 +180,10 @@ namespace Vintagestory.GameContent
             double midGrowthPoint = beginGrowMonth + growDurationMonths / 2;
 
             int startYear = (int)(cal.TotalDays / cal.DaysPerYear);
-            double distanceToMidGrowth = totalmonths - (startYear * 12 + midGrowthPoint);
+            double distanceToMidGrowth = GameMath.CyclicValueDistance(startYear * 12 + midGrowthPoint, totalmonths, 12);
 
-            if (distanceToMidGrowth < -9) distanceToMidGrowth += 12;
+            if (distanceToMidGrowth < -growDurationMonths/2) distanceToMidGrowth += 12;
 
-            if (distanceToMidGrowth < -growDurationMonths/2) return -1;
             if (distanceToMidGrowth > growDurationMonths/2 + grownDurationMonths + shedDurationMonths) return -1;
 
             double stageRel = (distanceToMidGrowth + growDurationMonths / 2) / growDurationMonths;
@@ -209,7 +196,7 @@ namespace Vintagestory.GameContent
                 MaxGrowth = Math.Min((entity.World.Rand.Next(cnt) + entity.World.Rand.Next(cnt)) / 2, cnt - 1);
             }
 
-            return (int)GameMath.Clamp(stageRel * cnt, 0, MaxGrowth);
+            return (int)GameMath.Clamp(stageRel * MaxGrowth, 0, MaxGrowth);
         }
 
         private void SetCreatureItemStack(ItemStack stack)
@@ -220,6 +207,11 @@ namespace Vintagestory.GameContent
             ToBytes(true);
         }
 
+
+        public ItemStack[] GetHarvestableDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer)
+        {
+            return new ItemStack[] { creatureInv[0].Itemstack };
+        }
 
         public override bool TryGiveItemStack(ItemStack itemstack, ref EnumHandling handling)
         {

@@ -25,7 +25,7 @@ namespace Vintagestory.GameContent
 
             FontSize = signConfig.FontSize;
 
-            ElementBounds textAreaBounds = ElementBounds.Fixed(0, 0, signConfig.MaxWidth, signConfig.MaxHeight);
+            ElementBounds textAreaBounds = ElementBounds.Fixed(0, 0, signConfig.MaxWidth + 4, signConfig.MaxHeight - 2);
             textareaFixedY = textAreaBounds.fixedY;
 
             // Clipping bounds for textarea
@@ -36,7 +36,7 @@ namespace Vintagestory.GameContent
             ElementBounds cancelButtonBounds = ElementBounds.FixedSize(0, 0).FixedUnder(clippingBounds, 2 * 5).WithAlignment(EnumDialogArea.LeftFixed).WithFixedPadding(8, 2).WithFixedAlignmentOffset(-1, 0);
             ElementBounds fontSizeBounds = ElementBounds.FixedSize(45, 22).FixedUnder(clippingBounds, 2 * 5).WithAlignment(EnumDialogArea.CenterFixed).WithFixedAlignmentOffset(3, 0);
             ElementBounds saveButtonBounds = ElementBounds.FixedSize(0, 0).FixedUnder(clippingBounds, 2 * 5).WithAlignment(EnumDialogArea.RightFixed).WithFixedPadding(8, 2);
-            ElementBounds bgBounds = ElementBounds.FixedSize(signConfig.MaxWidth + 20, 220).WithFixedPadding(GuiStyle.ElementToDialogPadding);
+            ElementBounds bgBounds = ElementBounds.FixedSize(signConfig.MaxWidth + 32, 220).WithFixedPadding(GuiStyle.ElementToDialogPadding);
 
             // 3. Finally Dialog
             ElementBounds dialogBounds = ElementStdBounds.AutosizedMainDialog.WithAlignment(EnumDialogArea.RightMiddle)

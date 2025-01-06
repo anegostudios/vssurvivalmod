@@ -92,7 +92,7 @@ namespace Vintagestory.GameContent
 
             List<BlockPos> holes = FindHolesInPit();
 
-            if (holes.Count > 0)
+            if (holes?.Count > 0)
             {
                 Block fireblock = Api.World.GetBlock(new AssetLocation("fire"));
                 finishedAfterTotalHours = Api.World.Calendar.TotalHours + BurnHours;

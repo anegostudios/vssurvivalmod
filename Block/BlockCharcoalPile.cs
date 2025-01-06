@@ -8,14 +8,14 @@ namespace Vintagestory.GameContent
     {
         public override bool OnFallOnto(IWorldAccessor world, BlockPos pos, Block block, TreeAttribute blockEntityAttributes)
         {
-            BlockCharcoalPile nBlock = (BlockCharcoalPile)world.BlockAccessor.GetMostSolidBlock(pos);
-            if (nBlock.CountLayers() < 8)
+            BlockCharcoalPile nBlock = world.BlockAccessor.GetMostSolidBlock(pos) as BlockCharcoalPile;
+            BlockCharcoalPile uBlock = block as BlockCharcoalPile;
+            if (uBlock != null && nBlock?.CountLayers() < 8)
             {
-                BlockCharcoalPile uBlock = (BlockCharcoalPile)block;
                 while (nBlock.CountLayers() < 8 && uBlock != null)
                 {
-                    nBlock = (BlockCharcoalPile)nBlock.GetNextLayer(world);
-                    uBlock = (BlockCharcoalPile)uBlock.GetPrevLayer(world);
+                    nBlock = nBlock.GetNextLayer(world) as BlockCharcoalPile;
+                    uBlock = uBlock.GetPrevLayer(world) as BlockCharcoalPile;
                 }
 
                 int downId = 0;

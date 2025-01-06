@@ -173,8 +173,7 @@ namespace Vintagestory.GameContent
             }
             if (inventory[1].Empty)
             {
-                lastReceivedDistillateTotalMs = Api.World.ElapsedMilliseconds;
-                lastReceivedDistillate = props.DistilledStack.ResolvedItemstack.Clone();
+                lastReceivedDistillateTotalMs = -99999;
                 return false;
             }
 
@@ -196,7 +195,7 @@ namespace Vintagestory.GameContent
             else
             {
                 ItemStack currentLiquidStack = bucketBlock.GetContent(bucketStack);
-                if (!currentLiquidStack.Equals(Api.World, distilledStack, GlobalConstants.IgnoredStackAttributes))
+                if (!currentLiquidStack.Equals(Api.World, distilledStack, GlobalConstants.IgnoredStackAttributes) || bucketBlock.IsFull(bucketStack))
                 {
                     lastReceivedDistillateTotalMs = -99999;
                     return false;

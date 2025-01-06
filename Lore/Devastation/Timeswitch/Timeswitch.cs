@@ -690,6 +690,7 @@ namespace Vintagestory.GameContent
             genStoryStructLoc = structureLocation;
             genGenStoryStructures = genStoryStructures;
             storyTowerBaseY = structureLocation.CenterPos.Y + 10;   // 10 is hard-coded fudge based on current schematic with a grass mound below the tower, that information is not found in any asset, I guess we could instead look for the lowest non-topsoil non-air block but just as fudgy because it assumes which blocks are in the schematic
+            sapi.Logger.VerboseDebug("Setup dim2 " + (baseChunkX * GlobalConstants.ChunkSize) + ", " + (baseChunkZ * GlobalConstants.ChunkSize));
             return size;
         }
 
@@ -773,15 +774,19 @@ namespace Vintagestory.GameContent
             blocks.PlaceDecors(blockAccessor, start);
         }
 
-        private bool AreAllDim0ChunksGenerated(IBlockAccessor blockAccessor)
+        private bool AreAllDim0ChunksGenerated(IBlockAccessor wgenBlockAccessor)
         {
+            var blockAccess = sapi.World.BlockAccessor;  // We use the standard blockAccessor - wgen version may be doing weird peek stuff
             for (int cx = baseChunkX - size + 1; cx < baseChunkX + size; cx++)
             {
                 for (int cz = baseChunkZ - size + 1; cz < baseChunkZ + size; cz++)
                 {
-                    IMapChunk mc = blockAccessor.GetMapChunk(cx, cz);
+                    IMapChunk mc = blockAccess.GetMapChunk(cx, cz);
                     if (mc == null) return false;
-                    if (mc.CurrentPass <= EnumWorldGenPass.Vegetation) return false;
+                    if (mc.CurrentPass <= EnumWorldGenPass.Vegetation)
+                    {
+                        return false;
+                    }
                 }
             }
 

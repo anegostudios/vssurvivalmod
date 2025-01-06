@@ -123,7 +123,20 @@ namespace Vintagestory.GameContent
 
         public virtual void SetNewText(string text, int color)
         {
-            if (translateable) text = Lang.Get(text);
+            if (translateable)
+            {
+                string translatedText = Lang.Get(text);
+                if (Lang.UsesNonLatinCharacters(Lang.CurrentLocale))
+                {
+                    string englishText = Lang.GetL(Lang.DefaultLocale, text);
+                    if (translatedText != englishText)   // If it has been translated, and it's a non-Latin font, use the configured standard font not the font stored in the sign/plaque
+                    {
+                        font.Fontname = GuiStyle.StandardFontName; // Asian languages probably can't use any fancy font such as Almendra; Github #4748
+                    }
+                }
+
+                text = translatedText;
+            }
 
             font.WithColor(ColorUtil.ToRGBADoubles(color));
             loadedTexture?.Dispose();

@@ -1175,7 +1175,7 @@ namespace Vintagestory.GameContent
                                 if (rs.Collectible.Attributes?["waterTightContainerProps"].Exists == true)
                                 {
                                     var props = BlockLiquidContainerBase.GetContainableProps(rs);
-                                    rs.StackSize = (int)(props.ItemsPerLitre / ingred.PortionSizeLitres);
+                                    rs.StackSize = (int)(props.ItemsPerLitre * ingred.PortionSizeLitres);
                                 } else {
                                     rs.StackSize = 1;
                                 }

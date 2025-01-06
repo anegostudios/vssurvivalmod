@@ -1,5 +1,6 @@
 ﻿using Cairo;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Metadata;
@@ -34,6 +35,8 @@ namespace Vintagestory.GameContent
         public event CanSitDelegate CanSit;
 
         public Entity Controller { get; set; }
+
+        public Entity OnEntity => entity;
 
         public EntityBehaviorSeatable(Entity entity) : base(entity)
         {
@@ -79,10 +82,10 @@ namespace Vintagestory.GameContent
 
                 if (seat.PassengerEntityIdForInit != 0 && seat.Passenger == null)
                 {
-                    var entity = Api.World.GetEntityById(seat.PassengerEntityIdForInit) as EntityAgent;
-                    if (entity != null)
+                    var byEntity = Api.World.GetEntityById(seat.PassengerEntityIdForInit) as EntityAgent;
+                    if (byEntity != null)
                     {
-                        entity.TryMount(seat);
+                        byEntity.TryMount(seat);
                     }
                 }
             }
@@ -146,6 +149,10 @@ namespace Vintagestory.GameContent
                 if (seat != null && CanSitOn(seat) && byEntity.TryMount(seat))
                 {
                     handled = EnumHandling.PreventSubsequent;
+                    if (Api.Side == EnumAppSide.Server)
+                    {
+                        Api.World.Logger.Audit("{0} mounts/embarks a {1} at {2}.", byEntity?.GetName(), entity.Code.ToShortString(), entity.ServerPos.AsBlockPos);
+                    }
                     return;
                 }
 
@@ -187,14 +194,28 @@ namespace Vintagestory.GameContent
             {
                 if (!CanSitOn(seat)) continue;
                 if (!seat.CanControl) continue;
-                if (byEntity.TryMount(seat)) return;
+                if (byEntity.TryMount(seat))
+                {
+                    if (Api.Side == EnumAppSide.Server)
+                    {
+                        Api.World.Logger.Audit("{0} mounts/embarks a {1} at {2}.", byEntity?.GetName(), entity.Code.ToShortString(), entity.ServerPos.AsBlockPos);
+                    }
+                    return;
+                }
             }
 
             // Otherwise just any seat
             foreach (var seat in Seats)
             {
                 if (!CanSitOn(seat)) continue;
-                if (byEntity.TryMount(seat)) return;
+                if (byEntity.TryMount(seat))
+                {
+                    if (Api.Side == EnumAppSide.Server)
+                    {
+                        Api.World.Logger.Audit("{0} mounts/embarks a {1} at {2}.", byEntity?.GetName(), entity.Code.ToShortString(), entity.ServerPos.AsBlockPos);
+                    }
+                    return;
+                }
             }
         }
 

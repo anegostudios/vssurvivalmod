@@ -64,6 +64,7 @@ namespace Vintagestory.GameContent
                     {
                         if (!(blocksel.Block is BlockFirepit)) return false;
                         var befirepit = capi.World.BlockAccessor.GetBlockEntity(blocksel.Position) as BlockEntityFirepit;
+                        if (befirepit == null) return false;   // See Github #4829
                         return befirepit.IsBurning;
                     }
                 ),

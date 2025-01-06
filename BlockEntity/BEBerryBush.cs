@@ -8,6 +8,7 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -152,7 +153,7 @@ namespace Vintagestory.GameContent
                 
                 if (stop || reset)
                 {
-                    transitionHoursLeft += intervalHours;
+                    if (!IsRipe()) transitionHoursLeft += intervalHours;
                     
                     if (reset)
                     {
@@ -160,7 +161,7 @@ namespace Vintagestory.GameContent
                             temperature < revertBlockBelowTemperature ||
                             temperature > revertBlockAboveTemperature;
 
-                        transitionHoursLeft = GetHoursForNextStage();
+                        if (!IsRipe()) transitionHoursLeft = GetHoursForNextStage();
                         if (revert && Block.Variant["state"] != "empty")
                         {
                             Block nextBlock = Api.World.GetBlock(Block.CodeWithVariant("state", "empty"));
@@ -227,18 +228,16 @@ namespace Vintagestory.GameContent
 
         public bool IsRipe()
         {
-            Block block = Api.World.BlockAccessor.GetBlock(Pos);
-            return block.LastCodePart() == "ripe";
+            return Block.Variant["state"] == "ripe";
         }
 
         bool DoGrow()
         {
-            Block block = Api.World.BlockAccessor.GetBlock(Pos);
-            string nowCodePart = block.LastCodePart();
+            string nowCodePart = Block.Variant["state"];
             string nextCodePart = (nowCodePart == "empty") ? "flowering" : ((nowCodePart == "flowering") ? "ripe" : "empty");
 
 
-            AssetLocation loc = block.CodeWithParts(nextCodePart);
+            AssetLocation loc = Block.CodeWithVariant("state", nextCodePart);
             if (!loc.Valid)
             {
                 Api.World.BlockAccessor.RemoveBlockEntity(Pos);
@@ -288,20 +287,11 @@ namespace Vintagestory.GameContent
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
         {
-            Block block = Api.World.BlockAccessor.GetBlock(Pos);
             double daysleft = transitionHoursLeft / Api.World.Calendar.HoursPerDay;
 
-            /*if (forPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative)
-            {
-                return "" + daysleft;
-            }*/
+            if (IsRipe()) return;
 
-            if (block.LastCodePart() == "ripe")
-            {
-                return;
-            }
-
-            string code = (block.LastCodePart() == "empty") ? "flowering" : "ripen";
+            string code = (Block.Variant["state"] == "empty") ? "flowering" : "ripen";
 
             if (daysleft < 1)
             {
@@ -330,7 +320,7 @@ namespace Vintagestory.GameContent
 
         public float ConsumeOnePortion(Entity entity)
         {
-            AssetLocation loc = Block.CodeWithParts("empty");
+            AssetLocation loc = Block.CodeWithVariant("state", "empty");
             if (!loc.Valid)
             {
                 Api.World.BlockAccessor.RemoveBlockEntity(Pos);
@@ -341,12 +331,8 @@ namespace Vintagestory.GameContent
             if (nextBlock?.Code == null) return 0f;
 
             var bbh = Block.GetBehavior<BlockBehaviorHarvestable>();
-            if (bbh?.harvestedStack != null)
-            {
-                ItemStack dropStack = bbh.harvestedStack.GetNextItemStack();
-                Api.World.PlaySoundAt(bbh.harvestingSound, Pos, 0);
-                Api.World.SpawnItemEntity(dropStack, Pos);
-            }
+            bbh?.harvestedStacks?.Foreach(harvestedStack => { Api.World.SpawnItemEntity(harvestedStack?.GetNextItemStack(), Pos); });
+            Api.World.PlaySoundAt(bbh?.harvestingSound, Pos, 0);
 
 
             Api.World.BlockAccessor.ExchangeBlock(nextBlock.BlockId, Pos);

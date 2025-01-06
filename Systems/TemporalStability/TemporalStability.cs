@@ -35,6 +35,8 @@ namespace Vintagestory.GameContent
             public float QuantityMul;
             [JsonProperty]
             public Dictionary<string, AssetLocation[]> variantGroups;
+            [JsonProperty]
+            public Dictionary<string, float> variantQuantityMuls;
 
             public Dictionary<string, EntityProperties[]> resolvedVariantGroups;
 
@@ -392,7 +394,6 @@ namespace Vintagestory.GameContent
                             e.Attributes.SetBool("ignoreDaylightFlee", true);
                         }
                     }
-
                 }
 
                 double activeDaysLeft = data.stormActiveTotalDays - api.World.Calendar.TotalDays;
@@ -506,12 +507,13 @@ namespace Vintagestory.GameContent
             var rareSpawns = mobConfig.rareSpawns.Variants.Shuffle(api.World.Rand);
             var spawnPattern = mobConfig.spawnsByStormStrength.spawnPatterns[data.spawnPatternCode];
             var variantGroups = mobConfig.spawnsByStormStrength.variantGroups;
+            var variantMuls = mobConfig.spawnsByStormStrength.variantQuantityMuls;
             var resovariantGroups = mobConfig.spawnsByStormStrength.resolvedVariantGroups;
             Dictionary<string, int> rareSpawnCounts = new Dictionary<string, int>();
             Dictionary<string, int> mainSpawnCountsByGroup = new Dictionary<string, int>();
 
             var plrPos = plr.Entity.ServerPos.XYZ;
-            part.WalkEntities(plrPos, range + 12, (e) =>
+            part.WalkEntities(plrPos, range + 30, (e) =>
             {
                 foreach (var vg in variantGroups)
                 {
@@ -549,6 +551,12 @@ namespace Vintagestory.GameContent
             foreach (var group in spawnPattern.GroupWeights)
             {
                 int allowedCount = (int)Math.Round((2 + stormStr * 8) * group.Value);
+
+                if (variantMuls.TryGetValue(group.Key, out var mul))
+                {
+                    allowedCount = (int)Math.Round(allowedCount * mul);
+                }
+
                 int nowCount = 0;
                 mainSpawnCountsByGroup.TryGetValue(group.Key, out nowCount);
 

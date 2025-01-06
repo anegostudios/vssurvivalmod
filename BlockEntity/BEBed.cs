@@ -69,6 +69,8 @@ namespace Vintagestory.GameContent
 
         public Entity Controller => MountedBy;
 
+        public Entity OnEntity => null;
+
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);

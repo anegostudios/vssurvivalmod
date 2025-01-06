@@ -225,9 +225,28 @@ namespace Vintagestory.GameContent
 
                 if (recipe.CooksInto != null)
                 {
+                    ItemStack outStack = recipe.CooksInto.ResolvedItemstack;
+
                     message = "mealcreation-nonfood";
                     quantity *= recipe.CooksInto.Quantity;
-                    outputName = recipe.CooksInto.ResolvedItemstack?.GetName();
+                    outputName = outStack?.GetName().ToLowerInvariant();
+
+                    if (outStack?.Collectible.Attributes?["waterTightContainerProps"].Exists == true)
+                    {
+                        float litreFloat = (float)quantity / BlockLiquidContainerBase.GetContainableProps(outStack).ItemsPerLitre;
+                        string litres;
+
+                        if (litreFloat < 0.1)
+                        {
+                            litres = Lang.Get("{0} mL", (int)(litreFloat * 1000));
+                        }
+                        else
+                        {
+                            litres = Lang.Get("{0:0.##} L", litreFloat);
+                        }
+
+                        return Lang.Get("mealcreation-nonfood-liquid", litres, outputName);
+                    }
                 }
                 else
                 {

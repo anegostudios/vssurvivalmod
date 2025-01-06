@@ -53,7 +53,7 @@ namespace Vintagestory.GameContent
 
                 string knobOrientation = GetSuggestedKnobOrientation(ba, blockSel.Position, horVer[0]);
 
-                AssetLocation downBlockCode = CodeWithVariants(new Dictionary<string, string>() { 
+                AssetLocation downBlockCode = CodeWithVariants(new Dictionary<string, string>() {
                     { "horizontalorientation", horVer[0].Code },
                     { "part", "down" },
                     { "state", "closed" },
@@ -201,8 +201,18 @@ namespace Vintagestory.GameContent
             if (type == EnumRetentionType.Sound) return IsSideSolid(facing) ? 3 : 0;
 
             if (!airtight) return 0;
-            if (api.World.Config.GetBool("openDoorsNotSolid", false)) return IsSideSolid(facing) ? 1 : 0;
-            return (IsSideSolid(facing) || IsSideSolid(facing.Opposite)) ? 1 : 3; // Also check opposite so the door can be facing inwards or outwards.
+            if (api.World.Config.GetBool("openDoorsNotSolid", false)) return IsSideSolid(facing) ? getInsulation(pos) : 0;
+            return (IsSideSolid(facing) || IsSideSolid(facing.Opposite)) ? getInsulation(pos) : 3; // Also check opposite so the door can be facing inwards or outwards.
+        }
+
+        int getInsulation(BlockPos pos)
+        {
+            var mat = GetBlockMaterial(api.World.BlockAccessor, pos);
+            if (mat == EnumBlockMaterial.Ore || mat == EnumBlockMaterial.Stone || mat == EnumBlockMaterial.Soil || mat == EnumBlockMaterial.Ceramic)
+            {
+                return -1;
+            }
+            return 1;
         }
 
         public override float GetLiquidBarrierHeightOnSide(BlockFacing face, BlockPos pos)

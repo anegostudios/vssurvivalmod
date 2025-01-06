@@ -1,5 +1,4 @@
-﻿using System;
-using System.Globalization;
+﻿using System.Globalization;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
@@ -18,7 +17,7 @@ namespace Vintagestory.ServerMods
 
     internal class TreeGenTool : ToolBase
     {
-        private readonly LCGRandom _rand;
+        private readonly IRandom _rand;
         private TreeGeneratorsUtil _treeGenerators;
 
         public float MinTreeSize
@@ -57,7 +56,7 @@ namespace Vintagestory.ServerMods
 
         public TreeGenTool(WorldEditWorkspace workspace, IBlockAccessorRevertable blockAccess) : base(workspace, blockAccess)
         {
-            _rand = new LCGRandom();
+            _rand = new NormalRandom();
             if (!workspace.FloatValues.ContainsKey("std.treeToolMinTreeSize")) MinTreeSize = 0.7f;
             if (!workspace.FloatValues.ContainsKey("std.treeToolMaxTreeSize")) MaxTreeSize = 1.3f;
             if (!workspace.StringValues.ContainsKey("std.treeToolTreeVariant")) TreeVariant = null;
@@ -182,7 +181,6 @@ namespace Vintagestory.ServerMods
             {
                 _treeGenerators = new TreeGeneratorsUtil(worldEdit.sapi);
             }
-            _rand.SetWorldSeed(worldEdit.sapi.World.Seed);
 
             if (TreeVariant == null)
             {

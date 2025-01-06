@@ -129,12 +129,14 @@ namespace Vintagestory.GameContent
 
         public GeneratedStructure GetStoryStructureAt(BlockPos pos)
         {
-            var mapregion = api.World.BlockAccessor.GetMapRegion(pos.X / api.World.BlockAccessor.RegionSize, pos.Z / api.World.BlockAccessor.RegionSize);
+            int regionSize = api.World.BlockAccessor.RegionSize;
+            var mapregion = api.World.BlockAccessor.GetMapRegion(pos.X / regionSize, pos.Z / regionSize);
 
-            for (int i = 0; i < mapregion.GeneratedStructures.Count; i++)
+            if (mapregion?.GeneratedStructures == null) return null;
+
+            foreach (var struc in mapregion.GeneratedStructures)
             {
-                var struc = mapregion.GeneratedStructures[i];
-                if (struc.Location != null && struc?.Group == "storystructure")
+                if (struc?.Location != null && struc.Group == "storystructure")
                 {
                     if (struc.Location.Contains(pos)) return struc;
                 }

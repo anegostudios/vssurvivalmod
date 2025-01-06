@@ -154,7 +154,7 @@ namespace Vintagestory.GameContent
                 {
                     if (stack.Class == mergedStacks[j].stack.Class && stack.Id == mergedStacks[j].stack.Id)
                     {
-                        mergedStacks[j].stackSize += stackSize;
+                        mergedStacks[j].stackSize = Math.Round(mergedStacks[j].stackSize + stackSize, 2);
                         exists = true;
                         break;
                     }

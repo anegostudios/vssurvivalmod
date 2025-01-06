@@ -20,10 +20,11 @@ namespace Vintagestory.GameContent
         {
             float pressedDryRatio = slot.Itemstack.ItemAttributes["juiceableProperties"]["pressedDryRatio"].AsFloat(1);
             double juiceableLitresTotal = slot.Itemstack.Attributes.GetDouble("juiceableLitresLeft") + slot.Itemstack.Attributes.GetDouble("juiceableLitresTransfered");
+            TransitionableProperties nProps = props.Clone();
 
-            if (juiceableLitresTotal > 0) props.TransitionRatio = (int)(GameMath.RoundRandom(api.World.Rand, (float)juiceableLitresTotal) * pressedDryRatio);
+            if (juiceableLitresTotal > 0) nProps.TransitionRatio = props.TransitionRatio * (int)(GameMath.RoundRandom(api.World.Rand, (float)juiceableLitresTotal) * pressedDryRatio);
 
-            return base.OnTransitionNow(slot, props);
+            return base.OnTransitionNow(slot, nProps);
         }
     }
 }

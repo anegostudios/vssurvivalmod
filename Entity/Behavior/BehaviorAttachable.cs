@@ -182,6 +182,7 @@ namespace Vintagestory.GameContent
 
             return base.TryGiveItemStack(itemstack, ref handling);
         }
+
         public override void OnInteract(EntityAgent byEntity, ItemSlot itemslot, Vec3d hitPosition, EnumInteractMode mode, ref EnumHandling handled)
         {
             int seleBox = (byEntity as EntityPlayer).EntitySelection?.SelectionBoxIndex ?? -1;
@@ -282,11 +283,18 @@ namespace Vintagestory.GameContent
             {
                 return false;
             }
-            
-            if (slot.StackSize == 0 || byEntity.TryGiveItemStack(slot.Itemstack))
+
+            bool wasEmptyAlready = slot.StackSize == 0;
+            if (wasEmptyAlready || byEntity.TryGiveItemStack(slot.Itemstack))
             {
                 IAttachedListener attached = slot.Itemstack?.Collectible.GetCollectibleInterface<IAttachedListener>();
                 attached?.OnDetached(slot, slotIndex, entity, byEntity);
+
+                if (Api.Side == EnumAppSide.Server && !wasEmptyAlready)
+                {
+                    slot.Itemstack.StackSize = 1;
+                    Api.World.Logger.Audit("{0} removed from a {1} at {2}, slot {4}: {3}", byEntity?.GetName(), entity.Code.ToShortString(), entity.ServerPos.AsBlockPos, slot.Itemstack?.ToString(), slotIndex);
+                }
 
                 slot.Itemstack = null;
                 storeInv();
@@ -320,9 +328,11 @@ namespace Vintagestory.GameContent
 
             if (entity.World.Side == EnumAppSide.Server)
             {
+                string auditLog = String.Format("{0} attached to a {1} at {2}, slot {4}: {3}", byEntity?.GetName(), entity.Code.ToShortString(), entity.ServerPos.AsBlockPos, itemslot.Itemstack.ToString(), slotIndex);
                 var moved = itemslot.TryPutInto(entity.World, targetSlot) > 0;
                 if (moved)
                 {
+                    Api.World.Logger.Audit(auditLog);
                     ial?.OnAttached(itemslot, slotIndex, entity, byEntity);
                     storeInv();
                 }

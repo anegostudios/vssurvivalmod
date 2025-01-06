@@ -76,7 +76,7 @@ namespace Vintagestory.GameContent
 
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
-            dsc.AppendLine(string.Format("Type: {0}", inSlot.Itemstack.Attributes.GetString("type")));
+            dsc.AppendLine(string.Format(Lang.Get("Type: {0}", Lang.Get("cropprop-type-" + inSlot.Itemstack.Attributes.GetString("type")))));
 
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
         }
