@@ -58,7 +58,7 @@ namespace Vintagestory.GameContent.Mechanics
 
                 BEBehaviorMPBase beMechBase = beOwn?.GetBehavior<BEBehaviorMPBase>();
                 BlockPos pos = blockSel.Position.DownCopy();
-                if (world.BlockAccessor.GetBlock(pos) is IMechanicalPowerBlock block && block.HasMechPowerConnectorAt(world, pos, BlockFacing.UP))
+                if (world.BlockAccessor.GetBlock(pos).GetInterface<IMechanicalPowerBlock>(world, pos) is IMechanicalPowerBlock block && block.HasMechPowerConnectorAt(world, pos, BlockFacing.UP))
                 {
                     block.DidConnectAt(world, pos, BlockFacing.UP);
                     connections.Add(BlockFacing.DOWN);
@@ -66,7 +66,7 @@ namespace Vintagestory.GameContent.Mechanics
                 else
                 {
                     pos = blockSel.Position.UpCopy();
-                    block = world.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
+                    block = world.BlockAccessor.GetBlock(pos).GetInterface<IMechanicalPowerBlock>(world, pos);
                     if (block != null && block.HasMechPowerConnectorAt(world, pos, BlockFacing.DOWN))
                     {
                         block.DidConnectAt(world, pos, BlockFacing.DOWN);

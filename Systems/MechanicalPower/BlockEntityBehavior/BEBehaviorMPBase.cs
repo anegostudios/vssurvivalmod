@@ -190,7 +190,7 @@ namespace Vintagestory.GameContent.Mechanics
             if (Api == null) return false;
 
             BlockPos pos = Position.AddCopy(toFacing);
-            IMechanicalPowerBlock connectedToBlock = Api.World.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
+            IMechanicalPowerBlock connectedToBlock = Api.World.BlockAccessor.GetBlock(pos).GetInterface<IMechanicalPowerBlock>(Api.World, pos);
             if (DEBUG) Api.Logger.Notification("tryConnect at " + this.Position + " towards " + toFacing + " " + pos);
 
             if (connectedToBlock == null || !connectedToBlock.HasMechPowerConnectorAt(Api.World, pos, toFacing.Opposite)) return false;
@@ -399,7 +399,7 @@ namespace Vintagestory.GameContent.Mechanics
         {
             BlockPos neibPos = Position.AddCopy(powerOutFacing);
             IMechanicalPowerBlock neibMechBlock = null;
-            neibMechBlock = Api.World.BlockAccessor.GetBlock(neibPos) as IMechanicalPowerBlock;
+            neibMechBlock = Api.World.BlockAccessor.GetBlock(neibPos).GetInterface<IMechanicalPowerBlock>(Api.World, neibPos);
 
             MechanicalNetwork neibNetwork = neibMechBlock == null ? null : neibMechBlock.GetNetwork(Api.World, neibPos);
 
@@ -430,7 +430,7 @@ namespace Vintagestory.GameContent.Mechanics
                 }
                 else
                 {
-                    IMechanicalPowerDevice node = Api.World.BlockAccessor.GetBlockEntity(neibPos)?.GetBehavior<BEBehaviorMPBase>() as IMechanicalPowerDevice;
+                    IMechanicalPowerDevice node = Api.World.BlockAccessor.GetBlock(neibPos).GetInterface<IMechanicalPowerDevice>(Api.World, neibPos);
                     if (node != null)
                     {
                         BlockFacing facing = node.IsPropagationDirection(Position, powerOutFacing) ? powerOutFacing : powerOutFacing.Opposite;
@@ -470,7 +470,7 @@ namespace Vintagestory.GameContent.Mechanics
             SetPropagationDirection(exitTurnDir);
 
             JoinNetwork(network);
-            (Block as IMechanicalPowerBlock).DidConnectAt(api.World, Position, exitTurnDir.OutFacing.Opposite);
+            Block.GetInterface<IMechanicalPowerBlock>(api.World, Pos).DidConnectAt(api.World, Position, exitTurnDir.OutFacing.Opposite);
 
             MechPowerPath[] paths = GetMechPowerExits(exitTurnDir);
             for (int i = 0; i < paths.Length; i++)
@@ -494,7 +494,7 @@ namespace Vintagestory.GameContent.Mechanics
         {
             missingChunkPos = null;
             BEBehaviorMPBase beMechBase = api.World.BlockAccessor.GetBlockEntity(exitPos)?.GetBehavior<BEBehaviorMPBase>();
-            IMechanicalPowerBlock mechBlock = beMechBase?.Block as IMechanicalPowerBlock;
+            IMechanicalPowerBlock mechBlock = beMechBase?.Block.GetInterface<IMechanicalPowerBlock>(api.World, exitPos);
             if (DEBUG) api.Logger.Notification("attempting spread to " + exitPos + (beMechBase == null ? " -" : ""));
 
             if (beMechBase == null && api.World.BlockAccessor.GetChunkAtBlockPos(exitPos) == null)

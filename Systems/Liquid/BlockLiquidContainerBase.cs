@@ -475,7 +475,7 @@ namespace Vintagestory.GameContent
             int availItems = liquidStack.StackSize;
 
             ItemStack stack = GetContent(containerStack);
-            ILiquidSink sink = containerStack.Collectible as ILiquidSink;
+            ILiquidSink sink = containerStack.Collectible.GetCollectibleInterface<ILiquidSink>();
 
             if (stack == null)
             {
@@ -562,7 +562,7 @@ namespace Vintagestory.GameContent
                 if (handling == EnumHandHandling.PreventDefault || handling == EnumHandHandling.PreventDefaultAction) return true;
             }
 
-            if (hotbarSlot.Empty || !(hotbarSlot.Itemstack.Collectible is ILiquidInterface)) return base.OnBlockInteractStart(world, byPlayer, blockSel);
+            if (hotbarSlot.Empty || !(hotbarSlot.Itemstack.Collectible.GetCollectibleInterface<ILiquidInterface>() is ILiquidInterface)) return base.OnBlockInteractStart(world, byPlayer, blockSel);
 
 
             CollectibleObject obj = hotbarSlot.Itemstack.Collectible;
@@ -570,7 +570,7 @@ namespace Vintagestory.GameContent
             bool singleTake = byPlayer.WorldData.EntityControls.ShiftKey;
             bool singlePut = byPlayer.WorldData.EntityControls.CtrlKey;
 
-            if (obj is ILiquidSource objLso && !singleTake)
+            if (obj.GetCollectibleInterface<ILiquidSource>() is ILiquidSource objLso && !singleTake)
             {
                 if (!objLso.AllowHeldLiquidTransfer) return false;
 
@@ -594,7 +594,7 @@ namespace Vintagestory.GameContent
             }
 
 
-            if (obj is ILiquidSink objLsi && !singlePut)
+            if (obj.GetCollectibleInterface<ILiquidSink>() is ILiquidSink objLsi && !singlePut)
             {
                 if (!objLsi.AllowHeldLiquidTransfer) return false;
 

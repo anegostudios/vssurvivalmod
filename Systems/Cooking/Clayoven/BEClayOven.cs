@@ -555,9 +555,7 @@ namespace Vintagestory.GameContent
 
                     if (resultStack != null)
                     {
-                        var collObjCb = ovenInv[slotIndex].Itemstack.Collectible as IBakeableCallback;
-
-                        if (collObjCb != null)
+                        if (ovenInv[slotIndex].Itemstack.Collectible.GetCollectibleInterface<IBakeableCallback>() is IBakeableCallback collObjCb)
                         {
                             collObjCb.OnBaked(ovenInv[slotIndex].Itemstack, resultStack);
                         }
