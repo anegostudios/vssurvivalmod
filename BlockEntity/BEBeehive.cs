@@ -168,7 +168,7 @@ namespace Vintagestory.GameContent
             float temp = Api.World.BlockAccessor.GetClimateAt(Pos, EnumGetClimateMode.ForSuppliedDate_TemperatureOnly, Api.World.Calendar.TotalDays).Temperature;
 
             if (roomness > 0 ) temp += 5;
-            actvitiyLevel = GameMath.Clamp(temp / 5f, 0f, 1f);
+            actvitiyLevel = GameMath.Clamp(temp, 0f, 1f);
 
             // Reset timers during winter
             if (temp <= -10)
