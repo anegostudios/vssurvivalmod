@@ -118,7 +118,7 @@ namespace Vintagestory.GameContent
 
             Random rand = Api.World.Rand;
 
-            Bees.MinQuantity = actvitiyLevel;
+            Bees.MinQuantity = activityLevel;
 
             // Leave hive
             if (Api.World.Rand.NextDouble() > 0.5)
@@ -159,7 +159,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        float actvitiyLevel;
+        float activityLevel;
         RoomRegistry roomreg;
         float roomness;
 
@@ -168,7 +168,7 @@ namespace Vintagestory.GameContent
             float temp = Api.World.BlockAccessor.GetClimateAt(Pos, EnumGetClimateMode.ForSuppliedDate_TemperatureOnly, Api.World.Calendar.TotalDays).Temperature;
 
             if (roomness > 0 ) temp += 5;
-            actvitiyLevel = GameMath.Clamp(temp, 0f, 1f);
+            activityLevel = GameMath.Clamp(temp / 5f, 0f, 1f);
 
             // Reset timers during winter
             if (temp <= -10)
@@ -189,7 +189,7 @@ namespace Vintagestory.GameContent
             Room room = roomreg?.GetRoomForPosition(Pos);
             roomness = (room != null && room.SkylightCount > room.NonSkylightCount && room.ExitCount == 0) ? 1 : 0;
 
-            if (actvitiyLevel < 1) return;
+            if (activityLevel == 0) return;
             if (Api.Side == EnumAppSide.Client) return;
             if (Api.World.Calendar.TotalHours < cooldownUntilTotalHours) return;
 
