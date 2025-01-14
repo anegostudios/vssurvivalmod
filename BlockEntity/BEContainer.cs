@@ -27,7 +27,8 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(api);
 
-            Inventory.LateInitialize(InventoryClassName + "-" + Pos.X + "/" + Pos.Y + "/" + Pos.Z, api);
+            var inventoryClassName = InventoryClassName + "-" + Pos;
+            Inventory.LateInitialize(inventoryClassName, api);
             Inventory.Pos = Pos;
 
             container.Init(Api, ()=>Pos, ()=>MarkDirty(true));

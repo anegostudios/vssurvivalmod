@@ -43,7 +43,7 @@ namespace Vintagestory.GameContent
                 val.Initialize(api, val.properties);
             }
 
-            Inventory.LateInitialize(InventoryClassName + "-" + Pos.X + "/" + Pos.Y + "/" + Pos.Z, api);
+            Inventory.LateInitialize(InventoryClassName + "-" + Pos, api);
             Inventory.Pos = Pos;
             Inventory.ResolveBlocksOrItems();
             //Inventory.OnAcquireTransitionSpeed = Inventory_OnAcquireTransitionSpeed;

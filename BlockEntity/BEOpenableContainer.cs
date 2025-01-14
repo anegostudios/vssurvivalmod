@@ -94,7 +94,7 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(api);
             LidOpenEntityId = new HashSet<long>();
-            Inventory.LateInitialize(InventoryClassName + "-" + Pos.X + "/" + Pos.Y + "/" + Pos.Z, api);
+            Inventory.LateInitialize(InventoryClassName + "-" + Pos, api);
             Inventory.ResolveBlocksOrItems();
             Inventory.OnInventoryOpened += OnInventoryOpened;  
             Inventory.OnInventoryClosed += OnInventoryClosed; 

@@ -16,6 +16,7 @@ namespace Vintagestory.GameContent
         {
             var blockTextures = (block as BlockShapeFromAttributes).blockTextures;
 
+
             // Prio 0: Shape textures
             var shape = cprops.ShapeResolved;
             if (shape == null) return false;
@@ -286,6 +287,12 @@ namespace Vintagestory.GameContent
         private bool RequiresTextureUploads()
         {
             var cprops = clutterBlock?.GetTypeProps(Type, null, this);
+
+            if (cprops == null) { 
+                // Ignore invalid clutter blocks
+                return false; 
+            }
+
             if (cprops?.Textures == null)
             {
                 if (overrideTextureCode == null) return false;

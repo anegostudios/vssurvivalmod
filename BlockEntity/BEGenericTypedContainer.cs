@@ -206,7 +206,7 @@ namespace Vintagestory.GameContent
 
         public virtual void LateInitInventory()
         {
-            Inventory.LateInitialize(InventoryClassName + "-" + Pos.X + "/" + Pos.Y + "/" + Pos.Z, Api);
+            Inventory.LateInitialize(InventoryClassName + "-" + Pos, Api);
             Inventory.ResolveBlocksOrItems();
             container.LateInit();
             MarkDirty();

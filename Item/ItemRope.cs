@@ -414,6 +414,7 @@ namespace Vintagestory.GameContent
                     {
                         Vec3d lpos = new Vec3d(0, entity.LocalEyePos.Y - 0.3f, 0);
                         Vec3d aheadPos = lpos.AheadCopy(0.1f, entity.SidedPos.Pitch, entity.SidedPos.Yaw).AheadCopy(0.4f, entity.SidedPos.Pitch, entity.SidedPos.Yaw - GameMath.PIHALF);
+
                         p.PinTo(entity, aheadPos.ToVec3f());
 
                         ItemSlot collectedSlot = null;
@@ -425,6 +426,16 @@ namespace Vintagestory.GameContent
                             }
                             return true;
                         });
+
+                        if (sys.FirstPoint.PinnedToEntity == entity && sys.LastPoint.PinnedToEntity == entity)
+                        {
+                            sys.FirstPoint.UnPin();
+                            sys.LastPoint.UnPin();
+                            collectedSlot?.Itemstack.Attributes.RemoveAttribute("clothId");
+                            collectedSlot?.Itemstack.Attributes.RemoveAttribute("ropeHeldByEntityId");
+                            cm.UnregisterCloth(sys.ClothId);
+                        }
+
                         collectedSlot?.Itemstack?.Attributes.SetLong("ropeHeldByEntityId", entity.EntityId);
                         collectedSlot?.MarkDirty();
                     }

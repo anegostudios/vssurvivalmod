@@ -290,6 +290,11 @@ namespace Vintagestory.ServerMods
                     }
 
                     if (startPos.Y <= 0) continue;
+                                
+                    if (!BlockSchematicStructure.SatisfiesMinSpawnDistance(struc.MinSpawnDistance, startPos, spawnPos))
+                    {
+                        continue;
+                    }
 
                     // check if in storylocation and if we can still generate this structure
                     if (locationCode != null)

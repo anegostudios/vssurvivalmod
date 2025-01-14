@@ -95,7 +95,7 @@ namespace Vintagestory.GameContent
 
                 tmpItem = stack.Collectible;
 
-                var meshSource = stack.Collectible as IContainedMeshSource;
+                IContainedMeshSource meshSource = stack.Collectible?.GetCollectibleInterface<IContainedMeshSource>();
                 if (meshSource != null)
                 {
                     toolMeshes[i] = meshSource.GenMesh(stack, capi.BlockTextureAtlas, Pos);

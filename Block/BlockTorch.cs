@@ -107,6 +107,10 @@ namespace Vintagestory.GameContent
         {
             if (blockSel != null && byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is IIgnitable ign)
             {
+                if (byEntity is EntityPlayer player && !byEntity.World.Claims.TryAccess(player.Player, blockSel.Position, EnumBlockAccessFlags.Use))
+                {
+                    return;
+                }
                 if (isExtinct)
                 {
                     var state = ign.OnTryIgniteStack(byEntity, blockSel.Position, slot, 0);
@@ -131,6 +135,10 @@ namespace Vintagestory.GameContent
         {
             if (isExtinct && blockSel != null && byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is IIgnitable ign)
             {
+                if (byEntity is EntityPlayer player && !byEntity.World.Claims.TryAccess(player.Player, blockSel.Position, EnumBlockAccessFlags.Use))
+                {
+                    return false;
+                }
                 var state = ign.OnTryIgniteStack(byEntity, blockSel.Position, slot, secondsUsed);
                 if (state == EnumIgniteState.Ignitable)
                 {

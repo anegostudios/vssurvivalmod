@@ -92,6 +92,8 @@ namespace Vintagestory.GameContent
         ElementBounds renderBounds = new ElementBounds();
         public void Render(float dt, float x, float y, float z)
         {
+            if (capi.World.Player.WorldData.CurrentGameMode == EnumGameMode.Spectator) return;
+
             float shakex = ((float)capi.World.Rand.NextDouble() * 60 - 30) * Math.Max(0, timeSwitchCooldown - Timeswitch.CooldownTime * 0.8f);
             float shakey = ((float)capi.World.Rand.NextDouble() * 60 - 30) * Math.Max(0, timeSwitchCooldown - Timeswitch.CooldownTime * 0.8f);
 

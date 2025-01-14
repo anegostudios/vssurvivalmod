@@ -41,7 +41,10 @@ namespace Vintagestory.ServerMods
         public int MaxYDiff = 3;
         [JsonProperty]
         public int? StoryLocationMaxAmount;
-
+        [JsonProperty]
+        public int MinSpawnDistance = 0;
+        [JsonProperty]
+        public int MaxBelowSealevel = 20;
         /// <summary>
         /// This bitmask for the position in schematics
         /// </summary>
@@ -116,6 +119,7 @@ namespace Vintagestory.ServerMods
             schematic.OffsetY = offsety;
             schematic.FromFileName = asset.Name;
             schematic.MaxYDiff = struc?.MaxYDiff ?? 3;
+            schematic.MaxBelowSealevel = struc?.MaxBelowSealevel ?? 3;
             schematic.StoryLocationMaxAmount = struc?.StoryLocationMaxAmount;
             T[] rotations = new T[4];
             rotations[0] = schematic;

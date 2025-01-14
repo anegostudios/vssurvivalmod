@@ -84,7 +84,7 @@ namespace Vintagestory.GameContent
         {
             BlockEntityBerryBush bebush = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityBerryBush;
 
-            if (!bebush?.Pruned ?? false && byPlayer?.InventoryManager?.ActiveHotbarSlot?.Itemstack?.Collectible?.Tool == EnumTool.Shears)
+            if ((!bebush?.Pruned ?? false) && byPlayer?.InventoryManager?.ActiveHotbarSlot?.Itemstack?.Collectible?.Tool == EnumTool.Shears)
             {
                 bebush.Prune();
                 return true;

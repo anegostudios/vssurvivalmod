@@ -858,7 +858,7 @@ namespace Vintagestory.GameContent
             if (BucketSlot.Empty || capi == null) return;
 
             var stack = BucketSlot.Itemstack;
-            var meshSource = stack.Collectible as IContainedMeshSource;
+            IContainedMeshSource meshSource = stack.Collectible?.GetCollectibleInterface<IContainedMeshSource>();
             if (meshSource != null)
             {
                 bucketMeshTmp = meshSource.GenMesh(stack, capi.BlockTextureAtlas, Pos);

@@ -109,7 +109,7 @@ namespace Vintagestory.GameContent
                     this.type = nowType;
                     this.preferredLidState = nowLidState;
                     InitInventory(Block, Api);   // We need to replace the inventory with one for the new type (may be a different size). It's OK to delete the existing inventory in a newly placed block, it can't hold anything
-                    Inventory.LateInitialize(InventoryClassName + "-" + Pos.X + "/" + Pos.Y + "/" + Pos.Z, Api);
+                    Inventory.LateInitialize(InventoryClassName + "-" + Pos, Api);
                     Inventory.ResolveBlocksOrItems();
                     container.LateInit();
                     MarkDirty();

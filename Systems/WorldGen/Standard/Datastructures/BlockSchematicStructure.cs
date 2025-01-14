@@ -1,5 +1,4 @@
-﻿using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Common;
@@ -25,10 +24,8 @@ namespace Vintagestory.ServerMods
 
         public int OffsetY { get; set; } = -1;
         public int MaxYDiff = 3;
+        public int MaxBelowSealevel = 20;
         public int? StoryLocationMaxAmount;
-
-        [JsonProperty]
-        public int MinSpawnDistance = 0;
 
         public static bool SatisfiesMinSpawnDistance(int minSpawnDistance, BlockPos pos, BlockPos spawnPos)
         {
@@ -487,6 +484,7 @@ namespace Vintagestory.ServerMods
             cloned.SizeZ = SizeZ;
             cloned.OffsetY = OffsetY;
             cloned.MaxYDiff = MaxYDiff;
+            cloned.MaxBelowSealevel = MaxBelowSealevel;
 
             cloned.GameVersion = GameVersion;
             cloned.FromFileName = FromFileName;

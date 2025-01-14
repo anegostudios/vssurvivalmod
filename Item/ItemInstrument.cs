@@ -36,7 +36,7 @@ namespace Vintagestory.GameContent
         {
             var plr = (byEntity as EntityPlayer).Player;
             var mseo = api.ModLoader.GetModSystem<ModSystemEntityOwnership>();
-            if (!mseo.OwnerShipsByPlayerUid.TryGetValue(plr.PlayerUID, out var ownerships) || !ownerships.TryGetValue(GroupCode, out var ownership))
+            if (!mseo.OwnerShipsByPlayerUid.TryGetValue(plr.PlayerUID, out var ownerships) || ownerships == null || !ownerships.TryGetValue(GroupCode, out var ownership))
             {
                 return;
             }

@@ -15,6 +15,8 @@ namespace Vintagestory.GameContent
         ModSystemSupportBeamPlacer sbp;
         Cuboidf[] collBoxes;
 
+        bool dropWhenBroken;
+
         public BEBehaviorSupportBeam(BlockEntity blockentity) : base(blockentity)
         {
         }
@@ -31,6 +33,8 @@ namespace Vintagestory.GameContent
                     beam.Block = Api.World.GetBlock(beam.BlockId);
                 }
             }
+
+            dropWhenBroken = properties?["dropWhenBroken"].AsBool(true) != false;
         }
 
         public void AddBeam(Vec3f start, Vec3f end, BlockFacing onFacing, Block block)
@@ -255,7 +259,7 @@ namespace Vintagestory.GameContent
 
             var beam = Beams[beamIndex];
 
-            if (drop)
+            if (drop && dropWhenBroken)
             {
                 Api.World.SpawnItemEntity(new ItemStack(beam.Block, (int)Math.Ceiling(beam.End.DistanceTo(beam.Start))), Pos);
             }

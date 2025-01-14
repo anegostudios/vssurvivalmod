@@ -116,11 +116,28 @@ namespace Vintagestory.GameContent
             OnFirePlaced(Blockentity.Pos, Blockentity.Pos.AddCopy(fromFacing.Opposite), startedByPlayerUid);
         }
 
-        public void OnFirePlaced(BlockPos firePos, BlockPos fuelPos, string startedByPlayerUid)
+        public void OnFirePlaced(BlockPos firePos, BlockPos fuelPos, string startedByPlayerUid, bool didSpread = false)
         {
             if (IsBurning || !ShouldBurn()) return;
 
             this.startedByPlayerUid = startedByPlayerUid;
+
+            if (!string.IsNullOrEmpty(startedByPlayerUid))
+            {
+                var playerByUid = Api.World.PlayerByUid(startedByPlayerUid);
+                if (playerByUid != null)
+                {
+                    if (didSpread)
+                    {
+                        Api.Logger.Audit($"{playerByUid.PlayerName} started a fire that spread to {firePos}");   
+                    }
+                    else
+                    {
+                        Api.Logger.Audit($"{playerByUid.PlayerName} started a fire at {firePos}");
+                    }
+                }
+            }
+            
 
             FirePos = firePos.Copy();
             FuelPos = fuelPos.Copy();
@@ -372,7 +389,7 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                buhu?.OnFirePlaced(pos, npos, startedByPlayerUid);
+                buhu?.OnFirePlaced(pos, npos, startedByPlayerUid, true);
             }
         }
 

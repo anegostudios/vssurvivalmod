@@ -250,9 +250,22 @@ namespace Vintagestory.GameContent
 
         public void OnTransformed(IWorldAccessor worldAccessor, ITreeAttribute tree, int degreeRotation, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, EnumAxis? flipAxis)
         {
-            /*RotateYRad = tree.GetFloat("rotateYRad");
-            RotateYRad = (RotateYRad - degreeRotation * GameMath.DEG2RAD) % GameMath.TWOPI;
-            tree.SetFloat("rotateYRad", RotateYRad);*/
+            AttachedFace = tree.GetInt("attachedFace");
+            var face = BlockFacing.ALLFACES[AttachedFace];
+            if (face.IsVertical)
+            {
+                RotDeg = tree.GetInt("rotDeg");
+                RotDeg = GameMath.Mod(RotDeg - degreeRotation, 360);
+                tree.SetInt("rotDeg", RotDeg);
+            }
+            else
+            {
+                var rIndex = degreeRotation / 90;
+                var horizontalAngleIndex = GameMath.Mod(face.HorizontalAngleIndex - rIndex, 4);
+                var newFace = BlockFacing.HORIZONTALS_ANGLEORDER[horizontalAngleIndex];
+                AttachedFace = newFace.Index;
+                tree.SetInt("attachedFace", AttachedFace);
+            }
         }
     }
 }

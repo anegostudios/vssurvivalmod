@@ -143,7 +143,7 @@ namespace Vintagestory.GameContent
             if (inventory.Count < 2 || inventory[1].Empty || Api.Side == EnumAppSide.Server) return;
 
             var stack = inventory[1].Itemstack;
-            var meshSource = stack.Collectible as IContainedMeshSource;
+            IContainedMeshSource meshSource = stack.Collectible?.GetCollectibleInterface<IContainedMeshSource>();
             if (meshSource != null)
             {
                 bucketMeshTmp = meshSource.GenMesh(stack, (Api as ICoreClientAPI).BlockTextureAtlas, Pos);

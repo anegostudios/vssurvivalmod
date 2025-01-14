@@ -529,6 +529,9 @@ namespace Vintagestory.ServerMods
             tmpPos.Set(startPos.X + wdthalf, 0, startPos.Z + lenhalf);
             int centerY = blockAccessor.GetTerrainMapheightAt(startPos);
 
+            // check if we are to deep underwater
+            if (centerY < worldForCollectibleResolve.SeaLevel - MaxBelowSealevel)
+                return false;
             // Probe all 4 corners + center if they either touch the surface or are sightly below ground
 
             tmpPos.Set(startPos.X, 0, startPos.Z);
@@ -622,6 +625,7 @@ namespace Vintagestory.ServerMods
 
             // Ensure not deeply submerged in water  =>  actually, that's now OK!
 
+
             tmpPos.Set(startPos.X, startPos.Y + 1, startPos.Z);
             if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
@@ -678,6 +682,10 @@ namespace Vintagestory.ServerMods
             tmpPos.Set(startPos.X + wdthalf, 0, startPos.Z + lenhalf);
             int centerY = blockAccessor.GetTerrainMapheightAt(tmpPos);
 
+            // check if we are to deep underwater
+            if (centerY < worldForCollectibleResolve.SeaLevel - MaxBelowSealevel)
+                return false;
+
             // Probe all 4 corners + center if they are on the same height
             tmpPos.Set(startPos.X, 0, startPos.Z);
             int topLeftY = blockAccessor.GetTerrainMapheightAt(tmpPos);
@@ -696,7 +704,6 @@ namespace Vintagestory.ServerMods
             if (diff != 0) return false;
 
             startPos.Y = centerY + 1 + schematic.OffsetY;
-
 
             // Ensure not floating on water
             tmpPos.Set(startPos.X + wdthalf, startPos.Y - 1, startPos.Z + lenhalf);
@@ -1040,7 +1047,7 @@ namespace Vintagestory.ServerMods
             // Definition: Max structure size is 256x256x256
             //int maxStructureSize = 256;
 
-            int minDistSq = mingroupDistance * mingroupDistance;
+            long minDistSq = (long)mingroupDistance * mingroupDistance;
 
             int minrx = GameMath.Clamp(x1 / regSize, 0, mapRegionSizeX);
             int minrz = GameMath.Clamp(z1 / regSize, 0, mapRegionSizeZ);

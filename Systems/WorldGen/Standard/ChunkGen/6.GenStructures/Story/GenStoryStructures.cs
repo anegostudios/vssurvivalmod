@@ -28,7 +28,6 @@ namespace Vintagestory.GameContent
         public OrderedDictionary<string, StoryStructureLocation> storyStructureInstances = new OrderedDictionary<string, StoryStructureLocation>();
         public bool StoryStructureInstancesDirty = false;
 
-        private Cuboidi[] structureLocations;
         private IWorldGenBlockAccessor worldgenBlockAccessor;
 
         private ICoreServerAPI api;
@@ -224,7 +223,6 @@ namespace Vintagestory.GameContent
                 });
             }
 
-            structureLocations = storyStructureInstances.Select(val => val.Value.Location).ToArray();
             StoryStructureInstancesDirty = true;
 
             return TextCommandResult.Success("Ok, story structure location moved to this position. Regenerating chunks at the location should make it appear now.");
@@ -274,7 +272,7 @@ namespace Vintagestory.GameContent
 
         public string GetStoryStructureCodeAt(int x, int z, int category)
         {
-            if (structureLocations == null)
+            if (storyStructureInstances == null)
             {
                 return null;
             }
@@ -300,7 +298,7 @@ namespace Vintagestory.GameContent
 
         public StoryStructureLocation GetStoryStructureAt(int x, int z)
         {
-            if (structureLocations == null)
+            if (storyStructureInstances == null)
             {
                 return null;
             }
@@ -336,8 +334,6 @@ namespace Vintagestory.GameContent
 
         protected void DetermineStoryStructures()
         {
-            var occupiedLocations = new List<Cuboidi>();
-
             var data = api.WorldManager.SaveGame.GetData<List<string>>("attemptedToGenerateStoryLocation");
             data ??= new List<string>();
             var i = 0;
@@ -356,8 +352,6 @@ namespace Vintagestory.GameContent
                     var minZ = storyStruc.CenterPos.Z - schem.SizeZ / 2;
                     var cuboidi = new Cuboidi(minX, storyStruc.CenterPos.Y, minZ, minX + schem.SizeX, storyStruc.CenterPos.Y + schem.SizeY, minZ + schem.SizeZ);
                     storyStruc.Location = cuboidi;
-
-                    occupiedLocations.Add(storyStruc.Location);
                 }
                 else
                 {
@@ -366,7 +360,7 @@ namespace Vintagestory.GameContent
                     if (!data.Contains(storyStructure.Code))
                     {
                         strucRand.SetWorldSeed(api.WorldManager.Seed + 1095 + i);
-                        TryAddStoryLocation(storyStructure, ref occupiedLocations);
+                        TryAddStoryLocation(storyStructure);
                         data.Add(storyStructure.Code);
                     }
                 }
@@ -374,14 +368,13 @@ namespace Vintagestory.GameContent
                 i++;
             }
 
-            structureLocations = occupiedLocations.ToArray();
             StoryStructureInstancesDirty = true;
 
             api.WorldManager.SaveGame.StoreData("attemptedToGenerateStoryLocation", data);
             SetupForceLandform();
         }
 
-        private void TryAddStoryLocation(WorldGenStoryStructure storyStructure, ref List<Cuboidi> occupiedLocations)
+        private void TryAddStoryLocation(WorldGenStoryStructure storyStructure)
         {
             BlockPos basePos = null;
             StoryStructureLocation dependentLocation = null;
@@ -523,7 +516,6 @@ namespace Vintagestory.GameContent
                 DirX = dirX,
                 SkipGenerationFlags = storyStructure.SkipGenerationFlags
             };
-            occupiedLocations.Add(cuboidi);
         }
 
         private void SetupForceLandform()
@@ -574,7 +566,6 @@ namespace Vintagestory.GameContent
             if (strucs != null)
             {
                 storyStructureInstances = strucs;
-                structureLocations = storyStructureInstances.Select(val => val.Value.Location).ToArray();
             }
         }
 
@@ -586,7 +577,7 @@ namespace Vintagestory.GameContent
         private void OnChunkColumnGen(IChunkColumnGenerateRequest request)
         {
             if (!genStoryStructures) return;
-            if (structureLocations == null) return;
+            if (storyStructureInstances == null) return;
 
             var chunks = request.Chunks;
             int chunkX = request.ChunkX;
@@ -594,12 +585,11 @@ namespace Vintagestory.GameContent
             tmpCuboid.Set(chunkX * chunksize, 0, chunkZ * chunksize, chunkX * chunksize + chunksize, chunks.Length * chunksize, chunkZ * chunksize + chunksize);
             worldgenBlockAccessor.BeginColumn();
 
-            for (int i = 0; i < structureLocations.Length; i++)
+            foreach (var (strucCode, strucInst) in storyStructureInstances)
             {
-                var strucloc = structureLocations[i];
+                var strucloc = strucInst.Location;
                 if (!strucloc.Intersects(tmpCuboid)) continue;
 
-                var strucInst = storyStructureInstances.GetValueAtIndex(i);
                 if (!strucInst.DidGenerate)
                 {
                     strucInst.DidGenerate = true;
@@ -607,7 +597,7 @@ namespace Vintagestory.GameContent
                 }
                 var startPos = new BlockPos(strucloc.X1, strucloc.Y1, strucloc.Z1, 0);
 
-                var structure = scfg.Structures[i];
+                var structure = scfg.Structures.First(s => s.Code == strucCode);
 
                 switch (structure.Placement)
                 {

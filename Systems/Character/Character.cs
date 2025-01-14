@@ -447,7 +447,16 @@ namespace Vintagestory.GameContent
             if (classChangeMonths >= 0)
             {
                 var lastDateChange = byPlayer.ServerData.LastCharacterSelectionDate ?? byPlayer.ServerData.FirstJoinDate ?? "1/1/1970 00:00 AM";
-                var daysPassed = DateTime.UtcNow.Subtract(DateTimeOffset.Parse(lastDateChange).UtcDateTime).TotalDays;
+                var date = DateTime.UtcNow;
+                if(byPlayer.ServerData.LastCharacterSelectionDate == null)
+                {
+                    var selectionOffset = sapi.World.Config.GetDecimal("firstClassChangeOffsetMonths");
+                    if (selectionOffset != 0)
+                    {
+                        date = date.AddDays(-30 * selectionOffset);
+                    }
+                }
+                var daysPassed = date.Subtract(DateTimeOffset.Parse(lastDateChange).UtcDateTime).TotalDays;
                 if (classChangeMonths < daysPassed / 30.0)
                 {
                     byPlayer.Entity.WatchedAttributes.SetBool("allowcharselonce", true);
@@ -540,16 +549,10 @@ namespace Vintagestory.GameContent
                 {
                     bh.selectSkinPart(skinpart.Key, skinpart.Value, false);
                 }
-            }
 
-            var date = DateTime.UtcNow;
-            if (!didSelectBefore)
-            {
-                var selectionOffset = sapi.World.Config.GetDecimal("firstClassChangeOffsetMonths", 0);
-                date = DateTime.UtcNow.AddDays(-30 * selectionOffset);
+                var date = DateTime.UtcNow;
+                fromPlayer.ServerData.LastCharacterSelectionDate = date.ToShortDateString() + " " + date.ToShortTimeString();
             }
-
-            fromPlayer.ServerData.LastCharacterSelectionDate = date.ToShortDateString() + " " + date.ToShortTimeString();
             fromPlayer.Entity.WatchedAttributes.MarkPathDirty("skinConfig");
             fromPlayer.BroadcastPlayerData(true);
         }

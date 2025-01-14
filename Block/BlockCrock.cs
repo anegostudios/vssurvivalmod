@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.Design;
 using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
@@ -358,7 +359,28 @@ namespace Vintagestory.GameContent
         }
 
 
-        
+        public override int GetMergableQuantity(ItemStack sinkStack, ItemStack sourceStack, EnumMergePriority priority)
+        {
+            if ((sourceStack?.Block is IBlockMealContainer || (sourceStack?.Collectible?.Attributes?.IsTrue("mealContainer") ?? false)) && sourceStack.StackSize == 1) return 1;
+
+            return base.GetMergableQuantity(sinkStack, sourceStack, priority);
+        }
+
+        public override void TryMergeStacks(ItemStackMergeOperation op)
+        {
+            if ((op.SourceSlot?.Itemstack?.Block is IBlockMealContainer || (op.SourceSlot?.Itemstack?.Collectible?.Attributes?.IsTrue("mealContainer") ?? false)) && op.SourceSlot?.Itemstack?.StackSize == 1)
+            {
+                if (op.CurrentPriority == EnumMergePriority.DirectMerge)
+                {
+                    ServeIntoStack(op.SourceSlot, op.SinkSlot, op.World);
+                }
+
+                return;
+            }
+
+            base.TryMergeStacks(op);
+        }
+
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {

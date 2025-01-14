@@ -85,7 +85,11 @@ namespace Vintagestory.GameContent
                 {
                     pos = getStructureCenter(attr);
                 }
-                catch (Exception e) { api.Logger.Error(e); }
+                catch (Exception e)
+                {
+                    api.Logger.Error("ItemLocatorMap attr: " + attr.ToJsonToken());
+                    api.Logger.Error(e);
+                }
             }
 
             if (pos == null)
