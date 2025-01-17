@@ -444,24 +444,24 @@ namespace Vintagestory.GameContent
             }
 
             var classChangeMonths = sapi.World.Config.GetDecimal("allowClassChangeAfterMonths", -1);
-            if (classChangeMonths >= 0)
+            var allowOneFreeClassChange = sapi.World.Config.GetBool("allowOneFreeClassChange");
+           
+            // allow players that already played on the server to also reselect their character like new players
+            if(allowOneFreeClassChange && byPlayer.ServerData.LastCharacterSelectionDate == null)
             {
-                var lastDateChange = byPlayer.ServerData.LastCharacterSelectionDate ?? byPlayer.ServerData.FirstJoinDate ?? "1/1/1970 00:00 AM";
+                byPlayer.Entity.WatchedAttributes.SetBool("allowcharselonce", true);
+            }
+            else if(classChangeMonths >= 0)
+            {
                 var date = DateTime.UtcNow;
-                if(byPlayer.ServerData.LastCharacterSelectionDate == null)
-                {
-                    var selectionOffset = sapi.World.Config.GetDecimal("firstClassChangeOffsetMonths");
-                    if (selectionOffset != 0)
-                    {
-                        date = date.AddDays(-30 * selectionOffset);
-                    }
-                }
-                var daysPassed = date.Subtract(DateTimeOffset.Parse(lastDateChange).UtcDateTime).TotalDays;
-                if (classChangeMonths < daysPassed / 30.0)
+                var lastDateChange = byPlayer.ServerData.LastCharacterSelectionDate ?? byPlayer.ServerData.FirstJoinDate ?? "1/1/1970 00:00 AM";
+                var monthsPassed = date.Subtract(DateTimeOffset.Parse(lastDateChange).UtcDateTime).TotalDays / 30.0;
+                if (classChangeMonths < monthsPassed)
                 {
                     byPlayer.Entity.WatchedAttributes.SetBool("allowcharselonce", true);
                 }
             }
+                
 
             sapi.Network.GetChannel("charselection").SendPacket(new CharacterSelectedState() { DidSelect = didSelect }, byPlayer);
         }
@@ -538,7 +538,6 @@ namespace Vintagestory.GameContent
             if (p.DidSelect)
             {
                 fromPlayer.SetModData<bool>("createCharacter", true);
-                fromPlayer.Entity.WatchedAttributes.RemoveAttribute("allowcharselonce");
 
                 setCharacterClass(fromPlayer.Entity, p.CharacterClass, !didSelectBefore || fromPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative);
 
@@ -552,6 +551,17 @@ namespace Vintagestory.GameContent
 
                 var date = DateTime.UtcNow;
                 fromPlayer.ServerData.LastCharacterSelectionDate = date.ToShortDateString() + " " + date.ToShortTimeString();
+
+                // allow players that just joined to immediately re select the class
+                var allowOneFreeClassChange = sapi.World.Config.GetBool("allowOneFreeClassChange");
+                if (!didSelectBefore && allowOneFreeClassChange)
+                {
+                    fromPlayer.ServerData.LastCharacterSelectionDate = null;
+                }
+                else
+                {
+                    fromPlayer.Entity.WatchedAttributes.RemoveAttribute("allowcharselonce");
+                }
             }
             fromPlayer.Entity.WatchedAttributes.MarkPathDirty("skinConfig");
             fromPlayer.BroadcastPlayerData(true);

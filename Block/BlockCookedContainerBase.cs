@@ -144,6 +144,48 @@ namespace Vintagestory.GameContent
         }
 
 
+        public override int GetMergableQuantity(ItemStack sinkStack, ItemStack sourceStack, EnumMergePriority priority)
+        {
+            if (sourceStack?.Block is IBlockMealContainer || (sourceStack?.Collectible?.Attributes?.IsTrue("mealContainer") ?? false)) return Math.Max(1, Math.Min(MaxStackSize - sinkStack.StackSize, sourceStack.StackSize));
+
+            return base.GetMergableQuantity(sinkStack, sourceStack, priority);
+        }
+
+        public override void TryMergeStacks(ItemStackMergeOperation op)
+        {
+            if (op.SourceSlot?.Itemstack?.Block is IBlockMealContainer || (op.SourceSlot?.Itemstack?.Collectible?.Attributes?.IsTrue("mealContainer") ?? false))
+            {
+                if (op.CurrentPriority != EnumMergePriority.DirectMerge)
+                {
+                    if (Math.Min(MaxStackSize - op.SinkSlot.Itemstack.StackSize, op.SourceSlot.Itemstack.StackSize) > 0) base.TryMergeStacks(op);
+                    return;
+                }
+
+                ItemStack bufferStack = null;
+                if (op.SourceSlot.Itemstack.StackSize > 1)
+                {
+                    bufferStack = op.SourceSlot.TakeOut(op.SourceSlot.Itemstack.StackSize - 1);
+                }
+                
+                if (ServeIntoStack(op.SourceSlot, op.SinkSlot, op.World))
+                {
+                    if (!op.ActingPlayer.Entity.TryGiveItemStack(bufferStack))
+                    {
+                        op.World.SpawnItemEntity(bufferStack, op.ActingPlayer.Entity.Pos.AsBlockPos);
+                    }
+                }
+                else
+                {
+                    DummySlot bufferSlot = new(bufferStack);
+                    bufferSlot.TryPutInto(op.World, op.SourceSlot);
+                    if (Math.Min(MaxStackSize - op.SinkSlot.Itemstack.StackSize, op.SourceSlot.Itemstack.StackSize) > 0) base.TryMergeStacks(op);
+                }  
+
+                return;
+            }
+
+            base.TryMergeStacks(op);
+        }
 
 
         private bool tryMergeServingsIntoBE(IBlockEntityMealContainer bemeal, ItemSlot potslot)

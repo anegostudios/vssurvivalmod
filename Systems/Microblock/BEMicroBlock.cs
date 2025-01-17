@@ -275,7 +275,17 @@ namespace Vintagestory.GameContent
         {
             base.GetBlockInfo(forPlayer, dsc);
 
-            dsc.AppendLine(Lang.Get("block-chiseledblock"));
+            
+            if (BlockName.IndexOf('\n') > 0) {
+                dsc.AppendLine(Lang.Get(BlockName.Substring(BlockName.IndexOf('\n') + 1))); 
+            }
+            else
+            {
+                if (forPlayer.Entity?.RightHandItemSlot?.Itemstack?.Collectible is ItemChisel)
+                {
+                    dsc.AppendLine(Lang.Get("block-chiseledblock"));
+                }
+            }
 
             if (forPlayer?.CurrentBlockSelection?.Face != null && BlockIds != null)
             {
@@ -307,7 +317,8 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                return blockName.Substring(blockName.IndexOf('\n') + 1);
+                int nind = blockName.IndexOf('\n');
+                return Lang.Get(nind > 0 ? blockName.Substring(0, nind) : blockName);
             }
         }
 

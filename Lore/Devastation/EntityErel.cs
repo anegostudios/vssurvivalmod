@@ -34,6 +34,8 @@ namespace Vintagestory.GameContent
             set { WatchedAttributes.SetBool("annoyed", value); }
         }
 
+        public override bool AlwaysActive => true;
+
         static EntityErel()
         {
             AiTaskRegistry.Register("flycircle", typeof(AiTaskFlyCircle));

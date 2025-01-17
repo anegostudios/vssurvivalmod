@@ -249,6 +249,16 @@ namespace Vintagestory.GameContent
             blockLayerConfig = BlockLayerConfig.GetInstance(api);
             scfg.Init(api, blockLayerConfig.RockStrata, blockLayerConfig);
 
+            var distScale = api.World.Config.GetDecimal("storyStructuresDistScaling", 1);
+            foreach (var struc in scfg.Structures)
+            {
+                struc.MinSpawnDistX = (int)(struc.MinSpawnDistX * distScale);
+                struc.MinSpawnDistZ = (int)(struc.MinSpawnDistZ * distScale);
+
+                struc.MaxSpawnDistX = (int)(struc.MaxSpawnDistX * distScale);
+                struc.MaxSpawnDistZ = (int)(struc.MaxSpawnDistZ * distScale);
+            }
+
             DetermineStoryStructures();
             // reset strucRand after DetermineStoryStructures was run
             strucRand.SetWorldSeed(api.WorldManager.Seed + 1095);

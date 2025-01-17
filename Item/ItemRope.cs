@@ -1,18 +1,12 @@
-﻿using System;
-using Vintagestory.API.Client;
+﻿using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
-    public enum EnumPinPart
-    {
-        Start,
-        End
-    }
-
     // Rope concept
     // 1st milestone goal:
     // - Able to push/pull tamed animals
@@ -101,12 +95,24 @@ namespace Vintagestory.GameContent
                 {
                     (api as ICoreClientAPI)?.TriggerIngameError(this, "tooshort", Lang.Get("Already at minimum length!"));
                 }
+                else
+                {
+                    if (api is ICoreServerAPI sapi)
+                        sapi.Network.GetChannel("clothphysics")
+                            .BroadcastPacket(new ClothLengthPacket() { ClothId = sys.ClothId, LengthChange = -0.5 }, byPlayer as IServerPlayer);
+                }
             }
             if (toolMode == 1)
             {
                 if (!sys.ChangeRopeLength(0.5))
                 {
                     (api as ICoreClientAPI)?.TriggerIngameError(this, "tooshort", Lang.Get("Already at maximum length!"));
+                }
+                else
+                {
+                    if (api is ICoreServerAPI sapi)
+                        sapi.Network.GetChannel("clothphysics")
+                            .BroadcastPacket(new ClothLengthPacket() { ClothId = sys.ClothId, LengthChange = 0.5 }, byPlayer as IServerPlayer);
                 }
             }
         }
@@ -321,16 +327,24 @@ namespace Vintagestory.GameContent
 
                 ClothPoint cpoint = pEnds[0];
 
-                if (pEnds[0].PinnedToEntity?.EntityId != byEntity.EntityId) cpoint = pEnds[1];
+                var startEntity = pEnds[0].PinnedToEntity;
+                var endEntity = pEnds[1].PinnedToEntity;
+                var fromEntity = startEntity ?? endEntity;
 
-                if ((pEnds[0].PinnedToEntity != null && pEnds[0].PinnedToEntity != byEntity) || (pEnds[1].PinnedToEntity != null && pEnds[1].PinnedToEntity != byEntity))
+                if (startEntity?.EntityId != byEntity.EntityId) 
+                    cpoint = pEnds[1];
+
+                if (fromEntity == byEntity)
+                    fromEntity = endEntity ?? startEntity;
+
+                if (fromEntity is EntityAgent agent && (
+                        (startEntity != null && startEntity != byEntity) || 
+                        (endEntity != null && endEntity != byEntity))
+                    )
                 {
-                    var fromEntity = pEnds[0].PinnedToEntity ?? pEnds[1].PinnedToEntity;
-                    if (fromEntity == byEntity) fromEntity = pEnds[1].PinnedToEntity ?? pEnds[0].PinnedToEntity;
-
                     // Lengthen rope to accomodate
                     cm.UnregisterCloth(sys.ClothId);
-                    sys = createRope(slot, fromEntity as EntityAgent, toPosition.ToVec3d().Add(0.5, 0.5, 0.5));
+                    sys = createRope(slot, agent, toPosition.ToVec3d().Add(0.5, 0.5, 0.5));
 
                     sys.LastPoint.PinTo(toPosition, new Vec3f(0.5f, 0.5f, 0.5f));
                 }
@@ -407,8 +421,8 @@ namespace Vintagestory.GameContent
                 if (sys != null)
                 {
                     ClothPoint p = null;
-                    if (sys.FirstPoint.PinnedToEntity is EntityItem) p = sys.FirstPoint;
-                    if (sys.LastPoint.PinnedToEntity is EntityItem) p = sys.LastPoint;
+                    if (sys.FirstPoint.PinnedToEntity is EntityItem itemFirst && !itemFirst.Alive) p = sys.FirstPoint;
+                    if (sys.LastPoint.PinnedToEntity is EntityItem itemLast && !itemLast.Alive) p = sys.LastPoint;
 
                     if (p != null)
                     {
@@ -431,9 +445,13 @@ namespace Vintagestory.GameContent
                         {
                             sys.FirstPoint.UnPin();
                             sys.LastPoint.UnPin();
-                            collectedSlot?.Itemstack.Attributes.RemoveAttribute("clothId");
-                            collectedSlot?.Itemstack.Attributes.RemoveAttribute("ropeHeldByEntityId");
+                            if(collectedSlot != null)
+                            {
+                                collectedSlot.Itemstack = null;
+                                collectedSlot.MarkDirty();
+                            }
                             cm.UnregisterCloth(sys.ClothId);
+                            return;
                         }
 
                         collectedSlot?.Itemstack?.Attributes.SetLong("ropeHeldByEntityId", entity.EntityId);

@@ -285,7 +285,11 @@ namespace Vintagestory.GameContent
 
         public override AssetLocation GetRotatedBlockCode(int angle)
         {
-            BlockFacing newFacing = BlockFacing.HORIZONTALS_ANGLEORDER[(angle / 90 + BlockFacing.FromCode(LastCodePart()).Opposite.HorizontalAngleIndex) % 4];
+            var blockFacing = BlockFacing.FromCode(LastCodePart());
+            var angleIndex = angle == 180 ? blockFacing.HorizontalAngleIndex : blockFacing.Opposite.HorizontalAngleIndex;
+            var rotatedIndex = angleIndex + angle / 90;
+            BlockFacing newFacing = BlockFacing.HORIZONTALS_ANGLEORDER[GameMath.Mod(rotatedIndex, 4)];
+            
             return CodeWithParts(newFacing.Code);
         }
 

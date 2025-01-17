@@ -87,16 +87,16 @@ namespace Vintagestory.GameContent
 
                     if ((ends[0].PinnedToEntity as EntityItem)?.Itemstack?.Collectible is ItemRope || (ends[1].PinnedToEntity as EntityItem)?.Itemstack?.Collectible is ItemRope)
                     {
-                        return;
+                        ItemStack stack = new ItemStack(entity.World.GetItem(new AssetLocation("rope")));
+                        stack.Attributes.SetInt("clothId", sys.ClothId);
+                        stack.Attributes.SetLong("ropeHeldByEntityId", byEntity.EntityId);
+
+                        if (!byEntity.TryGiveItemStack(stack))
+                        {
+                            entity.World.SpawnItemEntity(stack, byEntity.Pos.XYZ);
+                        }
                     }
 
-                    ItemStack stack = new ItemStack(entity.World.GetItem(new AssetLocation("rope")));
-                    stack.Attributes.SetInt("clothId", sys.ClothId);
-
-                    if (!byEntity.TryGiveItemStack(stack))
-                    {
-                        entity.World.SpawnItemEntity(stack, byEntity.Pos.XYZ);
-                    }
                 } else
                 {
                     ends[0].UnPin();

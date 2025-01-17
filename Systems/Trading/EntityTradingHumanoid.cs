@@ -113,7 +113,7 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                World.Logger.Warning("Trader TradeProps not set during trader entity spawn. Won't have any items for sale/purchase.");
+                //World.Logger.Warning("Trader TradeProps not set during trader entity spawn. Won't have any items for sale/purchase.");
             }
         }
 
