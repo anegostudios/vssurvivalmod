@@ -191,9 +191,12 @@ namespace Vintagestory.GameContent
                     return GetShatteredStack(ContentsLeft, FillLevelLeft);
                 }
 
-                ItemStack outstack = ContentsLeft.Clone();
-                (outstack.Attributes["temperature"] as ITreeAttribute)?.RemoveAttribute("cooldownSpeed");
-                return outstack;
+                if (TemperatureLeft < 300)
+                {
+                    ItemStack outstack = ContentsLeft.Clone();
+                    (outstack.Attributes["temperature"] as ITreeAttribute)?.RemoveAttribute("cooldownSpeed");
+                    return outstack;
+                }
             }
 
             return null;
@@ -212,9 +215,12 @@ namespace Vintagestory.GameContent
                     return GetShatteredStack(ContentsRight, FillLevelRight);
                 }
 
-                ItemStack outstack = ContentsRight.Clone();
-                (outstack.Attributes["temperature"] as ITreeAttribute)?.RemoveAttribute("cooldownSpeed");
-                return outstack;
+                if (TemperatureRight < 300)
+                {
+                    ItemStack outstack = ContentsRight.Clone();
+                    (outstack.Attributes["temperature"] as ITreeAttribute)?.RemoveAttribute("cooldownSpeed");
+                    return outstack;
+                }
             }
 
             return null;

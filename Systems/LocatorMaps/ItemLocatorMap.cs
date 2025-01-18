@@ -87,7 +87,7 @@ namespace Vintagestory.GameContent
                 }
                 catch (Exception e)
                 {
-                    api.Logger.Error("ItemLocatorMap attr: " + attr.ToJsonToken());
+                    api.Logger.Error("ItemLocatorMap attr: " + attr.ToJsonToken().Replace("{","{{").Replace("}","}}"));
                     api.Logger.Error(e);
                 }
             }
