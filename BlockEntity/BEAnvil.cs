@@ -230,7 +230,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            rotation = (rotation + 90) % 360;
+            rotation = (rotation + (ccw ? 270 : 90)) % 360;
 
             this.Voxels = rotVoxels;
             RegenMeshAndSelectionBoxes();
