@@ -53,14 +53,13 @@ namespace Vintagestory.GameContent
             Texture = new TextTextureUtil(capi).GenTextTexture(Lang.Get(Title), CairoFont.WhiteSmallText());
         }
 
-        public override float GetTextMatchWeight(string searchText)
+        public override PageText GetPageText()
         {
-            if (titleCached.Equals(searchText, StringComparison.InvariantCultureIgnoreCase)) return 4;
-            if (titleCached.StartsWith(searchText + " ", StringComparison.InvariantCultureIgnoreCase)) return 3.5f;
-            if (titleCached.StartsWith(searchText, StringComparison.InvariantCultureIgnoreCase)) return 3f;
-            if (titleCached.CaseInsensitiveContains(searchText)) return 2.75f;
-            if (Text.CaseInsensitiveContains(searchText)) return 1.25f;
-            return 0;
+            return new PageText
+            {
+                Title = titleCached,
+                Text = Text,
+            };
         }
 
         public override void RenderListEntryTo(ICoreClientAPI capi, float dt, double x, double y, double cellWidth, double cellHeight)

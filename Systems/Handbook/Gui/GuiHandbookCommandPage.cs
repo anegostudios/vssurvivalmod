@@ -75,15 +75,12 @@ namespace Vintagestory.GameContent
             return VtmlUtil.Richtextify(capi, "<font size=\"24\"><strong>" + Command.CallSyntax + "</strong></font>\n\n" + TextCacheAll, CairoFont.WhiteSmallText());
         }
 
-        public override float GetTextMatchWeight(string searchText)
+        public override PageText GetPageText()
         {
-            string title = TextCacheTitle;
-            if (title.Equals(searchText, StringComparison.InvariantCultureIgnoreCase)) return searchWeightOffset + 3;
-            if (title.StartsWith(searchText + " ", StringComparison.InvariantCultureIgnoreCase)) return searchWeightOffset + 2.75f + Math.Max(0, 15 - title.Length) / 100f;
-            if (title.StartsWith(searchText, StringComparison.InvariantCultureIgnoreCase)) return searchWeightOffset + 2.5f + Math.Max(0, 15 - title.Length) / 100f;
-            if (title.CaseInsensitiveContains(searchText)) return searchWeightOffset + 2;
-            if (TextCacheAll.CaseInsensitiveContains(searchText)) return searchWeightOffset + 1;
-            return 0;
+            return new PageText {
+                Title = TextCacheTitle,
+                Text = TextCacheAll,
+            };
         }
     }
 
