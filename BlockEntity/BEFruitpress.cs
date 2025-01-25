@@ -1,5 +1,4 @@
-﻿using System.Net.Sockets;
-using System.Text;
+﻿using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -264,16 +263,16 @@ public class BlockEntityFruitPress : BlockEntityContainer
         // Either a wet mash or more fruit will be transferred in now.
         ItemStack handStack = handSlot.Itemstack;
 
-        int desiredTransferAmount = 0;
+        int desiredTransferAmount = 1;
 
         if (mashProps.LitresPerItem == null) // Wet mash.
         {
             double roomInCurrentMash = LITRES_CAPACITY - (JuiceableLitresLeft + JuiceableLitresTransferred);
             double litresInHand = handStack.Attributes.GetDouble("juiceableLitresLeft");
-            float amountToTransfer = (float)Math.Min(litresInHand, roomInCurrentMash);
+            float litresToTransfer = (float)Math.Min(litresInHand, roomInCurrentMash);
 
             // Mix spoilage. The ratio will come from the source stack, and 1 - the ratio will come from the target stack.
-            float ratio = (float)((amountToTransfer / JuiceableLitresLeft) + amountToTransfer);
+            float ratio = (float)((litresToTransfer / JuiceableLitresLeft) + litresToTransfer);
             TransitionState[] sourceTransitionStates = handStack.Collectible.UpdateAndGetTransitionStates(Api.World, handSlot);
             TransitionState[] targetTransitionStates = MashSlot.Itemstack.Collectible.UpdateAndGetTransitionStates(Api.World, MashSlot);
             Dictionary<EnumTransitionType, TransitionState> targetStatesByType = new();
@@ -284,10 +283,14 @@ public class BlockEntityFruitPress : BlockEntityContainer
                 MashSlot.Itemstack.Collectible.SetTransitionState(MashSlot.Itemstack, sourceState.Props.Type, (sourceState.TransitionedHours * ratio) + (targetState.TransitionedHours * (1 - ratio)));
             }
 
-            handStack.Attributes.SetDouble("juiceableLitresLeft", litresInHand - amountToTransfer);
-            JuiceableLitresLeft += amountToTransfer;
+            handStack.Attributes.SetDouble("juiceableLitresLeft", Math.Max(litresInHand - litresToTransfer, 0));
+            JuiceableLitresLeft += litresToTransfer;
 
-            if (litresInHand - amountToTransfer <= 0) handSlot.TakeOut(1);
+            if (handStack.Attributes.GetDouble("juiceableLitresLeft") <= 0.001)
+            {
+                TryConvertMash(handSlot);
+            }
+
             handSlot.MarkDirty();
             MarkDirty(true);
         }
@@ -322,10 +325,10 @@ public class BlockEntityFruitPress : BlockEntityContainer
 
     public void TakeMashOut(IServerPlayer fromPlayer)
     {
-        if (MashSlot.Empty) return;
-
         // Remove liquid properties from the mash if it's empty.
-        TryConvertMash();
+        TryConvertMash(MashSlot);
+
+        if (MashSlot.Empty) return;
 
         if (!fromPlayer.InventoryManager.TryGiveItemstack(MashSlot.Itemstack, true))
         {
@@ -594,29 +597,36 @@ public class BlockEntityFruitPress : BlockEntityContainer
         }
     }
 
-    private void TryConvertMash()
+    /// <summary>
+    /// Converts a stack to dry mash.
+    /// </summary>
+    private void TryConvertMash(ItemSlot slot)
     {
-        if (MashSlot.Itemstack == null) return;
+        ItemStack? stack = slot.Itemstack;
 
-        JuiceableProperties? props = GetJuiceableProps(MashSlot.Itemstack);
+        if (stack == null) return;
 
-        if (JuiceableLitresLeft == 0 && props != null)
+        JuiceableProperties? props = GetJuiceableProps(stack);
+
+        if (stack.Attributes.GetDouble("juiceableLitresLeft") <= 0.001 && props != null)
         {
-            ItemStack mashStack = MashSlot.Itemstack;
-            double volume = JuiceableLitresLeft + JuiceableLitresTransferred;
-            int stackSize = (int)(volume * props.PressedDryRatio);
+            double volume = stack.Attributes.GetDouble("juiceableLitresLeft") + stack.Attributes.GetDouble("juiceableLitresTransfered");
 
-            mashStack.StackSize = stackSize;
+            stack.StackSize = (int)(volume * props.PressedDryRatio);
 
-            mashStack.Attributes?.RemoveAttribute("juiceableLitresTransfered");
-            mashStack.Attributes?.RemoveAttribute("juiceableLitresLeft");
-            mashStack.Attributes?.RemoveAttribute("squeezeRel");
+            stack.Attributes?.RemoveAttribute("juiceableLitresTransfered");
+            stack.Attributes?.RemoveAttribute("juiceableLitresLeft");
+            stack.Attributes?.RemoveAttribute("squeezeRel");
         }
+
+        if (stack.StackSize == 0) slot.TakeOutWhole();
+
+        slot.MarkDirty();
     }
 
     public override void OnBlockBroken(IPlayer? byPlayer = null)
     {
-        if (!MashSlot.Empty) TryConvertMash();
+        if (!MashSlot.Empty) TryConvertMash(MashSlot);
         base.OnBlockBroken();
     }
 
