@@ -44,7 +44,7 @@ namespace Vintagestory.GameContent
 
             foreach (var block in api.World.Blocks)
             {
-                if (block.Code == null || block.IsMissing) continue;
+                if (block.IsMissing) continue;
 
                 if (block.Attributes?["plantContainable"].Exists == true)
                 {

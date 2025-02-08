@@ -147,7 +147,7 @@ namespace Vintagestory.GameContent
         {
             // Instead of preventing rift spawn, we set the size to 0, which makes it invisible and inactive, 
             // so as to still consume a "rift slot"
-            if (HasFuel && sapi.World.Rand.NextDouble() <= 0.95 && rift.Position.DistanceTo(Pos.X + 0.5, Pos.Y + 1, Pos.Z + 0.5) < 30)
+            if (On && sapi.World.Rand.NextDouble() <= 0.95 && rift.Position.DistanceTo(Pos.X + 0.5, Pos.Y + 1, Pos.Z + 0.5) < 30)
             {
                 rift.Size = 0;
                 riftsBlocked++;

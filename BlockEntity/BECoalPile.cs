@@ -118,6 +118,7 @@ namespace Vintagestory.GameContent
 
             burning = false;
             UnregisterGameTickListener(listenerId);
+            listenerId = 0;
             MarkDirty(true);
             Api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), Pos, 0, null, false, 16);
         }
@@ -231,6 +232,7 @@ namespace Vintagestory.GameContent
                         inventory[0].Itemstack = new ItemStack(Api.World.GetItem(new AssetLocation("coke")), (int)(inventory[0].StackSize * cokeConversionRate));
                         burning = false;
                         UnregisterGameTickListener(listenerId);
+                        listenerId = 0;
                         MarkDirty(true);
                     } else
                     {
@@ -365,6 +367,7 @@ namespace Vintagestory.GameContent
                 if (listenerId != 0)
                 {
                     UnregisterGameTickListener(listenerId);
+                    listenerId = 0;
                 }
                 ambientSound?.Stop();
                 listenerId = 0;

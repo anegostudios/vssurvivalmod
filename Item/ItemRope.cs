@@ -120,7 +120,7 @@ namespace Vintagestory.GameContent
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
             handling = EnumHandHandling.PreventDefault;
-            
+
             int clothId = slot.Itemstack.Attributes.GetInt("clothId");
             ClothSystem sys = null;
             if (clothId != 0)
@@ -146,7 +146,7 @@ namespace Vintagestory.GameContent
                         if (sys != null) splitStack(slot, byEntity);
                         return;
                     }
-                    
+
                 }
 
                 if (sys != null) splitStack(slot, byEntity);
@@ -268,6 +268,14 @@ namespace Vintagestory.GameContent
         {
             relayRopeInteractions = false;
             Entity toEntity = toEntitySel.Entity;
+
+            var ebho = toEntity.GetBehavior<EntityBehaviorOwnable>();
+            if (ebho != null && !ebho.IsOwner(byEntity))
+            {
+                (toEntity.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "requiersownership", Lang.Get("mount-interact-requiresownership"));
+                return null;
+            }
+
             var icc = toEntity.GetInterface<IRopeTiedCreatureCarrier>();
             if (sys != null && icc != null)
             {
@@ -295,16 +303,20 @@ namespace Vintagestory.GameContent
                 return null;
             }
 
+            var bh = toEntity.GetBehavior<EntityBehaviorRopeTieable>();
+            if (!bh.CanAttach()) return null;
+
+
             if (sys == null)
             {
                 sys = createRope(slot, byEntity, toEntity.SidedPos.XYZ);
-                toEntity.GetBehavior<EntityBehaviorRopeTieable>().Attach(sys, sys.LastPoint);
+                bh.Attach(sys, sys.LastPoint);
             }
             else
             {
                 var pEnds = sys.Ends;
                 ClothPoint cpoint = pEnds[0].PinnedToEntity?.EntityId == byEntity.EntityId && pEnds[1].Pinned ? pEnds[0] : pEnds[1];
-                toEntity.GetBehavior<EntityBehaviorRopeTieable>().Attach(sys, cpoint);
+                bh.Attach(sys, cpoint);
             }
             return sys;
         }
@@ -331,14 +343,14 @@ namespace Vintagestory.GameContent
                 var endEntity = pEnds[1].PinnedToEntity;
                 var fromEntity = startEntity ?? endEntity;
 
-                if (startEntity?.EntityId != byEntity.EntityId) 
+                if (startEntity?.EntityId != byEntity.EntityId)
                     cpoint = pEnds[1];
 
                 if (fromEntity == byEntity)
                     fromEntity = endEntity ?? startEntity;
 
                 if (fromEntity is EntityAgent agent && (
-                        (startEntity != null && startEntity != byEntity) || 
+                        (startEntity != null && startEntity != byEntity) ||
                         (endEntity != null && endEntity != byEntity))
                     )
                 {
@@ -352,7 +364,7 @@ namespace Vintagestory.GameContent
                 {
                     cpoint.PinTo(toPosition, new Vec3f(0.5f, 0.5f, 0.5f));
                 }
-            }            
+            }
 
             return sys;
         }

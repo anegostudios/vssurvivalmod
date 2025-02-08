@@ -155,7 +155,8 @@ namespace Vintagestory.GameContent
         public bool IsSuitableFor(Entity entity, CreatureDiet diet)
         {
             if (TrapState != EnumTrapState.Ready) return false;
-            bool catchable = entity.Properties.Attributes?.IsTrue("basketCatchable") == true;
+            if (inv[0]?.Itemstack == null || diet == null) return false;
+            bool catchable = entity?.Properties?.Attributes?.IsTrue("basketCatchable") == true;
             bool dietMatches = diet.Matches(inv[0].Itemstack);
             return catchable && dietMatches;
         }

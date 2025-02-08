@@ -134,8 +134,8 @@ namespace Vintagestory.GameContent
                 prevOwnedEntity?.WatchedAttributes.RemoveAttribute("ownedby");
             }
 
-            playerShipsByPlayerUid[group] = new EntityOwnership() { 
-                EntityId = toEntity.EntityId, 
+            playerShipsByPlayerUid[group] = new EntityOwnership() {
+                EntityId = toEntity.EntityId,
                 Pos = toEntity.ServerPos,
                 Name = toEntity.GetName(),
                 Color = "#0e9d51"

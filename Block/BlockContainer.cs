@@ -191,16 +191,19 @@ namespace Vintagestory.GameContent
 
             ItemStack[] stacks = GetContents(world, inslot.Itemstack);
 
-            for (int i = 0; stacks != null && i < stacks.Length; i++)
+            if (stacks != null)
             {
-                var stack = stacks[i];
-                if (stack == null) continue;
-
-                ItemSlot dummySlot = GetContentInDummySlot(inslot, stack);
-                stack.Collectible.UpdateAndGetTransitionStates(world, dummySlot);
-                if (dummySlot.Itemstack == null)
+                for (int i = 0; i < stacks.Length; i++)
                 {
-                    stacks[i] = null;
+                    var stack = stacks[i];
+                    if (stack == null) continue;
+
+                    ItemSlot dummySlot = GetContentInDummySlot(inslot, stack);
+                    stack.Collectible.UpdateAndGetTransitionStates(world, dummySlot);
+                    if (dummySlot.Itemstack == null)
+                    {
+                        stacks[i] = null;
+                    }
                 }
             }
 
@@ -249,9 +252,12 @@ namespace Vintagestory.GameContent
         {
             ItemStack[] stacks = GetContents(world, itemstack);
 
-            for (int i = 0; stacks != null && i < stacks.Length; i++)
+            if (stacks != null)
             {
-                stacks[i]?.Collectible.SetTemperature(world, stacks[i], temperature, delayCooldown);
+                for (int i = 0; i < stacks.Length; i++)
+                {
+                    stacks[i]?.Collectible.SetTemperature(world, stacks[i], temperature, delayCooldown);
+                }
             }
 
             base.SetTemperature(world, itemstack, temperature, delayCooldown);

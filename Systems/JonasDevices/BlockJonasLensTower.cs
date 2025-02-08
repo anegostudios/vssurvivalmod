@@ -33,6 +33,10 @@ namespace Vintagestory.GameContent
             });
         }
 
+        public override float OnBlockBreaking(IPlayer player, BlockSelection blockSel, ItemSlot itemslot, float remainingResistance, float dt, int counter)
+        {
+            return 999f; // Not survival breakable
+        }
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {

@@ -124,8 +124,26 @@ namespace Vintagestory.GameContent
         }
 
 
+        bool wasOutsideLoaded;
         protected void ReadjustFlyHeight()
         {
+            var pos = entity.ServerPos;
+            bool outsideLoaded = entity.World.BlockAccessor.IsNotTraversable(pos.X, pos.Y, pos.Z, pos.Dimension);
+            if (outsideLoaded)
+            {
+                desiredYPos = Math.Max(entity.World.SeaLevel + height, desiredYPos);
+                return;
+            }
+            else if (wasOutsideLoaded)
+            {
+                // If now stuck, teleport back to surface
+                entity.ServerPos.Y = entity.World.BlockAccessor.GetTerrainMapheightAt(entity.ServerPos.AsBlockPos) + height;
+                wasOutsideLoaded = false;
+                return;
+            }
+
+            wasOutsideLoaded = outsideLoaded;
+
             int terrainYPos = entity.World.BlockAccessor.GetTerrainMapheightAt(entity.SidedPos.AsBlockPos);
             int tries = 10;
             while (tries-- > 0)
@@ -143,6 +161,5 @@ namespace Vintagestory.GameContent
 
             desiredYPos = terrainYPos + height;
         }
-
     }
 }

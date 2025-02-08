@@ -1,6 +1,4 @@
-﻿using Cairo;
-using System;
-using System.Collections;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
@@ -143,7 +141,7 @@ namespace Vintagestory.GameContent
                     }
                     continue;
                 }
-                
+
                 var attrseatconfig = itemslot.Itemstack?.ItemAttributes?["attachableToEntity"]?["seatConfig"]?.AsObject<SeatConfig>();
                 if (attrseatconfig != null)
                 {
@@ -151,7 +149,7 @@ namespace Vintagestory.GameContent
                     attrseatconfig.APName = slotcfg.AttachmentPointCode;
 
                     slotcfg.SeatConfig = attrseatconfig;
-                    
+
                     ivsm.RegisterSeat(slotcfg.SeatConfig);
                     slotcfg.ProvidesSeatId = slotcfg.SeatConfig.SeatId;
                 } else
@@ -213,7 +211,7 @@ namespace Vintagestory.GameContent
                     return;
                 }
             }
-            
+
             var iai = slot.Itemstack?.Collectible.GetCollectibleInterface<IAttachedInteractions>();
             if (iai != null)
             {
@@ -284,6 +282,13 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
+            var ebho = entity.GetBehavior<EntityBehaviorOwnable>();
+            if (ebho != null && !ebho.IsOwner(byEntity))
+            {
+                (entity.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "requiersownership", Lang.Get("mount-interact-requiresownership"));
+                return false;
+            }
+
             bool wasEmptyAlready = slot.StackSize == 0;
             if (wasEmptyAlready || byEntity.TryGiveItemStack(slot.Itemstack))
             {
@@ -317,6 +322,13 @@ namespace Vintagestory.GameContent
             if (!slotConfig.CanHold(code)) return false;
             if (!targetSlot.Empty) return false;
 
+            var ebho = entity.GetBehavior<EntityBehaviorOwnable>();
+            if (ebho != null && !ebho.IsOwner(byEntity))
+            {
+                (entity.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "requiersownership", Lang.Get("mount-interact-requiresownership"));
+                return false;
+            }
+
             // Cannot attach something where a player already sits on
             var bhs = entity.GetBehavior<EntityBehaviorSeatable>();
             if (bhs?.Seats.FirstOrDefault(s => s.Config.APName == slotConfig.AttachmentPointCode)?.Passenger != null) return false;
@@ -340,7 +352,7 @@ namespace Vintagestory.GameContent
                 return moved;
             }
 
-            return true;           
+            return true;
         }
 
 
@@ -502,7 +514,7 @@ namespace Vintagestory.GameContent
 
             if (stacks.Count == 0) return null;
 
-            
+
 
 
             return new WorldInteraction[]

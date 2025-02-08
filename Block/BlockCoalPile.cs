@@ -137,6 +137,15 @@ namespace Vintagestory.GameContent
         }
 
 
+        public override bool CanAcceptFallOnto(IWorldAccessor world, BlockPos pos, Block fallingBlock, TreeAttribute blockEntityAttributes)
+        {
+            if (fallingBlock is BlockCoalPile)
+            {
+                return world.BlockAccessor.GetBlockEntity(pos) is BlockEntityCoalPile;
+            }
+            return false;
+        }
+
         public override bool OnFallOnto(IWorldAccessor world, BlockPos pos, Block block, TreeAttribute blockEntityAttributes)
         {
             if (block is BlockCoalPile)

@@ -195,7 +195,7 @@ namespace Vintagestory.GameContent
             mountedByEntityId = 0;
             mountedByPlayerUid = null;
 
-            Api.Event.UnregisterGameTickListener(restingListener);
+            UnregisterGameTickListener(restingListener);
             restingListener = 0;
         }
 

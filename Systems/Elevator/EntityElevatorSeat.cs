@@ -44,7 +44,7 @@ public class EntityElevatorSeat : EntityRideableSeat
         {
             return false;
         }
-        return entityAgent is EntityPlayer;
+        return base.CanMount(entityAgent);
     }
 
     public override void DidMount(EntityAgent entityAgent)

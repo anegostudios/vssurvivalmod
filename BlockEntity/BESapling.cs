@@ -121,7 +121,8 @@ namespace Vintagestory.GameContent
 
             if (treeGenCode == null)
             {
-                Api.Event.UnregisterGameTickListener(growListenerId);
+                UnregisterGameTickListener(growListenerId);
+                growListenerId = 0;
                 return;
             }
 
@@ -131,7 +132,8 @@ namespace Vintagestory.GameContent
             ITreeGenerator gen;
             if (!sapi.World.TreeGenerators.TryGetValue(code, out gen))
             {
-                Api.Event.UnregisterGameTickListener(growListenerId);
+                UnregisterGameTickListener(growListenerId);
+                growListenerId = 0;
                 return;
             }
 

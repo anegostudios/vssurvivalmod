@@ -313,6 +313,8 @@ namespace Vintagestory.GameContent
             IsBurning = false;
             Blockentity.UnregisterGameTickListener(l1);
             Blockentity.UnregisterGameTickListener(l2);
+            l1 = 0;
+            l2 = 0;
             OnFireDeath(consumeFuel);
             unloaded = true;
         }

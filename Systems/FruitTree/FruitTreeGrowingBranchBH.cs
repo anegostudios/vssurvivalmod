@@ -98,6 +98,7 @@ namespace Vintagestory.GameContent
             if (ownBe.FoliageState == EnumFoliageState.Dead)
             {
                 ownBe.UnregisterGameTickListener(listenerId);
+                listenerId = 0;
                 return;
             }
 

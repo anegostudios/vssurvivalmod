@@ -6,6 +6,17 @@ namespace Vintagestory.GameContent
 {
     public class BlockCharcoalPile : BlockLayeredSlowDig
     {
+        public override bool CanAcceptFallOnto(IWorldAccessor world, BlockPos pos, Block fallingBlock, TreeAttribute blockEntityAttributes)
+        {
+            if (fallingBlock is BlockCharcoalPile)
+            {
+                BlockCharcoalPile ourBlock = world.BlockAccessor.GetMostSolidBlock(pos) as BlockCharcoalPile;
+                return ourBlock != null && ourBlock.CountLayers() < 8;
+            }
+
+            return false;
+        }
+
         public override bool OnFallOnto(IWorldAccessor world, BlockPos pos, Block block, TreeAttribute blockEntityAttributes)
         {
             BlockCharcoalPile nBlock = world.BlockAccessor.GetMostSolidBlock(pos) as BlockCharcoalPile;

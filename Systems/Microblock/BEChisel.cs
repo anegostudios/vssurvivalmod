@@ -232,7 +232,7 @@ namespace Vintagestory.GameContent
                     voxelPos = new Vec3i(reader.ReadInt32(), reader.ReadInt32(), reader.ReadInt32());
                     isBreak = reader.ReadBoolean();
                     facing = BlockFacing.ALLFACES[reader.ReadInt16()];
-                    nowmaterialIndex = reader.ReadByte();
+                    nowmaterialIndex = (byte)Math.Clamp(reader.ReadByte(), 0, BlockIds.Length - 1);
                 }
 
                 UpdateVoxel(player, player.InventoryManager.ActiveHotbarSlot, voxelPos, facing, isBreak);

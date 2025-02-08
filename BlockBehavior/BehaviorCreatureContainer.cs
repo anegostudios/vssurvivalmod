@@ -78,6 +78,7 @@ namespace Vintagestory.GameContent
                             var wiggleZ = (float)api.World.Rand.NextDouble() * 4 - 2;
                             if (target != EnumItemRenderTarget.Gui) { wiggleX /= 25; wiggleZ /= 25; }
                             if (target == EnumItemRenderTarget.Ground) { wiggleX /= 4; wiggleZ /= 4; }
+                            renderinfo.Transform.EnsureDefaultValues();
                             renderinfo.Transform.Translation.X += wiggleX;
                             renderinfo.Transform.Translation.Z += wiggleZ;
                         }
@@ -203,10 +204,25 @@ namespace Vintagestory.GameContent
                     return;
                 }
 
+                ItemStack leftOverBaskets = null;
+                if (slot.StackSize > 1)
+                {
+                    leftOverBaskets = slot.TakeOut(slot.StackSize - 1);
+                }
+
                 CatchCreature(slot, entitySel.Entity);
                 slot.TryFlipWith(emptyBackpackSlot);
+
+                if (slot.Empty) slot.Itemstack = leftOverBaskets;
+                else if (!byEntity.TryGiveItemStack(leftOverBaskets))
+                {
+                    byEntity.World.SpawnItemEntity(leftOverBaskets, byEntity.ServerPos.XYZ);
+                }
+
                 slot.MarkDirty();
                 emptyBackpackSlot.MarkDirty();
+
+                
 
                 return;
             }

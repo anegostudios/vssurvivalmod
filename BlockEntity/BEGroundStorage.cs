@@ -1064,6 +1064,7 @@ namespace Vintagestory.GameContent
                 if (listenerId != 0)
                 {
                     UnregisterGameTickListener(listenerId);
+                    listenerId = 0;
                 }
                 ambientSound?.Stop();
                 listenerId = 0;
@@ -1515,11 +1516,6 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockUnloaded();
             renderer?.Dispose();
-            if (listenerId != 0)
-            {
-                Api.Event.UnregisterGameTickListener(listenerId);
-                listenerId = 0;
-            }
             ambientSound?.Stop();
         }
 
@@ -1527,11 +1523,6 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockRemoved();
             renderer?.Dispose();
-            if (listenerId != 0)
-            {
-                Api.Event.UnregisterGameTickListener(listenerId);
-                listenerId = 0;
-            }
             ambientSound?.Stop();
         }
 

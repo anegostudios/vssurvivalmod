@@ -38,7 +38,7 @@ namespace Vintagestory.GameContent
                 return entityAgent.HasBehavior<EntityBehaviorRopeTieable>();
             }
 
-            return entityAgent is EntityPlayer;
+            return base.CanMount(entityAgent);
         }
 
         public override void DidMount(EntityAgent entityAgent)

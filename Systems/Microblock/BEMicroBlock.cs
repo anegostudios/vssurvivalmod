@@ -276,7 +276,7 @@ namespace Vintagestory.GameContent
             base.GetBlockInfo(forPlayer, dsc);
 
             
-            if (BlockName.IndexOf('\n') > 0) {
+            if (BlockName?.IndexOf('\n') > 0) {
                 dsc.AppendLine(Lang.Get(BlockName.Substring(BlockName.IndexOf('\n') + 1))); 
             }
             else

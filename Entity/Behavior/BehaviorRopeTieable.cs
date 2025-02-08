@@ -1,5 +1,7 @@
-﻿using Vintagestory.API.Common;
+﻿using Vintagestory.API.Client;
+using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
@@ -7,6 +9,8 @@ namespace Vintagestory.GameContent
 {
     public class EntityBehaviorRopeTieable : EntityBehavior
     {
+        int minGeneration = 0;
+
         public IntArrayAttribute ClothIds
         {
             get
@@ -24,6 +28,8 @@ namespace Vintagestory.GameContent
         public override void Initialize(EntityProperties properties, JsonObject attributes)
         {
             base.Initialize(properties, attributes);
+
+            minGeneration = attributes?["minGeneration"].AsInt(0) ?? 0;
         }
 
         public override void AfterInitialized(bool onFirstSpawn)
@@ -134,8 +140,21 @@ namespace Vintagestory.GameContent
             });
         }
 
+        public bool CanAttach()
+        {
+            if (entity.WatchedAttributes.GetInt("generation") < minGeneration)
+            {
+                var capi = entity.World.Api as ICoreClientAPI;
+                capi?.TriggerIngameError(this, "toowild", Lang.Get("Animal is too wild to attach a rope to"));
+                return false;
+            }
+
+            return true;
+        }
+
         public void Attach(ClothSystem sys, ClothPoint point)
         {
+
             if (!entity.WatchedAttributes.HasAttribute("clothIds"))
             {
                 entity.WatchedAttributes["clothIds"] = new IntArrayAttribute(new int[] { sys.ClothId });

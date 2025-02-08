@@ -278,7 +278,7 @@ namespace Vintagestory.GameContent
 
         private void Die()
         {
-            Api.Event.UnregisterGameTickListener(growListenerId);
+            UnregisterGameTickListener(growListenerId);
             growListenerId = 0;
             Api.World.BlockAccessor.SetBlock(0, Pos);
         }

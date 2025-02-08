@@ -297,16 +297,20 @@ namespace Vintagestory.ServerMods
                 schematic.EntitiesUnpacked.Add(entity);
             }
             schematic.Entities.Clear();
-            foreach (var entity in schematic.EntitiesUnpacked)
+            if (schematic.EntitiesUnpacked.Count > 0)
             {
-                using var ms = new MemoryStream();
-                var writer = new BinaryWriter(ms);
+                using FastMemoryStream ms = new FastMemoryStream();
+                foreach (var entity in schematic.EntitiesUnpacked)
+                {
+                    ms.Reset();
+                    var writer = new BinaryWriter(ms);
 
-                writer.Write(api.ClassRegistry.GetEntityClassName(entity.GetType()));
+                    writer.Write(api.ClassRegistry.GetEntityClassName(entity.GetType()));
 
-                entity.ToBytes(writer, false);
+                    entity.ToBytes(writer, false);
 
-                schematic.Entities.Add(Ascii85.Encode(ms.ToArray()));
+                    schematic.Entities.Add(Ascii85.Encode(ms.ToArray()));
+                }
             }
 
             // move the pathway positions back inside the schematic so when can use it later with blockfacing and opposite to match the positions

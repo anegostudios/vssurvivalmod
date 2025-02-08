@@ -825,7 +825,7 @@ namespace Vintagestory.GameContent
                 if (val.ItemAttributes?["juiceableProperties"].Exists == true)
                 {
                     var fjprops = getjuiceableProps(val);
-                    var juicedStack = fjprops.LiquidStack?.ResolvedItemstack;
+                    var juicedStack = fjprops?.LiquidStack?.ResolvedItemstack;
                     if (juicedStack != null && juicedStack.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes) && !juiceables.Any(s => s.Equals(capi.World, val, GlobalConstants.IgnoredStackAttributes)))
                     {
                         juiceables.Add(val);
@@ -835,7 +835,7 @@ namespace Vintagestory.GameContent
                 if (val.ItemAttributes?["distillationProps"].Exists == true)
                 {
                     var dsprops = getDistillationProps(val);
-                    var distilledStack = dsprops.DistilledStack?.ResolvedItemstack;
+                    var distilledStack = dsprops?.DistilledStack?.ResolvedItemstack;
                     if (distilledStack != null && distilledStack.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes) && !distillables.Any(s => s.Equals(capi.World, val, GlobalConstants.IgnoredStackAttributes)))
                     {
                         distillables.Add(val);
@@ -1537,7 +1537,7 @@ namespace Vintagestory.GameContent
 
         public JuiceableProperties getjuiceableProps(ItemStack stack)
         {
-            var props = stack?.ItemAttributes?["juiceableProperties"].Exists == true ? stack.ItemAttributes["juiceableProperties"].AsObject<JuiceableProperties>(null, stack.Collectible.Code.Domain) : null;
+            var props = stack?.ItemAttributes?["juiceableProperties"]?.AsObject<JuiceableProperties>(null, stack.Collectible.Code.Domain);
             props?.LiquidStack?.Resolve(Api.World, "juiceable properties liquidstack");
             props?.PressedStack?.Resolve(Api.World, "juiceable properties pressedstack");
 
@@ -1546,8 +1546,10 @@ namespace Vintagestory.GameContent
 
         public DistillationProps getDistillationProps(ItemStack stack)
         {
-            var distillationProps = stack?.ItemAttributes?["distillationProps"]?.AsObject<DistillationProps>(null, stack.Collectible.Code.Domain);
-            return distillationProps != null && !distillationProps.DistilledStack.Resolve(Api.World, "distillation props distilled stack") ? null : distillationProps;
+            var props = stack?.ItemAttributes?["distillationProps"]?.AsObject<DistillationProps>(null, stack.Collectible.Code.Domain);
+            props?.DistilledStack?.Resolve(Api.World, "distillation props distilled stack");
+
+            return props;
         }
 
     }

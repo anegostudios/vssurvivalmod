@@ -316,6 +316,7 @@ namespace Vintagestory.GameContent
 
             getRootBhSetupListener();
             UnregisterGameTickListener(listenerId);
+            listenerId = 0;
         }
 
         FruitTreeRootBH rootBh;

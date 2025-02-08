@@ -153,7 +153,7 @@ namespace Vintagestory.GameContent
         /// <summary>
         /// The speed this boat can reach at full power
         /// </summary>
-        public virtual float SpeedMultiplier => 1f;
+        public virtual float SpeedMultiplier { get; set; } = 1f;
 
         public double RenderOrder => 0;
         public int RenderRange => 999;
@@ -175,6 +175,8 @@ namespace Vintagestory.GameContent
         public override void Initialize(EntityProperties properties, ICoreAPI api, long InChunkIndex3d)
         {
             swimmingOffsetY = properties.Attributes["swimmingOffsetY"].AsDouble();
+            SpeedMultiplier = properties.Attributes["speedMultiplier"].AsFloat(1f);
+
             MountAnimations = properties.Attributes["mountAnimations"].AsObject<Dictionary<string, string>>();
 
 

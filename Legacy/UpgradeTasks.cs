@@ -139,7 +139,7 @@ namespace Vintagestory.ServerMods
             Dictionary<string, Block> blocksByName = new Dictionary<string, Block>();
             foreach (var block in api.World.Blocks)
             {
-                if (block.IsMissing || block.Code == null) continue;
+                if (block.IsMissing) continue;
                 blocksByName[block.GetHeldItemName(new ItemStack(block))] = block;
             }
 

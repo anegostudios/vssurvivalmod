@@ -111,7 +111,7 @@ namespace Vintagestory.GameContent
                     var jstack = data.AsObject<JsonItemStack>();
                     jstack.Resolve(entity.World, "conversable giveitem trigger");
                     ItemStack itemstack = jstack.ResolvedItemstack;
-                    if (triggeringEntity.TryGiveItemStack(itemstack))
+                    if (!triggeringEntity.TryGiveItemStack(itemstack))
                     {
                         entity.World.SpawnItemEntity(itemstack, triggeringEntity.Pos.XYZ);
                     }

@@ -2,6 +2,7 @@
 using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
@@ -36,7 +37,7 @@ namespace Vintagestory.GameContent
         public bool OnDidTrade(EntityTradingHumanoid trader, ItemStack stack, EnumTradeDirection tradeDir)
         {
             var loc = strucLocSys.FindFreshStructureLocation(props.SchematicCode, trader.SidedPos.AsBlockPos, 350);
-            stack.Attributes.SetInt("structureIndex", loc.StructureIndex);
+            stack.Attributes.SetVec3i("position", loc.Position);
             stack.Attributes.SetInt("regionX", loc.RegionX);
             stack.Attributes.SetInt("regionZ", loc.RegionZ);
 
@@ -79,27 +80,19 @@ namespace Vintagestory.GameContent
 
             var attr = slot.Itemstack.Attributes;
             Vec3d pos = null;
-            if (attr.HasAttribute("structureIndex"))
+            if (attr.HasAttribute("structureIndex") || attr.HasAttribute("positionX"))
             {
-                try
-                {
-                    pos = getStructureCenter(attr);
-                }
-                catch (Exception e)
-                {
-                    api.Logger.Error("ItemLocatorMap attr: " + attr.ToJsonToken().Replace("{","{{").Replace("}","}}"));
-                    api.Logger.Error(e);
-                }
+                pos = getStructureCenter(attr);
             }
 
             if (pos == null)
             {
                 foreach (var val in storyStructures.storyStructureInstances)
                 {
-                    if (val.Key == props.SchematicCode)
-                    {
-                        pos = val.Value.CenterPos.ToVec3d().Add(0.5, 0.5, 0.5);
-                    }
+                    if (val.Key != props.SchematicCode) continue;
+
+                    pos = val.Value.CenterPos.ToVec3d().Add(0.5, 0.5, 0.5);
+                    break;
                 }
             }
 
@@ -154,14 +147,16 @@ namespace Vintagestory.GameContent
             player.SendMessage(GlobalConstants.GeneralChatGroup, msg, EnumChatType.Notification);
         }
 
-        private Vec3d getStructureCenter(API.Datastructures.ITreeAttribute attr)
+        private Vec3d getStructureCenter(ITreeAttribute attr)
         {
             var struc = strucLocSys.GetStructure(new StructureLocation()
             {
-                StructureIndex = attr.GetInt("structureIndex"),
+                StructureIndex = attr.GetInt("structureIndex", -1),
+                Position = attr.GetVec3i("position"),
                 RegionX = attr.GetInt("regionX"),
                 RegionZ = attr.GetInt("regionZ")
             });
+            if(struc == null) return null;
 
             var c = struc.Location.Center;
             Vec3d pos = new Vec3d(c.X + 0.5, c.Y + 0.5, c.Z + 0.5);

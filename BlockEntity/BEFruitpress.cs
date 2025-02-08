@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -175,6 +176,7 @@ namespace Vintagestory.GameContent
                     animUtil.InitializeAnimator("fruitpress", shape, null, new Vec3f(0, ownBlock.Shape.rotateY, 0));
                 } else
                 {
+                    shape.InitForAnimations(api.Logger, "shapes/block/wood/fruitpress/part-movable.json", Array.Empty<string>());
                     animUtil.InitializeAnimatorServer("fruitpress", shape);
                 }
 
@@ -274,7 +276,7 @@ namespace Vintagestory.GameContent
 
             BlockLiquidContainerBase cntBlock = BucketSlot?.Itemstack?.Collectible as BlockLiquidContainerBase;
 
-            if (Api.Side == EnumAppSide.Server && squeezedLitresLeft > 0)
+            if (Api.Side == EnumAppSide.Server && juiceProps != null && squeezedLitresLeft > 0)
             {
                 ItemStack liquidStack = juiceProps.LiquidStack.ResolvedItemstack;
                 liquidStack.StackSize = 999999;
@@ -658,7 +660,11 @@ namespace Vintagestory.GameContent
                     animUtil.StopAnimation("compress");
                     (Api as ICoreServerAPI)?.Network.BroadcastBlockEntityPacket(Pos, PacketIdAnimUpdate, new FruitPressAnimPacket() { AnimationState = EnumFruitPressAnimState.Unscrew, AnimationSpeed = 1.5f });
                     animUtil.animator.GetAnimationState("compress").Stop(); // Without this the player is occasionally told to unscrew a second time
-                    if (MashSlot.Empty && listenerId != 0) UnregisterGameTickListener(listenerId); // Unregister the tick listener here since the container is empty
+                    if (MashSlot.Empty && listenerId != 0) // Unregister the tick listener here since the container is empty so we don't need it
+                    {
+                        UnregisterGameTickListener(listenerId);
+                        listenerId = 0;
+                    }
                     break;
             }
 

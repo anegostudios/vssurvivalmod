@@ -65,8 +65,20 @@ namespace Vintagestory.GameContent
             }
         }
 
-
-
         public override string PropertyName() => "ownable";
+
+        public bool IsOwner(EntityAgent byEntity)
+        {
+            var tree = entity.WatchedAttributes.GetTreeAttribute("ownedby");
+            if (tree == null) return true;
+            string uid = tree.GetString("uid");
+
+            // only owner can remove medallion if present
+            if (byEntity is EntityPlayer byPlayer && uid != null && byPlayer.PlayerUID == uid)
+            {
+                return true;
+            }
+            return false;
+        }
     }
 }

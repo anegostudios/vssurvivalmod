@@ -381,7 +381,7 @@ namespace Vintagestory.GameContent
 
         public virtual bool IsSoilNonSoilMix(BlockEntityMicroBlock be)
         {
-            if (be == null) return false;
+            if (be?.BlockIds == null) return false;
             bool hasSoil = false;
             bool hasNonSoil = false;
 

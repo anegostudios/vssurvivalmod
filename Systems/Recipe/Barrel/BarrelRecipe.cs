@@ -309,13 +309,13 @@ namespace Vintagestory.GameContent
 
                 if (ingred.Type == EnumItemClass.Block)
                 {
-                    for (int i = 0; i < world.Blocks.Count; i++)
+                    foreach (Block block in world.Blocks)
                     {
-                        if (world.Blocks[i].Code == null || world.Blocks[i].IsMissing) continue;
+                        if (block.IsMissing) continue;   // BlockList already performs the null check for us, in its enumerator
 
-                        if (WildcardUtil.Match(ingred.Code, world.Blocks[i].Code))
+                        if (WildcardUtil.Match(ingred.Code, block.Code))
                         {
-                            string code = world.Blocks[i].Code.Path.Substring(wildcardStartLen);
+                            string code = block.Code.Path.Substring(wildcardStartLen);
                             string codepart = code.Substring(0, code.Length - wildcardEndLen);
                             if (ingred.AllowedVariants != null && !ingred.AllowedVariants.Contains(codepart)) continue;
 
@@ -326,13 +326,13 @@ namespace Vintagestory.GameContent
                 }
                 else
                 {
-                    for (int i = 0; i < world.Items.Count; i++)
+                    foreach (Item item in world.Items)
                     {
-                        if (world.Items[i].Code == null || world.Items[i].IsMissing) continue;
+                        if (item.Code == null || item.IsMissing) continue;
 
-                        if (WildcardUtil.Match(ingred.Code, world.Items[i].Code))
+                        if (WildcardUtil.Match(ingred.Code, item.Code))
                         {
-                            string code = world.Items[i].Code.Path.Substring(wildcardStartLen);
+                            string code = item.Code.Path.Substring(wildcardStartLen);
                             string codepart = code.Substring(0, code.Length - wildcardEndLen);
                             if (ingred.AllowedVariants != null && !ingred.AllowedVariants.Contains(codepart)) continue;
 

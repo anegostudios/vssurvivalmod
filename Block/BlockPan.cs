@@ -60,7 +60,7 @@ namespace Vintagestory.GameContent
 
                 foreach (Block block in api.World.Blocks)
                 {
-                    if (block.Code == null || block.IsMissing) continue;
+                    if (block.IsMissing) continue;
                     if (block.CreativeInventoryTabs == null || block.CreativeInventoryTabs.Length == 0) continue;
 
                     if (IsPannableMaterial(block))

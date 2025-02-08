@@ -213,6 +213,12 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
         var minHeatHours = float.MaxValue;
         var beforeReceiveHeat = receivesHeat;
         var beforeStructureComplete = StructureComplete;
+
+        if (!receivesHeat)
+        {
+            TotalHoursLastUpdate = Api.World.Calendar.TotalHours;
+        }
+
         receivesHeat = true;
         for (int j = 0; j < 9; j++)
         {

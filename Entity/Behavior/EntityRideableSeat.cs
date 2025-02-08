@@ -2,6 +2,7 @@
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
@@ -92,6 +93,19 @@ namespace Vintagestory.GameContent
 
         public EntityRideableSeat(IMountable mountablesupplier, string seatId, SeatConfig config) : base(mountablesupplier, seatId, config)
         {
+        }
+
+        public override bool CanMount(EntityAgent entityAgent)
+        {
+            if (entityAgent is not EntityPlayer player) return false;
+
+            var ebho = Entity.GetBehavior<EntityBehaviorOwnable>();
+            if (ebho != null && !ebho.IsOwner(player))
+            {
+                (player.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "requiersownership", Lang.Get("mount-interact-requiresownership"));
+                return false;
+            }
+            return true;
         }
 
         public static IMountableSeat GetMountable(IWorldAccessor world, TreeAttribute tree)
