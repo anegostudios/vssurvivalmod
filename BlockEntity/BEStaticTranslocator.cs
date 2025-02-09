@@ -81,7 +81,23 @@ namespace Vintagestory.GameContent
                 float rotY = Block.Shape.rotateY;
                 animUtil.InitializeAnimator("translocator", null, null, new Vec3f(0, rotY, 0));
 
-                translocatingSound = (api as ICoreClientAPI).World.LoadSound(new SoundParams()
+                updateSoundState();
+            }
+        }
+
+
+
+        public void updateSoundState()
+        {
+            if (translocVolume > 0) startSound();
+            else stopSound();
+        }
+
+        public void startSound()
+        {
+            if (translocatingSound == null && Api.Side == EnumAppSide.Client)
+            {
+                translocatingSound = (Api as ICoreClientAPI).World.LoadSound(new SoundParams()
                 {
                     Location = new AssetLocation("sounds/effect/translocate-active.ogg"),
                     ShouldLoop = true,
@@ -90,8 +106,21 @@ namespace Vintagestory.GameContent
                     DisposeOnFinish = false,
                     Volume = 0.5f
                 });
+
+                translocatingSound.Start();
             }
         }
+
+        public void stopSound()
+        {
+            if (translocatingSound != null)
+            {
+                translocatingSound.Stop();
+                translocatingSound.Dispose();
+                translocatingSound = null;
+            }
+        }
+
 
         public void DoActivate()
         {
@@ -252,16 +281,12 @@ namespace Vintagestory.GameContent
                 translocPitch = Math.Max(translocPitch - dt, 0.5f);
             }
 
-
-            if (translocatingSound.IsPlaying)
+            updateSoundState();
+            
+            if (translocVolume > 0)
             {
                 translocatingSound.SetVolume(translocVolume);
                 translocatingSound.SetPitch(translocPitch);
-                if (translocVolume <= 0) translocatingSound.Stop();
-            }
-            else
-            {
-                if (translocVolume > 0) translocatingSound.Start();
             }
         }
 

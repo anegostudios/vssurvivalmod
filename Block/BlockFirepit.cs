@@ -369,7 +369,7 @@ namespace Vintagestory.GameContent
         public static bool IsFirewoodPile(IWorldAccessor world, BlockPos pos)
         {
             var beg = world.BlockAccessor.GetBlockEntity<BlockEntityGroundStorage>(pos);
-            return beg != null && beg.Inventory[0]?.Itemstack.Collectible is ItemFirewood;
+            return beg != null && beg.Inventory[0]?.Itemstack?.Collectible is ItemFirewood;
         }
 
         public static int GetFireWoodQuanity(IWorldAccessor world, BlockPos pos)

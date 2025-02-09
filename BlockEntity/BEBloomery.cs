@@ -99,19 +99,7 @@ namespace Vintagestory.GameContent
 
             RegisterGameTickListener(OnGameTick, 100);
 
-            if (ambientSound == null && api.Side == EnumAppSide.Client)
-            {
-                ambientSound = ((IClientWorldAccessor)api.World).LoadSound(new SoundParams()
-                {
-                    Location = new AssetLocation("sounds/environment/fire.ogg"),
-                    ShouldLoop = true,
-                    Position = Pos.ToVec3f().Add(0.5f, 0.25f, 0.5f),
-                    DisposeOnFinish = false,
-                    Volume = 0.3f,
-                    Range = 8
-                });
-                if (burning) ambientSound.Start();
-            }
+            updateSoundState();
 
             if (api.Side == EnumAppSide.Client)
             {
@@ -137,6 +125,40 @@ namespace Vintagestory.GameContent
             double glowLevel = Math.Max(0, Math.Min(easinLevel, easeoutLevel) * 250);
 
             renderer.glowLevel = burning ? (int)glowLevel : 0;
+        }
+
+        public void updateSoundState()
+        {
+            if (burning) startSound();
+            else stopSound();
+        }
+
+        public void startSound()
+        {
+            if (ambientSound == null && Api.Side == EnumAppSide.Client)
+            {
+                ambientSound = (Api as ICoreClientAPI).World.LoadSound(new SoundParams()
+                {
+                    Location = new AssetLocation("sounds/environment/fire.ogg"),
+                    ShouldLoop = true,
+                    Position = Pos.ToVec3f().Add(0.5f, 0.25f, 0.5f),
+                    DisposeOnFinish = false,
+                    Volume = 0.3f,
+                    Range = 8
+                });
+
+                ambientSound.Start();
+            }
+        }
+
+        public void stopSound()
+        {
+            if (ambientSound != null)
+            {
+                ambientSound.Stop();
+                ambientSound.Dispose();
+                ambientSound = null;
+            }
         }
 
         private void OnGameTick(float dt)
@@ -299,7 +321,7 @@ namespace Vintagestory.GameContent
             burningUntilTotalDays = Api.World.Calendar.TotalDays + 10 / 24.0;
             burningStartTotalDays = Api.World.Calendar.TotalDays;
             MarkDirty();
-            ambientSound?.Start();
+            updateSoundState();
             return true;
         }
 
@@ -331,11 +353,13 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockUnloaded();
             renderer?.Dispose();
+            ambientSound?.Dispose();
         }
     
         public override void OnBlockRemoved()
         {
             renderer?.Dispose();
+            ambientSound?.Dispose();
             base.OnBlockRemoved();
         }
 
@@ -348,8 +372,7 @@ namespace Vintagestory.GameContent
             burningUntilTotalDays = tree.GetDouble("burningUntilTotalDays");
             burningStartTotalDays = tree.GetDouble("burningStartTotalDays");
 
-            if (burning) ambientSound?.Start();
-            else ambientSound?.Stop();
+            updateSoundState();
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)

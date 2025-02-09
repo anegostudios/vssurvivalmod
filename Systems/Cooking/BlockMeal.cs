@@ -792,7 +792,7 @@ namespace Vintagestory.GameContent
 
             if (entityItem.Swimming && world.Rand.NextDouble() < 0.01)
             {
-                ItemStack[] stacks = GetContents(world, entityItem.Itemstack);
+                ItemStack[] stacks = GetNonEmptyContents(world, entityItem.Itemstack);
 
                 if (MealMeshCache.ContentsRotten(stacks))
                 {

@@ -154,18 +154,6 @@ namespace Vintagestory.GameContent
             RegisterGameTickListener(Every100ms, 100);
             RegisterGameTickListener(Every500ms, 500);
 
-            if (ambientSound == null && api.Side == EnumAppSide.Client)
-            {
-                ambientSound = ((IClientWorldAccessor)api.World).LoadSound(new SoundParams()
-                {
-                    Location = new AssetLocation("sounds/block/quern.ogg"),
-                    ShouldLoop = true,
-                    Position = Pos.ToVec3f().Add(0.5f, 0.25f, 0.5f),
-                    DisposeOnFinish = false,
-                    Volume = 0.75f
-                });
-            }
-
             if (api.Side == EnumAppSide.Client)
             {
                 renderer = new QuernTopRenderer(api as ICoreClientAPI, Pos, GenMesh("top"));
@@ -186,6 +174,41 @@ namespace Vintagestory.GameContent
                 {
                     quernTopMesh = GenMesh("top");
                 }
+            }
+        }
+
+
+
+        public void updateSoundState(bool nowGrinding)
+        {
+            if (nowGrinding) startSound();
+            else stopSound();
+        }
+
+        public void startSound()
+        {
+            if (ambientSound == null && Api.Side == EnumAppSide.Client)
+            {
+                ambientSound = (Api as ICoreClientAPI).World.LoadSound(new SoundParams()
+                {
+                    Location = new AssetLocation("sounds/block/quern.ogg"),
+                    ShouldLoop = true,
+                    Position = Pos.ToVec3f().Add(0.5f, 0.25f, 0.5f),
+                    DisposeOnFinish = false,
+                    Volume = 0.75f
+                });
+
+                ambientSound.Start();
+            }
+        }
+
+        public void stopSound()
+        {
+            if (ambientSound != null)
+            {
+                ambientSound.Stop();
+                ambientSound.Dispose();
+                ambientSound = null;
             }
         }
 
@@ -374,14 +397,7 @@ namespace Vintagestory.GameContent
 
                 Api.World.BlockAccessor.MarkBlockDirty(Pos, OnRetesselated);
 
-                if (nowGrinding)
-                {
-                    ambientSound?.Start();
-                }
-                else
-                {
-                    ambientSound?.Stop();
-                }
+                updateSoundState(nowGrinding);
 
                 if (Api.Side == EnumAppSide.Server)
                 {
@@ -699,6 +715,7 @@ namespace Vintagestory.GameContent
             {
                 ambientSound.Stop();
                 ambientSound.Dispose();
+                ambientSound = null;
             }
         }
 
