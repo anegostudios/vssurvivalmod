@@ -16,9 +16,7 @@ namespace Vintagestory.GameContent
 
         public BlockPos RootOffset = new BlockPos();
 
-        protected string[] unsuitableEntityCodesBeginsWith = new string[0];
-        protected string[] unsuitableEntityCodesExact;
-        protected string   unsuitableEntityFirstLetters = "";
+        protected AssetLocation[] unsuitableEntityCodes;
 
         public void init()
         {
@@ -84,8 +82,8 @@ namespace Vintagestory.GameContent
                 }
             };
 
-            string[] codes = Attributes?["unsuitableFor"].AsArray<string>(new string[0]);
-            if (codes.Length > 0) AiTaskBaseTargetable.InitializeTargetCodes(codes, ref unsuitableEntityCodesExact, ref unsuitableEntityCodesBeginsWith, ref unsuitableEntityFirstLetters); ;
+            // Defaulting to * instead of entity.Code.Domain for compatibility with mods for 1.20.0-rc and earlier
+            unsuitableEntityCodes = Attributes?["unsuitableFor"].AsArray<string>(new string[0]).Select(str => AssetLocation.Create(str, "*")).ToArray();
         }
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
@@ -94,18 +92,12 @@ namespace Vintagestory.GameContent
         }
 
         
-        public virtual bool UnsuitableForEntity(string testPath)  // Similar code to AiTaskBaseTargetable.IsTargetEntity(testPath)
+        public virtual bool UnsuitableForEntity(AssetLocation code)
         {
-            if (unsuitableEntityFirstLetters.IndexOf(testPath[0]) < 0) return false;   // early exit if we don't have the first letter
-
-            for (int i = 0; i < unsuitableEntityCodesExact.Length; i++)
-            {
-                if (testPath == unsuitableEntityCodesExact[i]) return true;
-            }
-
-            for (int i = 0; i < unsuitableEntityCodesBeginsWith.Length; i++)
-            {
-                if (testPath.StartsWithFast(unsuitableEntityCodesBeginsWith[i])) return true;
+            for (int i = 0; i < unsuitableEntityCodes.Length; ++i) {
+                if (WildcardUtil.Match(unsuitableEntityCodes[i], code)) {
+                    return true;
+                }
             }
 
             return false;
