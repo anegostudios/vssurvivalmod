@@ -187,7 +187,7 @@ namespace Vintagestory.GameContent
 
         public void startSound()
         {
-            if (ambientSound == null && Api.Side == EnumAppSide.Client)
+            if (ambientSound == null && Api?.Side == EnumAppSide.Client)
             {
                 ambientSound = (Api as ICoreClientAPI).World.LoadSound(new SoundParams()
                 {

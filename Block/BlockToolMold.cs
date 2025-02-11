@@ -224,7 +224,7 @@ namespace Vintagestory.GameContent
             {
                 if (!bet.Shattered)
                 {
-                    stacks.Add(new ItemStack(this));
+                    stacks.Add(new ItemStack(world.BlockAccessor.GetBlock(CodeWithVariant("side", "north"))));
                 }
                 var outstack = bet.GetStateAwareMoldedStacks();
                 if (outstack != null) {
@@ -232,7 +232,7 @@ namespace Vintagestory.GameContent
                 }
             } else
             {
-                stacks.Add(new ItemStack(this));
+                stacks.Add(new ItemStack(world.BlockAccessor.GetBlock(CodeWithVariant("side", "north"))));
             }
 
 

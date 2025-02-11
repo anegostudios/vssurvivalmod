@@ -121,31 +121,28 @@ namespace Vintagestory.GameContent
 
                 if (!handled && FillLevel == 0)
                 {
-                    ItemSlot activeSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
-                    if (activeSlot.Itemstack == null || activeSlot.Itemstack.Collectible is BlockToolMold)
+                    var activeStack = byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack;
+                    if (activeStack != null && activeStack.Collectible is not BlockToolMold and not BlockIngotMold) return handled;
+
+                    var itemStack = new ItemStack(Api.World.BlockAccessor.GetBlock(Block.CodeWithVariant("side", "north")));
+                    if (!byPlayer.InventoryManager.TryGiveItemstack(itemStack))
                     {
-                        var itemStack = new ItemStack(Block);
-                        if (!byPlayer.InventoryManager.TryGiveItemstack(itemStack))
-                        {
-                            Api.World.SpawnItemEntity(itemStack, Pos.ToVec3d().Add(0.5, 0.2, 0.5));
-                        }
-                        Api.World.Logger.Audit("{0} Took 1x{1} from Tool mold at {2}.",
-                            byPlayer.PlayerName,
-                            itemStack.Collectible.Code,
-                            Pos
-                        );
+                        Api.World.SpawnItemEntity(itemStack, Pos.ToVec3d().Add(0.5, 0.2, 0.5));
+                    }
+                    Api.World.Logger.Audit("{0} Took 1x{1} from Tool mold at {2}.",
+                        byPlayer.PlayerName,
+                        itemStack.Collectible.Code,
+                        Pos
+                    );
 
-                        Api.World.BlockAccessor.SetBlock(0, Pos);
+                    Api.World.BlockAccessor.SetBlock(0, Pos);
 
-                        if (Block.Sounds?.Place != null)
-                        {
-                            Api.World.PlaySoundAt(Block.Sounds.Place, Pos, -0.5, byPlayer, false);
-                        }
-
-                        handled = true;
+                    if (Block.Sounds?.Place != null)
+                    {
+                        Api.World.PlaySoundAt(Block.Sounds.Place, Pos, -0.5, byPlayer, false);
                     }
 
-
+                    handled = true;
                 }
 
                 return handled;

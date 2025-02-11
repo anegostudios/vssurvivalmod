@@ -95,7 +95,7 @@ namespace Vintagestory.GameContent
 
         public void startSound()
         {
-            if (translocatingSound == null && Api.Side == EnumAppSide.Client)
+            if (translocatingSound == null && Api?.Side == EnumAppSide.Client)
             {
                 translocatingSound = (Api as ICoreClientAPI).World.LoadSound(new SoundParams()
                 {

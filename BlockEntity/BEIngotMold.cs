@@ -303,8 +303,8 @@ namespace Vintagestory.GameContent
 
         protected bool TryTakeMold(IPlayer byPlayer, Vec3d hitPosition)
         {
-            ItemSlot activeSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
-            if (activeSlot.Itemstack != null && !(activeSlot.Itemstack.Collectible is BlockToolMold)) return false;
+            var activeStack = byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack;
+            if (activeStack != null && activeStack.Collectible is not BlockToolMold and not BlockIngotMold) return false;
             if (FillLevelLeft != 0 || FillLevelRight != 0) return false;
 
             var itemStack = new ItemStack(Block);

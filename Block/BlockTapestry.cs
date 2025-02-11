@@ -103,6 +103,7 @@ namespace Vintagestory.GameContent
         ICoreClientAPI capi;
         BlockFacing orientation;
         bool noLoreEvent;
+        string loreCode;
 
         public static string[][] tapestryGroups;
 
@@ -156,6 +157,7 @@ namespace Vintagestory.GameContent
             capi = api as ICoreClientAPI;
             orientation = BlockFacing.FromCode(Variant["side"]);
 
+            loreCode = Attributes["loreCode"].AsString("tapestry");
             noLoreEvent = Attributes.IsTrue("noLoreEvent") == true;
             if(tapestryGroups == null)
                 tapestryGroups = Attributes["tapestryGroups"].AsObject<string[][]>();
@@ -257,7 +259,7 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                return "tapestry";
+                return loreCode;
             }
         }
 
