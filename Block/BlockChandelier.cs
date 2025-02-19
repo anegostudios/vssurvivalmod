@@ -10,7 +10,7 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                switch (LastCodePart())
+                switch (Variant["type"])
                 {
                     case "candle0":
                         return 0;
