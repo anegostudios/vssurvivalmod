@@ -22,6 +22,7 @@ namespace Vintagestory.GameContent
         float fallSidewaysChance = 0.3f;
 
         AssetLocation fallSound;
+        AssetLocation variantAfterFalling;
         float impactDamageMul;
         Cuboidi[] attachmentAreas;
 
@@ -73,6 +74,11 @@ namespace Vintagestory.GameContent
             if (sound != null)
             {
                 fallSound = AssetLocation.Create(sound, block.Code.Domain);
+            }
+            string variant = properties["variantAfterFalling"].AsString(null);
+            if (variant != null)
+            {
+                variantAfterFalling = AssetLocation.Create(variant, block.Code.Domain);
             }
 
             impactDamageMul = properties["impactDamageMul"].AsFloat(1f);
@@ -127,6 +133,12 @@ namespace Vintagestory.GameContent
 
                 if (entity == null)
                 {
+                    // Change after falling, like a broken variant or a "lower shape"
+                    if (variantAfterFalling != null)
+                    {
+                        Block fallenBlock = world.BlockAccessor.GetBlock(variantAfterFalling);
+                        block = fallenBlock;
+                    }
                     EntityBlockFalling entityblock = new EntityBlockFalling(block, world.BlockAccessor.GetBlockEntity(pos), pos, fallSound, impactDamageMul, true, dustIntensity);
                     world.SpawnEntity(entityblock);
                 } else
