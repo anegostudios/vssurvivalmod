@@ -401,7 +401,7 @@ namespace Vintagestory.GameContent
                     if (hprops.LitresPerItem == null)
                     {
                         mashStack.StackSize = 1;
-                        dryStackSize = (int)(GameMath.RoundRandom(Api.World.Rand, (float)juiceableLitresLeft + (float)juiceableLitresTransfered) * getJuiceableProps(mashStack).PressedDryRatio);
+                        dryStackSize = GameMath.RoundRandom(Api.World.Rand, ((float)juiceableLitresLeft + (float)juiceableLitresTransfered) * getJuiceableProps(mashStack).PressedDryRatio);
                         handslot.TakeOut(1);
                         MarkDirty(true);
                         renderer?.reloadMeshes(hprops, true);
@@ -491,7 +491,7 @@ namespace Vintagestory.GameContent
 
                     // Calculate how large the stack of dry mash will be here so we can tell the player that amount is in
                     // the machine later and not have a random mismatch due to the use of RoundRandom in the calculation
-                    dryStackSize = (int)(GameMath.RoundRandom(Api.World.Rand, (float)juiceableLitresLeft + (float)juiceableLitresTransfered) * getJuiceableProps(mashStack).PressedDryRatio);
+                    dryStackSize = GameMath.RoundRandom(Api.World.Rand, ((float)juiceableLitresLeft + (float)juiceableLitresTransfered) * getJuiceableProps(mashStack).PressedDryRatio);
 
                     handslot.MarkDirty();
                     MarkDirty(true);
