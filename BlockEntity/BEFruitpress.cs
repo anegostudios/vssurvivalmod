@@ -438,18 +438,21 @@ namespace Vintagestory.GameContent
                     TransitionState[] sourceTransitionStates = handStack.Collectible.UpdateAndGetTransitionStates(Api.World, handslot);
                     TransitionState[] targetTransitionStates = mashStack.Collectible.UpdateAndGetTransitionStates(Api.World, MashSlot);
 
-                    Dictionary<EnumTransitionType, TransitionState> targetStatesByType = null;
+                    if (sourceTransitionStates != null && targetTransitionStates != null) {
 
-                    targetStatesByType = new Dictionary<EnumTransitionType, TransitionState>();
-                    foreach (var state in targetTransitionStates) targetStatesByType[state.Props.Type] = state;
+                        Dictionary<EnumTransitionType, TransitionState> targetStatesByType = null;
 
-                    // We're mixing based on total litres because we don't really have a stack size to compare
-                    float t = (transferableLitres + usedLitres) / (transferableLitres + usedLitres + (float)juiceableLitresLeft + (float)juiceableLitresTransfered);
+                        targetStatesByType = new Dictionary<EnumTransitionType, TransitionState>();
+                        foreach (var state in targetTransitionStates) targetStatesByType[state.Props.Type] = state;
 
-                    foreach (var sourceState in sourceTransitionStates)
-                    {
-                        TransitionState targetState = targetStatesByType[sourceState.Props.Type];
-                        mashStack.Collectible.SetTransitionState(mashStack, sourceState.Props.Type, sourceState.TransitionedHours * t + targetState.TransitionedHours * (1 - t));
+                        // We're mixing based on total litres because we don't really have a stack size to compare
+                        float t = (transferableLitres + usedLitres) / (transferableLitres + usedLitres + (float)juiceableLitresLeft + (float)juiceableLitresTransfered);
+
+                        foreach (var sourceState in sourceTransitionStates)
+                        {
+                            TransitionState targetState = targetStatesByType[sourceState.Props.Type];
+                            mashStack.Collectible.SetTransitionState(mashStack, sourceState.Props.Type, sourceState.TransitionedHours * t + targetState.TransitionedHours * (1 - t));
+                        }
                     }
 
                     removeItems = 1;
