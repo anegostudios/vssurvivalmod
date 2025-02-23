@@ -379,6 +379,13 @@ namespace Vintagestory.GameContent
             var beg = world.BlockAccessor.GetBlockEntity(selection.Position) as BlockEntityGroundStorage;
             if (beg?.StorageProps != null)
             {
+                WorldInteraction[] liquidInteractions = Array.Empty<WorldInteraction>();
+                ItemSlot slotLiquidContainer = beg.Inventory.FirstOrDefault(slot => !slot.Empty && slot.Itemstack.Collectible is BlockLiquidContainerBase);
+                if (slotLiquidContainer != null)
+                {
+                    liquidInteractions = (slotLiquidContainer.Itemstack.Collectible as BlockLiquidContainerBase).interactions;
+                }
+
                 int bulkquantity = beg.StorageProps.BulkTransferQuantity;
 
                 if (beg.StorageProps.Layout == EnumGroundStorageLayout.Stacking && !beg.Inventory.Empty)
@@ -432,7 +439,7 @@ namespace Vintagestory.GameContent
                             MouseButton = EnumMouseButton.Right
                         }
 
-                    }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
+                    }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer)).Append(liquidInteractions);
                 }
 
                 if (beg.StorageProps.Layout == EnumGroundStorageLayout.SingleCenter)
@@ -445,7 +452,7 @@ namespace Vintagestory.GameContent
                             MouseButton = EnumMouseButton.Right
                         },
 
-                    }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
+                    }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer)).Append(liquidInteractions);
                 }
 
                 if (beg.StorageProps.Layout == EnumGroundStorageLayout.Halves || beg.StorageProps.Layout == EnumGroundStorageLayout.Quadrants)
@@ -466,9 +473,8 @@ namespace Vintagestory.GameContent
                             HotKeyCode = null
                         }
 
-                    }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
+                    }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer)).Append(liquidInteractions);
                 }
-
             }
 
             return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer);
