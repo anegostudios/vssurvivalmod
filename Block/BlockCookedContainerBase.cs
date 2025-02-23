@@ -8,6 +8,17 @@ namespace Vintagestory.GameContent
 {
     public class BlockCookedContainerBase : BlockContainer, IBlockMealContainer, IContainedInteractable, IContainedCustomName
     {
+        public bool IsPotEmpty(ItemStack stack)
+        {
+            ItemStack[] nonEmptyContents = GetNonEmptyContents(api.World, stack);
+            if (nonEmptyContents == null || nonEmptyContents.Length == 0)
+            {
+                return true;
+            }
+    
+            return false;
+        }
+
         public void SetContents(string recipeCode, float servings, ItemStack containerStack, ItemStack[] stacks)
         {
             base.SetContents(containerStack, stacks);
@@ -402,6 +413,21 @@ namespace Vintagestory.GameContent
                 else
                 {
                     ServeIntoStack(targetSlot, slot, api.World);
+                }
+
+                if (slot.Itemstack.Collectible is BlockCrock
+                    && !IsPotEmpty(api.World, slot.Itemstack)
+                    && !targetSlot.Empty
+                    && targetSlot.Itemstack != null
+                    && targetSlot.StackSize > 0
+                    && !slot.Itemstack.Attributes.HasAttribute("sealed")
+                    && targetSlot.Itemstack.Collectible.Attributes.KeyExists("canSealCrock")
+                    && targetSlot.Itemstack.Collectible.Attributes["canSealCrock"].AsBool())
+                {
+                    slot.Itemstack.Attributes.SetBool("sealed", true);
+                    targetSlot.TakeOut(1);
+                    targetSlot.MarkDirty();
+                    return true;
                 }
 
                 slot.MarkDirty();
