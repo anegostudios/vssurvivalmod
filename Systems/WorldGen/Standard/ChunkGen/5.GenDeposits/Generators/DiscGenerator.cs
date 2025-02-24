@@ -356,7 +356,8 @@ namespace Vintagestory.ServerMods
                             {
                                 int surfaceY = heremapchunk.RainHeightMap[lz * chunksize + lx];
                                 int depth = surfaceY - posy;
-                                float chance = SurfaceBlockChance * Math.Max(0, 1.11f - depth / 9f);
+                                float seaLevelScale = 9f * (TerraGenConfig.seaLevel / 110f); // Default sea level for world height 256
+                                float chance = SurfaceBlockChance * Math.Max(0, 1.11f - depth / seaLevelScale);
                                 if (surfaceY < worldheight - 1 && DepositRand.NextFloat() < chance)
                                 {
                                     Block belowBlock = Api.World.Blocks[chunks[surfaceY / chunksize].Data.GetBlockIdUnsafe(((surfaceY % chunksize) * chunksize + lz) * chunksize + lx)];
