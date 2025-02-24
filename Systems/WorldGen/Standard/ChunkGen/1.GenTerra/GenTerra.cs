@@ -73,22 +73,22 @@ namespace Vintagestory.ServerMods
             return 0;
         }
 
-        public override void StartServerSide(ICoreServerAPI api)
+        public override void AssetsFinalize(ICoreAPI coreApi)
         {
-            this.api = api;
+            // Sea level needs to be initialized at least before GenDeposits.AssetsFinalize
+            this.api = (ICoreServerAPI)coreApi;
 
-            api.Event.ServerRunPhase(EnumServerRunPhase.ModsAndConfigReady, loadGamePre);
-            api.Event.InitWorldGenerator(initWorldGen, "standard");
-            api.Event.ChunkColumnGeneration(OnChunkColumnGen, EnumWorldGenPass.Terrain, "standard");
-        }
-
-        private void loadGamePre()
-        {
             if (api.WorldManager.SaveGame.WorldType != "standard") return;
 
             TerraGenConfig.seaLevel = (int)(0.4313725490196078 * api.WorldManager.MapSizeY);
             api.WorldManager.SetSeaLevel(TerraGenConfig.seaLevel);
             Climate.Sealevel = TerraGenConfig.seaLevel;
+        }
+
+        public override void StartServerSide(ICoreServerAPI api)
+        {
+            api.Event.InitWorldGenerator(initWorldGen, "standard");
+            api.Event.ChunkColumnGeneration(OnChunkColumnGen, EnumWorldGenPass.Terrain, "standard");
         }
 
         public void initWorldGen()
