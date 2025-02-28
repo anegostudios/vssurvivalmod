@@ -103,6 +103,11 @@ namespace Vintagestory.GameContent.Electrical
         /// <param name="drain">[Optional] Drain power to 0 if true.</param>
         void CheatPower(bool drain = false);
 
+        /// <summary>
+        /// True if the Block is loaded, false if the block is unloaded.
+        /// </summary>
+        bool IsLoaded { get; }
+
 		/// <summary>
         /// Returns the IElectricalBlockEntity for the BlockEntity or one of its behaviors at given position.
         /// </summary>
