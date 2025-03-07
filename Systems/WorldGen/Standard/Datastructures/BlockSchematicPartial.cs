@@ -22,6 +22,7 @@ namespace Vintagestory.ServerMods
             bool replaceMeta, bool resolveImports, Dictionary<int, Dictionary<int, int>> resolvedRockTypeRemaps = null,
             int[] replaceWithBlockLayersBlockids = null, Block rockBlock = null)
         {
+            Unpack(worldForResolve.Api);
             const int chunksize = GlobalConstants.ChunkSize;
             var rect = new Rectanglei(chunkX * chunksize, chunkZ * chunksize, chunksize, chunksize);
 

@@ -520,5 +520,14 @@ namespace Vintagestory.ServerMods
                 LoadMetaInformationAndValidate(api.World.BlockAccessor, api.World, FromFileName);
             }
         }
+
+        public void Unpack(ICoreAPI api, int orientation)
+        {
+            if (orientation > 0 && blocksByPos == null)
+            {
+                TransformWhilePacked(api.World, EnumOrigin.BottomCenter, orientation * 90, null, PathwayBlocksUnpacked != null);
+            }
+            Unpack(api);
+        }
     }
 }

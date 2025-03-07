@@ -17,7 +17,7 @@ namespace Vintagestory.GameContent
         private BlockPos pos;
         
 
-        MeshRef meshref;
+        MultiTextureMeshRef meshref;
         public Matrixf ModelMat = new Matrixf();
 
         public float AngleRad;
@@ -31,7 +31,7 @@ namespace Vintagestory.GameContent
             this.pos = pos;
             this.be = be;
 
-            meshref = coreClientAPI.Render.UploadMesh(mesh);
+            meshref = coreClientAPI.Render.UploadMultiTextureMesh(mesh);
         }
 
         public double RenderOrder
@@ -69,12 +69,10 @@ namespace Vintagestory.GameContent
             if (stage == EnumRenderStage.Opaque)
             {
                 IStandardShaderProgram prog = rpi.PreparedStandardShader(pos.X, pos.Y, pos.Z);
-                prog.Tex2D = api.BlockTextureAtlas.AtlasTextures[0].TextureId;
-
                 prog.ModelMatrix = ModelMat.Values;
                 prog.ViewMatrix = rpi.CameraMatrixOriginf;
                 prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
-                rpi.RenderMesh(meshref);
+                rpi.RenderMultiTextureMesh(meshref, "tex");
                 prog.Stop();
 
                 AngleRad = be.Angle;
@@ -83,11 +81,10 @@ namespace Vintagestory.GameContent
                 IRenderAPI rapi = api.Render;
                 shadowMvpMat.Set(rapi.CurrentProjectionMatrix).Mul(rapi.CurrentModelviewMatrix).Mul(ModelMat.Values);
 
-                rapi.CurrentActiveShader.BindTexture2D("tex2d", api.BlockTextureAtlas.AtlasTextures[0].TextureId, 0);
                 rapi.CurrentActiveShader.UniformMatrix("mvpMatrix", shadowMvpMat.Values);
                 rapi.CurrentActiveShader.Uniform("origin", new Vec3f());
 
-                rpi.RenderMesh(meshref);
+                rpi.RenderMultiTextureMesh(meshref, "tex");
             }
 
         }

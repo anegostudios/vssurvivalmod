@@ -313,7 +313,7 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
                     float itemHoursHeatReceived = 0;
                     var collectible = itemSlot.Itemstack.Collectible;
 
-                    if (collectible.CombustibleProps?.SmeltedStack.ResolvedItemstack.Block?.BlockMaterial == EnumBlockMaterial.Ceramic
+                    if (collectible.CombustibleProps?.SmeltedStack?.ResolvedItemstack.Block?.BlockMaterial == EnumBlockMaterial.Ceramic
                         ||  collectible.CombustibleProps?.SmeltingType == EnumSmeltType.Fire
                         || collectible.Attributes?["beehivekiln"].Exists == true)
                     {

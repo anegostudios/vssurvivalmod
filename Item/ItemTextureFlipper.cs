@@ -20,7 +20,7 @@ namespace Vintagestory.GameContent
         BlockPos pos;
         ICoreClientAPI capi;
 
-        Dictionary<AssetLocation, MeshRef> skillTextures = new Dictionary<AssetLocation, MeshRef>();
+        Dictionary<AssetLocation, MultiTextureMeshRef> skillTextures = new Dictionary<AssetLocation, MultiTextureMeshRef>();
 
         private void renderSkillItem(AssetLocation code, float dt, double atPosX, double atPosY)
         {
@@ -29,18 +29,18 @@ namespace Vintagestory.GameContent
             var textures = block.GetAvailableTextures(pos);
             if (textures == null) return;
 
-            MeshRef meshref;
+            MultiTextureMeshRef meshref;
             if (!skillTextures.TryGetValue(code, out meshref))
             {
                 var pos = textures[code.Path].Baked.TextureSubId;
                 var texPos = capi.BlockTextureAtlas.Positions[pos];
                 var mesh = QuadMeshUtil.GetCustomQuadModelData(texPos.x1, texPos.y1, texPos.x2, texPos.y2, 0, 0, 1, 1, 255, 255, 255, 255);
-                meshref = capi.Render.UploadMesh(mesh);
+                meshref = capi.Render.UploadMultiTextureMesh(mesh);
                 skillTextures[code] = meshref;
             }
 
             float scale = RuntimeEnv.GUIScale;
-            capi.Render.Render2DTexture(meshref, capi.BlockTextureAtlas.AtlasTextures[0].TextureId, (float)atPosX - 24 * scale, (float)atPosY - 24 * scale, scale * 64, scale * 64);
+            capi.Render.Render2DTexture(meshref, (float)atPosX - 24 * scale, (float)atPosY - 24 * scale, scale * 64, scale * 64);
         }
 
         public override void OnLoaded(ICoreAPI api)

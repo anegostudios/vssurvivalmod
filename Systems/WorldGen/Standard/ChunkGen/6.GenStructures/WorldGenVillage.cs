@@ -219,7 +219,8 @@ namespace Vintagestory.ServerMods
                     }
 
                     // First get a random structure from the VillageSchematic
-                    BlockSchematicStructure struc = schem.Structures[rand.NextInt(schem.Structures.Length)];
+                    int randomIndex = rand.NextInt(schem.Structures.Length);
+                    BlockSchematicStructure struc = schem.Structures[randomIndex];
 
                     location.Set(
                         botCenterPos.X - struc.SizeX / 2, botCenterPos.Y, botCenterPos.Z - struc.SizeZ / 2,
@@ -238,7 +239,7 @@ namespace Vintagestory.ServerMods
 
                     if (intersect) continue;
 
-                    struc.Unpack(worldForCollectibleResolve.Api);
+                    struc.Unpack(worldForCollectibleResolve.Api, randomIndex % 4);
                     if (CanGenerateStructureAt(struc, blockAccessor, location))
                     {
                         if (genRequired) mustGenerate.RemoveAt(mustGenerate.Count - 1);

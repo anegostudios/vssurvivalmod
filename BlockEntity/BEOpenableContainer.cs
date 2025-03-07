@@ -132,7 +132,7 @@ namespace Vintagestory.GameContent
                 };
 
                 invDialog.TryOpen();
-                capi.Network.SendPacketClient(Inventory.Open(byPlayer));
+                capi.Network.SendPacketClient(Inventory.Open(byPlayer));    // radfast 3.3.2025: I'm not sure this packet has any effect, as the inventory is still closed on the server side at this point, meaning its Id won't be found in PlayerInventoryManager.Inventories. It's the following line's packet which has the effect of causing the inventory to be opened on the server side
                 capi.Network.SendBlockEntityPacket(Pos, (int)EnumBlockEntityPacketId.Open, null);
             }
             else

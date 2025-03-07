@@ -128,18 +128,19 @@ namespace Vintagestory.ServerMods
             {
                 if (k > 0)
                 {
-                    rotations[k] = rotations[0].ClonePacked() as T;
+                    T unrotated = rotations[0];
+                    rotations[k] = unrotated.ClonePacked() as T;
                     if (isDungeon)
                     {
-                        rotations[k].PathwayBlocksUnpacked = new List<BlockPosFacing>();
-                        for (var index = 0; index < rotations[0].PathwayBlocksUnpacked.Count; index++)
+                        var pathways = rotations[k].PathwayBlocksUnpacked = new List<BlockPosFacing>();
+                        var pathwaysSource = unrotated.PathwayBlocksUnpacked;
+                        for (var index = 0; index < pathwaysSource.Count; index++)
                         {
-                            var path = rotations[0].PathwayBlocksUnpacked[index];
-                            var rotatedPos = rotations[0].GetRotatedPos(EnumOrigin.BottomCenter, k * 90, path.Position.X, path.Position.Y, path.Position.Z);
-                            rotations[k].PathwayBlocksUnpacked.Add(new BlockPosFacing(rotatedPos, path.Facing.GetHorizontalRotated(k * 90), path.Constraints));
+                            var path = pathwaysSource[index];
+                            var rotatedPos = unrotated.GetRotatedPos(EnumOrigin.BottomCenter, k * 90, path.Position.X, path.Position.Y, path.Position.Z);
+                            pathways.Add(new BlockPosFacing(rotatedPos, path.Facing.GetHorizontalRotated(k * 90), path.Constraints));
                         }
                     }
-                    rotations[k].TransformWhilePacked(api.World, EnumOrigin.BottomCenter, k * 90, null, isDungeon);
                 }
 
                 rotations[k].blockLayerConfig = config;

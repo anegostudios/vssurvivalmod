@@ -6,6 +6,7 @@ using Vintagestory.API.Util;
 using Vintagestory.API.Client;
 using System;
 using Vintagestory.API.MathTools;
+using Newtonsoft.Json.Linq;
 
 namespace Vintagestory.GameContent
 {
@@ -55,32 +56,36 @@ namespace Vintagestory.GameContent
 
         public override void Initialize(EntityProperties properties, ICoreAPI api, long InChunkIndex3d)
         {
-            base.Initialize(properties, api, InChunkIndex3d);
+            (AnimManager as PersonalizedAnimationManager).All = true;    // Do the PersonalizedAnimationManager init steps first, as base.Initialize() may need to start a personalized animation
 
-            if (World.Api.Side == EnumAppSide.Server)
+            string personality = null;
+            if (api.Side == EnumAppSide.Server)
             {
-                if (Properties.Attributes["personality"].Exists)
+                var personalityAttribute = properties.Attributes["personality"];
+                if (personalityAttribute.Exists)
                 {
-                    Personality = Properties.Attributes["personality"].AsString();
+                    personality = personalityAttribute.AsString();
                 }
                 else
                 {
-                    Personality = Personalities.GetKeyAtIndex(World.Rand.Next(Personalities.Count));
+                    personality = Personalities.GetKeyAtIndex(api.World.Rand.Next(Personalities.Count));
                 }
 
-                (AnimManager as PersonalizedAnimationManager).Personality = this.Personality;
+                (AnimManager as PersonalizedAnimationManager).Personality = personality;
+                WatchedAttributes.SetString("personality", personality);
             }
 
-            (AnimManager as PersonalizedAnimationManager).All = true;
+            base.Initialize(properties, api, InChunkIndex3d);
 
             if (api.Side == EnumAppSide.Client)
             {
+                personality = this.Personality;
                 bool isMultiSoundVoice = true;
                 talkUtil = new EntityTalkUtil(api as ICoreClientAPI, this, isMultiSoundVoice);
                 TalkUtil.soundName = AssetLocation.Create(VoiceSound, Code.Domain);
             }
 
-            this.Personality = this.Personality; // to update the talkutil
+            this.Personality = personality; // to update the talkutil
         }
 
         MusicTrack track;

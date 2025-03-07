@@ -78,7 +78,7 @@ namespace Vintagestory.ServerMods
         public void Init(ICoreServerAPI api, WorldGenStoryStructuresConfig scfg, RockStrataConfig rockstrata, BlockLayerConfig blockLayerConfig)
         {
             schematicData = LoadSchematics<BlockSchematicPartial>(api, Schematics, null)[0];
-            schematicData.Init(api.World.BlockAccessor);
+            //schematicData.Init(api.World.BlockAccessor);     // radfast note: do not Init() here for performance; .Init() will be called in BlockSchematicStructure.Unpack()
             schematicData.blockLayerConfig = blockLayerConfig;
 
             scfg.SchematicYOffsets.TryGetValue("story/" + schematicData.FromFileName.Replace(".json", ""), out var offset);
@@ -509,7 +509,7 @@ namespace Vintagestory.ServerMods
             int num = rand.NextInt(schematicDatas.Length);
             int orient = rand.NextInt(4);
             BlockSchematicStructure schematic = schematicDatas[num][orient];
-            schematic.Unpack(worldForCollectibleResolve.Api);
+            schematic.Unpack(worldForCollectibleResolve.Api, orient);
 
             startPos = startPos.AddCopy(0, schematic.OffsetY, 0);
 
@@ -517,7 +517,7 @@ namespace Vintagestory.ServerMods
             {
                 orient = FindClearEntranceRotation(blockAccessor, schematicDatas[num], startPos);
                 schematic = schematicDatas[num][orient];
-                schematic.Unpack(worldForCollectibleResolve.Api);
+                schematic.Unpack(worldForCollectibleResolve.Api, orient);
             }
 
             int wdthalf = (int)Math.Ceiling(schematic.SizeX / 2f);
@@ -662,7 +662,7 @@ namespace Vintagestory.ServerMods
             int num = rand.NextInt(schematicDatas.Length);
             int orient = rand.NextInt(4);
             BlockSchematicStructure schematic = schematicDatas[num][orient];
-            schematic.Unpack(worldForCollectibleResolve.Api);
+            schematic.Unpack(worldForCollectibleResolve.Api, orient);
 
             startPos = startPos.AddCopy(0, schematic.OffsetY, 0);
 
@@ -670,7 +670,7 @@ namespace Vintagestory.ServerMods
             {
                 orient = FindClearEntranceRotation(blockAccessor, schematicDatas[num], startPos);
                 schematic = schematicDatas[num][orient];
-                schematic.Unpack(worldForCollectibleResolve.Api);
+                schematic.Unpack(worldForCollectibleResolve.Api, orient);
             }
 
             int wdthalf = (int)Math.Ceiling(schematic.SizeX / 2f);
@@ -775,15 +775,16 @@ namespace Vintagestory.ServerMods
 
             BlockSchematicStructure[] schematicStruc = schematicDatas[num];
             BlockPos targetPos = pos.Copy();
-            schematicStruc[0].Unpack(worldForCollectibleResolve.Api);
+            schematicStruc[0].Unpack(worldForCollectibleResolve.Api, 0);
 
             if (schematicStruc[0].PathwayStarts.Length > 0)
             {
                 return tryGenerateAttachedToCave(blockAccessor, worldForCollectibleResolve, schematicStruc, targetPos, locationCode);
             }
 
-            BlockSchematicStructure schematic = schematicStruc[rand.NextInt(4)];
-            schematic.Unpack(worldForCollectibleResolve.Api);
+            int orient = rand.NextInt(4);
+            BlockSchematicStructure schematic = schematicStruc[orient];
+            schematic.Unpack(worldForCollectibleResolve.Api, orient);
 
             BlockPos placePos = schematic.AdjustStartPos(targetPos.Copy(), Origin);
 
@@ -858,7 +859,7 @@ namespace Vintagestory.ServerMods
 
             // 3. Random pathway
             BlockSchematicStructure schematic = schematicStruc[0];
-            schematic.Unpack(worldForCollectibleResolve.Api);
+            schematic.Unpack(worldForCollectibleResolve.Api, 0);
             int pathwayNum = rand.NextInt(schematic.PathwayStarts.Length);
             int targetDistance = -1;
             BlockFacing targetFacing = null;
@@ -868,7 +869,7 @@ namespace Vintagestory.ServerMods
             for (int targetOrientation = 0; targetOrientation < 4; targetOrientation++)
             {
                 schematic = schematicStruc[targetOrientation];
-                schematic.Unpack(worldForCollectibleResolve.Api);
+                schematic.Unpack(worldForCollectibleResolve.Api, targetOrientation);
                 // Try every rotation
                 pathway = schematic.PathwayOffsets[pathwayNum];
                 // This is the facing we are currently checking

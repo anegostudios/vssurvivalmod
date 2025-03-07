@@ -5,7 +5,6 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.Client.NoObf;
-using Vintagestory.GameContent;
 
 namespace Vintagestory.API.Common;
 
@@ -156,14 +155,6 @@ public class EntityBehaviorPassivePhysicsMultiBox : EntityBehaviorPassivePhysics
             }
         }
     }
-
-    private void revert(float dtFac, EntityPos prevPos)
-    {
-        entity.SidedPos.SetPos(prevPos.XYZ);
-        AdjustCollisionBoxesToYaw(dtFac, false, prevPos.Yaw);
-    }
-
-
 
 
     private bool PushoutOfCollisionbox(float dt, Cuboidd collBox)

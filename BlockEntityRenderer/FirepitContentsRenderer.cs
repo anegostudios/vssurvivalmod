@@ -7,7 +7,7 @@ namespace Vintagestory.GameContent
 {
     public class FirepitContentsRenderer : IRenderer
     {
-        MeshRef meshref;
+        MultiTextureMeshRef meshref;
         ICoreClientAPI api;
         BlockPos pos;
         public ItemStack ContentStack;
@@ -98,7 +98,7 @@ namespace Vintagestory.GameContent
                 textureId = api.ItemTextureAtlas.Positions[newContentStack.Block.Textures.FirstOrDefault().Value.Baked.TextureSubId].atlasTextureId;
             }
 
-            meshref = api.Render.UploadMesh(ingredientMesh);
+            meshref = api.Render.UploadMultiTextureMesh(ingredientMesh);
             this.ContentStack = newContentStack;
         }
 
@@ -120,7 +120,6 @@ namespace Vintagestory.GameContent
 
             IStandardShaderProgram prog = rpi.StandardShader;
             prog.Use();
-            prog.Tex2D = api.ItemTextureAtlas.AtlasTextures[0].TextureId;
             prog.DontWarpVertices = 0;
             prog.AddRenderFlags = 0;
             prog.RgbaAmbientIn = rpi.AmbientColor;
@@ -160,7 +159,7 @@ namespace Vintagestory.GameContent
             prog.ViewMatrix = rpi.CameraMatrixOriginf;
             prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
 
-            rpi.RenderMesh(meshref);
+            rpi.RenderMultiTextureMesh(meshref, "tex");
 
             prog.Stop();
         }

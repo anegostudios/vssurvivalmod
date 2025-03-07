@@ -11,8 +11,7 @@ namespace Vintagestory.GameContent
         ICoreClientAPI api;
         BlockPos pos;
         Matrixf ModelMat = new Matrixf();
-        MeshRef juiceMeshref;
-        MeshRef mashMeshref;
+        MultiTextureMeshRef mashMeshref;
 
         BlockEntityFruitPress befruitpress;
 
@@ -79,13 +78,11 @@ namespace Vintagestory.GameContent
         {
             if (befruitpress.Inventory.Empty)
             {
-                juiceMeshref = null;
                 mashMeshref = null;
                 return;
             }
-            if (!mustReload && juiceMeshref != null) return;
+            if (!mustReload && mashMeshref != null) return;
 
-            juiceMeshref?.Dispose();
             mashMeshref?.Dispose();
 
             ItemStack stack = befruitpress.Inventory[0].Itemstack;
@@ -134,13 +131,9 @@ namespace Vintagestory.GameContent
                 {
                     texPos = api.BlockTextureAtlas.Positions[item.FirstTexture.Baked.TextureSubId];
                 }
-
-                api.Tesselator.TesselateShape("fruitpress-juice", juiceShape, out MeshData juiceMesh, this);
-
-                juiceMeshref = api.Render.UploadMesh(juiceMesh);
             }
             
-            mashMeshref = api.Render.UploadMesh(mashMesh);
+            mashMeshref = api.Render.UploadMultiTextureMesh(mashMesh);
         }
 
 
@@ -157,7 +150,6 @@ namespace Vintagestory.GameContent
 
             IStandardShaderProgram prog = rpi.StandardShader;
             prog.Use();
-            prog.Tex2D = api.BlockTextureAtlas.AtlasTextures[0].TextureId;
             prog.DontWarpVertices = 0;
             prog.AddRenderFlags = 0;
             prog.RgbaAmbientIn = rpi.AmbientColor;
@@ -189,7 +181,7 @@ namespace Vintagestory.GameContent
             prog.ViewMatrix = rpi.CameraMatrixOriginf;
             prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
 
-            rpi.RenderMesh(mashMeshref);
+            rpi.RenderMultiTextureMesh(mashMeshref, "tex");
 
             prog.Stop();
         }
@@ -199,7 +191,6 @@ namespace Vintagestory.GameContent
             api.Event.UnregisterRenderer(this, EnumRenderStage.Opaque);
 
             mashMeshref?.Dispose();
-            juiceMeshref?.Dispose();
         }
 
     }

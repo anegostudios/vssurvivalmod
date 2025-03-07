@@ -566,7 +566,7 @@ namespace Vintagestory.GameContent
 
 
 
-                    entity.AnimManager.StartAnimation(new AnimationMetaData() { Animation = "welcome", Code = "welcome", Weight = 10, EaseOutSpeed = 10000, EaseInSpeed = 10000 });
+                    entity.AnimManager.TryStartAnimation(new AnimationMetaData() { Animation = "welcome", Code = "welcome", Weight = 10, EaseOutSpeed = 10000, EaseInSpeed = 10000 });
                     entity.AnimManager.StopAnimation("idle");
                 }
             }

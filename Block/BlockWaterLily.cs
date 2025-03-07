@@ -2,11 +2,18 @@
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
     public class BlockWaterLily : BlockPlant
     {
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+            IceCheckOffset = -1;
+        }
+
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
             if (CanPlantStay(world.BlockAccessor, blockSel.Position.UpCopy()))
@@ -23,7 +30,7 @@ namespace Vintagestory.GameContent
 
         public override bool CanPlantStay(IBlockAccessor blockAccessor, BlockPos pos)
         {
-            Block block = blockAccessor.GetBlock(pos.DownCopy(), BlockLayersAccess.Fluid);
+            Block block = blockAccessor.GetBlockBelow(pos, 1, BlockLayersAccess.Fluid);
             Block upblock = blockAccessor.GetBlock(pos, BlockLayersAccess.Fluid);
             return block.IsLiquid() && block.LiquidLevel == 7 && block.LiquidCode == "water" && upblock.Id==0;
         }
@@ -46,9 +53,9 @@ namespace Vintagestory.GameContent
         public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, IRandom worldGenRand, BlockPatchAttributes attributes = null)
         {
             // Don't spawn in 3 deep water
-            if (blockAccessor.GetBlock(pos.X, pos.Y - 4, pos.Z, BlockLayersAccess.Fluid).Id != 0) return false;
+            if (blockAccessor.GetBlockBelow(pos, 4, BlockLayersAccess.Fluid).Id != 0) return false;
             // do not spawn ontop of other plants
-            if (blockAccessor.GetBlock(pos.DownCopy(), BlockLayersAccess.Solid) is BlockPlant) return false;
+            if (blockAccessor.GetBlockBelow(pos, 1, BlockLayersAccess.Solid) is BlockPlant) return false;
 
             return base.TryPlaceBlockForWorldGen(blockAccessor, pos, onBlockFace, worldGenRand, attributes);
         }
@@ -59,7 +66,7 @@ namespace Vintagestory.GameContent
         public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, IRandom worldGenRand, BlockPatchAttributes attributes = null)
         {
             // Don't spawn in 3 deep water
-            if (blockAccessor.GetBlock(pos.X, pos.Y - 4, pos.Z, BlockLayersAccess.Fluid).Id != 0) return false;
+            if (blockAccessor.GetBlockBelow(pos, 4, BlockLayersAccess.Fluid).Id != 0) return false;
 
             var canPlace = true;
             var tmpPos = pos.Copy();
