@@ -10,12 +10,12 @@ namespace Vintagestory.GameContent
         internal bool ShouldRotateManual;
         internal bool ShouldRotateAutomated;
 
-        
+
         BEHelveHammer be;
 
         private ICoreClientAPI api;
         private BlockPos pos;
-        
+
 
         MultiTextureMeshRef meshref;
         public Matrixf ModelMat = new Matrixf();
@@ -23,7 +23,7 @@ namespace Vintagestory.GameContent
         public float AngleRad;
         internal bool Obstructed;
 
-        
+
 
         public HelveHammerRenderer(ICoreClientAPI coreClientAPI, BEHelveHammer be, BlockPos pos, MeshData mesh)
         {
@@ -52,7 +52,7 @@ namespace Vintagestory.GameContent
             Vec3d camPos = api.World.Player.Entity.CameraPos;
 
             rpi.GlDisableCullFace();
-            
+
             float rotY = be.facing.HorizontalAngleIndex * 90;
             float offx = be.facing == BlockFacing.NORTH || be.facing == BlockFacing.WEST ? -1 / 16f : 17 / 16f;
 
@@ -84,7 +84,7 @@ namespace Vintagestory.GameContent
                 rapi.CurrentActiveShader.UniformMatrix("mvpMatrix", shadowMvpMat.Values);
                 rapi.CurrentActiveShader.Uniform("origin", new Vec3f());
 
-                rpi.RenderMultiTextureMesh(meshref, "tex");
+                rpi.RenderMultiTextureMesh(meshref, "tex2d");
             }
 
         }

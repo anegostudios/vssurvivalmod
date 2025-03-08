@@ -4,6 +4,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
@@ -87,7 +88,7 @@ namespace Vintagestory.GameContent
             if (MountedBy == null && (mountedByEntityId != 0 || mountedByPlayerUid != null))
             {
                 var entity = mountedByPlayerUid != null ? api.World.PlayerByUid(mountedByPlayerUid)?.Entity : api.World.GetEntityById(mountedByEntityId) as EntityAgent;
-                if (entity != null)
+                if (entity?.SidedProperties != null) // Player entity might not be initialized if we load a sleeping player from spawnchunks
                 {
                     entity.TryMount(this);
                 }
@@ -226,8 +227,15 @@ namespace Vintagestory.GameContent
                 hoursTotal = Api.World.Calendar.TotalHours;
             }
 
-            EntityBehaviorTiredness ebt = MountedBy?.GetBehavior("tiredness") as EntityBehaviorTiredness;
-            if (ebt != null) ebt.IsSleeping = true;
+            if (MountedBy != null)
+            {
+                Api.Event.EnqueueMainThreadTask(() => // Might not be initialized yet if this is loaded from spawnchunks
+                {
+                    EntityBehaviorTiredness ebt = MountedBy.GetBehavior("tiredness") as EntityBehaviorTiredness;
+                    if (ebt != null) ebt.IsSleeping = true;
+                }, "issleeping");
+            }
+            
 
             MarkDirty(false);
         }
