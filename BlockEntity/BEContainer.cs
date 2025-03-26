@@ -63,8 +63,18 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockBroken(IPlayer byPlayer = null)
         {
-            if (Api.World is IServerWorldAccessor)
+            if (Api is ICoreServerAPI sapi)
             {
+                if (!Inventory.Empty)
+                {
+                    StringBuilder sb = new($"{byPlayer?.PlayerName} broke container {Block.Code} at {Pos} dropped: ");
+                    foreach (var slot in Inventory)
+                    {
+                        if (slot.Itemstack == null) continue;
+                        sb.Append(slot.Itemstack.StackSize).Append("x ").Append(slot.Itemstack.Collectible?.Code).Append(", ");
+                    }
+                    sapi.Logger.Audit(sb.ToString());
+                }
                 Inventory.DropAll(Pos.ToVec3d().Add(0.5, 0.5, 0.5));
             }
 

@@ -56,7 +56,7 @@ namespace Vintagestory.GameContent
         public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {
             BlockEntityItemPile be = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityItemPile;
-            be?.OnBlockBroken();
+            be?.OnBlockBroken(byPlayer);
             base.OnBlockBroken(world, pos, byPlayer);
         }
 

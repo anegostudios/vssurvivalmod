@@ -16,6 +16,8 @@ namespace Vintagestory.GameContent
 
         bool strokeActive;
 
+        public override bool AdjustCollisionBoxToAnimation => base.AdjustCollisionBoxToAnimation || AnimManager.IsAnimationActive("stroke-start", "stroke-idle", "stroke-end");
+
         public override void AfterInitialized(bool onFirstSpawn)
         {
             base.AfterInitialized(onFirstSpawn);

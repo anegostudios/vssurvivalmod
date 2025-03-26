@@ -94,7 +94,14 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            return TryFalling(world, blockSel.Position, ref handling, ref failureCode);
+            return true;
+        }
+
+        public override void OnBlockPlaced(IWorldAccessor world, BlockPos blockPos, ref EnumHandling handling)
+        {
+            TryFalling(world, blockPos, ref handling);
+
+            base.OnBlockPlaced(world, blockPos, ref handling);
         }
 
         public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos, ref EnumHandling handling)
@@ -104,11 +111,10 @@ namespace Vintagestory.GameContent
             if (world.Side == EnumAppSide.Client) return;
 
             EnumHandling bla = EnumHandling.PassThrough;
-            string bla2 = "";
-            TryFalling(world, pos, ref bla, ref bla2);
+            TryFalling(world, pos, ref bla);
         }
 
-        private bool TryFalling(IWorldAccessor world, BlockPos pos, ref EnumHandling handling, ref string failureCode)
+        private bool TryFalling(IWorldAccessor world, BlockPos pos, ref EnumHandling handling)
         {
             if (world.Side != EnumAppSide.Server) return false;
             if (!fallSideways && IsAttached(world.BlockAccessor, pos)) return false;
@@ -129,11 +135,6 @@ namespace Vintagestory.GameContent
                 {
                     EntityBlockFalling entityblock = new EntityBlockFalling(block, world.BlockAccessor.GetBlockEntity(pos), pos, fallSound, impactDamageMul, true, dustIntensity);
                     world.SpawnEntity(entityblock);
-                } else
-                {
-                    handling = EnumHandling.PreventDefault;
-                    failureCode = "entityintersecting";
-                    return false;
                 }
 
                 handling = EnumHandling.PreventSubsequent;

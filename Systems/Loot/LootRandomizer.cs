@@ -68,8 +68,20 @@ namespace Vintagestory.GameContent
 
         private void OnLootRndMsg(IServerPlayer fromPlayer, SaveLootRandomizerAttributes networkMessage)
         {
+            if (!fromPlayer.HasPrivilege("controlserver"))
+            {
+                fromPlayer.SendIngameError("noprivilege", "No privilege to set up a loot randomizer");
+                return;
+            }
+
             ItemSlot slot = fromPlayer.InventoryManager.GetInventory(networkMessage.InventoryId)?[networkMessage.SlotId];
-            if (slot == null) return;
+            if (slot == null || slot.Empty) return;
+
+            if (!(slot.Itemstack.Collectible is ItemLootRandomizer))
+            {
+                fromPlayer.SendIngameError("noprivilege", "Not a loot randomizer");
+                return;
+            }
 
             using (MemoryStream ms = new MemoryStream(networkMessage.attributes))
             {
@@ -80,8 +92,22 @@ namespace Vintagestory.GameContent
         
         private void OnStackRndMsg(IServerPlayer fromPlayer, SaveStackRandomizerAttributes networkMessage)
         {
+            if (!fromPlayer.HasPrivilege("controlserver"))
+            {
+                fromPlayer.SendIngameError("noprivilege", "No privilege to set up a loot randomizer");
+                return;
+            }
+
             ItemSlot slot = fromPlayer.InventoryManager.GetInventory(networkMessage.InventoryId)?[networkMessage.SlotId];
-            if (slot == null) return;
+            if (slot == null || slot.Empty) return;
+
+            if (!(slot.Itemstack.Collectible is ItemLootRandomizer))
+            {
+                fromPlayer.SendIngameError("noprivilege", "Not a loot randomizer");
+                return;
+            }
+
+
             slot.Itemstack.Attributes.SetFloat("totalChance", networkMessage.TotalChance);
         }
 

@@ -718,11 +718,6 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void OnBlockBroken(IPlayer byPlayer = null)
-        {
-            base.OnBlockBroken();
-        }
-
 
 
         #endregion

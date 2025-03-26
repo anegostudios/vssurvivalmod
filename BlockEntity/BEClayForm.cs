@@ -524,6 +524,7 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockRemoved()
         {
+            base.OnBlockRemoved();
             dlg?.TryClose();
 
             if (workitemRenderer != null)

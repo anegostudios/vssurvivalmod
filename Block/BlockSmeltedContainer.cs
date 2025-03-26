@@ -193,20 +193,6 @@ namespace Vintagestory.GameContent
             EntityPlayer eplr = byEntity as EntityPlayer;
             var player = eplr.Player;
 
-            if (byEntity.World is IClientWorldAccessor)
-            {
-                ModelTransform tf = new ModelTransform();
-                tf.EnsureDefaultValues();
-
-                tf.Origin.Set(0.5f, 0.2f, 0.5f);
-                tf.Translation.Set(0, 0, -Math.Min(0.25f, speed * secondsUsed / 4));
-                tf.Scale = 1f + Math.Min(0.25f, speed * secondsUsed / 4);
-                tf.Rotation.X = Math.Max(-110, -secondsUsed * 90 * speed);
-                byEntity.Controls.UsingHeldItemTransformBefore = tf;
-
-                
-            }
-
             if (secondsUsed > 1 / speed)
             {
                 if (!slot.Itemstack.Attributes.HasAttribute("nowPouringEntityId"))
@@ -294,7 +280,7 @@ namespace Vintagestory.GameContent
         {
             base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
 
-            if (target == EnumItemRenderTarget.HandTp)
+            if (target == EnumItemRenderTarget.HandTp || target == EnumItemRenderTarget.HandTpOff)
             {
                 long eid = itemstack.Attributes.GetLong("nowPouringEntityId");
                 if (eid != 0)
@@ -307,7 +293,6 @@ namespace Vintagestory.GameContent
                         SpawnPouringParticles(entity);
                     }
                 }
-
             }
         }
 

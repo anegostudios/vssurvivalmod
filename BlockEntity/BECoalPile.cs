@@ -446,7 +446,8 @@ namespace Vintagestory.GameContent
                     ItemStack remainingStack = inventory[0].Itemstack;
 
                     inventory[0].Itemstack = fallingStack;
-                    EntityBlockFalling entityblock = new EntityBlockFalling(Block, this, pos, null, 1, true, 0.05f);
+                    EntityBlockFalling entityblock = new EntityBlockFalling(Block, this, pos, null, 0, true, 0.5f);
+                    entityblock.maxSpawnHeightForParticles = 0.3f;
                     entityblock.DoRemoveBlock = false; // We want to split the pile, not remove it
                     world.SpawnEntity(entityblock);
                     entityblock.ServerPos.Y -= 0.25f;
@@ -567,16 +568,6 @@ namespace Vintagestory.GameContent
             }
         }
 
-
-        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
-        {
-            base.GetBlockInfo(forPlayer, dsc);
-
-            /*if (!inventory[0].Empty)
-            {
-                dsc.AppendLine(string.Format("{0}x {1}", inventory[0].StackSize, inventory[0].Itemstack.GetName())) ;
-            }*/
-        }
 
         public float GetHeatStrength(IWorldAccessor world, BlockPos heatSourcePos, BlockPos heatReceiverPos)
         {

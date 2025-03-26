@@ -209,16 +209,6 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-
-        public override void OnBlockBroken(IPlayer byPlayer = null)
-        {
-            
-            if (Api.World is IServerWorldAccessor)
-            {
-                Inventory.DropAll(Pos.ToVec3d().Add(0.5, 0.5, 0.5));
-            }
-        }
-
         public override void OnReceivedClientPacket(IPlayer player, int packetid, byte[] data)
         {
             if (packetid < 1000)

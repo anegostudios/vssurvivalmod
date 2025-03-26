@@ -401,7 +401,7 @@ namespace Vintagestory.GameContent
                     if (hprops.LitresPerItem == null)
                     {
                         mashStack.StackSize = 1;
-                        dryStackSize = (int)(GameMath.RoundRandom(Api.World.Rand, (float)juiceableLitresLeft + (float)juiceableLitresTransfered) * getJuiceableProps(mashStack).PressedDryRatio);
+                        dryStackSize = GameMath.RoundRandom(Api.World.Rand, ((float)juiceableLitresLeft + (float)juiceableLitresTransfered) * getJuiceableProps(mashStack).PressedDryRatio);
                         handslot.TakeOut(1);
                         MarkDirty(true);
                         renderer?.reloadMeshes(hprops, true);
@@ -438,18 +438,21 @@ namespace Vintagestory.GameContent
                     TransitionState[] sourceTransitionStates = handStack.Collectible.UpdateAndGetTransitionStates(Api.World, handslot);
                     TransitionState[] targetTransitionStates = mashStack.Collectible.UpdateAndGetTransitionStates(Api.World, MashSlot);
 
-                    Dictionary<EnumTransitionType, TransitionState> targetStatesByType = null;
+                    if (sourceTransitionStates != null && targetTransitionStates != null) {
 
-                    targetStatesByType = new Dictionary<EnumTransitionType, TransitionState>();
-                    foreach (var state in targetTransitionStates) targetStatesByType[state.Props.Type] = state;
+                        Dictionary<EnumTransitionType, TransitionState> targetStatesByType = null;
 
-                    // We're mixing based on total litres because we don't really have a stack size to compare
-                    float t = (transferableLitres + usedLitres) / (transferableLitres + usedLitres + (float)juiceableLitresLeft + (float)juiceableLitresTransfered);
+                        targetStatesByType = new Dictionary<EnumTransitionType, TransitionState>();
+                        foreach (var state in targetTransitionStates) targetStatesByType[state.Props.Type] = state;
 
-                    foreach (var sourceState in sourceTransitionStates)
-                    {
-                        TransitionState targetState = targetStatesByType[sourceState.Props.Type];
-                        mashStack.Collectible.SetTransitionState(mashStack, sourceState.Props.Type, sourceState.TransitionedHours * t + targetState.TransitionedHours * (1 - t));
+                        // We're mixing based on total litres because we don't really have a stack size to compare
+                        float t = (transferableLitres + usedLitres) / (transferableLitres + usedLitres + (float)juiceableLitresLeft + (float)juiceableLitresTransfered);
+
+                        foreach (var sourceState in sourceTransitionStates)
+                        {
+                            TransitionState targetState = targetStatesByType[sourceState.Props.Type];
+                            mashStack.Collectible.SetTransitionState(mashStack, sourceState.Props.Type, sourceState.TransitionedHours * t + targetState.TransitionedHours * (1 - t));
+                        }
                     }
 
                     removeItems = 1;
@@ -491,7 +494,7 @@ namespace Vintagestory.GameContent
 
                     // Calculate how large the stack of dry mash will be here so we can tell the player that amount is in
                     // the machine later and not have a random mismatch due to the use of RoundRandom in the calculation
-                    dryStackSize = (int)(GameMath.RoundRandom(Api.World.Rand, (float)juiceableLitresLeft + (float)juiceableLitresTransfered) * getJuiceableProps(mashStack).PressedDryRatio);
+                    dryStackSize = GameMath.RoundRandom(Api.World.Rand, ((float)juiceableLitresLeft + (float)juiceableLitresTransfered) * getJuiceableProps(mashStack).PressedDryRatio);
 
                     handslot.MarkDirty();
                     MarkDirty(true);
@@ -742,7 +745,7 @@ namespace Vintagestory.GameContent
         {
             if (!MashSlot.Empty) convertDryMash();
 
-            base.OnBlockBroken();
+            base.OnBlockBroken(byPlayer);
         }
 
         public override void OnBlockRemoved()
@@ -861,7 +864,11 @@ namespace Vintagestory.GameContent
 
         private void genBucketMesh()
         {
-            if (BucketSlot.Empty || capi == null) return;
+            if (BucketSlot.Empty || capi == null)
+            {
+                bucketMesh?.Clear();
+                return;
+            }
 
             var stack = BucketSlot.Itemstack;
             IContainedMeshSource meshSource = stack.Collectible?.GetCollectibleInterface<IContainedMeshSource>();

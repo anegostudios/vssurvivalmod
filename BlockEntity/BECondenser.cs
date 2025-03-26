@@ -131,12 +131,6 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-
-        public override void OnBlockBroken(IPlayer byPlayer = null)
-        {
-            base.OnBlockBroken(byPlayer);
-        }
-
         private void genBucketMesh()
         {
             if (Api == null || inventory == null) return;

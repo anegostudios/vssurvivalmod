@@ -270,7 +270,7 @@ namespace Vintagestory.GameContent
                 BlockEntity entity = world.BlockAccessor.GetBlockEntity(pos);
                 if (entity != null)
                 {
-                    entity.OnBlockBroken();
+                    entity.OnBlockBroken(byPlayer);
                 }
             }
 

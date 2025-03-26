@@ -417,6 +417,7 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockRemoved()
         {
+            base.OnBlockRemoved();
             workitemRenderer?.Dispose();
             workitemRenderer = null;
 

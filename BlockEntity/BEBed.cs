@@ -218,21 +218,27 @@ namespace Vintagestory.GameContent
             mountedByPlayerUid = (entityAgent as EntityPlayer)?.PlayerUID;
             mountedByEntityId = MountedBy.EntityId;
 
-            if (Api?.Side == EnumAppSide.Server)
+            if (entityAgent.Api?.Side == EnumAppSide.Server)
             {
                 if (restingListener == 0)
                 {
+                    var oldapi = this.Api;
+                    this.Api = entityAgent.Api;   // in case this.Api is currently null if this is called by LoadEntity method for entityAgent; a null Api here would cause RegisterGameTickListener to throw an exception
                     restingListener = RegisterGameTickListener(RestPlayer, 200);
+                    this.Api = oldapi;
                 }
-                hoursTotal = Api.World.Calendar.TotalHours;
+                hoursTotal = entityAgent.Api.World.Calendar.TotalHours;
             }
 
             if (MountedBy != null)
             {
-                Api.Event.EnqueueMainThreadTask(() => // Might not be initialized yet if this is loaded from spawnchunks
+                entityAgent.Api.Event.EnqueueMainThreadTask(() => // Might not be initialized yet if this is loaded from spawnchunks
                 {
-                    EntityBehaviorTiredness ebt = MountedBy.GetBehavior("tiredness") as EntityBehaviorTiredness;
-                    if (ebt != null) ebt.IsSleeping = true;
+                    if (MountedBy != null)
+                    {
+                        EntityBehaviorTiredness ebt = MountedBy.GetBehavior("tiredness") as EntityBehaviorTiredness;
+                        if (ebt != null) ebt.IsSleeping = true;
+                    }
                 }, "issleeping");
             }
             

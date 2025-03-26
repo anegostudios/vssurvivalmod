@@ -59,6 +59,7 @@ namespace Vintagestory.GameContent
                 ICoreServerAPI sapi = api as ICoreServerAPI;
                 this.sapi = sapi;
                 sapi.Event.GameWorldSave += OnSaveGameGettingSaved;
+                sapi.Event.PlayerDisconnect += OnPlayerDisconnect;
             } else
             {
                 quadModel = (api as ICoreClientAPI).Render.UploadMesh(QuadMeshUtil.GetQuad());
@@ -116,6 +117,8 @@ namespace Vintagestory.GameContent
 
         public int AddWaypoint(PropickReading waypoint, IServerPlayer player)
         {
+            // radfast 11.3.25: This method is not currently used in 1.20.5, nothing calls it. Left here for mod backwards compatibility
+
             var plrReadings = getOrLoadReadings(player);
             plrReadings.Add(waypoint);
             ResendWaypoints(player);
@@ -140,10 +143,25 @@ namespace Vintagestory.GameContent
 
         private void OnSaveGameGettingSaved()
         {
+            ISaveGame savegame = sapi.WorldManager.SaveGame;
             foreach (var val in PropickReadingsByPlayer)
             {
-                sapi.WorldManager.SaveGame.StoreData("oreMapMarkers-" + val.Key, SerializerUtil.Serialize(val.Value));
+                savegame.StoreData("oreMapMarkers-" + val.Key, SerializerUtil.Serialize(val.Value));
             }
+        }
+
+        private void OnPlayerDisconnect(IServerPlayer player)
+        {
+            try
+            {
+                if (PropickReadingsByPlayer.TryGetValue(player.PlayerUID, out var readings))
+                {
+                    ISaveGame savegame = sapi.WorldManager.SaveGame;
+                    savegame.StoreData("oreMapMarkers-" + player.PlayerUID, SerializerUtil.Serialize(readings));
+                }
+                PropickReadingsByPlayer.Remove(player.PlayerUID);
+            }
+            catch { }
         }
 
         public override void OnViewChangedServer(IServerPlayer fromPlayer, List<Vec2i> nowVisible, List<Vec2i> nowHidden)
@@ -273,7 +291,7 @@ namespace Vintagestory.GameContent
                 return;
             }
             var plrReadings = getOrLoadReadings(player);
-            plrReadings.RemoveAt(waypointIndex);
+            if (plrReadings.Count > waypointIndex) plrReadings.RemoveAt(waypointIndex);    // index might be outside the list due to server-client desync on laggy connection (eg. client version of waypoints list represents the server version from 250ms ago or more by the time roundtrip communication has occurred to bring us back to here)
         }
 
         public override string Title => "Player Ore map readings";

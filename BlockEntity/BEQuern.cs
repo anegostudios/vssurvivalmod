@@ -602,11 +602,6 @@ namespace Vintagestory.GameContent
             renderer = null;
         }
 
-        public override void OnBlockBroken(IPlayer byPlayer = null)
-        {
-            base.OnBlockBroken(byPlayer);
-        }
-
         ~BlockEntityQuern()
         {
             if (ambientSound != null) ambientSound.Dispose();

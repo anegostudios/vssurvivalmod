@@ -982,6 +982,7 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockRemoved()
         {
+            base.OnBlockRemoved();
             workitemRenderer?.Dispose();
             workitemRenderer = null;
             if (Api is ICoreClientAPI capi) capi.Event.ColorsPresetChanged -= RegenMeshAndSelectionBoxes;
@@ -1249,6 +1250,7 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockUnloaded()
         {
+            base.OnBlockUnloaded();
             workitemRenderer?.Dispose();
             dlg?.TryClose();
             dlg?.Dispose();

@@ -143,16 +143,6 @@ namespace Vintagestory.GameContent
 
         public override void OnReceivedClientPacket(IPlayer player, int packetid, byte[] data)
         {
-            if (packetid < 1000)
-            {
-                Inventory.InvNetworkUtil.HandleClientPacket(player, packetid, data);
-
-                // Tell server to save this chunk to disk again
-                Api.World.BlockAccessor.GetChunkAtBlockPos(Pos).MarkModified();
-
-                return;
-            }
-
             if (packetid == (int)EnumBlockEntityPacketId.Close)
             {
                 player.InventoryManager?.CloseInventory(Inventory);
@@ -163,6 +153,23 @@ namespace Vintagestory.GameContent
                     data,
                     (IServerPlayer)player
                 );
+            }
+
+
+            if (!Api.World.Claims.TryAccess(player, Pos, EnumBlockAccessFlags.Use))
+            {
+                Api.World.Logger.Audit("Player {0} sent an inventory packet to openable container at {1} but has no claim access. Rejected.", player.PlayerName, Pos);
+                return;
+            }
+
+            if (packetid < 1000)
+            {
+                Inventory.InvNetworkUtil.HandleClientPacket(player, packetid, data);
+
+                // Tell server to save this chunk to disk again
+                Api.World.BlockAccessor.GetChunkAtBlockPos(Pos).MarkModified();
+
+                return;
             }
 
             if (packetid == (int)EnumBlockEntityPacketId.Open)

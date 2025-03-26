@@ -81,6 +81,7 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockRemoved()
         {
+            base.OnBlockRemoved();
             signRenderer?.Dispose();
             signRenderer = null;
         }

@@ -35,6 +35,8 @@ namespace Vintagestory.GameContent
                 var pos = textures[code.Path].Baked.TextureSubId;
                 var texPos = capi.BlockTextureAtlas.Positions[pos];
                 var mesh = QuadMeshUtil.GetCustomQuadModelData(texPos.x1, texPos.y1, texPos.x2, texPos.y2, 0, 0, 1, 1, 255, 255, 255, 255);
+                mesh.TextureIds = new int[] { texPos.atlasTextureId };
+                mesh.TextureIndices = new byte[] { 0 };
                 meshref = capi.Render.UploadMultiTextureMesh(mesh);
                 skillTextures[code] = meshref;
             }

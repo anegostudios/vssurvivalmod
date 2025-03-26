@@ -362,7 +362,12 @@ namespace Vintagestory.GameContent
             slot.MarkDirty();
         }
 
-        private void ensureConditionExists(ItemSlot slot)
+        public override bool RequiresTransitionableTicking(IWorldAccessor world, ItemStack itemstack)
+        {
+            return !itemstack.Attributes.HasAttribute("condition");
+        }
+
+        private void ensureConditionExists(ItemSlot slot, bool markdirty=true)
         {
             // Prevent derp in the handbook
             if (slot is DummySlot) return;
@@ -379,7 +384,7 @@ namespace Vintagestory.GameContent
                         slot.Itemstack.Attributes.SetFloat("condition", (float)api.World.Rand.NextDouble() * 0.4f);
                     }
                     
-                    slot.MarkDirty();
+                    if (markdirty) slot.MarkDirty();
                 }
             }
         }

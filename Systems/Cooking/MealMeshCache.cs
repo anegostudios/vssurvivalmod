@@ -104,7 +104,7 @@ namespace Vintagestory.GameContent
 
         public override void Dispose()
         {
-            if (capi.ObjectCache.TryGetValue("pieMeshRefs", out var objPi) && objPi is Dictionary<int, MultiTextureMeshRef> meshRefs)
+            if (capi != null && capi.ObjectCache.TryGetValue("pieMeshRefs", out var objPi) && objPi is Dictionary<int, MultiTextureMeshRef> meshRefs)
             {
                 foreach (var (_, meshRef) in meshRefs)
                 {
