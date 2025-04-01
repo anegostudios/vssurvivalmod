@@ -142,7 +142,7 @@ namespace Vintagestory.GameContent
                     if (block is BlockBarrel blockBarrel && api.World.BlockAccessor.GetBlockEntity(blockSel.Position) is BlockEntityBarrel beb)
                     {
                         if (beb.Sealed) return;
-                        if (blockBarrel.TryPutLiquid(blockSel.Position, honeyStack, __instance.ContainedHoneyLitres) == 0) return;
+                        if (blockBarrel.TryPutLiquid(blockSel.Position, honeyStack, ContainedHoneyLitres) == 0) return;
                     }
                     else
                     {
