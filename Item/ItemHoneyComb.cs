@@ -23,11 +23,13 @@ namespace Vintagestory.GameContent
 
             if (pos != null)
             {
-                var beg = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityGroundStorage;
-                if (beg != null)
+                if (block is BlockBarrel barrel && api.World.BlockAccessor.GetBlockEntity(blockSel.Position) is BlockEntityBarrel beb)
+                {
+                    return !beb.Sealed && !barrel.IsFull(pos);
+                }
+                else if (api.World.BlockAccessor.GetBlockEntity(pos) is BlockEntityGroundStorage beg)
                 {
                     ItemSlot squeezeIntoSlot = beg.GetSlotAt(blockSel);
-
                     if (squeezeIntoSlot?.Itemstack?.Block is BlockLiquidContainerTopOpened bowl)
                     {
                         return !bowl.IsFull(squeezeIntoSlot.Itemstack);
@@ -52,6 +54,12 @@ namespace Vintagestory.GameContent
                 foreach (Block block in api.World.Blocks)
                 {
                     if (block.Code == null) continue;
+
+                    if (block is BlockBarrel)
+                    {
+                        stacks.Add(new ItemStack(block)); // Reliant on CanSqueezeInto allowing barrels. We check if barrel is sealed with world position
+                    }
+
 
                     if (CanSqueezeInto(block, null))
                     {
@@ -86,7 +94,7 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent,ref handling);
+                base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
             }
         }
 
@@ -128,6 +136,13 @@ namespace Vintagestory.GameContent
                     if (blockCnt != null)
                     {
                         if (blockCnt.TryPutLiquid(blockSel.Position, honeyStack, ContainedHoneyLitres) == 0) return;
+                    }
+                    else
+
+                    if (block is BlockBarrel blockBarrel && api.World.BlockAccessor.GetBlockEntity(blockSel.Position) is BlockEntityBarrel beb)
+                    {
+                        if (beb.Sealed) return;
+                        if (blockBarrel.TryPutLiquid(blockSel.Position, honeyStack, __instance.ContainedHoneyLitres) == 0) return;
                     }
                     else
                     {
