@@ -184,11 +184,19 @@ namespace Vintagestory.GameContent
             dialogs.Remove(slot);
             if (slot.Itemstack == null) return;
 
-            if (dialog.Attributes.GetInt("save") == 0) return;
+            ITreeAttribute dialogAttributes = dialog.Attributes;
+            if (dialogAttributes.GetInt("save") == 0) return;
 
-            foreach (var val in dialog.Attributes)
+            ITreeAttribute stree;
+            for (int i = 0; i < 10; i++)
             {
-                slot.Itemstack.Attributes[val.Key] = val.Value;
+                stree = dialogAttributes["stack" + i] as ITreeAttribute;
+                if (stree == null)
+                {
+                    slot.Itemstack.Attributes.RemoveAttribute("stack" + i);
+                    continue;
+                }
+                slot.Itemstack.Attributes["stack" + i] = stree;
             }
 
             using (MemoryStream ms = new MemoryStream())

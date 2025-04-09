@@ -126,7 +126,15 @@ namespace Vintagestory.GameContent
                 for (int i = 0; i < 10; i++)
                 {
                     var stree = tree["stack" + i] as TreeAttribute;
-                    if (stree == null) continue;
+                    if (stree == null)
+                    {
+                        Chances[i] = 0;
+                        if (!inventory[i].Empty)
+                        {
+                            inventory[i].Itemstack = null;
+                        }
+                        continue;
+                    }
 
                     Chances[i] = stree.GetFloat("chance");
 
