@@ -100,8 +100,6 @@ namespace Vintagestory.GameContent
         public override void OnBlockPlaced(IWorldAccessor world, BlockPos blockPos, ref EnumHandling handling)
         {
             TryFalling(world, blockPos, ref handling);
-
-            base.OnBlockPlaced(world, blockPos, ref handling);
         }
 
         public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos, ref EnumHandling handling)
@@ -121,21 +119,27 @@ namespace Vintagestory.GameContent
 
             ICoreServerAPI sapi = (world as IServerWorldAccessor).Api as ICoreServerAPI;
             if (!sapi.Server.Config.AllowFallingBlocks) return false;
-
-
+             
             if (IsReplacableBeneath(world, pos) || (fallSideways && world.Rand.NextDouble() < fallSidewaysChance && IsReplacableBeneathAndSideways(world, pos)))
             {
-                // Prevents duplication
-                Entity entity = world.GetNearestEntity(pos.ToVec3d().Add(0.5, 0.5, 0.5), 1, 1.5f, (e) =>
-                {
-                    return e is EntityBlockFalling ebf && ebf.initialPos.Equals(pos);
-                });
+                BlockPos ourPos = pos.Copy();
+                // Must run a frame later. This method is called from OnBlockPlaced, but at this point - if this is a freshly settled falling block, then the BE does not have its full data yet (because EntityBlockFalling makes a SetBlock, then only calls FromTreeAttributes on the BE
+                sapi.Event.EnqueueMainThreadTask(()=>{
+                    var block = world.BlockAccessor.GetBlock(ourPos);
+                    if (this.block != block) return; // Block was already removed
 
-                if (entity == null)
-                {
-                    EntityBlockFalling entityblock = new EntityBlockFalling(block, world.BlockAccessor.GetBlockEntity(pos), pos, fallSound, impactDamageMul, true, dustIntensity);
-                    world.SpawnEntity(entityblock);
-                }
+                    // Prevents duplication
+                    Entity entity = world.GetNearestEntity(ourPos.ToVec3d().Add(0.5, 0.5, 0.5), 1, 1.5f, (e) =>
+                    {
+                        return e is EntityBlockFalling ebf && ebf.initialPos.Equals(ourPos);
+                    });
+                    if (entity != null) return;
+
+                    var be = world.BlockAccessor.GetBlockEntity(ourPos);
+                    EntityBlockFalling entityBf = new EntityBlockFalling(block, be, ourPos, fallSound, impactDamageMul, true, dustIntensity);
+
+                    world.SpawnEntity(entityBf);
+                }, "falling");
 
                 handling = EnumHandling.PreventSubsequent;
                 return true;

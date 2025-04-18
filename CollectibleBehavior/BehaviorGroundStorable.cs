@@ -177,6 +177,7 @@ namespace Vintagestory.GameContent
             if (blockgs.CreateStorage(byEntity.World, blockSel, byPlayer))
             {
                 handHandling = EnumHandHandling.PreventDefault;
+                handling = EnumHandling.PreventSubsequent;
             }
         }
 

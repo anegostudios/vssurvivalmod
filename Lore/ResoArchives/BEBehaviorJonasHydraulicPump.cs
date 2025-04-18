@@ -18,6 +18,12 @@ namespace Vintagestory.GameContent
         bool hasTempGear;
         bool hasPumphead;
 
+        // radfast 7.4.25: as implemented in the Resonance Archives we have three of these:
+        //  - one is repaired already and governs network code "resoarchives-floor2" to control the lighting on this floor (including the generator room) - lighting is controlled via many instances of BEBehaviorControlPointLampNode
+        //  - one requires repair with a Large Temporal Gear and governs network code "resoarchives-floor1" for lighting on the floor below, and the Hydraulic Actuator on the door to the Translocator room
+        //  - one requires repair with a Pump Head and governs network code "resoarchives-floor3" for lighting on the floor above, and the Hydraulic Actuator on the Library door
+        // The ReceivesPower state of these is controlled by a separate ControlPoints network code "jonassteamengine" governed by an instance of BEBehaviorJonasBoilerDoor
+
         bool IsRepaired => hasTempGear && hasPumphead;
         bool ReceivesPower => (animControlPoint?.ControlData as AnimationMetaData)?.AnimationSpeed > 0;
 
@@ -57,8 +63,6 @@ namespace Vintagestory.GameContent
             modSys = Api.ModLoader.GetModSystem<ModSystemControlPoints>();
             var controlpointcode = AssetLocation.Create(networkCode, Block.Code.Domain);
             cp = modSys[controlpointcode];
-
-            on = IsRepaired && ReceivesPower;
         }
 
         protected override void BEBehaviorControlPointAnimatable_Activate(ControlPoint cpoint)
@@ -71,7 +75,6 @@ namespace Vintagestory.GameContent
                 this.animControlPoint = cpoint;
             }
 
-            on = IsRepaired && ReceivesPower;
             updatePumpingState();
         }
 
@@ -111,7 +114,6 @@ namespace Vintagestory.GameContent
                     Api.World.PlaySoundAt(new AssetLocation("sounds/effect/latch"), Pos, -0.5, null, true, 16);
                 }
 
-                on = IsRepaired && ReceivesPower;
                 updatePumpingState();
 
                 Blockentity.MarkDirty(true);
@@ -122,6 +124,7 @@ namespace Vintagestory.GameContent
 
         protected void updatePumpingState()
         {
+            on = IsRepaired && ReceivesPower;     // only returns correct result after base.Initialize() has been called to set up animControlPoint, needed for reading this.ReceivesPower
             if (Api == null) return;
 
             if (IsRepaired) updateAnimationstate();

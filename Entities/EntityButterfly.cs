@@ -159,14 +159,15 @@ namespace Vintagestory.GameContent
                 SidedPos.X += Math.Max(0, (windMotion - 0.2) / 20.0);
             }
 
-            if (ServerPos.SquareDistanceTo(Pos.XYZ) > 0.01 && !FeetInLiquid)
+            // What is this for? It seems to interfere with AiTaskButterflyWander Yaw setting causing them to circle in place 
+            /*if (ServerPos.SquareDistanceTo(Pos.XYZ) > 0.01 && !FeetInLiquid)
             {
                 float desiredYaw = (float)Math.Atan2(ServerPos.X - Pos.X, ServerPos.Z - Pos.Z);
 
                 float yawDist = GameMath.AngleRadDistance(SidedPos.Yaw, desiredYaw);
                 Pos.Yaw += GameMath.Clamp(yawDist, -35 * dt, 35 * dt);
                 Pos.Yaw = Pos.Yaw % GameMath.TWOPI;
-            }
+            }*/
         }
 
 

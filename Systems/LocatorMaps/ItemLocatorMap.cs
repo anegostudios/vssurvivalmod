@@ -68,6 +68,7 @@ namespace Vintagestory.GameContent
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
             base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
+            if (slot.Empty) return;
 
             handling = EnumHandHandling.Handled;
             var player = (byEntity as EntityPlayer).Player as IServerPlayer;

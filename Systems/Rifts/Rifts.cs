@@ -26,7 +26,9 @@ namespace Vintagestory.GameContent
         ICoreAPI api;
         ICoreClientAPI capi;
         ICoreServerAPI sapi;
-        RiftRenderer renderer;
+#pragma warning disable IDE0052 // Remove unread private members
+        RiftRenderer renderer; // No private member cannot be removed, stupid Visual Studio
+#pragma warning restore IDE0052 // Remove unread private members
 
         public Dictionary<int, Rift> riftsById = new Dictionary<int, Rift>();
         public ILoadedSound[] riftSounds = new ILoadedSound[4];
@@ -34,9 +36,9 @@ namespace Vintagestory.GameContent
 
         public IServerNetworkChannel schannel;
 
-        public int despawnDistance = 240;
-        public int spawnMinDistance = 8;
-        public int spawnAddDistance = 230;
+        public int despawnDistance = 190;
+        public int spawnMinDistance = 16;
+        public int spawnAddDistance = 180;
 
         bool riftsEnabled = true;
 
@@ -168,7 +170,6 @@ namespace Vintagestory.GameContent
             bool modified = KillOldRifts(nearbyRiftsByPlayerUid);
             modified |= SpawnNewRifts(nearbyRiftsByPlayerUid);
 
-
             if (modified)
             {
                 BroadCastRifts();
@@ -290,7 +291,7 @@ namespace Vintagestory.GameContent
             var pos = plr.Entity.Pos;
             float daylight = api.World.Calendar.GetDayLightStrength(pos.X, pos.Z);
 
-            return 5 * modRiftWeather.CurrentPattern.MobSpawnMul * GameMath.Clamp(1.1f - daylight, 0.35f, 1);
+            return 8 * modRiftWeather.CurrentPattern.MobSpawnMul * GameMath.Clamp(1.1f - daylight, 0.45f, 1);
         }
 
         private bool KillOldRifts(Dictionary<string, List<Rift>> nearbyRiftsByPlayerUid)
@@ -488,7 +489,7 @@ namespace Vintagestory.GameContent
                     .HandleWith(args => TextCommandResult.Success(riftsById.Count + " rifts loaded"))
                     .BeginSub("clear")
                         .WithDesc("Immediately remove all loaded rifts")
-                        .HandleWith(args => { riftsById.Clear(); BroadCastRifts(); return TextCommandResult.Success(); })
+                        .HandleWith(args => { riftsById.Clear(); BroadCastRifts(); return TextCommandResult.Success("Rifts cleared"); })
                     .EndSub()
                     .BeginSub("fade")
                         .WithDesc("Slowly remove all loaded rifts, over a few minutes")

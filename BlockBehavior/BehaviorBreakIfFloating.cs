@@ -56,7 +56,7 @@ namespace Vintagestory.GameContent
         {
             foreach(BlockFacing facing in BlockFacing.ALLFACES)
             {
-                if (world.BlockAccessor.IsSideSolid(pos.X + facing.Normali.X, pos.Y + facing.Normali.Y, pos.Z + facing.Normali.Z, facing.Opposite)) return false;
+                if (world.BlockAccessor.IsSideSolid(pos.X + facing.Normali.X, pos.InternalY + facing.Normali.Y, pos.Z + facing.Normali.Z, facing.Opposite)) return false;
             }
             return true;
         }

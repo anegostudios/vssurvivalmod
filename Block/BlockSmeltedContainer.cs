@@ -66,38 +66,6 @@ namespace Vintagestory.GameContent
             return "pour";
         }
 
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
-        {
-            return base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref failureCode);
-            /*(if (!byPlayer.Entity.Controls.Sneak || world.BlockAccessor.GetBlockEntity(blockSel.Position.DownCopy()) is ILiquidMetalSink)
-            {
-                failureCode = "__ignore__";
-                return false;
-            }
-
-            if (!CanPlaceBlock(world, byPlayer, blockSel, ref failureCode)) return false;
-
-            if (world.BlockAccessor.GetBlock(blockSel.Position.DownCopy()).CanAttachBlockAt(world.BlockAccessor, this, blockSel.Position, BlockFacing.UP))
-            {
-                DoPlaceBlock(world, byPlayer, blockSel, itemstack);
-
-                BlockEntity be = world.BlockAccessor.GetBlockEntity(blockSel.Position);
-                if (be is BlockEntitySmeltedContainer)
-                {
-                    BlockEntitySmeltedContainer belmc = (BlockEntitySmeltedContainer)be;
-                    KeyValuePair<ItemStack, int> contents = GetContents(world, itemstack);
-                    contents.Key.Collectible.SetTemperature(world, contents.Key, GetTemperature(world, itemstack));
-                    belmc.contents = contents.Key.Clone();
-                    belmc.units = contents.Value;
-                }
-                return true;
-            }
-
-            failureCode = "requiresolidground";
-
-            return false;*/
-        }
-
 
         public override void OnHeldIdle(ItemSlot slot, EntityAgent byEntity)
         {

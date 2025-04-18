@@ -1,6 +1,7 @@
 ﻿using ProtoBuf;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -615,6 +616,12 @@ namespace Vintagestory.GameContent
                     EnumBlockAccessFlags flags = GetAccessFlags(bre.PlayerUID, bre.GroupUid, forPlayer);
 
                     if ((flags & EnumBlockAccessFlags.Use) > 0) return false;
+
+                    if (forPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative && forPlayer.HasPrivilege(Privilege.commandplayer))
+                    {
+                        return false;
+                    }
+
                     return true;
                 }
             }

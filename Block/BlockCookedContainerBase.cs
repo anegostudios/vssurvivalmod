@@ -3,6 +3,7 @@ using System.Text;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
@@ -75,7 +76,7 @@ namespace Vintagestory.GameContent
                 containerStack.Attributes.RemoveAttribute("quantityServings");
                 containerStack.Attributes.RemoveAttribute("contents");
                 return;
-            } 
+            }
             containerStack.Attributes.SetString("recipeCode", code);
         }
 
@@ -146,7 +147,9 @@ namespace Vintagestory.GameContent
 
         public override int GetMergableQuantity(ItemStack sinkStack, ItemStack sourceStack, EnumMergePriority priority)
         {
-            if (sourceStack?.Block is IBlockMealContainer || (sourceStack?.Collectible?.Attributes?.IsTrue("mealContainer") ?? false)) return Math.Max(1, Math.Min(MaxStackSize - sinkStack.StackSize, sourceStack.StackSize));
+            if (priority != EnumMergePriority.AutoMerge &&
+                (sourceStack?.Block is IBlockMealContainer || (sourceStack?.Collectible?.Attributes?.IsTrue("mealContainer") ?? false)))
+                return Math.Max(1, Math.Min(MaxStackSize - sinkStack.StackSize, sourceStack.StackSize));
 
             return base.GetMergableQuantity(sinkStack, sourceStack, priority);
         }
@@ -157,7 +160,8 @@ namespace Vintagestory.GameContent
             {
                 if (op.CurrentPriority != EnumMergePriority.DirectMerge)
                 {
-                    if (Math.Min(MaxStackSize - op.SinkSlot.Itemstack.StackSize, op.SourceSlot.Itemstack.StackSize) > 0) base.TryMergeStacks(op);
+                    if (Math.Min(MaxStackSize - op.SinkSlot.Itemstack.StackSize, op.SourceSlot.Itemstack.StackSize) > 0)
+                        base.TryMergeStacks(op);
                     return;
                 }
 
@@ -166,10 +170,11 @@ namespace Vintagestory.GameContent
                 {
                     bufferStack = op.SourceSlot.TakeOut(op.SourceSlot.Itemstack.StackSize - 1);
                 }
-                
+
                 if (ServeIntoStack(op.SourceSlot, op.SinkSlot, op.World))
                 {
-                    if (!op.ActingPlayer.Entity.TryGiveItemStack(bufferStack))
+                    // only do TryGive on server since it will sync to the client which otherwise causes duplicated ghost stacks
+                    if (api is ICoreServerAPI && op.ActingPlayer?.Entity.TryGiveItemStack(bufferStack) == false)
                     {
                         op.World.SpawnItemEntity(bufferStack, op.ActingPlayer.Entity.Pos.AsBlockPos);
                     }
@@ -178,8 +183,9 @@ namespace Vintagestory.GameContent
                 {
                     DummySlot bufferSlot = new(bufferStack);
                     bufferSlot.TryPutInto(op.World, op.SourceSlot);
-                    if (Math.Min(MaxStackSize - op.SinkSlot.Itemstack.StackSize, op.SourceSlot.Itemstack.StackSize) > 0) base.TryMergeStacks(op);
-                }  
+                    if (Math.Min(MaxStackSize - op.SinkSlot.Itemstack.StackSize, op.SourceSlot.Itemstack.StackSize) > 0)
+                        base.TryMergeStacks(op);
+                }
 
                 return;
             }
@@ -298,7 +304,7 @@ namespace Vintagestory.GameContent
                     potslot.MarkDirty();
                     bowlSlot.MarkDirty();
 
-                    
+
 
                     return true;
                 }

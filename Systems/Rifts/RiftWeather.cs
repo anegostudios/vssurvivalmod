@@ -1,4 +1,5 @@
-﻿using ProtoBuf;
+﻿using Cairo;
+using ProtoBuf;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -168,22 +169,24 @@ namespace Vintagestory.GameContent
                 }
             }
 
+            SpawnPattern chosenPattern = patterns[patterns.Count - 1];
+
             float val = (float)sapi.World.Rand.NextDouble() * weightSum;
             foreach (var pattern in patterns)
             {
                 val -= pattern.Chance;
                 if (val <= 0)
                 {
-                    double untiltotalHours = totalHours + pattern.DurationHours.nextFloat(1, sapi.World.Rand);
-                    curPattern = new CurrentPattern() { Code = pattern.Code, UntilTotalHours = untiltotalHours };
-                    sapi.Network.GetChannel("riftWeather").BroadcastPacket(new SpawnPatternPacket() { Pattern = curPattern });
-                    return;
+                    chosenPattern= pattern;
+                    break;
                 }
             }
 
-            var patt = patterns[patterns.Count - 1];
-            curPattern = new CurrentPattern() { Code = patt.Code, UntilTotalHours = totalHours + patt.DurationHours.nextFloat(1, sapi.World.Rand) };
-
+            curPattern = new CurrentPattern() { 
+                Code = chosenPattern.Code, 
+                UntilTotalHours = totalHours + chosenPattern.DurationHours.nextFloat(1, sapi.World.Rand)
+            };
+            
             sapi.Network.GetChannel("riftWeather").BroadcastPacket(new SpawnPatternPacket() { Pattern = curPattern });
         }
 

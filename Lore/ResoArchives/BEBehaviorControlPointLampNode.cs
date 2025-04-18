@@ -25,7 +25,7 @@ namespace Vintagestory.GameContent
 
         public void setNetwork(string networkCode)
         {
-            string prevNet = networkCode;
+            string prevNet = this.networkCode;
             this.networkCode = networkCode;
             registerToControlPoint(prevNet);
             Blockentity.MarkDirty(true);
@@ -45,7 +45,7 @@ namespace Vintagestory.GameContent
 
             if (previousNetwork != null)
             {
-                modSys[AssetLocation.Create(networkCode, Block.Code.Domain)].Activate -= BEBehaviorControlPointLampNode_Activate;
+                modSys[AssetLocation.Create(previousNetwork, Block.Code.Domain)].Activate -= BEBehaviorControlPointLampNode_Activate;
             }
 
             if (networkCode == null) return;

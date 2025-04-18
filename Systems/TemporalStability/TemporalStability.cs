@@ -790,24 +790,26 @@ namespace Vintagestory.GameContent
 
                 float riftDist = NearestRiftDistance(spawnPosition);
 
-                // Still allow some mobs to spawn during daylight, but therefore must be very close to the rift
-                float minl = GameMath.Mix(0, sc.MinLightLevel, (float)mod);
-                float maxl = GameMath.Mix(32, sc.MaxLightLevel, (float)mod);
-                if (minl > herelightLevel || maxl < herelightLevel)
+                if (isSurface)
                 {
-                    if (!isSurface || riftDist >= 5 || api.World.Rand.NextDouble() > 0.05)
+                    var sunpos = api.World.Calendar.GetSunPosition(spawnPosition, api.World.Calendar.TotalDays);
+                    bool isDaytime = sunpos.Y >= 0;
+                    
+                    // Drifters, Shivers and Bowtorns have LightLevelType = OnlyBlockLight
+                    // So this prevents spawning of mobs near light sources, assuming decent self stability and no storm active
+                    if (herelightLevel * mod > sc.MaxLightLevel || herelightLevel * mod < sc.MinLightLevel) return false;
+
+
+                    if (isDaytime)
                     {
-                        return false;
+                        return riftDist < 6 && api.World.Rand.NextDouble() < 0.07;
+                    } else
+                    {
+                        return riftDist < 20;
                     }
                 }
 
                 double sqdist = byPlayer.Entity.ServerPos.SquareDistanceTo(spawnPosition);
-
-                if (isSurface)
-                {
-                    return riftDist < 24;
-                }
-
                 // Force a maximum distance
                 if (mod < 0.5)
                 {
