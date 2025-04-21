@@ -1102,26 +1102,30 @@ namespace Vintagestory.GameContent
                     entranceMaxZ = Math.Max(entranceMaxZ, posPlace.Z+struc.SizeY);
                 }
 
-                var entranceRegion = blockAccessor.GetMapRegion(pos.X / blockAccessor.RegionSize, pos.Z / blockAccessor.RegionSize);
-
-                var location = new Cuboidi(entranceMinX, posY, entranceMinZ, entranceMaxX, pos.Y, entranceMaxZ);
-                entranceRegion.AddGeneratedStructure(new GeneratedStructure()
+                // if we do not find a suitable entrance we do not need to add a landclaim and GeneratedStructure entry since it will not exceed the landclaim the RA already created
+                if (bestIndices.Count > 0)
                 {
-                    Code = param,
-                    Group = hookStruct.group,
-                    Location = location.Clone()
-                });
+                    var entranceRegion = blockAccessor.GetMapRegion(pos.X / blockAccessor.RegionSize, pos.Z / blockAccessor.RegionSize);
 
-                if (hookStruct.buildProtected)
-                {
-                    api.World.Claims.Add(new LandClaim
+                    var location = new Cuboidi(entranceMinX, posY, entranceMinZ, entranceMaxX, pos.Y, entranceMaxZ);
+                    entranceRegion.AddGeneratedStructure(new GeneratedStructure()
                     {
-                        Areas = new List<Cuboidi> { location },
-                        Description = hookStruct.buildProtectionDesc,
-                        ProtectionLevel = 10,
-                        LastKnownOwnerName = hookStruct.buildProtectionName,
-                        AllowUseEveryone = true
+                        Code = param,
+                        Group = hookStruct.group,
+                        Location = location.Clone()
                     });
+
+                    if (hookStruct.buildProtected)
+                    {
+                        api.World.Claims.Add(new LandClaim
+                        {
+                            Areas = new List<Cuboidi> { location },
+                            Description = hookStruct.buildProtectionDesc,
+                            ProtectionLevel = 10,
+                            LastKnownOwnerName = hookStruct.buildProtectionName,
+                            AllowUseEveryone = true
+                        });
+                    }
                 }
             }
 
