@@ -780,25 +780,25 @@ namespace Vintagestory.GameContent
 
             if (temporalStabilityEnabled && type.Attributes?["spawnCloserDuringLowStability"].AsBool() == true)
             {
+                int sunlightLevel = api.World.BlockAccessor.GetLightLevel((int)spawnPosition.X, (int)spawnPosition.Y, (int)spawnPosition.Z, EnumLightLevelType.OnlySunLight);
+
                 // Below 25% begin reducing range
                 double mod = Math.Min(1, 4 * byPlayer.Entity.WatchedAttributes.GetDouble("temporalStability", 1));
 
                 mod = Math.Min(mod, Math.Max(0, 1 - 2 * data.stormGlitchStrength));
 
-                int surfaceY = api.World.BlockAccessor.GetTerrainMapheightAt(spawnPosition.AsBlockPos);
-                bool isSurface = spawnPosition.Y >= surfaceY - 5;
+                bool isSurface = sunlightLevel >= 16;
 
                 float riftDist = NearestRiftDistance(spawnPosition);
+
+                // Drifters, Shivers and Bowtorns have LightLevelType = OnlyBlockLight
+                // So this prevents spawning of mobs near light sources, assuming decent self stability and no storm active
+                if (herelightLevel * mod > sc.MaxLightLevel || herelightLevel * mod < sc.MinLightLevel) return false;
 
                 if (isSurface)
                 {
                     var sunpos = api.World.Calendar.GetSunPosition(spawnPosition, api.World.Calendar.TotalDays);
-                    bool isDaytime = sunpos.Y >= 0;
-                    
-                    // Drifters, Shivers and Bowtorns have LightLevelType = OnlyBlockLight
-                    // So this prevents spawning of mobs near light sources, assuming decent self stability and no storm active
-                    if (herelightLevel * mod > sc.MaxLightLevel || herelightLevel * mod < sc.MinLightLevel) return false;
-
+                    bool isDaytime = sunpos.Y >= 0;                   
 
                     if (isDaytime)
                     {

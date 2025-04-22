@@ -106,16 +106,6 @@ namespace Vintagestory.GameContent
                 (byEntity as EntityPlayer)?.Player?.InventoryManager.BroadcastHotbarSlot();
             }
 
-            if (byEntity.World is IClientWorldAccessor)
-            {
-                ModelTransform tf = new ModelTransform();
-                tf.EnsureDefaultValues();
-
-                float rot = (float)Math.Max(0, secondsUsed) * GameMath.TWOPI * 85;
-                tf.Rotation.Set(rot, 0, 0);
-                byEntity.Controls.UsingHeldItemTransformAfter = tf;
-            }
-
             return true;
         }
 
@@ -177,6 +167,8 @@ namespace Vintagestory.GameContent
             {
                 damage += arrowSlot.Itemstack.Collectible.Attributes["damage"].AsFloat(0);
             }
+
+            if (byEntity != null) damage *= byEntity.Stats.GetBlended("rangedWeaponsDamage");
 
             ItemStack stack = arrowSlot.TakeOut(1);
             arrowSlot.MarkDirty();
