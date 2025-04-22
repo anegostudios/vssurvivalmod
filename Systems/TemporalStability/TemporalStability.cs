@@ -778,51 +778,49 @@ namespace Vintagestory.GameContent
             // Moved from EntitySpawner to here. Make mobs spawn at any light level if temporally unstable. A bit of an ugly hack, i know
             int herelightLevel = api.World.BlockAccessor.GetLightLevel((int)spawnPosition.X, (int)spawnPosition.Y, (int)spawnPosition.Z, sc.LightLevelType);
 
+            double mod;
             if (temporalStabilityEnabled && type.Attributes?["spawnCloserDuringLowStability"].AsBool() == true)
             {
-                int sunlightLevel = api.World.BlockAccessor.GetLightLevel((int)spawnPosition.X, (int)spawnPosition.Y, (int)spawnPosition.Z, EnumLightLevelType.OnlySunLight);
-
                 // Below 25% begin reducing range
-                double mod = Math.Min(1, 4 * byPlayer.Entity.WatchedAttributes.GetDouble("temporalStability", 1));
-
+                mod = Math.Min(1, 4 * byPlayer.Entity.WatchedAttributes.GetDouble("temporalStability", 1));
                 mod = Math.Min(mod, Math.Max(0, 1 - 2 * data.stormGlitchStrength));
-
-                bool isSurface = sunlightLevel >= 16;
-
-                float riftDist = NearestRiftDistance(spawnPosition);
-
-                // Drifters, Shivers and Bowtorns have LightLevelType = OnlyBlockLight
-                // So this prevents spawning of mobs near light sources, assuming decent self stability and no storm active
-                if (herelightLevel * mod > sc.MaxLightLevel || herelightLevel * mod < sc.MinLightLevel) return false;
-
-                if (isSurface)
-                {
-                    var sunpos = api.World.Calendar.GetSunPosition(spawnPosition, api.World.Calendar.TotalDays);
-                    bool isDaytime = sunpos.Y >= 0;                   
-
-                    if (isDaytime)
-                    {
-                        return riftDist < 6 && api.World.Rand.NextDouble() < 0.07;
-                    } else
-                    {
-                        return riftDist < 20;
-                    }
-                }
-
-                double sqdist = byPlayer.Entity.ServerPos.SquareDistanceTo(spawnPosition);
-                // Force a maximum distance
-                if (mod < 0.5)
-                {
-                    return sqdist < 10 * 10;
-                }
-
-                // Force a minimum distance
-                return sqdist > sc.MinDistanceToPlayer * sc.MinDistanceToPlayer * mod;
+            } else {
+                // for when we don't want TemporalStability to impact spawns
+                mod = 1;
             }
 
-            if (sc.MinLightLevel > herelightLevel || sc.MaxLightLevel < herelightLevel) return false;
+            int sunlightLevel = api.World.BlockAccessor.GetLightLevel((int)spawnPosition.X, (int)spawnPosition.Y, (int)spawnPosition.Z, EnumLightLevelType.OnlySunLight);
+            bool isSurface = sunlightLevel >= 16;
 
-            return byPlayer.Entity.ServerPos.SquareDistanceTo(spawnPosition) > sc.MinDistanceToPlayer * sc.MinDistanceToPlayer;
+            float riftDist = NearestRiftDistance(spawnPosition);
+
+            // Drifters, Shivers and Bowtorns have LightLevelType = OnlyBlockLight
+            // So this prevents spawning of mobs near light sources, assuming decent self stability and no storm active
+            if (herelightLevel * mod > sc.MaxLightLevel || herelightLevel * mod < sc.MinLightLevel) return false;
+
+            if (isSurface)
+            {
+                var sunpos = api.World.Calendar.GetSunPosition(spawnPosition, api.World.Calendar.TotalDays);
+                bool isDaytime = sunpos.Y >= 0;
+
+                if (isDaytime)
+                {
+                    return riftDist < 6 && api.World.Rand.NextDouble() < 0.07;
+                } else
+                {
+                    return riftDist < 20;
+                }
+            }
+
+            double sqdist = byPlayer.Entity.ServerPos.SquareDistanceTo(spawnPosition);
+            // Force a maximum distance
+            if (mod < 0.5)
+            {
+                return sqdist < 10 * 10;
+            }
+
+            // Force a minimum distance
+            return sqdist > sc.MinDistanceToPlayer * sc.MinDistanceToPlayer * mod;
         }
 
         private float NearestRiftDistance(Vec3d pos)
