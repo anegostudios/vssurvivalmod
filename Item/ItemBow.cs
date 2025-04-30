@@ -121,6 +121,23 @@ namespace Vintagestory.GameContent
 
         public override bool OnHeldInteractCancel(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
         {
+	        bool result = true;
+			bool preventDefault = false;
+			foreach (CollectibleBehavior collectibleBehavior in this.CollectibleBehaviors)
+			{
+				EnumHandling handled = EnumHandling.PassThrough;
+				bool behaviorResult = collectibleBehavior.OnHeldInteractCancel(secondsUsed, slot, byEntity, blockSel, entitySel, cancelReason, ref handled);
+				if (handled != EnumHandling.PassThrough)
+				{
+					result = (result && behaviorResult);
+					preventDefault = true;
+				}
+				if (handled == EnumHandling.PreventSubsequent)
+				{
+					return result;
+				}
+			}
+   
             byEntity.Attributes.SetInt("aiming", 0);
             byEntity.AnimManager.StopAnimation(aimAnimation);
 
