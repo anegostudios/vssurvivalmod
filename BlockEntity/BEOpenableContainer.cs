@@ -266,6 +266,11 @@ namespace Vintagestory.GameContent
         {
             if (invDialog?.IsOpened() == true) invDialog?.TryClose();
             invDialog?.Dispose();
+
+            if (Api is ICoreServerAPI sapi)
+            {
+                Inventory.openedByPlayerGUIds?.Clear();
+            }
         }
 
 

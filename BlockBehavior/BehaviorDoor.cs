@@ -89,9 +89,29 @@ namespace Vintagestory.GameContent
 
         protected bool hasCombinableLeftDoor(IWorldAccessor world, float RotateYRad, BlockPos pos, int doorWidth)
         {
-            int width = doorWidth;
-            BlockPos leftPos = pos.AddCopy((int)Math.Round(Math.Sin(RotateYRad - GameMath.PIHALF)), 0, (int)Math.Round(Math.Cos(RotateYRad - GameMath.PIHALF)));
+            BlockFacing leftFacing = BlockFacing.HorizontalFromYaw(RotateYRad).GetCW();
+
+            BlockPos leftPos = pos.AddCopy(leftFacing);
             var leftDoor = getDoorAt(world, leftPos);
+
+            if (doorWidth > 1)
+            {
+                if (leftDoor == null)
+                {
+                    leftPos = pos.AddCopy(leftFacing, 2);
+                    leftDoor = getDoorAt(world, leftPos);
+                }
+
+                if (leftDoor != null)
+                {
+                    if ((leftDoor.facingWhenClosed.Axis == EnumAxis.X && leftPos.X != leftDoor.Pos.X) ||
+                        (leftDoor.facingWhenClosed.Axis == EnumAxis.Z && leftPos.Z != leftDoor.Pos.Z))
+                    {
+                        leftDoor = null;
+                    }
+                }
+            }
+
             if (leftDoor != null && !leftDoor.InvertHandles && leftDoor.facingWhenClosed == BlockFacing.HorizontalFromYaw(RotateYRad))
             {
                 return true;

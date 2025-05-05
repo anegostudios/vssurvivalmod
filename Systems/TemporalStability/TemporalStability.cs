@@ -778,12 +778,12 @@ namespace Vintagestory.GameContent
             // Moved from EntitySpawner to here. Make mobs spawn at any light level if temporally unstable. A bit of an ugly hack, i know
             int herelightLevel = api.World.BlockAccessor.GetLightLevel((int)spawnPosition.X, (int)spawnPosition.Y, (int)spawnPosition.Z, sc.LightLevelType);
 
-            if (temporalStabilityEnabled && type.Attributes?["spawnCloserDuringLowStability"].AsBool() == true)
+            if (type.Attributes?["spawnCloserDuringLowStability"].AsBool() == true)
             {
                 int sunlightLevel = api.World.BlockAccessor.GetLightLevel((int)spawnPosition.X, (int)spawnPosition.Y, (int)spawnPosition.Z, EnumLightLevelType.OnlySunLight);
 
                 // Below 25% begin reducing range
-                double mod = Math.Min(1, 4 * byPlayer.Entity.WatchedAttributes.GetDouble("temporalStability", 1));
+                double mod = !temporalStabilityEnabled ? 1 : Math.Min(1, 4 * byPlayer.Entity.WatchedAttributes.GetDouble("temporalStability", 1));
 
                 mod = Math.Min(mod, Math.Max(0, 1 - 2 * data.stormGlitchStrength));
 
@@ -798,7 +798,7 @@ namespace Vintagestory.GameContent
                 if (isSurface)
                 {
                     var sunpos = api.World.Calendar.GetSunPosition(spawnPosition, api.World.Calendar.TotalDays);
-                    bool isDaytime = sunpos.Y >= 0;                   
+                    bool isDaytime = sunpos.Y >= 0;
 
                     if (isDaytime)
                     {
