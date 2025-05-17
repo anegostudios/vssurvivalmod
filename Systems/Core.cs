@@ -945,6 +945,7 @@ namespace Vintagestory.GameContent
 
             api.RegisterItemClass("ItemSkillTimeswitch", typeof(ItemSkillTimeswitch));
             api.RegisterItemClass("ItemAnchor", typeof(ItemAnchor));
+            api.RegisterItemClass("ItemEgg", typeof(ItemEgg));
         }
 
 

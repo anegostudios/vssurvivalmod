@@ -1,0 +1,396 @@
+{
+	code: "chicken",
+	class: "EntityAgent",
+	variantgroups: [
+		{ code: "age", states: ["hen", "henpoult", "rooster", "roosterpoult"]},
+	],
+	hitboxSize: { x: 0.5, y: 0.6 },
+	deadHitboxSize: { x: 0.5, y: 0.25 },
+	eyeHeight: 0.5,
+	weightByType: {
+		"chicken-hen*": 0.8,
+		"*": 1
+	},
+	fallDamageMultiplier: 0.75,
+	drops: [],
+	attributes: {
+		creatureDiet: {
+			foodCategories: ["Grain"],
+			foodTags: ["fruitmash"]
+		},
+		trappable: {
+			"small": { trapChance: 0.5, trapDestroyChance: 0.01 }
+		},
+		handbook: {
+			"groupcode": "creaturegroup-chicken"
+		},
+        eggTypes: [ { type: "item", code: "game:egg-chicken-raw" } ],
+	},
+	client: {
+		renderer: "Shape",
+		shapeByType: {
+			"chicken-hen*": { "base": "entity/land/chicken-hen" },
+			"*": { "base": "entity/land/chicken-rooster" }
+		},
+		textureByType: {
+			"chicken-hen*": { base: "entity/chicken/hen1", alternates: [ { base: "entity/chicken/hen2" }, { base: "entity/chicken/hen3" }, { base: "entity/chicken/hen4" }, { base: "entity/chicken/hen5" }, { base: "entity/chicken/hen6" }, { base: "entity/chicken/hen7" }, { base: "entity/chicken/hen8" } ] },
+			"*": { base: "entity/chicken/rooster1", alternates: [ { base: "entity/chicken/rooster2" }, { base: "entity/chicken/rooster3" }, { base: "entity/chicken/rooster4" }, { base: "entity/chicken/rooster5" } ] }
+		},
+		sizeByType: { "*poult": 0.72, "*": 1 },
+		sizeGrowthFactorByType: { "*poult": 0.24, "*": 0 },
+		behaviors: [
+			{ code: "repulseagents" }, 
+			{ code: "controlledphysics", stepHeight: 1.1251 }, 
+			{ code: "floatupwhenstuck", onlyWhenDead: true },
+			{ code: "interpolateposition" }, 
+			{ code: "multiplybase", "enabledByType": { "*-hen": true, "*": false } }, 
+			{ code: "harvestable" },
+			{ code: "despawn", minPlayerDistance: 8, belowLightLevel: 8, minSeconds: 300 },
+			{ code: "ropetieable", minGeneration: 2 }
+		],
+		animations: [
+			{
+				code: "hurt",
+				animation: "hurt", 
+				animationSpeed: 2.2,
+				weight: 10,
+				blendMode: "AddAverage" 
+			},
+			{
+				code: "roostercall",
+				animation: "roostercall",
+				animationSpeed: 1.3,
+				weight: 10,
+				blendMode: "AddAverage"
+			},
+			{
+				code: "eat",
+				animation: "eat", 
+				animationSpeed: 1,
+				weight: 4,
+				easeOutSpeed: 8,
+				easeInSpeed: 5,
+				blendMode: "AddAverage" 
+			},
+			{ 
+				code: "idle", 
+				animation: "idle",
+				blendMode: "AddAverage",
+				easeOutSpeed: 4,
+				triggeredBy: { defaultAnim: true },
+			},
+			{
+				code: "die",
+				animation: "death", 
+				animationSpeed: 1.25,
+				weight: 10,
+				blendMode: "Average",
+				triggeredBy: { onControls: ["dead"] }
+			},
+			{
+				code: "sleep", 
+				animation: "sleep",
+				easeInSpeed: 4,
+				easeOutSpeed: 4,
+				blendMode: "Average", 
+			},
+			{
+				code: "sit", 
+				animation: "sit",
+				easeInSpeed: 4,
+				easeOutSpeed: 4,
+				blendMode: "Average", 
+			}
+		]
+	},
+	server: {
+		attributes: {
+			pathfinder: {
+				minTurnAnglePerSec: 720,
+				maxTurnAnglePerSec: 1440
+			}
+		},
+		behaviors: [
+			{ code: "repulseagents" }, 
+			{ code: "controlledphysics", stepHeight: 1.1251 },
+			{ code: "despawn", minPlayerDistance: 8, belowLightLevel: 8, minSeconds: 300 },
+			{ code: "health", currenthealth: 3, maxhealth: 3 },
+			{ code: "deaddecay", hoursToDecay: 96, decayedBlock: "carcass-tiny" },
+			{ code: "harvestable", drops: [
+					{
+						type: "item", 
+						code: "poultry-raw", 
+						quantityByType: {
+							"*poult":{ avg: 1.25, var: 0.25 }, 
+							"*":{ avg: 1.75, var: 0.25 } 
+						}
+					},
+					{
+						type: "item", 
+						code: "feather", 
+						quantity: { avg: 12, var: 4 } 
+					}
+				],
+			},
+			{ code: "floatupwhenstuck", onlyWhenDead: true },
+			{ code: "multiplybase",
+				enabledByType: { "*-hen": true, "*": false },
+				multiplyCooldownDaysMin: 0,
+				multiplyCooldownDaysMax: 3,
+				portionsEatenForMultiply: 4
+			},
+			{ code: "grow",
+				enabledByType: { "*poult": true, "*": false },
+				hoursToGrowByType: {
+					"*-henpoult": 72,
+					"*-roosterpoult": 80
+				},
+				adultEntityCodesByType: {
+					"*-henpoult":["chicken-hen"],
+					"*-roosterpoult":["chicken-rooster"] 
+				}
+			},
+			{ code: "breathe" },
+			{
+				code: "emotionstates",
+				states: [
+					{ code: "alarmherdondamage", chance: 1, slot: 1, priority: 1, accumType: "max", enabledByType: { "*-rooster": false, "*": true } },
+					{ code: "aggressiveondamage", duration: 20, chance: 0.4, slot: 0, priority: 2, accumType: "noaccum", enabledByType: { "*-rooster": true, "*": false } },
+					{ code: "fleeondamage", duration: 10, chance: 1, slot: 0, priority: 1, accumType: "max" }
+				],
+			},
+			{ 
+				code: "taskai",
+				aiCreatureType: "LandCreature",
+				aitasks: [
+					{
+						"_comment": "pecker fight!!!",
+						code: "meleeattack",
+						enabledByType: { "*-rooster": true, "*": false },
+						entityCodes: ["chicken-rooster"],
+						priority: 2,
+						damage: 0.05,
+						mincooldown: 2500,
+						maxcooldown: 45000,
+						minDist: 0.9,
+						attackDurationMs: 2000,
+						damagePlayerAtMs: 600,
+						animation: "Attack",
+						animationSpeed: 1.5,
+						sound: "creature/chicken/rooster-alarm2"
+					},
+					{
+						code: "meleeattack",
+						enabledByType: { "*-rooster": true, "*": false },
+						entityCodes: ["player", "wolf-male", "wolf-female"],
+						priority: 2,
+						damage: 0.25,
+						mincooldown: 2500,
+						maxcooldown: 3500,
+						attackDurationMs: 2000,
+						damagePlayerAtMs: 600,
+						animation: "Attack",
+						animationSpeed: 1.5,
+						damageType: "PiercingAttack",
+						whenInEmotionState: "aggressiveondamage",
+						sound: "creature/chicken/rooster-alarm2"
+					},
+					{
+						code: "fleeentity",
+						seekingRange: 10,
+						entityCodes: ["player", "wolf-male", "wolf-female", "fox-*", "bear-*"],
+						priority: 1.8,
+						movespeed: 0.037,
+						animation: "Run",
+						animationSpeed: 2,
+						sound: "creature/chicken/hurt",
+						whenInEmotionState: "fleeondamage"
+					},
+					{
+						code: "seekentity",
+						priority: 1.7,
+						mincooldown: 1000,
+						maxcooldown: 1500,
+						seekingRange: 25,
+						movespeed: 0.033,
+						animation: "Run2",
+						animationSpeed: 2,
+						whenInEmotionState: "aggressiveondamage",
+						sound: "creature/chicken/rooster-alarm"
+					},
+					{
+						code: "fleeentity",
+						instafleeOnDamageChance: 1,
+						seekingRange: 11,
+						entityCodes: ["player", "wolf-male", "wolf-female", "fox-*", "bear-*"],
+						priority: 1.5,
+						movespeed: 0.037,
+						animationSpeed: 2.4,
+						animation: "Run",
+						sound: "creature/chicken/hen-flee"
+					},
+					{
+						code: "followleadholder",
+						minGeneration: 2,
+						priority: 1.45,
+						animation: "trot",
+						animationSpeed: 1.35,
+						movespeed: 0.019
+					},
+					{
+						code: "getoutofwater",
+						priority: 1.4,
+						movespeed: 0.02,
+						animation: "Run",
+						sound: "creature/chicken/hen-flee"
+					},
+					{
+						code: "seekblockandlay",
+						priorityByType: {"*-hen":1.36, "*":0},
+						layTime: 5,
+						chickCode: "chicken-baby",
+						sitDays: 0.9,
+						incubationDays: 5,
+						movespeed: 0.006,
+						animation: "Walk",
+						mincooldownHours: 1,
+						maxcooldownHours: 2,
+						sitAnimation: "Sit",
+						requiresNearbyEntityCode: "chicken-rooster",
+						requiresNearbyEntityRange: 12,
+						growthCapEntityCodes: ["chicken-baby", "chicken-hen", "chicken-rooster"],
+						failBlockCode: "egg-chicken-1",
+						sound: "creature/chicken/hen-lay"
+					},
+					{
+						code: "seekfoodandeat",
+						priority: 1.35,
+						eatSound: "creature/animal-eat-small",
+						eatTime: 1.5,
+						movespeed: 0.0065,
+						animation: "Walk",
+						mincooldownHours: 1,
+						maxcooldownHours: 4,
+					},
+					{
+						code: "stayclosetoentity",
+						enabledByType: { "*-hen": true, "*-henpoult": true, "*": false },
+						priority: 1.3,
+						entityCode: "chicken-rooster",
+						movespeed: 0.015,
+						maxDistance: 5,
+						searchRange: 12,
+						animation: "Run"
+					},
+					{
+						code: "idle",
+						animation: "Sleep",
+						priority: 1.25,
+						minduration: 5000000,
+						maxduration: 5000000,
+						mincooldown: 5000,
+						maxcooldown: 15000,
+						priorityForCancel: 1.38,
+						whenNotInEmotionState: "aggressiveondamage",
+						duringDayTimeFrames: [ { fromHour: 20, toHour: 24 }, { fromHour: 0, toHour: 6 } ],
+						stopOnNearbyEntityCodes: ["player", "wolf-male", "wolf-female", "fox-*"],
+						stopRange: 8,
+						stopOnHurt: true
+					},					
+					{
+						code: "idle",
+						animation: "RoosterCall",
+						priority: 1.23,
+						enabledByType: { "*-rooster": true, "*": false },
+						minduration: 3120,
+						maxduration: 3120,
+						mincooldown: 50000,
+						maxcooldown: 400000,
+						animationSpeed: 1.5,
+						sound: "creature/chicken/rooster-call",
+						soundRange: 48,
+						priorityForCancel: 1.35,
+					},
+					{
+						code: "idle",
+						animation: "Eat",
+						priority: 1.2,
+						minduration: 1000,
+						maxduration: 8000,
+						mincooldown: 1000,
+						maxcooldown: 10000,
+						priorityForCancel: 1.29
+					},
+					{
+						code: "idle",
+						animation: "Idle",
+						priority: 1.1,
+						minduration: 1000,
+						maxduration: 3000,
+						mincooldown: 2000,
+						maxcooldown: 30000
+					},
+					{
+						code: "wander", 
+						animation: "Walk",
+						priority: 1.0, 
+						movespeed: 0.007,
+						wanderChance: 0.02,
+						preferredLightLevel: 19
+					},			
+					{
+						code: "idle",
+						animation: "Sit",
+						priority: 0.9,
+						minduration: 6000,
+						maxduration: 40000,
+						mincooldown: 2000,
+						maxcooldown: 120000,
+						priorityForCancel: 1.29
+					},
+					{ 
+						code: "lookaround", 
+						priority: 0.5
+					}
+				]
+			},
+			{ code: "ropetieable", minGeneration: 2 },
+			{ code: "pettable", minGeneration: 1 }
+		],
+		spawnconditionsByType: {
+			"*-rooster": {
+				worldgen: {
+					TriesPerChunk: { avg: 0.1, var: 0 },
+					tryOnlySurface: true,
+					minLightLevel: 12,
+					groupSize: { dist: "verynarrowgaussian", avg: 4, var: 5 },
+					insideBlockCodes: ["air", "tallgrass-*"],
+					minTemp: -2,
+					minRain: 0.32,
+					minShrubs: 0.5,
+					companions: ["chicken-hen", "chicken-baby"]
+				},
+				runtime: {
+					group: "neutral",
+					tryOnlySurface: true,
+					chance: 0.001,
+					maxQuantity: 4,
+					minLightLevel: 12,
+					groupSize: { dist: "verynarrowgaussian", avg: 4, var: 5 },
+					insideBlockCodes: ["air", "tallgrass-*"],
+					minTemp: -2,
+					minRain: 0.32,
+					minShrubs: 0.5,
+					companions: ["chicken-hen", "chicken-baby"]
+				}
+			},
+			"*": null,
+		}
+	},
+	sounds: {
+		hurt: "creature/chicken/hurt",
+		death: "creature/chicken/hurt",
+		idle: "creature/chicken/hen-idle*"
+	},
+	idleSoundChance: 0.05
+}

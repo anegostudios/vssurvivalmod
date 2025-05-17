@@ -1,0 +1,10 @@
+{
+	ingredientPattern: "PHP	PPP",
+	ingredients: {
+		"H": { type: "item", code: "drygrass" },
+		"P": { type: "item", code: "plank-*" }
+	},
+	width: 3,
+	height: 2,
+	output: { type: "block", code: "henbox" }
+}
