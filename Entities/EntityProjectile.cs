@@ -380,5 +380,47 @@ namespace Vintagestory.GameContent
             beforeCollided = reader.ReadBoolean();
             ProjectileStack = new ItemStack(reader);
         }
+
+        /// <summary>
+        /// Common code for spawning and initiating the motion of an aimed projectile thrown overhead from the right hand
+        /// </summary>
+        /// <param name="entity">The projectile. Does not have to be an EntityProjectile, but if it is then we call .SetRotation()</param>
+        /// <param name="byEntity">The thrower</param>
+        /// <param name="accuracyFactor">A multiplier for the thrower's accuracy: usually 0.75 but a smaller number would make this projectile type more accurate than most</param>
+        /// <param name="heightOffset">The height above or below eye-height of the launched projectile</param>
+        /// <param name="horizontalOffset">The horizontal distance from eyes to throwing arm - used for thrown stones and snowballs. Positive for right arm, negative for left arm</param>
+        /// <param name="velocityFactor">How fast the projectile should move: default 0.5</param>
+        /// <param name="behindDistance">How far behind the player's eyes the projectile starts when first spawned, affects the feel of throwing/firing it: default 0.21</param>
+        /// <param name="aheadDistance">How far ahead of the player's position the projectile starts: default 0  (used only by Beenade)</param>
+        public static void SpawnThrownEntity(Entity entity, EntityAgent byEntity, double accuracyFactor, double heightOffset, double horizontalOffset, double velocityFactor = 0.5, double behindDistance = 0.21, double aheadDistance = 0)
+        {
+            float acc = Math.Max(0.001f, (1 - byEntity.Attributes.GetFloat("aimingAccuracy", 0)));
+            double rndpitch = byEntity.WatchedAttributes.GetDouble("aimingRandPitch", 1) * acc * accuracyFactor;
+            double rndyaw = byEntity.WatchedAttributes.GetDouble("aimingRandYaw", 1) * acc * accuracyFactor;
+
+            Vec3d pos = byEntity.ServerPos.XYZ.Add(0, byEntity.LocalEyePos.Y + heightOffset, 0);
+            if (horizontalOffset != 0)
+            {
+                rndyaw += Math.Atan(horizontalOffset / 4);
+            }
+            Vec3d aheadPos = pos.AheadCopy(1, byEntity.ServerPos.Pitch + rndpitch, byEntity.ServerPos.Yaw + rndyaw);
+            Vec3d velocity = (aheadPos - pos) * velocityFactor;
+
+            Vec3d spawnPos = byEntity.ServerPos.BehindCopy(behindDistance).XYZ.Add(
+                byEntity.LocalEyePos.X - GameMath.Cos(byEntity.ServerPos.Yaw) * horizontalOffset,
+                byEntity.LocalEyePos.Y + heightOffset,
+                byEntity.LocalEyePos.Z + GameMath.Sin(byEntity.ServerPos.Yaw) * horizontalOffset
+            );
+            if (aheadDistance != 0) spawnPos = spawnPos.Ahead(aheadDistance, 0, byEntity.ServerPos.Yaw + GameMath.PIHALF);
+            entity.ServerPos.SetPosWithDimension(spawnPos);
+            entity.ServerPos.Motion.Set(velocity);
+
+            entity.Pos.SetFrom(entity.ServerPos);
+            entity.World = byEntity.World;
+
+            if (entity is EntityProjectile enpr) enpr.SetRotation();
+
+            byEntity.World.SpawnPriorityEntity(entity);
+        }
     }
 }

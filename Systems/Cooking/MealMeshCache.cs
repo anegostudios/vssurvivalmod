@@ -118,8 +118,7 @@ namespace Vintagestory.GameContent
         {
             Dictionary<int, MultiTextureMeshRef> meshrefs;
 
-            object obj;
-            if (capi.ObjectCache.TryGetValue("pieMeshRefs", out obj))
+            if (capi.ObjectCache.TryGetValue("pieMeshRefs", out object obj))
             {
                 meshrefs = obj as Dictionary<int, MultiTextureMeshRef>;
             }

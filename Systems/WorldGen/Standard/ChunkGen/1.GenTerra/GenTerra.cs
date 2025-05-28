@@ -101,6 +101,7 @@ namespace Vintagestory.ServerMods
                 On a client, meanwhile, there will be at least the main rendering loop and the chunktesselator active.
              */
             maxThreads = Math.Clamp(Environment.ProcessorCount - (api.Server.IsDedicated ? 4 : 6), 1, api.Server.Config.HostedMode ? 4 : 10);  // We leave at least 4-6 threads free to avoid lag spikes due to CPU unavailability
+            if (api.Server.ReducedServerThreads && maxThreads > 1) maxThreads = 2;
 
             regionMapSize = (int)Math.Ceiling((double)api.WorldManager.MapSizeX / api.WorldManager.RegionSize);
             noiseScale = Math.Max(1, api.WorldManager.MapSizeY / 256f);

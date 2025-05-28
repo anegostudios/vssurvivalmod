@@ -185,24 +185,7 @@ namespace Vintagestory.GameContent
             ((EntityThrownStone)entity).ProjectileStack = stack;
             
 
-            float acc = Math.Max(0.001f, (1 - byEntity.Attributes.GetFloat("aimingAccuracy", 0)));
-            double rndpitch = byEntity.WatchedAttributes.GetDouble("aimingRandPitch", 1) * acc * 0.75;
-            double rndyaw = byEntity.WatchedAttributes.GetDouble("aimingRandYaw", 1) * acc * 0.75;
-            
-            Vec3d pos = byEntity.ServerPos.XYZ.Add(0, byEntity.LocalEyePos.Y, 0);
-            Vec3d aheadPos = pos.AheadCopy(1, byEntity.SidedPos.Pitch + rndpitch, byEntity.SidedPos.Yaw + rndyaw);
-            Vec3d velocity = (aheadPos - pos) * byEntity.Stats.GetBlended("bowDrawingStrength") * 0.8f;
-
-            
-            entity.ServerPos.SetPosWithDimension(byEntity.SidedPos.BehindCopy(0.21).XYZ.Add(0, byEntity.LocalEyePos.Y, 0));
-            entity.ServerPos.Motion.Set(velocity);
-
-            
-
-            entity.Pos.SetFrom(entity.ServerPos);
-            entity.World = byEntity.World;
-
-            byEntity.World.SpawnEntity(entity);
+            EntityProjectile.SpawnThrownEntity(entity, byEntity, 0.75, 0, 0, byEntity.Stats.GetBlended("bowDrawingStrength") * 0.8f);
 
             slot.Itemstack.Collectible.DamageItem(byEntity.World, byEntity, slot);
 

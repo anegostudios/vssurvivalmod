@@ -12,7 +12,7 @@ using Vintagestory.API.Util;
 namespace Vintagestory.GameContent
 {
 
-    public class CollectibleBehaviorBoatableGenericTypedContainer : CollectibleBehaviorHeldBag, IAttachedInteractions
+    public class CollectibleBehaviorBoatableGenericTypedContainer : CollectibleBehaviorHeldBag
     {
         public CollectibleBehaviorBoatableGenericTypedContainer(CollectibleObject collObj) : base(collObj)
         {
@@ -21,14 +21,12 @@ namespace Vintagestory.GameContent
         public override int GetQuantitySlots(ItemStack bagstack)
         {
             if (bagstack.Attributes?.HasAttribute("animalSerialized") == true) return 0;
-
             string type = bagstack.Attributes.GetString("type");
+            if (type == null)
+            {
+                type = bagstack.Block.Attributes["defaultType"].AsString();
+            }
             return bagstack.ItemAttributes?["quantitySlots"]?[type]?.AsInt(0) ?? 0;
-        }
-
-        public override EnumItemStorageFlags GetStorageFlags(ItemStack bagstack)
-        {
-            return base.GetStorageFlags(bagstack);
         }
     }
 
@@ -63,9 +61,6 @@ namespace Vintagestory.GameContent
         public Size2i AtlasSize { get { return blockTextureSource.AtlasSize; } }
         public ITexPositionSource blockTextureSource;
         public string curType;
-        public GenericContainerTextureSource()
-        {
-        }
 
         public TextureAtlasPosition this[string textureCode]
         {
@@ -86,7 +81,7 @@ namespace Vintagestory.GameContent
 
         Shape IWearableShapeSupplier.GetShape(ItemStack stack, Entity forEntity, string texturePrefixCode)
         {
-            string type = stack.Attributes.GetString("type");
+            string type = stack.Attributes.GetString("type", defaultType);
             string shapename = Attributes["shape"][type].AsString();
             var shape = GetShape(forEntity.World.Api, shapename);
 
@@ -96,27 +91,16 @@ namespace Vintagestory.GameContent
             return shape;
         }
 
-        public int GetProvideSlots(ItemStack stack)
-        {
-            string type = stack.Attributes.GetString("type");
-
-            if (type != null)
-            {
-                return stack.ItemAttributes?["quantitySlots"]?[type]?.AsInt(0) ?? 0;
-            }
-
-            return 0;
-        }
         public string GetCategoryCode(ItemStack stack)
         {
-            string type = stack.Attributes?.GetString("type");
+            string type = stack.Attributes?.GetString("type", defaultType);
             return Attributes["attachableCategoryCode"][type].AsString("chest");
         }
         public CompositeShape GetAttachedShape(ItemStack stack, string slotCode) => null;
 
         public void CollectTextures(ItemStack stack, Shape shape, string texturePrefixCode, Dictionary<string, CompositeTexture> intoDict) {
 
-            string type = stack.Attributes.GetString("type");
+            string type = stack.Attributes.GetString("type", defaultType);
             foreach (var key in shape.Textures.Keys)
             {
                 intoDict[texturePrefixCode + key] = this.Textures[type + "-" + key];
@@ -126,7 +110,7 @@ namespace Vintagestory.GameContent
         public string[] GetDisableElements(ItemStack stack) => null;
         public string[] GetKeepElements(ItemStack stack) => null;
 
-        public string GetTexturePrefixCode(ItemStack stack) => Code.ToShortString() + "-" + stack.Attributes.GetString("type") + "-";
+        public string GetTexturePrefixCode(ItemStack stack) => Code.ToShortString() + "-" + stack.Attributes.GetString("type", defaultType) + "-";
         #endregion
 
         public string Subtype
@@ -164,12 +148,6 @@ namespace Vintagestory.GameContent
             }
 
             return defaultType;
-        }
-
-
-        public override List<ItemStack> GetHandBookStacks(ICoreClientAPI capi)
-        {
-            return base.GetHandBookStacks(capi);
         }
 
         public override Cuboidf[] GetCollisionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
@@ -263,15 +241,6 @@ namespace Vintagestory.GameContent
 
             base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
         }
-
-
-        public override void OnDecalTesselation(IWorldAccessor world, MeshData decalMesh, BlockPos pos)
-        {
-            base.OnDecalTesselation(world, decalMesh, pos);
-
-        }
-
-
 
         public override void OnUnloaded(ICoreAPI api)
         {
@@ -488,14 +457,9 @@ namespace Vintagestory.GameContent
             return new ItemStack[] { new ItemStack(world.GetBlock(CodeWithVariant("side", "east"))) };
         }
 
-        public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
-        {
-            return base.OnBlockInteractStart(world, byPlayer, blockSel);
-        }
-
         public override string GetHeldItemName(ItemStack itemStack)
         {
-            string type = itemStack.Attributes.GetString("type");
+            string type = itemStack.Attributes.GetString("type", defaultType);
             return Lang.GetMatching(Code?.Domain + AssetLocation.LocationSeparator + "block-" + type + "-" + Code?.Path);
         }
 

@@ -275,13 +275,13 @@ namespace Vintagestory.GameContent
                 {
                     var facing = BlockFacing.FromCode(Side);
                     return CodeWithVariant("side",
-                        BlockFacing.HORIZONTALS[GameMath.Mod(facing.Index+dir+2, 4)].Code.ToLower());
+                        BlockFacing.HORIZONTALS[GameMath.Mod(facing.Index+dir+2, 4)].Code.ToLowerInvariant());
                 }
                 case "3way":
                 {
                     var facing = BlockFacing.FromCode(Side);
                     return CodeWithVariant("side",
-                        BlockFacing.HORIZONTALS[GameMath.Mod(facing.Index+dir, 4)].Code.ToLower());
+                        BlockFacing.HORIZONTALS[GameMath.Mod(facing.Index+dir, 4)].Code.ToLowerInvariant());
                 }
                 case "t":
                 {
@@ -298,7 +298,7 @@ namespace Vintagestory.GameContent
                         _ => BlockFacing.NORTH
                     };
                     return CodeWithVariant("side","ud-"+
-                        BlockFacing.HORIZONTALS[GameMath.Mod(facing.Index+dir, 4)].Code.ToLower()[0]);
+                        BlockFacing.HORIZONTALS[GameMath.Mod(facing.Index+dir, 4)].Code.ToLowerInvariant()[0]);
                 }
                 case "straight":
                 {

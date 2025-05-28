@@ -169,7 +169,7 @@ namespace Vintagestory.GameContent
 
                 entitypr.Pos.SetFrom(entitypr.ServerPos);
                 entitypr.World = entity.World;
-                entity.World.SpawnEntity(entitypr);
+                entity.World.SpawnPriorityEntity(entitypr);
             }
 
             return accum < durationMs / 1000f;

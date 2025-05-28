@@ -85,21 +85,8 @@ namespace Vintagestory.GameContent
             ((EntityThrownBeenade)entity).Damage = damage;
             ((EntityThrownBeenade)entity).ProjectileStack = stack;
             
-            float acc = (1 - byEntity.Attributes.GetFloat("aimingAccuracy", 0));
-            double rndpitch = byEntity.WatchedAttributes.GetDouble("aimingRandPitch", 1) * acc * 0.75;
-            double rndyaw = byEntity.WatchedAttributes.GetDouble("aimingRandYaw", 1) * acc * 0.75;
 
-            Vec3d pos = byEntity.ServerPos.XYZ.Add(0, byEntity.LocalEyePos.Y - 0.2, 0);
-            Vec3d aheadPos = pos.AheadCopy(1, byEntity.ServerPos.Pitch + rndpitch, byEntity.ServerPos.Yaw + rndyaw);
-            Vec3d velocity = (aheadPos - pos) * 0.5;
-
-            entity.ServerPos.SetPosWithDimension(byEntity.ServerPos.BehindCopy(0.21).XYZ.Add(0, byEntity.LocalEyePos.Y - 0.2, 0).Ahead(0.25, 0, byEntity.ServerPos.Yaw + GameMath.PIHALF));
-            entity.ServerPos.Motion.Set(velocity);
-
-            entity.Pos.SetFrom(entity.ServerPos);
-            entity.World = byEntity.World;
-
-            byEntity.World.SpawnEntity(entity);
+            EntityProjectile.SpawnThrownEntity(entity, byEntity, 0.75, -0.2, 0, 0.5, 0.21, 0.25);
             byEntity.StartAnimation("throw");
 
             if (byEntity is EntityPlayer) RefillSlotIfEmpty(slot, byEntity, (itemstack) => itemstack.Collectible.Code == Code);

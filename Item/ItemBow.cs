@@ -207,7 +207,7 @@ namespace Vintagestory.GameContent
             entityarrow.World = byEntity.World;
             entityarrow.SetRotation();
 
-            byEntity.World.SpawnEntity(entityarrow);
+            byEntity.World.SpawnPriorityEntity(entityarrow);
 
             slot.Itemstack.Collectible.DamageItem(byEntity.World, byEntity, slot);
             slot.MarkDirty();

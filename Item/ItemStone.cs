@@ -274,25 +274,7 @@ namespace Vintagestory.GameContent
             ((EntityThrownStone)entity).Damage = damage;
             ((EntityThrownStone)entity).ProjectileStack = stack;
 
-
-            float acc = (1 - byEntity.Attributes.GetFloat("aimingAccuracy", 0));
-            double rndpitch = byEntity.WatchedAttributes.GetDouble("aimingRandPitch", 1) * acc * 0.75;
-            double rndyaw = byEntity.WatchedAttributes.GetDouble("aimingRandYaw", 1) * acc * 0.75;
-
-            Vec3d pos = byEntity.ServerPos.XYZ.Add(0, byEntity.LocalEyePos.Y, 0);
-            Vec3d aheadPos = pos.AheadCopy(1, byEntity.ServerPos.Pitch + rndpitch, byEntity.ServerPos.Yaw + rndyaw);
-            Vec3d velocity = (aheadPos - pos) * 0.5;
-
-            entity.ServerPos.SetPosWithDimension(
-                byEntity.ServerPos.BehindCopy(0.21).XYZ.Add(0, byEntity.LocalEyePos.Y, 0)
-            );
-
-            entity.ServerPos.Motion.Set(velocity);
-
-            entity.Pos.SetFrom(entity.ServerPos);
-            entity.World = byEntity.World;
-
-            byEntity.World.SpawnEntity(entity);
+            EntityProjectile.SpawnThrownEntity(entity, byEntity, 0.75, 0.1, 0.2);
             byEntity.StartAnimation("throw");
 
             //byEntity.GetBehavior<EntityBehaviorHunger>()?.ConsumeSaturation(2f);

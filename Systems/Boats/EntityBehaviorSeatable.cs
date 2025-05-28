@@ -1,9 +1,6 @@
-﻿using Cairo;
-using System;
-using System.Collections;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection.Metadata;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -319,7 +316,12 @@ namespace Vintagestory.GameContent
 
         public virtual bool AnyMounted()
         {
-            return Seats.Any(seat => seat.Passenger != null);
+            var Seats = this.Seats;
+            for (int i = 0; i < Seats.Length; i++)
+            {
+                if (Seats[i].Passenger != null) return true;
+            }
+            return false;
         }
 
         public override string PropertyName() => "seatable";

@@ -94,19 +94,19 @@ namespace Vintagestory.GameContent
             string seg = null;
             if (around[normal0] != null && around[normal2] == null)
             {
-                seg = "s" + BlockFacing.FromFirstLetter(around[normal0].LastCodePart(1)[1]).Code.ToLower()[0];
+                seg = "s" + BlockFacing.FromFirstLetter(around[normal0].LastCodePart(1)[1]).Code.ToLowerInvariant()[0];
             }
             if (around[normal2] != null && around[normal0] == null)
             {
-                seg = "n" + BlockFacing.FromFirstLetter(around[normal2].LastCodePart(1)[1]).Code.ToLower()[0];
+                seg = "n" + BlockFacing.FromFirstLetter(around[normal2].LastCodePart(1)[1]).Code.ToLowerInvariant()[0];
             }
             if (around[normal1] != null && around[normal3] == null)
             {
-                seg = BlockFacing.FromFirstLetter(around[normal1].LastCodePart(1)[0]).Code.ToLower()[0] + "w";
+                seg = BlockFacing.FromFirstLetter(around[normal1].LastCodePart(1)[0]).Code.ToLowerInvariant()[0] + "w";
             }
             if (around[normal3] != null && around[normal1] == null)
             {
-                seg = BlockFacing.FromFirstLetter(around[normal3].LastCodePart(1)[0]).Code.ToLower()[0] + "e";
+                seg = BlockFacing.FromFirstLetter(around[normal3].LastCodePart(1)[0]).Code.ToLowerInvariant()[0] + "e";
             }
             if (seg == null)
             {

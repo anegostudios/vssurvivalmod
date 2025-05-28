@@ -787,16 +787,16 @@ namespace Vintagestory.GameContent
 
                 mod = Math.Min(mod, Math.Max(0, 1 - 2 * data.stormGlitchStrength));
 
-                bool isSurface = sunlightLevel >= 16;
-
-                float riftDist = NearestRiftDistance(spawnPosition);
-
                 // Drifters, Shivers and Bowtorns have LightLevelType = OnlyBlockLight
                 // So this prevents spawning of mobs near light sources, assuming decent self stability and no storm active
                 if (herelightLevel * mod > sc.MaxLightLevel || herelightLevel * mod < sc.MinLightLevel) return false;
 
+                bool isSurface = sunlightLevel >= 16;
+
                 if (isSurface)
                 {
+                    float riftDist = NearestRiftDistance(spawnPosition);
+
                     var sunpos = api.World.Calendar.GetSunPosition(spawnPosition, api.World.Calendar.TotalDays);
                     bool isDaytime = sunpos.Y >= 0;
 
@@ -810,6 +810,7 @@ namespace Vintagestory.GameContent
                 }
 
                 double sqdist = byPlayer.Entity.ServerPos.SquareDistanceTo(spawnPosition);
+
                 // Force a maximum distance
                 if (mod < 0.5)
                 {
@@ -827,7 +828,8 @@ namespace Vintagestory.GameContent
 
         private float NearestRiftDistance(Vec3d pos)
         {
-            var nrift = riftSys.riftsById.Values.Nearest(rift => rift.Position.SquareDistanceTo(pos));
+            Rift nrift = riftSys.ServerRifts.Nearest(rift => rift.Position.SquareDistanceTo(pos));
+
             if (nrift != null)
             {
                 return nrift.Position.DistanceTo(pos);

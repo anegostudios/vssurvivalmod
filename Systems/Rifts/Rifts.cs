@@ -31,6 +31,12 @@ namespace Vintagestory.GameContent
 #pragma warning restore IDE0052 // Remove unread private members
 
         public Dictionary<int, Rift> riftsById = new Dictionary<int, Rift>();
+        /// <summary>
+        /// A collection of all the Rifts on a server, for thread-safe access (e.g. by TemporalStability when testing entity spawn positions off-thread)
+        /// Updated every time the riftsById change (normally once per 3 seconds)
+        /// </summary>
+        private List<Rift> serverRifts = new();
+        public List<Rift> ServerRifts { get { return serverRifts; } }
         public ILoadedSound[] riftSounds = new ILoadedSound[4];
         public Rift[] nearestRifts = new Rift[0];
 
@@ -186,6 +192,15 @@ namespace Vintagestory.GameContent
                     chunkIndexbyPlayer[player.PlayerUID] = index3d;
                 }
             }
+
+            UpdateServerRiftList();
+        }
+
+        private void UpdateServerRiftList()
+        {
+            var serverRiftsNew = new List<Rift>();
+            foreach (var rift in riftsById.Values) serverRiftsNew.Add(rift);
+            serverRifts = serverRiftsNew;
         }
 
         private bool SpawnNewRifts(Dictionary<string, List<Rift>> nearbyRiftsByPlayerUid)
@@ -371,6 +386,7 @@ namespace Vintagestory.GameContent
             {
                 riftsById = new Dictionary<int, Rift>();
             }
+            else UpdateServerRiftList();
         }
 
         public void BroadCastRifts(IPlayer onlyToPlayer = null)
@@ -489,7 +505,7 @@ namespace Vintagestory.GameContent
                     .HandleWith(args => TextCommandResult.Success(riftsById.Count + " rifts loaded"))
                     .BeginSub("clear")
                         .WithDesc("Immediately remove all loaded rifts")
-                        .HandleWith(args => { riftsById.Clear(); BroadCastRifts(); return TextCommandResult.Success("Rifts cleared"); })
+                        .HandleWith(args => { riftsById.Clear(); serverRifts = new(); BroadCastRifts(); return TextCommandResult.Success("Rifts cleared"); })
                     .EndSub()
                     .BeginSub("fade")
                         .WithDesc("Slowly remove all loaded rifts, over a few minutes")
@@ -500,6 +516,7 @@ namespace Vintagestory.GameContent
                                 rift.DieAtTotalHours = Math.Min(rift.DieAtTotalHours, api.World.Calendar.TotalHours + 0.2);
                             }
 
+                            UpdateServerRiftList();
                             BroadCastRifts();
                             return TextCommandResult.Success();
                         })
@@ -544,6 +561,7 @@ namespace Vintagestory.GameContent
                                 riftsById[rift.RiftId] = rift;
                             }
 
+                            UpdateServerRiftList();
                             BroadCastRifts();
                             return TextCommandResult.Success("ok, " + cnt + " spawned.");
                         })
@@ -567,6 +585,7 @@ namespace Vintagestory.GameContent
                             OnRiftSpawned?.Invoke(rift);
 
                             riftsById[rift.RiftId] = rift;
+                            UpdateServerRiftList();
                             BroadCastRifts();
 
                             return TextCommandResult.Success("ok, rift spawned.");

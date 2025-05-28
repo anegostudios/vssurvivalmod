@@ -222,7 +222,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            cokeConversionRate = inventory[0].Itemstack.ItemAttributes?["cokeConversionRate"].AsFloat(0) ?? 0;
+            cokeConversionRate = inventory[0].Itemstack?.ItemAttributes?["cokeConversionRate"].AsFloat(0) ?? 0;
             if (cokeConversionRate > 0)
             {
                 if (isCokable = TestCokable())

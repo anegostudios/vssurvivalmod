@@ -6,6 +6,7 @@ using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
@@ -144,9 +145,10 @@ namespace Vintagestory.GameContent
         private void OnSaveGameGettingSaved()
         {
             ISaveGame savegame = sapi.WorldManager.SaveGame;
+            using FastMemoryStream ms = new ();
             foreach (var val in PropickReadingsByPlayer)
             {
-                savegame.StoreData("oreMapMarkers-" + val.Key, SerializerUtil.Serialize(val.Value));
+                savegame.StoreData("oreMapMarkers-" + val.Key, SerializerUtil.Serialize(val.Value, ms));
             }
         }
 
@@ -164,9 +166,15 @@ namespace Vintagestory.GameContent
             catch { }
         }
 
-        public override void OnViewChangedServer(IServerPlayer fromPlayer, List<Vec2i> nowVisible, List<Vec2i> nowHidden)
+        [Obsolete("Receiving the OnViewChangedPacket now calls: OnViewChangedServer(fromPlayer, int x1, int z1, int x2, int z2) but retained in 1.20.10 for backwards compatibility")]
+        public override void OnViewChangedServer(IServerPlayer fromPlayer, List<FastVec2i> nowVisible, List<FastVec2i> nowHidden)
         {
             ResendWaypoints(fromPlayer);
+        }
+
+        public override void OnViewChangedServer(IServerPlayer fromPlayer, int x1, int z1, int x2, int z2)
+        {
+            OnViewChangedServer(fromPlayer, null, null);
         }
         
         public override void OnMapOpenedClient()
