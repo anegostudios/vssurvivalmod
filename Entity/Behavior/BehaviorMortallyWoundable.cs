@@ -88,7 +88,8 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            entity.GetBehavior<EntityBehaviorSeatable>().CanSit += EntityBehaviorMortallyWoundable_CanSit;
+            var seatable = entity.GetBehavior<EntityBehaviorSeatable>();
+            if (seatable != null) seatable.CanSit += EntityBehaviorMortallyWoundable_CanSit;
         }
 
         private bool EntityBehaviorMortallyWoundable_CanSit(EntityAgent eagent, out string errorMessage)
