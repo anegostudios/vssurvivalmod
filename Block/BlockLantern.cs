@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.ServiceModel.Channels;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -102,6 +103,12 @@ namespace Vintagestory.GameContent
                 BELantern.setLightColor(this.LightHsv, lightHsv, stack.Attributes.GetString("glass"));
 
                 return lightHsv;
+            }
+
+            if (pos != null)  // This deals with the situation where a lantern at a pos was broken (so the BlockEntity is now null, as lighting updates are delayed) and we have no information about whether the lantern was lined or not: we return HSV *as if* it was lined, to ensure that lighting is fully cleared and no outer ring remains
+            {
+                int v = this.LightHsv[2] + 3;   // + 3 to match BELantern line 68
+                return new byte[] { this.LightHsv[0], this.LightHsv[1], (byte)v };
             }
 
             return base.GetLightHsv(blockAccessor, pos, stack);

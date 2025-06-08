@@ -27,6 +27,7 @@ namespace Vintagestory.GameContent
             base.Initialize(api);
             origlightHsv = Block.LightHsv;
             lightHsv = (byte[])Block.LightHsv.Clone();
+            setLightColor(origlightHsv, lightHsv, glass);
         }
 
         public void DidPlace(string material, string lining, string glass)
@@ -53,7 +54,7 @@ namespace Vintagestory.GameContent
             material = tree.GetString("material", "copper");
             lining = tree.GetString("lining", "plain");
             glass = tree.GetString("glass", "quartz");
-            setLightColor(origlightHsv, lightHsv, glass);
+            // The light color will be set in the Initialize() call which must follow FromTreeAttributes() for any BE in the world: for reliability, it needs to be called only after setting the origLightHsv and LightHsv values
 
             MeshAngle = tree.GetFloat("meshAngle");
 

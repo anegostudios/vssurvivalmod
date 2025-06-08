@@ -22,11 +22,11 @@ namespace Vintagestory.GameContent
         public override void OnUnloaded(ICoreAPI api)
         {
             var meshRefs = ObjectCacheUtil.TryGet<Dictionary<string, MultiTextureMeshRef>>(api, "wearableAttachmentMeshRefs");
-            if (meshRefs?.Count > 0)
+            if (meshRefs != null && meshRefs.Count > 0)
             {
-                foreach (var (_, meshRef) in meshRefs)
+                foreach (var meshRef in meshRefs.Values)
                 {
-                    meshRef.Dispose();
+                    meshRef?.Dispose();
                 }
                 ObjectCacheUtil.Delete(api, "wearableAttachmentMeshRefs");
             }

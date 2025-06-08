@@ -121,6 +121,12 @@ namespace Vintagestory.GameContent
 
             if (packetid == 1130)
             {
+                if (!fromPlayer.HasPrivilege("controlserver"))
+                {
+                    (fromPlayer as IServerPlayer).SendIngameError("noprivilege", "No privilege to set up a loot randomizer");
+                    return;
+                }
+
                 TreeAttribute tree = new TreeAttribute();
                 tree.FromBytes(data);
                 for (int i = 0; i < 10; i++)

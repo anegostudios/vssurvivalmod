@@ -503,8 +503,9 @@ namespace Vintagestory.GameContent
 
         public override int GetRandomContentColor(ICoreClientAPI capi, ItemStack[] stacks)
         {
+            if (stacks.Length == 0) return 0x808080;
             ItemStack[] cstacks = GetContents(capi.World, stacks[0]);
-            if (cstacks.Length == 0) return 0;
+            if (cstacks.Length == 0) return 0x808080;
 
             ItemStack rndStack = cstacks[capi.World.Rand.Next(stacks.Length)];
             return rndStack.Collectible.GetRandomColor(capi, rndStack);
