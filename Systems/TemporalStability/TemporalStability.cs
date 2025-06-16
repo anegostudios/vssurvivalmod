@@ -13,6 +13,8 @@ using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 using Vintagestory.ServerMods;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     
@@ -541,9 +543,8 @@ namespace Vintagestory.GameContent
             }
 
             foreach (var rspc in rareSpawnCounts)
-            {   
-                int prevcnt = 0;
-                plrdict.TryGetValue(rspc.Key, out prevcnt);
+            {
+                plrdict.TryGetValue(rspc.Key, out int prevcnt);
                 rareSpawnCounts.TryGetValue(rspc.Key, out int cnt);
                 plrdict[rspc.Key] = cnt + prevcnt;
             }
@@ -557,8 +558,7 @@ namespace Vintagestory.GameContent
                     allowedCount = (int)Math.Round(allowedCount * mul);
                 }
 
-                int nowCount = 0;
-                mainSpawnCountsByGroup.TryGetValue(group.Key, out nowCount);
+                mainSpawnCountsByGroup.TryGetValue(group.Key, out int nowCount);
 
                 if (nowCount < allowedCount)
                 {
@@ -780,8 +780,6 @@ namespace Vintagestory.GameContent
 
             if (type.Attributes?["spawnCloserDuringLowStability"].AsBool() == true)
             {
-                int sunlightLevel = api.World.BlockAccessor.GetLightLevel((int)spawnPosition.X, (int)spawnPosition.Y, (int)spawnPosition.Z, EnumLightLevelType.OnlySunLight);
-
                 // Below 25% begin reducing range
                 double mod = !temporalStabilityEnabled ? 1 : Math.Min(1, 4 * byPlayer.Entity.WatchedAttributes.GetDouble("temporalStability", 1));
 
@@ -791,6 +789,7 @@ namespace Vintagestory.GameContent
                 // So this prevents spawning of mobs near light sources, assuming decent self stability and no storm active
                 if (herelightLevel * mod > sc.MaxLightLevel || herelightLevel * mod < sc.MinLightLevel) return false;
 
+                int sunlightLevel = api.World.BlockAccessor.GetLightLevel((int)spawnPosition.X, (int)spawnPosition.Y, (int)spawnPosition.Z, EnumLightLevelType.OnlySunLight);
                 bool isSurface = sunlightLevel >= 16;
 
                 if (isSurface)

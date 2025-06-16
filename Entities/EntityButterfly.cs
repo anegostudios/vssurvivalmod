@@ -4,6 +4,8 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ModsystemButterflySpawnCondsExtra : ModSystem {
@@ -173,14 +175,13 @@ namespace Vintagestory.GameContent
 
         private void SetAnimation(string animCode, float speed)
         {
-            AnimationMetaData animMeta;
-            if (!AnimManager.ActiveAnimationsByAnimCode.TryGetValue(animCode, out animMeta))
+            if (!AnimManager.ActiveAnimationsByAnimCode.TryGetValue(animCode, out AnimationMetaData animMeta))
             {
                 animMeta = new AnimationMetaData()
                 {
                     Code = animCode,
                     Animation = animCode,
-                    AnimationSpeed = speed,                   
+                    AnimationSpeed = speed,
                 };
 
                 AnimManager.ActiveAnimationsByAnimCode.Clear();
@@ -220,8 +221,7 @@ namespace Vintagestory.GameContent
 
                         string code = anim.Code == null ? anim.Name.ToLowerInvariant() : anim.Code;
                         active += ", " + code;
-                        AnimationMetaData animmeta;
-                        Properties.Client.AnimationsByMetaCode.TryGetValue(code, out animmeta);
+                        Properties.Client.AnimationsByMetaCode.TryGetValue(code, out AnimationMetaData animmeta);
 
                         if (animmeta == null)
                         {

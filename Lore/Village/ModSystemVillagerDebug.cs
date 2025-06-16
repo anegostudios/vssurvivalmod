@@ -11,6 +11,8 @@ using System.Text;
 using System;
 using Vintagestory.API.Client;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public delegate TextCommandResult DressedEntityEachDelegate(EntityDressedHumanoid entity, Dictionary<string, WeightedCode[]> pro);
@@ -225,7 +227,7 @@ namespace Vintagestory.GameContent
                 var cfg = sapi.ModLoader.GetModSystem<HumanoidOutfits>().GetConfig(edh.OutfitConfigFileName);
                 foreach (var val in cfg.BySlot)
                 {
-                    pro[val.Code] = new WeightedCode[0];
+                    pro[val.Code] = Array.Empty<WeightedCode>();
                 }
 
                 edh.LoadOutfitCodes();
@@ -240,7 +242,7 @@ namespace Vintagestory.GameContent
 
             return OnEach(args, (edh, pro) =>
             {
-                pro[slot] = new WeightedCode[0];
+                pro[slot] = Array.Empty<WeightedCode>();
                 edh.LoadOutfitCodes();
 
                 return TextCommandResult.Success("ok, slot " + slot + " cleared");

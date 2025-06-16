@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using Vintagestory.API;
 using Vintagestory.API.Common;
@@ -17,19 +18,19 @@ namespace Vintagestory.GameContent
         /// <!--<jsonoptional>Optional</jsonoptional><jsondefault>None</jsondefault>-->
         /// The hierachy/path of the shape element inside the recipe's shape file. Will be enabled/disabled in the final meal if this itemstack is used.
         /// </summary>
-        [DocumentAsJson] public string ShapeElement;
+        [DocumentAsJson] public string? ShapeElement;
 
         /// <summary>
         /// <!--<jsonoptional>Optional</jsonoptional><jsondefault>None</jsondefault>-->
         /// Overrides a texture mapping for the shape element. Uses two strings, the first being the original texture code, and the second being a new texture code.
         /// </summary>
-        [DocumentAsJson] public string[] TextureMapping;
+        [DocumentAsJson] public string[]? TextureMapping;
 
         /// <summary>
         /// <!--<jsonoptional>Optional</jsonoptional><jsondefault>None</jsondefault>-->
         /// A cooked version of the ingredient stack that also satisfies this recipe.
         /// </summary>
-        [DocumentAsJson] public JsonItemStack CookedStack;
+        [DocumentAsJson] public JsonItemStack? CookedStack;
 
         public override void FromBytes(BinaryReader reader, IClassRegistryAPI instancer)
         {
@@ -74,7 +75,7 @@ namespace Vintagestory.GameContent
                 ResolvedItemstack = ResolvedItemstack?.Clone(),
                 StackSize = StackSize,
                 Type = Type,
-                TextureMapping = (string[])TextureMapping?.Clone(),
+                TextureMapping = (string[]?)TextureMapping?.Clone(),
                 CookedStack = CookedStack?.Clone()
             };
 
@@ -113,7 +114,7 @@ namespace Vintagestory.GameContent
         /// <!--<jsonoptional>Required</jsonoptional>-->
         /// The code for the recipe ingredient. Should be unique in the recipe, but isn't specifically used for anything.
         /// </summary>
-        [DocumentAsJson] public string Code;
+        [DocumentAsJson] required public string Code;
 
         /// <summary>
         /// <!--<jsonoptional>Required</jsonoptional>-->
@@ -135,22 +136,29 @@ namespace Vintagestory.GameContent
 
         /// <summary>
         /// <!--<jsonoptional>Required</jsonoptional>-->
+        /// The string to use when displaying the ingredient name in the recipe book.
+        /// </summary>
+        [DocumentAsJson] public string TypeName = "unknown";
+
+        /// <summary>
+        /// <!--<jsonoptional>Required</jsonoptional>-->
         /// A list of item stacks that satisfy this ingredient.
         /// </summary>
-        [DocumentAsJson] public CookingRecipeStack[] ValidStacks;
+        [DocumentAsJson] required public CookingRecipeStack[] ValidStacks;
 
         /// <summary>
         /// The world accessor for the ingredient.
         /// </summary>
-        public IWorldAccessor world;
-        
+        public IWorldAccessor? world;
 
+        [MemberNotNull(nameof(Code), nameof(ValidStacks))]
         public virtual void FromBytes(BinaryReader reader, IClassRegistryAPI instancer)
         {
             Code = reader.ReadString();
             MinQuantity = reader.ReadInt32();
             MaxQuantity = reader.ReadInt32();
             PortionSizeLitres = reader.ReadSingle();
+            TypeName = reader.ReadString();
 
             int q = reader.ReadInt32();
             ValidStacks = new CookingRecipeStack[q];
@@ -168,7 +176,8 @@ namespace Vintagestory.GameContent
             writer.Write(MinQuantity);
             writer.Write(MaxQuantity);
             writer.Write(PortionSizeLitres);
-            
+            writer.Write(TypeName);
+
             writer.Write(ValidStacks.Length);
             for (int i = 0; i < ValidStacks.Length; i++)
             {
@@ -188,10 +197,11 @@ namespace Vintagestory.GameContent
                 Code = Code,
                 MinQuantity = MinQuantity,
                 MaxQuantity = MaxQuantity,
-                PortionSizeLitres = PortionSizeLitres
+                PortionSizeLitres = PortionSizeLitres,
+                TypeName = TypeName,
+                ValidStacks = new CookingRecipeStack[ValidStacks.Length]
             };
 
-            ingredient.ValidStacks = new CookingRecipeStack[ValidStacks.Length];
             for (int i = 0; i < ValidStacks.Length; i++)
             {
                 ingredient.ValidStacks[i] = ValidStacks[i].Clone();
@@ -215,7 +225,7 @@ namespace Vintagestory.GameContent
         /// </summary>
         /// <param name="inputStack"></param>
         /// <returns></returns>
-        public CookingRecipeStack GetMatchingStack(ItemStack inputStack)
+        public CookingRecipeStack? GetMatchingStack(ItemStack? inputStack)
         {
             if (inputStack == null) return null;
 
@@ -225,7 +235,7 @@ namespace Vintagestory.GameContent
                 bool found =
                     (isWildCard && inputStack.Collectible.WildCardMatch(ValidStacks[i].Code))
                     || (!isWildCard && inputStack.Equals(world, ValidStacks[i].ResolvedItemstack, GlobalConstants.IgnoredStackAttributes))
-                    || (ValidStacks[i].CookedStack?.ResolvedItemstack != null && inputStack.Equals(world, ValidStacks[i].CookedStack.ResolvedItemstack, GlobalConstants.IgnoredStackAttributes))
+                    || (ValidStacks[i].CookedStack?.ResolvedItemstack is ItemStack cookedStack && inputStack.Equals(world, cookedStack, GlobalConstants.IgnoredStackAttributes))
                 ;
 
                 if (found) return ValidStacks[i];

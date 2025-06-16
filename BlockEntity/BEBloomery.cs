@@ -6,6 +6,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityBloomery : BlockEntity, IHeatSource
@@ -21,6 +23,9 @@ namespace Vintagestory.GameContent
 
         public AssetLocation FuelSoundLocation => new AssetLocation("sounds/block/charcoal");
         public AssetLocation OreSoundLocation => new AssetLocation("sounds/block/loosestone");
+
+        public const int MinTemp = 1000;
+        public const int MaxTemp = 1500;
 
         static BlockEntityBloomery() {
             smallMetalSparks = new SimpleParticleProperties(
@@ -241,7 +246,7 @@ namespace Vintagestory.GameContent
             if (OutSlot.StackSize > 0) return false;
             if (stack?.Collectible.CombustibleProps is not CombustibleProperties combustProps) return false;
 
-            if (combustProps.SmeltedStack != null && combustProps.MeltingPoint < 1500 && combustProps.MeltingPoint >= 1000)
+            if (combustProps.SmeltedStack != null && combustProps.MeltingPoint < MaxTemp && combustProps.MeltingPoint >= MinTemp)
             {
                 if (OreSlot.StackSize + quantity > OreCapacity) return false;
                 if (!OreSlot.Empty && !OreStack.Equals(Api.World, stack, GlobalConstants.IgnoredStackAttributes)) return false;
@@ -270,7 +275,7 @@ namespace Vintagestory.GameContent
 
             if (sourceSlot.Itemstack.Collectible.CombustibleProps is not CombustibleProperties combustProps) return true;
 
-            if (combustProps.SmeltedStack != null && combustProps.MeltingPoint < 1500 && combustProps.MeltingPoint >= 1000) 
+            if (combustProps.SmeltedStack != null && combustProps.MeltingPoint < MaxTemp && combustProps.MeltingPoint >= MinTemp) 
             {
                 if (sourceSlot.TryPutInto(Api.World, OreSlot, Math.Min(OreCapacity - OreSlot.StackSize, quantity)) > 0)
                 {

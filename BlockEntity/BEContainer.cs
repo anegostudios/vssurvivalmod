@@ -7,6 +7,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 
@@ -137,8 +139,7 @@ namespace Vintagestory.GameContent
             if (Inventory is InventoryGeneric)
             {
                 InventoryGeneric inv = Inventory as InventoryGeneric;
-                float rateMul;
-                if (inv.TransitionableSpeedMulByType != null && inv.TransitionableSpeedMulByType.TryGetValue(EnumTransitionType.Perish, out rateMul))
+                if (inv.TransitionableSpeedMulByType != null && inv.TransitionableSpeedMulByType.TryGetValue(EnumTransitionType.Perish, out float rateMul))
                 {
                     rate *= rateMul;
                 }

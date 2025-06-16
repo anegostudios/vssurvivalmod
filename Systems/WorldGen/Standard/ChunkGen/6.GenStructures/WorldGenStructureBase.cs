@@ -7,6 +7,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.Common.Collectible.Block;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     public abstract class WorldGenStructureBase
@@ -94,7 +96,7 @@ namespace Vintagestory.ServerMods
             return offsety;
         }
 
-        public static T[] LoadSchematic<T>(ICoreAPI api, IAsset asset, BlockLayerConfig config, WorldGenStructuresConfig structureConfig, WorldGenStructureBase? struc, int offsety,
+        public static T[] LoadSchematic<T>(ICoreAPI api, IAsset asset, BlockLayerConfig config, WorldGenStructuresConfig structureConfig, WorldGenStructureBase struc, int offsety,
             bool isDungeon = false) where T : BlockSchematicStructure
         {
             string cacheKey = asset.Location.ToShortString() + "~" + offsety;

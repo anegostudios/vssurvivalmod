@@ -9,6 +9,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent;
 
 public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
@@ -162,7 +164,7 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
                 {
                     particles = smokeParticles;
                     particles.Quantity.avg = 0.2f;
-                    particles.basePos.Set(pos.X + 0.5, pos.Y + 0.75, pos.Z + 0.5);
+                    particles.basePos.Set(pos.X + 0.5, pos.InternalY + 0.75, pos.Z + 0.5);
                     particles.Velocity[1].avg = (float)(0.3 + 0.3 * rnd.NextDouble()) * 2;
                     particles.PosOffset[1].var = 0.2f;
                     particles.Velocity[0].avg = (float)(rnd.NextDouble() - 0.5) / 4;
@@ -171,7 +173,7 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
                 else
                 {
                     particles.Quantity.avg = GameMath.Sqrt(0.5f * (index == 0 ? 0.5f : (index == 1 ? 5 : 0.6f))) / 4f;
-                    particles.basePos.Set(pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5);
+                    particles.basePos.Set(pos.X + 0.5, pos.InternalY + 0.5, pos.Z + 0.5);
                     particles.Velocity[1].avg = (float)(0.5 + 0.5 * rnd.NextDouble()) * 2;
                     particles.PosOffset[1].var = 1;
                     particles.Velocity[0].avg = (float)(rnd.NextDouble() - 0.5);

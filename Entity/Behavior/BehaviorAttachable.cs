@@ -10,6 +10,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 
@@ -64,7 +66,8 @@ namespace Vintagestory.GameContent
         public SeatConfig SeatConfig;
         public string Code;
         public string[] ForCategoryCodes;
-        public string[] CanMergeWith;
+        public string[] BehindSlots; // Needed so that the Elk can occupy 2 spaces
+
         public string AttachmentPointCode;
         public Dictionary<string, StepParentElementTo> StepParentTo;
         public string ProvidesSeatId = null;
@@ -142,7 +145,12 @@ namespace Vintagestory.GameContent
                     continue;
                 }
 
-                var attrseatconfig = itemslot.Itemstack?.ItemAttributes?["attachableToEntity"]?["seatConfig"]?.AsObject<SeatConfig>();
+                var attrseatconfig = itemslot.Itemstack?.ItemAttributes?["attachableToEntity"]?["seatConfigBySlotCode"][slotcfg.Code]?.AsObject<SeatConfig>(); 
+                if (attrseatconfig == null)
+                {
+                    attrseatconfig = itemslot.Itemstack?.ItemAttributes?["attachableToEntity"]?["seatConfig"]?.AsObject<SeatConfig>();
+                }
+
                 if (attrseatconfig != null)
                 {
                     attrseatconfig.SeatId = "attachableseat-" + i;
@@ -321,6 +329,42 @@ namespace Vintagestory.GameContent
 
             if (!slotConfig.CanHold(code)) return false;
             if (!targetSlot.Empty) return false;
+
+            if (iatta.RequiresBehindSlots > 0)
+            {
+                if (slotConfig.BehindSlots.Length < iatta.RequiresBehindSlots)
+                {
+                    (entity.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "notenoughspace", Lang.Get("mount-interact-requiresbehindslots", iatta.RequiresBehindSlots));
+                    return false;
+                }
+
+                var behindSlotIndex = wearableSlots.IndexOf(sc => sc.Code == slotConfig.BehindSlots[0]);
+                if (behindSlotIndex >= 0)
+                {
+                    var slot = inv[behindSlotIndex];
+                    if (!slot.Empty)
+                    {
+                        (entity.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "alreadyoccupied", Lang.Get("mount-interact-alreadyoccupiedbehind", iatta.RequiresBehindSlots+1));
+                        return false;
+                    }
+                }
+            }
+
+            var inFrontSlotIndex = wearableSlots.IndexOf(sc => sc.BehindSlots?.Contains(slotConfig.Code) == true);
+            if (inFrontSlotIndex >= 0)
+            {
+                var slot = inv[inFrontSlotIndex];
+                if (!slot.Empty)
+                {
+                    var inFrontiatta = IAttachableToEntity.FromCollectible(slot.Itemstack.Collectible);
+                    if (inFrontiatta.RequiresBehindSlots > 0)
+                    {
+                        (entity.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "alreadyoccupied", Lang.Get("mount-interact-alreadyoccupiedinfront", iatta.RequiresBehindSlots));
+                        return false;
+                    }
+                }
+            }
+
 
             var ebho = entity.GetBehavior<EntityBehaviorOwnable>();
             if (ebho != null && !ebho.IsOwner(byEntity))

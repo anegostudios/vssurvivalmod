@@ -9,6 +9,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockTorch : BlockGroundAndSideAttachable, IIgnitable
@@ -67,7 +69,6 @@ namespace Vintagestory.GameContent
                     {
                         ActionLangCode = "blockhelp-firepit-ignite",
                         MouseButton = EnumMouseButton.Right,
-                        HotKeyCode = "shift",
                         Itemstacks = canIgniteStacks.ToArray(),
                         GetMatchingStacks = (wi, bs, es) => {
                             return wi.Itemstacks;
@@ -193,7 +194,7 @@ namespace Vintagestory.GameContent
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {
-            if (Variant["state"] == "burnedout") return new ItemStack[0];
+            if (Variant["state"] == "burnedout") return Array.Empty<ItemStack>();
 
             Block block = world.BlockAccessor.GetBlock(CodeWithVariant("orientation", "up"));
             return new ItemStack[] { new ItemStack(block) };
@@ -232,7 +233,7 @@ namespace Vintagestory.GameContent
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
         {
-            if (Variant["state"] == "burnedout") return new WorldInteraction[0];
+            if (Variant["state"] == "burnedout") return Array.Empty<WorldInteraction>();
             return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer).Append(interactions);
         }
 

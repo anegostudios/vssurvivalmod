@@ -7,6 +7,8 @@ using Vintagestory.API.Server;
 using Vintagestory.GameContent;
 using Vintagestory.ServerMods.NoObf;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     public abstract class ModStdWorldGen : ModSystem

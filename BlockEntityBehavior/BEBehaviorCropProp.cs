@@ -8,6 +8,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 
@@ -105,7 +107,6 @@ namespace Vintagestory.GameContent
         ICoreClientAPI capi;
 
         Shape nowTesselatingShape;
-        ITexPositionSource defaultSource;
         bool dead;
         Block cropBlock;
 

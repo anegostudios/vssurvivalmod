@@ -6,6 +6,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     public class BlockSchematicStructure : BlockSchematic
@@ -213,11 +215,9 @@ namespace Vintagestory.ServerMods
 
                         if (replaceBlocks != null)
                         {
-                            Dictionary<int, int> replaceByBlock;
-                            if (replaceBlocks.TryGetValue(block.Id, out replaceByBlock))
+                            if (replaceBlocks.TryGetValue(block.Id, out Dictionary<int, int> replaceByBlock))
                             {
-                                int newBlockId;
-                                if (replaceByBlock.TryGetValue(centerrockblockid, out newBlockId))
+                                if (replaceByBlock.TryGetValue(centerrockblockid, out int newBlockId))
                                 {
                                     block = blockAccessor.GetBlock(newBlockId);
                                 }
@@ -320,8 +320,7 @@ namespace Vintagestory.ServerMods
 
                 if (replaceBlocks.TryGetValue(origBlock.Id, out var replaceByBlock))
                 {
-                    int newBlockId;
-                    if (replaceByBlock.TryGetValue(centerrockblockid, out newBlockId))
+                    if (replaceByBlock.TryGetValue(centerrockblockid, out int newBlockId))
                     {
                         BlockCodesTmpForRemap[val.Key] = blockAccessor.GetBlock(newBlockId).Code;
                     }
@@ -393,11 +392,9 @@ namespace Vintagestory.ServerMods
                 if (!blockAccessor.IsValidPos(curPos)) continue;    // Deal with cases where we are at the map edge
 
                 //Block oldBlock = blockAccessor.GetBlock(curPos);
-                Dictionary<int, int> replaceByBlock;
-                if (replaceBlocks.TryGetValue(newBlock.Id, out replaceByBlock))
+                if (replaceBlocks.TryGetValue(newBlock.Id, out Dictionary<int, int> replaceByBlock))
                 {
-                    int newBlockId;
-                    if (replaceByBlock.TryGetValue(centerrockblockid/*oldBlock.Id*/, out newBlockId)) // don't seem to be able to use the oldblockid here. some blocks remain granite for some reason.
+                    if (replaceByBlock.TryGetValue(centerrockblockid/*oldBlock.Id*/, out int newBlockId)) // don't seem to be able to use the oldblockid here. some blocks remain granite for some reason.
                     {
                         newBlock = blockAccessor.GetBlock(newBlockId);
                     }

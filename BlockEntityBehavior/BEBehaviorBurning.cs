@@ -6,6 +6,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 
@@ -23,6 +25,8 @@ namespace Vintagestory.GameContent
         Vec3d tmpPos = new Vec3d();
 
         ICoreClientAPI capi;
+
+        public bool AllowFireSpread;
         
         public float TimePassed
         {
@@ -66,7 +70,7 @@ namespace Vintagestory.GameContent
 
                     Api.World.BlockAccessor.SetBlock(0, FuelPos);
                     Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(FuelPos);
-                    if (((ICoreServerAPI)Api).Server.Config.AllowFireSpread)
+                    if (AllowFireSpread)
                     {
                         TrySpreadTo(FuelPos);
                     }
@@ -83,7 +87,7 @@ namespace Vintagestory.GameContent
             Block block = Api.World.BlockAccessor.GetBlock(pos);
             if (block.CombustibleProps != null) return block.CombustibleProps.BurnDuration;
 
-            if (block is ICombustible bic)
+            if (block.GetInterface<ICombustible>(Api.World, pos) is ICombustible bic)
             {
                 return bic.GetBurnDuration(Api.World, pos);
             }
@@ -109,6 +113,8 @@ namespace Vintagestory.GameContent
             {
                 capi.Event.RegisterAsyncParticleSpawner(onAsyncParticles);
             }
+
+            AllowFireSpread = Api.World.Config.GetBool("allowFireSpread");
         }
 
         public void OnFirePlaced(BlockFacing fromFacing, string startedByPlayerUid)
@@ -281,7 +287,7 @@ namespace Vintagestory.GameContent
 
                 float spreadChance = (TimePassed - 2.5f) / 450f;
 
-                if (((ICoreServerAPI)Api).Server.Config.AllowFireSpread && spreadChance > Api.World.Rand.NextDouble())
+                if (AllowFireSpread && spreadChance > Api.World.Rand.NextDouble())
                 {
                     TrySpreadFireAllDirs();
                 }
@@ -466,7 +472,7 @@ namespace Vintagestory.GameContent
 
                 return new Vec3d(
                     pos.X + box.X1 + rand.NextDouble() * box.XSize,
-                    pos.Y + box.Y1 + rand.NextDouble() * box.YSize,
+                    pos.InternalY + box.Y1 + rand.NextDouble() * box.YSize,
                     pos.Z + box.Z1 + rand.NextDouble() * box.ZSize
                 );
             }
@@ -480,7 +486,7 @@ namespace Vintagestory.GameContent
 
                 Vec3d basepos = new Vec3d(
                     pos.X + 0.5f + face.X / 1.95f + (haveCollisionBox && facing.Axis == EnumAxis.X ? (face.X > 0 ? collisionBoxes[0].X2 - 1 : collisionBoxes[0].X1) : 0),
-                    pos.Y + 0.5f + face.Y / 1.95f + (haveCollisionBox && facing.Axis == EnumAxis.Y ? (face.Y > 0 ? collisionBoxes[0].Y2 - 1 : collisionBoxes[0].Y1) : 0),
+                    pos.InternalY + 0.5f + face.Y / 1.95f + (haveCollisionBox && facing.Axis == EnumAxis.Y ? (face.Y > 0 ? collisionBoxes[0].Y2 - 1 : collisionBoxes[0].Y1) : 0),
                     pos.Z + 0.5f + face.Z / 1.95f + (haveCollisionBox && facing.Axis == EnumAxis.Z ? (face.Z > 0 ? collisionBoxes[0].Z2 - 1 : collisionBoxes[0].Z1) : 0)
                 );
 

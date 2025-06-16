@@ -2,6 +2,8 @@
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     /// <summary>
@@ -10,14 +12,22 @@ namespace Vintagestory.GameContent
     /// </summary>
     public class BlockBehaviorBreakIfFloating : BlockBehavior
     {
+        public bool AllowFallingBlocks;
+
         public BlockBehaviorBreakIfFloating(Block block) : base(block)
         {
+        }
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+            AllowFallingBlocks = api.World.Config.GetBool("allowFallingBlocks");
         }
 
         public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos, ref EnumHandling handled)
         {
             if (world.Side == EnumAppSide.Client) return;
-            if (!(world.Api as ICoreServerAPI).Server.Config.AllowFallingBlocks) return;
+            if (!AllowFallingBlocks) return;
 
             handled = EnumHandling.PassThrough;
 

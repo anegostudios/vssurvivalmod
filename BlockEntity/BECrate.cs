@@ -8,6 +8,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityCrate : BlockEntityContainer, IRotatable
@@ -448,7 +450,6 @@ namespace Vintagestory.GameContent
             string cacheKey = "crateMeshes" + block.FirstCodePart();
             Dictionary<string, MeshData> meshes = ObjectCacheUtil.GetOrCreate(Api, cacheKey, () => new Dictionary<string, MeshData>());
 
-            MeshData mesh;
 
             CompositeShape cshape = ownBlock.Props[type].Shape;
             if (cshape?.Base == null)
@@ -460,7 +461,7 @@ namespace Vintagestory.GameContent
 
             string meshKey = type + block.Subtype + "-" + label + "-" + LidState + "-" + (LidState == "closed" ? null : firstStack?.StackSize + "-" + firstStack?.GetHashCode());
 
-            if (!meshes.TryGetValue(meshKey, out mesh))
+            if (!meshes.TryGetValue(meshKey, out MeshData mesh))
             {
                 mesh = block.GenMesh(Api as ICoreClientAPI, firstStack, type, label, LidState, cshape, new Vec3f(cshape.rotateX, cshape.rotateY, cshape.rotateZ));
                 meshes[meshKey] = mesh;

@@ -4,6 +4,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockBomb : Block, IIgnitable
@@ -70,16 +72,16 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnBlockExploded(IWorldAccessor world, BlockPos pos, BlockPos explosionCenter, EnumBlastType blastType)
+        public override void OnBlockExploded(IWorldAccessor world, BlockPos pos, BlockPos explosionCenter, EnumBlastType blastType, string ignitedByPlayerUid)
         {
             BlockEntityBomb bebomb = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityBomb;
-            bebomb?.OnBlockExploded(pos);
+            bebomb?.OnBlockExploded(pos, ignitedByPlayerUid);
         }
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
         {
             BlockEntityBomb bebomb = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityBomb;
-            if (bebomb.CascadeLit) return new ItemStack[0];
+            if (bebomb.CascadeLit) return System.Array.Empty<ItemStack>();
 
             var stacks = base.GetDrops(world, pos, byPlayer, dropQuantityMultiplier);
             

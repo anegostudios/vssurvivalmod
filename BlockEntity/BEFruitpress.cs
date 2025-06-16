@@ -4,12 +4,13 @@ using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -19,6 +20,7 @@ namespace Vintagestory.GameContent
         public float PressedDryRatio = 1f;
         public JsonItemStack LiquidStack;
         public JsonItemStack PressedStack;
+        public JsonItemStack ReturnStack = null;
     }
 
     public enum EnumFruitPressSection
@@ -263,15 +265,19 @@ namespace Vintagestory.GameContent
             double totalHours = Api.World.Calendar.TotalHours;
 
             double squeezeRel = mashStack.Attributes.GetDouble("squeezeRel", 1);
+            double litresToTransfer = 0;
 
-            // First we need to calculate how squeezed down the mash has been and therefore how much we're allowed to take
-            squeezedLitresLeft = Math.Max(Math.Max(0, squeezedLitresLeft), juiceableLitresLeft - ((juiceableLitresLeft + juiceableLitresTransfered) * screwPercent));
-            double litresToTransfer = Math.Min(squeezedLitresLeft, Math.Round((totalHours - lastLiquidTransferTotalHours) * (CompressAnimActive ? GameMath.Clamp(squeezedLitresLeft * (1 - squeezeRel) * 500f, 25f, 100f) : 5f), 2));
-
-            if (Api.Side == EnumAppSide.Server && CompressAnimActive && squeezeRel < 1 && pressSqueezeRel <= squeezeRel && !squeezeSoundPlayed && juiceableLitresLeft > 0)
+            if (Api.Side == EnumAppSide.Server && CompressAnimActive && squeezeRel < 1 && pressSqueezeRel <= squeezeRel && juiceableLitresLeft > 0)
             {
-                Api.World.PlaySoundAt(new AssetLocation("sounds/player/wetclothsqueeze.ogg"), Pos, 0, null, false);
-                squeezeSoundPlayed = true;
+                // First we need to calculate how squeezed down the mash has been and therefore how much we're allowed to take
+                squeezedLitresLeft = Math.Max(Math.Max(0, squeezedLitresLeft), juiceableLitresLeft - ((juiceableLitresLeft + juiceableLitresTransfered) * screwPercent));
+                litresToTransfer = Math.Min(squeezedLitresLeft, Math.Round((totalHours - lastLiquidTransferTotalHours) * (CompressAnimActive ? GameMath.Clamp(squeezedLitresLeft * (1 - squeezeRel) * 500f, 25f, 100f) : 5f), 2));
+
+                if (!squeezeSoundPlayed)
+                {
+                    Api.World.PlaySoundAt(new AssetLocation("sounds/player/wetclothsqueeze.ogg"), Pos, 0, null, false);
+                    squeezeSoundPlayed = true;
+                }
             }
 
             BlockLiquidContainerBase cntBlock = BucketSlot?.Itemstack?.Collectible as BlockLiquidContainerBase;
@@ -619,10 +625,20 @@ namespace Vintagestory.GameContent
         {
             if (juiceableLitresLeft < 0.01)
             {
-                mashStack?.Attributes?.RemoveAttribute("juiceableLitresTransfered");
-                mashStack?.Attributes?.RemoveAttribute("juiceableLitresLeft");
-                mashStack?.Attributes?.RemoveAttribute("squeezeRel");
-                if (mashStack?.Collectible.Code.Path != "rot") mashStack.StackSize = dryStackSize;
+                var jprops = getJuiceableProps(mashStack);
+                if (jprops?.ReturnStack?.ResolvedItemstack != null && mashStack != null)
+                {
+                    var totalLitresJuiced = Math.Round(juiceableLitresTransfered, 2, MidpointRounding.AwayFromZero);
+                    MashSlot.Itemstack = jprops.ReturnStack.ResolvedItemstack.Clone();
+                    mashStack.StackSize = (int)(mashStack.StackSize * totalLitresJuiced);
+                }
+                else
+                {
+                    mashStack?.Attributes?.RemoveAttribute("juiceableLitresTransfered");
+                    mashStack?.Attributes?.RemoveAttribute("juiceableLitresLeft");
+                    mashStack?.Attributes?.RemoveAttribute("squeezeRel");
+                    if (mashStack?.Collectible.Code.Path != "rot") mashStack.StackSize = dryStackSize;
+                }
                 dryStackSize = 0;
             }
         }
@@ -736,6 +752,7 @@ namespace Vintagestory.GameContent
             var props = stack?.ItemAttributes?["juiceableProperties"].Exists == true ? stack.ItemAttributes["juiceableProperties"].AsObject<JuiceableProperties>(null, stack.Collectible.Code.Domain) : null;
             props?.LiquidStack?.Resolve(Api.World, "juiceable properties liquidstack", stack.Collectible.Code);
             props?.PressedStack?.Resolve(Api.World, "juiceable properties pressedstack", stack.Collectible.Code);
+            props?.ReturnStack?.Resolve(Api.World, "juiceable properties returnstack", stack.Collectible.Code);
 
             return props;
         }
@@ -844,18 +861,28 @@ namespace Vintagestory.GameContent
 
             if (!MashSlot.Empty)
             {
-                // Using the precalculated dryStackSize we fake the number of dry mash in the slot without converting,
-                // and that means we don't have to worry about someone adding fruit to the machine when it still has
-                // dry mash inside and overwriting the total stack size, making them lose some of their dry mash
-                int stacksize = mashStack.Collectible.Code.Path != "rot" ? dryStackSize : MashSlot.StackSize;
+                var jprops = getJuiceableProps(mashStack);
 
-                if (juiceableLitresLeft > 0 && mashStack.Collectible.Code.Path != "rot")
+                if (juiceableLitresLeft >= 0.01 && mashStack.Collectible.Code.Path != "rot")
                 {
-                    string juicename = getJuiceableProps(mashStack).LiquidStack.ResolvedItemstack.GetName().ToLowerInvariant();
+                    string juicename = jprops.LiquidStack.ResolvedItemstack.GetName().ToLowerInvariant();
                     dsc.AppendLine(Lang.GetWithFallback("fruitpress-litreswhensqueezed", "Mash produces {0:0.##} litres of juice when squeezed", juiceableLitresLeft, juicename));
-                } else
+                }
+                else
                 {
-                    dsc.AppendLine(Lang.Get("{0}x {1}", stacksize, MashSlot.GetStackName().ToLowerInvariant()));
+                    // Using the precalculated dryStackSize we fake the number of dry mash in the slot without converting,
+                    // and that means we don't have to worry about someone adding fruit to the machine when it still has
+                    // dry mash inside and overwriting the total stack size, making them lose some of their dry mash
+                    int stacksize = mashStack.Collectible.Code.Path != "rot" ? dryStackSize : MashSlot.StackSize;
+                    string stackname = MashSlot.GetStackName().ToLowerInvariant();
+
+                    if (jprops.ReturnStack?.ResolvedItemstack != null)
+                    {
+                        stacksize = (int)(jprops.ReturnStack.ResolvedItemstack.StackSize * Math.Round(juiceableLitresTransfered, 2, MidpointRounding.AwayFromZero));
+                        stackname = jprops.ReturnStack.ResolvedItemstack.GetName().ToLowerInvariant();
+                    }
+
+                    dsc.AppendLine(Lang.Get("{0}x {1}", stacksize, stackname));
                 }
             }
         }

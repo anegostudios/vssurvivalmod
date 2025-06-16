@@ -7,6 +7,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BELantern : BlockEntity
@@ -26,7 +28,7 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(api);
             origlightHsv = Block.LightHsv;
-            lightHsv = (byte[])Block.LightHsv.Clone();
+            lightHsv = (byte[])Block.LightHsv;
             setLightColor(origlightHsv, lightHsv, glass);
         }
 
@@ -74,13 +76,12 @@ namespace Vintagestory.GameContent
         {
             Dictionary<string, MeshData> lanternMeshes = ObjectCacheUtil.GetOrCreate(Api, "blockLanternBlockMeshes", () => new Dictionary<string, MeshData>());
 
-            MeshData mesh = null;
             BlockLantern block = Api.World.BlockAccessor.GetBlock(Pos) as BlockLantern;
             if (block == null) return null;
 
             string orient = block.LastCodePart();
 
-            if (lanternMeshes.TryGetValue(material + "-" + lining + "-" + orient + "-" + glass, out mesh))
+            if (lanternMeshes.TryGetValue(material + "-" + lining + "-" + orient + "-" + glass, out MeshData mesh))
             {
                 return mesh;
             }

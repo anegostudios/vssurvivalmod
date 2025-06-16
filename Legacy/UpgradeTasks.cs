@@ -8,6 +8,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.GameContent;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
@@ -67,9 +69,9 @@ namespace Vintagestory.ServerMods
             api.Network.GetChannel("upgradeTasks").SetMessageHandler<UpgradeHerePacket>(didUseBlock);
 
             api.Event.DidBreakBlock += Event_DidBreakBlock;
-            var parsers = api.ChatCommands.Parsers;
             api.ChatCommands.GetOrCreate("we")
                 .BeginSubCommand("chisel")
+                    .WithDescription("chisel")
                     .BeginSubCommand("upgradearea")
                         .WithDescription("Fixes chiseled blocks, pots and planters broken in v1.13")
                         .HandleWith(OnUpgradeCmd)
@@ -160,8 +162,7 @@ namespace Vintagestory.ServerMods
                             if (bechisel.BlockIds != null && bechisel.BlockIds.Length > 0 && bechisel.BlockIds[0] == graniteBlockId)
                             {
 
-                                Block matblock = null;
-                                if (blocksByName.TryGetValue(bechisel.BlockName, out matblock))
+                                if (blocksByName.TryGetValue(bechisel.BlockName, out Block matblock))
                                 {
                                     bechisel.BlockIds[0] = matblock.Id;
                                     bechisel.MarkDirty(true);

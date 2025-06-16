@@ -7,6 +7,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockTroughBase : Block
@@ -14,9 +16,9 @@ namespace Vintagestory.GameContent
         public ContentConfig[] contentConfigs;
         public WorldInteraction[] placeInteractionHelp;
 
-        public BlockPos RootOffset = new BlockPos();
+        public Vec3i RootOffset = new Vec3i(0, 0, 0);
 
-        protected string[] unsuitableEntityCodesBeginsWith = new string[0];
+        protected string[] unsuitableEntityCodesBeginsWith = Array.Empty<string>();
         protected string[] unsuitableEntityCodesExact;
         protected string   unsuitableEntityFirstLetters = "";
 
@@ -73,7 +75,7 @@ namespace Vintagestory.GameContent
                     MouseButton = EnumMouseButton.Right,
                     Itemstacks = allowedstacks.ToArray(),
                     GetMatchingStacks = (wi, bs, es) => {
-                        BlockEntityTrough betr = api.World.BlockAccessor.GetBlockEntity(bs.Position + RootOffset) as BlockEntityTrough;
+                        BlockEntityTrough betr = api.World.BlockAccessor.GetBlockEntity(bs.Position.AddCopy(RootOffset)) as BlockEntityTrough;
                         if (betr?.IsFull != false) return null;
 
                         ItemStack[] stacks = betr.GetNonEmptyContentStacks();
@@ -84,7 +86,7 @@ namespace Vintagestory.GameContent
                 }
             };
 
-            string[] codes = Attributes?["unsuitableFor"].AsArray<string>(new string[0]);
+            string[] codes = Attributes?["unsuitableFor"].AsArray<string>(Array.Empty<string>());
             if (codes.Length > 0) AiTaskBaseTargetable.InitializeTargetCodes(codes, ref unsuitableEntityCodesExact, ref unsuitableEntityCodesBeginsWith, ref unsuitableEntityFirstLetters); ;
         }
 

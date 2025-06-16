@@ -2,6 +2,8 @@
 using System;
 using Vintagestory.API.Client;
 
+#nullable disable
+
 namespace VSSurvivalMod.Systems.ChiselModes
 {
     public class FourByChiselMode : ChiselMode

@@ -4,6 +4,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 
 /*
  * 1. Procedeurally make horizontal and vertical branch ends use the bark texture not the treetrunk texture

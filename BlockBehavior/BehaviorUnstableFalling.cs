@@ -6,6 +6,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 
@@ -64,7 +66,7 @@ namespace Vintagestory.GameContent
             }
 
             ignorePlaceTest = properties["ignorePlaceTest"].AsBool(false);
-            exceptions = properties["exceptions"].AsObject(new AssetLocation[0], block.Code.Domain);
+            exceptions = properties["exceptions"].AsObject(System.Array.Empty<AssetLocation>(), block.Code.Domain);
             fallSideways = properties["fallSideways"].AsBool(false);
             dustIntensity = properties["dustIntensity"].AsFloat(0);
 
@@ -87,7 +89,7 @@ namespace Vintagestory.GameContent
 
             BlockPos pos = blockSel.Position.DownCopy();
             Block onBlock = world.BlockAccessor.GetBlock(pos);
-            if (blockSel != null && !IsAttached(world.BlockAccessor, blockSel.Position) && !onBlock.CanAttachBlockAt(world.BlockAccessor, block, pos, BlockFacing.UP, attachmentArea) && block.Attributes?["allowUnstablePlacement"].AsBool() != true && !exceptions.Contains(onBlock.Code))
+            if (blockSel != null && !IsAttached(world.BlockAccessor, blockSel.Position) && !onBlock.CanAttachBlockAt(world.BlockAccessor, block, pos, BlockFacing.UP, attachmentArea) && block.Attributes?["allowUnstablePlacement"].AsBool() != true && !onBlock.WildCardMatch(exceptions))
             {
                 handling = EnumHandling.PreventSubsequent;
                 failureCode = "requiresolidground";
@@ -118,7 +120,7 @@ namespace Vintagestory.GameContent
             if (!fallSideways && IsAttached(world.BlockAccessor, pos)) return false;
 
             ICoreServerAPI sapi = (world as IServerWorldAccessor).Api as ICoreServerAPI;
-            if (!sapi.Server.Config.AllowFallingBlocks) return false;
+            if (!sapi.World.Config.GetBool("allowFallingBlocks")) return false;
              
             if (IsReplacableBeneath(world, pos) || (fallSideways && world.Rand.NextDouble() < fallSidewaysChance && IsReplacableBeneathAndSideways(world, pos)))
             {

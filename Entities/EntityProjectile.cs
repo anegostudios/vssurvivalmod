@@ -7,6 +7,8 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class EntityProjectile : Entity
@@ -28,6 +30,7 @@ namespace Vintagestory.GameContent
         public EnumDamageType DamageType = EnumDamageType.PiercingAttack;
         public int DamageTier = 0;
         public ItemStack ProjectileStack;
+        public ItemStack WeaponStack;
         public float DropOnImpactChance = 0f;
         public bool DamageStackOnImpact = false;
 
@@ -278,7 +281,15 @@ namespace Vintagestory.GameContent
                 World.PlaySoundAt(new AssetLocation("sounds/arrow-impact"), this, null, false, 24);
 
                 float dmg = Damage;
-                if (FiredBy != null) dmg *= FiredBy.Stats.GetBlended("rangedWeaponsDamage");
+                if (FiredBy != null)
+                {
+                    dmg *= FiredBy.Stats.GetBlended("rangedWeaponsDamage");
+
+                    if (entity.Properties.Attributes?["isMechanical"].AsBool() == true)
+                    {
+                        dmg *= FiredBy.Stats.GetBlended("mechanicalsDamage");
+                    }
+                }
 
                 bool didDamage = entity.ReceiveDamage(new DamageSource()
                 {

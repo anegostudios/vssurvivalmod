@@ -10,6 +10,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ContentConfig
@@ -277,18 +279,16 @@ namespace Vintagestory.GameContent
 
 
             Vec3f rotation = new Vec3f(Block.Shape.rotateX, Block.Shape.rotateY, Block.Shape.rotateZ);
-            MeshData meshbase;
-            MeshData meshadd;
 
             blockTexPosSource = capi.Tesselator.GetTextureSource(Block);
             Shape shape = Shape.TryGet(Api, "shapes/" + shapeLoc + ".json");
-            capi.Tesselator.TesselateShape("betroughcontentsleft", shape, out meshbase, this, rotation);
+            capi.Tesselator.TesselateShape("betroughcontentsleft", shape, out MeshData meshbase, this, rotation);
 
             BlockTroughDoubleBlock doubleblock = Block as BlockTroughDoubleBlock;
 
             if (doubleblock != null)
             {
-                capi.Tesselator.TesselateShape("betroughcontentsright", shape, out meshadd, this, rotation.Add(0, 180, 0));
+                capi.Tesselator.TesselateShape("betroughcontentsright", shape, out MeshData meshadd, this, rotation.Add(0, 180, 0));
                 BlockFacing facing = doubleblock.OtherPartFacing();
                 meshadd.Translate(facing.Normalf);
                 meshbase.AddMeshData(meshadd);

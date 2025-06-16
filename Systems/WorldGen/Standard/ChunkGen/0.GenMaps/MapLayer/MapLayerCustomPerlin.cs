@@ -1,5 +1,7 @@
 ﻿using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     public class MapLayerCustomPerlin : MapLayerBase

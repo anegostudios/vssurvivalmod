@@ -4,6 +4,9 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -154,13 +157,15 @@ namespace Vintagestory.GameContent
 
         public void Attach(ClothSystem sys, ClothPoint point)
         {
-
             if (!entity.WatchedAttributes.HasAttribute("clothIds"))
             {
                 entity.WatchedAttributes["clothIds"] = new IntArrayAttribute(new int[] { sys.ClothId });
             }
 
-            ClothIds.AddInt(sys.ClothId);
+            if (!ClothIds.value.Contains(sys.ClothId))
+            {
+                ClothIds.AddInt(sys.ClothId);
+            }
 
             point.PinTo(entity, new Vec3f(0, 0.5f, 0));
         }

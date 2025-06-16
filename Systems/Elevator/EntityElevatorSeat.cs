@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 
+#nullable disable
+
 namespace Vintagestory.GameContent;
 
 public class EntityElevatorSeat : EntityRideableSeat
@@ -66,6 +68,6 @@ public class EntityElevatorSeat : EntityRideableSeat
 
     protected override void tryTeleportToFreeLocation()
     {
-        Passenger?.TeleportTo(Passenger.ServerPos.Add(0, 0.1, 0));
+        Passenger?.TeleportTo(Passenger.ServerPos.Add(0, 0.2, 0));
     }
 }

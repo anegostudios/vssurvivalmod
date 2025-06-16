@@ -3,6 +3,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public delegate int DialogueTriggerDelegate(EntityAgent triggeringEntity, string value, JsonObject data);
@@ -32,7 +34,7 @@ namespace Vintagestory.GameContent
             {
                 cmp.Dispose();
             }
-            textElem.SetNewText(new RichTextComponent[0]);
+            textElem.SetNewText(System.Array.Empty<RichTextComponent>());
         }
 
         public void EmitDialogue(RichTextComponentBase[] cmps)

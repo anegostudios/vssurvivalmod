@@ -7,6 +7,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.ServerMods.NoObf;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     // Contains some haxy stuff and public fields that shouldn't be public so that the Prospecting Pick can also generate rock strata columns during probing
@@ -317,8 +319,7 @@ namespace Vintagestory.ServerMods
         {
             int index2d = chunkZ / regionChunkSize * regionMapSize + chunkX / regionChunkSize;
 
-            LerpedWeightedIndex2DMap map;
-            ProvinceMapByRegion.TryGetValue(index2d, out map);
+            ProvinceMapByRegion.TryGetValue(index2d, out LerpedWeightedIndex2DMap map);
             if (map != null) return map;
 
             return CreateLerpedProvinceMap(mapchunk.MapRegion.GeologicProvinceMap, chunkX / regionChunkSize, chunkZ / regionChunkSize);

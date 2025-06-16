@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -8,13 +9,17 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
-    public class BlockSmeltedContainer : Block
+    public class BlockSmeltedContainer : Block, IGroundStoredParticleEmitter
     {
         public static SimpleParticleProperties smokeHeld;
         public static SimpleParticleProperties smokePouring;
         public static SimpleParticleProperties bigMetalSparks;
+
+        Vec3d gsSmokePos = new Vec3d(0.45, 0.44, 0.45);
 
         static BlockSmeltedContainer()
         {
@@ -59,6 +64,13 @@ namespace Vintagestory.GameContent
                 0.25f, 0.25f
             );
             bigMetalSparks.VertexFlags = 128;
+        }
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+
+            gsSmokePos.Y = CollisionBoxes.FirstOrDefault().MaxY;
         }
 
         public override string GetHeldTpUseAnimation(ItemSlot activeHotbarSlot, Entity forEntity)
@@ -300,7 +312,7 @@ namespace Vintagestory.GameContent
                 bigMetalSparks.Bounciness = 0.6f;
                 bigMetalSparks.MinQuantity = 1;
                 bigMetalSparks.AddQuantity = 1;
-                bigMetalSparks.MinPos = new Vec3d(eplr.Pos.X + endVec[0], eplr.Pos.Y + endVec[1], eplr.Pos.Z + endVec[2]);
+                bigMetalSparks.MinPos = new Vec3d(eplr.Pos.X + endVec[0], eplr.Pos.InternalY + endVec[1], eplr.Pos.Z + endVec[2]);
                 bigMetalSparks.AddPos.Set(0, 0, 0);
                 bigMetalSparks.MinSize = 0.75f;
 
@@ -383,10 +395,10 @@ namespace Vintagestory.GameContent
 
             if (HasSolidifed(itemStack, contents.Key, api.World))
             {
-                return Lang.Get("Crucible (Contains solidified {0})", contentsLocalized);
+                return Lang.GetWithFallback("crucible-smelted-solid", "Crucible (Contains solidified {0})", contentsLocalized, base.GetHeldItemName(itemStack));
             } else
             {
-                return Lang.Get("Crucible (Contains molten {0})", contentsLocalized);
+                return Lang.GetWithFallback("crucible-smelted-molten", "Crucible (Contains molten {0})", contentsLocalized, base.GetHeldItemName(itemStack));
             }
         }
 
@@ -433,23 +445,30 @@ namespace Vintagestory.GameContent
             return ownStack.Collectible.GetTemperature(world, ownStack) < 0.9 * contentstack.Collectible.GetMeltingPoint(world, null, null);
         }
 
-        internal void SetContents(ItemStack stack, ItemStack output, int units)
+        public void SetContents(ItemStack stack, ItemStack output, int units)
         {
             stack.Attributes.SetItemstack("output", output);
             stack.Attributes.SetInt("units", units);
         }
 
-        KeyValuePair<ItemStack, int> GetContents(IWorldAccessor world, ItemStack stack)
+        public KeyValuePair<ItemStack, int> GetContents(IWorldAccessor world, ItemStack stack)
         {
             ItemStack outstack = stack.Attributes.GetItemstack("output");
-            if (outstack != null)
-            {
-                outstack.ResolveBlockOrItem(world);
-            }
-            return new KeyValuePair<ItemStack, int>(
-                outstack,
-                stack.Attributes.GetInt("units")
-            );
+            outstack?.ResolveBlockOrItem(world);
+            return new KeyValuePair<ItemStack, int>(outstack, stack.Attributes.GetInt("units"));
+        }
+
+        public virtual bool ShouldSpawnGSParticles(IWorldAccessor world, ItemStack stack)
+        {
+            var contents = GetContents(world, stack).Key;
+
+            return contents != null && !HasSolidifed(stack, contents, world) && world.Rand.NextDouble() <= 0.05;
+        }
+
+        public virtual void DoSpawnGSParticles(IAsyncParticleManager manager, BlockPos pos, Vec3f offset)
+        {
+            smokeHeld.MinPos = pos.ToVec3d().AddCopy(gsSmokePos).AddCopy(offset);
+            manager.Spawn(smokeHeld);
         }
     }
 }

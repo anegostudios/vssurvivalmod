@@ -10,6 +10,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
@@ -38,7 +40,7 @@ namespace Vintagestory.GameContent
         private List<Rift> serverRifts = new();
         public List<Rift> ServerRifts { get { return serverRifts; } }
         public ILoadedSound[] riftSounds = new ILoadedSound[4];
-        public Rift[] nearestRifts = new Rift[0];
+        public Rift[] nearestRifts = Array.Empty<Rift>();
 
         public IServerNetworkChannel schannel;
 
@@ -208,6 +210,7 @@ namespace Vintagestory.GameContent
             var uids = nearbyRiftsByPlayerUid.Keys;
             int riftsSpawned = 0;
 
+            double totalDays = api.World.Calendar.TotalDays;
             foreach (var uid in uids)
             {
                 float cap = GetRiftCap(uid);
@@ -221,8 +224,9 @@ namespace Vintagestory.GameContent
                 if (api.World.Rand.NextDouble() < fract / 50.0) canSpawnCount++;
 
                 if (canSpawnCount <= 0) continue;
-                
-                if (api.World.Calendar.TotalDays < 2 && api.World.Calendar.GetDayLightStrength(plr.Entity.Pos.AsBlockPos) > 0.9f) continue;
+
+                var plrPos = plr.Entity.Pos;
+                if (totalDays < 2 && api.World.Calendar.GetDayLightStrength(plrPos.X, plrPos.Z) > 0.9f) continue;
 
                 for (int i = 0; i < canSpawnCount; i++)
                 {
@@ -232,7 +236,7 @@ namespace Vintagestory.GameContent
                     double dz = distance * Math.Sin(angle);
                     double dx = distance * Math.Cos(angle);
 
-                    Vec3d riftPos = plr.Entity.Pos.XYZ.Add(dx, 0, dz);
+                    Vec3d riftPos = plrPos.XYZ.Add(dx, 0, dz);
                     BlockPos pos = new BlockPos((int)riftPos.X, 0, (int)riftPos.Z);
                     pos.Y = api.World.BlockAccessor.GetTerrainMapheightAt(pos);
 
@@ -579,7 +583,7 @@ namespace Vintagestory.GameContent
                                 Position = riftPos,
                                 Size = size,
                                 SpawnedTotalHours = api.World.Calendar.TotalHours,
-                                DieAtTotalHours = api.World.Calendar.TotalHours + 8 + api.World.Rand.NextDouble() * 48
+                                DieAtTotalHours = api.World.Calendar.TotalHours + 16 + api.World.Rand.NextDouble() * 48
                             };
 
                             OnRiftSpawned?.Invoke(rift);

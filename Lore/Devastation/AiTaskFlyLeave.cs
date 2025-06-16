@@ -1,4 +1,7 @@
-﻿using Vintagestory.API.Common;
+﻿using System.Diagnostics;
+using Vintagestory.API.Common;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {

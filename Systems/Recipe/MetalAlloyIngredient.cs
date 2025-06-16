@@ -2,6 +2,8 @@
 using Vintagestory.API;
 using Vintagestory.API.Common;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     /// <summary>

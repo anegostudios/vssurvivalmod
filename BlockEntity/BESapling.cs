@@ -7,6 +7,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public enum EnumTreeGrowthStage
@@ -32,10 +34,9 @@ namespace Vintagestory.GameContent
 
                 return ObjectCacheUtil.GetOrCreate(Api, "dirtMoundMesh", () =>
                 {
-                    MeshData mesh = null;
 
                     Shape shape = API.Common.Shape.TryGet(capi, AssetLocation.Create("shapes/block/plant/dirtmound.json", Block.Code.Domain));
-                    capi.Tesselator.TesselateShape(Block, shape, out mesh);
+                    capi.Tesselator.TesselateShape(Block, shape, out MeshData mesh);
 
                     return mesh;
                 });
@@ -129,8 +130,7 @@ namespace Vintagestory.GameContent
             AssetLocation code = new AssetLocation(treeGenCode);
             ICoreServerAPI sapi = Api as ICoreServerAPI;
 
-            ITreeGenerator gen;
-            if (!sapi.World.TreeGenerators.TryGetValue(code, out gen))
+            if (!sapi.World.TreeGenerators.TryGetValue(code, out ITreeGenerator gen))
             {
                 UnregisterGameTickListener(growListenerId);
                 growListenerId = 0;

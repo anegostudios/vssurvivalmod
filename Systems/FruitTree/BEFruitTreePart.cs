@@ -7,6 +7,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 
 namespace Vintagestory.GameContent
 {
@@ -108,7 +110,6 @@ namespace Vintagestory.GameContent
             {
                 IDictionary<string, CompositeTexture> textures = Block.Textures;
                 AssetLocation texturePath = null;
-                CompositeTexture tex;
 
                 if ((this is BlockEntityFruitTreeBranch || this is BlockEntityFruitTreeFoliage) && FoliageState == EnumFoliageState.Dead && (textureCode == "bark" || textureCode == "treetrunk"))
                 {
@@ -128,7 +129,7 @@ namespace Vintagestory.GameContent
                 }
 
                 // Prio 2: Get from collectible textures
-                if (textures.TryGetValue(textureCode, out tex))
+                if (textures.TryGetValue(textureCode, out CompositeTexture tex))
                 {
                     texturePath = tex.Baked.BakedName;
                 }
@@ -191,9 +192,8 @@ namespace Vintagestory.GameContent
 
             Dictionary<int, MeshData[]> meshesByKey = ObjectCacheUtil.GetOrCreate(Api, foliageDictCacheKey, () => new Dictionary<int, MeshData[]>());
 
-            MeshData[] meshes;
             int meshCacheKey = getHashCodeLeaves();
-            if (meshesByKey.TryGetValue(meshCacheKey, out meshes))
+            if (meshesByKey.TryGetValue(meshCacheKey, out MeshData[] meshes))
             {
                 sticksMesh = meshes[0];
                 foliageMesh = meshes[1];
@@ -217,8 +217,7 @@ namespace Vintagestory.GameContent
                 List<string> selectiveElements = new List<string>();
 
                 bool everGreen = false;
-                FruitTreeProperties props = null;
-                if (rootBh?.propsByType.TryGetValue(TreeType, out props) == true)
+                if (rootBh?.propsByType.TryGetValue(TreeType, out FruitTreeProperties props) == true)
                 {
                     everGreen = props.CycleType == EnumTreeCycleType.Evergreen;
                 }
@@ -250,9 +249,8 @@ namespace Vintagestory.GameContent
             // Fruit shape 
             if (FoliageState == EnumFoliageState.Fruiting || FoliageState == EnumFoliageState.Ripe) {
                 string shapekey = "fruit-" + TreeType;
-                FruitTreeShape shapeData;
 
-                if (FoliageState != EnumFoliageState.Ripe || !blockBranch.Shapes.TryGetValue(shapekey + "-ripe", out shapeData))
+                if (FoliageState != EnumFoliageState.Ripe || !blockBranch.Shapes.TryGetValue(shapekey + "-ripe", out FruitTreeShape shapeData))
                 {
                     if (!blockBranch.Shapes.TryGetValue(shapekey, out shapeData)) return false;
                 }

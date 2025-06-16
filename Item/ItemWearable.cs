@@ -10,6 +10,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class StatModifiers
@@ -58,8 +60,7 @@ namespace Vintagestory.GameContent
             base.OnLoaded(api);
 
             string strdress = Attributes["clothescategory"].AsString();
-            EnumCharacterDressType dt;
-            Enum.TryParse(strdress, true, out dt);
+            Enum.TryParse(strdress, true, out EnumCharacterDressType dt);
             DressType = dt;
 
 
@@ -278,6 +279,15 @@ namespace Vintagestory.GameContent
                 dsc.AppendLine("<font color=\"#86aad0\">" + Lang.Get("High damage tier resistant") + "</font> " + Lang.Get("When damaged by a higher tier attack, the loss of protection is only half as much."));
             }
 
+            if (Variant["category"] == "head")
+            {
+                var rainProt = Attributes["rainProtectionPerc"].AsFloat(0);
+                if (rainProt > 0)
+                {
+                    dsc.AppendLine(Lang.Get("Protection from rain: {0}%", (int)(rainProt * 100)));
+                }
+            }
+
             // Condition: Useless (0-10%)
             // Condition: Heavily Tattered (10-20%)
             // Condition: Slightly Tattered (20-30%)
@@ -287,6 +297,7 @@ namespace Vintagestory.GameContent
 
             // Condition: 0-40%
             // Warmth: +1.5°C
+
 
 
             if (inSlot.Itemstack.ItemAttributes?["warmth"].Exists == true && inSlot.Itemstack.ItemAttributes?["warmth"].AsFloat() != 0)
@@ -489,13 +500,12 @@ namespace Vintagestory.GameContent
 
         public int GetInputRepairCount(ItemSlot[] inputSlots)
         {
-            OrderedDictionary<int, int> matcounts = new OrderedDictionary<int, int>();
+            API.Datastructures.OrderedDictionary<int, int> matcounts = new ();
             foreach (var slot in inputSlots)
             {
                 if (slot.Empty || slot.Itemstack.Collectible is ItemWearable) continue;
                 var hash = slot.Itemstack.GetHashCode();
-                int cnt = 0;
-                matcounts.TryGetValue(hash, out cnt);
+                matcounts.TryGetValue(hash, out int cnt);
                 matcounts[hash] = cnt + slot.StackSize;
             }
             return matcounts.Values.Min();

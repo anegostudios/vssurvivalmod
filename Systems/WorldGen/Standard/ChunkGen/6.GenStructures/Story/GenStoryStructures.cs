@@ -10,6 +10,8 @@ using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 using Vintagestory.ServerMods;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     [ProtoContract]
@@ -25,7 +27,7 @@ namespace Vintagestory.GameContent
         private LCGRandom strucRand; // Deterministic random
         private LCGRandom grassRand; // Deterministic random
 
-        public OrderedDictionary<string, StoryStructureLocation> storyStructureInstances = new OrderedDictionary<string, StoryStructureLocation>();
+        public API.Datastructures.OrderedDictionary<string, StoryStructureLocation> storyStructureInstances = new ();
         public bool StoryStructureInstancesDirty = false;
 
         private IWorldGenBlockAccessor worldgenBlockAccessor;
@@ -478,6 +480,8 @@ namespace Vintagestory.GameContent
                         if (api.WorldManager.BlockingTestMapChunkExists(x, z))
                         {
                             var blockingLoadChunk = api.WorldManager.BlockingLoadChunkColumn(x, z);
+                            if (blockingLoadChunk == null) continue;
+                            
                             foreach (var chunk in blockingLoadChunk)
                             {
                                 if (chunk.BlocksPlaced > 0 || chunk.BlocksRemoved > 0)
@@ -572,7 +576,7 @@ namespace Vintagestory.GameContent
 
         private void Event_SaveGameLoaded()
         {
-            var strucs = api.WorldManager.SaveGame.GetData<OrderedDictionary<string, StoryStructureLocation>>("storystructurelocations");
+            var strucs = api.WorldManager.SaveGame.GetData<API.Datastructures.OrderedDictionary<string, StoryStructureLocation>>("storystructurelocations");
             if (strucs != null)
             {
                 storyStructureInstances = strucs;
@@ -1093,7 +1097,7 @@ namespace Vintagestory.GameContent
                     var struc = structures[ix];
                     var offset = offsets[ix];
                     BlockPos posPlace = pos.AddCopy(offset.X, offset.Y, offset.Z);
-                    struc.PlaceRespectingBlockLayers(blockAccessor, api.World, posPlace, 0, 0, 0, 0, null, new int[0], GenStructures.ReplaceMetaBlocks, true, false, true);
+                    struc.PlaceRespectingBlockLayers(blockAccessor, api.World, posPlace, 0, 0, 0, 0, null, Array.Empty<int>(), GenStructures.ReplaceMetaBlocks, true, false, true);
                     pos.Y += struc.SizeY;
 
                     entranceMinX = Math.Min(entranceMinX, posPlace.X);
@@ -1173,7 +1177,7 @@ namespace Vintagestory.GameContent
 
                 }
             }
-            else replaceblockids = new int[0];
+            else replaceblockids = Array.Empty<int>();
 
             int climateUpLeft, climateUpRight, climateBotLeft, climateBotRight;
             IMapRegion region = mapchunk.MapRegion;

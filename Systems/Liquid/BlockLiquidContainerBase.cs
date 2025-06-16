@@ -10,6 +10,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public abstract class BlockLiquidContainerBase : BlockContainer, ILiquidSource, ILiquidSink
@@ -41,13 +43,12 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            string contentCode = gridRecipe.Attributes["liquidContainerProps"]["requiresContent"]["code"].AsString();
-            string contentType = gridRecipe.Attributes["liquidContainerProps"]["requiresContent"]["type"].AsString();
-            float litres = gridRecipe.Attributes["liquidContainerProps"]["requiresLitres"].AsFloat();
+            string contentCode = rprops?["requiresContent"]?["code"]?.AsString() ?? gridRecipe.Attributes["liquidContainerProps"]["requiresContent"]["code"].AsString();
+            string contentType = rprops?["requiresContent"]?["type"]?.AsString() ?? gridRecipe.Attributes["liquidContainerProps"]["requiresContent"]["type"].AsString();
+            float litres = rprops?["requiresLitres"]?.AsFloat() ?? gridRecipe.Attributes["liquidContainerProps"]["requiresLitres"].AsFloat();
 
             string key = contentType + "-" + contentCode;
-            ItemStack[] stacks;
-            if (!recipeLiquidContents.TryGetValue(key, out stacks))
+            if (!recipeLiquidContents.TryGetValue(key, out ItemStack[] stacks))
             {
                 if (contentCode.Contains('*'))
                 {
@@ -66,7 +67,8 @@ namespace Vintagestory.GameContent
                         }
                     }
                     stacks = lstacks.ToArray();
-                } else
+                }
+                else
                 {
                     recipeLiquidContents[key] = stacks = new ItemStack[1];
 
@@ -106,7 +108,7 @@ namespace Vintagestory.GameContent
         }
 
         #region Interaction help
-        protected WorldInteraction[] interactions;
+        public WorldInteraction[] interactions { get; protected set; }
 
         public override void OnLoaded(ICoreAPI api)
         {
@@ -644,6 +646,15 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
         {
+            if (blockSel != null && api.World.BlockAccessor.GetBlockEntity(blockSel.Position) is BlockEntityGroundStorage begs)
+            {
+                ItemSlot gslot = begs.GetSlotAt(blockSel);
+                if (!gslot.Empty && gslot.Itemstack.Collectible is ILiquidInterface)
+                {
+                    return;
+                }
+            }
+
             if (blockSel == null || byEntity.Controls.ShiftKey)
             {
                 if (byEntity.Controls.ShiftKey) base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
@@ -878,8 +889,7 @@ namespace Vintagestory.GameContent
 
                 if (props.WhenSpilled.StackByFillLevel != null)
                 {
-                    JsonItemStack fillLevelStack;
-                    props.WhenSpilled.StackByFillLevel.TryGetValue((int)currentlitres, out fillLevelStack);
+                    props.WhenSpilled.StackByFillLevel.TryGetValue((int)currentlitres, out JsonItemStack fillLevelStack);
                     if (fillLevelStack != null) waterBlock = byEntity.World.GetBlock(fillLevelStack.Code);
                 }
 

@@ -4,6 +4,8 @@ using System.IO;
 using Vintagestory.API.Common;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class HumanoidOutfits : ModSystem
@@ -38,10 +40,9 @@ namespace Vintagestory.GameContent
 
                 for (int j = 0; j < shapecodes.Length; j++)
                 {
-                    TexturedWeightedCompositeShape wcshape;
-                    if (!props.Variants.TryGetValue(shapecodes[j], out wcshape))
+                    if (!props.Variants.TryGetValue(shapecodes[j], out TexturedWeightedCompositeShape wcshape))
                     {
-                        api.World.Logger.Error("Typo in "+ configFilename + ".json Shape reference {0} defined for slot {1}, but not in list of shapes. Will remove.", shapecodes[j], props.BySlot[i].Code);
+                        api.World.Logger.Error("Typo in " + configFilename + ".json Shape reference {0} defined for slot {1}, but not in list of shapes. Will remove.", shapecodes[j], props.BySlot[i].Code);
                         shapecodes = shapecodes.Remove(shapecodes[j]);
                         j--;
                         continue;

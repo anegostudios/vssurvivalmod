@@ -7,6 +7,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent.Mechanics
 {
     public class BEBehaviorMPAxle : BEBehaviorMPBase
@@ -79,8 +81,7 @@ namespace Vintagestory.GameContent.Mechanics
             return ObjectCacheUtil.GetOrCreate(Api, Block.Code + "-" + orient + "-stand", () =>
             {
                 Shape shape = API.Common.Shape.TryGet(capi, orient == "west" ? axleStandLocWest : axleStandLocEast);
-                MeshData mesh;
-                capi.Tesselator.TesselateShape(Block, shape, out mesh);
+                capi.Tesselator.TesselateShape(Block, shape, out MeshData mesh);
                 return mesh;
             });
         }
@@ -172,16 +173,19 @@ namespace Vintagestory.GameContent.Mechanics
                 if (bempaxle.orientations == orientations && IsAttachedToBlock(world.BlockAccessor, block, sidePos)) return false;
                 return bempaxle.RequiresStand(world, sidePos, vector);
             }
+#if DEBUG
+            catch (Exception)
+            {
+                throw;
+            }
+#else
             catch (Exception e)
             {
-#if DEBUG
-                throw;
-#else
                 world.Logger.Error("Exception thrown in RequiresStand, will log exception but silently ignore it: at " + pos);
                 world.Logger.Error(e);
                 return false;
-#endif
             }
+#endif
         }
 
         private MeshData rotStand(MeshData mesh)

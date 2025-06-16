@@ -10,6 +10,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 using Vintagestory.ServerMods;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockAntlerMount : Block
@@ -267,13 +269,12 @@ namespace Vintagestory.GameContent
 
             Dictionary<string, MultiTextureMeshRef> meshRefs;
             meshRefs = ObjectCacheUtil.GetOrCreate(capi, "AntlerMountMeshesInventory", () => new Dictionary<string, MultiTextureMeshRef>());
-            MultiTextureMeshRef meshref;
 
             string type = itemstack.Attributes.GetString("type", "");
             string material = itemstack.Attributes.GetString("material", "");
             string key = type + "-" + material;
 
-            if (!meshRefs.TryGetValue(key, out meshref))
+            if (!meshRefs.TryGetValue(key, out MultiTextureMeshRef meshref))
             {
                 MeshData mesh = GetOrCreateMesh(type, material);
                 meshref = capi.Render.UploadMultiTextureMesh(mesh);

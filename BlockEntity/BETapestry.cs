@@ -6,6 +6,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityTapestry : BlockEntity
@@ -93,15 +95,15 @@ namespace Vintagestory.GameContent
             bool found = false;
 
             double val = ((double)(uint)schematicSeed / uint.MaxValue);
-            var tapestryGroups = BlockTapestry.tapestryGroups;
+            var blockGroups = Block.FirstCodePart() == "wallcarving" ? BlockTapestry.wallcarvingGroups : BlockTapestry.tapestryGroups;
 
             if (!preserveType)
             {
-                for (int i = 0; !found && i < tapestryGroups.Length; i++)
+                for (int i = 0; !found && i < blockGroups.Length; i++)
                 {
-                    for (int j = 0; !found && j < tapestryGroups[i].Length; j++)
+                    for (int j = 0; !found && j < blockGroups[i].Length; j++)
                     {
-                        if (tapestryGroups[i][j] == type)
+                        if (blockGroups[i][j] == type)
                         {
                             int rnd = GameMath.oaatHashMany(schematicSeed + ((i >= 3) ? 87987 : 0), 20);
                 
@@ -109,10 +111,10 @@ namespace Vintagestory.GameContent
                 
                             val = ((double)seed2 / uint.MaxValue);
                 
-                            int len = tapestryGroups[i].Length;
+                            int len = blockGroups[i].Length;
                             int pos = GameMath.oaatHashMany(j + schematicSeed, 20);
                 
-                            type = tapestryGroups[i][GameMath.Mod(pos, len)];
+                            type = blockGroups[i][GameMath.Mod(pos, len)];
                             found = true;
                 
                         }

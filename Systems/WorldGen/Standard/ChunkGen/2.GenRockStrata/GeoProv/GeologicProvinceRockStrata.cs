@@ -1,4 +1,6 @@
-﻿namespace Vintagestory.ServerMods.NoObf
+﻿
+#nullable disable
+namespace Vintagestory.ServerMods.NoObf
 {
     public class GeologicProvinceRockStrata
     {

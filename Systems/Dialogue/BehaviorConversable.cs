@@ -11,6 +11,9 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+using Vintagestory.Systems;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -63,9 +66,8 @@ namespace Vintagestory.GameContent
         {
             if (player == null) return null;
 
-            DialogueController controller;
 
-            if (ControllerByPlayer.TryGetValue(player.PlayerUID, out controller))
+            if (ControllerByPlayer.TryGetValue(player.PlayerUID, out DialogueController controller))
             {
                 foreach (var cmp in dialogue.components)
                 {
@@ -73,7 +75,8 @@ namespace Vintagestory.GameContent
                 }
 
                 return controller;
-            } else
+            }
+            else
             {
                 dialogue = loadDialogue(dialogueLoc, player);
                 if (dialogue == null) return null;
@@ -227,6 +230,13 @@ namespace Vintagestory.GameContent
                 }
             }
 
+            if (value == "unlockdoor" && triggeringEntity is EntityPlayer player)
+            {
+                var doorCode = data["doorcode"].AsString();
+                
+                var stl = world.Api.ModLoader.GetModSystem<StoryLockableDoor>();
+                stl.Add(doorCode, player);
+            }
             return -1;
         }
 
@@ -394,7 +404,7 @@ namespace Vintagestory.GameContent
             var bhActivityDriven = entity.GetBehavior<EntityBehaviorActivityDriven>();
             if (bhActivityDriven != null)
             {
-                bhActivityDriven.OnShouldRunActivitySystem += () => ControllerByPlayer.Count == 0 && gototask == null;
+                bhActivityDriven.OnShouldRunActivitySystem += () => ControllerByPlayer.Count == 0 && gototask == null ? EnumInteruptionType.None : EnumInteruptionType.BeingTalkedTo;
             }
         }
 
@@ -561,7 +571,7 @@ namespace Vintagestory.GameContent
                     else
                     {
                         tmgr.ExecuteTask(gototask, 1);
-                        bhActivityDriven?.ActivitySystem.Pause();
+                        bhActivityDriven?.ActivitySystem.Pause(EnumInteruptionType.AskedToCome);
                     }
 
 

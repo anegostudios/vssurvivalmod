@@ -1,6 +1,8 @@
 ﻿using Vintagestory.API.Common;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ItemNpcGuideStick : Item

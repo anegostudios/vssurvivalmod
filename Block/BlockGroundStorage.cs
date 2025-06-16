@@ -7,9 +7,17 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 
 {
+    public interface IGroundStoredParticleEmitter
+    {
+        bool ShouldSpawnGSParticles(IWorldAccessor world, ItemStack stack);
+        void DoSpawnGSParticles(IAsyncParticleManager manager, BlockPos pos, Vec3f offset);
+    }
+
     public class BlockGroundStorage : Block, ICombustible, IIgnitable
     {
         ItemStack[] groundStorablesQuadrants;
@@ -287,7 +295,7 @@ namespace Vintagestory.GameContent
                 var bpos = pos.AddCopy(facing.Normali.X, beg.StorageProps.WallOffY - 1, facing.Normali.Z);
                 var block = world.BlockAccessor.GetBlock(bpos);
 
-                if (!block.CanAttachBlockAt(world.BlockAccessor, this, bpos, facing))
+                if (!block.CanAttachBlockAt(world.BlockAccessor, this, bpos, facing.Opposite))
                 {
                     world.BlockAccessor.BreakBlock(pos, null);
                 }
@@ -379,6 +387,13 @@ namespace Vintagestory.GameContent
             var beg = world.BlockAccessor.GetBlockEntity(selection.Position) as BlockEntityGroundStorage;
             if (beg?.StorageProps != null)
             {
+                WorldInteraction[] liquidInteractions = Array.Empty<WorldInteraction>();
+                ItemSlot slotLiquidContainer = beg.Inventory.FirstOrDefault(slot => !slot.Empty && slot.Itemstack.Collectible is BlockLiquidContainerBase);
+                if (slotLiquidContainer != null)
+                {
+                    liquidInteractions = (slotLiquidContainer.Itemstack.Collectible as BlockLiquidContainerBase).interactions;
+                }
+
                 int bulkquantity = beg.StorageProps.BulkTransferQuantity;
 
                 if (beg.StorageProps.Layout == EnumGroundStorageLayout.Stacking && !beg.Inventory.Empty)
@@ -432,7 +447,7 @@ namespace Vintagestory.GameContent
                             MouseButton = EnumMouseButton.Right
                         }
 
-                    }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
+                    }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer)).Append(liquidInteractions);
                 }
 
                 if (beg.StorageProps.Layout == EnumGroundStorageLayout.SingleCenter)
@@ -445,7 +460,7 @@ namespace Vintagestory.GameContent
                             MouseButton = EnumMouseButton.Right
                         },
 
-                    }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
+                    }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer)).Append(liquidInteractions);
                 }
 
                 if (beg.StorageProps.Layout == EnumGroundStorageLayout.Halves || beg.StorageProps.Layout == EnumGroundStorageLayout.Quadrants)
@@ -466,9 +481,8 @@ namespace Vintagestory.GameContent
                             HotKeyCode = null
                         }
 
-                    }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
+                    }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer)).Append(liquidInteractions);
                 }
-
             }
 
             return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer);
@@ -524,7 +538,7 @@ namespace Vintagestory.GameContent
             if (secondsIgniting > 0.25f && (int)(30 * secondsIgniting) % 9 == 1)
             {
                 Random rand = byEntity.World.Rand;
-                Vec3d dpos = new Vec3d(pos.X + 2 / 8f + 4 / 8f * rand.NextDouble(), pos.Y + 7 / 8f, pos.Z + 2 / 8f + 4 / 8f * rand.NextDouble());
+                Vec3d dpos = new Vec3d(pos.X + 2 / 8f + 4 / 8f * rand.NextDouble(), pos.InternalY + 7 / 8f, pos.Z + 2 / 8f + 4 / 8f * rand.NextDouble());
 
                 Block blockFire = byEntity.World.GetBlock(new AssetLocation("fire"));
 
@@ -561,5 +575,34 @@ namespace Vintagestory.GameContent
             var bea = byEntity.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityGroundStorage;
             bea?.TryIgnite();
         }
+
+        public override bool ShouldReceiveClientParticleTicks(IWorldAccessor world, IPlayer player, BlockPos pos, out bool isWindAffected)
+        {
+            return base.ShouldReceiveClientParticleTicks(world, player, pos, out isWindAffected) ||
+                   (world.BlockAccessor.GetBlockEntity<BlockEntityGroundStorage>(pos)?.Inventory.Any(slot => slot.Itemstack?.Collectible?.GetCollectibleInterface<IGroundStoredParticleEmitter>() != null) ?? false);
+        }
+
+        public override void OnAsyncClientParticleTick(IAsyncParticleManager manager, BlockPos pos, float windAffectednessAtPos, float secondsTicking)
+        {
+            if (manager.BlockAccess.GetBlockEntity(pos) is BlockEntityGroundStorage begs && begs.StorageProps != null && !begs.Inventory.Empty)
+            {
+                Vec3f[] offs = new Vec3f[begs.DisplayedItems];
+                begs.GetLayoutOffset(offs);
+
+                foreach (ItemSlot slot in begs.Inventory)
+                {
+                    if (slot?.Itemstack?.Collectible.GetCollectibleInterface<IGroundStoredParticleEmitter>() is IGroundStoredParticleEmitter gsParticleEmitter)
+                    {
+                        int slotId = begs.Inventory.GetSlotId(slot);
+                        Vec3f offset = new Matrixf().RotateY(begs.MeshAngle).TransformVector(new Vec4f(offs[slotId].X, offs[slotId].Y, offs[slotId].Z, 1)).XYZ;
+
+                        if (gsParticleEmitter.ShouldSpawnGSParticles(begs.Api.World, slot.Itemstack)) gsParticleEmitter.DoSpawnGSParticles(manager, pos, offset);
+                    }
+                }
+            }
+
+            base.OnAsyncClientParticleTick(manager, pos, windAffectednessAtPos, secondsTicking);
+        }
+
     }
 }

@@ -5,6 +5,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockContainer : Block
@@ -85,7 +87,7 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                return new ItemStack[0];
+                return System.Array.Empty<ItemStack>();
             }
         }
 
@@ -191,6 +193,12 @@ namespace Vintagestory.GameContent
 
             ItemStack[] stacks = GetContents(world, inslot.Itemstack);
 
+            if (inslot.Itemstack.Attributes.GetBool("timeFrozen"))
+            {
+                foreach (var stack in stacks) stack?.Attributes.SetBool("timeFrozen", true);
+                return null;
+            }
+
             if (stacks != null)
             {
                 for (int i = 0; i < stacks.Length; i++)
@@ -233,11 +241,6 @@ namespace Vintagestory.GameContent
                 {
                     mul = inslot.Inventory.InvokeTransitionSpeedDelegates(transType, stack, mulByConfig);
                 }
-                /*var pref = inslot.Inventory?.OnAcquireTransitionSpeed;
-                if (pref != null)
-                {
-                    mul = pref(transType, stack, mulByConfig);
-                }*/
 
                 return mul * GetContainingTransitionModifierContained(api.World, inslot, transType);
             };

@@ -5,6 +5,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.ServerMods.WorldEdit;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     public static class TreeToolRegisterUtil
@@ -188,8 +190,6 @@ namespace Vintagestory.ServerMods
                 WorldEdit.WorldEdit.Bad(player, "Please select a tree variant first.");
                 return;
             }
-
-            blockSelection.Position.Add(blockSelection.Face.Opposite); // - prevented trees from growing o.O   - seems to work again and with this disabled trees float in the air 0.O
 
             ba.ReadFromStagedByDefault = true;
 

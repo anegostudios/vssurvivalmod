@@ -5,6 +5,8 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     [JsonObject(MemberSerialization.OptIn)]
@@ -35,7 +37,7 @@ namespace Vintagestory.GameContent
 
         public bool ConditionSatisfied(Entity e)
         {
-            return ep.GetNearestEntity(vas.Entity.Pos.XYZ, range, (e) => e.WildCardMatch(entityCode)) != null;
+            return ep.GetNearestEntity(vas.Entity.Pos.XYZ, range, (e) => e.WildCardMatch(entityCode), EnumEntitySearchType.Creatures) != null;
         }
 
         public void LoadState(ITreeAttribute tree) { }

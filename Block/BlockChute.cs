@@ -2,6 +2,8 @@
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     /// <summary>
@@ -13,9 +15,9 @@ namespace Vintagestory.GameContent
         public string Side { get; set; }
         public string Vertical { get; set; }
 
-        public string[] PullFaces => Attributes["pullFaces"].AsArray<string>(new string[0]);
-        public string[] PushFaces => Attributes["pushFaces"].AsArray<string>(new string[0]);
-        public string[] AcceptFaces => Attributes["acceptFromFaces"].AsArray<string>(new string[0]);
+        public string[] PullFaces => Attributes["pullFaces"].AsArray<string>(System.Array.Empty<string>());
+        public string[] PushFaces => Attributes["pushFaces"].AsArray<string>(System.Array.Empty<string>());
+        public string[] AcceptFaces => Attributes["acceptFromFaces"].AsArray<string>(System.Array.Empty<string>());
 
 
         
@@ -138,8 +140,7 @@ namespace Vintagestory.GameContent
                 if (Type == "3way" && horizontal != null)
                 {
                     face = horizontal.GetCW();
-                    BlockFacing unused = null;
-                    if (HasConnector(worldmap, pos.AddCopy(face), face.Opposite, out unused) && !HasConnector(worldmap, pos.AddCopy(face.Opposite), face, out unused)) horizontal = face;
+                    if (HasConnector(worldmap, pos.AddCopy(face), face.Opposite, out BlockFacing unused) && !HasConnector(worldmap, pos.AddCopy(face.Opposite), face, out unused)) horizontal = face;
                 }
             }
             else
@@ -168,8 +169,7 @@ namespace Vintagestory.GameContent
             if (vert == null)
             {
                 //If vertical orientation not already chosen, see whether there is an existing open connector up or down
-                BlockFacing unused = null;
-                bool up = HasConnector(worldmap, pos.UpCopy(), BlockFacing.DOWN, out unused);
+                bool up = HasConnector(worldmap, pos.UpCopy(), BlockFacing.DOWN, out BlockFacing unused);
                 bool down = HasConnector(worldmap, pos.DownCopy(), BlockFacing.UP, out unused);
                 if (up && !down) vert = BlockFacing.UP;
                 else if (down && !up) vert = BlockFacing.DOWN;

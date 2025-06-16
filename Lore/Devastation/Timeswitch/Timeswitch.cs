@@ -10,6 +10,8 @@ using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 using Vintagestory.ServerMods;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     /// <summary>
@@ -53,6 +55,24 @@ namespace Vintagestory.GameContent
         }
     }
 
+    [ProtoContract]
+    public class DimensionSwitchForEntity
+    {
+        [ProtoMember(1)]
+        public long entityId;
+
+        [ProtoMember(2)]
+        public int dimension;
+
+        public DimensionSwitchForEntity() { }  // Parameter-less constructor used by NetworkChannel
+
+        public DimensionSwitchForEntity(long entityId, int dimension)
+        {
+            this.entityId = entityId;
+            this.dimension = dimension;
+        }
+    }
+
 
     public class ItemSkillTimeswitch : Item, ISkillItemRenderer
     {
@@ -63,12 +83,19 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
-            if (api is ICoreClientAPI capi && timeSwitchCooldown <= 0)
+            if (api is ICoreClientAPI capi)
             {
-                capi.SendChatMessage("/timeswitch toggle");
-                capi.World.AddCameraShake(0.25f);
-                timeSwitchCooldown = Timeswitch.CooldownTime;
+                UseTimeSwitchSkillClient(capi);
             }
+        }
+
+        public static void UseTimeSwitchSkillClient(ICoreClientAPI capi)
+        {
+            if (timeSwitchCooldown > 0) return;
+
+            capi.SendChatMessage("/timeswitch toggle");
+            capi.World.AddCameraShake(0.25f);
+            timeSwitchCooldown = Timeswitch.CooldownTime / (capi.World.Player.WorldData.CurrentGameMode != EnumGameMode.Survival ? 3 : 1);  // reduce the cooldown in Creative mode
         }
 
         public override void OnLoaded(ICoreAPI api)
@@ -136,7 +163,6 @@ namespace Vintagestory.GameContent
 
         const GlKeys TimeswitchHotkey = GlKeys.Y;
         const int OtherDimension = Dimensions.AltWorld;
-        const double SquareRootOf2 = 1.41421356;
 
 
         // Server-side
@@ -185,7 +211,9 @@ namespace Vintagestory.GameContent
             clientChannel =
                 api.Network.RegisterChannel("timeswitch")
                .RegisterMessageType(typeof(TimeSwitchState))
-               .SetMessageHandler<TimeSwitchState>(OnStateReceived);
+               .SetMessageHandler<TimeSwitchState>(OnStateReceived)
+               .RegisterMessageType(typeof(DimensionSwitchForEntity))
+               .SetMessageHandler<DimensionSwitchForEntity>(OnEntityDimensionSwitchPacketReceived);
         }
 
 
@@ -203,6 +231,7 @@ namespace Vintagestory.GameContent
             serverChannel =
                api.Network.RegisterChannel("timeswitch")
                .RegisterMessageType(typeof(TimeSwitchState))
+               .RegisterMessageType(typeof(DimensionSwitchForEntity))
             ;
 
             api.Event.RegisterGameTickListener(PlayerEntryCheck, 500);
@@ -225,8 +254,7 @@ namespace Vintagestory.GameContent
 
                 if (WithinRange(player.Entity.ServerPos, deactivateRadius - 1))
                 {
-                    TimeSwitchState state;
-                    if (!timeswitchStatesByPlayerUid.TryGetValue(player.PlayerUID, out state))
+                    if (!timeswitchStatesByPlayerUid.TryGetValue(player.PlayerUID, out TimeSwitchState state))
                     {
                         state = new TimeSwitchState(player.PlayerUID);
                         timeswitchStatesByPlayerUid[player.PlayerUID] = state;
@@ -260,8 +288,7 @@ namespace Vintagestory.GameContent
                         ActivateTimeswitchServer(player, true, out string ignore);
                     }
 
-                    TimeSwitchState state;
-                    if (!timeswitchStatesByPlayerUid.TryGetValue(player.PlayerUID, out state))
+                    if (!timeswitchStatesByPlayerUid.TryGetValue(player.PlayerUID, out TimeSwitchState state))
                     {
                         state = new TimeSwitchState(player.PlayerUID);
                         timeswitchStatesByPlayerUid[player.PlayerUID] = state;
@@ -274,11 +301,7 @@ namespace Vintagestory.GameContent
 
         private bool OnHotkeyTimeswitch(KeyCombination comb)
         {
-            if (ItemSkillTimeswitch.timeSwitchCooldown > 0) return true;
-
-            capi.SendChatMessage(string.Format("/timeswitch toggle"));
-            capi.World.AddCameraShake(0.25f);
-            ItemSkillTimeswitch.timeSwitchCooldown = CooldownTime;
+            ItemSkillTimeswitch.UseTimeSwitchSkillClient(capi);
             return true;
         }
 
@@ -323,8 +346,7 @@ namespace Vintagestory.GameContent
 
         private void OnPlayerJoin(IServerPlayer byPlayer)
         {
-            TimeSwitchState state;
-            if (timeswitchStatesByPlayerUid.TryGetValue(byPlayer.PlayerUID, out state))
+            if (timeswitchStatesByPlayerUid.TryGetValue(byPlayer.PlayerUID, out TimeSwitchState state))
             {
                 //serverChannel.SendPacket(state, byPlayer);
             }
@@ -405,8 +427,7 @@ namespace Vintagestory.GameContent
 
             if (byPlayer.Entity.ServerPos.Dimension == Dimensions.NormalWorld)
             {
-                TimeSwitchState state;
-                if (!timeswitchStatesByPlayerUid.TryGetValue(byPlayer.PlayerUID, out state))
+                if (!timeswitchStatesByPlayerUid.TryGetValue(byPlayer.PlayerUID, out TimeSwitchState state))
                 {
                     state = new TimeSwitchState(byPlayer.PlayerUID);
                     timeswitchStatesByPlayerUid[byPlayer.PlayerUID] = state;
@@ -446,8 +467,7 @@ namespace Vintagestory.GameContent
             bool farFromTimeswitch = !WithinRange(byPlayer.Entity.ServerPos, deactivateRadius + 2 * GlobalConstants.ChunkSize);
             int targetDimension = byPlayer.Entity.Pos.Dimension == Dimensions.NormalWorld ? OtherDimension : Dimensions.NormalWorld;
 
-            TimeSwitchState tsState;
-            if (timeswitchStatesByPlayerUid.TryGetValue(byPlayer.PlayerUID, out tsState))
+            if (timeswitchStatesByPlayerUid.TryGetValue(byPlayer.PlayerUID, out TimeSwitchState tsState))
             {
                 tsState.forcedY = 0;   // Reset this to 0 before anything else, to prevent perma-falling!
 
@@ -528,6 +548,7 @@ namespace Vintagestory.GameContent
             if (state.failureReason.Length > 0)
             {
                 capi.TriggerIngameError(capi.World, state.failureReason, Lang.Get("ingameerror-timeswitch-" + state.failureReason));
+                if (state.failureReason == "blocked") ItemSkillTimeswitch.timeSwitchCooldown = 0;
                 return;
             }
 
@@ -541,6 +562,24 @@ namespace Vintagestory.GameContent
                 var otherPlayer = capi.World.PlayerByUid(state.playerUID);
                 otherPlayer?.Entity?.ChangeDimension(state.Activated ? OtherDimension : Dimensions.NormalWorld);
             }
+        }
+
+        public void ChangeEntityDimensionOnClient(Entity entity, int dimension)
+        {
+            serverChannel.BroadcastPacket(new DimensionSwitchForEntity(entity.EntityId, dimension));
+        }
+
+        private void OnEntityDimensionSwitchPacketReceived(DimensionSwitchForEntity packet)
+        {
+            Entity entity = capi.World.GetEntityById(packet.entityId);
+
+            if (entity == null) return;
+
+            entity.Pos.Dimension = packet.dimension;
+            entity.ServerPos.Dimension = packet.dimension;
+
+            long newchunkindex3d = capi.World.ChunkProvider.ChunkIndex3D(entity.Pos);
+            capi.World.UpdateEntityChunk(entity, newchunkindex3d);
         }
 
 

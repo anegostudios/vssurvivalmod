@@ -4,6 +4,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ItemFirestarter : Item
@@ -93,8 +95,6 @@ namespace Vintagestory.GameContent
 
                     (api as ICoreClientAPI).World.SetCameraShake(0.04f);
                 }
-                
-                byEntity.Controls.UsingHeldItemTransformBefore = tf;
 
 
                 if (secondsUsed > 0.25f && (int)(30 * secondsUsed) % 2 == 1)
@@ -161,7 +161,7 @@ namespace Vintagestory.GameContent
 
         public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot)
         {
-            return new WorldInteraction[]
+            WorldInteraction[] interactions = new WorldInteraction[]
             {
                 new WorldInteraction
                 {
@@ -170,6 +170,8 @@ namespace Vintagestory.GameContent
                     MouseButton = EnumMouseButton.Right
                 }
             };
+
+            return base.GetHeldInteractionHelp(inSlot).Append(interactions);
         }
 
     }

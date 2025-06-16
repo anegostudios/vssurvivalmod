@@ -1,5 +1,7 @@
 ﻿using Vintagestory.API.Common;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     // The 4 trader slots for selling stuff to the trader

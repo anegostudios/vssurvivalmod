@@ -6,6 +6,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     public class GenDeposits : GenPartial
@@ -156,8 +158,7 @@ namespace Vintagestory.ServerMods
 
         MapLayerBase getOrCreateMapLayer(int seed, string oremapCode, Dictionary<string, MapLayerBase> maplayersByCode, float scaleMul, float contrastMul, float sub)
         {
-            MapLayerBase ml;
-            if (!maplayersByCode.TryGetValue(oremapCode, out ml))
+            if (!maplayersByCode.TryGetValue(oremapCode, out MapLayerBase ml))
             {
                 NoiseOre noiseOre = new NoiseOre(seed + oremapCode.GetNonRandomizedHashCode());
                 maplayersByCode[oremapCode] = ml = GenMaps.GetOreMap(seed + oremapCode.GetNonRandomizedHashCode() + 1, noiseOre, scaleMul, contrastMul, sub);

@@ -8,7 +8,10 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -27,6 +30,10 @@ namespace Vintagestory.GameContent
 
         public ExtraHandbookSection[] ExtraHandBookSections = null;
         ICoreAPI Api;
+        Dictionary<string, Dictionary<CookingRecipeIngredient, HashSet<ItemStack>>> cachedValidStacks;
+
+        InventorySmelting dummySmeltingInv;
+
 
         public CollectibleBehaviorHandbookTextAndExtraInfo(CollectibleObject collObj) : base(collObj)
         {
@@ -35,6 +42,9 @@ namespace Vintagestory.GameContent
         public override void OnLoaded(ICoreAPI api)
         {
             this.Api = api;
+            cachedValidStacks = new();
+
+            dummySmeltingInv = new InventorySmelting("smelting-handbook", api);
 
             JsonObject obj = collObj.Attributes?["handbook"]?["extraSections"];
             if (obj != null && obj.Exists)
@@ -59,16 +69,22 @@ namespace Vintagestory.GameContent
 
             List<RichTextComponentBase> components = new List<RichTextComponentBase>();
 
-            float marginTop, marginBottom;
-            addGeneralInfo(inSlot, capi, stack, components, out marginTop, out marginBottom);
+            addGeneralInfo(inSlot, capi, stack, components, out float marginTop, out float marginBottom);
 
-            List<ItemStack> breakBlocks = new List<ItemStack>();
+            List<ItemStack> breakBlocks = [];
+            List<ItemStack> containers = [];
+            List<ItemStack> fuels = [];
+            List<ItemStack> molds = [];
 
-            foreach (var blockStack in allStacks)
+            foreach (var aStack in allStacks)
             {
-                if (blockStack.Block == null) continue;
+                if (aStack.ItemAttributes?.KeyExists("cookingContainerSlots") == true) containers.Add(aStack);
+                if (aStack.Collectible.CombustibleProps?.BurnDuration != null || aStack.Collectible.CombustibleProps?.BurnTemperature != null) fuels.Add(aStack);
+                if (aStack.Collectible is BlockToolMold or BlockIngotMold) molds.Add(aStack);
 
-                BlockDropItemStack[] droppedStacks = blockStack.Block.GetDropsForHandbook(blockStack, capi.World.Player);
+                if (aStack.Block == null) continue;
+
+                BlockDropItemStack[] droppedStacks = aStack.Block.GetDropsForHandbook(aStack, capi.World.Player);
                 if (droppedStacks == null) continue;
 
                 for (int i = 0; i < droppedStacks.Length; i++)
@@ -78,26 +94,23 @@ namespace Vintagestory.GameContent
 
                     if (droppedStack.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes))
                     {
-                        breakBlocks.Add(blockStack);
+                        breakBlocks.Add(aStack);
                     }
                 }
             }
 
             addDropsInfo(capi, openDetailPageFor, stack, components, marginTop, breakBlocks);
-            bool haveText = addObtainedThroughInfo(capi, openDetailPageFor, stack, components, marginTop, breakBlocks);
+            bool haveText = addObtainedThroughInfo(capi, allStacks, openDetailPageFor, stack, components, marginTop, breakBlocks);
             haveText = addFoundInInfo(capi, openDetailPageFor, stack, components, marginTop, haveText);
-            haveText = addAlloyForInfo(capi, openDetailPageFor, stack, components, marginTop, haveText);
-            haveText = addAlloyedFromInfo(capi, openDetailPageFor, stack, components, marginTop, haveText);
-            haveText = addProcessesIntoInfo(inSlot, capi, openDetailPageFor, stack, components, marginTop, marginBottom, haveText);
-            haveText = addIngredientForInfo(capi, openDetailPageFor, stack, components, marginTop, haveText);
-            haveText = addCreatedByInfo(capi, allStacks, openDetailPageFor, stack, components, marginTop, haveText);
+            haveText = addAlloyForInfo(capi, openDetailPageFor, stack, components, marginTop, containers, fuels, haveText);
+            haveText = addAlloyedFromInfo(capi, allStacks, openDetailPageFor, stack, components, marginTop, containers, fuels, haveText);
+            haveText = addProcessesIntoInfo(capi, openDetailPageFor, stack, components, marginTop, marginBottom, containers, fuels, haveText);
+            haveText = addIngredientForInfo(capi, allStacks, openDetailPageFor, stack, components, marginTop, containers, fuels, molds, haveText);
+            haveText = addCreatedByInfo(capi, allStacks, openDetailPageFor, stack, components, marginTop, containers, fuels, molds, haveText);
             addExtraSections(capi, stack, components, marginTop);
             addStorableInfo(capi, stack, components, marginTop);
 
-            if (this.collObj is ICustomHandbookPageContent chp)
-            {
-                chp.OnHandbookPageComposed(components, inSlot, capi, allStacks, openDetailPageFor);
-            }
+            collObj.GetCollectibleInterface<ICustomHandbookPageContent>()?.OnHandbookPageComposed(components, inSlot, capi, allStacks, openDetailPageFor);
 
             return components.ToArray();
         }
@@ -106,9 +119,9 @@ namespace Vintagestory.GameContent
         {
             components.Add(new ItemstackTextComponent(capi, stack, 100, 10, EnumFloat.Left));
             components.AddRange(VtmlUtil.Richtextify(capi, stack.GetName() + "\n", CairoFont.WhiteSmallishText()));
-            var font = CairoFont.WhiteDetailText();
             if (capi.Settings.Bool["extendedDebugInfo"] == true)
             {
+                var font = CairoFont.WhiteDetailText();
                 font.Color[3] = 0.5;
                 components.AddRange(VtmlUtil.Richtextify(capi, "Page code:" + GuiHandbookItemStackPage.PageCodeForStack(stack) + "\n", font));
             }
@@ -151,56 +164,81 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-                if (dropsStacks != null && dropsStacks.Count > 0)
+                if (dropsStacks?.Count > 0)
                 {
-                    if (dropsStacks.Count == 1 && breakBlocks.Count == 1 && breakBlocks[0].Equals(capi.World, dropsStacks[0], GlobalConstants.IgnoredStackAttributes))
+                    for (int j = 0; j < breakBlocks.Count; j++)
                     {
-                        // No need to display the same info twice
-                    }
-                    else
-                    {
-                        bool haveText = components.Count > 0;
-                        AddHeading(components, capi, "Drops when broken", ref haveText);
-                        components.Add(new ClearFloatTextComponent(capi, TinyPadding));
-                        int i = 0;
-                        while (dropsStacks.Count > 0)
+                        if (dropsStacks.Any(stack => stack.Equals(capi.World, breakBlocks[j], GlobalConstants.IgnoredStackAttributes)))
                         {
-                            ItemStack dstack = dropsStacks[0];
-                            EnumTool? tool = tools[i];
-                            ItemStack[] toolStacks = breakBlocksWithToolStacks[i++];
-                            dropsStacks.RemoveAt(0);
-
-                            if (dstack == null) continue;
-
-                            SlideshowItemstackTextComponent comp = new SlideshowItemstackTextComponent(capi, dstack, dropsStacks, 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
-                            if (toolStacks != null)
-                            {
-                                comp.ExtraTooltipText = "\n\n<font color=\"orange\">" + Lang.Get("break-requires-tool-" + tool.ToString().ToLowerInvariant()) + "</font>";
-                            }
-                            components.Add(comp);
-
-                            if (toolStacks != null)
-                            {
-                                comp = new SlideshowItemstackTextComponent(capi, toolStacks, 24, EnumFloat.Left, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
-                                comp.renderOffset.X = -(float)GuiElement.scaled(17);
-                                comp.renderOffset.Z = 100;
-
-                                comp.ShowTooltip = false;
-                                components.Add(comp);
-                            }
+                            // No need to display the same info twice
+                            breakBlocks.RemoveAt(j);
                         }
-
-                        components.Add(new ClearFloatTextComponent(capi, TinyPadding));
                     }
+
+                    bool haveText = components.Count > 0;
+                    AddHeading(components, capi, "Drops when broken", ref haveText);
+                    components.Add(new ClearFloatTextComponent(capi, TinyPadding));
+                    int i = 0;
+                    while (dropsStacks.Count > 0)
+                    {
+                        ItemStack dstack = dropsStacks[0];
+                        EnumTool? tool = tools[i];
+                        ItemStack[] toolStacks = breakBlocksWithToolStacks[i++];
+                        dropsStacks.RemoveAt(0);
+
+                        if (dstack == null) continue;
+
+                        SlideshowItemstackTextComponent comp = new SlideshowItemstackTextComponent(capi, dstack, dropsStacks, 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                        if (toolStacks != null)
+                        {
+                            comp.ExtraTooltipText = "\n\n<font color=\"orange\">" + Lang.Get("break-requires-tool-" + tool.ToString().ToLowerInvariant()) + "</font>";
+                        }
+                        components.Add(comp);
+
+                        if (toolStacks != null)
+                        {
+                            comp = new SlideshowItemstackTextComponent(capi, toolStacks, 24, EnumFloat.Left, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                            comp.renderOffset.X = -(float)GuiElement.scaled(17);
+                            comp.renderOffset.Z = 100;
+
+                            comp.ShowTooltip = false;
+                            components.Add(comp);
+                        }
+                    }
+
+                    components.Add(new ClearFloatTextComponent(capi, TinyPadding));
+                }
+
+                List<ItemStack> harvestedStacks = [];
+                if (stack.Block.GetBehavior<BlockBehaviorHarvestable>()?.harvestedStacks is BlockDropItemStack[] hStacks) harvestedStacks = [.. hStacks.Select(hStack => hStack?.ResolvedItemstack)];
+
+                if (harvestedStacks?.Count > 0)
+                {
+                    bool haveText = components.Count > 0;
+                    AddHeading(components, capi, "handbook-dropswhen-harvested", ref haveText);
+                    components.Add(new ClearFloatTextComponent(capi, TinyPadding));
+                    while (harvestedStacks.Count > 0)
+                    {
+                        ItemStack hstack = harvestedStacks[0];
+                        harvestedStacks.RemoveAt(0);
+
+                        if (hstack == null) continue;
+
+                        SlideshowItemstackTextComponent comp = new SlideshowItemstackTextComponent(capi, hstack, harvestedStacks, 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                        components.Add(comp);
+                    }
+
+                    components.Add(new ClearFloatTextComponent(capi, TinyPadding));
                 }
             }
         }
 
-        protected bool addObtainedThroughInfo(ICoreClientAPI capi, ActionConsumable<string> openDetailPageFor, ItemStack stack, List<RichTextComponentBase> components, float marginTop, List<ItemStack> breakBlocks)
+        protected bool addObtainedThroughInfo(ICoreClientAPI capi, ItemStack[] allStacks, ActionConsumable<string> openDetailPageFor, ItemStack stack, List<RichTextComponentBase> components, float marginTop, List<ItemStack> breakBlocks)
         {
-            List<string> killCreatures = new List<string>();
-            List<string> harvestCreatures = new List<string>();
-            HashSet<string> harvestCreatureCodes = new HashSet<string>();
+            List<ItemStack> harvestBlocks = [];
+            List<string> killCreatures = [];
+            List<string> harvestCreatures = [];
+            HashSet<string> harvestCreatureCodes = [];
 
             foreach (var val in capi.World.EntityTypes)
             {
@@ -239,8 +277,16 @@ namespace Vintagestory.GameContent
                         }
                     }
                 }
-                   
-                
+            }
+
+            foreach (var aStack in allStacks)
+            {
+                if (aStack.Block?.GetBehavior<BlockBehaviorHarvestable>()?.harvestedStacks is not BlockDropItemStack[] harvestedStacks) continue;
+
+                if (harvestedStacks.Any(hStack => hStack?.ResolvedItemstack?.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes) == true))
+                {
+                    harvestBlocks.Add(aStack);
+                }
             }
 
 
@@ -282,6 +328,24 @@ namespace Vintagestory.GameContent
                 components.Add(new ClearFloatTextComponent(capi, TinyPadding));
             }
 
+            if (harvestBlocks.Count > 0)
+            {
+                AddHeading(components, capi, "handbook-obtainedby-block-harvesting", ref haveText);
+                components.Add(new ClearFloatTextComponent(capi, TinyPadding));
+
+                while (harvestBlocks.Count > 0)
+                {
+                    ItemStack hstack = harvestBlocks[0];
+                    harvestBlocks.RemoveAt(0);
+                    if (hstack == null) continue;
+
+                    SlideshowItemstackTextComponent comp = new SlideshowItemstackTextComponent(capi, hstack, harvestBlocks, 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                    components.Add(comp);
+                }
+
+                components.Add(new ClearFloatTextComponent(capi, TinyPadding));
+            }
+
             return haveText;
         }
 
@@ -302,7 +366,7 @@ namespace Vintagestory.GameContent
 
                 int[] blockids = collObj.Attributes?["hostRockFor"].AsArray<int>();
 
-                OrderedDictionary<string, List<ItemStack>> blocks = new OrderedDictionary<string, List<ItemStack>>();
+                API.Datastructures.OrderedDictionary<string, List<ItemStack>> blocks = new ();
 
                 for (int i = 0; i < blockids.Length; i++)
                 {
@@ -339,17 +403,19 @@ namespace Vintagestory.GameContent
 
                 ushort[] blockids = collObj.Attributes?["hostRock"].AsArray<ushort>();
 
-                OrderedDictionary<string, List<ItemStack>> blocks = new OrderedDictionary<string, List<ItemStack>>();
+                API.Datastructures.OrderedDictionary<string, List<ItemStack>> blocks = new ();
 
                 for (int i = 0; i < blockids.Length; i++)
                 {
                     Block block = capi.World.Blocks[blockids[i]];
 
-                    string key = block.Code.ToString();
+                    string key = block.Code.FirstCodePart();
                     if (block.Attributes?["handbook"]["groupBy"].Exists == true)
                     {
                         key = block.Attributes["handbook"]["groupBy"].AsArray<string>()[0];
                     }
+
+                    if (block.Attributes?["handbook"]?["exclude"]?.AsBool() ?? false) continue;
 
                     if (!blocks.ContainsKey(key))
                     {
@@ -372,16 +438,18 @@ namespace Vintagestory.GameContent
             return haveText;
         }
 
-        protected static bool addAlloyForInfo(ICoreClientAPI capi, ActionConsumable<string> openDetailPageFor, ItemStack stack, List<RichTextComponentBase> components, float marginTop, bool haveText)
+        protected bool addAlloyForInfo(ICoreClientAPI capi, ActionConsumable<string> openDetailPageFor, ItemStack stack, List<RichTextComponentBase> components, float marginTop, List<ItemStack> containers, List<ItemStack> fuels, bool haveText)
         {
             Dictionary<AssetLocation, ItemStack> alloyables = new Dictionary<AssetLocation, ItemStack>();
             foreach (var val in capi.GetMetalAlloys())
             {
                 foreach (var ing in val.Ingredients)
                 {
-                    if (ing.ResolvedItemstack.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes))
+                    if (ing.ResolvedItemstack.Equals(capi.World, stack.Collectible.CombustibleProps?.SmeltedStack?.ResolvedItemstack, GlobalConstants.IgnoredStackAttributes) && getCanContainerSmelt(capi, containers, fuels, stack))
                     {
-                        alloyables[val.Output.ResolvedItemstack.Collectible.Code] = val.Output.ResolvedItemstack;
+                        var outputColl = val.Output.ResolvedItemstack.Collectible;
+                        var bitCode = new AssetLocation(outputColl.Code.Domain, "metalbit-" + outputColl.Variant["metal"]);
+                        alloyables[bitCode] = new ItemStack(capi.World.GetItem(bitCode));
                     }
                 }
             }
@@ -405,15 +473,17 @@ namespace Vintagestory.GameContent
             return haveText;
         }
 
-        protected bool addAlloyedFromInfo(ICoreClientAPI capi, ActionConsumable<string> openDetailPageFor, ItemStack stack, List<RichTextComponentBase> components, float marginTop, bool haveText)
+        protected bool addAlloyedFromInfo(ICoreClientAPI capi, ItemStack[] allStacks, ActionConsumable<string> openDetailPageFor, ItemStack stack, List<RichTextComponentBase> components, float marginTop, List<ItemStack> containers, List<ItemStack> fuels, bool haveText)
         {
+            var ingotStack = stack.Collectible.CombustibleProps?.SmeltedStack?.ResolvedItemstack;
+            if (stack.Collectible.FirstCodePart() != "metalbit" || ingotStack == null) return haveText;
+
             Dictionary<AssetLocation, MetalAlloyIngredient[]> alloyableFrom = new Dictionary<AssetLocation, MetalAlloyIngredient[]>();
             foreach (var val in capi.GetMetalAlloys())
             {
-                if (val.Output.ResolvedItemstack.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes))
+                if (val.Output.ResolvedItemstack.Equals(capi.World, ingotStack, GlobalConstants.IgnoredStackAttributes))
                 {
-                    List<MetalAlloyIngredient> ingreds = new List<MetalAlloyIngredient>();
-                    foreach (var ing in val.Ingredients) ingreds.Add(ing);
+                    List<MetalAlloyIngredient> ingreds = [.. val.Ingredients];
                     alloyableFrom[val.Output.ResolvedItemstack.Collectible.Code] = ingreds.ToArray();
                 }
             }
@@ -429,7 +499,10 @@ namespace Vintagestory.GameContent
                     {
                         string ratio = " " + Lang.Get("alloy-ratio-from-to", (int)(ingred.MinRatio * 100), (int)(ingred.MaxRatio * 100));
                         components.Add(new RichTextComponent(capi, ratio, CairoFont.WhiteSmallText()));
-                        ItemstackComponentBase comp = new ItemstackTextComponent(capi, ingred.ResolvedItemstack, 30, 5, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+
+                        ItemStack[] ores = allStacks.Where(aStack => ingred.ResolvedItemstack.Equals(capi.World, aStack.Collectible.CombustibleProps?.SmeltedStack?.ResolvedItemstack, GlobalConstants.IgnoredStackAttributes) && getCanContainerSmelt(capi, containers, fuels, aStack)).ToArray();
+                        if (ores?.Length == 0) continue;
+                        ItemstackComponentBase comp = new SlideshowItemstackTextComponent(capi, ores, 30, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
                         comp.offY = GuiElement.scaled(7);
                         comp.PaddingLeft = firstPadding;
                         firstPadding = 0;
@@ -442,10 +515,11 @@ namespace Vintagestory.GameContent
                 components.Add(new RichTextComponent(capi, "\n", CairoFont.WhiteSmallText()));
             }
 
+
             return haveText;
         }
 
-        protected bool addProcessesIntoInfo(ItemSlot inSlot, ICoreClientAPI capi, ActionConsumable<string> openDetailPageFor, ItemStack stack, List<RichTextComponentBase> components, float marginTop, float marginBottom, bool haveText)
+        protected bool addProcessesIntoInfo(ICoreClientAPI capi, ActionConsumable<string> openDetailPageFor, ItemStack stack, List<RichTextComponentBase> components, float marginTop, float marginBottom, List<ItemStack> containers, List<ItemStack> fuels, bool haveText)
         {
             // Bakes into
             if (collObj.Attributes?["bakingProperties"]?.AsObject<BakingProperties>() is BakingProperties bp && bp.ResultCode != null)
@@ -466,14 +540,17 @@ namespace Vintagestory.GameContent
             // Smelts into
             if (collObj.CombustibleProps?.SmeltedStack?.ResolvedItemstack != null && !collObj.CombustibleProps.SmeltedStack.ResolvedItemstack.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes))
             {
-                string smelttype = collObj.CombustibleProps.SmeltingType.ToString().ToLowerInvariant();
-                AddHeading(components, capi, "game:smeltdesc-" + smelttype + "-title", ref haveText);
+                if (getCanSmelt(fuels, stack) || getCanBloomerySmelt(stack))
+                {
+                    string smelttype = collObj.CombustibleProps.SmeltingType.ToString().ToLowerInvariant();
+                    AddHeading(components, capi, "game:smeltdesc-" + smelttype + "-title", ref haveText);
 
-                var cmp = new ItemstackTextComponent(capi, collObj.CombustibleProps.SmeltedStack.ResolvedItemstack, 40, 10, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
-                cmp.ShowStacksize = true;
-                cmp.PaddingLeft = TinyIndent;
-                components.Add(cmp);
-                components.Add(new ClearFloatTextComponent(capi, marginBottom));  //nice margin below the item graphic
+                    var cmp = new ItemstackTextComponent(capi, collObj.CombustibleProps.SmeltedStack.ResolvedItemstack, 40, 10, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                    cmp.ShowStacksize = true;
+                    cmp.PaddingLeft = TinyIndent;
+                    components.Add(cmp);
+                    components.Add(new ClearFloatTextComponent(capi, marginBottom));  //nice margin below the item graphic
+                }
             }
 
             // Fires into in beehive kiln
@@ -524,8 +601,9 @@ namespace Vintagestory.GameContent
             }
 
             // Juices into
-            JuiceableProperties jprops = getjuiceableProps(inSlot.Itemstack);
-            if (jprops != null)
+            JuiceableProperties jprops = getjuiceableProps(stack);
+            var litresLeft = stack.Attributes?.GetDouble("juiceableLitresLeft") ?? 0;
+            if (jprops != null && (jprops.LitresPerItem != null || litresLeft > 0))
             {
                 AddHeading(components, capi, "Juices into", ref haveText);
 
@@ -534,15 +612,76 @@ namespace Vintagestory.GameContent
                 {
                     jstack.StackSize = (int)(100 * jprops.LitresPerItem);
                 }
-                var cmp = new ItemstackTextComponent(capi, jstack, 40, 10, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                if (litresLeft > 0)
+                {
+                    jstack.StackSize = (int)(100 * litresLeft);
+                }
+                var cmp = new ItemstackTextComponent(capi, jstack, 40, 0, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
                 cmp.ShowStacksize = jprops.LitresPerItem != null;
                 cmp.PaddingLeft = TinyIndent;
                 components.Add(cmp);
+
+                if (jprops.ReturnStack?.ResolvedItemstack == null)
+                {
+                    if (!stack.Equals(capi.World, jprops.PressedStack.ResolvedItemstack, GlobalConstants.IgnoredStackAttributes))
+                    {
+                        var pstack = jprops.PressedStack.ResolvedItemstack.Clone();
+                        cmp = new ItemstackTextComponent(capi, pstack, 40, 0, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                        cmp.PaddingLeft = 0;
+                        components.Add(cmp);
+                    }
+                }
+                else
+                {
+                    var rstack = jprops.ReturnStack.ResolvedItemstack.Clone();
+                    if (jprops.LitresPerItem != null)
+                    {
+                        rstack.StackSize /= (int)(1 / jprops.LitresPerItem);
+                    }
+                    cmp = new ItemstackTextComponent(capi, rstack, 40, 0, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                    cmp.ShowStacksize = jprops.LitresPerItem != null;
+                    cmp.PaddingLeft = 0;
+                    components.Add(cmp);
+                }
+
+                components.Add(new ClearFloatTextComponent(capi, marginBottom));  //nice margin below the item graphic
+            }
+
+            // Squeezes into
+            if (stack.Collectible.GetCollectibleBehavior<CollectibleBehaviorSqueezable>(true) is CollectibleBehaviorSqueezable cbs)
+            {
+                AddHeading(components, capi, "squeezesdesc-title", ref haveText);
+                var indent = TinyIndent;
+
+                if (cbs.SqueezedLiquid != null)
+                {
+                    var lstack = new ItemStack(cbs.SqueezedLiquid);
+                    lstack.StackSize = (int)(100 * cbs.SqueezedLitres);
+                    var cmp = new ItemstackTextComponent(capi, lstack, 40, 0, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                    cmp.ShowStacksize = true;
+                    cmp.PaddingLeft = indent;
+                    components.Add(cmp);
+                    indent = 0;
+                }
+
+                foreach (var returnStack in cbs.ReturnStacks)
+                {
+                    if (returnStack?.ResolvedItemstack == null) continue;
+                    if (!stack.Equals(capi.World, returnStack.ResolvedItemstack, GlobalConstants.IgnoredStackAttributes))
+                    {
+                        var cmp = new ItemstackTextComponent(capi, returnStack.ResolvedItemstack, 40, 0, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                        cmp.ShowStacksize = true;
+                        cmp.PaddingLeft = indent;
+                        components.Add(cmp);
+                        indent = 0;
+                    }
+                }
+
                 components.Add(new ClearFloatTextComponent(capi, marginBottom));  //nice margin below the item graphic
             }
 
             // Distills into
-            DistillationProps dprops = getDistillationProps(inSlot.Itemstack);
+            DistillationProps dprops = getDistillationProps(stack);
             if (dprops != null)
             {
                 AddHeading(components, capi, "One liter distills into", ref haveText);
@@ -550,7 +689,7 @@ namespace Vintagestory.GameContent
                 var dstack = dprops.DistilledStack?.ResolvedItemstack.Clone();
                 if (dprops.Ratio != 0)
                 {
-                    dstack.StackSize = (int)(100 * inSlot.Itemstack.StackSize * dprops.Ratio);
+                    dstack.StackSize = (int)(100 * stack.StackSize * dprops.Ratio);
                 }
                 var cmp = new ItemstackTextComponent(capi, dstack, 40, 10, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
                 cmp.ShowStacksize = dprops.Ratio != 0;
@@ -622,7 +761,7 @@ namespace Vintagestory.GameContent
             return haveText;
         }
 
-        protected bool addIngredientForInfo(ICoreClientAPI capi, ActionConsumable<string> openDetailPageFor, ItemStack stack, List<RichTextComponentBase> components, float marginTop, bool haveText)
+        protected bool addIngredientForInfo(ICoreClientAPI capi, ItemStack[] allStacks, ActionConsumable<string> openDetailPageFor, ItemStack stack, List<RichTextComponentBase> components, float marginTop, List<ItemStack> containers, List<ItemStack> fuels, List<ItemStack> molds, bool haveText)
         {
             ItemStack maxstack = stack.Clone();
             maxstack.StackSize = maxstack.Collectible.MaxStackSize * 10; // because SatisfiesAsIngredient() tests for stacksize. Times 10 because liquid portion oddities
@@ -656,8 +795,14 @@ namespace Vintagestory.GameContent
                         recval.GenerateOutputStack(inSlots, outSlot);
                         recipestacks.Add(outSlot.Itemstack);
                     }
-                }
 
+                    ItemStack returnedStack = ingred?.ReturnedStack?.ResolvedItemstack;
+                    if (returnedStack?.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes) != false) continue;
+                    if (!recipestacks.Any(s => s.Equals(capi.World, returnedStack, GlobalConstants.IgnoredStackAttributes)))
+                    {
+                        if (recval.resolvedIngredients.Any(ingred => ingred?.SatisfiesAsIngredient(maxstack) == true)) recipestacks.Add(returnedStack);
+                    }
+                }
             }
 
 
@@ -665,6 +810,8 @@ namespace Vintagestory.GameContent
             {
                 if (val.Ingredient.SatisfiesAsIngredient(maxstack) && !recipestacks.Any(s => s.Equals(capi.World, val.Output.ResolvedItemstack, GlobalConstants.IgnoredStackAttributes)))
                 {
+                    if (!getIsAnvilWorkable(stack.Collectible, fuels)) continue;
+
                     recipestacks.Add(val.Output.ResolvedItemstack);
                 }
             }
@@ -711,9 +858,105 @@ namespace Vintagestory.GameContent
                 }                
             }
 
+            if (stack.Collectible is BlockAnvilPart)
+            {
+                recipestacks.Add(new ItemStack(Api.World.GetBlock(new AssetLocation("anvil-" + stack.Collectible.Variant["metal"]))));
+            }
+
+            if (stack.ItemAttributes?.IsTrue("isFlux") ?? false)
+            {
+                foreach (var val in capi.World.Blocks.Where(block => block is BlockAnvilPart))
+                {
+                    var anvil = new ItemStack(Api.World.GetBlock(new AssetLocation("anvil-" + val.Variant["metal"])));
+                    if (!recipestacks.Any(s => s.Equals(capi.World, anvil, GlobalConstants.IgnoredStackAttributes)))
+                    {
+                        recipestacks.Add(anvil);
+                    }
+                }
+            }
+
+            if (stack.Collectible.CombustibleProps?.SmeltedStack?.ResolvedItemstack.Collectible is ItemIngot ingot)
+            {
+                foreach (var mold in molds)
+                {
+                    if (!getCanContainerSmelt(capi, containers, fuels, stack)) break;
+
+                    var smeltedStack = stack.Collectible.CombustibleProps?.SmeltedStack?.ResolvedItemstack;
+                    if (smeltedStack != null && mold.Collectible is BlockIngotMold && !recipestacks.Any(s => s.Equals(capi.World, smeltedStack, GlobalConstants.IgnoredStackAttributes)))
+                    {
+                        recipestacks.Add(smeltedStack);
+                        continue;
+                    }
+
+                    string metaltype = ingot.LastCodePart();
+                    if (mold.ItemAttributes?["drop"]?.AsObject<JsonItemStack>(null)?.Clone() is JsonItemStack dropStack)
+                    {
+                        dropStack.Code.Path = dropStack.Code.Path.Replace("{metal}", metaltype);
+
+                        dropStack.Resolve(capi.World, "handbookmolds", false);
+                        if (dropStack.ResolvedItemstack != null && !recipestacks.Any(s => s.Equals(capi.World, dropStack.ResolvedItemstack, GlobalConstants.IgnoredStackAttributes)))
+                        {
+                            recipestacks.Add(dropStack.ResolvedItemstack);
+                        }
+                    }
+                    else if (mold.ItemAttributes?["drops"].AsObject<JsonItemStack[]>(null, mold.Collectible.Code.Domain) is JsonItemStack[] dropStacks)
+                    {
+                        List<ItemStack> stacks = new List<ItemStack>();
+
+                        foreach (var dstack in dropStacks)
+                        {
+                            dstack.Code.Path = dstack.Code.Path.Replace("{metal}", metaltype);
+
+                            dstack.Resolve(capi.World, "handbookmolds", false);
+                            if (dstack.ResolvedItemstack != null && !recipestacks.Any(s => s.Equals(capi.World, dstack.ResolvedItemstack, GlobalConstants.IgnoredStackAttributes)))
+                            {
+                                recipestacks.Add(dstack.ResolvedItemstack);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (getjuiceableProps(stack) is JuiceableProperties jprops)
+            {
+                var pstack = jprops.PressedStack.ResolvedItemstack.Clone();
+                pstack.Attributes.SetDouble("juiceableLitresLeft", 1);
+
+                if (jprops.ReturnStack != null && !stack.Equals(capi.World, pstack, GlobalConstants.IgnoredStackAttributes) && !recipestacks.Any(s => s.Equals(capi.World, pstack, GlobalConstants.IgnoredStackAttributes)))
+                {
+                    recipestacks.Add(pstack);
+                }
+            }
 
 
-            if (recipestacks.Count > 0)
+            List<CookingRecipe> cookingrecipes = new List<CookingRecipe>();
+            foreach (CookingRecipe recipe in capi.GetCookingRecipes())
+            {
+                if (recipe.CooksInto?.ResolvedItemstack != null) continue;
+                foreach (var ingred in recipe.Ingredients)
+                {
+                    if (!cookingrecipes.Contains(recipe) && ingred.GetMatchingStack(stack) != null)
+                    {
+                        cookingrecipes.Add(recipe);
+                    }
+                }
+            }
+
+            List<CookingRecipe> pierecipes = new List<CookingRecipe>();
+
+            foreach (CookingRecipe recipe in BlockPie.GetHandbookRecipes(capi, allStacks))
+            {
+                if (recipe.CooksInto?.ResolvedItemstack != null) continue;
+                foreach (var ingred in recipe.Ingredients)
+                {
+                    if (!pierecipes.Contains(recipe) && ingred.GetMatchingStack(stack) != null)
+                    {
+                        pierecipes.Add(recipe);
+                    }
+                }
+            }
+
+            if (recipestacks.Count > 0 || cookingrecipes.Count > 0 || pierecipes.Count > 0)
             {
                 AddHeading(components, capi, "Ingredient for", ref haveText);
                 components.Add(new ClearFloatTextComponent(capi, TinyPadding));
@@ -728,55 +971,99 @@ namespace Vintagestory.GameContent
                     components.Add(comp);
                 }
 
+                while (cookingrecipes.Count > 0 || pierecipes.Count > 0)
+                {
+                    CookingRecipe recipe;
+                    bool isPie = false;
+                    int slots = 4;
+                    if (cookingrecipes.Count > 0)
+                    {
+                        recipe = cookingrecipes[0];
+                        cookingrecipes.RemoveAt(0);
+                    }
+                    else
+                    {
+                        recipe = pierecipes[0];
+                        pierecipes.RemoveAt(0);
+                        slots = 6;
+                        isPie = true;
+                    }
+                    if (recipe == null) continue;
+
+                    ItemStack mealBlock;
+                    if (isPie)
+                    {
+                        mealBlock = new ItemStack(capi.World.BlockAccessor.GetBlock("pie-perfect"));
+                        mealBlock.Attributes.SetInt("pieSize", 4);
+                        mealBlock.Attributes.SetInt("topCrustType", capi.World.Rand.Next(3));
+                        mealBlock.Attributes.SetInt("bakeLevel", 2);
+                    }
+                    else mealBlock = new ItemStack(BlockMeal.AllMealBowls[capi.World.Rand.Next(BlockMeal.AllMealBowls.Length)]);
+                    var validStacks = cachedValidStacks.GetValueOrDefault(recipe.Code);
+                    MealstackTextComponent comp = new MealstackTextComponent(capi, ref validStacks, mealBlock, recipe, 40, EnumFloat.Inline, allStacks, (cs) => openDetailPageFor("handbook-mealrecipe-" + recipe.Code + (isPie ? "-pie" : "")), slots, isPie, maxstack);
+                    cachedValidStacks[recipe.Code] = validStacks;
+                    components.Add(comp);
+                }
+
                 components.Add(new ClearFloatTextComponent(capi, MarginBottom));
             }
 
             return haveText;
         }
 
-        protected bool addCreatedByInfo(ICoreClientAPI capi, ItemStack[] allStacks, ActionConsumable<string> openDetailPageFor, ItemStack stack, List<RichTextComponentBase> components, float marginTop, bool haveText)
+        protected bool addCreatedByInfo(ICoreClientAPI capi, ItemStack[] allStacks, ActionConsumable<string> openDetailPageFor, ItemStack stack, List<RichTextComponentBase> components, float marginTop, List<ItemStack> containers, List<ItemStack> fuels, List<ItemStack> molds, bool haveText)
         {
             bool smithable = false;
-            bool knappable = false;
-            bool clayformable = false;
+            bool moldable = false;
+            bool anvilweldable = false;
 
-            foreach (var val in capi.GetSmithingRecipes())
-            {
-                if (val.Output.ResolvedItemstack.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes))
-                {
-                    smithable = true;
-                    break;
-                }
-            }
-
+            List<KnappingRecipe> knaprecipes = new List<KnappingRecipe>();
             foreach (var val in capi.GetKnappingRecipes())
             {
                 if (val.Output.ResolvedItemstack.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes))
                 {
-                    knappable = true;
-                    break;
+                    knaprecipes.Add(val);
                 }
             }
 
 
+            List<ClayFormingRecipe> clayrecipes = new List<ClayFormingRecipe>();
             foreach (var val in capi.GetClayformingRecipes())
             {
                 if (val.Output.ResolvedItemstack.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes))
                 {
-                    clayformable = true;
-                    break;
+                    clayrecipes.Add(val);
                 }
+            }
+            clayrecipes = clayrecipes.OrderBy(recipe => recipe.Output.ResolvedItemstack?.StackSize).ToList();
+
+
+            if (stack.Collectible is BlockAnvil && capi.World.GetBlock(new AssetLocation("anvilpart-base-" + stack.Collectible.Variant["metal"])) != null)
+            {
+                anvilweldable = true;
             }
 
 
             List<GridRecipe> grecipes = new List<GridRecipe>();
-
             foreach (var val in capi.World.GridRecipes)
             {
                 if (!val.ShowInCreatedBy) continue;
-                if (val.Output.ResolvedItemstack?.Satisfies(stack) ?? false)
+                if (val.Output.ResolvedItemstack?.Satisfies(stack) == true)
                 {
                     grecipes.Add(val);
+                    continue;
+                }
+
+                GridRecipeIngredient[] gRIngred = [.. val.resolvedIngredients];
+                foreach (var ingred in gRIngred)
+                {
+                    if (ingred?.ReturnedStack?.ResolvedItemstack is not ItemStack rstack) continue;
+
+                    if (rstack.Satisfies(stack) && ingred.ResolvedItemstack?.Satisfies(stack) == false)
+                    {
+                        grecipes.Add(val);
+                        break;
+                    }
                 }
             }
 
@@ -790,8 +1077,66 @@ namespace Vintagestory.GameContent
                 }
             }
 
+            List<SmithingRecipe> smithingrecipes = new List<SmithingRecipe>();
+            foreach (var val in capi.GetSmithingRecipes())
+            {
+                if (val.Output.ResolvedItemstack?.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes) ?? false)
+                {
+                    if (!getIsAnvilWorkable(val.Ingredient.ResolvedItemstack?.Collectible, fuels)) continue;
 
+                    smithable = true;
+                    smithingrecipes.Add(val);
+                }
+            }
+            smithingrecipes = smithingrecipes.OrderBy(recipe => recipe.Output.ResolvedItemstack?.StackSize).ToList();
+
+            List<ItemStack> moldStacks = new List<ItemStack>();
+            foreach (var mold in molds)
+            {
+                string metaltype = stack.Collectible.Variant["metal"];
+
+                if (mold.Collectible is BlockIngotMold && stack.Collectible is ItemIngot)
+                {
+                    moldStacks.Add(mold);
+                    continue;
+                }
+
+                if (mold.ItemAttributes?["drop"]?.AsObject<JsonItemStack>(null)?.Clone() is JsonItemStack dropStack)
+                {
+                    metaltype = stack.Collectible.LastCodePart();
+                    dropStack.Code.Path = dropStack.Code.Path.Replace("{metal}", metaltype);
+
+                    dropStack.Resolve(capi.World, "handbookmolds", false);
+                    if (dropStack.ResolvedItemstack?.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes) ?? false)
+                    {
+                        moldStacks.Add(mold);
+                    }
+                }
+                else if (mold.ItemAttributes?["drops"].AsObject<JsonItemStack[]>(null, mold.Collectible.Code.Domain) is JsonItemStack[] dropStacks)
+                {
+                    List<ItemStack> stacks = new List<ItemStack>();
+
+                    foreach (var dstack in dropStacks)
+                    {
+                        metaltype = stack.Collectible.LastCodePart();
+                        dstack.Code.Path = dstack.Code.Path.Replace("{metal}", metaltype);
+
+                        dstack.Resolve(capi.World, "handbookmolds", false);
+                        if (dstack.ResolvedItemstack?.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes) ?? false)
+                        {
+                            moldStacks.Add(mold);
+                        }
+                    }
+                }
+            }
+
+
+            List<ItemStack> knappables = new List<ItemStack>();
+            List<ItemStack> clayformables = new List<ItemStack>();
+            List<ItemStack> metalworkables = new List<ItemStack>();
             List<ItemStack> bakables = new List<ItemStack>();
+            List<ItemStack> bloomeryables = new List<ItemStack>();
+            List<ItemStack> kilnables = new List<ItemStack>();
             List<ItemStack> grindables = new List<ItemStack>();
             List<ItemStack> crushables = new List<ItemStack>();
             List<ItemStack> curables = new List<ItemStack>();
@@ -799,15 +1144,90 @@ namespace Vintagestory.GameContent
             List<ItemStack> dryables = new List<ItemStack>();
             List<ItemStack> meltables = new List<ItemStack>();
             List<ItemStack> juiceables = new List<ItemStack>();
+            List<ItemStack> squeezables = new List<ItemStack>();
             List<ItemStack> distillables = new List<ItemStack>();
-
+            List<ItemStack> smashables = new List<ItemStack>();
+            List<ItemStack> fluxes = new List<ItemStack>();
 
             foreach (var val in allStacks)
             {
                 ItemStack smeltedStack = val.Collectible.CombustibleProps?.SmeltedStack?.ResolvedItemstack;
-                if (smeltedStack != null && smeltedStack.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes) && !bakables.Any(s => s.Equals(capi.World, smeltedStack, GlobalConstants.IgnoredStackAttributes)))
+                if (smeltedStack != null && smeltedStack.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes) && !val.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes))
                 {
-                    bakables.Add(val);
+                    if (getCanBloomerySmelt(val) && !bloomeryables.Any(s => s.Equals(capi.World, val, GlobalConstants.IgnoredStackAttributes)))
+                    {
+                        var bloomeryStack = val.Clone();
+                        bloomeryStack.StackSize = val.Collectible.CombustibleProps.SmeltedRatio;
+                        bloomeryables.Add(bloomeryStack);
+                    }
+                    else if (val.Collectible.CombustibleProps.SmeltingType == EnumSmeltType.Fire && !kilnables.Any(s => s.Equals(capi.World, val, GlobalConstants.IgnoredStackAttributes)))
+                    {
+                        kilnables.Add(val);
+                    }
+                    else if (getCanSmelt(fuels, val) && !bakables.Any(s => s.Equals(capi.World, val, GlobalConstants.IgnoredStackAttributes)))
+                    {
+                        var bakeStack = val.Clone();
+                        bakeStack.StackSize = val.Collectible.CombustibleProps.SmeltedRatio;
+                        bakables.Add(bakeStack);
+                    }
+                }
+
+                if (moldStacks.Count > 0 && smeltedStack?.Collectible is ItemIngot && smeltedStack?.Collectible.Variant["metal"] == stack.Collectible.LastCodePart() && getCanContainerSmelt(capi, containers, fuels, val))
+                {
+                    var moldStack = val.Clone();
+                    moldStack.StackSize = (moldStacks.FirstOrDefault()?.ItemAttributes?["requiredUnits"].AsInt(100) ?? 100) / 5;
+                    metalworkables.Add(moldStack);
+                    moldable = true;
+                }
+
+                if (smithable && !val.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes))
+                {
+                    if (val.Collectible.GetCollectibleInterface<IAnvilWorkable>() is IAnvilWorkable workable)
+                    {
+                        var valRecipes = workable.GetMatchingRecipes(val);
+                        foreach (var recipe in smithingrecipes)
+                        {
+                            if (!valRecipes.Contains(recipe)) continue;
+
+                            var smithStack = val.Clone();
+                            smithStack.StackSize = (int)Math.Ceiling(recipe.Voxels.Cast<bool>().Count(voxel => voxel) / (double)workable.VoxelCountForHandbook(val));
+                            metalworkables.Add(smithStack);
+
+                            break;
+                        }
+                    }
+                }
+
+                if (knaprecipes.Count > 0 && !val.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes))
+                {
+                    if (knaprecipes.Where(recipe => recipe.Ingredient.SatisfiesAsIngredient(val, false)).FirstOrDefault() != null)
+                    {
+                        knappables.Add(val);
+                    }
+                }
+
+                if (clayrecipes.Count > 0 && !val.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes))
+                {
+                    var recipe = clayrecipes.Where(recipe => recipe.Ingredient.SatisfiesAsIngredient(val, false)).FirstOrDefault();
+                    if (recipe != null)
+                    {
+                        var clayStack = val.Clone();
+                        clayStack.StackSize = (int)Math.Ceiling(GameMath.Max(1, (recipe.Voxels.Cast<bool>().Count(voxel => voxel) - 64) / 25f));
+                        clayformables.Add(clayStack);
+                    }
+                }
+
+                var beehiveKilnProps = val.ItemAttributes?["beehivekiln"].AsObject<Dictionary<string, JsonItemStack>>();
+                if (beehiveKilnProps != null)
+                {
+                    foreach (var beehiveStack in beehiveKilnProps.Values)
+                    {
+                        if (beehiveStack?.Resolve(capi.World, "beehivekiln-burn") != null && beehiveStack.ResolvedItemstack.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes) && !kilnables.Any(s => s.Equals(capi.World, val, GlobalConstants.IgnoredStackAttributes)))
+                        {
+                            kilnables.Add(val);
+                            break;
+                        }
+                    }
                 }
 
                 ItemStack groundStack = val.Collectible.GrindingProps?.GroundStack.ResolvedItemstack;
@@ -822,16 +1242,61 @@ namespace Vintagestory.GameContent
                     crushables.Add(val);
                 }
 
+                if (val.Collectible is ItemOre)
+                {
+                    int units = val.ItemAttributes["metalUnits"].AsInt(5);
+                    string type = val.Collectible.Variant["ore"].Replace("quartz_", "").Replace("galena_", "");
+
+                    if (capi.World.GetItem(new AssetLocation("nugget-" + type)) is Item item)
+                    {
+                        ItemStack outStack = new ItemStack(item);
+                        if (outStack != null && outStack.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes) && !smashables.Any(s => s.Equals(capi.World, outStack, GlobalConstants.IgnoredStackAttributes)))
+                        {
+                            smashables.Add(val);
+                        }
+                    }
+                }
+
                 if (val.ItemAttributes?["juiceableProperties"].Exists == true)
                 {
                     var fjprops = getjuiceableProps(val);
                     var juicedStack = fjprops?.LiquidStack?.ResolvedItemstack;
+                    var pressedStack = fjprops?.PressedStack?.ResolvedItemstack;
+                    var returnStack = fjprops?.ReturnStack?.ResolvedItemstack;
                     if (juicedStack != null && juicedStack.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes) && !juiceables.Any(s => s.Equals(capi.World, val, GlobalConstants.IgnoredStackAttributes)))
+                    {
+                        if (getjuiceableProps(val)?.LitresPerItem != null || val.Attributes?.GetDouble("juiceableLitresLeft") > 0) juiceables.Add(val);
+                    }
+                    if (pressedStack != null && pressedStack.Equals(capi.World, stack, [..GlobalConstants.IgnoredStackAttributes, "juiceableLitresLeft"]) && !juiceables.Any(s => s.Equals(capi.World, val, GlobalConstants.IgnoredStackAttributes)))
+                    {
+                        if (!val.Equals(capi.World, pressedStack, [..GlobalConstants.IgnoredStackAttributes, "juiceableLitresLeft"])) juiceables.Add(val);
+                    }
+                    if (returnStack != null && returnStack.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes) && !juiceables.Any(s => s.Equals(capi.World, val, GlobalConstants.IgnoredStackAttributes)))
                     {
                         juiceables.Add(val);
                     }
                 }
-                
+
+                if (val.Collectible.GetCollectibleBehavior<CollectibleBehaviorSqueezable>(true) is CollectibleBehaviorSqueezable cbs && cbs.ReturnStacks != null)
+                {
+                    foreach (var returnStack in cbs.ReturnStacks)
+                    {
+                        if (returnStack?.ResolvedItemstack == null) continue;
+                        if (stack.Equals(capi.World, returnStack.ResolvedItemstack, GlobalConstants.IgnoredStackAttributes) && !squeezables.Any(s => s.Equals(capi.World, val, GlobalConstants.IgnoredStackAttributes)))
+                        {
+                            squeezables.Add(val);
+                        }
+                    }
+                    if (cbs.SqueezedLiquid != null)
+                    {
+                        var liquidStack = new ItemStack(cbs.SqueezedLiquid);
+                        if (stack.Equals(capi.World, liquidStack, GlobalConstants.IgnoredStackAttributes) && !squeezables.Any(s => s.Equals(capi.World, val, GlobalConstants.IgnoredStackAttributes)))
+                        {
+                            squeezables.Add(val);
+                        }
+                    }
+                }
+
                 if (val.ItemAttributes?["distillationProps"].Exists == true)
                 {
                     var dsprops = getDistillationProps(val);
@@ -840,6 +1305,11 @@ namespace Vintagestory.GameContent
                     {
                         distillables.Add(val);
                     }
+                }
+
+                if (val.ItemAttributes?.IsTrue("isFlux") ?? false && !fluxes.Any(s => s.Equals(capi.World, val, GlobalConstants.IgnoredStackAttributes)))
+                {
+                    fluxes.Add(val);
                 }
 
                 TransitionableProperties[] oprops = val.Collectible.GetTransitionableProperties(capi.World, val, null);
@@ -899,31 +1369,13 @@ namespace Vintagestory.GameContent
             string customCreatedBy = stack.Collectible.Attributes?["handbook"]?["createdBy"]?.AsString(null);
             string bakingInitialIngredient = collObj.Attributes?["bakingProperties"]?.AsObject<BakingProperties>()?.InitialCode;
 
-            if (grecipes.Count > 0 || cookrecipes.Count > 0 || smithable || knappable || clayformable || customCreatedBy != null || bakables.Count > 0 || barrelRecipestext.Count > 0 || grindables.Count > 0 || curables.Count > 0 || ripenables.Count > 0 || dryables.Count > 0 || meltables.Count > 0 || crushables.Count > 0 || bakingInitialIngredient != null || juiceables.Count > 0 || distillables.Count > 0)
+            if (grecipes.Count > 0 || cookrecipes.Count > 0 || metalworkables.Count > 0 || knappables.Count > 0 || clayformables.Count > 0 || anvilweldable || customCreatedBy != null || bakables.Count > 0 || bloomeryables.Count > 0 || kilnables.Count > 0 || barrelRecipestext.Count > 0 || grindables.Count > 0 || curables.Count > 0 || ripenables.Count > 0 || dryables.Count > 0 || meltables.Count > 0 || crushables.Count > 0 || bakingInitialIngredient != null || juiceables.Count > 0 || squeezables.Count > 0 || distillables.Count > 0 || smashables.Count > 0)
             {
                 AddHeading(components, capi, "Created by", ref haveText);
 
                 var verticalSpaceSmall = new ClearFloatTextComponent(capi, SmallPadding);
                 var verticalSpace = new ClearFloatTextComponent(capi, TinyPadding + 1);   // The first bullet point has a smaller space than any later ones
 
-                if (smithable)
-                {
-                    components.Add(verticalSpace);
-                    verticalSpace = verticalSpaceSmall;
-                    AddSubHeading(components, capi, openDetailPageFor, "Smithing", "craftinginfo-smithing");
-                }
-                if (knappable)
-                {
-                    components.Add(verticalSpace);
-                    verticalSpace = verticalSpaceSmall;
-                    AddSubHeading(components, capi, openDetailPageFor, "Knapping", "craftinginfo-knapping");
-                }
-                if (clayformable)
-                {
-                    components.Add(verticalSpace);
-                    verticalSpace = verticalSpaceSmall;
-                    AddSubHeading(components, capi, openDetailPageFor, "Clay forming", "craftinginfo-clayforming");
-                }
                 if (customCreatedBy != null)
                 {
                     components.Add(verticalSpace);
@@ -934,6 +1386,108 @@ namespace Vintagestory.GameContent
                     components.AddRange(VtmlUtil.Richtextify(capi, Lang.Get(customCreatedBy) + "\n", CairoFont.WhiteSmallText()));
                 }
 
+                if (metalworkables.Count > 0)
+                {
+                    components.Add(verticalSpace);
+                    verticalSpace = verticalSpaceSmall;
+                    var bullet = new RichTextComponent(capi, "• ", CairoFont.WhiteSmallText());
+                    bullet.PaddingLeft = TinyIndent;
+                    components.Add(bullet);
+                    if (smithable) components.Add(new LinkTextComponent(capi, Lang.Get("Smithing"), CairoFont.WhiteSmallText(), (cs) => { openDetailPageFor("craftinginfo-smithing"); }));
+                    if (smithable && moldable) components.Add(new RichTextComponent(capi, "/", CairoFont.WhiteSmallText()) { PaddingRight = 0});
+                    if (moldable) components.AddRange(VtmlUtil.Richtextify(capi, Lang.Get("metalmolding"), CairoFont.WhiteSmallText()));
+                    components.Add(new RichTextComponent(capi, "\n", CairoFont.WhiteSmallText()));
+
+                    int firstPadding = TinyPadding;
+                    while (metalworkables.Count > 0)
+                    {
+                        ItemStack dstack = metalworkables[0];
+                        metalworkables.RemoveAt(0);
+                        if (dstack == null) continue;
+
+                        SlideshowItemstackTextComponent comp = new SlideshowItemstackTextComponent(capi, dstack, metalworkables, 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                        comp.ShowStackSize = true;
+                        comp.PaddingLeft = firstPadding;
+                        firstPadding = 0;
+                        components.Add(comp);
+                    }
+
+                    components.Add(new RichTextComponent(capi, "\n", CairoFont.WhiteSmallText()));
+                }
+                if (knappables.Count > 0)
+                {
+                    components.Add(verticalSpace);
+                    verticalSpace = verticalSpaceSmall;
+                    AddSubHeading(components, capi, openDetailPageFor, "Knapping", "craftinginfo-knapping");
+
+                    int firstPadding = TinyPadding;
+                    while (knappables.Count > 0)
+                    {
+                        ItemStack dstack = knappables[0];
+                        knappables.RemoveAt(0);
+                        if (dstack == null) continue;
+
+                        SlideshowItemstackTextComponent comp = new SlideshowItemstackTextComponent(capi, dstack, knappables, 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                        comp.ShowStackSize = true;
+                        comp.PaddingLeft = firstPadding;
+                        firstPadding = 0;
+                        components.Add(comp);
+                    }
+
+                    components.Add(new RichTextComponent(capi, "\n", CairoFont.WhiteSmallText()));
+                }
+                if (clayformables.Count > 0)
+                {
+                    components.Add(verticalSpace);
+                    verticalSpace = verticalSpaceSmall;
+                    AddSubHeading(components, capi, openDetailPageFor, "Clay forming", "craftinginfo-clayforming");
+
+                    int firstPadding = TinyPadding;
+                    while (clayformables.Count > 0)
+                    {
+                        ItemStack dstack = clayformables[0];
+                        clayformables.RemoveAt(0);
+                        if (dstack == null) continue;
+
+                        SlideshowItemstackTextComponent comp = new SlideshowItemstackTextComponent(capi, dstack, clayformables, 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                        comp.ShowStackSize = true;
+                        comp.PaddingLeft = firstPadding;
+                        firstPadding = 0;
+                        components.Add(comp);
+                    }
+
+                    components.Add(new RichTextComponent(capi, "\n", CairoFont.WhiteSmallText()));
+                }
+                if (anvilweldable)
+                {
+                    components.Add(verticalSpace);
+                    verticalSpace = verticalSpaceSmall;
+                    AddSubHeading(components, capi, openDetailPageFor, "handbook-createdby-anvilwelding", "gamemechanicinfo-steelmaking");
+
+                    var baseComp = new ItemstackTextComponent(capi, new ItemStack(capi.World.GetBlock(new AssetLocation("anvilpart-base-" + stack.Collectible.Variant["metal"]))), 40, 0, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                    baseComp.PaddingLeft = TinyIndent;
+                    components.Add(baseComp);
+
+                    RichTextComponent cmp = new RichTextComponent(capi, " + ", CairoFont.WhiteMediumText());
+                    cmp.PaddingLeft = 0;
+                    cmp.VerticalAlign = EnumVerticalAlign.Middle;
+                    components.Add(cmp);
+
+                    var fluxComp = new SlideshowItemstackTextComponent(capi, fluxes.ToArray(), 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                    fluxComp.PaddingLeft = 0;
+                    components.Add(fluxComp);
+
+                    cmp = new RichTextComponent(capi, " + ", CairoFont.WhiteMediumText());
+                    cmp.PaddingLeft = 0;
+                    cmp.VerticalAlign = EnumVerticalAlign.Middle;
+                    components.Add(cmp);
+
+                    var topComp = new ItemstackTextComponent(capi, new ItemStack(capi.World.GetBlock(new AssetLocation("anvilpart-top-" + stack.Collectible.Variant["metal"]))), 40, 0, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                    topComp.PaddingLeft = 0;
+                    components.Add(topComp);
+
+                    components.Add(new RichTextComponent(capi, "\n", CairoFont.WhiteSmallText()));
+                }
                 if (grindables.Count > 0)
                 {
                     components.Add(verticalSpace);
@@ -971,6 +1525,30 @@ namespace Vintagestory.GameContent
                         if (dstack == null) continue;
 
                         SlideshowItemstackTextComponent comp = new SlideshowItemstackTextComponent(capi, dstack, crushables, 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                        comp.ShowStackSize = true;
+                        comp.PaddingLeft = firstPadding;
+                        firstPadding = 0;
+                        components.Add(comp);
+                    }
+
+                    components.Add(new RichTextComponent(capi, "\n", CairoFont.WhiteSmallText()));
+                }
+
+
+                if (smashables.Count > 0)
+                {
+                    components.Add(verticalSpace);
+                    verticalSpace = verticalSpaceSmall;
+                    AddSubHeading(components, capi, openDetailPageFor, "handbook-createdby-smashing", null);
+
+                    int firstPadding = TinyPadding;
+                    while (smashables.Count > 0)
+                    {
+                        ItemStack dstack = smashables[0];
+                        smashables.RemoveAt(0);
+                        if (dstack == null) continue;
+
+                        SlideshowItemstackTextComponent comp = new SlideshowItemstackTextComponent(capi, dstack, smashables, 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
                         comp.ShowStackSize = true;
                         comp.PaddingLeft = firstPadding;
                         firstPadding = 0;
@@ -1083,7 +1661,52 @@ namespace Vintagestory.GameContent
                         if (dstack == null) continue;
 
                         SlideshowItemstackTextComponent comp = new SlideshowItemstackTextComponent(capi, dstack, bakables, 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
-                        //comp.ShowStackSize = true;   // We don't want to show the stacksize, as the bakables were collected from allStacks and each has stackSize == maxStackSize
+                        comp.ShowStackSize = true;
+                        comp.PaddingLeft = firstPadding;
+                        firstPadding = 0;
+                        components.Add(comp);
+                    }
+
+                    components.Add(new RichTextComponent(capi, "\n", CairoFont.WhiteSmallText()));
+                }
+
+                if (bloomeryables.Count > 0)
+                {
+                    components.Add(verticalSpace);
+                    verticalSpace = verticalSpaceSmall;
+                    AddSubHeading(components, capi, openDetailPageFor, "handbook-createdby-bloomerysmelting", null);
+
+                    int firstPadding = TinyPadding;
+                    while (bloomeryables.Count > 0)
+                    {
+                        ItemStack dstack = bloomeryables[0];
+                        bloomeryables.RemoveAt(0);
+                        if (dstack == null) continue;
+
+                        SlideshowItemstackTextComponent comp = new SlideshowItemstackTextComponent(capi, dstack, bloomeryables, 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                        comp.ShowStackSize = true;
+                        comp.PaddingLeft = firstPadding;
+                        firstPadding = 0;
+                        components.Add(comp);
+                    }
+
+                    components.Add(new RichTextComponent(capi, "\n", CairoFont.WhiteSmallText()));
+                }
+
+                if (kilnables.Count > 0)
+                {
+                    components.Add(verticalSpace);
+                    verticalSpace = verticalSpaceSmall;
+                    AddSubHeading(components, capi, openDetailPageFor, "handbook-createdby-kilnfiring", null);
+
+                    int firstPadding = TinyPadding;
+                    while (kilnables.Count > 0)
+                    {
+                        ItemStack dstack = kilnables[0];
+                        kilnables.RemoveAt(0);
+                        if (dstack == null) continue;
+
+                        SlideshowItemstackTextComponent comp = new SlideshowItemstackTextComponent(capi, dstack, bakables, 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
                         comp.PaddingLeft = firstPadding;
                         firstPadding = 0;
                         components.Add(comp);
@@ -1096,7 +1719,7 @@ namespace Vintagestory.GameContent
                 {
                     components.Add(verticalSpace);
                     verticalSpace = verticalSpaceSmall;
-                    AddSubHeading(components, capi, openDetailPageFor, "Juicing", null);
+                    AddSubHeading(components, capi, openDetailPageFor, "Juicing", "block-fruitpress-ns");
 
                     int firstPadding = TinyPadding;
                     while (juiceables.Count > 0)
@@ -1114,11 +1737,33 @@ namespace Vintagestory.GameContent
                     components.Add(new RichTextComponent(capi, "\n", CairoFont.WhiteSmallText()));
                 }
 
+                if (squeezables.Count > 0)
+                {
+                    components.Add(verticalSpace);
+                    verticalSpace = verticalSpaceSmall;
+                    AddSubHeading(components, capi, openDetailPageFor, "handbook-createdby-squeezing", null);
+
+                    int firstPadding = TinyPadding;
+                    while (squeezables.Count > 0)
+                    {
+                        ItemStack dstack = squeezables[0];
+                        squeezables.RemoveAt(0);
+                        if (dstack == null) continue;
+
+                        SlideshowItemstackTextComponent comp = new SlideshowItemstackTextComponent(capi, dstack, squeezables, 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                        comp.PaddingLeft = firstPadding;
+                        firstPadding = 0;
+                        components.Add(comp);
+                    }
+
+                    components.Add(new RichTextComponent(capi, "\n", CairoFont.WhiteSmallText()));
+                }
+
                 if (distillables.Count > 0)
                 {
                     components.Add(verticalSpace);
                     verticalSpace = verticalSpaceSmall;
-                    AddSubHeading(components, capi, openDetailPageFor, "Distillation", null);
+                    AddSubHeading(components, capi, openDetailPageFor, "Distillation", "craftinginfo-alcohol");
 
                     int firstPadding = TinyPadding;
                     while (distillables.Count > 0)
@@ -1174,9 +1819,7 @@ namespace Vintagestory.GameContent
                                 if (rs.Collectible.Attributes?["waterTightContainerProps"].Exists == true)
                                 {
                                     var props = BlockLiquidContainerBase.GetContainableProps(rs);
-                                    rs.StackSize = (int)(props.ItemsPerLitre * ingred.PortionSizeLitres);
-                                } else {
-                                    rs.StackSize = 1;
+                                    rs.StackSize *= (int)(props.ItemsPerLitre * ingred.PortionSizeLitres);
                                 }
 
 
@@ -1216,19 +1859,28 @@ namespace Vintagestory.GameContent
                     verticalSpace = verticalSpaceSmall;
                     AddSubHeading(components, capi, openDetailPageFor, "Crafting", null);
 
-                    OrderedDictionary<int, List<GridRecipe>> grouped = new OrderedDictionary<int, List<GridRecipe>>();
+                    API.Datastructures.OrderedDictionary<int, List<GridRecipe>> grouped = [];
 
                     ItemStack[] outputStacks = new ItemStack[grecipes.Count];
                     int i = 0;
 
                     foreach (var recipe in grecipes)
                     {
-                        List<GridRecipe> list;
-                        if (!grouped.TryGetValue(recipe.RecipeGroup, out list))
+                        if (!grouped.TryGetValue(recipe.RecipeGroup, out List<GridRecipe> list))
                         {
-                            grouped[recipe.RecipeGroup] = list = new List<GridRecipe>();
+                            grouped[recipe.RecipeGroup] = list = [];
                         }
-                        
+
+                        if (recipe.resolvedIngredients.Select(ingred => ingred?.ReturnedStack?.ResolvedItemstack).Where(stack => stack != null).ToArray() is ItemStack[] returnedStacks)
+                        {
+                            if (returnedStacks.Length > 0 && returnedStacks.Any(rstack => rstack.Satisfies(stack)))
+                            {
+                                list.Add(recipe);
+                                outputStacks[i++] = returnedStacks.FirstOrDefault(rstack => rstack.Satisfies(stack));
+                                continue;
+                            }
+                        }
+
                         if (recipe.CopyAttributesFrom != null && recipe.Ingredients.ContainsKey(recipe.CopyAttributesFrom))
                         {
                             var rec = recipe.Clone();
@@ -1239,6 +1891,73 @@ namespace Vintagestory.GameContent
                             ingred.Attributes = new JsonObject(JToken.Parse(cattr.ToJsonToken()));
                             rec.ResolveIngredients(capi.World);
 
+                            rec.Output.ResolvedItemstack.Attributes.MergeTree(stack.Attributes);
+
+                            list.Add(rec);
+                            outputStacks[i++] = rec.Output.ResolvedItemstack;
+                            continue;
+                        }
+
+                        if (recipe.MergeAttributesFrom.Length > 0)
+                        {
+                            var rec = recipe.Clone();
+                            var cattr = stack.Attributes.Clone();
+
+                            foreach (var ingredientName in recipe.MergeAttributesFrom)
+                            {
+                                if (!rec.Ingredients.ContainsKey(ingredientName)) continue;
+
+                                var ingred = rec.Ingredients[ingredientName];
+                                
+                                cattr.MergeTree(ingred.ResolvedItemstack.Attributes);
+                            }
+
+                            foreach (var ingredientName in recipe.MergeAttributesFrom)
+                            {
+                                if (!rec.Ingredients.ContainsKey(ingredientName)) continue;
+
+                                var ingred = rec.Ingredients[ingredientName];
+
+                                ingred.Attributes = new JsonObject(JToken.Parse(cattr.ToJsonToken()));
+                            }
+                            
+                            rec.ResolveIngredients(capi.World);
+                            rec.Output.ResolvedItemstack.Attributes.MergeTree(stack.Attributes);
+
+                            list.Add(rec);
+                            outputStacks[i++] = rec.Output.ResolvedItemstack;
+                            continue;
+                        }
+
+                        if (recipe.CopyAttributesFrom != null && recipe.Ingredients.ContainsKey(recipe.CopyAttributesFrom) && recipe.MergeAttributesFrom.Length > 0)
+                        {
+                            var rec = recipe.Clone();
+                            var cattr = stack.Attributes.Clone();
+
+                            var ingred2 = rec.Ingredients[recipe.CopyAttributesFrom];
+                            cattr.MergeTree(ingred2.ResolvedItemstack.Attributes);
+
+                            foreach (var ingredientName in recipe.MergeAttributesFrom)
+                            {
+                                if (!rec.Ingredients.ContainsKey(ingredientName)) continue;
+
+                                var ingred = rec.Ingredients[ingredientName];
+
+                                cattr.MergeTree(ingred.ResolvedItemstack.Attributes);
+                            }
+
+                            foreach (var ingredientName in recipe.MergeAttributesFrom)
+                            {
+                                if (!rec.Ingredients.ContainsKey(ingredientName)) continue;
+
+                                var ingred = rec.Ingredients[ingredientName];
+
+                                ingred.Attributes = new JsonObject(JToken.Parse(cattr.ToJsonToken()));
+                            }
+
+                            ingred2.Attributes = new JsonObject(JToken.Parse(cattr.ToJsonToken()));
+
+                            rec.ResolveIngredients(capi.World);
                             rec.Output.ResolvedItemstack.Attributes.MergeTree(stack.Attributes);
 
                             list.Add(rec);
@@ -1269,12 +1988,25 @@ namespace Vintagestory.GameContent
                         ecomp.PaddingRight = 5;
                         var ocomp = new SlideshowItemstackTextComponent(capi, outputStacks, 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
                         ocomp.overrideCurrentItemStack = () => comp.CurrentVisibleRecipe.Recipe.Output.ResolvedItemstack;
+                        /*ocomp.overrideCurrentItemStack = () =>
+                        {
+                            ItemStack[] currentReturns = [.. comp.CurrentVisibleRecipe.Recipe.resolvedIngredients.Select(ingred => ingred?.ReturnedStack?.ResolvedItemstack).Where(stack => stack != null)];
+                            if (currentReturns.Length > 0 && currentReturns.Any(rstack => rstack.Satisfies(stack))) return currentReturns.FirstOrDefault(rstack => rstack.Satisfies(stack));
+                            else return comp.CurrentVisibleRecipe.Recipe.Output.ResolvedItemstack;
+                        };*/
                         ocomp.VerticalAlign = EnumVerticalAlign.FixedOffset;
                         ocomp.UnscaledMarginTop = 50;
                         ocomp.ShowStackSize = true;
+                        var rcomp = new SlideshowItemstackTextComponent(capi, [null], 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                        rcomp.overrideCurrentItemStack = () => comp.CurrentVisibleRecipe.Recipe.resolvedIngredients.Select(ingred => ingred?.ReturnedStack?.ResolvedItemstack).Where(stack => stack != null).FirstOrDefault();
+                        rcomp.VerticalAlign = EnumVerticalAlign.FixedOffset;
+                        rcomp.PaddingLeft = -40;
+                        rcomp.UnscaledMarginTop = 108;
+                        rcomp.ShowStackSize = true;
 
                         components.Add(ecomp);
                         components.Add(ocomp);
+                        components.Add(rcomp);
                     }
 
                     components.Add(new ClearFloatTextComponent(capi, MarginBottom));  //nice margin below the grid graphic
@@ -1292,7 +2024,7 @@ namespace Vintagestory.GameContent
             return haveText;
         }
 
-        protected static void AddHeading(List<RichTextComponentBase> components, ICoreClientAPI capi, string heading, ref bool haveText)
+        public static void AddHeading(List<RichTextComponentBase> components, ICoreClientAPI capi, string heading, ref bool haveText)
         {
             if (haveText) components.Add(new ClearFloatTextComponent(capi, MediumPadding));
             haveText = true;
@@ -1300,7 +2032,7 @@ namespace Vintagestory.GameContent
             components.Add(headc);
         }
 
-        protected void AddSubHeading(List<RichTextComponentBase> components, ICoreClientAPI capi, ActionConsumable<string> openDetailPageFor, string subheading, string detailpage)
+        public static void AddSubHeading(List<RichTextComponentBase> components, ICoreClientAPI capi, ActionConsumable<string> openDetailPageFor, string subheading, string detailpage)
         {
             if (detailpage == null)
             {
@@ -1382,9 +2114,8 @@ namespace Vintagestory.GameContent
 
                 if (mixdStack != null && mixdStack.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes))
                 {
-                    List<BarrelRecipe> tmp;
 
-                    if (!brecipesbyCode.TryGetValue(recipe.Code, out tmp))
+                    if (!brecipesbyCode.TryGetValue(recipe.Code, out List<BarrelRecipe> tmp))
                     {
                         brecipesbyCode[recipe.Code] = tmp = new List<BarrelRecipe>();
                     }
@@ -1398,6 +2129,7 @@ namespace Vintagestory.GameContent
                 int ingredientsLen = recipes[0].Ingredients.Length;
                 ItemStack[][] ingstacks = new ItemStack[ingredientsLen][];
                 ItemStack[] outstacks = new ItemStack[recipes.Count];
+                double sealHours = 0;
 
                 for (int i = 0; i < recipes.Count; i++)
                 {
@@ -1416,6 +2148,7 @@ namespace Vintagestory.GameContent
                         ingstacks[j][i] = recipes[i].Ingredients[j].ResolvedItemstack;
                     }
 
+                    sealHours = recipes[i].SealHours;
                     outstacks[i] = recipes[i].Output.ResolvedItemstack;
                 }
 
@@ -1443,6 +2176,11 @@ namespace Vintagestory.GameContent
 
                 ocmp.ShowStackSize = true;
                 barrelRecipesTexts.Add(ocmp);
+
+                string sealHoursText = (sealHours > capi.World.Calendar.HoursPerDay) ? " " + Lang.Get("{0} days", Math.Round(sealHours / (double)capi.World.Calendar.HoursPerDay, 1)) : Lang.Get("{0} hours", Math.Round(sealHours));
+                var hoursCmp = new RichTextComponent(capi, sealHoursText, CairoFont.WhiteSmallText());
+                hoursCmp.VerticalAlign = EnumVerticalAlign.Middle;
+                barrelRecipesTexts.Add(hoursCmp);
 
                 barrelRecipesTexts.Add(new ClearFloatTextComponent(capi, 10));
             }
@@ -1540,6 +2278,7 @@ namespace Vintagestory.GameContent
             var props = stack?.ItemAttributes?["juiceableProperties"]?.AsObject<JuiceableProperties>(null, stack.Collectible.Code.Domain);
             props?.LiquidStack?.Resolve(Api.World, "juiceable properties liquidstack");
             props?.PressedStack?.Resolve(Api.World, "juiceable properties pressedstack");
+            props?.ReturnStack?.Resolve(Api.World, "juiceable properties returnstack");
 
             return props;
         }
@@ -1550,6 +2289,47 @@ namespace Vintagestory.GameContent
             props?.DistilledStack?.Resolve(Api.World, "distillation props distilled stack");
 
             return props;
+        }
+
+        bool getIsAnvilWorkable(CollectibleObject obj, List<ItemStack> fuels)
+        {
+            if (obj.GetCollectibleInterface<IAnvilWorkable>() is not IAnvilWorkable || (obj.CombustibleProps == null && (!obj.Attributes?["workableTemperature"].Exists ?? true))) return false;
+
+            float maxFuelTemp = fuels.OrderBy(fuel => fuel.Collectible.CombustibleProps.BurnTemperature).Select(fuel => fuel.Collectible.CombustibleProps.BurnTemperature).LastOrDefault();
+            float meltingPoint = obj.CombustibleProps?.MeltingPoint / 2 ?? 0;
+            float workableTemp = obj.Attributes?["workableTemperature"]?.AsFloat(meltingPoint) ?? meltingPoint;
+
+            return workableTemp <= maxFuelTemp;
+        }
+
+        bool getCanBloomerySmelt(ItemStack stack)
+        {
+            if (stack.Collectible.CombustibleProps?.SmeltedStack?.ResolvedItemstack == null) return false;
+
+            int stackMeltingPoint = stack.Collectible.CombustibleProps?.MeltingPoint ?? 0;
+            return stackMeltingPoint < BlockEntityBloomery.MaxTemp && stackMeltingPoint >= BlockEntityBloomery.MinTemp;
+        }
+
+        bool getCanContainerSmelt(ICoreClientAPI capi, List<ItemStack> containers, List<ItemStack> fuels, ItemStack stack)
+        {
+            int maxFuelTemp = fuels.OrderBy(fuel => fuel.Collectible.CombustibleProps.BurnTemperature).Select(fuel => fuel.Collectible.CombustibleProps.BurnTemperature).LastOrDefault();
+            if (stack.Collectible.CombustibleProps is not CombustibleProperties combustProps || combustProps.MeltingPoint > maxFuelTemp) return false;
+
+            ItemStack[] filteredContainers = containers.Where(container => container.ItemAttributes["maxContentDimensions"].AsObject<Size3f>(null)?.CanContain(stack.Collectible.Dimensions) ?? true).ToArray();
+            ItemStack smeltedStack = stack.Clone();
+            smeltedStack.StackSize = combustProps.SmeltedRatio;
+            dummySmeltingInv.Slots[1].Itemstack = smeltedStack;
+
+            return filteredContainers.Any(container => container.Collectible.CanSmelt(capi.World, dummySmeltingInv, container, null));
+        }
+
+        bool getCanSmelt(List<ItemStack> fuels, ItemStack stack)
+        {
+            int maxFuelTemp = fuels.OrderBy(fuel => fuel.Collectible.CombustibleProps.BurnTemperature).Select(fuel => fuel.Collectible.CombustibleProps.BurnTemperature).LastOrDefault();
+            if (stack.Collectible.CombustibleProps is not CombustibleProperties combustProps || combustProps.MeltingPoint > maxFuelTemp) return false;
+            if (combustProps.RequiresContainer == false) return true;
+
+            return false;
         }
 
     }

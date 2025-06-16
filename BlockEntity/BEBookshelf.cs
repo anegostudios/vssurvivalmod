@@ -8,6 +8,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityBookshelf : BlockEntityDisplay, IRotatable
@@ -31,7 +33,7 @@ namespace Vintagestory.GameContent
         public int[] UsableSlots {
             get {
                 var bs = block as BlockBookshelf;
-                if (bs == null) return new int[0];
+                if (bs == null) return System.Array.Empty<int>();
                 bs.UsableSlots.TryGetValue(type, out var slots);
                 return slots;
             }

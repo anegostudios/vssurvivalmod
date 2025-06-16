@@ -22,7 +22,7 @@ namespace Vintagestory.GameContent
 
             if (transType == EnumTransitionType.Perish)
             {
-                if (inSlot.Itemstack.Attributes.GetBool("sealed"))
+                if (inSlot.Itemstack?.Attributes?.GetBool("sealed") == true)
                 {
                     if (inSlot.Itemstack.Attributes.GetString("recipeCode") != null)
                     {
@@ -46,8 +46,7 @@ namespace Vintagestory.GameContent
         {
             float mul = 1;
 
-            BlockEntityCrock becrock = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityCrock;
-            if (becrock == null) return mul;
+            if (world.BlockAccessor.GetBlockEntity(pos) is not BlockEntityCrock becrock) return mul;
 
             if (transType == EnumTransitionType.Perish)
             {
@@ -71,23 +70,10 @@ namespace Vintagestory.GameContent
             return mul;
         }
 
-        string[] vegetableLabels = new string[] { "carrot", "cabbage", "onion", "parsnip", "turnip", "pumpkin", "soybean", "bellpepper", "cassava", "mushroom", "redmeat", "poultry", "porridge" };
+        string[] vegetableLabels = ["carrot", "cabbage", "onion", "parsnip", "turnip", "pumpkin", "soybean", "bellpepper", "cassava", "mushroom", "redmeat", "poultry", "porridge"];
 
-        public AssetLocation LabelForContents(string recipeCode, ItemStack[] contents)
+        public AssetLocation LabelForContents(string? recipeCode, ItemStack[]? contents)
         {
-            string label;
-
-            if (recipeCode != null && recipeCode.Length > 0)
-            {
-                var code = getMostCommonMealIngredient(contents);
-                if (code != null && (label = CodeToLabel(code)) != null)
-                {
-                    return AssetLocation.Create("shapes/block/clay/crock/label-" + label + ".json", Code.Domain);
-                }
-
-                return AssetLocation.Create("shapes/block/clay/crock/label-meal.json", Code.Domain);
-            }
-
             if (contents == null || contents.Length == 0 || contents[0] == null)
             {
                 return AssetLocation.Create("shapes/block/clay/crock/label-empty.json", Code.Domain);
@@ -98,14 +84,18 @@ namespace Vintagestory.GameContent
                 return AssetLocation.Create("shapes/block/clay/crock/label-rot.json", Code.Domain);
             }
 
-            label = CodeToLabel(contents[0].Collectible.Code) ?? "empty";
+            if (recipeCode != null && recipeCode.Length > 0)
+            {
+                return AssetLocation.Create("shapes/block/clay/crock/label-" + (CodeToLabel(getMostCommonMealIngredient(contents)) ?? "meal") + ".json", Code.Domain);
+            }
 
-            return AssetLocation.Create("shapes/block/clay/crock/label-" + label + ".json", Code.Domain);
+            return AssetLocation.Create("shapes/block/clay/crock/label-" + (CodeToLabel(contents[0].Collectible.Code) ?? "empty") + ".json", Code.Domain);
         }
 
-        public string CodeToLabel(AssetLocation loc)
+        public string? CodeToLabel(AssetLocation? loc)
         {
-            string type = null;
+            if (loc == null) return null;
+            string? type = null;
 
             foreach (var label in vegetableLabels)
             {
@@ -119,7 +109,7 @@ namespace Vintagestory.GameContent
             return type;
         }
 
-        private AssetLocation getMostCommonMealIngredient(ItemStack[] contents)
+        private AssetLocation? getMostCommonMealIngredient(ItemStack[] contents)
         {
             Dictionary<AssetLocation, int> sdf = new Dictionary<AssetLocation, int>();
 
@@ -138,8 +128,7 @@ namespace Vintagestory.GameContent
         {
             ItemStack stack = new ItemStack(world.GetBlock(CodeWithVariant("side", "east")));
 
-            BlockEntityCrock becrock = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityCrock;
-            if (becrock != null)
+            if (world.BlockAccessor.GetBlockEntity(pos) is BlockEntityCrock becrock)
             {
                 ItemStack[] contents = becrock.GetContentStacks();
                 for (int i = 0; i < contents.Length; i++)
@@ -175,8 +164,7 @@ namespace Vintagestory.GameContent
             });
 
             string key = Code.ToShortString() + loc.ToShortString();
-            MultiTextureMeshRef meshref;
-            if (!meshrefs.TryGetValue(key, out meshref))
+            if (!meshrefs.TryGetValue(key, out MultiTextureMeshRef? meshref))
             {
                 MeshData mesh = GenMesh(capi, loc, new Vec3f(0, 270, 0));
                 meshrefs[key] = meshref = capi.Render.UploadMultiTextureMesh(mesh);
@@ -195,24 +183,23 @@ namespace Vintagestory.GameContent
         }
 
 
-        public MeshData GenMesh(ItemStack itemstack, ITextureAtlasAPI targetAtlas, BlockPos forBlockPos = null)
+        public MeshData GenMesh(ItemStack itemstack, ITextureAtlasAPI targetAtlas, BlockPos? forBlockPos = null)
         {
             ItemStack[] contents = GetNonEmptyContents(api.World, itemstack);
             string recipeCode = itemstack.Attributes.GetString("recipeCode");
             
-            return GenMesh(api as ICoreClientAPI, LabelForContents(recipeCode, contents));
+            return GenMesh((ICoreClientAPI)api, LabelForContents(recipeCode, contents));
         }
 
-        public MeshData GenMesh(ICoreClientAPI capi, AssetLocation labelLoc, Vec3f rot = null)
+        public MeshData GenMesh(ICoreClientAPI capi, AssetLocation labelLoc, Vec3f? rot = null)
         {
             var tesselator = capi.Tesselator;
 
             Shape baseshape = API.Common.Shape.TryGet(capi, AssetLocation.Create("shapes/block/clay/crock/base.json", Code.Domain));
             Shape labelshape = API.Common.Shape.TryGet(capi, labelLoc);
 
-            MeshData mesh, labelmesh;
-            tesselator.TesselateShape(this, baseshape, out mesh, rot);
-            tesselator.TesselateShape(this, labelshape, out labelmesh, rot);
+            tesselator.TesselateShape(this, baseshape, out MeshData mesh, rot);
+            tesselator.TesselateShape(this, labelshape, out MeshData labelmesh, rot);
 
             mesh.AddMeshData(labelmesh);
 
@@ -222,6 +209,8 @@ namespace Vintagestory.GameContent
 
         public override void OnCreatedByCrafting(ItemSlot[] allInputslots, ItemSlot outputSlot, GridRecipe byRecipe)
         {
+            if (outputSlot.Itemstack == null) return;
+
             for (int i = 0; i < allInputslots.Length; i++)
             {
                 ItemSlot slot = allInputslots[i];
@@ -241,8 +230,10 @@ namespace Vintagestory.GameContent
                 return;
             }
 
+            if (slot.Itemstack is not ItemStack crockStack) return;
+
             Block block = api.World.BlockAccessor.GetBlock(blockSel.Position);
-            float quantityServings = (float)slot.Itemstack.Attributes.GetDecimal("quantityServings");
+            float quantityServings = (float)crockStack.Attributes.GetDecimal("quantityServings");
 
             if (block?.Attributes?.IsTrue("mealContainer") == true)
             {
@@ -259,9 +250,7 @@ namespace Vintagestory.GameContent
             if (block is BlockGroundStorage)
             {
                 if (!byEntity.Controls.ShiftKey) return;
-                var begs = api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityGroundStorage;
-                ItemSlot gsslot = begs.GetSlotAt(blockSel);
-                if (gsslot == null || gsslot.Empty) return;
+                if (api.World.BlockAccessor.GetBlockEntity(blockSel.Position) is not BlockEntityGroundStorage begs || begs?.GetSlotAt(blockSel) is not ItemSlot gsslot || gsslot.Empty) return;
 
                 if (gsslot.Itemstack.ItemAttributes?.IsTrue("mealContainer") == true)
                 {
@@ -278,25 +267,25 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (block is BlockCookingContainer && slot.Itemstack.Attributes.HasAttribute("recipeCode"))
+            if (block is BlockCookingContainer bcc && crockStack.Attributes.HasAttribute("recipeCode"))
             {
                 handHandling = EnumHandHandling.PreventDefault;
                 ((byEntity as EntityPlayer)?.Player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
 
-                string recipeCode = slot.Itemstack.Attributes.GetString("recipeCode");
+                string recipeCode = crockStack.Attributes.GetString("recipeCode");
                 
 
-                float movedServings = (block as BlockCookingContainer).PutMeal(blockSel.Position, GetNonEmptyContents(api.World, slot.Itemstack), recipeCode, quantityServings);
+                float movedServings = bcc.PutMeal(blockSel.Position, GetNonEmptyContents(api.World, crockStack), recipeCode, quantityServings);
 
                 quantityServings -= movedServings;
 
                 if (quantityServings > 0) {
-                    slot.Itemstack.Attributes.SetFloat("quantityServings", quantityServings);
+                    crockStack.Attributes.SetFloat("quantityServings", quantityServings);
                 } else {
 
-                    slot.Itemstack.Attributes.RemoveAttribute("recipeCode");
-                    slot.Itemstack.Attributes.RemoveAttribute("quantityServings");
-                    slot.Itemstack.Attributes.RemoveAttribute("contents");
+                    crockStack.Attributes.RemoveAttribute("recipeCode");
+                    crockStack.Attributes.RemoveAttribute("quantityServings");
+                    crockStack.Attributes.RemoveAttribute("contents");
                 }
 
                 return;
@@ -304,31 +293,30 @@ namespace Vintagestory.GameContent
 
             if (block is BlockBarrel)
             {
-                BlockEntityBarrel bebarrel = api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityBarrel;
-                if (bebarrel != null)
+                if (api.World.BlockAccessor.GetBlockEntity(blockSel.Position) is BlockEntityBarrel bebarrel)
                 {
-                    ItemStack stack = bebarrel.Inventory[0].Itemstack;
-
-                    ItemStack[] ownContentStacks = GetNonEmptyContents(api.World, slot.Itemstack);
+                    ItemStack[] ownContentStacks = GetNonEmptyContents(api.World, crockStack);
                     if (ownContentStacks == null || ownContentStacks.Length == 0)
                     {
-                        if (stack != null && stack.Collectible.Attributes?.IsTrue("crockable") == true)
+                        if (bebarrel.Inventory[0].Itemstack?.Collectible.Attributes?.IsTrue("crockable") == true)
                         {
-                            float servingCapacity = slot.Itemstack.Block.Attributes["servingCapacity"].AsFloat(1);
+                            float servingCapacity = crockStack.Block.Attributes["servingCapacity"].AsFloat(1);
 
-                            var foodstack = bebarrel.Inventory[0].TakeOut((int)servingCapacity * 4);
-                            float servingSize = foodstack.StackSize / 4f; 
-                            
-                            foodstack.StackSize = Math.Max(0, foodstack.StackSize / 4);
+                            if (bebarrel.Inventory[0].TakeOut((int)servingCapacity * 4) is ItemStack foodstack)
+                            {
+                                float servingSize = foodstack.StackSize / 4f;
 
-                            SetContents(null, slot.Itemstack, new ItemStack[] { foodstack }, servingSize);
-                            bebarrel.MarkDirty(true);
-                            slot.MarkDirty();
+                                foodstack.StackSize = Math.Max(0, foodstack.StackSize / 4);
+
+                                SetContents(null, crockStack, [foodstack], servingSize);
+                                bebarrel.MarkDirty(true);
+                                slot.MarkDirty();
+                            }
                         }
                     }
 
                     // non-meal items (eg. pickled vegetables) can be placed from a crock INTO a barrel - this is useful eg. for cheese-making
-                    else if (ownContentStacks.Length == 1 && slot.Itemstack.Attributes.GetString("recipeCode") == null)
+                    else if (ownContentStacks.Length == 1 && crockStack.Attributes.GetString("recipeCode") == null)
                     {
                         var foodstack = ownContentStacks[0].Clone();
                         foodstack.StackSize = (int)(foodstack.StackSize * quantityServings);
@@ -337,10 +325,10 @@ namespace Vintagestory.GameContent
 
                         if (foodstack.StackSize <= 0)
                         {
-                            SetContents(slot.Itemstack, new ItemStack[0]);
+                            SetContents(crockStack, Array.Empty<ItemStack>());
                         } else
                         {
-                            SetContents(slot.Itemstack, new ItemStack[] { foodstack });
+                            SetContents(crockStack, [foodstack]);
                         }
 
                         bebarrel.MarkDirty(true);
@@ -363,8 +351,7 @@ namespace Vintagestory.GameContent
 
             if (!hotbarSlot.Empty && hotbarSlot.Itemstack.Collectible.Attributes?.IsTrue("mealContainer") == true && (!(hotbarSlot.Itemstack.Collectible is BlockCrock) || hotbarSlot.StackSize == 1))
             {
-                BlockEntityCrock bec = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityCrock;
-                if (bec == null) return false;
+                if (world.BlockAccessor.GetBlockEntity(blockSel.Position) is not BlockEntityCrock bec) return false;
 
                 if (hotbarSlot.Itemstack.Attributes.GetDecimal("quantityServings", 0) == 0)
                 {
@@ -392,16 +379,16 @@ namespace Vintagestory.GameContent
         {
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
 
-            BlockMeal mealblock = world.GetBlock(new AssetLocation("bowl-meal")) as BlockMeal;
+            if (inSlot.Itemstack is not ItemStack crockStack) return;
 
-            CookingRecipe recipe = GetCookingRecipe(world, inSlot.Itemstack);
-            ItemStack[] stacks = GetNonEmptyContents(world, inSlot.Itemstack);
+            CookingRecipe? recipe = GetCookingRecipe(world, crockStack);
+            ItemStack[]? stacks = GetNonEmptyContents(world, crockStack);
 
             if (stacks == null || stacks.Length == 0)
             {
                 dsc.AppendLine(Lang.Get("Empty"));
 
-                if (inSlot.Itemstack.Attributes.GetBool("sealed"))
+                if (crockStack.Attributes.GetBool("sealed") == true)
                 {
                     dsc.AppendLine("<font color=\"lightgreen\">" + Lang.Get("Sealed.") + "</font>");
                 }
@@ -416,7 +403,7 @@ namespace Vintagestory.GameContent
             {
                 float val = mul * GetContainingTransitionModifierContained(world, inSlot, transType);
 
-                if (inSlot.Inventory != null) val *= inSlot.Inventory.GetTransitionSpeedMul(transType, inSlot.Itemstack);
+                if (inSlot.Inventory != null) val *= inSlot.Inventory.GetTransitionSpeedMul(transType, crockStack);
 
                 return val;
             };
@@ -424,7 +411,7 @@ namespace Vintagestory.GameContent
 
             if (recipe != null)
             {
-                double servings = inSlot.Itemstack.Attributes.GetDecimal("quantityServings");
+                double servings = crockStack.Attributes.GetDecimal("quantityServings");
 
                 if (recipe != null)
                 {
@@ -438,7 +425,7 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-                string facts = mealblock.GetContentNutritionFacts(world, inSlot, null);
+                string? facts = BlockMeal.AllMealBowls?[0]?.GetContentNutritionFacts(world, inSlot, null);
                 if (facts != null)
                 {
                     dsc.Append(facts);
@@ -448,9 +435,9 @@ namespace Vintagestory.GameContent
 
             } else
             {
-                if (inSlot.Itemstack.Attributes.HasAttribute("quantityServings"))
+                if (crockStack.Attributes.HasAttribute("quantityServings"))
                 {
-                    double servings = inSlot.Itemstack.Attributes.GetDecimal("quantityServings");
+                    double servings = crockStack.Attributes.GetDecimal("quantityServings");
                     dsc.AppendLine(Lang.Get("{0} servings left", Math.Round(servings, 1)));
                 }
                 else
@@ -468,24 +455,21 @@ namespace Vintagestory.GameContent
 
             mealSlot.Itemstack?.Collectible.AppendPerishableInfoText(mealSlot, dsc, world);
 
-            if (inSlot.Itemstack.Attributes.GetBool("sealed"))
+            if (crockStack.Attributes.GetBool("sealed"))
             {
                 dsc.AppendLine("<font color=\"lightgreen\">" + Lang.Get("Sealed.") + "</font>");
-            }            
+            }
         }
 
 
         public override string GetPlacedBlockInfo(IWorldAccessor world, BlockPos pos, IPlayer forPlayer)
         {
-            BlockEntityCrock becrock = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityCrock;
-            if (becrock == null) return "";
+            if (world.BlockAccessor.GetBlockEntity(pos) is not BlockEntityCrock becrock) return "";
 
-            BlockMeal mealblock = world.GetBlock(new AssetLocation("bowl-meal")) as BlockMeal;
+            CookingRecipe? recipe = api.GetCookingRecipe(becrock.RecipeCode);
+            ItemStack[] stacks = becrock.inventory.Where(slot => !slot.Empty).Select(slot => slot.Itemstack!).ToArray();
 
-            CookingRecipe recipe = api.GetCookingRecipe(becrock.RecipeCode);
-            ItemStack[] stacks = becrock.inventory.Where(slot => !slot.Empty).Select(slot => slot.Itemstack).ToArray();
-
-            if (stacks == null || stacks.Length == 0)
+            if (stacks.Length == 0)
             {
                 return Lang.Get("Empty");
             }
@@ -508,7 +492,7 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-                string facts = mealblock.GetContentNutritionFacts(world, new DummySlot(OnPickBlock(world, pos)), null);
+                string? facts = BlockMeal.AllMealBowls?[0]?.GetContentNutritionFacts(world, new DummySlot(OnPickBlock(world, pos)), null);
 
                 if (facts != null)
                 {
@@ -540,9 +524,9 @@ namespace Vintagestory.GameContent
         }
 
 
-        public static ItemSlot GetDummySlotForFirstPerishableStack(IWorldAccessor world, ItemStack[] stacks, Entity forEntity, InventoryBase slotInventory)
+        public static ItemSlot GetDummySlotForFirstPerishableStack(IWorldAccessor world, ItemStack[]? stacks, Entity? forEntity, InventoryBase slotInventory)
         {
-            ItemStack stack = null;
+            ItemStack? stack = null;
             if (stacks != null)
             {
                 for (int i = 0; i < stacks.Length; i++)
@@ -568,20 +552,14 @@ namespace Vintagestory.GameContent
 
 
 
-        public override TransitionState[] UpdateAndGetTransitionStates(IWorldAccessor world, ItemSlot inslot)
+        public override TransitionState[]? UpdateAndGetTransitionStates(IWorldAccessor world, ItemSlot inslot)
         {
-            TransitionState[] states = base.UpdateAndGetTransitionStates(world, inslot);
+            TransitionState[]? states = base.UpdateAndGetTransitionStates(world, inslot);
 
-            ItemStack[] stacks = GetNonEmptyContents(world, inslot.Itemstack);
-            if (MealMeshCache.ContentsRotten(stacks))
+            if (inslot.Itemstack is ItemStack crockStack && (GetNonEmptyContents(world, crockStack) is not ItemStack[] stacks || stacks.Length == 0 || MealMeshCache.ContentsRotten(stacks)))
             {
-                inslot.Itemstack.Attributes.RemoveAttribute("recipeCode");
-                inslot.Itemstack.Attributes?.RemoveAttribute("quantityServings");
-            }
-            if (stacks == null || stacks.Length == 0)
-            {
-                inslot.Itemstack.Attributes.RemoveAttribute("recipeCode");
-                inslot.Itemstack.Attributes?.RemoveAttribute("quantityServings");
+                crockStack.Attributes?.RemoveAttribute("recipeCode");
+                crockStack.Attributes?.RemoveAttribute("quantityServings");
             }
 
             return states;
@@ -621,22 +599,76 @@ namespace Vintagestory.GameContent
 
         public override void OnUnloaded(ICoreAPI api)
         {
-            ICoreClientAPI capi = api as ICoreClientAPI;
-            if (capi == null) return;
+            if (api is not ICoreClientAPI capi) return;
 
-            object obj;
-            if (capi.ObjectCache.TryGetValue("blockcrockGuiMeshRefs", out obj))
+            if (capi.ObjectCache.TryGetValue("blockcrockGuiMeshRefs", out object? obj))
             {
-                Dictionary<string, MultiTextureMeshRef> meshrefs = obj as Dictionary<string, MultiTextureMeshRef>;
-
-                foreach (var val in meshrefs)
+                if (obj is Dictionary<string, MultiTextureMeshRef> meshrefs)
                 {
-                    val.Value.Dispose();
+                    foreach (var val in meshrefs)
+                    {
+                        val.Value.Dispose();
+                    }
                 }
 
                 capi.ObjectCache.Remove("blockcrockGuiMeshRefs");
             }
         }
 
+        public bool IsFullAndUnsealed(ItemStack stack)
+        {
+            return !IsEmpty(stack) && !stack.Attributes.GetBool("sealed");
+        }
+
+        public override int GetMergableQuantity(ItemStack sinkStack, ItemStack sourceStack, EnumMergePriority priority)
+        {
+            if (priority == EnumMergePriority.DirectMerge && sourceStack.ItemAttributes?["canSealCrock"]?.AsBool() == true && IsFullAndUnsealed(sinkStack))
+            {
+                return 1;
+            }
+
+            return base.GetMergableQuantity(sinkStack, sourceStack, priority);
+        }
+
+        public override void TryMergeStacks(ItemStackMergeOperation op)
+        {
+            ItemSlot sourceSlot = op.SourceSlot;
+
+            if (op.CurrentPriority == EnumMergePriority.DirectMerge && sourceSlot.Itemstack.ItemAttributes?["canSealCrock"]?.AsBool() == true)
+            {
+                ItemSlot sinkSlot = op.SinkSlot;
+
+                if (IsFullAndUnsealed(sinkSlot.Itemstack))
+                {
+                    sinkSlot.Itemstack.Attributes.SetBool("sealed", true);
+                    op.MovedQuantity = 1;
+                    sourceSlot.TakeOut(1);
+                    sinkSlot.MarkDirty();
+                }
+
+                return;
+            }
+
+            base.TryMergeStacks(op);
+        }
+
+        public override bool OnContainedInteractStart(BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        {
+            var handSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
+            if (handSlot.Itemstack?.Collectible.Attributes?["canSealCrock"]?.AsBool() == true)
+            {
+                if (IsFullAndUnsealed(slot.Itemstack))
+                {
+                    slot.Itemstack.Attributes.SetBool("sealed", true);
+                    handSlot.TakeOut(1);
+                    handSlot.MarkDirty();
+                }
+                else (api as ICoreClientAPI)?.TriggerIngameError(this, "crockemptyorsealed", Lang.Get("ingameerror-crock-empty-or-sealed"));
+
+                return true;
+            }
+
+            return base.OnContainedInteractStart(be, slot, byPlayer, blockSel);
+        }
     }
 }

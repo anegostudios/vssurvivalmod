@@ -9,6 +9,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class MicroBlockSounds : BlockSounds
@@ -443,14 +445,14 @@ namespace Vintagestory.GameContent
                 if (block.BlockMaterial == EnumBlockMaterial.Stone && rocktype != null)
                 {
                     int q = GameMath.RoundRandom(world.Rand, be.VolumeRel * 4 * dropQuantityMultiplier);
-                    if (q <= 0) return new ItemStack[0];
+                    if (q <= 0) return System.Array.Empty<ItemStack>();
 
                     var stack = new ItemStack(world.GetItem(AssetLocation.Create("stone-" + rocktype, Code.Domain)));
                     while (q-- > 0) world.SpawnItemEntity(stack.Clone(), pos);
                 }
             }
 
-            return new ItemStack[0];
+            return System.Array.Empty<ItemStack>();
         }
 
         public override bool CanAttachBlockAt(IBlockAccessor world, Block block, BlockPos pos, BlockFacing blockFace, Cuboidi attachmentArea = null)

@@ -5,6 +5,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BEBehaviorMicroblockSnowCover : BlockEntityBehavior, IRotatable, IMicroblockBehavior
@@ -161,11 +163,9 @@ namespace Vintagestory.GameContent
 
         private void GenSnowMesh()
         {
-            BoolArray16x16x16 Voxels;
-            byte[,,] VoxelMaterial;
             if (beMicroBlock != null)
             {
-                beMicroBlock.ConvertToVoxels(out Voxels, out VoxelMaterial);
+                beMicroBlock.ConvertToVoxels(out BoolArray16x16x16 Voxels, out byte[,,] VoxelMaterial);
                 buildSnowCuboids(Voxels);
             }
 

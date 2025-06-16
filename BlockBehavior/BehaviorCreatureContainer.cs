@@ -13,6 +13,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using System.Diagnostics;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockBehaviorCreatureContainer : BlockBehavior
@@ -47,7 +49,7 @@ namespace Vintagestory.GameContent
         {
             if (HasAnimal(itemstack))
             {
-                string shapepath = itemstack.Collectible.Attributes["creatureContainedShape"][itemstack.Attributes.GetString("type")].AsString();
+                string shapepath = itemstack.Collectible.Attributes?["creatureContainedShape"][itemstack.Attributes.GetString("type")].AsString();
 
                 if (GetStillAliveDays(capi.World, itemstack) > 0)
                 {
@@ -72,7 +74,7 @@ namespace Vintagestory.GameContent
 
                         if (wiggle > 0)
                         {
-                            shapepath += "-wiggle";
+                            if (shapepath != null) shapepath += "-wiggle";
                             renderinfo.Transform = renderinfo.Transform.Clone();
                             var wiggleX = (float)api.World.Rand.NextDouble() * 4 - 2;
                             var wiggleZ = (float)api.World.Rand.NextDouble() * 4 - 2;
@@ -86,16 +88,17 @@ namespace Vintagestory.GameContent
                 }
 
 
-                MultiTextureMeshRef meshref;
-
-                if (!containedMeshrefs.TryGetValue(shapepath, out meshref))
+                if (shapepath != null)
                 {
-                    var shape = capi.Assets.TryGet(new AssetLocation(shapepath).WithPathPrefix("shapes/").WithPathAppendixOnce(".json")).ToObject<Shape>();
-                    capi.Tesselator.TesselateShape(block, shape, out var meshdata, new Vec3f(0, 270, 0));
-                    containedMeshrefs[shapepath] = meshref = capi.Render.UploadMultiTextureMesh(meshdata);
-                }
+                    if (!containedMeshrefs.TryGetValue(shapepath, out MultiTextureMeshRef meshref))
+                    {
+                        var shape = capi.Assets.TryGet(new AssetLocation(shapepath).WithPathPrefix("shapes/").WithPathAppendixOnce(".json")).ToObject<Shape>();
+                        capi.Tesselator.TesselateShape(block, shape, out var meshdata, new Vec3f(0, 270, 0));
+                        containedMeshrefs[shapepath] = meshref = capi.Render.UploadMultiTextureMesh(meshdata);
+                    }
 
-                renderinfo.ModelRef = meshref;
+                    renderinfo.ModelRef = meshref;
+                }
             }
 
             base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
@@ -296,14 +299,6 @@ namespace Vintagestory.GameContent
                 entity.Attributes.SetString("origin", "playerplaced");
                 entity.Attributes.SetDouble("totalDaysCaught", stack.Attributes.GetDouble("totalDaysCaught"));
                 entity.Attributes.SetDouble("totalDaysReleased", world.Calendar.TotalDays);
-                /*if (entity.Attributes?.IsTrue("setGuardedEntityAttribute") == true)
-                {
-                    entity.WatchedAttributes.SetLong("guardedEntityId", byEntity.EntityId);
-                    if (byEntity is EntityPlayer eplr)
-                    {
-                        entity.WatchedAttributes.SetString("guardedPlayerUid", eplr.PlayerUID);
-                    }
-                }*/
 
                 world.SpawnEntity(entity);
                 if (GetStillAliveDays(world, slot.Itemstack) < 0)

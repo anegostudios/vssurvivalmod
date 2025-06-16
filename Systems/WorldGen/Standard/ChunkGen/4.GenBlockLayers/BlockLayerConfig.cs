@@ -6,6 +6,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
 
@@ -22,6 +24,9 @@ namespace Vintagestory.ServerMods
         public BeachLayerProperties BeachLayer;
 
         public LakeBedLayerProperties LakeBedLayer;
+
+        public LakeBedLayerProperties OceanBedLayer;
+
 
         public RockStrataConfig RockStrata;
 
@@ -83,7 +88,12 @@ namespace Vintagestory.ServerMods
                 Random rnd = new Random(api.WorldManager.Seed + i);
                 LakeBedLayer.BlockCodeByMin[i].Init(api, RockStrata, rnd);
             }
-
+            for (int i = 0; i < OceanBedLayer.BlockCodeByMin.Length; i++)
+            {
+                Random rnd = new Random(api.WorldManager.Seed + i);
+                OceanBedLayer.BlockCodeByMin[i].Init(api, RockStrata, rnd);
+            }
+            
             BeachLayer.ResolveBlockIds(api, RockStrata);
         }
     }

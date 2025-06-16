@@ -1,5 +1,7 @@
 using Newtonsoft.Json;
 
+#nullable disable
+
 namespace Vintagestory.GameContent;
 
 public class PathAndOffset

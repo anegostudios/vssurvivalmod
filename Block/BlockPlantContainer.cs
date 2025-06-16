@@ -5,6 +5,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     // Concept
@@ -25,7 +27,7 @@ namespace Vintagestory.GameContent
     //
     public class BlockPlantContainer : Block
     {
-        WorldInteraction[] interactions = new WorldInteraction[0];
+        WorldInteraction[] interactions = Array.Empty<WorldInteraction>();
 
         public string ContainerSize => Attributes["plantContainerSize"].AsString();
 

@@ -15,6 +15,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     public enum EnumSlabPlaceMode
@@ -288,7 +290,7 @@ namespace Vintagestory.ServerMods
                 if (world.Rand.NextDouble() > dropChance)
                 {
                     handling = EnumHandling.PreventDefault;
-                    return new ItemStack[0];
+                    return Array.Empty<ItemStack>();
                 }
             }
 

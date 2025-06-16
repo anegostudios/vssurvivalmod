@@ -4,6 +4,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockBehaviorContainer : BlockBehavior
@@ -42,7 +44,7 @@ namespace Vintagestory.GameContent
                 {
                     if (players[i].InventoryManager.HasInventory(container.Inventory))
                     {
-                        players[i].InventoryManager.CloseInventory(container.Inventory);
+                        players[i].InventoryManager.CloseInventoryAndSync(container.Inventory);
                     }
                 }
             }

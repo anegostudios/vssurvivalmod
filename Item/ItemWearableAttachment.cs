@@ -7,6 +7,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ItemWearableAttachment : Item, IContainedMeshSource, ITexPositionSource
@@ -44,10 +46,9 @@ namespace Vintagestory.GameContent
             get
             {
                 AssetLocation texturePath = null;
-                CompositeTexture tex;
 
                 // Prio 1: Get from collectible textures
-                if (Textures.TryGetValue(textureCode, out tex))
+                if (Textures.TryGetValue(textureCode, out CompositeTexture tex))
                 {
                     texturePath = tex.Baked.BakedName;
                 }

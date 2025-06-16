@@ -6,6 +6,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 using Vintagestory.GameContent.Mechanics;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockQuern : BlockMPBase

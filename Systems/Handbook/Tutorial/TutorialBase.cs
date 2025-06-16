@@ -1,9 +1,12 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using System;
+using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -170,7 +173,16 @@ namespace Vintagestory.GameContent
 
         public void Load()
         {
-            stepData = capi.LoadModConfig("tutorial-" + PageCode + ".json");
+            try
+            {
+                stepData = capi.LoadModConfig("tutorial-" + PageCode + ".json");
+            }
+            catch (Exception e)
+            {
+                capi.Logger.Error("Failed to load tutorial-" + PageCode + ".json, the tutorial will be reset.");
+                capi.Logger.Error(e);
+            }
+            
             if (stepData != null)
             {
                 foreach (var step in steps)

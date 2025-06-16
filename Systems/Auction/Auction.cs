@@ -11,6 +11,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public enum EnumAuctionState
@@ -29,7 +31,7 @@ namespace Vintagestory.GameContent
 
         protected AuctionsData auctionsData = new AuctionsData();
 
-        protected OrderedDictionary<long, Auction> auctions => auctionsData.auctions;
+        protected API.Datastructures.OrderedDictionary<long, Auction> auctions => auctionsData.auctions;
 
         protected IServerNetworkChannel serverCh => sapi.Network.GetChannel("auctionHouse");
         protected IClientNetworkChannel clientCh => capi.Network.GetChannel("auctionHouse");
@@ -328,7 +330,7 @@ namespace Vintagestory.GameContent
         {
             if (createAuctionSlotByPlayer.TryGetValue(byPlayer.PlayerUID, out var inv))
             {
-                byPlayer.InventoryManager.CloseInventory(createAuctionSlotByPlayer[byPlayer.PlayerUID]);
+                byPlayer.InventoryManager.CloseInventoryAndSync(createAuctionSlotByPlayer[byPlayer.PlayerUID]);
                 createAuctionSlotByPlayer.Remove(byPlayer.PlayerUID);
             }
         }
@@ -408,8 +410,7 @@ namespace Vintagestory.GameContent
                             inv.DropAll(fromPlayer.Entity.Pos.XYZ);
                         }
 
-                        float debt = 0;
-                        auctionsData.DebtToTraderByPlayer.TryGetValue(fromPlayer.PlayerUID, out debt);
+                        auctionsData.DebtToTraderByPlayer.TryGetValue(fromPlayer.PlayerUID, out float debt);
 
                         serverCh.SendPacket(new AuctionActionResponsePacket() { Action = pkt.Action, AuctionId = pkt.AuctionId, ErrorCode = failureCode }, fromPlayer);
                         serverCh.SendPacket(new DebtPacket() { TraderDebt = debt }, fromPlayer);
@@ -513,9 +514,8 @@ namespace Vintagestory.GameContent
             if (sellerName == null) sellerName = sellerEntity.Properties.Code.ToShortString();
 
 
-            float debt;
             string uid = (sellerEntity as EntityPlayer)?.PlayerUID ?? "";
-            auctionsData.DebtToTraderByPlayer.TryGetValue(uid, out debt);
+            auctionsData.DebtToTraderByPlayer.TryGetValue(uid, out float debt);
 
             float traderCutGears = price * SalesCutRate + debt;
 

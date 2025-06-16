@@ -4,6 +4,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockSmeltingContainer : Block
@@ -94,7 +96,7 @@ namespace Vintagestory.GameContent
 
             AlloyRecipe alloy = GetMatchingAlloy(world, stacks);
 
-            Block block = world.GetBlock(CodeWithPath(FirstCodePart() + "-smelted"));
+            Block block = world.GetBlock(CodeWithVariant("type", "smelted"));
             ItemStack outputStack = new ItemStack(block);
 
             if (alloy != null)

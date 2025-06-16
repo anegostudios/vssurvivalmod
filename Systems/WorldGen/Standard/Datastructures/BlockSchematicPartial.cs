@@ -9,6 +9,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     public class BlockSchematicPartial : BlockSchematicStructure
@@ -256,8 +258,7 @@ namespace Vintagestory.ServerMods
         {
             if (resolvedRockTypeRemaps != null)
             {
-                Dictionary<int, int> replaceByBlock;
-                if (resolvedRockTypeRemaps.TryGetValue(blockId, out replaceByBlock))
+                if (resolvedRockTypeRemaps.TryGetValue(blockId, out Dictionary<int, int> replaceByBlock))
                 {
                     if (replaceByBlock.TryGetValue(rockblockid, out var newBlockId))
                     {

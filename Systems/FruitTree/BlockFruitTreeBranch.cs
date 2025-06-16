@@ -8,6 +8,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class FruitTreeShape
@@ -55,8 +57,7 @@ namespace Vintagestory.GameContent
                 }
 
                 // Prio 2: Get from currently tesselating shape
-                AssetLocation texturePath=null;
-                if (curTessShape?.Textures.TryGetValue(textureCode, out texturePath) == true)
+                if (curTessShape?.Textures.TryGetValue(textureCode, out AssetLocation texturePath) == true)
                 {
                     return capi.BlockTextureAtlas[texturePath];
                 }

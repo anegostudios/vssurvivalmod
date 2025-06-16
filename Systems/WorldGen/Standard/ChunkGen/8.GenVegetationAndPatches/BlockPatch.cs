@@ -6,6 +6,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods.NoObf
 {
     public enum EnumBlockPatchPlacement
@@ -293,8 +295,7 @@ namespace Vintagestory.ServerMods.NoObf
 
         private Block[] getBlocks(int firstBlockId)
         {
-            Block[] blocks;
-            if (BlocksByRockType == null || !BlocksByRockType.TryGetValue(firstBlockId, out blocks))
+            if (BlocksByRockType == null || !BlocksByRockType.TryGetValue(firstBlockId, out Block[] blocks))
             {
                 blocks = Blocks;
             }

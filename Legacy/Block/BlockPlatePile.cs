@@ -3,6 +3,8 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockPlatePile : Block
@@ -68,14 +70,14 @@ namespace Vintagestory.GameContent
 
         public override BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)
         {
-            return new BlockDropItemStack[0];
+            return Array.Empty<BlockDropItemStack>();
         }
         
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {
             // Handled by BlockEntityItemPile
-            return new ItemStack[0];
+            return Array.Empty<ItemStack>();
         }
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)

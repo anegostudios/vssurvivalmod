@@ -5,6 +5,8 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockPlantDamageOnTouch : BlockDamageOnTouch
@@ -27,7 +29,7 @@ namespace Vintagestory.GameContent
             base.OnLoaded(api);
             sprintIntoDamage = Attributes["sprintIntoDamage"].AsFloat(1);
             fallIntoDamageMul = Attributes["fallIntoDamageMul"].AsFloat(30);
-            immuneCreatures = new HashSet<AssetLocation>(Attributes["immuneCreatures"].AsObject<AssetLocation[]>(new AssetLocation[0], this.Code.Domain));
+            immuneCreatures = new HashSet<AssetLocation>(Attributes["immuneCreatures"].AsObject<AssetLocation[]>(Array.Empty<AssetLocation>(), this.Code.Domain));
         }
 
         public override void OnEntityInside(IWorldAccessor world, Entity entity, BlockPos pos)

@@ -5,6 +5,8 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ToolMoldRenderer : IRenderer
@@ -28,14 +30,17 @@ namespace Vintagestory.GameContent
 
         public AssetLocation TextureName = null;
 
+        private readonly BlockEntityToolMold entity;
+
         internal Cuboidf[] fillQuadsByLevel;
 
         public ItemStack stack;
 
-        public ToolMoldRenderer(BlockPos pos, ICoreClientAPI api, Cuboidf[] fillQuadsByLevel = null)
+        public ToolMoldRenderer(BlockEntityToolMold betm, ICoreClientAPI api, Cuboidf[] fillQuadsByLevel = null)
         {
-            this.pos = pos;
+            this.pos = betm.Pos;
             this.api = api;
+            entity = betm;
 
             this.fillQuadsByLevel = fillQuadsByLevel;
 
@@ -108,6 +113,9 @@ namespace Vintagestory.GameContent
             prog.ModelMatrix = ModelMat
                 .Identity()
                 .Translate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z)
+                .Translate(0.5f, 0f, 0.5f)
+                .RotateY(entity.MeshAngle)
+                .Translate(-0.5f, 0f, -0.5f)
                 .Translate(1 - rect.X1 / 16f, 1.01f / 16f + Math.Max(0, Level / 16f - 0.0625f / 3), 1 - rect.Z1 / 16f)
                 .RotateX(90 * GameMath.DEG2RAD)
                 .Scale(0.5f * rect.Width / 16f, 0.5f * rect.Length / 16f, 0.5f)

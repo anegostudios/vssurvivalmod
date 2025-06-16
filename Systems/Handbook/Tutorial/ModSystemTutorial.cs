@@ -8,6 +8,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.ServerMods;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 
@@ -53,7 +55,7 @@ namespace Vintagestory.GameContent
 
         public string CurrentTutorial { get; private set; }
 
-        public OrderedDictionary<string, ITutorial> Tutorials = new OrderedDictionary<string, ITutorial>();
+        public API.Datastructures.OrderedDictionary<string, ITutorial> Tutorials = new ();
 
         public override bool ShouldLoad(EnumAppSide forSide)
         {

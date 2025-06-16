@@ -9,6 +9,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Util;
 using System.Linq;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class CollapsibleSearchResult
@@ -102,9 +104,10 @@ namespace Vintagestory.GameContent
         protected float maxSupportDistance = 2;
         protected float maxCollapseDistance = 1;
 
-        ICoreServerAPI sapi;
         ICoreAPI api;
-        bool Enabled => api.World.Config.GetString("caveIns") == "on" && (sapi == null || sapi.Server.Config.AllowFallingBlocks);
+        public bool AllowFallingBlocks;
+        public bool CaveIns;
+        bool Enabled => CaveIns && AllowFallingBlocks;
 
         public BlockBehaviorUnstableRock(Block block) : base(block)
         {
@@ -137,9 +140,11 @@ namespace Vintagestory.GameContent
         {
             base.OnLoaded(api);
 
-            sapi = api as ICoreServerAPI;
             this.api = api;
             collapsedBlock = collapsedBlockLoc == null ? block : (api.World.GetBlock(collapsedBlockLoc) ?? block);
+
+            AllowFallingBlocks = api.World.Config.GetBool("allowFallingBlocks");
+            CaveIns = api.World.Config.GetString("caveIns") == "on";
         }
 
 

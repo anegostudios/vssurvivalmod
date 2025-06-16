@@ -6,6 +6,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class FruitTreeGrowingBranchBH : BlockEntityBehavior
@@ -82,7 +84,6 @@ namespace Vintagestory.GameContent
             double hoursPerDay = Api.World.Calendar.HoursPerDay;
 
 
-            FruitTreeProperties props = null;
 
             if (ownBe.TreeType == null)
             {
@@ -91,7 +92,7 @@ namespace Vintagestory.GameContent
             }
 
             var rootBh = rootBe.GetBehavior<FruitTreeRootBH>();
-            if (rootBh?.propsByType.TryGetValue(ownBe.TreeType, out props) != true)
+            if (rootBh?.propsByType.TryGetValue(ownBe.TreeType, out FruitTreeProperties props) != true)
             {
                 return;
             }

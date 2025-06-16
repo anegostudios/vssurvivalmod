@@ -1,4 +1,5 @@
-﻿using ProtoBuf;
+﻿using Newtonsoft.Json.Linq;
+using ProtoBuf;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,6 +10,8 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -192,8 +195,9 @@ namespace Vintagestory.GameContent
         private void loadCharacterClasses()
         {
             onLoadedUniversal();
-            traits = api.Assets.Get("config/traits.json").ToObject<List<Trait>>();
-            characterClasses = api.Assets.Get("config/characterclasses.json").ToObject<List<CharacterClass>>();
+            LoadTraits();
+            LoadClasses();
+
 
             foreach (var trait in traits)
             {
@@ -223,6 +227,56 @@ namespace Vintagestory.GameContent
                     }
                 }
             }
+        }
+
+        private void LoadTraits()
+        {
+            traits = new List<Trait>();
+            Dictionary<AssetLocation, JToken> files = api.Assets.GetMany<JToken>(api.Logger, "config/traits");
+            int traitQuantity = 0;
+
+            foreach (var val in files)
+            {
+                if (val.Value is JObject)
+                {
+                    traits.Add(val.Value.ToObject<Trait>(val.Key.Domain));
+                    traitQuantity++;
+                }
+                if (val.Value is JArray)
+                {
+                    foreach (var token in (val.Value as JArray))
+                    {
+                        traits.Add(token.ToObject<Trait>(val.Key.Domain));
+                        traitQuantity++;
+                    }
+                }
+            }
+            api.World.Logger.Event("{0} traits loaded from {1} files", traitQuantity, files.Count);
+        }
+
+        private void LoadClasses()
+        {
+            characterClasses = new List<CharacterClass>();
+            Dictionary<AssetLocation, JToken> files = api.Assets.GetMany<JToken>(api.Logger, "config/characterclasses");
+            int classQuantity = 0;
+
+            foreach (var val in files)
+            {
+                if (val.Value is JObject)
+                {
+                    characterClasses.Add(val.Value.ToObject<CharacterClass>(val.Key.Domain));
+                    classQuantity++;
+                }
+                if (val.Value is JArray)
+                {
+                    foreach (var token in (val.Value as JArray))
+                    {
+                        characterClasses.Add(token.ToObject<CharacterClass>(val.Key.Domain));
+                        classQuantity++;
+                    }
+                }
+            }
+            api.World.Logger.Event("{0} classes loaded from {1} files", classQuantity, files.Count);
         }
 
 
@@ -266,9 +320,8 @@ namespace Vintagestory.GameContent
                         ItemStack stack = jstack.ResolvedItemstack?.Clone();
                         if (stack == null) continue;
 
-                        EnumCharacterDressType dresstype;
                         string strdress = stack.ItemAttributes["clothescategory"].AsString();
-                        if (!Enum.TryParse(strdress, true, out dresstype))
+                        if (!Enum.TryParse(strdress, true, out EnumCharacterDressType dresstype))
                         {
                             eplayer.TryGiveItemStack(stack);
                         }
@@ -317,8 +370,7 @@ namespace Vintagestory.GameContent
 
             foreach (var traitcode in allTraits)
             {
-                Trait trait;
-                if (TraitsByCode.TryGetValue(traitcode, out trait))
+                if (TraitsByCode.TryGetValue(traitcode, out Trait trait))
                 {
                     foreach (var val in trait.Attributes)
                     {
@@ -390,10 +442,9 @@ namespace Vintagestory.GameContent
             if (recipe.RequiresTrait == null) return true;
 
             string classcode = player.Entity.WatchedAttributes.GetString("characterClass");
-            CharacterClass charclass;
             if (classcode == null) return true;
 
-            if (characterClassesByCode.TryGetValue(classcode, out charclass))
+            if (characterClassesByCode.TryGetValue(classcode, out CharacterClass charclass))
             {
                 if (charclass.Traits.Contains(recipe.RequiresTrait)) return true;
 
@@ -407,10 +458,9 @@ namespace Vintagestory.GameContent
         public bool HasTrait(IPlayer player, string trait)
         {
             string classcode = player.Entity.WatchedAttributes.GetString("characterClass");
-            CharacterClass charclass;
             if (classcode == null) return true;
 
-            if (characterClassesByCode.TryGetValue(classcode, out charclass))
+            if (characterClassesByCode.TryGetValue(classcode, out CharacterClass charclass))
             {
                 if (charclass.Traits.Contains(trait)) return true;
 
@@ -479,19 +529,20 @@ namespace Vintagestory.GameContent
 
             foreach (var skinpart in skinMod.AvailableSkinParts)
             {
-                int index = api.World.Rand.Next(skinpart.Variants.Length);
-                string variantCode = null;
+                var variants = skinpart.Variants.Where(v => v.Category == "standard").ToArray();
 
-                if (preSelection.TryGetValue(skinpart.Code, out variantCode))
+                int index = api.World.Rand.Next(variants.Length);
+
+                if (preSelection.TryGetValue(skinpart.Code, out string variantCode))
                 {
-                    index = skinpart.Variants.IndexOf(val => val.Code == variantCode);
+                    index = variants.IndexOf(val => val.Code == variantCode);
                 }
                 else
                 {
                     if (currentConstraints.TryGetValue(skinpart.Code, out var partConstraints))
                     {
-                        variantCode = partConstraints.SelectRandom(api.World.Rand, skinpart.Variants);
-                        index = skinpart.Variants.IndexOf(val => val.Code == variantCode);
+                        variantCode = partConstraints.SelectRandom(api.World.Rand, variants);
+                        index = variants.IndexOf(val => val.Code == variantCode);
                     }
 
                     if ((skinpart.Code == "mustache" || skinpart.Code == "beard") && !mustached)
@@ -501,7 +552,7 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-                if (variantCode == null) variantCode = skinpart.Variants[index].Code;
+                if (variantCode == null) variantCode = variants[index].Code;
 
                 skinMod.selectSkinPart(skinpart.Code, variantCode, true, playVoice);
 

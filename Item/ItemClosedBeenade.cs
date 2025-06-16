@@ -5,6 +5,8 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ItemClosedBeenade : Item
@@ -45,8 +47,6 @@ namespace Vintagestory.GameContent
                 float offset = GameMath.Clamp(secondsUsed * 3, 0, 2f);
 
                 tf.Translation.Set(offset, -offset / 4f, 0);
-
-                byEntity.Controls.UsingHeldItemTransformBefore = tf;
             }
 
             return true;

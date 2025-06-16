@@ -6,6 +6,8 @@ using System;
 using Vintagestory.API.Util;
 using Vintagestory.API.Datastructures;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 
@@ -37,7 +39,7 @@ namespace Vintagestory.GameContent
             dummySlot = new DummySlot(stack, unspoilableInventory);
 
             TextCacheTitle = stack.GetName().ToSearchFriendly();
-            TextCacheAll = stack.GetName() + " " + stack.GetDescription(capi.World, dummySlot, false);
+            TextCacheAll = (stack.GetName() + " " + stack.GetDescription(capi.World, dummySlot, false)).ToSearchFriendly();
             isDuplicate = stack.Collectible.Attributes?["handbook"]?["isDuplicate"].AsBool(false) == true;
 
             searchWeightOffset = stack.Collectible.Attributes?["handbook"]?["searchWeightOffset"].AsFloat(0) ?? 0;
@@ -114,7 +116,7 @@ namespace Vintagestory.GameContent
 
         protected virtual RichTextComponentBase[] GetPageText(ICoreClientAPI capi, ItemStack[] allStacks, ActionConsumable<string> openDetailPageFor)
         {
-            return Stack.Collectible.GetBehavior<CollectibleBehaviorHandbookTextAndExtraInfo>()?.GetHandbookInfo(dummySlot, capi, allStacks, openDetailPageFor) ?? new RichTextComponentBase[0];
+            return Stack.Collectible.GetBehavior<CollectibleBehaviorHandbookTextAndExtraInfo>()?.GetHandbookInfo(dummySlot, capi, allStacks, openDetailPageFor) ?? Array.Empty<RichTextComponentBase>();
         }
 
         public override float GetTextMatchWeight(string searchText)

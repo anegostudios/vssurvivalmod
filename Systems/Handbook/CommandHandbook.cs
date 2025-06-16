@@ -9,6 +9,8 @@ using ProtoBuf;
 using Vintagestory.API.Config;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 
@@ -287,7 +289,7 @@ namespace Vintagestory.GameContent
                 .HandleWith(onCommandHandbook)
 
                 .BeginSubCommand("expcmds")
-                    .WithDescription("")
+                    .WithDescription("Export all commands to a html format for the wiki.")
                     .HandleWith(onCmd)
                 .EndSubCommand();
         }
@@ -298,11 +300,11 @@ namespace Vintagestory.GameContent
 
             foreach (var page in dialog.allHandbookPages)
             {
-                sb.Append(((GuiHandbookCommandPage)page).TextCacheAll);
-                sb.Append("<br>");
+                sb.Append($"<h3>{page.PageCode}</h3>");
+                sb.Append(((GuiHandbookCommandPage)page).TextCacheAll.Replace("\n","\n</br>").Replace("<strong>", "<b>").Replace("</strong>", "</b>"));
             }
 
-            File.WriteAllText(Path.Combine(GamePaths.ModConfig,"cmds.txt"),sb.ToString());
+            File.WriteAllText(Path.Combine(GamePaths.ModConfig,"cmds.html"),sb.ToString());
             return TextCommandResult.Success("exported all cmds");
         }
 

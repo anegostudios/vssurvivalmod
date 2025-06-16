@@ -2,6 +2,8 @@
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class LiquidTopOpenContainerProps
@@ -32,6 +34,7 @@ namespace Vintagestory.GameContent
         public int MaxStackSize;
         public int GlowLevel;
         public FoodNutritionProperties NutritionPropsPerLitre;
+        public FoodNutritionProperties NutritionPropsPerLitreWhenInMeal = null;
 
         public enum EnumSpilledAction { PlaceBlock, DropContents };
 

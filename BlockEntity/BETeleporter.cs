@@ -9,6 +9,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class TeleportingEntity
@@ -49,8 +51,7 @@ namespace Vintagestory.GameContent
 
         public virtual void OnEntityCollide(Entity entity)
         {
-            TeleportingEntity tpe;
-            if (!tpingEntities.TryGetValue(entity.EntityId, out tpe))
+            if (!tpingEntities.TryGetValue(entity.EntityId, out TeleportingEntity tpe))
             {
                 tpingEntities[entity.EntityId] = tpe = new TeleportingEntity()
                 {

@@ -6,6 +6,8 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class StoryStructuresSpawnConditions : ModSystem
@@ -30,7 +32,7 @@ namespace Vintagestory.GameContent
         {
             base.StartClientSide(api);
 
-            structureLocations = new Cuboidi[0];
+            structureLocations = System.Array.Empty<Cuboidi>();
             api.Event.MapRegionLoaded += Event_MapRegionLoaded;
             api.Event.MapRegionUnloaded += Event_MapRegionUnloaded;
         }

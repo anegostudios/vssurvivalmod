@@ -5,6 +5,8 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 
@@ -162,6 +164,8 @@ namespace Vintagestory.GameContent
 
         public override void Dispose()
         {
+            base.Dispose();
+
             startStopButton?.Dispose();
             startStopButton = null;
 

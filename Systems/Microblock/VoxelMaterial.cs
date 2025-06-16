@@ -4,6 +4,8 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 
@@ -65,24 +67,33 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-                var texSource = capi.Tesselator.GetTextureSource(block, altNum, returnNullWhenMissing: true);
                 var texture = new TextureAtlasPosition[6];
                 var textureInside = new TextureAtlasPosition[6];
-
                 TextureAtlasPosition fallbackTexture = null;
 
+                var texSource = capi.Tesselator.GetTextureSource(block, altNum, returnNullWhenMissing: true);
                 for (int i = 0; i < 6; i++)
                 {
                     BlockFacing facing = BlockFacing.ALLFACES[i];
 
-                    if ((texSource[facing.Code] == null || texSource["inside-" + facing.Code] == null) && fallbackTexture == null)
+                    if (block.HasTiles && block.FastTextureVariants[i] is BakedCompositeTexture[] tiles)
                     {
-                        fallbackTexture = capi.BlockTextureAtlas.UnknownTexturePosition;
-                        if (block.Textures.Count > 0) fallbackTexture = texSource[block.Textures.First().Key] ?? capi.BlockTextureAtlas.UnknownTexturePosition;
+                        int positionSelector = BakedCompositeTexture.GetTiledTexturesSelector(tiles, i, posForRnd.X, posForRnd.Y, posForRnd.Z);
+                        int textureSubId = tiles[GameMath.Mod(positionSelector, tiles.Length)].TextureSubId;
+                        texture[i] = textureSubId >= 0 ? capi.BlockTextureAtlas.Positions[textureSubId] : capi.BlockTextureAtlas.UnknownTexturePosition;
+                    }
+                    else
+                    {
+                        if ((texSource[facing.Code] == null || texSource["inside-" + facing.Code] == null) && fallbackTexture == null)
+                        {
+                            fallbackTexture = capi.BlockTextureAtlas.UnknownTexturePosition;
+                            if (block.Textures.Count > 0) fallbackTexture = texSource[block.Textures.First().Key] ?? capi.BlockTextureAtlas.UnknownTexturePosition;
+                        }
+
+                        texture[i] = texSource[facing.Code] ?? fallbackTexture;
                     }
 
-                    texture[i] = texSource[facing.Code] ?? fallbackTexture;
-                    textureInside[i] = texSource["inside-" + facing.Code] ?? texSource[facing.Code] ?? fallbackTexture;
+                    textureInside[i] = texSource["inside-" + facing.Code] ?? texture[i];
                 }
 
                 byte climateColorMapId = block.ClimateColorMapResolved == null ? (byte)0 : (byte)(block.ClimateColorMapResolved.RectIndex + 1);
@@ -111,7 +122,6 @@ namespace Vintagestory.GameContent
             }
         }
 
-        
 
 
     }

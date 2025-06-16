@@ -3,6 +3,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public interface IStorableTypedComponent
@@ -23,7 +25,7 @@ namespace Vintagestory.GameContent
         public virtual void Finish() { }
 
 
-        public virtual void Pause() { }
+        public virtual void Pause(EnumInteruptionType interuptionType) { }
         public virtual void Resume() { }
 
         public virtual bool IsFinished() { return true; }
@@ -49,7 +51,7 @@ namespace Vintagestory.GameContent
         void Start(EntityActivity entityActivity);
         void Cancel();
         void Finish();
-        void Pause();
+        void Pause(EnumInteruptionType interuptionType);
         void Resume();
         void OnTick(float dt);
         bool IsFinished();
@@ -95,7 +97,7 @@ namespace Vintagestory.GameContent
         /// </summary>
         void Start();
         void OnTick(float dt);
-        void Pause();
+        void Pause(EnumInteruptionType interuptionType);
         void Resume();
     }
 

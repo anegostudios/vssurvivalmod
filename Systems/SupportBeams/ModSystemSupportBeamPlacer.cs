@@ -7,6 +7,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ModSystemSupportBeamPlacer : ModSystem, IRenderer
@@ -200,21 +202,21 @@ namespace Vintagestory.GameContent
             }
 
             string key = block.Code + "-" + partialEnds;
-            MeshData[] meshdatas;
 
-            if (!origBeamMeshes.TryGetValue(key, out meshdatas))
+            if (!origBeamMeshes.TryGetValue(key, out MeshData[] meshdatas))
             {
                 if (partialEnds)
                 {
                     origBeamMeshes[key] = meshdatas = new MeshData[4];
                     for (int i = 0; i < 4; i++)
                     {
-                        var loc = block.Shape.Base.Clone().WithFilename("" + ((i+1) * 4));
+                        var loc = block.Shape.Base.Clone().WithFilename("" + ((i + 1) * 4));
                         var shape = capi.Assets.Get(loc.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json")).ToObject<Shape>();
                         capi.Tesselator.TesselateShape(block, shape, out var meshData);
                         meshdatas[i] = meshData;
                     }
-                } else
+                }
+                else
                 {
                     origBeamMeshes[key] = meshdatas = new MeshData[1];
                     capi.Tesselator.TesselateShape(block, capi.TesselatorManager.GetCachedShape(block.Shape.Base), out var meshData);

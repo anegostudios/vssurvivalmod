@@ -3,6 +3,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class EntityShiver : EntityAgent, IMeleeAttackListener
@@ -16,7 +18,7 @@ namespace Vintagestory.GameContent
 
         bool strokeActive;
 
-        public override bool AdjustCollisionBoxToAnimation => base.AdjustCollisionBoxToAnimation || AnimManager.IsAnimationActive("stroke-start", "stroke-idle", "stroke-end");
+        
 
         public override void AfterInitialized(bool onFirstSpawn)
         {
@@ -60,33 +62,33 @@ namespace Vintagestory.GameContent
                 if (!Alive)
                 {
                     if (AnimManager.IsAnimationActive("stroke-start", "stroke-idle", "stroke-end", "despair"))
-                    {
-                        AnimManager.StopAnimation("stroke-start");
-                        AnimManager.StopAnimation("stroke-idle");
-                        AnimManager.StopAnimation("stroke-end");
-                    }
+            {
+                AnimManager.StopAnimation("stroke-start");
+                AnimManager.StopAnimation("stroke-idle");
+                AnimManager.StopAnimation("stroke-end");
+            }
                 }
                 else if (Api.World.Rand.NextDouble() < 0.0008 && !AnimManager.IsAnimationActive("stroke-start", "stroke-idle", "stroke-end", "despair"))
-                {
-                    strokeActive = true;
-                    aiTaskManager.StopTasks();
-                    this.AnimManager.StartAnimation("stroke-start");
-                    World.PlaySoundAt(new AssetLocation("sounds/creature/shiver/shock"), this, null, true, 16);
+            {
+                strokeActive = true;
+                aiTaskManager.StopTasks();
+                this.AnimManager.StartAnimation("stroke-start");
+                World.PlaySoundAt(new AssetLocation("sounds/creature/shiver/shock"), this, null, true, 16);
 
                     Api.Event.RegisterCallback((dt) =>
                     {
-                        this.AnimManager.StartAnimation("stroke-idle");
-                    }, (int)(20 * 1000 / 30f));
+                    this.AnimManager.StartAnimation("stroke-idle");
+                }, (int)(20 * 1000 / 30f));
 
                     Api.Event.RegisterCallback((dt) =>
                     {
-
-                        AnimManager.StopAnimation("stroke-idle");
-                        AnimManager.StartAnimation("stroke-end");
-                        Api.Event.RegisterCallback((dt) => strokeActive = false, (int)(36 * 1000 / 30f));
-                    }, (int)(Api.World.Rand.NextDouble() * 3 + 3) * 1000);
-                }
+                    
+                    AnimManager.StopAnimation("stroke-idle");
+                    AnimManager.StartAnimation("stroke-end");
+                    Api.Event.RegisterCallback((dt) => strokeActive = false, (int)(36*1000/30f));
+                }, (int)(Api.World.Rand.NextDouble() * 3 + 3)*1000);
             }
+        }
         }
 
         private void TaskManager_OnTaskStopped(IAiTask task)

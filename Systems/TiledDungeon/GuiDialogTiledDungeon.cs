@@ -1,6 +1,8 @@
 using Vintagestory.API.Client;
 using Vintagestory.API.Datastructures;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods;
 
 public class GuiDialogTiledDungeon : GuiDialogGeneric

@@ -6,6 +6,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityBucket : BlockEntityLiquidContainer, IRotatable
@@ -65,8 +67,8 @@ namespace Vintagestory.GameContent
             {
                 for (int i = 0; i < mesh.CustomInts.Count; i++)
                 {
-                    mesh.CustomInts.Values[i] |= 1 << 27; // Disable water wavy
-                    mesh.CustomInts.Values[i] |= 1 << 26; // Enabled weak foam
+                    mesh.CustomInts.Values[i] |= 1 << VertexFlags.LiquidWeakWaveBitMask; // Enable weak water wavy
+                    mesh.CustomInts.Values[i] |= 1 << VertexFlags.LiquidWeakFoamBitMask; // Enabled weak foamd
                 }
             }
 

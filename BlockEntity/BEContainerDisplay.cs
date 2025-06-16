@@ -5,6 +5,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public interface IContainedInteractable
@@ -63,10 +65,9 @@ namespace Vintagestory.GameContent
             {
                 IDictionary<string, CompositeTexture> textures = nowTesselatingObj is Item item ? item.Textures : (nowTesselatingObj as Block).Textures;
                 AssetLocation texturePath = null;
-                CompositeTexture tex;
 
                 // Prio 1: Get from collectible textures
-                if (textures.TryGetValue(textureCode, out tex))
+                if (textures.TryGetValue(textureCode, out CompositeTexture tex))
                 {
                     texturePath = tex.Baked.BakedName;
                 }
@@ -117,7 +118,7 @@ namespace Vintagestory.GameContent
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
-
+            
             capi = api as ICoreClientAPI;
             if (capi != null)
             {
@@ -134,12 +135,15 @@ namespace Vintagestory.GameContent
             if (capi == null || Inventory.Empty) return;
 
             // This is only used for doing .tfedit on nearby stuff, it creates a lot of lag if we remesh the entire loaded chunk area
-            if (Pos.DistanceTo(capi.World.Player.Entity.Pos.X, capi.World.Player.Entity.Pos.Y, capi.World.Player.Entity.Pos.Z) > 20) return;
+            var PlayerPos = capi.World.Player.Entity.Pos;
+            if (Pos.DistanceTo(PlayerPos.X, PlayerPos.Y, PlayerPos.Z) > 20) return;
 
+            int DisplayedItems = this.DisplayedItems;
             for (var i = 0; i < DisplayedItems; i++)
             {
-                if (Inventory[i].Empty) continue;
-                var key = getMeshCacheKey(Inventory[i].Itemstack);
+                ItemStack stack = Inventory[i].Itemstack;
+                if (stack == null) continue;
+                var key = getMeshCacheKey(stack);
                 MeshCache.Remove(key);
             }
 
@@ -168,6 +172,7 @@ namespace Vintagestory.GameContent
         public virtual void updateMeshes()
         {
             if (Api == null || Api.Side == EnumAppSide.Server) return;
+            int DisplayedItems = this.DisplayedItems;
             if (DisplayedItems == 0) return;
 
             for (int i = 0; i < DisplayedItems; i++)
@@ -181,12 +186,13 @@ namespace Vintagestory.GameContent
         protected virtual void updateMesh(int index)
         {
             if (Api == null || Api.Side == EnumAppSide.Server) return;
-            if (Inventory[index].Empty)
+            var stack = Inventory[index].Itemstack;
+            if (stack == null || stack.Collectible?.Code == null)
             {
                 return;
             }
 
-            getOrCreateMesh(Inventory[index].Itemstack, index);
+            getOrCreateMesh(stack, index);
         }
 
 
@@ -221,28 +227,22 @@ namespace Vintagestory.GameContent
             {
                 mesh = meshSource.GenMesh(stack, capi.BlockTextureAtlas, Pos);
             }
-            
+
             if (mesh == null)
             {
-                ICoreClientAPI capi = Api as ICoreClientAPI;
-                if (stack.Class == EnumItemClass.Block)
-                {
-                    mesh = capi.TesselatorManager.GetDefaultBlockMesh(stack.Block).Clone();
-                }
-                else
-                {
-                    nowTesselatingObj = stack.Collectible;
-                    nowTesselatingShape = null;
-                    if (stack.Item.Shape?.Base != null)
-                    {
-                        nowTesselatingShape = capi.TesselatorManager.GetCachedShape(stack.Item.Shape.Base);
-                    }
-                    capi.Tesselator.TesselateItem(stack.Item, out mesh, this);
-
-                    mesh.RenderPassesAndExtraBits.Fill((short)EnumChunkRenderPass.BlendNoCull);
-                }
+                mesh = getDefaultMesh(stack);
             }
 
+            applyDefaultTranforms(stack, mesh);
+
+            string key = getMeshCacheKey(stack);
+            MeshCache[key] = mesh;
+
+            return mesh;
+        }
+
+        protected void applyDefaultTranforms(ItemStack stack, MeshData mesh)
+        {
             if (stack.Collectible.Attributes?[AttributeTransformCode].Exists == true)
             {
                 ModelTransform transform = stack.Collectible.Attributes?[AttributeTransformCode].AsObject<ModelTransform>();
@@ -265,13 +265,31 @@ namespace Vintagestory.GameContent
                 mesh.Scale(new Vec3f(0.5f, 0.5f, 0.5f), 0.33f, 0.33f, 0.33f);
                 mesh.Translate(0, -7.5f / 16f, 0f);
             }
+        }
 
-            string key = getMeshCacheKey(stack);
-            MeshCache[key] = mesh;
+        protected MeshData getDefaultMesh(ItemStack stack)
+        {
+            MeshData mesh;
+            ICoreClientAPI capi = Api as ICoreClientAPI;
+            if (stack.Class == EnumItemClass.Block)
+            {
+                mesh = capi.TesselatorManager.GetDefaultBlockMesh(stack.Block).Clone();
+            }
+            else
+            {
+                nowTesselatingObj = stack.Collectible;
+                nowTesselatingShape = null;
+                if (stack.Item.Shape?.Base != null)
+                {
+                    nowTesselatingShape = capi.TesselatorManager.GetCachedShape(stack.Item.Shape.Base);
+                }
+                capi.Tesselator.TesselateItem(stack.Item, out mesh, this);
+
+                mesh.RenderPassesAndExtraBits.Fill((short)EnumChunkRenderPass.BlendNoCull);
+            }
 
             return mesh;
         }
-
 
         protected float[][] tfMatrices;
         protected abstract float[][] genTransformationMatrices();
@@ -282,7 +300,7 @@ namespace Vintagestory.GameContent
             for (int index = 0; index < DisplayedItems; index++)
             {
                 ItemSlot slot = Inventory[index];
-                if (slot.Empty || tfMatrices == null)
+                if (slot.Empty || tfMatrices == null || slot.Itemstack.Collectible?.Code == null)
                 {
                     continue;
                 }
@@ -291,9 +309,6 @@ namespace Vintagestory.GameContent
 
             return base.OnTesselation(mesher, tessThreadTesselator);
         }
-
-
-
 
     }
 

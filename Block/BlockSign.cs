@@ -5,6 +5,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 using System;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class TextAreaConfig
@@ -123,15 +125,12 @@ namespace Vintagestory.GameContent
                 return true;
             }
 
-
-
             if (!CanPlaceBlock(world, byPlayer, bs, ref failureCode))
             {
                 return false;
             }
 
             BlockFacing[] horVer = SuggestedHVOrientation(byPlayer, bs);
-
             AssetLocation blockCode = CodeWithParts(horVer[0].Code);
             Block block = world.BlockAccessor.GetBlock(blockCode);
             world.BlockAccessor.SetBlock(block.BlockId, bs.Position);
@@ -148,7 +147,6 @@ namespace Vintagestory.GameContent
                 float roundRad = ((int)Math.Round(angleHor / deg45)) * deg45;
                 bect.MeshAngleRad = roundRad;
             }
-
 
             return true;
         }

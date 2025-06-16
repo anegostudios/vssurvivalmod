@@ -6,6 +6,8 @@ using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 using Vintagestory.ServerMods.NoObf;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
 
@@ -90,8 +92,7 @@ namespace Vintagestory.ServerMods
 
         public ITreeGenerator GetGenerator(AssetLocation generatorCode)
         {
-            ITreeGenerator gen;
-            sapi.World.TreeGenerators.TryGetValue(generatorCode, out gen);
+            sapi.World.TreeGenerators.TryGetValue(generatorCode, out ITreeGenerator gen);
             return gen;
         }
 

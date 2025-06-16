@@ -10,6 +10,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 using Vintagestory.ServerMods;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockScrollRack : Block
@@ -64,11 +66,11 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < slotSide.Length; i++)
             {
                 var side = slotSide[i];
-                int[] slots;
-                if (slotsBySide.TryGetValue(side, out slots))
+                if (slotsBySide.TryGetValue(side, out int[] slots))
                 {
                     slots = slots.Append(i);
-                } else
+                }
+                else
                 {
                     slots = new int[] { i };
                 }
@@ -208,13 +210,12 @@ namespace Vintagestory.GameContent
 
             Dictionary<string, MultiTextureMeshRef> meshRefs;
             meshRefs = ObjectCacheUtil.GetOrCreate(capi, "ScrollrackMeshesInventory", () => new Dictionary<string, MultiTextureMeshRef>());
-            MultiTextureMeshRef meshref;
 
             string type = itemstack.Attributes.GetString("type", "");
             string material = itemstack.Attributes.GetString("material", "");
             string key = type + "-" + material;
 
-            if (!meshRefs.TryGetValue(key, out meshref))
+            if (!meshRefs.TryGetValue(key, out MultiTextureMeshRef meshref))
             {
                 MeshData mesh = GetOrCreateMesh(type, material);
                 meshref = capi.Render.UploadMultiTextureMesh(mesh);

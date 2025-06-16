@@ -10,6 +10,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityStaticTranslocator : BlockEntityTeleporterBase
@@ -479,8 +481,7 @@ namespace Vintagestory.GameContent
                         int cx = x / chunksize;
                         int cz = z / chunksize;
 
-                        IServerChunk[] chunks;
-                        if (!columnsByChunkCoordinate.TryGetValue(new Vec2i(cx, cz), out chunks))
+                        if (!columnsByChunkCoordinate.TryGetValue(new Vec2i(cx, cz), out IServerChunk[] chunks))
                         {
                             continue;
                         }
@@ -645,10 +646,9 @@ namespace Vintagestory.GameContent
                         case 3: shapeCode = "repairstate3"; break;
                     }
 
-                    MeshData meshdata;
                     Shape shape = Shape.TryGet(Api, "shapes/block/machine/statictranslocator/" + shapeCode + ".json");
 
-                    tessThreadTesselator.TesselateShape(ownBlock, shape, out meshdata, new Vec3f(0, rotY, 0));
+                    tessThreadTesselator.TesselateShape(ownBlock, shape, out MeshData meshdata, new Vec3f(0, rotY, 0));
 
                     return meshdata;
                 });

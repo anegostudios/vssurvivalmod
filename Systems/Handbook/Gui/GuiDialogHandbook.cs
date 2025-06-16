@@ -6,6 +6,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class HandbookTab : GuiTab
@@ -115,7 +117,6 @@ namespace Vintagestory.GameContent
             ElementBounds dialogBounds = ElementStdBounds.AutosizedMainDialog.WithAlignment(EnumDialogArea.None).WithAlignment(EnumDialogArea.CenterFixed).WithFixedPosition(0, 70);
             ElementBounds tabBounds = ElementBounds.Fixed(-200, 35, 200, 545);
 
-            int curTab;
             ElementBounds backButtonBounds = ElementBounds
                 .FixedSize(0, 0)
                 .FixedUnder(clipBounds, 2 * 5 + 5)
@@ -124,7 +125,7 @@ namespace Vintagestory.GameContent
                 .WithFixedAlignmentOffset(-6, 3)
             ;
 
-            tabs = genTabs(out curTab);
+            tabs = genTabs(out int curTab);
 
             overviewGui = capi.Gui
                 .CreateCompo("handbook-overview", dialogBounds)
@@ -177,7 +178,7 @@ namespace Vintagestory.GameContent
         protected virtual GuiTab[] genTabs(out int curTab)
         {
             curTab = 0;
-            return new GuiTab[0];
+            return Array.Empty<GuiTab>();
         }
 
 
@@ -242,14 +243,13 @@ namespace Vintagestory.GameContent
 
             BrowseHistoryElement curPage = browseHistory.Peek();
             float posY = curPage.PosY;
-            int curTab;
 
             detailViewGui?.Dispose();
             detailViewGui = capi.Gui
                 .CreateCompo("handbook-detail", dialogBounds)
                 .AddShadedDialogBG(bgBounds, true)
                 .AddDialogTitleBar(DialogTitle, OnTitleBarClose)
-                .AddVerticalTabs(genTabs(out curTab), tabBounds, OnDetailViewTabClicked, "verticalTabs")
+                .AddVerticalTabs(genTabs(out int curTab), tabBounds, OnDetailViewTabClicked, "verticalTabs")
                 .BeginChildElements(bgBounds)
                     .BeginClip(clipBounds)
                         .AddInset(insetBounds, 3)
@@ -300,8 +300,7 @@ namespace Vintagestory.GameContent
         {
             capi.Gui.PlaySound("menubutton_press");
 
-            int num;
-            if (pageNumberByPageCode.TryGetValue(pageCode, out num))
+            if (pageNumberByPageCode.TryGetValue(pageCode, out int num))
             {
                 GuiHandbookPage elem = allHandbookPages[num];
                 if (browseHistory.Count > 0 && elem == browseHistory.Peek().Page) return true;
@@ -460,7 +459,7 @@ namespace Vintagestory.GameContent
             bool logicalAnd = false;   // true if "and" is present; false if "or" or no logical operator is present
             if (text == null)
             {
-                texts = new string[0];
+                texts = Array.Empty<string>();
             }
             else
             {

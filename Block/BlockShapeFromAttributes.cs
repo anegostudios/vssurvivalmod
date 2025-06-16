@@ -8,6 +8,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 
@@ -117,7 +119,7 @@ namespace Vintagestory.GameContent
         public abstract IEnumerable<IShapeTypeProps> AllTypes { get; }
         public abstract void LoadTypes();
         public abstract IShapeTypeProps GetTypeProps(string code, ItemStack stack, BEBehaviorShapeFromAttributes be);
-        public Dictionary<string, OrderedDictionary<string, CompositeTexture>> OverrideTextureGroups;
+        public Dictionary<string, API.Datastructures.OrderedDictionary<string, CompositeTexture>> OverrideTextureGroups;
         protected Dictionary<string, MeshData> meshDictionary;
         protected string inventoryMeshDictionary;
         protected string blockForLogging;
@@ -159,7 +161,7 @@ namespace Vintagestory.GameContent
             else
             {
                 LoadTypes();   // Client side types are already loaded in OnCollectTextures - which MUST be implemented!
-                OverrideTextureGroups = Attributes["overrideTextureGroups"].AsObject<Dictionary<string, OrderedDictionary<string, CompositeTexture>>>();
+                OverrideTextureGroups = Attributes["overrideTextureGroups"].AsObject<Dictionary<string, API.Datastructures.OrderedDictionary<string, CompositeTexture>>>();
             }
 
             AllowRandomizeDims = Attributes?["randomizeDimensions"].AsBool(true) == true;
@@ -189,7 +191,7 @@ namespace Vintagestory.GameContent
 
         public override void OnCollectTextures(ICoreAPI api, ITextureLocationDictionary textureDict)
         {
-            OverrideTextureGroups = Attributes["overrideTextureGroups"].AsObject<Dictionary<string, OrderedDictionary<string, CompositeTexture>>>();
+            OverrideTextureGroups = Attributes["overrideTextureGroups"].AsObject<Dictionary<string, API.Datastructures.OrderedDictionary<string, CompositeTexture>>>();
 
             this.api = api;
             LoadTypes();
@@ -478,7 +480,6 @@ namespace Vintagestory.GameContent
 
             Dictionary<string, MultiTextureMeshRef> clutterMeshRefs;
             clutterMeshRefs = ObjectCacheUtil.GetOrCreate(capi, inventoryMeshDictionary, () => new Dictionary<string, MultiTextureMeshRef>());
-            MultiTextureMeshRef meshref;
 
             string type = itemstack.Attributes.GetString("type", "");
             var cprops = GetTypeProps(type, itemstack, null);
@@ -491,7 +492,7 @@ namespace Vintagestory.GameContent
 
             string hashkey = cprops.HashKey + "-" + rotX + "-" + rotY + "-" + rotZ + "-" + otcode;
 
-            if (!clutterMeshRefs.TryGetValue(hashkey, out meshref))
+            if (!clutterMeshRefs.TryGetValue(hashkey, out MultiTextureMeshRef meshref))
             {
                 MeshData mesh = GetOrCreateMesh(cprops, null, otcode);
                 mesh = mesh.Clone().Rotate(new Vec3f(0.5f, 0.5f, 0.5f), rotX, rotY, rotZ);
@@ -755,7 +756,7 @@ namespace Vintagestory.GameContent
             bect.Blockentity.MarkDirty(true);
         }
 
-        public OrderedDictionary<string, CompositeTexture> GetAvailableTextures(BlockPos pos)
+        public API.Datastructures.OrderedDictionary<string, CompositeTexture> GetAvailableTextures(BlockPos pos)
         {
             var bect = GetBEBehavior<BEBehaviorShapeFromAttributes>(pos);
             var cprops = GetTypeProps(bect?.Type, null, bect);

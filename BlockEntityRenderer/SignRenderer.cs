@@ -4,6 +4,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntitySignRenderer : IRenderer
@@ -148,8 +150,7 @@ namespace Vintagestory.GameContent
 
                 double verPadding = verticalAlign == EnumVerticalAlign.Middle ? (TextHeight - api.Gui.Text.GetMultilineTextHeight(font, text, TextWidth)) : 0;
                 var bg = new TextBackground() { 
-                    VerPadding = (int)verPadding / 2,
-                    //FillColor = new double[] { 0, 0, 0, 0.35 }
+                    VerPadding = (int)verPadding / 2
                 };
                 
                 loadedTexture = api.Gui.TextTexture.GenTextTexture(

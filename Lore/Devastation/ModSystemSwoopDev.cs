@@ -5,6 +5,8 @@ using Vintagestory.API.MathTools;
 using System;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ModSystemSwoopDev : ModSystem

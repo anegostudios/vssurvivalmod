@@ -7,12 +7,14 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class AiTaskBellAlarm : AiTaskBase
     {
         string[] seekEntityCodesExact = new string[] { "player" };
-        string[] seekEntityCodesBeginsWith = new string[0];
+        string[] seekEntityCodesBeginsWith = Array.Empty<string>();
 
         int spawnRange;
         float seekingRange = 12;
@@ -45,7 +47,7 @@ namespace Vintagestory.GameContent
             spawnMaxQuantity = taskConfig["spawnMaxQuantity"].AsInt(5);
             seekingRange = taskConfig["seekingRange"].AsFloat(12);
 
-            var spawnMobLocs = taskConfig["spawnMobs"].AsObject<AssetLocation[]>(new AssetLocation[0]);
+            var spawnMobLocs = taskConfig["spawnMobs"].AsObject<AssetLocation[]>(Array.Empty<AssetLocation>());
             List<EntityProperties> props = new List<EntityProperties>();
             foreach (var val in spawnMobLocs)
             {

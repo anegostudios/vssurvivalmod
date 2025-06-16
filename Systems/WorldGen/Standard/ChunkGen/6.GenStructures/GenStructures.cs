@@ -7,6 +7,8 @@ using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 using Vintagestory.GameContent;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     public class GenStructuresPosPass : ModStdWorldGen
@@ -301,6 +303,11 @@ namespace Vintagestory.ServerMods
                     {
                         location = GetIntersectingStructure(chunkX * chunksize + chunksize / 2, chunkZ * chunksize + chunksize / 2);
                         if (location.SchematicsSpawned?.TryGetValue(struc.Group, out var spawnedSchematics) == true && spawnedSchematics >= struc.StoryLocationMaxAmount)
+                        {
+                            continue;
+                        }
+
+                        if (struc.StoryMaxFromCenter != 0 &&  !startPos.InRangeHorizontally(location.CenterPos.X, location.CenterPos.Z, struc.StoryMaxFromCenter))
                         {
                             continue;
                         }

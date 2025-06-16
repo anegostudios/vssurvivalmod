@@ -4,6 +4,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Common;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods.NoObf
 {
     [JsonObject(MemberSerialization.OptIn)]

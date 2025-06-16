@@ -9,6 +9,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public delegate bool CanSitDelegate(EntityAgent eagent, out string errorMessage);
@@ -53,6 +55,11 @@ namespace Vintagestory.GameContent
                     seatConfig.SeatId = "baseseat-" + i++;
                 }
                 RegisterSeat(seatConfig);
+            }
+
+            if (Api is ICoreClientAPI)
+            {
+                entity.WatchedAttributes.RegisterModifiedListener("seatdata", UpdatePassenger);
             }
 
             base.Initialize(properties, attributes);
@@ -228,7 +235,8 @@ namespace Vintagestory.GameContent
                 {
                     return 
                         slot.Itemstack.ItemAttributes?["isSaddle"].AsBool(false) == true ||  // Can only sit if in this slot there is a saddle
-                        slot.Itemstack.ItemAttributes?["attachableToEntity"]["seatConfig"].Exists == true
+                        slot.Itemstack.ItemAttributes?["attachableToEntity"]["seatConfig"].Exists == true ||
+                        slot.Itemstack.ItemAttributes?["attachableToEntity"]["seatConfigBySlotCode"].Exists == true
                     ;
                 }
             }
@@ -240,7 +248,7 @@ namespace Vintagestory.GameContent
         {
             if (seatconfig?.SeatId == null) throw new ArgumentNullException("seatConfig.SeatId must be set");
 
-            if (Seats == null) Seats = new IMountableSeat[0];
+            if (Seats == null) Seats = Array.Empty<IMountableSeat>();
 
             int index = Seats.IndexOf(s => s.SeatId == seatconfig.SeatId);
             if (index < 0)
@@ -296,6 +304,25 @@ namespace Vintagestory.GameContent
 
                 Seats[i] = CreateSeat((stree["seatid"] as StringAttribute).value, null);
                 Seats[i].PassengerEntityIdForInit = (stree["passenger"] as LongAttribute).value;
+            }
+        } 
+
+        private void UpdatePassenger()
+        {
+            var tree = entity.WatchedAttributes["seatdata"] as TreeAttribute;
+            if (tree == null) return;
+
+            for (int i = 0; i < tree.Count; i++)
+            {
+                var stree = tree["s" + i] as TreeAttribute;
+
+                if (Api.World.GetEntityById((stree["passenger"] as LongAttribute).value) is EntityAgent passanger)
+                {
+                    ((EntitySeat)Seats[i]).Passenger = passanger;
+                }else if (Seats[i].Passenger != null)
+                {
+                    ((EntitySeat)Seats[i]).Passenger = null;
+                }
             }
         }
 

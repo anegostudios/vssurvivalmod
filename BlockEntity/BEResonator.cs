@@ -5,6 +5,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public delegate MeshData CreateMeshDelegate(ICoreClientAPI capi);
@@ -210,8 +212,7 @@ namespace Vintagestory.GameContent
 
         private MeshData createCylinderMesh(ICoreClientAPI cp)
         {
-            MeshData discMesh;
-            cp.Tesselator.TesselateItem(inventory[0].Itemstack.Item, out discMesh);
+            cp.Tesselator.TesselateItem(inventory[0].Itemstack.Item, out MeshData discMesh);
             return discMesh;
         }
 
@@ -234,8 +235,7 @@ namespace Vintagestory.GameContent
 
         MeshData getOrCreateMesh(ICoreClientAPI capi, string code, CreateMeshDelegate onCreate)
         {
-            object obj;
-            if (!Api.ObjectCache.TryGetValue(code, out obj))
+            if (!Api.ObjectCache.TryGetValue(code, out object obj))
             {
                 MeshData mesh = onCreate(capi);
                 Api.ObjectCache[code] = mesh;

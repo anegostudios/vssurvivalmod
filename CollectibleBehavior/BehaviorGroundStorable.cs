@@ -5,6 +5,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public enum EnumGroundStorageLayout
@@ -28,7 +30,11 @@ namespace Vintagestory.GameContent
         /// <summary>
         /// A generic stack of items
         /// </summary>
-        Stacking
+        Stacking,
+        /// <summary>
+        /// Single item, but 12x of them in messy order
+        /// </summary>
+        Messy12
     }
 
 
@@ -38,6 +44,7 @@ namespace Vintagestory.GameContent
         public int WallOffY = 1;
         public AssetLocation PlaceRemoveSound = new AssetLocation("sounds/player/build");
         public bool RandomizeSoundPitch;
+        public bool RandomizeCenterRotation;
         public AssetLocation StackingModel;
 
         [Obsolete("Use ModelItemsToStackSizeRatio instead, which is now a float instead of int?")]
@@ -68,6 +75,7 @@ namespace Vintagestory.GameContent
                 WallOffY = WallOffY,
                 PlaceRemoveSound = PlaceRemoveSound,
                 RandomizeSoundPitch = RandomizeSoundPitch,
+                RandomizeCenterRotation = RandomizeCenterRotation,
                 StackingCapacity = StackingCapacity,
                 StackingModel = StackingModel,
                 StackingTextures = StackingTextures,
@@ -101,7 +109,9 @@ namespace Vintagestory.GameContent
             base.Initialize(properties);
 
             StorageProps = properties.AsObject<GroundStorageProperties>(null, collObj.Code.Domain);
+#pragma warning disable CS0618 // Type or member is obsolete
             if (StorageProps.SprintKey) StorageProps.CtrlKey = true;
+#pragma warning restore CS0618 // Type or member is obsolete
         }
 
 

@@ -6,10 +6,21 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ItemStone : Item
     {
+        float damage;
+    
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+    
+            damage = this.Attributes["damage"].AsFloat(1);
+        }
+        
         public override string GetHeldTpUseAnimation(ItemSlot activeHotbarSlot, Entity byEntity)
         {
             return null;
@@ -27,7 +38,8 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
-            if (blockSel != null && byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is BlockDisplayCase)
+            var lookedAtBlock = blockSel == null ? null : byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
+            if (lookedAtBlock is BlockDisplayCase || lookedAtBlock is BlockSign)
             {
                 base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handling);
                 handling = EnumHandHandling.NotHandled;
@@ -214,8 +226,6 @@ namespace Vintagestory.GameContent
 
                 tf.Translation.Set(offset / 4f, offset / 2f, 0);
                 tf.Rotation.Set(0, 0, GameMath.Min(90, secondsUsed * 360/1.5f));
-
-                byEntity.Controls.UsingHeldItemTransformBefore = tf;
             }
 
 
@@ -259,8 +269,6 @@ namespace Vintagestory.GameContent
 
             if (secondsUsed < 0.35f) return;
 
-            float damage = 1;
-            
             ItemStack stack = slot.TakeOut(1);
             slot.MarkDirty();
 
@@ -285,7 +293,7 @@ namespace Vintagestory.GameContent
         {
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
 
-            dsc.AppendLine(Lang.Get("1 blunt damage when thrown"));
+            dsc.AppendLine(Lang.Get("{0} blunt damage when thrown", damage));
         }
 
 

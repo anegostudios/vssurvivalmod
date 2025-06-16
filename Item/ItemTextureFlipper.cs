@@ -5,13 +5,15 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public interface ITextureFlippable
     {
         void FlipTexture(BlockPos pos, string newTextureCode);
 
-        OrderedDictionary<string, CompositeTexture> GetAvailableTextures(BlockPos pos);
+        API.Datastructures.OrderedDictionary<string, CompositeTexture> GetAvailableTextures(BlockPos pos);
     }
 
     public class ItemTextureFlipper : Item

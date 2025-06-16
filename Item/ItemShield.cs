@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Newtonsoft.Json.Linq;
 using Vintagestory.API.Client;
@@ -9,6 +10,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -47,7 +50,7 @@ namespace Vintagestory.GameContent
         }
     }
 
-    public class ItemShield : Item, IContainedMeshSource
+    public class ItemShield : Item, IContainedMeshSource, IAttachableToEntity
     {
         float offY;
         float curOffY = 0;
@@ -58,17 +61,47 @@ namespace Vintagestory.GameContent
         public string Construction => Variant["construction"];
 
 
+        IAttachableToEntity attrAtta;
+        #region IAttachableToEntity
+        public int RequiresBehindSlots { get; set; } = 0;
+        string IAttachableToEntity.GetCategoryCode(ItemStack stack) => attrAtta?.GetCategoryCode(stack);
+        CompositeShape IAttachableToEntity.GetAttachedShape(ItemStack stack, string slotCode) => attrAtta.GetAttachedShape(stack, slotCode);
+        string[] IAttachableToEntity.GetDisableElements(ItemStack stack) => attrAtta.GetDisableElements(stack);
+        string[] IAttachableToEntity.GetKeepElements(ItemStack stack) => attrAtta.GetKeepElements(stack);
+        string IAttachableToEntity.GetTexturePrefixCode(ItemStack stack)
+        {
+            string wood = stack.Attributes.GetString("wood");
+            string metal = stack.Attributes.GetString("metal");
+            string color = stack.Attributes.GetString("color");
+            string deco = stack.Attributes.GetString("deco");
+            return attrAtta.GetTexturePrefixCode(stack) + "-" + stack.Attributes.GetString("metal") + "-" + stack.Attributes.GetString("color") + "-" + stack.Attributes.GetString("deco");
+        }
+
+        void IAttachableToEntity.CollectTextures(ItemStack itemstack, Shape intoShape, string texturePrefixCode, Dictionary<string, CompositeTexture> intoDict)
+        {
+            ContainedTextureSource cnts = genTextureSource(itemstack, null);
+            foreach (var val in cnts.Textures)
+            {
+                intoShape.Textures[val.Key] = val.Value;
+            }
+        }
+
+        public bool IsAttachable(Entity toEntity, ItemStack itemStack) => true;
+        #endregion
+
 
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
 
-            curOffY = offY = FpHandTransform.Translation.Y;
             capi = api as ICoreClientAPI;
+            if (capi != null) curOffY = offY = FpHandTransform.Translation.Y;
 
             durabilityGains = Attributes["durabilityGains"].AsObject<Dictionary<string, Dictionary<string, int>>>();
 
             AddAllTypesToCreativeInventory();
+
+            attrAtta = IAttachableToEntity.FromAttributes(this);
         }
 
         public override void OnUnloaded(ICoreAPI api)
@@ -204,9 +237,17 @@ namespace Vintagestory.GameContent
 
         public MeshData GenMesh(ItemStack itemstack, ITextureAtlasAPI targetAtlas)
         {
+            ContainedTextureSource cnts = genTextureSource(itemstack, targetAtlas);
+            if (null == cnts) return new MeshData();
+
+            capi.Tesselator.TesselateItem(this, out MeshData mesh, cnts);
+            return mesh;
+        }
+
+        private ContainedTextureSource genTextureSource(ItemStack itemstack, ITextureAtlasAPI targetAtlas)
+        {
             var cnts = new ContainedTextureSource(api as ICoreClientAPI, targetAtlas, new Dictionary<string, AssetLocation>(), string.Format("For render in shield {0}", Code));
 
-            MeshData mesh;
             cnts.Textures.Clear();
 
             string wood = itemstack.Attributes.GetString("wood");
@@ -214,7 +255,7 @@ namespace Vintagestory.GameContent
             string color = itemstack.Attributes.GetString("color");
             string deco = itemstack.Attributes.GetString("deco");
 
-            if (wood == null && metal == null && Construction != "crude" && Construction != "blackguard") return new MeshData();
+            if (wood == null && metal == null && Construction != "crude" && Construction != "blackguard") return null;
 
             if (wood == null || wood == "") wood = "generic";
 
@@ -271,11 +312,8 @@ namespace Vintagestory.GameContent
                     break;
             }
 
-            capi.Tesselator.TesselateItem(this, out mesh, cnts);
-
-            return mesh;
+            return cnts;
         }
-
 
         public override string GetHeldItemName(ItemStack itemStack)
         {

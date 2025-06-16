@@ -9,6 +9,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 
@@ -211,8 +213,7 @@ namespace Vintagestory.GameContent
                 return TextCommandResult.Success("Must be owner of the group to change access flags");
             }
 
-            ReinforcedPrivilegeGrantsGroup groupGrants;
-            if (!privGrantsByOwningGroupUid.TryGetValue(groupId, out groupGrants))
+            if (!privGrantsByOwningGroupUid.TryGetValue(groupId, out ReinforcedPrivilegeGrantsGroup groupGrants))
             {
                 privGrantsByOwningGroupUid[groupId] = groupGrants = new ReinforcedPrivilegeGrantsGroup();
             }
@@ -238,8 +239,7 @@ namespace Vintagestory.GameContent
             
             var flags = GetFlags(flagString);
 
-            ReinforcedPrivilegeGrantsGroup groupGrants;
-            if (!privGrantsByOwningGroupUid.TryGetValue(groupId, out groupGrants))
+            if (!privGrantsByOwningGroupUid.TryGetValue(groupId, out ReinforcedPrivilegeGrantsGroup groupGrants))
             {
                 privGrantsByOwningGroupUid[groupId] = groupGrants = new ReinforcedPrivilegeGrantsGroup();
             }
@@ -274,14 +274,13 @@ namespace Vintagestory.GameContent
             {
                 return TextCommandResult.Success("Must be owner of the group to change access flags");
             }
-            
-            
-            ReinforcedPrivilegeGrantsGroup groupGrants;
-            if (!privGrantsByOwningGroupUid.TryGetValue(groupId, out groupGrants))
+
+
+            if (!privGrantsByOwningGroupUid.TryGetValue(groupId, out ReinforcedPrivilegeGrantsGroup groupGrants))
             {
                 privGrantsByOwningGroupUid[groupId] = groupGrants = new ReinforcedPrivilegeGrantsGroup();
             }
-            
+
             if (playerName == "default")
             {
                 groupGrants.DefaultGrants = 0;
@@ -310,9 +309,8 @@ namespace Vintagestory.GameContent
             }
             
             var flags = GetFlags(flagString);
-            
-            ReinforcedPrivilegeGrantsGroup groupGrants;
-            if (!privGrantsByOwningGroupUid.TryGetValue(groupId, out groupGrants))
+
+            if (!privGrantsByOwningGroupUid.TryGetValue(groupId, out ReinforcedPrivilegeGrantsGroup groupGrants))
             {
                 privGrantsByOwningGroupUid[groupId] = groupGrants = new ReinforcedPrivilegeGrantsGroup();
             }
@@ -608,8 +606,7 @@ namespace Vintagestory.GameContent
             if (reinforcmentsOfChunk == null) return false;
 
             int index3d = toLocalIndex(pos);
-            BlockReinforcement bre;
-            if (reinforcmentsOfChunk.TryGetValue(index3d, out bre))
+            if (reinforcmentsOfChunk.TryGetValue(index3d, out BlockReinforcement bre))
             {
                 if (bre.Locked && bre.PlayerUID != forPlayer.PlayerUID && forPlayer.GetGroup(bre.GroupUid) == null)
                 {
@@ -636,10 +633,9 @@ namespace Vintagestory.GameContent
             var group = forPlayer.GetGroup(owningGroupId);
             if (group != null) return EnumBlockAccessFlags.Use | EnumBlockAccessFlags.BuildOrBreak;
 
-            ReinforcedPrivilegeGrants grants;
             EnumBlockAccessFlags flags = EnumBlockAccessFlags.None;
 
-            if (owningPlayerUid != null && privGrantsByOwningPlayerUid.TryGetValue(owningPlayerUid, out grants))
+            if (owningPlayerUid != null && privGrantsByOwningPlayerUid.TryGetValue(owningPlayerUid, out ReinforcedPrivilegeGrants grants))
             {
                 // Maybe player privilege?
                 grants.PlayerGrants.TryGetValue(forPlayer.PlayerUID, out flags);
@@ -654,8 +650,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            ReinforcedPrivilegeGrantsGroup grantsgr;
-            if (owningGroupId != 0 && privGrantsByOwningGroupUid.TryGetValue(owningGroupId, out grantsgr))
+            if (owningGroupId != 0 && privGrantsByOwningGroupUid.TryGetValue(owningGroupId, out ReinforcedPrivilegeGrantsGroup grantsgr))
             {
                 // Is a member of the owning group
                 if (group != null)
@@ -686,9 +681,8 @@ namespace Vintagestory.GameContent
 
             int index3d = toLocalIndex(pos);
 
-            BlockReinforcement bre;
-            if (reinforcmentsOfChunk.TryGetValue(index3d, out bre))
-            {   
+            if (reinforcmentsOfChunk.TryGetValue(index3d, out BlockReinforcement bre))
+            {
                 var membership = byPlayer.GetGroup(bre.GroupUid);
                 bool isAllowed = bre.PlayerUID == byPlayer.PlayerUID;
                 if (membership != null)
@@ -696,7 +690,7 @@ namespace Vintagestory.GameContent
                     isAllowed |= membership.Level == EnumPlayerGroupMemberShip.Owner;
                     isAllowed |= membership.Level == EnumPlayerGroupMemberShip.Op;
                 }
-                    
+
                 if (!isAllowed || bre.Locked) return false;
                 bre.Locked = true;
                 bre.LockedByItemCode = itemCode;
@@ -873,8 +867,7 @@ namespace Vintagestory.GameContent
 
         public TextCommandResult SetPlayerPrivilege(IServerPlayer owningPlayer, string forPlayerUid, EnumBlockAccessFlags access)
         {
-            ReinforcedPrivilegeGrants grants;
-            if (!privGrantsByOwningPlayerUid.TryGetValue(owningPlayer.PlayerUID, out grants))
+            if (!privGrantsByOwningPlayerUid.TryGetValue(owningPlayer.PlayerUID, out ReinforcedPrivilegeGrants grants))
             {
                 grants = new ReinforcedPrivilegeGrants();
                 privGrantsByOwningPlayerUid[owningPlayer.PlayerUID] = grants;
@@ -902,8 +895,7 @@ namespace Vintagestory.GameContent
 
         public TextCommandResult SetGroupPrivilege(IServerPlayer owningPlayer,string forGroupName, EnumBlockAccessFlags access)
         {
-            ReinforcedPrivilegeGrants grants;
-            if (!privGrantsByOwningPlayerUid.TryGetValue(owningPlayer.PlayerUID, out grants))
+            if (!privGrantsByOwningPlayerUid.TryGetValue(owningPlayer.PlayerUID, out ReinforcedPrivilegeGrants grants))
             {
                 grants = new ReinforcedPrivilegeGrants();
                 privGrantsByOwningPlayerUid[owningPlayer.PlayerUID] = grants;

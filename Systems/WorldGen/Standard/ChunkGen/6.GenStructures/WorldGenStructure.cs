@@ -10,6 +10,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     public delegate bool TryGenerateHandler(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos pos, string locationCode);
@@ -71,7 +73,7 @@ namespace Vintagestory.ServerMods
 
         [JsonProperty]
         public AssetLocation[] ReplaceWithBlocklayers;
-        internal int[] replacewithblocklayersBlockids = new int[0];
+        internal int[] replacewithblocklayersBlockids = Array.Empty<int>();
 
         internal Dictionary<int, Dictionary<int, int>> resolvedRockTypeRemaps = null;
 
@@ -159,10 +161,12 @@ namespace Vintagestory.ServerMods
         public bool SuppressTrees = false;
         [JsonProperty]
         public bool SuppressWaterfalls = false;
+        [JsonProperty]
+        public int StoryMaxFromCenter = 0;
 
 
         internal BlockSchematicStructure[][] schematicDatas;
-        internal int[] replacewithblocklayersBlockids = new int[0];
+        internal int[] replacewithblocklayersBlockids = Array.Empty<int>();
         internal HashSet<int> insideblockids = new HashSet<int>();
 
         internal Dictionary<int, Dictionary<int, int>> resolvedRockTypeRemaps = null;

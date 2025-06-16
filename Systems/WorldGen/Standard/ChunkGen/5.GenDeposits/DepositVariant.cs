@@ -5,6 +5,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.Config;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     [JsonObject(MemberSerialization.OptIn)]
@@ -134,8 +136,7 @@ namespace Vintagestory.ServerMods
             int lx = (chunkx * chunksize + chunksize / 2) % regionSize;
             int lz = (chunkz * chunksize + chunksize / 2) % regionSize;
 
-            IntDataMap2D map;
-            originMapRegion.OreMaps.TryGetValue(Code, out map);
+            originMapRegion.OreMaps.TryGetValue(Code, out IntDataMap2D map);
             if (map != null)
             {
                 float posXInRegionOre = GameMath.Clamp((float)lx / regionSize * noiseSizeOre, 0, noiseSizeOre - 1);

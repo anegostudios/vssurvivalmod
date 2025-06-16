@@ -9,6 +9,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 using VSSurvivalMod.Systems.ChiselModes;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public interface IConditionalChiselable
@@ -300,10 +302,10 @@ namespace Vintagestory.GameContent
             if (mode == "off") return false;
 
             // 1.5 priority: Disabled by code
-            if (block is IConditionalChiselable icc || (icc = block.BlockBehaviors.FirstOrDefault(bh => bh is IConditionalChiselable) as IConditionalChiselable) != null)
+            IConditionalChiselable icc = block.GetInterface<IConditionalChiselable>(api.World, pos);
+            if (icc != null)
             {
-                string errorCode;
-                if (icc?.CanChisel(api.World, pos, player, out errorCode) == false || icc?.CanChisel(api.World, pos, player, out errorCode) == false)
+                if (icc?.CanChisel(api.World, pos, player, out string errorCode) == false || icc?.CanChisel(api.World, pos, player, out errorCode) == false)
                 {
                     (api as ICoreClientAPI)?.TriggerIngameError(icc, errorCode, Lang.Get(errorCode));
                     return false;
@@ -421,8 +423,7 @@ namespace Vintagestory.GameContent
                 {
                     if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
                     {
-                        bool isFull;
-                        be.AddMaterial(mouseslot.Itemstack.Block, out isFull);
+                        be.AddMaterial(mouseslot.Itemstack.Block, out bool isFull);
                         if (!isFull)
                         {
                             mouseslot.TakeOut(1);

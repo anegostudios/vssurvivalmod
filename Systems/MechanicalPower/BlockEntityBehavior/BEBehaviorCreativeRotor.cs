@@ -5,6 +5,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent.Mechanics
 {
     public class BEBehaviorMPCreativeRotor : BEBehaviorMPRotor
@@ -69,8 +71,7 @@ namespace Vintagestory.GameContent.Mechanics
                 default:
                     break;
             }
-            MeshData mesh;
-            capi.Tesselator.TesselateShape(Block, shape, out mesh, new Vec3f(0, rotateY, 0));
+            capi.Tesselator.TesselateShape(Block, shape, out MeshData mesh, new Vec3f(0, rotateY, 0));
             mesher.AddMeshData(mesh);
             return true;
         }

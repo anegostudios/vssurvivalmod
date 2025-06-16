@@ -6,6 +6,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 
@@ -14,6 +16,7 @@ namespace Vintagestory.GameContent
         public PlacedBeam[] Beams;
         ModSystemSupportBeamPlacer sbp;
         Cuboidf[] collBoxes;
+        Cuboidf[] selBoxes;
 
         bool dropWhenBroken;
 
@@ -39,7 +42,7 @@ namespace Vintagestory.GameContent
 
         public void AddBeam(Vec3f start, Vec3f end, BlockFacing onFacing, Block block)
         {
-            if (Beams == null) Beams = new PlacedBeam[0];
+            if (Beams == null) Beams = Array.Empty<PlacedBeam>();
 
             Beams = Beams.Append(new PlacedBeam() {
                 Start = start.Clone(),
@@ -60,19 +63,63 @@ namespace Vintagestory.GameContent
             if (Beams == null) return null;
             if (collBoxes != null) return collBoxes;
 
+            float size = 1 / 6f;
             Cuboidf[] cuboids = new Cuboidf[Beams.Length];
             for (int i = 0; i < Beams.Length; i++)
             {
-                float size = 1 / 8f;
                 var beam = Beams[i];
-                cuboids[i] = new Cuboidf(beam.Start.X - size, beam.Start.Y - size, beam.Start.Z - size, beam.Start.X + size, beam.Start.Y + size, beam.Start.Z + size);
+                var cuboid = cuboids[i] = new Cuboidf(beam.Start.X - size, beam.Start.Y - size, beam.Start.Z - size, beam.Start.X + size, beam.Start.Y + size, beam.Start.Z + size);
 
-                // This does not work when the beam extends into another block
-                //cuboids[2 * i + 1] = new Cuboidf(beam.End.X - size, beam.End.Y - size, beam.End.Z - size, beam.End.X + size, beam.End.Y + size, beam.End.Z + size);
+                for (int j = 0; j < 3; j++)
+                {
+                    if (cuboid[j] < 0)
+                    {
+                        cuboid[j] = -size;
+                        cuboid[j + 3] = size;
+                    }
+                    if (cuboid[j] > 1)
+                    {
+                        cuboid[j] = 1-size;
+                        cuboid[j + 3] = 1+size;
+                    }
+                }
             }
 
             return collBoxes = cuboids;
         }
+
+        public Cuboidf[] GetSelectionBoxes()
+        {
+            if (selBoxes != null) return selBoxes;
+
+            var boxes = GetCollisionBoxes();
+            if (boxes == null) return null;
+
+            float size = 1 / 6f;
+
+            for (int i = 0; i < boxes.Length; i++)
+            {
+                var cuboid = boxes[i].Clone();
+
+                for (int j = 0; j < 3; j++)
+                {
+                    if (cuboid[j] < 0)
+                    {
+                        cuboid[j] = -size;
+                        cuboid[j + 3] = size;
+                    }
+                    if (cuboid[j] > 1)
+                    {
+                        cuboid[j] = 1 - size;
+                        cuboid[j + 3] = 1 + size;
+                    }
+                }
+            }
+
+            return selBoxes = boxes;
+        }
+
+
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
         {
@@ -111,8 +158,7 @@ namespace Vintagestory.GameContent
 
             for (int i = 0; i < Beams.Length; i++)
             {
-                AssetLocation code;
-                if (oldBlockIdMapping.TryGetValue(Beams[i].BlockId, out code))
+                if (oldBlockIdMapping.TryGetValue(Beams[i].BlockId, out AssetLocation code))
                 {
                     Block block = worldForNewMappings.GetBlock(code);
                     if (block == null)
@@ -264,7 +310,7 @@ namespace Vintagestory.GameContent
                 Api.World.SpawnItemEntity(new ItemStack(beam.Block, (int)Math.Ceiling(beam.End.DistanceTo(beam.Start))), Pos);
             }
             sbp.OnBeamRemoved(beam.Start.ToVec3d().Add(Pos), beam.End.ToVec3d().Add(Pos));
-            Beams = Beams.RemoveEntry(beamIndex);
+            Beams = Beams.RemoveAt(beamIndex);
             Blockentity.MarkDirty(true);
         }
 

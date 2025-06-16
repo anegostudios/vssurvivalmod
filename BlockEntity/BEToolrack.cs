@@ -7,6 +7,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityToolrack : BlockEntity, ITexPositionSource
@@ -25,13 +27,11 @@ namespace Vintagestory.GameContent
         public TextureAtlasPosition this[string textureCode]
         {
             get {
-                ToolTextures tt;
 
                 var toolTextureSubIds = BlockToolRack.ToolTextureSubIds(Api);
-                if (toolTextureSubIds.TryGetValue((Item)tmpItem, out tt))
+                if (toolTextureSubIds.TryGetValue((Item)tmpItem, out ToolTextures tt))
                 {
-                    int textureSubId = 0;
-                    if (tt.TextureSubIdsByCode.TryGetValue(textureCode, out textureSubId))
+                    if (tt.TextureSubIdsByCode.TryGetValue(textureCode, out int textureSubId))
                     {
                         return ((ICoreClientAPI)Api).BlockTextureAtlas.Positions[textureSubId];
                     }

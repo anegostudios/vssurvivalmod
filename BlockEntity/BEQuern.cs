@@ -8,6 +8,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.GameContent.Mechanics;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 
@@ -91,8 +93,7 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                object value;
-                Api.ObjectCache.TryGetValue("quernbasemesh-" + Material, out value);
+                Api.ObjectCache.TryGetValue("quernbasemesh-" + Material, out object value);
                 return (MeshData)value;
             }
             set { Api.ObjectCache["quernbasemesh-" + Material] = value; }
@@ -102,8 +103,7 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                object value = null;
-                Api.ObjectCache.TryGetValue("querntopmesh-" + Material, out value);
+                Api.ObjectCache.TryGetValue("querntopmesh-" + Material, out object value);
                 return (MeshData)value;
             }
             set { Api.ObjectCache["querntopmesh-" + Material] = value; }
@@ -449,10 +449,9 @@ namespace Vintagestory.GameContent
             Block block = Api.World.BlockAccessor.GetBlock(Pos);
             if (block.BlockId == 0) return null;
 
-            MeshData mesh;
             ITesselatorAPI mesher = ((ICoreClientAPI)Api).Tesselator;
 
-            mesher.TesselateShape(block, API.Common.Shape.TryGet(Api, "shapes/block/stone/quern/" + type + ".json"), out mesh);
+            mesher.TesselateShape(block, API.Common.Shape.TryGet(Api, "shapes/block/stone/quern/" + type + ".json"), out MeshData mesh);
 
             return mesh;
         }

@@ -2,6 +2,8 @@
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent.Mechanics
 {
     public class AngledCageGearRenderer : MechBlockRenderer
@@ -11,25 +13,23 @@ namespace Vintagestory.GameContent.Mechanics
 
         public AngledCageGearRenderer(ICoreClientAPI capi, MechanicalPowerMod mechanicalPowerMod, Block textureSoureBlock, CompositeShape shapeLoc) : base(capi, mechanicalPowerMod)
         {
-            MeshData blockMesh;
 
             AssetLocation loc = shapeLoc.Base.Clone().WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
 
             Shape shape = API.Common.Shape.TryGet(capi, loc);
             Vec3f rot = new Vec3f(shapeLoc.rotateX, shapeLoc.rotateY, shapeLoc.rotateZ);
 
-            capi.Tesselator.TesselateShape(textureSoureBlock, shape, out blockMesh, rot);
+            capi.Tesselator.TesselateShape(textureSoureBlock, shape, out MeshData blockMesh, rot);
 
             if (shapeLoc.Overlays != null)
             {
                 for (int i = 0; i < shapeLoc.Overlays.Length; i++)
                 {
-                    MeshData overlayMesh;
                     CompositeShape ovShapeCmp = shapeLoc.Overlays[i];
                     rot = new Vec3f(ovShapeCmp.rotateX, ovShapeCmp.rotateY, ovShapeCmp.rotateZ);
                     
                     Shape ovshape = API.Common.Shape.TryGet(capi, ovShapeCmp.Base.Clone().WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json"));
-                    capi.Tesselator.TesselateShape(textureSoureBlock, ovshape, out overlayMesh, rot);
+                    capi.Tesselator.TesselateShape(textureSoureBlock, ovshape, out MeshData overlayMesh, rot);
                     blockMesh.AddMeshData(overlayMesh);
                 }
             }

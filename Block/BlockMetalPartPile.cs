@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockMetalPartPile : Block
@@ -111,7 +113,7 @@ namespace Vintagestory.GameContent
             }
 
             ItemStack drop = Drops[index].GetNextItemStack(dropQuantityMultiplier);
-            if (drop == null) return new ItemStack[0];
+            if (drop == null) return Array.Empty<ItemStack>();
 
             double rndVal = rand.NextDouble();
             Dictionary<int, double> quantityDict = index==0 ? entry.ScrapQuantityChances : entry.PartQuantityChances;

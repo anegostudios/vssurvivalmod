@@ -4,6 +4,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityBarrel : BlockEntityLiquidContainer
@@ -135,9 +137,8 @@ namespace Vintagestory.GameContent
 
             foreach (var recipe in Api.GetBarrelRecipes())
             {
-                int outsize;
 
-                if (recipe.Matches(inputSlots, out outsize))
+                if (recipe.Matches(inputSlots, out int outsize))
                 {
                     ignoreChange = true;
 
@@ -146,7 +147,8 @@ namespace Vintagestory.GameContent
                         CurrentRecipe = recipe;
                         CurrentOutSize = outsize;
 
-                    } else
+                    }
+                    else
                     {
                         if (Api?.Side == EnumAppSide.Server)
                         {
@@ -263,8 +265,8 @@ namespace Vintagestory.GameContent
                     capi.Network.SendBlockEntityPacket(Pos, (int)EnumBlockEntityPacketId.Close, null);
                     capi.Network.SendPacketClient(Inventory.Close(byPlayer));
                 };
-                invDialog.OpenSound = AssetLocation.Create("sounds/block/barrelopen", Block.Code.Domain);
-                invDialog.CloseSound = AssetLocation.Create("sounds/block/barrelclose", Block.Code.Domain);
+                invDialog.OpenSound = AssetLocation.Create(Block.Attributes?["openSound"].AsString() ?? "sounds/block/barrelopen", Block.Code.Domain);
+                invDialog.CloseSound = AssetLocation.Create(Block.Attributes?["closeSound"].AsString() ?? "sounds/block/barrelclose", Block.Code.Domain);
 
                 invDialog.TryOpen();
                 capi.Network.SendPacketClient(Inventory.Open(byPlayer));
@@ -361,8 +363,8 @@ namespace Vintagestory.GameContent
             {
                 for (int i = 0; i < mesh.CustomInts.Count; i++)
                 {
-                    mesh.CustomInts.Values[i] |= 1 << 27; // Enable weak water wavy
-                    mesh.CustomInts.Values[i] |= 1 << 26; // Enabled weak foam
+                    mesh.CustomInts.Values[i] |= 1 << VertexFlags.LiquidWeakWaveBitMask; // Enable weak water wavy
+                    mesh.CustomInts.Values[i] |= 1 << VertexFlags.LiquidWeakFoamBitMask; // Enabled weak foam
                 }
             }
 

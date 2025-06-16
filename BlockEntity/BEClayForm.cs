@@ -12,6 +12,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 
@@ -36,7 +38,7 @@ namespace Vintagestory.GameContent
         /// </summary>
         ItemStack baseMaterial;
 
-        Cuboidf[] selectionBoxes = new Cuboidf[0];
+        Cuboidf[] selectionBoxes = Array.Empty<Cuboidf>();
 
         ClayFormRenderer workitemRenderer;
 
@@ -760,6 +762,13 @@ namespace Vintagestory.GameContent
                 pos, 
                 Api as ICoreClientAPI
             );
+
+            for (int i = 0; i < recipes.Count; i++)
+            {
+                ItemStack[] ingredCount = [ingredient.GetEmptyClone()];
+                ingredCount[0].StackSize = (int)Math.Ceiling(GameMath.Max(1, (recipes[i].Voxels.Cast<bool>().Count(voxel => voxel) - 64) / 25f));
+                (dlg as GuiDialogBlockEntityRecipeSelector).SetIngredientCounts(i, ingredCount);
+            }
 
             dlg.OnClosed += dlg.Dispose;
             dlg.TryOpen();

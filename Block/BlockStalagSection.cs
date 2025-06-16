@@ -7,6 +7,8 @@ using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 using Vintagestory.ServerMods;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockStalagSection : Block
@@ -97,8 +99,7 @@ namespace Vintagestory.GameContent
                 Block block = blockAccessor.GetBlockAbove(pos, dy, BlockLayersAccess.Solid);
                 if (block.SideSolid[BlockFacing.DOWN.Index] && block.BlockMaterial == EnumBlockMaterial.Stone)
                 {
-                    string rocktype;
-                    if (block.Variant.TryGetValue("rock", out rocktype))
+                    if (block.Variant.TryGetValue("rock", out string rocktype))
                     {
                         GrowDownFrom(blockAccessor, pos.AddCopy(0, dy - 1, 0), rocktype, thickOff, worldGenRand);
                         didplace = true;
@@ -115,8 +116,7 @@ namespace Vintagestory.GameContent
                 Block block = blockAccessor.GetBlockBelow(pos, dy, BlockLayersAccess.Solid);
                 if (block.SideSolid[BlockFacing.UP.Index] && block.BlockMaterial == EnumBlockMaterial.Stone)
                 {
-                    string rocktype;
-                    if (block.Variant.TryGetValue("rock", out rocktype))
+                    if (block.Variant.TryGetValue("rock", out string rocktype))
                     {
                         GrowUpFrom(blockAccessor, pos.AddCopy(0, -dy + 1, 0), rocktype, thickOff);
                         didplace = true;

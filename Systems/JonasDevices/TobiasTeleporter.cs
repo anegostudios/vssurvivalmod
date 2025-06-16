@@ -7,6 +7,8 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent;
 
 [ProtoContract]
@@ -47,7 +49,7 @@ public class TobiasTeleporter : ModSystem
     private IServerNetworkChannel serverChannel;
     public double OwnLastUsage;
 
-    public int TpCooldownInMonths { get; set; } = 6;
+    public int TpCooldownInMonths { get; set; } = 2;
 
     public override void StartClientSide(ICoreClientAPI api)
     {

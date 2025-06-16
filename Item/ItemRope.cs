@@ -5,6 +5,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     // Rope concept
@@ -75,7 +77,7 @@ namespace Vintagestory.GameContent
         }
         public override int GetToolMode(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSelection)
         {
-            return 0;
+            return -1;
         }
 
         public override void SetToolMode(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSelection, int toolMode)

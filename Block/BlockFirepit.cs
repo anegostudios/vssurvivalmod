@@ -5,6 +5,8 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockFirepit : Block, IIgnitable, ISmokeEmitter
@@ -116,7 +118,6 @@ namespace Vintagestory.GameContent
                     {
                         ActionLangCode = "blockhelp-firepit-ignite",
                         MouseButton = EnumMouseButton.Right,
-                        HotKeyCode = "shift",
                         Itemstacks = canIgniteStacks.ToArray(),
                         GetMatchingStacks = (wi, bs, es) => {
                             BlockEntityFirepit bef = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityFirepit;
@@ -199,7 +200,7 @@ namespace Vintagestory.GameContent
                     AdvancedParticleProperties bps = ringParticles[i];
                     bps.WindAffectednesAtPos = windAffectednessAtPos;
                     bps.basePos.X = pos.X + basePos[i].X;
-                    bps.basePos.Y = pos.Y + basePos[i].Y;
+                    bps.basePos.Y = pos.InternalY + basePos[i].Y;
                     bps.basePos.Z = pos.Z + basePos[i].Z;
 
                     manager.Spawn(bps);
@@ -231,81 +232,84 @@ namespace Vintagestory.GameContent
                     return false;
                 }
 
-                if (bef != null && stack != null && byPlayer.Entity.Controls.ShiftKey)
+                if (bef != null && stack != null)
                 {
-                    if (stack.Collectible.CombustibleProps != null && stack.Collectible.CombustibleProps.MeltingPoint > 0)
+                    bool activated = false;
+
+                    if (byPlayer.Entity.Controls.ShiftKey)
                     {
-                        ItemStackMoveOperation op = new ItemStackMoveOperation(world, EnumMouseButton.Left, 0, EnumMergePriority.DirectMerge, 1);
-                        byPlayer.InventoryManager.ActiveHotbarSlot.TryPutInto(bef.inputSlot, ref op);
-                        if (op.MovedQuantity > 0)
+                        if (stack.Collectible.CombustibleProps != null && stack.Collectible.CombustibleProps.MeltingPoint > 0)
                         {
-                            (byPlayer as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
-                            return true;
+                            ItemStackMoveOperation op = new ItemStackMoveOperation(world, EnumMouseButton.Left, 0, EnumMergePriority.DirectMerge, 1);
+                            byPlayer.InventoryManager.ActiveHotbarSlot.TryPutInto(bef.inputSlot, ref op);
+                            if (op.MovedQuantity > 0) activated = true;
+                        }
+
+                        if (stack.Collectible.CombustibleProps != null && stack.Collectible.CombustibleProps.BurnTemperature > 0)
+                        {
+                            ItemStackMoveOperation op = new ItemStackMoveOperation(world, EnumMouseButton.Left, 0, EnumMergePriority.DirectMerge, 1);
+                            byPlayer.InventoryManager.ActiveHotbarSlot.TryPutInto(bef.fuelSlot, ref op);
+                            if (op.MovedQuantity > 0) activated = true;
                         }
                     }
 
-                    if (stack.Collectible.CombustibleProps != null && stack.Collectible.CombustibleProps.BurnTemperature > 0)
+                    if (stack.Collectible.Attributes?.IsTrue("mealContainer") == true && !activated)
                     {
-                        ItemStackMoveOperation op = new ItemStackMoveOperation(world, EnumMouseButton.Left, 0, EnumMergePriority.DirectMerge, 1);
-                        byPlayer.InventoryManager.ActiveHotbarSlot.TryPutInto(bef.fuelSlot, ref op);
-                        if (op.MovedQuantity > 0)
+                        ItemSlot potSlot = null;
+                        if (bef.inputStack?.Collectible is BlockCookedContainer)
                         {
-                            (byPlayer as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+                            potSlot = bef.inputSlot;
+                        }
+                        if (bef.outputStack?.Collectible is BlockCookedContainer)
+                        {
+                            potSlot = bef.outputSlot;
+                        }
 
-                            var loc = stack.ItemAttributes?["placeSound"].Exists == true ? AssetLocation.Create(stack.ItemAttributes["placeSound"].AsString(), stack.Collectible.Code.Domain) : null;
-
-                            if (loc != null)
+                        if (potSlot != null)
+                        {
+                            BlockCookedContainer blockPot = potSlot.Itemstack.Collectible as BlockCookedContainer;
+                            ItemSlot targetSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
+                            if (byPlayer.InventoryManager.ActiveHotbarSlot.StackSize > 1)
                             {
-                                api.World.PlaySoundAt(loc.WithPathPrefixOnce("sounds/"), blockSel.Position.X, blockSel.Position.InternalY, blockSel.Position.Z, byPlayer, 0.88f + (float)api.World.Rand.NextDouble() * 0.24f, 16);
+                                targetSlot = new DummySlot(targetSlot.TakeOut(1));
+                                byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                                blockPot.ServeIntoStack(targetSlot, potSlot, world);
+                                if (!byPlayer.InventoryManager.TryGiveItemstack(targetSlot.Itemstack, true))
+                                {
+                                    world.SpawnItemEntity(targetSlot.Itemstack, byPlayer.Entity.ServerPos.XYZ);
+                                }
                             }
-
-                            return true;
+                            else blockPot.ServeIntoStack(targetSlot, potSlot, world);
                         }
-                    }
-                }
-
-                if (stack?.Collectible.Attributes?.IsTrue("mealContainer") == true)
-                {
-                    ItemSlot potSlot = null;
-                    if (bef?.inputStack?.Collectible is BlockCookedContainer)
-                    {
-                        potSlot = bef.inputSlot;
-                    }
-                    if (bef?.outputStack?.Collectible is BlockCookedContainer)
-                    {
-                        potSlot = bef.outputSlot;
-                    }
-
-                    if (potSlot != null)
-                    {
-                        BlockCookedContainer blockPot = potSlot.Itemstack.Collectible as BlockCookedContainer;
-                        ItemSlot targetSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
-                        if (byPlayer.InventoryManager.ActiveHotbarSlot.StackSize > 1)
-                        {
-                            targetSlot = new DummySlot(targetSlot.TakeOut(1));
-                            byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
-                            blockPot.ServeIntoStack(targetSlot, potSlot, world);
-                            if (!byPlayer.InventoryManager.TryGiveItemstack(targetSlot.Itemstack, true))
-                            {
-                                world.SpawnItemEntity(targetSlot.Itemstack, byPlayer.Entity.ServerPos.XYZ);
-                            }
-                        } else
-                        {
-                            blockPot.ServeIntoStack(targetSlot, potSlot, world);
-                        }
-
-                    } else
-                    {
-                        if (!bef.inputSlot.Empty || byPlayer.InventoryManager.ActiveHotbarSlot.TryPutInto(api.World, bef.inputSlot, 1) == 0)
+                        else if (!bef.inputSlot.Empty || byPlayer.InventoryManager.ActiveHotbarSlot.TryPutInto(api.World, bef.inputSlot, 1) == 0)
                         {
                             bef.OnPlayerRightClick(byPlayer, blockSel);
                         }
+
+                        activated = true;
                     }
 
-                    return true;
+                    if (stack?.Collectible is BlockSmeltingContainer or BlockSmeltedContainer && !activated)
+                    {
+                        if (byPlayer.InventoryManager.ActiveHotbarSlot.TryPutInto(api.World, bef.inputSlot, 1) > 0) activated = true;
+                    }
+
+                    if (activated)
+                    {
+                        (byPlayer as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+
+                        var loc = stack.ItemAttributes?["placeSound"].Exists == true ? AssetLocation.Create(stack.ItemAttributes["placeSound"].AsString(), stack.Collectible.Code.Domain) : null;
+
+                        if (loc != null)
+                        {
+                            api.World.PlaySoundAt(loc.WithPathPrefixOnce("sounds/"), blockSel.Position.X, blockSel.Position.InternalY, blockSel.Position.Z, byPlayer, 0.88f + (float)api.World.Rand.NextDouble() * 0.24f, 16);
+                        }
+
+                        return true;
+                    }
                 }
 
-                
+
 
                 return base.OnBlockInteractStart(world, byPlayer, blockSel);
             }

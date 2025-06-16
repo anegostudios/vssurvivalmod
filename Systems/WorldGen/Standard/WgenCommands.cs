@@ -14,6 +14,8 @@ using Vintagestory.API.Util;
 using Vintagestory.GameContent;
 using Vintagestory.ServerMods.NoObf;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     static class RandomExtensions
@@ -531,10 +533,8 @@ namespace Vintagestory.ServerMods
                                 indices[i].Index = provincesByIndex[indices[i].Index].ColorInt;
                             }
 
-                            int[] colors;
-                            float[] weights;
-                            map.Split(indices, out colors, out weights);
-                            outColors[z * outSize + x] = ColorUtil.ColorAverage(colors, weights);
+                                map.Split(indices, out int[] colors, out float[] weights);
+                                outColors[z * outSize + x] = ColorUtil.ColorAverage(colors, weights);
                         }
                     }
 
@@ -571,9 +571,7 @@ namespace Vintagestory.ServerMods
                                 {
                                     indices[i].Index = landformsByIndex[indices[i].Index].ColorInt;
                                 }
-                                int[] colors;
-                                float[] weights;
-                                map.Split(indices, out colors, out weights);
+                                map.Split(indices, out int[] colors, out float[] weights);
                                 outColors[z * outSize + x] = ColorUtil.ColorAverage(colors, weights);
                             }
                         }
@@ -1259,7 +1257,7 @@ namespace Vintagestory.ServerMods
                         RockStratum stratum = null;
 
 
-                        OrderedDictionary<int, int> stratathicknesses = new OrderedDictionary<int, int>();
+                        API.Datastructures.OrderedDictionary<int, int> stratathicknesses = new ();
 
                         while (ylower <= yupper)
                         {

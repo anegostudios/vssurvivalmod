@@ -8,6 +8,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 
 namespace Vintagestory.GameContent
 {
@@ -78,7 +80,7 @@ namespace Vintagestory.GameContent
         string variantByGroupInventory;
 
         #region IAttachableToEntity
-
+        public int RequiresBehindSlots { get; set; } = 0;
         Shape IWearableShapeSupplier.GetShape(ItemStack stack, Entity forEntity, string texturePrefixCode)
         {
             string type = stack.Attributes.GetString("type", defaultType);
@@ -308,7 +310,6 @@ namespace Vintagestory.GameContent
                 return new MeshData();
             }
 
-            MeshData mesh;
 
             var texSource = new GenericContainerTextureSource()
             {
@@ -325,7 +326,7 @@ namespace Vintagestory.GameContent
                 Rotation = rotation == null ? new Vec3f(Shape.rotateX, Shape.rotateY, Shape.rotateZ) : rotation
             };
 
-            tesselator.TesselateShape(meta, shape, out mesh);
+            tesselator.TesselateShape(meta, shape, out MeshData mesh);
             return mesh;
         }
         
@@ -351,13 +352,12 @@ namespace Vintagestory.GameContent
                     shape = API.Common.Shape.TryGet(capi, shapeloc + "1.json");
                 }
 
-                MeshData md;
                 var texSource = new GenericContainerTextureSource
                 {
                     blockTextureSource = decalTexSource,
                     curType = be.type
                 };
-                capi.Tesselator.TesselateShape("typedcontainer-decal", shape, out md, texSource);
+                capi.Tesselator.TesselateShape("typedcontainer-decal", shape, out MeshData md, texSource);
                 decalModelData = md;
 
                 decalModelData.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, be.MeshAngle, 0);
@@ -438,12 +438,12 @@ namespace Vintagestory.GameContent
             if (type == null)
             {
                 api.World.Logger.Warning("BlockGenericTypedContainer.GetDropsForHandbook(): type not set for block " + handbookStack.Collectible?.Code);
-                return new BlockDropItemStack[0];
+                return Array.Empty<BlockDropItemStack>();
             }
 
             if (Attributes?["drop"]?[type]?.AsBool() == false)
             {
-                return new BlockDropItemStack[0]; 
+                return Array.Empty<BlockDropItemStack>(); 
             } else
             {
                 return new BlockDropItemStack[] { new BlockDropItemStack(handbookStack) };
@@ -482,8 +482,8 @@ namespace Vintagestory.GameContent
             BlockEntityGenericTypedContainer be = capi.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityGenericTypedContainer;
             if (be != null)
             {
-                CompositeTexture tex = null;
-                if (!Textures.TryGetValue(be.type + "-lid", out tex)) {
+                if (!Textures.TryGetValue(be.type + "-lid", out CompositeTexture tex))
+                {
                     Textures.TryGetValue(be.type + "-top", out tex);
                 }
                 return capi.BlockTextureAtlas.GetRandomColor(tex?.Baked == null ? 0 : tex.Baked.TextureSubId, rndIndex);

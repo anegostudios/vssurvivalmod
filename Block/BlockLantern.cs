@@ -10,12 +10,15 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockLantern : Block, ITexPositionSource, IAttachableToEntity
     {
         IAttachableToEntity attrAtta;
         #region IAttachableToEntity
+        public int RequiresBehindSlots { get; set; } = 0;
         string IAttachableToEntity.GetCategoryCode(ItemStack stack) => attrAtta?.GetCategoryCode(stack);
         CompositeShape IAttachableToEntity.GetAttachedShape(ItemStack stack, string slotCode) => attrAtta.GetAttachedShape(stack, slotCode);
         string[] IAttachableToEntity.GetDisableElements(ItemStack stack) => attrAtta.GetDisableElements(stack);
@@ -35,6 +38,8 @@ namespace Vintagestory.GameContent
             intoShape.Textures["lining"] = this.Textures[(lining == null || lining == "plain") ? material : lining].Base;
             intoShape.Textures["material-deco"] = this.Textures["deco-" + material].Base;
         }
+
+        public bool IsAttachable(Entity toEntity, ItemStack itemStack) => true;
         #endregion
 
         public Size2i AtlasSize { get; set; }
@@ -126,8 +131,7 @@ namespace Vintagestory.GameContent
             string glass = itemstack.Attributes.GetString("glass", "quartz");
 
             string key = material + "-" + lining + "-" + glass;
-            MultiTextureMeshRef meshref;
-            if (!meshrefs.TryGetValue(key, out meshref))
+            if (!meshrefs.TryGetValue(key, out MultiTextureMeshRef meshref))
             {
                 AssetLocation shapeloc = Shape.Base.CopyWithPathPrefixAndAppendixOnce("shapes/", ".json");
                 Shape shape = API.Common.Shape.TryGet(capi, shapeloc);
@@ -145,8 +149,7 @@ namespace Vintagestory.GameContent
             ICoreClientAPI capi = api as ICoreClientAPI;
             if (capi == null) return;
 
-            object obj;
-            if (capi.ObjectCache.TryGetValue("blockLanternGuiMeshRefs", out obj))
+            if (capi.ObjectCache.TryGetValue("blockLanternGuiMeshRefs", out object obj))
             {
                 Dictionary<string, MultiTextureMeshRef> meshrefs = obj as Dictionary<string, MultiTextureMeshRef>;
 
@@ -182,8 +185,7 @@ namespace Vintagestory.GameContent
 
             Block glassBlock = capi.World.GetBlock(new AssetLocation("glass-" + glassMaterial));
             glassTextureSource = tesselator.GetTextureSource(glassBlock);
-            MeshData mesh;
-            tesselator.TesselateShape("blocklantern", shape, out mesh, this, new Vec3f(Shape.rotateX, Shape.rotateY, Shape.rotateZ));
+            tesselator.TesselateShape("blocklantern", shape, out MeshData mesh, this, new Vec3f(Shape.rotateX, Shape.rotateY, Shape.rotateZ));
             return mesh;
         }
 
@@ -326,8 +328,7 @@ namespace Vintagestory.GameContent
             BELantern be = capi.World.BlockAccessor.GetBlockEntity(pos) as BELantern;
             if (be != null)
             {
-                CompositeTexture tex = null;
-                if (Textures.TryGetValue(be.material, out tex)) return capi.BlockTextureAtlas.GetRandomColor(tex.Baked.TextureSubId, rndIndex);
+                if (Textures.TryGetValue(be.material, out CompositeTexture tex)) return capi.BlockTextureAtlas.GetRandomColor(tex.Baked.TextureSubId, rndIndex);
             }
 
             return base.GetRandomColor(capi, pos, facing, rndIndex);
@@ -386,6 +387,6 @@ namespace Vintagestory.GameContent
             return stacks;
         }
 
-        public bool IsAttachable(Entity toEntity, ItemStack itemStack) => true;
+        
     }
 }

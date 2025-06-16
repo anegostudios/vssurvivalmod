@@ -9,6 +9,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public enum EnumBlockContainerPacketId
@@ -96,24 +98,23 @@ namespace Vintagestory.GameContent
             LidOpenEntityId = new HashSet<long>();
             Inventory.LateInitialize(InventoryClassName + "-" + Pos, api);
             Inventory.ResolveBlocksOrItems();
-            Inventory.OnInventoryOpened += OnInventoryOpened;  
-            Inventory.OnInventoryClosed += OnInventoryClosed; 
+            Inventory.OnInventoryOpened += OnInventoryOpened;
+            Inventory.OnInventoryClosed += OnInventoryClosed;
 
-            string os = Block.Attributes?["openSound"]?.AsString();
-            string cs = Block.Attributes?["closeSound"]?.AsString();
-            AssetLocation opensound = os == null ? null : AssetLocation.Create(os, Block.Code.Domain);
-            AssetLocation closesound = cs == null ? null : AssetLocation.Create(cs, Block.Code.Domain);
-
-            OpenSound = opensound ?? this.OpenSound;
-            CloseSound = closesound ?? this.CloseSound;
+            var os = Block.Attributes?["openSound"]?.AsString();
+            var cs = Block.Attributes?["closeSound"]?.AsString();
+            var opensound = os == null ? null : AssetLocation.Create(os, Block.Code.Domain);
+            var closesound = cs == null ? null : AssetLocation.Create(cs, Block.Code.Domain);
+            OpenSound = opensound ?? OpenSound;
+            CloseSound = closesound ?? CloseSound;
         }
 
-        private void OnInventoryOpened(IPlayer player)
+        protected void OnInventoryOpened(IPlayer player)
         {
             LidOpenEntityId.Add(player.Entity.EntityId);
         }
 
-        private void OnInventoryClosed(IPlayer player)
+        protected void OnInventoryClosed(IPlayer player)
         {
             LidOpenEntityId.Remove(player.Entity.EntityId);
         }
@@ -128,7 +129,6 @@ namespace Vintagestory.GameContent
                 {
                     invDialog = null;
                     capi.Network.SendBlockEntityPacket(Pos, (int)EnumBlockEntityPacketId.Close, null);
-                    capi.Network.SendPacketClient(Inventory.Close(byPlayer));
                 };
 
                 invDialog.TryOpen();

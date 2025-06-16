@@ -9,6 +9,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityCoalPile : BlockEntityItemPile, ITexPositionSource, IHeatSource
@@ -429,7 +431,7 @@ namespace Vintagestory.GameContent
             if (world.Side == EnumAppSide.Server)
             {
                 ICoreServerAPI sapi = (world as IServerWorldAccessor).Api as ICoreServerAPI;
-                if (!sapi.Server.Config.AllowFallingBlocks) return false;
+                if (!sapi.World.Config.GetBool("allowFallingBlocks")) return false;
             }
 
             if (IsReplacableBeneath(world, pos) || IsReplacableBeneathAndSideways(world, pos))
@@ -509,8 +511,7 @@ namespace Vintagestory.GameContent
                     if (mesher is EntityBlockFallingRenderer) size = 2; // Haxy solution >.>
 
                     Shape shape = capi.TesselatorManager.GetCachedShape(new AssetLocation("block/basic/layers/" + GameMath.Clamp(size, 2, 16) + "voxel"));
-                    MeshData meshdata;
-                    capi.Tesselator.TesselateShape("coalpile", shape, out meshdata, this);
+                    capi.Tesselator.TesselateShape("coalpile", shape, out MeshData meshdata, this);
 
                     if (burning)
                     {

@@ -7,6 +7,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+
+#nullable disable
 using static Vintagestory.API.Common.EntityAgent;
 
 namespace Vintagestory.GameContent

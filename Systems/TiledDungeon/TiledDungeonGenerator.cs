@@ -7,6 +7,8 @@ using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 using Vintagestory.Common.Collectible.Block;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     public class ModSystemTiledDungeonGenerator : ModSystem

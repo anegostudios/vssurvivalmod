@@ -5,6 +5,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockFenceStackAware : BlockFence
@@ -36,8 +38,7 @@ namespace Vintagestory.GameContent
             {
                 int var = (GameMath.MurmurHash3Mod(pos.X, pos.Y, pos.Z, 8) + 1);
 
-                MeshData mesh;
-                if (!continousFenceMeches.TryGetValue(cntCode + var, out mesh))
+                if (!continousFenceMeches.TryGetValue(cntCode + var, out MeshData mesh))
                 {
                     AssetLocation loc = Shape.Base.Clone();
                     loc.Path = loc.Path.Replace("-top", "");

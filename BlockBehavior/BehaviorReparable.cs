@@ -13,6 +13,8 @@ using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 using Vintagestory.ServerMods;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 
@@ -61,7 +63,7 @@ namespace Vintagestory.GameContent
                     splr.SendLocalisedMessage(GlobalConstants.GeneralChatGroup, "clutter-didshatter", Lang.GetMatchingL(splr.LanguageCode, bec.GetFullCode()));
                 }
                 world.PlaySoundAt(new AssetLocation("sounds/effect/toolbreak"), pos, 0, null, false, 12);
-                return new ItemStack[0];
+                return Array.Empty<ItemStack>();
             }
 
             var stack = block.OnPickBlock(world, pos);

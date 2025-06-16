@@ -10,6 +10,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 using VSSurvivalMod.Systems.ChiselModes;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityChisel : BlockEntityMicroBlock
@@ -128,6 +130,17 @@ namespace Vintagestory.GameContent
             nowmaterialIndex = (byte)Math.Max(0, BlockIds.IndexOf(materialId));
         }
 
+        public void PickBlockMaterial(IPlayer byPlayer)
+        {
+            if (byPlayer != null && byPlayer.InventoryManager?.ActiveHotbarSlot is ItemSlot slot && slot.Itemstack?.Collectible is ItemChisel chisel)
+            {
+                var hitPos = byPlayer.CurrentBlockSelection.HitPosition;
+                Vec3i voxPos = new Vec3i(Math.Min(15, (int)(hitPos.X * 16)), Math.Min(15, (int)(hitPos.Y * 16)), Math.Min(15, (int)(hitPos.Z * 16)));
+                int matNum = GetVoxelMaterialAt(voxPos);
+                int toolMode = (byte)Math.Max(0, BlockIds.IndexOf(matNum)) + chisel.ToolModes.Length;
+                chisel.SetToolMode(slot, byPlayer, byPlayer.CurrentBlockSelection, toolMode);
+            }
+        }
 
 
         internal void UpdateVoxel(IPlayer byPlayer, ItemSlot itemslot, Vec3i voxelPos, BlockFacing facing, bool isBreak)
@@ -237,6 +250,8 @@ namespace Vintagestory.GameContent
 
                 UpdateVoxel(player, player.InventoryManager.ActiveHotbarSlot, voxelPos, facing, isBreak);
             }
+
+            if (packetid == 1011) PickBlockMaterial(player);
         }
 
 

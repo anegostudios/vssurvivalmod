@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class FruitTreeRootBH : BlockEntityBehavior
@@ -74,8 +76,7 @@ namespace Vintagestory.GameContent
             if (treeType == null) return;
             if (propsByType.ContainsKey(treeType)) return;
 
-            FruitTreeTypeProperties typeProps;
-            if (!blockBranch.TypeProps.TryGetValue(bebr.TreeType, out typeProps))
+            if (!blockBranch.TypeProps.TryGetValue(bebr.TreeType, out FruitTreeTypeProperties typeProps))
             {
                 Api.Logger.Error("Missing fruitTreeProperties for dynamic tree of type '" + bebr.TreeType + "', will use default values.");
                 typeProps = new FruitTreeTypeProperties();

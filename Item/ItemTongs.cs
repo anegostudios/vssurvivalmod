@@ -1,6 +1,8 @@
 ﻿using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ItemTongs : Item, IHeldHandAnimOverrider
@@ -14,7 +16,7 @@ namespace Vintagestory.GameContent
         {
             if (isHoldingHotItem(forEntity))
             {
-                return "holdbothhands";
+                return "holdbothhands-tongs1";
             }
 
             return base.GetHeldTpIdleAnimation(activeHotbarSlot, forEntity, hand);

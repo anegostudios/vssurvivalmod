@@ -4,6 +4,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockBehaviorMilkingContainer : BlockBehavior
@@ -73,8 +75,6 @@ namespace Vintagestory.GameContent
                         tf.Translation.X += (float)GameMath.MurmurHash3Mod((int)(secondsUsed * 3), 0, 0, 10) / 600f;
                         tf.Translation.Y += (float)GameMath.MurmurHash3Mod(0, (int)(secondsUsed * 3), 0, 10) / 600f;
                     }
-
-                    byEntity.Controls.UsingHeldItemTransformBefore = tf;
                 }
 
 

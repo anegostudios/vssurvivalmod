@@ -7,6 +7,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.GameContent.Mechanics;
+
+#nullable disable
 using SerializerUtil = Vintagestory.API.Util.SerializerUtil;
 
 namespace Vintagestory.GameContent
@@ -15,9 +17,9 @@ namespace Vintagestory.GameContent
     {
         internal InventoryGeneric inventory;
 
-        public BlockFacing[] PullFaces = new BlockFacing[0];
-        public BlockFacing[] PushFaces = new BlockFacing[0];
-        public BlockFacing[] AcceptFromFaces = new BlockFacing[0];
+        public BlockFacing[] PullFaces = Array.Empty<BlockFacing>();
+        public BlockFacing[] PushFaces = Array.Empty<BlockFacing>();
+        public BlockFacing[] AcceptFromFaces = Array.Empty<BlockFacing>();
 
         public string inventoryClassName = "hopper";
         public string ItemFlowObjectLangCode = "hopper-contents";

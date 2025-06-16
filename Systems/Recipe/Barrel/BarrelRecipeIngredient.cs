@@ -8,6 +8,8 @@ using System.Xml.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     /// <summary>

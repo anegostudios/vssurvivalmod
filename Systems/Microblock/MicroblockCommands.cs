@@ -11,6 +11,8 @@ using System;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     public class MicroblockCommands

@@ -7,6 +7,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     public class SpawnOppurtunity
@@ -84,8 +86,7 @@ namespace Vintagestory.ServerMods
 
                 for (int j = 0; j < companions.Length; j++)
                 {
-                    EntityProperties cptype;
-                    if (entityTypesByCode.TryGetValue(companions[j], out cptype))
+                    if (entityTypesByCode.TryGetValue(companions[j], out EntityProperties cptype))
                     {
                         grouptypes.Add(cptype);
                     }
@@ -156,6 +157,7 @@ namespace Vintagestory.ServerMods
             {
                 EntityProperties entitytype = val.Key;
                 float tries = entitytype.Server.SpawnConditions.Worldgen.TriesPerChunk.nextFloat(1, rnd);
+                if (tries == 0f) continue;
 
                 var scRuntime = entitytype.Server.SpawnConditions.Runtime;   // the Group ("hostile"/"neutral"/"passive") is only held in the Runtime spawn conditions
                 if (scRuntime == null || scRuntime.Group != "hostile") tries *= GlobalConfig.neutralCreatureSpawnMultiplier;
@@ -216,17 +218,17 @@ namespace Vintagestory.ServerMods
 
                 EntityProperties typeToSpawn = entityType;
 
-                // First entity 80% chance to spawn the dominant creature, every subsequent only 20% chance for males (or even lower if more than 5 companion types)
-                double dominantChance = i == 0 ? 0.8 : Math.Min(0.2, 1f / grouptypes.Length);
+                // First entity with valid spawnpos (typically the male) must be the dominant creature, every subsequent only 20% chance for males (or even lower if more than 5 companion types)
+                double dominantChance = spawned == 0 ? 1 : Math.Min(0.2, 1f / grouptypes.Length);
 
                 if (grouptypes.Length > 1 && rnd.NextDouble() > dominantChance)
                 {
                     typeToSpawn = grouptypes[1 + rnd.Next(grouptypes.Length - 1)];
                 }
 
-                IBlockAccessor blockAccesssor = wgenBlockAccessor.GetChunkAtBlockPos(pos) == null ? api.World.BlockAccessor : wgenBlockAccessor;
+                IBlockAccessor blockAccessor = wgenBlockAccessor.GetChunkAtBlockPos(pos) == null ? api.World.BlockAccessor : wgenBlockAccessor;
 
-                IMapChunk mapchunk = blockAccesssor.GetMapChunkAtBlockPos(pos);
+                IMapChunk mapchunk = blockAccessor.GetMapChunkAtBlockPos(pos);
                 if (mapchunk != null)
                 {
                     if (sc.TryOnlySurface)
@@ -235,7 +237,7 @@ namespace Vintagestory.ServerMods
                         pos.Y = heightMap[(pos.Z % chunksize) * chunksize + (pos.X % chunksize)] + 1;
                     }
 
-                    if (CanSpawnAtPosition(blockAccesssor, typeToSpawn, pos, sc))
+                    if (CanSpawnAtPosition(blockAccessor, typeToSpawn, pos, sc))
                     {
                         posAsVec.Set(pos.X + 0.5, pos.Y + 0.005, pos.Z + 0.5);
 
@@ -249,11 +251,12 @@ namespace Vintagestory.ServerMods
                         shrubDensity = GameMath.BiLerp(shrubsUpLeft, shrubsUpRight, shrubsBotLeft, shrubsBotRight, xRel, zRel) / 255f;
 
 
-                        if (CanSpawnAtConditions(blockAccesssor, typeToSpawn, pos, posAsVec, sc, rain, temp, forestDensity, shrubDensity))
+                        if (CanSpawnAtConditions(blockAccessor, typeToSpawn, pos, posAsVec, sc, rain, temp, forestDensity, shrubDensity))
                         {
                             spawnPositions.Add(new SpawnOppurtunity() { ForType = typeToSpawn, Pos = posAsVec.Clone() });
                             spawned++;
                         }
+
                     }
                 }
 

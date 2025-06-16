@@ -8,6 +8,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityFirepit : BlockEntityOpenableContainer, IHeatSource, IFirePit, ITemperatureSensitive
@@ -891,8 +893,7 @@ namespace Vintagestory.GameContent
 
                 if (contentStack.Class != EnumItemClass.Item)
                 {
-                    MeshData ingredientMesh;
-                    tesselator.TesselateBlock(contentStack.Block, out ingredientMesh);
+                    tesselator.TesselateBlock(contentStack.Block, out MeshData ingredientMesh);
 
                     ingredientMesh.ModelTransform(renderProps.Transform);
 
@@ -940,8 +941,7 @@ namespace Vintagestory.GameContent
             Dictionary<string, MeshData> Meshes = ObjectCacheUtil.GetOrCreate(Api, "firepit-meshes", () => new Dictionary<string, MeshData>());
 
             string key = burnstate + "-" + contentstate;
-            MeshData meshdata;
-            if (!Meshes.TryGetValue(key, out meshdata))
+            if (!Meshes.TryGetValue(key, out MeshData meshdata))
             {
                 Block block = Api.World.BlockAccessor.GetBlock(Pos);
                 if (block.BlockId == 0) return null;

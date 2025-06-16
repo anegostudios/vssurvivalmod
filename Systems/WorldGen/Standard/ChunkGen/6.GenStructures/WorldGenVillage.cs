@@ -7,6 +7,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     public delegate void DidGenerate(Cuboidi location, BlockSchematicStructure schematic);
@@ -70,7 +72,7 @@ namespace Vintagestory.ServerMods
         [JsonProperty]
         public int MaxYDiff = 3;
 
-        internal int[] replaceblockids = new int[0];
+        internal int[] replaceblockids = Array.Empty<int>();
         internal Dictionary<int, Dictionary<int, int>> resolvedRockTypeRemaps = null;
 
         LCGRandom rand;

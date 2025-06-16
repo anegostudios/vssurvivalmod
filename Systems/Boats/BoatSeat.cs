@@ -2,10 +2,13 @@
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class EntityBoatSeat : EntityRideableSeat
     {
+        public override EnumMountAngleMode AngleMode => config.AngleMode;
         Dictionary<string, string> animations => (Entity as EntityBoat).MountAnimations;
         public string actionAnim;
 
@@ -45,7 +48,7 @@ namespace Vintagestory.GameContent
         {
             base.DidMount(entityAgent);
 
-            entityAgent.AnimManager.StartAnimation(animations["idle"]);
+            entityAgent.AnimManager.StartAnimation(config.Animation ?? animations["idle"]);
         }
 
         public override void DidUnmount(EntityAgent entityAgent)
@@ -56,6 +59,7 @@ namespace Vintagestory.GameContent
                 Passenger.AnimManager?.StopAnimation(animations["forwards"]);
                 Passenger.AnimManager?.StopAnimation(animations["backwards"]);
                 Passenger.AnimManager?.StopAnimation(animations["idle"]);
+                Passenger.AnimManager?.StopAnimation(config.Animation);
                 Passenger.SidedPos.Roll = 0;
             }
 

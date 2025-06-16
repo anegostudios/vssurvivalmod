@@ -7,6 +7,8 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public enum EnumEntityHealthState
@@ -88,7 +90,8 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            entity.GetBehavior<EntityBehaviorSeatable>().CanSit += EntityBehaviorMortallyWoundable_CanSit;
+            var seatable = entity.GetBehavior<EntityBehaviorSeatable>();
+            if (seatable != null) seatable.CanSit += EntityBehaviorMortallyWoundable_CanSit;
         }
 
         private bool EntityBehaviorMortallyWoundable_CanSit(EntityAgent eagent, out string errorMessage)
@@ -222,6 +225,12 @@ namespace Vintagestory.GameContent
         {
             HealthState = EnumEntityHealthState.Dead;
             entity.Die();
+        }
+        
+        public override void OnEntityDeath(DamageSource damageSourceForDeath)
+        {
+            HealthState = EnumEntityHealthState.Dead;
+            base.OnEntityDeath(damageSourceForDeath);
         }
 
 
