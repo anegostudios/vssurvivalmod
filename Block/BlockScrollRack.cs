@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -10,6 +9,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 using Vintagestory.ServerMods;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -29,6 +30,20 @@ namespace Vintagestory.GameContent
         {
             base.OnLoaded(api);
             LoadTypes();
+        }
+
+        public override void OnUnloaded(ICoreAPI api)
+        {
+            var meshRefs = ObjectCacheUtil.TryGet<Dictionary<string, MultiTextureMeshRef>>(api, "ScrollrackMeshesInventory");
+            if (meshRefs?.Count > 0)
+            {
+                foreach (var (_, meshRef) in meshRefs)
+                {
+                    meshRef.Dispose();
+                }
+                ObjectCacheUtil.Delete(api, "ScrollrackMeshesInventory");
+            }
+            base.OnUnloaded(api);
         }
 
         public void LoadTypes()
@@ -51,11 +66,11 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < slotSide.Length; i++)
             {
                 var side = slotSide[i];
-                int[] slots;
-                if (slotsBySide.TryGetValue(side, out slots))
+                if (slotsBySide.TryGetValue(side, out int[] slots))
                 {
                     slots = slots.Append(i);
-                } else
+                }
+                else
                 {
                     slots = new int[] { i };
                 }
@@ -183,7 +198,7 @@ namespace Vintagestory.GameContent
         public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
             var beb = GetBlockEntity<BlockEntityScrollRack>(pos);
-            beb.clearUsableSlots();
+            beb?.clearUsableSlots();
 
             base.OnNeighbourBlockChange(world, pos, neibpos);
         }
@@ -195,13 +210,12 @@ namespace Vintagestory.GameContent
 
             Dictionary<string, MultiTextureMeshRef> meshRefs;
             meshRefs = ObjectCacheUtil.GetOrCreate(capi, "ScrollrackMeshesInventory", () => new Dictionary<string, MultiTextureMeshRef>());
-            MultiTextureMeshRef meshref;
 
             string type = itemstack.Attributes.GetString("type", "");
             string material = itemstack.Attributes.GetString("material", "");
             string key = type + "-" + material;
 
-            if (!meshRefs.TryGetValue(key, out meshref))
+            if (!meshRefs.TryGetValue(key, out MultiTextureMeshRef meshref))
             {
                 MeshData mesh = GetOrCreateMesh(type, material);
                 meshref = capi.Render.UploadMultiTextureMesh(mesh);

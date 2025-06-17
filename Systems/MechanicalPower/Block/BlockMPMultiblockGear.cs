@@ -1,6 +1,9 @@
-﻿using Vintagestory.API.Client;
+﻿using System.Text;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+
+#nullable disable
 
 namespace Vintagestory.GameContent.Mechanics
 {
@@ -141,6 +144,32 @@ namespace Vintagestory.GameContent.Mechanics
             return centerBlock.GetRandomColor(capi, be.Principal, facing, rndIndex);
         }
 
+
+        public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
+        {
+            IBlockAccessor blockAccess = world.BlockAccessor;
+            BEMPMultiblock be = blockAccess.GetBlockEntity(pos) as BEMPMultiblock;
+            if (be == null || be.Principal == null)
+            {
+                return new ItemStack(world.GetBlock(new AssetLocation("largegear3")));   // hard-coded, better than returning an invalid itemstack
+            }
+            Block principalBlock = blockAccess.GetBlock(be.Principal);
+            return principalBlock.OnPickBlock(world, be.Principal);
+        }
+
+
+        public override string GetPlacedBlockName(IWorldAccessor world, BlockPos pos)
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.Append(base.OnPickBlock(world, pos)?.GetName());    // base.OnPickBlock() is important here, to avoid calling the above OnPickBlock() which returns a different block
+
+            foreach (BlockBehavior bh in BlockBehaviors)
+            {
+                bh.GetPlacedBlockName(sb, world, pos);
+            }
+
+            return sb.ToString().TrimEnd();
+        }
 
     }
 }

@@ -1,6 +1,9 @@
-﻿using Vintagestory.API.Common;
+﻿using Vintagestory.API.Client;
+using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -31,7 +34,7 @@ namespace Vintagestory.GameContent
             {
                 Type = (Block as BlockClutterBookshelf).RandomType(Variant);
                 Type2 = (Block as BlockClutterBookshelf).RandomType(Variant);
-                initShape();
+                loadMesh();
                 Blockentity.MarkDirty(true);
                 return;
             }
@@ -39,16 +42,21 @@ namespace Vintagestory.GameContent
             base.OnBlockPlaced(byItemStack);
         }
 
-        public override void initShape()
+        public override void loadMesh()
         {
             if (Type == null || Api.Side == EnumAppSide.Server || Variant == null) return;
 
             IShapeTypeProps cprops = clutterBlock.GetTypeProps(Type, null, this);
             if (cprops == null) return;
 
+            bool noOffset = offsetX == 0 && offsetY == 0 && offsetZ == 0;
             float angleY = rotateY + cprops.Rotation.Y * GameMath.DEG2RAD;
-            if (angleY == 0 && rotateX == 0 && rotateZ == 0) mesh = clutterBlock.GetOrCreateMesh(cprops);
-            else mesh = clutterBlock.GetOrCreateMesh(cprops).Clone().Rotate(Origin, rotateX, angleY, rotateZ);
+            MeshData baseMesh = clutterBlock.GetOrCreateMesh(cprops);
+
+            if (rotateX == 0 && angleY == 0 && rotateZ == 0 && noOffset) mesh = baseMesh;
+            else mesh = baseMesh.Clone().Rotate(Origin, rotateX, angleY, rotateZ);
+
+            if (!noOffset) mesh.Translate(offsetX, offsetY, offsetZ);
         }
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
@@ -62,7 +70,7 @@ namespace Vintagestory.GameContent
 
             if (worldAccessForResolve.Side == EnumAppSide.Client && Api != null && (mesh == null || prevType2 != Type2))
             {
-                initShape();
+                MaybeInitialiseMesh_OnMainThread();
                 Blockentity.MarkDirty(true);
             }
         }

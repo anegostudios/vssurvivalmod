@@ -1,14 +1,19 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using System;
+using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public interface ITutorial
     {
+        bool Complete { get; }
+        float Progress { get; }
         string PageCode { get; }
         void Restart();
         void Skip(int count);
@@ -59,6 +64,8 @@ namespace Vintagestory.GameContent
                 step.Restart();
                 step.ToJson(StepDataForSaving);
             }
+
+            Save();
         }
 
 
@@ -81,16 +88,20 @@ namespace Vintagestory.GameContent
             if (anyNowCompleted)
             {
                 capi.Gui.PlaySound(new AssetLocation("sounds/tutorialstepsuccess.ogg"), false, 1);
+                Save();
             }
 
             return anyDirty;
         }
 
+        public bool Complete => steps[steps.Count - 1].Complete;
+
+        public float Progress => steps.Count == 0 ? 0f : steps.Sum((t) => t.Complete ? 1 : 0) / (float)steps.Count;
+
         public void addSteps(params TutorialStepBase[] steps)
         {
             for (int i = 0; i < steps.Length; i++)
             {
-                //steps[i].text = (i + 1) + ". " + steps[i].text;
                 steps[i].index = i;
             }
 
@@ -157,12 +168,21 @@ namespace Vintagestory.GameContent
                 step.ToJson(job);
             }
 
-            capi.StoreModConfig(job, "tutorialsteps.json");
+            capi.StoreModConfig(job, "tutorial-"+PageCode+".json");
         }
 
         public void Load()
         {
-            stepData = capi.LoadModConfig("tutorialsteps.json");
+            try
+            {
+                stepData = capi.LoadModConfig("tutorial-" + PageCode + ".json");
+            }
+            catch (Exception e)
+            {
+                capi.Logger.Error("Failed to load tutorial-" + PageCode + ".json, the tutorial will be reset.");
+                capi.Logger.Error(e);
+            }
+            
             if (stepData != null)
             {
                 foreach (var step in steps)

@@ -4,6 +4,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class GuiDialogConfirmPurchase : GuiDialog
@@ -122,7 +124,7 @@ namespace Vintagestory.GameContent
 
         private void onDeliveryModeChanged(bool on)
         {
-            int deliveryCosts = (int)Math.Ceiling((traderEntity.Pos.XYZ.DistanceTo(auction.SrcAuctioneerEntityPos) - 200) / 2000f);
+            int deliveryCosts = auctionSys.DeliveryCostsByDistance(traderEntity.Pos.XYZ, auction.SrcAuctioneerEntityPos);
             var rtele = Composers["confirmauctionpurchase"].GetRichtext("totalCost");
 
             (rtele.Components[0] as RichTextComponent).DisplayText = Lang.Get("Total Cost: {0}", auction.Price + (on ? deliveryCosts : 0));

@@ -12,6 +12,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 
@@ -36,7 +38,7 @@ namespace Vintagestory.GameContent
         /// </summary>
         ItemStack baseMaterial;
 
-        Cuboidf[] selectionBoxes = new Cuboidf[0];
+        Cuboidf[] selectionBoxes = Array.Empty<Cuboidf>();
 
         ClayFormRenderer workitemRenderer;
 
@@ -265,7 +267,7 @@ namespace Vintagestory.GameContent
                     }
                     else
                     {
-                        Api.World.SpawnItemEntity(dropStack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                        Api.World.SpawnItemEntity(dropStack, Pos);
                     }
                 }
 
@@ -397,7 +399,7 @@ namespace Vintagestory.GameContent
 
         private bool OnCopyLayer(int layer)
         {
-            if (layer == 0) return false;
+            if (layer <= 0 || layer > 15) return false;
 
             bool didplace = false;
             int quantity = 4;
@@ -524,6 +526,7 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockRemoved()
         {
+            base.OnBlockRemoved();
             dlg?.TryClose();
 
             if (workitemRenderer != null)
@@ -655,7 +658,7 @@ namespace Vintagestory.GameContent
             }
 
             ((ICoreClientAPI)Api).Network.SendBlockEntityPacket(
-                Pos.X, Pos.Y, Pos.Z,
+                Pos,
                 (int)EnumClayFormingPacket.OnUserOver,
                 data
             );
@@ -668,7 +671,7 @@ namespace Vintagestory.GameContent
             {
                 if (baseMaterial != null)
                 {
-                    Api.World.SpawnItemEntity(baseMaterial, Pos.ToVec3d().Add(0.5));
+                    Api.World.SpawnItemEntity(baseMaterial, Pos);
                 }
                 Api.World.BlockAccessor.SetBlock(0, Pos);
             }
@@ -749,16 +752,23 @@ namespace Vintagestory.GameContent
 
                     selectedRecipe = recipes[selectedIndex];
                     selectedRecipeId = selectedRecipe.RecipeId;
-                    capi.Network.SendBlockEntityPacket(pos.X, pos.Y, pos.Z, (int)EnumClayFormingPacket.SelectRecipe, SerializerUtil.Serialize(recipes[selectedIndex].RecipeId));
+                    capi.Network.SendBlockEntityPacket(pos, (int)EnumClayFormingPacket.SelectRecipe, SerializerUtil.Serialize(recipes[selectedIndex].RecipeId));
 
                     RegenMeshForNextLayer();
                 },
                 () => {
-                    capi.Network.SendBlockEntityPacket(pos.X, pos.Y, pos.Z, (int)EnumClayFormingPacket.CancelSelect);
+                    capi.Network.SendBlockEntityPacket(pos, (int)EnumClayFormingPacket.CancelSelect);
                 },
                 pos, 
                 Api as ICoreClientAPI
             );
+
+            for (int i = 0; i < recipes.Count; i++)
+            {
+                ItemStack[] ingredCount = [ingredient.GetEmptyClone()];
+                ingredCount[0].StackSize = (int)Math.Ceiling(GameMath.Max(1, (recipes[i].Voxels.Cast<bool>().Count(voxel => voxel) - 64) / 25f));
+                (dlg as GuiDialogBlockEntityRecipeSelector).SetIngredientCounts(i, ingredCount);
+            }
 
             dlg.OnClosed += dlg.Dispose;
             dlg.TryOpen();

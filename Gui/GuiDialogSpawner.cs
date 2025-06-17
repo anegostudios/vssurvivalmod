@@ -7,6 +7,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     // We need a spawner block that spawns exactly 1 trader withing a configurable radius on solid ground
@@ -242,7 +244,7 @@ namespace Vintagestory.GameContent
             spawnerData.EntityCodes = SingleComposer.GetDropDown("entityCode").SelectedValues;
 
             byte[] data = SerializerUtil.Serialize(spawnerData);
-            capi.Network.SendBlockEntityPacket(blockEntityPos.X, blockEntityPos.Y, blockEntityPos.Z, 1001, data);
+            capi.Network.SendBlockEntityPacket(blockEntityPos, 1001, data);
             
             return true;
         }

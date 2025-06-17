@@ -4,6 +4,8 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ModsystemButterflySpawnCondsExtra : ModSystem {
@@ -159,27 +161,27 @@ namespace Vintagestory.GameContent
                 SidedPos.X += Math.Max(0, (windMotion - 0.2) / 20.0);
             }
 
-            if (ServerPos.SquareDistanceTo(Pos.XYZ) > 0.01 && !FeetInLiquid)
+            // What is this for? It seems to interfere with AiTaskButterflyWander Yaw setting causing them to circle in place 
+            /*if (ServerPos.SquareDistanceTo(Pos.XYZ) > 0.01 && !FeetInLiquid)
             {
                 float desiredYaw = (float)Math.Atan2(ServerPos.X - Pos.X, ServerPos.Z - Pos.Z);
 
                 float yawDist = GameMath.AngleRadDistance(SidedPos.Yaw, desiredYaw);
                 Pos.Yaw += GameMath.Clamp(yawDist, -35 * dt, 35 * dt);
                 Pos.Yaw = Pos.Yaw % GameMath.TWOPI;
-            }
+            }*/
         }
 
 
         private void SetAnimation(string animCode, float speed)
         {
-            AnimationMetaData animMeta;
-            if (!AnimManager.ActiveAnimationsByAnimCode.TryGetValue(animCode, out animMeta))
+            if (!AnimManager.ActiveAnimationsByAnimCode.TryGetValue(animCode, out AnimationMetaData animMeta))
             {
                 animMeta = new AnimationMetaData()
                 {
                     Code = animCode,
                     Animation = animCode,
-                    AnimationSpeed = speed,                   
+                    AnimationSpeed = speed,
                 };
 
                 AnimManager.ActiveAnimationsByAnimCode.Clear();
@@ -219,8 +221,7 @@ namespace Vintagestory.GameContent
 
                         string code = anim.Code == null ? anim.Name.ToLowerInvariant() : anim.Code;
                         active += ", " + code;
-                        AnimationMetaData animmeta;
-                        Properties.Client.AnimationsByMetaCode.TryGetValue(code, out animmeta);
+                        Properties.Client.AnimationsByMetaCode.TryGetValue(code, out AnimationMetaData animmeta);
 
                         if (animmeta == null)
                         {

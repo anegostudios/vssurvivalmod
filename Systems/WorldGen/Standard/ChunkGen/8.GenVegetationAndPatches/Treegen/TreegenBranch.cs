@@ -4,6 +4,8 @@ using System.Reflection;
 using System.Runtime.Serialization;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods.NoObf
 {
     public class Inheritance
@@ -96,12 +98,12 @@ namespace Vintagestory.ServerMods.NoObf
 
         /// <summary>
         /// Amount of sub branches over distance (beginning of branch = sequence 0, end of branch = sequence 1000)
-        /// </summary>            
+        /// </summary>
         public NatFloat branchQuantity = NatFloat.createUniform(1, 0);
 
         /// <summary>
         /// Amount of sub branches over distance. If null then for each branch event a new quantity will be read from branchQuantity. Otherwise branchQuantity wil be read once and evolved using branchQuantityEvolve's algo.
-        /// </summary>            
+        /// </summary>
         public EvolvingNatFloat branchQuantityEvolve = null;
 
         public TreeGenBranch()
@@ -128,17 +130,17 @@ namespace Vintagestory.ServerMods.NoObf
         }
 
 
-        public float WidthLoss(Random rand)
+        public float WidthLoss(IRandom rand)
         {
             return randomWidthLoss != null ? randomWidthLoss.nextFloat(1f, rand) : widthloss;
         }
 
 
-        public virtual int getBlockId(float width, TreeGenBlocks blocks, TreeGen gen, int treeSubType)
+        public virtual int getBlockId(IRandom rand, float width, TreeGenBlocks blocks, TreeGen gen, int treeSubType)
         {
             return
                 width < 0.3f || NoLogs ? blocks.GetLeaves(width, treeSubType) :
-                    (blocks.otherLogBlockCode != null && gen.TriggerRandomOtherBlock() ? blocks.otherLogBlockId : blocks.logBlockId)
+                    (blocks.otherLogBlockCode != null && gen.TriggerRandomOtherBlock(rand) ? blocks.otherLogBlockId : blocks.logBlockId)
             ;
         }
     }

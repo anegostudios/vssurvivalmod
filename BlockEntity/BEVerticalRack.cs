@@ -4,6 +4,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityMoldRack : BlockEntityDisplay
@@ -24,15 +26,15 @@ namespace Vintagestory.GameContent
         public override void Initialize(ICoreAPI api)
         {
             block = api.World.BlockAccessor.GetBlock(Pos);
-            mat.RotateYDeg(block.Shape.rotateY);
             base.Initialize(api);
-            
+
             if (api is ICoreClientAPI)
             {
+                mat.RotateYDeg(block.Shape.rotateY);
                 api.Event.RegisterEventBusListener(OnEventBusEvent);
             }
         }
-        
+
 
         private void OnEventBusEvent(string eventname, ref EnumHandling handling, IAttribute data)
         {
@@ -72,9 +74,15 @@ namespace Vintagestory.GameContent
                 {
                     AssetLocation sound = slot.Itemstack?.Block?.Sounds?.Place;
 
+                    var stackName = slot.Itemstack?.Collectible.Code;
                     if (TryPut(slot, blockSel))
                     {
                         Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
+                        Api.World.Logger.Audit("{0} Put 1x{1} into Rack at {2}.",
+                            byPlayer.PlayerName,
+                            stackName,
+                            Pos
+                        );
                         return true;
                     }
 
@@ -121,8 +129,13 @@ namespace Vintagestory.GameContent
 
                 if (stack.StackSize > 0)
                 {
-                    Api.World.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    Api.World.SpawnItemEntity(stack, Pos);
                 }
+                Api.World.Logger.Audit("{0} Took 1x{1} from Rack at {2}.",
+                    byPlayer.PlayerName,
+                    stack.Collectible.Code,
+                    Pos
+                );
 
                 MarkDirty();
                 return true;

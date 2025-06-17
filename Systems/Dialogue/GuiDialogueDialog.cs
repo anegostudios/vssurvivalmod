@@ -3,6 +3,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public delegate int DialogueTriggerDelegate(EntityAgent triggeringEntity, string value, JsonObject data);
@@ -28,10 +30,14 @@ namespace Vintagestory.GameContent
 
         public void ClearDialogue()
         {
-            textElem.SetNewText(new RichTextComponent[0]);
+            foreach (var cmp in textElem.Components)
+            {
+                cmp.Dispose();
+            }
+            textElem.SetNewText(System.Array.Empty<RichTextComponent>());
         }
 
-        public void EmitDialogue(RichTextComponent[] cmps)
+        public void EmitDialogue(RichTextComponentBase[] cmps)
         {
             foreach (var elem in textElem.Components)
             {
@@ -80,7 +86,7 @@ namespace Vintagestory.GameContent
                 .WithFixedAlignmentOffset(-GuiStyle.DialogToScreenPadding, 0);
 
             int w = 600;
-            int h = 250;
+            int h = 470;
             ElementBounds textBounds = ElementBounds.Fixed(0, 30, w, h);
 
             clipBounds = textBounds.ForkBoundingParent();
@@ -124,6 +130,10 @@ namespace Vintagestory.GameContent
             return true;
         }
 
+        public override void OnGuiClosed()
+        {
+            base.OnGuiClosed();
+        }
 
         void updateScrollbarBounds()
         {
@@ -142,6 +152,19 @@ namespace Vintagestory.GameContent
         {
             textElem.Bounds.fixedY = 0 - value;
             textElem.Bounds.CalcWorldBounds();
+        }
+        
+        public override void OnFinalizeFrame(float dt)
+        {
+            base.OnFinalizeFrame(dt);
+
+            var playerPos = capi.World.Player.Entity.Pos;
+
+            if (IsOpened() && playerPos.SquareDistanceTo(npcEntity.Pos) > EntityBehaviorConversable.StopTalkRangeSq)
+            {
+                // Because we cant do it in here
+                capi.Event.EnqueueMainThreadTask(() => TryClose(), "closedlg");
+            }
         }
     }
 }

@@ -1,5 +1,8 @@
 ﻿using System;
+using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+
+#nullable disable
 
 namespace Vintagestory.ServerMods
 {
@@ -14,22 +17,22 @@ namespace Vintagestory.ServerMods
         /// Distance from the north pole
         /// </summary>
         public double ZOffset { get; private set; }
-        
+
         public NoiseClimateRealistic(long seed, double mapsizeZ, int polarEquatorDistance, int spawnMinTemp, int spawnMaxTemp) : base(seed+1)
         {
             // range must be divided by the climate map scaling
             halfRange = polarEquatorDistance / TerraGenConfig.climateMapScale / TerraGenConfig.climateMapSubScale;
 
             // Our temperature values are stored in a range from 0..255, so lets descale them
-            int minTempDescaled = TerraGenConfig.DescaleTemperature(spawnMinTemp);
-            int maxTempDescaled = TerraGenConfig.DescaleTemperature(spawnMaxTemp);
+            int minTempDescaled = Climate.DescaleTemperature(spawnMinTemp);
+            int maxTempDescaled = Climate.DescaleTemperature(spawnMaxTemp);
 
             // Chose one random value between min and max temp
             double rndTemp = minTempDescaled + NextInt(maxTempDescaled - minTempDescaled + 1);
 
-            // A change of one degree 
+            // A change of one degree
             double zPerDegDescaled = halfRange / 255;
-           
+
             // We need to shift over z by this much to achieve 6-15 degrees
             ZOffset = rndTemp * zPerDegDescaled - mapsizeZ / 2;
         }
@@ -69,18 +72,18 @@ namespace Vintagestory.ServerMods
             int posZInt = (int)(posZ);
 
             return GameMath.BiSerpRgbColor(
-                (float)(posX - posXInt), 
+                (float)(posX - posXInt),
                 (float)(posZ - posZInt),
                 climateCache[posZInt * sizeX + posXInt],
                 climateCache[posZInt * sizeX + posXInt + 1],
-                climateCache[(posZInt + 1) * sizeX + posXInt], 
+                climateCache[(posZInt + 1) * sizeX + posXInt],
                 climateCache[(posZInt + 1) * sizeX + posXInt + 1]
             );
         }
 
         // 16-23 bits = Red = temperature
         // 8-15 bits = Green = rain
-        // 0-7 bits = Blue = unused 
+        // 0-7 bits = Blue = unused
         int GetRandomClimate(double posX, double posZ)
         {
             int tempRnd = NextInt(51) - 35;

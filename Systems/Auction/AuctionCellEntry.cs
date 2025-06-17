@@ -5,6 +5,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class AuctionCellEntry : GuiElement, IGuiElementCell
@@ -37,11 +39,11 @@ namespace Vintagestory.GameContent
         float accum1Sec;
         string prevExpireText;
 
-        public AuctionCellEntry(ICoreClientAPI capi, ElementBounds bounds, Auction auction, Action<int> onClick) : base(capi, bounds)
+        public AuctionCellEntry(ICoreClientAPI capi, InventoryBase inventoryAuction, ElementBounds bounds, Auction auction, Action<int> onClick) : base(capi, bounds)
         {
             iconSize = (float)scaled(unscaledIconSize);
 
-            dummySlot = new DummySlot(auction.ItemStack);
+            dummySlot = new DummySlot(auction.ItemStack, inventoryAuction);
             this.onClick = onClick;
             this.auction = auction;
 

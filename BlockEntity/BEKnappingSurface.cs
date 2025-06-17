@@ -11,6 +11,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityKnappingSurface : BlockEntity
@@ -23,7 +25,7 @@ namespace Vintagestory.GameContent
         // Temporary data, generated on be creation
 
         
-        Cuboidf[] selectionBoxes = new Cuboidf[0];
+        Cuboidf[] selectionBoxes = Array.Empty<Cuboidf>();
         KnappingRenderer workitemRenderer;
         
 
@@ -191,7 +193,7 @@ namespace Vintagestory.GameContent
                     }
                     else
                     {
-                        Api.World.SpawnItemEntity(dropStack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                        Api.World.SpawnItemEntity(dropStack, Pos);
                     }
 
                     if (tries++ > 1000)
@@ -417,6 +419,7 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockRemoved()
         {
+            base.OnBlockRemoved();
             workitemRenderer?.Dispose();
             workitemRenderer = null;
 
@@ -506,7 +509,7 @@ namespace Vintagestory.GameContent
             }
 
             ((ICoreClientAPI)Api).Network.SendBlockEntityPacket(
-                Pos.X, Pos.Y, Pos.Z,
+                Pos,
                 (int)EnumClayFormingPacket.OnUserOver,
                 data
             );
@@ -519,7 +522,7 @@ namespace Vintagestory.GameContent
             {
                 if (BaseMaterial != null)
                 {
-                    Api.World.SpawnItemEntity(BaseMaterial, Pos.ToVec3d().Add(0.5));
+                    Api.World.SpawnItemEntity(BaseMaterial, Pos);
                 }
                 Api.World.BlockAccessor.SetBlock(0, Pos);
                 Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
@@ -585,10 +588,10 @@ namespace Vintagestory.GameContent
                 stacks.ToArray(),
                 (selectedIndex) => {
                     selectedRecipeId = recipes[selectedIndex].RecipeId;
-                    capi.Network.SendBlockEntityPacket(pos.X, pos.Y, pos.Z, (int)EnumClayFormingPacket.SelectRecipe, SerializerUtil.Serialize(recipes[selectedIndex].RecipeId));
+                    capi.Network.SendBlockEntityPacket(pos, (int)EnumClayFormingPacket.SelectRecipe, SerializerUtil.Serialize(recipes[selectedIndex].RecipeId));
                 },
                 () => {
-                    capi.Network.SendBlockEntityPacket(pos.X, pos.Y, pos.Z, (int)EnumClayFormingPacket.CancelSelect);
+                    capi.Network.SendBlockEntityPacket(pos, (int)EnumClayFormingPacket.CancelSelect);
                 },
                 pos,
                 Api as ICoreClientAPI

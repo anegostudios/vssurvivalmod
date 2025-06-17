@@ -3,15 +3,18 @@ using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
     public class BlockPlantDamageOnTouch : BlockDamageOnTouch
     {
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldgenRandom)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, IRandom worldgenRandom, BlockPatchAttributes attributes = null)
         {
-            Block block = blockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
-            return block.Fertility > 0 && base.TryPlaceBlockForWorldGen(blockAccessor, pos, onBlockFace, worldgenRandom);
+            Block blockBelow = blockAccessor.GetBlockBelow(pos);
+            return blockBelow.Fertility > 0 && base.TryPlaceBlockForWorldGen(blockAccessor, pos, onBlockFace, worldgenRandom, attributes);
         }
     }
 
@@ -26,7 +29,7 @@ namespace Vintagestory.GameContent
             base.OnLoaded(api);
             sprintIntoDamage = Attributes["sprintIntoDamage"].AsFloat(1);
             fallIntoDamageMul = Attributes["fallIntoDamageMul"].AsFloat(30);
-            immuneCreatures = new HashSet<AssetLocation>(Attributes["immuneCreatures"].AsObject<AssetLocation[]>(new AssetLocation[0], this.Code.Domain));
+            immuneCreatures = new HashSet<AssetLocation>(Attributes["immuneCreatures"].AsObject<AssetLocation[]>(Array.Empty<AssetLocation>(), this.Code.Domain));
         }
 
         public override void OnEntityInside(IWorldAccessor world, Entity entity, BlockPos pos)
@@ -35,7 +38,7 @@ namespace Vintagestory.GameContent
             {
                 if (immuneCreatures.Contains(entity.Code)) return;
 
-                if (world.Rand.NextDouble() > 0.05) 
+                if (world.Rand.NextDouble() > 0.05)
                 {
                     entity.ReceiveDamage(new DamageSource() { Source = EnumDamageSource.Block, SourceBlock = this, Type = EnumDamageType.PiercingAttack, SourcePos = pos.ToVec3d() }, sprintIntoDamage);
                     entity.ServerPos.Motion.Set(0, 0, 0);

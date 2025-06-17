@@ -1,9 +1,12 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+
+#nullable disable
 
 namespace Vintagestory.ServerMods
 {
@@ -76,8 +79,10 @@ namespace Vintagestory.ServerMods
         {
             chanceMultiplier = api.Assets.Get("worldgen/deposits.json").ToObject<Deposits>().ChanceMultiplier;
 
-            Dictionary<AssetLocation, DepositVariant[]> depositFiles = api.Assets.GetMany<DepositVariant[]>(api.World.Logger, "worldgen/deposits/");
-            List<DepositVariant> variants = new List<DepositVariant>();
+            var depositFiles = api.Assets.GetMany<DepositVariant[]>(api.World.Logger, "worldgen/deposits/")
+                .OrderBy(d=>d.Key.ToString());
+            // order the list so when iterating over it for wgen it is always the same
+            var variants = new List<DepositVariant>();
 
             foreach (var val in depositFiles)
             {
@@ -143,7 +148,7 @@ namespace Vintagestory.ServerMods
                     }
                 }
             }
-            
+
             verticalDistortBottom = GenMaps.GetDepositVerticalDistort(seed + 12);
             verticalDistortTop = GenMaps.GetDepositVerticalDistort(seed + 28);
 
@@ -153,8 +158,7 @@ namespace Vintagestory.ServerMods
 
         MapLayerBase getOrCreateMapLayer(int seed, string oremapCode, Dictionary<string, MapLayerBase> maplayersByCode, float scaleMul, float contrastMul, float sub)
         {
-            MapLayerBase ml;
-            if (!maplayersByCode.TryGetValue(oremapCode, out ml))
+            if (!maplayersByCode.TryGetValue(oremapCode, out MapLayerBase ml))
             {
                 NoiseOre noiseOre = new NoiseOre(seed + oremapCode.GetNonRandomizedHashCode());
                 maplayersByCode[oremapCode] = ml = GenMaps.GetOreMap(seed + oremapCode.GetNonRandomizedHashCode() + 1, noiseOre, scaleMul, contrastMul, sub);
@@ -216,7 +220,7 @@ namespace Vintagestory.ServerMods
                 float qModified = variant.TriesPerChunk * quantityFactor * chanceMultiplier * (variant.ScaleWithWorldheight ? scaleAdjustMul : 1);
                 int quantity = (int)qModified;
                 quantity += chunkRand.NextInt(100) < 100 * (qModified - quantity) ? 1 : 0;
-                
+
                 while (quantity-- > 0)
                 {
                     tmpPos.Set(fromBaseX + chunkRand.NextInt(chunksize), -99, fromBaseZ + chunkRand.NextInt(chunksize));
@@ -237,8 +241,8 @@ namespace Vintagestory.ServerMods
             }
         }
 
-        
-        
+
+
         public virtual void GenDeposit(IServerChunk[] chunks, int chunkX, int chunkZ, BlockPos depoCenterPos, DepositVariant variant)
         {
             int lx = GameMath.Mod(depoCenterPos.X, chunksize);
@@ -249,7 +253,7 @@ namespace Vintagestory.ServerMods
             {
                 IMapChunk originMapchunk = api.WorldManager.GetMapChunk(depoCenterPos.X / chunksize, depoCenterPos.Z / chunksize);
 
-                if (originMapchunk == null) return; // Definition: Climate dependent deposits are limited to size 32x32x32 
+                if (originMapchunk == null) return; // Definition: Climate dependent deposits are limited to size 32x32x32
 
                 depoCenterPos.Y = originMapchunk.RainHeightMap[lz * chunksize + lx];
 
@@ -261,10 +265,10 @@ namespace Vintagestory.ServerMods
 
                 int climate = climateMap.GetUnpaddedColorLerpedForNormalizedPos(normXInRegionClimate, normZInRegionClimate);
 
-                float rainRel = TerraGenConfig.GetRainFall((climate >> 8) & 0xff, depoCenterPos.Y) / 255f;
+                float rainRel = Climate.GetRainFall((climate >> 8) & 0xff, depoCenterPos.Y) / 255f;
                 if (rainRel < variant.Climate.MinRain || rainRel > variant.Climate.MaxRain) return;
 
-                float temp = TerraGenConfig.GetScaledAdjustedTemperatureFloat((climate >> 16) & 0xff, depoCenterPos.Y - TerraGenConfig.seaLevel);
+                float temp = Climate.GetScaledAdjustedTemperatureFloat((climate >> 16) & 0xff, depoCenterPos.Y - TerraGenConfig.seaLevel);
                 if (temp < variant.Climate.MinTemp || temp > variant.Climate.MaxTemp) return;
 
                 double seaLevel = TerraGenConfig.seaLevel;

@@ -8,6 +8,9 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -34,8 +37,13 @@ namespace Vintagestory.GameContent
         float revertBlockAboveTemperature = 0;
 
         float growthRateMul = 1f;
+        NatFloat nextStageMonths = NatFloat.create(EnumDistribution.UNIFORM, 0.98f, 0.09f);
 
         public string[] creatureDietFoodTags;
+
+        public bool IsEmpty => Block.Variant["state"] == "empty";
+        public bool IsFlowering => Block.Variant["state"] == "flowering";
+        public bool IsRipe => Block.Variant["state"] == "ripe";
 
         public BlockEntityBerryBush() : base()
         {
@@ -75,31 +83,29 @@ namespace Vintagestory.GameContent
             }
         }
 
-        internal void Prune()
+        public void Prune()
         {
             Pruned = true;
             LastPrunedTotalDays = Api.World.Calendar.TotalDays;
             MarkDirty(true);
         }
 
-        private void CheckGrow(float dt)
+        protected virtual void CheckGrow(float dt)
         {
             if (!(Api as ICoreServerAPI).World.IsFullyLoadedChunk(Pos)) return;
 
             if (Block.Attributes == null)
-                {
+            {
 #if DEBUG
                 Api.World.Logger.Notification("Ghost berry bush block entity at {0}. Block.Attributes is null, will remove game tick listener", Pos);
-                if (TickHandlers != null) foreach (long handlerId in TickHandlers)
-                {
-                    Api.Event.UnregisterGameTickListener(handlerId);
-                }
 #endif
+                UnregisterAllTickListeners();
                 return;
             }
 
-            // In case this block was imported from another older world. In that case lastCheckAtTotalDays would be a future date.
+            // In case this block was imported from another older world. In that case lastCheckAtTotalDays and LastPrunedTotalDays would be a future date.
             lastCheckAtTotalDays = Math.Min(lastCheckAtTotalDays, Api.World.Calendar.TotalDays);
+            LastPrunedTotalDays = Math.Min(LastPrunedTotalDays, Api.World.Calendar.TotalDays);
 
 
             // We don't need to check more than one year because it just begins to loop then
@@ -154,7 +160,7 @@ namespace Vintagestory.GameContent
                 
                 if (stop || reset)
                 {
-                    transitionHoursLeft += intervalHours;
+                    if (!IsRipe) transitionHoursLeft += intervalHours;
                     
                     if (reset)
                     {
@@ -162,8 +168,8 @@ namespace Vintagestory.GameContent
                             temperature < revertBlockBelowTemperature ||
                             temperature > revertBlockAboveTemperature;
 
-                        transitionHoursLeft = GetHoursForNextStage();
-                        if (revert && Block.Variant["state"] != "empty")
+                        if (!IsRipe) transitionHoursLeft = GetHoursForNextStage();
+                        if (revert && !IsEmpty)
                         {
                             Block nextBlock = Api.World.GetBlock(Block.CodeWithVariant("state", "empty"));
                             Api.World.BlockAccessor.ExchangeBlock(nextBlock.BlockId, Pos);
@@ -175,10 +181,14 @@ namespace Vintagestory.GameContent
                     continue;
                 }
 
+                if (Pruned && Api.World.Calendar.TotalDays - LastPrunedTotalDays > Api.World.Calendar.DaysPerYear)
+                {
+                    Pruned = false;
+                }
+
                 if (transitionHoursLeft <= 0)
                 {
                     if (!DoGrow()) return;
-                    transitionHoursLeft = GetHoursForNextStage();
                 }
             }
 
@@ -188,6 +198,7 @@ namespace Vintagestory.GameContent
         public override void OnExchanged(Block block)
         {
             base.OnExchanged(block);
+            transitionHoursLeft = GetHoursForNextStage();
             if (Api?.Side == EnumAppSide.Server) UpdateTransitionsFromBlock();
         }
 
@@ -197,13 +208,14 @@ namespace Vintagestory.GameContent
             if (worldForResolve.Side == EnumAppSide.Server) UpdateTransitionsFromBlock();
         }
 
-        protected void UpdateTransitionsFromBlock()
+        protected virtual void UpdateTransitionsFromBlock()
         {
             // In case we have a Block which is not a BerryBush block (why does this happen?)
             if (Block?.Attributes == null)
             {
                 resetBelowTemperature = stopBelowTemperature = revertBlockBelowTemperature = -999;
                 resetAboveTemperature = stopAboveTemperature = revertBlockAboveTemperature = 999;
+                nextStageMonths = NatFloat.create(EnumDistribution.UNIFORM, 0.98f, 0.09f);
                 return;
             }
             // These Attributes lookups are costly because Newtonsoft JSON lib ~~sucks~~ uses a weird approximation to a Dictionary in JToken.TryGetValue() but it can ignore case
@@ -213,34 +225,19 @@ namespace Vintagestory.GameContent
             stopAboveTemperature = Block.Attributes["stopAboveTemperature"].AsFloat(999);
             revertBlockBelowTemperature = Block.Attributes["revertBlockBelowTemperature"].AsFloat(-999);
             revertBlockAboveTemperature = Block.Attributes["revertBlockAboveTemperature"].AsFloat(999);
+            nextStageMonths = Block.Attributes["nextStageMonths"].AsObject<NatFloat>(nextStageMonths);
         }
 
-        public double GetHoursForNextStage()
+        public virtual double GetHoursForNextStage()
         {
-            if (IsRipe()) return 4 * (5 + rand.NextDouble()) * 1.6 * Api.World.Calendar.HoursPerDay;
+            if (IsRipe) return 4 * nextStageMonths.nextFloat() * Api.World.Calendar.DaysPerMonth * Api.World.Calendar.HoursPerDay;
 
-            return (5 + rand.NextDouble()) * 1.6 * Api.World.Calendar.HoursPerDay / growthRateMul;
+            return nextStageMonths.nextFloat() * Api.World.Calendar.DaysPerMonth * Api.World.Calendar.HoursPerDay / growthRateMul;
         }
 
-        public bool IsRipe()
+        protected virtual bool DoGrow()
         {
-            Block block = Api.World.BlockAccessor.GetBlock(Pos);
-            return block.LastCodePart() == "ripe";
-        }
-
-        bool DoGrow()
-        {
-            if (Api.World.Calendar.TotalDays - LastPrunedTotalDays > Api.World.Calendar.DaysPerYear)
-            {
-                Pruned = false;
-            }
-
-            Block block = Api.World.BlockAccessor.GetBlock(Pos);
-            string nowCodePart = block.LastCodePart();
-            string nextCodePart = (nowCodePart == "empty") ? "flowering" : ((nowCodePart == "flowering") ? "ripe" : "empty");
-
-
-            AssetLocation loc = block.CodeWithParts(nextCodePart);
+            AssetLocation loc = Block.CodeWithVariant("state", IsEmpty ? "flowering" : (IsFlowering ? "ripe" : "empty"));
             if (!loc.Valid)
             {
                 Api.World.BlockAccessor.RemoveBlockEntity(Pos);
@@ -290,20 +287,11 @@ namespace Vintagestory.GameContent
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
         {
-            Block block = Api.World.BlockAccessor.GetBlock(Pos);
             double daysleft = transitionHoursLeft / Api.World.Calendar.HoursPerDay;
 
-            /*if (forPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative)
-            {
-                return "" + daysleft;
-            }*/
+            if (IsRipe) return;
 
-            if (block.LastCodePart() == "ripe")
-            {
-                return;
-            }
-
-            string code = (block.LastCodePart() == "empty") ? "flowering" : "ripen";
+            string code = IsEmpty ? "flowering" : "ripen";
 
             if (daysleft < 1)
             {
@@ -325,14 +313,13 @@ namespace Vintagestory.GameContent
         #region IAnimalFoodSource impl
         public bool IsSuitableFor(Entity entity, CreatureDiet diet)
         {
-            if (diet == null) return false;
-            if (!IsRipe()) return false;
+            if (diet == null || !IsRipe) return false;
             return diet.Matches(EnumFoodCategory.NoNutrition, this.creatureDietFoodTags);
         }
 
         public float ConsumeOnePortion(Entity entity)
         {
-            AssetLocation loc = Block.CodeWithParts("empty");
+            AssetLocation loc = Block.CodeWithVariant("state", "empty");
             if (!loc.Valid)
             {
                 Api.World.BlockAccessor.RemoveBlockEntity(Pos);
@@ -343,12 +330,8 @@ namespace Vintagestory.GameContent
             if (nextBlock?.Code == null) return 0f;
 
             var bbh = Block.GetBehavior<BlockBehaviorHarvestable>();
-            if (bbh?.harvestedStack != null)
-            {
-                ItemStack dropStack = bbh.harvestedStack.GetNextItemStack();
-                Api.World.PlaySoundAt(bbh.harvestingSound, Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5);
-                Api.World.SpawnItemEntity(dropStack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
-            }
+            bbh?.harvestedStacks?.Foreach(harvestedStack => { Api.World.SpawnItemEntity(harvestedStack?.GetNextItemStack(), Pos); });
+            Api.World.PlaySoundAt(bbh?.harvestingSound, Pos, 0);
 
 
             Api.World.BlockAccessor.ExchangeBlock(nextBlock.BlockId, Pos);

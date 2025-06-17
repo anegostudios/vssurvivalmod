@@ -6,6 +6,8 @@ using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 using Vintagestory.ServerMods.NoObf;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
 
@@ -44,7 +46,7 @@ namespace Vintagestory.ServerMods
 
         public void LoadTreeGenerators()
         {
-            Dictionary<AssetLocation, TreeGenConfig> TreeGenModelsByTree = sapi.Assets.GetMany<TreeGenConfig>(sapi.Server.Logger, "worldgen/treegen");
+            var treeGenModelsByTree = sapi.Assets.GetMany<TreeGenConfig>(sapi.Server.Logger, "worldgen/treegen");
 
             var worldprops = sapi.Assets.Get<WoodWorldProperty>(new AssetLocation("worldproperties/block/wood.json"));
             Dictionary<string, EnumTreeType> treetypes = new Dictionary<string, EnumTreeType>();
@@ -56,7 +58,7 @@ namespace Vintagestory.ServerMods
             bool potatoeMode = sapi.World.Config.GetAsString("potatoeMode", "false").ToBool() == true;
 
             string names = "";
-            foreach (var val in TreeGenModelsByTree)
+            foreach (var val in treeGenModelsByTree)
             {
                 AssetLocation name = val.Key.Clone();
 
@@ -64,7 +66,7 @@ namespace Vintagestory.ServerMods
                 {
                     names += ", ";
                 }
-                    
+
                 names += name;
 
                 name.Path = val.Key.Path.Substring("worldgen/treegen/".Length);
@@ -84,14 +86,13 @@ namespace Vintagestory.ServerMods
             }
 
 
-            sapi.Server.LogNotification("Reloaded {0} tree generators", TreeGenModelsByTree.Count);
+            sapi.Server.LogNotification("Reloaded {0} tree generators", treeGenModelsByTree.Count);
 
         }
 
         public ITreeGenerator GetGenerator(AssetLocation generatorCode)
         {
-            ITreeGenerator gen;
-            sapi.World.TreeGenerators.TryGetValue(generatorCode, out gen);
+            sapi.World.TreeGenerators.TryGetValue(generatorCode, out ITreeGenerator gen);
             return gen;
         }
 
@@ -107,7 +108,7 @@ namespace Vintagestory.ServerMods
 
         public void RunGenerator(AssetLocation treeName, IBlockAccessor api, BlockPos pos, TreeGenParams treeGenParams)
         {
-            sapi.World.TreeGenerators[treeName].GrowTree(api, pos, treeGenParams);
+            sapi.World.TreeGenerators[treeName].GrowTree(api, pos, treeGenParams, new NormalRandom());
         }
     }
 }

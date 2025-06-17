@@ -15,6 +15,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     public enum EnumSlabPlaceMode
@@ -161,7 +163,7 @@ namespace Vintagestory.ServerMods
                     }
                     else
                     {
-                        blockCode = block.CodeWithVariant("rot", BlockFacing.HorizontalFromAngle(byPlayer.Entity.Pos.Yaw).Code);
+                        blockCode = block.CodeWithVariant("rot", BlockFacing.HorizontalFromYaw(byPlayer.Entity.Pos.Yaw).Code);
                     }
                 }
             }
@@ -173,7 +175,7 @@ namespace Vintagestory.ServerMods
                 if (blockSel.Face.IsVertical)
                 {
                     v = blockSel.Face.Code;
-                    h = BlockFacing.HorizontalFromAngle(byPlayer.Entity.Pos.Yaw).Code;
+                    h = BlockFacing.HorizontalFromYaw(byPlayer.Entity.Pos.Yaw).Code;
                 }
                 else if (rotateV4)
                 {
@@ -184,7 +186,7 @@ namespace Vintagestory.ServerMods
                     else
                     {
                         // Default to player facing.
-                        h = BlockFacing.HorizontalFromAngle(byPlayer.Entity.Pos.Yaw).Code;
+                        h = BlockFacing.HorizontalFromYaw(byPlayer.Entity.Pos.Yaw).Code;
                     }
                     switch (blockSel.Face.Axis)
                     {
@@ -288,7 +290,7 @@ namespace Vintagestory.ServerMods
                 if (world.Rand.NextDouble() > dropChance)
                 {
                     handling = EnumHandling.PreventDefault;
-                    return new ItemStack[0];
+                    return Array.Empty<ItemStack>();
                 }
             }
 

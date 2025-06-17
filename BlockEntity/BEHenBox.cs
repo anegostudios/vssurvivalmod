@@ -7,6 +7,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     /** Mechanics
@@ -26,7 +28,7 @@ namespace Vintagestory.GameContent
     public class BlockEntityHenBox : BlockEntity, IAnimalNest
     {
         internal InventoryGeneric inventory;
-        string fullCode = "1egg";
+        protected string fullCode = "1egg";
 
         public Size2i AtlasSize => (Api as ICoreClientAPI).BlockTextureAtlas.Size;
 
@@ -35,10 +37,10 @@ namespace Vintagestory.GameContent
 
         public Entity occupier;
 
-        private int[] parentGenerations = new int[10];
-        private AssetLocation[] chickNames = new AssetLocation[10];
-        private double timeToIncubate;
-        private double occupiedTimeLast;
+        protected int[] parentGenerations = new int[10];
+        protected AssetLocation[] chickNames = new AssetLocation[10];
+        protected double timeToIncubate;
+        protected double occupiedTimeLast;
 
 
         public BlockEntityHenBox()
@@ -64,7 +66,7 @@ namespace Vintagestory.GameContent
         public float DistanceWeighting => 2 / (CountEggs() + 2);
 
 
-        public bool TryAddEgg(Entity entity, string chickCode, double incubationTime)
+        public virtual bool TryAddEgg(Entity entity, string chickCode, double incubationTime)
         {
             if (Block.LastCodePart() == fullCode)
             {
@@ -82,7 +84,7 @@ namespace Vintagestory.GameContent
             parentGenerations[eggs] = entity.WatchedAttributes.GetInt("generation", 0);
             chickNames[eggs] = chickCode == null ? null : entity.Code.CopyWithPath(chickCode);
             eggs++;
-            Block replacementBlock = Api.World.GetBlock(new AssetLocation(Block.FirstCodePart() + "-" + eggs + (eggs > 1 ? "eggs" : "egg")));
+            Block replacementBlock = Api.World.GetBlock(Block.CodeWithVariant("eggCount", eggs + ((eggs > 1) ? "eggs" : "egg")));
             if (replacementBlock == null)
             {
                 return false;
@@ -94,13 +96,13 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        private int CountEggs()
+        protected int CountEggs()
         {
             int eggs = Block.LastCodePart()[0];
             return eggs <= '9' && eggs >= '0' ? eggs - '0' : 0;
         }
 
-        private void On1500msTick(float dt)
+        protected virtual void On1500msTick(float dt)
         {
             if (timeToIncubate == 0) return;
 

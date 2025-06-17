@@ -1,6 +1,8 @@
-﻿using ProtoBuf;
+using Newtonsoft.Json;
+using ProtoBuf;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -11,8 +13,62 @@ using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 using Vintagestory.ServerMods;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
+    
+    public class MobExtraSpawnsTemp
+    {
+        public TempStormMobConfig temporalStormSpawns;
+    }
+
+    [JsonObject(MemberSerialization.OptIn)]
+    public class TempStormMobConfig
+    {
+        [JsonProperty]
+        public SpawnsByStormStrength spawnsByStormStrength;
+        [JsonProperty]
+        public RareStormSpawns rareSpawns;
+
+        public class SpawnsByStormStrength
+        {
+            [JsonProperty]
+            public float QuantityMul;
+            [JsonProperty]
+            public Dictionary<string, AssetLocation[]> variantGroups;
+            [JsonProperty]
+            public Dictionary<string, float> variantQuantityMuls;
+
+            public Dictionary<string, EntityProperties[]> resolvedVariantGroups;
+
+            [JsonProperty]
+            public Dictionary<string, TempStormSpawnPattern> spawnPatterns;
+        }
+
+        public class TempStormSpawnPattern
+        {
+            public float Weight;
+            public Dictionary<string, float> GroupWeights;
+        }
+
+        public class RareStormSpawns
+        {
+            public RareStormSpawnsVariant[] Variants;
+        }
+
+        public class RareStormSpawnsVariant
+        {
+            public AssetLocation Code;
+            public string GroupCode;
+            public float ChancePerStorm;
+
+            public EntityProperties ResolvedCode;
+        }
+    }
+
+    
+
     public enum EnumTempStormStrength
     {
         Light, Medium, Heavy
@@ -35,16 +91,15 @@ namespace Vintagestory.GameContent
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
     public class TemporalStormRunTimeData
     {
-        public bool nowStormActive;
-        
+        public string spawnPatternCode="default";
+        public bool nowStormActive;       
         public int stormDayNotify = 99;
         public float stormGlitchStrength;
         public double stormActiveTotalDays = 0;
-
-
         public double nextStormTotalDays = 5;
         public EnumTempStormStrength nextStormStrength = 0;
         public double nextStormStrDouble;
+        public Dictionary<string, int> rareSpawnCount;
     }
 
     public delegate float GetTemporalStabilityDelegate(float stability, double x, double y, double z);
@@ -58,8 +113,6 @@ namespace Vintagestory.GameContent
         ICoreAPI api;
         ICoreServerAPI sapi;
 
-        EntityProperties[] drifterTypes;
-        EntityProperties doubleHeadedDrifterType;
         bool temporalStabilityEnabled;
         bool stormsEnabled;
 
@@ -69,12 +122,15 @@ namespace Vintagestory.GameContent
         TemporalStormConfig config;
         TemporalStormRunTimeData data = new TemporalStormRunTimeData();
 
+        TempStormMobConfig mobConfig;
+
         ModSystemRifts riftSys;
 
         public float modGlitchStrength;
 
         public event GetTemporalStabilityDelegate OnGetTemporalStability;
 
+        public HashSet<AssetLocation> stormMobCache = new HashSet<AssetLocation>();
 
         string worldConfigStorminess;
 
@@ -292,7 +348,7 @@ namespace Vintagestory.GameContent
 
             if (data.nowStormActive)
             {
-                trySpawnDrifters();
+                trySpawnMobs();
             }
 
             double nextStormDaysLeft = data.nextStormTotalDays - api.World.Calendar.TotalDays;
@@ -335,13 +391,11 @@ namespace Vintagestory.GameContent
                     var list = ((CachingConcurrentDictionary<long, Entity>)(api.World as IServerWorldAccessor).LoadedEntities).Values;
                     foreach (var e in list)
                     {
-                        if (e is EntityHumanoid && e.Code.Path.Contains("drifter"))
+                        if (stormMobCache.Contains(e.Code))
                         {
                             e.Attributes.SetBool("ignoreDaylightFlee", true);
                         }
-                        
                     }
-
                 }
 
                 double activeDaysLeft = data.stormActiveTotalDays - api.World.Calendar.TotalDays;
@@ -363,7 +417,7 @@ namespace Vintagestory.GameContent
                     var list = ((CachingConcurrentDictionary<long,Entity>)(api.World as IServerWorldAccessor).LoadedEntities).Values;
                     foreach (var e in list)
                     {
-                        if (e is EntityHumanoid && e.Code.Path.Contains("drifter"))
+                        if (stormMobCache.Contains(e.Code))
                         {
                             e.Attributes.RemoveAttribute("ignoreDaylightFlee");
 
@@ -391,10 +445,31 @@ namespace Vintagestory.GameContent
 
             int index = (int)Math.Min(2, stormStrength);
             data.nextStormStrength = (EnumTempStormStrength)index;
-
             data.nextStormStrDouble = Math.Max(0, addStrength);
 
-            doubleHeadedDrifterCountByPlayer.Clear();
+            var patterns = mobConfig.spawnsByStormStrength.spawnPatterns;
+            var patterncodes = patterns.Keys.ToArray().Shuffle(sapi.World.Rand);
+            float sumWeight = patterncodes.Sum(code => patterns[code].Weight);
+            var rndval = sapi.World.Rand.NextDouble() * sumWeight;
+            for (int i = 0; i < patterncodes.Length; i++)
+            {
+                var patterncode = patterncodes[i];
+                var pattern = patterns[patterncode];
+                rndval -= pattern.Weight;
+                if (rndval <= 0)
+                {
+                    data.spawnPatternCode = patterncode;
+                }
+            }
+
+            data.rareSpawnCount = new Dictionary<string, int>();
+
+            foreach (var val in mobConfig.rareSpawns.Variants)
+            {
+                data.rareSpawnCount[val.Code] = GameMath.RoundRandom(sapi.World.Rand, val.ChancePerStorm);
+            }
+
+            rareSpawnsCountByCodeByPlayer.Clear();
         }
 
 
@@ -402,9 +477,9 @@ namespace Vintagestory.GameContent
         long spawnBreakUntilMs;
         int nobreakSpawns = 0;
 
-        Dictionary<string, int> doubleHeadedDrifterCountByPlayer = new Dictionary<string, int>();
+        Dictionary<string, Dictionary<string, int>> rareSpawnsCountByCodeByPlayer = new Dictionary<string, Dictionary<string, int>>();
 
-        private void trySpawnDrifters()
+        private void trySpawnMobs()
         {
             float str = StormStrength;
             if (str < 0.01f) return;
@@ -412,9 +487,6 @@ namespace Vintagestory.GameContent
 
             var part = api.ModLoader.GetModSystem<EntityPartitioning>();
             int range = 15;
-            Vec3d plrPos;
-            Vec3d spawnPos = new Vec3d();
-            BlockPos spawnPosi = new BlockPos();
 
             nobreakSpawns++;
             if (api.World.Rand.NextDouble() + 0.04f < nobreakSpawns / 100f)
@@ -422,41 +494,95 @@ namespace Vintagestory.GameContent
                 spawnBreakUntilMs = api.World.ElapsedMilliseconds + 1000 * api.World.Rand.Next(15);
             }
 
-
-            foreach (var val in api.World.AllOnlinePlayers)
+            foreach (var plr in api.World.AllOnlinePlayers)
             {
-                if (api.World.Rand.NextDouble() < 0.75) continue;
+                if (api.World.Rand.NextDouble() < 0.7) continue;
+                trySpawnForPlayer(plr, range, str, part);
+            }
+        }
 
-                int dHeadedDrifterCount = 0;
+        private void trySpawnForPlayer(IPlayer plr, int range, float stormStr, EntityPartitioning part)
+        {
+            Vec3d spawnPos = new Vec3d();
+            BlockPos spawnPosi = new BlockPos();
 
+            var rareSpawns = mobConfig.rareSpawns.Variants.Shuffle(api.World.Rand);
+            var spawnPattern = mobConfig.spawnsByStormStrength.spawnPatterns[data.spawnPatternCode];
+            var variantGroups = mobConfig.spawnsByStormStrength.variantGroups;
+            var variantMuls = mobConfig.spawnsByStormStrength.variantQuantityMuls;
+            var resovariantGroups = mobConfig.spawnsByStormStrength.resolvedVariantGroups;
+            Dictionary<string, int> rareSpawnCounts = new Dictionary<string, int>();
+            Dictionary<string, int> mainSpawnCountsByGroup = new Dictionary<string, int>();
 
-                int drifterCount = 0;
-                plrPos = val.Entity.ServerPos.XYZ;
-                part.WalkEntities(plrPos, range + 5, (e) => {
-                    if (e.Code.Path.Contains("drifter"))
-                    {
-                        drifterCount++;
-                        dHeadedDrifterCount += e.Code.Path.Contains("drifter-double-headed") ? 1 : 0;
-                    }
-                    return true; 
-                }, EnumEntitySearchType.Creatures);
-
-                doubleHeadedDrifterCountByPlayer.TryGetValue(val.PlayerUID, out int prevcnt);
-                doubleHeadedDrifterCountByPlayer[val.PlayerUID] = dHeadedDrifterCount + prevcnt;
-
-                if (drifterCount <= 2 + str * 8)
+            var plrPos = plr.Entity.ServerPos.XYZ;
+            part.WalkEntities(plrPos, range + 30, (e) =>
+            {
+                foreach (var vg in variantGroups)
                 {
-                    int tries = 15;
+                    if (vg.Value.Contains(e.Code))
+                    {
+                        mainSpawnCountsByGroup.TryGetValue(vg.Key, out int cnt);
+                        mainSpawnCountsByGroup[vg.Key] = cnt + 1;
+                    }
+                }
+
+                for (int i = 0; i < rareSpawns.Length; i++)
+                {
+                    if (rareSpawns[i].Code.Equals(e.Code)) {
+                        rareSpawnCounts.TryGetValue(rareSpawns[i].GroupCode, out int cnt);
+                        rareSpawnCounts[rareSpawns[i].GroupCode] = cnt + 1; 
+                        break; 
+                    }
+                }
+                return true;
+            }, EnumEntitySearchType.Creatures);
+
+            if (!rareSpawnsCountByCodeByPlayer.TryGetValue(plr.PlayerUID, out var plrdict))
+            {
+                plrdict = rareSpawnsCountByCodeByPlayer[plr.PlayerUID] = new Dictionary<string, int>();
+            }
+
+            foreach (var rspc in rareSpawnCounts)
+            {
+                plrdict.TryGetValue(rspc.Key, out int prevcnt);
+                rareSpawnCounts.TryGetValue(rspc.Key, out int cnt);
+                plrdict[rspc.Key] = cnt + prevcnt;
+            }
+
+            foreach (var group in spawnPattern.GroupWeights)
+            {
+                int allowedCount = (int)Math.Round((2 + stormStr * 8) * group.Value);
+
+                if (variantMuls.TryGetValue(group.Key, out var mul))
+                {
+                    allowedCount = (int)Math.Round(allowedCount * mul);
+                }
+
+                mainSpawnCountsByGroup.TryGetValue(group.Key, out int nowCount);
+
+                if (nowCount < allowedCount)
+                {
+                    var variantGroup = resovariantGroups[group.Key];
+                    int tries = 10;
                     int spawned = 0;
                     while (tries-- > 0 && spawned < 2)
                     {
-                        float typernd = (str * 0.15f + (float)api.World.Rand.NextDouble() * (0.3f + str/2f)) * drifterTypes.Length;
+                        float typernd = (stormStr * 0.15f + (float)api.World.Rand.NextDouble() * (0.3f + stormStr / 2f)) * variantGroup.Length;
                         int index = GameMath.RoundRandom(api.World.Rand, typernd);
-                        var type = drifterTypes[GameMath.Clamp(index, 0, drifterTypes.Length - 1)];
+                        var type = variantGroup[GameMath.Clamp(index, 0, variantGroup.Length - 1)];
 
-                        if ((index == 3 || index == 4) && api.World.Rand.NextDouble() < 0.2 && dHeadedDrifterCount == 0)
+                        if ((index == 3 || index == 4) && api.World.Rand.NextDouble() < 0.2)
                         {
-                            type = doubleHeadedDrifterType;
+                            for (int i = 0; i < rareSpawns.Length; i++)
+                            {
+                                plrdict.TryGetValue(rareSpawns[i].GroupCode, out int cnt);
+                                if (cnt == 0)
+                                {
+                                    type = rareSpawns[i].ResolvedCode;
+                                    tries = -1;
+                                    break;
+                                }
+                            }
                         }
 
                         int rndx = api.World.Rand.Next(2 * range) - range;
@@ -490,7 +616,7 @@ namespace Vintagestory.GameContent
             EntityAgent agent = entity as EntityAgent;
             if (agent != null) agent.HerdId = herdid;
 
-            entity.ServerPos.SetPos(spawnPosition);
+            entity.ServerPos.SetPosWithDimension(spawnPosition);
             entity.ServerPos.SetYaw((float)api.World.Rand.NextDouble() * GameMath.TWOPI);
             entity.Pos.SetFrom(entity.ServerPos);
             entity.PositionBeforeFalling.Set(entity.ServerPos.X, entity.ServerPos.Y, entity.ServerPos.Z);
@@ -502,16 +628,17 @@ namespace Vintagestory.GameContent
             entity.WatchedAttributes.SetDouble("temporalStability", GameMath.Clamp((1 - 1.5f * StormStrength), 0, 1));
             entity.Attributes.SetBool("ignoreDaylightFlee", true);
             var bh = entity.GetBehavior("timeddespawn");   // Gradually despawn the storm-spawned entities after the storm ends - maximum time 2.4 in-game hours for maximum strength storm
-            if (bh is ITimedDespawn bhDespawn) bhDespawn.SetForcedCalendarDespawn(data.stormActiveTotalDays + 0.1 * StormStrength * api.World.Rand.NextDouble());
-
+            if (bh is ITimedDespawn bhDespawn)
+            {
+                bhDespawn.SetDespawnByCalendarDate(data.stormActiveTotalDays + 0.1 * StormStrength * api.World.Rand.NextDouble());
+            }
         }
 
 
-
+        // Replace standard spawning of mobs with more difficult variants during storms and low stability
         private bool Event_OnTrySpawnEntity(IBlockAccessor blockAccessor, ref EntityProperties properties, Vec3d spawnPosition, long herdId)
         {
-            if (!properties.Code.Path.StartsWithFast("drifter")) return true;
-            if (drifterTypes == null) return true;    // radfast 20.2.24: This will be null if Temporal Stability is disabled; but we still allow surface drifter spawn if drifters exist as a spawnable entity in the game (their runtime spawning is only disabled in Homo Sapiens mode via a patch). Could also think about returning false here if both Temporal Stability and Rifts systems are both off?
+            if (mobConfig == null || !stormMobCache.Contains(properties.Code)) return true;
 
             IPlayer plr = api.World.NearestPlayer(spawnPosition.X, spawnPosition.Y, spawnPosition.Z);
             if (plr == null) return true;
@@ -523,21 +650,39 @@ namespace Vintagestory.GameContent
             if (stab < 0.25f)
             {
                 int index = -1;
-                for (int i = 0; i < drifterTypes.Length; i++)
+                string groupCode = null;
+                foreach (var group in mobConfig.spawnsByStormStrength.variantGroups)
                 {
-                    if (drifterTypes[i].Code.Equals(properties.Code))
+                    for (int i = 0; i < group.Value.Length; i++)
                     {
-                        index = i;
-                        break;
+                        if (group.Value[i].Equals(properties.Code))
+                        {
+                            index = i;
+                            groupCode = group.Key;
+                            break;
+                        }
                     }
                 }
 
                 if (index == -1) return true;
 
-                int hardnessIncrease = (int)Math.Round((0.25f - stab) * 15);
+                EntityProperties[] resolvedVariantGroups = null;
+                // Get Target group
+                var spawnPattern = mobConfig.spawnsByStormStrength.spawnPatterns[data.spawnPatternCode];
+                float sumWeight = spawnPattern.GroupWeights.Sum(w => w.Value);
+                var rndval = sapi.World.Rand.NextDouble() * sumWeight;
+                foreach (var w in spawnPattern.GroupWeights)
+                {
+                    rndval -= w.Value;
+                    if (rndval <= 0)
+                    {
+                        resolvedVariantGroups = mobConfig.spawnsByStormStrength.resolvedVariantGroups[w.Key];
+                    }
+                }
 
-                int newIndex = Math.Min(index + hardnessIncrease, drifterTypes.Length - 1);
-                properties = drifterTypes[newIndex];
+                int difficultyIncrease = (int)Math.Round((0.25f - stab) * 15);
+                int newIndex = Math.Min(index + difficultyIncrease, resolvedVariantGroups.Length - 1);
+                properties = resolvedVariantGroups[newIndex];
             }
 
             return true;
@@ -549,7 +694,6 @@ namespace Vintagestory.GameContent
 
             temporalStabilityEnabled = api.World.Config.GetBool("temporalStability", true);
             if (!temporalStabilityEnabled) return;
-
 
             stabilityNoise = SimplexNoise.FromDefaultOctaves(4, 0.1, 0.9, api.World.Seed);
 
@@ -577,16 +721,25 @@ namespace Vintagestory.GameContent
 
                 sapi.Event.OnEntityDeath += Event_OnEntityDeath;
 
+                mobConfig = sapi.Assets.Get("config/mobextraspawns.json").ToObject<MobExtraSpawnsTemp>().temporalStormSpawns;
+                var rdi = mobConfig.spawnsByStormStrength.resolvedVariantGroups = new Dictionary<string, EntityProperties[]>();
 
-                doubleHeadedDrifterType = sapi.World.GetEntityType(new AssetLocation("drifter-double-headed"));
-                drifterTypes = new EntityProperties[]
+                foreach (var val in mobConfig.spawnsByStormStrength.variantGroups)
                 {
-                    sapi.World.GetEntityType(new AssetLocation("drifter-normal")),
-                    sapi.World.GetEntityType(new AssetLocation("drifter-deep")),
-                    sapi.World.GetEntityType(new AssetLocation("drifter-tainted")),
-                    sapi.World.GetEntityType(new AssetLocation("drifter-corrupt")),
-                    sapi.World.GetEntityType(new AssetLocation("drifter-nightmare"))
-                };
+                    int i = 0;
+                    rdi[val.Key] = new EntityProperties[val.Value.Length];
+                    foreach (var code in val.Value)
+                    {
+                        rdi[val.Key][i++] = sapi.World.GetEntityType(code);
+                        stormMobCache.Add(code);
+                    }
+                }
+
+                foreach (var val in mobConfig.rareSpawns.Variants)
+                {
+                    val.ResolvedCode = sapi.World.GetEntityType(val.Code);
+                    stormMobCache.Add(val.Code);
+                }
             }
         }
 
@@ -622,38 +775,40 @@ namespace Vintagestory.GameContent
 
         public bool CanSpawnNearby(IPlayer byPlayer, EntityProperties type, Vec3d spawnPosition, RuntimeSpawnConditions sc)
         {
-            // Moved from EntitySpawner to here. Make drifters spawn at any light level if temporally unstable. A bit of an ugly hack, i know
+            // Moved from EntitySpawner to here. Make mobs spawn at any light level if temporally unstable. A bit of an ugly hack, i know
             int herelightLevel = api.World.BlockAccessor.GetLightLevel((int)spawnPosition.X, (int)spawnPosition.Y, (int)spawnPosition.Z, sc.LightLevelType);
 
-            if (temporalStabilityEnabled && type.Attributes?["spawnCloserDuringLowStability"].AsBool() == true)
+            if (type.Attributes?["spawnCloserDuringLowStability"].AsBool() == true)
             {
                 // Below 25% begin reducing range
-                double mod = Math.Min(1, 4 * byPlayer.Entity.WatchedAttributes.GetDouble("temporalStability", 1));
+                double mod = !temporalStabilityEnabled ? 1 : Math.Min(1, 4 * byPlayer.Entity.WatchedAttributes.GetDouble("temporalStability", 1));
 
                 mod = Math.Min(mod, Math.Max(0, 1 - 2 * data.stormGlitchStrength));
 
-                int surfaceY = api.World.BlockAccessor.GetTerrainMapheightAt(spawnPosition.AsBlockPos);
-                bool isSurface = spawnPosition.Y >= surfaceY - 5;
+                // Drifters, Shivers and Bowtorns have LightLevelType = OnlyBlockLight
+                // So this prevents spawning of mobs near light sources, assuming decent self stability and no storm active
+                if (herelightLevel * mod > sc.MaxLightLevel || herelightLevel * mod < sc.MinLightLevel) return false;
 
-                float riftDist = NearestRiftDistance(spawnPosition);
+                int sunlightLevel = api.World.BlockAccessor.GetLightLevel((int)spawnPosition.X, (int)spawnPosition.Y, (int)spawnPosition.Z, EnumLightLevelType.OnlySunLight);
+                bool isSurface = sunlightLevel >= 16;
 
-                // Still allow some drifters to spawn during daylight, but therefore must be very close to the rift
-                float minl = GameMath.Mix(0, sc.MinLightLevel, (float)mod);
-                float maxl = GameMath.Mix(32, sc.MaxLightLevel, (float)mod);
-                if (minl > herelightLevel || maxl < herelightLevel)
+                if (isSurface)
                 {
-                    if (!isSurface || riftDist >= 5 || api.World.Rand.NextDouble() > 0.05)
+                    float riftDist = NearestRiftDistance(spawnPosition);
+
+                    var sunpos = api.World.Calendar.GetSunPosition(spawnPosition, api.World.Calendar.TotalDays);
+                    bool isDaytime = sunpos.Y >= 0;
+
+                    if (isDaytime)
                     {
-                        return false;
+                        return riftDist < 6 && api.World.Rand.NextDouble() < 0.07;
+                    } else
+                    {
+                        return riftDist < 20;
                     }
                 }
 
                 double sqdist = byPlayer.Entity.ServerPos.SquareDistanceTo(spawnPosition);
-
-                if (isSurface)
-                {
-                    return riftDist < 24;
-                }
 
                 // Force a maximum distance
                 if (mod < 0.5)
@@ -672,7 +827,8 @@ namespace Vintagestory.GameContent
 
         private float NearestRiftDistance(Vec3d pos)
         {
-            var nrift = riftSys.riftsById.Values.Nearest(rift => rift.Position.SquareDistanceTo(pos));
+            Rift nrift = riftSys.ServerRifts.Nearest(rift => rift.Position.SquareDistanceTo(pos));
+
             if (nrift != null)
             {
                 return nrift.Position.DistanceTo(pos);

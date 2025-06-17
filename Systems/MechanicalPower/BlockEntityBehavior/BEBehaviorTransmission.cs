@@ -5,6 +5,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent.Mechanics
 {
     public class BEBehaviorMPTransmission : BEBehaviorMPBase
@@ -88,7 +90,7 @@ namespace Vintagestory.GameContent.Mechanics
 
         protected override MechPowerPath[] GetMechPowerExits(MechPowerPath fromExitTurnDir)
         {
-            if (!engaged) return new MechPowerPath[0];
+            if (!engaged) return System.Array.Empty<MechPowerPath>();
 
             return base.GetMechPowerExits(fromExitTurnDir);
         }

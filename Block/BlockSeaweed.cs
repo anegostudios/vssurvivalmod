@@ -2,6 +2,9 @@
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -9,52 +12,64 @@ namespace Vintagestory.GameContent
     {
         public override string RemapToLiquidsLayer { get { return "water-still-7"; } }
 
-        Random random = new Random();
-        Block[] blocks;
+        protected Block[] blocks;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+            blocks = new Block[]
+            {
+                api.World.BlockAccessor.GetBlock(CodeWithParts("section")),
+                api.World.BlockAccessor.GetBlock(CodeWithParts("top")),
+            };
+        }
 
         public override bool CanPlantStay(IBlockAccessor blockAccessor, BlockPos pos)
         {
-            Block block = blockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
-            return (block.Fertility > 0) || (block is BlockSeaweed && block.Variant["part"] == "section");
+            Block blockBelow = blockAccessor.GetBlockBelow(pos, 1, BlockLayersAccess.Solid);
+            return (blockBelow.Fertility > 0) || (blockBelow is BlockSeaweed && blockBelow.Variant["part"] == "section");
         }
 
         public override void OnJsonTesselation(ref MeshData sourceMesh, ref int[] lightRgbsByCorner, BlockPos pos, Block[] chunkExtBlocks, int extIndex3d)
         {
+            var blockAccessor = api.World.BlockAccessor;
             int windData =
-                ((api.World.BlockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z) is BlockSeaweed) ? 1 : 0)
-                + ((api.World.BlockAccessor.GetBlock(pos.X, pos.Y - 2, pos.Z) is BlockSeaweed) ? 1 : 0)
-                + ((api.World.BlockAccessor.GetBlock(pos.X, pos.Y - 3, pos.Z) is BlockSeaweed) ? 1 : 0)
-                + ((api.World.BlockAccessor.GetBlock(pos.X, pos.Y - 4, pos.Z) is BlockSeaweed) ? 1 : 0)
+                ((blockAccessor.GetBlockBelow(pos, 1, BlockLayersAccess.Solid) is BlockSeaweed) ? 1 : 0)
+                + ((blockAccessor.GetBlockBelow(pos, 2, BlockLayersAccess.Solid) is BlockSeaweed) ? 1 : 0)
+                + ((blockAccessor.GetBlockBelow(pos, 3, BlockLayersAccess.Solid) is BlockSeaweed) ? 1 : 0)
+                + ((blockAccessor.GetBlockBelow(pos, 4, BlockLayersAccess.Solid) is BlockSeaweed) ? 1 : 0)
             ;
 
-            for (int i = 0; i < sourceMesh.FlagsCount; i++)
+            var sourceMeshXyz = sourceMesh.xyz;
+            var sourceMeshFlags = sourceMesh.Flags;
+            var sourceFlagsCount = sourceMesh.FlagsCount;
+            for (int i = 0; i < sourceFlagsCount; i++)
             {
-                float y = sourceMesh.xyz[i * 3 + 1];
-                VertexFlags.ReplaceWindData(ref sourceMesh.Flags[i], windData + (y > 0 ? 1 : 0));
+                float y = sourceMeshXyz[i * 3 + 1];
+                VertexFlags.ReplaceWindData(ref sourceMeshFlags[i], windData + (y > 0 ? 1 : 0));
             }
         }
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
+        public override bool TryPlaceBlockForWorldGenUnderwater(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, IRandom worldGenRand, int minWaterDepth, int maxWaterDepth, BlockPatchAttributes attributes = null)
         {
+            var height = attributes?.Height ?? NatFloat.createGauss(3, 3);
+
             BlockPos belowPos = pos.DownCopy();
 
-            Block block = blockAccessor.GetBlock(belowPos, BlockLayersAccess.Fluid);
-            if (block.LiquidCode != "water") return false;
+            Block block;
 
             int depth = 1;
-            while (depth < 10)
+            while (depth < maxWaterDepth)
             {
                 belowPos.Down();
                 block = blockAccessor.GetBlock(belowPos);
-
+                if (block is BlockWaterPlant) return false;
                 if (block.Fertility > 0)
                 {
-                    PlaceSeaweed(blockAccessor, belowPos, depth);
+                    PlaceSeaweed(blockAccessor, belowPos, depth, worldGenRand, height);
                     return true;
-                } else
-                {
-                    if (block is BlockSeaweed || !block.IsLiquid()) return false;   // Prevent placing seaweed over seaweed (for example might result on a 3-deep plant placed on top of a 5-deep plant's existing position, giving a plant with 2 tops at positions 3 and 5)
                 }
+                if (!block.IsLiquid()) return false;   // Prevent placing seaweed over seaweed (for example might result on a 3-deep plant placed on top of a 5-deep plant's existing position, giving a plant with 2 tops at positions 3 and 5)
 
                 depth++;
             }
@@ -64,26 +79,25 @@ namespace Vintagestory.GameContent
         }
 
 
-        private void PlaceSeaweed(IBlockAccessor blockAccessor, BlockPos pos, int depth)
+        internal void PlaceSeaweed(IBlockAccessor blockAccessor, BlockPos pos, int depth, IRandom random, NatFloat heightNatFloat)
         {
-            int height = Math.Min(depth - 1,  1 + random.Next(3) + random.Next(3));
-
-            if (blocks == null)
-            {
-                blocks = new Block[]
-                {
-                    blockAccessor.GetBlock(CodeWithParts("section")),
-                    blockAccessor.GetBlock(CodeWithParts("top")),
-                };
-            }
-
+            var height = Math.Min(depth, (int)heightNatFloat.nextFloat(1f, random));
             while (height-- > 1)
             {
                 pos.Up();
                 blockAccessor.SetBlock(blocks[0].BlockId, pos);   // section
             }
             pos.Up();
-            blockAccessor.SetBlock(blocks[1].BlockId, pos);   // top
+
+            if (blocks[1] == null)
+            {
+                // spawn section if there is no top, (seegrass)
+                blockAccessor.SetBlock(blocks[0].BlockId, pos);   // top
+            }
+            else
+            {
+                blockAccessor.SetBlock(blocks[1].BlockId, pos);   // top
+            }
         }
     }
 }

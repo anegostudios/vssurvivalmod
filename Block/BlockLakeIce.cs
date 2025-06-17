@@ -2,6 +2,8 @@
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockLakeIce : BlockForFluidsLayer
@@ -42,14 +44,14 @@ namespace Vintagestory.GameContent
                             {
                                 ItemStack stack = drops[i].Clone();
                                 stack.StackSize = 1;
-                                world.SpawnItemEntity(stack, new Vec3d(pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5), null);
+                                world.SpawnItemEntity(stack, pos, null);
                             }
                         }
 
                     }
                 }
 
-                world.PlaySoundAt(Sounds?.GetBreakSound(byPlayer), pos.X, pos.Y, pos.Z, byPlayer);
+                world.PlaySoundAt(Sounds?.GetBreakSound(byPlayer), pos, -0.5, byPlayer);
             }
 
             SpawnBlockBrokenParticles(pos);

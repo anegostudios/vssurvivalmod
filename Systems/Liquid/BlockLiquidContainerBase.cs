@@ -10,6 +10,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public abstract class BlockLiquidContainerBase : BlockContainer, ILiquidSource, ILiquidSink
@@ -41,13 +43,12 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            string contentCode = gridRecipe.Attributes["liquidContainerProps"]["requiresContent"]["code"].AsString();
-            string contentType = gridRecipe.Attributes["liquidContainerProps"]["requiresContent"]["type"].AsString();
-            float litres = gridRecipe.Attributes["liquidContainerProps"]["requiresLitres"].AsFloat();
+            string contentCode = rprops?["requiresContent"]?["code"]?.AsString() ?? gridRecipe.Attributes["liquidContainerProps"]["requiresContent"]["code"].AsString();
+            string contentType = rprops?["requiresContent"]?["type"]?.AsString() ?? gridRecipe.Attributes["liquidContainerProps"]["requiresContent"]["type"].AsString();
+            float litres = rprops?["requiresLitres"]?.AsFloat() ?? gridRecipe.Attributes["liquidContainerProps"]["requiresLitres"].AsFloat();
 
             string key = contentType + "-" + contentCode;
-            ItemStack[] stacks;
-            if (!recipeLiquidContents.TryGetValue(key, out stacks))
+            if (!recipeLiquidContents.TryGetValue(key, out ItemStack[] stacks))
             {
                 if (contentCode.Contains('*'))
                 {
@@ -66,7 +67,8 @@ namespace Vintagestory.GameContent
                         }
                     }
                     stacks = lstacks.ToArray();
-                } else
+                }
+                else
                 {
                     recipeLiquidContents[key] = stacks = new ItemStack[1];
 
@@ -106,7 +108,7 @@ namespace Vintagestory.GameContent
         }
 
         #region Interaction help
-        protected WorldInteraction[] interactions;
+        public WorldInteraction[] interactions { get; protected set; }
 
         public override void OnLoaded(ICoreAPI api)
         {
@@ -394,7 +396,7 @@ namespace Vintagestory.GameContent
         }
 
         /// <summary>
-        /// Tries to take out as much items/liquid as possible and returns it
+        /// Tries to take out as much items/liquid as possible and returns it. Note, returns the amount taken out of ONE container, if containerStack has StackSize > 1 then you may want to multiply the result by the StackSize
         /// </summary>
         /// <param name="world"></param>
         /// <param name="containerStack"></param>
@@ -470,7 +472,8 @@ namespace Vintagestory.GameContent
             var props = GetContainableProps(liquidStack);
             if (props == null) return 0;
 
-            int desiredItems = (int)(props.ItemsPerLitre * desiredLitres);
+            float epsilon = 0.00001f;
+            int desiredItems = (int)(props.ItemsPerLitre * desiredLitres + epsilon);
             int availItems = liquidStack.StackSize;
 
             ItemStack stack = GetContent(containerStack);
@@ -480,7 +483,7 @@ namespace Vintagestory.GameContent
             {
                 if (!props.Containable) return 0;
 
-                int placeableItems = (int)(sink.CapacityLitres * props.ItemsPerLitre);
+                int placeableItems = (int)(sink.CapacityLitres * props.ItemsPerLitre + epsilon);
 
                 ItemStack placedstack = liquidStack.Clone();
                 placedstack.StackSize = GameMath.Min(availItems, desiredItems, placeableItems);
@@ -495,8 +498,9 @@ namespace Vintagestory.GameContent
                 float maxItems = sink.CapacityLitres * props.ItemsPerLitre;
                 int placeableItems = (int)(maxItems - (float)stack.StackSize);
 
-                stack.StackSize += GameMath.Min(availItems, placeableItems, desiredItems);
-                return GameMath.Min(availItems, placeableItems, desiredItems);
+                int moved = GameMath.Min(availItems, placeableItems, desiredItems);
+                stack.StackSize += moved;
+                return moved;
             }
         }
 
@@ -579,7 +583,7 @@ namespace Vintagestory.GameContent
 
                 if (moved > 0)
                 {
-                    splitStackAndPerformAction(byPlayer.Entity, hotbarSlot, (stack) =>
+                    SplitStackAndPerformAction(byPlayer.Entity, hotbarSlot, (stack) =>
                     {
                         objLso.TryTakeContent(stack, moved);
                         return moved;
@@ -604,7 +608,7 @@ namespace Vintagestory.GameContent
 
                 float litres = singleTake ? objLsi.TransferSizeLitres : objLsi.CapacityLitres;
 
-                int moved = splitStackAndPerformAction(byPlayer.Entity, hotbarSlot, (stack) => objLsi.TryPutLiquid(stack, owncontentStack, litres));
+                int moved = SplitStackAndPerformAction(byPlayer.Entity, hotbarSlot, (stack) => objLsi.TryPutLiquid(stack, owncontentStack, litres));
                 if (moved > 0)
                 {
                     TryTakeContent(blockSel.Position, moved);
@@ -642,6 +646,15 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
         {
+            if (blockSel != null && api.World.BlockAccessor.GetBlockEntity(blockSel.Position) is BlockEntityGroundStorage begs)
+            {
+                ItemSlot gslot = begs.GetSlotAt(blockSel);
+                if (!gslot.Empty && gslot.Itemstack.Collectible is ILiquidInterface)
+                {
+                    return;
+                }
+            }
+
             if (blockSel == null || byEntity.Controls.ShiftKey)
             {
                 if (byEntity.Controls.ShiftKey) base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
@@ -807,7 +820,7 @@ namespace Vintagestory.GameContent
             var cprops = GetContainableProps(contentStack);
             contentStack.StackSize = 999999;
 
-            int moved = splitStackAndPerformAction(byEntity, itemslot, (stack) => TryPutLiquid(stack, contentStack, CapacityLitres));
+            int moved = SplitStackAndPerformAction(byEntity, itemslot, (stack) => TryPutLiquid(stack, contentStack, CapacityLitres));
 
             if (moved > 0) 
             { 
@@ -837,10 +850,10 @@ namespace Vintagestory.GameContent
             if (!canFill) return;
 
             whenFilledStack.StackSize = 999999;
-            int moved = splitStackAndPerformAction(byEntityItem, byEntityItem.Slot, (stack) => TryPutLiquid(stack, whenFilledStack, CapacityLitres));
+            int moved = SplitStackAndPerformAction(byEntityItem, byEntityItem.Slot, (stack) => TryPutLiquid(stack, whenFilledStack, CapacityLitres));
             if (moved > 0)
             {
-                world.PlaySoundAt(props.FillSound, pos.X, pos.Y, pos.Z, null);
+                world.PlaySoundAt(props.FillSound, pos, -0.4, null);
             }
         }
 
@@ -876,8 +889,7 @@ namespace Vintagestory.GameContent
 
                 if (props.WhenSpilled.StackByFillLevel != null)
                 {
-                    JsonItemStack fillLevelStack;
-                    props.WhenSpilled.StackByFillLevel.TryGetValue((int)currentlitres, out fillLevelStack);
+                    props.WhenSpilled.StackByFillLevel.TryGetValue((int)currentlitres, out JsonItemStack fillLevelStack);
                     if (fillLevelStack != null) waterBlock = byEntity.World.GetBlock(fillLevelStack.Code);
                 }
 
@@ -916,7 +928,7 @@ namespace Vintagestory.GameContent
             }
 
 
-            int moved = splitStackAndPerformAction(byEntity, containerSlot, (stack) => { SetContent(stack, null); return contentStack.StackSize; } );
+            int moved = SplitStackAndPerformAction(byEntity, containerSlot, (stack) => { SetContent(stack, null); return contentStack.StackSize; } );
 
             DoLiquidMovedEffects(byPlayer, contentStack, moved, EnumLiquidDirection.Pour);
             return true;
@@ -930,7 +942,7 @@ namespace Vintagestory.GameContent
 
 
 
-        private int splitStackAndPerformAction(Entity byEntity, ItemSlot slot, System.Func<ItemStack, int> action)
+        public int SplitStackAndPerformAction(Entity byEntity, ItemSlot slot, System.Func<ItemStack, int> action)
         {
             if (slot.Itemstack == null) return 0;
             if (slot.Itemstack.StackSize == 1)
@@ -1134,10 +1146,11 @@ namespace Vintagestory.GameContent
             if (op.CurrentPriority == EnumMergePriority.DirectMerge)
             {
                 float movableLitres = Math.Min(sinkCapLitres - sinkLitres, sourceLitres);
-                int moved = TryPutLiquid(op.SinkSlot.Itemstack, sinkContent, movableLitres / op.SinkSlot.StackSize);
+                int moved = TryPutLiquid(op.SinkSlot.Itemstack, sourceContent, movableLitres / op.SinkSlot.StackSize);
                 DoLiquidMovedEffects(op.ActingPlayer, sinkContent, moved, EnumLiquidDirection.Pour);
 
-                TryTakeContent(op.SourceSlot.Itemstack, moved / op.SourceSlot.StackSize);
+                moved *= op.SinkSlot.StackSize;   // We multiply by stacksize because the TryPutLiquid() method returned the amount moved into a *single* SinkSlot itemstack
+                TryTakeContent(op.SourceSlot.Itemstack, (int)(0.51f + (float)moved / op.SourceSlot.StackSize));  // We add the 0.51f for a bit of rounding up, otherwising rounding errors can slowly duplicate liquids by 1 portion (0.01 litres), better to lose liquid sometimes by rounding up the amount taken out, call it spillage
                 op.SourceSlot.MarkDirty();
                 op.SinkSlot.MarkDirty();
             }

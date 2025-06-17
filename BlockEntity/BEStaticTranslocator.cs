@@ -10,6 +10,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityStaticTranslocator : BlockEntityTeleporterBase
@@ -81,7 +83,23 @@ namespace Vintagestory.GameContent
                 float rotY = Block.Shape.rotateY;
                 animUtil.InitializeAnimator("translocator", null, null, new Vec3f(0, rotY, 0));
 
-                translocatingSound = (api as ICoreClientAPI).World.LoadSound(new SoundParams()
+                updateSoundState();
+            }
+        }
+
+
+
+        public void updateSoundState()
+        {
+            if (translocVolume > 0) startSound();
+            else stopSound();
+        }
+
+        public void startSound()
+        {
+            if (translocatingSound == null && Api?.Side == EnumAppSide.Client)
+            {
+                translocatingSound = (Api as ICoreClientAPI).World.LoadSound(new SoundParams()
                 {
                     Location = new AssetLocation("sounds/effect/translocate-active.ogg"),
                     ShouldLoop = true,
@@ -90,8 +108,21 @@ namespace Vintagestory.GameContent
                     DisposeOnFinish = false,
                     Volume = 0.5f
                 });
+
+                translocatingSound.Start();
             }
         }
+
+        public void stopSound()
+        {
+            if (translocatingSound != null)
+            {
+                translocatingSound.Stop();
+                translocatingSound.Dispose();
+                translocatingSound = null;
+            }
+        }
+
 
         public void DoActivate()
         {
@@ -252,16 +283,12 @@ namespace Vintagestory.GameContent
                 translocPitch = Math.Max(translocPitch - dt, 0.5f);
             }
 
-
-            if (translocatingSound.IsPlaying)
+            updateSoundState();
+            
+            if (translocVolume > 0)
             {
                 translocatingSound.SetVolume(translocVolume);
                 translocatingSound.SetPitch(translocPitch);
-                if (translocVolume <= 0) translocatingSound.Stop();
-            }
-            else
-            {
-                if (translocVolume > 0) translocatingSound.Start();
             }
         }
 
@@ -454,8 +481,7 @@ namespace Vintagestory.GameContent
                         int cx = x / chunksize;
                         int cz = z / chunksize;
 
-                        IServerChunk[] chunks;
-                        if (!columnsByChunkCoordinate.TryGetValue(new Vec2i(cx, cz), out chunks))
+                        if (!columnsByChunkCoordinate.TryGetValue(new Vec2i(cx, cz), out IServerChunk[] chunks))
                         {
                             continue;
                         }
@@ -570,7 +596,7 @@ namespace Vintagestory.GameContent
                 {
                     // Might get called from the SystemNetworkProcess thread
                     worldAccessForResolve.Api.Event.EnqueueMainThreadTask(
-                        () => worldAccessForResolve.PlaySoundAt(new AssetLocation("sounds/effect/translocate-breakdimension"), Pos.X + 0.5f, Pos.Y + 0.5f, Pos.Z + 0.5f, null, false, 16),
+                        () => worldAccessForResolve.PlaySoundAt(new AssetLocation("sounds/effect/translocate-breakdimension"), Pos, 0, null, false, 16),
                         "playtelesound"
                     );
                 }
@@ -620,10 +646,9 @@ namespace Vintagestory.GameContent
                         case 3: shapeCode = "repairstate3"; break;
                     }
 
-                    MeshData meshdata;
                     Shape shape = Shape.TryGet(Api, "shapes/block/machine/statictranslocator/" + shapeCode + ".json");
 
-                    tessThreadTesselator.TesselateShape(ownBlock, shape, out meshdata, new Vec3f(0, rotY, 0));
+                    tessThreadTesselator.TesselateShape(ownBlock, shape, out MeshData meshdata, new Vec3f(0, rotY, 0));
 
                     return meshdata;
                 });

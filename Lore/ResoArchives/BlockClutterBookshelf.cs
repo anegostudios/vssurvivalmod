@@ -7,7 +7,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Util;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -17,7 +18,7 @@ namespace Vintagestory.GameContent
         string classtype;
         public override string ClassType => classtype;
 
-        public OrderedDictionary<string, BookShelfVariantGroup> variantGroupsByCode = new OrderedDictionary<string, BookShelfVariantGroup>();
+        public API.Datastructures.OrderedDictionary<string, BookShelfVariantGroup> variantGroupsByCode = new ();
         public override IEnumerable<IShapeTypeProps> AllTypes
         {
             get
@@ -36,7 +37,7 @@ namespace Vintagestory.GameContent
 
         public override void LoadTypes()
         {
-            variantGroupsByCode = Attributes["variantGroups"].AsObject<OrderedDictionary<string, BookShelfVariantGroup>>();
+            variantGroupsByCode = Attributes["variantGroups"].AsObject<API.Datastructures.OrderedDictionary<string, BookShelfVariantGroup>>();
             basePath = Attributes["shapeBasePath"].AsString();
             classtype = Attributes["classtype"].AsString("bookshelf");
 
@@ -47,7 +48,7 @@ namespace Vintagestory.GameContent
             foreach (var variant in variantGroupsByCode)
             {
                 variant.Value.block = this;
-                
+
                 if (variant.Value.DoubleSided)
                 {
                     var jstackd = new JsonItemStack()
@@ -199,16 +200,16 @@ namespace Vintagestory.GameContent
 
         public override MeshData GetOrCreateMesh(IShapeTypeProps cprops, ITexPositionSource overrideTexturesource = null, string overrideTextureCode = null)
         {
-            var cMeshes = ObjectCacheUtil.GetOrCreate(api, ClassType + "Meshes", () => new Dictionary<string, MeshData>());
+            var cMeshes = meshDictionary;
             ICoreClientAPI capi = api as ICoreClientAPI;
 
             var bprops = cprops as BookShelfTypeProps;
-            
+
             if (overrideTexturesource == null && cMeshes.TryGetValue(bprops.HashKey, out var mesh))
             {
                 return mesh;
             }
-            
+
             mesh = new MeshData(4, 3);
             var shape = cprops.ShapeResolved;
             if (shape == null) return mesh;
@@ -232,7 +233,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            capi.Tesselator.TesselateShape(ClassType + "block", shape, out mesh, texSource);
+            capi.Tesselator.TesselateShape(blockForLogging, shape, out mesh, texSource);
 
             if (bprops.Variant == "full" || bprops.group.DoubleSided)
             {
@@ -250,7 +251,7 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-                capi.Tesselator.TesselateShape(ClassType + "block", shape, out var mesh2, texSource);
+                capi.Tesselator.TesselateShape(blockForLogging, shape, out var mesh2, texSource);
 
                 mesh2.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, GameMath.PI, 0).Translate(0, 0, -0.5f);
                 mesh.AddMeshData(mesh2);
@@ -267,13 +268,15 @@ namespace Vintagestory.GameContent
             {
                 cMeshes[bprops.HashKey] = mesh;
             }
-            
+
             return mesh;
         }
 
         public string RandomType(string variant)
         {
+            if (variantGroupsByCode == null) return null;
             var vgroup = variantGroupsByCode[variant];
+
             int rndindex = api.World.Rand.Next(vgroup.typesByCode.Count);
             return vgroup.typesByCode.GetKeyAtIndex(rndindex);
         }
@@ -283,12 +286,6 @@ namespace Vintagestory.GameContent
             string type = itemStack.Attributes.GetString("type", "");
             string variant = itemStack.Attributes.GetString("variant", "");
             return Lang.GetMatching(Code.Domain + ":" + (type.Length == 0 ? "bookshelf-" + variant : type.Replace("/", "-")));
-        }
-
-        public override string GetPlacedBlockName(IWorldAccessor world, BlockPos pos)
-        {
-            var bec = GetBEBehavior<BEBehaviorClutterBookshelf>(pos);
-            return Lang.GetMatching(Code.Domain + ":" + (bec?.Type?.Replace("/", "-") ?? "unknown"));
         }
 
         public override string GetPlacedBlockInfo(IWorldAccessor world, BlockPos pos, IPlayer forPlayer)
@@ -305,9 +302,10 @@ namespace Vintagestory.GameContent
             return sb.ToString();
         }
 
-        public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
+        //Suppress "bookshelf-" at start of localized name key; it will therefore normally start with "bookshelves-"
+        public override string BaseCodeForName()
         {
-            return new ItemStack[0];
+            return Code.Domain + ":";
         }
     }
 }

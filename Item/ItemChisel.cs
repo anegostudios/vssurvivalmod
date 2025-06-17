@@ -9,6 +9,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 using VSSurvivalMod.Systems.ChiselModes;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public interface IConditionalChiselable
@@ -17,7 +19,7 @@ namespace Vintagestory.GameContent
     }
 
     /// <summary>
-    /// When right clicked on a block, this chisel tool will exchange given block into a chiseledblock which 
+    /// When right clicked on a block, this chisel tool will exchange given block into a chiseledblock which
     /// takes on the model of the block the player interacted with in the first place, but with each voxel being selectable and removable
     /// </summary>
     public class ItemChisel : Item
@@ -25,7 +27,15 @@ namespace Vintagestory.GameContent
         public SkillItem[] ToolModes;
         SkillItem addMatItem;
 
-        public static bool carvingTime = DateTime.Now.Month == 10 || DateTime.Now.Month == 11;
+        public bool carvingTime
+        {
+            get
+            {
+                var dateTime = DateTime.UtcNow;
+                return dateTime.Month == 10 || dateTime.Month == 11;
+            }
+        }
+
         public static bool AllowHalloweenEvent = true;
 
         public override void OnLoaded(ICoreAPI api)
@@ -161,20 +171,20 @@ namespace Vintagestory.GameContent
             }
 
 
-            if (blockSel == null)
+            if (blockSel == null)   // This line cannot be reached, see the if (blockSel?.Position == null) test 23 lines above
             {
                 base.OnHeldAttackStart(slot, byEntity, blockSel, entitySel, ref handling);
                 return;
             }
 
             if (block is BlockChisel)
-            {   
+            {
                 OnBlockInteract(byEntity.World, byPlayer, blockSel, true, ref handling);
                 return;
             }
         }
 
-        
+
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
@@ -245,8 +255,8 @@ namespace Vintagestory.GameContent
                 base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
                 return;
             }
-            
-            
+
+
             if (block is BlockChisel)
             {
                 OnBlockInteract(byEntity.World, byPlayer, blockSel, false, ref handling);
@@ -266,7 +276,7 @@ namespace Vintagestory.GameContent
             {
                 be.AddMaterial(api.World.GetBlock(new AssetLocation("creativeglow-35")));
             }
-            
+
             handling = EnumHandHandling.PreventDefaultAction;
         }
 
@@ -292,10 +302,10 @@ namespace Vintagestory.GameContent
             if (mode == "off") return false;
 
             // 1.5 priority: Disabled by code
-            if (block is IConditionalChiselable icc || (icc = block.BlockBehaviors.FirstOrDefault(bh => bh is IConditionalChiselable) as IConditionalChiselable) != null)
+            IConditionalChiselable icc = block.GetInterface<IConditionalChiselable>(api.World, pos);
+            if (icc != null)
             {
-                string errorCode;
-                if (icc?.CanChisel(api.World, pos, player, out errorCode) == false || icc?.CanChisel(api.World, pos, player, out errorCode) == false)
+                if (icc?.CanChisel(api.World, pos, player, out string errorCode) == false || icc?.CanChisel(api.World, pos, player, out errorCode) == false)
                 {
                     (api as ICoreClientAPI)?.TriggerIngameError(icc, errorCode, Lang.Get(errorCode));
                     return false;
@@ -330,7 +340,7 @@ namespace Vintagestory.GameContent
 
             return true;
         }
-        
+
 
         public void OnBlockInteract(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, bool isBreak, ref EnumHandHandling handling)
         {
@@ -359,7 +369,7 @@ namespace Vintagestory.GameContent
             if (blockSel == null) return null;
             BlockEntityChisel be = forPlayer.Entity.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityChisel;
             if (be != null)
-            {    
+            {
                 if (be.BlockIds.Length <= 1)
                 {
                     addMatItem.Linebreak = true;
@@ -413,8 +423,7 @@ namespace Vintagestory.GameContent
                 {
                     if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
                     {
-                        bool isFull;
-                        be.AddMaterial(mouseslot.Itemstack.Block, out isFull);
+                        be.AddMaterial(mouseslot.Itemstack.Block, out bool isFull);
                         if (!isFull)
                         {
                             mouseslot.TakeOut(1);
@@ -423,7 +432,7 @@ namespace Vintagestory.GameContent
                     }
                     else
                     {
-                        be.AddMaterial(mouseslot.Itemstack.Block);
+                        be.AddMaterial(mouseslot.Itemstack.Block, out _, false);
                     }
 
                     be.MarkDirty();

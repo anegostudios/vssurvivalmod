@@ -1,6 +1,8 @@
 ﻿using System.Collections.Generic;
 using Vintagestory.API.Common;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public enum EnumTraitType

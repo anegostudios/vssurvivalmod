@@ -6,6 +6,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ModSystemResoArchiveCommands : ModSystem
@@ -177,7 +179,7 @@ namespace Vintagestory.GameContent
                 } else
                 {
                     sapi.Logger.Notification(string.Join(", ", foundtypes));
-                    return TextCommandResult.Success(Lang.GetL(args.LanguageCode, "{0} chiseled blocks match your search. Names logged to server-main.txt.", foundtotal));
+                    return TextCommandResult.Success(Lang.GetL(args.LanguageCode, "{0} chiseled blocks match your search. Names logged to server-main.log.", foundtotal));
                 }
             } else
             {
@@ -285,7 +287,7 @@ namespace Vintagestory.GameContent
             }
 
             Cuboidi area = new Cuboidi((int)args[1], (int)args[2], (int)args[3], (int)args[4], (int)args[5], (int)args[6]);
-            bec.areas = (bec.areas ?? new Cuboidi[0]).Append(area);
+            bec.areas = (bec.areas ?? System.Array.Empty<Cuboidi>()).Append(area);
             bec.MarkDirty(true);
 
             musicAreaPreview(bec, args, true);

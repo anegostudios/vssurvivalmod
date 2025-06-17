@@ -3,23 +3,13 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockMushroom : BlockPlant
     {
         WorldInteraction[] interactions = null;
-
-        /// <summary>
-        /// Code part indicating a non harvested, fully grown mushroom
-        /// </summary>
-        public static readonly string normalCodePart = "normal";
-
-        /// <summary>
-        /// Code part indicating a harvested mushroom
-        /// </summary>
-        public static readonly string harvestedCodePart = "harvested";
-
-
         public ICoreAPI Api => api;
 
         public override void OnLoaded(ICoreAPI api)
@@ -53,21 +43,6 @@ namespace Vintagestory.GameContent
             return base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref failureCode);
         }
 
-        public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
-        {
-            base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier);
-
-            /*if (byPlayer != null)
-            {
-                EnumTool? tool = byPlayer.InventoryManager.ActiveTool;
-                if (IsGrown() && tool == EnumTool.Knife)
-                {
-                    Block harvestedBlock = GetHarvestedBlock(world);
-                    world.BlockAccessor.SetBlock(harvestedBlock.BlockId, pos);
-                }
-            }*/
-        }
-
         public override void OnServerGameTick(IWorldAccessor world, BlockPos pos, object extra = null)
         {
             // Prevent the legacy mushrooms from removing/adding snow coverage
@@ -81,38 +56,12 @@ namespace Vintagestory.GameContent
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {
-
-            if (IsGrown())
+            if (Attributes?.IsTrue("forageStatAffected") == true)
             {
-                if (Attributes?.IsTrue("forageStatAffected") == true)
-                {
-                    dropQuantityMultiplier *= byPlayer?.Entity?.Stats.GetBlended("forageDropRate") ?? 1;
-                }
-
-                return base.GetDrops(world, pos, byPlayer, dropQuantityMultiplier);
+                dropQuantityMultiplier *= byPlayer?.Entity?.Stats.GetBlended("forageDropRate") ?? 1;
             }
-            else
-            {
-                return null;
-            }
-        }
-        
 
-        public bool IsGrown()
-        {
-            return Code.Path.Contains(normalCodePart);
-        }
-
-        public Block GetNormalBlock(IWorldAccessor world)
-        {
-            AssetLocation newBlockCode = Code.CopyWithPath(Code.Path.Replace(harvestedCodePart, normalCodePart));
-            return world.GetBlock(newBlockCode);
-        }
-
-        public Block GetHarvestedBlock(IWorldAccessor world)
-        {
-            AssetLocation newBlockCode = Code.CopyWithPath(Code.Path.Replace(normalCodePart, harvestedCodePart));
-            return world.GetBlock(newBlockCode);
+            return base.GetDrops(world, pos, byPlayer, dropQuantityMultiplier);
         }
 
 
@@ -121,7 +70,7 @@ namespace Vintagestory.GameContent
             return interactions.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
         }
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, IRandom worldGenRand, BlockPatchAttributes attributes = null)
         {
             BlockPos rootPos = onBlockFace.IsHorizontal ? pos.AddCopy(onBlockFace) : pos.AddCopy(onBlockFace.Opposite);
 

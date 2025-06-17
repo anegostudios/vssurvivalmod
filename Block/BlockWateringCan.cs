@@ -5,6 +5,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockWateringCan : Block
@@ -26,7 +28,7 @@ namespace Vintagestory.GameContent
             );
 
             WaterParticles.AddPos = new Vec3d(0.125 / 2, 2 / 16f, 0.125 / 2);
-            WaterParticles.SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.LINEAR, -1f);
+            WaterParticles.SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.LINEAR, -0.7f);
             WaterParticles.ClimateColorMap = "climateWaterTint";
             WaterParticles.AddQuantity = 1;
 
@@ -54,7 +56,7 @@ namespace Vintagestory.GameContent
                 slot.Itemstack.TempAttributes.SetInt("refilled", 1);
                 slot.MarkDirty();
 
-                byEntity.World.PlaySoundAt(new AssetLocation("sounds/block/water"), pos.X, pos.Y, pos.Z, byPlayer);
+                byEntity.World.PlaySoundAt(new AssetLocation("sounds/block/water"), pos, 0.35, byPlayer);
                 handHandling = EnumHandHandling.PreventDefault;
                 return;
             }
@@ -73,7 +75,7 @@ namespace Vintagestory.GameContent
                 slot.Itemstack.TempAttributes.SetInt("refilled", 1);
                 slot.MarkDirty();
 
-                byEntity.World.PlaySoundAt(new AssetLocation("sounds/block/water"), pos.X, pos.Y, pos.Z, byPlayer);
+                byEntity.World.PlaySoundAt(new AssetLocation("sounds/block/water"), pos, 0.35, byPlayer);
                 handHandling = EnumHandHandling.PreventDefault;
                 return;
             }
@@ -194,26 +196,28 @@ namespace Vintagestory.GameContent
                 beburningBh = world.BlockAccessor.GetBlockEntity(blockSel.Position)?.GetBehavior<BEBehaviorBurning>();
                 if (beburningBh != null) beburningBh.KillFire(false);
 
-                Vec3i voxelPos = new Vec3i();
+                var beits = GetBEBehavior<BEBehaviorTemperatureSensitive>(blockSel.Position);
+                if (beits != null)
+                {
+                    beits.OnWatered(secondsUsed - prevsecondsused);
+                }
+
                 for (int dx = -2; dx < 2; dx++)
                 {
                     for (int dy = -2; dy < 2; dy++)
                     {
                         for (int dz = -2; dz < 2; dz++)
                         {
-                            int x = (int)(blockSel.HitPosition.X * 16);
-                            int y = (int)(blockSel.HitPosition.Y * 16);
-                            int z = (int)(blockSel.HitPosition.Z * 16);
-                            if (x + dx < 0 || x + dx > 15 || y + dy < 0 || y + dy > 15 || z + dz < 0 || z + dz > 15) continue;
+                            int x = (int)(blockSel.HitPosition.X * 16) + dx;
+                            int y = (int)(blockSel.HitPosition.Y * 16) + dy;
+                            int z = (int)(blockSel.HitPosition.Z * 16) + dz;
+                            if (x < 0 || x > 15 || y < 0 || y > 15 || z < 0 || z > 15) continue;
 
-                            voxelPos.Set(x + dx, y + dy, z + dz);
-
-                            int faceAndSubPosition = CollectibleBehaviorArtPigment.BlockSelectionToSubPosition(blockSel.Face, voxelPos);
-                            Block decorblock = world.BlockAccessor.GetDecor(blockSel.Position, faceAndSubPosition);
-
+                            DecorBits decorPosition = new DecorBits(blockSel.Face, x, 15 - y, z);
+                            Block decorblock = world.BlockAccessor.GetDecor(blockSel.Position, decorPosition);
                             if (decorblock?.FirstCodePart() == "caveart")
                             {
-                                world.BlockAccessor.BreakDecor(blockSel.Position, blockSel.Face, faceAndSubPosition);
+                                world.BlockAccessor.BreakDecor(blockSel.Position, blockSel.Face, decorPosition);
                             }
                         }
                     }
@@ -238,18 +242,7 @@ namespace Vintagestory.GameContent
                 be.WaterFarmland(secondsUsed - prevsecondsused);
             }
             
-            float speed = 3f;            
-
-            if (world.Side == EnumAppSide.Client)
-            {
-                ModelTransform tf = new ModelTransform();
-                tf.EnsureDefaultValues();
-
-                tf.Origin.Set(0.5f, 0.2f, 0.5f);
-                tf.Translation.Set(-Math.Min(0.25f, speed * secondsUsed / 2), 0, 0);                
-                tf.Rotation.Z = GameMath.Min(60, secondsUsed * 90 * speed, 120 - remainingwater * 4);
-                byEntity.Controls.UsingHeldItemTransformBefore = tf;
-            }
+            float speed = 3f;
 
             IPlayer byPlayer = null;
             if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
@@ -264,11 +257,6 @@ namespace Vintagestory.GameContent
             }
 
             return true;
-        }
-
-        public override bool OnHeldInteractCancel(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
-        {
-            return base.OnHeldInteractCancel(secondsUsed, slot, byEntity, blockSel, entitySel, cancelReason);
         }
 
 
@@ -326,7 +314,7 @@ namespace Vintagestory.GameContent
             dsc.AppendLine();            
 
             double perc = Math.Round(100 * GetRemainingWateringSeconds(inSlot.Itemstack) / CapacitySeconds);
-            string colorn = ColorUtil.Int2Hex(GuiStyle.DamageColorGradient[(int)Math.Min(99, perc)]);
+            string colorn = ColorUtil.Int2Hex(GuiStyle.DamageColorGradient[(int)GameMath.Clamp(perc, 0, 99)]);
 
             if (perc < 1)
             {

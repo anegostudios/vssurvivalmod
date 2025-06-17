@@ -3,6 +3,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockTermiteMound : BlockRequireSolidGround
@@ -30,35 +32,35 @@ namespace Vintagestory.GameContent
             base.OnLoaded(api);
         }
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, IRandom worldGenRand, BlockPatchAttributes attributes = null)
         {
             if (!HasSolidGround(blockAccessor, pos)) return false;
 
             // This needs a 3x3 flat area, looks weird otherwise
             if (islarge)
             {
-                if (!blockAccessor.GetBlock(pos.X - 1, pos.Y - 1, pos.Z - 1).SideSolid[BlockFacing.UP.Index]) return false;
-                if (!blockAccessor.GetBlock(pos.X + 0, pos.Y - 1, pos.Z - 1).SideSolid[BlockFacing.UP.Index]) return false;
-                if (!blockAccessor.GetBlock(pos.X + 1, pos.Y - 1, pos.Z - 1).SideSolid[BlockFacing.UP.Index]) return false;
-                if (!blockAccessor.GetBlock(pos.X + 1, pos.Y - 1, pos.Z + 0).SideSolid[BlockFacing.UP.Index]) return false;
-                if (!blockAccessor.GetBlock(pos.X + 1, pos.Y - 1, pos.Z + 1).SideSolid[BlockFacing.UP.Index]) return false;
-                if (!blockAccessor.GetBlock(pos.X + 0, pos.Y - 1, pos.Z + 1).SideSolid[BlockFacing.UP.Index]) return false;
-                if (!blockAccessor.GetBlock(pos.X - 1, pos.Y - 1, pos.Z + 1).SideSolid[BlockFacing.UP.Index]) return false;
-                if (!blockAccessor.GetBlock(pos.X - 1, pos.Y - 1, pos.Z - 0).SideSolid[BlockFacing.UP.Index]) return false;
+                if (!blockAccessor.GetBlockRaw(pos.X - 1, pos.InternalY - 1, pos.Z - 1, BlockLayersAccess.Solid).SideSolid[BlockFacing.UP.Index]) return false;
+                if (!blockAccessor.GetBlockRaw(pos.X + 0, pos.InternalY - 1, pos.Z - 1, BlockLayersAccess.Solid).SideSolid[BlockFacing.UP.Index]) return false;
+                if (!blockAccessor.GetBlockRaw(pos.X + 1, pos.InternalY - 1, pos.Z - 1, BlockLayersAccess.Solid).SideSolid[BlockFacing.UP.Index]) return false;
+                if (!blockAccessor.GetBlockRaw(pos.X + 1, pos.InternalY - 1, pos.Z + 0, BlockLayersAccess.Solid).SideSolid[BlockFacing.UP.Index]) return false;
+                if (!blockAccessor.GetBlockRaw(pos.X + 1, pos.InternalY - 1, pos.Z + 1, BlockLayersAccess.Solid).SideSolid[BlockFacing.UP.Index]) return false;
+                if (!blockAccessor.GetBlockRaw(pos.X + 0, pos.InternalY - 1, pos.Z + 1, BlockLayersAccess.Solid).SideSolid[BlockFacing.UP.Index]) return false;
+                if (!blockAccessor.GetBlockRaw(pos.X - 1, pos.InternalY - 1, pos.Z + 1, BlockLayersAccess.Solid).SideSolid[BlockFacing.UP.Index]) return false;
+                if (!blockAccessor.GetBlockRaw(pos.X - 1, pos.InternalY - 1, pos.Z - 0, BlockLayersAccess.Solid).SideSolid[BlockFacing.UP.Index]) return false;
             }
 
             var ch = GlobalConstants.ChunkSize;
             int rockId = blockAccessor.GetMapChunkAtBlockPos(pos).TopRockIdMap[(pos.Z % ch) * ch + (pos.X % ch)];
 
             Block tblock = null;
-            if (islarge) largeTermiteBlockCodeByRockid.TryGetValue(rockId, out tblock); 
+            if (islarge) largeTermiteBlockCodeByRockid.TryGetValue(rockId, out tblock);
             else mediumTermiteBlockCodeByRockid.TryGetValue(rockId, out tblock);
 
             if (tblock != null)
             {
                 blockAccessor.SetBlock(tblock.Id, pos);
             }
-            
+
 
             return true;
         }

@@ -1,7 +1,10 @@
 ﻿using System.Collections.Generic;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -9,6 +12,11 @@ namespace Vintagestory.GameContent
     {
         public BEBehaviorRockRubbleFromAttributes(BlockEntity blockentity) : base(blockentity)
         {
+        }
+
+        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
+        {
+            return base.OnTesselation(mesher, tessThreadTesselator);
         }
 
         public bool ExchangeWith(ItemSlot fromSlot, ItemSlot toSlot)

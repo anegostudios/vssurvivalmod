@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Runtime.Intrinsics.Arm;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -8,7 +7,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.ServerMods;
-using static System.TimeZoneInfo;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -117,13 +117,27 @@ namespace Vintagestory.GameContent
             bool lowLightLevel = world.BlockAccessor.GetLightLevel(pos, EnumLightLevelType.MaxLight) < growthLightLevel && (world.BlockAccessor.GetLightLevel(upPos, EnumLightLevelType.MaxLight) < growthLightLevel || world.BlockAccessor.GetBlock(upPos).SideSolid[BlockFacing.DOWN.Index]);
             bool smothering = isSmotheringBlock(world, upPos);
 
-            if ((lowLightLevel || smothering) && currentStage > 0)
+            int overheatingAmount = 0;
+            world.BlockAccessor.WalkBlocks(pos.AddCopy(-3, 0, -3), pos.AddCopy(3, 1, 3), (block, x, y, z) =>
+            {
+                if (block.Attributes == null) return;
+                overheatingAmount = Math.Max(overheatingAmount, (block.Attributes["killPlantRadius"].AsInt(0) - Math.Max(0, (int)pos.DistanceTo(x, y, z)-1)));
+            });
+
+            bool die =
+                (overheatingAmount >= 1 && currentStage == 3) ||
+                (overheatingAmount >= 2 && currentStage == 2) ||
+                (overheatingAmount >= 3 && currentStage == 1)
+            ;
+
+            
+            if ((lowLightLevel || smothering || die) && currentStage > 0)
             {
                 grass = tryGetBlockForDying(world);
             }
             else
             {
-                if (!smothering && !lowLightLevel && currentStage < MaxStage)
+                if (overheatingAmount <= 0 && !smothering && !lowLightLevel && currentStage < MaxStage)
                 {
                     isGrowing = true;
                     grass = tryGetBlockForGrowing(world, pos);

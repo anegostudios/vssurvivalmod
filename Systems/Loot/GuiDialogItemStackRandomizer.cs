@@ -1,6 +1,8 @@
 ﻿using Vintagestory.API.Client;
 using Vintagestory.API.Datastructures;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     /// <summary>

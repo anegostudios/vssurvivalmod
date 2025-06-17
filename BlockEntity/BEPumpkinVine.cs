@@ -6,6 +6,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityPumpkinVine : BlockEntity
@@ -278,7 +280,7 @@ namespace Vintagestory.GameContent
 
         private void Die()
         {
-            Api.Event.UnregisterGameTickListener(growListenerId);
+            UnregisterGameTickListener(growListenerId);
             growListenerId = 0;
             Api.World.BlockAccessor.SetBlock(0, Pos);
         }
@@ -365,7 +367,7 @@ namespace Vintagestory.GameContent
 
         private bool CanGrowOn(ICoreAPI api, BlockPos pos)
         {
-            return api.World.BlockAccessor.GetMostSolidBlock(pos.X, pos.Y, pos.Z).CanAttachBlockAt(api.World.BlockAccessor, stage1VineBlock, pos, BlockFacing.UP);
+            return api.World.BlockAccessor.GetMostSolidBlock(pos).CanAttachBlockAt(api.World.BlockAccessor, stage1VineBlock, pos, BlockFacing.UP);
         }
 
         private bool IsReplaceable(Block block)
@@ -399,15 +401,13 @@ namespace Vintagestory.GameContent
 
         private int CurrentVineStage(Block block)
         {
-            int stage = 0;
-            int.TryParse(block.LastCodePart(1), out stage);
+            int.TryParse(block.LastCodePart(1), out int stage);
             return stage;
         }
 
         private int CurrentPumpkinStage(Block block)
         {
-            int stage = 0;
-            int.TryParse(block.LastCodePart(0), out stage);
+            int.TryParse(block.LastCodePart(0), out int stage);
             return stage;
         }
 

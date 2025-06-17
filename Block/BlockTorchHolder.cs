@@ -2,6 +2,8 @@
 using Vintagestory.API.Common;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockTorchHolder : Block
@@ -26,7 +28,7 @@ namespace Vintagestory.GameContent
 
                     if (Sounds?.Place != null)
                     {
-                        world.PlaySoundAt(Sounds.Place, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, byPlayer);
+                        world.PlaySoundAt(Sounds.Place, blockSel.Position, 0.1, byPlayer);
                     }
 
                     return true;
@@ -41,7 +43,7 @@ namespace Vintagestory.GameContent
 
                     if (Sounds?.Place != null)
                     {
-                        world.PlaySoundAt(Sounds.Place, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, byPlayer);
+                        world.PlaySoundAt(Sounds.Place, blockSel.Position, 0.1, byPlayer);
                     }
 
                     return true;

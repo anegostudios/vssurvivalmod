@@ -4,6 +4,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     public class GenPonds : ModStdWorldGen
@@ -40,7 +42,7 @@ namespace Vintagestory.ServerMods
         }
 
         /// <summary>
-        /// 
+        ///
         /// </summary>
         /// <param name="api"></param>
         public override void StartServerSide(ICoreServerAPI api)
@@ -73,12 +75,7 @@ namespace Vintagestory.ServerMods
             mapheight = api.WorldManager.MapSizeY;
             didCheckPosition = new int[searchSize * searchSize];
 
-            IAsset asset = api.Assets.Get("worldgen/rockstrata.json");
-            RockStrataConfig rockstrata = asset.ToObject<RockStrataConfig>();
-
-            asset = api.Assets.Get("worldgen/blocklayers.json");
-            BlockLayerConfig blockLayerConfig = asset.ToObject<BlockLayerConfig>();
-            blockLayerConfig.ResolveBlockIds(api, rockstrata);
+            var blockLayerConfig = BlockLayerConfig.GetInstance(api);
 
             lakebedLayerConfig = blockLayerConfig.LakeBedLayer;
         }
@@ -88,7 +85,10 @@ namespace Vintagestory.ServerMods
             var chunks = request.Chunks;
             int chunkX = request.ChunkX;
             int chunkZ = request.ChunkZ;
-
+            if (GetIntersectingStructure(chunkX * chunksize + chunksize / 2, chunkZ * chunksize + chunksize / 2, SkipPondgHashCode) != null)
+            {
+                return;
+            }
             blockAccessor.BeginColumn();
             LCGRandom rand = this.rand;
             rand.InitPositionSeed(chunkX, chunkZ);
@@ -121,7 +121,7 @@ namespace Vintagestory.ServerMods
             // Lake density at chunk center
             float pondDensity = Math.Max(0, 4 * (rain - 10) / 255f);
 
-            float sealeveltemp = TerraGenConfig.GetScaledAdjustedTemperatureFloat(temp, 0);
+            float sealeveltemp = Climate.GetScaledAdjustedTemperatureFloat(temp, 0);
 
             // Less lakes where its below -5 degrees
             pondDensity -= Math.Max(0, 5 - sealeveltemp);
@@ -297,7 +297,7 @@ namespace Vintagestory.ServerMods
 
                     mapchunk = chunk.MapChunk;
                     IntDataMap2D climateMap = mapchunk.MapRegion.ClimateMap;
-                    
+
                     float fac = (float)climateMap.InnerSize / regionChunkSize;
                     int rlX = curChunkX % regionChunkSize;
                     int rlZ = curChunkZ % regionChunkSize;
@@ -320,7 +320,7 @@ namespace Vintagestory.ServerMods
 
                 // Identify correct climate at this position - could be optimised if we place water into ponds in columns instead of layers
                 int climate = GameMath.BiLerpRgbColor((float)lx / chunksize, (float)lz / chunksize, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight);
-                float temp = TerraGenConfig.GetScaledAdjustedTemperatureFloat((climate >> 16) & 0xff, pondYPos - TerraGenConfig.seaLevel);
+                float temp = Climate.GetScaledAdjustedTemperatureFloat((climate >> 16) & 0xff, pondYPos - TerraGenConfig.seaLevel);
 
 
                 // 1. Place water or ice block
@@ -342,30 +342,23 @@ namespace Vintagestory.ServerMods
                 if (!withSeabed) continue;
 
                 // Need to check the block below first
-                int index = ly == 0 ? 
-                    ((31 * chunksize + lz) * chunksize + lx) : 
+                int index = ly == 0 ?
+                    ((31 * chunksize + lz) * chunksize + lx) :
                     (((ly - 1) * chunksize + lz) * chunksize + lx)
                 ;
-                
+
                 // again this would be more efficient if we place water in columns
                 Block belowBlock = api.World.Blocks[chunkOneBlockBelow.Data.GetFluid(index)];
 
                 // Water below? Seabed already placed
                 if (belowBlock.IsLiquid()) continue;
-                
-                float rainRel = TerraGenConfig.GetRainFall((climate >> 8) & 0xff, pondYPos) / 255f;
+
+                float rainRel = Climate.GetRainFall((climate >> 8) & 0xff, pondYPos) / 255f;
                 int rockBlockId = mapchunk.TopRockIdMap[lz * chunksize + lx];
                 if (rockBlockId == 0) continue;
 
-                LakeBedBlockCodeByMin[] codes = lakebedLayerConfig.BlockCodeByMin;
-                for (int i = 0; i < codes.Length; i++)
-                {
-                    if (codes[i].Suitable(temp, rainRel, (float)pondYPos / mapheight, rand))
-                    {
-                        chunkOneBlockBelow.Data[index] = codes[i].GetBlockForMotherRock(rockBlockId);
-                        break;
-                    }
-                }
+                int lakebedId = lakebedLayerConfig.GetSuitable(temp, rainRel, (float)pondYPos / mapheight, rand, rockBlockId);
+                if (lakebedId != 0) chunkOneBlockBelow.Data[index] = lakebedId;
             }
 
 

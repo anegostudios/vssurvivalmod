@@ -3,6 +3,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class AiTaskButterflyWander : AiTaskBase
@@ -85,7 +87,7 @@ namespace Vintagestory.GameContent
 
             double dy = desiredYPos - entity.ServerPos.Y;
             double yMot = GameMath.Clamp(dy, -1, 1);
-            float yawDist = GameMath.AngleRadDistance(entity.ServerPos.Yaw, desiredYaw);
+            float yawDist = GameMath.AngleRadDistance(desiredYaw, entity.ServerPos.Yaw);
 
             if (!entity.FeetInLiquid)
             {
@@ -98,7 +100,6 @@ namespace Vintagestory.GameContent
                     entity.ServerPos.Motion.Y = 0.02f;
                 }
             }
-
 
             double cosYaw = Math.Cos(entity.ServerPos.Yaw);
             double sinYaw = Math.Sin(entity.ServerPos.Yaw);

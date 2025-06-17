@@ -2,13 +2,15 @@
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     // Steelmaking
     // 1. Craft stone coffing
     // 2. Combine both halves into one whole
     // 3. Add coal, add ingots, add coal, till full
-    // 4. 
+    // 4.
 
     public class BlockStoneCoffinSection : Block
     {
@@ -33,7 +35,7 @@ namespace Vintagestory.GameContent
             }
 
             int[] incade = ColorUtil.getIncandescenceColor(temp);
-            
+
             float ina = GameMath.Clamp(incade[3] / 255f, 0, 1);
 
             for (int i = 0; i < lightRgbsByCorner.Length; i++)
@@ -93,7 +95,7 @@ namespace Vintagestory.GameContent
             {
                 pos = GetControllerBlockPositionOrNull(blockSel.Position);
             }
-            
+
             if (pos == null) return base.OnBlockInteractStart(world, byPlayer, blockSel);
 
             BlockEntityStoneCoffin besc = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityStoneCoffin;
@@ -155,6 +157,26 @@ namespace Vintagestory.GameContent
                 nsele.Position = npos;
 
                 return api.World.BlockAccessor.GetBlock(npos).GetPlacedBlockInteractionHelp(world, nsele, forPlayer);
+            }
+
+            var besc = world.BlockAccessor.GetBlockEntity<BlockEntityStoneCoffin>(selection.Position);
+            if (besc?.StructureComplete == false)
+            {
+                return new WorldInteraction[]
+                {
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-mulblock-struc-show",
+                        HotKeyCodes = new string[] {"shift" },
+                        MouseButton = EnumMouseButton.Right,
+                    },
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-mulblock-struc-hide",
+                        HotKeyCodes = new string[] {"ctrl" },
+                        MouseButton = EnumMouseButton.Right,
+                    }
+                };
             }
 
             return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer);

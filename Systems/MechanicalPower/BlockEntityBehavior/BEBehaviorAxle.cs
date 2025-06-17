@@ -7,6 +7,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent.Mechanics
 {
     public class BEBehaviorMPAxle : BEBehaviorMPBase
@@ -79,8 +81,7 @@ namespace Vintagestory.GameContent.Mechanics
             return ObjectCacheUtil.GetOrCreate(Api, Block.Code + "-" + orient + "-stand", () =>
             {
                 Shape shape = API.Common.Shape.TryGet(capi, orient == "west" ? axleStandLocWest : axleStandLocEast);
-                MeshData mesh;
-                capi.Tesselator.TesselateShape(Block, shape, out mesh);
+                capi.Tesselator.TesselateShape(Block, shape, out MeshData mesh);
                 return mesh;
             });
         }
@@ -92,15 +93,15 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 // Up or down
                 if (
-                    blockaccessor.GetBlock(Position.X, Position.Y - 1, Position.Z).SideSolid[BlockFacing.UP.Index] ||
-                    blockaccessor.GetBlock(Position.X, Position.Y + 1, Position.Z).SideSolid[BlockFacing.DOWN.Index]
+                    blockaccessor.GetBlockBelow(Position, 1, BlockLayersAccess.Solid).SideSolid[BlockFacing.UP.Index] ||
+                    blockaccessor.GetBlockAbove(Position, 1, BlockLayersAccess.Solid).SideSolid[BlockFacing.DOWN.Index]
                 ) return true;
 
                 // Front or back
                 BlockFacing frontFacing = orientations == "ns" ? BlockFacing.WEST : BlockFacing.NORTH;
                 return
-                    blockaccessor.GetBlock(Position.AddCopy(frontFacing)).SideSolid[frontFacing.Opposite.Index] ||
-                    blockaccessor.GetBlock(Position.AddCopy(frontFacing.Opposite)).SideSolid[frontFacing.Index]
+                    blockaccessor.GetBlockOnSide(Position, frontFacing, BlockLayersAccess.Solid).SideSolid[frontFacing.Opposite.Index] ||
+                    blockaccessor.GetBlockOnSide(Position, frontFacing.Opposite, BlockLayersAccess.Solid).SideSolid[frontFacing.Index]
                 ;
             }
             else
@@ -108,7 +109,7 @@ namespace Vintagestory.GameContent.Mechanics
                 for (int i = 0; i < 4; i++)
                 {
                     BlockFacing face = BlockFacing.HORIZONTALS[i];
-                    Block blockNeib = blockaccessor.GetBlock(Position.X + face.Normali.X, Position.Y, Position.Z + face.Normali.Z);
+                    Block blockNeib = blockaccessor.GetBlockOnSide(Position, face, BlockLayersAccess.Solid);
                     if (blockNeib.SideSolid[face.Opposite.Index])
                     {
                         return true;
@@ -151,10 +152,10 @@ namespace Vintagestory.GameContent.Mechanics
         {
             try
             {
-                BlockMPBase block = world.BlockAccessor.GetBlock(pos.X + vector.X, pos.Y + vector.Y, pos.Z + vector.Z) as BlockMPBase;
+                BlockMPBase block = world.BlockAccessor.GetBlockRaw(pos.X + vector.X, pos.InternalY + vector.Y, pos.Z + vector.Z, BlockLayersAccess.Solid) as BlockMPBase;
                 if (block == null) return true;
 
-                BlockPos sidePos = new BlockPos(pos.X + vector.X, pos.Y + vector.Y, pos.Z + vector.Z);
+                BlockPos sidePos = new BlockPos(pos.X + vector.X, pos.Y + vector.Y, pos.Z + vector.Z, pos.dimension);
                 BEBehaviorMPBase bemp = world.BlockAccessor.GetBlockEntity(sidePos)?.GetBehavior<BEBehaviorMPBase>();
                 if (bemp == null) return true;
 
@@ -172,16 +173,19 @@ namespace Vintagestory.GameContent.Mechanics
                 if (bempaxle.orientations == orientations && IsAttachedToBlock(world.BlockAccessor, block, sidePos)) return false;
                 return bempaxle.RequiresStand(world, sidePos, vector);
             }
+#if DEBUG
+            catch (Exception)
+            {
+                throw;
+            }
+#else
             catch (Exception e)
             {
-#if DEBUG
-                throw;
-#else
                 world.Logger.Error("Exception thrown in RequiresStand, will log exception but silently ignore it: at " + pos);
                 world.Logger.Error(e);
                 return false;
-#endif
             }
+#endif
         }
 
         private MeshData rotStand(MeshData mesh)
@@ -193,9 +197,9 @@ namespace Vintagestory.GameContent.Mechanics
                 if (orientations == "ns") mesh = mesh.Rotate(center, 0, -GameMath.PIHALF, 0);
 
                 // No stand rotation if standing on a solid block below
-                if (!Api.World.BlockAccessor.GetBlock(Position.X, Position.Y - 1, Position.Z).SideSolid[BlockFacing.UP.Index])
+                if (!Api.World.BlockAccessor.GetBlockBelow(Position, 1, BlockLayersAccess.Solid).SideSolid[BlockFacing.UP.Index])
                 {
-                    if (Api.World.BlockAccessor.GetBlock(Position.X, Position.Y + 1, Position.Z).SideSolid[BlockFacing.DOWN.Index])
+                    if (Api.World.BlockAccessor.GetBlockAbove(Position, 1, BlockLayersAccess.Solid).SideSolid[BlockFacing.DOWN.Index])
                     {
                         mesh = mesh.Rotate(center, GameMath.PI, 0, 0);
 
@@ -203,14 +207,14 @@ namespace Vintagestory.GameContent.Mechanics
                     else if (orientations == "ns")
                     {
                         BlockFacing face = BlockFacing.EAST;
-                        if (Api.World.BlockAccessor.GetBlock(Position.X + face.Normali.X, Position.Y, Position.Z + face.Normali.Z).SideSolid[face.Opposite.Index])
+                        if (Api.World.BlockAccessor.GetBlockOnSide(Position, face, BlockLayersAccess.Solid).SideSolid[face.Opposite.Index])
                         {
                             mesh = mesh.Rotate(center, 0, 0, GameMath.PIHALF);
                         }
                         else
                         {
                             face = BlockFacing.WEST;
-                            if (Api.World.BlockAccessor.GetBlock(Position.X + face.Normali.X, Position.Y, Position.Z + face.Normali.Z).SideSolid[face.Opposite.Index])
+                            if (Api.World.BlockAccessor.GetBlockOnSide(Position, face, BlockLayersAccess.Solid).SideSolid[face.Opposite.Index])
                             {
                                 mesh = mesh.Rotate(center, 0, 0, -GameMath.PIHALF);
                             }
@@ -219,14 +223,14 @@ namespace Vintagestory.GameContent.Mechanics
                     } else
                     {
                         BlockFacing face = BlockFacing.NORTH;
-                        if (Api.World.BlockAccessor.GetBlock(Position.X + face.Normali.X, Position.Y, Position.Z + face.Normali.Z).SideSolid[face.Opposite.Index])
+                        if (Api.World.BlockAccessor.GetBlockOnSide(Position, face, BlockLayersAccess.Solid).SideSolid[face.Opposite.Index])
                         {
                             mesh = mesh.Rotate(center, GameMath.PIHALF, 0, 0);
                         }
                         else
                         {
                             face = BlockFacing.SOUTH;
-                            if (Api.World.BlockAccessor.GetBlock(Position.X + face.Normali.X, Position.Y, Position.Z + face.Normali.Z).SideSolid[face.Opposite.Index])
+                            if (Api.World.BlockAccessor.GetBlockOnSide(Position, face, BlockLayersAccess.Solid).SideSolid[face.Opposite.Index])
                             {
                                 mesh = mesh.Rotate(center, -GameMath.PIHALF, 0, 0);
                             }
@@ -241,7 +245,7 @@ namespace Vintagestory.GameContent.Mechanics
                 for (int i = 0; i < 4; i++)
                 {
                     BlockFacing face = BlockFacing.HORIZONTALS[i];
-                    if (Api.World.BlockAccessor.GetBlock(Position.X + face.Normali.X, Position.Y, Position.Z + face.Normali.Z).SideSolid[face.Opposite.Index])
+                    if (Api.World.BlockAccessor.GetBlockOnSide(Position, face, BlockLayersAccess.Solid).SideSolid[face.Opposite.Index])
                     {
                         attachFace = face;
                         break;

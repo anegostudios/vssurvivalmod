@@ -10,6 +10,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class StatModifiers
@@ -32,13 +34,18 @@ namespace Vintagestory.GameContent
         public bool HighDamageTierResistant;
     }
 
-    public class ItemWearable : Item, IContainedMeshSource, ITexPositionSource
+    public class ItemWearable : ItemWearableAttachment
     {
         public StatModifiers StatModifers;
         public ProtectionModifiers ProtectionModifiers;
         public AssetLocation[] FootStepSounds;
 
         public EnumCharacterDressType DressType { get; private set; }
+
+        public override string GetMeshCacheKey(ItemStack itemstack)
+        {
+            return "wearableModelRef-" + itemstack.Collectible.Code.ToString();
+        }
 
         public bool IsArmor
         {
@@ -48,99 +55,12 @@ namespace Vintagestory.GameContent
             }
         }
 
-
-        #region For ground storable mesh
-        ITextureAtlasAPI curAtlas;
-        Shape nowTesselatingShape;
-
-        public Size2i AtlasSize => curAtlas.Size;
-
-
-        public virtual TextureAtlasPosition this[string textureCode]
-        {
-            get
-            {
-                AssetLocation texturePath = null;
-                CompositeTexture tex;
-
-                // Prio 1: Get from collectible textures
-                if (Textures.TryGetValue(textureCode, out tex))
-                {
-                    texturePath = tex.Baked.BakedName;
-                }
-
-                // Prio 2: Get from collectible textures, use "all" code
-                if (texturePath == null && Textures.TryGetValue("all", out tex))
-                {
-                    texturePath = tex.Baked.BakedName;
-                }
-
-                // Prio 3: Get from currently tesselating shape
-                if (texturePath == null)
-                {
-                    nowTesselatingShape?.Textures.TryGetValue(textureCode, out texturePath);
-                }
-
-                // Prio 4: The code is the path
-                if (texturePath == null)
-                {
-                    texturePath = new AssetLocation(textureCode);
-                }
-
-                return getOrCreateTexPos(texturePath);
-            }
-        }
-
-
-        protected TextureAtlasPosition getOrCreateTexPos(AssetLocation texturePath)
-        {
-            var capi = api as ICoreClientAPI;
-
-            curAtlas.GetOrInsertTexture(texturePath, out _, out var texpos, () =>
-            {
-                IAsset texAsset = capi.Assets.TryGet(texturePath.Clone().WithPathPrefixOnce("textures/").WithPathAppendixOnce(".png"));
-                if (texAsset != null)
-                {
-                    return texAsset.ToBitmap(capi);
-                }
-
-                capi.World.Logger.Warning("Item {0} defined texture {1}, not no such texture found.", Code, texturePath);
-                return null;
-            }, 0.1f);
-
-            return texpos;
-        }
-
-        public MeshData GenMesh(ItemStack itemstack, ITextureAtlasAPI targetAtlas, BlockPos forBlockPos = null)
-        {
-            var capi = api as ICoreClientAPI;
-            if (targetAtlas == capi.ItemTextureAtlas)
-            {
-                ITexPositionSource texSource = capi.Tesselator.GetTextureSource(itemstack.Item);
-                return genMesh(capi, itemstack, texSource);
-            }
-
-
-            curAtlas = targetAtlas;
-            MeshData mesh = genMesh(api as ICoreClientAPI, itemstack, this);
-            mesh.RenderPassesAndExtraBits.Fill((short)EnumChunkRenderPass.OpaqueNoCull);
-            return mesh;
-        }
-
-        public string GetMeshCacheKey(ItemStack itemstack)
-        {
-            return "armorModelRef-" + itemstack.Collectible.Code.ToString();
-        }
-        #endregion
-
-
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
 
             string strdress = Attributes["clothescategory"].AsString();
-            EnumCharacterDressType dt = EnumCharacterDressType.Unknown;
-            Enum.TryParse(strdress, true, out dt);
+            Enum.TryParse(strdress, true, out EnumCharacterDressType dt);
             DressType = dt;
 
 
@@ -235,32 +155,6 @@ namespace Vintagestory.GameContent
             api.ObjectCache.Remove("armorMeshRefs");
         }
 
-
-
-        public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
-        {
-            JsonObject attrObj = itemstack.Collectible.Attributes;
-            if (attrObj?["wearableAttachment"].Exists != true) return;
-
-            Dictionary<string, MultiTextureMeshRef> armorMeshrefs = ObjectCacheUtil.GetOrCreate(capi, "armorMeshRefs", () => new Dictionary<string, MultiTextureMeshRef>());
-            string key = "armorModelRef-" + itemstack.Collectible.Code.ToString();
-
-            if (!armorMeshrefs.TryGetValue(key, out renderinfo.ModelRef))
-            {
-                ITexPositionSource texSource = capi.Tesselator.GetTextureSource(itemstack.Item);
-                var mesh = genMesh(capi, itemstack, texSource);
-                renderinfo.ModelRef = armorMeshrefs[key] = mesh == null ? renderinfo.ModelRef : capi.Render.UploadMultiTextureMesh(mesh);
-
-                
-            }
-
-            if (Attributes["visibleDamageEffect"].AsBool())
-            {
-                renderinfo.DamageEffect = Math.Max(0, 1 - (float)GetRemainingDurability(itemstack) / GetMaxDurability(itemstack) * 1.1f);
-            }
-        }
-
-
         public override void OnHandbookRecipeRender(ICoreClientAPI capi, GridRecipe recipe, ItemSlot dummyslot, double x, double y, double z, double size)
         {
             bool isRepairRecipe = recipe.Name.Path.Contains("repair");
@@ -278,111 +172,6 @@ namespace Vintagestory.GameContent
                 dummyslot.Itemstack.Attributes.SetInt("durability", prevDura);
             }
         }
-
-
-        private MeshData genMesh(ICoreClientAPI capi, ItemStack itemstack, ITexPositionSource texSource)
-        {
-            JsonObject attrObj = itemstack.Collectible.Attributes;
-            EntityProperties props = capi.World.GetEntityType(new AssetLocation("player"));
-            Shape entityShape = props.Client.LoadedShape;
-            AssetLocation shapePathForLogging = props.Client.Shape.Base;
-            Shape newShape;
-
-            bool iswearableAttachment = attrObj.IsTrue("wearableAttachment");
-            if (!iswearableAttachment)
-            {
-                // No need to step parent anything if its just a texture on the seraph
-                newShape = entityShape;
-            }
-            else
-            {
-                newShape = new Shape()
-                {
-                    Elements = entityShape.CloneElements(),
-                    Animations = entityShape.Animations,
-                    AnimationsByCrc32 = entityShape.AnimationsByCrc32,
-                    AttachmentPointsByCode = entityShape.AttachmentPointsByCode,
-                    JointsById = entityShape.JointsById,
-                    TextureWidth = entityShape.TextureWidth,
-                    TextureHeight = entityShape.TextureHeight,
-                    Textures = null,
-                };
-
-                CompositeShape compArmorShape = !attrObj["attachShape"].Exists ? (itemstack.Class == EnumItemClass.Item ? itemstack.Item.Shape : itemstack.Block.Shape) : attrObj["attachShape"].AsObject<CompositeShape>(null, itemstack.Collectible.Code.Domain);
-
-                if (compArmorShape == null)
-                {
-                    capi.World.Logger.Warning("Entity armor {0} {1} does not define a shape through either the shape property or the attachShape Attribute. Armor pieces will be invisible.", itemstack.Class, itemstack.Collectible.Code);
-                    return null;
-                }
-
-                AssetLocation shapePath = compArmorShape.Base.CopyWithPath("shapes/" + compArmorShape.Base.Path + ".json");
-
-                Shape armorShape = API.Common.Shape.TryGet(capi, shapePath);
-                if (armorShape == null)
-                {
-                    capi.World.Logger.Warning("Entity wearable shape {0} defined in {1} {2} not found or errored, was supposed to be at {3}. Armor piece will be invisible.", compArmorShape.Base, itemstack.Class, itemstack.Collectible.Code, shapePath);
-                    return null;
-                }
-
-                newShape.Textures = armorShape.Textures;
-
-                if (armorShape.Textures.Count > 0 && armorShape.TextureSizes.Count == 0)
-                {
-                    foreach (var val in armorShape.Textures)
-                    {
-                        armorShape.TextureSizes.Add(val.Key, new int[] { armorShape.TextureWidth, armorShape.TextureHeight });
-                    }
-                }
-
-                foreach (var val in armorShape.TextureSizes)
-                {
-                    newShape.TextureSizes[val.Key] = val.Value;
-                }
-
-                foreach (var val in armorShape.Elements)
-                {
-                    ShapeElement elem;
-
-                    if (val.StepParentName != null)
-                    {
-                        elem = newShape.GetElementByName(val.StepParentName, StringComparison.InvariantCultureIgnoreCase);
-                        if (elem == null)
-                        {
-                            capi.World.Logger.Warning("Entity wearable shape {0} defined in {1} {2} requires step parent element with name {3}, but no such element was found in shape {3}. Will not be visible.", compArmorShape.Base, itemstack.Class, itemstack.Collectible.Code, val.StepParentName, shapePathForLogging);
-                            continue;
-                        }
-                    }
-                    else
-                    {
-                        capi.World.Logger.Warning("Entity wearable shape element {0} in shape {1} defined in {2} {3} did not define a step parent element. Will not be visible.", val.Name, compArmorShape.Base, itemstack.Class, itemstack.Collectible.Code);
-                        continue;
-                    }
-
-                    if (elem.Children == null)
-                    {
-                        elem.Children = new ShapeElement[] { val };
-                    }
-                    else
-                    {
-                        elem.Children = elem.Children.Append(val);
-                    }
-                }
-            }
-
-
-
-            MeshData meshdata;
-
-            nowTesselatingShape = newShape;
-
-            capi.Tesselator.TesselateShapeWithJointIds("entity", newShape, out meshdata, texSource, new Vec3f());
-
-            nowTesselatingShape = null;
-
-            return meshdata;
-        }
-
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
         {
@@ -490,6 +279,15 @@ namespace Vintagestory.GameContent
                 dsc.AppendLine("<font color=\"#86aad0\">" + Lang.Get("High damage tier resistant") + "</font> " + Lang.Get("When damaged by a higher tier attack, the loss of protection is only half as much."));
             }
 
+            if (Variant["category"] == "head")
+            {
+                var rainProt = Attributes["rainProtectionPerc"].AsFloat(0);
+                if (rainProt > 0)
+                {
+                    dsc.AppendLine(Lang.Get("Protection from rain: {0}%", (int)(rainProt * 100)));
+                }
+            }
+
             // Condition: Useless (0-10%)
             // Condition: Heavily Tattered (10-20%)
             // Condition: Slightly Tattered (20-30%)
@@ -499,6 +297,7 @@ namespace Vintagestory.GameContent
 
             // Condition: 0-40%
             // Warmth: +1.5°C
+
 
 
             if (inSlot.Itemstack.ItemAttributes?["warmth"].Exists == true && inSlot.Itemstack.ItemAttributes?["warmth"].AsFloat() != 0)
@@ -574,7 +373,12 @@ namespace Vintagestory.GameContent
             slot.MarkDirty();
         }
 
-        private void ensureConditionExists(ItemSlot slot)
+        public override bool RequiresTransitionableTicking(IWorldAccessor world, ItemStack itemstack)
+        {
+            return !itemstack.Attributes.HasAttribute("condition");
+        }
+
+        private void ensureConditionExists(ItemSlot slot, bool markdirty=true)
         {
             // Prevent derp in the handbook
             if (slot is DummySlot) return;
@@ -591,7 +395,7 @@ namespace Vintagestory.GameContent
                         slot.Itemstack.Attributes.SetFloat("condition", (float)api.World.Rand.NextDouble() * 0.4f);
                     }
                     
-                    slot.MarkDirty();
+                    if (markdirty) slot.MarkDirty();
                 }
             }
         }
@@ -696,13 +500,12 @@ namespace Vintagestory.GameContent
 
         public int GetInputRepairCount(ItemSlot[] inputSlots)
         {
-            OrderedDictionary<int, int> matcounts = new OrderedDictionary<int, int>();
+            API.Datastructures.OrderedDictionary<int, int> matcounts = new ();
             foreach (var slot in inputSlots)
             {
                 if (slot.Empty || slot.Itemstack.Collectible is ItemWearable) continue;
                 var hash = slot.Itemstack.GetHashCode();
-                int cnt = 0;
-                matcounts.TryGetValue(hash, out cnt);
+                matcounts.TryGetValue(hash, out int cnt);
                 matcounts[hash] = cnt + slot.StackSize;
             }
             return matcounts.Values.Min();
@@ -783,7 +586,7 @@ namespace Vintagestory.GameContent
 
             if (leftDurability > 0 && leftDurability - amount < 0)
             {
-                world.PlaySoundAt(new AssetLocation("sounds/effect/toolbreak"), byEntity.SidedPos.X, byEntity.SidedPos.Y, byEntity.SidedPos.Z, (byEntity as EntityPlayer)?.Player);
+                world.PlaySoundAt(new AssetLocation("sounds/effect/toolbreak"), byEntity.SidedPos.X, byEntity.SidedPos.InternalY, byEntity.SidedPos.Z, (byEntity as EntityPlayer)?.Player);
             }
 
             itemslot.Itemstack.Attributes.SetInt("durability", Math.Max(0, leftDurability - amount));

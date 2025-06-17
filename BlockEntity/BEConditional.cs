@@ -5,6 +5,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityConditional : BlockEntityGuiConfigurableCommands, IWrenchOrientable
@@ -35,17 +37,25 @@ namespace Vintagestory.GameContent
 
         private int EvaluateConditionAsTrue()
         {
+            string theCommands = Commands.Trim();
             TextCommandCallingArgs packedArgs = new TextCommandCallingArgs()
             {
                 Caller = getCaller(),
-                RawArgs = new CmdArgs(Commands)
+                RawArgs = new CmdArgs(theCommands)
             };
 
-            ICommandArgumentParser parser = new EntitiesArgParser("cond", Api, true);
-            EnumParseResult result = parser.TryProcess(packedArgs);
+            if (theCommands.StartsWith("isBlock"))
+            {
+                ICommandArgumentParser blockCondParser = new IsBlockArgParser("cond", Api, true);
+                EnumParseResult bresult = blockCondParser.TryProcess(packedArgs);
+                if (bresult != EnumParseResult.Good) return 0;
+                return (bool)blockCondParser.GetValue() ? 2 : 1;
+            }
+            ICommandArgumentParser entityCondParser = new EntitiesArgParser("cond", Api, true);
+            EnumParseResult result = entityCondParser.TryProcess(packedArgs);
             if (result != EnumParseResult.Good) return 0;
 
-            return (parser.GetValue() as Entity[]).Length > 0 ? 2 : 1;
+            return (entityCondParser.GetValue() as Entity[]).Length > 0 ? 2 : 1;
         }
 
         Caller getCaller()

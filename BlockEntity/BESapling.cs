@@ -7,6 +7,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public enum EnumTreeGrowthStage
@@ -21,6 +23,7 @@ namespace Vintagestory.GameContent
         long growListenerId;
         public EnumTreeGrowthStage stage;
         public bool plantedFromSeed;
+        private NormalRandom normalRandom;
 
         MeshData dirtMoundMesh
         {
@@ -31,23 +34,23 @@ namespace Vintagestory.GameContent
 
                 return ObjectCacheUtil.GetOrCreate(Api, "dirtMoundMesh", () =>
                 {
-                    MeshData mesh = null;
 
                     Shape shape = API.Common.Shape.TryGet(capi, AssetLocation.Create("shapes/block/plant/dirtmound.json", Block.Code.Domain));
-                    capi.Tesselator.TesselateShape(Block, shape, out mesh);
+                    capi.Tesselator.TesselateShape(Block, shape, out MeshData mesh);
 
                     return mesh;
                 });
             }
         }
-            
+
 
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
 
             if (api is ICoreServerAPI)
-            {   
+            {
+                normalRandom = new NormalRandom(api.World.Seed);
                 growListenerId = RegisterGameTickListener(CheckGrow, 2000);
             }
         }
@@ -119,17 +122,18 @@ namespace Vintagestory.GameContent
 
             if (treeGenCode == null)
             {
-                Api.Event.UnregisterGameTickListener(growListenerId);
+                UnregisterGameTickListener(growListenerId);
+                growListenerId = 0;
                 return;
             }
 
             AssetLocation code = new AssetLocation(treeGenCode);
             ICoreServerAPI sapi = Api as ICoreServerAPI;
 
-            ITreeGenerator gen;
-            if (!sapi.World.TreeGenerators.TryGetValue(code, out gen))
+            if (!sapi.World.TreeGenerators.TryGetValue(code, out ITreeGenerator gen))
             {
-                Api.Event.UnregisterGameTickListener(growListenerId);
+                UnregisterGameTickListener(growListenerId);
+                growListenerId = 0;
                 return;
             }
 
@@ -146,7 +150,7 @@ namespace Vintagestory.GameContent
                 mossGrowthChance = 0
             };
 
-            gen.GrowTree(Api.World.BulkBlockAccessor, Pos.DownCopy(), pa);
+            gen.GrowTree(Api.World.BulkBlockAccessor, Pos.DownCopy(), pa, normalRandom);
 
             Api.World.BulkBlockAccessor.Commit();
         }
@@ -243,7 +247,7 @@ namespace Vintagestory.GameContent
             return base.OnTesselation(mesher, tessThreadTesselator);
         }
 
-        
+
 
     }
 }

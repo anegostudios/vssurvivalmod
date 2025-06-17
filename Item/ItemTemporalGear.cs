@@ -4,6 +4,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ItemTemporalGear : Item
@@ -36,15 +38,18 @@ namespace Vintagestory.GameContent
 
         public override void InGuiIdle(IWorldAccessor world, ItemStack stack)
         {
-            GuiTransform.Rotation.Y = GameMath.Mod(world.ElapsedMilliseconds / 50f, 360);
+            if (world is IClientWorldAccessor)
+            {
+                GuiTransform.Rotation.Y = GameMath.Mod(world.ElapsedMilliseconds / 50f, 360);
+            }
         }
 
         public override void OnGroundIdle(EntityItem entityItem)
         {
-            GroundTransform.Rotation.Y = -GameMath.Mod(entityItem.World.ElapsedMilliseconds / 50f, 360);
-
             if (entityItem.World is IClientWorldAccessor)
             {
+                GroundTransform.Rotation.Y = -GameMath.Mod(entityItem.World.ElapsedMilliseconds / 50f, 360);
+
                 particlesHeld.MinQuantity = 1;
 
                 Vec3d pos = entityItem.SidedPos.XYZ;
@@ -115,12 +120,12 @@ namespace Vintagestory.GameContent
         public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             if (blockSel == null || !(byEntity is EntityPlayer)) return false;
-            
-            FpHandTransform.Rotation.Y = GameMath.Mod(byEntity.World.ElapsedMilliseconds / (50f - secondsUsed * 20), 360);
-            TpHandTransform.Rotation.Y = GameMath.Mod(byEntity.World.ElapsedMilliseconds / (50f - secondsUsed * 20), 360);
 
             if (byEntity.World is IClientWorldAccessor)
             {
+                FpHandTransform.Rotation.Y = GameMath.Mod(byEntity.World.ElapsedMilliseconds / (50f - secondsUsed * 20), 360);
+                TpHandTransform.Rotation.Y = GameMath.Mod(byEntity.World.ElapsedMilliseconds / (50f - secondsUsed * 20), 360);
+
                 particlesHeld.MinQuantity = 1;
 
                 Vec3d pos = blockSel.Position.ToVec3d().Add(blockSel.HitPosition);

@@ -5,44 +5,32 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class EntityPlayerBot : EntityAnimalBot
     {
-
-        protected InventoryBase inv;
-       
-
+        EntityBehaviorSeraphInventory invbh;
         public override bool StoreWithChunk
         {
             get { return true; }
         }
-        
 
-        public override IInventory GearInventory
-        {
-            get
-            {
-                return inv;
-            }
-        }
+        public override ItemSlot RightHandItemSlot => invbh.Inventory[15];
+        public override ItemSlot LeftHandItemSlot => invbh.Inventory[16];
 
-        public override ItemSlot RightHandItemSlot => inv[15];
-        public override ItemSlot LeftHandItemSlot => inv[16];
-
-        public EntityPlayerBot() : base()
-        {
-            inv = new InventoryGear(null, null);
-        }
+        public EntityPlayerBot() : base() { }
 
         public override void Initialize(EntityProperties properties, ICoreAPI api, long chunkindex3d)
         {
             base.Initialize(properties, api, chunkindex3d);
 
-            inv.LateInitialize("gearinv-" + EntityId, api);
-
             Name = WatchedAttributes.GetTreeAttribute("nametag")?.GetString("name");
+
+            invbh = GetBehavior<EntityBehaviorSeraphInventory>();
         }
+
 
         public override void OnEntitySpawn()
         {
@@ -79,14 +67,6 @@ namespace Vintagestory.GameContent
 
             HandleHandAnimations(dt);
         }
-
-        protected override Shape addGearToShape(ItemSlot slot, Shape entityShape, string shapePathForLogging)
-        {
-            if (!(slot is ItemSlotCharacter)) return entityShape; // Don't "wear" held items
-
-            return base.addGearToShape(slot, entityShape, shapePathForLogging);
-        }
-
 
 
 
@@ -177,25 +157,6 @@ namespace Vintagestory.GameContent
 
 
 
-        public override void ToBytes(BinaryWriter writer, bool forClient)
-        {
-            TreeAttribute tree;
-            WatchedAttributes["gearInv"] = tree = new TreeAttribute();
-            inv.ToTreeAttributes(tree);
-            
-
-            base.ToBytes(writer, forClient);
-        }
-
-
-        public override void FromBytes(BinaryReader reader, bool forClient)
-        {
-            base.FromBytes(reader, forClient);
-
-            TreeAttribute tree = WatchedAttributes["gearInv"] as TreeAttribute;
-            if (tree != null) inv.FromTreeAttributes(tree);
-        }
-
         public override void OnInteract(EntityAgent byEntity, ItemSlot slot, Vec3d hitPosition, EnumInteractMode mode)
         {
             base.OnInteract(byEntity, slot, hitPosition, mode);
@@ -210,16 +171,64 @@ namespace Vintagestory.GameContent
                 }
                 else
                 {
-                    inv.DiscardAll();
+                    invbh.Inventory.DiscardAll();
                 }
 
                 WatchedAttributes.MarkAllDirty();
             }
         }
-
     }
 
+    public class EntityBehaviorArmorStandInventory : EntityBehaviorSeraphInventory
+    {
+        public override string InventoryClassName => "inventory";
+        public override string PropertyName() => "armorstandinventory";
 
+        public EntityBehaviorArmorStandInventory(Entity entity) : base(entity)
+        {
+        }
+
+        protected override void Inventory_SlotModified(int slotid)
+        {
+            base.Inventory_SlotModified(slotid);
+            storeInv();
+        }
+    }
+
+    public class EntityBehaviorSeraphInventory : EntityBehaviorTexturedClothing
+    {
+        public override string PropertyName() => "seraphinventory";
+        EntityAgent eagent;
+        public override InventoryBase Inventory => inv;
+
+        public override string InventoryClassName => "seraphinventory";
+
+        InventoryGear inv;
+
+        public EntityBehaviorSeraphInventory(Entity entity) : base(entity)
+        {
+            eagent = entity as EntityAgent;
+            inv = new InventoryGear(null, null);
+        }
+
+        public override void Initialize(EntityProperties properties, JsonObject attributes)
+        {
+            Api = entity.World.Api;
+
+            inv.LateInitialize("gearinv-" + entity.EntityId, Api);
+            loadInv();
+
+            eagent.WatchedAttributes.RegisterModifiedListener("wearablesInv", wearablesModified);
+
+            base.Initialize(properties, attributes);
+        }
+
+        private void wearablesModified()
+        {
+            loadInv();
+            eagent.MarkShapeModified();
+        }
+    }
 
 
     public class InventoryGear : InventoryBase
@@ -261,7 +270,6 @@ namespace Vintagestory.GameContent
         public override void ToTreeAttributes(ITreeAttribute tree)
         {
             SlotsToTreeAttributes(slots, tree);
-            //ResolveBlocksOrItems();
         }
 
         Dictionary<EnumCharacterDressType, string> iconByDressType = new Dictionary<EnumCharacterDressType, string>()

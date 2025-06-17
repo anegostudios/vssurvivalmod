@@ -5,26 +5,19 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ToolMoldRenderer : IRenderer
     {
         BlockPos pos;
         ICoreClientAPI api;
-
-
         MeshRef[] quadModelRefs;
         public Matrixf ModelMat = new Matrixf();
 
-        public double RenderOrder
-        {
-            get { return 0.5; }
-        }
-
-        public int RenderRange
-        {
-            get { return 24; }
-        }
+        public double RenderOrder => 0.5;
+        public int RenderRange => 24;   
 
         /// <summary>
         /// 0..1
@@ -37,12 +30,17 @@ namespace Vintagestory.GameContent
 
         public AssetLocation TextureName = null;
 
+        private readonly BlockEntityToolMold entity;
+
         internal Cuboidf[] fillQuadsByLevel;
 
-        public ToolMoldRenderer(BlockPos pos, ICoreClientAPI api, Cuboidf[] fillQuadsByLevel = null)
+        public ItemStack stack;
+
+        public ToolMoldRenderer(BlockEntityToolMold betm, ICoreClientAPI api, Cuboidf[] fillQuadsByLevel = null)
         {
-            this.pos = pos;
+            this.pos = betm.Pos;
             this.api = api;
+            entity = betm;
 
             this.fillQuadsByLevel = fillQuadsByLevel;
 
@@ -77,7 +75,6 @@ namespace Vintagestory.GameContent
 
             IRenderAPI rpi = api.Render;
             IClientWorldAccessor worldAccess = api.World;
-            EntityPos plrPos = worldAccess.Player.Entity.Pos;
             Vec3d camPos = worldAccess.Player.Entity.CameraPos;
 
             rpi.GlDisableCullFace();
@@ -92,6 +89,12 @@ namespace Vintagestory.GameContent
             prog.AddRenderFlags = 0;
             prog.ExtraGodray = 0;
             prog.NormalShaded = 0;
+            if (stack != null)
+            {
+                prog.AverageColor = ColorUtil.ToRGBAVec4f(api.BlockTextureAtlas.GetAverageColor((stack.Item?.FirstTexture ?? stack.Block.FirstTextureInventory).Baked.TextureSubId));
+                prog.TempGlowMode = 1;
+            }
+            
 
             Vec4f lightrgbs = api.World.BlockAccessor.GetLightRGBs(pos.X, pos.Y, pos.Z);
             float[] glowColor = ColorUtil.GetIncandescenceColorAsColor4f((int)Temperature);
@@ -110,6 +113,9 @@ namespace Vintagestory.GameContent
             prog.ModelMatrix = ModelMat
                 .Identity()
                 .Translate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z)
+                .Translate(0.5f, 0f, 0.5f)
+                .RotateY(entity.MeshAngle)
+                .Translate(-0.5f, 0f, -0.5f)
                 .Translate(1 - rect.X1 / 16f, 1.01f / 16f + Math.Max(0, Level / 16f - 0.0625f / 3), 1 - rect.Z1 / 16f)
                 .RotateX(90 * GameMath.DEG2RAD)
                 .Scale(0.5f * rect.Width / 16f, 0.5f * rect.Length / 16f, 0.5f)
@@ -135,9 +141,7 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < quadModelRefs.Length; i++)
             {
                 quadModelRefs[i]?.Dispose();
-            }
-
-            
+            }            
         }
     }
 }

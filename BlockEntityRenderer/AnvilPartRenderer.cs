@@ -1,6 +1,8 @@
 ﻿using Vintagestory.API.Client;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class AnvilPartRenderer : IRenderer
@@ -29,7 +31,9 @@ namespace Vintagestory.GameContent
             IRenderAPI rpi = capi.Render;
             Vec3d camPos = capi.World.Player.Entity.CameraPos;
 
-            int temp = (int)beAnvil.Inventory[0].Itemstack.Collectible.GetTemperature(capi.World, beAnvil.Inventory[0].Itemstack);
+            var stack = beAnvil.Inventory[0].Itemstack;
+
+            int temp = (int)stack.Collectible.GetTemperature(capi.World, stack);
             Vec4f lightrgbs = capi.World.BlockAccessor.GetLightRGBs(beAnvil.Pos.X, beAnvil.Pos.Y, beAnvil.Pos.Z);
             float[] glowColor = ColorUtil.GetIncandescenceColorAsColor4f(temp);
             int extraGlow = GameMath.Clamp((temp - 550) / 2, 0, 255);
@@ -39,7 +43,6 @@ namespace Vintagestory.GameContent
             rpi.GlToggleBlend(true);
 
             IStandardShaderProgram prog = rpi.PreparedStandardShader(beAnvil.Pos.X, beAnvil.Pos.Y, beAnvil.Pos.Z);
-            prog.Tex2D = capi.BlockTextureAtlas.AtlasTextures[0].TextureId;
 
 
             prog.ModelMatrix = ModelMat
@@ -53,16 +56,18 @@ namespace Vintagestory.GameContent
             prog.ExtraGlow = extraGlow;
             prog.ViewMatrix = rpi.CameraMatrixOriginf;
             prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
+            prog.AverageColor = ColorUtil.ToRGBAVec4f(capi.BlockTextureAtlas.GetAverageColor((stack.Item?.FirstTexture ?? stack.Block.FirstTextureInventory).Baked.TextureSubId));
+            prog.TempGlowMode = stack.ItemAttributes?["tempGlowMode"].AsInt() ?? 0;
 
             if (beAnvil.BaseMeshRef != null && !beAnvil.BaseMeshRef.Disposed)
             {
-                rpi.RenderMultiTextureMesh(beAnvil.BaseMeshRef);
+                rpi.RenderMultiTextureMesh(beAnvil.BaseMeshRef, "tex");
             }
 
             if (beAnvil.FluxMeshRef != null && !beAnvil.FluxMeshRef.Disposed)
             {
                 prog.ExtraGlow = 0;
-                rpi.RenderMultiTextureMesh(beAnvil.FluxMeshRef);
+                rpi.RenderMultiTextureMesh(beAnvil.FluxMeshRef, "tex");
             }
 
             if (beAnvil.TopMeshRef != null && !beAnvil.TopMeshRef.Disposed)
@@ -83,7 +88,7 @@ namespace Vintagestory.GameContent
                 prog.ExtraGlow = extraGlow;
 
 
-                rpi.RenderMultiTextureMesh(beAnvil.TopMeshRef);
+                rpi.RenderMultiTextureMesh(beAnvil.TopMeshRef, "tex");
             }
 
             prog.Stop();

@@ -7,6 +7,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BEBehaviorJonasGasifier : BlockEntityBehavior, INetworkedLight
@@ -98,7 +100,7 @@ namespace Vintagestory.GameContent
                 int moved = slot.TryPutInto(Api.World, inventory[0]);
                 if (moved > 0)
                 {
-                    Api.World.PlaySoundAt(new AssetLocation("sounds/block/charcoal"), Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, byPlayer);
+                    Api.World.PlaySoundAt(new AssetLocation("sounds/block/charcoal"), Pos, 0, byPlayer);
                     (byPlayer as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
                     slot.MarkDirty();
                     Blockentity.MarkDirty(true);

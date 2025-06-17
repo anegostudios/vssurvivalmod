@@ -6,6 +6,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent.Mechanics
 {
     public class BEBehaviorWindmillRotor : BEBehaviorMPRotor
@@ -72,11 +74,11 @@ namespace Vintagestory.GameContent.Mechanics
 
                 if (obstructed(sailLength + 1))
                 {
-                    Api.World.PlaySoundAt(new AssetLocation("sounds/effect/toolbreak"), Position.X + 0.5, Position.Y + 0.5, Position.Z + 0.5, null, false, 20, 1f);
+                    Api.World.PlaySoundAt(new AssetLocation("sounds/effect/toolbreak"), Position, 0, null, false, 20, 1f);
                     while (sailLength-- > 0)
                     {
                         ItemStack stacks = new ItemStack(Api.World.GetItem(new AssetLocation("sail")), 4);
-                        Api.World.SpawnItemEntity(stacks, Blockentity.Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                        Api.World.SpawnItemEntity(stacks, Blockentity.Pos);
                     }
                     sailLength = 0;
                     Blockentity.MarkDirty(true);
@@ -90,7 +92,7 @@ namespace Vintagestory.GameContent.Mechanics
             while (sailLength-- > 0)
             { 
                 ItemStack stacks = new ItemStack(Api.World.GetItem(new AssetLocation("sail")), 4);
-                Api.World.SpawnItemEntity(stacks, Blockentity.Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                Api.World.SpawnItemEntity(stacks, Blockentity.Pos);
             }
 
             base.OnBlockBroken(byPlayer);

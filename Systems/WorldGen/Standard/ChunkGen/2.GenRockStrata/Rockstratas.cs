@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using Vintagestory.ServerMods;
 
+#nullable disable
+
 namespace Vintagestory.API.Common
 {
     [JsonObject(MemberSerialization.OptIn)]

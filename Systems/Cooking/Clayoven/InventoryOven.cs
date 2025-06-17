@@ -4,6 +4,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class InventoryOven : InventoryBase, ISlotProvider
@@ -66,6 +68,10 @@ namespace Vintagestory.GameContent
             if (targetSlot == slots[cookingSize] && (props == null || props.BurnTemperature <= 0)) return 0;
 
             return base.GetSuitability(sourceSlot, targetSlot, isMerge);
+        }
+        public override ItemSlot GetAutoPushIntoSlot(BlockFacing atBlockFace, ItemSlot fromSlot)
+        {
+            return null;
         }
     }
 }

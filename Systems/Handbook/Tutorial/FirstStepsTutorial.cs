@@ -1,6 +1,8 @@
 ﻿using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class FirstStepsTutorial : TutorialBase
@@ -49,7 +51,7 @@ namespace Vintagestory.GameContent
                 TutorialStepBase.Knap(capi, "knapknife", "tutorial-firststeps-6", (stack) => stack.Collectible.Code.Path.Contains("knifeblade"), 1),
                 TutorialStepBase.Craft(capi, "craftknife", "tutorial-firststeps-7", (stack) => stack.Collectible.Tool == EnumTool.Knife, 1),
                 TutorialStepBase.Collect(capi, "getcattails", "tutorial-firststeps-8", (stack) => stack.Collectible.Code.Path == "papyrustops" || stack.Collectible.Code.Path == "cattailtops", 10),
-                TutorialStepBase.Craft(capi, "craftbasket", "tutorial-firststeps-9", (stack) => CollectibleObject.IsBackPack(stack), 1),
+                TutorialStepBase.Craft(capi, "craftbasket", "tutorial-firststeps-9", (stack) => stack.Collectible.GetCollectibleInterface<IHeldBag>() != null, 1),
                 TutorialStepBase.Collect(capi, "getfood", "tutorial-firststeps-10", (stack) => stack.Collectible.NutritionProps != null, 10),
                 TutorialStepBase.Craft(capi, "knapaxe", "tutorial-firststeps-11", (stack) => stack.Collectible.Tool == EnumTool.Axe, 1),
                 TutorialStepBase.Collect(capi, "getlogs", "tutorial-firststeps-12", (stack) => stack.Collectible is BlockLog, 4),
@@ -64,12 +66,13 @@ namespace Vintagestory.GameContent
                     {
                         if (!(blocksel.Block is BlockFirepit)) return false;
                         var befirepit = capi.World.BlockAccessor.GetBlockEntity(blocksel.Position) as BlockEntityFirepit;
+                        if (befirepit == null) return false;   // See Github #4829
                         return befirepit.IsBurning;
                     }
                 ),
-                TutorialStepBase.Craft(capi, "maketorch", "tutorial-firststeps-19", (stack) => stack.Collectible is BlockTorch, 1),
+                TutorialStepBase.Craft(capi, "maketorch", "tutorial-firststeps-19", (stack) => stack.Collectible.Code.Path.Contains("torch-basic-extinct"), 1),
                 TutorialStepBase.Grab(capi, "ignitetorch", "tutorial-firststeps-20", (stack) => (stack.Collectible as BlockTorch)?.IsExtinct == false, 1),
-                TutorialStepBase.Collect(capi, "finished", "tutorial-firststeps-21", (stack) => false, 1)
+                TutorialStepBase.Place(capi, "finished", "tutorial-firststeps-21", (pos, block, stack) => block is BlockTorch bt && !bt.IsExtinct, 1)
             );
         }
 

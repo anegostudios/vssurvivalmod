@@ -3,6 +3,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.GameContent;
 
+#nullable disable
+
 namespace Vintagestory.API.Common
 {
     public class ItemSlotBarrelInput : ItemSlot
@@ -110,7 +112,7 @@ namespace Vintagestory.API.Common
                         sourceSlot.MarkDirty();
 
                         var pos = op.ActingPlayer?.Entity?.Pos;
-                        if (pos != null) op.World.PlaySoundAt(lprops.PourSound, pos.X, pos.Y, pos.Z);
+                        if (pos != null) op.World.PlaySoundAt(lprops.PourSound, pos.X, pos.InternalY, pos.Z);
                     }
                 }
 
@@ -165,7 +167,7 @@ namespace Vintagestory.API.Common
                         op.MovedQuantity = moveQuantity;
 
                         var pos = op.ActingPlayer?.Entity?.Pos;
-                        if (pos != null) op.World.PlaySoundAt(lprops.FillSound, pos.X, pos.Y, pos.Z);
+                        if (pos != null) op.World.PlaySoundAt(lprops.FillSound, pos.X, pos.InternalY, pos.Z);
                     }
 
                     return;

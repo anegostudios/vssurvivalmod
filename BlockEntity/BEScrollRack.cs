@@ -9,9 +9,11 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
-    
+
     public class BlockEntityScrollRack : BlockEntityDisplay, IRotatable
     {
         public override InventoryBase Inventory => inv;
@@ -68,7 +70,7 @@ namespace Vintagestory.GameContent
             usableSlots.AddRange(slotsBySide["mid"]);
             usableSlots.AddRange(slotsBySide["top"]);
             if (left) usableSlots.AddRange(slotsBySide["left"]);
-            
+
             this.UsableSlots = usableSlots.ToArray();
 
             var hitboxes = (Block as BlockScrollRack).slotsHitBoxes;
@@ -87,15 +89,13 @@ namespace Vintagestory.GameContent
 
         void initShelf()
         {
-            if (Api == null || type == null || !(Block is BlockScrollRack)) return;
+            if (Api == null || type == null || Block is not BlockScrollRack rack) return;
 
             if (Api.Side == EnumAppSide.Client)
             {
-                mesh = (Block as BlockScrollRack).GetOrCreateMesh(type, material);
+                mesh = rack.GetOrCreateMesh(type, material);
                 mat = Matrixf.Create().Translate(0.5f, 0.5f, 0.5f).RotateY(MeshAngleRad).Translate(-0.5f, -0.5f, -0.5f).Values;
             }
-
-            if (!(block is BlockScrollRack)) return;
 
             type = "normal";
         }
@@ -115,8 +115,8 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockPlaced(byItemStack);
 
-            type = byItemStack?.Attributes.GetString("type");
-            material = byItemStack?.Attributes.GetString("material");
+            type ??= byItemStack?.Attributes.GetString("type");
+            material ??= byItemStack?.Attributes.GetString("material");
 
             initShelf();
         }
@@ -164,9 +164,15 @@ namespace Vintagestory.GameContent
                 {
                     AssetLocation sound = slot.Itemstack?.Block?.Sounds?.Place;
 
+                    var stackName = slot.Itemstack?.Collectible.Code;
                     if (TryPut(slot, blockSel))
                     {
                         Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
+                        Api.World.Logger.Audit("{0} Put 1x{1} into Scroll rack at {2}.",
+                            byPlayer.PlayerName,
+                            stackName,
+                            Pos
+                        );
                         return true;
                     }
 
@@ -215,8 +221,13 @@ namespace Vintagestory.GameContent
 
                 if (stack.StackSize > 0)
                 {
-                    Api.World.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    Api.World.SpawnItemEntity(stack, Pos);
                 }
+                Api.World.Logger.Audit("{0} Took 1x{1} from Scroll rack at {2}.",
+                    byPlayer.PlayerName,
+                    stack.Collectible.Code,
+                    Pos
+                );
 
                 MarkDirty();
                 return true;
@@ -309,7 +320,7 @@ namespace Vintagestory.GameContent
             ItemSlot slot = inv[index];
             if (slot.Empty)
             {
-                // If we are a rack-edge slot and it is full in the other rack, show contents correctly - otherwise it shows 50/50 as empty depending on which of the two blocks the player is precisely looking at 
+                // If we are a rack-edge slot and it is full in the other rack, show contents correctly - otherwise it shows 50/50 as empty depending on which of the two blocks the player is precisely looking at
                 var slotSides = (Block as BlockScrollRack).slotSide;
                 var slotside = slotSides[index];
                 if (slotside == "bot")

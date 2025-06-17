@@ -3,11 +3,13 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockLooseStones : BlockLooseRock
     {
-        protected override void generate(IBlockAccessor blockAccessor, Block block, BlockPos pos, LCGRandom worldGenRand)
+        protected override void generate(IBlockAccessor blockAccessor, Block block, BlockPos pos, IRandom worldGenRand)
         {
             if (worldGenRand.NextDouble() <= 0.20)
             {

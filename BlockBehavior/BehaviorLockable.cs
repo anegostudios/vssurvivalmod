@@ -1,6 +1,9 @@
 ﻿using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
+using Vintagestory.Systems;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -25,6 +28,28 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
+            var blockEntity = world.BlockAccessor.GetBlockEntity(blockSel.Position);
+            var bed = blockEntity?.GetBehavior<BEBehaviorDoor>();
+            if (bed?.StoryLockedCode != null)
+            {
+                // only open client side
+                if (world.Api is not ICoreClientAPI capi)
+                {
+                    handling = EnumHandling.PreventSubsequent;
+                    return false;
+                }
+                handling = EnumHandling.Handled;
+
+                var stl = capi.ModLoader.GetModSystem<StoryLockableDoor>();
+                if (stl.StoryLockedLocationCodes.TryGetValue(bed.StoryLockedCode, out var list) && list.Contains(byPlayer.PlayerUID))
+                {
+                    return true;
+                }
+                capi.TriggerIngameError(this, "locked", Lang.Get("ingameerror-locked"));
+
+                handling = EnumHandling.PreventSubsequent;
+                return false;
+            }
             return base.OnBlockInteractStart(world, byPlayer, blockSel, ref handling);
         }
 

@@ -1,11 +1,12 @@
 ﻿using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockWaterPlant : BlockPlant
     {
-
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
             if (!CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
@@ -30,7 +31,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (blockToPlace != null && CanPlantStay(world.BlockAccessor, blockSel.Position))
+            if (blockToPlace != null && skipPlantCheck || CanPlantStay(world.BlockAccessor, blockSel.Position))
             {
                 world.BlockAccessor.SetBlock(blockToPlace.BlockId, blockSel.Position);
                 return true;
@@ -39,54 +40,29 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-        public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
+        public override bool TryPlaceBlockForWorldGenUnderwater(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, IRandom worldGenRand, int minWaterDepth, int maxWaterDepth, BlockPatchAttributes attributes = null)
         {
-            base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier);
+            BlockPos belowPos = pos.DownCopy();
 
-            //if (LastCodePart() != "free")
-            //{
-            //    world.BlockAccessor.SetBlock(world.GetBlock(new AssetLocation("water-still-7")).BlockId, pos);
-            //    world.BlockAccessor.GetBlock(pos).OnNeighbourBlockChange(world, pos, pos);
-            //}
-        }
+            Block block;
 
-
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
-        {
-            Block block = blockAccessor.GetBlock(pos);
-
-            if (!block.IsReplacableBy(this))
+            int depth = 1;
+            while (depth < maxWaterDepth)
             {
-                return false;
-            }
+                belowPos.Down();
+                block = blockAccessor.GetBlock(belowPos);
+                if (block is BlockWaterPlant) return false;
+                if (block.Fertility > 0)
+                {
+                    blockAccessor.SetBlock(BlockId, belowPos.Up());
+                    return true;
+                }
+                if (!block.IsLiquid()) return false;
 
-            Block belowBlock = blockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
-            if (belowBlock.Fertility > 0)
-            {
-                Block placingBlock = blockAccessor.GetBlock(CodeWithParts("free"));
-                if (placingBlock == null) return false;
-                blockAccessor.SetBlock(placingBlock.BlockId, pos);
-                return true;
-            }
-
-            if (belowBlock.LiquidCode == "water")   // radfast 23.2.24: note this won't work in salt water!!  Otherwise should be OK, as in worldgen blocks are either still water only, or not water at all
-            {
-                return TryPlaceBlockInWater(blockAccessor, pos);
+                depth++;
             }
 
             return false;
         }
-
-        protected virtual bool TryPlaceBlockInWater(IBlockAccessor blockAccessor, BlockPos pos)
-        {
-            Block belowBlock = blockAccessor.GetBlock(pos.X, pos.Y - 2, pos.Z);
-            if (belowBlock.Fertility > 0)
-            {
-                blockAccessor.SetBlock(blockAccessor.GetBlock(CodeWithParts("water")).BlockId, pos.AddCopy(0, -1, 0));
-                return true;
-            }
-            return false;
-        }
-
     }
 }

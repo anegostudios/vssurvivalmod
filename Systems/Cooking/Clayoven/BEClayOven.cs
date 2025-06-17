@@ -6,6 +6,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public enum EnumOvenContentMode
@@ -158,7 +160,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        
+
         #region Interaction: Code for placing and taking items
 
         public virtual bool OnInteract(IPlayer byPlayer, BlockSelection bs)
@@ -203,11 +205,17 @@ namespace Vintagestory.GameContent
                     }
                     else
                     {
+                        var stackName = slot.Itemstack?.Collectible.Code;
                         if (TryPut(slot))
                         {
                             AssetLocation sound = slot.Itemstack?.Block?.Sounds?.Place;
                             Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/buildhigh"), byPlayer.Entity, byPlayer, true, 16);
                             byPlayer.InventoryManager.BroadcastHotbarSlot();
+                            Api.World.Logger.Audit("{0} Put 1x{1} into Clay oven at {2}.",
+                                byPlayer.PlayerName,
+                                stackName,
+                                Pos
+                            );
                             return true;
                         }
                         else
@@ -217,7 +225,7 @@ namespace Vintagestory.GameContent
                                 ICoreClientAPI capi = Api as ICoreClientAPI;
                                 if (capi != null && (slot.Empty || slot.Itemstack.Attributes.GetBool("bakeable", true) == false)) capi.TriggerIngameError(this, "notbakeable", Lang.Get("This item is not bakeable."));
                                 else if (capi != null && !slot.Empty) capi.TriggerIngameError(this, "notbakeable", burning ? Lang.Get("Wait until the fire is out") : Lang.Get("Oven is full"));
-                                
+
                                 return true;
                             }
                         }
@@ -317,8 +325,13 @@ namespace Vintagestory.GameContent
 
                     if (stack.StackSize > 0)
                     {
-                        Api.World.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                        Api.World.SpawnItemEntity(stack, Pos);
                     }
+                    Api.World.Logger.Audit("{0} Took 1x{1} from Clay oven at {2}.",
+                        byPlayer.PlayerName,
+                        stack.Collectible.Code,
+                        Pos
+                    );
 
                     bakingData[index].CurHeightMul = 1; // Reset risenLevel to avoid brief render of unwanted size on next item inserted, if server/client not perfectly in sync - note this only really works if the newly inserted item can be assumed to have risenLevel of 0 i.e. dough
                     updateMesh(index);
@@ -429,7 +442,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            
+
             // Sync to client every 500ms
             if (++syncCount % 5 == 0 && (IsBurning || prevOvenTemperature != ovenTemperature || !Inventory[0].Empty || !Inventory[1].Empty || !Inventory[2].Empty || !Inventory[3].Empty))
             {
@@ -514,7 +527,7 @@ namespace Vintagestory.GameContent
             float nowHeightMulStaged = (int)(heightMul * BakingStageThreshold) / (float)BakingStageThreshold;
 
             bool reDraw = nowHeightMulStaged != bakeData.CurHeightMul;
-            
+
             bakeData.CurHeightMul = nowHeightMulStaged;
 
             // see if increasing the partBaked by delta, has moved this stack up to the next "bakedStage", i.e. a different item
@@ -544,12 +557,7 @@ namespace Vintagestory.GameContent
 
                     if (resultStack != null)
                     {
-                        var collObjCb = ovenInv[slotIndex].Itemstack.Collectible as IBakeableCallback;
-
-                        if (collObjCb != null)
-                        {
-                            collObjCb.OnBaked(ovenInv[slotIndex].Itemstack, resultStack);
-                        }
+                        ovenInv[slotIndex].Itemstack.Collectible.GetCollectibleInterface<IBakeableCallback>()?.OnBaked(ovenInv[slotIndex].Itemstack, resultStack);
 
                         ovenInv[slotIndex].Itemstack = resultStack;
                         bakingData[slotIndex] = new OvenItemData(resultStack);
@@ -662,6 +670,10 @@ namespace Vintagestory.GameContent
             if (ovenTemperature <= 25)
             {
                 sb.AppendLine(Lang.Get("Temperature: {0}", Lang.Get("Cold")));
+                if (!IsBurning)
+                {
+                    sb.AppendLine(Lang.Get("clayoven-preheat-warning"));
+                }
             }
             else
             {
@@ -680,7 +692,7 @@ namespace Vintagestory.GameContent
                 {
                     ItemStack stack = ovenInv[index].Itemstack;
                     sb.Append(stack.GetName());
-                    sb.AppendLine(string.Format(" ({0}°C)", (int)bakingData[index].temp));
+                    sb.AppendLine(" (" + Lang.Get("{0}°C", (int)bakingData[index].temp) + ")");
                 }
             }
         }
@@ -816,7 +828,9 @@ namespace Vintagestory.GameContent
                 MeshData mesh = getMesh(stack);
                 if (mesh != null) return mesh;
 
-                var loc = AssetLocation.Create(Block.Attributes["ovenFuelShape"].AsString(), Block.Code.Domain).WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
+                string shapeLoc = FuelSlot?.Itemstack?.Collectible?.Attributes?["ovenFuelShape"].AsString() ?? Block.Attributes["ovenFuelShape"].AsString();
+
+                var loc = AssetLocation.Create(shapeLoc, Block.Code.Domain).WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
                 nowTesselatingShape = Shape.TryGet(capi, loc);
                 nowTesselatingObj = stack.Collectible;
 
@@ -867,7 +881,7 @@ namespace Vintagestory.GameContent
                 AdvancedParticleProperties bps = particles[i];
                 bps.WindAffectednesAtPos = 0f;
                 bps.basePos.X = pos.X;
-                bps.basePos.Y = pos.Y + (fireFull ? 3 / 32f : 1 / 32f);
+                bps.basePos.Y = pos.InternalY + (fireFull ? 3 / 32f : 1 / 32f);
                 bps.basePos.Z = pos.Z;
 
                 //i >= 4 is flames; i < 4 is smoke

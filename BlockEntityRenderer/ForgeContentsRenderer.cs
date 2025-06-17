@@ -3,6 +3,8 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ForgeContentsRenderer : IRenderer, ITexPositionSource
@@ -229,6 +231,7 @@ namespace Vintagestory.GameContent
 
                 prog.NormalShaded = 0;
                 prog.RgbaLightIn = lightrgbs;
+                prog.TempGlowMode = 1;
 
                 int glow = 255 - (int)(flicker * 50);
                 

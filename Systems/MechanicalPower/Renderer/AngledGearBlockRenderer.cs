@@ -2,6 +2,8 @@
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent.Mechanics
 {
     public class AngledGearsBlockRenderer : MechBlockRenderer
@@ -17,10 +19,8 @@ namespace Vintagestory.GameContent.Mechanics
         {
             Vec3f rot = new Vec3f(shapeLoc.rotateX, shapeLoc.rotateY, shapeLoc.rotateZ);
 
-            MeshData gearboxCageMesh;
-            MeshData gearboxPegMesh;
-            capi.Tesselator.TesselateShape(textureSoureBlock, API.Common.Shape.TryGet(capi, "shapes/block/wood/mechanics/angledgearbox-cage.json"), out gearboxCageMesh, rot);
-            capi.Tesselator.TesselateShape(textureSoureBlock, API.Common.Shape.TryGet(capi, "shapes/block/wood/mechanics/angledgearbox-peg.json"), out gearboxPegMesh, rot);
+            capi.Tesselator.TesselateShape(textureSoureBlock, API.Common.Shape.TryGet(capi, "shapes/block/wood/mechanics/angledgearbox-cage.json"), out MeshData gearboxCageMesh, rot);
+            capi.Tesselator.TesselateShape(textureSoureBlock, API.Common.Shape.TryGet(capi, "shapes/block/wood/mechanics/angledgearbox-peg.json"), out MeshData gearboxPegMesh, rot);
 
             
             // 16 floats matrix, 4 floats light rgbs

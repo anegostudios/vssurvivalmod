@@ -5,6 +5,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent.Mechanics
 {
     // Concept:
@@ -129,8 +131,7 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 if (textureCode == "metal")
                 {
-                    CompositeTexture ctex;
-                    if (hammerStack.Item.Textures.TryGetValue(textureCode, out ctex))
+                    if (hammerStack.Item.Textures.TryGetValue(textureCode, out CompositeTexture ctex))
                     {
                         AssetLocation texturePath = ctex.Base;
                         return capi.BlockTextureAtlas[texturePath];
@@ -193,7 +194,7 @@ namespace Vintagestory.GameContent.Mechanics
         {
             if (HammerStack != null)
             {
-                Api.World.SpawnItemEntity(HammerStack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                Api.World.SpawnItemEntity(HammerStack, Pos);
             }
             base.OnBlockBroken(byPlayer);
         }
@@ -202,10 +203,9 @@ namespace Vintagestory.GameContent.Mechanics
         {
             Block block = Api.World.BlockAccessor.GetBlock(Pos);
             if (block.BlockId == 0) return null;
-            MeshData mesh;
             ITesselatorAPI mesher = ((ICoreClientAPI)Api).Tesselator;
             Shape shape = API.Common.Shape.TryGet(Api, "shapes/block/wood/mechanics/helvehammer.json");
-            mesher.TesselateShape("helvehammerhead", shape, out mesh, this, new Vec3f(0, block.Shape.rotateY, 0));
+            mesher.TesselateShape("helvehammerhead", shape, out MeshData mesh, this, new Vec3f(0, block.Shape.rotateY, 0));
 
             return mesh;
         }
@@ -261,22 +261,30 @@ namespace Vintagestory.GameContent.Mechanics
 
                 bool obst = collboxes != null && collboxes.Length > 0;
 
-                if (obst && i == 0)
+                if (obst && i <= 1)
                 {
                     obst = false;
                     for (int j = 0; j < collboxes.Length; j++)
                     {
-                        var b = collboxes[j].Y1 < 0.2f;
-                        switch(facing.Index)
+                        if (i == 1)
                         {
-                            case 0: b = b && collboxes[j].Z1 < 0.5; break;
-                            case 1: b = b && collboxes[j].X2 > 0.5; break;
-                            case 2: b = b && collboxes[j].Z2 > 0.5; break;
-                            case 3: b = b && collboxes[j].X1 < 0.5; break;
-
+                            obst |= collboxes[j].Y1 < 0.375f;
                         }
+                        else
+                        {
+                            var hereObs = collboxes[j].Y1 < 0.2f;
 
-                        obst |= b;
+                            switch (facing.Index)
+                            {
+                                case 0: hereObs = hereObs && collboxes[j].Z1 < 0.5; break;
+                                case 1: hereObs = hereObs && collboxes[j].X2 > 0.5; break;
+                                case 2: hereObs = hereObs && collboxes[j].Z2 > 0.5; break;
+                                case 3: hereObs = hereObs && collboxes[j].X1 < 0.5; break;
+
+                            }
+
+                            obst |= hereObs;
+                        }
                     }
                 }
 

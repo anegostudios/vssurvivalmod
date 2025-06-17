@@ -1,159 +1,113 @@
-﻿using System;
-using Vintagestory.API.Client;
+﻿using System.Collections.Generic;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
-using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
-    public class EntityBoatSeat : IMountable
+    public class EntityBoatSeat : EntityRideableSeat
     {
-        public EntityBoat EntityBoat;
-        public int SeatNumber;
-        public EntityControls controls = new EntityControls();
-        public EntityAgent Passenger = null;
-        public long PassengerEntityIdForInit;
-        public bool controllable;
+        public override EnumMountAngleMode AngleMode => config.AngleMode;
+        Dictionary<string, string> animations => (Entity as EntityBoat).MountAnimations;
+        public string actionAnim;
 
-        protected Vec3f eyePos = new Vec3f(0, 1, 0);
-        protected Vec3f mountOffset;
-
-        public EntityBoatSeat(EntityBoat entityBoat, int seatNumber, Vec3f mountOffset)
-        {
-            controls.OnAction = this.onControls;
-            this.EntityBoat = entityBoat;
-            this.SeatNumber = seatNumber;
-            this.mountOffset = mountOffset;
-        }
-
-        public static IMountable GetMountable(IWorldAccessor world, TreeAttribute tree)
-        {
-            Entity entityBoat = world.GetEntityById(tree.GetLong("entityIdBoat"));
-            if (entityBoat is EntityBoat eBoat)
-            {
-                return eBoat.Seats[tree.GetInt("seatNumber")];
-            }
-
-            return null;
-        }
-
-        Vec4f tmp = new Vec4f();
-        Vec3f transformedMountOffset = new Vec3f();
-        public Vec3f MountOffset
+        public override AnimationMetaData SuggestedAnimation
         {
             get
             {
-                var pos = EntityBoat.SidedPos;
-                modelmat.Identity();
-                
-                modelmat.Rotate(EntityBoat.xangle, EntityBoat.yangle + pos.Yaw, EntityBoat.zangle);
-                
-                var rotvec = modelmat.TransformVector(tmp.Set(mountOffset.X, mountOffset.Y, mountOffset.Z, 0));
-                return transformedMountOffset.Set(rotvec.X, rotvec.Y, rotvec.Z);
+                if (actionAnim == null) return null;
+
+                if (Passenger?.Properties?.Client.AnimationsByMetaCode?.TryGetValue(actionAnim, out var ameta) == true)
+                {
+                    return ameta;
+                }
+
+                return null;
             }
         }
 
-        EntityPos mountPos = new EntityPos();
-        Matrixf modelmat = new Matrixf();
-        public EntityPos MountPosition
+
+
+        public EntityBoatSeat(IMountable mountablesupplier, string seatId, SeatConfig config) : base(mountablesupplier, seatId, config)
         {
-            get
+            RideableClassName = "boat";
+        }
+
+        public override bool CanMount(EntityAgent entityAgent)
+        {
+            if (config.Attributes?["ropeTieablesOnly"].AsBool(false)==true)
             {
-                var pos = EntityBoat.SidedPos;
-                var moffset = MountOffset;
-
-                mountPos.SetPos(pos.X + moffset.X, pos.Y + moffset.Y, pos.Z + moffset.Z);
-
-                mountPos.SetAngles(
-                    pos.Roll + EntityBoat.xangle,
-                    pos.Yaw + EntityBoat.yangle,
-                    pos.Pitch + EntityBoat.zangle
-                );
-
-                return mountPos;
+                return entityAgent.HasBehavior<EntityBehaviorRopeTieable>();
             }
+
+            return base.CanMount(entityAgent);
         }
 
-        public string SuggestedAnimation
+        public override void DidMount(EntityAgent entityAgent)
         {
-            get { return "sitflooridle"; }
+            base.DidMount(entityAgent);
+
+            entityAgent.AnimManager.StartAnimation(config.Animation ?? animations["idle"]);
         }
 
-        public EntityControls Controls
+        public override void DidUnmount(EntityAgent entityAgent)
         {
-            get {
-                return this.controls; 
-            }
-        }
-
-        public IMountableSupplier MountSupplier => EntityBoat;
-        public EnumMountAngleMode AngleMode => EnumMountAngleMode.Push;
-        public Vec3f LocalEyePos => eyePos;
-        public Entity MountedBy => Passenger;
-        public bool CanControl => controllable;
-
-        public void DidUnmount(EntityAgent entityAgent)
-        {
-            if (entityAgent.World.Side == EnumAppSide.Server)
+            if (Passenger != null)
             {
-                tryTeleportPassengerToShore();
+                Passenger.AnimManager?.StopAnimation(animations["ready"]);
+                Passenger.AnimManager?.StopAnimation(animations["forwards"]);
+                Passenger.AnimManager?.StopAnimation(animations["backwards"]);
+                Passenger.AnimManager?.StopAnimation(animations["idle"]);
+                Passenger.AnimManager?.StopAnimation(config.Animation);
+                Passenger.SidedPos.Roll = 0;
             }
 
-            var pesr = Passenger?.Properties?.Client.Renderer as EntityShapeRenderer;
-            if (pesr != null)
-            {
-                pesr.xangle = 0;
-                pesr.yangle = 0;
-                pesr.zangle = 0;
-            }
-
-            Passenger?.AnimManager?.StopAnimation("crudeOarReady");
-            Passenger?.AnimManager?.StopAnimation("crudeOarBackward");
-            Passenger?.AnimManager?.StopAnimation("crudeOarForward");
-
-            this.Passenger.Pos.Roll = 0;
-            this.Passenger = null;
+            base.DidUnmount(entityAgent);
         }
 
-        private void tryTeleportPassengerToShore()
+        protected override void tryTeleportToFreeLocation()
         {
             var world = Passenger.World;
             var ba = Passenger.World.BlockAccessor;
+
+            double shortestDistance = 99;
+            Vec3d shortestTargetPos = null;
+
+            // var entityBoat = this.Entity;
+            /*var ebox = entityBoat.CollisionBox.ToDouble().Translate(entityBoat.ServerPos.XYZ);
+            var passengerBox = Passenger.CollisionBox.ToDouble().Translate(Passenger.ServerPos.XYZ);*/
+             //&& !ebox.Intersects(passengerBox)
+
+            for (int dx = -4; dx <= 4; dx++)
+            {
+                for (int dy = 0; dy < 2; dy++)
+                {
+                    for (int dz = -4; dz <= 4; dz++)
+                    {
+                        var targetPos = Passenger.ServerPos.XYZ.AsBlockPos.ToVec3d().Add(dx + 0.5, dy + 0.1, dz + 0.5);
+                        var block = ba.GetMostSolidBlock((int)targetPos.X, (int)(targetPos.Y - 0.15), (int)targetPos.Z);
+                        var upfblock = ba.GetBlock((int)targetPos.X, (int)(targetPos.Y), (int)targetPos.Z, BlockLayersAccess.Fluid);
+                        if (upfblock.Id == 0 && block.SideSolid[BlockFacing.UP.Index] && !world.CollisionTester.IsColliding(ba, Passenger.CollisionBox, targetPos, false))
+                        {
+                            var dist = targetPos.DistanceTo(Passenger.ServerPos.XYZ);
+                            if (dist < shortestDistance)
+                            {
+                                shortestDistance = dist;
+                                shortestTargetPos = targetPos;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (shortestTargetPos != null)
+            {
+                this.Passenger.TeleportTo(shortestTargetPos);
+                return;
+            }
+
             bool found = false;
-
-            for (int dx = -1; !found && dx <= 1; dx++)
-            {
-                for (int dz = -1; !found && dz <= 1; dz++)
-                {
-                    var targetPos = Passenger.ServerPos.XYZ.AsBlockPos.ToVec3d().Add(dx + 0.5, 1.1, dz + 0.5);
-                    var block = ba.GetMostSolidBlock((int)targetPos.X, (int)(targetPos.Y - 0.15), (int)targetPos.Z);
-                    if (block.SideSolid[BlockFacing.UP.Index] && !world.CollisionTester.IsColliding(ba, Passenger.CollisionBox, targetPos, false))
-                    {
-                        this.Passenger.TeleportTo(targetPos);
-                        found = true;
-                        break;
-                    }
-                }
-            }
-
-            for (int dx = -2; !found && dx <= 2; dx++)
-            {
-                for (int dz = -2; !found && dz <= 2; dz++)
-                {
-                    if (Math.Abs(dx) != 2 && Math.Abs(dz) != 2) continue;
-
-                    var targetPos = Passenger.ServerPos.XYZ.AsBlockPos.ToVec3d().Add(dx + 0.5, 1.1, dz + 0.5);
-                    var block = ba.GetMostSolidBlock((int)targetPos.X, (int)(targetPos.Y - 0.15), (int)targetPos.Z);
-                    if (block.SideSolid[BlockFacing.UP.Index] && !world.CollisionTester.IsColliding(ba, Passenger.CollisionBox, targetPos, false))
-                    {
-                        this.Passenger.TeleportTo(targetPos);
-                        found = true;
-                        break;
-                    }
-                }
-            }
-
             for (int dx = -1; !found && dx <= 1; dx++)
             {
                 for (int dz = -1; !found && dz <= 1; dz++)
@@ -168,36 +122,7 @@ namespace Vintagestory.GameContent
                 }
             }
         }
-
-        public void DidMount(EntityAgent entityAgent)
-        {
-            if (this.Passenger != null && this.Passenger != entityAgent)
-            {
-                this.Passenger.TryUnmount();
-                return;
-            }
-
-            this.Passenger = entityAgent;
-        }
-
-        public void MountableToTreeAttributes(TreeAttribute tree)
-        {
-            tree.SetString("className", "boat");
-            tree.SetLong("entityIdBoat", this.EntityBoat.EntityId);
-            tree.SetInt("seatNumber", SeatNumber);
-        }
-
-        internal void onControls(EnumEntityAction action, bool on, ref EnumHandling handled)
-        {
-            if (action == EnumEntityAction.Sneak && on)
-            {
-                Passenger?.TryUnmount();
-                controls.StopAllMovement();
-            }
-        }
-
     }
-
 
 
 }

@@ -6,6 +6,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     [JsonObject(MemberSerialization.OptIn)]
@@ -205,7 +207,7 @@ namespace Vintagestory.ServerMods
 
         public int[] GetBearingBlocks()
         {
-            return new int[0];
+            return Array.Empty<int>();
         }
 
         public override float GetMaxRadius()

@@ -5,6 +5,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     // Concept
@@ -25,7 +27,7 @@ namespace Vintagestory.GameContent
     //
     public class BlockPlantContainer : Block
     {
-        WorldInteraction[] interactions = new WorldInteraction[0];
+        WorldInteraction[] interactions = Array.Empty<WorldInteraction>();
 
         public string ContainerSize => Attributes["plantContainerSize"].AsString();
 
@@ -44,7 +46,7 @@ namespace Vintagestory.GameContent
 
             foreach (var block in api.World.Blocks)
             {
-                if (block.Code == null || block.IsMissing) continue;
+                if (block.IsMissing) continue;
 
                 if (block.Attributes?["plantContainable"].Exists == true)
                 {
@@ -120,7 +122,7 @@ namespace Vintagestory.GameContent
             ItemStack contents = GetContents(world, pos);
             if (contents != null)
             {
-                world.SpawnItemEntity(contents, pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                world.SpawnItemEntity(contents, pos);
             }
         }
 

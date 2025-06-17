@@ -6,13 +6,14 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.Essentials;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     #region Npc commands
     public interface INpcCommand
     {
         string Type { get; }
-
         void Start();
         void Stop();
         bool IsFinished();
@@ -29,14 +30,15 @@ namespace Vintagestory.GameContent
         public float AnimSpeed;
         public float GotoSpeed;
         public string AnimCode;
-
+        public bool astar;
 
         public string Type => "goto";
 
 
-        public NpcGotoCommand(EntityAnimalBot entity, Vec3d target, string animCode = "walk", float gotoSpeed = 0.02f, float animSpeed = 1)
+        public NpcGotoCommand(EntityAnimalBot entity, Vec3d target, bool astar, string animCode = "walk", float gotoSpeed = 0.02f, float animSpeed = 1)
         {
             this.entity = entity;
+            this.astar = astar;
             this.Target = target;
             this.AnimSpeed = animSpeed;
             this.AnimCode = animCode;
@@ -46,7 +48,14 @@ namespace Vintagestory.GameContent
 
         public void Start()
         {
-            entity.pathTraverser.NavigateTo(Target, GotoSpeed, OnDone, OnDone);
+            if (astar)
+            {
+                entity.wppathTraverser.WalkTowards(Target, GotoSpeed, /*size + */0.2f, OnDone, OnDone);
+            } else
+            {
+                entity.linepathTraverser.NavigateTo(Target, GotoSpeed, OnDone, OnDone);
+            }
+            
 
             if (AnimSpeed != 0.02f)
             {
@@ -66,7 +75,8 @@ namespace Vintagestory.GameContent
 
         public void Stop()
         {
-            entity.pathTraverser.Stop();
+            entity.linepathTraverser.Stop();
+            entity.wppathTraverser.Stop();
             entity.AnimManager.StopAnimation(AnimCode);
             entity.Controls.Sprint = false;
         }
@@ -79,7 +89,7 @@ namespace Vintagestory.GameContent
 
         public bool IsFinished()
         {
-            return !entity.pathTraverser.Active;
+            return !entity.linepathTraverser.Active;
         }
 
         public override string ToString()
@@ -96,6 +106,7 @@ namespace Vintagestory.GameContent
             tree.SetFloat("animSpeed", AnimSpeed);
             tree.SetFloat("gotoSpeed", GotoSpeed);
             tree.SetString("animCode", AnimCode);
+            tree.SetBool("astar", astar);
         }
 
         public void FromAttribute(ITreeAttribute tree)
@@ -104,6 +115,7 @@ namespace Vintagestory.GameContent
             AnimSpeed = tree.GetFloat("animSpeed");
             GotoSpeed = tree.GetFloat("gotoSpeed");
             AnimCode = tree.GetString("animCode");
+            astar = tree.GetBool("astar");
         }
     }
 
@@ -183,8 +195,7 @@ namespace Vintagestory.GameContent
 
         public void Stop()
         {
-            AnimationMetaData animData;
-            entity.Properties.Client.AnimationsByMetaCode.TryGetValue(AnimCode, out animData);
+            entity.Properties.Client.AnimationsByMetaCode.TryGetValue(AnimCode, out AnimationMetaData animData);
             if (animData?.Code != null)
             {
                 entity.AnimManager.StopAnimation(animData.Code);
@@ -197,8 +208,7 @@ namespace Vintagestory.GameContent
 
         public bool IsFinished()
         {
-            AnimationMetaData animData;
-            entity.Properties.Client.AnimationsByMetaCode.TryGetValue(AnimCode, out animData);
+            entity.Properties.Client.AnimationsByMetaCode.TryGetValue(AnimCode, out AnimationMetaData animData);
 
             return !entity.AnimManager.ActiveAnimationsByAnimCode.ContainsKey(AnimCode) && (animData?.Animation == null || !entity.AnimManager.ActiveAnimationsByAnimCode.ContainsKey(animData?.Animation));
         }
@@ -279,7 +289,8 @@ namespace Vintagestory.GameContent
 
         public bool LoopCommands;
 
-        public PathTraverserBase pathTraverser;
+        public PathTraverserBase linepathTraverser;
+        public PathTraverserBase wppathTraverser;
 
         public override bool StoreWithChunk
         {
@@ -290,7 +301,8 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(properties, api, InChunkIndex3d);
 
-            pathTraverser = new StraightLineTraverser(this);
+            linepathTraverser = new StraightLineTraverser(this);
+            wppathTraverser = new WaypointsTraverser(this);
         }
 
         public void StartExecuteCommands(bool enqueue = true)
@@ -311,7 +323,6 @@ namespace Vintagestory.GameContent
             }
 
             commandQueueActive = true;
-            
         }
 
         public void StopExecuteCommands()
@@ -326,7 +337,8 @@ namespace Vintagestory.GameContent
         {
             base.OnGameTick(dt);
 
-            pathTraverser.OnGameTick(dt);
+            linepathTraverser.OnGameTick(dt);
+            wppathTraverser.OnGameTick(dt);
 
             if (commandQueueActive)
             {
@@ -411,7 +423,7 @@ namespace Vintagestory.GameContent
                             command = new NpcTeleportCommand(this, null);
                             break;
                         case "goto":
-                            command = new NpcGotoCommand(this, null, null, 0);
+                            command = new NpcGotoCommand(this, null, false, null, 0);
                             break;
                         case "anim":
                             command = new NpcPlayAnimationCommand(this, null, 1f);

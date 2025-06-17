@@ -1,7 +1,13 @@
 ﻿using Newtonsoft.Json;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.Common.Collectible.Block;
+
+#nullable disable
 
 namespace Vintagestory.ServerMods
 {
@@ -18,8 +24,6 @@ namespace Vintagestory.ServerMods
         [JsonProperty]
         public NatFloat Depth = null;
         [JsonProperty]
-        public NatFloat Quantity = NatFloat.createGauss(7, 7);
-        [JsonProperty]
         public bool BuildProtected = false;
         [JsonProperty]
         public string BuildProtectionDesc = null;
@@ -34,19 +38,31 @@ namespace Vintagestory.ServerMods
         [JsonProperty]
         public EnumOrigin Origin = EnumOrigin.StartPos;
         [JsonProperty]
-        public Dictionary<string, int> OffsetYByCode;
+        public int? OffsetY;
+        [JsonProperty]
+        public int MaxYDiff = 3;
+        [JsonProperty]
+        public int? StoryLocationMaxAmount;
+        [JsonProperty]
+        public int MinSpawnDistance = 0;
+        [JsonProperty]
+        public int MaxBelowSealevel = 20;
+        /// <summary>
+        /// This bitmask for the position in schematics
+        /// </summary>
+        public const uint PosBitMask = 0x3ff;
 
-        protected T[][] LoadSchematicsWithRotations<T>(ICoreAPI api, AssetLocation[] locs, BlockLayerConfig config, WorldGenStructuresConfig structureConfig, Dictionary<string, int> schematicYOffsets, int? defaultOffsetY, string pathPrefix = "schematics/") where T : BlockSchematicStructure
+        protected T[][] LoadSchematicsWithRotations<T>(ICoreAPI api, WorldGenStructureBase struc, BlockLayerConfig config, WorldGenStructuresConfig structureConfig, Dictionary<string, int> schematicYOffsets, string pathPrefix = "schematics/", bool isDungeon = false) where T : BlockSchematicStructure
         {
             List<T[]> schematics = new List<T[]>();
 
-            for (int i = 0; i < locs.Length; i++)
+            for (int i = 0; i < struc.Schematics.Length; i++)
             {
                 IAsset[] assets;
 
                 var schematicLoc = Schematics[i];
 
-                if (locs[i].Path.EndsWith('*'))
+                if (struc.Schematics[i].Path.EndsWith('*'))
                 {
                     assets = api.Assets.GetManyInCategory("worldgen", pathPrefix + schematicLoc.Path.Substring(0, schematicLoc.Path.Length - 1), schematicLoc.Domain).ToArray();
                 }
@@ -58,8 +74,8 @@ namespace Vintagestory.ServerMods
                 for (int j = 0; j < assets.Length; j++)
                 {
                     IAsset asset = assets[j];
-                    int offsety = getOffsetY(schematicYOffsets, defaultOffsetY, OffsetYByCode, asset);
-                    var sch = LoadSchematic<T>(api, asset, config, structureConfig, offsety);
+                    int offsety = getOffsetY(schematicYOffsets, struc.OffsetY, asset);
+                    var sch = LoadSchematic<T>(api, asset, config, structureConfig, struc, offsety, isDungeon);
                     if (sch != null) schematics.Add(sch);
                 }
             }
@@ -67,12 +83,11 @@ namespace Vintagestory.ServerMods
             return schematics.ToArray();
         }
 
-        public static int getOffsetY(Dictionary<string, int> schematicYOffsets, int? defaultOffsetY, Dictionary<string, int> OffsetYByCode, IAsset asset)
+        public static int getOffsetY(Dictionary<string, int> schematicYOffsets, int? defaultOffsetY, IAsset asset)
         {
             var assloc = asset.Location.PathOmittingPrefixAndSuffix("worldgen/schematics/", ".json");
             int offsety = 0;
-            if (OffsetYByCode != null && OffsetYByCode.TryGetValue(assloc, out offsety)) { }
-            else if (schematicYOffsets != null && schematicYOffsets.TryGetValue(assloc, out offsety)) { }
+            if (schematicYOffsets != null && schematicYOffsets.TryGetValue(assloc, out offsety)) { }
             else if (defaultOffsetY != null)
             {
                 offsety = (int)defaultOffsetY;
@@ -81,12 +96,20 @@ namespace Vintagestory.ServerMods
             return offsety;
         }
 
-        public static T[] LoadSchematic<T>(ICoreAPI api, IAsset asset, BlockLayerConfig config, WorldGenStructuresConfig structureConfig, int offsety) where T : BlockSchematicStructure
+        public static T[] LoadSchematic<T>(ICoreAPI api, IAsset asset, BlockLayerConfig config, WorldGenStructuresConfig structureConfig, WorldGenStructureBase struc, int offsety,
+            bool isDungeon = false) where T : BlockSchematicStructure
         {
             string cacheKey = asset.Location.ToShortString() + "~" + offsety;
             if (structureConfig != null && structureConfig.LoadedSchematicsCache.TryGetValue(cacheKey, out BlockSchematicStructure[] cached) && cached is T[] result) return result;
 
             T schematic = asset.ToObject<T>();
+
+            schematic.Remap();
+
+            if (isDungeon)
+            {
+                InitDungeonData(api, schematic);
+            }
 
             if (schematic == null)
             {
@@ -94,11 +117,12 @@ namespace Vintagestory.ServerMods
                 if (structureConfig != null) structureConfig.LoadedSchematicsCache[cacheKey] = null;
                 return null;
             }
-            
+
             schematic.OffsetY = offsety;
             schematic.FromFileName = asset.Name;
-            string location = asset.Location.ToShortString();
-
+            schematic.MaxYDiff = struc?.MaxYDiff ?? 3;
+            schematic.MaxBelowSealevel = struc?.MaxBelowSealevel ?? 3;
+            schematic.StoryLocationMaxAmount = struc?.StoryLocationMaxAmount;
             T[] rotations = new T[4];
             rotations[0] = schematic;
 
@@ -106,8 +130,19 @@ namespace Vintagestory.ServerMods
             {
                 if (k > 0)
                 {
-                    rotations[k] = rotations[0].ClonePacked() as T;
-                    rotations[k].TransformWhilePacked(api.World, EnumOrigin.BottomCenter, k * 90);
+                    T unrotated = rotations[0];
+                    rotations[k] = unrotated.ClonePacked() as T;
+                    if (isDungeon)
+                    {
+                        var pathways = rotations[k].PathwayBlocksUnpacked = new List<BlockPosFacing>();
+                        var pathwaysSource = unrotated.PathwayBlocksUnpacked;
+                        for (var index = 0; index < pathwaysSource.Count; index++)
+                        {
+                            var path = pathwaysSource[index];
+                            var rotatedPos = unrotated.GetRotatedPos(EnumOrigin.BottomCenter, k * 90, path.Position.X, path.Position.Y, path.Position.Z);
+                            pathways.Add(new BlockPosFacing(rotatedPos, path.Facing.GetHorizontalRotated(k * 90), path.Constraints));
+                        }
+                    }
                 }
 
                 rotations[k].blockLayerConfig = config;
@@ -117,7 +152,202 @@ namespace Vintagestory.ServerMods
             return rotations;
         }
 
-        protected T[] LoadSchematics<T>(ICoreAPI api, AssetLocation[] locs, BlockLayerConfig config, string pathPrefix = "schematics/") where T : BlockSchematicStructure
+        private static void InitDungeonData(ICoreAPI api, BlockSchematicStructure schematic)
+        {
+            bool hasX = false, hasZ = false, hasXO = false, hasZO = false;
+            var pathwayBlockId = schematic.BlockCodes.First(s => s.Value.Path.Equals("meta-connector")).Key;
+            //check 1 side if it only contains a pathway block
+            schematic.PathwayBlocksUnpacked = new List<BlockPosFacing>();
+            var listIndex = new List<int>();
+            for (var i = 0; i < schematic.Indices.Count; i++)
+            {
+                var index = schematic.Indices[i];
+                int dx = (int)(index & PosBitMask);
+                int dy = (int)((index >> 20) & PosBitMask);
+                int dz = (int)((index >> 10) & PosBitMask);
+
+                if (dx == 0)
+                {
+                    // x side
+                    if (schematic.BlockIds[i] == pathwayBlockId)
+                    {
+                        hasX = true;
+                        var constraint = ExtractDungeonPathConstraint(schematic, index);
+                        schematic.PathwayBlocksUnpacked.Add(new BlockPosFacing(new BlockPos(dx,dy,dz), BlockFacing.WEST, constraint));
+                        listIndex.Add(i);
+                    }
+
+                }
+
+                // add z 0 but do not add 0,0 twice
+                if (dz == 0 && dx != 0)
+                {
+                    if (schematic.BlockIds[i] == pathwayBlockId)
+                    {
+                        hasZ = true;
+                        var constraint = ExtractDungeonPathConstraint(schematic, index);
+                        schematic.PathwayBlocksUnpacked.Add(new BlockPosFacing(new BlockPos(dx,dy,dz), BlockFacing.NORTH,constraint));
+                        listIndex.Add(i);
+                    }
+                }
+
+                if (dx == schematic.SizeX - 1)
+                {
+                    if (schematic.BlockIds[i] == pathwayBlockId)
+                    {
+                        hasXO = true;
+                        var constraint = ExtractDungeonPathConstraint(schematic, index);
+                        schematic.PathwayBlocksUnpacked.Add(new BlockPosFacing(new BlockPos(dx,dy,dz), BlockFacing.EAST, constraint));
+                        listIndex.Add(i);
+                    }
+                }
+
+                if (dz == schematic.SizeZ - 1 && dx != schematic.SizeX - 1)
+                {
+                    if (schematic.BlockIds[i] == pathwayBlockId)
+                    {
+                        hasZO = true;
+                        var constraint = ExtractDungeonPathConstraint(schematic, index);
+                        schematic.PathwayBlocksUnpacked.Add(new BlockPosFacing(new BlockPos(dx,dy,dz), BlockFacing.SOUTH, constraint));
+                        listIndex.Add(i);
+                    }
+                }
+            }
+
+            // remove all pathway blocks from data
+            listIndex.Reverse();
+            foreach (var i in listIndex)
+            {
+                schematic.Indices.RemoveAt(i);
+                schematic.BlockIds.RemoveAt(i);
+            }
+
+            if (hasXO)
+                schematic.SizeX--;
+            if (hasZO)
+                schematic.SizeZ--;
+            if (hasX)
+                schematic.SizeX--;
+            if (hasZ)
+                schematic.SizeZ--;
+
+            // move entire schematic by 1 x and 1 y if at those sides was a pathway block
+            for (var i = 0; i < schematic.Indices.Count; i++)
+            {
+                if(!hasX && !hasZ) continue;
+                var index = schematic.Indices[i];
+                int dx = (int)(index & PosBitMask);
+                int dy = (int)((index >> 20) & PosBitMask);
+                int dz = (int)((index >> 10) & PosBitMask);
+                if (hasX) dx--;
+                if (hasZ) dz--;
+
+                schematic.Indices[i] = (uint)((dy << 20) | (dz << 10) | dx);
+            }
+
+            for (var i = 0; i < schematic.DecorIndices.Count; i++)
+            {
+                if(!hasX && !hasZ) continue;
+                var index = schematic.DecorIndices[i];
+                int dx = (int)(index & PosBitMask);
+                int dy = (int)((index >> 20) & PosBitMask);
+                int dz = (int)((index >> 10) & PosBitMask);
+                if (hasX) dx--;
+                if (hasZ) dz--;
+
+                schematic.DecorIndices[i] = (uint)((dy << 20) | (dz << 10) | dx);
+            }
+
+            var tmpBlockEntities = new Dictionary<uint, string>();
+            foreach (var (index, data) in schematic.BlockEntities)
+            {
+                if(!hasX && !hasZ) continue;
+                int dx = (int)(index & PosBitMask);
+                int dy = (int)((index >> 20) & PosBitMask);
+                int dz = (int)((index >> 10) & PosBitMask);
+                if (hasX) dx--;
+                if (hasZ) dz--;
+
+                tmpBlockEntities[(uint)((dy << 20) | (dz << 10) | dx)] = data;
+            }
+
+            schematic.BlockEntities = tmpBlockEntities;
+
+            schematic.EntitiesUnpacked.Clear();
+            foreach (var entityData in schematic.Entities)
+            {
+                using var ms = new MemoryStream(Ascii85.Decode(entityData));
+                var reader = new BinaryReader(ms);
+
+                var className = reader.ReadString();
+                var entity = api.ClassRegistry.CreateEntity(className);
+
+                entity.FromBytes(reader, false);
+
+                if (hasX)
+                {
+                    entity.ServerPos.X--;
+                    entity.Pos.X--;
+                    entity.PositionBeforeFalling.X--;
+                }
+                if (hasZ)
+                {
+                    entity.ServerPos.Z--;
+                    entity.Pos.Z--;
+                    entity.PositionBeforeFalling.Z--;
+                }
+
+                schematic.EntitiesUnpacked.Add(entity);
+            }
+            schematic.Entities.Clear();
+            if (schematic.EntitiesUnpacked.Count > 0)
+            {
+                using FastMemoryStream ms = new FastMemoryStream();
+                foreach (var entity in schematic.EntitiesUnpacked)
+                {
+                    ms.Reset();
+                    var writer = new BinaryWriter(ms);
+
+                    writer.Write(api.ClassRegistry.GetEntityClassName(entity.GetType()));
+
+                    entity.ToBytes(writer, false);
+
+                    schematic.Entities.Add(Ascii85.Encode(ms.ToArray()));
+                }
+            }
+
+            // move the pathway positions back inside the schematic so when can use it later with blockfacing and opposite to match the positions
+            for (int i = 0; i < schematic.PathwayBlocksUnpacked.Count; i++)
+            {
+                var path = schematic.PathwayBlocksUnpacked[i];
+                var posx = 0;
+                var posz = 0;
+                if (hasX && path.Position.X > 0)
+                    posx--;
+
+                if (hasZ && path.Position.Z > 0)
+                    posz--;
+
+                if (hasXO && path.Position.X >= schematic.SizeX)
+                    posx--;
+                if (hasZO && path.Position.Z >= schematic.SizeZ)
+                    posz--;
+
+                path.Position.X += posx;
+                path.Position.Z += posz;
+            }
+        }
+
+        private static string ExtractDungeonPathConstraint(BlockSchematicStructure schematic, uint index)
+        {
+            var beData = schematic.BlockEntities[index];
+            var tree = schematic.DecodeBlockEntityData(beData);
+            var constraint = (tree["constraints"] as StringAttribute).value;
+            schematic.BlockEntities.Remove(index);
+            return constraint;
+        }
+
+        public T[] LoadSchematics<T>(ICoreAPI api, AssetLocation[] locs, BlockLayerConfig config, string pathPrefix = "schematics/") where T : BlockSchematicStructure
         {
             List<T> schematics = new List<T>();
 
@@ -146,7 +376,7 @@ namespace Vintagestory.ServerMods
 
                     if (schematic == null)
                     {
-                        api.World.Logger.Warning("Could not load {0}: {1}", Schematics[i], error);
+                        api.World.Logger.Warning("Could not load {0}: {1}", Schematics[i], error);   // error here is unused, it is always ""
                         continue;
                     }
 

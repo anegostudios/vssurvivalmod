@@ -3,6 +3,8 @@ using Vintagestory.API.Client.Tesselation;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockSlabSnowRemove : Block, ITexPositionSource
@@ -27,16 +29,17 @@ namespace Vintagestory.GameContent
 
             capi = api as ICoreClientAPI;
 
-            rot = BlockFacing.FromCode(Variant["rot"]);
+            var rotation = Variant["rot"];
+            rot = BlockFacing.FromCode(rotation);
 
             testGroundSnowRemoval =
                 Variant["cover"] == "snow" &&
-                (Variant["rot"] == "north" || Variant["rot"] == "east" || Variant["rot"] == "south" || Variant["rot"] == "west")
+                (rotation == "north" || rotation == "east" || rotation == "south" || rotation == "west")
             ;
 
             testGroundSnowAdd =
                 Variant["cover"] == "free" &&
-                (Variant["rot"] == "north" || Variant["rot"] == "east" || Variant["rot"] == "south" || Variant["rot"] == "west")
+                (rotation == "north" || rotation == "east" || rotation == "south" || rotation == "west")
             ;
         }
 
@@ -85,10 +88,15 @@ namespace Vintagestory.GameContent
             return nblock.SideSolid[BlockFacing.UP.Index];
         }
 
-        public override bool ShouldPlayAmbientSound(IWorldAccessor world, BlockPos pos)
+        public override float GetAmbientSoundStrength(IWorldAccessor world, BlockPos pos)
         {
             var conds = capi.World.Player.Entity.selfClimateCond;
-            return conds != null && conds.Rainfall > 0.1f && conds.Temperature > 3f && (world.BlockAccessor.GetRainMapHeightAt(pos) <= pos.Y || world.BlockAccessor.GetDistanceToRainFall(pos, 3, 1) <= 2);
+            if (FirstCodePart() == "glassslab" && conds != null && conds.Rainfall > 0.1f && conds.Temperature > 3f && (world.BlockAccessor.GetRainMapHeightAt(pos) <= pos.Y || world.BlockAccessor.GetDistanceToRainFall(pos, 3, 1) <= 2))
+            {
+                return conds.Rainfall;
+            }
+
+            return 0;
         }
     }
 }

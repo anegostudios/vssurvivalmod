@@ -7,6 +7,9 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -39,11 +42,10 @@ namespace Vintagestory.GameContent
         double progress; // 0..1
         double totalHoursLastUpdate;
         bool processComplete;
-        bool structureComplete;
+        public bool StructureComplete;
         int tickCounter;
 
         int tempStoneCoffin;
-        BlockPos tmpPos = new BlockPos();
         BlockPos[] particlePositions = new BlockPos[7];
 
         public override InventoryBase Inventory => inv;
@@ -131,12 +133,27 @@ namespace Vintagestory.GameContent
                 int wtOpp = 0;
 
                 ic = ms.InCompleteBlockCount(Api.World, Pos,
-                    (haveBlock, wantLoc) => { if (haveBlock.FirstCodePart() == "refractorybricks" && haveBlock.Variant["state"] == "damaged") dt++; else wt++; }
+                    (haveBlock, wantLoc) =>
+                    {
+                        var firstCodePart = haveBlock.FirstCodePart();
+                        if ((firstCodePart == "refractorybricks" || firstCodePart == "refractorybrickgrating") && haveBlock.Variant["state"] == "damaged")
+                        {
+                            dt++;
+                        }
+                        else wt++;
+                    }
                 );
                 if (ic > 0 && blockScs.IsCompleteCoffin(Pos))
                 {
                     icOpp = msOpp.InCompleteBlockCount(Api.World, Pos.AddCopy(blockScs.Orientation.Opposite),
-                        (haveBlock, wantLoc) => { if (haveBlock.FirstCodePart() == "refractorybricks" && haveBlock.Variant["state"] == "damaged") dtOpp++; else wtOpp++; }
+                        (haveBlock, wantLoc) =>
+                        {
+                            var firstCodePart = haveBlock.FirstCodePart();
+                            if ((firstCodePart == "refractorybricks" || firstCodePart == "refractorybrickgrating") && haveBlock.Variant["state"] == "damaged")
+                            {
+                                dt++;
+                            } else wtOpp++;
+                        }
                     );
                 }
 
@@ -177,10 +194,10 @@ namespace Vintagestory.GameContent
                         {
                             capi?.TriggerIngameError(this, "incomplete", Lang.Get("Structure is not complete, {0} tiles are damaged!", damagedTiles));
                         }
-                        
+
                     }
                 }
-                
+
                 if (Api.Side == EnumAppSide.Client)
                 {
                     msHighlighted.HighlightIncompleteParts(Api.World, byPlayer, posMain);
@@ -214,7 +231,7 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        
+
 
         bool AddCoal(ItemSlot slot)
         {
@@ -284,8 +301,8 @@ namespace Vintagestory.GameContent
 
         public int CoffinTemperature => tempStoneCoffin;
 
-        string[] selectiveElementsMain = new string[0];
-        string[] selectiveElementsSecondary = new string[0];
+        string[] selectiveElementsMain = Array.Empty<string>();
+        string[] selectiveElementsSecondary = Array.Empty<string>();
 
         void updateSelectiveElements()
         {
@@ -332,7 +349,7 @@ namespace Vintagestory.GameContent
             BlockPos othercoalPilePos = coalPilePos.AddCopy(blockScs.Orientation.Opposite);
 
             bool beforeReceiveHeat = receivesHeat;
-            bool beforeStructureComplete = structureComplete;
+            bool beforeStructureComplete = StructureComplete;
 
             if (!receivesHeat)
             {
@@ -346,36 +363,38 @@ namespace Vintagestory.GameContent
 
             receivesHeat = leftHeatHoursLeft > 0 && rightHeatHoursLeft > 0;
 
-
-            if (processComplete || !IsFull || !hasLid()) return;
-
             MultiblockStructure msInUse = null;
             BlockPos posInUse = null;
-            structureComplete = false;
+            StructureComplete = false;
             if (ms.InCompleteBlockCount(Api.World, Pos) == 0)
             {
                 msInUse = ms;
                 posInUse = Pos;
-                structureComplete = true;
+                StructureComplete = true;
             }
             else if (msOpp.InCompleteBlockCount(Api.World, Pos.AddCopy(blockScs.Orientation.Opposite)) == 0)
             {
                 msInUse = msOpp;
                 posInUse = Pos.AddCopy(blockScs.Orientation.Opposite);
-                structureComplete = true;
+                StructureComplete = true;
             }
 
-            if (beforeReceiveHeat != receivesHeat || beforeStructureComplete != structureComplete)
+            if (beforeReceiveHeat != receivesHeat || beforeStructureComplete != StructureComplete)
             {
                 MarkDirty();
             }
 
+            if (processComplete || !IsFull || !hasLid())
+            {
+                return;
+            }
+
             if (receivesHeat)
             {
-                if (!structureComplete) return;
+                if (!StructureComplete) return;
 
                 double hoursPassed = Api.World.Calendar.TotalHours - totalHoursLastUpdate;
-                double heatHoursReceived = Math.Max(0, Math.Min(hoursPassed, Math.Min(leftHeatHoursLeft, rightHeatHoursLeft)));
+                double heatHoursReceived = Math.Max(0, GameMath.Min((float)hoursPassed, leftHeatHoursLeft, rightHeatHoursLeft));
 
                 progress += heatHoursReceived / 160f;
                 totalHoursLastUpdate = Api.World.Calendar.TotalHours;
@@ -430,14 +449,14 @@ namespace Vintagestory.GameContent
         bool hasLid()
         {
             return
-                Api.World.BlockAccessor.GetBlock(Pos.X, Pos.Y + 1, Pos.Z).FirstCodePart() == "stonecoffinlid" &&
-                Api.World.BlockAccessor.GetBlock(Pos.X + blockScs.Orientation.Opposite.Normali.X, Pos.Y + 1, Pos.Z + blockScs.Orientation.Opposite.Normali.Z).FirstCodePart() == "stonecoffinlid"
+                Api.World.BlockAccessor.GetBlockAbove(Pos, 1, BlockLayersAccess.Solid).FirstCodePart() == "stonecoffinlid" &&
+                Api.World.BlockAccessor.GetBlockAbove(Pos.AddCopy(blockScs.Orientation.Opposite), 1, BlockLayersAccess.Solid).FirstCodePart() == "stonecoffinlid"
             ;
         }
 
         private void onClientTick50ms(float dt)
         {
-            if (processComplete || !structureComplete) return;
+            if (!receivesHeat) return;
 
             receivesHeatSmooth = GameMath.Clamp(receivesHeatSmooth + (receivesHeat ? dt / 10 : -dt / 3), 0, 1);
 
@@ -458,7 +477,7 @@ namespace Vintagestory.GameContent
                     {
                         particles = smokeParticles;
                         particles.Quantity.avg = 0.2f;
-                        particles.basePos.Set(pos.X + 0.5, pos.Y + 0.75, pos.Z + 0.5);
+                        particles.basePos.Set(pos.X + 0.5, pos.InternalY + 0.75, pos.Z + 0.5);
                         particles.Velocity[1].avg = (float)(0.3 + 0.3 * rnd.NextDouble()) * 2;
                         particles.PosOffset[1].var = 0.2f;
                         particles.Velocity[0].avg = (float)(rnd.NextDouble() - 0.5) / 4;
@@ -468,24 +487,22 @@ namespace Vintagestory.GameContent
                     else
                     {
                         particles.Quantity.avg = GameMath.Sqrt(0.5f * (index == 0 ? 0.5f : (index == 1 ? 5 : 0.6f)))/2f;
-                        particles.basePos.Set(pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5);
+                        particles.basePos.Set(pos.X + 0.5, pos.InternalY + 0.5, pos.Z + 0.5);
                         particles.Velocity[1].avg = (float)(0.5 + 0.5 * rnd.NextDouble()) * 2;
                         particles.PosOffset[1].var = 1;
                         particles.Velocity[0].avg = (float)(rnd.NextDouble() - 0.5);
                         particles.Velocity[2].avg = (float)(rnd.NextDouble() - 0.5);
                     }
 
-                    
+
                     particles.PosOffset[0].var = 0.49f;
                     particles.PosOffset[2].var = 0.49f;
-                    
-                    
+
+
                     Api.World.SpawnParticles(particles);
                 }
             }
         }
-
-
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
         {
@@ -498,7 +515,7 @@ namespace Vintagestory.GameContent
             totalHoursLastUpdate = tree.GetDouble("totalHoursLastUpdate");
             progress = tree.GetDouble("progress");
             processComplete = tree.GetBool("processComplete");
-            structureComplete = tree.GetBool("structureComplete");
+            StructureComplete = tree.GetBool("structureComplete");
             tempStoneCoffin = tree.GetInt("tempStoneCoffin");
 
             if (worldAccessForResolve.Api.Side == EnumAppSide.Client)
@@ -520,7 +537,7 @@ namespace Vintagestory.GameContent
             tree.SetDouble("totalHoursLastUpdate", totalHoursLastUpdate);
             tree.SetDouble("progress", progress);
             tree.SetBool("processComplete", processComplete);
-            tree.SetBool("structureComplete", structureComplete);
+            tree.SetBool("structureComplete", StructureComplete);
             tree.SetInt("tempStoneCoffin", tempStoneCoffin);
         }
 
@@ -551,11 +568,9 @@ namespace Vintagestory.GameContent
 
             Shape shape = capi.TesselatorManager.GetCachedShape(Block.Shape.Base);
 
-            MeshData meshdataMain;
-            MeshData meshdataSecondary;
 
-            tessThreadTesselator.TesselateShape(Block, shape, out meshdataMain, null, null, selectiveElementsMain);
-            tessThreadTesselator.TesselateShape(Block, shape, out meshdataSecondary, null, null, selectiveElementsSecondary);
+            tessThreadTesselator.TesselateShape(Block, shape, out MeshData meshdataMain, null, null, selectiveElementsMain);
+            tessThreadTesselator.TesselateShape(Block, shape, out MeshData meshdataSecondary, null, null, selectiveElementsSecondary);
             if (blockScs.Orientation == BlockFacing.EAST)
             {
                 meshdataMain.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, -GameMath.PIHALF, 0);
@@ -568,12 +583,10 @@ namespace Vintagestory.GameContent
             mesher.AddMeshData(meshdataMain);
             mesher.AddMeshData(meshdataSecondary);
 
-            
+
 
             return false;
         }
-
-
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
@@ -589,7 +602,7 @@ namespace Vintagestory.GameContent
                     dsc.AppendLine(Lang.Get("Stone coffin lid is missing"));
                 } else
                 {
-                    if (!structureComplete)
+                    if (!StructureComplete)
                     {
                         dsc.AppendLine(Lang.Get("Structure incomplete! Can't get hot enough, carburization paused."));
                         return;
@@ -602,7 +615,7 @@ namespace Vintagestory.GameContent
                     {
                         dsc.AppendLine(Lang.Get("Ready to be fired. Ignite a pile of coal below each stone coffin half."));
                     }
-                    
+
                 }
             }
 
@@ -610,7 +623,7 @@ namespace Vintagestory.GameContent
             {
                 dsc.AppendLine(Lang.Get("Carburization: {0}% complete", (int)(progress * 100)));
             }
-            
+
         }
 
     }

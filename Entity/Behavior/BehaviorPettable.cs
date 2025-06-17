@@ -3,9 +3,11 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
-    public class EntityBehaviorPettable : EntityBehavior
+    public class EntityBehaviorPettable : EntityBehavior, IPettable
     {
         long lastPetTotalMs;
         float petDurationS;
@@ -85,6 +87,11 @@ namespace Vintagestory.GameContent
         public override string PropertyName()
         {
             return "pettable";
+        }
+
+        public bool CanPet(Entity byEntity)
+        {
+            return true;
         }
     }
 }

@@ -5,6 +5,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockWater : BlockForFluidsLayer, IBlockFlowing
@@ -17,6 +19,7 @@ namespace Vintagestory.GameContent
         bool freezable;
         Block iceBlock;
         float freezingPoint = -4;
+        bool isBoiling;
 
         public override void OnLoaded(ICoreAPI api)
         {
@@ -37,15 +40,15 @@ namespace Vintagestory.GameContent
             {
                 iceBlock = api.World.GetBlock(AssetLocation.Create("lakeice", Code.Domain));
             }
+
+            isBoiling = HasBehavior<BlockBehaviorSteaming>();
         }
 
 
-        public override bool ShouldPlayAmbientSound(IWorldAccessor world, BlockPos pos)
+        public override float GetAmbientSoundStrength(IWorldAccessor world, BlockPos pos)
         {
             // Play water wave sound when above is air and below is a solid block
-            return
-                world.BlockAccessor.GetBlockId(pos.X, pos.Y + 1, pos.Z) == 0 &&
-                world.BlockAccessor.IsSideSolid(pos.X, pos.Y - 1, pos.Z, BlockFacing.UP);
+            return (world.BlockAccessor.GetBlockId(pos.X, pos.Y + 1, pos.Z) == 0 && world.BlockAccessor.IsSideSolid(pos.X, pos.Y - 1, pos.Z, BlockFacing.UP)) ? 1 : 0;
         }
 
         public override void OnAsyncClientParticleTick(IAsyncParticleManager manager, BlockPos pos, float windAffectednessAtPos, float secondsTicking)
@@ -160,6 +163,13 @@ namespace Vintagestory.GameContent
             if (preventDefault) return result;
 
             return true;
+        }
+
+
+        public override float GetTraversalCost(BlockPos pos, EnumAICreatureType creatureType)
+        {
+            if (creatureType == EnumAICreatureType.SeaCreature && !isBoiling) return 0;
+            return isBoiling && creatureType != EnumAICreatureType.HeatProofCreature ? 99999f : 5f;
         }
     }
 }

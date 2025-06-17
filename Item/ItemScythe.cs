@@ -5,6 +5,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ItemScythe : ItemShears
@@ -123,8 +125,6 @@ namespace Vintagestory.GameContent
                     tf.Translation.Y += b * 2 / 0.75f;
                     tf.Translation.Z += b * 2;
                 }
-
-                byEntity.Controls.UsingHeldItemTransformBefore = tf;
             }
 
             performActions(secondsPassed, byEntity, slot, blockSelection);
@@ -162,7 +162,7 @@ namespace Vintagestory.GameContent
             {
                 if (byEntity.World.Side == EnumAppSide.Server && byEntity.World.Claims.TryAccess(byPlayer, blockSelection.Position, EnumBlockAccessFlags.BuildOrBreak))
                 {
-                    trimMode = block.Variant["tallgrass"] != null && block.Variant["tallgrass"] != "eaten" && slot.Itemstack.Attributes.GetInt("toolMode", 0) == 0;
+                    trimMode = slot.Itemstack.Attributes.GetInt("toolMode", 0) == 0;
 
                     OnBlockBrokenWith(byEntity.World, byEntity, slot, blockSelection);
                 }
@@ -178,9 +178,10 @@ namespace Vintagestory.GameContent
             {
                 var block = api.World.BlockAccessor.GetBlock(pos);
                 var trimmedBlock = api.World.GetBlock(block.CodeWithVariant("tallgrass", "eaten"));
-                if (block == trimmedBlock) return;
+                bool blockIsTallgrass = block.Variant.ContainsKey("tallgrass");
+                if (blockIsTallgrass && block == trimmedBlock) return;
 
-                if (trimmedBlock != null)
+                if (blockIsTallgrass && trimmedBlock != null)
                 {
                     api.World.BlockAccessor.BreakBlock(pos, plr);
                     api.World.BlockAccessor.MarkBlockDirty(pos);

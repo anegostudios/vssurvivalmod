@@ -6,6 +6,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public enum EnumTransactionResult
@@ -19,7 +21,7 @@ namespace Vintagestory.GameContent
 
     public class InventoryTrader : InventoryBase
     {
-        EntityTrader traderEntity;
+        EntityTradingHumanoid traderEntity;
 
         // Slots 0..15: Selling slots
         // Slots 16..19: Buying cart
@@ -85,7 +87,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        internal void LateInitialize(string id, ICoreAPI api, EntityTrader traderEntity)
+        internal void LateInitialize(string id, ICoreAPI api, EntityTradingHumanoid traderEntity)
         {
             base.LateInitialize(id, api);
             this.traderEntity = traderEntity;
@@ -102,8 +104,8 @@ namespace Vintagestory.GameContent
                     ItemSlotTrade tradeSlot = (slots[slotId] as ItemSlotTrade);
 
                     if (tradeSlot.TradeItem != null) continue;
-                    
-                    tradeSlot.TradeItem = GetTradeItemByName(name, slotId < 20 ? traderEntity.TradeProps.Selling : traderEntity.TradeProps.Buying); 
+
+                    tradeSlot.TradeItem = GetTradeItemByName(name, slotId < 20 ? traderEntity.TradeProps.Selling : traderEntity.TradeProps.Buying);
                 }
             }*/
         }
@@ -124,7 +126,7 @@ namespace Vintagestory.GameContent
 
                 if (op.MouseButton == EnumMouseButton.Right)
                 {
-                    // Just remove one batch on right mouse    
+                    // Just remove one batch on right mouse
                     if (cartSlot.TradeItem?.Stack != null)
                     {
                         cartSlot.TakeOut(cartSlot.TradeItem.Stack.StackSize);
@@ -209,22 +211,6 @@ namespace Vintagestory.GameContent
             }
         }
 
-        // wtf is this for?
-        /*private ResolvedTradeItem GetTradeItemByName(string name, TradeList tradeList)
-        {
-            if (name == null) return null;
-
-            for (int i = 0; i < tradeList.List.Length; i++)
-            {
-                TradeItem item = tradeList.List[i];
-                string itemname = item.Name == null ? i + "" : item.Name;
-                if (itemname.Equals(name)) return item.Resolve(Api.World);
-            }
-
-            return null;
-        }*/
-
-
 
         public override void FromTreeAttributes(ITreeAttribute tree)
         {
@@ -239,7 +225,7 @@ namespace Vintagestory.GameContent
                 ItemSlotTrade tradeSlot = (slots[slotId] as ItemSlotTrade);
 
                 tradeSlot.TradeItem = new ResolvedTradeItem(tradeItems.GetTreeAttribute(slotId + ""));
-                
+
             }
         }
 
@@ -352,8 +338,7 @@ namespace Vintagestory.GameContent
                 ItemSlotTrade tradeSlot = GetSellingConditionsSlot(slot.Itemstack);
 
                 int tradeslotid = GetSlotId(tradeSlot);
-                int stock;
-                if (!Stocks.TryGetValue(tradeslotid, out stock))
+                if (!Stocks.TryGetValue(tradeslotid, out int stock))
                 {
                     stock = slot.TradeItem.Stock;
                 }
@@ -392,8 +377,7 @@ namespace Vintagestory.GameContent
                 }
 
                 int tradeslotid = GetSlotId(tradeSlot);
-                int stock;
-                if (!Stocks.TryGetValue(tradeslotid, out stock))
+                if (!Stocks.TryGetValue(tradeslotid, out int stock))
                 {
                     stock = tradeItem.Stock;
                 }
@@ -430,7 +414,7 @@ namespace Vintagestory.GameContent
             return tradeItem.Stock > 0;
         }
 
-    
+
 
 
         public bool HasPlayerEnoughAssets(IPlayer buyingPlayer)
@@ -517,8 +501,7 @@ namespace Vintagestory.GameContent
                 int pieceValue = CurrencyValuePerItem(invslot);
                 if (pieceValue != 0)
                 {
-                    List<ItemSlot> slots = null;
-                    if (!moneys.TryGetValue(pieceValue, out slots)) slots = new List<ItemSlot>();
+                    if (!moneys.TryGetValue(pieceValue, out List<ItemSlot> slots)) slots = new List<ItemSlot>();
 
                     slots.Add(invslot);
 
@@ -577,7 +560,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            // ...and return single value gears 
+            // ...and return single value gears
             if (totalUnitsToDeduct < 0)
             {
                 GiveOrDrop(eagent, new ItemStack(api.World.GetItem(new AssetLocation("gear-rusty"))), -totalUnitsToDeduct, null);
@@ -591,7 +574,7 @@ namespace Vintagestory.GameContent
             GiveOrDrop(eagent, stack, stack.StackSize, traderEntity);
         }
 
-        public static void GiveOrDrop(EntityAgent eagent, ItemStack stack, int quantity, EntityTrader entityTrader)
+        public static void GiveOrDrop(EntityAgent eagent, ItemStack stack, int quantity, EntityTradingHumanoid entityTrader)
         {
             if (stack == null) return;
 
@@ -778,7 +761,6 @@ namespace Vintagestory.GameContent
                 slots[i + 36].Itemstack = null;
             }
 
-            traderEntity.tradingWithPlayer = null;
             return p;
         }
 

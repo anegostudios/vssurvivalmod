@@ -4,6 +4,8 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockStaticTranslocator : Block
@@ -88,7 +90,7 @@ namespace Vintagestory.GameContent
                 if (slot.Itemstack.Collectible.Code.Path == "metal-parts" && slot.StackSize >= 2)
                 {
                     slot.TakeOut(2);
-                    world.PlaySoundAt(new AssetLocation("sounds/effect/latch"), blockSel.Position.X + 0.5, blockSel.Position.Y, blockSel.Position.Z + 0.5, byPlayer, true, 16);
+                    world.PlaySoundAt(new AssetLocation("sounds/effect/latch"), blockSel.Position, -0.25, byPlayer, true, 16);
 
                     Block block = world.GetBlock(CodeWithVariant("state", "normal"));
                     world.BlockAccessor.SetBlock(block.Id, blockSel.Position);
@@ -109,7 +111,7 @@ namespace Vintagestory.GameContent
                 {
                     be.DoRepair(byPlayer);
                     slot.TakeOut(1);
-                    world.PlaySoundAt(new AssetLocation("sounds/effect/latch"), blockSel.Position.X + 0.5, blockSel.Position.Y, blockSel.Position.Z + 0.5, byPlayer, true, 16);
+                    world.PlaySoundAt(new AssetLocation("sounds/effect/latch"), blockSel.Position, -0.25, byPlayer, true, 16);
 
                     return true;
                 }
@@ -207,6 +209,13 @@ namespace Vintagestory.GameContent
             }
 
             return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer);
+        }
+
+        public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
+        {
+            if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative) return;
+
+            base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier);
         }
 
 

@@ -3,6 +3,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 
@@ -16,7 +18,7 @@ namespace Vintagestory.GameContent
 
         public override void Initialize(JsonObject properties)
         {
-            sides = properties["sides"].AsArray<string>(new string[0]);
+            sides = properties["sides"].AsArray<string>(System.Array.Empty<string>());
 
             base.Initialize(properties);
         }

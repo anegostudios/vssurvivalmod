@@ -11,6 +11,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class CodeAndChance
@@ -30,7 +32,8 @@ namespace Vintagestory.GameContent
     public class BlockEntityFarmland : BlockEntity, IFarmlandBlockEntity, IAnimalFoodSource, ITexPositionSource
     {
         protected static Random rand = new Random();
-        public static OrderedDictionary<string, float> Fertilities = new OrderedDictionary<string, float>{
+        public static API.Datastructures.OrderedDictionary<string, float> Fertilities = new ()
+        {
             { "verylow", 5 },
             { "low", 25 },
             { "medium", 50 },
@@ -41,7 +44,7 @@ namespace Vintagestory.GameContent
         
         protected HashSet<string> PermaBoosts = new HashSet<string>();
         // How many hours this block can retain water before becoming dry
-        protected double totalHoursWaterRetention = 24.5;
+        protected float totalHoursWaterRetention;
         protected BlockPos upPos;
         // Total game hours from where on it can enter the next growth stage
         protected double totalHoursForNextStage;
@@ -101,7 +104,7 @@ namespace Vintagestory.GameContent
 
             capi = api as ICoreClientAPI;
 
-            totalHoursWaterRetention = Api.World.Calendar.HoursPerDay + 0.5;
+            totalHoursWaterRetention = Api.World.Calendar.HoursPerDay * 4; // Water stays for 4 days
             upPos = base.Pos.UpCopy();
             
             allowundergroundfarming = Api.World.Config.GetBool("allowUndergroundFarming", false);
@@ -189,7 +192,7 @@ namespace Vintagestory.GameContent
             byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
 
             (byPlayer as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
-            Api.World.PlaySoundAt(Api.World.BlockAccessor.GetBlock(base.Pos).Sounds.Hit, base.Pos.X + 0.5, base.Pos.Y + 0.75, base.Pos.Z + 0.5, byPlayer, true, 12);
+            Api.World.PlaySoundAt(Api.World.BlockAccessor.GetBlock(base.Pos).Sounds.Hit, base.Pos.X + 0.5, base.Pos.InternalY + 0.75, base.Pos.Z + 0.5, byPlayer, true, 12);
 
             MarkDirty(false);
             return true;
@@ -306,8 +309,7 @@ namespace Vintagestory.GameContent
             float dist = 99;
             if (searchNearbyWater)
             {
-                EnumWaterSearchResult res;
-                dist = GetNearbyWaterDistance(out res, 0);
+                dist = GetNearbyWaterDistance(out EnumWaterSearchResult res, 0);
                 if (res == EnumWaterSearchResult.Deferred) return false; // Wait with updating until neighbouring chunks are loaded
                 if (res != EnumWaterSearchResult.Found) dist = 99;
 
@@ -346,7 +348,7 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            double hoursPassed = Math.Min((totalDays - lastMoistureLevelUpdateTotalDays) * Api.World.Calendar.HoursPerDay, 48);
+            double hoursPassed = Math.Min((totalDays - lastMoistureLevelUpdateTotalDays) * Api.World.Calendar.HoursPerDay, totalHoursWaterRetention);
             if (hoursPassed < 0.03f)
             {
                 // Get wet from a water source
@@ -356,7 +358,7 @@ namespace Vintagestory.GameContent
             }
 
             // Dry out
-            moistureLevel = Math.Max(minMoisture, moistureLevel - (float)hoursPassed / 48f);
+            moistureLevel = Math.Max(minMoisture, moistureLevel - (float)hoursPassed / totalHoursWaterRetention);
 
             // Get wet from all the rainfall since last update
             if (skyExposed)
@@ -460,8 +462,7 @@ namespace Vintagestory.GameContent
             {
                 if (!nearbyWaterTested)
                 {
-                    EnumWaterSearchResult res;
-                    waterDistance = GetNearbyWaterDistance(out res, (float)hourIntervall);
+                    waterDistance = GetNearbyWaterDistance(out EnumWaterSearchResult res, (float)hourIntervall);
                     if (res == EnumWaterSearchResult.Deferred) return; // Wait with updating until neighbouring chunks are loaded
                     if (res == EnumWaterSearchResult.NotFound) waterDistance = 99;
                     nearbyWaterTested = true;
@@ -700,7 +701,8 @@ namespace Vintagestory.GameContent
             return 0f;
         }
 
-        public bool TryPlant(Block block)
+        
+        public bool TryPlant(Block block, ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel)
         {
             if (CanPlant() && block.CropProps != null)
             {
@@ -709,7 +711,7 @@ namespace Vintagestory.GameContent
 
                 foreach (CropBehavior behavior in block.CropProps.Behaviors)
                 {
-                    behavior.OnPlanted(Api);
+                    behavior.OnPlanted(Api, itemslot, byEntity, blockSel);
                 }
 
                 return true;
@@ -837,8 +839,7 @@ namespace Vintagestory.GameContent
 
         internal int GetCropStage(Block block)
         {
-            int stage;
-            int.TryParse(block.LastCodePart(), out stage);
+            int.TryParse(block.LastCodePart(), out int stage);
             return stage;
         }
 

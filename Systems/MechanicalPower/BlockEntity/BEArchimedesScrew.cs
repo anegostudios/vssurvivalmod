@@ -1,5 +1,7 @@
 ﻿using System;
 
+#nullable disable
+
 namespace Vintagestory.GameContent.Mechanics
 {
     public class BlockEntityArchimedesScrew : BlockEntityItemFlow

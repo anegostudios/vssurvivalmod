@@ -4,6 +4,8 @@ using Vintagestory.API.Common;
 using System;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class GuiHandbookTextPage : GuiHandbookPage
@@ -39,7 +41,7 @@ namespace Vintagestory.GameContent
             
             comps = VtmlUtil.Richtextify(capi, Text, CairoFont.WhiteSmallText().WithLineHeightMultiplier(1.2));
 
-            titleCached = Lang.Get(Title).RemoveDiacritics();
+            titleCached = Lang.Get(Title).ToSearchFriendly();
         }
 
         public override void ComposePage(GuiComposer detailViewGui, ElementBounds textBounds, ItemStack[] allstacks, ActionConsumable<string> openDetailPageFor)
@@ -76,7 +78,7 @@ namespace Vintagestory.GameContent
             capi.Render.Render2DTexturePremultipliedAlpha(
                 Texture.TextureId,
                 (x + pad),
-                y + size / 4 - 3,
+                y + size / 4 - GuiElement.scaled(3),
                 Texture.Width,
                 Texture.Height,
                 50

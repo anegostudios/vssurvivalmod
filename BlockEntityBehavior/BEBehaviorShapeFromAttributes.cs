@@ -1,23 +1,76 @@
-﻿using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
-using Vintagestory.ServerMods;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
+    public class MSShapeFromAttrCacheHelper : ModSystem
+    {
+        public override bool ShouldLoad(EnumAppSide forSide) => forSide == EnumAppSide.Client;
 
-    public class BEBehaviorShapeFromAttributes : BlockEntityBehavior, IRotatable
+        public static bool IsInCache(ICoreClientAPI capi, Block block, IShapeTypeProps cprops, string overrideTextureCode)
+        {
+            var blockTextures = (block as BlockShapeFromAttributes).blockTextures;
+
+
+            // Prio 0: Shape textures
+            var shape = cprops.ShapeResolved;
+            if (shape == null) return false;
+            if (shape.Textures != null)
+            {
+                foreach (var val in shape.Textures)
+                {
+                    if (capi.BlockTextureAtlas[val.Value] == null) return false;
+                }
+            }
+
+            // Prio 1: Block wide custom textures
+            if (blockTextures != null)
+            {
+                foreach (var val in blockTextures)
+                {
+                    if (val.Value.Baked == null) val.Value.Bake(capi.Assets);
+                    if (capi.BlockTextureAtlas[val.Value.Baked.BakedName] == null) return false;
+                }
+            }
+
+            // Prio 2: Variant textures
+            if (cprops.Textures != null)
+            {
+                foreach (var val in cprops.Textures)
+                {
+                    var baked = val.Value.Baked ?? CompositeTexture.Bake(capi.Assets, val.Value);
+                    if (capi.BlockTextureAtlas[baked.BakedName] == null) return false;
+                }
+            }
+
+            // Prio 3: Override texture
+            if (overrideTextureCode != null && cprops.TextureFlipCode != null)
+            {
+                if ((block as BlockShapeFromAttributes).OverrideTextureGroups[cprops.TextureFlipGroupCode].TryGetValue(overrideTextureCode, out var ctex))
+                {
+                    if (ctex.Baked == null) ctex.Bake(capi.Assets);
+                    if (capi.BlockTextureAtlas[ctex.Baked.BakedName] == null) return false;
+                }
+            }
+
+            return true;
+        }
+    }
+
+    public class BEBehaviorShapeFromAttributes : BlockEntityBehavior, IRotatable, IExtraWrenchModes
     {
         public string Type;
         public BlockShapeFromAttributes clutterBlock;
         protected MeshData mesh;
         public float rotateX;
+        public float rotateY { get; internal set; }
         public float rotateZ;
         public bool Collected;
 
@@ -37,11 +90,37 @@ namespace Vintagestory.GameContent
         /// </summary>
         protected static Vec3f Origin = new Vec3f(0.5f, 0.5f, 0.5f);
 
+        public float offsetX, offsetY, offsetZ;
+
+        protected bool loadMeshDuringTesselation;
+
         public BEBehaviorShapeFromAttributes(BlockEntity blockentity) : base(blockentity)
         {
         }
 
-        public float rotateY { get; internal set; }
+        #region IExtraWrenchModes
+        public SkillItem[] GetExtraWrenchModes(IPlayer byPlayer, BlockSelection blockSelection)
+        {
+            return clutterBlock?.extraWrenchModes;
+        }
+
+        public void OnWrenchInteract(IPlayer player, BlockSelection blockSel, int mode, int rightmouseBtn)
+        {
+            switch (mode)
+            {
+                case 0: offsetZ += (1 - rightmouseBtn * 2) / 16f; break; // N/S
+                case 1: offsetX += (1 - rightmouseBtn * 2) / 16f; break; // W/E
+                case 2: offsetY += (1 - rightmouseBtn * 2) / 16f; break; // U/D
+            }
+
+            loadMesh();
+            Blockentity.MarkDirty(true);
+
+            Api.World.PlaySoundAt(Block.Sounds.Place, blockSel.Position, 0, player);
+            (Api.World as IClientWorldAccessor)?.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+        }
+
+        #endregion
 
 
         public override void Initialize(ICoreAPI api, JsonObject properties)
@@ -52,34 +131,36 @@ namespace Vintagestory.GameContent
 
             if (Type != null)
             {
-                initShape();
+                MaybeInitialiseMesh_OnMainThread();
 
                 var brep = clutterBlock.GetBehavior<BlockBehaviorReparable>();
                 brep?.Initialize(Type, this);
             }
         }
 
-        public virtual void initShape()
+        public virtual void loadMesh()
         {
             if (Type == null || Api == null || Api.Side == EnumAppSide.Server) return;
 
-            
-
             var cprops = clutterBlock?.GetTypeProps(Type, null, this);
-            
+
             if (cprops != null)
             {
+                bool noOffset = offsetX == 0 && offsetY == 0 && offsetZ == 0;
                 float angleY = rotateY + cprops.Rotation.Y * GameMath.DEG2RAD;
+
                 MeshData baseMesh = clutterBlock.GetOrCreateMesh(cprops, null, overrideTextureCode);
-                if (cprops.Randomize)
+                if (cprops.RandomizeYSize && clutterBlock?.AllowRandomizeDims != false)
                 {
                     mesh = baseMesh.Clone().Rotate(Origin, rotateX, angleY, rotateZ).Scale(Vec3f.Zero, 1, 0.98f + GameMath.MurmurHash3Mod(Pos.X, Pos.Y, Pos.Z, 1000) / 1000f * 0.04f, 1);
                 } else
                 {
-                    if (rotateX == 0 && angleY == 0 && rotateZ == 0) mesh = baseMesh;
+
+                    if (rotateX == 0 && angleY == 0 && rotateZ == 0 && noOffset) mesh = baseMesh;
                     else mesh = baseMesh.Clone().Rotate(Origin, rotateX, angleY, rotateZ);
                 }
-                
+
+                if (!noOffset) mesh.Translate(offsetX, offsetY, offsetZ);
             }
         }
 
@@ -93,7 +174,7 @@ namespace Vintagestory.GameContent
                 Collected = byItemStack.Attributes.GetBool("collected");
             }
 
-            initShape();
+            loadMesh();
             var brep = clutterBlock.GetBehavior<BlockBehaviorReparable>();
             brep?.Initialize(Type, this);
         }
@@ -117,6 +198,10 @@ namespace Vintagestory.GameContent
             float prevRotateY = rotateY;
             float prevRotateZ = rotateZ;
 
+            float prevOffsetX = offsetX;
+            float prevOffsetY = offsetY;
+            float prevOffsetZ = offsetZ;
+
             Type = tree.GetString("type");
             if (Type != null) {
                 Type = BlockClutter.Remap(worldAccessForResolve, Type);
@@ -129,9 +214,13 @@ namespace Vintagestory.GameContent
             Collected = tree.GetBool("collected");
             repairState = tree.GetFloat("repairState");
 
-            if ((mesh == null || prevType != Type || prevOverrideTextureCode != overrideTextureCode || rotateX != prevRotateX || rotateY != prevRotateY || rotateZ != prevRotateZ) && Api != null && worldAccessForResolve.Side == EnumAppSide.Client)
+            offsetX = tree.GetFloat("offsetX");
+            offsetY = tree.GetFloat("offsetY");
+            offsetZ = tree.GetFloat("offsetZ");
+
+            if (worldAccessForResolve.Side == EnumAppSide.Client && Api != null && (mesh == null || prevType != Type || prevOverrideTextureCode != overrideTextureCode || rotateX != prevRotateX || rotateY != prevRotateY || rotateZ != prevRotateZ || offsetX != prevOffsetX || offsetY != prevOffsetY || offsetZ != prevOffsetZ))
             {
-                initShape();
+                MaybeInitialiseMesh_OnMainThread();
                 relight(prevType);
                 Blockentity.MarkDirty(true);
             }
@@ -162,14 +251,60 @@ namespace Vintagestory.GameContent
             tree.SetBool("collected", Collected);
             tree.SetFloat("repairState", repairState);
 
+            tree.SetFloat("offsetX", offsetX);
+            tree.SetFloat("offsetY", offsetY);
+            tree.SetFloat("offsetZ", offsetZ);
+
             if (overrideTextureCode!=null) tree.SetString("overrideTextureCode", overrideTextureCode);
             base.ToTreeAttributes(tree);
         }
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
         {
+            MaybeInitialiseMesh_OffThread();
+
             mesher.AddMeshData(mesh);
             return true;
+        }
+
+        protected void MaybeInitialiseMesh_OnMainThread()
+        {
+            if (Api.Side == EnumAppSide.Server) return;
+            if (RequiresTextureUploads())
+            {
+                loadMesh();
+            }
+            else
+            {
+                loadMeshDuringTesselation = true;
+            }
+        }
+
+        protected void MaybeInitialiseMesh_OffThread()
+        {
+            if (loadMeshDuringTesselation)
+            {
+                loadMeshDuringTesselation = false;
+                loadMesh();
+            }
+        }
+
+        private bool RequiresTextureUploads()
+        {
+            var cprops = clutterBlock?.GetTypeProps(Type, null, this);
+
+            if (cprops == null) { 
+                // Ignore invalid clutter blocks
+                return false; 
+            }
+
+            if (cprops?.Textures == null)
+            {
+                if (overrideTextureCode == null) return false;
+            }
+
+            bool isInCache = MSShapeFromAttrCacheHelper.IsInCache(this.Api as ICoreClientAPI, Block, cprops, overrideTextureCode);
+            return !isInCache;
         }
 
         public void OnTransformed(IWorldAccessor worldAccessor, ITreeAttribute tree, int degreeRotation, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, EnumAxis? flipAxis)
@@ -179,7 +314,7 @@ namespace Vintagestory.GameContent
             float thetaZ = tree.GetFloat("rotateZ");
             var cprops = clutterBlock?.GetTypeProps(Type, null, this);
             if (cprops != null) thetaY += cprops.Rotation.Y * GameMath.DEG2RAD;
-            
+
             float[] m = Mat4f.Create();
             Mat4f.RotateY(m, m, -degreeRotation * GameMath.DEG2RAD);   // apply the new rotation
             Mat4f.RotateX(m, m, thetaX);
@@ -194,11 +329,41 @@ namespace Vintagestory.GameContent
             rotateX = thetaX;
             rotateY = thetaY;
             rotateZ = thetaZ;
+
+            var tmpOffsetX = tree.GetFloat("offsetX");
+            offsetY = tree.GetFloat("offsetY");
+            var tmpOffsetZ = tree.GetFloat("offsetZ");
+
+            switch (degreeRotation)
+            {
+                case 90:
+                {
+                    offsetX = -tmpOffsetZ;
+                    offsetZ = tmpOffsetX;
+                    break;
+                }
+                case 180:
+                {
+                    offsetX = -tmpOffsetX;
+                    offsetZ = -tmpOffsetZ;
+                    break;
+                }
+                case 270:
+                {
+                    offsetX = tmpOffsetZ;
+                    offsetZ = -tmpOffsetX;
+                    break;
+                }
+            }
+
+            tree.SetFloat("offsetX", offsetX);
+            tree.SetFloat("offsetY", offsetY);
+            tree.SetFloat("offsetZ", offsetZ);
         }
 
         public void Rotate(EntityAgent byEntity, BlockSelection blockSel, int dir)
         {
-            if (byEntity.Controls.Sneak)
+            if (byEntity.Controls.ShiftKey)
             {
                 if (blockSel.Face.Axis == EnumAxis.X)
                 {
@@ -219,7 +384,7 @@ namespace Vintagestory.GameContent
                 rotateY += deg22dot5rad * dir;
             }
 
-            initShape();
+            loadMesh();
             Blockentity.MarkDirty(true);
         }
 
@@ -238,7 +403,7 @@ namespace Vintagestory.GameContent
 
         public string GetFullCode()
         {
-            return clutterBlock.Code.Domain + ":" + clutterBlock.ClassType + "-" + Type?.Replace("/", "-");
+            return clutterBlock.BaseCodeForName() + Type?.Replace("/", "-");
         }
     }
 }

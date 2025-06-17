@@ -7,6 +7,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ItemClay : Item
@@ -27,7 +29,7 @@ namespace Vintagestory.GameContent
         {
             var plr = byEntity as EntityPlayer;
             var pos = plr?.BlockSelection?.Position;
-            if (pos != null && plr.Controls.HandUse != EnumHandInteract.None)
+            if (pos != null && (plr.Controls.HandUse != EnumHandInteract.None || plr.Controls.RightMouseDown))
             {
                 if (api.World.BlockAccessor.GetBlock(pos) is BlockClayForm)
                 {
@@ -103,7 +105,7 @@ namespace Vintagestory.GameContent
 
                 world.BlockAccessor.SetBlock(clayformBlock.BlockId, placePos);
 
-                if (clayformBlock.Sounds != null) world.PlaySoundAt(clayformBlock.Sounds.Place, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z);
+                if (clayformBlock.Sounds != null) world.PlaySoundAt(clayformBlock.Sounds.Place, blockSel.Position, -0.5);
 
                 bec = byEntity.World.BlockAccessor.GetBlockEntity(placePos) as BlockEntityClayForm;
 

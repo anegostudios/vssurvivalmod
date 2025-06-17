@@ -2,6 +2,8 @@
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockCactus : BlockPlant
@@ -23,7 +25,7 @@ namespace Vintagestory.GameContent
         Block topFlowering;
         Block topRipe;
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, IRandom worldGenRand, BlockPatchAttributes attributes = null)
         {
             if (!CanPlantStay(blockAccessor, pos)) return false;
 
@@ -53,7 +55,7 @@ namespace Vintagestory.GameContent
                 };
             }
 
-            
+
 
             int height = rand.Next(3);
 

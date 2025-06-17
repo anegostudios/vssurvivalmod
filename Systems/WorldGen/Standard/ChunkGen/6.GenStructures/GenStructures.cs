@@ -5,6 +5,9 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+using Vintagestory.GameContent;
+
+#nullable disable
 
 namespace Vintagestory.ServerMods
 {
@@ -23,10 +26,11 @@ namespace Vintagestory.ServerMods
         }
     }
 
-    public delegate bool PeventSchematicAtDelegate(BlockPos pos, Cuboidi schematicLocation);
+    public delegate bool PeventSchematicAtDelegate(IBlockAccessor blockAccessor, BlockPos pos, Cuboidi schematicLocation, string locationCode);
 
     public class GenStructures : ModStdWorldGen
     {
+        public static bool ReplaceMetaBlocks = true;
         ICoreServerAPI api;
 
         int worldheight;
@@ -46,10 +50,11 @@ namespace Vintagestory.ServerMods
 
         LCGRandom strucRand; // Deterministic random
 
-        
+
         IWorldGenBlockAccessor worldgenBlockAccessor;
 
         WorldGenStructure[] shuffledStructures;
+        private Dictionary<string, WorldGenStructure[]> StoryStructures;
 
         public override double ExecuteOrder() { return 0.3; }
 
@@ -73,14 +78,14 @@ namespace Vintagestory.ServerMods
             worldgenBlockAccessor = chunkProvider.GetBlockAccessor(false);
         }
 
-        public bool WouldSchematicOverlapAt(BlockPos pos, Cuboidi schematicLocation)
+        public bool WouldSchematicOverlapAt(IBlockAccessor blockAccessor, BlockPos pos, Cuboidi schematicLocation, string locationCode)
         {
             if (OnPreventSchematicPlaceAt != null)
             {
                 var deles = OnPreventSchematicPlaceAt.GetInvocationList();
                 foreach (PeventSchematicAtDelegate dele in deles)
                 {
-                    if (dele(pos, schematicLocation)) return true;
+                    if (dele(blockAccessor, pos, schematicLocation, locationCode)) return true;
                 }
             }
 
@@ -88,14 +93,27 @@ namespace Vintagestory.ServerMods
         }
 
 
+        BlockPos spawnPos;
+
         public void initWorldGen()
         {
+            LoadGlobalConfig(api);
+
+            var fillerBlock = api.World.BlockAccessor.GetBlock(new AssetLocation("meta-filler"));
+            var pathwayBlock = api.World.BlockAccessor.GetBlock(new AssetLocation("meta-pathway"));
+            var undergroundBlock = api.World.BlockAccessor.GetBlock(new AssetLocation("meta-underground"));
+            var abovegroundBlock = api.World.BlockAccessor.GetBlock(new AssetLocation("meta-aboveground"));
+            BlockSchematic.FillerBlockId = fillerBlock.Id;
+            BlockSchematic.PathwayBlockId = pathwayBlock.Id;
+            BlockSchematic.UndergroundBlockId = undergroundBlock.Id;
+            BlockSchematic.AbovegroundBlockId = abovegroundBlock.Id;
+
             worldheight = api.WorldManager.MapSizeY;
             regionChunkSize = api.WorldManager.RegionSize / chunksize;
 
             strucRand = new LCGRandom(api.WorldManager.Seed + 1090);
 
-            IAsset asset = api.Assets.Get("worldgen/structures.json");
+            var asset = api.Assets.Get("worldgen/structures.json");
             scfg = asset.ToObject<WorldGenStructuresConfig>();
 
             shuffledStructures = new WorldGenStructure[scfg.Structures.Length];
@@ -105,11 +123,41 @@ namespace Vintagestory.ServerMods
             asset = api.Assets.Get("worldgen/villages.json");
             vcfg = asset.ToObject<WorldGenVillageConfig>();
             vcfg.Init(api, scfg);
+
+            var genStoryStructures = api.World.Config.GetAsString("loreContent", "true").ToBool(true);
+            if (!genStoryStructures) return;
+
+            asset = api.Assets.Get("worldgen/storystructures.json");
+            var stcfg = asset.ToObject<WorldGenStoryStructuresConfig>();
+            StoryStructures = new Dictionary<string, WorldGenStructure[]>();
+            foreach (var storyStructure in stcfg.Structures)
+            {
+                var path = "worldgen/story/" + storyStructure.Code + "/structures.json";
+                if(api.Assets.Exists(new AssetLocation(path)))
+                {
+                    asset = api.Assets.Get(path);
+                    var storyStructuresConfig = asset.ToObject<WorldGenStructuresConfig>();
+                    storyStructuresConfig.Init(api);
+                    StoryStructures[storyStructure.Code] = storyStructuresConfig.Structures;
+                }
+            }
+
+
+            var df = api.WorldManager.SaveGame.DefaultSpawn;
+            if (df != null)
+            {
+                spawnPos = new BlockPos(df.x, df.y ?? 0, df.z);
+            } else
+            {
+                spawnPos = api.World.BlockAccessor.MapSize.AsBlockPos / 2;
+            }
         }
 
         private void OnChunkColumnGenPostPass(IChunkColumnGenerateRequest request)
         {
             if (!TerraGenConfig.GenerateStructures) return;
+
+            var locationCode = GetIntersectingStructure(request.ChunkX * chunksize + chunksize / 2, request.ChunkZ * chunksize + chunksize / 2, SkipStructuresgHashCode);
 
             var chunks = request.Chunks;
             int chunkX = request.ChunkX;
@@ -119,13 +167,15 @@ namespace Vintagestory.ServerMods
 
             IMapRegion region = chunks[0].MapChunk.MapRegion;
 
-            DoGenStructures(region, chunkX, chunkZ, true, request.ChunkGenParams);
+            DoGenStructures(region, chunkX, chunkZ, true, locationCode, request.ChunkGenParams);
             TryGenVillages(region, chunkX, chunkZ, true, request.ChunkGenParams);
         }
 
         private void OnChunkColumnGen(IChunkColumnGenerateRequest request)
         {
             if (!TerraGenConfig.GenerateStructures) return;
+
+            var locationCode = GetIntersectingStructure(request.ChunkX * chunksize + chunksize / 2, request.ChunkZ * chunksize + chunksize / 2, SkipStructuresgHashCode);
 
             var chunks = request.Chunks;
             int chunkX = request.ChunkX;
@@ -151,18 +201,41 @@ namespace Vintagestory.ServerMods
             climateBotRight = climateMap.GetUnpaddedInt((int)(rlX * facC + facC), (int)(rlZ * facC + facC));
 
             heightmap = chunks[0].MapChunk.WorldGenTerrainHeightMap;
-            
-            
-            DoGenStructures(region, chunkX, chunkZ, false, request.ChunkGenParams);
-            TryGenVillages(region, chunkX, chunkZ, false, request.ChunkGenParams);
+
+            DoGenStructures(region, chunkX, chunkZ, false, locationCode, request.ChunkGenParams);
+            if (locationCode == null)
+            {
+                TryGenVillages(region, chunkX, chunkZ, false, request.ChunkGenParams);
+            }
         }
 
-        private void DoGenStructures(IMapRegion region, int chunkX, int chunkZ, bool postPass, ITreeAttribute chunkGenParams = null)
+        private void DoGenStructures(IMapRegion region, int chunkX, int chunkZ, bool postPass,
+            string locationCode, ITreeAttribute chunkGenParams = null)
         {
+            // We need to make a copy each time to preserve determinism
+            // which is crucial for the translocator to find an exit point
+            if (locationCode != null)
+            {
+                if (StoryStructures.TryGetValue(locationCode, out var storyStructures))
+                {
+                    shuffledStructures = new WorldGenStructure[storyStructures.Length];
+                    for (int i = 0; i < storyStructures.Length; i++) shuffledStructures[i] = storyStructures[i];
+                }
+                else
+                {
+                    return;
+                }
+            }
+            else
+            {
+                shuffledStructures = new WorldGenStructure[scfg.Structures.Length];
+                for (int i = 0; i < shuffledStructures.Length; i++) shuffledStructures[i] = scfg.Structures[i];
+            }
             BlockPos startPos = new BlockPos();
 
             ITreeAttribute chanceModTree = null;
             ITreeAttribute maxQuantityModTree = null;
+            StoryStructureLocation location = null;
             if (chunkGenParams?["structureChanceModifier"] != null)
             {
                 chanceModTree = chunkGenParams["structureChanceModifier"] as TreeAttribute;
@@ -174,10 +247,6 @@ namespace Vintagestory.ServerMods
 
 
             strucRand.InitPositionSeed(chunkX, chunkZ);
-
-            // We need to make a copy each time to preserve determinism
-            // which is crucial for the translocator to find an exit point
-            for (int i = 0; i < shuffledStructures.Length; i++) shuffledStructures[i] = scfg.Structures[i];
 
             shuffledStructures.Shuffle(strucRand);
 
@@ -223,11 +292,43 @@ namespace Vintagestory.ServerMods
                     }
 
                     if (startPos.Y <= 0) continue;
-
-                    if (struc.TryGenerate(worldgenBlockAccessor, api.World, startPos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight))
+                                
+                    if (!BlockSchematicStructure.SatisfiesMinSpawnDistance(struc.MinSpawnDistance, startPos, spawnPos))
                     {
+                        continue;
+                    }
+
+                    // check if in storylocation and if we can still generate this structure
+                    if (locationCode != null)
+                    {
+                        location = GetIntersectingStructure(chunkX * chunksize + chunksize / 2, chunkZ * chunksize + chunksize / 2);
+                        if (location.SchematicsSpawned?.TryGetValue(struc.Group, out var spawnedSchematics) == true && spawnedSchematics >= struc.StoryLocationMaxAmount)
+                        {
+                            continue;
+                        }
+
+                        if (struc.StoryMaxFromCenter != 0 &&  !startPos.InRangeHorizontally(location.CenterPos.X, location.CenterPos.Z, struc.StoryMaxFromCenter))
+                        {
+                            continue;
+                        }
+                    }
+
+                    if (struc.TryGenerate(worldgenBlockAccessor, api.World, startPos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, locationCode))
+                    {
+                        if(locationCode != null && location != null)
+                        {
+                            if (location.SchematicsSpawned?.TryGetValue(struc.Group, out var spawnedSchematics) == true)
+                            {
+                                location.SchematicsSpawned[struc.Group] = spawnedSchematics + 1;
+                            }
+                            else
+                            {
+                                location.SchematicsSpawned ??= new Dictionary<string, int>();
+                                location.SchematicsSpawned[struc.Group] = 1;
+                            }
+                        }
                         Cuboidi loc = struc.LastPlacedSchematicLocation;
-                        
+
                         string code = struc.Code + (struc.LastPlacedSchematic == null ? "" : "/" + struc.LastPlacedSchematic.FromFileName);
 
                         region.AddGeneratedStructure(new GeneratedStructure() { Code = code, Group = struc.Group, Location = loc.Clone(), SuppressTreesAndShrubs = struc.SuppressTrees, SuppressRivulets = struc.SuppressWaterfalls });
@@ -255,7 +356,8 @@ namespace Vintagestory.ServerMods
 
 
 
-        public void TryGenVillages(IMapRegion region, int chunkX, int chunkZ, bool postPass, ITreeAttribute chunkGenParams = null)
+        public void TryGenVillages(IMapRegion region, int chunkX, int chunkZ, bool postPass,
+             ITreeAttribute chunkGenParams = null)
         {
             strucRand.InitPositionSeed(chunkX, chunkZ);
 
@@ -299,8 +401,7 @@ namespace Vintagestory.ServerMods
                         AllowUseEveryone = true
                     });
                 }
-            });
+            }, spawnPos);
         }
-
     }
 }

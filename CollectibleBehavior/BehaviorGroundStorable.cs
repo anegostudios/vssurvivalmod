@@ -5,6 +5,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public enum EnumGroundStorageLayout
@@ -28,7 +30,11 @@ namespace Vintagestory.GameContent
         /// <summary>
         /// A generic stack of items
         /// </summary>
-        Stacking
+        Stacking,
+        /// <summary>
+        /// Single item, but 12x of them in messy order
+        /// </summary>
+        Messy12
     }
 
 
@@ -38,6 +44,7 @@ namespace Vintagestory.GameContent
         public int WallOffY = 1;
         public AssetLocation PlaceRemoveSound = new AssetLocation("sounds/player/build");
         public bool RandomizeSoundPitch;
+        public bool RandomizeCenterRotation;
         public AssetLocation StackingModel;
 
         [Obsolete("Use ModelItemsToStackSizeRatio instead, which is now a float instead of int?")]
@@ -49,6 +56,8 @@ namespace Vintagestory.GameContent
         public int StackingCapacity = 1;
         public int TransferQuantity = 1;
         public int BulkTransferQuantity = 4;
+        public bool CtrlKey;
+        [Obsolete("Use CtrlKey instead. SprintKey maintained for compatibility with existing JSONs")]
         public bool SprintKey;
         public bool UpSolid = false;
 
@@ -66,6 +75,7 @@ namespace Vintagestory.GameContent
                 WallOffY = WallOffY,
                 PlaceRemoveSound = PlaceRemoveSound,
                 RandomizeSoundPitch = RandomizeSoundPitch,
+                RandomizeCenterRotation = RandomizeCenterRotation,
                 StackingCapacity = StackingCapacity,
                 StackingModel = StackingModel,
                 StackingTextures = StackingTextures,
@@ -76,7 +86,7 @@ namespace Vintagestory.GameContent
                 SelectionBox = SelectionBox,
                 CbScaleYByLayer = CbScaleYByLayer,
                 MaxFireable = MaxFireable,
-                SprintKey = SprintKey,
+                CtrlKey = CtrlKey,
                 UpSolid = UpSolid
             };
         }
@@ -99,6 +109,9 @@ namespace Vintagestory.GameContent
             base.Initialize(properties);
 
             StorageProps = properties.AsObject<GroundStorageProperties>(null, collObj.Code.Domain);
+#pragma warning disable CS0618 // Type or member is obsolete
+            if (StorageProps.SprintKey) StorageProps.CtrlKey = true;
+#pragma warning restore CS0618 // Type or member is obsolete
         }
 
 
@@ -115,7 +128,7 @@ namespace Vintagestory.GameContent
             {
                 new WorldInteraction
                 {
-                    HotKeyCodes = StorageProps.SprintKey ? new string[] {"ctrl", "shift" } : new string[] {"shift"},
+                    HotKeyCodes = StorageProps.CtrlKey ? new string[] {"ctrl", "shift" } : new string[] {"shift"},
                     ActionLangCode = "heldhelp-place",
                     MouseButton = EnumMouseButton.Right
                 }
@@ -174,6 +187,7 @@ namespace Vintagestory.GameContent
             if (blockgs.CreateStorage(byEntity.World, blockSel, byPlayer))
             {
                 handHandling = EnumHandHandling.PreventDefault;
+                handling = EnumHandling.PreventSubsequent;
             }
         }
 

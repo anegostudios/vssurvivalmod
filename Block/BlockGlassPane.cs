@@ -2,6 +2,8 @@
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockRainAmbient : Block
@@ -12,10 +14,16 @@ namespace Vintagestory.GameContent
             base.OnLoaded(api);
             capi = api as ICoreClientAPI;
         }
-        public override bool ShouldPlayAmbientSound(IWorldAccessor world, BlockPos pos)
+
+        public override float GetAmbientSoundStrength(IWorldAccessor world, BlockPos pos)
         {
             var conds = capi.World.Player.Entity.selfClimateCond;
-            return conds != null && conds.Rainfall > 0.1f && conds.Temperature > 3f && (world.BlockAccessor.GetRainMapHeightAt(pos) <= pos.Y || world.BlockAccessor.GetDistanceToRainFall(pos, 3, 1) <= 2);
+            if (conds != null && conds.Rainfall > 0.1f && conds.Temperature > 3f && (world.BlockAccessor.GetRainMapHeightAt(pos) <= pos.Y || world.BlockAccessor.GetDistanceToRainFall(pos, 3, 1) <= 2))
+            {
+                return conds.Rainfall;
+            }
+
+            return 0;
         }
     }
 

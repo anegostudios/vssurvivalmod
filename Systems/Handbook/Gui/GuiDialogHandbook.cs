@@ -6,6 +6,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class HandbookTab : GuiTab
@@ -30,11 +32,11 @@ namespace Vintagestory.GameContent
         public override double DrawOrder => 0.2; // Needs to be same as chest container guis so it can be on top of those dialogs if necessary
 
         protected Dictionary<string, int> pageNumberByPageCode = new Dictionary<string, int>();
-        protected List<GuiHandbookPage> allHandbookPages = new List<GuiHandbookPage>();
+        internal List<GuiHandbookPage> allHandbookPages = new List<GuiHandbookPage>();
         protected List<IFlatListItem> shownHandbookPages = new List<IFlatListItem>();
-        
+
         protected List<string> categoryCodes = new List<string>();
-        
+
         protected Stack<BrowseHistoryElement> browseHistory = new Stack<BrowseHistoryElement>();
         protected string currentSearchText;
         protected GuiComposer overviewGui;
@@ -55,7 +57,7 @@ namespace Vintagestory.GameContent
         public GuiDialogHandbook(ICoreClientAPI capi, OnCreatePagesDelegate createPageHandlerAsync, OnComposePageDelegate composePageHandler) : base(capi)
         {
             this.createPageHandlerAsync = createPageHandlerAsync;
-            this.composePageHandler = composePageHandler;           
+            this.composePageHandler = composePageHandler;
 
             capi.Settings.AddWatcher<float>("guiScale", (float val) =>
             {
@@ -115,7 +117,6 @@ namespace Vintagestory.GameContent
             ElementBounds dialogBounds = ElementStdBounds.AutosizedMainDialog.WithAlignment(EnumDialogArea.None).WithAlignment(EnumDialogArea.CenterFixed).WithFixedPosition(0, 70);
             ElementBounds tabBounds = ElementBounds.Fixed(-200, 35, 200, 545);
 
-            int curTab;
             ElementBounds backButtonBounds = ElementBounds
                 .FixedSize(0, 0)
                 .FixedUnder(clipBounds, 2 * 5 + 5)
@@ -124,7 +125,7 @@ namespace Vintagestory.GameContent
                 .WithFixedAlignmentOffset(-6, 3)
             ;
 
-            tabs = genTabs(out curTab);
+            tabs = genTabs(out int curTab);
 
             overviewGui = capi.Gui
                 .CreateCompo("handbook-overview", dialogBounds)
@@ -177,7 +178,7 @@ namespace Vintagestory.GameContent
         protected virtual GuiTab[] genTabs(out int curTab)
         {
             curTab = 0;
-            return new GuiTab[0];
+            return Array.Empty<GuiTab>();
         }
 
 
@@ -242,14 +243,13 @@ namespace Vintagestory.GameContent
 
             BrowseHistoryElement curPage = browseHistory.Peek();
             float posY = curPage.PosY;
-            int curTab;
 
             detailViewGui?.Dispose();
             detailViewGui = capi.Gui
                 .CreateCompo("handbook-detail", dialogBounds)
                 .AddShadedDialogBG(bgBounds, true)
                 .AddDialogTitleBar(DialogTitle, OnTitleBarClose)
-                .AddVerticalTabs(genTabs(out curTab), tabBounds, OnDetailViewTabClicked, "verticalTabs")
+                .AddVerticalTabs(genTabs(out int curTab), tabBounds, OnDetailViewTabClicked, "verticalTabs")
                 .BeginChildElements(bgBounds)
                     .BeginClip(clipBounds)
                         .AddInset(insetBounds, 3)
@@ -300,8 +300,7 @@ namespace Vintagestory.GameContent
         {
             capi.Gui.PlaySound("menubutton_press");
 
-            int num;
-            if (pageNumberByPageCode.TryGetValue(pageCode, out num))
+            if (pageNumberByPageCode.TryGetValue(pageCode, out int num))
             {
                 GuiHandbookPage elem = allHandbookPages[num];
                 if (browseHistory.Count > 0 && elem == browseHistory.Peek().Page) return true;
@@ -455,8 +454,47 @@ namespace Vintagestory.GameContent
 
         public void FilterItems()
         {
-            string text = currentSearchText?.RemoveDiacritics().ToLowerInvariant();
-            string[] texts = text == null ? new string[0] : text.Split(new string[] { " or " }, StringSplitOptions.RemoveEmptyEntries).OrderBy(str => str.Length).ToArray();
+            string text = currentSearchText?.ToLowerInvariant();
+            string[] texts;
+            bool logicalAnd = false;   // true if "and" is present; false if "or" or no logical operator is present
+            if (text == null)
+            {
+                texts = Array.Empty<string>();
+            }
+            else
+            {
+                if (text.Contains(" or ", StringComparison.Ordinal))
+                {
+                    texts = text.Split(new string[] { " or " }, StringSplitOptions.RemoveEmptyEntries).OrderBy(str => str.Length).ToArray();
+                }
+                else if (text.Contains(" and ", StringComparison.Ordinal))
+                {
+                    texts = text.Split(new string[] { " and " }, StringSplitOptions.RemoveEmptyEntries).OrderBy(str => str.Length).ToArray();
+                    logicalAnd = texts.Length > 1;
+                }
+                else
+                {
+                    texts = new string[] { text };
+                }
+                int countEmpty = 0;
+                for (int i = 0; i < texts.Length; i++)
+                {
+                    texts[i] = texts[i].ToSearchFriendly().Trim();      // Only remove diacritical marks etc after splitting on " or ", helps with languages such as Icelandic where "ör" is a word (a type of bow)
+                    if (texts[i].Length == 0) countEmpty++;
+                }
+                if (countEmpty > 0)
+                {
+                    string[] newTexts = new string[texts.Length - countEmpty];
+                    int j = 0;
+                    for (int i = 0; i < texts.Length; i++)
+                    {
+                        if (texts[i].Length == 0) continue;
+                        newTexts[j++] = texts[i];
+                    }
+                    texts = newTexts;
+                    logicalAnd = logicalAnd && texts.Length > 1;
+                }
+            }
 
             List<WeightedHandbookPage> foundPages = new List<WeightedHandbookPage>();
             shownHandbookPages.Clear();
@@ -470,14 +508,21 @@ namespace Vintagestory.GameContent
                     if (page.IsDuplicate) continue;
 
                     float weight = 1;
-                    bool skip = texts.Length > 0;
+                    bool matched = logicalAnd;    // Normally (for no logical operator or logical operator OR) no match unless any found; if it's logical AND then we have no match if any in texts are not found (and texts length cannot be 0)
 
                     for (int j = 0; j < texts.Length; j++)
                     {
                         weight = page.GetTextMatchWeight(texts[j]);
-                        if (weight > 0) { skip = false; break; }
+                        if (weight > 0)
+                        {
+                            if (!logicalAnd) { matched = true; break; }
+                        }
+                        else
+                        {
+                            if (logicalAnd) { matched = false; break; };
+                        }
                     }
-                    if (skip) continue;
+                    if (!matched && texts.Length > 0) continue;
 
                     foundPages.Add(new WeightedHandbookPage() { Page = page, Weight = weight });
                 }

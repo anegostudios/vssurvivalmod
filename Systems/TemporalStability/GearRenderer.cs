@@ -4,6 +4,8 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class MachineGear
@@ -50,6 +52,8 @@ namespace Vintagestory.GameContent
         {
             var shape = Shape.TryGet(capi, "shapes/block/machine/machinegear2.json");
             var block = capi.World.GetBlock(new AssetLocation("platepile"));
+            if (block == null) return;
+
             capi.Tesselator.TesselateShape(block, shape, out var mesh);
             gearMeshref = capi.Render.UploadMesh(mesh);
             genGears();
@@ -127,6 +131,7 @@ namespace Vintagestory.GameContent
 
         public void OnRenderFrame(float deltaTime, EnumRenderStage stage)
         {
+            if (tripodAnim == null) return;
             if (capi.IsGamePaused) deltaTime = 0;
 
             float targetRaiseyRel = 0;

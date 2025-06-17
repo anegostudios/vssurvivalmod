@@ -4,6 +4,8 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 
@@ -21,10 +23,12 @@ namespace Vintagestory.GameContent
             
             public readonly bool CullBetweenTransparents;
             public readonly byte ClimateMapIndex;
+            public readonly bool Frostable;
             public readonly byte SeasonMapIndex;
+            public readonly int TextureRotation;
 
             public VoxelMaterial(int blockId, TextureAtlasPosition[] texture, TextureAtlasPosition[] textureInside, TextureAtlasPosition textureTopSoil,
-                EnumChunkRenderPass renderPass, int flags, byte climateMapIndex, byte seasonMapIndex, bool cullBetweenTransparents)
+                EnumChunkRenderPass renderPass, int flags, byte climateMapIndex, byte seasonMapIndex, bool frostable, bool cullBetweenTransparents, int textureRotation)
             {
                 ClimateMapIndex = climateMapIndex;
                 SeasonMapIndex = seasonMapIndex;
@@ -32,12 +36,18 @@ namespace Vintagestory.GameContent
                 Texture = texture;
                 TextureInside = textureInside;
                 RenderPass = renderPass;
+                Frostable = frostable;
                 Flags = flags;
                 TextureTopSoil = textureTopSoil;
                 CullBetweenTransparents = cullBetweenTransparents;
+                TextureRotation = textureRotation;
             }
 
-            public static VoxelMaterial FromBlock(ICoreClientAPI capi, Block block, BlockPos posForRnd = null, bool cullBetweenTransparents = false)
+            public VoxelMaterial(int blockId, TextureAtlasPosition[] texture, TextureAtlasPosition[] textureInside, TextureAtlasPosition textureTopSoil,
+                EnumChunkRenderPass renderPass, int flags, byte climateMapIndex, byte seasonMapIndex, bool frostable, bool cullBetweenTransparents) : this(blockId, texture, textureInside, textureTopSoil, renderPass, flags, climateMapIndex, seasonMapIndex, frostable, cullBetweenTransparents, 0)
+            { }
+
+            public static VoxelMaterial FromBlock(ICoreClientAPI capi, Block block, BlockPos posForRnd = null, bool cullBetweenTransparents = false, int decorRotation = 0)
             {
                 int altNum = 0;
                 if (block.HasAlternates && posForRnd != null)
@@ -57,24 +67,33 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-                var texSource = capi.Tesselator.GetTextureSource(block, altNum, returnNullWhenMissing: true);
                 var texture = new TextureAtlasPosition[6];
                 var textureInside = new TextureAtlasPosition[6];
-
                 TextureAtlasPosition fallbackTexture = null;
 
+                var texSource = capi.Tesselator.GetTextureSource(block, altNum, returnNullWhenMissing: true);
                 for (int i = 0; i < 6; i++)
                 {
                     BlockFacing facing = BlockFacing.ALLFACES[i];
 
-                    if ((texSource[facing.Code] == null || texSource["inside-" + facing.Code] == null) && fallbackTexture == null)
+                    if (block.HasTiles && block.FastTextureVariants[i] is BakedCompositeTexture[] tiles)
                     {
-                        fallbackTexture = capi.BlockTextureAtlas.UnknownTexturePosition;
-                        if (block.Textures.Count > 0) fallbackTexture = texSource[block.Textures.First().Key] ?? capi.BlockTextureAtlas.UnknownTexturePosition;
+                        int positionSelector = BakedCompositeTexture.GetTiledTexturesSelector(tiles, i, posForRnd.X, posForRnd.Y, posForRnd.Z);
+                        int textureSubId = tiles[GameMath.Mod(positionSelector, tiles.Length)].TextureSubId;
+                        texture[i] = textureSubId >= 0 ? capi.BlockTextureAtlas.Positions[textureSubId] : capi.BlockTextureAtlas.UnknownTexturePosition;
+                    }
+                    else
+                    {
+                        if ((texSource[facing.Code] == null || texSource["inside-" + facing.Code] == null) && fallbackTexture == null)
+                        {
+                            fallbackTexture = capi.BlockTextureAtlas.UnknownTexturePosition;
+                            if (block.Textures.Count > 0) fallbackTexture = texSource[block.Textures.First().Key] ?? capi.BlockTextureAtlas.UnknownTexturePosition;
+                        }
+
+                        texture[i] = texSource[facing.Code] ?? fallbackTexture;
                     }
 
-                    texture[i] = texSource[facing.Code] ?? fallbackTexture;
-                    textureInside[i] = texSource["inside-" + facing.Code] ?? texSource[facing.Code] ?? fallbackTexture;
+                    textureInside[i] = texSource["inside-" + facing.Code] ?? texture[i];
                 }
 
                 byte climateColorMapId = block.ClimateColorMapResolved == null ? (byte)0 : (byte)(block.ClimateColorMapResolved.RectIndex + 1);
@@ -86,7 +105,7 @@ namespace Vintagestory.GameContent
                     grasscoverexPos = capi.BlockTextureAtlas[block.Textures["specialSecondTexture"].Baked.BakedName];
                 }
 
-                return new VoxelMaterial(block.Id, texture, textureInside, grasscoverexPos, block.RenderPass, block.VertexFlags.All, climateColorMapId, seasonColorMapId, cullBetweenTransparents);
+                return new VoxelMaterial(block.Id, texture, textureInside, grasscoverexPos, block.RenderPass, block.VertexFlags.All, climateColorMapId, seasonColorMapId, block.Frostable, cullBetweenTransparents, decorRotation);
             }
 
             public static VoxelMaterial FromTexSource(ICoreClientAPI capi, ITexPositionSource texSource, bool cullBetweenTransparents = false)
@@ -99,11 +118,10 @@ namespace Vintagestory.GameContent
                     texture[i] = texSource[facing.Code] ?? capi.BlockTextureAtlas.UnknownTexturePosition;
                     textureInside[i] = texSource["inside-" + facing.Code] ?? texSource[facing.Code] ?? capi.BlockTextureAtlas.UnknownTexturePosition;
                 }
-                return new VoxelMaterial(0, texture, textureInside, null, EnumChunkRenderPass.Opaque, 0, 0, 0, cullBetweenTransparents);
+                return new VoxelMaterial(0, texture, textureInside, null, EnumChunkRenderPass.Opaque, 0, 0, 0, false, cullBetweenTransparents, 0);
             }
         }
 
-        
 
 
     }

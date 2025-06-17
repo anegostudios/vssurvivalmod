@@ -6,6 +6,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
@@ -55,20 +57,18 @@ namespace Vintagestory.GameContent
 
             api.Event.RegisterGameTickListener(ServerSlowTick, 200);
             
-            api.Event.SaveGameLoaded += Event_SaveGameLoaded;
+            api.Event.ServerRunPhase(EnumServerRunPhase.RunGame, OnRunGame);
             api.Event.RegisterGameTickListener(FastTick, 20);
             
             serverChannel =
                api.Network.RegisterChannel("sleeping")
                .RegisterMessageType(typeof(NetworksMessageAllSleepMode))
             ;
-            
         }
 
-        private void Event_SaveGameLoaded()
+        private void OnRunGame()
         {
             api.World.Calendar?.RemoveTimeSpeedModifier("sleeping");
-            GameSpeedBoost = 0;
         }
 
         private void FastTick(float dt)
@@ -120,7 +120,7 @@ namespace Vintagestory.GameContent
                 if (splr.ConnectionState != EnumClientState.Playing || splr.WorldData.CurrentGameMode == EnumGameMode.Spectator) continue;
 
                 var bh = splr.Entity.GetBehavior<EntityBehaviorTiredness>();
-                IMountable mount = player.Entity?.MountedOn;
+                IMountableSeat mount = player.Entity?.MountedOn;
                 if (bh?.IsSleeping == true && mount != null)
                 {
                     player.Entity.TryUnmount();

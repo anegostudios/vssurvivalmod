@@ -7,6 +7,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public abstract class BlockEntityItemPile : BlockEntity, IBlockEntityItemPile
@@ -19,7 +21,7 @@ namespace Vintagestory.GameContent
         public abstract string BlockCode { get; }
         public abstract int MaxStackSize { get; }
 
-        
+
 
         public virtual int DefaultTakeQuantity { get { return 1; } }
         public virtual int BulkTakeQuantity { get { return 4; } }
@@ -55,7 +57,7 @@ namespace Vintagestory.GameContent
                 while (slot.StackSize > 0)
                 {
                     ItemStack split = slot.TakeOut(GameMath.Clamp(slot.StackSize, 1, System.Math.Max(1, slot.Itemstack.Collectible.MaxStackSize / 4)));
-                    Api.World.SpawnItemEntity(split, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    Api.World.SpawnItemEntity(split, Pos);
                 }
             }
         }
@@ -98,7 +100,7 @@ namespace Vintagestory.GameContent
 
             bool sneaking = byPlayer.Entity.Controls.ShiftKey;
 
-          
+
             ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
             bool equalStack = hotbarSlot.Itemstack != null && hotbarSlot.Itemstack.Equals(Api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes);
@@ -155,7 +157,7 @@ namespace Vintagestory.GameContent
             {
                 invSlot.Itemstack = hotbarSlot.Itemstack.Clone();
                 invSlot.Itemstack.StackSize = 0;
-                Api.World.PlaySoundAt(SoundLocation, Pos.X, Pos.Y, Pos.Z, null, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
+                Api.World.PlaySoundAt(SoundLocation, Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, null, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
             }
 
             if (invSlot.Itemstack.Equals(Api.World, hotbarSlot.Itemstack, GlobalConstants.IgnoredStackAttributes))
@@ -174,13 +176,20 @@ namespace Vintagestory.GameContent
                     invSlot.Itemstack.Collectible.SetTemperature(Api.World, invSlot.Itemstack, (tempPile * oldSize + tempAdded * q) / (oldSize + q), false);
                 }
 
+                Api.World.Logger.Audit("{0} Put {1}x{2} into {3} at {4}.",
+                    player.PlayerName,
+                    q,
+                    hotbarSlot.Itemstack.Collectible.Code,
+                    Block.Code,
+                    Pos
+                );
                 if (player.WorldData.CurrentGameMode != EnumGameMode.Creative)
                 {
                     hotbarSlot.TakeOut(q);
                     hotbarSlot.OnItemSlotModified(null);
                 }
 
-                Api.World.PlaySoundAt(SoundLocation, Pos.X, Pos.Y, Pos.Z, player, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
+                Api.World.PlaySoundAt(SoundLocation, Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, player, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
 
                 MarkDirty();
 
@@ -210,8 +219,15 @@ namespace Vintagestory.GameContent
 
                 if (stack.StackSize > 0)
                 {
-                    Api.World.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    Api.World.SpawnItemEntity(stack, Pos);
                 }
+                Api.World.Logger.Audit("{0} Took {1}x{2} from {3} at {4}.",
+                    player.PlayerName,
+                    q,
+                    stack.Collectible.Code,
+                    Block.Code,
+                    Pos
+                );
             }
 
             if (OwnStackSize == 0)
@@ -219,7 +235,7 @@ namespace Vintagestory.GameContent
                 Api.World.BlockAccessor.SetBlock(0, Pos);
             }
 
-            Api.World.PlaySoundAt(SoundLocation, Pos.X, Pos.Y, Pos.Z, player, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
+            Api.World.PlaySoundAt(SoundLocation, Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, player, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
 
             MarkDirty();
 

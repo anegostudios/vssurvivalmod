@@ -4,6 +4,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public enum EnumRestReason
@@ -72,13 +74,11 @@ namespace Vintagestory.GameContent
 
             reason = EnumRestReason.NoReason;
 
-            float dayLightStrength = entity.World.Calendar.GetDayLightStrength(entity.Pos.X, entity.Pos.Z);
-
             if (cooldownUntilTotalHours < entity.World.Calendar.TotalHours)
             {
                 reason = EnumRestReason.TakingABreak;
             }
-            else if (dayLightStrength < 0.6)
+            else if (entity.World.Calendar.GetDayLightStrength(entity.Pos.X, entity.Pos.Z) < 0.6)
             {
                 // Hardcoded: Rest at night 
                 reason = EnumRestReason.Night;

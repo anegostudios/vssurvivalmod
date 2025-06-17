@@ -7,12 +7,14 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class AiTaskBellAlarm : AiTaskBase
     {
         string[] seekEntityCodesExact = new string[] { "player" };
-        string[] seekEntityCodesBeginsWith = new string[0];
+        string[] seekEntityCodesBeginsWith = Array.Empty<string>();
 
         int spawnRange;
         float seekingRange = 12;
@@ -45,7 +47,7 @@ namespace Vintagestory.GameContent
             spawnMaxQuantity = taskConfig["spawnMaxQuantity"].AsInt(5);
             seekingRange = taskConfig["seekingRange"].AsFloat(12);
 
-            var spawnMobLocs = taskConfig["spawnMobs"].AsObject<AssetLocation[]>(new AssetLocation[0]);
+            var spawnMobLocs = taskConfig["spawnMobs"].AsObject<AssetLocation[]>(Array.Empty<AssetLocation>());
             List<EntityProperties> props = new List<EntityProperties>();
             foreach (var val in spawnMobLocs)
             {
@@ -88,7 +90,7 @@ namespace Vintagestory.GameContent
             if (entity.World.Rand.NextDouble() > 0.05) return false;
             if (cooldownUntilMs > entity.World.ElapsedMilliseconds) return false;
             if (cooldownUntilTotalHours > entity.World.Calendar.TotalHours) return false;
-            if (!EmotionStatesSatisifed()) return false;
+            if (!PreconditionsSatisifed()) return false;
 
             float range = seekingRange;
             bool listening = entity.GetBehavior<EntityBehaviorTaskAI>().TaskManager.IsTaskActive("listen");
@@ -161,7 +163,7 @@ namespace Vintagestory.GameContent
                 spawnAccum = 0;
             }
 
-            if (targetEntity.Pos.SquareDistanceTo(entity.Pos.X, entity.Pos.Y, entity.Pos.Z) > Math.Pow(seekingRange + 5, 2))
+            if (targetEntity.Pos.SquareDistanceTo(entity.Pos) > Math.Pow(seekingRange + 5, 2))
             {
                 return false;
             }
@@ -193,7 +195,7 @@ namespace Vintagestory.GameContent
         {
             Vec3d centerPos = entity.Pos.XYZ;
             Vec3d spawnPos = new Vec3d();
-            BlockPos spawnPosi = new BlockPos();
+            BlockPos spawnPosi = new BlockPos();    // Omit dimension, because dimension will come from the InternalY being used in centerPos and spawnPos
 
             for (int i = 0; i < spawnedEntities.Count; i++)
             {
@@ -223,7 +225,7 @@ namespace Vintagestory.GameContent
 
                     spawnPosi.Set((int)spawnPos.X, (int)spawnPos.Y, (int)spawnPos.Z);
 
-                    while (sapi.World.BlockAccessor.GetBlock(spawnPosi.X, spawnPosi.Y - 1, spawnPosi.Z).Id == 0 && spawnPos.Y > 0)
+                    while (sapi.World.BlockAccessor.GetBlockBelow(spawnPosi).Id == 0 && spawnPos.Y > 0)
                     {
                         spawnPosi.Y--;
                         spawnPos.Y--;
@@ -247,7 +249,7 @@ namespace Vintagestory.GameContent
             EntityAgent agent = entity as EntityAgent;
             if (agent != null) agent.HerdId = herdid;
 
-            entity.ServerPos.SetPos(spawnPosition);
+            entity.ServerPos.SetPosWithDimension(spawnPosition);
             entity.ServerPos.SetYaw((float)sapi.World.Rand.NextDouble() * GameMath.TWOPI);
             entity.Pos.SetFrom(entity.ServerPos);
             entity.PositionBeforeFalling.Set(entity.ServerPos.X, entity.ServerPos.Y, entity.ServerPos.Z);

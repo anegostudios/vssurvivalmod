@@ -6,6 +6,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public interface INetworkedLight
@@ -25,7 +27,7 @@ namespace Vintagestory.GameContent
 
         public void setNetwork(string networkCode)
         {
-            string prevNet = networkCode;
+            string prevNet = this.networkCode;
             this.networkCode = networkCode;
             registerToControlPoint(prevNet);
             Blockentity.MarkDirty(true);
@@ -45,7 +47,7 @@ namespace Vintagestory.GameContent
 
             if (previousNetwork != null)
             {
-                modSys[AssetLocation.Create(networkCode, Block.Code.Domain)].Activate -= BEBehaviorControlPointLampNode_Activate;
+                modSys[AssetLocation.Create(previousNetwork, Block.Code.Domain)].Activate -= BEBehaviorControlPointLampNode_Activate;
             }
 
             if (networkCode == null) return;
@@ -69,7 +71,7 @@ namespace Vintagestory.GameContent
                 var oldType = Type;
                 this.Type = newType;
                 Blockentity.MarkDirty(true);
-                initShape();
+                loadMesh();
                 relight(oldType);   // Possible performance issue, this will duplicate relighting on the client because the Blockentity.MarkDirty will also cause a full update client-side
             }
         }
@@ -106,7 +108,7 @@ namespace Vintagestory.GameContent
             {
                 if (blockAccessor is IWorldGenBlockAccessor wgen)
                 {
-                    wgen.ScheduleBlockLightUpdate(pos.Copy(), 0, Block.BlockId);
+                    wgen.ScheduleBlockLightUpdate(pos, 0, Block.BlockId);
                 }
             }
         }

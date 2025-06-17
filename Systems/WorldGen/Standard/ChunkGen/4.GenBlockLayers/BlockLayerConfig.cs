@@ -1,9 +1,12 @@
 ﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+
+#nullable disable
 
 namespace Vintagestory.ServerMods
 {
@@ -22,6 +25,11 @@ namespace Vintagestory.ServerMods
 
         public LakeBedLayerProperties LakeBedLayer;
 
+        public LakeBedLayerProperties OceanBedLayer;
+
+
+        public RockStrataConfig RockStrata;
+
         public static readonly string cacheKey = "BlockLayerConfig";
 
         /// <summary>
@@ -32,21 +40,19 @@ namespace Vintagestory.ServerMods
         /// <returns></returns>
         public static BlockLayerConfig GetInstance(ICoreServerAPI api)
         {
-            if(api.ObjectCache.ContainsKey(cacheKey))
+            if(api.ObjectCache.TryGetValue(cacheKey, out var value))
             {
-                return api.ObjectCache[cacheKey] as BlockLayerConfig;
+                return value as BlockLayerConfig;
             }
-            else
-            {
-                IAsset asset = api.Assets.Get("worldgen/rockstrata.json");
-                RockStrataConfig rockstrata = asset.ToObject<RockStrataConfig>();
-                asset = api.Assets.Get("worldgen/blocklayers.json");
-                BlockLayerConfig blockLayerConfig = asset.ToObject<BlockLayerConfig>();
-                blockLayerConfig.ResolveBlockIds(api, rockstrata);
 
-                api.ObjectCache[cacheKey] = blockLayerConfig;
-                return blockLayerConfig;
-            }
+            var asset = api.Assets.Get("worldgen/blocklayers.json");
+            var blockLayerConfig = asset.ToObject<BlockLayerConfig>();
+            asset = api.Assets.Get("worldgen/rockstrata.json");
+            blockLayerConfig.RockStrata = asset.ToObject<RockStrataConfig>();
+            blockLayerConfig.ResolveBlockIds(api);
+
+            api.ObjectCache[cacheKey] = blockLayerConfig;
+            return blockLayerConfig;
         }
 
         public BlockLayer GetBlockLayerById(IWorldAccessor world, string blockLayerId)
@@ -61,13 +67,13 @@ namespace Vintagestory.ServerMods
             return null;
         }
 
-        public void ResolveBlockIds(ICoreServerAPI api, RockStrataConfig rockstrata)
+        public void ResolveBlockIds(ICoreServerAPI api)
         {
             for (int i = 0; i < Blocklayers.Length; i++)
             {
                 Random rnd = new Random(api.WorldManager.Seed + i);
 
-                Blocklayers[i].Init(api, rockstrata, rnd);
+                Blocklayers[i].Init(api, RockStrata, rnd);
             }
 
             SnowLayer.BlockId = api.WorldManager.GetBlockId(SnowLayer.BlockCode);
@@ -80,10 +86,15 @@ namespace Vintagestory.ServerMods
             for (int i = 0; i < LakeBedLayer.BlockCodeByMin.Length; i++)
             {
                 Random rnd = new Random(api.WorldManager.Seed + i);
-                LakeBedLayer.BlockCodeByMin[i].Init(api, rockstrata, rnd);
+                LakeBedLayer.BlockCodeByMin[i].Init(api, RockStrata, rnd);
             }
-
-            BeachLayer.ResolveBlockIds(api, rockstrata);
+            for (int i = 0; i < OceanBedLayer.BlockCodeByMin.Length; i++)
+            {
+                Random rnd = new Random(api.WorldManager.Seed + i);
+                OceanBedLayer.BlockCodeByMin[i].Init(api, RockStrata, rnd);
+            }
+            
+            BeachLayer.ResolveBlockIds(api, RockStrata);
         }
     }
 
@@ -98,6 +109,19 @@ namespace Vintagestory.ServerMods
     public class LakeBedLayerProperties
     {
         public LakeBedBlockCodeByMin[] BlockCodeByMin;
+
+        public int GetSuitable(float temp, float rainRel, float yRel, LCGRandom rand, int rockBlockId)
+        {
+            for (int i = 0; i < BlockCodeByMin.Length; i++)
+            {
+                if (BlockCodeByMin[i].Suitable(temp, rainRel, yRel, rand))
+                {
+                    return BlockCodeByMin[i].GetBlockForMotherRock(rockBlockId);
+                }
+            }
+
+            return 0;
+        }
     }
 
     [JsonObject(MemberSerialization.OptIn)]

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
@@ -8,6 +7,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -31,7 +32,7 @@ namespace Vintagestory.GameContent
         Cuboidf selBoxLabel;
 
         int labelColor;
-        
+
         ItemStack labelStack;
         ModSystemLabelMeshCache labelCacheSys;
 
@@ -67,7 +68,7 @@ namespace Vintagestory.GameContent
 
                 if (inventory.Empty) return preferredLidState;
                 var stack = inventory.FirstNonEmptySlot.Itemstack;
-                if (stack == null || (stack.ItemAttributes != null && stack.ItemAttributes["inContainerTexture"].Exists)) return preferredLidState;
+                if (stack?.Collectible == null || (stack.ItemAttributes != null && stack.ItemAttributes["inContainerTexture"].Exists)) return preferredLidState;
 
                 bool? displayInsideCrate = stack.ItemAttributes?["displayInsideCrate"].Exists != true ? null : stack.ItemAttributes?["displayInsideCrate"].AsBool(true);
                 bool hasContentTexture = (stack.Block != null && stack.Block.DrawType == EnumDrawType.Cube && displayInsideCrate != false) || displayInsideCrate == true;
@@ -110,9 +111,9 @@ namespace Vintagestory.GameContent
                     this.type = nowType;
                     this.preferredLidState = nowLidState;
                     InitInventory(Block, Api);   // We need to replace the inventory with one for the new type (may be a different size). It's OK to delete the existing inventory in a newly placed block, it can't hold anything
-                    Inventory.LateInitialize(InventoryClassName + "-" + Pos.X + "/" + Pos.Y + "/" + Pos.Z, Api);
+                    Inventory.LateInitialize(InventoryClassName + "-" + Pos, Api);
                     Inventory.ResolveBlocksOrItems();
-                    Inventory.OnAcquireTransitionSpeed = Inventory_OnAcquireTransitionSpeed;
+                    container.LateInit();
                     MarkDirty();
                 }
             }
@@ -149,7 +150,7 @@ namespace Vintagestory.GameContent
                     labelStack = inventory.FirstNonEmptySlot.Itemstack.Clone();
                     labelMesh = null;
 
-                    byPlayer.Entity.World.PlaySoundAt(new AssetLocation("sounds/player/chalkdraw"), blockSel.Position.X + blockSel.HitPosition.X, blockSel.Position.Y + blockSel.HitPosition.Y, blockSel.Position.Z + blockSel.HitPosition.Z, byPlayer, true, 8);
+                    byPlayer.Entity.World.PlaySoundAt(new AssetLocation("sounds/player/chalkdraw"), blockSel.Position.X + blockSel.HitPosition.X, blockSel.Position.InternalY + blockSel.HitPosition.Y, blockSel.Position.Z + blockSel.HitPosition.Z, byPlayer, true, 8);
 
                     MarkDirty(true);
                 }
@@ -164,6 +165,7 @@ namespace Vintagestory.GameContent
             if (take && ownSlot != null)
             {
                 ItemStack stack = bulk ? ownSlot.TakeOutWhole() : ownSlot.TakeOut(1);
+                var quantity = bulk ? stack.StackSize : 1;
                 if (!byPlayer.InventoryManager.TryGiveItemstack(stack, true))
                 {
                     Api.World.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5f + blockSel.Face.Normalf.X, 0.5f + blockSel.Face.Normalf.Y, 0.5f + blockSel.Face.Normalf.Z));
@@ -172,9 +174,17 @@ namespace Vintagestory.GameContent
                 {
                     didMoveItems(stack, byPlayer);
                 }
+                Api.World.Logger.Audit("{0} Took {1}x{2} from Crate at {3}.",
+                    byPlayer.PlayerName,
+                    quantity,
+                    stack?.Collectible.Code,
+                    Pos
+                );
 
                 if (inventory.Empty)
                 {
+                    FreeAtlasSpace();
+                    labelStack = null;
                     labelMesh = null;
                 }
 
@@ -184,11 +194,18 @@ namespace Vintagestory.GameContent
 
             if (put && !hotbarslot.Empty)
             {
+                var quantity = bulk ? hotbarslot.StackSize : 1;
                 if (ownSlot == null)
                 {
-                    if (hotbarslot.TryPutInto(Api.World, inventory[0], bulk ? hotbarslot.StackSize : 1) > 0)
+                    if (hotbarslot.TryPutInto(Api.World, inventory[0], quantity) > 0)
                     {
                         didMoveItems(inventory[0].Itemstack, byPlayer);
+                        Api.World.Logger.Audit("{0} Put {1}x{2} into Crate at {3}.",
+                            byPlayer.PlayerName,
+                            quantity,
+                            inventory[0].Itemstack?.Collectible.Code,
+                            Pos
+                        );
                     }
                 }
                 else
@@ -201,9 +218,15 @@ namespace Vintagestory.GameContent
                             var wslot = inventory.GetBestSuitedSlot(hotbarslot, null, skipSlots);
                             if (wslot.slot == null) break;
 
-                            if (hotbarslot.TryPutInto(Api.World, wslot.slot, bulk ? hotbarslot.StackSize : 1) > 0)
+                            if (hotbarslot.TryPutInto(Api.World, wslot.slot, quantity) > 0)
                             {
                                 didMoveItems(wslot.slot.Itemstack, byPlayer);
+                                Api.World.Logger.Audit("{0} Put {1}x{2} into Crate at {3}.",
+                                    byPlayer.PlayerName,
+                                    quantity,
+                                    wslot.slot.Itemstack?.Collectible.Code,
+                                    Pos
+                                );
                                 if (!bulk) break;
                             }
 
@@ -238,7 +261,7 @@ namespace Vintagestory.GameContent
                 quantitySlots = props["quantitySlots"].AsInt(quantitySlots);
                 retrieveOnly = props["retrieveOnly"].AsBool(false);
             }
-            
+
             inventory = new InventoryGeneric(quantitySlots, null, null, null);
             inventory.BaseWeight = 1f;
             inventory.OnGetSuitability = (sourceSlot, targetSlot, isMerge) => (isMerge ? (inventory.BaseWeight + 3) : (inventory.BaseWeight + 1)) + (sourceSlot.Inventory is InventoryBasePlayer ? 1 : 0);
@@ -261,11 +284,13 @@ namespace Vintagestory.GameContent
             inventory.PutLocked = retrieveOnly;
             inventory.OnInventoryClosed += OnInvClosed;
             inventory.OnInventoryOpened += OnInvOpened;
-            
+
             if (api.Side == EnumAppSide.Server)
             {
                 inventory.SlotModified += Inventory_SlotModified;
             }
+
+            container.Reset();
         }
 
 
@@ -425,7 +450,6 @@ namespace Vintagestory.GameContent
             string cacheKey = "crateMeshes" + block.FirstCodePart();
             Dictionary<string, MeshData> meshes = ObjectCacheUtil.GetOrCreate(Api, cacheKey, () => new Dictionary<string, MeshData>());
 
-            MeshData mesh;
 
             CompositeShape cshape = ownBlock.Props[type].Shape;
             if (cshape?.Base == null)
@@ -437,7 +461,7 @@ namespace Vintagestory.GameContent
 
             string meshKey = type + block.Subtype + "-" + label + "-" + LidState + "-" + (LidState == "closed" ? null : firstStack?.StackSize + "-" + firstStack?.GetHashCode());
 
-            if (!meshes.TryGetValue(meshKey, out mesh))
+            if (!meshes.TryGetValue(meshKey, out MeshData mesh))
             {
                 mesh = block.GenMesh(Api as ICoreClientAPI, firstStack, type, label, LidState, cshape, new Vec3f(cshape.rotateX, cshape.rotateY, cshape.rotateZ));
                 meshes[meshKey] = mesh;
@@ -450,7 +474,9 @@ namespace Vintagestory.GameContent
         void genLabelMesh()
         {
             if (LabelProps?.EditableShape == null || labelStack == null || requested) return;
-            
+
+            if (labelCacheSys == null) labelCacheSys = Api.ModLoader.GetModSystem<ModSystemLabelMeshCache>();
+
             requested = true;
             labelCacheSys.RequestLabelTexture(labelColor, Pos, labelStack, (texSubId) =>
             {
@@ -459,7 +485,6 @@ namespace Vintagestory.GameContent
                 requested = false;
             });
         }
-
 
 
         static Vec3f origin = new Vec3f(0.5f, 0f, 0.5f);
@@ -477,7 +502,7 @@ namespace Vintagestory.GameContent
             bool skipmesh = base.OnTesselation(mesher, tesselator);
             if (skipmesh) return true;
 
-            
+
             if (ownMesh == null)
             {
                 return true;
@@ -501,7 +526,7 @@ namespace Vintagestory.GameContent
         {
             int stacksize = 0;
             foreach (var slot in inventory) stacksize += slot.StackSize;
-            
+
             if (stacksize > 0) {
                 dsc.AppendLine(Lang.Get("Contents: {0}x{1}", stacksize, inventory.FirstNonEmptySlot.GetStackName()));
             } else

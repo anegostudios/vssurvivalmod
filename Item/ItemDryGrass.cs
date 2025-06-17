@@ -3,6 +3,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ItemDryGrass : Item
@@ -44,7 +46,7 @@ namespace Vintagestory.GameContent
                         string useless = "";
                         if (!firepitBlock.CanPlaceBlock(world, byPlayer, new BlockSelection() { Position = onPos, Face = BlockFacing.UP }, ref useless)) return;
                         world.BlockAccessor.SetBlock(firepitBlock.BlockId, onPos);
-                        if (firepitBlock.Sounds != null) world.PlaySoundAt(firepitBlock.Sounds.Place, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, byPlayer);
+                        if (firepitBlock.Sounds != null) world.PlaySoundAt(firepitBlock.Sounds.Place, blockSel.Position.X, blockSel.Position.InternalY, blockSel.Position.Z, byPlayer);
                         itemslot.Itemstack.StackSize--;
 
                     }
@@ -71,7 +73,7 @@ namespace Vintagestory.GameContent
 
                 world.BlockAccessor.SetBlock(firepitBlock.BlockId, onPos);
 
-                if (firepitBlock.Sounds != null) world.PlaySoundAt(firepitBlock.Sounds.Place, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, byPlayer);
+                if (firepitBlock.Sounds != null) world.PlaySoundAt(firepitBlock.Sounds.Place, blockSel.Position.X, blockSel.Position.InternalY, blockSel.Position.Z, byPlayer);
 
                 itemslot.Itemstack.StackSize--;
                 handHandling = EnumHandHandling.PreventDefaultAction;

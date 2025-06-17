@@ -7,6 +7,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class MushroomProps
@@ -32,7 +34,7 @@ namespace Vintagestory.GameContent
                         .HandleWith(OnCmd)
                     .EndSubCommand()
                 .EndSubCommand();
-                
+
             api.Event.SaveGameLoaded += Event_SaveGameLoaded;
 
             this.api = api;
@@ -62,8 +64,8 @@ namespace Vintagestory.GameContent
 
     public class BlockEntityMycelium : BlockEntity
     {
-        Vec3i[] grownMushroomOffsets = new Vec3i[0];
-        
+        Vec3i[] grownMushroomOffsets = Array.Empty<Vec3i>();
+
         double mushroomsGrownTotalDays = 0;
         double mushroomsDiedTotalDays = -999999;
         double mushroomsGrowingDays = 0;
@@ -88,7 +90,7 @@ namespace Vintagestory.GameContent
             {
                 int interval = 10000;
                 RegisterGameTickListener(onServerTick, interval, -api.World.Rand.Next(interval));
-                
+
                 if (mushroomBlockCode != null && !setMushroomBlock(Api.World.GetBlock(mushroomBlockCode)))
                 {
                     api.Logger.Error("Invalid mycelium mushroom type '{0}' at {1}. Will delete block entity.", mushroomBlockCode, Pos);
@@ -152,7 +154,7 @@ namespace Vintagestory.GameContent
 
                         if (!Api.World.BlockAccessor.GetBlock(pos).Code.Equals(mushroomBlockCode))
                         {
-                            grownMushroomOffsets = grownMushroomOffsets.RemoveEntry(i);
+                            grownMushroomOffsets = grownMushroomOffsets.RemoveAt(i);
                             i--;
                         }
                     }
@@ -178,7 +180,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            grownMushroomOffsets = new Vec3i[0];
+            grownMushroomOffsets = Array.Empty<Vec3i>();
         }
 
         bool setMushroomBlock(Block block)
@@ -198,7 +200,7 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public void OnGenerated(IBlockAccessor blockAccessor, LCGRandom rnd, BlockMushroom block)
+        public void OnGenerated(IBlockAccessor blockAccessor, IRandom rnd, BlockMushroom block)
         {
             setMushroomBlock(block);
 
@@ -253,7 +255,7 @@ namespace Vintagestory.GameContent
                 pos.Y = mapChunk.WorldGenTerrainHeightMap[lz * GlobalConstants.ChunkSize + lx] + 1;
 
                 Block hereBlock = blockAccessor.GetBlock(pos);
-                Block belowBlock = blockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
+                Block belowBlock = blockAccessor.GetBlockBelow(pos);
 
                 if (belowBlock.Fertility < 10 || hereBlock.LiquidCode != null) continue;
 
@@ -314,10 +316,10 @@ namespace Vintagestory.GameContent
                     mpos.Set(Pos.X + dx, Pos.Y + dy, Pos.Z + dz).Add(f);
                     var nblock = blockAccessor.GetBlock(mpos);
                     if (nblock.Id != 0) continue;
-                    
+
                     facing = f.Opposite;
                     break;
-                    
+
                 }
 
                 if (facing == null) continue;
@@ -358,6 +360,6 @@ namespace Vintagestory.GameContent
             tree.SetDouble("mushroomsGrowingDays", mushroomsGrowingDays);
         }
 
-        
+
     }
 }

@@ -1,6 +1,8 @@
 ﻿using System.Collections.Generic;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     public class TiledDungeonConfig
@@ -13,7 +15,7 @@ namespace Vintagestory.ServerMods
         {
             DungeonsByCode = new Dictionary<string, TiledDungeon>();
 
-            for (int i = 0; i < Dungeons.Length; i++)
+            for (var i = 0; i < Dungeons.Length; i++)
             {
                 Dungeons[i].Init(api);
                 DungeonsByCode[Dungeons[i].Code] = Dungeons[i];

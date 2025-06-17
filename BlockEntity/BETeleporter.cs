@@ -9,6 +9,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class TeleportingEntity
@@ -23,7 +25,6 @@ namespace Vintagestory.GameContent
         protected TeleporterManager manager;
         protected Dictionary<long, TeleportingEntity> tpingEntities = new Dictionary<long, TeleportingEntity>();
         protected float TeleportWarmupSec = 3;
-        public abstract Vec3d GetTarget(Entity forEntity);
 
         protected bool somebodyIsTeleporting;
         protected bool somebodyDidTeleport;
@@ -32,11 +33,8 @@ namespace Vintagestory.GameContent
         public long lastEntityCollideMs = 0;
         public long lastOwnPlayerCollideMs = 0;
 
-        
         public bool tpLocationIsOffset;
-
-
-
+        public Vec3d tmpPosVec = new Vec3d();
 
         public BlockEntityTeleporterBase()
         {
@@ -49,10 +47,11 @@ namespace Vintagestory.GameContent
             manager = api.ModLoader.GetModSystem<TeleporterManager>();
         }
 
+        public abstract Vec3d GetTarget(Entity forEntity);
+
         public virtual void OnEntityCollide(Entity entity)
         {
-            TeleportingEntity tpe;
-            if (!tpingEntities.TryGetValue(entity.EntityId, out tpe))
+            if (!tpingEntities.TryGetValue(entity.EntityId, out TeleportingEntity tpe))
             {
                 tpingEntities[entity.EntityId] = tpe = new TeleportingEntity()
                 {
@@ -73,8 +72,6 @@ namespace Vintagestory.GameContent
                 }
             }
         }
-
-        
 
         protected virtual void HandleTeleportingServer(float dt)
         {
@@ -98,9 +95,12 @@ namespace Vintagestory.GameContent
 
                 if (Api.World.ElapsedMilliseconds - val.Value.LastCollideMs > 100)
                 {
+                    // round the position since the entity is placed at y.12506xxxx and the teleporter collisionbox is y.125 so without it GetCollidingBlock does round y to 5 decimals, and so we get a null block back and assume they left the tl and abort teleporting
+                    tmpPosVec.Set(val.Value.Entity.Pos);
+                    tmpPosVec.Y = Math.Round(tmpPosVec.Y, 3); 
                     // Make sure its not just server lag
-                    Block block = Api.World.CollisionTester.GetCollidingBlock(Api.World.BlockAccessor, val.Value.Entity.SelectionBox, val.Value.Entity.Pos.XYZ, true);
-                    if (!(block is BlockStaticTranslocator) && !(block is BlockTeleporter))
+                    Block block = Api.World.CollisionTester.GetCollidingBlock(Api.World.BlockAccessor, val.Value.Entity.CollisionBox, tmpPosVec, true);
+                    if (block == null || block.GetType() != Block.GetType())
                     {
                         toremove.Add(val.Key);
                         continue;
@@ -145,11 +145,11 @@ namespace Vintagestory.GameContent
                     Entity e = val.Value.Entity;
                     if (e is EntityPlayer)
                     {
-                        Api.World.Logger.Debug("Teleporting player {0} to {1}", (e as EntityPlayer).GetBehavior<EntityBehaviorNameTag>().DisplayName, tpTarget);
+                        Api.World.Logger.Audit("Teleporting player {0} from {1} to {2}", (e as EntityPlayer).GetBehavior<EntityBehaviorNameTag>().DisplayName, e.Pos.AsBlockPos, tpTarget);
                     }
                     else
                     {
-                        Api.World.Logger.Debug("Teleporting entity {0} to {1}", e.Code, tpTarget);
+                        Api.World.Logger.Audit("Teleporting entity {0} from {1} to {2}", e.Code, e.Pos.AsBlockPos, tpTarget);
                     }
 
                     didTeleport(val.Value.Entity);
@@ -173,18 +173,10 @@ namespace Vintagestory.GameContent
             }
         }
 
-
-
-
-
-
-
-
         protected virtual void didTeleport(Entity entity)
         {
-            
-        }
 
+        }
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
         {
@@ -209,25 +201,22 @@ namespace Vintagestory.GameContent
         Vec3d posvec;
         TeleporterLocation tpLocation;
 
+        public ILoadedSound teleportingSound;
+        float teleSoundVolume = 0;
+        float teleSoundPitch = 0.7f;
+
+        public BlockEntityTeleporter()
+        {
+        }
 
         public override Vec3d GetTarget(Entity forEntity)
         {
             return tpLocation?.TargetPos?.ToVec3d().Add(-0.3, 1, -0.3);
         }
 
-        public ILoadedSound teleportingSound;
-        float teleSoundVolume = 0;
-        float teleSoundPitch = 0.7f;
-
-
-        public BlockEntityTeleporter()
-        {
-        }
-
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
-            
 
             if (api.Side == EnumAppSide.Server)
             {
@@ -253,27 +242,20 @@ namespace Vintagestory.GameContent
 
             ownBlock = Block as BlockTeleporter;
             posvec = new Vec3d(Pos.X, Pos.Y + 1, Pos.Z);
-
-            
         }
 
-
-
-        
         private void OnClientGameTick(float dt)
         {
             if (ownBlock == null || Api?.World == null) return;
 
             HandleSoundClient(dt);
 
-            SimpleParticleProperties currentParticles = (Api.World.ElapsedMilliseconds > 100 && Api.World.ElapsedMilliseconds - lastOwnPlayerCollideMs < 100) ? 
-                ownBlock.insideParticles : 
-                ownBlock.idleParticles
-            ;
-            
+            SimpleParticleProperties currentParticles = (Api.World.ElapsedMilliseconds > 100 && Api.World.ElapsedMilliseconds - lastOwnPlayerCollideMs < 100) ?
+                ownBlock.insideParticles :
+                ownBlock.idleParticles;
+
             currentParticles.MinPos = posvec;
             Api.World.SpawnParticles(currentParticles);
-
         }
 
         protected virtual void HandleSoundClient(float dt)
@@ -307,7 +289,6 @@ namespace Vintagestory.GameContent
                     if (teleSoundVolume > 0) teleportingSound.Start();
                 }
             }
-
         }
 
         protected override void didTeleport(Entity entity)
@@ -317,7 +298,6 @@ namespace Vintagestory.GameContent
                 manager.DidTranslocateServer((entity as EntityPlayer).Player as IServerPlayer);
             }
         }
-
 
         private void OnServerGameTick(float dt)
         {
@@ -331,8 +311,6 @@ namespace Vintagestory.GameContent
                 Api.Logger.Error(e);
             }
         }
-
-
 
         public override void OnBlockRemoved()
         {
@@ -353,7 +331,6 @@ namespace Vintagestory.GameContent
 
             teleportingSound?.Dispose();
         }
-
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
         {

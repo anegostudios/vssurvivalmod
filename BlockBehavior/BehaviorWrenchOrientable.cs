@@ -3,6 +3,8 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockBehaviorWrenchOrientable : BlockBehavior
@@ -45,7 +47,7 @@ namespace Vintagestory.GameContent
                     MouseButton = EnumMouseButton.Right
                 } };
             }
-            else return new WorldInteraction[0];
+            else return System.Array.Empty<WorldInteraction>();
         }
 
         public override void Initialize(JsonObject properties)

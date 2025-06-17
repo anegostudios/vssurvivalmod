@@ -4,6 +4,8 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class EntityThrownStone : Entity
@@ -21,7 +23,6 @@ namespace Vintagestory.GameContent
         public int DamageTier = 0;
         public ItemStack ProjectileStack;
 
-        public bool NonCollectible;
         public float collidedAccum;
 
         public float VerticalImpactBreakChance = 0f;
@@ -29,6 +30,12 @@ namespace Vintagestory.GameContent
 
         public float ImpactParticleSize = 1f;
         public int ImpactParticleCount = 20;
+
+        public bool NonCollectible
+        {
+            get { return Attributes.GetBool("nonCollectible"); }
+            set { Attributes.SetBool("nonCollectible", value); }
+        }
 
         public override bool IsInteractable
         {
@@ -38,7 +45,18 @@ namespace Vintagestory.GameContent
         public override void Initialize(EntityProperties properties, ICoreAPI api, long InChunkIndex3d)
         {
             base.Initialize(properties, api, InChunkIndex3d);
+            if (Api.Side == EnumAppSide.Server)
+            {
+                if (FiredBy != null)
+                {
+                    WatchedAttributes.SetLong("firedBy", FiredBy.EntityId);
+                }
+            }
 
+            if (Api.Side == EnumAppSide.Client)
+            {
+                FiredBy = Api.World.GetEntityById(WatchedAttributes.GetLong("firedBy"));
+            }
             msLaunch = World.ElapsedMilliseconds;
 
             if (ProjectileStack?.Collectible != null)
@@ -46,7 +64,7 @@ namespace Vintagestory.GameContent
                 ProjectileStack.ResolveBlockOrItem(World);
             }
 
-            GetBehavior<EntityBehaviorPassivePhysics>().collisionYExtra = 0f; // Slightly cheap hax so that stones/arrows don't collid with fences
+            GetBehavior<EntityBehaviorPassivePhysics>().CollisionYExtra = 0f; // Slightly cheap hax so that stones/arrows don't collid with fences
         }
 
         public override void OnGameTick(float dt)
@@ -88,12 +106,13 @@ namespace Vintagestory.GameContent
 
                 if (entity != null)
                 {
-                    bool didDamage = entity.ReceiveDamage(new DamageSource() { 
-                        Source = FiredBy is EntityPlayer ? EnumDamageSource.Player : EnumDamageSource.Entity, 
-                        SourceEntity = this, 
-                        CauseEntity = FiredBy, 
+                    bool didDamage = entity.ReceiveDamage(new DamageSource() {
+                        Source = FiredBy is EntityPlayer ? EnumDamageSource.Player : EnumDamageSource.Entity,
+                        SourceEntity = this,
+                        CauseEntity = FiredBy,
                         Type = EnumDamageType.BluntAttack,
-                        DamageTier = DamageTier
+                        DamageTier = DamageTier,
+                        YDirKnockbackDiv = 3
                     }, Damage);
                     World.PlaySoundAt(new AssetLocation("sounds/thud"), this, null, false, 32);
                     World.SpawnCubeParticles(entity.SidedPos.XYZ.OffsetCopy(0, 0.2, 0), ProjectileStack, 0.2f, ImpactParticleCount, ImpactParticleSize);
@@ -192,7 +211,7 @@ namespace Vintagestory.GameContent
         {
             base.FromBytes(reader, fromServer);
             beforeCollided = reader.ReadBoolean();
-            
+
             ProjectileStack = World == null ? new ItemStack(reader) : new ItemStack(reader, World);
         }
     }

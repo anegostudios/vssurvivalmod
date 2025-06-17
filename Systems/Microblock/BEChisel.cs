@@ -10,6 +10,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 using VSSurvivalMod.Systems.ChiselModes;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityChisel : BlockEntityMicroBlock
@@ -112,7 +114,8 @@ namespace Vintagestory.GameContent
 
                 if (DecorIds != null && DecorIds[rotfaceindex] != 0)
                 {
-                    Api.World.SpawnItemEntity(new ItemStack(Api.World.Blocks[DecorIds[rotfaceindex]]), Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    var block = Api.World.Blocks[DecorIds[rotfaceindex]];
+                    Api.World.SpawnItemEntity(block.OnPickBlock(Api.World, Pos), Pos);
                     DecorIds[rotfaceindex] = 0;
                     MarkDirty(true, byPlayer);
                 }
@@ -127,6 +130,17 @@ namespace Vintagestory.GameContent
             nowmaterialIndex = (byte)Math.Max(0, BlockIds.IndexOf(materialId));
         }
 
+        public void PickBlockMaterial(IPlayer byPlayer)
+        {
+            if (byPlayer != null && byPlayer.InventoryManager?.ActiveHotbarSlot is ItemSlot slot && slot.Itemstack?.Collectible is ItemChisel chisel)
+            {
+                var hitPos = byPlayer.CurrentBlockSelection.HitPosition;
+                Vec3i voxPos = new Vec3i(Math.Min(15, (int)(hitPos.X * 16)), Math.Min(15, (int)(hitPos.Y * 16)), Math.Min(15, (int)(hitPos.Z * 16)));
+                int matNum = GetVoxelMaterialAt(voxPos);
+                int toolMode = (byte)Math.Max(0, BlockIds.IndexOf(matNum)) + chisel.ToolModes.Length;
+                chisel.SetToolMode(slot, byPlayer, byPlayer.CurrentBlockSelection, toolMode);
+            }
+        }
 
 
         internal void UpdateVoxel(IPlayer byPlayer, ItemSlot itemslot, Vec3i voxelPos, BlockFacing facing, bool isBreak)
@@ -160,7 +174,7 @@ namespace Vintagestory.GameContent
             }
 
             double posx = Pos.X + voxelPos.X / 16f;
-            double posy = Pos.Y + voxelPos.Y / 16f;
+            double posy = Pos.InternalY + voxelPos.Y / 16f;
             double posz = Pos.Z + voxelPos.Z / 16f;
             Api.World.PlaySoundAt(new AssetLocation("sounds/player/knap" + (Api.World.Rand.Next(2) > 0 ? 1 : 2)), posx, posy, posz, byPlayer, true, 12, 1);
 
@@ -195,7 +209,7 @@ namespace Vintagestory.GameContent
             }
 
             ((ICoreClientAPI)Api).Network.SendBlockEntityPacket(
-                Pos.X, Pos.Y, Pos.Z,
+                Pos,
                 (int)1010,
                 data
             );
@@ -231,18 +245,20 @@ namespace Vintagestory.GameContent
                     voxelPos = new Vec3i(reader.ReadInt32(), reader.ReadInt32(), reader.ReadInt32());
                     isBreak = reader.ReadBoolean();
                     facing = BlockFacing.ALLFACES[reader.ReadInt16()];
-                    nowmaterialIndex = reader.ReadByte();
+                    nowmaterialIndex = (byte)Math.Clamp(reader.ReadByte(), 0, BlockIds.Length - 1);
                 }
 
                 UpdateVoxel(player, player.InventoryManager.ActiveHotbarSlot, voxelPos, facing, isBreak);
             }
+
+            if (packetid == 1011) PickBlockMaterial(player);
         }
 
 
 
         public override Cuboidf[] GetSelectionBoxes(IBlockAccessor world, BlockPos pos, IPlayer forPlayer = null)
         {
-            if (Api.Side == EnumAppSide.Client && DetailingMode)
+            if (Api?.Side == EnumAppSide.Client && DetailingMode)
             {
                 if (forPlayer == null) forPlayer = (Api.World as IClientWorldAccessor).Player;
 
@@ -398,9 +414,10 @@ namespace Vintagestory.GameContent
             selectionBoxesVoxels = boxes.ToArray();
         }
 
-        public int AddMaterial(Block block, out bool isFull)
+
+        public int AddMaterial(Block addblock, out bool isFull, bool compareToPickBlock = true)
         {
-            Cuboidf[] collboxes = block.GetCollisionBoxes(Api.World.BlockAccessor, Pos);
+            Cuboidf[] collboxes = addblock.GetCollisionBoxes(Api.World.BlockAccessor, Pos);
             int sum = 0;
             if (collboxes == null) collboxes = new Cuboidf[] { Cuboidf.Default() };
 
@@ -410,30 +427,29 @@ namespace Vintagestory.GameContent
                 sum += new Cuboidi((int)(16 * box.X1), (int)(16 * box.Y1), (int)(16 * box.Z1), (int)(16 * box.X2), (int)(16 * box.Y2), (int)(16 * box.Z2)).SizeXYZ;
             }
 
-            if (!BlockIds.Contains(block.Id))
+            if (compareToPickBlock && !BlockIds.Contains(addblock.Id))
             {
                 foreach (int blockid in BlockIds)
                 {
                     var matblock = Api.World.Blocks[blockid];
                     var stack = matblock.OnPickBlock(Api.World, Pos);
-                    if (stack.Block?.Id == block.Id)
+                    if (stack.Block?.Id == addblock.Id)
                     {
-                        block = matblock;
+                        addblock = matblock;
                     }
                 }
             }
 
-
-            if (!BlockIds.Contains(block.Id))
+            if (!BlockIds.Contains(addblock.Id))
             {
                 isFull = false;
-                BlockIds = BlockIds.Append(block.Id);
+                BlockIds = BlockIds.Append(addblock.Id);
                 if (AvailMaterialQuantities != null) AvailMaterialQuantities = AvailMaterialQuantities.Append((ushort)sum);
                 return BlockIds.Length - 1;
             }
             else
             {
-                int index = BlockIds.IndexOf(block.Id);
+                int index = BlockIds.IndexOf(addblock.Id);
                 isFull = AvailMaterialQuantities[index] >= 16 * 16 * 16;
                 if (AvailMaterialQuantities != null) AvailMaterialQuantities[index] = (ushort)Math.Min(ushort.MaxValue, AvailMaterialQuantities[index] + sum);
                 return index;

@@ -6,6 +6,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityBomb : BlockEntity
@@ -113,9 +115,9 @@ namespace Vintagestory.GameContent
         public void Combust(float dt)
         {
             if (combusted) return;
-            if (nearToClaimedLand())
+            if (!HasPermissionToUse())
             {
-                Api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), Pos.X + 0.5, Pos.Y, Pos.Z + 0.5, null, false, 16);
+                Api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), Pos, -0.5, null, false, 16);
                 lit = false;
                 MarkDirty(true);
                 return;
@@ -123,31 +125,36 @@ namespace Vintagestory.GameContent
 
             combusted = true;
             Api.World.BlockAccessor.SetBlock(0, Pos);
-            ((IServerWorldAccessor)Api.World).CreateExplosion(Pos, BlastType, BlastRadius, InjureRadius);
+            ((IServerWorldAccessor)Api.World).CreateExplosion(Pos, BlastType, BlastRadius, InjureRadius, 1f, ignitedByPlayerUid);
         }
 
-        public bool nearToClaimedLand()
+        public bool HasPermissionToUse()
         {
             int rad = (int)Math.Ceiling(BlastRadius);
             Cuboidi exploArea = new Cuboidi(Pos.AddCopy(-rad, -rad, -rad), Pos.AddCopy(rad, rad, rad));
             List<LandClaim> claims = (Api as ICoreServerAPI).WorldManager.SaveGame.LandClaims;
+            var player = Api.World.PlayerByUid(ignitedByPlayerUid);
             for (int i = 0; i < claims.Count; i++)
             {
-                if (claims[i].Intersects(exploArea)) return true;
+                if (claims[i].Intersects(exploArea))
+                {
+                    return claims[i].TestPlayerAccess(player, EnumBlockAccessFlags.BuildOrBreak) !=
+                           EnumPlayerAccessResult.Denied;
+                }
             }
-            return false;
+            return true;
         }
 
-        internal void OnBlockExploded(BlockPos pos)
+        internal void OnBlockExploded(BlockPos pos, string ignitedByPlayerUid)
         {
             if (Api.Side == EnumAppSide.Server)
             {
-                if ((!lit || RemainingSeconds > 0.3) && !nearToClaimedLand())
+                this.ignitedByPlayerUid = ignitedByPlayerUid;
+                if ((!lit || RemainingSeconds > 0.3) && HasPermissionToUse())
                 {
                     Api.World.RegisterCallback(Combust, 250);
                     CascadeLit = true;
                 }
-                
             }
         }
 

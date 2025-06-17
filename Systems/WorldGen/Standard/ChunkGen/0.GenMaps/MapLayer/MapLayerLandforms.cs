@@ -1,6 +1,9 @@
 ﻿using System;
+using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+
+#nullable disable
 
 namespace Vintagestory.ServerMods
 {
@@ -50,11 +53,11 @@ namespace Vintagestory.ServerMods
 
                     int climate = climateNoise.GetLerpedClimateAt(finalX / TerraGenConfig.climateMapScale, finalZ / TerraGenConfig.climateMapScale);
                     int rain = (climate >> 8) & 0xff;
-                    int temp = TerraGenConfig.GetScaledAdjustedTemperature((climate >> 16) & 0xff, 0);
+                    int temp = Climate.GetScaledAdjustedTemperature((climate >> 16) & 0xff, 0);
 
                     result[z * sizeX + x] = noiseLandforms.GetLandformIndexAt(
-                        finalX, 
-                        finalZ, 
+                        finalX,
+                        finalZ,
                         temp,
                         rain
                     );
@@ -65,6 +68,6 @@ namespace Vintagestory.ServerMods
         }
 
 
-      
+
     }
 }

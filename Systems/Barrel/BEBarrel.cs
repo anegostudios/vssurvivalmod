@@ -4,6 +4,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityBarrel : BlockEntityLiquidContainer
@@ -11,7 +13,7 @@ namespace Vintagestory.GameContent
         public int CapacityLitres { get; set; } = 50;
 
         GuiDialogBarrel invDialog;
-        
+
         // Slot 0: Input/Item slot
         // Slot 1: Liquid slot
         public override string InventoryClassName => "barrel";
@@ -47,6 +49,15 @@ namespace Vintagestory.GameContent
 
 
             inventory.SlotModified += Inventory_SlotModified;
+            inventory.OnAcquireTransitionSpeed += Inventory_OnAcquireTransitionSpeed1;
+        }
+
+        private float Inventory_OnAcquireTransitionSpeed1(EnumTransitionType transType, ItemStack stack, float mul)
+        {
+            // Don't spoil while sealed
+            if (Sealed && CurrentRecipe != null && CurrentRecipe.SealHours > 0) return 0;
+
+            return mul;
         }
 
         private float GetSuitability(ItemSlot sourceSlot, ItemSlot targetSlot, bool isMerge)
@@ -66,13 +77,6 @@ namespace Vintagestory.GameContent
             return (isMerge ? (inventory.BaseWeight + 3) : (inventory.BaseWeight + 1)) + (sourceSlot.Inventory is InventoryBasePlayer ? 1 : 0);
         }
 
-        protected override float Inventory_OnAcquireTransitionSpeed(EnumTransitionType transType, ItemStack stack, float baseMul)
-        {
-            // Don't spoil while sealed
-            if (Sealed && CurrentRecipe != null && CurrentRecipe.SealHours > 0) return 0;
-
-            return base.Inventory_OnAcquireTransitionSpeed(transType, stack, baseMul);
-        }
 
         protected override ItemSlot GetAutoPushIntoSlot(BlockFacing atBlockFace, ItemSlot fromSlot)
         {
@@ -99,7 +103,7 @@ namespace Vintagestory.GameContent
             }
             if (api.Side == EnumAppSide.Server)
             {
-                RegisterGameTickListener(OnEvery3Second, 3000); 
+                RegisterGameTickListener(OnEvery3Second, 3000);
             }
 
             FindMatchingRecipe();
@@ -133,9 +137,8 @@ namespace Vintagestory.GameContent
 
             foreach (var recipe in Api.GetBarrelRecipes())
             {
-                int outsize;
 
-                if (recipe.Matches(inputSlots, out outsize))
+                if (recipe.Matches(inputSlots, out int outsize))
                 {
                     ignoreChange = true;
 
@@ -144,7 +147,8 @@ namespace Vintagestory.GameContent
                         CurrentRecipe = recipe;
                         CurrentOutSize = outsize;
 
-                    } else
+                    }
+                    else
                     {
                         if (Api?.Side == EnumAppSide.Server)
                         {
@@ -153,7 +157,7 @@ namespace Vintagestory.GameContent
                             Api.World.BlockAccessor.MarkBlockEntityDirty(Pos);
                         }
                     }
-                    
+
 
                     invDialog?.UpdateContents();
                     if (Api?.Side == EnumAppSide.Client)
@@ -195,7 +199,22 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public override void OnBlockPlaced(ItemStack byItemStack = null)
+        {
+            base.OnBlockPlaced(byItemStack);
 
+            // Deal with situation where the itemStack had some liquid contents, and BEContainer.OnBlockPlaced() placed this into the inputSlot not the liquidSlot
+            ItemSlot inputSlot = Inventory[0];
+            ItemSlot liquidSlot = Inventory[1];
+            if (!inputSlot.Empty && liquidSlot.Empty)
+            {
+                var liqProps = BlockLiquidContainerBase.GetContainableProps(inputSlot.Itemstack);
+                if (liqProps != null)
+                {
+                    Inventory.TryFlipItems(1, inputSlot);
+                }
+            }
+        }
 
         public override void OnBlockBroken(IPlayer byPlayer = null)
         {
@@ -243,15 +262,15 @@ namespace Vintagestory.GameContent
                 invDialog.OnClosed += () =>
                 {
                     invDialog = null;
-                    capi.Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, (int)EnumBlockEntityPacketId.Close, null);
+                    capi.Network.SendBlockEntityPacket(Pos, (int)EnumBlockEntityPacketId.Close, null);
                     capi.Network.SendPacketClient(Inventory.Close(byPlayer));
                 };
-                invDialog.OpenSound = AssetLocation.Create("sounds/block/barrelopen", Block.Code.Domain);
-                invDialog.CloseSound = AssetLocation.Create("sounds/block/barrelclose", Block.Code.Domain);
+                invDialog.OpenSound = AssetLocation.Create(Block.Attributes?["openSound"].AsString() ?? "sounds/block/barrelopen", Block.Code.Domain);
+                invDialog.CloseSound = AssetLocation.Create(Block.Attributes?["closeSound"].AsString() ?? "sounds/block/barrelclose", Block.Code.Domain);
 
                 invDialog.TryOpen();
                 capi.Network.SendPacketClient(Inventory.Open(byPlayer));
-                capi.Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, (int)EnumBlockEntityPacketId.Open, null);
+                capi.Network.SendBlockEntityPacket(Pos, (int)EnumBlockEntityPacketId.Open, null);
             }
             else
             {
@@ -344,8 +363,8 @@ namespace Vintagestory.GameContent
             {
                 for (int i = 0; i < mesh.CustomInts.Count; i++)
                 {
-                    mesh.CustomInts.Values[i] |= 1 << 27; // Enable weak water wavy
-                    mesh.CustomInts.Values[i] |= 1 << 26; // Enabled weak foam
+                    mesh.CustomInts.Values[i] |= 1 << VertexFlags.LiquidWeakWaveBitMask; // Enable weak water wavy
+                    mesh.CustomInts.Values[i] |= 1 << VertexFlags.LiquidWeakFoamBitMask; // Enabled weak foam
                 }
             }
 

@@ -4,6 +4,8 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class EntityThrownSnowball : Entity
@@ -46,7 +48,7 @@ namespace Vintagestory.GameContent
                 ProjectileStack.ResolveBlockOrItem(World);
             }
 
-            GetBehavior<EntityBehaviorPassivePhysics>().collisionYExtra = 0f; // Slightly cheap hax so that stones/arrows don't collid with fences
+            GetBehavior<EntityBehaviorPassivePhysics>().CollisionYExtra = 0f; // Slightly cheap hax so that stones/arrows don't collid with fences
         }
 
         public override void OnGameTick(float dt)
@@ -88,12 +90,13 @@ namespace Vintagestory.GameContent
 
                 if (entity != null)
                 {
-                    bool didDamage = entity.ReceiveDamage(new DamageSource() { 
-                        Source = FiredBy is EntityPlayer ? EnumDamageSource.Player : EnumDamageSource.Entity, 
-                        SourceEntity = this, 
-                        CauseEntity = FiredBy, 
-                        Type = EnumDamageType.Frost,
-                        DamageTier = DamageTier
+                    bool didDamage = entity.ReceiveDamage(new DamageSource() {
+                        Source = FiredBy is EntityPlayer ? EnumDamageSource.Player : EnumDamageSource.Entity,
+                        SourceEntity = this,
+                        CauseEntity = FiredBy,
+                        Type = Damage > 0.01 ? EnumDamageType.BluntAttack : EnumDamageType.Frost,
+                        DamageTier = DamageTier,
+                        YDirKnockbackDiv = 3
                     }, Damage);
 
                     World.PlaySoundAt(new AssetLocation("sounds/block/snow"), this, null, false, 32);
@@ -142,7 +145,7 @@ namespace Vintagestory.GameContent
                         Die();
                     }
                 }
-                
+
                 World.PlaySoundAt(new AssetLocation("sounds/block/snow"), this, null, false, 32, strength);
                 World.SpawnCubeParticles(SidedPos.XYZ.OffsetCopy(0, 0.25, 0), ProjectileStack, 0.5f, ImpactParticleCount, ImpactParticleSize, null, new Vec3f((float)motionBeforeCollide.X * 8, (float)-motionBeforeCollide.Y * 6, (float)motionBeforeCollide.Z * 8));
 
@@ -176,7 +179,7 @@ namespace Vintagestory.GameContent
         {
             base.FromBytes(reader, fromServer);
             beforeCollided = reader.ReadBoolean();
-            
+
             ProjectileStack = World == null ? new ItemStack(reader) : new ItemStack(reader, World);
         }
     }

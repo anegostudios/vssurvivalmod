@@ -4,6 +4,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ItemFirestarter : Item
@@ -18,7 +20,9 @@ namespace Vintagestory.GameContent
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
             base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
-            if (handling == EnumHandHandling.PreventDefault) return;
+            
+            // Commented out cause GroundStorable behavior was preventing animations and sound when using on pitkiln
+            //if (handling == EnumHandHandling.PreventDefault) return;
 
             if (blockSel == null) return;
             Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
@@ -91,8 +95,6 @@ namespace Vintagestory.GameContent
 
                     (api as ICoreClientAPI).World.SetCameraShake(0.04f);
                 }
-                
-                byEntity.Controls.UsingHeldItemTransformBefore = tf;
 
 
                 if (secondsUsed > 0.25f && (int)(30 * secondsUsed) % 2 == 1)
@@ -159,7 +161,7 @@ namespace Vintagestory.GameContent
 
         public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot)
         {
-            return new WorldInteraction[]
+            WorldInteraction[] interactions = new WorldInteraction[]
             {
                 new WorldInteraction
                 {
@@ -168,6 +170,8 @@ namespace Vintagestory.GameContent
                     MouseButton = EnumMouseButton.Right
                 }
             };
+
+            return base.GetHeldInteractionHelp(inSlot).Append(interactions);
         }
 
     }

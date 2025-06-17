@@ -3,17 +3,25 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockLocustNest : Block
     {
         public Block[] DecoBlocksCeiling;
         public Block[] DecoBlocksFloor;
+        public Block[] DecorBlocksWall;
 
 
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
+
+            DecorBlocksWall = new Block[]
+            {
+                api.World.GetBlock(new AssetLocation("oxidation-rust-normal")),
+            };
 
             DecoBlocksCeiling = new Block[]
             {
@@ -79,7 +87,7 @@ namespace Vintagestory.GameContent
             return base.OnGettingBroken(player, blockSel, itemslot, remainingResistance, dt, counter);
         }
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, IRandom worldGenRand, BlockPatchAttributes attributes = null)
         {
             if (blockAccessor.GetBlockId(pos.X, pos.Y, pos.Z) != 0) return false;
 
@@ -118,14 +126,32 @@ namespace Vintagestory.GameContent
                     if (offX == 0 && offZ == 0 && offY >= dy) continue;  // Don't overwrite self
                     tryPlaceDecoDown(tmppos.Set(cavepos.X + offX, cavepos.Y + offY, cavepos.Z + offZ), blockAccessor, worldGenRand);
                 }
-
-                
             }
+
+            blockAccessor.WalkBlocks(pos.AddCopy(-7, -7, -7), pos.AddCopy(7, 7, 7), (block, x, y, z) =>
+            {
+                if (block.Replaceable >= 6000) return;
+                if (api.World.Rand.NextDouble() < 0.5) return;  
+
+                for (int i = 0; i < 6; i++)
+                {
+                    if (block.SideSolid[i])
+                    {
+                        var face = BlockFacing.ALLFACES[i];
+                        var nblock = blockAccessor.GetBlock(x + face.Normali.X, y + face.Normali.Y, z + face.Normali.Z);
+                        if (nblock.Id == 0)
+                        {
+                            blockAccessor.SetDecor(DecorBlocksWall[0], tmppos.Set(x,y,z), face);
+                            if (api.World.Rand.NextDouble() < 0.5) return;
+                        }
+                    }
+                }
+            });
 
             return true;
         }
 
-        private void tryPlaceDecoDown(BlockPos blockPos, IBlockAccessor blockAccessor, LCGRandom worldGenRand)
+        private void tryPlaceDecoDown(BlockPos blockPos, IBlockAccessor blockAccessor, IRandom worldGenRand)
         {
             if (blockAccessor.GetBlock(blockPos).Id != 0) return;
 
@@ -143,7 +169,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        private void tryPlaceDecoUp(BlockPos blockPos, IBlockAccessor blockAccessor, LCGRandom worldgenRand)
+        private void tryPlaceDecoUp(BlockPos blockPos, IBlockAccessor blockAccessor, IRandom worldgenRand)
         {
             if (blockAccessor.GetBlock(blockPos).Id != 0) return;
 

@@ -6,6 +6,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class TextureCodeReplace { public string From; public string To; }
@@ -40,7 +42,7 @@ namespace Vintagestory.GameContent
         public string MatCode;
     }
 
-    public class BlockPitkiln : BlockGroundStorage, IIgnitable
+    public class BlockPitkiln : BlockGroundStorage, IIgnitable, ISmokeEmitter
     {
         public Dictionary<string, BuildStage[]> BuildStagesByBlock = new Dictionary<string, BuildStage[]>();
         public Dictionary<string, Shape> ShapesByBlock = new Dictionary<string, Shape>();
@@ -64,7 +66,7 @@ namespace Vintagestory.GameContent
                 GetMatchingStacks = (wi, bs, es) =>
                 {
                     BlockEntityPitKiln beg = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityPitKiln;
-                    if (beg?.Lit != true && beg?.CanIgnite() == true)
+                    if (beg?.Lit != true && beg?.CanIgnite == true)
                     {
                         return wi.Itemstacks;
                     }
@@ -120,9 +122,8 @@ namespace Vintagestory.GameContent
 
                 for (int i = 0; i < stages.Length; i++)
                 {
-                    BuildStageMaterial[] stacks;
 
-                    if (!resolvedMats.TryGetValue(matcodes[i], out stacks))
+                    if (!resolvedMats.TryGetValue(matcodes[i], out BuildStageMaterial[] stacks))
                     {
                         api.World.Logger.Error("Pit kiln model configs: No such mat code " + matcodes[i] + ". Please fix. Will ignore all configs.");
                         return;
@@ -192,6 +193,14 @@ namespace Vintagestory.GameContent
 
                 ICoreClientAPI capi = api as ICoreClientAPI;
                 bool ok = true;
+                Block liquidblock = world.BlockAccessor.GetBlock(pos, BlockLayersAccess.Fluid);
+                if (liquidblock.BlockId != 0)
+                {
+                    ok = false;
+                    capi?.TriggerIngameError(this, "submerged", Lang.Get("pitkilnerror-submerged"));
+                }
+                if (!ok) return false;
+
                 foreach (var face in BlockFacing.HORIZONTALS.Append(BlockFacing.DOWN))
                 {
                     BlockPos npos = pos.AddCopy(face);
@@ -264,14 +273,14 @@ namespace Vintagestory.GameContent
         }
 
 
-        public EnumIgniteState OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting)
+        public new EnumIgniteState OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting)
         {
             BlockEntityPitKiln beb = byEntity.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityPitKiln;
-            if (!beb.CanIgnite()) return EnumIgniteState.NotIgnitablePreventDefault;
+            if (!beb.CanIgnite) return EnumIgniteState.NotIgnitablePreventDefault;
             return secondsIgniting > 4 ? EnumIgniteState.IgniteNow : EnumIgniteState.Ignitable;
         }
 
-        public void OnTryIgniteBlockOver(EntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)
+        public new void OnTryIgniteBlockOver(EntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)
         {
             handling = EnumHandling.PreventDefault;
             BlockEntityPitKiln beb = byEntity.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityPitKiln;
@@ -319,6 +328,22 @@ namespace Vintagestory.GameContent
         public override string GetPlacedBlockName(IWorldAccessor world, BlockPos pos)
         {
             return new ItemStack(this).GetName();
+        }
+
+        public override float GetTraversalCost(BlockPos pos, EnumAICreatureType creatureType)
+        {
+            if (creatureType == EnumAICreatureType.LandCreature || creatureType == EnumAICreatureType.Humanoid)
+            {
+                return GetBlockEntity<BlockEntityPitKiln>(pos)?.IsBurning == true ? 10000f : 1f;
+            }
+
+            return base.GetTraversalCost(pos, creatureType);
+        }
+
+        public bool EmitsSmoke(BlockPos pos)
+        {
+            var be = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityPitKiln;
+            return be?.IsBurning == true;
         }
     }
 }

@@ -6,6 +6,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 
@@ -64,7 +66,7 @@ namespace Vintagestory.GameContent
             }
 
             ignorePlaceTest = properties["ignorePlaceTest"].AsBool(false);
-            exceptions = properties["exceptions"].AsObject(new AssetLocation[0], block.Code.Domain);
+            exceptions = properties["exceptions"].AsObject(System.Array.Empty<AssetLocation>(), block.Code.Domain);
             fallSideways = properties["fallSideways"].AsBool(false);
             dustIntensity = properties["dustIntensity"].AsFloat(0);
 
@@ -87,14 +89,19 @@ namespace Vintagestory.GameContent
 
             BlockPos pos = blockSel.Position.DownCopy();
             Block onBlock = world.BlockAccessor.GetBlock(pos);
-            if (blockSel != null && !IsAttached(world.BlockAccessor, blockSel.Position) && !onBlock.CanAttachBlockAt(world.BlockAccessor, block, pos, BlockFacing.UP, attachmentArea) && block.Attributes?["allowUnstablePlacement"].AsBool() != true && !exceptions.Contains(onBlock.Code))
+            if (blockSel != null && !IsAttached(world.BlockAccessor, blockSel.Position) && !onBlock.CanAttachBlockAt(world.BlockAccessor, block, pos, BlockFacing.UP, attachmentArea) && block.Attributes?["allowUnstablePlacement"].AsBool() != true && !onBlock.WildCardMatch(exceptions))
             {
                 handling = EnumHandling.PreventSubsequent;
                 failureCode = "requiresolidground";
                 return false;
             }
 
-            return TryFalling(world, blockSel.Position, ref handling, ref failureCode);
+            return true;
+        }
+
+        public override void OnBlockPlaced(IWorldAccessor world, BlockPos blockPos, ref EnumHandling handling)
+        {
+            TryFalling(world, blockPos, ref handling);
         }
 
         public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos, ref EnumHandling handling)
@@ -104,37 +111,37 @@ namespace Vintagestory.GameContent
             if (world.Side == EnumAppSide.Client) return;
 
             EnumHandling bla = EnumHandling.PassThrough;
-            string bla2 = "";
-            TryFalling(world, pos, ref bla, ref bla2);
+            TryFalling(world, pos, ref bla);
         }
 
-        private bool TryFalling(IWorldAccessor world, BlockPos pos, ref EnumHandling handling, ref string failureCode)
+        private bool TryFalling(IWorldAccessor world, BlockPos pos, ref EnumHandling handling)
         {
             if (world.Side != EnumAppSide.Server) return false;
             if (!fallSideways && IsAttached(world.BlockAccessor, pos)) return false;
 
             ICoreServerAPI sapi = (world as IServerWorldAccessor).Api as ICoreServerAPI;
-            if (!sapi.Server.Config.AllowFallingBlocks) return false;
-
-
+            if (!sapi.World.Config.GetBool("allowFallingBlocks")) return false;
+             
             if (IsReplacableBeneath(world, pos) || (fallSideways && world.Rand.NextDouble() < fallSidewaysChance && IsReplacableBeneathAndSideways(world, pos)))
             {
-                // Prevents duplication
-                Entity entity = world.GetNearestEntity(pos.ToVec3d().Add(0.5, 0.5, 0.5), 1, 1.5f, (e) =>
-                {
-                    return e is EntityBlockFalling ebf && ebf.initialPos.Equals(pos);
-                });
+                BlockPos ourPos = pos.Copy();
+                // Must run a frame later. This method is called from OnBlockPlaced, but at this point - if this is a freshly settled falling block, then the BE does not have its full data yet (because EntityBlockFalling makes a SetBlock, then only calls FromTreeAttributes on the BE
+                sapi.Event.EnqueueMainThreadTask(()=>{
+                    var block = world.BlockAccessor.GetBlock(ourPos);
+                    if (this.block != block) return; // Block was already removed
 
-                if (entity == null)
-                {
-                    EntityBlockFalling entityblock = new EntityBlockFalling(block, world.BlockAccessor.GetBlockEntity(pos), pos, fallSound, impactDamageMul, true, dustIntensity);
-                    world.SpawnEntity(entityblock);
-                } else
-                {
-                    handling = EnumHandling.PreventDefault;
-                    failureCode = "entityintersecting";
-                    return false;
-                }
+                    // Prevents duplication
+                    Entity entity = world.GetNearestEntity(ourPos.ToVec3d().Add(0.5, 0.5, 0.5), 1, 1.5f, (e) =>
+                    {
+                        return e is EntityBlockFalling ebf && ebf.initialPos.Equals(ourPos);
+                    });
+                    if (entity != null) return;
+
+                    var be = world.BlockAccessor.GetBlockEntity(ourPos);
+                    EntityBlockFalling entityBf = new EntityBlockFalling(block, be, ourPos, fallSound, impactDamageMul, true, dustIntensity);
+
+                    world.SpawnEntity(entityBf);
+                }, "falling");
 
                 handling = EnumHandling.PreventSubsequent;
                 return true;
@@ -194,7 +201,7 @@ namespace Vintagestory.GameContent
 
         private bool IsReplacableBeneath(IWorldAccessor world, BlockPos pos)
         {
-            Block bottomBlock = world.BlockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
+            Block bottomBlock = world.BlockAccessor.GetBlockBelow(pos);
             return bottomBlock.Replaceable > 6000;
         }
     }

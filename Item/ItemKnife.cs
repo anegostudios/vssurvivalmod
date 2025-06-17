@@ -7,6 +7,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ItemKnife : Item
@@ -90,7 +92,7 @@ namespace Vintagestory.GameContent
             }
 
             EntityBehaviorHarvestable bh;
-            if (byEntity.Controls.Sneak && entitySel != null && (bh = entitySel.Entity.GetBehavior<EntityBehaviorHarvestable>()) != null && bh.Harvestable)
+            if (byEntity.Controls.ShiftKey && entitySel != null && (bh = entitySel.Entity.GetBehavior<EntityBehaviorHarvestable>()) != null && bh.Harvestable)
             {
                 byEntity.World.PlaySoundAt(new AssetLocation("sounds/player/scrape"), entitySel.Entity, (byEntity as EntityPlayer)?.Player, false, 12);
                 handling = EnumHandHandling.PreventDefault;
@@ -177,6 +179,7 @@ namespace Vintagestory.GameContent
         public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             byEntity.StopAnimation("insertgear");
+            byEntity.StopAnimation("knifecut");
 
             if (byEntity.LeftHandItemSlot?.Itemstack?.Collectible is ItemTemporalGear)
             {
@@ -191,7 +194,6 @@ namespace Vintagestory.GameContent
 
             if (bh != null && bh.Harvestable && secondsUsed >= KnifeHarvestingSpeed * bh.GetHarvestDuration(byEntity) - 0.1f)
             {
-                byEntity.StopAnimation("knifecut");
                 bh.SetHarvested((byEntity as EntityPlayer)?.Player);
                 slot?.Itemstack?.Collectible.DamageItem(byEntity.World, byEntity, slot, 3);
             }

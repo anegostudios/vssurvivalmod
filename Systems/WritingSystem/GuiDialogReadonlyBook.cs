@@ -6,6 +6,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public delegate void TranscribePressedDelegate(string pageText, string pageTitle, int pageNumber);
@@ -29,11 +31,11 @@ namespace Vintagestory.GameContent
 
             if (bookStack.Attributes.HasAttribute("textCodes"))
             {
-                AllPagesText = string.Join("\n", (bookStack.Attributes["textCodes"] as StringArrayAttribute).value.Select(code => Lang.Get(code)));
+                AllPagesText = string.Join("\n", (bookStack.Attributes["textCodes"] as StringArrayAttribute).value.Select(code => Lang.Get(code))).Replace("\r", "").Replace("___NEWPAGE___", "");
                 Title = Lang.Get(bookStack.Attributes.GetString("titleCode", ""));
             } else
             {
-                AllPagesText = bookStack.Attributes.GetString("text", "");
+                AllPagesText = bookStack.Attributes.GetString("text", "").Replace("\r", "");
                 Title = bookStack.Attributes.GetString("title", "");
             }
 
@@ -44,8 +46,6 @@ namespace Vintagestory.GameContent
 
         protected List<PagePosition> Pageize(string fullText, CairoFont font, double pageWidth, int maxLinesPerPage)
         {
-            fullText = fullText.Replace("\r", "");
-
             TextDrawUtil textUtil = new TextDrawUtil();
             Stack<string> lines = new Stack<string>();
             IEnumerable<TextLine> textlines = textUtil.Lineize(font, fullText, pageWidth, EnumLinebreakBehavior.Default, true).Reverse();
@@ -62,17 +62,6 @@ namespace Vintagestory.GameContent
                 while (currentPageLines < maxLinesPerPage && lines.Count > 0)
                 {
                     string line = lines.Pop();
-                    string[] parts = line.Split(new string[] { "___NEWPAGE___" }, 2, StringSplitOptions.None);
-
-                    if (parts.Length > 1)
-                    {
-                        curLen += parts[0].Length;
-                        if (parts[1].Length > 0)
-                        {
-                            lines.Push(parts[1]);
-                        }
-                        break;
-                    }
 
                     currentPageLines++;
                     curLen += line.Length;
@@ -97,7 +86,7 @@ namespace Vintagestory.GameContent
         protected virtual void Compose()
         {
             double lineHeight = font.GetFontExtents().Height * font.LineHeightMultiplier / RuntimeEnv.GUIScale;
-            ElementBounds textAreaBounds = ElementBounds.Fixed(0, 30, maxWidth, maxLines * lineHeight + 1);
+            ElementBounds textAreaBounds = ElementBounds.Fixed(0, 30, maxWidth, (maxLines + (Pages.Count > 1 ? 2 : 0)) * lineHeight + 1);
 
             ElementBounds prevButtonBounds = ElementBounds.FixedSize(60, 30).FixedUnder(textAreaBounds, 18 + 5).WithAlignment(EnumDialogArea.LeftFixed).WithFixedPadding(10, 2);
             ElementBounds pageLabelBounds = ElementBounds.FixedSize(80, 30).FixedUnder(textAreaBounds, 18 + 2 * 5 + 5).WithAlignment(EnumDialogArea.CenterFixed).WithFixedPadding(10, 2);

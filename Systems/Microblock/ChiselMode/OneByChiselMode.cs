@@ -1,6 +1,8 @@
 ﻿using Vintagestory.API.Client;
 using Vintagestory.GameContent;
 
+#nullable disable
+
 namespace VSSurvivalMod.Systems.ChiselModes
 {
     public class OneByChiselMode : ChiselMode

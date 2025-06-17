@@ -5,6 +5,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockAnvil : Block
@@ -114,7 +116,7 @@ namespace Vintagestory.GameContent
                         Itemstacks = workableStacklist.ToArray(),
                         GetMatchingStacks = (wi, bs, es) => {
                             BlockEntityAnvil bea = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityAnvil;
-                            return bea?.WorkItemStack == null ? null : new ItemStack[] { (bea.WorkItemStack.Collectible as IAnvilWorkable).GetBaseMaterial(bea.WorkItemStack) };
+                            return bea?.WorkItemStack == null ? null : new ItemStack[] { bea.WorkItemStack.Collectible.GetCollectibleInterface<IAnvilWorkable>().GetBaseMaterial(bea.WorkItemStack) };
                         }
                     }
                 };
@@ -147,6 +149,11 @@ namespace Vintagestory.GameContent
         }
 
         public override Cuboidf[] GetCollisionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
+        {
+            return GetSelectionBoxes(blockAccessor, pos);
+        }
+
+        public override Cuboidf[] GetParticleCollisionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
         {
             return GetSelectionBoxes(blockAccessor, pos);
         }

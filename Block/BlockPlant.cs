@@ -3,6 +3,9 @@ using Vintagestory.API.Client.Tesselation;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -20,10 +23,12 @@ namespace Vintagestory.GameContent
         {
             base.OnJsonTesselation(ref sourceMesh, ref lightRgbsByCorner, pos, chunkExtBlocks, extIndex3d);
 
-            for (int i = 0; i < sourceMesh.FlagsCount; i++)
+            var sourcemeshFlags = sourceMesh.Flags;
+            int flagsCount = sourceMesh.FlagsCount;
+            int vertical = VertexFlags.PackNormal(0, 1, 0);
+            for (int i = 0; i < flagsCount; i++)
             {
-                sourceMesh.Flags[i] &= VertexFlags.ClearNormalBitMask;
-                sourceMesh.Flags[i] |= VertexFlags.PackNormal(0, 1, 0);
+                sourcemeshFlags[i] = (sourcemeshFlags[i] & VertexFlags.ClearNormalBitMask) | vertical;
             }
         }
     }
@@ -55,6 +60,7 @@ namespace Vintagestory.GameContent
 
         protected bool disappearOnSoilRemoved = false;
 
+        public virtual bool skipPlantCheck { get; set; } = false;
 
         public override void OnLoaded(ICoreAPI api)
         {
@@ -80,7 +86,7 @@ namespace Vintagestory.GameContent
             drawnHeight = Attributes?["drawnHeight"]?.AsInt(48) ?? 48;
         }
 
-        public float AdjustYPosition(Block[] chunkExtBlocks, int extIndex3d)
+        public float AdjustYPosition(BlockPos pos, Block[] chunkExtBlocks, int extIndex3d)
         {
             Block nblock = chunkExtBlocks[extIndex3d + TileSideEnum.MoveIndex[TileSideEnum.Down]];
             return nblock is BlockFarmland ? -0.0625f : 0f;
@@ -103,22 +109,29 @@ namespace Vintagestory.GameContent
             int clearFlags = VertexFlags.WindBitsMask;
             int verticesCount = sourceMesh.VerticesCount;
 
+            int windToApply = allFlags | ExtraBend;
+
             // Iterate over each element face
+            var sourceMeshFlags = sourceMesh.Flags;
+            var sourceMeshXyz = sourceMesh.xyz;
             for (int vertexNum = 0; vertexNum < verticesCount; vertexNum++)
             {
-                int flag = sourceMesh.Flags[vertexNum] & clearFlags;
+                int flag = sourceMeshFlags[vertexNum] & clearFlags;
 
-                if (!off && sourceMesh.xyz[vertexNum * 3 + 1] > 0.5)
+                if (!off && sourceMeshXyz[vertexNum * 3 + 1] > 0.5)
                 {
-                    flag |= allFlags | ExtraBend;
+                    flag |= windToApply;
                 }
-                sourceMesh.Flags[vertexNum] = flag;
+                sourceMeshFlags[vertexNum] = flag;
             }
         }
 
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
+            if(skipPlantCheck)
+                return base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref failureCode);
+
             if (Variant.ContainsKey("side"))
             {
                 return base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref failureCode);
@@ -134,10 +147,10 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-        
+
         public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
-            if (!CanPlantStay(world.BlockAccessor, pos))
+            if (!skipPlantCheck && !CanPlantStay(world.BlockAccessor, pos))
             {
                 if (world.BlockAccessor.GetBlock(pos.DownCopy()).Id == 0 && disappearOnSoilRemoved) world.BlockAccessor.SetBlock(0, pos);
                 else world.BlockAccessor.BreakBlock(pos, null);
@@ -150,27 +163,42 @@ namespace Vintagestory.GameContent
             if (Variant.ContainsKey("side"))
             {
                 var facing = BlockFacing.FromCode(Variant["side"]);
-                
+
                 var npos = pos.AddCopy(facing);
                 var block = blockAccessor.GetBlock(npos);
                 return block.CanAttachBlockAt(blockAccessor, this, npos, facing.Opposite);
             }
             else
             {
-                Block block = blockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
-                if (block.Fertility <= 0) return false;
+                Block blockBelow = blockAccessor.GetBlockBelow(pos);
+                if (blockBelow.Fertility <= 0) return false;
                 return true;
             }
         }
 
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, IRandom worldGenRand, BlockPatchAttributes attributes = null)
         {
             if (!CanPlantStay(blockAccessor, pos)) return false;
-            return base.TryPlaceBlockForWorldGen(blockAccessor, pos, onBlockFace, worldGenRand);
+            var canPlace = true;
+            var tmpPos = pos.Copy();
+            for (int x = -1; x < 2; x++)
+            {
+                for (int z = -1; z < 2; z++)
+                {
+                    tmpPos.Set(pos.X + x, pos.Y, pos.Z + z);
+                    var block = blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Solid);
+                    if (block is BlockWaterLilyGiant)
+                    {
+                        canPlace = false;
+                    }
+                }
+            }
+            if (!canPlace) return false;
+            return base.TryPlaceBlockForWorldGen(blockAccessor, pos, onBlockFace, worldGenRand, attributes);
         }
 
-        
+
 
         public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing, int rndIndex = -1)
         {
@@ -244,6 +272,5 @@ namespace Vintagestory.GameContent
         {
             return EnumTreeFellingBehavior.ChopSpreadVertical;
         }
-
     }
 }

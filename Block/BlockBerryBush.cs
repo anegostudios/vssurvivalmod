@@ -1,8 +1,11 @@
-﻿using System.Linq;
+﻿using System.Collections.Generic;
+using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -12,6 +15,45 @@ namespace Vintagestory.GameContent
 
         public string State => Variant["state"];
         public string Type => Variant["type"];
+
+        WorldInteraction[] interactions;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+
+            interactions = ObjectCacheUtil.GetOrCreate(api, "berryBushInteractions", () =>
+            {
+                List<ItemStack> toolStacklist = new List<ItemStack>();
+
+                foreach (Item item in api.World.Items)
+                {
+                    if (item.Tool == EnumTool.Shears)
+                    {
+                        toolStacklist.Add(new ItemStack(item));
+                    }
+                }
+
+                var sstacks = toolStacklist.ToArray();
+
+                return new WorldInteraction[]
+                {
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-berrybush-prune",
+                        MouseButton = EnumMouseButton.Right,
+                        Itemstacks = sstacks,
+                        GetMatchingStacks = (wi, bs, es) =>
+                        {
+                            var bebush = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityBerryBush;
+
+                            if (bebush != null && !bebush.Pruned) return sstacks;
+                            else return null;
+                        }
+                    }
+                };
+            });
+        }
 
         public MeshData GetPrunedMesh(BlockPos pos)
         {
@@ -42,9 +84,10 @@ namespace Vintagestory.GameContent
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
-            if (byPlayer?.InventoryManager?.ActiveHotbarSlot?.Itemstack?.Collectible?.Tool == EnumTool.Shears)
+            BlockEntityBerryBush bebush = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityBerryBush;
+
+            if ((!bebush?.Pruned ?? false) && byPlayer?.InventoryManager?.ActiveHotbarSlot?.Itemstack?.Collectible?.Tool == EnumTool.Shears)
             {
-                BlockEntityBerryBush bebush = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityBerryBush;
                 bebush.Prune();
                 return true;
             }
@@ -101,6 +144,11 @@ namespace Vintagestory.GameContent
             }
 
             return drops;
+        }
+
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
+        {
+            return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer).Append(interactions);
         }
     }
 }

@@ -1,5 +1,7 @@
 ﻿using Vintagestory.API.Common;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     class ItemLiquidPortion : Item
@@ -14,7 +16,7 @@ namespace Vintagestory.GameContent
                 float litres = (float)entityItem.Itemstack.StackSize / props.ItemsPerLitre;
 
                 entityItem.World.SpawnCubeParticles(entityItem.SidedPos.XYZ, entityItem.Itemstack, 0.75f, (int)(litres * 2), 0.45f);
-                entityItem.World.PlaySoundAt(new AssetLocation("sounds/environment/smallsplash"), (float)entityItem.SidedPos.X, (float)entityItem.SidedPos.Y, (float)entityItem.SidedPos.Z, null);
+                entityItem.World.PlaySoundAt(new AssetLocation("sounds/environment/smallsplash"), (float)entityItem.SidedPos.X, (float)entityItem.SidedPos.InternalY, (float)entityItem.SidedPos.Z, null);
             }
             
 

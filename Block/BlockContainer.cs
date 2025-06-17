@@ -5,6 +5,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockContainer : Block
@@ -45,16 +47,16 @@ namespace Vintagestory.GameContent
                 return ResolveUcontents(world, itemstack);
             }
 
-            List<ItemStack> stacks = new List<ItemStack>();
+            ItemStack[] stacks = new ItemStack[treeAttr.Count];
             foreach (var val in treeAttr)
             {
                 ItemStack stack = (val.Value as ItemstackAttribute).value;
                 if (stack != null) stack.ResolveBlockOrItem(world);
 
-                stacks.Add(stack);
+                if (int.TryParse(val.Key, out int index)) stacks[index] = stack;
             }
 
-            return stacks.ToArray();
+            return stacks;
         }
 
         public override bool Equals(ItemStack thisStack, ItemStack otherStack, params string[] ignoreAttributeSubTrees)
@@ -72,18 +74,20 @@ namespace Vintagestory.GameContent
                 List<ItemStack> stacks = new List<ItemStack>();
 
                 var attrs = itemstack.Attributes["ucontents"] as TreeArrayAttribute;
+
                 foreach (ITreeAttribute stackAttr in attrs.value)
                 {
                     stacks.Add(CreateItemStackFromJson(stackAttr, world, Code.Domain));
                 }
-                SetContents(itemstack, stacks.ToArray());
+                ItemStack[] stacksAsArray = stacks.ToArray();
+                SetContents(itemstack, stacksAsArray);
                 itemstack.Attributes.RemoveAttribute("ucontents");
 
-                return stacks.ToArray();
+                return stacksAsArray;
             }
             else
             {
-                return new ItemStack[0];
+                return System.Array.Empty<ItemStack>();
             }
         }
 
@@ -164,10 +168,10 @@ namespace Vintagestory.GameContent
 
                 for (int i = 0; i < drops.Length; i++)
                 {
-                    world.SpawnItemEntity(drops[i], new Vec3d(pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5), null);
+                    world.SpawnItemEntity(drops[i], pos, null);
                 }
 
-                world.PlaySoundAt(Sounds.GetBreakSound(byPlayer), pos.X, pos.Y, pos.Z, byPlayer);
+                world.PlaySoundAt(Sounds.GetBreakSound(byPlayer), pos, -0.5, byPlayer);
             }
 
             if (EntityClass != null)
@@ -175,7 +179,7 @@ namespace Vintagestory.GameContent
                 BlockEntity entity = world.BlockAccessor.GetBlockEntity(pos);
                 if (entity != null)
                 {
-                    entity.OnBlockBroken();
+                    entity.OnBlockBroken(byPlayer);
                 }
             }
 
@@ -189,16 +193,25 @@ namespace Vintagestory.GameContent
 
             ItemStack[] stacks = GetContents(world, inslot.Itemstack);
 
-            for (int i = 0; stacks != null && i < stacks.Length; i++)
+            if (inslot.Itemstack.Attributes.GetBool("timeFrozen"))
             {
-                var stack = stacks[i];
-                if (stack == null) continue;
+                foreach (var stack in stacks) stack?.Attributes.SetBool("timeFrozen", true);
+                return null;
+            }
 
-                ItemSlot dummySlot = GetContentInDummySlot(inslot, stack);
-                stack.Collectible.UpdateAndGetTransitionStates(world, dummySlot);
-                if (dummySlot.Itemstack == null)
+            if (stacks != null)
+            {
+                for (int i = 0; i < stacks.Length; i++)
                 {
-                    stacks[i] = null;
+                    var stack = stacks[i];
+                    if (stack == null) continue;
+
+                    ItemSlot dummySlot = GetContentInDummySlot(inslot, stack);
+                    stack.Collectible.UpdateAndGetTransitionStates(world, dummySlot);
+                    if (dummySlot.Itemstack == null)
+                    {
+                        stacks[i] = null;
+                    }
                 }
             }
 
@@ -216,19 +229,17 @@ namespace Vintagestory.GameContent
         protected virtual ItemSlot GetContentInDummySlot(ItemSlot inslot, ItemStack itemstack)
         {
             ItemSlot dummySlot;
-
-            var pref = inslot.Inventory?.OnAcquireTransitionSpeed;
-
             DummyInventory dummyInv = new DummyInventory(api);
             dummySlot = new DummySlot(itemstack, dummyInv);
             dummySlot.MarkedDirty += () => { inslot.Inventory?.DidModifyItemSlot(inslot); return true; };
 
-            dummyInv.OnAcquireTransitionSpeed = (transType, stack, mulByConfig) =>
+            dummyInv.OnAcquireTransitionSpeed += (transType, stack, mulByConfig) =>
             {
                 float mul = mulByConfig;
-                if (pref != null)
+
+                if (inslot.Inventory != null)
                 {
-                    mul = pref(transType, stack, mulByConfig);
+                    mul = inslot.Inventory.InvokeTransitionSpeedDelegates(transType, stack, mulByConfig);
                 }
 
                 return mul * GetContainingTransitionModifierContained(api.World, inslot, transType);
@@ -244,9 +255,12 @@ namespace Vintagestory.GameContent
         {
             ItemStack[] stacks = GetContents(world, itemstack);
 
-            for (int i = 0; stacks != null && i < stacks.Length; i++)
+            if (stacks != null)
             {
-                stacks[i]?.Collectible.SetTemperature(world, stacks[i], temperature, delayCooldown);
+                for (int i = 0; i < stacks.Length; i++)
+                {
+                    stacks[i]?.Collectible.SetTemperature(world, stacks[i], temperature, delayCooldown);
+                }
             }
 
             base.SetTemperature(world, itemstack, temperature, delayCooldown);
@@ -264,11 +278,11 @@ namespace Vintagestory.GameContent
             ItemStack[] stacks = GetNonEmptyContents(world, inSlot.Itemstack);
             DummyInventory dummyInv = new DummyInventory(api);
             ItemSlot slot = BlockCrock.GetDummySlotForFirstPerishableStack(api.World, stacks, null, dummyInv);
-            dummyInv.OnAcquireTransitionSpeed = (transType, stack, mul) =>
+            dummyInv.OnAcquireTransitionSpeed += (transType, stack, mul) =>
             {
                 float val = mul * GetContainingTransitionModifierContained(world, inSlot, transType);
 
-                val *= inSlot.Inventory.GetTransitionSpeedMul(transType, inSlot.Itemstack);
+                if (inSlot.Inventory != null) val *= inSlot.Inventory.GetTransitionSpeedMul(transType, inSlot.Itemstack);
 
                 return val;
             };

@@ -2,6 +2,8 @@
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class PotInFirepitRenderer : IInFirepitRenderer
@@ -38,12 +40,10 @@ namespace Vintagestory.GameContent
             else
             {
                 string basePath = potBlock.Code.PathStartsWith("dirtyclaypot") ? "shapes/block/clay/pot-dirty-" : "shapes/block/clay/pot-";    // hard-coding for dirty pot seems reasonable here, as the shape paths are already hard-coded
-                MeshData potMesh;
-                capi.Tesselator.TesselateShape(potBlock, Shape.TryGet(capi, basePath + "opened-empty.json"), out potMesh);
+                capi.Tesselator.TesselateShape(potBlock, Shape.TryGet(capi, basePath + "opened-empty.json"), out MeshData potMesh);
                 potRef = capi.Render.UploadMultiTextureMesh(potMesh);
 
-                MeshData lidMesh;
-                capi.Tesselator.TesselateShape(potBlock, Shape.TryGet(capi, basePath + "part-lid.json"), out lidMesh);
+                capi.Tesselator.TesselateShape(potBlock, Shape.TryGet(capi, basePath + "part-lid.json"), out MeshData lidMesh);
                 lidRef = capi.Render.UploadMultiTextureMesh(lidMesh);
             }
         }
@@ -67,7 +67,6 @@ namespace Vintagestory.GameContent
 
             IStandardShaderProgram prog = rpi.PreparedStandardShader(pos.X, pos.Y, pos.Z);
 
-            prog.Tex2D = capi.BlockTextureAtlas.AtlasTextures[0].TextureId;
             prog.DontWarpVertices = 0;
             prog.AddRenderFlags = 0;
             prog.RgbaAmbientIn = rpi.AmbientColor;
@@ -92,7 +91,7 @@ namespace Vintagestory.GameContent
             prog.ViewMatrix = rpi.CameraMatrixOriginf;
             prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
 
-            rpi.RenderMultiTextureMesh(potRef == null ? potWithFoodRef : potRef);
+            rpi.RenderMultiTextureMesh(potRef == null ? potWithFoodRef : potRef, "tex");
 
             if (!isInOutputSlot)
             {
@@ -115,7 +114,7 @@ namespace Vintagestory.GameContent
                 prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
 
 
-                rpi.RenderMultiTextureMesh(lidRef);
+                rpi.RenderMultiTextureMesh(lidRef, "tex");
             }
 
             prog.Stop();

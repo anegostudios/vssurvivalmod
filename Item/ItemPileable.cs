@@ -3,6 +3,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public abstract class ItemPileable : Item
@@ -43,16 +45,13 @@ namespace Vintagestory.GameContent
 
             if (be is BlockEntityLabeledChest || be is BlockEntitySignPost || be is BlockEntitySign || be is BlockEntityBloomery || be is BlockEntityFirepit || be is BlockEntityForge || be is BlockEntityCrate || atblock.HasBehavior<BlockBehaviorJonasGasifier>()) return;
 
-            if (be is IBlockEntityItemPile)
+            IBlockEntityItemPile pile = be?.Block.GetInterface<IBlockEntityItemPile>(api.World, onBlockPos);
+            if (pile?.OnPlayerInteract(byPlayer) ?? false)
             {
-                IBlockEntityItemPile pile = (IBlockEntityItemPile)be;
-                if (pile.OnPlayerInteract(byPlayer))
-                {
-                    handling = EnumHandHandling.PreventDefaultAction;
+                handling = EnumHandHandling.PreventDefaultAction;
 
-                    ((byEntity as EntityPlayer)?.Player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
-                    return;
-                }
+                ((byEntity as EntityPlayer)?.Player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+                return;
             }
 
             if (!byEntity.World.Claims.TryAccess(byPlayer, onBlockPos.AddCopy(blockSel.Face), EnumBlockAccessFlags.BuildOrBreak))
@@ -61,17 +60,13 @@ namespace Vintagestory.GameContent
             }
 
 
-            be = byEntity.World.BlockAccessor.GetBlockEntity(onBlockPos.AddCopy(blockSel.Face));
-            if (be is IBlockEntityItemPile)
+            pile = be?.Block.GetInterface<IBlockEntityItemPile>(api.World, onBlockPos.AddCopy(blockSel.Face));
+            if (pile?.OnPlayerInteract(byPlayer) ?? false)
             {
-                IBlockEntityItemPile pile = (IBlockEntityItemPile)be;
-                if (pile.OnPlayerInteract(byPlayer))
-                {
-                    handling = EnumHandHandling.PreventDefaultAction;
+                handling = EnumHandHandling.PreventDefaultAction;
 
-                    ((byEntity as EntityPlayer)?.Player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
-                    return;
-                }
+                ((byEntity as EntityPlayer)?.Player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+                return;
             }
 
             Block block = byEntity.World.GetBlock(PileBlockCode);

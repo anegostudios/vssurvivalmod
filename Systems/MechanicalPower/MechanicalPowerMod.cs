@@ -6,6 +6,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent.Mechanics
 {
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
@@ -257,9 +259,8 @@ namespace Vintagestory.GameContent.Mechanics
 
         public MechanicalNetwork GetOrCreateNetwork(long networkId)
         {
-            MechanicalNetwork mw;
-            
-            if (!data.networksById.TryGetValue(networkId, out mw))
+
+            if (!data.networksById.TryGetValue(networkId, out MechanicalNetwork mw))
             {
                 data.networksById[networkId] = mw = new MechanicalNetwork(this, networkId);
             }

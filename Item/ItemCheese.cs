@@ -3,6 +3,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ItemCheese : Item
@@ -40,7 +42,7 @@ namespace Vintagestory.GameContent
                         slot.MarkDirty();
                     }
 
-                    api.World.PlaySoundAt(placeblock.Sounds.Place, targetPos.X + 0.5, targetPos.Y, targetPos.Z + 0.5, byPlayer);
+                    api.World.PlaySoundAt(placeblock.Sounds.Place, targetPos.X + 0.5, targetPos.InternalY, targetPos.Z + 0.5, byPlayer);
 
                     handling = EnumHandHandling.PreventDefault;
                 } else

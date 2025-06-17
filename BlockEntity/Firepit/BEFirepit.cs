@@ -8,12 +8,13 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityFirepit : BlockEntityOpenableContainer, IHeatSource, IFirePit
+    public class BlockEntityFirepit : BlockEntityOpenableContainer, IHeatSource, IFirePit, ITemperatureSensitive
     {
         internal InventorySmelting inventory;
-
 
         // Temperature before the half second tick
         public float prevFurnaceTemperature = 20;
@@ -48,6 +49,9 @@ namespace Vintagestory.GameContent
         FirepitContentsRenderer renderer;
 
         bool shouldRedraw;
+
+        public bool IsHot => IsBurning;
+        public float emptyFirepitBurnTimeMulBonus = 4f;
 
 
         #region Config
@@ -121,8 +125,6 @@ namespace Vintagestory.GameContent
 
                 UpdateRenderer();
             }
-
-            wsys = api.ModLoader.GetModSystem<WeatherSystemBase>();
         }
 
 
@@ -152,11 +154,6 @@ namespace Vintagestory.GameContent
         }
 
 
-        public int getInventoryStackLimit()
-        {
-            return 64;
-        }
-
         // Sync to client every 500ms
         private void On500msTick(float dt)
         {
@@ -166,54 +163,10 @@ namespace Vintagestory.GameContent
             }
 
             prevFurnaceTemperature = furnaceTemperature;
-
-            if (shouldExtinguishFromRainFall(out float rainLevel))
-            {
-                Api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), Pos.X + 0.5, Pos.Y, Pos.Z + 0.5, null, false, 16);
-
-                fuelBurnTime -= (float)rainLevel / 10f;
-
-                if (Api.World.Rand.NextDouble() < rainLevel / 5f || fuelBurnTime <= 0)
-                {
-                    setBlockState("cold");
-                    extinguishedTotalHours = -99;
-                    canIgniteFuel = false;
-                    fuelBurnTime = 0;
-                    maxFuelBurnTime = 0;
-                }
-
-                MarkDirty(true);
-            }
         }
 
 
 
-        WeatherSystemBase wsys;
-        Vec3d tmpPos = new Vec3d();
-
-
-        public bool shouldExtinguishFromRainFall(out float rainLevel)
-        {
-            rainLevel = 0;
-            if (Api.Side == EnumAppSide.Server && IsBurning && Api.World.Rand.NextDouble() > 0.5)
-            {
-                if (Api.World.BlockAccessor.GetRainMapHeightAt(Pos.X, Pos.Z) <= Pos.Y)   // It's more efficient to do this quick check before GetPrecipitation
-                {
-                    // Die on rainfall
-                    tmpPos.Set(Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5);
-                    rainLevel = wsys.GetPrecipitation(tmpPos);
-                    if (rainLevel > 0.04 && Api.World.Rand.NextDouble() < rainLevel * 5)
-                    {
-                        return true;
-                    }
-                }
-            }
-
-            return false;
-        }
-
-
-        public float emptyFirepitBurnTimeMulBonus = 4f;
 
         private void OnBurnTick(float dt)
         {
@@ -415,7 +368,23 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public void CoolNow(float amountRel)
+        {
+            Api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), Pos, -0.5, null, false, 16);
 
+            fuelBurnTime -= (float)amountRel / 10f;
+
+            if (Api.World.Rand.NextDouble() < amountRel / 5f || fuelBurnTime <= 0)
+            {
+                setBlockState("cold");
+                extinguishedTotalHours = -99;
+                canIgniteFuel = false;
+                fuelBurnTime = 0;
+                maxFuelBurnTime = 0;
+            }
+
+            MarkDirty(true);
+        }
 
 
 
@@ -612,7 +581,7 @@ namespace Vintagestory.GameContent
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
             base.FromTreeAttributes(tree, worldForResolving);
-            Inventory.FromTreeAttributes(tree.GetTreeAttribute("inventory"));
+            //Inventory.FromTreeAttributes(tree.GetTreeAttribute("inventory")); - why twice? its already done in the base method Tyron 5.nov 2024
 
             if (Api != null)
             {
@@ -751,11 +720,6 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void OnBlockBroken(IPlayer byPlayer = null)
-        {
-            base.OnBlockBroken();
-        }
-
 
 
         #endregion
@@ -856,7 +820,8 @@ namespace Vintagestory.GameContent
         {
             base.OnLoadCollectibleMappings(worldForResolve, oldBlockIdMapping, oldItemIdMapping, schematicSeed, resolveImports);
 
-            foreach (ItemSlot slot in inventory.CookingSlots)
+            // Why is this here? The base method already does this
+            /*foreach (ItemSlot slot in inventory.CookingSlots)
             {
                 if (slot.Itemstack == null) continue;
                 if (!slot.Itemstack.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve))
@@ -867,7 +832,7 @@ namespace Vintagestory.GameContent
                 {
                     slot.Itemstack.Collectible.OnLoadCollectibleMappings(worldForResolve, slot, oldBlockIdMapping, oldItemIdMapping, resolveImports);
                 }
-            }
+            }*/
         }
 
         public EnumFirepitModel CurrentModel { get; private set; }
@@ -928,8 +893,7 @@ namespace Vintagestory.GameContent
 
                 if (contentStack.Class != EnumItemClass.Item)
                 {
-                    MeshData ingredientMesh;
-                    tesselator.TesselateBlock(contentStack.Block, out ingredientMesh);
+                    tesselator.TesselateBlock(contentStack.Block, out MeshData ingredientMesh);
 
                     ingredientMesh.ModelTransform(renderProps.Transform);
 
@@ -977,8 +941,7 @@ namespace Vintagestory.GameContent
             Dictionary<string, MeshData> Meshes = ObjectCacheUtil.GetOrCreate(Api, "firepit-meshes", () => new Dictionary<string, MeshData>());
 
             string key = burnstate + "-" + contentstate;
-            MeshData meshdata;
-            if (!Meshes.TryGetValue(key, out meshdata))
+            if (!Meshes.TryGetValue(key, out MeshData meshdata))
             {
                 Block block = Api.World.BlockAccessor.GetBlock(Pos);
                 if (block.BlockId == 0) return null;

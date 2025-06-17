@@ -6,6 +6,9 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.Util;
+using Vintagestory.ServerMods;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -36,11 +39,22 @@ namespace Vintagestory.GameContent
             {
                 TradeProperties tradeProps = null;
 
-                if (entitytype.Attributes?["tradeProps"].Exists == true)
+                var stringpath = entitytype.Attributes?["tradePropsFile"].AsString();
+                AssetLocation filepath=null;
+
+                if (entitytype.Attributes?["tradeProps"].Exists == true || stringpath != null)
                 {
                     try
                     {
-                        tradeProps = entitytype.Attributes["tradeProps"].AsObject<TradeProperties>(null, entitytype.Code.Domain);
+                        filepath = stringpath == null ? null : AssetLocation.Create(stringpath, entitytype.Code.Domain);
+                        if (filepath != null)
+                        {
+                            tradeProps = capi.Assets.Get(filepath.WithPathAppendixOnce(".json")).ToObject<TradeProperties>();
+                        }
+                        else
+                        {
+                            tradeProps = entitytype.Attributes["tradeProps"].AsObject<TradeProperties>(null, entitytype.Code.Domain);
+                        }
                     }
                     catch (Exception e)
                     {
@@ -49,6 +63,7 @@ namespace Vintagestory.GameContent
                         capi.World.Logger.VerboseDebug("Failed deserializing TradeProperties:");
                         capi.World.Logger.VerboseDebug("=================");
                         capi.World.Logger.VerboseDebug("Tradeprops json:");
+                        if (filepath != null) capi.World.Logger.VerboseDebug("File path {0}:", filepath);
                         capi.World.Logger.VerboseDebug("{0}", entitytype.Server?.Attributes["tradeProps"].ToJsonToken());
                     }
                 }
@@ -83,7 +98,7 @@ namespace Vintagestory.GameContent
                 ExtraHandbookSection section = bh.ExtraHandBookSections?.FirstOrDefault(ele => ele.Title == title);
                 if (section == null)
                 {
-                    section = new ExtraHandbookSection() { Title = title, TextParts = new string[0] };
+                    section = new ExtraHandbookSection() { Title = title, TextParts = Array.Empty<string>() };
                     if (bh.ExtraHandBookSections != null) bh.ExtraHandBookSections.Append(section);
                     else bh.ExtraHandBookSections = new ExtraHandbookSection[] { section };
                 }

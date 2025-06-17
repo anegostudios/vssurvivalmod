@@ -4,6 +4,8 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     
@@ -59,7 +61,7 @@ namespace Vintagestory.GameContent
 
                     .AddSmallButton(Lang.Get("Cancel"), OnButtonCancel, cancelButtonBounds)
                     .AddSmallButton(Lang.Get("editablebook-sign"), OnButtonSign, signButtonBounds)
-                    .AddSmallButton(Lang.Get("Save"), OnButtonSave, saveButtonBounds)
+                    .AddSmallButton(Lang.Get("editablebook-save"), OnButtonSave, saveButtonBounds)
                 .EndChildElements()
                 .Compose()
             ;
@@ -192,7 +194,7 @@ namespace Vintagestory.GameContent
             var curPagePos = Pages[curPage];
             string pageText = SingleComposer.GetTextArea("text").GetText();
 
-            AllPagesText = AllPagesText.Substring(0, curPagePos.Start) + pageText + AllPagesText.Substring(Math.Min(AllPagesText.Length, curPagePos.Start + curPagePos.Length));
+            AllPagesText = AllPagesText.Substring(0, curPagePos.Start) + pageText + AllPagesText.Substring(Math.Min(AllPagesText.Length, curPagePos.Start + curPagePos.Length)).Replace("\r", "");
             Pages = Pageize(AllPagesText, font, textAreaWidth, maxLines);
             if (curPage >= Pages.Count)
             {

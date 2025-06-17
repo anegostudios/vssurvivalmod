@@ -4,6 +4,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     /// <summary>
@@ -33,11 +35,11 @@ namespace Vintagestory.GameContent
             vineBlockLocation = new AssetLocation("pumpkin-vine-1-normal");
         }
 
-        public override void OnPlanted(ICoreAPI api)
+        public override void OnPlanted(ICoreAPI api, ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel)
         {
             vineGrowthQuantity = vineGrowthQuantityGen.nextFloat(1, api.World.Rand);
         }
-        
+
         public override bool TryGrowCrop(ICoreAPI api, IFarmlandBlockEntity farmland, double currentTotalHours, int newGrowthStage, ref EnumHandling handling)
         {
             if (vineGrowthQuantity == 0)

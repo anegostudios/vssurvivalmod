@@ -5,6 +5,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     /// <summary>
@@ -49,8 +51,7 @@ namespace Vintagestory.GameContent
         {
             Dictionary<int, MultiTextureMeshRef> meshrefs;
 
-            object obj;
-            if (capi.ObjectCache.TryGetValue(meshRefsCacheKey, out obj))
+            if (capi.ObjectCache.TryGetValue(meshRefsCacheKey, out object obj))
             {
                 meshrefs = obj as Dictionary<int, MultiTextureMeshRef>;
             }
@@ -89,8 +90,7 @@ namespace Vintagestory.GameContent
             ICoreClientAPI capi = api as ICoreClientAPI;
             if (capi == null) return;
 
-            object obj;
-            if (capi.ObjectCache.TryGetValue(meshRefsCacheKey, out obj))
+            if (capi.ObjectCache.TryGetValue(meshRefsCacheKey, out object obj))
             {
                 Dictionary<int, MultiTextureMeshRef> meshrefs = obj as Dictionary<int, MultiTextureMeshRef>;
 
@@ -149,8 +149,7 @@ namespace Vintagestory.GameContent
                     return containerMesh;
                 }
 
-                MeshData contentMesh;
-                capi.Tesselator.TesselateShape(GetType().Name, shape, out contentMesh, contentSource, new Vec3f(Shape.rotateX, Shape.rotateY, Shape.rotateZ), props.GlowLevel);
+                capi.Tesselator.TesselateShape(GetType().Name, shape, out MeshData contentMesh, contentSource, new Vec3f(Shape.rotateX, Shape.rotateY, Shape.rotateZ), props.GlowLevel);
 
                 contentMesh.Translate(0, GameMath.Min(liquidMaxYTranslate, contentStack.StackSize / props.ItemsPerLitre * liquidYTranslatePerLitre), 0);
 

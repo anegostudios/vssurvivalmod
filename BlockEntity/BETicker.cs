@@ -6,6 +6,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityTicker : BlockEntity
@@ -39,7 +41,7 @@ namespace Vintagestory.GameContent
 
         private void TryInteract(BlockFacing facing)
         {
-            Block block = Api.World.BlockAccessor.GetBlock(Pos.X + facing.Normali.X, Pos.Y + facing.Normali.Y, Pos.Z + facing.Normali.Z);
+            Block block = Api.World.BlockAccessor.GetBlockOnSide(Pos, facing);
             if (block != null)
             {
                 try

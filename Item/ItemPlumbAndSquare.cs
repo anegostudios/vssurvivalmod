@@ -7,6 +7,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ItemPlumbAndSquare : Item
@@ -78,19 +80,25 @@ namespace Vintagestory.GameContent
                 return;
             }
 
+            IServerPlayer byPlayer = (byEntity as EntityPlayer).Player as IServerPlayer;
+            if (byPlayer == null) return;
+
+            if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                return;
+            }
+
             ModSystemBlockReinforcement bre = byEntity.Api.ModLoader.GetModSystem<ModSystemBlockReinforcement>();
 
-            IPlayer player = (byEntity as EntityPlayer).Player;
-            if (player == null) return;
 
-            ItemSlot resSlot = bre.FindResourceForReinforcing(player);
+            ItemSlot resSlot = bre.FindResourceForReinforcing(byPlayer);
             if (resSlot == null) return;
 
             int strength = resSlot.Itemstack.ItemAttributes["reinforcementStrength"].AsInt(0);
 
             int toolMode = slot.Itemstack.Attributes.GetInt("toolMode");
             int groupUid = 0;
-            var groups = player.GetGroups();
+            var groups = byPlayer.GetGroups();
             if (toolMode > 0 && toolMode - 1 < groups.Length)
             {
                 groupUid = groups[toolMode - 1].GroupUid;
@@ -98,15 +106,15 @@ namespace Vintagestory.GameContent
 
             if (!api.World.BlockAccessor.GetBlock(blockSel.Position).HasBehavior<BlockBehaviorReinforcable>())
             {
-                (player as IServerPlayer).SendIngameError("notreinforcable", "This block can not be reinforced!");
+                (byPlayer as IServerPlayer).SendIngameError("notreinforcable", "This block can not be reinforced!");
                 return;
             }
 
-            bool didStrengthen = groupUid > 0 ? bre.StrengthenBlock(blockSel.Position, player, strength, groupUid) : bre.StrengthenBlock(blockSel.Position, player, strength);
+            bool didStrengthen = groupUid > 0 ? bre.StrengthenBlock(blockSel.Position, byPlayer, strength, groupUid) : bre.StrengthenBlock(blockSel.Position, byPlayer, strength);
 
             if (!didStrengthen)
             {
-                (player as IServerPlayer).SendIngameError("alreadyreinforced", "Cannot reinforce block, it's already reinforced!");
+                (byPlayer as IServerPlayer).SendIngameError("alreadyreinforced", "Cannot reinforce block, it's already reinforced!");
                 return;
             }
 
@@ -114,7 +122,7 @@ namespace Vintagestory.GameContent
             resSlot.MarkDirty();
 
             BlockPos pos = blockSel.Position;
-            byEntity.World.PlaySoundAt(new AssetLocation("sounds/tool/reinforce"), pos.X, pos.Y, pos.Z, null);
+            byEntity.World.PlaySoundAt(new AssetLocation("sounds/tool/reinforce"), pos, 0, null);
 
             handling = EnumHandHandling.PreventDefaultAction;
             if (byEntity.World.Side == EnumAppSide.Client) ((byEntity as EntityPlayer)?.Player as IClientPlayer).TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
@@ -166,7 +174,7 @@ namespace Vintagestory.GameContent
             }
 
             BlockPos pos = blockSel.Position;
-            byEntity.World.PlaySoundAt(new AssetLocation("sounds/tool/reinforce"), pos.X, pos.Y, pos.Z, null);
+            byEntity.World.PlaySoundAt(new AssetLocation("sounds/tool/reinforce"), pos, 0, null);
 
             handling = EnumHandHandling.PreventDefaultAction;
         }

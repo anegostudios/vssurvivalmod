@@ -2,6 +2,8 @@
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BEBehaviorAttractsLightning : BlockEntityBehavior
@@ -73,14 +75,9 @@ namespace Vintagestory.GameContent
 
             float yDiff = configProps.ArtificialElevation + ourRainHeight - impactRainHeight;
 
-            // We want the modifier to always be beneficial (if greater than 1)
-            if(yDiff < 0)
-            {
-                yDiff /= configProps.ElevationAttractivenessMultiplier;
-            } else
-            {
-                yDiff *= configProps.ElevationAttractivenessMultiplier;
-            }
+            // If yDiff is less than 0, this doesn't change the result
+            // since any multiplication or division would still be less than 0
+            yDiff *= configProps.ElevationAttractivenessMultiplier;
 
             yDiff = GameMath.Min(40, yDiff);
 

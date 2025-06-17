@@ -5,6 +5,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public enum EnumCurdsBundleState
@@ -126,10 +128,10 @@ namespace Vintagestory.GameContent
                 startSqueezeAnim();
             } else
             {
-                (Api as ICoreServerAPI).Network.BroadcastBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, 1010);
+                (Api as ICoreServerAPI).Network.BroadcastBlockEntityPacket(Pos, 1010);
             }
 
-            Api.World.PlaySoundAt(new AssetLocation("sounds/player/wetclothsqueeze.ogg"), Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, byPlayer, false);
+            Api.World.PlaySoundAt(new AssetLocation("sounds/player/wetclothsqueeze.ogg"), Pos.X + 0.5, Pos.InternalY + 0.5, Pos.Z + 0.5, byPlayer, false);
 
             listenerId = Api.World.RegisterGameTickListener(onSqueezing, 20);
             secondsPassed = 0;

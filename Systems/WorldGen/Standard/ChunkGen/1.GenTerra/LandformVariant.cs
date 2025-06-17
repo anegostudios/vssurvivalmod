@@ -5,6 +5,8 @@ using Vintagestory.API.Server;
 using Vintagestory.API.Common;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods.NoObf
 {
     public class LandformVariant : WorldPropertyVariant
@@ -16,9 +18,9 @@ namespace Vintagestory.ServerMods.NoObf
         [JsonIgnore]
         public int ColorInt;
         [JsonIgnore]
-        public double WeightTmp; // Temporary helper value 
-        
-        
+        public double WeightTmp; // Temporary helper value
+
+
         [JsonProperty]
         public string HexColor;
         [JsonProperty]
@@ -51,14 +53,14 @@ namespace Vintagestory.ServerMods.NoObf
         [JsonProperty]
         public float[] TerrainYKeyThresholds;
         [JsonProperty]
-        public LandformVariant[] Mutations = new LandformVariant[0];
+        public LandformVariant[] Mutations = Array.Empty<LandformVariant>();
         // Mutation chance
         [JsonProperty]
         public float Chance = 0f;
 
 
         // What if we the horizontal plane could modify the terrain thresholds?
-        // Example: A heavily perlin wobbled map that creates lots of stripes should 
+        // Example: A heavily perlin wobbled map that creates lots of stripes should
         // give us ripples or dents in the terrain
         // Should probably only be taken into calculation if the base thresholds is a above a certain value (e.g. so only hills/mountains are affected)
 
@@ -71,7 +73,7 @@ namespace Vintagestory.ServerMods.NoObf
             expandOctaves(api);
 
             LerpThresholds(api.MapSizeY);
-            this.ColorInt = rnd.Next(int.MaxValue) | (255 << 24);
+            ColorInt = rnd.Next(int.MaxValue) | (255 << 24);
         }
 
         // Adds additional octaves to prevent super smooth worldgen on large world heights
@@ -83,7 +85,7 @@ namespace Vintagestory.ServerMods.NoObf
             {
                 var ext = new double[m].Fill(TerrainOctaves[TerrainOctaves.Length - 1]);
                 double addSum = 0;
-                
+
                 for (int i = 0; i < ext.Length; i++)
                 {
                     var val = Math.Pow(0.8, i + 1);
@@ -156,7 +158,7 @@ namespace Vintagestory.ServerMods.NoObf
                     }
                     throw new Exception("Illegal TerrainYKeyPositions in landforms.js, Landform " + Code + ", key positions must be more than 0 blocks apart. Translated key positions for this maps world height: " + pos);
                 }
-                
+
                 TerrainYThresholds[y] = 1 - GameMath.Lerp(curThreshold, nextThreshold, distance); // We need inverted lerped value
             }
         }

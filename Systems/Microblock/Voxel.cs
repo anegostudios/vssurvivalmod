@@ -1,5 +1,7 @@
 ﻿using System;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public struct Voxel : IEquatable<Voxel>

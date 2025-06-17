@@ -2,6 +2,8 @@
 using Vintagestory.API.Client;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ResonatorRenderer : IRenderer
@@ -41,7 +43,7 @@ namespace Vintagestory.GameContent
         {
             if (cylinderMeshRef == null) return;
 
-            long ellapsedMs = api.World.ElapsedMilliseconds;
+            long ellapsedMs = api.InWorldEllapsedMilliseconds;
 
             IRenderAPI rpi = api.Render;
             IClientWorldAccessor worldAccess = api.World;
@@ -73,10 +75,10 @@ namespace Vintagestory.GameContent
 
             discPos.X = -4f / 16f;
             discPos.Y = 10.3f / 16f;
-            discPos.Z = 2f / 16f;
+            discPos.Z = 2.2f / 16f;
 
             discRotRad.X = 0;
-            discRotRad.Y = Math.Max(0, (ellapsedMs - updatedTotalMs) / 500f - 0.5f);
+            discRotRad.Y = (ellapsedMs - updatedTotalMs) / 500f * GameMath.PI;
             discRotRad.Z = 0;
 
             prog.NormalShaded = 0;
@@ -106,7 +108,7 @@ namespace Vintagestory.GameContent
                 cylinderMeshRef = api.Render.UploadMesh(cylinderMesh);                
             }
 
-            updatedTotalMs = api.World.ElapsedMilliseconds;
+            updatedTotalMs = api.InWorldEllapsedMilliseconds;
         }
 
         public void Dispose()

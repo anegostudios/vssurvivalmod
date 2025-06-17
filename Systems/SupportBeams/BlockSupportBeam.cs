@@ -3,23 +3,28 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockSupportBeam : Block
     {
         ModSystemSupportBeamPlacer bp;
+        public bool PartialEnds;
 
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
             bp = api.ModLoader.GetModSystem<ModSystemSupportBeamPlacer>();
             PartialSelection = true;
+
+            PartialEnds = Attributes?["partialEnds"].AsBool(false) ?? false;
         }
 
         public override Cuboidf[] GetSelectionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
         {
             var be = api.World.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorSupportBeam>();
-            if (be != null) return be.GetCollisionBoxes();
+            if (be != null) return be.GetSelectionBoxes();
 
             return base.GetSelectionBoxes(blockAccessor, pos);
         }
@@ -28,14 +33,15 @@ namespace Vintagestory.GameContent
         {
             var be = api.World.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorSupportBeam>();
             if (be != null) return be.GetCollisionBoxes();
-
+            
             return base.GetCollisionBoxes(blockAccessor, pos);
         }
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
+            if (blockSel == null) return;
             handling = EnumHandHandling.PreventDefault;
-            bp.OnInteract(this, slot, byEntity, blockSel);
+            bp.OnInteract(this, slot, byEntity, blockSel, PartialEnds);
         }
 
         public override void OnHeldAttackStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
@@ -110,6 +116,11 @@ namespace Vintagestory.GameContent
                     MouseButton = EnumMouseButton.Left
                 },
             };
+        }
+
+        public override bool DisplacesLiquids(IBlockAccessor blockAccess, BlockPos pos)
+        {
+            return false;
         }
     }
 }

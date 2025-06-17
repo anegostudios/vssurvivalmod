@@ -4,6 +4,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockFruitPressTop : Block
@@ -13,6 +15,8 @@ namespace Vintagestory.GameContent
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
+
+            PlacedPriorityInteract = true;
 
             interactions = ObjectCacheUtil.GetOrCreate(api, "fruitPressInteractionsTop", () =>
             {
@@ -44,6 +48,7 @@ namespace Vintagestory.GameContent
                     new WorldInteraction()
                     {
                         ActionLangCode = "blockhelp-fruitpress-release",
+                        HotKeyCode = "ctrl",
                         MouseButton = EnumMouseButton.Right,
                         ShouldApply = (wi, bs, es) =>
                         {
@@ -55,6 +60,34 @@ namespace Vintagestory.GameContent
                     new WorldInteraction()
                     {
                         ActionLangCode = "blockhelp-fruitpress-fillremove",
+                        MouseButton = EnumMouseButton.Right,
+                        Itemstacks = jstacks,
+                        GetMatchingStacks = (wi, bs, es) =>
+                        {
+                            var bePress = api.World.BlockAccessor.GetBlockEntity(bs.Position.DownCopy()) as BlockEntityFruitPress;
+
+                            if (bePress != null && bs.SelectionBoxIndex == 0 && bePress.CanFillRemoveItems) return jstacks;
+                            else return null;
+                        }
+                    },
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-fruitpress-fillsingle",
+                        HotKeyCode = "shift",
+                        MouseButton = EnumMouseButton.Right,
+                        Itemstacks = jstacks,
+                        GetMatchingStacks = (wi, bs, es) =>
+                        {
+                            var bePress = api.World.BlockAccessor.GetBlockEntity(bs.Position.DownCopy()) as BlockEntityFruitPress;
+
+                            if (bePress != null && bs.SelectionBoxIndex == 0 && bePress.CanFillRemoveItems) return jstacks;
+                            else return null;
+                        }
+                    },
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-fruitpress-fillstack",
+                        HotKeyCode = "ctrl",
                         MouseButton = EnumMouseButton.Right,
                         Itemstacks = jstacks,
                         GetMatchingStacks = (wi, bs, es) =>

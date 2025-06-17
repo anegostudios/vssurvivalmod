@@ -4,6 +4,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent.Mechanics
 {
     public class BEBehaviorMPRotor : BEBehaviorMPBase
@@ -42,7 +44,7 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 if (Sound != null && network?.Speed > 0 && Api.World.ElapsedMilliseconds - lastMsAngle > 500 / network.Speed && Api.Side == EnumAppSide.Client)
                 {
-                    Api.World.PlaySoundAt(Sound, Position.X + 0.5, Position.Y + 0.5, Position.Z + 0.5, null, false, 18, GetSoundVolume());
+                    Api.World.PlaySoundAt(Sound, Position, 0, null, false, 18, GetSoundVolume());
                     lastMsAngle = Api.World.ElapsedMilliseconds;
                 }
 
@@ -116,7 +118,7 @@ namespace Vintagestory.GameContent.Mechanics
 
         protected override MechPowerPath[] GetMechPowerExits(MechPowerPath fromExitTurnDir)
         {
-            return new MechPowerPath[0];
+            return Array.Empty<MechPowerPath>();
         }
     }
 }

@@ -3,6 +3,8 @@ using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class RemapAnimationManager : AnimationManager
@@ -63,9 +65,9 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void OnAnimationStopped(string code)
+        public override void TriggerAnimationStopped(string code)
         {
-            base.OnAnimationStopped(code);
+            base.TriggerAnimationStopped(code);
 
             if (entity.Alive && ActiveAnimationsByAnimCode.Count == 0)
             {

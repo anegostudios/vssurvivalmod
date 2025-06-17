@@ -6,6 +6,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 using Vintagestory.GameContent.Mechanics;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockQuern : BlockMPBase
@@ -45,7 +47,7 @@ namespace Vintagestory.GameContent
                 beQuern.SetPlayerGrinding(byPlayer, true);
                 return true;
             }
-            
+
             return base.OnBlockInteractStart(world, byPlayer, blockSel);
         }
 
@@ -114,7 +116,7 @@ namespace Vintagestory.GameContent
 
         public override void DidConnectAt(IWorldAccessor world, BlockPos pos, BlockFacing face)
         {
-            
+
         }
 
         public override bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face)
@@ -128,14 +130,14 @@ namespace Vintagestory.GameContent
 
             if (facing == BlockFacing.UP)
             {
-                
+
                 if (entity.World.Side == EnumAppSide.Server)
                 {
                     float frameTime = GlobalConstants.PhysicsFrameTime;
                     var mpc = GetBEBehavior<BEBehaviorMPConsumer>(pos);
                     if (mpc != null)
                     {
-                        entity.SidedPos.Yaw += frameTime * mpc.TrueSpeed * 3f;
+                        entity.SidedPos.Yaw += frameTime * mpc.TrueSpeed * 2.5f * (mpc.isRotationReversed() ? -1 : 1);
                     }
                 }
                 else
@@ -145,13 +147,14 @@ namespace Vintagestory.GameContent
                     var capi = api as ICoreClientAPI;
                     if (capi.World.Player.Entity.EntityId == entity.EntityId)
                     {
+                        var sign = mpc.isRotationReversed() ? -1 : 1;
                         if (capi.World.Player.CameraMode != EnumCameraMode.Overhead)
                         {
-                            capi.Input.MouseYaw += frameTime * mpc.TrueSpeed * 3f;
+                            capi.Input.MouseYaw += frameTime * mpc.TrueSpeed * 2.5f * sign;
                         }
-                        capi.World.Player.Entity.BodyYaw += frameTime * mpc.TrueSpeed * 3f;
-                        capi.World.Player.Entity.WalkYaw += frameTime * mpc.TrueSpeed * 3f;
-                        capi.World.Player.Entity.Pos.Yaw += frameTime * mpc.TrueSpeed * 3f;
+                        capi.World.Player.Entity.BodyYaw += frameTime * mpc.TrueSpeed * 2.5f * sign;
+                        capi.World.Player.Entity.WalkYaw += frameTime * mpc.TrueSpeed * 2.5f * sign;
+                        capi.World.Player.Entity.Pos.Yaw += frameTime * mpc.TrueSpeed * 2.5f * sign;
                     }
                 }
             }

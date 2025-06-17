@@ -1,6 +1,9 @@
 ﻿using System;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -22,14 +25,14 @@ namespace Vintagestory.GameContent
             Variants[4] = api.World.GetBlock(new AssetLocation("loosegears-5")); // 3.125%
         }
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, IRandom worldGenRand, BlockPatchAttributes attributes = null)
         {
             Block block = blockAccessor.GetBlock(pos);
             if (block.Id != 0) return false;
 
             for (int i = 1; i < 5; i++)
             {
-                block = blockAccessor.GetBlock(pos.X, pos.Y - i, pos.Z);
+                block = blockAccessor.GetBlockBelow(pos, i, BlockLayersAccess.Solid);
 
                 if (block.SideSolid[BlockFacing.UP.Index])
                 {

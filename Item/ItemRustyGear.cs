@@ -3,6 +3,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ItemRustyGear : Item
@@ -27,16 +29,15 @@ namespace Vintagestory.GameContent
             Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
             if (block is BlockLooseGears)
             {
-                int q = 5;
-                if (int.TryParse(block.LastCodePart(), out q) && q < 5)
+                if (int.TryParse(block.LastCodePart(), out int q) && q < 5)
                 {
                     Block moregearsblock = byEntity.World.GetBlock(block.CodeWithPart((q + 1) + "", 1));
                     byEntity.World.BlockAccessor.SetBlock(moregearsblock.BlockId, blockSel.Position);
-                    byEntity.World.PlaySoundAt(block.Sounds.Place, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, byPlayer);
+                    byEntity.World.PlaySoundAt(block.Sounds.Place, blockSel.Position, -0.5, byPlayer);
                     slot.TakeOut(1);
                 }
 
-                
+
                 return;
             }
 
@@ -50,7 +51,7 @@ namespace Vintagestory.GameContent
             block = byEntity.World.BlockAccessor.GetBlock(placePos);
             Block gearBlock = byEntity.World.GetBlock(new AssetLocation("loosegears-1"));
             placePos.Y--;
-            if (block.IsReplacableBy(gearBlock) && byEntity.World.BlockAccessor.GetMostSolidBlock(placePos.X, placePos.Y, placePos.Z).CanAttachBlockAt(byEntity.World.BlockAccessor, gearBlock, placePos, BlockFacing.UP))
+            if (block.IsReplacableBy(gearBlock) && byEntity.World.BlockAccessor.GetMostSolidBlock(placePos).CanAttachBlockAt(byEntity.World.BlockAccessor, gearBlock, placePos, BlockFacing.UP))
             {
                 placePos.Y++;
                 byEntity.World.BlockAccessor.SetBlock(gearBlock.BlockId, placePos);

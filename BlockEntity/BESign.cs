@@ -8,6 +8,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     [ProtoContract]
@@ -81,6 +83,7 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockRemoved()
         {
+            base.OnBlockRemoved();
             signRenderer?.Dispose();
             signRenderer = null;
         }
@@ -172,7 +175,7 @@ namespace Vintagestory.GameContent
                 editDialog.OnCloseCancel = () =>
                 {
                     signRenderer.SetNewText(text, color);
-                    (Api as ICoreClientAPI).Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, (int)EnumSignPacketId.CancelEdit, null);
+                    (Api as ICoreClientAPI).Network.SendBlockEntityPacket(Pos, (int)EnumSignPacketId.CancelEdit, null);
                 };
                 editDialog.TryOpen();
             }
@@ -219,7 +222,7 @@ namespace Vintagestory.GameContent
                     {
                         sapi.Network.SendBlockEntityPacket(
                             (IServerPlayer)byPlayer,
-                            Pos.X, Pos.Y, Pos.Z,
+                            Pos,
                             (int)EnumSignPacketId.OpenDialog
                         );
                     }

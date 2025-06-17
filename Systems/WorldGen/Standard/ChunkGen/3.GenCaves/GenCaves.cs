@@ -4,6 +4,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     public class GenCaves : GenPartial
@@ -36,7 +38,7 @@ namespace Vintagestory.ServerMods
                     .RequiresPrivilege(Privilege.controlserver)
                     .HandleWith(CmdCaveGenTest)
                     .EndSubCommand();
-    
+
                 if (TerraGenConfig.DoDecorationPass)
                 {
                     api.Event.MapChunkGeneration(OnMapChunkGen, "standard");
@@ -73,7 +75,7 @@ namespace Vintagestory.ServerMods
                 }
             }
         }
-        
+
         private TextCommandResult CmdCaveGenTest(TextCommandCallingArgs args)
         {
             caveRand = new LCGRandom(api.WorldManager.Seed + 123128);
@@ -113,7 +115,7 @@ namespace Vintagestory.ServerMods
                 {
                     int chunkX = baseChunkX + dx;
                     int chunkZ = baseChunkZ + dz;
-                    
+
                     IServerChunk[] chunks = GetChunkColumn(chunkX, chunkZ);
                     ClearChunkColumn(chunks);
 
@@ -157,7 +159,7 @@ namespace Vintagestory.ServerMods
         }
 
         private bool ClearChunkColumn(IServerChunk[] chunks)
-        {   
+        {
             for (int i = 0; i < chunks.Length; i++)
             {
                 IServerChunk chunk = chunks[i];
@@ -178,6 +180,11 @@ namespace Vintagestory.ServerMods
 
         public override void GeneratePartial(IServerChunk[] chunks, int chunkX, int chunkZ, int cdx, int cdz)
         {
+            if (GetIntersectingStructure(chunkX * chunksize + chunksize / 2, chunkZ * chunksize + chunksize / 2, SkipCavesgHashCode) != null)
+            {
+                return;
+            }
+
             worldgenBlockAccessor.BeginColumn();
             LCGRandom chunkRand = this.chunkRand;
             int quantityCaves = chunkRand.NextInt(100) < TerraGenConfig.CavesPerChunkColumn*100 ? 1 : 0;
@@ -423,7 +430,7 @@ namespace Vintagestory.ServerMods
                 }
 
 
-                
+
                 if (horRadius >= 2 && rrnd % 5 == 0) continue;
 
                 // Check just to prevent unnecessary calculations
@@ -434,7 +441,7 @@ namespace Vintagestory.ServerMods
             }
         }
 
-        
+
 
         private void CarveShaft(IServerChunk[] chunks, int chunkX, int chunkZ, double posX, double posY, double posZ, float horAngle, float vertAngle, float horizontalSize, float verticalSize, int caveCurrentIteration, int maxIterations, int branchLevel)
         {
@@ -476,8 +483,8 @@ namespace Vintagestory.ServerMods
                             chunkX,
                             chunkZ,
                             posX, posY, posZ,
-                            chunkRand.NextFloat() * GameMath.TWOPI,
-                            (chunkRand.NextFloat() - 0.5f) * 0.25f,
+                            caveRand.NextFloat() * GameMath.TWOPI,
+                            (caveRand.NextFloat() - 0.5f) * 0.25f,
                             horizontalSize + 1,
                             verticalSize,
                             caveCurrentIteration,
@@ -524,7 +531,7 @@ namespace Vintagestory.ServerMods
             for (int lx = mindx; lx <= maxdx; lx++)
             {
                 xdistRel = (lx - centerX) * (lx - centerX) / hRadiusSq;
-                
+
                 for (int lz = mindz; lz <= maxdz; lz++)
                 {
                     zdistRel = (lz - centerZ) * (lz - centerZ) / hRadiusSq;
@@ -565,10 +572,10 @@ namespace Vintagestory.ServerMods
             hRadiusSq = horRadius * horRadius;
             vRadiusSq = vertRadius * vertRadius;
 
-            
+
             int geoActivity = getGeologicActivity(chunkX * chunksize + (int)centerX, chunkZ * chunksize + (int)centerZ);
             genHotSpring &= geoActivity > 128;
-            
+
             if (genHotSpring && centerX >= 0 && centerX < 32 && centerZ >= 0 && centerZ < 32)
             {
                 var data = mapchunk.GetModdata<Dictionary<Vec3i, HotSpringGenData>>("hotspringlocations");
@@ -578,7 +585,7 @@ namespace Vintagestory.ServerMods
             }
 
             int yLavaStart = (geoActivity * 16) / 128;
-            
+
 
             for (int lx = mindx; lx <= maxdx; lx++)
             {
@@ -627,7 +634,7 @@ namespace Vintagestory.ServerMods
                                 {
                                     chunkBlockData.SetFluid(index3d, GlobalConfig.lavaBlockId);
                                 }
-                                
+
                                 if (y <= yLavaStart) worldgenBlockAccessor.ScheduleBlockLightUpdate(new BlockPos(chunkX * chunksize + lx, y, chunkZ * chunksize + lz), airBlockId, GlobalConfig.lavaBlockId);
                             }
 

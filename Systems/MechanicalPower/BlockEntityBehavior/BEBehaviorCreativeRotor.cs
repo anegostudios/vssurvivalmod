@@ -5,6 +5,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent.Mechanics
 {
     public class BEBehaviorMPCreativeRotor : BEBehaviorMPRotor
@@ -40,8 +42,7 @@ namespace Vintagestory.GameContent.Mechanics
             if (++this.powerSetting > 10) this.powerSetting = 1;
             Blockentity.MarkDirty(true);
 
-            var pos = Blockentity.Pos.ToVec3d().Add(0.5, 0, 0.5);
-            Api.World.PlaySoundAt(new AssetLocation("sounds/toggleswitch"), pos.X, pos.Y, pos.Z, byPlayer, false, 16);
+            Api.World.PlaySoundAt(new AssetLocation("sounds/toggleswitch"), Blockentity.Pos, -0.2, byPlayer, false, 16);
 
             return true;
         }
@@ -70,8 +71,7 @@ namespace Vintagestory.GameContent.Mechanics
                 default:
                     break;
             }
-            MeshData mesh;
-            capi.Tesselator.TesselateShape(Block, shape, out mesh, new Vec3f(0, rotateY, 0));
+            capi.Tesselator.TesselateShape(Block, shape, out MeshData mesh, new Vec3f(0, rotateY, 0));
             mesher.AddMeshData(mesh);
             return true;
         }

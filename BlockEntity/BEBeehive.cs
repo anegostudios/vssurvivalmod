@@ -10,6 +10,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public enum EnumHivePopSize
@@ -32,6 +34,7 @@ namespace Vintagestory.GameContent
         float popHiveAfterHours;
         double cooldownUntilTotalHours;
         double harvestableAtTotalHours;
+        double lastCheckedAtTotalHours;
         public bool Harvestable;
 
         // Current scan values
@@ -44,6 +47,7 @@ namespace Vintagestory.GameContent
         bool wasPlaced = false;
         public static SimpleParticleProperties Bees;
         string orientation;
+        string material;
 
         static BlockEntityBeehive()
         {
@@ -83,21 +87,21 @@ namespace Vintagestory.GameContent
                 harvestableAtTotalHours = api.World.Calendar.TotalHours + 24/2 * (3 + api.World.Rand.NextDouble() * 8);
             }
 
-            orientation = Block.LastCodePart();
+            orientation = Block.Variant["side"];
+            material = Block.Variant["material"];
             isWildHive = Block.FirstCodePart() != "skep";
             if (!isWildHive && api.Side == EnumAppSide.Client)
             {
                 ICoreClientAPI capi = api as ICoreClientAPI;
-                Block fullSkep = api.World.GetBlock(new AssetLocation("skep-populated-east"));
+                Block fullSkep = api.World.GetBlock(Block.CodeWithVariant("type", "populated"));
 
-                MeshData mesh;
                 capi.Tesselator.TesselateShape(
-                    fullSkep, 
-                    API.Common.Shape.TryGet(api, "shapes/block/beehive/skep-harvestable.json"), 
-                    out mesh, 
+                    fullSkep,
+                    API.Common.Shape.TryGet(api, "shapes/block/beehive/skep-harvestable.json"),
+                    out MeshData mesh,
                     new Vec3f(0, BlockFacing.FromCode(orientation).HorizontalAngleIndex * 90 - 90, 0)
                 );
-                api.ObjectCache["beehive-harvestablemesh-" + orientation] = mesh;
+                api.ObjectCache["beehive-" + material + "-harvestablemesh-" + orientation] = mesh;
             }
 
             if (!isWildHive && api.Side == EnumAppSide.Server)
@@ -118,7 +122,7 @@ namespace Vintagestory.GameContent
 
             Random rand = Api.World.Rand;
 
-            Bees.MinQuantity = actvitiyLevel;
+            Bees.MinQuantity = activityLevel;
 
             // Leave hive
             if (Api.World.Rand.NextDouble() > 0.5)
@@ -159,16 +163,28 @@ namespace Vintagestory.GameContent
         }
 
 
-        float actvitiyLevel;
+        float activityLevel;
         RoomRegistry roomreg;
         float roomness;
 
         private void TestHarvestable(float dt)
         {
+            double hoursSinceLastCheck = Api.World.Calendar.TotalHours - lastCheckedAtTotalHours;
+
             float temp = Api.World.BlockAccessor.GetClimateAt(Pos, EnumGetClimateMode.ForSuppliedDate_TemperatureOnly, Api.World.Calendar.TotalDays).Temperature;
 
             if (roomness > 0 ) temp += 5;
-            actvitiyLevel = GameMath.Clamp(temp / 5f, 0f, 1f);
+            activityLevel = GameMath.Clamp(temp / 5f, 0f, 1f);
+
+            // Pause timers below zero
+            if (temp <= 0)
+            {
+                harvestableAtTotalHours += hoursSinceLastCheck;
+                cooldownUntilTotalHours += hoursSinceLastCheck;
+                beginPopStartTotalHours += hoursSinceLastCheck;
+            }
+
+            lastCheckedAtTotalHours = Api.World.Calendar.TotalHours;
 
             // Reset timers during winter
             if (temp <= -10)
@@ -189,7 +205,7 @@ namespace Vintagestory.GameContent
             Room room = roomreg?.GetRoomForPosition(Pos);
             roomness = (room != null && room.SkylightCount > room.NonSkylightCount && room.ExitCount == 0) ? 1 : 0;
 
-            if (actvitiyLevel < 1) return;
+            if (activityLevel <= 0) return;
             if (Api.Side == EnumAppSide.Client) return;
             if (Api.World.Calendar.TotalHours < cooldownUntilTotalHours) return;
 
@@ -228,9 +244,10 @@ namespace Vintagestory.GameContent
 
                 if (block.BlockMaterial != EnumBlockMaterial.Other) return;   // All types of skep and wildbeehive have BlockMaterial: "Other"
 
-                string blockcode = block.Code.Path;
-                if (blockcode.StartsWithOrdinal("skep-empty")) scanEmptySkeps.Add(new BlockPos(x, y, z));
-                else if (blockcode.StartsWithOrdinal("skep-populated") || blockcode.StartsWithOrdinal("wildbeehive")) scanQuantityNearbyHives++;
+                string blockcode = block.FirstCodePart();
+                string blocktype = block.Variant["type"];
+                if (blockcode == "skep" && blocktype == "empty") scanEmptySkeps.Add(new BlockPos(x, y, z));
+                else if ((blockcode == "skep" && blocktype == "populated") || blockcode.StartsWithOrdinal("wildbeehive")) scanQuantityNearbyHives++;
             });
 
             scanIteration++;
@@ -338,7 +355,7 @@ namespace Vintagestory.GameContent
             string orient = skepToPopBlock.LastCodePart();
 
             string blockcode = "skep-populated-" + orient;
-            Block fullSkep = Api.World.GetBlock(new AssetLocation(blockcode));
+            Block fullSkep = Api.World.GetBlock(skepToPopBlock.CodeWithVariant("type", "populated"));
 
             if (fullSkep == null)
             {
@@ -394,6 +411,7 @@ namespace Vintagestory.GameContent
             tree.SetDouble("harvestableAtTotalHours", harvestableAtTotalHours);
             tree.SetInt("hiveHealth", (int)hivePopSize);
             tree.SetFloat("roomness", roomness);
+            tree.SetDouble("lastCheckedAtTotalHours", lastCheckedAtTotalHours);
         }
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
@@ -448,6 +466,7 @@ namespace Vintagestory.GameContent
             harvestableAtTotalHours = tree.GetDouble("harvestableAtTotalHours");
             hivePopSize = (EnumHivePopSize)tree.GetInt("hiveHealth");
             roomness = tree.GetFloat("roomness");
+            lastCheckedAtTotalHours = tree.GetDouble("lastCheckedAtTotalHours");
 
             if (Harvestable != wasHarvestable && Api != null)
             {
@@ -460,7 +479,7 @@ namespace Vintagestory.GameContent
         {
             if (Harvestable)
             {
-                mesher.AddMeshData(Api.ObjectCache["beehive-harvestablemesh-" + orientation] as MeshData);
+                mesher.AddMeshData(Api.ObjectCache["beehive-" + material + "-harvestablemesh-" + orientation] as MeshData);
                 return true;
             }
 
@@ -498,6 +517,11 @@ namespace Vintagestory.GameContent
                 }
             }
 
+            if (roomness > 0)
+            {
+                str += "\n" + Lang.Get("greenhousetempbonus");
+            }
+
             dsc.AppendLine(str);
         }
 
@@ -508,11 +532,9 @@ namespace Vintagestory.GameContent
         #region IAnimalFoodSource impl
         public bool IsSuitableFor(Entity entity, CreatureDiet diet)
         {
-            if (diet == null) return false;
-
             if (isWildHive || !Harvestable) return false;
 
-            return diet.FoodTags.Contains("lootableSweet");
+            return diet?.WeightedFoodTags?.Contains(wf => wf.Code == "lootableSweet") == true;
         }
 
         public float ConsumeOnePortion(Entity entity)

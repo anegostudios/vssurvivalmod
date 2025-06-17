@@ -6,6 +6,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 
@@ -14,6 +16,9 @@ namespace Vintagestory.GameContent
         public PlacedBeam[] Beams;
         ModSystemSupportBeamPlacer sbp;
         Cuboidf[] collBoxes;
+        Cuboidf[] selBoxes;
+
+        bool dropWhenBroken;
 
         public BEBehaviorSupportBeam(BlockEntity blockentity) : base(blockentity)
         {
@@ -31,14 +36,16 @@ namespace Vintagestory.GameContent
                     beam.Block = Api.World.GetBlock(beam.BlockId);
                 }
             }
+
+            dropWhenBroken = properties?["dropWhenBroken"].AsBool(true) != false;
         }
 
         public void AddBeam(Vec3f start, Vec3f end, BlockFacing onFacing, Block block)
         {
-            if (Beams == null) Beams = new PlacedBeam[0];
+            if (Beams == null) Beams = Array.Empty<PlacedBeam>();
 
-            Beams = Beams.Append(new PlacedBeam() { 
-                Start = start.Clone(), 
+            Beams = Beams.Append(new PlacedBeam() {
+                Start = start.Clone(),
                 End = end.Clone(),
                 FacingIndex = onFacing.Index,
                 BlockId = block.Id,
@@ -56,19 +63,63 @@ namespace Vintagestory.GameContent
             if (Beams == null) return null;
             if (collBoxes != null) return collBoxes;
 
+            float size = 1 / 6f;
             Cuboidf[] cuboids = new Cuboidf[Beams.Length];
             for (int i = 0; i < Beams.Length; i++)
             {
-                float size = 1 / 8f;
                 var beam = Beams[i];
-                cuboids[i] = new Cuboidf(beam.Start.X - size, beam.Start.Y - size, beam.Start.Z - size, beam.Start.X + size, beam.Start.Y + size, beam.Start.Z + size);
+                var cuboid = cuboids[i] = new Cuboidf(beam.Start.X - size, beam.Start.Y - size, beam.Start.Z - size, beam.Start.X + size, beam.Start.Y + size, beam.Start.Z + size);
 
-                // This does not work when the beam extends into another block
-                //cuboids[2 * i + 1] = new Cuboidf(beam.End.X - size, beam.End.Y - size, beam.End.Z - size, beam.End.X + size, beam.End.Y + size, beam.End.Z + size);
+                for (int j = 0; j < 3; j++)
+                {
+                    if (cuboid[j] < 0)
+                    {
+                        cuboid[j] = -size;
+                        cuboid[j + 3] = size;
+                    }
+                    if (cuboid[j] > 1)
+                    {
+                        cuboid[j] = 1-size;
+                        cuboid[j + 3] = 1+size;
+                    }
+                }
             }
 
             return collBoxes = cuboids;
         }
+
+        public Cuboidf[] GetSelectionBoxes()
+        {
+            if (selBoxes != null) return selBoxes;
+
+            var boxes = GetCollisionBoxes();
+            if (boxes == null) return null;
+
+            float size = 1 / 6f;
+
+            for (int i = 0; i < boxes.Length; i++)
+            {
+                var cuboid = boxes[i].Clone();
+
+                for (int j = 0; j < 3; j++)
+                {
+                    if (cuboid[j] < 0)
+                    {
+                        cuboid[j] = -size;
+                        cuboid[j + 3] = size;
+                    }
+                    if (cuboid[j] > 1)
+                    {
+                        cuboid[j] = 1 - size;
+                        cuboid[j + 3] = 1 + size;
+                    }
+                }
+            }
+
+            return selBoxes = boxes;
+        }
+
+
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
         {
@@ -107,8 +158,7 @@ namespace Vintagestory.GameContent
 
             for (int i = 0; i < Beams.Length; i++)
             {
-                AssetLocation code;
-                if (oldBlockIdMapping.TryGetValue(Beams[i].BlockId, out code))
+                if (oldBlockIdMapping.TryGetValue(Beams[i].BlockId, out AssetLocation code))
                 {
                     Block block = worldForNewMappings.GetBlock(code);
                     if (block == null)
@@ -159,8 +209,8 @@ namespace Vintagestory.GameContent
             var beam = Beams[beamIndex];
             var start = beam.Start;
             var end = beam.End;
-            var meshData = sbp.getOrCreateBeamMesh(beam.Block, texSource, texSourceKey);
-            var mesh = ModSystemSupportBeamPlacer.generateMesh(start, end, BlockFacing.ALLFACES[beam.FacingIndex], meshData, beam.SlumpPerMeter);
+            var meshDatas = sbp.getOrCreateBeamMeshes(beam.Block, (beam.Block as BlockSupportBeam)?.PartialEnds ?? false, texSource, texSourceKey);
+            var mesh = ModSystemSupportBeamPlacer.generateMesh(start, end, BlockFacing.ALLFACES[beam.FacingIndex], meshDatas, beam.SlumpPerMeter);
 
             float x = GameMath.MurmurHash3Mod(pos.X + beamIndex * 100, pos.Y + beamIndex * 100, pos.Z + beamIndex * 100, 500) / 50000f;
             float y = GameMath.MurmurHash3Mod(pos.X - beamIndex * 100, pos.Y + beamIndex * 100, pos.Z + beamIndex * 100, 500) / 50000f;
@@ -169,39 +219,69 @@ namespace Vintagestory.GameContent
             return mesh;
         }
 
-        public void OnTransformed(IWorldAccessor worldAccessor, ITreeAttribute tree, int degreeRotation,Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, EnumAxis? flipAxis)
+        public void OnTransformed(IWorldAccessor worldAccessor, ITreeAttribute tree, int degreeRotation, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, EnumAxis? flipAxis)
         {
             FromTreeAttributes(tree, null);
             if (Beams == null) return;
 
-            Matrixf mat = new Matrixf();
-            mat.Translate(0.5f, 0.5f, 0.5f);
-            mat.RotateYDeg(-degreeRotation);
-            mat.Translate(-0.5f, -0.5f, -0.5f);
-            
-            Vec4f tmpVec = new Vec4f();
-            tmpVec.W = 1;
-
-            for (int i = 0; i < Beams.Length; i++)
+            if (degreeRotation != 0)
             {
-                var beam = Beams[i];
+                Matrixf mat = new Matrixf();
+                mat.Translate(0.5f, 0.5f, 0.5f);
+                mat.RotateYDeg(-degreeRotation);
+                mat.Translate(-0.5f, -0.5f, -0.5f);
 
-                tmpVec.X = beam.Start.X;
-                tmpVec.Y = beam.Start.Y;
-                tmpVec.Z = beam.Start.Z;
-                var rotatedVec = mat.TransformVector(tmpVec);
-                beam.Start.X = rotatedVec.X;
-                beam.Start.Y = rotatedVec.Y;
-                beam.Start.Z = rotatedVec.Z;
+                Vec4f tmpVec = new Vec4f();
+                tmpVec.W = 1;
+
+                foreach (var beam in Beams)
+                {
+                    tmpVec.X = beam.Start.X;
+                    tmpVec.Y = beam.Start.Y;
+                    tmpVec.Z = beam.Start.Z;
+                    var rotatedVec = mat.TransformVector(tmpVec);
+                    beam.Start.X = rotatedVec.X;
+                    beam.Start.Y = rotatedVec.Y;
+                    beam.Start.Z = rotatedVec.Z;
 
 
-                tmpVec.X = beam.End.X;
-                tmpVec.Y = beam.End.Y;
-                tmpVec.Z = beam.End.Z;
-                rotatedVec = mat.TransformVector(tmpVec);
-                beam.End.X = rotatedVec.X;
-                beam.End.Y = rotatedVec.Y;
-                beam.End.Z = rotatedVec.Z;
+                    tmpVec.X = beam.End.X;
+                    tmpVec.Y = beam.End.Y;
+                    tmpVec.Z = beam.End.Z;
+                    rotatedVec = mat.TransformVector(tmpVec);
+                    beam.End.X = rotatedVec.X;
+                    beam.End.Y = rotatedVec.Y;
+                    beam.End.Z = rotatedVec.Z;
+                }
+            }
+            else if (flipAxis != null)
+            {
+                foreach (var beam in Beams)
+                {
+                    switch (flipAxis)
+                    {
+                        case EnumAxis.X:
+                        {
+                            beam.Start.X = beam.Start.X * -1 + 1;
+                            beam.End.X = beam.End.X * -1 + 1;
+                            break;
+                        }
+                        case EnumAxis.Y:
+                        {
+                            beam.Start.Y = beam.Start.Y * -1 + 1;
+                            beam.End.Y = beam.End.Y * -1 + 1;
+                            break;
+                        }
+                        case EnumAxis.Z:
+                        {
+                            beam.Start.Z = beam.Start.Z * -1 + 1;
+                            beam.End.Z = beam.End.Z * -1 + 1;
+                            break;
+                        }
+                        default:
+                            throw new ArgumentOutOfRangeException(nameof(flipAxis), flipAxis, null);
+                    }
+                }
             }
 
             ToTreeAttributes(tree);
@@ -225,12 +305,12 @@ namespace Vintagestory.GameContent
 
             var beam = Beams[beamIndex];
 
-            if (drop)
+            if (drop && dropWhenBroken)
             {
-                Api.World.SpawnItemEntity(new ItemStack(beam.Block, (int)Math.Ceiling(beam.End.DistanceTo(beam.Start))), Pos.ToVec3d().Add(0.5));
+                Api.World.SpawnItemEntity(new ItemStack(beam.Block, (int)Math.Ceiling(beam.End.DistanceTo(beam.Start))), Pos);
             }
             sbp.OnBeamRemoved(beam.Start.ToVec3d().Add(Pos), beam.End.ToVec3d().Add(Pos));
-            Beams = Beams.RemoveEntry(beamIndex);
+            Beams = Beams.RemoveAt(beamIndex);
             Blockentity.MarkDirty(true);
         }
 

@@ -6,6 +6,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods.NoObf
 {
     public enum EnumBlockPatchPlacement
@@ -73,10 +75,33 @@ namespace Vintagestory.ServerMods.NoObf
 
         /// <summary>
         /// This property is only used if the placement is set to UnderWater. It determines the minimum water depth for this patch
-        /// to be placed. 
+        /// to be placed.
         /// </summary>
         [JsonProperty]
-        public int MinWaterDepth = 3;
+        public int MinWaterDepth = 0;
+
+        /// <summary>
+        /// This property is only used if the placement is set to UnderWater.
+        /// When MinWaterDepth is 0 this property is used to calculate the MinWaterDepth = sealevel * MinWaterDepthP.
+        /// Value range: 0.0 - 1.0
+        /// </summary>
+        [JsonProperty]
+        public float MinWaterDepthP = 0;
+
+        /// <summary>
+        /// This property is only used if the placement is set to UnderWater. It determines the maximum water depth for this patch
+        /// to be placed. (default 0 / disabled)
+        /// </summary>
+        [JsonProperty]
+        public int MaxWaterDepth = 0;
+
+        /// <summary>
+        /// This property is only used if the placement is set to UnderWater.
+        /// When MaxWaterDepth is 0 this property is used to calculate the MaxWaterDepth = sealevel * MaxWaterDepthP
+        /// Value range: 0.0 - 1.0
+        /// </summary>
+        [JsonProperty]
+        public float MaxWaterDepthP = 0;
 
         /// <summary>
         /// This property can be specified to limit (or increase) the distance from the starting position - e.g. Tule near water should not be more than 1 block higher or lower
@@ -97,6 +122,8 @@ namespace Vintagestory.ServerMods.NoObf
         [JsonProperty]
         public bool PrePass = false;
 
+        [JsonProperty]
+        public BlockPatchAttributes Attributes;
 
         public Block[] Blocks;
 
@@ -145,7 +172,22 @@ namespace Vintagestory.ServerMods.NoObf
                     }
                     else
                     {
-                        api.World.Logger.Warning("Block patch Nr. {0}: Unable to resolve block with code {1}. Will ignore.", i, code);
+                        if (code.Path.Contains('*'))
+                        {
+                            var searchBlocks = api.World.SearchBlocks(code);
+                            if (searchBlocks != null)
+                            {
+                                blocks.AddRange(searchBlocks);
+                            }
+                            else
+                            {
+                                api.World.Logger.Warning("Block patch Nr. {0}: Unable to resolve block with code {1}. Will ignore.", i, code);
+                            }
+                        }
+                        else
+                        {
+                            api.World.Logger.Warning("Block patch Nr. {0}: Unable to resolve block with code {1}. Will ignore.", i, code);
+                        }
                     }
                 }
             }
@@ -162,27 +204,42 @@ namespace Vintagestory.ServerMods.NoObf
                 int index = rnd.NextInt(RandomMapCodePool.Length);
                 MapCode = RandomMapCodePool[index];
             }
+
+            if (Attributes != null)
+            {
+                Attributes.Init(api, i);
+            }
+
+            if (MinWaterDepth == 0 && MinWaterDepthP != 0)
+            {
+                MinWaterDepth = (int)(api.World.SeaLevel * Math.Clamp(MinWaterDepthP, 0, 1));
+            }
+            if (MaxWaterDepth == 0 && MaxWaterDepthP != 0)
+            {
+                MaxWaterDepth = (int)(api.World.SeaLevel * Math.Clamp(MaxWaterDepthP, 0, 1));
+            }
         }
 
-        public void Generate(IBlockAccessor blockAccessor, LCGRandom rnd, int posX, int posY, int posZ, int firstBlockId)
+        public void Generate(IBlockAccessor blockAccessor, IRandom rnd, int posX, int posY, int posZ, int firstBlockId, bool isStoryPatch)
         {
-            float quantity = Quantity.nextFloat() + 1;
+            float quantity = Quantity.nextFloat(1f, rnd) + 1;
             const int chunkSize = GlobalConstants.ChunkSize;
 
             Block[] blocks = getBlocks(firstBlockId);
             if (blocks.Length == 0) return;
 
             ModStdWorldGen modSys = null;
-            if (blockAccessor is IWorldGenBlockAccessor wgba) wgba.WorldgenWorldAccessor.Api.ModLoader.GetModSystem<GenVegetationAndPatches>();
+            if (blockAccessor is IWorldGenBlockAccessor wgba) modSys = wgba.WorldgenWorldAccessor.Api.ModLoader.GetModSystem<GenVegetationAndPatches>();
 
             while (quantity-- > 0)
             {
                 if (quantity < 1 && rnd.NextFloat() > quantity) break;
 
-                pos.X = posX + (int)OffsetX.nextFloat();
-                pos.Z = posZ + (int)OffsetZ.nextFloat();
+                pos.X = posX + (int)OffsetX.nextFloat(1f, rnd);
+                pos.Z = posZ + (int)OffsetZ.nextFloat(1f, rnd);
+                if (modSys != null && !isStoryPatch && modSys.GetIntersectingStructure(pos, ModStdWorldGen.SkipPatchesgHashCode) != null) continue;
 
-                int index = GameMath.Mod((int)BlockCodeIndex.nextFloat(), blocks.Length);
+                int index = GameMath.Mod((int)BlockCodeIndex.nextFloat(1f, rnd), blocks.Length);
 
                 IServerChunk chunk = (IServerChunk)blockAccessor.GetChunk(pos.X / chunkSize, 0, pos.Z / chunkSize);
                 if (chunk == null) break;
@@ -193,7 +250,6 @@ namespace Vintagestory.ServerMods.NoObf
                 if (Placement == EnumBlockPatchPlacement.Underground)
                 {
                     pos.Y = rnd.NextInt(Math.Max(1, chunk.MapChunk.WorldGenTerrainHeightMap[lz * GlobalConstants.ChunkSize + lx] - 1));
-                    if (modSys != null && modSys.SkipGenerationAt(pos, EnumWorldGenPass.Vegetation)) continue;
                 }
                 else
                 {
@@ -201,23 +257,45 @@ namespace Vintagestory.ServerMods.NoObf
 
                     if (Math.Abs(pos.Y - posY) > MaxHeightDifferential || pos.Y >= blockAccessor.MapSizeY - 1) continue;
 
-                    if (Placement == EnumBlockPatchPlacement.UnderWater)
+                    if (Placement == EnumBlockPatchPlacement.UnderWater || Placement == EnumBlockPatchPlacement.UnderSeaWater)
                     {
-                        tempPos.Set(pos.X, pos.Y - GameMath.Max(1, MinWaterDepth), pos.Z);
+                        // ensure top most block is not solid (can be if a larger structure generates over ponds)
+                        tempPos.Set(pos.X, pos.Y - 2, pos.Z);
+                        var topBlock = blockAccessor.GetBlock(tempPos, BlockLayersAccess.Fluid);
+                        if (!topBlock.IsLiquid()) continue;
+
+                        tempPos.Y = pos.Y - GameMath.Max(1, MinWaterDepth);
                         Block downBlock = blockAccessor.GetBlock(tempPos, BlockLayersAccess.Fluid);
-                        if (downBlock.LiquidCode != "water") continue;
+
+                        if (Placement == EnumBlockPatchPlacement.UnderWater && downBlock.LiquidCode != "water") continue;
+                        if (Placement == EnumBlockPatchPlacement.UnderSeaWater && downBlock.LiquidCode != "saltwater") continue;
+
+                        if (MaxWaterDepth > 0)
+                        {
+                            tempPos.Set(pos.X, pos.Y - (MaxWaterDepth + 1), pos.Z);
+                            downBlock = blockAccessor.GetBlock(tempPos, BlockLayersAccess.Fluid);
+
+                            if (Placement == EnumBlockPatchPlacement.UnderWater && downBlock.LiquidCode == "water") continue;
+                            if (Placement == EnumBlockPatchPlacement.UnderSeaWater && downBlock.LiquidCode == "saltwater") continue;
+                        }
                     }
                 }
 
-                blocks[index].TryPlaceBlockForWorldGen(blockAccessor, pos, BlockFacing.UP, rnd);
+                if (Placement == EnumBlockPatchPlacement.UnderWater || Placement == EnumBlockPatchPlacement.UnderSeaWater)
+                {
+                    blocks[index].TryPlaceBlockForWorldGenUnderwater(blockAccessor, pos, BlockFacing.UP, rnd, MinWaterDepth, MaxWaterDepth, Attributes);
+                }
+                else
+                {
+                    blocks[index].TryPlaceBlockForWorldGen(blockAccessor, pos, BlockFacing.UP, rnd, Attributes);
+                }
             }
         }
 
 
         private Block[] getBlocks(int firstBlockId)
         {
-            Block[] blocks;
-            if (BlocksByRockType == null || !BlocksByRockType.TryGetValue(firstBlockId, out blocks))
+            if (BlocksByRockType == null || !BlocksByRockType.TryGetValue(firstBlockId, out Block[] blocks))
             {
                 blocks = Blocks;
             }

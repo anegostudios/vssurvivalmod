@@ -5,6 +5,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public delegate MeshData CreateMeshDelegate(ICoreClientAPI capi);
@@ -30,7 +32,7 @@ namespace Vintagestory.GameContent
             inventory = new InventoryGeneric(1, null, null);
         }
 
-        
+
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
@@ -77,6 +79,11 @@ namespace Vintagestory.GameContent
                 {
                     world.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5, 1, 0.5));
                 }
+                Api.World.Logger.Audit("{0} Took 1x{1} from Resonator at {2}.",
+                    byPlayer.PlayerName,
+                    stack.Collectible.Code,
+                    Pos
+                );
 
                 StopMusic();
                 IsPlaying = false;
@@ -93,12 +100,18 @@ namespace Vintagestory.GameContent
                 if (track == null) return;
 
                 inventory[0].Itemstack = slot.TakeOut(1);
+
+                Api.World.Logger.Audit("{0} Put 1x{1} into Resonator at {2}.",
+                    byPlayer.PlayerName,
+                    inventory[0].Itemstack.Collectible.Code,
+                    Pos
+                );
                 slot.MarkDirty();
                 StartMusic();
                 IsPlaying = true;
                 MarkDirty(true);
-                
-            }   
+
+            }
         }
 
         #region Music start/stop
@@ -118,7 +131,7 @@ namespace Vintagestory.GameContent
             track = (Api as ICoreClientAPI)?.StartTrack(new AssetLocation(trackstring), 99f, EnumSoundType.MusicGlitchunaffected, onTrackLoaded);
 
             wasStopped = false;
-            Api.World.PlaySoundAt(new AssetLocation("sounds/block/vinyl"), Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, null, false, 32);
+            Api.World.PlaySoundAt(new AssetLocation("sounds/block/vinyl"), Pos, 0, null, false, 32);
             updateMeshesAndRenderer(Api as ICoreClientAPI);
 
             animUtil.StartAnimation(new AnimationMetaData()
@@ -179,7 +192,7 @@ namespace Vintagestory.GameContent
         }
 
         #endregion
-        
+
         #region mesh stuff
 
         private void updateMeshesAndRenderer(ICoreClientAPI capi)
@@ -199,8 +212,7 @@ namespace Vintagestory.GameContent
 
         private MeshData createCylinderMesh(ICoreClientAPI cp)
         {
-            MeshData discMesh;
-            cp.Tesselator.TesselateItem(inventory[0].Itemstack.Item, out discMesh);
+            cp.Tesselator.TesselateItem(inventory[0].Itemstack.Item, out MeshData discMesh);
             return discMesh;
         }
 
@@ -223,8 +235,7 @@ namespace Vintagestory.GameContent
 
         MeshData getOrCreateMesh(ICoreClientAPI capi, string code, CreateMeshDelegate onCreate)
         {
-            object obj;
-            if (!Api.ObjectCache.TryGetValue(code, out obj))
+            if (!Api.ObjectCache.TryGetValue(code, out object obj))
             {
                 MeshData mesh = onCreate(capi);
                 Api.ObjectCache[code] = mesh;
@@ -289,7 +300,7 @@ namespace Vintagestory.GameContent
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
             // Remove perish rate thing
-            
+
         }
 
     }

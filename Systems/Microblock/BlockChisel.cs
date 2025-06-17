@@ -6,6 +6,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockChisel : BlockMicroBlock, IWrenchOrientable
@@ -48,7 +50,17 @@ namespace Vintagestory.GameContent
         public void Rotate(EntityAgent byEntity, BlockSelection blockSel, int dir)
         {
             var bechisel = api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityChisel;
-            bechisel.RotateModel(dir > 0 ? 90 : -90, null);
+            if (byEntity.Controls.CtrlKey)
+            {
+                int rot = bechisel.DecorRotations;
+                int bitshift = blockSel.Face.Index * 3;
+                int facerot = rot >> bitshift & DecorBits.maskRotationData;
+                rot &= ~(DecorBits.maskRotationData << bitshift);
+                rot += ((facerot + 1) & DecorBits.maskRotationData) << bitshift;
+                bechisel.DecorRotations = rot;
+            }
+            else bechisel.RotateModel(dir > 0 ? 90 : -90, null);
+
             bechisel.MarkDirty(true);
         }
 
@@ -58,6 +70,17 @@ namespace Vintagestory.GameContent
             if (bechisel?.Interact(byPlayer, blockSel) == true) return true;
 
             return base.OnBlockInteractStart(world, byPlayer, blockSel);
+        }
+
+        public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
+        {
+            if (world.BlockAccessor.GetBlockEntity(pos) is BlockEntityChisel bec && (api as ICoreClientAPI)?.World.Player.InventoryManager.ActiveTool == EnumTool.Chisel)
+            {
+                ((ICoreClientAPI)api).Network.SendBlockEntityPacket(pos, 1011);
+                return null;
+            }
+
+            return base.OnPickBlock(world, pos);
         }
 
         public override bool TryToRemoveSoilFirst(IWorldAccessor world, BlockPos pos, IPlayer byPlayer)

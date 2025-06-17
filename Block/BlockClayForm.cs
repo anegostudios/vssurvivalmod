@@ -4,6 +4,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockClayForm : Block
@@ -106,18 +108,18 @@ namespace Vintagestory.GameContent
 
         public override BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)
         {
-            return new BlockDropItemStack[0];
+            return System.Array.Empty<BlockDropItemStack>();
         }
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {
-            return new ItemStack[0];
+            return System.Array.Empty<ItemStack>();
         }
 
         public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
             pos.Y--;
-            if (!world.BlockAccessor.GetMostSolidBlock(pos.X, pos.Y, pos.Z).CanAttachBlockAt(world.BlockAccessor, this, pos, BlockFacing.UP))
+            if (!world.BlockAccessor.GetMostSolidBlock(pos).CanAttachBlockAt(world.BlockAccessor, this, pos, BlockFacing.UP))
             {
                 pos.Y++;
                 world.BlockAccessor.BreakBlock(pos, null);

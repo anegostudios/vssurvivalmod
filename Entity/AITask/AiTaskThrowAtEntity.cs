@@ -5,6 +5,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class AiTaskThrowAtEntity : AiTaskBaseTargetable
@@ -20,15 +22,15 @@ namespace Vintagestory.GameContent
         float maxTurnAnglePerSec;
         float curTurnRadPerSec;
         float projectileDamage;
+        int projectileDamageTier;
         AssetLocation projectileCode;
         float maxTurnAngleRad;
         float maxOffAngleThrowRad;
         float spawnAngleRad;
+        float yawInaccuracy;
         bool immobile;
 
-        public AiTaskThrowAtEntity(EntityAgent entity) : base(entity)
-        {
-        }
+        public AiTaskThrowAtEntity(EntityAgent entity) : base(entity) { }
 
         public override void LoadConfig(JsonObject taskConfig, JsonObject aiConfig)
         {
@@ -36,8 +38,11 @@ namespace Vintagestory.GameContent
             this.durationMs = taskConfig["durationMs"].AsInt(1500);
             this.releaseAtMs = taskConfig["releaseAtMs"].AsInt(1000);
             this.projectileDamage = taskConfig["projectileDamage"].AsFloat(1f);
+            this.projectileDamageTier = taskConfig["projectileDamageTier"].AsInt(0);
             this.maxDist = taskConfig["maxDist"].AsFloat(15f);
-			this.projectileCode = AssetLocation.Create(taskConfig["projectileCode"].AsString("thrownstone-{rock}"), entity.Code.Domain);
+            this.yawInaccuracy = taskConfig["yawInaccuracy"].AsFloat(0f);
+
+            this.projectileCode = AssetLocation.Create(taskConfig["projectileCode"].AsString("thrownstone-{rock}"), entity.Code.Domain);
 
             this.immobile = taskConfig["immobile"].AsBool(false);
             maxTurnAngleRad = taskConfig["maxTurnAngleDeg"].AsFloat(360) * GameMath.DEG2RAD;
@@ -49,11 +54,11 @@ namespace Vintagestory.GameContent
         public override bool ShouldExecute()
         {
             // React immediately on hurt, otherwise only 1/10 chance of execution
-            if (rand.NextDouble() > 0.1f && (whenInEmotionState == null || IsInEmotionState(whenInEmotionState) != true)) return false;
+            if (rand.NextDouble() > 0.1f && (WhenInEmotionState == null || IsInEmotionState(WhenInEmotionState) != true)) return false;
 
-            if (!EmotionStatesSatisifed()) return false;
+            if (!PreconditionsSatisifed()) return false;
             if (lastSearchTotalMs + searchWaitMs > entity.World.ElapsedMilliseconds) return false;
-            if (whenInEmotionState == null && rand.NextDouble() > 0.5f) return false;
+            if (WhenInEmotionState == null && rand.NextDouble() > 0.5f) return false;
             if (cooldownUntilMs > entity.World.ElapsedMilliseconds) return false;
 
             float range = maxDist;
@@ -80,14 +85,11 @@ namespace Vintagestory.GameContent
             accum = 0;
             didThrow = false;
 
-            if (entity?.Properties.Server?.Attributes != null)
+            ITreeAttribute pathfinder = entity?.Properties.Server?.Attributes?.GetTreeAttribute("pathfinder");
+            if (pathfinder != null)
             {
-                ITreeAttribute pathfinder = entity.Properties.Server.Attributes.GetTreeAttribute("pathfinder");
-                if (pathfinder != null)
-                {
-                    minTurnAnglePerSec = pathfinder.GetFloat("minTurnAnglePerSec", 250);
-                    maxTurnAnglePerSec = pathfinder.GetFloat("maxTurnAnglePerSec", 450);
-                }
+                minTurnAnglePerSec = pathfinder.GetFloat("minTurnAnglePerSec", 250);
+                maxTurnAnglePerSec = pathfinder.GetFloat("maxTurnAnglePerSec", 450);
             }
             else
             {
@@ -145,6 +147,7 @@ namespace Vintagestory.GameContent
                 var entitypr = entity.World.ClassRegistry.CreateEntity(type) as EntityThrownStone;
                 entitypr.FiredBy = entity;
                 entitypr.Damage = projectileDamage;
+                entitypr.DamageTier = projectileDamageTier;
                 entitypr.ProjectileStack = new ItemStack(entity.World.GetItem(new AssetLocation("stone-granite")));
                 entitypr.NonCollectible = true;
 
@@ -154,7 +157,13 @@ namespace Vintagestory.GameContent
                 double distf = Math.Pow(pos.SquareDistanceTo(targetPos), 0.1);
                 Vec3d velocity = (targetPos - pos).Normalize() * GameMath.Clamp(distf - 1f, 0.1f, 1f);
 
-                entitypr.ServerPos.SetPos(
+                if (yawInaccuracy > 0)
+                {
+                    var rnd = entity.World.Rand;
+                    velocity = velocity.RotatedCopy((float)(rnd.NextDouble() * yawInaccuracy - yawInaccuracy / 2.0));
+                }
+
+                entitypr.ServerPos.SetPosWithDimension(
                     entity.ServerPos.BehindCopy(0.21).XYZ.Add(0, entity.LocalEyePos.Y, 0)
                 );
 
@@ -162,7 +171,7 @@ namespace Vintagestory.GameContent
 
                 entitypr.Pos.SetFrom(entitypr.ServerPos);
                 entitypr.World = entity.World;
-                entity.World.SpawnEntity(entitypr);
+                entity.World.SpawnPriorityEntity(entitypr);
             }
 
             return accum < durationMs / 1000f;
@@ -181,12 +190,6 @@ namespace Vintagestory.GameContent
             float desiredYaw = (float)Math.Atan2(targetVec.X, targetVec.Z);
             
             return desiredYaw;
-        }
-
-        public override void FinishExecute(bool cancelled)
-        {
-            base.FinishExecute(cancelled);
-
         }
     }
 }

@@ -8,101 +8,58 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
     public class BlockBamboo : Block, ITreeGenerator, ICustomTreeFellingBehavior
     {
-        public const int MaxPlantHeight = 15;
-
-        Block greenSeg1;
-        Block greenSeg2;
-        Block greenSeg3;
-
-        Block brownSeg1;
-        Block brownSeg2;
-        Block brownSeg3;
-
-        Block brownLeaves;
-        Block greenLeaves;
+        public int MaxPlantHeight { get; private set; }
 
         static Random rand = new Random();
         private bool isSegmentWithLeaves;
 
-        Block greenShootBlock;
-        Block brownShootBlock;
-
-        IBlockAccessor lockFreeBa;
+        IBlockAccessor? lockFreeBa;
+        string? domain => Code.Domain == GlobalConstants.DefaultDomain ? null : Code.Domain;
 
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
+
+            MaxPlantHeight = Attributes?["maxPlantHeight"].AsInt(15) ?? 15;
 
             if (api.Side == EnumAppSide.Client)
             {
                 lockFreeBa = api.World.GetLockFreeBlockAccessor();
             }
 
-            ICoreServerAPI sapi = api as ICoreServerAPI;
-            if (sapi != null)
-            {
-                if (Code.Path.Equals("bamboo-grown-green-segment1"))
-                {
-                    sapi.RegisterTreeGenerator(new AssetLocation("bamboo-grown-green"), this);
-                }
-                if (Code.Path.Equals("bamboo-grown-brown-segment1"))
-                {
-                    sapi.RegisterTreeGenerator(new AssetLocation("bamboo-grown-brown"), this);
-                }
-            }
-
-            if (greenSeg1 == null)
-            {
-                IBlockAccessor blockAccess = api.World.BlockAccessor;
-
-                greenSeg1 = blockAccess.GetBlock(new AssetLocation("bamboo-grown-green-segment1"));
-                greenSeg2 = blockAccess.GetBlock(new AssetLocation("bamboo-grown-green-segment2"));
-                greenSeg3 = blockAccess.GetBlock(new AssetLocation("bamboo-grown-green-segment3"));
-
-                brownSeg1 = blockAccess.GetBlock(new AssetLocation("bamboo-grown-brown-segment1"));
-                brownSeg2 = blockAccess.GetBlock(new AssetLocation("bamboo-grown-brown-segment2"));
-                brownSeg3 = blockAccess.GetBlock(new AssetLocation("bamboo-grown-brown-segment3"));
-
-                brownLeaves = blockAccess.GetBlock(new AssetLocation("bambooleaves-brown-grown"));
-                greenLeaves = blockAccess.GetBlock(new AssetLocation("bambooleaves-green-grown"));
-
-                greenShootBlock = blockAccess.GetBlock(new AssetLocation("sapling-greenbambooshoots-free"));
-                brownShootBlock = blockAccess.GetBlock(new AssetLocation("sapling-brownbambooshoots-free"));
-            }
+            if (Variant["part"] == "segment1") (api as ICoreServerAPI)?.RegisterTreeGenerator(AssetLocation.Create(FirstCodePart() + "-grown-" + Variant["color"], domain), this);
 
             if (RandomDrawOffset > 0)
             {
-                JsonObject overrider = Attributes?["overrideRandomDrawOffset"];
+                JsonObject? overrider = Attributes?["overrideRandomDrawOffset"];
                 if (overrider?.Exists == true) this.RandomDrawOffset = overrider.AsInt(1);
             }
 
-            isSegmentWithLeaves = LastCodePart() == "segment2" || LastCodePart() == "segment3";
+            isSegmentWithLeaves = Variant["part"] == "segment2" || Variant["part"] == "segment3";
         }
 
 
-        public string Type()
+        public string? Type()
         {
-            return LastCodePart(1);
+            return Variant["color"];
         }
 
-        public Block NextSegment(IBlockAccessor blockAccess)
+        public Block? NextSegment(IBlockAccessor blockAccess)
         {
-            
-            string part = LastCodePart();
+            int nextSegment = Variant["part"][^1].ToString().ToInt() + 1;
+            if (nextSegment > 3 || nextSegment < 1) return null;
 
-            return Type() == "green" ?
-                (part == "segment1" ? greenSeg2 : (part == "segment2" ? greenSeg3 : null)) :
-                (part == "segment1" ? brownSeg2 : (part == "segment2" ? brownSeg3 : null))
-            ;
+            return blockAccess.GetBlock(CodeWithVariant("part", "segment" + nextSegment));
         }
 
 
-        public void GrowTree(IBlockAccessor blockAccessor, BlockPos pos, TreeGenParams treegenParams)
+        public void GrowTree(IBlockAccessor blockAccessor, BlockPos pos, TreeGenParams treegenParams, IRandom random)
         {
             float f = treegenParams.otherBlockChance == 0 ? (3 + (float)rand.NextDouble() * 6) : (3 + (float)rand.NextDouble() * 4) * 3 * 3;
 
@@ -143,7 +100,7 @@ namespace Vintagestory.GameContent
 
         private void GrowStalk(IBlockAccessor blockAccessor, BlockPos upos, float centerDist, float sizeModifier, float vineGrowthChance)
         {
-            Block block = this;
+            Block? block = this;
             float heightf = (8 + rand.Next(5)) * sizeModifier;
             heightf = Math.Max(1f, heightf - centerDist);
 
@@ -151,6 +108,8 @@ namespace Vintagestory.GameContent
             int nextSegmentAtHeight = height / 3;
 
             BlockPos npos = upos.Copy();
+            Block shootBlock = blockAccessor.GetBlock(AssetLocation.Create("sapling-" + Variant["color"] + FirstCodePart() + "shoots-free", domain));
+            Block blockLeaves = blockAccessor.GetBlock(AssetLocation.Create(FirstCodePart() + "leaves-" + Variant["color"] + "-grown", domain));
 
             // Bamboo shoots nearby
             foreach (BlockFacing face in BlockFacing.HORIZONTALS)
@@ -158,7 +117,6 @@ namespace Vintagestory.GameContent
                 if (rand.NextDouble() > 0.75)
                 {
                     BlockPos bpos = npos.Set(upos).Add(face);
-                    Block shootBlock = block == greenSeg3 ? greenShootBlock : brownShootBlock;
 
                     var nblock = blockAccessor.GetBlock(bpos);
 
@@ -169,10 +127,11 @@ namespace Vintagestory.GameContent
                     }
                 }
             }
-            
+
             if (height < 4)
             {
-                block = ((BlockBamboo)block).NextSegment(blockAccessor);
+                block = (block as BlockBamboo)?.NextSegment(blockAccessor);
+                if (block == null) return;
             }
 
             for (int i = 0; i < height; i++)
@@ -183,17 +142,14 @@ namespace Vintagestory.GameContent
 
                 if (nextSegmentAtHeight <= i)
                 {
-                    block = ((BlockBamboo)block).NextSegment(blockAccessor);
+                    block = (block as BlockBamboo)?.NextSegment(blockAccessor);
                     nextSegmentAtHeight += height / 3;
                 }
 
                 if (block == null) break;
 
-                if (block == greenSeg3 || block == brownSeg3)
+                if (block.Variant["part"] == "segment3") // segment 3 can generate leaves
                 {
-                    // segment 3 can generate leaves
-                    Block blockLeaves = block == greenSeg3 ? greenLeaves : brownLeaves;
-
                     foreach (BlockFacing facing in BlockFacing.ALLFACES)
                     {
                         if (facing == BlockFacing.DOWN) continue;
@@ -245,11 +201,10 @@ namespace Vintagestory.GameContent
 
         public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing, int rndIndex = -1)
         {
-            if (!this.isSegmentWithLeaves || LastCodePart() != "segment3") return base.GetRandomColor(capi, pos, facing, rndIndex);
+            if (!this.isSegmentWithLeaves || Variant["part"] != "segment3") return base.GetRandomColor(capi, pos, facing, rndIndex);
 
             if (Textures == null || Textures.Count == 0) return 0;
-            CompositeTexture tex;
-            if (!Textures.TryGetValue(facing.Code, out tex))
+            if (!Textures.TryGetValue(facing.Code, out CompositeTexture? tex))
             {
                 tex = Textures.First().Value;
             }
@@ -287,8 +242,9 @@ namespace Vintagestory.GameContent
 
         private void applyWindSwayToMesh(MeshData sourceMesh, bool enableWind, BlockPos pos, Vec3i windDir)
         {
-            int[] origFlags;
-            if (!windModeByFlagCount.TryGetValue(sourceMesh.FlagsCount, out origFlags))
+            if (lockFreeBa == null) return;
+
+            if (!windModeByFlagCount.TryGetValue(sourceMesh.FlagsCount, out int[]? origFlags))
             {
                 origFlags = windModeByFlagCount[sourceMesh.FlagsCount] = new int[sourceMesh.FlagsCount];
                 for (int i = 0; i < origFlags.Length; i++) origFlags[i] = sourceMesh.Flags[i] & VertexFlags.WindModeBitsMask;
@@ -306,7 +262,7 @@ namespace Vintagestory.GameContent
                 if (nblock.VertexFlags.WindMode == EnumWindBitMode.NoWind && nblock.SideSolid[TileSideEnum.West]) sideDisableWindWaveDown = true;
             }
 
-            
+
             int groundOffset = 1;
 
             // Disable swaying if would push into a block to the East
@@ -318,10 +274,10 @@ namespace Vintagestory.GameContent
                 bool bambooLeavesFound = isSegmentWithLeaves;
                 bool continuousBambooCane = true;
                 Block block;
-                Block blockInWindDir;
+                Block? blockInWindDir;
                 for (; groundOffset < 8; groundOffset++)
                 {
-                    block = api.World.BlockAccessor.GetBlock(pos.X, pos.Y - groundOffset, pos.Z);
+                    block = api.World.BlockAccessor.GetBlockBelow(pos, groundOffset);
                     blockInWindDir = (block is BlockBamboo) ? api.World.BlockAccessor.GetBlock(pos.X + windDir.X, pos.Y - groundOffset, pos.Z + windDir.Z) : null;
 
                     if (block.VertexFlags.WindMode == EnumWindBitMode.NoWind && block.SideSolid[TileSideEnum.Up]) break;

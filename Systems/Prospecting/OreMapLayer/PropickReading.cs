@@ -5,6 +5,8 @@ using System.Text;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     [ProtoContract]
@@ -37,6 +39,7 @@ namespace Vintagestory.GameContent
             List<KeyValuePair<double, string>> readouts = new List<KeyValuePair<double, string>>();
             List<string> traceamounts = new List<string>();
 
+            string[] names = new string[] { "propick-density-verypoor", "propick-density-poor", "propick-density-decent", "propick-density-high", "propick-density-veryhigh", "propick-density-ultrahigh" };
             foreach (var val in OreReadings)
             {
                 var reading = val.Value;
@@ -47,12 +50,18 @@ namespace Vintagestory.GameContent
                     continue;
                 }
 
-                string[] names = new string[] { "propick-density-verypoor", "propick-density-poor", "propick-density-decent", "propick-density-high", "propick-density-veryhigh", "propick-density-ultrahigh" };
-
                 if (reading.TotalFactor > 0.025)
                 {
-                    string pageCode = pageCodes[val.Key];
-                    string text = Lang.GetL(languageCode, "propick-reading", Lang.GetL(languageCode, names[(int)GameMath.Clamp(reading.TotalFactor * 7.5f, 0, 5)]), pageCode, Lang.GetL(languageCode, "ore-" + val.Key), reading.PartsPerThousand.ToString("0.##"));
+                    string text;
+                    if (pageCodes.TryGetValue(val.Key, out string pageCode))
+                    {
+                        text = Lang.GetL(languageCode, "propick-reading", Lang.GetL(languageCode, names[(int)GameMath.Clamp(reading.TotalFactor * 7.5f, 0, 5)]), pageCode, Lang.GetL(languageCode, "ore-" + val.Key), reading.PartsPerThousand.ToString("0.##"));
+                    }
+                    else
+                    {
+                        text = val.Key;
+                    }
+
                     readouts.Add(new KeyValuePair<double, string>(reading.TotalFactor, text));
                 }
                 else if (reading.TotalFactor > MentionThreshold)
@@ -77,7 +86,8 @@ namespace Vintagestory.GameContent
                     foreach (var val in traceamounts)
                     {
                         if (i > 0) sbTrace.Append(", ");
-                        string pageCode = pageCodes[val];
+
+                        if (!pageCodes.TryGetValue(val, out string pageCode)) pageCode = val;
                         string text = string.Format("<a href=\"handbook://{0}\">{1}</a>", pageCode, Lang.GetL(languageCode, "ore-" + val));
                         sbTrace.Append(text);
                         i++;

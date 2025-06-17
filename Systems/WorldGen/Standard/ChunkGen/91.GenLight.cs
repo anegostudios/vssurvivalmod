@@ -1,6 +1,8 @@
 ﻿using Vintagestory.API.Common;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     public class GenLightSurvival : ModSystem
@@ -38,7 +40,7 @@ namespace Vintagestory.ServerMods
         {
             blockAccessor.BeginColumn();
             api.WorldManager.SunFloodChunkColumnForWorldGen(request.Chunks, request.ChunkX, request.ChunkZ);
-            blockAccessor.RunScheduledBlockLightUpdates();
+            blockAccessor.RunScheduledBlockLightUpdates(request.ChunkX, request.ChunkZ);
         }
 
         private void OnChunkColumnGenerationFlood(IChunkColumnGenerateRequest request)

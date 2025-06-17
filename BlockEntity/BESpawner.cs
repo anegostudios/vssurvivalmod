@@ -13,6 +13,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public enum EnumSpawnRangeMode
@@ -97,7 +99,7 @@ namespace Vintagestory.GameContent
         {
             tree.SetInt("maxCount", MaxCount);
             tree.SetFloat("intervalHours", InGameHourInterval);
-            tree["entityCodes"] = new StringArrayAttribute(EntityCodes == null ? new string[0] : EntityCodes);
+            tree["entityCodes"] = new StringArrayAttribute(EntityCodes == null ? Array.Empty<string>() : EntityCodes);
             tree.SetInt("x1", SpawnArea.X1);
             tree.SetInt("y1", SpawnArea.Y1);
             tree.SetInt("z1", SpawnArea.Z1);
@@ -236,7 +238,7 @@ namespace Vintagestory.GameContent
 
             if (Data.SpawnRangeMode > 0)
             {
-                IPlayer player = Api.World.NearestPlayer(Pos.X, Pos.Y, Pos.Z);
+                IPlayer player = Api.World.NearestPlayer(Pos.X, Pos.InternalY, Pos.Z);
                 if (player?.Entity?.ServerPos == null) return;
                 double distanceSq = player.Entity.ServerPos.SquareDistanceTo(Pos.ToVec3d());
 
@@ -400,6 +402,23 @@ namespace Vintagestory.GameContent
         public override void OnBlockRemoved()
         {
             base.OnBlockRemoved();
+
+            var sapi = Api as ICoreServerAPI;
+            if (sapi != null)
+            {
+                sapi.Event.OnEntityDespawn -= Event_OnEntityDespawn;
+            }
+        }
+
+        public override void OnBlockUnloaded()
+        {
+            base.OnBlockUnloaded();
+
+            var sapi = Api as ICoreServerAPI;
+            if (sapi != null)
+            {
+                sapi.Event.OnEntityDespawn -= Event_OnEntityDespawn;
+            }
         }
 
 
@@ -412,7 +431,7 @@ namespace Vintagestory.GameContent
             EntityAgent agent = entity as EntityAgent;
             if (agent != null) agent.HerdId = herdid;
 
-            entity.ServerPos.SetPos(spawnPosition);
+            entity.ServerPos.SetPosWithDimension(spawnPosition);
             entity.ServerPos.SetYaw((float)Api.World.Rand.NextDouble() * GameMath.TWOPI);
             entity.Pos.SetFrom(entity.ServerPos);
             entity.Attributes.SetString("origin", "entityspawner");
@@ -462,7 +481,7 @@ namespace Vintagestory.GameContent
             if (Api.Side == EnumAppSide.Server)
             {
                 ICoreServerAPI sapi = Api as ICoreServerAPI;
-                sapi.Network.SendBlockEntityPacket(byPlayer as IServerPlayer, Pos.X, Pos.Y, Pos.Z, 1000, SerializerUtil.Serialize(Data));
+                sapi.Network.SendBlockEntityPacket(byPlayer as IServerPlayer, Pos, 1000, SerializerUtil.Serialize(Data));
                 return;
             }
 
@@ -509,7 +528,7 @@ namespace Vintagestory.GameContent
             Data.FromTreeAttributes(tree);
 
             long[] values = (tree["spawnedEntities"] as LongArrayAttribute)?.value;
-            this.spawnedEntities = new HashSet<long>(values == null ? new long[0] : values);
+            this.spawnedEntities = new HashSet<long>(values == null ? Array.Empty<long>() : values);
         }
 
         public override void OnLoadCollectibleMappings(IWorldAccessor worldForNewMappings, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed, bool resolveImports)

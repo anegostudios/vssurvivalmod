@@ -6,6 +6,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockBehaviorDoor : StrongBlockBehavior, IMultiBlockColSelBoxes, IMultiBlockBlockProperties
@@ -87,12 +89,85 @@ namespace Vintagestory.GameContent
         }
 
 
-        protected bool hasCombinableLeftDoor(IWorldAccessor world, float RotateYRad, BlockPos pos, int doorWidth)
+        public static bool HasCombinableLeftDoor(IWorldAccessor world, float RotateYRad, BlockPos pos, int width, out BEBehaviorDoor leftDoor, out int leftOffset)
         {
-            int width = doorWidth;
-            BlockPos leftPos = pos.AddCopy(width * (int)Math.Round(Math.Sin(RotateYRad - 90)), 0, width * (int)Math.Round(Math.Cos(RotateYRad - 90)));
-            var leftDoor = getDoorAt(world, leftPos);
-            if (leftDoor != null && !leftDoor.InvertHandles)
+            leftOffset = 0;
+            leftDoor = null;
+            BlockFacing leftFacing = BlockFacing.HorizontalFromYaw(RotateYRad).GetCW();
+
+            BlockPos leftPos = pos.AddCopy(leftFacing);
+            leftDoor = getDoorAt(world, leftPos);
+
+            if (width > 1)
+            {
+                if (leftDoor == null)
+                {
+                    for (int i = 2; i <= width; i++)
+                    {
+                        leftPos = pos.AddCopy(leftFacing, i);
+                        leftDoor = getDoorAt(world, leftPos);
+                        if (leftDoor != null) break;
+                    }
+                }
+
+                if (leftDoor != null)
+                {
+                    BlockPos offsetPos = leftDoor.Pos.AddCopy(leftFacing.Opposite, leftDoor.InvertHandles ? width : (width + leftDoor.doorBh.width - 1));
+                    leftOffset = (int)pos.DistanceTo(offsetPos);
+
+                    if ((leftDoor.facingWhenClosed.Axis == EnumAxis.X && leftPos.X != leftDoor.Pos.X) ||
+                        (leftDoor.facingWhenClosed.Axis == EnumAxis.Z && leftPos.Z != leftDoor.Pos.Z))
+                    {
+                        leftDoor = null;
+                        leftOffset = 0;
+                    }
+                }
+            }
+
+            if (leftDoor != null && leftDoor.LeftDoor == null && leftDoor.RightDoor == null && leftDoor.facingWhenClosed == BlockFacing.HorizontalFromYaw(RotateYRad))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        public static bool HasCombinableRightDoor(IWorldAccessor world, float RotateYRad, BlockPos pos, int width, out BEBehaviorDoor rightDoor, out int rightOffset)
+        {
+            rightOffset = 0;
+            rightDoor = null;
+            BlockFacing rightFacing = BlockFacing.HorizontalFromYaw(RotateYRad).GetCCW();
+
+            BlockPos rightPos = pos.AddCopy(rightFacing);
+            rightDoor = getDoorAt(world, rightPos);
+
+            if (width > 1)
+            {
+                if (rightDoor == null)
+                {
+                    for (int i = 2; i <= width; i++)
+                    {
+                        rightPos = pos.AddCopy(rightFacing, i);
+                        rightDoor = getDoorAt(world, rightPos);
+                        if (rightDoor != null) break;
+                    }
+                }
+
+                if (rightDoor != null)
+                {
+                    BlockPos offsetPos = rightDoor.Pos.AddCopy(rightFacing.Opposite, !rightDoor.InvertHandles ? width : width + rightDoor.doorBh.width - 1);
+                    rightOffset = (int)pos.DistanceTo(offsetPos);
+
+                    if ((rightDoor.facingWhenClosed.Axis == EnumAxis.X && rightPos.X != rightDoor.Pos.X) ||
+                        (rightDoor.facingWhenClosed.Axis == EnumAxis.Z && rightPos.Z != rightDoor.Pos.Z))
+                    {
+                        rightDoor = null;
+                        rightOffset = 0;
+                    }
+                }
+            }
+
+            if (rightDoor != null && rightDoor.RightDoor == null && rightDoor.LeftDoor == null && rightDoor.facingWhenClosed == BlockFacing.HorizontalFromYaw(RotateYRad))
             {
                 return true;
             }
@@ -103,15 +178,25 @@ namespace Vintagestory.GameContent
 
         public override bool CanPlaceBlock(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref EnumHandling handling, ref string failureCode)
         {
+            BlockPos pos = blockSel.Position.Copy();
             var rotRad = BEBehaviorDoor.getRotateYRad(byPlayer, blockSel);
+            BlockFacing facing = BlockFacing.HorizontalFromYaw(rotRad);
             bool blocked = false;
 
-            bool invertHandle = hasCombinableLeftDoor(world, rotRad, blockSel.Position, width);
+            bool invertHandle = HasCombinableLeftDoor(world, rotRad, blockSel.Position, width, out BEBehaviorDoor otherDoor, out int offset);
 
-            IterateOverEach(blockSel.Position, rotRad, invertHandle, (mpos) =>
+            if (invertHandle && width > 1 && offset != 0)
             {
-                if (mpos == blockSel.Position) return true;
+                pos.Add(facing.GetCCW(), offset);
+            }
 
+            if (!invertHandle && HasCombinableRightDoor(world, rotRad, blockSel.Position, width, out otherDoor, out offset) && width > 1 && offset != 0)
+            {
+                pos.Add(facing.GetCW(), offset);
+            }
+
+            IterateOverEach(pos, rotRad, invertHandle, (mpos) =>
+            {
                 Block mblock = world.BlockAccessor.GetBlock(mpos, BlockLayersAccess.Solid);
                 if (!mblock.IsReplacableBy(block))
                 {
@@ -135,11 +220,28 @@ namespace Vintagestory.GameContent
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handling, ref string failureCode)
         {
             handling = EnumHandling.PreventDefault;
-            BlockPos pos = blockSel.Position;
+            BlockPos pos = blockSel.Position.Copy();
             IBlockAccessor ba = world.BlockAccessor;
 
-            if (ba.GetBlock(pos, BlockLayersAccess.Solid).Id == 0 && block.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
+            if (block.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
             {
+                var rotRad = BEBehaviorDoor.getRotateYRad(byPlayer, blockSel);
+                BlockFacing facing = BlockFacing.HorizontalFromYaw(rotRad);
+                if (HasCombinableLeftDoor(world, rotRad, blockSel.Position, width, out BEBehaviorDoor otherDoor, out int offset))
+                {
+                    if (width > 1 && offset != 0)
+                    {
+                        pos.Add(facing.GetCCW(), offset);
+                    }
+                }
+                else if (HasCombinableRightDoor(world, rotRad, blockSel.Position, width, out otherDoor, out offset))
+                {
+                    if (width > 1 && offset != 0)
+                    {
+                        pos.Add(facing.GetCW(), offset);
+                    }
+                }
+
                 return placeDoor(world, byPlayer, itemstack, blockSel, pos, ba);
             }
 
@@ -179,6 +281,7 @@ namespace Vintagestory.GameContent
                 AssetLocation loc = new AssetLocation("multiblock-monolithic-" + sdx + "-" + sdy + "-" + sdz);
                 Block block = world.GetBlock(loc);
                 world.BlockAccessor.SetBlock(block.Id, mpos);
+                if (world.Side == EnumAppSide.Server) world.BlockAccessor.TriggerNeighbourBlockUpdate(mpos);
                 return true;
             });
         }
@@ -198,6 +301,7 @@ namespace Vintagestory.GameContent
                 if (mblock is BlockMultiblock)
                 {
                     world.BlockAccessor.SetBlock(0, mpos);
+                    if (world.Side == EnumAppSide.Server) world.BlockAccessor.TriggerNeighbourBlockUpdate(mpos);
                 }
 
                 return true;
@@ -208,8 +312,7 @@ namespace Vintagestory.GameContent
 
         public void IterateOverEach(BlockPos pos, float yRotRad, bool invertHandle, ActionConsumable<BlockPos> onBlock)
         {
-            BlockPos tmpPos = new BlockPos();
-            tmpPos.dimension = pos.dimension;
+            BlockPos tmpPos = new BlockPos(pos.dimension);
 
             for (int dx = 0; dx < width; dx++)
             {
@@ -288,6 +391,14 @@ namespace Vintagestory.GameContent
 
         public override void GetDecal(IWorldAccessor world, BlockPos pos, ITexPositionSource decalTexSource, ref MeshData decalModelData, ref MeshData blockModelData, ref EnumHandling handled)
         {
+            var beh = world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorDoor>();
+
+            if (beh.Opened)
+            {
+                float rot = beh.InvertHandles ? 90 : -90;
+                decalModelData = decalModelData.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, rot * GameMath.DEG2RAD, 0);
+                if (!beh.InvertHandles) decalModelData = decalModelData.Scale(new Vec3f(0.5f, 0.5f, 0.5f), 1, 1f, -1);
+            }
             base.GetDecal(world, pos, decalTexSource, ref decalModelData, ref blockModelData, ref handled);
         }
 
@@ -317,8 +428,7 @@ namespace Vintagestory.GameContent
             var beh = block.GetBEBehavior<BEBehaviorDoor>(pos);
             if (beh == null) return 0f;
 
-            if (beh.Opened) return 0f;
-            if (face != beh.facingWhenClosed) return 0f;
+            if (!beh.IsSideSolid(face)) return 0f;
 
             if (block.Variant["style"] == "sleek-windowed") return 1.0f;
 
@@ -331,8 +441,7 @@ namespace Vintagestory.GameContent
         {
             var beh = block.GetBEBehavior<BEBehaviorDoor>(pos.AddCopy(offset.X, offset.Y, offset.Z));
             if (beh == null) return 0f;
-            if (beh.Opened) return 0f;
-            if (face != beh.facingWhenClosed) return 0f;
+            if (!beh.IsSideSolid(face)) return 0f;
 
             if (block.Variant["style"] == "sleek-windowed") return offset.Y == -1 ? 0.0f : 1.0f;
 
@@ -347,10 +456,11 @@ namespace Vintagestory.GameContent
             var beh = block.GetBEBehavior<BEBehaviorDoor>(pos);
             if (beh == null) return 0;
 
-            if (type == EnumRetentionType.Sound) return beh.Opened ? 0 : 3;
+            if (type == EnumRetentionType.Sound) return beh.IsSideSolid(facing) ? 3 : 0;
 
             if (!airtight) return 0;
-            return beh.Opened ? 3 : 1;
+            if (api.World.Config.GetBool("openDoorsNotSolid", false)) return beh.IsSideSolid(facing) ? getInsulation(pos) : 0;
+            return (beh.IsSideSolid(facing) || beh.IsSideSolid(facing.Opposite)) ? getInsulation(pos) : 3; // Also check opposite so the door can be facing inwards or outwards.
         }
 
 
@@ -358,10 +468,21 @@ namespace Vintagestory.GameContent
         {
             var beh = block.GetBEBehavior< BEBehaviorDoor>(pos.AddCopy(offset.X, offset.Y, offset.Z));
             if (beh == null) return 0;
-            if (type == EnumRetentionType.Sound) return beh.Opened ? 0 : 3;
+            if (type == EnumRetentionType.Sound) return beh.IsSideSolid(facing) ? 3 : 0;
 
             if (!airtight) return 0;
-            return beh.Opened ? 3 : 1; 
+            if (api.World.Config.GetBool("openDoorsNotSolid", false)) return beh.IsSideSolid(facing) ? getInsulation(pos) : 0;
+            return (beh.IsSideSolid(facing) || beh.IsSideSolid(facing.Opposite)) ? getInsulation(pos) : 3; // Also check opposite so the door can be facing inwards or outwards.
+        }
+
+        private int getInsulation(BlockPos pos)
+        {
+            var mat = block.GetBlockMaterial(api.World.BlockAccessor, pos);
+            if (mat == EnumBlockMaterial.Ore || mat == EnumBlockMaterial.Stone || mat == EnumBlockMaterial.Soil || mat == EnumBlockMaterial.Ceramic)
+            {
+                return -1;
+            }
+            return 1;
         }
 
         public bool MBCanAttachBlockAt(IBlockAccessor blockAccessor, Block block, BlockPos pos, BlockFacing blockFace, Cuboidi attachmentArea, Vec3i offsetInv)

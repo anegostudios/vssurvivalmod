@@ -8,6 +8,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 
 namespace Vintagestory.GameContent
 {
@@ -169,8 +171,7 @@ namespace Vintagestory.GameContent
 
             if (blocksbroken > 35 && axeHasDurability)
             {
-                Vec3d pos = blockSel.Position.ToVec3d().Add(0.5, 0.5, 0.5);
-                api.World.PlaySoundAt(new AssetLocation("sounds/effect/treefell"), pos.X, pos.Y, pos.Z, byPlayer, false, 32, GameMath.Clamp(blocksbroken / 100f, 0.25f, 1));
+                api.World.PlaySoundAt(new AssetLocation("sounds/effect/treefell"), blockSel.Position, -0.25, byPlayer, false, 32, GameMath.Clamp(blocksbroken / 100f, 0.25f, 1));
             }
             
             return true;
@@ -219,19 +220,19 @@ namespace Vintagestory.GameContent
             if (spreadIndex < 2) return foundPositions;
             if (treeFellingGroupCode == null) return foundPositions;
 
-            queue.Enqueue(new Vec4i(startPos.X, startPos.Y, startPos.Z, spreadIndex));
+            queue.Enqueue(new Vec4i(startPos, spreadIndex));
             checkedPositions.Add(startPos);
             int[] adjacentLeafGroupsCounts = new int[LeafGroups];
 
             while (queue.Count > 0)
             {
                 Vec4i pos = queue.Dequeue();
-                foundPositions.Push(new BlockPos(pos.X, pos.Y, pos.Z, startPos.dimension));
+                foundPositions.Push(new BlockPos(pos.X, pos.Y, pos.Z));   // dimension-correct because pos.Y contains the dimension
                 resistance += pos.W + 1;      // leaves -> 1; branchyleaves -> 2; softwood -> 4 etc.
                 if (woodTier == 0) woodTier = pos.W;
                 if (foundPositions.Count > 2500) break;
 
-                block = world.BlockAccessor.GetBlock(pos.X, pos.Y, pos.Z, BlockLayersAccess.Solid);
+                block = world.BlockAccessor.GetBlockRaw(pos.X, pos.Y, pos.Z, BlockLayersAccess.Solid);
                 if (block is ICustomTreeFellingBehavior ctfbhh)
                 {
                     bh = ctfbhh.GetTreeFellingBehavior(startPos, null, spreadIndex);
@@ -259,7 +260,7 @@ namespace Vintagestory.GameContent
             while (leafqueue.Count > 0)
             {
                 Vec4i pos = leafqueue.Dequeue();
-                foundPositions.Push(new BlockPos(pos.X, pos.Y, pos.Z, startPos.dimension));
+                foundPositions.Push(new BlockPos(pos.X, pos.Y, pos.Z));   // dimension-correct because pos.Y contains the dimension
                 resistance += pos.W + 1;      // leaves -> 1; branchyleaves -> 2; softwood -> 4 etc.
                 if (foundPositions.Count > 2500) break;
 
@@ -313,7 +314,7 @@ namespace Vintagestory.GameContent
 
                 if (chopSpreadVertical && !facing.Equals(0, 1, 0) && nspreadIndex > 0) continue;
 
-                outqueue.Enqueue(new Vec4i(neibPos.X, neibPos.Y, neibPos.Z, nspreadIndex));
+                outqueue.Enqueue(new Vec4i(neibPos, nspreadIndex));
             }
         }
     }

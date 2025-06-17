@@ -1,6 +1,8 @@
 ﻿using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockBehaviorBreakSnowFirst : BlockBehavior
@@ -17,7 +19,7 @@ namespace Vintagestory.GameContent
                 if (byPlayer != null && byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
                 {
                     world.BlockAccessor.SetBlock(block.notSnowCovered.Id, pos);
-                    if (world.Side == EnumAppSide.Server) world.PlaySoundAt(new AssetLocation("block/snow"), pos.X, pos.Y, pos.Z, byPlayer);
+                    if (world.Side == EnumAppSide.Server) world.PlaySoundAt(new AssetLocation("block/snow"), pos, 0.5, byPlayer);
                     handled = EnumHandling.PreventSubsequent;
                     return;
                 }

@@ -4,6 +4,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class GuiDialogBlockEntityConditional : GuiDialogBlockEntity
@@ -109,7 +111,7 @@ namespace Vintagestory.GameContent
         {
             string commands = SingleComposer.GetTextArea("commands").GetText();
             bool latching = SingleComposer.GetSwitch("latchingSwitch").On;
-            capi.Network.SendBlockEntityPacket(BlockEntityPosition.X, BlockEntityPosition.Y, BlockEntityPosition.Z, 12, SerializerUtil.Serialize(new BlockEntityCommandPacket() { Commands = commands, Silent = latching }));
+            capi.Network.SendBlockEntityPacket(BlockEntityPosition, 12, SerializerUtil.Serialize(new BlockEntityCommandPacket() { Commands = commands, Silent = latching }));
             TryClose();
             return true;
         }
@@ -124,7 +126,7 @@ namespace Vintagestory.GameContent
             }
 
             string display = "Ok";
-            ICommandArgumentParser test = new EntitiesArgParser("test", capi, true);
+            ICommandArgumentParser test = s.StartsWith("isBlock") ? new IsBlockArgParser("cond", capi, true) : new EntitiesArgParser("test", capi, true);
             TextCommandCallingArgs packedArgs = new TextCommandCallingArgs()
             {
                 Caller = new Caller()

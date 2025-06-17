@@ -3,6 +3,8 @@ using Vintagestory.API.Common;
 using System;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 

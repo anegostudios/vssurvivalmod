@@ -1,8 +1,15 @@
 ﻿using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
+    public interface IHandBookPageCodeProvider
+    {
+        string HandbookPageCodeForStack(IWorldAccessor world, ItemStack stack);
+    }
+
     public struct WeightedHandbookPage
     {
         public float Weight;

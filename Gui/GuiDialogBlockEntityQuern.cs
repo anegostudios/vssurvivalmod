@@ -3,6 +3,8 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class GuiDialogBlockEntityQuern : GuiDialogBlockEntity

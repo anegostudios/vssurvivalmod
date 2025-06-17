@@ -3,6 +3,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockBehaviorReinforcable : BlockBehavior
@@ -24,7 +26,7 @@ namespace Vintagestory.GameContent
             {
                 handling = EnumHandling.PreventDefault;   // This prevents the block from breaking normally, while it any amount of reinforcement left
 
-                world.PlaySoundAt(new AssetLocation("sounds/tool/breakreinforced"), pos.X, pos.Y, pos.Z, byPlayer);
+                world.PlaySoundAt(new AssetLocation("sounds/tool/breakreinforced"), pos, 0, byPlayer);
 
                 if (!byPlayer.HasPrivilege("denybreakreinforced"))
                 {

@@ -4,6 +4,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockIngotPile : Block
@@ -78,7 +80,7 @@ namespace Vintagestory.GameContent
                 
                 pile.MarkDirty();
                 world.BlockAccessor.MarkBlockDirty(pos);
-                world.PlaySoundAt(new AssetLocation("sounds/block/ingot"), pos.X, pos.Y, pos.Z, player, false);
+                world.PlaySoundAt(new AssetLocation("sounds/block/ingot"), pos, pile.inventory[0].Itemstack.StackSize / pile.MaxStackSize - 0.5, player, false);
             }
 
 
@@ -99,13 +101,13 @@ namespace Vintagestory.GameContent
 
         public override BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)
         {
-            return new BlockDropItemStack[0];
+            return Array.Empty<BlockDropItemStack>();
         }
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {
             // Handled by BlockEntityItemPile
-            return new ItemStack[0];
+            return Array.Empty<ItemStack>();
         }
 
 

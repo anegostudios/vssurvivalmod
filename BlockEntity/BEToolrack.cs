@@ -7,6 +7,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityToolrack : BlockEntity, ITexPositionSource
@@ -14,7 +16,7 @@ namespace Vintagestory.GameContent
         public InventoryGeneric inventory;
 
         MeshData[] toolMeshes = new MeshData[4];
-        
+
 
         public Size2i AtlasSize
         {
@@ -25,13 +27,11 @@ namespace Vintagestory.GameContent
         public TextureAtlasPosition this[string textureCode]
         {
             get {
-                ToolTextures tt;
 
                 var toolTextureSubIds = BlockToolRack.ToolTextureSubIds(Api);
-                if (toolTextureSubIds.TryGetValue((Item)tmpItem, out tt))
+                if (toolTextureSubIds.TryGetValue((Item)tmpItem, out ToolTextures tt))
                 {
-                    int textureSubId = 0;
-                    if (tt.TextureSubIdsByCode.TryGetValue(textureCode, out textureSubId))
+                    if (tt.TextureSubIdsByCode.TryGetValue(textureCode, out int textureSubId))
                     {
                         return ((ICoreClientAPI)Api).BlockTextureAtlas.Positions[textureSubId];
                     }
@@ -39,7 +39,7 @@ namespace Vintagestory.GameContent
                     return ((ICoreClientAPI)Api).BlockTextureAtlas.Positions[tt.TextureSubIdsByCode.First().Value];
                 }
 
-                Api.Logger.Debug("Could not get item texture! textureCode: {0} Item: {1} toolTextureSubIds: [{2}] {3}",textureCode, tmpItem.Code, toolTextureSubIds.Count, string.Join(",",toolTextureSubIds.Select(x => x.Key.Code)));
+                Api.Logger.Debug("Could not get item texture! textureCode: {0} Item: {1}",textureCode, tmpItem.Code);
                 return ((ICoreClientAPI)Api).BlockTextureAtlas.UnknownTexturePosition;
             }
         }
@@ -55,7 +55,7 @@ namespace Vintagestory.GameContent
 
             inventory.LateInitialize("toolrack-" + Pos.ToString(), api);
             inventory.ResolveBlocksOrItems();
-            inventory.OnAcquireTransitionSpeed = Inventory_OnAcquireTransitionSpeed;
+            inventory.OnAcquireTransitionSpeed += Inventory_OnAcquireTransitionSpeed;
 
             if (api is ICoreClientAPI)
             {
@@ -68,7 +68,7 @@ namespace Vintagestory.GameContent
         {
             if (eventname != "genjsontransform" && eventname != "oncloseedittransforms" &&
                 eventname != "onapplytransforms") return;
-            
+
             loadToolMeshes();
             MarkDirty(true);
         }
@@ -95,7 +95,7 @@ namespace Vintagestory.GameContent
 
                 tmpItem = stack.Collectible;
 
-                var meshSource = stack.Collectible as IContainedMeshSource;
+                IContainedMeshSource meshSource = stack.Collectible?.GetCollectibleInterface<IContainedMeshSource>();
                 if (meshSource != null)
                 {
                     toolMeshes[i] = meshSource.GenMesh(stack, capi.BlockTextureAtlas, Pos);
@@ -125,8 +125,8 @@ namespace Vintagestory.GameContent
                 {
                     toolMeshes[i].Scale(origin, 0.33f, 0.33f, 0.33f);
                     toolMeshes[i].Translate(
-                        (((i % 2) == 0) ? 0.23f : -0.3f), 
-                        ((i > 1) ? 0.2f : -0.3f) + yOff, 
+                        (((i % 2) == 0) ? 0.23f : -0.3f),
+                        ((i > 1) ? 0.2f : -0.3f) + yOff,
                         0.433f * ((facing.Axis == EnumAxis.X) ? -1 : 1)
                     );
                     toolMeshes[i].Rotate(origin, 0, facing.HorizontalAngleIndex * 90 * GameMath.DEG2RAD, 0);
@@ -147,7 +147,7 @@ namespace Vintagestory.GameContent
 
             }
         }
-        
+
         internal bool OnPlayerInteract(IPlayer byPlayer, Vec3d hit)
         {
             BlockFacing facing = getFacing();
@@ -175,8 +175,13 @@ namespace Vintagestory.GameContent
             IItemStack stack = player.InventoryManager.ActiveHotbarSlot.Itemstack;
             if (stack == null || (stack.Collectible.Tool == null && stack.Collectible.Attributes?["rackable"].AsBool() != true)) return false;
 
+            var stackName = player.InventoryManager.ActiveHotbarSlot.Itemstack?.Collectible.Code;
             player.InventoryManager.ActiveHotbarSlot.TryPutInto(Api.World, inventory[slot]);
-
+            Api.World.Logger.Audit("{0} Put 1x{1} into Tool rack at {2}.",
+                player.PlayerName,
+                stackName,
+                Pos
+            );
             didInteract(player);
             return true;
         }
@@ -184,11 +189,17 @@ namespace Vintagestory.GameContent
         bool TakeFromSlot(IPlayer player, int slot)
         {
             ItemStack stack = inventory[slot].TakeOutWhole();
-            
+
             if (!player.InventoryManager.TryGiveItemstack(stack))
             {
-                Api.World.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                Api.World.SpawnItemEntity(stack, Pos);
             }
+            var stackName = stack?.Collectible.Code;
+            Api.World.Logger.Audit("{0} Took 1x{1} from Tool rack at {2}.",
+                player.PlayerName,
+                stackName,
+                Pos
+            );
 
             didInteract(player);
             return true;
@@ -196,14 +207,14 @@ namespace Vintagestory.GameContent
 
         void didInteract(IPlayer player)
         {
-            Api.World.PlaySoundAt(new AssetLocation("sounds/player/buildhigh"), Pos.X, Pos.Y, Pos.Z, player, false);
+            Api.World.PlaySoundAt(new AssetLocation("sounds/player/buildhigh"), Pos, 0, player, false);
             if (Api is ICoreClientAPI) loadToolMeshes();
             MarkDirty(true);
         }
 
         public override void OnBlockRemoved()
         {
-            
+
         }
 
         public override void OnBlockBroken(IPlayer byPlayer = null)
@@ -212,7 +223,7 @@ namespace Vintagestory.GameContent
             {
                 ItemStack stack = inventory[i].Itemstack;
                 if (stack == null) continue;
-                Api.World.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                Api.World.SpawnItemEntity(stack, Pos);
             }
         }
 
@@ -304,7 +315,7 @@ namespace Vintagestory.GameContent
         {
             int i = 0;
 
-            // The item meshes are drawn first on the right, then on the left: BlockInfo text description should match item positions i.e. 1, 0, 3, 2 
+            // The item meshes are drawn first on the right, then on the left: BlockInfo text description should match item positions i.e. 1, 0, 3, 2
             ItemStack slotsReverserLeftRight = null;
             foreach (var slot in inventory)
             {

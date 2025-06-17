@@ -5,12 +5,14 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     public class GenRivulets : ModStdWorldGen
     {
         ICoreServerAPI api;
-        Random rnd;
+        LCGRandom rnd;
         IWorldGenBlockAccessor blockAccessor;
         int regionsize;
         int chunkMapSizeY;
@@ -50,7 +52,7 @@ namespace Vintagestory.ServerMods
         private void initWorldGen()
         {
             LoadGlobalConfig(api);
-            rnd = new Random(api.WorldManager.Seed);
+            rnd = new LCGRandom(api.WorldManager.Seed);
             chunkMapSizeY = api.WorldManager.MapSizeY / chunksize;
         }
 
@@ -97,8 +99,9 @@ namespace Vintagestory.ServerMods
 
             int quantityWaterRivulets = 2 * ((int)(160 * (rain + humidity) / 255f) * (api.WorldManager.MapSizeY / chunksize) - Math.Max(0, 100 - temp));
             int quantityLavaRivers = (int)(500 * geoActivity/255f * (api.WorldManager.MapSizeY / chunksize));
-            
-            float sealeveltemp = TerraGenConfig.GetScaledAdjustedTemperatureFloat(temp, 0);
+
+            float sealeveltemp = Climate.GetScaledAdjustedTemperatureFloat(temp, 0);
+            rnd.InitPositionSeed(chunkX, chunkZ);
             if (sealeveltemp >= -15)
             {
                 while (quantityWaterRivulets-- > 0)
@@ -120,12 +123,12 @@ namespace Vintagestory.ServerMods
             int surfaceY = (int)(TerraGenConfig.seaLevel * 1.1f);
             int aboveSurfaceHeight = api.WorldManager.MapSizeY - surfaceY;
 
-            int dx = 1 + rnd.Next(chunksize - 2);
-            int y = Math.Min(1 + rnd.Next(surfaceY) + rnd.Next(aboveSurfaceHeight) * rnd.Next(aboveSurfaceHeight), api.WorldManager.MapSizeY - 2);
-            int dz = 1 + rnd.Next(chunksize - 2);
+            int dx = 1 + rnd.NextInt(chunksize - 2);
+            int y = Math.Min(1 + rnd.NextInt(surfaceY) + rnd.NextInt(aboveSurfaceHeight) * rnd.NextInt(aboveSurfaceHeight), api.WorldManager.MapSizeY - 2);
+            int dz = 1 + rnd.NextInt(chunksize - 2);
 
             ushort hereSurfaceY = mapChunk.WorldGenTerrainHeightMap[dz * chunksize + dx];
-            if (y > hereSurfaceY && rnd.Next(2) == 0) return; // Half as common overground
+            if (y > hereSurfaceY && rnd.NextInt(2) == 0) return; // Half as common overground
 
             // Water only above y-threshold, Lava only below y-threshold
             if (y < geoActivityYThreshold && !lava || y > geoActivityYThreshold && lava) return;
@@ -160,13 +163,13 @@ namespace Vintagestory.ServerMods
             }
 
             if (quantitySolid != 5 || quantityAir != 1) return;
-            
+
             BlockPos pos = new BlockPos(chunkX * chunksize + dx, y, chunkZ * chunksize + dz);
             for (int i = 0; i < structuresIntersectingChunk.Count; i++)
             {
                 if (structuresIntersectingChunk[i].Contains(pos)) return;
             }
-            if (SkipGenerationAt(pos, EnumWorldGenPass.Vegetation)) return;
+            if (GetIntersectingStructure(pos, SkipRivuletsgHashCode) != null) return;
 
             var chunk = chunks[y / chunksize];
             var index = (chunksize * (y % chunksize) + dz) * chunksize + dx;
@@ -178,8 +181,8 @@ namespace Vintagestory.ServerMods
             chunk.Data.SetBlockAir(index);
             chunk.Data.SetFluid(index, y < geoActivityYThreshold ? GlobalConfig.lavaBlockId : GlobalConfig.waterBlockId);
 
-            
-            
+
+
 
             blockAccessor.ScheduleBlockUpdate(pos);
         }

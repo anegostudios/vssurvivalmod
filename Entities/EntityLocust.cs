@@ -2,6 +2,8 @@
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class EntityLocust : EntityGlowingAgent
@@ -54,8 +56,8 @@ namespace Vintagestory.GameContent
             {
                 cnt = 0;
                 var pos = SidedPos;
-                Block belowBlock = World.BlockAccessor.GetBlock((int)pos.X, (int)(pos.Y - 0.05f), (int)pos.Z);
-                Block insideblock = World.BlockAccessor.GetBlock((int)pos.X, (int)(pos.Y + 0.01f), (int)pos.Z);
+                Block belowBlock = World.BlockAccessor.GetBlockRaw((int)pos.X, (int)(pos.InternalY - 0.05f), (int)pos.Z);
+                Block insideblock = World.BlockAccessor.GetBlockRaw((int)pos.X, (int)(pos.InternalY + 0.01f), (int)pos.Z);
 
                 mul1 = belowBlock.Code == null || belowBlock.Code.Path.Contains("metalspike") ? 1 : belowBlock.WalkSpeedMultiplier;
                 mul2 = insideblock.Code == null || insideblock.Code.Path.Contains("metalspike") ? 1 : insideblock.WalkSpeedMultiplier;

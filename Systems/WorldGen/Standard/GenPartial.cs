@@ -1,6 +1,8 @@
 ﻿using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     public abstract class GenPartial : ModStdWorldGen

@@ -8,6 +8,8 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Datastructures;
 using Newtonsoft.Json.Linq;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ItemCreatureInventory : Item, ITexPositionSource
@@ -73,7 +75,7 @@ namespace Vintagestory.GameContent
         static Dictionary<EnumItemRenderTarget, string> map = new Dictionary<EnumItemRenderTarget, string>() {
             { EnumItemRenderTarget.Ground, "groundTransform" },
             { EnumItemRenderTarget.HandTp, "tpHandTransform" },
-            { EnumItemRenderTarget.HandFp, "fpHandTransform" },
+            //{ EnumItemRenderTarget.HandFp, "fpHandTransform" },
             { EnumItemRenderTarget.Gui, "guiTransform" },
             { EnumItemRenderTarget.HandTpOff, "tpOffHandTransform" },
         };

@@ -3,6 +3,8 @@ using Vintagestory.API.Client;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     [ProtoContract]
@@ -81,7 +83,7 @@ namespace Vintagestory.GameContent
                 Active = SingleComposer.GetSwitch("onSwitch").On
             };
 
-            capi.Network.SendBlockEntityPacket(BlockEntityPosition.X, BlockEntityPosition.Y, BlockEntityPosition.Z, 12, SerializerUtil.Serialize(packet));
+            capi.Network.SendBlockEntityPacket(BlockEntityPosition, 12, SerializerUtil.Serialize(packet));
             TryClose();
             return true;
         }

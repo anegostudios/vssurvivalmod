@@ -2,6 +2,8 @@
 using System.Runtime.Serialization;
 using Vintagestory.API.Common;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods.NoObf
 {
     public enum EnumTreeHabitat

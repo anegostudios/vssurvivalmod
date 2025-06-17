@@ -4,6 +4,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     [ProtoContract()]
@@ -114,7 +116,7 @@ namespace Vintagestory.GameContent
         {
             string commands = SingleComposer.GetTextArea("commands").GetText();
             bool silent = SingleComposer.GetSwitch("silentSwitch").On;
-            capi.Network.SendBlockEntityPacket(BlockEntityPosition.X, BlockEntityPosition.Y, BlockEntityPosition.Z, 12, SerializerUtil.Serialize(new BlockEntityCommandPacket() { Commands = commands, Silent = silent }));
+            capi.Network.SendBlockEntityPacket(BlockEntityPosition, 12, SerializerUtil.Serialize(new BlockEntityCommandPacket() { Commands = commands, Silent = silent }));
             TryClose();
             return true;
         }

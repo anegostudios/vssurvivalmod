@@ -6,6 +6,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityFruitTreeBranch : BlockEntityFruitTreePart
@@ -268,8 +270,7 @@ namespace Vintagestory.GameContent
 
 
             int meshkey = getHashCode(shapekey);
-            MeshData mesh;
-            if (meshes.TryGetValue(meshkey, out mesh))
+            if (meshes.TryGetValue(meshkey, out MeshData mesh))
             {
                 return mesh;
             }

@@ -5,6 +5,8 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockSkep : Block
@@ -34,10 +36,10 @@ namespace Vintagestory.GameContent
                 return true;
             }
 
-            if (byPlayer.InventoryManager.TryGiveItemstack(new ItemStack(this)))
+            if (byPlayer.InventoryManager.TryGiveItemstack(new ItemStack(world.BlockAccessor.GetBlock(this.CodeWithVariant("side", "east")))))
             {
                 world.BlockAccessor.SetBlock(0, blockSel.Position);
-                world.PlaySoundAt(new AssetLocation("sounds/block/planks"), blockSel.Position.X + 0.5, blockSel.Position.Y, blockSel.Position.Z + 0.5, byPlayer, false);
+                world.PlaySoundAt(new AssetLocation("sounds/block/planks"), blockSel.Position, -0.5, byPlayer, false);
 
                 return true;
             }
@@ -88,13 +90,13 @@ namespace Vintagestory.GameContent
         {
             if (IsEmpty())
             {
-                return new ItemStack[] { new ItemStack(this) };
+                return new ItemStack[] { new ItemStack(world.BlockAccessor.GetBlock(this.CodeWithVariant("side", "east"))) };
             }
 
             BlockEntityBeehive beh = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityBeehive;
             if (beh == null || !beh.Harvestable)
             {
-                return new ItemStack[] { new ItemStack(this) };
+                return new ItemStack[] { new ItemStack(world.BlockAccessor.GetBlock(this.CodeWithVariant("side", "east"))) };
             }
 
             if (Drops == null) return null;

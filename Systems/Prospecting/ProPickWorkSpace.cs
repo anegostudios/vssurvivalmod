@@ -8,6 +8,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.ServerMods;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ProPickWorkSpace
@@ -18,7 +20,7 @@ namespace Vintagestory.GameContent
         GenRockStrataNew rockStrataGen;
         GenDeposits depositGen;
         ICoreServerAPI sapi;
-        
+
 
         public virtual void OnLoaded(ICoreAPI api)
         {
@@ -161,11 +163,11 @@ namespace Vintagestory.GameContent
             {
                 Blocks = new DummyChunkData(chunksize);
             }
- 
+
             public class DummyChunkData : IChunkBlocks
             {
                 public int[] blocks;
-                
+
 
                 public DummyChunkData(int chunksize)
                 {
@@ -218,7 +220,7 @@ namespace Vintagestory.GameContent
 
                 public void SetFluid(int index3d, int value)
                 {
-                    
+
                 }
 
                 public void TakeBulkReadLock()
@@ -305,7 +307,7 @@ namespace Vintagestory.GameContent
 			{
 				throw new NotImplementedException();
 			}
-			public int UnpackAndReadBlock(int index, int layer) 
+			public int UnpackAndReadBlock(int index, int layer)
 			{
 				throw new NotImplementedException();
 			}
@@ -344,7 +346,17 @@ namespace Vintagestory.GameContent
 				throw new NotImplementedException();
 			}
 
-			public bool GetDecors(IBlockAccessor blockAccessor, BlockPos pos, Block[] result)
+            Block[] IWorldChunk.GetDecors(IBlockAccessor blockAccessor, BlockPos pos)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Dictionary<int, Block> GetSubDecors(IBlockAccessor blockAccessor, BlockPos position)
+            {
+                throw new NotImplementedException();
+            }
+
+            public bool GetDecors(IBlockAccessor blockAccessor, BlockPos pos, Block[] result)
 			{
 				throw new NotImplementedException();
 			}
@@ -379,7 +391,7 @@ namespace Vintagestory.GameContent
                 throw new NotImplementedException();
             }
 
-            public Block[] GetDecors(IBlockAccessor blockAccessor, BlockPos pos)
+            public Dictionary<int, Block> GetDecors(IBlockAccessor blockAccessor, BlockPos pos)
             {
                 throw new NotImplementedException();
             }
@@ -388,7 +400,7 @@ namespace Vintagestory.GameContent
 			{
 				throw new NotImplementedException();
 			}
-			
+
 			public void BreakDecorPart(IWorldAccessor world, BlockPos pos, BlockFacing side, int faceAndSubposition)
             {
                 throw new NotImplementedException();
@@ -439,7 +451,7 @@ namespace Vintagestory.GameContent
                 throw new NotImplementedException();
             }
 
-            public bool SetDecor(Block block, int index3d, int decorIndex)
+            public bool SetDecor(Block block, int index3d, int faceAndSubposition)
             {
                 throw new NotImplementedException();
             }
@@ -457,6 +469,11 @@ namespace Vintagestory.GameContent
             public void ReleaseBlockReadLock()
             {
                 throw new NotImplementedException();
+            }
+
+            public void Dispose()
+            {
+
             }
 
             #endregion

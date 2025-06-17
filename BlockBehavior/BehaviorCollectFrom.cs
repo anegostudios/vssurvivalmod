@@ -2,6 +2,8 @@
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BehaviorCollectFrom : BlockBehavior
@@ -32,14 +34,14 @@ namespace Vintagestory.GameContent
 
                     if (!byPlayer.InventoryManager.TryGiveItemstack(stack))
                     {
-                        world.SpawnItemEntity(drop.GetNextItemStack(), blockSel.Position.ToVec3d().Add(0.5, 0.5, 0.5));
+                        world.SpawnItemEntity(drop.GetNextItemStack(), blockSel.Position);
                     }
 
                     AssetLocation loc = block.Code.CopyWithPath(block.Code.Path.Replace(block.Code.Path.Split('-').Last(), "empty"));
 
                     world.BlockAccessor.SetBlock(world.GetBlock(loc).BlockId, blockSel.Position);
 
-                    world.PlaySoundAt(new AssetLocation("sounds/player/collect"), blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, byPlayer);
+                    world.PlaySoundAt(new AssetLocation("sounds/player/collect"), blockSel.Position, 0, byPlayer);
                 }
 
                 return true;

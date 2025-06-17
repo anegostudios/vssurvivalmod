@@ -14,10 +14,8 @@ namespace Vintagestory.GameContent
         public override InventoryBase Inventory => inv;
 
         public override string InventoryClassName => "shelf";
-        
-        public override string AttributeTransformCode => "onshelfTransform";
 
-        Block block;
+        public override string AttributeTransformCode => "onshelfTransform";
 
         static int slotCount = 8;
 
@@ -28,24 +26,21 @@ namespace Vintagestory.GameContent
 
         public override void Initialize(ICoreAPI api)
         {
-            block = api.World.BlockAccessor.GetBlock(Pos);
             base.Initialize(api);
+
+            // Must be added after Initialize(), so we can override the transition speed value
+            inv.OnAcquireTransitionSpeed += Inv_OnAcquireTransitionSpeed;
         }
 
-        protected override float Inventory_OnAcquireTransitionSpeed(EnumTransitionType transType, ItemStack stack, float baseMul)
+        private float Inv_OnAcquireTransitionSpeed(EnumTransitionType transType, ItemStack stack, float baseMul)
         {
-            if (transType == EnumTransitionType.Dry || transType == EnumTransitionType.Melt) return room?.ExitCount == 0 ? 2f : 0.5f;
+            if (transType == EnumTransitionType.Dry || transType == EnumTransitionType.Melt) return container.Room?.ExitCount == 0 ? 2f : 0.5f;
             if (Api == null) return 0;
 
-            if (transType == EnumTransitionType.Perish || transType == EnumTransitionType.Ripen)
+            if (transType == EnumTransitionType.Ripen)
             {
-                float perishRate = GetPerishRate();
-                if (transType == EnumTransitionType.Ripen)
-                {
-                    return GameMath.Clamp((1 - perishRate - 0.5f) * 3, 0, 1);
-                }
-
-                return baseMul * perishRate;
+                float perishRate = container.GetPerishRate();
+                return GameMath.Clamp((1 - perishRate - 0.5f) * 3, 0, 1);
             }
 
             return 1;
@@ -65,26 +60,106 @@ namespace Vintagestory.GameContent
             } else
             {
                 CollectibleObject colObj = slot.Itemstack.Collectible;
-                if (colObj.Attributes != null && colObj.Attributes["shelvable"].AsBool(false) == true)
+                if (!TryUse(byPlayer, blockSel))
                 {
-                    AssetLocation sound = slot.Itemstack?.Block?.Sounds?.Place;
-                    
-                    if (TryPut(slot, blockSel))
+                    if (colObj.Attributes != null && colObj.Attributes["shelvable"].AsBool(false))
                     {
-                        Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
-                        MarkDirty();
-                        return true;
-                    }
+                        AssetLocation? sound = slot.Itemstack?.Block?.Sounds?.Place;
+                        var stackName = slot.Itemstack?.Collectible.Code;
+                        if (TryPut(slot, blockSel))
+                        {
+                            Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
+                            Api.World.Logger.Audit("{0} Put 1x{1} into Shelf at {2}.",
+                                byPlayer.PlayerName,
+                                stackName,
+                                Pos
+                            );
+                            MarkDirty();
+                            return true;
+                        }
 
-                    return false;
+                        return false;
+                    }
                 }
             }
-
 
             return false;
         }
 
+        public bool CanUse(ItemStack? stack, BlockSelection blockSel)
+        {
+            var obj = stack?.Collectible;
+            bool up = blockSel.SelectionBoxIndex > 1;
+            bool left = (blockSel.SelectionBoxIndex % 2) == 0;
 
+            int start = (up ? 4 : 0) + (left ? 0 : 2);
+            int end = start + 2;
+
+            CollectibleObject invColl;
+            for (int i = end - 1; i >= start; i--)
+            {
+                if (!inv[i].Empty)
+                {
+                    invColl = inv[i].Itemstack.Collectible;
+
+                    if (obj?.Attributes?["mealContainer"]?.AsBool() == true || obj is IContainedInteractable or IBlockMealContainer)
+                    {
+                        return invColl is IContainedInteractable;
+                    }
+
+                    if (obj?.Attributes?["canSealCrock"]?.AsBool() == true)
+                    {
+                        return invColl is BlockCrock;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        public bool CanPlace(BlockSelection blockSel, out bool canTake)
+        {
+            bool up = blockSel.SelectionBoxIndex > 1;
+            bool left = (blockSel.SelectionBoxIndex % 2) == 0;
+
+            int start = (up ? 4 : 0) + (left ? 0 : 2);
+            int end = start + 2;
+
+            canTake = false;
+            bool canPlace = false;
+            for (int i = end - 1; i >= start; i--)
+            {
+                if (inv[i].Empty) canPlace = true;
+                else canTake = true;
+            }
+
+            return canPlace;
+        }
+
+        private bool TryUse(IPlayer player, BlockSelection blockSel)
+        {
+            bool up = blockSel.SelectionBoxIndex > 1;
+            bool left = (blockSel.SelectionBoxIndex % 2) == 0;
+
+            int start = (up ? 4 : 0) + (left ? 0 : 2);
+            int end = start + 2;
+
+            for (int i = end - 1; i >= start; i--)
+            {
+                if (!player.Entity.Controls.ShiftKey)
+                {
+                    if (inv[i]?.Itemstack?.Collectible is IContainedInteractable collIci)
+                    {
+                        if (collIci.OnContainedInteractStart(this, inv[i], player, blockSel))
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            return false;
+        }
 
         private bool TryPut(ItemSlot slot, BlockSelection blockSel)
         {
@@ -121,17 +196,22 @@ namespace Vintagestory.GameContent
             {
                 if (!inv[i].Empty)
                 {
-                    ItemStack stack = inv[i].TakeOut(1);
+                    ItemStack? stack = inv[i].TakeOut(1);
                     if (byPlayer.InventoryManager.TryGiveItemstack(stack))
                     {
-                        AssetLocation sound = stack.Block?.Sounds?.Place;
+                        AssetLocation? sound = stack?.Block?.Sounds?.Place;
                         Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
                     }
 
-                    if (stack.StackSize > 0)
+                    if (stack?.StackSize > 0)
                     {
-                        Api.World.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                        Api.World.SpawnItemEntity(stack, Pos);
                     }
+                    Api.World.Logger.Audit("{0} Took 1x{1} from Shelf at {2}.",
+                        byPlayer.PlayerName,
+                        stack?.Collectible.Code,
+                        Pos
+                    );
 
                     (Api as ICoreClientAPI)?.World.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
                     MarkDirty();
@@ -152,10 +232,10 @@ namespace Vintagestory.GameContent
                 float y = index >= 4 ? 10 / 16f : 2 / 16f;
                 float z = (index % 2 == 0) ? 4 / 16f : 10 / 16f;
 
-                tfMatrices[index] = 
+                tfMatrices[index] =
                     new Matrixf()
                     .Translate(0.5f, 0, 0.5f)
-                    .RotateYDeg(block.Shape.rotateY)
+                    .RotateYDeg(Block.Shape.rotateY)
                     .Translate(x - 0.5f, y, z - 0.5f)
                     .Translate(-0.5f, 0, -0.5f)
                     .Values
@@ -174,8 +254,6 @@ namespace Vintagestory.GameContent
             RedrawAfterReceivingTreeAttributes(worldForResolving);     // Redraw on client after we have completed receiving the update from server
         }
 
-
-
         #region Block info
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
@@ -183,12 +261,11 @@ namespace Vintagestory.GameContent
             base.GetBlockInfo(forPlayer, sb);
 
 
-            float ripenRate = GameMath.Clamp(((1 - GetPerishRate()) - 0.5f) * 3, 0, 1);
+            float ripenRate = GameMath.Clamp(((1 - container.GetPerishRate()) - 0.5f) * 3, 0, 1);
             if (ripenRate > 0)
             {
                 sb.Append(Lang.Get("Suitable spot for food ripening."));
             }
-
 
             sb.AppendLine();
 
@@ -201,20 +278,24 @@ namespace Vintagestory.GameContent
 
                 if (inv[i].Empty) continue;
 
-                ItemStack stack = inv[i].Itemstack;
+                ItemStack? stack = inv[i].Itemstack;
 
-                if (stack.Collectible is BlockCrock)
+                if (stack?.Collectible is BlockCrock)
                 {
                     sb.Append(CrockInfoCompact(inv[i]));
                 } else
                 {
-                    if (stack.Collectible.TransitionableProps != null && stack.Collectible.TransitionableProps.Length > 0)
+                    if (stack?.Collectible.TransitionableProps != null && stack.Collectible.TransitionableProps.Length > 0)
                     {
                         sb.Append(PerishableInfoCompact(Api, inv[i], ripenRate));
                     }
+                    else if (stack?.Collectible is IContainedCustomName ccn)
+                    {
+                        sb.AppendLine(ccn.GetContainedInfo(inv[i]));
+                    }
                     else
                     {
-                        sb.AppendLine(stack.GetName());
+                        sb.AppendLine(stack?.GetName() ?? Lang.Get("unknown"));
                     }
                 }
             }
@@ -231,7 +312,7 @@ namespace Vintagestory.GameContent
                 dsc.Append(contentSlot.Itemstack.GetName());
             }
 
-            TransitionState[] transitionStates = contentSlot.Itemstack?.Collectible.UpdateAndGetTransitionStates(Api.World, contentSlot);
+            TransitionState[]? transitionStates = contentSlot.Itemstack.Collectible.UpdateAndGetTransitionStates(Api.World, contentSlot);
 
             bool nowSpoiling = false;
 
@@ -310,7 +391,6 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-
                 if (appendLine) dsc.AppendLine();
             }
 
@@ -319,12 +399,15 @@ namespace Vintagestory.GameContent
 
         public string CrockInfoCompact(ItemSlot inSlot)
         {
-            BlockMeal mealblock = Api.World.GetBlock(new AssetLocation("bowl-meal")) as BlockMeal;
-            BlockCrock crock = inSlot.Itemstack.Collectible as BlockCrock;
+            if (inSlot.Itemstack is not ItemStack crockStack || crockStack.Collectible is not BlockCrock crock)
+            {
+                return Lang.Get("unknown");
+            }
+
             IWorldAccessor world = Api.World;
 
-            CookingRecipe recipe = crock.GetCookingRecipe(world, inSlot.Itemstack);
-            ItemStack[] stacks = crock.GetNonEmptyContents(world, inSlot.Itemstack);
+            CookingRecipe? recipe = crock.GetCookingRecipe(world, crockStack);
+            ItemStack[]? stacks = crock.GetNonEmptyContents(world, crockStack);
 
             if (stacks == null || stacks.Length == 0)
             {
@@ -335,18 +418,15 @@ namespace Vintagestory.GameContent
 
             if (recipe != null)
             {
-                double servings = inSlot.Itemstack.Attributes.GetDecimal("quantityServings");
+                double servings = crockStack.Attributes.GetDecimal("quantityServings");
 
-                if (recipe != null)
+                if (servings == 1)
                 {
-                    if (servings == 1)
-                    {
-                        dsc.Append(Lang.Get("{0:0.#}x {1}.", servings, recipe.GetOutputName(world, stacks)));
-                    }
-                    else
-                    {
-                        dsc.Append(Lang.Get("{0:0.#}x {1}.", servings, recipe.GetOutputName(world, stacks)));
-                    }
+                    dsc.Append(Lang.Get("{0:0.#}x {1}.", servings, recipe.GetOutputName(world, stacks)));
+                }
+                else
+                {
+                    dsc.Append(Lang.Get("{0:0.#}x {1}.", servings, recipe.GetOutputName(world, stacks)));
                 }
             }
             else
@@ -365,15 +445,13 @@ namespace Vintagestory.GameContent
             DummyInventory dummyInv = new DummyInventory(Api);
 
             ItemSlot contentSlot = BlockCrock.GetDummySlotForFirstPerishableStack(Api.World, stacks, null, dummyInv);
-            dummyInv.OnAcquireTransitionSpeed = (transType, stack, mul) =>
+            dummyInv.OnAcquireTransitionSpeed += (transType, stack, mul) =>
             {
                 return mul * crock.GetContainingTransitionModifierContained(world, inSlot, transType) * inv.GetTransitionSpeedMul(transType, stack);
             };
 
-            
-            TransitionState[] transitionStates = contentSlot.Itemstack?.Collectible.UpdateAndGetTransitionStates(Api.World, contentSlot);
             bool addNewLine = true;
-            if (transitionStates != null)
+            if (contentSlot.Itemstack?.Collectible.UpdateAndGetTransitionStates(Api.World, contentSlot) is TransitionState[] transitionStates)
             {
                 for (int i = 0; i < transitionStates.Length; i++)
                 {
@@ -420,8 +498,7 @@ namespace Vintagestory.GameContent
                     }
                 }
             }
-            
-            
+
             if (addNewLine)
             {
                 dsc.AppendLine("");

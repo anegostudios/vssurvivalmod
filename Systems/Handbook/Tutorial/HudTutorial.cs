@@ -1,5 +1,7 @@
 ﻿using Vintagestory.API.Client;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class HudTutorial : HudElement
@@ -15,7 +17,7 @@ namespace Vintagestory.GameContent
             ElementBounds bgBounds = new ElementBounds().WithSizing(ElementSizing.FitToChildren).WithFixedPadding(GuiStyle.ElementToDialogPadding / 2);
             bgBounds.WithChildren(textBounds);
 
-            ElementBounds dialogBounds = bgBounds.ForkBoundingParent().WithAlignment(EnumDialogArea.None).WithAlignment(EnumDialogArea.RightMiddle).WithFixedPosition(0, 70);
+            ElementBounds dialogBounds = bgBounds.ForkBoundingParent().WithAlignment(EnumDialogArea.None).WithAlignment(EnumDialogArea.RightMiddle).WithFixedPosition(0, -225);
 
             RichTextComponentBase[] cmps = capi.ModLoader.GetModSystem<ModSystemTutorial>().GetPageText(pagecode, true);
 

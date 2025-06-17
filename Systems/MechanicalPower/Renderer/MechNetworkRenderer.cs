@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 
+#nullable disable
+
 namespace Vintagestory.GameContent.Mechanics
 {
     /// <summary>

@@ -1,10 +1,14 @@
 ﻿using System;
+using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -200,12 +204,11 @@ namespace Vintagestory.GameContent
                     blockAccess.Begin();
                     blockAccess.WalkBlocks(min, max, (block, x, y, z) =>
                     {
-                        BlockBehavior src;
-                        if ((src = block.GetBehavior(typeof(IHeatSource), true)) != null)
+                        var src = block.GetInterface<IHeatSource>(api.World, tmpPos.Set(x,y,z));
+                        if (src != null)
                         {
-                            tmpPos.Set(x, y, z);
                             float factor = Math.Min(1f, 9 / (8 + (float)Math.Pow(tmpPos.DistanceSqToNearerEdge(px, py, pz), proximityPower)));
-                            nearHeatSourceStrength += (src as IHeatSource).GetHeatStrength(api.World, tmpPos, plrpos) * factor;
+                            nearHeatSourceStrength += src.GetHeatStrength(api.World, tmpPos, plrpos) * factor;
                         }
                     });
                 }
@@ -240,9 +243,21 @@ namespace Vintagestory.GameContent
 
                 bool rainExposed = api.World.BlockAccessor.GetRainMapHeightAt(plrpos) <= plrpos.Y;
 
+                float wetnessFromRain = conds.Rainfall * (rainExposed ? 0.06f : 0) * (conds.Temperature < -1 ? 0.05f : 1); /* Get wet 20 times slower with snow */
+                if (wetnessFromRain > 0 && eplr != null)
+                {
+                    var charInv = eplr.Player.InventoryManager.GetOwnInventory(GlobalConstants.characterInvClassName);
+                    var headSlot = charInv?.FirstOrDefault(slot => (slot as ItemSlotCharacter).Type == EnumCharacterDressType.Head);
+
+                    if (headSlot != null && !headSlot.Empty)
+                    {
+                        wetnessFromRain *= GameMath.Clamp(1 - headSlot.Itemstack.ItemAttributes["rainProtectionPerc"].AsFloat(0), 0, 1);
+                    }
+                }
+
                 Wetness = GameMath.Clamp(
                     Wetness
-                    + conds.Rainfall * (rainExposed ? 0.06f : 0) * (conds.Temperature < -1 ? 0.05f : 1) /* Get wet 20 times slower with snow */
+                    + wetnessFromRain
                     + (entity.Swimming ? 1 : 0)
                     - (float)Math.Max(0, (api.World.Calendar.TotalHours - LastWetnessUpdateTotalHours) * GameMath.Clamp(nearHeatSourceStrength, 1, 2))
                 , 0, 1);
@@ -277,7 +292,7 @@ namespace Vintagestory.GameContent
                 }
 
                 if (entity.IsOnFire) tempChange = Math.Max(25, tempChange);
-
+ 
 
                 float tempUpdateHoursPassed = (float)(api.World.Calendar.TotalHours - BodyTempUpdateTotalHours);
                 if (tempUpdateHoursPassed > 0.01)
@@ -376,10 +391,11 @@ namespace Vintagestory.GameContent
             // 1296 hours is half a default year
             if (!isStandingStill) conditionloss = -(float)hoursPassed / 1296f;
 
-            IInventory gearWorn = eagent?.GearInventory;
-            if (gearWorn != null)  //can be null when creating a new world and entering for the first time
+            var bh = eagent?.GetBehavior<EntityBehaviorPlayerInventory>();
+            //IInventory gearWorn = eagent?.GearInventory;
+            if (bh?.Inventory != null)  //can be null when creating a new world and entering for the first time
             {
-                foreach (var slot in gearWorn)
+                foreach (var slot in bh.Inventory)
                 {
                     ItemWearable wearableItem = slot.Itemstack?.Collectible as ItemWearable;
 

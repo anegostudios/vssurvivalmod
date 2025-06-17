@@ -1,5 +1,6 @@
 ﻿using ProtoBuf;
 using System;
+using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -9,6 +10,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class JuiceableProperties
@@ -17,6 +20,7 @@ namespace Vintagestory.GameContent
         public float PressedDryRatio = 1f;
         public JsonItemStack LiquidStack;
         public JsonItemStack PressedStack;
+        public JsonItemStack ReturnStack = null;
     }
 
     public enum EnumFruitPressSection
@@ -26,11 +30,19 @@ namespace Vintagestory.GameContent
         Screw
     }
 
+    public enum EnumFruitPressAnimState
+    {
+        ScrewStart,
+        Unscrew,
+        ScrewContinue
+    }
+
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
     public class FruitPressAnimPacket
     {
-        public bool AnimationActive;
+        public EnumFruitPressAnimState AnimationState;
         public float AnimationSpeed;
+        public float CurrentFrame = 0;
     }
 
 
@@ -90,10 +102,16 @@ namespace Vintagestory.GameContent
             EaseInSpeed = 3
         };
 
+        float? loadedFrame;
+        bool serverListenerActive;
 
         long listenerId;
         double juiceableLitresCapacity = 10;
+        double screwPercent;
+        double squeezedLitresLeft;
+        double pressSqueezeRel;
         bool squeezeSoundPlayed;
+        int dryStackSize = 0;
 
         public ItemSlot MashSlot => inv[0];
         public ItemSlot BucketSlot => inv[1];
@@ -103,7 +121,7 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                return mashStack?.Attributes.GetDouble("juiceableLitresLeft") ?? 0;
+                return mashStack?.Attributes?.GetDouble("juiceableLitresLeft") ?? 0;
             }
             set
             {
@@ -115,7 +133,7 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                return mashStack.Attributes.GetDouble("juiceableLitresTransfered");
+                return mashStack?.Attributes?.GetDouble("juiceableLitresTransfered") ?? 0;
             }
             set
             {
@@ -134,8 +152,8 @@ namespace Vintagestory.GameContent
         public bool CompressAnimActive => animUtil.activeAnimationsByAnimCode.ContainsKey("compress") || animUtil.animator.GetAnimationState("compress")?.Active == true;
 
 
-        public bool CanScrew => !CompressAnimActive || compressAnimMeta.AnimationSpeed == 0;
-        public bool CanUnscrew => CompressAnimFinished;
+        public bool CanScrew => !CompressAnimFinished;
+        public bool CanUnscrew => CompressAnimFinished || CompressAnimActive;
         public bool CanFillRemoveItems => !CompressAnimActive;
 
         public BlockEntityFruitPress()
@@ -160,6 +178,7 @@ namespace Vintagestory.GameContent
                     animUtil.InitializeAnimator("fruitpress", shape, null, new Vec3f(0, ownBlock.Shape.rotateY, 0));
                 } else
                 {
+                    shape.InitForAnimations(api.Logger, "shapes/block/wood/fruitpress/part-movable.json", Array.Empty<string>());
                     animUtil.InitializeAnimatorServer("fruitpress", shape);
                 }
 
@@ -171,6 +190,11 @@ namespace Vintagestory.GameContent
                     renderer.reloadMeshes(getJuiceableProps(mashStack), true);
                     genBucketMesh();
                 }
+                else if (serverListenerActive)
+                {
+                    if (loadedFrame > 0) animUtil.StartAnimation(compressAnimMeta);
+                    if (listenerId == 0) listenerId = RegisterGameTickListener(onTick100msServer, 25);
+                }
             }
         }
 
@@ -180,8 +204,9 @@ namespace Vintagestory.GameContent
         private void onTick25msClient(float dt)
         {
             double squeezeRel = mashStack?.Attributes.GetDouble("squeezeRel", 1) ?? 1;
+            float selfHeight = (float)(juiceableLitresTransfered + juiceableLitresLeft) / 10f;
 
-            if (MashSlot.Empty || renderer.juiceTexPos == null || squeezeRel >= 1) return;
+            if (MashSlot.Empty || renderer.juiceTexPos == null || squeezeRel >= 1 || pressSqueezeRel > squeezeRel || squeezedLitresLeft < 0.01) return;
 
             var rand = Api.World.Rand;
 
@@ -192,13 +217,13 @@ namespace Vintagestory.GameContent
                 BlockFacing face = BlockFacing.HORIZONTALS[i];
 
                 liquidParticles.Color = capi.BlockTextureAtlas.GetRandomColor(renderer.juiceTexPos, rand.Next(TextureAtlasPosition.RndColorsLength));
-                
+
                 Vec3d minPos = face.Plane.Startd.Add(-0.5, 0, -0.5);
                 Vec3d maxPos = face.Plane.Endd.Add(-0.5, 0, -0.5);
 
                 minPos.Mul(8 / 16f);
                 maxPos.Mul(8 / 16f);
-                maxPos.Y = 5 / 16f - (1 - squeezeRel) * 0.25f;
+                maxPos.Y = 5 / 16f - (1 - squeezeRel + Math.Max(0, 0.9f - selfHeight)) * 0.5f;
 
                 minPos.Add(face.Normalf.X * 1.2f / 16f, 0, face.Normalf.Z * 1.2f / 16f);
                 maxPos.Add(face.Normalf.X * 1.2f / 16f, 0, face.Normalf.Z * 1.2f / 16f);
@@ -224,29 +249,46 @@ namespace Vintagestory.GameContent
 
         private void onTick100msServer(float dt)
         {
+            RunningAnimation anim = animUtil.animator.GetAnimationState("compress");
+            if (serverListenerActive)
+            {
+                anim.CurrentFrame = loadedFrame ?? 0;
+                updateSqueezeRel(animUtil.animator.GetAnimationState("compress"));
+                serverListenerActive = false;
+                loadedFrame = null;
+                return;
+            }
+            else if (CompressAnimActive) (Api as ICoreServerAPI)?.Network.BroadcastBlockEntityPacket(Pos, PacketIdAnimUpdate, new FruitPressAnimPacket() { AnimationState = EnumFruitPressAnimState.ScrewContinue, AnimationSpeed = compressAnimMeta.AnimationSpeed, CurrentFrame = anim.CurrentFrame });
             if (MashSlot.Empty) return;
 
             var juiceProps = getJuiceableProps(mashStack);
             double totalHours = Api.World.Calendar.TotalHours;
 
             double squeezeRel = mashStack.Attributes.GetDouble("squeezeRel", 1);
-            double litresToTransfer = Math.Min(juiceableLitresLeft, (totalHours - lastLiquidTransferTotalHours) * 50f);
+            double litresToTransfer = 0;
 
-            if (Api.Side == EnumAppSide.Server && squeezeRel < 1 && !squeezeSoundPlayed && juiceableLitresLeft > 0)
+            if (Api.Side == EnumAppSide.Server && CompressAnimActive && squeezeRel < 1 && pressSqueezeRel <= squeezeRel && juiceableLitresLeft > 0)
             {
-                Api.World.PlaySoundAt(new AssetLocation("sounds/player/wetclothsqueeze.ogg"), Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, null, false);
-                squeezeSoundPlayed = true;
+                // First we need to calculate how squeezed down the mash has been and therefore how much we're allowed to take
+                squeezedLitresLeft = Math.Max(Math.Max(0, squeezedLitresLeft), juiceableLitresLeft - ((juiceableLitresLeft + juiceableLitresTransfered) * screwPercent));
+                litresToTransfer = Math.Min(squeezedLitresLeft, Math.Round((totalHours - lastLiquidTransferTotalHours) * (CompressAnimActive ? GameMath.Clamp(squeezedLitresLeft * (1 - squeezeRel) * 500f, 25f, 100f) : 5f), 2));
+
+                if (!squeezeSoundPlayed)
+                {
+                    Api.World.PlaySoundAt(new AssetLocation("sounds/player/wetclothsqueeze.ogg"), Pos, 0, null, false);
+                    squeezeSoundPlayed = true;
+                }
             }
 
             BlockLiquidContainerBase cntBlock = BucketSlot?.Itemstack?.Collectible as BlockLiquidContainerBase;
 
-            if (Api.Side == EnumAppSide.Server && squeezeRel < 1 && totalHours - lastLiquidTransferTotalHours > 0.01)
+            if (Api.Side == EnumAppSide.Server && juiceProps != null && squeezedLitresLeft > 0)
             {
                 ItemStack liquidStack = juiceProps.LiquidStack.ResolvedItemstack;
                 liquidStack.StackSize = 999999;
                 float actuallyTransfered;
 
-                if (cntBlock != null)
+                if (cntBlock != null && !cntBlock.IsFull(BucketSlot.Itemstack))
                 {
                     float beforelitres = cntBlock.GetCurrentLitres(BucketSlot.Itemstack);
 
@@ -263,28 +305,15 @@ namespace Vintagestory.GameContent
                 }
 
                 juiceableLitresLeft -= actuallyTransfered;
+                squeezedLitresLeft -= pressSqueezeRel <= squeezeRel ? actuallyTransfered : (actuallyTransfered * 100); // Let the mash drain less if screw is released.
                 juiceableLitresTransfered += actuallyTransfered;
                 lastLiquidTransferTotalHours = totalHours;
                 MarkDirty(true);
             }
-
-
-            if (juiceableLitresLeft <= 0.01)
+            else if (Api.Side == EnumAppSide.Server && (!CompressAnimActive || juiceableLitresLeft <= 0))
             {
-                // Hack to fix rounding errors
-                if (cntBlock != null)
-                {
-                    float litres = cntBlock.GetCurrentLitres(BucketSlot.Itemstack);
-                    cntBlock.SetCurrentLitres(BucketSlot.Itemstack, (float)Math.Round(100 * litres) / 100f);
-                }
-
                 UnregisterGameTickListener(listenerId);
                 listenerId = 0;
-
-                int stacksize = GameMath.RoundRandom(Api.World.Rand, (float)juiceableLitresTransfered);
-                mashStack.Attributes.RemoveAttribute("juiceableLitresTransfered");
-                mashStack.Attributes.RemoveAttribute("juiceableLitresLeft");
-                mashStack.StackSize = (int)(stacksize * juiceProps.PressedDryRatio);
 
                 MarkDirty(true);
             }
@@ -301,11 +330,11 @@ namespace Vintagestory.GameContent
         {
             firstEvent |= Api.Side == EnumAppSide.Server;
 
-            if (section == EnumFruitPressSection.MashContainer)
+            if (section == EnumFruitPressSection.MashContainer && firstEvent)
             {
                 return InteractMashContainer(byPlayer, blockSel);
             }
-            if (section == EnumFruitPressSection.Ground)
+            if (section == EnumFruitPressSection.Ground && firstEvent)
             {
                 return InteractGround(byPlayer, blockSel);
             }
@@ -322,36 +351,26 @@ namespace Vintagestory.GameContent
             if (Api.Side == EnumAppSide.Server) return true; // We let the client control this
 
             // Start
-            if (!CompressAnimActive && firstEvent)
+            if (!CompressAnimActive && !byPlayer.Entity.Controls.CtrlKey && firstEvent)
             {
-                compressAnimMeta.AnimationSpeed = 0.5f;
-                animUtil.StartAnimation(compressAnimMeta);
-                squeezeSoundPlayed = false;
-                
                 (Api as ICoreClientAPI).Network.SendBlockEntityPacket(Pos, PacketIdScrewStart);
-
-                if (listenerId == 0)
-                {
-                    listenerId = RegisterGameTickListener(onTick25msClient, 25);
-                }
 
                 return true;
             }
 
             // Unscrew
-            if (CanUnscrew && firstEvent)
+            if (CanUnscrew && (byPlayer.Entity.Controls.CtrlKey || (CompressAnimFinished && !byPlayer.Entity.Controls.CtrlKey)) && firstEvent)
             {
-                compressAnimMeta.AnimationSpeed = 1.5f;
-                animUtil.StopAnimation("compress");
                 (Api as ICoreClientAPI).Network.SendBlockEntityPacket(Pos, PacketIdUnscrew);
+
                 return true;
             }
 
             // Continue
-            if (compressAnimMeta.AnimationSpeed == 0)
+            if (compressAnimMeta.AnimationSpeed == 0 && !byPlayer.Entity.Controls.CtrlKey)
             {
-                compressAnimMeta.AnimationSpeed = 0.5f;
                 (Api as ICoreClientAPI).Network.SendBlockEntityPacket(Pos, PacketIdScrewContinue);
+
                 return true;
             }
 
@@ -376,9 +395,27 @@ namespace Vintagestory.GameContent
                 var hprops = getJuiceableProps(handStack);
                 if (hprops == null) return false;
 
-                var pressedStack = hprops.PressedStack.ResolvedItemstack.Clone();
-                if (MashSlot.Empty) MashSlot.Itemstack = pressedStack;
-                else if (mashStack.StackSize >= 10)
+                // Don't try to put dry mash back into the machine
+                if (hprops.LitresPerItem == null && !handStack.Attributes.HasAttribute("juiceableLitresLeft")) return false;
+
+                var pressedStack = hprops.LitresPerItem != null ? hprops.PressedStack.ResolvedItemstack.Clone() : handStack.GetEmptyClone();
+                if (MashSlot.Empty)
+                {
+                    MashSlot.Itemstack = pressedStack;
+
+                    // Directly transfer the fruit mash to the machine if it's empty, but only one if it's a stack
+                    if (hprops.LitresPerItem == null)
+                    {
+                        mashStack.StackSize = 1;
+                        dryStackSize = GameMath.RoundRandom(Api.World.Rand, ((float)juiceableLitresLeft + (float)juiceableLitresTransfered) * getJuiceableProps(mashStack).PressedDryRatio);
+                        handslot.TakeOut(1);
+                        MarkDirty(true);
+                        renderer?.reloadMeshes(hprops, true);
+                        (byPlayer as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+                        return true;
+                    }
+                }
+                else if (juiceableLitresLeft + juiceableLitresTransfered >= juiceableLitresCapacity)
                 {
                     (Api as ICoreClientAPI)?.TriggerIngameError(this, "fullcontainer", Lang.Get("Container is full, press out juice and remove the mash before adding more"));
                     return false;
@@ -390,29 +427,81 @@ namespace Vintagestory.GameContent
                     return false;
                 }
 
-
-                float transferableLitres;
+                float transferableLitres = (float)handStack.Attributes.GetDecimal("juiceableLitresLeft");
+                float usedLitres = (float)handStack.Attributes.GetDecimal("juiceableLitresTransfered");
                 int removeItems;
                 if (hprops.LitresPerItem == null)
                 {
-                    var availableLitres = (float)handStack.Attributes.GetDecimal("juiceableLitresLeft");
-                    transferableLitres = (float)Math.Min(availableLitres, juiceableLitresCapacity - juiceableLitresLeft);
-                    // the juiceableLitresLeft is per item if we have a stack of multiple
-                    // so we only remove one item and add the liters for one
+                    // the juiceableLitresLeft and juiceableLitresTransfered are per item if we have a stack of multiple
+                    // so we check if the press is full and only remove and add the liters for one item at a time
+                    if (juiceableLitresLeft + juiceableLitresTransfered + transferableLitres + usedLitres > juiceableLitresCapacity)
+                    {
+                        (Api as ICoreClientAPI)?.TriggerIngameError(this, "fullcontainer", Lang.Get("Container is full, press out juice and remove the mash before adding more"));
+                        return false;
+                    }
+
+                    // If we're adding mash we want to average the spoiling so players can't keep it fresh forever
+                    TransitionState[] sourceTransitionStates = handStack.Collectible.UpdateAndGetTransitionStates(Api.World, handslot);
+                    TransitionState[] targetTransitionStates = mashStack.Collectible.UpdateAndGetTransitionStates(Api.World, MashSlot);
+
+                    if (sourceTransitionStates != null && targetTransitionStates != null) {
+
+                        Dictionary<EnumTransitionType, TransitionState> targetStatesByType = null;
+
+                        targetStatesByType = new Dictionary<EnumTransitionType, TransitionState>();
+                        foreach (var state in targetTransitionStates) targetStatesByType[state.Props.Type] = state;
+
+                        // We're mixing based on total litres because we don't really have a stack size to compare
+                        float t = (transferableLitres + usedLitres) / (transferableLitres + usedLitres + (float)juiceableLitresLeft + (float)juiceableLitresTransfered);
+
+                        foreach (var sourceState in sourceTransitionStates)
+                        {
+                            TransitionState targetState = targetStatesByType[sourceState.Props.Type];
+                            mashStack.Collectible.SetTransitionState(mashStack, sourceState.Props.Type, sourceState.TransitionedHours * t + targetState.TransitionedHours * (1 - t));
+                        }
+                    }
+
                     removeItems = 1;
                 } else
-                {  
-                    float desiredTransferSizeLitres = byPlayer.Entity.Controls.ShiftKey ? (float)hprops.LitresPerItem : Math.Min(handStack.StackSize, 4) * (float)hprops.LitresPerItem;
-                    transferableLitres = (float)Math.Min(desiredTransferSizeLitres, juiceableLitresCapacity - juiceableLitresLeft);
+                {
+                    // In order to make sure we're always giving exactly the amount of juice that's appropriate for the number
+                    // of items we take out of the inventory we start by counting up how many the player wants to add, be it
+                    // 1, 4, or the whole stack, and then subtracting 1 from that total until we have an amount that can fit
+                    int desiredTransferAmount = Math.Min(handStack.StackSize, byPlayer.Entity.Controls.ShiftKey ? 1 : byPlayer.Entity.Controls.CtrlKey ? handStack.Item.MaxStackSize : 4);
 
-                    removeItems = (int)(transferableLitres / hprops.LitresPerItem);
+                    while (desiredTransferAmount * (float)hprops.LitresPerItem + juiceableLitresLeft + juiceableLitresTransfered > juiceableLitresCapacity) desiredTransferAmount -= 1;
+
+                    if (desiredTransferAmount <= 0)
+                    {
+                        (Api as ICoreClientAPI)?.TriggerIngameError(this, "fullcontainer", Lang.Get("Container is full, press out juice and remove the mash before adding more"));
+                        return false;
+                    }
+
+                    transferableLitres = desiredTransferAmount * (float)hprops.LitresPerItem;
+                    removeItems = desiredTransferAmount;
                 }
 
-                if (transferableLitres > 0) {
+                if (removeItems > 0)
+                {
+                    var stackCode = handslot.Itemstack.Collectible.Code;
                     handslot.TakeOut(removeItems);
 
+
+                    Api.World.Logger.Audit("{0} Put {1}x{2} into Fruitpress at {3}.",
+                        byPlayer.PlayerName,
+                        removeItems,
+                        stackCode,
+                        blockSel.Position
+                    );
+
                     mashStack.Attributes.SetDouble("juiceableLitresLeft", juiceableLitresLeft += transferableLitres);
+                    mashStack.Attributes.SetDouble("juiceableLitresTransfered", juiceableLitresTransfered += usedLitres);
                     mashStack.StackSize = 1;
+
+                    // Calculate how large the stack of dry mash will be here so we can tell the player that amount is in
+                    // the machine later and not have a random mismatch due to the use of RoundRandom in the calculation
+                    dryStackSize = GameMath.RoundRandom(Api.World.Rand, ((float)juiceableLitresLeft + (float)juiceableLitresTransfered) * getJuiceableProps(mashStack).PressedDryRatio);
+
                     handslot.MarkDirty();
                     MarkDirty(true);
                     renderer?.reloadMeshes(hprops, true);
@@ -425,10 +514,17 @@ namespace Vintagestory.GameContent
             // Take out mash
             if (MashSlot.Empty) return false;
 
+            convertDryMash();
+
             if (!byPlayer.InventoryManager.TryGiveItemstack(mashStack, true))
             {
-                Api.World.SpawnItemEntity(mashStack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                Api.World.SpawnItemEntity(mashStack, Pos);
             }
+            Api.World.Logger.Audit("{0} Took 1x{1} from Fruitpress at {2}.",
+                byPlayer.PlayerName,
+                mashStack.Collectible.Code,
+                blockSel.Position
+            );
 
             MashSlot.Itemstack = null;
             renderer?.reloadMeshes(null, true);
@@ -450,10 +546,15 @@ namespace Vintagestory.GameContent
             {
                 if (!byPlayer.InventoryManager.TryGiveItemstack(BucketSlot.Itemstack, true))
                 {
-                    Api.World.SpawnItemEntity(BucketSlot.Itemstack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    Api.World.SpawnItemEntity(BucketSlot.Itemstack, Pos);
                 }
+                Api.World.Logger.Audit("{0} Took 1x{1} from Fruitpress at {2}.",
+                    byPlayer.PlayerName,
+                    BucketSlot.Itemstack.Collectible.Code,
+                    blockSel.Position
+                );
 
-                if (BucketSlot.Itemstack.Block != null) Api.World.PlaySoundAt(BucketSlot.Itemstack.Block.Sounds.Place, Pos.X + 0.5, Pos.Y, Pos.Z + 0.5, byPlayer);
+                if (BucketSlot.Itemstack.Block != null) Api.World.PlaySoundAt(BucketSlot.Itemstack.Block.Sounds.Place, Pos, -0.5, byPlayer);
 
                 BucketSlot.Itemstack = null;
                 MarkDirty(true);
@@ -465,10 +566,15 @@ namespace Vintagestory.GameContent
                 bool moved = handslot.TryPutInto(Api.World, BucketSlot, 1) > 0;
                 if (moved)
                 {
+                    Api.World.Logger.Audit("{0} Put 1x{1} into Fruitpress at {2}.",
+                        byPlayer.PlayerName,
+                        BucketSlot.Itemstack.Collectible.Code,
+                        blockSel.Position
+                    );
                     handslot.MarkDirty();
                     MarkDirty(true);
                     genBucketMesh();
-                    Api.World.PlaySoundAt(handStack.Block.Sounds.Place, Pos.X + 0.5, Pos.Y, Pos.Z + 0.5, byPlayer);
+                    Api.World.PlaySoundAt(handStack.Block.Sounds.Place, Pos, -0.5, byPlayer);
                 }
             }
 
@@ -480,38 +586,25 @@ namespace Vintagestory.GameContent
         {
             if (section != EnumFruitPressSection.Screw) return false;
 
-            if (mashStack != null)
-            {
-                RunningAnimation anim = animUtil.animator.GetAnimationState("compress");
-                if (anim != null)
-                {
-                    udpateSqueezeRel(anim);
-                }
-            }
+            if (mashStack != null) updateSqueezeRel(animUtil.animator.GetAnimationState("compress"));
 
-            return CompressAnimActive && secondsUsed < 4f;
+            return CompressAnimActive || (Block as BlockFruitPress).RightMouseDown;
         }
 
 
         public void OnBlockInteractStop(float secondsUsed, IPlayer byPlayer)
         {
-            RunningAnimation anim = animUtil.animator.GetAnimationState("compress");
-            udpateSqueezeRel(anim);
+            updateSqueezeRel(animUtil.animator.GetAnimationState("compress"));
 
             if (!CompressAnimActive) return;
 
-            if (secondsUsed >= 4.8f)
-            {
-                compressAnimMeta.AnimationSpeed = 0f;
-                // Fast forward the server
-                anim.CurrentFrame = anim.Animation.QuantityFrames - 1;
-
-                (Api as ICoreServerAPI)?.Network.BroadcastBlockEntityPacket(Pos, PacketIdAnimUpdate, new FruitPressAnimPacket() { AnimationActive = true, AnimationSpeed = 0f });
-            }
+            compressAnimMeta.AnimationSpeed = 0f;
+            (Api as ICoreServerAPI)?.Network.BroadcastBlockEntityPacket(Pos, PacketIdAnimUpdate, new FruitPressAnimPacket() { AnimationState = EnumFruitPressAnimState.ScrewContinue, AnimationSpeed = 0f });
         }
 
-
-        private void udpateSqueezeRel(RunningAnimation anim)
+        // Here we will calculate various things, like how squeezed down the mash is, how far down the screw is,
+        // and a copy of squeezeRel for the press itself so that it can tell if the screw is touching the mash yet
+        private void updateSqueezeRel(RunningAnimation anim)
         {
             if (anim == null || mashStack==null) return;
 
@@ -519,21 +612,46 @@ namespace Vintagestory.GameContent
             float selfHeight = (float)(juiceableLitresTransfered + juiceableLitresLeft) / 10f;
 
             squeezeRel += Math.Max(0, 0.9f - selfHeight);
+            pressSqueezeRel = GameMath.Clamp(squeezeRel, 0.1f, 1f);
             squeezeRel = GameMath.Clamp(Math.Min(mashStack.Attributes.GetDouble("squeezeRel", 1), squeezeRel), 0.1f, 1f);
 
             mashStack.Attributes.SetDouble("squeezeRel", squeezeRel);
+
+            screwPercent = GameMath.Clamp(1f - anim.CurrentFrame / (anim.Animation.QuantityFrames - 1), 0, 1f) / selfHeight;
+        }
+
+
+        private void convertDryMash()
+        {
+            if (juiceableLitresLeft < 0.01)
+            {
+                var jprops = getJuiceableProps(mashStack);
+                if (jprops?.ReturnStack?.ResolvedItemstack != null && mashStack != null)
+                {
+                    var totalLitresJuiced = Math.Round(juiceableLitresTransfered, 2, MidpointRounding.AwayFromZero);
+                    MashSlot.Itemstack = jprops.ReturnStack.ResolvedItemstack.Clone();
+                    mashStack.StackSize = (int)(mashStack.StackSize * totalLitresJuiced);
+                }
+                else
+                {
+                    mashStack?.Attributes?.RemoveAttribute("juiceableLitresTransfered");
+                    mashStack?.Attributes?.RemoveAttribute("juiceableLitresLeft");
+                    mashStack?.Attributes?.RemoveAttribute("squeezeRel");
+                    if (mashStack?.Collectible.Code.Path != "rot") mashStack.StackSize = dryStackSize;
+                }
+                dryStackSize = 0;
+            }
         }
 
 
         public bool OnBlockInteractCancel(float secondsUsed, IPlayer byPlayer)
         {
-            RunningAnimation anim = animUtil.animator.GetAnimationState("compress");
-            udpateSqueezeRel(anim);
+            updateSqueezeRel(animUtil.animator.GetAnimationState("compress"));
 
             if (CompressAnimActive)
             {
                 compressAnimMeta.AnimationSpeed = 0f;
-                (Api as ICoreServerAPI)?.Network.BroadcastBlockEntityPacket(Pos, PacketIdAnimUpdate, new FruitPressAnimPacket() { AnimationActive = true, AnimationSpeed = 0f });
+                (Api as ICoreServerAPI)?.Network.BroadcastBlockEntityPacket(Pos, PacketIdAnimUpdate, new FruitPressAnimPacket() { AnimationState = EnumFruitPressAnimState.ScrewContinue, AnimationSpeed = 0f });
             }
 
             return true;
@@ -545,21 +663,27 @@ namespace Vintagestory.GameContent
             switch (packetid)
             {
                 case PacketIdScrewStart:
-                    compressAnimMeta.AnimationSpeed = 1f; // This is supposed to be 0.5f, but for some reason, the server runs animations at half the speed?!
+                    compressAnimMeta.AnimationSpeed = 0.5f;
                     animUtil.StartAnimation(compressAnimMeta);
                     squeezeSoundPlayed = false;
                     lastLiquidTransferTotalHours = Api.World.Calendar.TotalHours;
                     if (listenerId == 0) listenerId = RegisterGameTickListener(onTick100msServer, 25);
-                    (Api as ICoreServerAPI)?.Network.BroadcastBlockEntityPacket(Pos, PacketIdAnimUpdate, new FruitPressAnimPacket() { AnimationActive = true, AnimationSpeed = 0.5f });
+                    (Api as ICoreServerAPI)?.Network.BroadcastBlockEntityPacket(Pos, PacketIdAnimUpdate, new FruitPressAnimPacket() { AnimationState = EnumFruitPressAnimState.ScrewStart, AnimationSpeed = 0.5f });
                     break;
                 case PacketIdScrewContinue:
-                    compressAnimMeta.AnimationSpeed = 1f; // This is supposed to be 0.5f, but for some reason, the server runs animations at half the speed?!
-                    (Api as ICoreServerAPI)?.Network.BroadcastBlockEntityPacket(Pos, PacketIdAnimUpdate, new FruitPressAnimPacket() { AnimationActive = true, AnimationSpeed = 0.5f });
+                    compressAnimMeta.AnimationSpeed = 0.5f;
+                    (Api as ICoreServerAPI)?.Network.BroadcastBlockEntityPacket(Pos, PacketIdAnimUpdate, new FruitPressAnimPacket() { AnimationState = EnumFruitPressAnimState.ScrewContinue, AnimationSpeed = 0.5f });
                     break;
                 case PacketIdUnscrew:
                     compressAnimMeta.AnimationSpeed = 1.5f;
                     animUtil.StopAnimation("compress");
-                    (Api as ICoreServerAPI)?.Network.BroadcastBlockEntityPacket(Pos, PacketIdAnimUpdate, new FruitPressAnimPacket() { AnimationActive = false, AnimationSpeed = 1.5f });
+                    (Api as ICoreServerAPI)?.Network.BroadcastBlockEntityPacket(Pos, PacketIdAnimUpdate, new FruitPressAnimPacket() { AnimationState = EnumFruitPressAnimState.Unscrew, AnimationSpeed = 1.5f });
+                    animUtil.animator.GetAnimationState("compress").Stop(); // Without this the player is occasionally told to unscrew a second time
+                    if (MashSlot.Empty && listenerId != 0) // Unregister the tick listener here since the container is empty so we don't need it
+                    {
+                        UnregisterGameTickListener(listenerId);
+                        listenerId = 0;
+                    }
                     break;
             }
 
@@ -574,17 +698,46 @@ namespace Vintagestory.GameContent
 
                 compressAnimMeta.AnimationSpeed = packet.AnimationSpeed;
 
-                if (packet.AnimationActive)
+                if (packet.AnimationState == EnumFruitPressAnimState.ScrewStart)
                 {
-                    if (!MashSlot.Empty && juiceableLitresLeft > 0 && !CompressAnimActive)
-                    {
-                        Api.World.PlaySoundAt(new AssetLocation("sounds/player/wetclothsqueeze.ogg"), Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, null, false);
-                    }
-
                     animUtil.StartAnimation(compressAnimMeta);
+                    squeezeSoundPlayed = false;
+                    lastLiquidTransferTotalHours = Api.World.Calendar.TotalHours;
                     if (listenerId == 0) listenerId = RegisterGameTickListener(onTick25msClient, 25);
                 }
-                else
+                else if (packet.AnimationState == EnumFruitPressAnimState.ScrewContinue)
+                {
+                    // Since the game isn't set up to synchronize BlockEntity animations and the game logic of
+                    // the fruit press relies on the animation progress we have to do something a little hacky
+                    // to get the client to properly synchronize the visual animation with the server, so first
+                    // we have to get the animation running for a moment if it hasn't been already
+                    RunningAnimation anim = animUtil.animator.GetAnimationState("compress");
+                    if (anim.CurrentFrame <= 0 && packet.CurrentFrame > 0)
+                    {
+                        compressAnimMeta.AnimationSpeed = 0.0001f;
+                        animUtil.StartAnimation(compressAnimMeta);
+                    }
+
+                    // Then we have to fast forward the animation to the correct spot so the client will visually
+                    // match where the server is in the animation. We do this by setting the speed very low and
+                    // then progressing one step at a time in a while loop before resetting the speed back to
+                    // where it was before we performed this action. We also make sure we don't do this unless
+                    // the CurrentFrame is > 0 to make sure that the client is fully loaded and capable of playing
+                    // animations otherwise it will crash with a null pointer exception
+                    if (anim.CurrentFrame > 0 && anim.CurrentFrame < packet.CurrentFrame)
+                    {
+                        compressAnimMeta.AnimationSpeed = 0.0001f;
+                        while (anim.CurrentFrame < packet.CurrentFrame && anim.CurrentFrame < anim.Animation.QuantityFrames - 1) anim.Progress(1f, 1f);
+                        compressAnimMeta.AnimationSpeed = packet.AnimationSpeed;
+                        anim.CurrentFrame = packet.CurrentFrame;
+
+                        MarkDirty(true);
+                        updateSqueezeRel(anim);
+                    }
+
+                    if (listenerId == 0) listenerId = RegisterGameTickListener(onTick25msClient, 25);
+                }
+                else if (packet.AnimationState == EnumFruitPressAnimState.Unscrew)
                 {
                     animUtil.StopAnimation("compress");
                     if (listenerId != 0) { UnregisterGameTickListener(listenerId); listenerId = 0; }
@@ -599,6 +752,7 @@ namespace Vintagestory.GameContent
             var props = stack?.ItemAttributes?["juiceableProperties"].Exists == true ? stack.ItemAttributes["juiceableProperties"].AsObject<JuiceableProperties>(null, stack.Collectible.Code.Domain) : null;
             props?.LiquidStack?.Resolve(Api.World, "juiceable properties liquidstack", stack.Collectible.Code);
             props?.PressedStack?.Resolve(Api.World, "juiceable properties pressedstack", stack.Collectible.Code);
+            props?.ReturnStack?.Resolve(Api.World, "juiceable properties returnstack", stack.Collectible.Code);
 
             return props;
         }
@@ -606,7 +760,9 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockBroken(IPlayer byPlayer = null)
         {
-            base.OnBlockBroken();
+            if (!MashSlot.Empty) convertDryMash();
+
+            base.OnBlockBroken(byPlayer);
         }
 
         public override void OnBlockRemoved()
@@ -631,6 +787,10 @@ namespace Vintagestory.GameContent
             ItemStack beforeStack = mashStack;
 
             base.FromTreeAttributes(tree, worldForResolving);
+            squeezedLitresLeft = tree.GetDouble("squeezedLitresLeft");
+            squeezeSoundPlayed = tree.GetBool("squeezeSoundPlayed");
+            dryStackSize = tree.GetInt("dryStackSize");
+            lastLiquidTransferTotalHours = tree.GetDouble("lastLiquidTransferTotalHours");
 
             if (worldForResolving.Side == EnumAppSide.Client)
             {
@@ -642,11 +802,34 @@ namespace Vintagestory.GameContent
                 renderer?.reloadMeshes(getJuiceableProps(mashStack), wasEmpty != Inventory.Empty || (beforeStack != null && mashStack != null && !beforeStack.Equals(Api.World, mashStack, GlobalConstants.IgnoredStackAttributes)));
                 genBucketMesh();
             }
+            else
+            {
+                if (listenerId == 0) serverListenerActive = tree.GetBool("ServerListenerActive");
+                if (listenerId != 0 || serverListenerActive)
+                {
+                    loadedFrame = tree.GetFloat("CurrentFrame");
+                    compressAnimMeta.AnimationSpeed = tree.GetFloat("AnimationSpeed", compressAnimMeta.AnimationSpeed);
+                }
+            }
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
         {
             base.ToTreeAttributes(tree);
+            tree.SetDouble("squeezedLitresLeft", squeezedLitresLeft);
+            tree.SetBool("squeezeSoundPlayed", squeezeSoundPlayed);
+            tree.SetInt("dryStackSize", dryStackSize);
+            tree.SetDouble("lastLiquidTransferTotalHours", lastLiquidTransferTotalHours);
+
+            if (Api.Side == EnumAppSide.Server)
+            {
+                if (listenerId != 0) tree.SetBool("ServerListenerActive", true);
+                if (CompressAnimActive)
+                {
+                    tree.SetFloat("CurrentFrame", animUtil.animator.GetAnimationState("compress").CurrentFrame);
+                    tree.SetFloat("AnimationSpeed", compressAnimMeta.AnimationSpeed);
+                }
+            }
         }
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
@@ -670,7 +853,7 @@ namespace Vintagestory.GameContent
                 BlockLiquidContainerBase block = BucketSlot.Itemstack.Collectible as BlockLiquidContainerBase;
                 if (block != null)
                 {
-                    dsc.Append(Lang.Get("Container: "));
+                    dsc.Append(Lang.Get("Container:") + " ");
                     block.GetContentInfo(BucketSlot, dsc, Api.World);
                     dsc.AppendLine();
                 }
@@ -678,12 +861,28 @@ namespace Vintagestory.GameContent
 
             if (!MashSlot.Empty)
             {
-                if (juiceableLitresLeft > 0)
+                var jprops = getJuiceableProps(mashStack);
+
+                if (juiceableLitresLeft >= 0.01 && mashStack.Collectible.Code.Path != "rot")
                 {
-                    dsc.AppendLine(Lang.Get("Mash produces {0:0.##} litres of juice when squeezed", juiceableLitresLeft));
-                } else
+                    string juicename = jprops.LiquidStack.ResolvedItemstack.GetName().ToLowerInvariant();
+                    dsc.AppendLine(Lang.GetWithFallback("fruitpress-litreswhensqueezed", "Mash produces {0:0.##} litres of juice when squeezed", juiceableLitresLeft, juicename));
+                }
+                else
                 {
-                    dsc.AppendLine(Lang.Get("Dry Mash"));
+                    // Using the precalculated dryStackSize we fake the number of dry mash in the slot without converting,
+                    // and that means we don't have to worry about someone adding fruit to the machine when it still has
+                    // dry mash inside and overwriting the total stack size, making them lose some of their dry mash
+                    int stacksize = mashStack.Collectible.Code.Path != "rot" ? dryStackSize : MashSlot.StackSize;
+                    string stackname = MashSlot.GetStackName().ToLowerInvariant();
+
+                    if (jprops.ReturnStack?.ResolvedItemstack != null)
+                    {
+                        stacksize = (int)(jprops.ReturnStack.ResolvedItemstack.StackSize * Math.Round(juiceableLitresTransfered, 2, MidpointRounding.AwayFromZero));
+                        stackname = jprops.ReturnStack.ResolvedItemstack.GetName().ToLowerInvariant();
+                    }
+
+                    dsc.AppendLine(Lang.Get("{0}x {1}", stacksize, stackname));
                 }
             }
         }
@@ -692,10 +891,14 @@ namespace Vintagestory.GameContent
 
         private void genBucketMesh()
         {
-            if (BucketSlot.Empty || capi == null) return;
+            if (BucketSlot.Empty || capi == null)
+            {
+                bucketMesh?.Clear();
+                return;
+            }
 
             var stack = BucketSlot.Itemstack;
-            var meshSource = stack.Collectible as IContainedMeshSource;
+            IContainedMeshSource meshSource = stack.Collectible?.GetCollectibleInterface<IContainedMeshSource>();
             if (meshSource != null)
             {
                 bucketMeshTmp = meshSource.GenMesh(stack, capi.BlockTextureAtlas, Pos);
@@ -712,4 +915,3 @@ namespace Vintagestory.GameContent
         }
     }
 }
-    

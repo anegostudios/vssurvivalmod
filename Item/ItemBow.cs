@@ -8,6 +8,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ItemBow : Item
@@ -62,7 +64,8 @@ namespace Vintagestory.GameContent
             {
                 if (invslot is ItemSlotCreative) return true;
 
-                if (invslot.Itemstack != null && invslot.Itemstack.Collectible.Code.PathStartsWith("arrow-"))
+                ItemStack stack = invslot.Itemstack;
+                if (stack != null && stack.Collectible != null && stack.Collectible.Code.PathStartsWith("arrow-") && stack.StackSize > 0)
                 {
                     slot = invslot;
                     return false;
@@ -145,9 +148,11 @@ namespace Vintagestory.GameContent
             byEntity.Attributes.SetInt("aiming", 0);
             byEntity.AnimManager.StopAnimation(aimAnimation);
 
-            if (byEntity.World is IClientWorldAccessor)
+            if (byEntity.World.Side == EnumAppSide.Client)
             {
                 slot.Itemstack.TempAttributes.RemoveAttribute("renderVariant");
+                byEntity.AnimManager.StartAnimation("bowhit");
+                return;
             }
 
             slot.Itemstack.Attributes.SetInt("renderVariant", 0);
@@ -159,14 +164,12 @@ namespace Vintagestory.GameContent
             if (arrowSlot == null) return;
 
             float damage = 0;
-            float accuracyBonus = 0f;
 
             // Bow damage
             if (slot.Itemstack.Collectible.Attributes != null)
             {
                 damage += slot.Itemstack.Collectible.Attributes["damage"].AsFloat(0);
 
-                accuracyBonus = 1 - slot.Itemstack.Collectible.Attributes["accuracyBonus"].AsFloat(0);
             }
 
             // Arrow damage
@@ -178,39 +181,38 @@ namespace Vintagestory.GameContent
             ItemStack stack = arrowSlot.TakeOut(1);
             arrowSlot.MarkDirty();
 
-            IPlayer byPlayer = null;
-            if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
-            byEntity.World.PlaySoundAt(new AssetLocation("sounds/bow-release"), byEntity, byPlayer, false, 8);
+            byEntity.World.PlaySoundAt(new AssetLocation("sounds/bow-release"), byEntity, null, false, 8);
 
             float breakChance = 0.5f;
             if (stack.ItemAttributes != null) breakChance = stack.ItemAttributes["breakChanceOnImpact"].AsFloat(0.5f);
 
-            EntityProperties type = byEntity.World.GetEntityType(new AssetLocation("arrow-" + stack.Collectible.Variant["material"]));
+            EntityProperties type = byEntity.World.GetEntityType(new AssetLocation(stack.ItemAttributes["arrowEntityCode"].AsString("arrow-" + stack.Collectible.Variant["material"])));
             var entityarrow = byEntity.World.ClassRegistry.CreateEntity(type) as EntityProjectile;
             entityarrow.FiredBy = byEntity;
             entityarrow.Damage = damage;
+            entityarrow.DamageTier = Attributes["damageTier"].AsInt(0);
             entityarrow.ProjectileStack = stack;
             entityarrow.DropOnImpactChance = 1 - breakChance;
 
-            float acc = Math.Max(0.001f, (1 - byEntity.Attributes.GetFloat("aimingAccuracy", 0)));
-            
-            double rndpitch = byEntity.WatchedAttributes.GetDouble("aimingRandPitch", 1) * acc * (0.75 * accuracyBonus);
-            double rndyaw = byEntity.WatchedAttributes.GetDouble("aimingRandYaw", 1) * acc * (0.75 * accuracyBonus);
+            float acc = Math.Max(0.001f, 1 - byEntity.Attributes.GetFloat("aimingAccuracy", 0));
+            double rndpitch = byEntity.WatchedAttributes.GetDouble("aimingRandPitch", 1) * acc * 0.75f;
+            double rndyaw = byEntity.WatchedAttributes.GetDouble("aimingRandYaw", 1) * acc * 0.75f;
             
             Vec3d pos = byEntity.ServerPos.XYZ.Add(0, byEntity.LocalEyePos.Y, 0);
             Vec3d aheadPos = pos.AheadCopy(1, byEntity.SidedPos.Pitch + rndpitch, byEntity.SidedPos.Yaw + rndyaw);
             Vec3d velocity = (aheadPos - pos) * byEntity.Stats.GetBlended("bowDrawingStrength");
 
 
-            entityarrow.ServerPos.SetPos(byEntity.SidedPos.BehindCopy(0.21).XYZ.Add(0, byEntity.LocalEyePos.Y, 0));
+            entityarrow.ServerPos.SetPosWithDimension(byEntity.SidedPos.BehindCopy(0.21).XYZ.Add(0, byEntity.LocalEyePos.Y, 0));
             entityarrow.ServerPos.Motion.Set(velocity);
             entityarrow.Pos.SetFrom(entityarrow.ServerPos);
             entityarrow.World = byEntity.World;
             entityarrow.SetRotation();
 
-            byEntity.World.SpawnEntity(entityarrow);
+            byEntity.World.SpawnPriorityEntity(entityarrow);
 
             slot.Itemstack.Collectible.DamageItem(byEntity.World, byEntity, slot);
+            slot.MarkDirty();
 
             byEntity.AnimManager.StartAnimation("bowhit");
         }
@@ -225,7 +227,7 @@ namespace Vintagestory.GameContent
             float dmg = inSlot.Itemstack.Collectible.Attributes?["damage"].AsFloat(0) ?? 0;
             if (dmg != 0) dsc.AppendLine(Lang.Get("bow-piercingdamage", dmg));
 
-            float accuracyBonus = inSlot.Itemstack.Collectible?.Attributes["accuracyBonus"].AsFloat(0) ?? 0;
+            float accuracyBonus = inSlot.Itemstack.Collectible?.Attributes["statModifier"]["rangedWeaponsAcc"].AsFloat(0) ?? 0;
             if (accuracyBonus != 0) dsc.AppendLine(Lang.Get("bow-accuracybonus", accuracyBonus > 0 ? "+" : "", (int)(100*accuracyBonus)));
         }
 

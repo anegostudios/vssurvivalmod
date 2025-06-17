@@ -4,6 +4,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BECheese : BlockEntityContainer
@@ -93,8 +95,7 @@ namespace Vintagestory.GameContent
         {
             if (inv[0].Empty) return true;
 
-            MeshData modeldata;
-            tessThreadTesselator.TesselateShape(Block, (Api as ICoreClientAPI).TesselatorManager.GetCachedShape(inv[0].Itemstack.Item.Shape.Base), out modeldata);
+            tessThreadTesselator.TesselateShape(Block, (Api as ICoreClientAPI).TesselatorManager.GetCachedShape(inv[0].Itemstack.Item.Shape.Base), out MeshData modeldata);
             modeldata.Scale(new Vec3f(0.5f, 0, 0.5f), 0.75f, 0.75f, 0.75f);
             mesher.AddMeshData(modeldata);
             return true;

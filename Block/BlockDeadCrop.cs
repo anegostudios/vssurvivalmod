@@ -3,6 +3,8 @@ using Vintagestory.API.Client.Tesselation;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockDeadCrop : Block, IDrawYAdjustable
@@ -24,7 +26,7 @@ namespace Vintagestory.GameContent
             return base.GetPlacedBlockName(world, pos);
         }
 
-        public float AdjustYPosition(Block[] chunkExtBlocks, int extIndex3d)
+        public float AdjustYPosition(BlockPos pos, Block[] chunkExtBlocks, int extIndex3d)
         {
             Block nblock = chunkExtBlocks[extIndex3d + TileSideEnum.MoveIndex[TileSideEnum.Down]];
             return nblock is BlockFarmland ? -0.0625f : 0f;

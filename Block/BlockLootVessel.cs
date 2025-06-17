@@ -5,6 +5,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class LootItem
@@ -214,7 +216,7 @@ namespace Vintagestory.GameContent
                 return new ItemStack[] { new ItemStack(this) };
             }
 
-            if (lootList == null) return new ItemStack[0];
+            if (lootList == null) return System.Array.Empty<ItemStack>();
 
             return lootList.GenerateLoot(world, byPlayer);
         }
@@ -228,7 +230,7 @@ namespace Vintagestory.GameContent
                 if (counter % 5 == 0 || remainingResistance <= 0)
                 {
                     double posx = blockSel.Position.X + blockSel.HitPosition.X;
-                    double posy = blockSel.Position.Y + blockSel.HitPosition.Y;
+                    double posy = blockSel.Position.InternalY + blockSel.HitPosition.Y;
                     double posz = blockSel.Position.Z + blockSel.HitPosition.Z;
                     player.Entity.World.PlaySoundAt(remainingResistance > 0 ? Sounds.GetHitSound(player) : Sounds.GetBreakSound(player), posx, posy, posz, player, true, 16, 1);
                 }

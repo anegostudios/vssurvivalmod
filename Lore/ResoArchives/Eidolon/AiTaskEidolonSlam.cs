@@ -8,6 +8,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     [ProtoContract]
@@ -73,7 +75,7 @@ namespace Vintagestory.GameContent
         float maxDist = 15f;
 
         float projectileDamage;
-        int damageTier;
+        int projectileDamageTier;
         AssetLocation projectileCode;
 
         public float creatureSpawnChance = 0f;
@@ -102,7 +104,7 @@ namespace Vintagestory.GameContent
             this.durationMs = taskConfig["durationMs"].AsInt(1500);
             this.releaseAtMs = taskConfig["releaseAtMs"].AsInt(1000);
             this.projectileDamage = taskConfig["projectileDamage"].AsFloat(1f);
-            this.damageTier = taskConfig["damageTier"].AsInt(0);
+            this.projectileDamageTier = taskConfig["projectileDamageTier"].AsInt(0);
             this.projectileCode = AssetLocation.Create(taskConfig["projectileCode"].AsString("thrownstone-{rock}"), entity.Code.Domain);
             if (taskConfig["creatureCode"].Exists)
             {
@@ -119,11 +121,11 @@ namespace Vintagestory.GameContent
         public override bool ShouldExecute()
         {
             // React immediately on hurt, otherwise only 1/10 chance of execution
-            if (rand.NextDouble() > 0.1f && (whenInEmotionState == null || IsInEmotionState(whenInEmotionState) != true)) return false;
+            if (rand.NextDouble() > 0.1f && (WhenInEmotionState == null || IsInEmotionState(WhenInEmotionState) != true)) return false;
 
-            if (!EmotionStatesSatisifed()) return false;
+            if (!PreconditionsSatisifed()) return false;
             if (lastSearchTotalMs + searchWaitMs > entity.World.ElapsedMilliseconds) return false;
-            if (whenInEmotionState == null && rand.NextDouble() > 0.5f) return false;
+            if (WhenInEmotionState == null && rand.NextDouble() > 0.5f) return false;
             if (cooldownUntilMs > entity.World.ElapsedMilliseconds) return false;
 
             float range = maxDist;
@@ -265,14 +267,14 @@ namespace Vintagestory.GameContent
 
             entitypr.FiredBy = entity;
             entitypr.Damage = projectileDamage;
-            entitypr.DamageTier = damageTier;
+            entitypr.DamageTier = projectileDamageTier;
             entitypr.ProjectileStack = new ItemStack(entity.World.GetItem(new AssetLocation("stone-" + rocktype)));
             entitypr.NonCollectible = true;
             entitypr.VerticalImpactBreakChance = 1f;
             entitypr.ImpactParticleSize = 1.5f;
             entitypr.ImpactParticleCount = 30;
 
-            entitypr.ServerPos.SetPos(entity.ServerPos.XYZ.Add(dx, dy, dz));
+            entitypr.ServerPos.SetPosWithDimension(entity.ServerPos.XYZ.Add(dx, dy, dz));
             entitypr.Pos.SetFrom(entitypr.ServerPos);
             entitypr.World = entity.World;
             entity.World.SpawnEntity(entitypr);
@@ -282,7 +284,7 @@ namespace Vintagestory.GameContent
         {
             EntityProperties type = entity.World.GetEntityType(creatureCode);
             Entity entitypr = entity.World.ClassRegistry.CreateEntity(type);
-            entitypr.ServerPos.SetPos(entity.ServerPos.XYZ.Add(dx, dy, dz));
+            entitypr.ServerPos.SetPosWithDimension(entity.ServerPos.XYZ.Add(dx, dy, dz));
             entitypr.Pos.SetFrom(entitypr.ServerPos);
             entitypr.World = entity.World;
             entity.World.SpawnEntity(entitypr);

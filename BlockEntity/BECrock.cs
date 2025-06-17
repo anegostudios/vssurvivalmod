@@ -7,6 +7,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityCrock : BlockEntityContainer, IBlockEntityMealContainer
@@ -35,8 +37,14 @@ namespace Vintagestory.GameContent
             base.Initialize(api);
 
             this.ownBlock = Block as BlockCrock;
+
+            inv.OnAcquireTransitionSpeed += Inv_OnAcquireTransitionSpeed;
         }
 
+        private float Inv_OnAcquireTransitionSpeed(EnumTransitionType transType, ItemStack stack, float mulByConfig)
+        {
+            return mulByConfig * (ownBlock?.GetContainingTransitionModifierPlaced(Api.World, Pos, transType) ?? 1);
+        }
 
         public override void OnBlockPlaced(ItemStack byItemStack = null)
         {
@@ -48,14 +56,6 @@ namespace Vintagestory.GameContent
                 QuantityServings = (float)byItemStack.Attributes.GetDecimal("quantityServings");
                 Sealed = byItemStack.Attributes.GetBool("sealed");
             }
-        }
-
-
-        protected override float Inventory_OnAcquireTransitionSpeed(EnumTransitionType transType, ItemStack stack, float baseMul)
-        {
-            float mul = base.Inventory_OnAcquireTransitionSpeed(transType, stack, baseMul);
-            mul *= ownBlock?.GetContainingTransitionModifierPlaced(Api.World, Pos, transType) ?? 1;
-            return mul;
         }
 
         public override void OnBlockBroken(IPlayer byPlayer = null)
@@ -79,10 +79,9 @@ namespace Vintagestory.GameContent
         public static MeshData GetMesh(ITesselatorAPI tesselator, ICoreAPI api, BlockCrock block, ItemStack[] stacks, string recipeCode, Vec3f rot)
         {
             Dictionary<string, MeshData> meshes = ObjectCacheUtil.GetOrCreate(api, "blockCrockMeshes", () => new Dictionary<string, MeshData>());
-            MeshData mesh = null;
-            
-            
-            
+
+
+
             AssetLocation labelLoc = block.LabelForContents(recipeCode, stacks);
 
             if (labelLoc == null)
@@ -91,7 +90,7 @@ namespace Vintagestory.GameContent
             }
 
             string key = labelLoc.ToShortString() + block.Code.ToShortString() + "/" + rot.Y + "/" + rot.X + "/" + rot.Z;
-            if (meshes.TryGetValue(key, out mesh))
+            if (meshes.TryGetValue(key, out MeshData mesh))
             {
                 return mesh;
             }
@@ -165,7 +164,7 @@ namespace Vintagestory.GameContent
                 slot.TakeOut(1);
                 if (!player.InventoryManager.TryGiveItemstack(mealstack, true))
                 {
-                    Api.World.SpawnItemEntity(mealstack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    Api.World.SpawnItemEntity(mealstack, Pos);
                 }
                 slot.MarkDirty();
             }

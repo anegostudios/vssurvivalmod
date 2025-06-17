@@ -4,6 +4,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BEBehaviorFruiting : BlockEntityBehavior
@@ -64,7 +66,7 @@ namespace Vintagestory.GameContent
 
             // Read the properties
 
-            fruitCodeBases = properties["fruitCodeBases"].AsArray<string>(new string[0]);
+            fruitCodeBases = properties["fruitCodeBases"].AsArray<string>(Array.Empty<string>());
             if (fruitCodeBases.Length == 0) return;
 
             positionsCount = properties["positions"].AsInt(0);
@@ -450,6 +452,12 @@ namespace Vintagestory.GameContent
                         {
                             Api.World.SpawnItemEntity(stack, Blockentity.Pos.ToVec3d().Add(0.5, 0.25, 0.5));
                         }
+                        Api.World.Logger.Audit("{0} Took 1x{1} from {2} at {3}.",
+                            player.PlayerName,
+                            stack.Collectible.Code,
+                            Blockentity.Block.Code,
+                            Blockentity.Pos
+                        );
                     }
                     Blockentity.MarkDirty();
                     break;

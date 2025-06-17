@@ -5,6 +5,8 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class GuiDialogSignPost : GuiDialogGeneric
@@ -148,7 +150,7 @@ namespace Vintagestory.GameContent
                 data = ms.ToArray();
             }
 
-            capi.Network.SendBlockEntityPacket(blockEntityPos.X, blockEntityPos.Y, blockEntityPos.Z, (int)EnumSignPacketId.SaveText, data);
+            capi.Network.SendBlockEntityPacket(blockEntityPos, (int)EnumSignPacketId.SaveText, data);
             didSave = true;
             TryClose();
             return true;

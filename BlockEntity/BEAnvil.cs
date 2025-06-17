@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -11,6 +12,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public enum EnumVoxelMaterial
@@ -21,10 +24,10 @@ namespace Vintagestory.GameContent
         Placeholder1 = 3,
     }
 
-    public class BlockEntityAnvil : BlockEntity, IRotatable
+    public class BlockEntityAnvil : BlockEntity, IRotatable, ITemperatureSensitive
     {
         #region Particle
-        
+
         public static SimpleParticleProperties bigMetalSparks;
         public static SimpleParticleProperties smallMetalSparks;
         public static SimpleParticleProperties slagPieces;
@@ -44,7 +47,6 @@ namespace Vintagestory.GameContent
             );
             smallMetalSparks.VertexFlags = 128;
             smallMetalSparks.AddPos.Set(1 / 16f, 0, 1 / 16f);
-            smallMetalSparks.SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.LINEAR, -0.05f);
             smallMetalSparks.ParticleModel = EnumParticleModel.Quad;
             smallMetalSparks.LifeLength = 0.03f;
             smallMetalSparks.MinVelocity = new Vec3f(-2f, 1f, -2f);
@@ -56,13 +58,12 @@ namespace Vintagestory.GameContent
             smallMetalSparks.SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.LINEAR, -0.1f);
 
 
-
             bigMetalSparks = new SimpleParticleProperties(
                 4, 8,
                 ColorUtil.ToRgba(255, 255, 233, 83),
                 new Vec3d(), new Vec3d(),
-                new Vec3f(-1.5f, 0.9f, -1.5f),
-                new Vec3f(3f, 2f, 3f),
+                new Vec3f(-1f, 1f, -1f),
+                new Vec3f(2f, 4f, 2f),
                 0.5f,
                 1f,
                 0.25f, 0.25f
@@ -70,6 +71,11 @@ namespace Vintagestory.GameContent
             bigMetalSparks.VertexFlags = 128;
             bigMetalSparks.AddPos.Set(1 / 16f, 0, 1 / 16f);
             bigMetalSparks.SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.LINEAR, -0.25f);
+            bigMetalSparks.Bounciness = 1f;
+            bigMetalSparks.addLifeLength = 2f;
+            bigMetalSparks.GreenEvolve = new EvolvingNatFloat(EnumTransformFunction.LINEAR, -233f);
+            bigMetalSparks.BlueEvolve = new EvolvingNatFloat(EnumTransformFunction.LINEAR, -83f);
+
 
 
 
@@ -146,13 +152,15 @@ namespace Vintagestory.GameContent
 
         public bool CanWorkCurrent
         {
-            get { return workItemStack != null && (workItemStack.Collectible as IAnvilWorkable).CanWork(WorkItemStack); }
+            get { return workItemStack != null && workItemStack.Collectible.GetCollectibleInterface<IAnvilWorkable>().CanWork(WorkItemStack); }
         }
 
         public ItemStack WorkItemStack
         {
             get { return workItemStack; }
         }
+
+        public bool IsHot => (workItemStack?.Collectible.GetTemperature(Api.World, workItemStack) ?? 0) > 20;
 
         public BlockEntityAnvil() : base() { }
 
@@ -162,7 +170,7 @@ namespace Vintagestory.GameContent
             base.Initialize(api);
 
             workItemStack?.ResolveBlockOrItem(api.World);
-            
+
             if (api is ICoreClientAPI capi)
             {
                 capi.Event.RegisterRenderer(workitemRenderer = new AnvilWorkItemRenderer(this, Pos, capi), EnumRenderStage.Opaque);
@@ -174,8 +182,7 @@ namespace Vintagestory.GameContent
             }
 
             string metalType = Block.Variant["metal"];
-            MetalPropertyVariant var;
-            if (api.ModLoader.GetModSystem<SurvivalCoreSystem>().metalsByCode.TryGetValue(metalType, out var))
+            if (api.ModLoader.GetModSystem<SurvivalCoreSystem>().metalsByCode.TryGetValue(metalType, out MetalPropertyVariant var))
             {
                 OwnMetalTier = var.Tier;
             }
@@ -220,12 +227,12 @@ namespace Vintagestory.GameContent
                         {
                             rotVoxels[z, y, x] = Voxels[16 - x - 1, y, z];
                         }
-                        
+
                     }
                 }
             }
 
-            rotation = (rotation + 90) % 360;
+            rotation = (rotation + (ccw ? 270 : 90)) % 360;
 
             this.Voxels = rotVoxels;
             RegenMeshAndSelectionBoxes();
@@ -250,9 +257,7 @@ namespace Vintagestory.GameContent
             if (slot.Itemstack == null) return false;
             ItemStack stack = slot.Itemstack;
 
-            IAnvilWorkable workableobj = stack.Collectible as IAnvilWorkable;
-
-            
+            IAnvilWorkable workableobj = stack.Collectible.GetCollectibleInterface<IAnvilWorkable>();
 
             if (workableobj == null) return false;
             int requiredTier = workableobj.GetRequiredAnvilTier(stack);
@@ -294,6 +299,11 @@ namespace Vintagestory.GameContent
 
                 returnOnCancelStack = slot.TakeOut(1);
                 slot.MarkDirty();
+                Api.World.Logger.Audit("{0} Put 1x{1} on to Anvil at {2}.",
+                    byPlayer?.PlayerName,
+                    newWorkItemStack.Collectible.Code,
+                    Pos
+                );
 
                 if (Api.Side == EnumAppSide.Server)
                 {
@@ -360,7 +370,7 @@ namespace Vintagestory.GameContent
             int toolMode = slot.Itemstack.Collectible.GetToolMode(slot, byPlayer, blockSel);
 
             float yaw = GameMath.Mod(byPlayer.Entity.Pos.Yaw, 2 * GameMath.PI);
-            
+
 
             EnumVoxelMaterial voxelMat = (EnumVoxelMaterial)Voxels[voxelPos.X, voxelPos.Y, voxelPos.Z];
 
@@ -371,10 +381,10 @@ namespace Vintagestory.GameContent
                 switch (toolMode)
                 {
                     case 0: OnHit(voxelPos); break;
-                    case 1: OnUpset(voxelPos, BlockFacing.NORTH.FaceWhenRotatedBy(0, yaw - GameMath.PIHALF, 0)); break;
-                    case 2: OnUpset(voxelPos, BlockFacing.EAST.FaceWhenRotatedBy(0, yaw - GameMath.PIHALF, 0)); break;
-                    case 3: OnUpset(voxelPos, BlockFacing.SOUTH.FaceWhenRotatedBy(0, yaw - GameMath.PIHALF, 0)); break;
-                    case 4: OnUpset(voxelPos, BlockFacing.WEST.FaceWhenRotatedBy(0, yaw - GameMath.PIHALF, 0)); break;
+                    case 1: OnUpset(voxelPos, BlockFacing.NORTH.FaceWhenRotatedBy(0, yaw - GameMath.PI, 0)); break;
+                    case 2: OnUpset(voxelPos, BlockFacing.EAST.FaceWhenRotatedBy(0, yaw - GameMath.PI, 0)); break;
+                    case 3: OnUpset(voxelPos, BlockFacing.SOUTH.FaceWhenRotatedBy(0, yaw - GameMath.PI, 0)); break;
+                    case 4: OnUpset(voxelPos, BlockFacing.WEST.FaceWhenRotatedBy(0, yaw - GameMath.PI, 0)); break;
                     case 5: OnSplit(voxelPos); break;
                 }
 
@@ -400,18 +410,21 @@ namespace Vintagestory.GameContent
 
             if (voxelMat == EnumVoxelMaterial.Metal && temp > 800)
             {
+
+
+
                 bigMetalSparks.MinPos = Pos.ToVec3d().AddCopy(voxelPos.X / 16f, voxYOff + voxelPos.Y / 16f + 0.0625f, voxelPos.Z / 16f);
                 bigMetalSparks.AddPos.Set(1 / 16f, 0, 1 / 16f);
                 bigMetalSparks.VertexFlags = (byte)GameMath.Clamp((int)(temp - 700) / 2, 32, 128);
-                bigMetalSparks.Bounciness = 0.7f;
+
                 Api.World.SpawnParticles(bigMetalSparks, byPlayer);
 
-                
+
                 smallMetalSparks.MinPos = Pos.ToVec3d().AddCopy(voxelPos.X / 16f, voxYOff + voxelPos.Y / 16f + 0.0625f, voxelPos.Z / 16f);
                 smallMetalSparks.VertexFlags = (byte)GameMath.Clamp((int)(temp - 770) / 3, 32, 128);
                 smallMetalSparks.AddPos.Set(1 / 16f, 0, 1 / 16f);
 
-                
+
 
                 Api.World.SpawnParticles(smallMetalSparks, byPlayer);
             }
@@ -431,7 +444,7 @@ namespace Vintagestory.GameContent
             SmithingRecipe recipe = SelectedRecipe;
 
 
-            EnumHelveWorkableMode? mode = (workItemStack?.Collectible as IAnvilWorkable)?.GetHelveWorkableMode(workItemStack, this);
+            EnumHelveWorkableMode? mode = workItemStack?.Collectible.GetCollectibleInterface<IAnvilWorkable>()?.GetHelveWorkableMode(workItemStack, this);
 
             StringBuilder sb = new StringBuilder();
             sb.AppendLine("Workitem: " + workItemStack);
@@ -445,14 +458,14 @@ namespace Vintagestory.GameContent
         public virtual void OnHelveHammerHit()
         {
             if (workItemStack == null || !CanWorkCurrent) return;
-            
+
             SmithingRecipe recipe = SelectedRecipe;
             if (recipe == null)
             {
                 return;
             }
 
-            var mode = (workItemStack.Collectible as IAnvilWorkable).GetHelveWorkableMode(workItemStack, this);
+            var mode = workItemStack.Collectible.GetCollectibleInterface<IAnvilWorkable>()?.GetHelveWorkableMode(workItemStack, this);
             if (mode == EnumHelveWorkableMode.NotWorkable) return;
 
             rotation = 0;
@@ -572,12 +585,12 @@ namespace Vintagestory.GameContent
             if (SelectedRecipe == null) return;
 
             if (MatchesRecipe() && Api.World is IServerWorldAccessor)
-            {   
+            {
                 Voxels = new byte[16, 6, 16];
                 ItemStack outstack = SelectedRecipe.Output.ResolvedItemstack.Clone();
                 outstack.Collectible.SetTemperature(Api.World, outstack, workItemStack.Collectible.GetTemperature(Api.World, workItemStack));
                 workItemStack = null;
-                
+
                 SelectedRecipeId = -1;
 
                 if (byPlayer?.InventoryManager.TryGiveItemstack(outstack) == true)
@@ -588,6 +601,11 @@ namespace Vintagestory.GameContent
                 {
                     Api.World.SpawnItemEntity(outstack, Pos.ToVec3d().Add(0.5, 0.626, 0.5));
                 }
+                Api.World.Logger.Audit("{0} Took 1x{1} from Anvil at {2}.",
+                    byPlayer?.PlayerName,
+                    outstack.Collectible.Code,
+                    Pos
+                );
 
                 RegenMeshAndSelectionBoxes();
                 MarkDirty();
@@ -603,7 +621,7 @@ namespace Vintagestory.GameContent
             ItemStack ditchedStack;
             if (SelectedRecipe == null)
             {
-                ditchedStack = returnOnCancelStack ?? (workItemStack.Collectible as IAnvilWorkable).GetBaseMaterial(workItemStack);
+                ditchedStack = returnOnCancelStack ?? workItemStack.Collectible.GetCollectibleInterface<IAnvilWorkable>().GetBaseMaterial(workItemStack);
                 float temp = workItemStack.Collectible.GetTemperature(Api.World, workItemStack);
                 ditchedStack.Collectible.SetTemperature(Api.World, ditchedStack, temp);
             }
@@ -624,8 +642,13 @@ namespace Vintagestory.GameContent
 
             if (byPlayer == null || !byPlayer.InventoryManager.TryGiveItemstack(ditchedStack))
             {
-                Api.World.SpawnItemEntity(ditchedStack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                Api.World.SpawnItemEntity(ditchedStack, Pos);
             }
+            Api.World.Logger.Audit("{0} Took 1x{1} from Anvil at {2}.",
+                byPlayer?.PlayerName,
+                ditchedStack.Collectible.Code,
+                Pos
+            );
 
             clearWorkSpace();
         }
@@ -667,7 +690,7 @@ namespace Vintagestory.GameContent
             return true;
         }
 
- 
+
 
         bool HasAnyMetalVoxel()
         {
@@ -757,7 +780,7 @@ namespace Vintagestory.GameContent
                 }
                 return;
             }
-            
+
 
             npos.Y++;
 
@@ -872,7 +895,7 @@ namespace Vintagestory.GameContent
                                 {
                                     Voxels[voxelPos.X + 2 * dx, voxelPos.Y, voxelPos.Z + 2 * dz] = (byte)EnumVoxelMaterial.Metal;
                                 }
-                                
+
                             } else
                             {
                                 if (spotEmpty) emptySpot = voxelPos.Clone().Add(dx, 0, dz);
@@ -880,7 +903,7 @@ namespace Vintagestory.GameContent
                         }
                     }
 
-                    if (emptySpot != null && Voxels[voxelPos.X, voxelPos.Y, voxelPos.Z] == (byte)EnumVoxelMaterial.Metal) 
+                    if (emptySpot != null && Voxels[voxelPos.X, voxelPos.Y, voxelPos.Z] == (byte)EnumVoxelMaterial.Metal)
                     {
                         Voxels[voxelPos.X, voxelPos.Y, voxelPos.Z] = (byte)EnumVoxelMaterial.Empty;
 
@@ -892,14 +915,14 @@ namespace Vintagestory.GameContent
                             Voxels[emptySpot.X, emptySpot.Y, emptySpot.Z] = (byte)EnumVoxelMaterial.Metal;
                         }
 
-                        
+
                     }
                 }
             }
         }
 
 
-        bool moveVoxelDownwards(Vec3i voxelPos, BlockFacing towardsFace, int maxDist)
+        protected bool moveVoxelDownwards(Vec3i voxelPos, BlockFacing towardsFace, int maxDist)
         {
             int origy = voxelPos.Y;
 
@@ -920,14 +943,14 @@ namespace Vintagestory.GameContent
                         return true;
                     }
                 }
-                
+
                 return true;
             }
 
             return false;
         }
 
-        void RegenMeshAndSelectionBoxes()
+        protected void RegenMeshAndSelectionBoxes()
         {
             if (workitemRenderer != null)
             {
@@ -959,6 +982,7 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockRemoved()
         {
+            base.OnBlockRemoved();
             workitemRenderer?.Dispose();
             workitemRenderer = null;
             if (Api is ICoreClientAPI capi) capi.Event.ColorsPresetChanged -= RegenMeshAndSelectionBoxes;
@@ -971,7 +995,7 @@ namespace Vintagestory.GameContent
                 workItemStack.Attributes.SetBytes("voxels", serializeVoxels(Voxels));
                 workItemStack.Attributes.SetInt("selectedRecipeId", SelectedRecipeId);
 
-                Api.World.SpawnItemEntity(workItemStack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                Api.World.SpawnItemEntity(workItemStack, Pos);
             }
         }
 
@@ -995,8 +1019,7 @@ namespace Vintagestory.GameContent
 
             if (Api?.Side == EnumAppSide.Client)
             {
-                MeshData newMesh;
-                ((ICoreClientAPI)Api).Tesselator.TesselateBlock(Block, out newMesh);
+                ((ICoreClientAPI)Api).Tesselator.TesselateBlock(Block, out MeshData newMesh);
 
                 currentMesh = newMesh; // Needed so we don't get race conditions
 
@@ -1080,7 +1103,7 @@ namespace Vintagestory.GameContent
             }
 
             ((ICoreClientAPI)Api).Network.SendBlockEntityPacket(
-                Pos.X, Pos.Y, Pos.Z,
+                Pos,
                 (int)EnumAnvilPacket.OnUserOver,
                 data
             );
@@ -1137,10 +1160,11 @@ namespace Vintagestory.GameContent
         }
 
 
-        
+
         internal void OpenDialog(ItemStack ingredient)
         {
-            List<SmithingRecipe> recipes = (ingredient.Collectible as IAnvilWorkable).GetMatchingRecipes(ingredient);
+            IAnvilWorkable workableobj = ingredient.Collectible.GetCollectibleInterface<IAnvilWorkable>();
+            List<SmithingRecipe> recipes = workableobj.GetMatchingRecipes(ingredient);
 
             List<ItemStack> stacks = recipes
                 .Select(r => r.Output.ResolvedItemstack)
@@ -1156,14 +1180,21 @@ namespace Vintagestory.GameContent
                 stacks.ToArray(),
                 (selectedIndex) => {
                     SelectedRecipeId = recipes[selectedIndex].RecipeId;
-                    capi.Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, (int)EnumAnvilPacket.SelectRecipe, SerializerUtil.Serialize(recipes[selectedIndex].RecipeId));
+                    capi.Network.SendBlockEntityPacket(Pos, (int)EnumAnvilPacket.SelectRecipe, SerializerUtil.Serialize(recipes[selectedIndex].RecipeId));
                 },
                 () => {
-                    capi.Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, (int)EnumAnvilPacket.CancelSelect);
+                    capi.Network.SendBlockEntityPacket(Pos, (int)EnumAnvilPacket.CancelSelect);
                 },
                 Pos,
                 Api as ICoreClientAPI
             );
+
+            for (int i = 0; i < recipes.Count; i++)
+            {
+                ItemStack[] ingredCount = [ingredient.GetEmptyClone()];
+                ingredCount[0].StackSize = (int)Math.Ceiling(recipes[i].Voxels.Cast<bool>().Count(voxel => voxel) / (double)workableobj.VoxelCountForHandbook(ingredient));
+                (dlg as GuiDialogBlockEntityRecipeSelector).SetIngredientCounts(i, ingredCount);
+            }
 
             dlg.TryOpen();
         }
@@ -1189,7 +1220,7 @@ namespace Vintagestory.GameContent
             {
                 dsc.AppendLine(Lang.Get("Temperature: {0}°C", (int)temperature));
             }
-            
+
 
             if (!CanWorkCurrent)
             {
@@ -1204,8 +1235,8 @@ namespace Vintagestory.GameContent
             if (workItemStack?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve) == false)
             {
                 workItemStack = null;
-            } 
-            workItemStack?.Collectible.OnLoadCollectibleMappings(Api.World, new DummySlot(workItemStack) ,oldBlockIdMapping, oldItemIdMapping, resolveImports);
+            }
+            workItemStack?.Collectible.OnLoadCollectibleMappings(worldForResolve, new DummySlot(workItemStack) ,oldBlockIdMapping, oldItemIdMapping, resolveImports);
         }
 
         public override void OnStoreCollectibleMappings(Dictionary<int, AssetLocation> blockIdMapping, Dictionary<int, AssetLocation> itemIdMapping)
@@ -1226,6 +1257,7 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockUnloaded()
         {
+            base.OnBlockUnloaded();
             workitemRenderer?.Dispose();
             dlg?.TryClose();
             dlg?.Dispose();
@@ -1243,7 +1275,20 @@ namespace Vintagestory.GameContent
         {
             MeshAngle = tree.GetFloat("meshAngle");
             MeshAngle -= degreeRotation * GameMath.DEG2RAD;
-            tree.SetFloat("meshAngle", MeshAngle);  
+            tree.SetFloat("meshAngle", MeshAngle);
+        }
+
+        public void CoolNow(float amountRel)
+        {
+            if (workItemStack == null) return;
+            float temp = workItemStack.Collectible.GetTemperature(Api.World, workItemStack);
+            if (temp > 120)
+            {
+                Api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), Pos, 0.25, null, false, 16);
+            }
+
+            workItemStack.Collectible.SetTemperature(Api.World, workItemStack, Math.Max(20, temp - amountRel * 20), false);
+            MarkDirty(true);
         }
     }
 

@@ -13,6 +13,8 @@ using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 using Vintagestory.ServerMods;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 
@@ -60,8 +62,8 @@ namespace Vintagestory.GameContent
                 {
                     splr.SendLocalisedMessage(GlobalConstants.GeneralChatGroup, "clutter-didshatter", Lang.GetMatchingL(splr.LanguageCode, bec.GetFullCode()));
                 }
-                world.PlaySoundAt(new AssetLocation("sounds/effect/toolbreak"), pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5, null, false, 12);
-                return new ItemStack[0];
+                world.PlaySoundAt(new AssetLocation("sounds/effect/toolbreak"), pos, 0, null, false, 12);
+                return Array.Empty<ItemStack>();
             }
 
             var stack = block.OnPickBlock(world, pos);
@@ -74,6 +76,8 @@ namespace Vintagestory.GameContent
         {
             BEBehaviorShapeFromAttributes bec = block.GetBEBehavior<BEBehaviorShapeFromAttributes>(pos);
             if (bec == null || bec.Collected) return base.GetPlacedBlockInfo(world, pos, forPlayer);
+
+            if (world.Claims.TestAccess(forPlayer, pos, EnumBlockAccessFlags.BuildOrBreak) != EnumWorldAccessResponse.Granted) return ""; 
 
             EnumClutterDropRule rule = GetRule(world);
             if (rule == EnumClutterDropRule.Reparable)
@@ -168,9 +172,8 @@ namespace Vintagestory.GameContent
 
                                 if (world.Side == EnumAppSide.Client)
                                 {
-                                    var Pos = blockSel.Position;
                                     var sound = AssetLocation.Create("sounds/player/gluerepair");
-                                    world.PlaySoundAt(sound, Pos.X + 0.5f, Pos.Y + 0.5f, Pos.Z + 0.5f, byPlayer, true, 8);
+                                    world.PlaySoundAt(sound, blockSel.Position, 0, byPlayer, true, 8);
                                 }
                             }
                         }

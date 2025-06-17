@@ -3,6 +3,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     abstract public class BlockBaseDoor : Block
@@ -80,7 +82,7 @@ namespace Vintagestory.GameContent
             BlockPos pos = blockSel.Position;
             Open(world, byPlayer, pos);
 
-            world.PlaySoundAt(AssetLocation.Create(Attributes["triggerSound"].AsString("sounds/block/door"), Code.Domain), pos.X + 0.5f, pos.Y + 0.5f, pos.Z + 0.5f, byPlayer);
+            world.PlaySoundAt(AssetLocation.Create(Attributes["triggerSound"].AsString("sounds/block/door"), Code.Domain), pos, 0, byPlayer);
 
             bool isRoughFence = this.FirstCodePart() == "roughhewnfencegate";
             if (!isRoughFence) TryOpenConnectedDoor(world, byPlayer, pos);

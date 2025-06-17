@@ -5,6 +5,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent.Mechanics
 {
     public class BEBrake : BlockEntity
@@ -79,9 +81,8 @@ namespace Vintagestory.GameContent.Mechanics
                 return new Dictionary<string, MeshData>();
             });
 
-            MeshData mesh;
 
-            if (meshes.TryGetValue("" + rotY, out mesh))
+            if (meshes.TryGetValue("" + rotY, out MeshData mesh))
             {
                 return mesh;
             }
@@ -97,7 +98,7 @@ namespace Vintagestory.GameContent.Mechanics
         public bool OnInteract(IPlayer byPlayer)
         {
             Engaged = !Engaged;
-            Api.World.PlaySoundAt(new AssetLocation("sounds/effect/woodswitch.ogg"), Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, byPlayer);
+            Api.World.PlaySoundAt(new AssetLocation("sounds/effect/woodswitch.ogg"), Pos, 0, byPlayer);
 
             MarkDirty(true);
             return true;

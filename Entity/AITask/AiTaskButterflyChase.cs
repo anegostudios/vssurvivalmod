@@ -2,6 +2,8 @@
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class AiTaskButterflyChase: AiTaskButterflyWander
@@ -44,7 +46,7 @@ namespace Vintagestory.GameContent
             if (cooldownUntilMs > entity.World.ElapsedMilliseconds) return false;
             if (entity.FeetInLiquid) return false;
             if (cooldownUntilTotalHours > entity.World.Calendar.TotalHours) return false;
-            if (!EmotionStatesSatisifed()) return false;
+            if (!PreconditionsSatisifed()) return false;
 
             targetEntity = (EntityButterfly)entity.World.GetNearestEntity(entity.ServerPos.XYZ, seekingRange, seekingRange, (e) => {
                 if (!e.Alive || e.EntityId == this.entity.EntityId) return false;

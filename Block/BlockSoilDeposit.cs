@@ -1,6 +1,9 @@
 ﻿using System;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -26,11 +29,11 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, IRandom worldGenRand, BlockPatchAttributes attributes = null)
         {
             blockAccessor.SetBlock(BlockId, pos);
 
-            if (soilBlockId > 0 && blockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z).BlockMaterial == EnumBlockMaterial.Stone)
+            if (soilBlockId > 0 && blockAccessor.GetBlockBelow(pos, 1, BlockLayersAccess.Solid).BlockMaterial == EnumBlockMaterial.Stone)
             {
                 blockAccessor.SetBlock(soilBlockId, pos.DownCopy());
             }
@@ -59,7 +62,7 @@ namespace Vintagestory.GameContent
 
             Block grass;
             BlockPos upPos = pos.UpCopy();
-            
+
             bool lowLightLevel = world.BlockAccessor.GetLightLevel(pos, EnumLightLevelType.MaxLight) < growthLightLevel;
             if (lowLightLevel || isSmotheringBlock(world, upPos))
             {

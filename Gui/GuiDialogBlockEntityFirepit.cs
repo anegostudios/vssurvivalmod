@@ -5,6 +5,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class GuiDialogBlockEntityFirepit : GuiDialogBlockEntity
@@ -22,9 +24,7 @@ namespace Vintagestory.GameContent
 
         public override double DrawOrder => 0.2;
 
-        public GuiDialogBlockEntityFirepit(string dialogTitle, InventoryBase Inventory, BlockPos BlockEntityPosition,
-                                           SyncedTreeAttribute tree, ICoreClientAPI capi)
-            : base(dialogTitle, Inventory, BlockEntityPosition, capi)
+        public GuiDialogBlockEntityFirepit(string dlgTitle, InventoryBase Inventory, BlockPos bePos, SyncedTreeAttribute tree, ICoreClientAPI capi) : base(dlgTitle, Inventory, bePos, capi)
         {
             if (IsDuplicate) return;
             tree.OnModified.Add(new TreeModifiedListener() { listener = OnAttributesModified } );
@@ -106,6 +106,7 @@ namespace Vintagestory.GameContent
             if (!capi.Settings.Bool["immersiveMouseMode"])
             {
                 dialogBounds.fixedOffsetY += (stoveBounds.fixedHeight + 65 + (haveCookingContainer ? 25 : 0)) * YOffsetMul(screenPos);
+                dialogBounds.fixedOffsetX += (stoveBounds.fixedWidth + 10) * XOffsetMul(screenPos);
             }
 
 
@@ -145,6 +146,8 @@ namespace Vintagestory.GameContent
             if (outputTextElem.QuantityTextLines > 2)
             {
                 outputTextElem.Bounds.fixedOffsetY = -outputTextElem.Font.GetFontExtents().Height / RuntimeEnv.GUIScale * 0.65;
+                outputTextElem.Font.WithFontSize(12);
+                outputTextElem.RecomposeText();
             }
             outputTextElem.Bounds.CalcWorldBounds();
 

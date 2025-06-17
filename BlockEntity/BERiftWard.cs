@@ -5,6 +5,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityRiftWard : BlockEntity
@@ -17,6 +19,8 @@ namespace Vintagestory.GameContent
         protected bool HasFuel => fuelDays > 0;
 
         int riftsBlocked = 0;
+
+        int protectionDistance = 40;
 
         public bool On { get; set; }
 
@@ -35,6 +39,8 @@ namespace Vintagestory.GameContent
                 api.ModLoader.GetModSystem<ModSystemRifts>().OnRiftSpawned += BlockEntityRiftWard_OnRiftSpawned;
                 RegisterGameTickListener(OnServerTick, 5000);
             }
+
+            protectionDistance = Block.Attributes?["protectionDistance"].AsInt(40) ?? 40;
 
             lastUpdateTotalDays = api.World.Calendar.TotalDays;
 
@@ -124,7 +130,7 @@ namespace Vintagestory.GameContent
             var slot = byPlayer.InventoryManager.ActiveHotbarSlot;
             if (slot.Empty)
             {
-                Api.World.PlaySoundAt(new AssetLocation("sounds/toggleswitch"), Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, byPlayer, false, 16);
+                Api.World.PlaySoundAt(new AssetLocation("sounds/toggleswitch"), Pos, 0, byPlayer, false, 16);
 
                 if (On) Deactivate();
                 else Activate();
@@ -147,7 +153,7 @@ namespace Vintagestory.GameContent
         {
             // Instead of preventing rift spawn, we set the size to 0, which makes it invisible and inactive, 
             // so as to still consume a "rift slot"
-            if (HasFuel && sapi.World.Rand.NextDouble() <= 0.95 && rift.Position.DistanceTo(Pos.X + 0.5, Pos.Y + 1, Pos.Z + 0.5) < 30)
+            if (On && sapi.World.Rand.NextDouble() <= 0.95 && rift.Position.HorizontalSquareDistanceTo(Pos.X + 0.5, Pos.Z + 0.5) < protectionDistance * protectionDistance)
             {
                 rift.Size = 0;
                 riftsBlocked++;

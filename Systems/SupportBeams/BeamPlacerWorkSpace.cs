@@ -2,6 +2,8 @@
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BeamPlacerWorkSpace {
@@ -9,8 +11,8 @@ namespace Vintagestory.GameContent
         public BlockFacing onFacing;
         public Vec3f startOffset;
         public Vec3f endOffset;
-        public MeshData currentMesh;
-        public MeshRef currentMeshRef;
+        public MeshData[] currentMeshes;
+        public MultiTextureMeshRef currentMeshRef;
         public bool nowBuilding;
         public Block block;
 

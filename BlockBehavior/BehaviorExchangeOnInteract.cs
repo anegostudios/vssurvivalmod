@@ -4,6 +4,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockBehaviorExchangeOnInteract : BlockBehavior
@@ -68,7 +70,7 @@ namespace Vintagestory.GameContent
 
             if (sound != null)
             {
-                world.PlaySoundAt(new AssetLocation("sounds/" + sound), pos.X, pos.Y, pos.Z, byPlayer);
+                world.PlaySoundAt(new AssetLocation("sounds/" + sound), pos, 0, byPlayer);
             }
 
             (byPlayer as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);

@@ -5,6 +5,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 
@@ -129,7 +131,7 @@ namespace Vintagestory.GameContent
                 ElementBounds playerMoneyBounds = costTextBounds.FlatCopy().WithFixedOffset(0, costTextBounds.fixedHeight);
 
 
-                double daysLeft = (owningEntity as EntityTrader).NextRefreshTotalDays();
+                double daysLeft = (owningEntity as EntityTradingHumanoid).NextRefreshTotalDays();
                 string daysLeftString = daysLeft < 1 ? Lang.Get("Delievery of new goods in less than 1 day") : Lang.Get("Delievery of new goods in {0} days", (int)daysLeft);
 
                 CairoFont deliveryTextFont = CairoFont.WhiteDetailText();
@@ -297,7 +299,7 @@ namespace Vintagestory.GameContent
         private IGuiElementCell createCell(Auction auction, ElementBounds bounds)
         {
             bounds.fixedPaddingY = 0;
-            var cellElem = new AuctionCellEntry(capi, bounds, auction, didClickAuctionElem);
+            var cellElem = new AuctionCellEntry(capi, auctionSlotInv, bounds, auction, didClickAuctionElem);
             return cellElem;
         }
 
@@ -386,12 +388,12 @@ namespace Vintagestory.GameContent
             if (result == EnumTransactionResult.Success)
             {
                 capi.Gui.PlaySound(new AssetLocation("sounds/effect/cashregister"), false, 0.25f);
-                (owningEntity as EntityTrader).talkUtil.Talk(EnumTalkType.Purchase);
+                (owningEntity as EntityTradingHumanoid).TalkUtil?.Talk(EnumTalkType.Purchase);
             } 
 
             if (result == EnumTransactionResult.PlayerNotEnoughAssets)
             {
-                (owningEntity as EntityTrader).talkUtil.Talk(EnumTalkType.Complain);
+                (owningEntity as EntityTradingHumanoid).TalkUtil?.Talk(EnumTalkType.Complain);
                 if (notifyPlayerMoneyTextSeconds <= 0)
                 {
                     prevPlrAbsFixedX = SingleComposer.GetDynamicText("playerMoneyText").Bounds.absFixedX;
@@ -402,7 +404,7 @@ namespace Vintagestory.GameContent
 
             if (result == EnumTransactionResult.TraderNotEnoughAssets)
             {
-                (owningEntity as EntityTrader).talkUtil.Talk(EnumTalkType.Complain);
+                (owningEntity as EntityTradingHumanoid).TalkUtil?.Talk(EnumTalkType.Complain);
                 if (notifyTraderMoneyTextSeconds <= 0)
                 {
                     prevTdrAbsFixedX = SingleComposer.GetDynamicText("traderMoneyText").Bounds.absFixedX;
@@ -413,7 +415,7 @@ namespace Vintagestory.GameContent
 
             if (result == EnumTransactionResult.TraderNotEnoughSupplyOrDemand)
             {
-                (owningEntity as EntityTrader).talkUtil.Talk(EnumTalkType.Complain);
+                (owningEntity as EntityTradingHumanoid).TalkUtil?.Talk(EnumTalkType.Complain);
             }
 
             capi.Network.SendEntityPacket(owningEntity.EntityId, 1000, null);
@@ -454,9 +456,9 @@ namespace Vintagestory.GameContent
 
             traderInventory.SlotModified -= TraderInventory_SlotModified;
 
-            (owningEntity as EntityTrader).talkUtil.Talk(EnumTalkType.Goodbye);
+            (owningEntity as EntityTradingHumanoid).TalkUtil?.Talk(EnumTalkType.Goodbye);
 
-            capi.Network.SendPacketClient(capi.World.Player.InventoryManager.CloseInventory(traderInventory));
+            capi.World.Player.InventoryManager.CloseInventoryAndSync(traderInventory);
 
             SingleComposer.GetSlotGrid("traderSellingSlots")?.OnGuiClosed(capi);
             SingleComposer.GetSlotGrid("playerBuyingSlots")?.OnGuiClosed(capi);
@@ -464,7 +466,7 @@ namespace Vintagestory.GameContent
             SingleComposer.GetSlotGrid("playerSellingSlots")?.OnGuiClosed(capi);
 
             auctionSlotInv[0].Itemstack = null;
-            capi.World.Player.InventoryManager.CloseInventory(auctionSlotInv);
+            capi.World.Player.InventoryManager.CloseInventoryAndSync(auctionSlotInv);
 
             auctionSys.DidLeaveAuctionHouse();
         }

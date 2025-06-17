@@ -1,10 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.Intrinsics.Arm;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.ServerMods.NoObf;
+
+#nullable disable
 
 namespace Vintagestory.ServerMods
 {
@@ -243,7 +246,15 @@ namespace Vintagestory.ServerMods
 
                     float allowedThickness = rockGroupMaxThickness[grp] * thicknessDistort - rockGroupCurrentThickness[grp];
 
-                    strataThickness = Math.Min(allowedThickness, rockMap.GetIntLerpedCorrectly(rdx * step + step * (float)(lx + distx) / chunksize, rdz * step + step * (float)(lz + distz) / chunksize));
+                    var nx = rdx * step + step * (float)(lx + distx) / chunksize;
+                    var nz = rdz * step + step * (float)(lz + distz) / chunksize;
+
+                    // 1.20 fix, only clamp the values, to prevent chunk borders
+                    // In 1.21 we ought to simply use normalized noise * rockmapsize
+                    nx = Math.Max(nx, -1.499f);
+                    nz = Math.Max(nz, -1.499f);
+
+                    strataThickness = Math.Min(allowedThickness, rockMap.GetIntLerpedCorrectly(nx, nz));
 
                     if (stratum.RockGroup == EnumRockGroup.Sedimentary) strataThickness -= Math.Max(0, yupper - TerraGenConfig.seaLevel) * 0.5f;
 
@@ -308,8 +319,7 @@ namespace Vintagestory.ServerMods
         {
             int index2d = chunkZ / regionChunkSize * regionMapSize + chunkX / regionChunkSize;
 
-            LerpedWeightedIndex2DMap map;
-            ProvinceMapByRegion.TryGetValue(index2d, out map);
+            ProvinceMapByRegion.TryGetValue(index2d, out LerpedWeightedIndex2DMap map);
             if (map != null) return map;
 
             return CreateLerpedProvinceMap(mapchunk.MapRegion.GeologicProvinceMap, chunkX / regionChunkSize, chunkZ / regionChunkSize);

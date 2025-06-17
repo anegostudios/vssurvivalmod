@@ -1,4 +1,5 @@
-﻿using ProtoBuf;
+﻿using Newtonsoft.Json.Linq;
+using ProtoBuf;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,6 +10,8 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -37,8 +40,6 @@ namespace Vintagestory.GameContent
         public string VoiceType;
         public string VoicePitch;
     }
-
-
 
     public class SeraphRandomizerConstraints
     {
@@ -194,8 +195,9 @@ namespace Vintagestory.GameContent
         private void loadCharacterClasses()
         {
             onLoadedUniversal();
-            traits = api.Assets.Get("config/traits.json").ToObject<List<Trait>>();
-            characterClasses = api.Assets.Get("config/characterclasses.json").ToObject<List<CharacterClass>>();
+            LoadTraits();
+            LoadClasses();
+
 
             foreach (var trait in traits)
             {
@@ -221,35 +223,88 @@ namespace Vintagestory.GameContent
                 {
                     if (!jstack.Resolve(api.World, "character class gear", false))
                     {
-                        api.World.Logger.Warning("Unable to resolve character class gear " + jstack.Type + " with code " + jstack.Code + " item/bloc does not seem to exist. Will ignore.");
+                        api.World.Logger.Warning("Unable to resolve character class gear " + jstack.Type + " with code " + jstack.Code + " item/block does not seem to exist. Will ignore.");
                     }
                 }
             }
         }
 
+        private void LoadTraits()
+        {
+            traits = new List<Trait>();
+            Dictionary<AssetLocation, JToken> files = api.Assets.GetMany<JToken>(api.Logger, "config/traits");
+            int traitQuantity = 0;
 
-        public void setCharacterClass(EntityPlayer player, string classCode, bool initializeGear = true)
+            foreach (var val in files)
+            {
+                if (val.Value is JObject)
+                {
+                    traits.Add(val.Value.ToObject<Trait>(val.Key.Domain));
+                    traitQuantity++;
+                }
+                if (val.Value is JArray)
+                {
+                    foreach (var token in (val.Value as JArray))
+                    {
+                        traits.Add(token.ToObject<Trait>(val.Key.Domain));
+                        traitQuantity++;
+                    }
+                }
+            }
+            api.World.Logger.Event("{0} traits loaded from {1} files", traitQuantity, files.Count);
+        }
+
+        private void LoadClasses()
+        {
+            characterClasses = new List<CharacterClass>();
+            Dictionary<AssetLocation, JToken> files = api.Assets.GetMany<JToken>(api.Logger, "config/characterclasses");
+            int classQuantity = 0;
+
+            foreach (var val in files)
+            {
+                if (val.Value is JObject)
+                {
+                    characterClasses.Add(val.Value.ToObject<CharacterClass>(val.Key.Domain));
+                    classQuantity++;
+                }
+                if (val.Value is JArray)
+                {
+                    foreach (var token in (val.Value as JArray))
+                    {
+                        characterClasses.Add(token.ToObject<CharacterClass>(val.Key.Domain));
+                        classQuantity++;
+                    }
+                }
+            }
+            api.World.Logger.Event("{0} classes loaded from {1} files", classQuantity, files.Count);
+        }
+
+
+        public void setCharacterClass(EntityPlayer eplayer, string classCode, bool initializeGear = true)
         {
             CharacterClass charclass = characterClasses.FirstOrDefault(c => c.Code == classCode);
             if (charclass == null) throw new ArgumentException("Not a valid character class code!");
 
-            player.WatchedAttributes.SetString("characterClass", charclass.Code);
+            eplayer.WatchedAttributes.SetString("characterClass", charclass.Code);
 
             if (initializeGear)
             {
-                var essr = capi?.World.Player.Entity.Properties.Client.Renderer as EntitySkinnableShapeRenderer;
-                if (essr != null) essr.doReloadShapeAndSkin = false;
+                var bh = eplayer.GetBehavior<EntityBehaviorPlayerInventory>();
+                var essr = capi?.World.Player.Entity.Properties.Client.Renderer as EntityShapeRenderer;
+                
+                bh.doReloadShapeAndSkin = false;
 
-                IInventory inv = player.GearInventory;
+                IInventory inv = bh.Inventory;
                 if (inv != null)
                 {
                     for (int i = 0; i < inv.Count; i++)
                     {
                         if (i >= 12) break; // Armor
-                        if (!player.GearInventory[i].Empty)
+                        /*if (!inv.Empty)
                         {
                             api.World.SpawnItemEntity(player.GearInventory[i].TakeOutWhole(), player.Pos.XYZ);
-                        }
+                        }*/
+                        inv[i].Itemstack = null;
                     }
 
 
@@ -258,18 +313,17 @@ namespace Vintagestory.GameContent
                         // no idea why this is needed here, it yields the wrong item otherwise
                         if (!jstack.Resolve(api.World, "character class gear", false))
                         {
-                            api.World.Logger.Warning("Unable to resolve character class gear " + jstack.Type + " with code " + jstack.Code + " item/bloc does not seem to exist. Will ignore.");
+                            api.World.Logger.Warning("Unable to resolve character class gear " + jstack.Type + " with code " + jstack.Code + " item/block does not seem to exist. Will ignore.");
                             continue;
                         }
 
                         ItemStack stack = jstack.ResolvedItemstack?.Clone();
                         if (stack == null) continue;
 
-                        EnumCharacterDressType dresstype;
                         string strdress = stack.ItemAttributes["clothescategory"].AsString();
-                        if (!Enum.TryParse(strdress, true, out dresstype))
+                        if (!Enum.TryParse(strdress, true, out EnumCharacterDressType dresstype))
                         {
-                            player.TryGiveItemStack(stack);
+                            eplayer.TryGiveItemStack(stack);
                         }
                         else
                         {
@@ -280,13 +334,13 @@ namespace Vintagestory.GameContent
 
                     if (essr != null)
                     {
-                        essr.doReloadShapeAndSkin = true;
+                        bh.doReloadShapeAndSkin = true;
                         essr.TesselateShape();
                     }
                 }
             }
 
-            applyTraitAttributes(player);
+            applyTraitAttributes(eplayer);
         }
 
         private void applyTraitAttributes(EntityPlayer eplr)
@@ -316,8 +370,7 @@ namespace Vintagestory.GameContent
 
             foreach (var traitcode in allTraits)
             {
-                Trait trait;
-                if (TraitsByCode.TryGetValue(traitcode, out trait))
+                if (TraitsByCode.TryGetValue(traitcode, out Trait trait))
                 {
                     foreach (var val in trait.Attributes)
                     {
@@ -389,10 +442,9 @@ namespace Vintagestory.GameContent
             if (recipe.RequiresTrait == null) return true;
 
             string classcode = player.Entity.WatchedAttributes.GetString("characterClass");
-            CharacterClass charclass;
             if (classcode == null) return true;
 
-            if (characterClassesByCode.TryGetValue(classcode, out charclass))
+            if (characterClassesByCode.TryGetValue(classcode, out CharacterClass charclass))
             {
                 if (charclass.Traits.Contains(recipe.RequiresTrait)) return true;
 
@@ -406,10 +458,9 @@ namespace Vintagestory.GameContent
         public bool HasTrait(IPlayer player, string trait)
         {
             string classcode = player.Entity.WatchedAttributes.GetString("characterClass");
-            CharacterClass charclass;
             if (classcode == null) return true;
 
-            if (characterClassesByCode.TryGetValue(classcode, out charclass))
+            if (characterClassesByCode.TryGetValue(classcode, out CharacterClass charclass))
             {
                 if (charclass.Traits.Contains(trait)) return true;
 
@@ -439,9 +490,28 @@ namespace Vintagestory.GameContent
 
             if (!didSelect)
             {
-                //randomizeSkin(byPlayer.Entity, getPreviousSelection(), false);
                 setCharacterClass(byPlayer.Entity, characterClasses[0].Code, false);
             }
+
+            var classChangeMonths = sapi.World.Config.GetDecimal("allowClassChangeAfterMonths", -1);
+            var allowOneFreeClassChange = sapi.World.Config.GetBool("allowOneFreeClassChange");
+           
+            // allow players that already played on the server to also reselect their character like new players
+            if(allowOneFreeClassChange && byPlayer.ServerData.LastCharacterSelectionDate == null)
+            {
+                byPlayer.Entity.WatchedAttributes.SetBool("allowcharselonce", true);
+            }
+            else if(classChangeMonths >= 0)
+            {
+                var date = DateTime.UtcNow;
+                var lastDateChange = byPlayer.ServerData.LastCharacterSelectionDate ?? byPlayer.ServerData.FirstJoinDate ?? "1/1/1970 00:00 AM";
+                var monthsPassed = date.Subtract(DateTimeOffset.Parse(lastDateChange).UtcDateTime).TotalDays / 30.0;
+                if (classChangeMonths < monthsPassed)
+                {
+                    byPlayer.Entity.WatchedAttributes.SetBool("allowcharselonce", true);
+                }
+            }
+                
 
             sapi.Network.GetChannel("charselection").SendPacket(new CharacterSelectedState() { DidSelect = didSelect }, byPlayer);
         }
@@ -459,19 +529,20 @@ namespace Vintagestory.GameContent
 
             foreach (var skinpart in skinMod.AvailableSkinParts)
             {
-                int index = api.World.Rand.Next(skinpart.Variants.Length);
-                string variantCode = null;
+                var variants = skinpart.Variants.Where(v => v.Category == "standard").ToArray();
 
-                if (preSelection.TryGetValue(skinpart.Code, out variantCode))
+                int index = api.World.Rand.Next(variants.Length);
+
+                if (preSelection.TryGetValue(skinpart.Code, out string variantCode))
                 {
-                    index = skinpart.Variants.IndexOf(val => val.Code == variantCode);
+                    index = variants.IndexOf(val => val.Code == variantCode);
                 }
                 else
                 {
                     if (currentConstraints.TryGetValue(skinpart.Code, out var partConstraints))
                     {
-                        variantCode = partConstraints.SelectRandom(api.World.Rand, skinpart.Variants);
-                        index = skinpart.Variants.IndexOf(val => val.Code == variantCode);
+                        variantCode = partConstraints.SelectRandom(api.World.Rand, variants);
+                        index = variants.IndexOf(val => val.Code == variantCode);
                     }
 
                     if ((skinpart.Code == "mustache" || skinpart.Code == "beard") && !mustached)
@@ -481,7 +552,7 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-                if (variantCode == null) variantCode = skinpart.Variants[index].Code;
+                if (variantCode == null) variantCode = variants[index].Code;
 
                 skinMod.selectSkinPart(skinpart.Code, variantCode, true, playVoice);
 
@@ -505,8 +576,10 @@ namespace Vintagestory.GameContent
 
         private void onCharacterSelection(IServerPlayer fromPlayer, CharacterSelectionPacket p)
         {
-            bool didSelectBefore = SerializerUtil.Deserialize(fromPlayer.GetModdata("createCharacter"), false);
-            if (didSelectBefore && (fromPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative))
+            bool didSelectBefore = fromPlayer.GetModData<bool>("createCharacter", false);
+            bool allowSelect = !didSelectBefore || fromPlayer.Entity.WatchedAttributes.GetBool("allowcharselonce") || fromPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative;
+
+            if (!allowSelect)
             {
                 fromPlayer.Entity.WatchedAttributes.MarkPathDirty("skinConfig");
                 fromPlayer.BroadcastPlayerData(true);
@@ -515,8 +588,7 @@ namespace Vintagestory.GameContent
 
             if (p.DidSelect)
             {
-                fromPlayer.SetModdata("createCharacter", SerializerUtil.Serialize(true));
-                fromPlayer.Entity.WatchedAttributes.RemoveAttribute("allowcharselonce");
+                fromPlayer.SetModData<bool>("createCharacter", true);
 
                 setCharacterClass(fromPlayer.Entity, p.CharacterClass, !didSelectBefore || fromPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative);
 
@@ -527,8 +599,21 @@ namespace Vintagestory.GameContent
                 {
                     bh.selectSkinPart(skinpart.Key, skinpart.Value, false);
                 }
-            }
 
+                var date = DateTime.UtcNow;
+                fromPlayer.ServerData.LastCharacterSelectionDate = date.ToShortDateString() + " " + date.ToShortTimeString();
+
+                // allow players that just joined to immediately re select the class
+                var allowOneFreeClassChange = sapi.World.Config.GetBool("allowOneFreeClassChange");
+                if (!didSelectBefore && allowOneFreeClassChange)
+                {
+                    fromPlayer.ServerData.LastCharacterSelectionDate = null;
+                }
+                else
+                {
+                    fromPlayer.Entity.WatchedAttributes.RemoveAttribute("allowcharselonce");
+                }
+            }
             fromPlayer.Entity.WatchedAttributes.MarkPathDirty("skinConfig");
             fromPlayer.BroadcastPlayerData(true);
         }

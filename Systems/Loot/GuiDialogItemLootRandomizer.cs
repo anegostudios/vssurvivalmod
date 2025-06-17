@@ -3,6 +3,8 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class GuiDialogItemLootRandomizer : GuiDialogGeneric

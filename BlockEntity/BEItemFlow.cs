@@ -1,5 +1,4 @@
 ﻿using System;
-using System.IO;
 using System.Linq;
 using System.Text;
 using Vintagestory.API.Common;
@@ -9,15 +8,18 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.GameContent.Mechanics;
 
+#nullable disable
+using SerializerUtil = Vintagestory.API.Util.SerializerUtil;
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityItemFlow : BlockEntityOpenableContainer
     {
         internal InventoryGeneric inventory;
 
-        public BlockFacing[] PullFaces = new BlockFacing[0];
-        public BlockFacing[] PushFaces = new BlockFacing[0];
-        public BlockFacing[] AcceptFromFaces = new BlockFacing[0];
+        public BlockFacing[] PullFaces = Array.Empty<BlockFacing>();
+        public BlockFacing[] PushFaces = Array.Empty<BlockFacing>();
+        public BlockFacing[] AcceptFromFaces = Array.Empty<BlockFacing>();
 
         public string inventoryClassName = "hopper";
         public string ItemFlowObjectLangCode = "hopper-contents";
@@ -183,7 +185,7 @@ namespace Vintagestory.GameContent
                 BlockFacing outputFace = PushFaces[Api.World.Rand.Next(PushFaces.Length)];
                 int dir = stack.Attributes.GetInt("chuteDir", -1);
                 BlockFacing desiredDir = dir >= 0 && PushFaces.Contains(BlockFacing.ALLFACES[dir]) ? BlockFacing.ALLFACES[dir] : null;
-                
+
                 // If we have a desired dir, try to go there
                 if (desiredDir != null)
                 {
@@ -245,7 +247,7 @@ namespace Vintagestory.GameContent
                 }
 
             }
-            
+
             if (PullFaces != null && PullFaces.Length > 0 && inventory.Empty)
             {
                 BlockFacing inputFace = PullFaces[Api.World.Rand.Next(PullFaces.Length)];
@@ -303,7 +305,7 @@ namespace Vintagestory.GameContent
 
                         if (qmoved > 0 && Api.World.Rand.NextDouble() < 0.2)
                         {
-                            Api.World.PlaySoundAt(hopperTumble, Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, null, true, 8, 0.5f);
+                            Api.World.PlaySoundAt(hopperTumble, Pos, 0, null, true, 8, 0.5f);
 
                             itemFlowAccum -= qmoved;
                         }
@@ -318,7 +320,7 @@ namespace Vintagestory.GameContent
             BlockPos OutputPosition = Pos.AddCopy(outputFace);
 
             var ba = Api.World.BlockAccessor;
-            
+
             // Retrieve the block first to handle the possibility of it being a multiblock,
             // as this overrides GetBlockEntity on the block to ensure the associated block entity is obtained.
             var beContainer = ba.GetBlock(OutputPosition).GetBlockEntity<BlockEntityContainer>(OutputPosition);
@@ -352,7 +354,7 @@ namespace Vintagestory.GameContent
                     {
                         if (Api.World.Rand.NextDouble() < 0.2)
                         {
-                            Api.World.PlaySoundAt(hopperTumble, Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5, null, true, 8, 0.5f);
+                            Api.World.PlaySoundAt(hopperTumble, Pos, 0, null, true, 8, 0.5f);
                         }
 
                         if (beFlow != null)
@@ -424,23 +426,11 @@ namespace Vintagestory.GameContent
         {
             if (Api.World is IServerWorldAccessor)
             {
-                byte[] data;
-
-                using (MemoryStream ms = new MemoryStream())
-                {
-                    BinaryWriter writer = new BinaryWriter(ms);
-                    writer.Write("BlockEntityItemFlowDialog");
-                    writer.Write(Lang.Get(ItemFlowObjectLangCode));
-                    writer.Write((byte)4); // Quantity columns
-                    TreeAttribute tree = new TreeAttribute();
-                    inventory.ToTreeAttributes(tree);
-                    tree.ToBytes(writer);
-                    data = ms.ToArray();
-                }
+                var data = BlockEntityContainerOpen.ToBytes("BlockEntityItemFlowDialog", Lang.Get(ItemFlowObjectLangCode), 4, inventory);
 
                 ((ICoreServerAPI)Api).Network.SendBlockEntityPacket(
                     (IServerPlayer)byPlayer,
-                    Pos.X, Pos.Y, Pos.Z,
+                    Pos,
                     (int)EnumBlockContainerPacketId.OpenInventory,
                     data
                 );

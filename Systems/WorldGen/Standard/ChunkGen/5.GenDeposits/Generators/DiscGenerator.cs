@@ -9,6 +9,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     public enum EnumGradeDistribution
@@ -101,7 +103,7 @@ namespace Vintagestory.ServerMods
         protected int depoitThickness;
         protected int hereThickness;
 
-        double absAvgQuantity;
+        public double absAvgQuantity;
 
 
         protected DiscDepositGenerator(ICoreServerAPI api, DepositVariant variant, LCGRandom depositRand, NormalizedSimplexNoise noiseGen) : base(api, variant, depositRand, noiseGen)
@@ -165,13 +167,13 @@ namespace Vintagestory.ServerMods
                                 JsonUtil.Populate(val.Attributes.Token, val.GeneratorInst);
                             }
 
-                            
+
                             foreach (Block depositblock in placeBlocks)
                             {
                                 (val.GeneratorInst as ChildDepositGenerator).ResolveAdd(depositblock, key, value);
                             }
 
-                            
+
                         }
                     }
 
@@ -179,7 +181,7 @@ namespace Vintagestory.ServerMods
                     if (block.Id != 0 && variant.addHandbookAttributes)
                     {
                         if (block.Attributes == null) block.Attributes = new JsonObject(JToken.Parse("{}"));
-                        int[] oreIds = block.Attributes["hostRockFor"].AsArray(new int[0]);
+                        int[] oreIds = block.Attributes["hostRockFor"].AsArray(Array.Empty<int>());
 
                         oreIds = oreIds.Append(placeBlocks.Select(b => b.BlockId).ToArray());
                         block.Attributes.Token["hostRockFor"] = JToken.FromObject(oreIds);
@@ -189,7 +191,7 @@ namespace Vintagestory.ServerMods
                         {
                             Block pblock = placeBlocks[i];
                             if (pblock.Attributes == null) pblock.Attributes = new JsonObject(JToken.Parse("{}"));
-                            oreIds = pblock.Attributes["hostRock"].AsArray(new int[0]);
+                            oreIds = pblock.Attributes["hostRock"].AsArray(Array.Empty<int>());
                             oreIds = oreIds.Append(block.BlockId);
                             pblock.Attributes.Token["hostRock"] = JToken.FromObject(oreIds);
                         }
@@ -201,8 +203,8 @@ namespace Vintagestory.ServerMods
                 Api.Server.LogWarning("Deposit in file {0} has no inblock defined, it will never spawn.", variant.fromFile);
             }
 
-
-            absAvgQuantity = GetAbsAvgQuantity();
+            var rnd = new LCGRandom(Api.World.Seed);
+            absAvgQuantity = GetAbsAvgQuantity(rnd);
         }
 
 
@@ -217,7 +219,7 @@ namespace Vintagestory.ServerMods
             float deform = GameMath.Clamp(DepositRand.NextFloat() - 0.5f, -0.25f, 0.25f);
             radiusX = radius - (int)(radius * deform);
             radiusZ = radius + (int)(radius * deform);
-            
+
             int baseX = chunkX * chunksize;
             int baseZ = chunkZ * chunksize;
 
@@ -319,7 +321,7 @@ namespace Vintagestory.ServerMods
                         if (parentBlockOk && resolvedPlaceBlock.Blocks.Length > 0)
                         {
                             int gradeIndex = Math.Min(resolvedPlaceBlock.Blocks.Length - 1, depositGradeIndex);
-                            
+
                             Block placeblock = resolvedPlaceBlock.Blocks[gradeIndex];
 
                             if (variant.WithBlockCallback || (WithLastLayerBlockCallback && y == hereThickness-1))
@@ -356,7 +358,8 @@ namespace Vintagestory.ServerMods
                             {
                                 int surfaceY = heremapchunk.RainHeightMap[lz * chunksize + lx];
                                 int depth = surfaceY - posy;
-                                float chance = SurfaceBlockChance * Math.Max(0, 1.11f - depth / 9f);
+                                float seaLevelScale = 9f * (TerraGenConfig.seaLevel / 110f); // Default sea level for world height 256
+                                float chance = SurfaceBlockChance * Math.Max(0, 1.11f - depth / seaLevelScale);
                                 if (surfaceY < worldheight - 1 && DepositRand.NextFloat() < chance)
                                 {
                                     Block belowBlock = Api.World.Blocks[chunks[surfaceY / chunksize].Data.GetBlockIdUnsafe(((surfaceY % chunksize) * chunksize + lz) * chunksize + lx)];
@@ -388,7 +391,7 @@ namespace Vintagestory.ServerMods
 
         protected abstract void loadYPosAndThickness(IMapChunk heremapchunk, int lx, int lz, BlockPos pos, double distanceToEdge);
 
-        
+
 
 
         public float getDepositYDistort(BlockPos pos, int lx, int lz, float step, IMapChunk heremapchunk)
@@ -396,14 +399,14 @@ namespace Vintagestory.ServerMods
             int rdx = (pos.X / chunksize) % regionChunkSize;
             int rdz = (pos.Z / chunksize) % regionChunkSize;
 
-            
+
             IMapRegion reg = heremapchunk.MapRegion;
             float yOffTop = reg.OreMapVerticalDistortTop.GetIntLerpedCorrectly(rdx * step + step * ((float)lx / chunksize), rdz * step + step * ((float)lz / chunksize)) - 20;
             float yOffBot = reg.OreMapVerticalDistortBottom.GetIntLerpedCorrectly(rdx * step + step * ((float)lx / chunksize), rdz * step + step * ((float)lz / chunksize)) - 20;
 
             float yRel = (float)pos.Y / worldheight;
             return yOffBot * (1 - yRel) + yOffTop * yRel;
-            
+
         }
 
 
@@ -415,7 +418,7 @@ namespace Vintagestory.ServerMods
 
 
 
-       
+
 
         public override void GetPropickReading(BlockPos pos, int oreDist, int[] blockColumn, out double ppt, out double totalFactor)
         {
@@ -439,7 +442,7 @@ namespace Vintagestory.ServerMods
             HashSet<int> oreBearingBlocks = new HashSet<int>();
 
             if (variant == null) return 0;
-            
+
             int[] blocks = GetBearingBlocks();
             if (blocks == null) return 1;
 
@@ -448,10 +451,8 @@ namespace Vintagestory.ServerMods
                 oreBearingBlocks.Add(val);
             }
 
-            double minYAvg;
-            double maxYAvg;
-            GetYMinMax(pos, out minYAvg, out maxYAvg);
-            
+            GetYMinMax(pos, out double minYAvg, out double maxYAvg);
+
             int q = 0;
             for (int ypos = 0; ypos < blockColumn.Length; ypos++)
             {
@@ -463,16 +464,25 @@ namespace Vintagestory.ServerMods
             return (double)q / blockColumn.Length;
         }
 
-
-        Random avgQRand = new Random();
+        /// <summary>
+        /// This will always return the same result for the same ore generator if Radius or Thickness have not been changed.
+        /// <see cref="GetAbsAvgQuantity(LCGRandom)"/>
+        /// </summary>
+        /// <returns></returns>
+        [Obsolete("Use GetAbsAvgQuantity(LCGRandom rnd) instead to ensure your code is seed deterministic.")]
         public float GetAbsAvgQuantity()
+        {
+            return GetAbsAvgQuantity(new LCGRandom(Api.World.Seed));
+        }
+
+        public float GetAbsAvgQuantity(LCGRandom rnd)
         {
             float radius = 0;
             float thickness = 0;
             for (int j = 0; j < 100; j++)
             {
-                radius += Radius.nextFloat(1, avgQRand);
-                thickness += Thickness.nextFloat(1, avgQRand);
+                radius += Radius.nextFloat(1, rnd);
+                thickness += Thickness.nextFloat(1, rnd);
             }
             radius /= 100;
             thickness /= 100;

@@ -8,6 +8,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     [ProtoContract]
@@ -199,7 +201,7 @@ namespace Vintagestory.GameContent
     public class AuctionsData
     {
         [ProtoMember(1)]
-        public OrderedDictionary<long, Auction> auctions = new OrderedDictionary<long, Auction>();
+        public API.Datastructures.OrderedDictionary<long, Auction> auctions = new ();
         [ProtoMember(2)]
         public long nextAuctionId;
         [ProtoMember(3)]

@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     /// <summary>
@@ -166,8 +168,7 @@ namespace Vintagestory.ServerMods
             for (int i = 0; i < left.Length; i++)
             {
                 int index = left[i].Index;
-                WeightedIndex windex;
-                indices.TryGetValue(index, out windex);
+                indices.TryGetValue(index, out WeightedIndex windex);
 
                 indices[index] = new WeightedIndex(index, windex.Weight + (1 - lerp) * left[i].Weight);
             }
@@ -175,8 +176,7 @@ namespace Vintagestory.ServerMods
             for (int i = 0; i < right.Length; i++)
             {
                 int index = right[i].Index;
-                WeightedIndex windex;
-                indices.TryGetValue(index, out windex);
+                indices.TryGetValue(index, out WeightedIndex windex);
 
                 indices[index] = new WeightedIndex(index, windex.Weight + lerp * right[i].Weight);
             }
@@ -193,8 +193,7 @@ namespace Vintagestory.ServerMods
             for (int i = 0; i < left.Length; i++)
             {
                 int index = left[i].Index;
-                WeightedIndex windex;
-                indices.TryGetValue(index, out windex);
+                indices.TryGetValue(index, out WeightedIndex windex);
 
                 indices[index] = new WeightedIndex() { Index = index, Weight = windex.Weight + (1 - lerp) * left[i].Weight };
             }
@@ -202,8 +201,7 @@ namespace Vintagestory.ServerMods
             for (int i = 0; i < right.Length; i++)
             {
                 int index = right[i].Index;
-                WeightedIndex windex;
-                indices.TryGetValue(index, out windex);
+                indices.TryGetValue(index, out WeightedIndex windex);
 
                 indices[index] = new WeightedIndex() { Index = index, Weight = windex.Weight + lerp * right[i].Weight };
             }

@@ -1,6 +1,9 @@
 ﻿using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -12,7 +15,34 @@ namespace Vintagestory.GameContent
         static string[] types = new string[] { "scallop", "sundial", "turritella", "clam", "conch", "seastar", "volute" };
         static Dictionary<string, string> tmpDict = new Dictionary<string, string>();
 
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, LCGRandom worldGenRand)
+        public override bool TryPlaceBlockForWorldGenUnderwater(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, IRandom worldgenRandom, int minWaterDepth, int maxWaterDepth, BlockPatchAttributes attributes = null)
+        {
+            var depth = 1;
+            Block block;
+            while (depth < maxWaterDepth)
+            {
+                pos.Down();
+                block = blockAccessor.GetBlock(pos);
+                if (block is BlockWaterPlant) return false;
+                if (block is BlockSeashell) return false;
+                if(!block.IsLiquid()) break;
+                depth++;
+            }
+
+            if (depth >= maxWaterDepth) return false;
+
+            pos.Up();
+
+            if (blockAccessor.GetBlock(pos).IsReplacableBy(this))
+            {
+                blockAccessor.SetBlock(BlockId, pos);
+                return true;
+            }
+
+            return false;
+        }
+
+        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, IRandom worldGenRand, BlockPatchAttributes attributes = null)
         {
             if (!HasBeachyGround(blockAccessor, pos))
             {
@@ -45,8 +75,8 @@ namespace Vintagestory.GameContent
 
         internal virtual bool HasBeachyGround(IBlockAccessor blockAccessor, BlockPos pos)
         {
-            Block block = blockAccessor.GetBlock(pos.X, pos.Y - 1, pos.Z);
-            return block.SideSolid[BlockFacing.UP.Index] && (block.BlockMaterial == EnumBlockMaterial.Sand || block.BlockMaterial == EnumBlockMaterial.Gravel);
+            Block blockBelow = blockAccessor.GetBlockBelow(pos, 1, BlockLayersAccess.Solid);
+            return blockBelow.SideSolid[BlockFacing.UP.Index] && (blockBelow.BlockMaterial == EnumBlockMaterial.Sand || blockBelow.BlockMaterial == EnumBlockMaterial.Gravel);
         }
 
     }

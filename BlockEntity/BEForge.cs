@@ -7,9 +7,11 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityForge : BlockEntity, IHeatSource
+    public class BlockEntityForge : BlockEntity, IHeatSource, ITemperatureSensitive
     {
         ForgeContentsRenderer renderer;
         ItemStack contents;
@@ -24,6 +26,8 @@ namespace Vintagestory.GameContent
         public ItemStack Contents => contents;
         public float FuelLevel => fuelLevel;
 
+        public bool IsHot => (contents?.Collectible.GetTemperature(Api.World, contents) ?? 0) > 20;
+
 
         public override void Initialize(ICoreAPI api)
         {
@@ -33,14 +37,11 @@ namespace Vintagestory.GameContent
             if (api is ICoreClientAPI)
             {
                 ICoreClientAPI capi = (ICoreClientAPI)api;
-                capi.Event.RegisterRenderer(renderer = new ForgeContentsRenderer(Pos, capi), EnumRenderStage.Opaque, "forge");  
+                capi.Event.RegisterRenderer(renderer = new ForgeContentsRenderer(Pos, capi), EnumRenderStage.Opaque, "forge");
                 renderer.SetContents(contents, fuelLevel, burning, true);
 
                 RegisterGameTickListener(OnClientTick, 50);
             }
-
-            
-            wsys = api.ModLoader.GetModSystem<WeatherSystemBase>();
 
             RegisterGameTickListener(OnCommonTick, 200);
         }
@@ -96,8 +97,6 @@ namespace Vintagestory.GameContent
         }
 
 
-        WeatherSystemBase wsys;
-        Vec3d tmpPos = new Vec3d();
         private void OnCommonTick(float dt)
         {
             if (burning)
@@ -120,45 +119,6 @@ namespace Vintagestory.GameContent
 
                         contents.Collectible.SetTemperature(Api.World, contents, Math.Min(1100, temp + tempGain));
                     }
-                }
-            }
-
-
-            tmpPos.Set(Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5);
-            double rainLevel = 0;
-            bool rainCheck =
-                Api.Side == EnumAppSide.Server
-                && Api.World.Rand.NextDouble() < 0.15
-                && Api.World.BlockAccessor.GetRainMapHeightAt(Pos.X, Pos.Z) <= Pos.Y
-                && (rainLevel = wsys.GetPrecipitation(tmpPos)) > 0.1
-            ;
-
-            if (rainCheck && Api.World.Rand.NextDouble() < rainLevel * 5)
-            {
-                bool playsound = false;
-                if (burning)
-                {
-                    playsound = true;
-                    fuelLevel -= (float)rainLevel / 250f;
-                    if (Api.World.Rand.NextDouble() < rainLevel / 30f || fuelLevel <= 0)
-                    {
-                        burning = false;
-                    }
-                    MarkDirty(true);
-                }
-
-
-                float temp = contents == null ? 0 : contents.Collectible.GetTemperature(Api.World, contents);
-                if (temp > 20)
-                {
-                    playsound = temp > 100;
-                    contents.Collectible.SetTemperature(Api.World, contents, Math.Min(1100, temp - 8), false);
-                    MarkDirty(true);
-                }
-                
-                if (playsound)
-                {
-                    Api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), Pos.X + 0.5, Pos.Y + 0.75, Pos.Z + 0.5, null, false, 16);
                 }
             }
 
@@ -195,22 +155,27 @@ namespace Vintagestory.GameContent
                 ItemStack split = contents.Clone();
                 split.StackSize = 1;
                 contents.StackSize--;
-                
+
                 if (contents.StackSize == 0) contents = null;
 
                 if (!byPlayer.InventoryManager.TryGiveItemstack(split))
                 {
-                    world.SpawnItemEntity(split, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    world.SpawnItemEntity(split, Pos);
                 }
+                Api.World.Logger.Audit("{0} Took 1x{1} from Forge at {2}.",
+                    byPlayer.PlayerName,
+                    split.Collectible.Code,
+                    blockSel.Position
+                );
 
                 renderer?.SetContents(contents, fuelLevel, burning, true);
                 MarkDirty();
-                Api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), Pos.X, Pos.Y, Pos.Z, byPlayer, false);
+                Api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), Pos, 0.4375, byPlayer, false);
 
                 return true;
 
             } else
-            {   
+            {
                 if (slot.Itemstack == null) return false;
 
                 // Add fuel
@@ -251,10 +216,15 @@ namespace Vintagestory.GameContent
 
                     slot.TakeOut(1);
                     slot.MarkDirty();
+                    Api.World.Logger.Audit("{0} Put 1x{1} into Forge at {2}.",
+                        byPlayer.PlayerName,
+                        contents.Collectible.Code,
+                        blockSel.Position
+                    );
 
                     renderer?.SetContents(contents, fuelLevel, burning, true);
                     MarkDirty();
-                    Api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), Pos.X, Pos.Y, Pos.Z, byPlayer, false);
+                    Api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), Pos, 0.4375, byPlayer, false);
 
                     return true;
                 }
@@ -270,9 +240,14 @@ namespace Vintagestory.GameContent
 
                     slot.TakeOut(1);
                     slot.MarkDirty();
+                    Api.World.Logger.Audit("{0} Put 1x{1} into Forge at {2}.",
+                        byPlayer.PlayerName,
+                        contents.Collectible.Code,
+                        blockSel.Position
+                    );
 
                     renderer?.SetContents(contents, fuelLevel, burning, true);
-                    Api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), Pos.X, Pos.Y, Pos.Z, byPlayer, false);
+                    Api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), Pos, 0.4375, byPlayer, false);
 
                     MarkDirty();
                     return true;
@@ -301,7 +276,7 @@ namespace Vintagestory.GameContent
 
             if (contents != null)
             {
-                Api.World.SpawnItemEntity(contents, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                Api.World.SpawnItemEntity(contents, Pos);
             }
 
             ambientSound?.Dispose();
@@ -348,7 +323,7 @@ namespace Vintagestory.GameContent
                 {
                     dsc.AppendLine(Lang.Get("forge-contentsandtemp", contents.StackSize, contents.GetName(), temp));
                 }
-                
+
             }
         }
 
@@ -388,6 +363,34 @@ namespace Vintagestory.GameContent
         public float GetHeatStrength(IWorldAccessor world, BlockPos heatSourcePos, BlockPos heatReceiverPos)
         {
             return IsBurning ? 7 : 0;
+        }
+
+        public void CoolNow(float amountRel)
+        {
+            bool playsound = false;
+            if (burning)
+            {
+                playsound = true;
+                fuelLevel -= (float)amountRel / 250f;
+                if (Api.World.Rand.NextDouble() < amountRel / 30f || fuelLevel <= 0)
+                {
+                    burning = false;
+                }
+                MarkDirty(true);
+            }
+
+            float temp = contents == null ? 0 : contents.Collectible.GetTemperature(Api.World, contents);
+            if (temp > 20)
+            {
+                playsound = temp > 100;
+                contents.Collectible.SetTemperature(Api.World, contents, Math.Min(1100, temp - amountRel * 20), false);
+                MarkDirty(true);
+            }
+
+            if (playsound)
+            {
+                Api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), Pos, 0.25, null, false, 16);
+            }
         }
     }
 }

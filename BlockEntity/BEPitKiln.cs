@@ -10,6 +10,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     // The first 4 slots are the ground storage contents
@@ -170,7 +172,7 @@ namespace Vintagestory.GameContent
                             AssetLocation sound = AssetLocation.Create(stack.Collectible.Attributes["placeSound"].AsString(), stack.Collectible.Code.Domain);
                             if (sound != null)
                             {
-                                Api.World.PlaySoundAt(sound.WithPathPrefixOnce("sounds/"), Pos.X + 0.5, Pos.Y + 0.1, Pos.Z + 0.5, player, true, 12);
+                                Api.World.PlaySoundAt(sound.WithPathPrefixOnce("sounds/"), Pos, -0.4, player, true, 12);
                             }
                         }
                     }
@@ -219,7 +221,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public float GetHeatStrength(IWorldAccessor world, BlockPos heatSourcePos, BlockPos heatReceiverPos)
+        public override float GetHeatStrength(IWorldAccessor world, BlockPos heatSourcePos, BlockPos heatReceiverPos)
         {
             return Lit ? 10 : 0;
         }
@@ -253,7 +255,13 @@ namespace Vintagestory.GameContent
         protected bool IsValidPitKiln()
         {
             var world = Api.World;
-            
+
+            Block liquidblock = world.BlockAccessor.GetBlock(Pos, BlockLayersAccess.Fluid);
+            if (liquidblock.BlockId != 0)
+            {
+                return false;
+            }
+
             foreach (var face in BlockFacing.HORIZONTALS.Append(BlockFacing.DOWN))
             {
                 BlockPos npos = Pos.AddCopy(face);
@@ -293,7 +301,7 @@ namespace Vintagestory.GameContent
                 AssetLocation sound = AssetLocation.Create(stack.Collectible.Attributes["placeSound"].AsString(), stack.Collectible.Code.Domain);
                 if (sound != null)
                 {
-                    Api.World.PlaySoundAt(sound.WithPathPrefixOnce("sounds/"), Pos.X + 0.5, Pos.Y + 0.1, Pos.Z + 0.5, byPlayer, true, 12);
+                    Api.World.PlaySoundAt(sound.WithPathPrefixOnce("sounds/"), Pos, -0.4, byPlayer, true, 12);
                 }
             }
 
@@ -469,10 +477,8 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public bool CanIgnite()
-        {
-            return IsComplete && IsValidPitKiln() && !GetBehavior<BEBehaviorBurning>().IsBurning;
-        }
+        public override bool CanIgnite => IsComplete && IsValidPitKiln() && !GetBehavior<BEBehaviorBurning>().IsBurning;
+        
 
         public void TryIgnite(IPlayer byPlayer)
         {
@@ -507,16 +513,15 @@ namespace Vintagestory.GameContent
 
         public override string[] getContentSummary()
         {
-            OrderedDictionary<string, int> dict = new OrderedDictionary<string, int>();
+            API.Datastructures.OrderedDictionary<string, int> dict = new ();
 
             for (int i = 0; i < 4; i++)
             {
                 ItemSlot slot = inventory[i];
                 if (slot.Empty) continue;
 
-                int cnt;
                 string stackName = slot.Itemstack.GetName();
-                if (!dict.TryGetValue(stackName, out cnt)) cnt = 0;
+                if (!dict.TryGetValue(stackName, out int cnt)) cnt = 0;
 
                 dict[stackName] = cnt + slot.StackSize;
             }

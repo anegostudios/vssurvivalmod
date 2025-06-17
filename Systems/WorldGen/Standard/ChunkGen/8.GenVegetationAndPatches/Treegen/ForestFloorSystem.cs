@@ -3,8 +3,11 @@ using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 using Vintagestory.GameContent;
 using Vintagestory.ServerMods.NoObf;
+
+#nullable disable
 
 namespace Vintagestory.ServerMods
 {
@@ -76,7 +79,7 @@ namespace Vintagestory.ServerMods
             for (int i = 0; i < outline.Length; i++) outline[i] = 0;
         }
 
-        internal void CreateForestFloor(IBlockAccessor blockAccessor, TreeGenConfig config, BlockPos pos, LCGRandom rnd, int treesInChunkGenerated)
+        internal void CreateForestFloor(IBlockAccessor blockAccessor, TreeGenConfig config, BlockPos pos, IRandom rnd, int treesInChunkGenerated)
         {
             int grassLevelOffset = 0;
             // More grass coverage for jungles
@@ -91,7 +94,7 @@ namespace Vintagestory.ServerMods
 
             // Only replace soil with forestFloor in certain climate conditions
             if (climate.Fertility <= 0.25 || forestness <= 0.4) return;
-           
+
             // Otherwise adjust the strength of the effect according to forest density and fertility (fertility is higher for tropical forests)
             for (int i = 0; i < outline.Length; i++) outline[i] = (short)(outline[i] * forestness + 0.3f);
 
@@ -174,7 +177,7 @@ namespace Vintagestory.ServerMods
                 }
                 if (noChange) break;
             }
-            
+
 
             BlockPos currentPos = new BlockPos();
             for (int canopyIndex = 0; canopyIndex < outline.Length; canopyIndex++)
@@ -198,7 +201,7 @@ namespace Vintagestory.ServerMods
 
 
         BlockPos tmpPos = new BlockPos();
-        private void GenPatches(IBlockAccessor blockAccessor, BlockPos pos, float forestNess, EnumTreeType treetype, LCGRandom rnd)
+        private void GenPatches(IBlockAccessor blockAccessor, BlockPos pos, float forestNess, EnumTreeType treetype, IRandom rnd)
         {
             var bpc = genPatchesSystem.bpc;
             int radius = 5;
@@ -213,7 +216,7 @@ namespace Vintagestory.ServerMods
                     continue;
                 }
 
-                float chance = 0.003f * forestNess * bPatch.Chance * bpc.ChanceMultiplier.nextFloat();
+                float chance = 0.003f * forestNess * bPatch.Chance * bpc.ChanceMultiplier.nextFloat(1f, rnd);
 
                 //if (bPatch.blockCodes[0].Path.Contains("mushroom")) chance *= 20; - for debugging
 
@@ -228,7 +231,7 @@ namespace Vintagestory.ServerMods
                     if (y <= 0 || y >= worldheight - 8) continue;
 
                     tmpPos.Y = y;
-                    
+
                     var climate = blockAccessor.GetClimateAt(tmpPos, EnumGetClimateMode.WorldGenValues);
                     if (climate == null)
                     {
@@ -261,7 +264,9 @@ namespace Vintagestory.ServerMods
 
                         if (found)
                         {
-                            bPatch.Generate(blockAccessor, rnd, tmpPos.X, tmpPos.Y, tmpPos.Z, firstBlockId);
+                            var blockPatchRandom = new LCGRandom(sapi.WorldManager.Seed + i);
+                            blockPatchRandom.InitPositionSeed(tmpPos.X, tmpPos.Z);
+                            bPatch.Generate(blockAccessor, rnd, tmpPos.X, tmpPos.Y, tmpPos.Z, firstBlockId, false);
                         }
                     }
                 }
@@ -272,7 +277,7 @@ namespace Vintagestory.ServerMods
             {
                 BlockPatch blockPatch = onTreePatches[i];
 
-                float chance = 3 * forestNess * blockPatch.Chance * bpc.ChanceMultiplier.nextFloat();
+                float chance = 3 * forestNess * blockPatch.Chance * bpc.ChanceMultiplier.nextFloat(1f, rnd);
 
                 while (chance-- > rnd.NextFloat())
                 {
@@ -289,7 +294,7 @@ namespace Vintagestory.ServerMods
                     for (int j = 0; j < 4; j++)
                     {
                         var f = BlockFacing.HORIZONTALS[j];
-                        var nblock = api.GetBlock(tmpPos.X + f.Normali.X, tmpPos.Y, tmpPos.Z + f.Normali.Z);
+                        var nblock = api.GetBlockOnSide(tmpPos, f);
                         if (nblock is BlockLog && nblock.Variant["type"] != "resin")
                         {
                             facing = f;

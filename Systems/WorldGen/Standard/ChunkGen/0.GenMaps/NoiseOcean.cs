@@ -1,5 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+
+#nullable disable
 
 namespace Vintagestory.ServerMods
 {
@@ -7,53 +8,36 @@ namespace Vintagestory.ServerMods
     {
         public int X;
         public int Z;
-        
+
         public XZ(int x, int z)
         {
-            this.X = x;
-            this.Z = z;
+            X = x;
+            Z = z;
         }
     }
 
     class NoiseOcean : NoiseBase
     {
         float landcover;
-        List<XZ> requireLandAt;
         float scale;
 
-        public NoiseOcean(long seed, float scale, List<XZ> requireLandAt, float landcover) : base(seed)
+        public NoiseOcean(long seed, float scale, float landcover) : base(seed)
         {
-            this.requireLandAt = requireLandAt;
             this.landcover = landcover;
             this.scale = scale;
         }
 
-
         public int GetOceanIndexAt(int unscaledXpos, int unscaledZpos)
         {
-            float xpos = (float)unscaledXpos / scale;
-            float zpos = (float)unscaledZpos / scale;
+            var xpos = (int)(unscaledXpos / scale);
+            var zpos = (int)(unscaledZpos / scale);
 
-            int xposInt = (int)xpos;
-            int zposInt = (int)zpos;
+            InitPositionSeed(xpos, zpos);
 
-            InitPositionSeed(xposInt, zposInt);
-
-            double rand = NextInt(10000) / 10000.0;
+            var rand = NextInt(10000) / 10000.0;
             if (rand < landcover) return 0;
-
-            for (int i = 0; i < requireLandAt.Count; i++)
-            {
-                var xz = requireLandAt[i];
-                if (Math.Abs(xz.X - unscaledXpos) <= scale/2 && Math.Abs(xz.Z - unscaledZpos) <= scale/2)
-                {
-                    return 0;
-                }
-            }
 
             return 255;
         }
-
-
     }
 }

@@ -1,10 +1,13 @@
 ﻿using ProtoBuf;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -23,7 +26,7 @@ namespace Vintagestory.GameContent
             api.ModLoader.GetModSystem<WorldMapManager>().RegisterMapLayer<OreMapLayer>("ores", 0.75);
             api.Network
                 .RegisterChannel("oremap")
-                .RegisterMessageType<PropickReading>()
+                .RegisterMessageType<PropickReading>()              // radfast 11.3.25:  such messages are not sent in the vanilla game in 1.20.5, left here in case of mod backward compatibility
                 .RegisterMessageType<ProspectingMetaData>()
                 .RegisterMessageType<DeleteReadingPacket>()
             ;
@@ -34,7 +37,7 @@ namespace Vintagestory.GameContent
         {
             api.Network
                 .GetChannel("oremap")
-                .SetMessageHandler<PropickReading>(onPropickReadingPacket)
+                .SetMessageHandler<PropickReading>(onPropickReadingPacket)              // radfast 11.3.25:  such messages are not sent in the vanilla game in 1.20.5, left here in case of mod backward compatibility
                 .SetMessageHandler<ProspectingMetaData>(onPropickMetaData)
             ;
 
@@ -58,7 +61,7 @@ namespace Vintagestory.GameContent
             if (oml == null) return;
 
             oml.Delete(fromPlayer, packet.Index);
-            oml.RebuildMapComponents();
+            //oml.RebuildMapComponents();    // radfast 11.3.25: It makes no sense to call this on the server side
         }
 
         private void Event_PlayerJoin(IServerPlayer byPlayer)
@@ -77,6 +80,8 @@ namespace Vintagestory.GameContent
 
         private void onPropickReadingPacket(PropickReading reading)
         {
+            // radfast 11.3.25: This method is not currently used in 1.20.5, such packets are not sent in vanilla. Left here in case of mod backward compatibility
+
             var oml = capi.ModLoader.GetModSystem<WorldMapManager>().MapLayers.FirstOrDefault(ml => ml is OreMapLayer) as OreMapLayer;
             if (oml == null) return;
 

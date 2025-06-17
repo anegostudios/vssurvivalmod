@@ -5,6 +5,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class CachedModel
@@ -105,7 +107,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            MeshData mesh = BlockEntityMicroBlock.CreateMesh(capi, voxelCuboids, materials, null, null, originalCuboids);
+            MeshData mesh = BlockEntityMicroBlock.CreateMesh(capi, voxelCuboids, materials, null, null, originalCuboids, 0);
             mesh.Rgba.Fill((byte)255);
 
             return capi.Render.UploadMultiTextureMesh(mesh);

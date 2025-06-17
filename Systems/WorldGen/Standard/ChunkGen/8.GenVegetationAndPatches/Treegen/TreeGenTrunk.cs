@@ -3,6 +3,8 @@ using System.Reflection;
 using System.Runtime.Serialization;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods.NoObf
 {
     public class TreeGenTrunk : TreeGenBranch
@@ -30,10 +32,10 @@ namespace Vintagestory.ServerMods.NoObf
             if (angleVert == null) angleVert = NatFloat.createUniform(GameMath.PI, 0);
         }
 
-        public override int getBlockId(float width, TreeGenBlocks blocks, TreeGen gen, int treeSubType)
+        public override int getBlockId(IRandom rand, float width, TreeGenBlocks blocks, TreeGen gen, int treeSubType)
         {
             if (segment != 0 && width >= 0.3f) return blocks.trunkSegmentBlockIds[segment - 1];
-            return base.getBlockId(width, blocks, gen, treeSubType);
+            return base.getBlockId(rand, width, blocks, gen, treeSubType);
         }
     }
 }

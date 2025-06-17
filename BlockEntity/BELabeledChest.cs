@@ -7,6 +7,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityLabeledChest : BlockEntityGenericTypedContainer
@@ -31,7 +33,7 @@ namespace Vintagestory.GameContent
         public override string DialogTitle {
             get
             {
-                if (text == null || text.Length == 0) return Lang.Get("Chest Contents");
+                if (text == null || text.Length == 0) return base.DialogTitle;
                 else return text.Replace("\r", "").Replace("\n", " ").Substring(0, Math.Min(text.Length, 15));
             }
         }
@@ -73,7 +75,7 @@ namespace Vintagestory.GameContent
                     {
                         sapi.Network.SendBlockEntityPacket(
                             (IServerPlayer)byPlayer,
-                            Pos.X, Pos.Y, Pos.Z,
+                            Pos,
                             (int)EnumSignPacketId.OpenDialog
                         );
                     }
@@ -133,7 +135,7 @@ namespace Vintagestory.GameContent
                 editDialog.OnCloseCancel = () =>
                 {
                     labelrenderer?.SetNewText(text, color);
-                    (Api as ICoreClientAPI).Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, (int)EnumSignPacketId.CancelEdit, null);
+                    (Api as ICoreClientAPI).Network.SendBlockEntityPacket(Pos, (int)EnumSignPacketId.CancelEdit, null);
                 };
                 editDialog.TryOpen();
             }

@@ -6,6 +6,8 @@ using System;
 using Vintagestory.API.Util;
 using Vintagestory.API.Datastructures;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 
@@ -36,8 +38,8 @@ namespace Vintagestory.GameContent
             unspoilableInventory = new CreativeInventoryTab(1, "not-used", null);
             dummySlot = new DummySlot(stack, unspoilableInventory);
 
-            TextCacheTitle = stack.GetName().RemoveDiacritics();
-            TextCacheAll = stack.GetName() + " " + stack.GetDescription(capi.World, dummySlot, false);
+            TextCacheTitle = stack.GetName().ToSearchFriendly();
+            TextCacheAll = (stack.GetName() + " " + stack.GetDescription(capi.World, dummySlot, false)).ToSearchFriendly();
             isDuplicate = stack.Collectible.Attributes?["handbook"]?["isDuplicate"].AsBool(false) == true;
 
             searchWeightOffset = stack.Collectible.Attributes?["handbook"]?["searchWeightOffset"].AsFloat(0) ?? 0;
@@ -51,10 +53,10 @@ namespace Vintagestory.GameContent
                 foreach (var val in GlobalConstants.IgnoredStackAttributes) tree.RemoveAttribute(val);
                 tree.RemoveAttribute("durability");
 
-                tree = tree.SortedCopy(true);
+                var sortedtree = tree.SortedCopy(true);
                 if (tree.Count != 0)
                 {
-                    string treeStr = tree.ToJsonToken();
+                    string treeStr = TreeAttribute.ToJsonToken(sortedtree);
                     return (stack.Class.Name()) + "-" + stack.Collectible.Code.ToShortString() + "-" + treeStr;
                 }
             }
@@ -114,7 +116,7 @@ namespace Vintagestory.GameContent
 
         protected virtual RichTextComponentBase[] GetPageText(ICoreClientAPI capi, ItemStack[] allStacks, ActionConsumable<string> openDetailPageFor)
         {
-            return Stack.Collectible.GetBehavior<CollectibleBehaviorHandbookTextAndExtraInfo>()?.GetHandbookInfo(dummySlot, capi, allStacks, openDetailPageFor) ?? new RichTextComponentBase[0];
+            return Stack.Collectible.GetBehavior<CollectibleBehaviorHandbookTextAndExtraInfo>()?.GetHandbookInfo(dummySlot, capi, allStacks, openDetailPageFor) ?? Array.Empty<RichTextComponentBase>();
         }
 
         public override float GetTextMatchWeight(string searchText)

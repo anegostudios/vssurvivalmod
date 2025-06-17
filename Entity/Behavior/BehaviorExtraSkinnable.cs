@@ -8,6 +8,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public enum EnumSkinnableType
@@ -36,6 +38,8 @@ namespace Vintagestory.GameContent
 
     public class SkinnablePartVariant
     {
+        public string Category = "standard";
+
         public string Code;
         public CompositeShape Shape;
         public AssetLocation Texture;
@@ -79,18 +83,12 @@ namespace Vintagestory.GameContent
                 ITreeAttribute appliedTree = skintree.GetTreeAttribute("appliedParts");
                 if (appliedTree == null) return appliedTemp;
 
-                foreach (var val in appliedTree)
+                foreach (SkinnablePart part in AvailableSkinParts)
                 {
-                    string partCode = val.Key;
-                    if (!AvailableSkinPartsByCode.ContainsKey(partCode)) continue;
-
-                    SkinnablePart part = AvailableSkinPartsByCode[partCode];
-                    SkinnablePartVariant variant;
-
-                    string code = (val.Value as StringAttribute).value;
-                    if (part.VariantsByCode.TryGetValue(code, out variant))
+                    string code = appliedTree.GetString(part.Code);
+                    if (code != null && part.VariantsByCode.TryGetValue(code, out SkinnablePartVariant variant))
                     {
-                        appliedTemp.Add(variant.AppliedCopy(partCode));
+                        appliedTemp.Add(variant.AppliedCopy(part.Code));
                     }
                 }
 
@@ -118,25 +116,27 @@ namespace Vintagestory.GameContent
             entity.WatchedAttributes.RegisterModifiedListener("voicepitch", onVoiceConfigChanged);
 
             AvailableSkinParts = properties.Attributes["skinnableParts"].AsObject<SkinnablePart[]>();
-            foreach (var val in AvailableSkinParts)
+            AvailableSkinParts = entity.Api.ModLoader.GetModSystem<ModSystemSkinnableAdditions>().AppendAdditions(AvailableSkinParts);
+
+            foreach (var part in AvailableSkinParts)
             {
-                string partCode = val.Code;
-                val.VariantsByCode = new Dictionary<string, SkinnablePartVariant>();
+                string partCode = part.Code;
+                part.VariantsByCode = new Dictionary<string, SkinnablePartVariant>();
 
-                AvailableSkinPartsByCode[val.Code] = val;
+                AvailableSkinPartsByCode[part.Code] = part;
 
-                if (val.Type == EnumSkinnableType.Texture && entity.Api.Side == EnumAppSide.Client)
+                if (part.Type == EnumSkinnableType.Texture && entity.Api.Side == EnumAppSide.Client)
                 {
                     ICoreClientAPI capi = entity.Api as ICoreClientAPI;
 
                     LoadedTexture texture = new LoadedTexture(capi);
-                    foreach (var variant in val.Variants)
+                    foreach (var variant in part.Variants)
                     {
                         AssetLocation textureLoc;
 
-                        if (val.TextureTemplate != null)
+                        if (part.TextureTemplate != null)
                         {
-                            textureLoc = val.TextureTemplate.Clone();
+                            textureLoc = part.TextureTemplate.Clone();
                             textureLoc.Path = textureLoc.Path.Replace("{code}", variant.Code);
                         }
                         else
@@ -167,13 +167,13 @@ namespace Vintagestory.GameContent
 
                         c = Math.Max(1, c);
                         variant.Color = ColorUtil.ColorFromRgba((int)(b/c), (int)(g/c), (int)(r/c), 255);
-                        val.VariantsByCode[variant.Code] = variant;
+                        part.VariantsByCode[variant.Code] = variant;
                     }
                 } else
                 {
-                    foreach (var variant in val.Variants)
+                    foreach (var variant in part.Variants)
                     {
-                        val.VariantsByCode[variant.Code] = variant;
+                        part.VariantsByCode[variant.Code] = variant;
                     }
                 }
             }
@@ -190,11 +190,8 @@ namespace Vintagestory.GameContent
         {
             skintree = entity.WatchedAttributes["skinConfig"] as ITreeAttribute;
            
-            if (entity.World.Side == EnumAppSide.Client)
-            {
-                var essr = entity.Properties.Client.Renderer as EntitySkinnableShapeRenderer;
-                essr.MarkShapeModified();
-            }
+            entity.MarkShapeModified();
+
         }
 
 
@@ -223,11 +220,10 @@ namespace Vintagestory.GameContent
         {
             base.OnEntityDespawn(despawn);
 
-            var essr = entity.Properties.Client.Renderer as EntitySkinnableShapeRenderer;
-            if (essr != null)
+            var ebhtc = entity.GetBehavior<EntityBehaviorTexturedClothing>();
+            if (ebhtc != null)
             {
-                essr.OnReloadSkin -= Essr_OnReloadSkin;
-                essr.OnTesselation -= Essr_OnTesselation;
+                ebhtc.OnReloadSkin -= Essr_OnReloadSkin;
             }
         }
 
@@ -238,38 +234,41 @@ namespace Vintagestory.GameContent
 
             if (!didInit)
             {
-                var essr = entity.Properties.Client.Renderer as EntitySkinnableShapeRenderer;
-                if (essr == null) throw new InvalidOperationException("The extra skinnable requires the entity to use the SkinnableShape renderer.");
+                var essr = entity.Properties.Client.Renderer as EntityShapeRenderer;
+                if (essr == null) throw new InvalidOperationException("The extra skinnable entity behavior requires the entity to use the Shape renderer.");
 
-                essr.OnReloadSkin += Essr_OnReloadSkin;
-                essr.OnTesselation += Essr_OnTesselation;
+                var ebhtc = entity.GetBehavior<EntityBehaviorTexturedClothing>();
+                if (ebhtc == null) throw new InvalidOperationException("The extra skinnable entity behavior requires the entity to have the TextureClothing entitybehavior.");
+
+                ebhtc.OnReloadSkin += Essr_OnReloadSkin;
                 didInit = true;
             }
         }
 
 
-
-        private void Essr_OnTesselation(ref Shape entityShape, string shapePathForLogging)
+        public override void OnTesselation(ref Shape entityShape, string shapePathForLogging, ref bool shapeIsCloned, ref string[] willDeleteElements)
         {
             // Make a copy so we don't mess up the original
-            Shape newShape = entityShape.Clone();
-            entityShape = newShape;
-
-            foreach (var val in AppliedSkinParts)
+            if (!shapeIsCloned)
             {
-                SkinnablePart part;
-                AvailableSkinPartsByCode.TryGetValue(val.PartCode, out part);
-                
+                Shape newShape = entityShape.Clone();
+                entityShape = newShape;
+                shapeIsCloned = true;
+            }
+
+            foreach (var skinpart in AppliedSkinParts)
+            {
+                AvailableSkinPartsByCode.TryGetValue(skinpart.PartCode, out SkinnablePart part);
+
                 if (part?.Type == EnumSkinnableType.Shape)
                 {
-                    entityShape = addSkinPart(val, entityShape, part.DisableElements, shapePathForLogging);
+                    entityShape = addSkinPart(skinpart, entityShape, part.DisableElements, shapePathForLogging);
                 }
             }
 
             foreach (var val in AppliedSkinParts)
             {
-                SkinnablePart part;
-                AvailableSkinPartsByCode.TryGetValue(val.PartCode, out part);
+                AvailableSkinPartsByCode.TryGetValue(val.PartCode, out SkinnablePart part);
 
                 if (part != null && part.Type == EnumSkinnableType.Texture && part.TextureTarget != null && part.TextureTarget != mainTextureCode)
                 {
@@ -297,14 +296,15 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            var inv = (entity as EntityAgent).GearInventory;
+            var ebhtc = entity.GetBehavior<EntityBehaviorTexturedClothing>();
+            var inv = ebhtc.Inventory;
             if (inv != null)
             {
                 foreach (var slot in inv)
                 {
                     if (slot.Empty) continue;
 
-                    if ((entity as EntityAgent).hideClothing)
+                    if (ebhtc.hideClothing)
                     {
                         continue;
                     }
@@ -312,13 +312,11 @@ namespace Vintagestory.GameContent
                     ItemStack stack = slot.Itemstack;
                     JsonObject attrObj = stack.Collectible.Attributes;
 
-                    string[] disableElements = attrObj?["disableElements"]?.AsArray<string>(null);
-                    if (disableElements != null)
+                    entityShape.RemoveElements(attrObj?["disableElements"]?.AsArray<string>(null));
+                    var keepEles = attrObj?["keepElements"]?.AsArray<string>(null);
+                    if (keepEles != null && willDeleteElements != null)
                     {
-                        foreach (var val in disableElements)
-                        {
-                            entityShape.RemoveElementByName(val);
-                        }
+                        foreach (var val in keepEles) willDeleteElements = willDeleteElements.Remove(val);
                     }
                 }
             }
@@ -368,7 +366,7 @@ namespace Vintagestory.GameContent
         {
             AvailableSkinPartsByCode.TryGetValue(partCode, out var part);
 
-            var essr = entity.Properties.Client.Renderer as EntitySkinnableShapeRenderer;
+            
             ITreeAttribute appliedTree = skintree.GetTreeAttribute("appliedParts");
             if (appliedTree == null) skintree["appliedParts"] = appliedTree = new TreeAttribute();
             appliedTree[partCode] = new StringAttribute(variantCode);
@@ -391,6 +389,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
+            var essr = entity.Properties.Client.Renderer as EntityShapeRenderer;
             if (retesselateShape) essr?.TesselateShape();
             return;
         }
@@ -443,16 +442,11 @@ namespace Vintagestory.GameContent
                 entity.WatchedAttributes.SetString("voicetype", part.Code);
                 return entityShape;
             }
+            
+            entityShape.RemoveElements(disableElements);
 
-            if (disableElements != null)
-            {
-                foreach (var val in disableElements)
-                {
-                    entityShape.RemoveElementByName(val);
-                }
-            }
-
-            ICoreClientAPI api = entity.World.Api as ICoreClientAPI;
+            var api = entity.World.Api;
+            ICoreClientAPI capi = entity.World.Api as ICoreClientAPI;
             AssetLocation shapePath;
             CompositeShape tmpl = skinpart.ShapeTemplate;
 
@@ -474,16 +468,17 @@ namespace Vintagestory.GameContent
             }
 
             string prefixcode = "skinpart";
-            partShape.SubclassForStepParenting(prefixcode);
+            partShape.SubclassForStepParenting(prefixcode + "-");
 
             var textures = entity.Properties.Client.Textures;
             entityShape.StepParentShape(partShape, shapePath.ToShortString(), shapePathForLogging, api.Logger, (texcode, loc) =>
             {
+                if (capi == null) return;
                 if (!textures.ContainsKey("skinpart-" + texcode) && skinpart.TextureRenderTo == null)
                 {
                     var cmpt = textures[prefixcode + "-" + texcode] = new CompositeTexture(loc);
                     cmpt.Bake(api.Assets);
-                    api.EntityTextureAtlas.GetOrInsertTexture(cmpt.Baked.TextureFilenames[0], out int textureSubid, out _);
+                    capi.EntityTextureAtlas.GetOrInsertTexture(cmpt.Baked.TextureFilenames[0], out int textureSubid, out _);
                     cmpt.Baked.TextureSubId = textureSubid;
                 }
             });
@@ -494,6 +489,8 @@ namespace Vintagestory.GameContent
 
         private void loadTexture(Shape entityShape, string code, AssetLocation location, int textureWidth, int textureHeight, string shapePathForLogging)
         {
+            if (entity.World.Side == EnumAppSide.Server) return;
+
             var textures = entity.Properties.Client.Textures;
             ICoreClientAPI capi = entity.World.Api as ICoreClientAPI;
 

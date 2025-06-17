@@ -2,6 +2,8 @@
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockWorldgenHook : Block

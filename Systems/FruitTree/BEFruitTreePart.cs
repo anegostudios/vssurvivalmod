@@ -7,6 +7,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 
 namespace Vintagestory.GameContent
 {
@@ -108,7 +110,6 @@ namespace Vintagestory.GameContent
             {
                 IDictionary<string, CompositeTexture> textures = Block.Textures;
                 AssetLocation texturePath = null;
-                CompositeTexture tex;
 
                 if ((this is BlockEntityFruitTreeBranch || this is BlockEntityFruitTreeFoliage) && FoliageState == EnumFoliageState.Dead && (textureCode == "bark" || textureCode == "treetrunk"))
                 {
@@ -116,7 +117,8 @@ namespace Vintagestory.GameContent
                 }
 
                 // Prio 1: Config
-                blockFoliage.foliageProps.TryGetValue(TreeType, out var props);
+                DynFoliageProperties props = null;
+                blockFoliage.foliageProps?.TryGetValue(TreeType, out props);
                 if (props != null)
                 {
                     string key = textureCode + "-" + FoliageUtil.FoliageStates[(int)FoliageState];
@@ -127,7 +129,7 @@ namespace Vintagestory.GameContent
                 }
 
                 // Prio 2: Get from collectible textures
-                if (textures.TryGetValue(textureCode, out tex))
+                if (textures.TryGetValue(textureCode, out CompositeTexture tex))
                 {
                     texturePath = tex.Baked.BakedName;
                 }
@@ -160,10 +162,7 @@ namespace Vintagestory.GameContent
 
             if (texpos == null)
             {
-                bool ok = capi.BlockTextureAtlas.GetOrInsertTexture(texturePath, out _, out texpos, () =>
-                {
-                    return capi.BlockTextureAtlas.LoadCompositeBitmap(texturePath);
-                });
+                bool ok = capi.BlockTextureAtlas.GetOrInsertTexture(texturePath, out _, out texpos);
 
                 if (!ok)
                 {
@@ -193,9 +192,8 @@ namespace Vintagestory.GameContent
 
             Dictionary<int, MeshData[]> meshesByKey = ObjectCacheUtil.GetOrCreate(Api, foliageDictCacheKey, () => new Dictionary<int, MeshData[]>());
 
-            MeshData[] meshes;
             int meshCacheKey = getHashCodeLeaves();
-            if (meshesByKey.TryGetValue(meshCacheKey, out meshes))
+            if (meshesByKey.TryGetValue(meshCacheKey, out MeshData[] meshes))
             {
                 sticksMesh = meshes[0];
                 foliageMesh = meshes[1];
@@ -219,8 +217,7 @@ namespace Vintagestory.GameContent
                 List<string> selectiveElements = new List<string>();
 
                 bool everGreen = false;
-                FruitTreeProperties props = null;
-                if (rootBh?.propsByType.TryGetValue(TreeType, out props) == true)
+                if (rootBh?.propsByType.TryGetValue(TreeType, out FruitTreeProperties props) == true)
                 {
                     everGreen = props.CycleType == EnumTreeCycleType.Evergreen;
                 }
@@ -252,9 +249,8 @@ namespace Vintagestory.GameContent
             // Fruit shape 
             if (FoliageState == EnumFoliageState.Fruiting || FoliageState == EnumFoliageState.Ripe) {
                 string shapekey = "fruit-" + TreeType;
-                FruitTreeShape shapeData;
 
-                if (FoliageState != EnumFoliageState.Ripe || !blockBranch.Shapes.TryGetValue(shapekey + "-ripe", out shapeData))
+                if (FoliageState != EnumFoliageState.Ripe || !blockBranch.Shapes.TryGetValue(shapekey + "-ripe", out FruitTreeShape shapeData))
                 {
                     if (!blockBranch.Shapes.TryGetValue(shapekey, out shapeData)) return false;
                 }
@@ -318,6 +314,7 @@ namespace Vintagestory.GameContent
 
             getRootBhSetupListener();
             UnregisterGameTickListener(listenerId);
+            listenerId = 0;
         }
 
         FruitTreeRootBH rootBh;
@@ -391,11 +388,13 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < 4; i++)
             {
                 var face = BlockFacing.HORIZONTALS[i];
-                if (Api.World.BlockAccessor.GetBlock(Pos.X + face.Normali.X, Pos.Y, Pos.Z + face.Normali.Z).Id == 0)
+                face.IterateThruFacingOffsets(Pos);
+                if (Api.World.BlockAccessor.GetBlock(Pos).Id == 0)
                 {
                     fruitingSide |= 1 << i;
                 }
             }
+            Pos.East();   // Complete IterateThruFacingOffsets when it ended with West
         }
 
 
@@ -476,7 +475,7 @@ namespace Vintagestory.GameContent
                     ItemStack stack = drop.GetNextItemStack(1);
                     if (stack == null) continue;
 
-                    Api.World.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    Api.World.SpawnItemEntity(stack, Pos);
                     if (drop.LastDrop) break;
                 }
             }

@@ -1,10 +1,13 @@
 ﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Vintagestory.API.Common;
-using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
+
+#nullable disable
 
 namespace Vintagestory.ServerMods
 {
@@ -12,6 +15,9 @@ namespace Vintagestory.ServerMods
 
     public class VillageSchematic
     {
+        [JsonProperty]
+        public int MinSpawnDistance = 0;
+
         public string Path;
         public int OffsetY = 0;
         public double Weight;
@@ -21,6 +27,7 @@ namespace Vintagestory.ServerMods
 
         // Used by worldgen
         public int NowQuantity;
+        
 
         public bool ShouldGenerate => NowQuantity < MaxQuantity;
     }
@@ -47,22 +54,6 @@ namespace Vintagestory.ServerMods
         [JsonProperty]
         public float Chance = 0.05f;
         [JsonProperty]
-        public int MinTemp = -30;
-        [JsonProperty]
-        public int MaxTemp = 40;
-        [JsonProperty]
-        public float MinRain = 0;
-        [JsonProperty]
-        public float MaxRain = 1;
-        [JsonProperty]
-        public float MinForest = 0;
-        [JsonProperty]
-        public float MaxForest = 1;
-        [JsonProperty]
-        public float MinY = -0.3f;
-        [JsonProperty]
-        public float MaxY = 1;
-        [JsonProperty]
         public NatFloat QuantityStructures = NatFloat.createGauss(7, 7);
         [JsonProperty]
         public AssetLocation[] ReplaceWithBlocklayers;
@@ -79,15 +70,15 @@ namespace Vintagestory.ServerMods
         [JsonProperty]
         public string RockTypeRemapGroup = null; // For rocktyped ruins
         [JsonProperty]
-        public Dictionary<string, int> OffsetYByCode;
+        public int MaxYDiff = 3;
 
-        internal int[] replaceblockids = new int[0];
+        internal int[] replaceblockids = Array.Empty<int>();
         internal Dictionary<int, Dictionary<int, int>> resolvedRockTypeRemaps = null;
 
         LCGRandom rand;
-        
 
-        
+
+
 
         public void Init(ICoreServerAPI api, BlockLayerConfig blockLayerConfig, WorldGenStructuresConfig structureConfig, Dictionary<string, Dictionary<int, Dictionary<int, int>>> resolvedRocktypeRemapGroups, Dictionary<string, int> schematicYOffsets, int? defaultOffsetY, RockStrataConfig rockstrata, LCGRandom rand)
         {
@@ -110,9 +101,12 @@ namespace Vintagestory.ServerMods
 
                 for (int j = 0; j < assets.Length; j++)
                 {
-                    int offsety = WorldGenStructureBase.getOffsetY(schematicYOffsets, defaultOffsetY, OffsetYByCode, assets[j]);
-                    var sch = WorldGenStructureBase.LoadSchematic<BlockSchematicStructure>(api, assets[j], blockLayerConfig, structureConfig, offsety);
-                    if (sch != null) schematics.AddRange(sch);
+                    int offsety = WorldGenStructureBase.getOffsetY(schematicYOffsets, defaultOffsetY, assets[j]);
+                    var sch = WorldGenStructureBase.LoadSchematic<BlockSchematicStructure>(api, assets[j], blockLayerConfig, structureConfig, null, offsety);
+                    if (sch != null)
+                    {
+                        schematics.AddRange(sch);
+                    }
                 }
 
                 schem.Structures = schematics.ToArray();
@@ -153,10 +147,11 @@ namespace Vintagestory.ServerMods
         }
 
 
-        
-        public bool TryGenerate(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos pos, int climateUpLeft, int climateUpRight, int climateBotLeft, int climateBotRight, DidGenerate didGenerateStructure)
+
+        public bool TryGenerate(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos pos, int climateUpLeft, int climateUpRight, int climateBotLeft, int climateBotRight, DidGenerate didGenerateStructure, BlockPos spawnPos)
         {
             if (!WorldGenStructure.SatisfiesMinDistance(pos, worldForCollectibleResolve, MinGroupDistance, Group)) return false;
+            
 
             rand.InitPositionSeed(pos.X, pos.Z);
 
@@ -194,7 +189,7 @@ namespace Vintagestory.ServerMods
                     int r = Math.Min(16 + dr++ / 2, 24);
 
                     botCenterPos.Set(pos);
-                    botCenterPos.Add(rand.NextInt(2*r) - r, 0, rand.NextInt(2*r) - r);
+                    botCenterPos.Add(rand.NextInt(2 * r) - r, 0, rand.NextInt(2 * r) - r);
                     botCenterPos.Y = blockAccessor.GetTerrainMapheightAt(botCenterPos);
                     if (botCenterPos.Y == 0) continue;    // Can only be because it couldn't find a mapchunk or invalid position
 
@@ -219,9 +214,15 @@ namespace Vintagestory.ServerMods
                         }
                     }
 
+                    if (!BlockSchematicStructure.SatisfiesMinSpawnDistance(schem.MinSpawnDistance, pos, spawnPos))
+                    {
+                        if (genRequired) break;
+                        continue;
+                    }
+
                     // First get a random structure from the VillageSchematic
-                    int num = rand.NextInt(schem.Structures.Length);
-                    BlockSchematicStructure struc = schem.Structures[num];
+                    int randomIndex = rand.NextInt(schem.Structures.Length);
+                    BlockSchematicStructure struc = schem.Structures[randomIndex];
 
                     location.Set(
                         botCenterPos.X - struc.SizeX / 2, botCenterPos.Y, botCenterPos.Z - struc.SizeZ / 2,
@@ -240,7 +241,7 @@ namespace Vintagestory.ServerMods
 
                     if (intersect) continue;
 
-                    struc.Unpack(worldForCollectibleResolve.Api);
+                    struc.Unpack(worldForCollectibleResolve.Api, randomIndex % 4);
                     if (CanGenerateStructureAt(struc, blockAccessor, location))
                     {
                         if (genRequired) mustGenerate.RemoveAt(mustGenerate.Count - 1);
@@ -255,7 +256,7 @@ namespace Vintagestory.ServerMods
             {
                 foreach (var val in generatables)
                 {
-                    val.Structure.PlaceRespectingBlockLayers(blockAccessor, worldForCollectibleResolve, val.StartPos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, resolvedRockTypeRemaps, replaceblockids);
+                    val.Structure.PlaceRespectingBlockLayers(blockAccessor, worldForCollectibleResolve, val.StartPos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, resolvedRockTypeRemaps, replaceblockids, GenStructures.ReplaceMetaBlocks);
                     didGenerateStructure(val.Location, val.Structure);
                 }
 
@@ -295,7 +296,7 @@ namespace Vintagestory.ServerMods
 
             // 1.5. Adjust schematic location to be at the lowest point of all 4 corners, otherwise some corners will float
             // "+1" because using the y-value from GetTerrainMapheightAt() means the structure will already be 1 block sunken into the ground. It is more intuitive for the builder when setting OffsetY=0 means the structure is placed on top of the surface
-            location.Y1 = lowestY + schematic.OffsetY + 1; 
+            location.Y1 = lowestY + schematic.OffsetY + 1;
             location.Y2 = location.Y1 + schematic.SizeY;
 
             // 2. Verify U Blocks are in solid ground

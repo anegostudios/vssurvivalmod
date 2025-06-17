@@ -5,6 +5,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     [ProtoContract]
@@ -100,6 +102,7 @@ namespace Vintagestory.GameContent
         public void BeginEdit(IPlayer player, ItemSlot slot)
         {
             nowEditing[player.PlayerUID] = slot;
+            api.World.PlaySoundAt(new AssetLocation("sounds/held/bookturn*"), player.Entity);
         }
 
 
@@ -121,6 +124,7 @@ namespace Vintagestory.GameContent
                 if (api is ICoreClientAPI capi)
                 {
                     capi.Network.GetChannel("editablebook").SendPacket(new EditbookPacket() { DidSave = true, DidSign = didSign, Text = text, Title = title });
+                    api.World.PlaySoundAt(new AssetLocation("sounds/held/bookclose*"), player.Entity);
                 }
             }
 
@@ -134,6 +138,7 @@ namespace Vintagestory.GameContent
             if (api is ICoreClientAPI capi)
             {
                 capi.Network.GetChannel("editablebook").SendPacket(new EditbookPacket() { DidSave = false });
+                api.World.PlaySoundAt(new AssetLocation("sounds/held/bookclose*"), player.Entity);
             }
         }
 

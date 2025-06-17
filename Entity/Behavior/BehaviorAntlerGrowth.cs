@@ -5,9 +5,11 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
-    public class EntityBehaviorAntlerGrowth : EntityBehavior
+    public class EntityBehaviorAntlerGrowth : EntityBehaviorContainer, IHarvestableDrops
     {
         InventoryGeneric creatureInv;
         Item[] variants;
@@ -32,6 +34,10 @@ namespace Vintagestory.GameContent
             set => entity.WatchedAttributes.SetDouble("lastShedTotalDays", value);
         }
 
+        public override InventoryBase Inventory => creatureInv;
+
+        public override string InventoryClassName => "antlerinv";
+
         public EntityBehaviorAntlerGrowth(Entity entity) : base(entity)
         {
         }
@@ -44,7 +50,7 @@ namespace Vintagestory.GameContent
             if (variantnames != null)
             {
                 variants = new Item[variantnames.Length];
-                string entityType = entity.Properties.Variant["type"];
+                string entityType = attributes["overrideType"]?.ToString() ?? entity.Properties.Variant["type"];
                 for (int i = 0; i < variantnames.Length; i++)
                 {
                     AssetLocation loc = new AssetLocation("antler-" + entityType + "-" + variantnames[i]);
@@ -61,14 +67,8 @@ namespace Vintagestory.GameContent
             shedDurationMonths = attributes["shedDurationMonths"].AsFloat();
             noItemDrop = attributes["noItemDrop"].AsBool(false);
 
-            if (entity.Api.Side == EnumAppSide.Client)
-            {
-                entity.WatchedAttributes.RegisterModifiedListener("inventory", readInventoryFromAttributes);
-            }
-
-            readInventoryFromAttributes();
-            var rnd = entity.World.Rand;
-
+            creatureInv = new InventoryGeneric(1, InventoryClassName + "-" + entity.EntityId, entity.Api, (id, inv) => new ItemSlot(inv));
+            loadInv();
         }
 
         public override void OnEntitySpawn()
@@ -97,30 +97,6 @@ namespace Vintagestory.GameContent
             }
         }
 
-        private void GearInv_SlotModified(int id)
-        {
-            ToBytes(true);
-            entity.WatchedAttributes.MarkPathDirty("inventory");
-        }
-
-        private void readInventoryFromAttributes()
-        {
-            if (creatureInv == null)
-            {
-                creatureInv = new InventoryGeneric(1, "antler-" + entity.EntityId, entity.Api, (id, inv) => new ItemSlot(inv));
-                creatureInv.SlotModified += GearInv_SlotModified;
-            }
-
-            ITreeAttribute tree = entity.WatchedAttributes["inventory"] as ITreeAttribute;
-            if (creatureInv != null && tree != null)
-            {
-                creatureInv.FromTreeAttributes(tree);
-            }
-
-            (entity as EntityAgent).GearInventory = creatureInv;
-
-            (entity.Properties.Client.Renderer as EntityShapeRenderer)?.MarkShapeModified();
-        }
 
         float accum3s = 0;
 
@@ -178,27 +154,15 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                if (shedNow)
-                {
-                    var lastShed = LastShedTotalDays;
-                    double shedDaysAgo = entity.World.Calendar.TotalDays - lastShed;
-
-                    if (lastShed >= 0 && shedDaysAgo / entity.World.Calendar.DaysPerMonth < 3)
-                    {
-                        // Recently shed. No need to grow, no need to shed
-                        return;
-                    }
-
-                    if (!creatureInv[0].Empty)
-                    {
-                        if (!noItemDrop) entity.World.SpawnItemEntity(creatureInv[0].Itemstack, entity.Pos.XYZ);
-                        SetCreatureItemStack(null);
-                        LastShedTotalDays = entity.World.Calendar.TotalDays;
-                    }
-                }
-                else
+                if (!shedNow)
                 {
                     SetAntler(stage);
+                }
+                else if (!creatureInv[0].Empty)
+                {
+                    if (!noItemDrop) entity.World.SpawnItemEntity(creatureInv[0].Itemstack, entity.Pos.XYZ);
+                    SetCreatureItemStack(null);
+                    LastShedTotalDays = entity.World.Calendar.TotalDays;
                 }
             }
         }
@@ -218,11 +182,10 @@ namespace Vintagestory.GameContent
             double midGrowthPoint = beginGrowMonth + growDurationMonths / 2;
 
             int startYear = (int)(cal.TotalDays / cal.DaysPerYear);
-            double distanceToMidGrowth = totalmonths - (startYear * 12 + midGrowthPoint);
+            double distanceToMidGrowth = GameMath.CyclicValueDistance(startYear * 12 + midGrowthPoint, totalmonths, 12);
 
-            if (distanceToMidGrowth < -9) distanceToMidGrowth += 12;
+            if (distanceToMidGrowth < -growDurationMonths/2) distanceToMidGrowth += 12;
 
-            if (distanceToMidGrowth < -growDurationMonths/2) return -1;
             if (distanceToMidGrowth > growDurationMonths/2 + grownDurationMonths + shedDurationMonths) return -1;
 
             double stageRel = (distanceToMidGrowth + growDurationMonths / 2) / growDurationMonths;
@@ -235,31 +198,27 @@ namespace Vintagestory.GameContent
                 MaxGrowth = Math.Min((entity.World.Rand.Next(cnt) + entity.World.Rand.Next(cnt)) / 2, cnt - 1);
             }
 
-            return (int)GameMath.Clamp(stageRel * cnt, 0, MaxGrowth);
+            return (int)GameMath.Clamp(stageRel * MaxGrowth, 0, MaxGrowth);
         }
 
         private void SetCreatureItemStack(ItemStack stack)
         {
+            if (creatureInv[0].Itemstack == null && stack == null) return;
+
             creatureInv[0].Itemstack = stack;
-
-            // radfast 26/1/24:  Do we actually need the next two lines, when creatureInv.SlotModified has been set to GearInv_SlotModified ?
             ToBytes(true);
-            entity.WatchedAttributes.MarkPathDirty("inventory");
         }
 
-        public override void FromBytes(bool isSync)
+
+        public ItemStack[] GetHarvestableDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer)
         {
-            readInventoryFromAttributes();
+            return new ItemStack[] { creatureInv[0].Itemstack };
         }
 
-        public override void ToBytes(bool forClient)
+        public override bool TryGiveItemStack(ItemStack itemstack, ref EnumHandling handling)
         {
-            ITreeAttribute tree = new TreeAttribute();
-            entity.WatchedAttributes["inventory"] = tree;
-            creatureInv.ToTreeAttributes(tree);
+            return false;
         }
-
-
 
         public override string PropertyName()
         {

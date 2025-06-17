@@ -6,6 +6,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 
@@ -18,12 +20,14 @@ namespace Vintagestory.GameContent
         Block fuelBlock;
         string startedByPlayerUid;
 
-        ILoadedSound ambientSound;
         static Cuboidf fireCuboid = new Cuboidf(-0.125f, 0, -0.125f, 1.125f, 1, 1.125f);
         WeatherSystemBase wsys;
         Vec3d tmpPos = new Vec3d();
 
+        ICoreClientAPI capi;
 
+        public bool AllowFireSpread;
+        
         public float TimePassed
         {
             get { return startDuration - remainingBurnDuration; }
@@ -66,7 +70,10 @@ namespace Vintagestory.GameContent
 
                     Api.World.BlockAccessor.SetBlock(0, FuelPos);
                     Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(FuelPos);
-                    TrySpreadTo(FuelPos);
+                    if (AllowFireSpread)
+                    {
+                        TrySpreadTo(FuelPos);
+                    }
                 }
 
                 Api.World.BlockAccessor.SetBlock(0, FirePos);
@@ -80,7 +87,7 @@ namespace Vintagestory.GameContent
             Block block = Api.World.BlockAccessor.GetBlock(pos);
             if (block.CombustibleProps != null) return block.CombustibleProps.BurnDuration;
 
-            if (block is ICombustible bic)
+            if (block.GetInterface<ICombustible>(Api.World, pos) is ICombustible bic)
             {
                 return bic.GetBurnDuration(Api.World, pos);
             }
@@ -99,6 +106,15 @@ namespace Vintagestory.GameContent
             {
                 initSoundsAndTicking();
             }
+
+            capi = api as ICoreClientAPI;
+
+            if (capi != null)
+            {
+                capi.Event.RegisterAsyncParticleSpawner(onAsyncParticles);
+            }
+
+            AllowFireSpread = Api.World.Config.GetBool("allowFireSpread");
         }
 
         public void OnFirePlaced(BlockFacing fromFacing, string startedByPlayerUid)
@@ -106,15 +122,32 @@ namespace Vintagestory.GameContent
             OnFirePlaced(Blockentity.Pos, Blockentity.Pos.AddCopy(fromFacing.Opposite), startedByPlayerUid);
         }
 
-        public void OnFirePlaced(BlockPos firePos, BlockPos fuelPos, string startedByPlayerUid)
+        public void OnFirePlaced(BlockPos firePos, BlockPos fuelPos, string startedByPlayerUid, bool didSpread = false)
         {
             if (IsBurning || !ShouldBurn()) return;
 
             this.startedByPlayerUid = startedByPlayerUid;
 
+            if (!string.IsNullOrEmpty(startedByPlayerUid))
+            {
+                var playerByUid = Api.World.PlayerByUid(startedByPlayerUid);
+                if (playerByUid != null)
+                {
+                    if (didSpread)
+                    {
+                        Api.Logger.Audit($"{playerByUid.PlayerName} started a fire that spread to {firePos}");   
+                    }
+                    else
+                    {
+                        Api.Logger.Audit($"{playerByUid.PlayerName} started a fire at {firePos}");
+                    }
+                }
+            }
+            
+
             FirePos = firePos.Copy();
             FuelPos = fuelPos.Copy();
-            
+
             if (FuelPos == null || !canBurn(FuelPos))
             {
                 foreach (BlockFacing facing in BlockFacing.ALLFACES)
@@ -124,6 +157,7 @@ namespace Vintagestory.GameContent
                     {
                         FuelPos = npos;
                         startDuration = remainingBurnDuration = getBurnDuration(npos);
+                        startBurning();
                         return;
                     }
                 }
@@ -154,7 +188,7 @@ namespace Vintagestory.GameContent
         }
 
         BlockFacing particleFacing;
-
+         
         private void initSoundsAndTicking()
         {
             fuelBlock = Api.World.BlockAccessor.GetBlock(FuelPos);
@@ -167,29 +201,25 @@ namespace Vintagestory.GameContent
 
             wsys = Api.ModLoader.GetModSystem<WeatherSystemBase>();
 
-            if (ambientSound == null && Api.Side == EnumAppSide.Client)
-            {
-                ambientSound = ((IClientWorldAccessor)Api.World).LoadSound(new SoundParams()
-                {
-                    Location = new AssetLocation("sounds/environment/fire.ogg"),
-                    ShouldLoop = true,
-                    Position = FirePos.ToVec3f().Add(0.5f, 0.25f, 0.5f),
-                    DisposeOnFinish = false,
-                    Volume = 1f
-                });
-
-                if (ambientSound != null)
-                {
-                    ambientSound.PlaybackPosition = ambientSound.SoundLengthSeconds * (float)Api.World.Rand.NextDouble();
-                    ambientSound.Start();
-                }
-            }
+            // To get the ambient sound engine to update quicker
+            Api.World.BlockAccessor.MarkBlockDirty(Pos);
 
             particleFacing = BlockFacing.FromNormal(new Vec3i(FirePos.X - FuelPos.X, FirePos.Y - FuelPos.Y, FirePos.Z - FuelPos.Z));
         }
 
 
+        bool unloaded = false;
+        public override void OnBlockUnloaded()
+        {
+            base.OnBlockUnloaded();
+            unloaded = true;
+        }
 
+        public override void OnBlockRemoved()
+        {
+            base.OnBlockRemoved();
+            unloaded = true;
+        }
 
 
         private void OnSlowServerTick(float dt)
@@ -230,9 +260,12 @@ namespace Vintagestory.GameContent
                 // Die on rainfall
                 tmpPos.Set(FirePos.X + 0.5, FirePos.Y + 0.5, FirePos.Z + 0.5);
                 double rain = wsys.GetPrecipitation(tmpPos);
-                if (rain > 0.15)
+                if (rain > 0.05)
                 {
-                    Api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), FirePos.X + 0.5, FirePos.Y, FirePos.Z + 0.5, null, false, 16);
+                    if (rand.NextDouble() < rain / 2)
+                    {
+                        Api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), FirePos, -0.25, null, false, 16);
+                    }
 
                     if (rand.NextDouble() < rain / 2)
                     {
@@ -254,24 +287,28 @@ namespace Vintagestory.GameContent
 
                 float spreadChance = (TimePassed - 2.5f) / 450f;
 
-                if (((ICoreServerAPI)Api).Server.Config.AllowFireSpread && spreadChance > Api.World.Rand.NextDouble())
+                if (AllowFireSpread && spreadChance > Api.World.Rand.NextDouble())
                 {
                     TrySpreadFireAllDirs();
                 }
             }
+        }
 
-            if (Api.Side == EnumAppSide.Client)
-            {
-                int index = Math.Min(fireBlock.ParticleProperties.Length - 1, Api.World.Rand.Next(fireBlock.ParticleProperties.Length + 1));
-                AdvancedParticleProperties particles = fireBlock.ParticleProperties[index];
-                
-                particles.basePos = RandomBlockPos(Api.World.BlockAccessor, FuelPos, fuelBlock, particleFacing);
 
-                particles.Quantity.avg = 0.75f;
-                particles.TerrainCollision = false;
-                Api.World.SpawnParticles(particles);
-                particles.Quantity.avg = 0;
-            }
+        private bool onAsyncParticles(float dt, IAsyncParticleManager manager)
+        {
+            if (fuelBlock == null) return true; // Not yet loaded
+
+            int index = Math.Min(fireBlock.ParticleProperties.Length - 1, Api.World.Rand.Next(fireBlock.ParticleProperties.Length + 1));
+            AdvancedParticleProperties particles = fireBlock.ParticleProperties[index];
+
+            particles.basePos = RandomBlockPos(Api.World.BlockAccessor, FuelPos, fuelBlock, particleFacing);
+            particles.Quantity.avg = index == 1 ? 4 : 0.75f;
+            particles.TerrainCollision = false;
+            manager.Spawn(particles);
+            particles.Quantity.avg = 0;
+
+            return !unloaded && IsBurning;
         }
 
 
@@ -282,8 +319,10 @@ namespace Vintagestory.GameContent
             IsBurning = false;
             Blockentity.UnregisterGameTickListener(l1);
             Blockentity.UnregisterGameTickListener(l2);
-            ambientSound?.FadeOutAndStop(1);
+            l1 = 0;
+            l2 = 0;
             OnFireDeath(consumeFuel);
+            unloaded = true;
         }
 
 
@@ -305,11 +344,12 @@ namespace Vintagestory.GameContent
         public bool TrySpreadTo(BlockPos pos)
         {
             // 1. Replaceable test
-            var block = Api.World.BlockAccessor.GetBlock(pos);
-            if (block.Replaceable < 6000) return false;
-
             BlockEntity be = Api.World.BlockAccessor.GetBlockEntity(pos);
-            if (be?.GetBehavior<BEBehaviorBurning>() != null) return false;
+            var block = Api.World.BlockAccessor.GetBlock(pos);
+            if (block.Replaceable < 6000 && be is not BlockEntityGroundStorage) return false;
+
+            var bhbu = be?.GetBehavior<BEBehaviorBurning>();
+            if (bhbu?.IsBurning == true) return false;
 
             // 2. fuel test
             bool hasFuel = false;
@@ -317,67 +357,59 @@ namespace Vintagestory.GameContent
             foreach (BlockFacing firefacing in BlockFacing.ALLFACES)
             {
                 npos = pos.AddCopy(firefacing);
-                block = Api.World.BlockAccessor.GetBlock(npos);
                 if (canBurn(npos) && Api.World.BlockAccessor.GetBlockEntity(npos)?.GetBehavior<BEBehaviorBurning>() == null) {
-                    hasFuel = true; 
-                    break; 
+                    hasFuel = true;
+                    break;
                 }
             }
+
+            var begs = be as BlockEntityGroundStorage;
+            if (hasFuel == false && begs?.IsBurning == false && begs.CanIgnite)
+            {
+                hasFuel = true;
+            }
+
             if (!hasFuel) return false;
 
             // 3. Land claim test
-            IPlayer player = Api.World.PlayerByUid(startedByPlayerUid);            
+            IPlayer player = Api.World.PlayerByUid(startedByPlayerUid);
             if (player != null && (Api.World.Claims.TestAccess(player, pos, EnumBlockAccessFlags.BuildOrBreak) != EnumWorldAccessResponse.Granted || Api.World.Claims.TestAccess(player, npos, EnumBlockAccessFlags.BuildOrBreak) != EnumWorldAccessResponse.Granted)) {
                 return false;
             }
 
-
-            Api.World.BlockAccessor.SetBlock(fireBlock.BlockId, pos);
-
-            //Api.World.Logger.Debug(string.Format("Fire @{0}: Spread to {1}.", FirePos, pos));
-
-            BlockEntity befire = Api.World.BlockAccessor.GetBlockEntity(pos);
-            befire.GetBehavior<BEBehaviorBurning>()?.OnFirePlaced(pos, npos, startedByPlayerUid);
-
+            SpreadTo(pos, npos, begs);
             return true;
+        }
+
+        private void SpreadTo(BlockPos pos, BlockPos npos, BlockEntityGroundStorage begs)
+        {
+            //Api.World.Logger.Debug(string.Format("Fire @{0}: Spread to {1}.", FirePos, pos));
+            if (begs == null)
+            {
+                Api.World.BlockAccessor.SetBlock(fireBlock.BlockId, pos);
+            }
+            var befire = Api.World.BlockAccessor.GetBlockEntity(pos);
+            var buhu = befire?.GetBehavior<BEBehaviorBurning>();
+
+            if (begs?.IsBurning == false && buhu?.IsBurning == false)
+            {
+                begs.TryIgnite();
+            }
+            else
+            {
+                buhu?.OnFirePlaced(pos, npos, startedByPlayerUid, true);
+            }
         }
 
 
         protected bool canBurn(BlockPos pos)
         {
-            return 
-                OnCanBurn(pos) 
+            return
+                OnCanBurn(pos)
                 && Api.ModLoader.GetModSystem<ModSystemBlockReinforcement>()?.IsReinforced(pos) != true
             ;
         }
-
-        public override void OnBlockRemoved()
-        {
-            base.OnBlockRemoved();
-            killAmbientSound();
-        }
-
-        public override void OnBlockUnloaded()
-        {
-            base.OnBlockUnloaded();
-            killAmbientSound();
-        }
-
-        ~BEBehaviorBurning()
-        {
-            killAmbientSound();
-        }
-
-        void killAmbientSound()
-        {
-            if (ambientSound != null)
-            {
-                ambientSound?.Stop();
-                ambientSound?.Dispose();
-                ambientSound = null;
-            }
-        }
-
+        
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
         {
             base.FromTreeAttributes(tree, worldAccessForResolve);
@@ -398,7 +430,7 @@ namespace Vintagestory.GameContent
             }
 
             bool wasBurning = IsBurning;
-            bool nowBurning = tree.GetBool("isBurning", true);
+            bool nowBurning = tree.GetBool("isBurning", false);
 
             if (nowBurning && !wasBurning)
             {
@@ -440,7 +472,7 @@ namespace Vintagestory.GameContent
 
                 return new Vec3d(
                     pos.X + box.X1 + rand.NextDouble() * box.XSize,
-                    pos.Y + box.Y1 + rand.NextDouble() * box.YSize,
+                    pos.InternalY + box.Y1 + rand.NextDouble() * box.YSize,
                     pos.Z + box.Z1 + rand.NextDouble() * box.ZSize
                 );
             }
@@ -454,7 +486,7 @@ namespace Vintagestory.GameContent
 
                 Vec3d basepos = new Vec3d(
                     pos.X + 0.5f + face.X / 1.95f + (haveCollisionBox && facing.Axis == EnumAxis.X ? (face.X > 0 ? collisionBoxes[0].X2 - 1 : collisionBoxes[0].X1) : 0),
-                    pos.Y + 0.5f + face.Y / 1.95f + (haveCollisionBox && facing.Axis == EnumAxis.Y ? (face.Y > 0 ? collisionBoxes[0].Y2 - 1 : collisionBoxes[0].Y1) : 0),
+                    pos.InternalY + 0.5f + face.Y / 1.95f + (haveCollisionBox && facing.Axis == EnumAxis.Y ? (face.Y > 0 ? collisionBoxes[0].Y2 - 1 : collisionBoxes[0].Y1) : 0),
                     pos.Z + 0.5f + face.Z / 1.95f + (haveCollisionBox && facing.Axis == EnumAxis.Z ? (face.Z > 0 ? collisionBoxes[0].Z2 - 1 : collisionBoxes[0].Z1) : 0)
                 );
 

@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Vintagestory.API.Common;
@@ -7,6 +8,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -54,7 +57,7 @@ namespace Vintagestory.GameContent
 
         public override void OnLoaded(ICoreAPI api)
         {
-            rand = new Random(api.World.Seed);
+            rand = new Random();
 
             this.Stacks = Attributes["stacks"].AsObject<RandomStack[]>();
             float totalchance = 0;
@@ -131,6 +134,17 @@ namespace Vintagestory.GameContent
                 diceRoll -= Stacks[i].Chance;
 
             }
+        }
+
+        public BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)
+        {
+            List<BlockDropItemStack> resolvedDrops = new();
+            foreach (var randomStack in Stacks)
+            {
+                resolvedDrops.Add(new(randomStack.ResolvedStack.Clone()));
+            }
+
+            return resolvedDrops.ToArray();
         }
 
 

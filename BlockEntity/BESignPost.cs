@@ -6,6 +6,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntitySignPost : BlockEntity
@@ -54,6 +56,7 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockRemoved()
         {
+            base.OnBlockRemoved();
             signRenderer?.Dispose();
             signRenderer = null;
         }
@@ -151,7 +154,7 @@ namespace Vintagestory.GameContent
                     dlg.OnCloseCancel = () =>
                     {
                         signRenderer.SetNewText(textByCardinalDirection, color);
-                        (Api as ICoreClientAPI).Network.SendBlockEntityPacket(Pos.X, Pos.Y, Pos.Z, (int)EnumSignPacketId.CancelEdit, null);
+                        (Api as ICoreClientAPI).Network.SendBlockEntityPacket(Pos, (int)EnumSignPacketId.CancelEdit, null);
                     };
                     dlg.OnClosed += () => { dlg.Dispose(); dlg = null; };
                     dlg.TryOpen();
@@ -223,7 +226,7 @@ namespace Vintagestory.GameContent
 
                         ((ICoreServerAPI)Api).Network.SendBlockEntityPacket(
                             (IServerPlayer)byPlayer,
-                            Pos.X, Pos.Y, Pos.Z,
+                            Pos,
                             (int)EnumSignPacketId.OpenDialog,
                             data
                         );

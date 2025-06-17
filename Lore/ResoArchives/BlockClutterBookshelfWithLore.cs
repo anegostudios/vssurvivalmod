@@ -5,6 +5,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockClutterBookshelfWithLore : BlockClutterBookshelf
@@ -52,7 +54,7 @@ namespace Vintagestory.GameContent
             if (type == null) return null;
 
             if (cachedRefs.TryGetValue(type, out var meshref)) return meshref;
-            
+
             var mesh = GetOrCreateMesh(GetTypeProps(type, itemstack, null));
             var loc = new AssetLocation("shapes/block/clutter/" + type + "-book.json");
             var shape = api.Assets.TryGet(loc).ToObject<Shape>();
@@ -85,8 +87,15 @@ namespace Vintagestory.GameContent
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
             var be = GetBEBehavior<BEBehaviorClutterBookshelfWithLore>(blockSel.Position);
-            if (be != null) return be.OnInteract(byPlayer);
+            if (be != null)
+            {
+                if (be.OnInteract(byPlayer))
+                {
+                    return true;
+                }
+            }
 
+            // if there is no more lore content then we can repair it
             return base.OnBlockInteractStart(world, byPlayer, blockSel);
         }
 

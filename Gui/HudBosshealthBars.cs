@@ -1,9 +1,15 @@
-﻿using System.Collections.Generic;
+﻿using OpenTK.Mathematics;
+using System.Collections.Generic;
+using System.Diagnostics;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 using Vintagestory.GameContent;
+
+#nullable disable
 
 namespace Vintagestory.Client.NoObf
 {
@@ -26,11 +32,35 @@ namespace Vintagestory.Client.NoObf
         {
             List<EntityAgent> foundBosses = new List<EntityAgent>();
 
-            partUtil.WalkEntities(capi.World.Player.Entity.Pos.XYZ, 30, (e) => {
+            // Look for bosses in player's dimension
+            var plrpos = capi.World.Player.Entity.Pos.XYZ;
+            partUtil.WalkEntities(plrpos, 60, (e) => {
                 EntityBehaviorBoss bh;
                 if (e.Alive && e.IsInteractable && (bh = e.GetBehavior<EntityBehaviorBoss>()) != null)
                 {
-                    if (bh.ShowHealthBar) foundBosses.Add(e as EntityAgent);
+                    var dist = getDistance(capi.World.Player.Entity, e);
+                    if (bh.ShowHealthBar && dist <= bh.BossHpbarRange) foundBosses.Add(e as EntityAgent);
+                }
+                return true;
+            }, EnumEntitySearchType.Creatures);
+
+            // Look for bosses in dimension 2 if player is in dimension 0 and vice versa
+            int dimensionDiff = 0;
+            if (capi.World.Player.Entity.Pos.Dimension == Dimensions.NormalWorld)
+            {
+                dimensionDiff = 2;
+            }
+            else
+            {
+                dimensionDiff = -capi.World.Player.Entity.Pos.Dimension;
+            }
+            plrpos.Y += dimensionDiff * BlockPos.DimensionBoundary;
+            partUtil.WalkEntities(plrpos, 60, (e) => {
+                EntityBehaviorBoss bh;
+                if (e.Alive && e.IsInteractable && (bh = e.GetBehavior<EntityBehaviorBoss>()) != null)
+                {
+                    var dist = getDistance(capi.World.Player.Entity, e);
+                    if (bh.ShowHealthBar && dist <= bh.BossHpbarRange) foundBosses.Add(e as EntityAgent);
                 }
                 return true;
             }, EnumEntitySearchType.Creatures);
@@ -66,6 +96,27 @@ namespace Vintagestory.Client.NoObf
                     trackedBosses[i].ComposeGuis();
                 }
             }
+
+            foreach (var hudbar in trackedBosses)
+            {
+                int previousDimension = hudbar.Dimension;
+                int currentDimesnsion = hudbar.TargetEntity.ServerPos.Dimension;
+                if (currentDimesnsion != previousDimension)
+                {
+                    hudbar.ComposeGuis();
+                    hudbar.Dimension = currentDimesnsion;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Returns distance as if both entities in same dimension
+        /// </summary>
+        private double getDistance(Entity player, Entity entity)
+        {
+            Vector3d entityPos = new(entity.Pos.X, entity.Pos.Y, entity.Pos.Z);
+            Vector3d playerPos = new(player.Pos.X, player.Pos.Y, player.Pos.Z);
+            return Vector3d.Distance(entityPos, playerPos);
         }
     }
 
@@ -76,6 +127,7 @@ namespace Vintagestory.Client.NoObf
         float lastMaxHealth;
         public int barIndex;
         public EntityAgent TargetEntity;
+        public int Dimension;
 
         GuiElementStatbar healthbar;
         long listenerId;
@@ -90,6 +142,8 @@ namespace Vintagestory.Client.NoObf
             this.barIndex = barIndex;
 
             ComposeGuis();
+
+            Dimension = bossEntity.ServerPos.Dimension;
         }
         public override string ToggleKeyCombinationCode { get { return null; } }
 
@@ -130,7 +184,9 @@ namespace Vintagestory.Client.NoObf
                 fixedY = 10 + barIndex * 25
             }.WithFixedAlignmentOffset(0, 5);
 
-            ElementBounds healthBarBounds = ElementBounds.Fixed(0, 17, width, 14);
+            ElementBounds healthBarBounds = ElementBounds.Fixed(0, 18, width, 14);
+
+            string name = TargetEntity.GetBehavior<EntityBehaviorBoss>()?.BossName ?? "";
 
             ITreeAttribute healthTree = TargetEntity.WatchedAttributes.GetTreeAttribute("health");
             string key = "bosshealthbar-" + TargetEntity.EntityId;
@@ -139,7 +195,7 @@ namespace Vintagestory.Client.NoObf
                 .CreateCompo(key, dialogBounds.FlatCopy().FixedGrow(0, 20))
                 .BeginChildElements(dialogBounds)
                     .AddIf(healthTree != null)
-                        .AddStaticText(Lang.Get(TargetEntity.Code.Domain + ":item-creature-" + TargetEntity.Code.Path), CairoFont.WhiteSmallText(), ElementBounds.Fixed(0, 0, 200, 20))
+                        .AddStaticText(name, CairoFont.WhiteSmallText(), ElementBounds.Fixed(0, 0, 200, 20))
                         .AddStatbar(healthBarBounds, GuiStyle.HealthBarColor, "healthstatbar")
                     .EndIf()
                 .EndChildElements()

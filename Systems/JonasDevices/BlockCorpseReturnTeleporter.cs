@@ -9,6 +9,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 
@@ -215,7 +217,7 @@ namespace Vintagestory.GameContent
                 {
                     // Might get called from the SystemNetworkProcess thread
                     worldAccessForResolve.Api.Event.EnqueueMainThreadTask(
-                        () => worldAccessForResolve.PlaySoundAt(new AssetLocation("sounds/effect/translocate-breakdimension"), Pos.X + 0.5f, Pos.Y + 0.5f, Pos.Z + 0.5f, null, false, 16),
+                        () => worldAccessForResolve.PlaySoundAt(new AssetLocation("sounds/effect/translocate-breakdimension"), Pos, 0, null, false, 16),
                         "playtelesound"
                     );
                 }

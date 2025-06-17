@@ -6,6 +6,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 
@@ -25,7 +27,7 @@ namespace Vintagestory.GameContent
         public string Type => type;
         public string Material => material;
 
-        
+
         public BlockEntityAntlerMount()
         {
             inv = new InventoryGeneric(1, "antlermount-0", null, null);
@@ -57,8 +59,8 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockPlaced(byItemStack);
 
-            type = byItemStack?.Attributes.GetString("type");
-            material = byItemStack?.Attributes.GetString("material");
+            type ??= byItemStack?.Attributes.GetString("type");
+            material ??= byItemStack?.Attributes.GetString("material");
 
             init();
         }
@@ -83,10 +85,16 @@ namespace Vintagestory.GameContent
                 if (shelvable)
                 {
                     AssetLocation sound = slot.Itemstack?.Block?.Sounds?.Place;
-
+                    var stackCode = slot.Itemstack?.Collectible.Code;
                     if (TryPut(slot, blockSel))
                     {
                         Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
+
+                        Api.World.Logger.Audit("{0} Put 1x{1} on to AntlerMount at {2}.",
+                            byPlayer.PlayerName,
+                            stackCode,
+                            blockSel.Position
+                        );
                         return true;
                     }
 
@@ -128,8 +136,13 @@ namespace Vintagestory.GameContent
 
                 if (stack.StackSize > 0)
                 {
-                    Api.World.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                    Api.World.SpawnItemEntity(stack, Pos);
                 }
+                Api.World.Logger.Audit("{0} Took 1x{1} from AntlerMount at {2}.",
+                    byPlayer.PlayerName,
+                    stack.Collectible.Code,
+                    blockSel.Position
+                );
 
                 MarkDirty();
                 return true;

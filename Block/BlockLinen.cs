@@ -2,6 +2,8 @@
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockLinen : BlockSimpleCoating
@@ -21,7 +23,7 @@ namespace Vintagestory.GameContent
             if (blockSel != null)
             {
                 BlockEntityBarrel beba = api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityBarrel;
-                
+
                 var liqslot = beba?.Inventory[1];
 
                 if (beba != null && !liqslot.Empty)
@@ -55,6 +57,11 @@ namespace Vintagestory.GameContent
                             {
                                 api.World.SpawnItemEntity(bundleStack, byEntity.Pos.XYZ.AddCopy(0, 0.5, 0));
                             }
+                            api.World.Logger.Audit("{0} Took 1x{1} from Barrel at {2}.",
+                                byEntity.GetName(),
+                                bundleStack.Collectible.Code,
+                                blockSel.Position
+                            );
                         }
 
                         handHandling = EnumHandHandling.PreventDefault;

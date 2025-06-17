@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -9,18 +10,17 @@ namespace Vintagestory.GameContent
 {
     public class ItemHoe : Item
     {
-        WorldInteraction[] interactions;
+        WorldInteraction[]? interactions;
 
         public override void OnLoaded(ICoreAPI api)
         {
-            if (api.Side != EnumAppSide.Client) return;
-            ICoreClientAPI capi = api as ICoreClientAPI;
+            if (api is not ICoreClientAPI capi) return;
 
-            interactions = ObjectCacheUtil.GetOrCreate(api, "hoeInteractions", () =>
+            interactions = ObjectCacheUtil.GetOrCreate(capi, "hoeInteractions", () =>
             {
                 List<ItemStack> stacks = new List<ItemStack>();
 
-                foreach (Block block in api.World.Blocks)
+                foreach (Block block in capi.World.Blocks)
                 {
                     if (block.Code == null) continue;
 
@@ -57,6 +57,13 @@ namespace Vintagestory.GameContent
             BlockPos pos = blockSel.Position;
             Block block = byEntity.World.BlockAccessor.GetBlock(pos);
 
+            if (byEntity.World.BlockAccessor.GetBlock(pos.UpCopy()).Id != 0)
+            {
+                (api as ICoreClientAPI)?.TriggerIngameError(this, "covered", Lang.Get("Requires no block above"));
+                handHandling = EnumHandHandling.PreventDefault;
+                return;
+            }
+
             byEntity.Attributes.SetInt("didtill", 0);
 
             if (block.Code.PathStartsWith("soil"))
@@ -70,8 +77,9 @@ namespace Vintagestory.GameContent
         {
             if (blockSel == null) return false;
             if (byEntity.Controls.ShiftKey && byEntity.Controls.CtrlKey) return false;
+            if (byEntity.World.BlockAccessor.GetBlock(blockSel.Position.UpCopy()).BlockId != 0) return false;
 
-            IPlayer byPlayer = (byEntity as EntityPlayer).Player;
+            IPlayer? byPlayer = (byEntity as EntityPlayer)?.Player;
 
             if (byEntity.World is IClientWorldAccessor)
             {
@@ -88,8 +96,6 @@ namespace Vintagestory.GameContent
                 tf.Origin.Set(0f, 0, 0.5f);
                 tf.Rotation.Set(0, rotateWithReset * 45, 0);
                 tf.Translation.Set(scrapeShake , 0, scrapeWithReset / 2);
-
-                byEntity.Controls.UsingHeldItemTransformBefore = tf;
             }
 
             if (secondsUsed > 0.35f && secondsUsed < 0.87f)
@@ -130,20 +136,16 @@ namespace Vintagestory.GameContent
             string fertility = block.LastCodePart(1);
             Block farmland = byEntity.World.GetBlock(new AssetLocation("farmland-dry-" + fertility));
 
-            IPlayer byPlayer = (byEntity as EntityPlayer).Player;
+            IPlayer? byPlayer = (byEntity as EntityPlayer)?.Player;
             if (farmland == null || byPlayer == null) return;
-
-
-
-
-            if (block.Sounds != null) byEntity.World.PlaySoundAt(block.Sounds.Place, pos.X, pos.Y, pos.Z, null);
+            if (block.Sounds != null) byEntity.World.PlaySoundAt(block.Sounds.Place, pos, 0.4, null);
 
             byEntity.World.BlockAccessor.SetBlock(farmland.BlockId, pos);
             slot.Itemstack.Collectible.DamageItem(byEntity.World, byEntity, byPlayer.InventoryManager.ActiveHotbarSlot);
 
             if (slot.Empty)
             {
-                byEntity.World.PlaySoundAt(new AssetLocation("sounds/effect/toolbreak"), byEntity.Pos.X, byEntity.Pos.Y, byEntity.Pos.Z);
+                byEntity.World.PlaySoundAt(new AssetLocation("sounds/effect/toolbreak"), byEntity.Pos.X, byEntity.Pos.InternalY, byEntity.Pos.Z);
             }
 
             BlockEntity be = byEntity.World.BlockAccessor.GetBlockEntity(pos);
