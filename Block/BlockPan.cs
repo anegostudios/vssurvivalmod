@@ -7,12 +7,18 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class PanningDrop : JsonItemStack
     {
         public NatFloat Chance;
         public string DropModbyStat;
+        /// <summary>
+        /// If true, will be removed when in playstyle "Homo Sapiens"
+        /// </summary>
+        public bool ManMade;
     }
 
     public class BlockPan : Block, ITexPositionSource, IContainedMeshSource
