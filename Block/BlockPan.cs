@@ -493,11 +493,11 @@ namespace Vintagestory.GameContent
             AssetLocation shapeloc;
             if (blockMaterialCode != null)
             {
-                shapeloc = new AssetLocation("shapes/block/wood/pan/filled.json");
+                shapeloc = shapeFull;
             }
             else
             {
-                shapeloc = new AssetLocation("shapes/block/wood/pan/empty.json");
+                shapeloc = shapeEmpty;
             }
     
             Shape shape = Vintagestory.API.Common.Shape.TryGet(capi, shapeloc);
