@@ -993,6 +993,7 @@ namespace Vintagestory.GameContent
             api.RegisterEntityBehaviorClass("bossErel", typeof(EntityBehaviorErelBoss));
             api.RegisterEntityBehaviorClass("antlergrowth", typeof(EntityBehaviorAntlerGrowth));
             api.RegisterEntityBehaviorClass("idleanimations", typeof(EntityBehaviorIdleAnimations));
+            api.RegisterEntityBehaviorClass("gait", typeof(EntityBehaviorGait));
             api.RegisterEntityBehaviorClass("rideable", typeof(EntityBehaviorRideable));
             api.RegisterEntityBehaviorClass("attachable", typeof(EntityBehaviorAttachable));
             api.RegisterEntityBehaviorClass("rideableaccessories", typeof(EntityBehaviorRideableAccessories));
