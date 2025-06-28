@@ -217,7 +217,7 @@ namespace Vintagestory.GameContent
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
             Dictionary<string, MultiTextureMeshRef> meshrefs = new Dictionary<string, MultiTextureMeshRef>();
-            string key = "genericTypedContainerMeshRefs" + FirstCodePart() + SubtypeInventory;
+            string key = "genericTypedContainerMeshRefs" + Code + SubtypeInventory;
 
             
             meshrefs = ObjectCacheUtil.GetOrCreate(capi, key, () =>
@@ -249,7 +249,7 @@ namespace Vintagestory.GameContent
             ICoreClientAPI capi = api as ICoreClientAPI;
             if (capi == null) return;
 
-            string key = "genericTypedContainerMeshRefs" + FirstCodePart() + SubtypeInventory;
+            string key = "genericTypedContainerMeshRefs" + Code + SubtypeInventory;
             Dictionary<string, MultiTextureMeshRef> meshrefs = ObjectCacheUtil.TryGet<Dictionary<string, MultiTextureMeshRef>>(api, key);
             
             if (meshrefs != null) {
