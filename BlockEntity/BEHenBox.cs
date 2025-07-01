@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -53,9 +54,9 @@ namespace Vintagestory.GameContent
         }
 
 
-        public virtual bool IsSuitableFor(Entity entity)
+        public virtual bool IsSuitableFor(Entity entity, string[] nestTypes)
         {
-            return entity is EntityAgent && entity.Code.Path == "chicken-hen";
+            return nestTypes?.Contains(((BlockHenbox)Block).NestType) == true;
         }
 
         public bool Occupied(Entity entity)
@@ -75,59 +76,20 @@ namespace Vintagestory.GameContent
 
         public virtual float DistanceWeighting => 2 / (CountEggs() + 2);
 
-
-        public virtual bool TryAddEgg(Entity entity, string chickCode, double incubationTime)
+        public virtual bool TryAddEgg(ItemStack egg)
         {
             for (int i = 0; i < inventory.Count; ++i) {
                 if (inventory[i].Empty) {
-                    inventory[i].Itemstack = MakeEggItem(entity, chickCode, incubationTime);
+                    inventory[i].Itemstack = egg;
                     inventory.DidModifyItemSlot(inventory[i]);
-                    timeToIncubate = 0;
+                    double? incubationDays = (egg.Attributes["chick"] as TreeAttribute)?.GetDouble("incubationDays");
+                    if (incubationDays != null) timeToIncubate = Math.Max(timeToIncubate, (double)incubationDays);
+                    occupiedTimeLast = Api.World.Calendar.TotalDays;
+                    MarkDirty();
                     return true;
                 }
             }
-            if (timeToIncubate == 0)
-            {
-                timeToIncubate = incubationTime;
-                occupiedTimeLast = entity.World.Calendar.TotalDays;
-                MarkDirty();
-            }
             return false;
-        }
-
-        protected virtual ItemStack MakeEggItem(Entity entity, string chickCode, double incubationTime, ICoreAPI api=null)
-        {
-            api ??= this.Api;
-            ItemStack eggStack;
-            JsonItemStack[] eggTypes = entity?.Properties.Attributes?["eggTypes"].AsArray<JsonItemStack>();
-            if (eggTypes == null)
-            {
-                string fallbackCode = "game:egg-chicken-raw";
-                if (entity != null) api.Logger.Warning("No egg type specified for entity " + entity.Code + ", falling back to " + fallbackCode);
-                eggStack = new ItemStack(api.World.GetItem(fallbackCode));
-            }
-            else
-            {
-                JsonItemStack jsonEgg = eggTypes[api.World.Rand.Next(eggTypes.Length)];
-                if (!jsonEgg.Resolve(api.World, null, false))
-                {
-                    api.Logger.Warning("Failed to resolve egg " + jsonEgg.Type + " with code " + jsonEgg.Code + " for entity " + entity.Code);
-                    return null;
-                }
-                eggStack = new ItemStack(jsonEgg.ResolvedItemstack.Collectible);
-            }
-
-            if (chickCode != null) {
-                TreeAttribute chickTree = new TreeAttribute();
-                if (entity != null) chickCode = AssetLocation.Create(chickCode, entity?.Code.Domain ?? "game");
-                chickTree.SetString("code", chickCode);
-                chickTree.SetInt("generation", entity?.WatchedAttributes.GetInt("generation", 0) + 1 ?? 0);
-                EntityAgent eagent = entity as EntityAgent;
-                if (eagent != null) chickTree.SetLong("herdID", eagent.HerdId);
-                eggStack.Attributes["chick"] = chickTree;
-            }
-
-            return eggStack;
         }
 
         public int CountEggs()
@@ -241,7 +203,7 @@ namespace Vintagestory.GameContent
                 }
                 for (int i = 0; i < eggsWithBlock; ++i)
                 {
-                    inventory[i].Itemstack ??= MakeEggItem(null, null, 0, api);
+                    inventory[i].Itemstack ??= new ItemStack(api.World.GetItem("game:egg-chicken-raw"));
                     inventory.DidModifyItemSlot(inventory[i]);
                 }
 
@@ -313,7 +275,11 @@ namespace Vintagestory.GameContent
                 if (chickCode != null)
                 {
                     int generation = tree.GetInt("gen" + i);
-                    inventory[i].Itemstack = MakeEggItem(null, chickCode, 0, worldForResolving.Api);
+                    inventory[i].Itemstack = new ItemStack(worldForResolving.GetItem("game:egg-chicken-raw"));
+                    TreeAttribute chickTree = new TreeAttribute();
+                    chickTree.SetString("code", chickCode);
+                    chickTree.SetInt("generation", generation);
+                    inventory[i].Itemstack.Attributes["chick"] = chickTree;
                     inventory.DidModifyItemSlot(inventory[i]);
                 }
             }

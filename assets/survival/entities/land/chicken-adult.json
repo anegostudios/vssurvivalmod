@@ -249,6 +249,7 @@
 						priorityByType: {"*-hen":1.36, "*":0},
 						layTime: 5,
 						chickCode: "chicken-baby",
+						nestTypes: [ "ground" ],
 						sitDays: 0.9,
 						incubationDays: 5,
 						movespeed: 0.006,

@@ -6,6 +6,7 @@
 		{code: "eggCount", states: ["empty", "1egg", "2eggs", "3eggs"]}
 	],
 	attributes: {
+        nestType: "ground",
         inventoryClassName: "henbox",
         quantitySlots: 3,
         displayTransforms: [

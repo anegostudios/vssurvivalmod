@@ -3,6 +3,7 @@
 	class: "BlockHenbox",
 	entityClass: "HenBox",
 	attributes: {
+        nestType: "ground",
         inventoryClassName: "henbox",
         quantitySlots: 3,
         displayTransforms: [

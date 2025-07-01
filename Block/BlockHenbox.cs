@@ -7,6 +7,17 @@ namespace Vintagestory.GameContent
 {
     public class BlockHenbox : Block
     {
+        public string NestType;
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+
+            NestType = Attributes?["nestType"]?.AsString();
+            if (NestType == null) api.Logger.Warning("BlockHenbox " + Code + " nestType attribute not set, defaulting to \"ground\"");
+            NestType ??= "ground";
+        }
+
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel) {
             var blockEntity = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityHenBox;
             if (blockEntity != null) {
