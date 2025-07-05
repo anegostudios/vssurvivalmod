@@ -12,11 +12,23 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using System.Diagnostics;
+using Vintagestory.API;
 
 #nullable disable
 
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Allows a creature to be contained inside of this block, as well as catching and releasing the entity.
+    /// Note that this behavior is built around use with the reed chest, and may have unexpected results with other blocks.
+    /// This behavior uses the code "CreatureContainer", and has no properties.
+    /// </summary>
+    /// <example><code lang="json">
+    ///"behaviors": [
+	///	{ "name": "CreatureContainer" }
+	///]
+    /// </code></example>
+    [DocumentAsJson]
     public class BlockBehaviorCreatureContainer : BlockBehavior
     {
         public double CreatureSurvivalDays = 1;
@@ -171,15 +183,19 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            if (entitySel != null)
+            if (entitySel != null && entitySel.Entity.Alive && entitySel.Entity is not EntityBoat)
             {
-                if (!IsCatchable(entitySel.Entity))
+                if (!IsCatchableAtThisGeneration(entitySel.Entity))
                 {
-                    if (entitySel.Entity is not EntityBoat)
-                    {
-                        (byEntity.Api as ICoreClientAPI)?.TriggerIngameError(this, "notcatchable", Lang.Get("This animal is too large, or too wild to catch with a basket"));
-                    }
-                    
+                    (byEntity.Api as ICoreClientAPI)?.TriggerIngameError(this, "toowildtocatch", Lang.Get("animaltrap-toowildtocatch-error"));
+
+                    return;
+                }
+
+                if (!IsCatchableInThisTrap(entitySel.Entity))
+                {
+                    (byEntity.Api as ICoreClientAPI)?.TriggerIngameError(this, "notcatchable", Lang.Get("animaltrap-notcatchable-error"));
+
                     return;
                 }
 
@@ -225,15 +241,22 @@ namespace Vintagestory.GameContent
                 slot.MarkDirty();
                 emptyBackpackSlot.MarkDirty();
 
-                
+
 
                 return;
             }
         }
 
-        private bool IsCatchable(Entity entity)
-        {       
-            return entity.Properties.Attributes?.IsTrue("basketCatchable") == true && entity.Properties.Attributes["trapChance"].AsFloat() > 0 && entity.WatchedAttributes.GetAsInt("generation") > 4 && entity.Alive;
+        private bool IsCatchableInThisTrap(Entity entity)
+        {
+            return TrapChances.FromEntityAttr(entity) is Dictionary<string, TrapChances> trapChancesByTrapType &&
+                   trapChancesByTrapType.TryGetValue(block.Attributes["traptype"].AsString("small"), out var trapMeta) &&
+                   trapMeta.TrapChance > 0;
+        }
+
+        private bool IsCatchableAtThisGeneration(Entity entity)
+        {
+            return entity.WatchedAttributes.GetAsInt("generation") >= (entity.Properties.Attributes?["trapPickupGeneration"].AsInt(5) ?? 5);
         }
 
         public static void CatchCreature(ItemSlot slot, Entity entity)

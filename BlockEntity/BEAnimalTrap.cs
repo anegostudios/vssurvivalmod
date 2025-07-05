@@ -1,8 +1,10 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -116,7 +118,7 @@ namespace Vintagestory.GameContent
 
         public bool Interact(IPlayer player, BlockSelection blockSel)
         {
-            if (TrapState == EnumTrapState.Ready || TrapState == EnumTrapState.Destroyed) return true;
+            if (TrapState is EnumTrapState.Ready or EnumTrapState.Destroyed) return true;
 
             if (inv[0].Empty)
             {
@@ -139,7 +141,8 @@ namespace Vintagestory.GameContent
                         blockSel.Position
                     );
                 }
-            } else
+            }
+            else
             {
                 if (!player.InventoryManager.TryGiveItemstack(inv[0].Itemstack))
                 {
@@ -161,16 +164,27 @@ namespace Vintagestory.GameContent
         private void tryReadyTrap(IPlayer player)
         {
             var heldSlot = player.InventoryManager.ActiveHotbarSlot;
-            if (heldSlot.Empty) return;
+            if (heldSlot?.Empty != false) return;
 
-            var collobj = heldSlot?.Itemstack.Collectible;
-            if (!heldSlot.Empty && (collobj.NutritionProps != null || collobj.Attributes?["foodTags"].Exists == true))
+            var collobj = heldSlot.Itemstack.Collectible;
+
+            if ((collobj.NutritionProps == null && collobj.Attributes?["foodTags"].Exists != true) ||
+                !Api.World.EntityTypes.Any(type => type.Attributes?["creatureDiet"].AsObject<CreatureDiet>()?.Matches(heldSlot.Itemstack, true, 0.5f) == true))
             {
-                TrapState = EnumTrapState.Ready;
-                inv[0].Itemstack = heldSlot.TakeOut(1);
-                heldSlot.MarkDirty();
-                MarkDirty(true);
+                (Api as ICoreClientAPI)?.TriggerIngameError(this, "unappetizingbait", Lang.Get("animaltrap-unappetizingbait-error"));
+                return;
             }
+
+            if (Block.Attributes?["excludeFoodTags"].AsArray<string>()?.Any(tag => collobj.Attributes?["foodTags"].AsArray<string>()?.Contains(tag) == true) == true)
+            {
+                (Api as ICoreClientAPI)?.TriggerIngameError(this, "cannotfitintrap", Lang.Get("animaltrap-cannotfitintrap-error"));
+                return;
+            }
+
+            TrapState = EnumTrapState.Ready;
+            inv[0].Itemstack = heldSlot.TakeOut(1);
+            heldSlot.MarkDirty();
+            MarkDirty(true);
         }
 
         public bool IsSuitableFor(Entity entity, CreatureDiet diet)
@@ -322,7 +336,7 @@ namespace Vintagestory.GameContent
         {
             if (TrapState == EnumTrapState.Destroyed)
             {
-                mesher.AddMeshData(GetOrCreateMesh(destroyedShape), rotMat);
+                mesher.AddMeshData(GetOrCreateMesh(destroyedShape, tessThreadTesselator.GetTextureSource(Block)), rotMat);
                 return true;
             }
 
@@ -346,25 +360,14 @@ namespace Vintagestory.GameContent
 
         public MeshData GetOrCreateMesh(CompositeShape cshape, ITexPositionSource texSource = null)
         {
-            return ObjectCacheUtil.GetOrCreate(Api, "destroyedBasketTrap-" + cshape + (texSource == null ? "-d" : "-t"), () =>
-            {
-                cshape.Base.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
-                var shape = Api.Assets.Get<Shape>(cshape.Base);
-                if (texSource == null)
-                {
-                    texSource = new ShapeTextureSource(capi, shape, cshape.Base.ToShortString());
-                }
-
-                (Api as ICoreClientAPI).Tesselator.TesselateShape(
-                    "basket trap decal", 
-                    shape, 
-                    out var meshdata, 
-                    texSource, 
-                    new Vec3f(cshape.rotateX, cshape.rotateY, cshape.rotateZ)
-                );
-
-                return meshdata;
-            });
+            string key = Block.Variant["material"] + "BasketTrap-" + cshape.ToString();
+            return ObjectCacheUtil.GetOrCreate(capi, key, () =>
+                capi.TesselatorManager.CreateMesh(
+                    "basket trap decal",
+                    cshape,
+                    (shape, name) => new ShapeTextureSource(capi, shape, name),
+                    texSource
+            ));
         }
     }
 }

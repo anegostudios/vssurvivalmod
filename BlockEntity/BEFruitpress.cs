@@ -876,7 +876,7 @@ namespace Vintagestory.GameContent
                     int stacksize = mashStack.Collectible.Code.Path != "rot" ? dryStackSize : MashSlot.StackSize;
                     string stackname = MashSlot.GetStackName().ToLowerInvariant();
 
-                    if (jprops.ReturnStack?.ResolvedItemstack != null)
+                    if (jprops?.ReturnStack?.ResolvedItemstack != null)
                     {
                         stacksize = (int)(jprops.ReturnStack.ResolvedItemstack.StackSize * Math.Round(juiceableLitresTransfered, 2, MidpointRounding.AwayFromZero));
                         stackname = jprops.ReturnStack.ResolvedItemstack.GetName().ToLowerInvariant();

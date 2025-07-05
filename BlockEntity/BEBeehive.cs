@@ -89,8 +89,8 @@ namespace Vintagestory.GameContent
 
             orientation = Block.Variant["side"];
             material = Block.Variant["material"];
-            isWildHive = Block.FirstCodePart() != "skep";
-            if (!isWildHive && api.Side == EnumAppSide.Client)
+            isWildHive = Block is BlockBeehive;
+            if (!isWildHive && api.Side == EnumAppSide.Client && !api.ObjectCache.ContainsKey("beehive-" + material + "-harvestablemesh-" + orientation))
             {
                 ICoreClientAPI capi = api as ICoreClientAPI;
                 Block fullSkep = api.World.GetBlock(Block.CodeWithVariant("type", "populated"));
@@ -235,19 +235,24 @@ namespace Vintagestory.GameContent
             {
                 if (block.Id == 0) return;
 
-                // Only do costly Attributes check if the block is a plant or a plant container
-                if (block.BlockMaterial == EnumBlockMaterial.Plant || block is BlockPlantContainer)
+                // First we do costly Attributes check only if the block is a plant
+                if (block.BlockMaterial == EnumBlockMaterial.Plant)
                 {
                     if (block.Attributes?.IsTrue("beeFeed") == true) scanQuantityNearbyFlowers++;
                     return;
                 }
 
-                if (block.BlockMaterial != EnumBlockMaterial.Other) return;   // All types of skep and wildbeehive have BlockMaterial: "Other"
+                // Then we do costly Attributes check for plant containers only if they are not empty
+                if ((block as BlockPlantContainer)?.GetContents(Api.World, new(x, y, z))?.Collectible is CollectibleObject plant)
+                {
+                    if (plant.Attributes?.IsTrue("beeFeed") == true) scanQuantityNearbyFlowers++; 
+                    return;
+                }
 
-                string blockcode = block.FirstCodePart();
-                string blocktype = block.Variant["type"];
-                if (blockcode == "skep" && blocktype == "empty") scanEmptySkeps.Add(new BlockPos(x, y, z));
-                else if ((blockcode == "skep" && blocktype == "populated") || blockcode.StartsWithOrdinal("wildbeehive")) scanQuantityNearbyHives++;
+                if (block is not BlockSkep and not BlockBeehive) return; // Lastly we skip anything that isn't a beehive or a skep
+
+                if (!block.Variant["type"].EqualsFast("empty")) scanQuantityNearbyHives++;
+                else scanEmptySkeps.Add(new BlockPos(x, y, z));
             });
 
             scanIteration++;
@@ -344,22 +349,17 @@ namespace Vintagestory.GameContent
 
         private void TryPopCurrentSkep()
         {
-            Block skepToPopBlock = Api.World.BlockAccessor.GetBlock(skepToPop);
-            if (skepToPopBlock == null || !(skepToPopBlock is BlockSkep))
+            if (Api.World.BlockAccessor.GetBlock(skepToPop) is not BlockSkep skepToPopBlock)
             {
                 // Skep must have changed since last time we checked, so lets restart 
                 this.skepToPop = null;
                 return;
             }
 
-            string orient = skepToPopBlock.LastCodePart();
-
-            string blockcode = "skep-populated-" + orient;
-            Block fullSkep = Api.World.GetBlock(skepToPopBlock.CodeWithVariant("type", "populated"));
-
-            if (fullSkep == null)
+            var blockcode = skepToPopBlock.CodeWithVariant("type", "populated");
+            if (Api.World.GetBlock(blockcode) is not BlockSkep fullSkep)
             {
-                Api.World.Logger.Warning("BEBeehive.TryPopSkep() - block with code {0} does not exist?", blockcode);
+                Api.World.Logger.Warning("BEBeehive.TryPopSkep() - block with code {0} does not exist?", blockcode.ToShortString());
                 return;
             }
 
@@ -498,7 +498,6 @@ namespace Vintagestory.GameContent
             }
 
             string str = Lang.Get("beehive-flowers-pop", quantityNearbyFlowers, popSizeLocalized);
-            if (Harvestable) str += "\n" + Lang.Get("Harvestable");
 
             if (skepToPop != null && Api.World.Calendar.TotalHours > cooldownUntilTotalHours)
             {

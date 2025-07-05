@@ -1,4 +1,5 @@
-﻿using Vintagestory.API.Common;
+﻿using Vintagestory.API;
+using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
@@ -7,10 +8,26 @@ using Vintagestory.API.MathTools;
 namespace Vintagestory.GameContent
 {
     /// <summary>
-    /// Publishes the BlockPos when a Block is broken with the given event name
+    /// Publishes the BlockPos when a Block is broken with the given event name. Likely used in tandem with code mods. 
+    /// Uses the "PushEventOnBlockBroken" code.
     /// </summary>
+    /// <example><code lang="json">
+    ///"behaviorsByType": {
+	///	"bamboo-grown-*": [
+	///		{
+	///			"name": "PushEventOnBlockBroken",
+	///			"properties": { "eventName": "testForDecay" }
+	///		}
+	///	]
+	///}
+    /// </code></example>
+    [DocumentAsJson]
     public class BlockBehaviorPushEventOnBlockBroken : BlockBehavior
     {
+        /// <summary>
+        /// The name of the event to call. Use Api.Event.RegisterEventBusListener in code to register an event.
+        /// </summary>
+        [DocumentAsJson("Required")]
         private string eventName;
 
         public BlockBehaviorPushEventOnBlockBroken(Block block) : base(block) { }

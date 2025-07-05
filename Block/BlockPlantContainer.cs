@@ -77,8 +77,7 @@ namespace Vintagestory.GameContent
 
         public ItemStack GetContents(IWorldAccessor world, BlockPos pos)
         {
-            BlockEntityPlantContainer be = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityPlantContainer;
-            return be?.GetContents();
+            return GetBlockEntity<BlockEntityPlantContainer>(pos)?.GetContents();
         }
 
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
@@ -23,7 +23,7 @@ namespace Vintagestory.GameContent
         ICoreAPI api;
         ICoreClientAPI capi;
         bool soundsActive;
-        float accum;        
+        float accum;
 
         ModSystemProgressBar mspb;
         IProgressBar progressBar;
@@ -41,7 +41,7 @@ namespace Vintagestory.GameContent
             mspb = capi.ModLoader.GetModSystem<ModSystemProgressBar>();
         }
 
-        
+
         public override void StartServerSide(ICoreServerAPI api)
         {
             this.api = api;
@@ -114,7 +114,7 @@ namespace Vintagestory.GameContent
                         eplr.WatchedAttributes.RemoveAttribute("remainingMountedStrengthHours");
                         playersToRemove.Add(eplr.PlayerUID);
                     }
-                }                
+                }
             }
 
             foreach (var val in playersToRemove) playersOnRatlines.Remove(val);
@@ -447,7 +447,33 @@ namespace Vintagestory.GameContent
             float step = GlobalConstants.PhysicsFrameTime;
             var motion = SeatsToMotion(step);
 
-            if (!Swimming) return;
+            if (!Swimming)   // If not swimming then the boat is on land, or partly touching land or in water that is too shallow
+            {
+                if (!unfurlSails || sailPosition > 0) return;    // For rafts or sailboat with unfurled sails, it cannot move at all
+
+                // For furled sails, we allow the player to attempt to move it slowly using the forwards or backwards keys (hopefully to get to deeper water)
+                bool nudgeForwards = false;
+                var bhs = GetBehavior<EntityBehaviorSeatable>();
+                foreach (var sseat in bhs.Seats)
+                {
+                    var seat = sseat as EntityBoatSeat;
+                    if (!seat.Config.Controllable) continue;
+                    if (seat.Passenger is EntityPlayer pl)
+                    {
+                        if (seat.Passenger.EntityId != CurrentlyControllingEntityId) continue;
+                        var controls = seat.controls;
+                        if (controls.Forward || controls.Backward)
+                        {
+                            nudgeForwards = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!nudgeForwards) return;
+
+                motion *= 0.5;   // Move it slowly
+            }
 
             // Add some easing to it
             ForwardSpeed += (motion.X * SpeedMultiplier - ForwardSpeed) * dt;
@@ -526,8 +552,18 @@ namespace Vintagestory.GameContent
                 }
                 if (seat.Config.BodyYawLimit != null && seat.Passenger is EntityPlayer eplr)
                 {
-                    eplr.BodyYawLimits = new AngleConstraint(Pos.Yaw + seat.Config.MountRotation.Y * GameMath.DEG2RAD, (float)seat.Config.BodyYawLimit);
-                    eplr.HeadYawLimits = new AngleConstraint(Pos.Yaw + seat.Config.MountRotation.Y * GameMath.DEG2RAD, GameMath.PIHALF);
+                    if (eplr.BodyYawLimits == null)
+                    {
+                        eplr.BodyYawLimits = new AngleConstraint(Pos.Yaw + seat.Config.MountRotation.Y * GameMath.DEG2RAD, (float)seat.Config.BodyYawLimit);
+                        eplr.HeadYawLimits = new AngleConstraint(Pos.Yaw + seat.Config.MountRotation.Y * GameMath.DEG2RAD, GameMath.PIHALF);
+                    }
+                    else
+                    {
+                        eplr.BodyYawLimits.X = Pos.Yaw + seat.Config.MountRotation.Y * GameMath.DEG2RAD;
+                        eplr.BodyYawLimits.Y = (float)seat.Config.BodyYawLimit;
+                        eplr.HeadYawLimits.X = Pos.Yaw + seat.Config.MountRotation.Y * GameMath.DEG2RAD;
+                        eplr.HeadYawLimits.Y = GameMath.PIHALF;
+                    }
                 }
 
                 if (!seat.Config.Controllable || bh.Controller != null)
@@ -567,7 +603,7 @@ namespace Vintagestory.GameContent
 
                 if (unfurlSails && sailPosition > 0)
                 {
-                    linearMotion += str * dt * sailPosition;
+                    linearMotion += str * dt * sailPosition * 1.5f;
                 }
 
                 if (!controls.TriesToMove)
@@ -600,14 +636,18 @@ namespace Vintagestory.GameContent
                 }
 
 
-                if ((controls.Forward || controls.Backward))
+                if (controls.Forward || controls.Backward)
                 {
                     float dir = controls.Forward ? 1 : -1;
 
                     var yawdist = Math.Abs(GameMath.AngleRadDistance(SidedPos.Yaw, seat.Passenger.SidedPos.Yaw));
                     bool isLookingBackwards = yawdist > GameMath.PIHALF;
                     if (isLookingBackwards && requiresPaddlingTool) dir *= -1;
-                    linearMotion += str * dir * dt * 2f * (unfurlSails && sailPosition == 0 ? 0.15f : 1);
+
+                    float ctrlstr = 2f;
+                    if (unfurlSails) ctrlstr = sailPosition == 0 ? 0.4f : 0f;
+
+                    linearMotion += str * dir * dt * ctrlstr;
                 }
             }
 
@@ -622,7 +662,7 @@ namespace Vintagestory.GameContent
                 if (tryPickup(byEntity, mode)) return;
             }
 
-            if (GetBehavior<EntityBehaviorSelectionBoxes>()?.IsAPCode((byEntity as EntityPlayer).EntitySelection, "LowerMastAP") == true) 
+            if (GetBehavior<EntityBehaviorSelectionBoxes>()?.IsAPCode((byEntity as EntityPlayer).EntitySelection, "LowerMastAP") == true)
             {
                 sailPosition = (ushort)((sailPosition + 1) % 3);
             }
@@ -683,7 +723,7 @@ namespace Vintagestory.GameContent
             var wis = base.GetInteractionHelp(world, es, player);
 
             if (GetBehavior<EntityBehaviorSelectionBoxes>()?.IsAPCode(es, "LowerMastAP") == true)
-            { 
+            {
                 wis = wis.Append(new WorldInteraction()
                 {
                     ActionLangCode = "sailboat-unfurlsails",
@@ -745,7 +785,7 @@ namespace Vintagestory.GameContent
             return text;
         }
 
-        
+
 
     }
 }

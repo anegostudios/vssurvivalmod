@@ -333,13 +333,9 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public virtual string ContainerNameShort => Lang.Get("pot");
-        public virtual string ContainerNameShortPlural => Lang.Get("pots");
-
-
         public string GetContainedName(ItemSlot inSlot, int quantity)
         {
-            return quantity == 1 ? Lang.Get("{0} {1}", quantity, ContainerNameShort) : Lang.Get("{0} {1}", quantity, ContainerNameShortPlural);
+            return GetHeldItemName(inSlot.Itemstack);
         }
 
         public string GetContainedInfo(ItemSlot inSlot)
@@ -353,25 +349,31 @@ namespace Vintagestory.GameContent
 
             if (stacks.Length == 0)
             {
-                return Lang.Get("Empty {0}", ContainerNameShort);
+                return Lang.GetWithFallback("contained-empty-container", "{0} (Empty)", inSlot.GetStackName());
             }
 
-            if (recipe != null)
+            if (inSlot.Itemstack?.Block is not Block contBlock) return Lang.Get("unknown");
+
+            var emptyCode = contBlock.Attributes?["emptiedBlockCode"].AsString();
+            string emptyName = new ItemStack(emptyCode == null ? contBlock : api.World.GetBlock(emptyCode)).GetName();
+
+            if (recipe != null || MealMeshCache.ContentsRotten(stacks))
             {
                 string message;
-                string outputName = recipe.GetOutputName(world, stacks);
-                if (recipe.CooksInto != null)
+                string outputName = recipe?.GetOutputName(world, stacks) ?? Lang.Get("Rotten Food");
+                if (recipe?.CooksInto != null)
                 {
                     message = "contained-nonfood-portions";
                     int index = outputName.IndexOf('\n');
                     if (index > 0) outputName = outputName.Substring(0, index);
                 }
-                else
+                else if (MealMeshCache.ContentsRotten(stacks))
                 {
-                    message = servings == 1 ? "contained-food-servings-singular" : "contained-food-servings-plural";
-                    // In 1.20 we need to use language plural format instead, here and all similar code!
+                    message = "contained-food-singleservingmax"; // This lets me show the "Rotten Food" name without the "1 serving of" text
+                    servings = 1;
                 }
-                return Lang.Get(message, Math.Round(servings, 1), outputName, ContainerNameShort, PerishableInfoCompactContainer(api, inSlot));
+                else message = "contained-food-servings";
+                return Lang.Get(message, Math.Round(servings, 1), outputName, emptyName, PerishableInfoCompactContainer(api, inSlot));
             }
 
             StringBuilder sb = new StringBuilder();
@@ -380,7 +382,7 @@ namespace Vintagestory.GameContent
                 if (sb.Length > 0) sb.Append(", ");
                 sb.Append(stack.GetName());
             }
-            var str = Lang.Get("contained-foodstacks-insideof", sb.ToString(), ContainerNameShort);
+            var str = Lang.Get("contained-foodstacks-insideof", sb.ToString(), emptyName);
             sb.Clear();
             sb.Append(str);
 

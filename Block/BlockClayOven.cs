@@ -56,8 +56,8 @@ namespace Vintagestory.GameContent
 
             if (capi != null) interactions = ObjectCacheUtil.GetOrCreate(api, "ovenInteractions", () =>
             {
-                List<ItemStack> bakeableStacklist = new List<ItemStack>();
-                List<ItemStack> fuelStacklist = new List<ItemStack>();
+                List<ItemStack> bakeableStacklist = [];
+                List<ItemStack> fuelStacklist = [];
                 List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(api, true);
 
                 foreach (CollectibleObject obj in api.World.Collectibles)
@@ -73,6 +73,20 @@ namespace Vintagestory.GameContent
                         List<ItemStack> stacks = obj.GetHandBookStacks(capi);
                         if (stacks != null) bakeableStacklist.AddRange(stacks);
                     }
+                }
+
+                foreach (var stack in bakeableStacklist)
+                {
+                    if (stack.Collectible is not BlockPie pieBlock) continue;
+
+                    stack.Attributes.SetInt("pieSize", 4);
+                    stack.Attributes.SetString("topCrustType", "square");
+                    stack.Attributes.SetInt("bakeLevel", 0);
+
+                    ItemStack doughStack = new(api.World.GetItem("dough-spelt"), 2);
+                    ItemStack fillingStack = new(api.World.GetItem("fruit-redapple"), 2);
+                    pieBlock.SetContents(stack, [doughStack, fillingStack, fillingStack, fillingStack, fillingStack, doughStack]);
+                    stack.Attributes.SetFloat("quantityServings", 1);
                 }
 
                 return new WorldInteraction[] {

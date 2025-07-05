@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics.Metrics;
 using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
@@ -1379,7 +1378,31 @@ namespace Vintagestory.GameContent
         {
             if(stack.Class == EnumItemClass.Block)
             {
-                MeshRefs[index] = capi.TesselatorManager.GetDefaultBlockMeshRef(stack.Block);
+                if (stack.Block is IBlockMealContainer be)
+                {
+                    var mealMeshCache = capi.ModLoader.GetModSystem<MealMeshCache>();
+                    var key = mealMeshCache.GetMealHashCode(stack);
+                    Dictionary<int, MultiTextureMeshRef> meshrefs;
+                    if (capi!.ObjectCache.TryGetValue("cookedMeshRefs", out var obj))
+                    {
+                        meshrefs = obj as Dictionary<int, MultiTextureMeshRef> ?? [];
+                        if(!meshrefs.TryGetValue(key, out MeshRefs[index]))
+                        {
+                            if (be is BlockCookedContainer bc)
+                            {
+                                MeshRefs[index] = mealMeshCache!.GetOrCreateMealInContainerMeshRef(stack.Block, be.GetCookingRecipe(capi.World, stack), be.GetNonEmptyContents(capi.World, stack), new Vec3f(0, bc.yoff/16f, 0));
+                            }
+                            else
+                            {
+                                MeshRefs[index] = mealMeshCache!.GetOrCreateMealInContainerMeshRef(stack.Block, be.GetCookingRecipe(capi.World, stack), be.GetNonEmptyContents(capi.World, stack));
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    MeshRefs[index] = capi.TesselatorManager.GetDefaultBlockMeshRef(stack.Block);
+                }
             }
             // shingle/bricks are items but uses Stacking layout to get the mesh, so this should be not needed atm
             else if(stack.Class == EnumItemClass.Item && StorageProps.Layout != EnumGroundStorageLayout.Stacking)

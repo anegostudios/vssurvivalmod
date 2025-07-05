@@ -42,6 +42,11 @@ namespace Vintagestory.GameContent
 
         }
 
+        public virtual void DoCheckPlayerInventory(IPlayerInventoryManager inventoryManager)
+        {
+
+        }
+
         public virtual void FromJson(JsonObject job)
         {
 

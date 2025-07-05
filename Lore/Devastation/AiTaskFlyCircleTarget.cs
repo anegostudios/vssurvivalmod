@@ -86,7 +86,8 @@ public class AiTaskFlyCircleTarget : AiTaskFlyCircle
         CenterPos.Y += dimensionOffset(TargetDimension, CurrentDimension);
     }
 
-    public override bool ContinueExecute(float dt)
+    public override bool 
+        ContinueExecute(float dt)
     {
         CenterPos = targetEntity.ServerPos.XYZ;
         CenterPos.Y += dimensionOffset(TargetDimension, CurrentDimension);

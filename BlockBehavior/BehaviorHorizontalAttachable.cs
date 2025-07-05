@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -7,11 +8,73 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Forces a block to only allow placement on the side of another block. Requires use of the "horizontalorientation" variant group.
+    /// Uses the code "HorizontalAttachable".
+    /// </summary>
+    /// <example><code lang="json">
+    ///"behaviors": [
+	///	{
+	///		"name": "HorizontalAttachable",
+	///		"properties": {
+	///			"handleDrops": false,
+	///			"attachmentAreas": {
+	///				"north": {
+	///					"x1": 7,
+	///					"y1": 0,
+	///					"z1": 15,
+	///					"x2": 8,
+	///					"y2": 6,
+	///					"z2": 15,
+	///					"rotateY": 180
+	///				},
+	///				"east": {
+	///					...
+	///				},
+	///				"south": {
+	///					...
+	///				},
+	///				"west": {
+	///					...
+	///				}
+	///			}
+	///		}
+	///	}
+	///]
+    /// </code>
+    /// <code lang="json">
+    ///"variantgroups": [
+	///	{
+	///		"code": "side",
+	///		"loadFromProperties": "abstract/horizontalorientation"
+	///	}
+	///]
+    /// </code></example>
+    [DocumentAsJson]
     public class BlockBehaviorHorizontalAttachable : BlockBehavior
     {
+        /// <summary>
+        /// Should the drops be handled by this behavior? If true, then uses values from <see cref="dropBlockFace"/> or <see cref="dropBlock"/>.
+        /// </summary>
+        [DocumentAsJson("Optional", "False")]
         bool handleDrops = true;
+
+        /// <summary>
+        /// The 'face' variant to drop when this block is mined, if <see cref="handleDrops"/> is set and <see cref="dropBlock"/> is not set.
+        /// </summary>
+        [DocumentAsJson("Optional", "north")]
         string dropBlockFace = "north";
+
+        /// <summary>
+        /// A custom block to drop when this block is mined, if <see cref="handleDrops"/> is set.
+        /// </summary>
+        [DocumentAsJson("Optional", "None")]
         string dropBlock = null;
+
+        /// <summary>
+        /// A list of cuboids for each face which define where the object should be attached for each.
+        /// </summary>
+        [DocumentAsJson("Optional", "None")]
         Dictionary<string, Cuboidi> attachmentAreas;
 
         public BlockBehaviorHorizontalAttachable(Block block) : base(block)

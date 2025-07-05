@@ -1,4 +1,5 @@
-﻿using Vintagestory.API.Common;
+﻿using Vintagestory.API;
+using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
@@ -9,7 +10,15 @@ namespace Vintagestory.GameContent
     /// <summary>
     /// Forces the Block to drop as an item when surrounded by air blocks. It will override drops returned by the Block
     /// when this happens.
+    /// Uses the code "BreakIfFloating". This behavior doesn't use any properties.
     /// </summary>
+    /// <example>
+    /// <code lang="json">
+    ///"behaviors": [
+	///	{ "name": "BreakIfFloating" }
+	///]
+    ///</code></example>
+    [DocumentAsJson]
     public class BlockBehaviorBreakIfFloating : BlockBehavior
     {
         public bool AllowFallingBlocks;

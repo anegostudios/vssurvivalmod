@@ -12,28 +12,55 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public enum EnumTopCrustType
+    public class PieTopCrustType
     {
-        Full, Square, Diagonal
+        public required string Code;
+        public required string ShapeElement;
     }
 
     // Definition: GetContents() must always return a ItemStack[] of array length 6
     // [0] = crust
     // [1-4] = filling
     // [5] = topping (unused atm)
-    public class BlockPie : BlockMeal, IBakeableCallback
+    public class BlockPie : BlockMeal, IBakeableCallback, IShelvable
     {
         public string State => Variant["state"];
         protected override bool PlacedBlockEating => false;
+
+        public EnumShelvableLayout? GetShelvableType(ItemStack stack)
+        {
+            switch (stack.Attributes.GetAsInt("pieSize"))
+            {
+                case 1:
+                    return EnumShelvableLayout.Quadrants;
+                case 2:
+                    return EnumShelvableLayout.Halves;
+                default:
+                    return EnumShelvableLayout.SingleCenter;
+            }
+        }
+        public ModelTransform? GetOnShelfTransform(ItemStack stack)
+        {
+            return GetShelvableType(stack) switch
+            {
+                EnumShelvableLayout.Quadrants => stack.Collectible.Attributes?["onShelfQuarterTransform"].AsObject<ModelTransform>(),
+                EnumShelvableLayout.Halves => stack.Collectible.Attributes?["onShelfHalfTransform"].AsObject<ModelTransform>(),
+                _ => stack.Collectible.Attributes?["onShelfFullTransform"].AsObject<ModelTransform>()
+            };
+        }
 
         MealMeshCache? ms;
 
         WorldInteraction[]? interactions;
 
+        public static PieTopCrustType[] TopCrustTypes = null!;
+
         [MemberNotNull(nameof(ms), nameof(interactions))]
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
+
+            TopCrustTypes ??= api.Assets.Get("config/pietopcrusttypes.json").ToObject<PieTopCrustType[]>();
 
             InteractionHelpYOffset = 0.375f;
 
@@ -210,14 +237,14 @@ namespace Vintagestory.GameContent
             // Copy over properties and bake the contents
             newStack.Attributes["contents"] = oldStack.Attributes["contents"];
             newStack.Attributes.SetInt("pieSize", oldStack.Attributes.GetAsInt("pieSize"));
-            newStack.Attributes.SetInt("topCrustType", oldStack.Attributes.GetAsInt("topCrustType"));
+            newStack.Attributes.SetString("topCrustType", GetTopCrustType(oldStack));
             newStack.Attributes.SetInt("bakeLevel", oldStack.Attributes.GetAsInt("bakeLevel", 0) + 1);
 
             ItemStack[] stacks = GetContents(api.World, newStack);
 
 
             // 1. Cook contents, if there is a cooked version of it
-            for (int i = 0; i < stacks.Length; i++)
+            /*for (int i = 0; i < stacks.Length; i++)
             {
                 if (stacks[i]?.Collectible.CombustibleProps.SmeltedStack?.ResolvedItemstack?.Clone() is ItemStack cookedStack)
                 {
@@ -232,7 +259,7 @@ namespace Vintagestory.GameContent
 
                     stacks[i] = cookedStack;
                 }
-            }
+            }*/// This breaks pies by causing them to have cooked meat and stuff inside which the game doesn't know how to handle.
 
 
             // Carry over and set perishable properties
@@ -710,6 +737,45 @@ namespace Vintagestory.GameContent
             }
 
             return randomMeal.ToArray();
+        }
+
+        [return: NotNullIfNotNull(nameof(pieStack))]
+        public static ItemStack? CycleTopCrustType(ItemStack? pieStack)
+        {
+            if (pieStack == null) return null;
+
+            string topCrustType = GetTopCrustType(pieStack);
+
+            pieStack.Attributes.SetString("topCrustType", TopCrustTypes[(TopCrustTypes.IndexOf(type => type.Code.EqualsFast(topCrustType)) + 1) % TopCrustTypes.Length].Code);
+            return pieStack;
+        }
+
+        [return: NotNullIfNotNull(nameof(pieStack))]
+        public static string? GetTopCrustType(ItemStack? pieStack)
+        {
+            if (pieStack == null) return null;
+
+            string topCrustType = pieStack.Attributes.GetAsString("topCrustType", "full");
+            if (!TopCrustTypes.Any(type => type.Code.EqualsFast(topCrustType)))
+            {
+                switch (topCrustType.ToInt())
+                {
+                    default:
+                    case 0:
+                        topCrustType = "full";
+                        break;
+                    case 1:
+                        topCrustType = "square";
+                        break;
+                    case 2:
+                        topCrustType = "diagonal";
+                        break;
+                }
+
+                pieStack.Attributes.SetString("topCrustType", topCrustType);
+            }
+
+            return topCrustType;
         }
 
         public override string HandbookPageCodeForStack(IWorldAccessor world, ItemStack stack)

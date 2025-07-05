@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -10,6 +11,26 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
+
+    /// <summary>
+    /// Used to create a liquid which distrubutes itself over an area, and has interaction with other liquids.
+    /// Uses the "FiniteSpreadingLiquid" code.
+    /// </summary>
+    /// <example><code lang="json">
+    ///"behaviors": [
+	///	{
+	///		"name": "FiniteSpreadingLiquid",
+	///		"properties": {
+	///			"spreadDelay": 125,
+	///			"liquidCollisionSound": "sizzle",
+	///			"sourceReplacementCode": "rock-obsidian",
+	///			"flowingReplacementCode": "rock-basalt",
+	///			"collidesWith": "lava"
+	///		}
+	///	}
+	///]
+    /// </code></example>
+    [DocumentAsJson]
     public class BlockBehaviorFiniteSpreadingLiquid : BlockBehavior
     {
         private const int MAXLEVEL = 7;
@@ -20,20 +41,34 @@ namespace Vintagestory.GameContent
 
         public static int ReplacableThreshold = 5000;
 
-        //The sound to play when a liquid collision causes blocks to be replaced
+        /// <summary>
+        /// The sound to play when a liquid collision causes blocks to be replaced
+        /// </summary>
+        [DocumentAsJson]
         private AssetLocation collisionReplaceSound;
 
-        //Controls how fast the liquid spreads
+        /// <summary>
+        /// Controls how fast the liquid spreads
+        /// </summary>
+        [DocumentAsJson("Recommended", "150")]
         private int spreadDelay = 150;
 
-        //The liquid this one can collide with
+        /// <summary>
+        /// The liquid this one can collide with
+        /// </summary>
+        [DocumentAsJson("Optional", "None")]
         private string collidesWith;
 
-        //Block code to use when colliding with the source block of a different liquid
-
+        /// <summary>
+        /// Block code to replace the block with when colliding with the source block of a different liquid
+        /// </summary>
+        [DocumentAsJson("Optional", "None")]
         AssetLocation liquidSourceCollisionReplacement;
 
-        //Block code to use when colliding with a flowing block of a different liquid
+        /// <summary>
+        /// Block code to replace the block with when colliding with a flowing block of a different liquid
+        /// </summary>
+        [DocumentAsJson("Optional", "None")]
         AssetLocation liquidFlowingCollisionReplacement;
 
         public BlockBehaviorFiniteSpreadingLiquid(Block block) : base(block)

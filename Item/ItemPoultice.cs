@@ -56,6 +56,12 @@ namespace Vintagestory.GameContent
                     targetEntity = entitySel.Entity;
                 }
 
+                if (health > 0)
+                {
+                    float healingEffectivness = targetEntity.Stats.GetBlended("healingeffectivness");
+                    health *= Math.Max(0, healingEffectivness);
+                }
+
                 targetEntity.ReceiveDamage(new DamageSource()
                 {
                     Source = EnumDamageSource.Internal,

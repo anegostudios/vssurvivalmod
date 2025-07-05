@@ -374,6 +374,8 @@ namespace Vintagestory.GameContent
         {
             if (world.BlockAccessor.GetBlockEntity(pos) is BlockEntityIngotMold beim)
             {
+                if (beim.SelectedMold == null) return base.GetPlacedBlockName(world, pos);
+
                 if (!beim.SelectedShattered) return beim.SelectedMold.GetName();
                 else return Lang.Get("ceramicblock-blockname-shattered", beim.SelectedMold.GetName());
             }

@@ -150,8 +150,12 @@ public class AiTaskFlySwoopAttack : AiTaskBaseTargetable
         base.StartExecute();
     }
 
-    public override bool ContinueExecute(float dt)
+    public override bool 
+        ContinueExecute(float dt)
     {
+        //Check if time is still valid for task.
+        if (!IsInValidDayTimeHours(false)) return false;
+
         if (timeoutExceeded())
         {
             return false;

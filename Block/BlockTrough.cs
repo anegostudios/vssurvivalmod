@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -79,7 +80,7 @@ namespace Vintagestory.GameContent
                         if (betr?.IsFull != false) return null;
 
                         ItemStack[] stacks = betr.GetNonEmptyContentStacks();
-                        if (stacks != null && stacks.Length != 0) return stacks;
+                        if (stacks != null && stacks.Length != 0) return [.. wi.Itemstacks.Where(stack => stack.Equals(api.World, stacks[0], GlobalConstants.IgnoredStackAttributes))];
 
                         return wi.Itemstacks;
                     }

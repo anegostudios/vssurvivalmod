@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -52,7 +53,7 @@ public class BlockCoral : BlockWaterPlant
                             blockAccessor.SetBlock(saltwater.BlockId, tmpPos);
                             tmpPos.Down();
                             block = blockAccessor.GetBlock(tmpPos);
-                        } while (block is BlockWaterPlant);
+                        } while (block is BlockWaterPlant and not BlockCoral);
                     }
                     else
                     {
@@ -127,6 +128,13 @@ public class BlockCoral : BlockWaterPlant
         pos.Add(0, - (coralBaseHeight - 1), 0);
         for (var i = 0; i < coralBaseHeight; i++)
         {
+            var block = blockAccessor.GetBlock(pos);
+            if (block is BlockCoral) // prevent spawning multiple layers of base coral when reefs overlap
+            {
+                pos.Up();
+                break;
+            }
+
             var coralBase = GetRandomBlock(worldGenRand, attributes.CoralBaseBlock);
             blockAccessor.SetBlock(coralBase.BlockId, pos);
             pos.Up();

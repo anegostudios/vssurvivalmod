@@ -238,8 +238,5 @@ namespace Vintagestory.GameContent
 
             return Code;
         }
-
-
-
     }
 }

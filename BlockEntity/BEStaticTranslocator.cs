@@ -339,7 +339,6 @@ namespace Vintagestory.GameContent
             }
         }
 
-
         ITreeAttribute chunkGenParams()
         {
             TreeAttribute tree = new TreeAttribute();
@@ -471,7 +470,7 @@ namespace Vintagestory.GameContent
         private BlockPos FindTranslocator(Cuboidi location, Dictionary<Vec2i, IServerChunk[]> columnsByChunkCoordinate, int centerCx, int centerCz)
         {
             const int chunksize = GlobalConstants.ChunkSize;
-            
+            var chunkCoord = new Vec2i(0, 0);
             for (int x = location.X1; x < location.X2; x++)
             {
                 for (int y = location.Y1; y < location.Y2; y++)
@@ -480,8 +479,9 @@ namespace Vintagestory.GameContent
                     {
                         int cx = x / chunksize;
                         int cz = z / chunksize;
-
-                        if (!columnsByChunkCoordinate.TryGetValue(new Vec2i(cx, cz), out IServerChunk[] chunks))
+                        chunkCoord.X = cx;
+                        chunkCoord.Y = cz;
+                        if (!columnsByChunkCoordinate.TryGetValue(chunkCoord, out IServerChunk[] chunks))
                         {
                             continue;
                         }
@@ -586,6 +586,12 @@ namespace Vintagestory.GameContent
                 tpLocation = new BlockPos(tree.GetInt("teleX"), tree.GetInt("teleY"), tree.GetInt("teleZ"));
 
                 if (tpLocation.X == 0 && tpLocation.Z == 0) tpLocation = null; // For safety
+            }
+
+            if (!findNextChunk && FullyRepaired && !canTeleport && tpLocation == null)
+            {
+                // resume searching for an exit if the TL was unloaded during search
+                findNextChunk = true;
             }
 
             if (worldAccessForResolve != null && worldAccessForResolve.Side == EnumAppSide.Client)

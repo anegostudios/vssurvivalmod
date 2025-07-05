@@ -978,6 +978,8 @@ namespace Vintagestory.GameContent
 
             writer.Write(CooksInto != null);
             if (CooksInto != null) CooksInto.ToBytes(writer);
+
+            writer.Write(IsFood);
         }
 
         /// <summary>
@@ -1011,6 +1013,8 @@ namespace Vintagestory.GameContent
                 CooksInto.FromBytes(reader, resolver.ClassRegistry);
                 CooksInto.Resolve(resolver, "[FromBytes]");
             }
+
+            IsFood = reader.ReadBoolean();
         }
 
     }

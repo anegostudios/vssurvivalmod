@@ -1,4 +1,5 @@
-﻿using Vintagestory.API.Common;
+﻿using Vintagestory.API;
+using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
@@ -6,10 +7,45 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
+
+    /// <summary>
+    /// Allows a block to automatically rotate between the four horizontal directions based on placement angle. Requires use of the "horizontalorientation" variant group.
+    /// Uses the "HorizontalOrientable" code.
+    /// </summary>
+    /// <example>
+    /// <code lang="json">
+    ///"behaviors": [
+	///	{
+	///		"name": "HorizontalOrientable"
+	///	}
+	///]
+    /// </code>
+    /// <code lang="json">
+    ///"variantgroups": [
+	///	{
+	///		"code": "side",
+	///		"loadFromProperties": "abstract/horizontalorientation"
+	///	}
+	///]
+    ///</code></example>
+    [DocumentAsJson]
     public class BlockBehaviorHorizontalOrientable : BlockBehavior
     {
+        /// <summary>
+        /// The face variant of this block to drop when mined, if <see cref="drop"/> is not set.
+        /// </summary>
+        [DocumentAsJson("Optional", "north")]
         string dropBlockFace = "north";
+
+        /// <summary>
+        /// The variant code used to look for certain faces.
+        /// </summary>
         string variantCode = "horizontalorientation";
+
+        /// <summary>
+        /// A custom item stack which will be dropped when this block is mined. If not set, then <see cref="dropBlockFace"/> will be used.
+        /// </summary>
+        [DocumentAsJson("Optional", "None")]
         JsonItemStack drop = null;
 
         public BlockBehaviorHorizontalOrientable(Block block) : base(block)

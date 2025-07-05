@@ -392,41 +392,25 @@ namespace Vintagestory.GameContent
             dsc.AppendLine(Lang.Get("Portions: {0}", fillLevel));
 
             ItemStack contentsStack = config.Content.ResolvedItemstack ?? ResolveWildcardContent(config, forPlayer.Entity.World);
-            
-            if (contentsStack != null)
+
+            if (contentsStack == null) return;
+
+            dsc.AppendLine(Lang.Get(contentsStack.GetName()));
+
+            HashSet<string> creatureNames = new HashSet<string>();
+            foreach (var entityType in Api.World.EntityTypes)
             {
-                var cobj = contentsStack.Collectible;
-                var foodCat = cobj.NutritionProps?.FoodCategory ?? EnumFoodCategory.NoNutrition;
-                var foodTags = cobj.Attributes?["foodTags"].AsArray<string>();
+                var attr = entityType.Attributes;
+                if (attr?["creatureDiet"].AsObject<CreatureDiet>()?.Matches(contentsStack) != true) continue;
 
-                dsc.AppendLine(Lang.Get(contentsStack.GetName()));
+                if ((Block as BlockTroughBase)?.UnsuitableForEntity(entityType.Code.Path) == true) continue;
 
-                HashSet<string> creatureNames = new HashSet<string>();
-                foreach (var entityType in Api.World.EntityTypes)
-                {
-                    var attr = entityType.Attributes;
-                    if (attr?["creatureDiet"].Exists == true)
-                    {
-                        var diet = attr["creatureDiet"].AsObject<CreatureDiet>();
-                        if (diet.Matches(foodCat, foodTags))
-                        {
-                            string code = attr?["creatureDietGroup"].AsString() ?? attr?["handbook"]["groupcode"].AsString() ?? "item-creature-" + entityType.Code; 
-                            creatureNames.Add(Lang.Get(code));
-                        }
-                    }
-                }
-
-                if (creatureNames.Count > 0)
-                {
-                    dsc.AppendLine(Lang.Get("trough-suitable", string.Join(", ", creatureNames)));
-                }
-                else
-                {
-                    dsc.AppendLine(Lang.Get("trough-unsuitable"));
-                }
+                string code = attr?["creatureDietGroup"].AsString() ?? attr?["handbook"]["groupcode"].AsString() ?? "item-creature-" + entityType.Code;
+                creatureNames.Add(Lang.Get(code));
             }
 
+            if (creatureNames.Count <= 0) dsc.AppendLine(Lang.Get("trough-unsuitable"));
+            else dsc.AppendLine(Lang.Get("trough-suitable", string.Join(", ", creatureNames)));
         }
-
     }
 }

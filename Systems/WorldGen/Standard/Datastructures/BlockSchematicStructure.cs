@@ -1,10 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 #nullable disable
 
@@ -17,7 +18,7 @@ namespace Vintagestory.ServerMods
         public string FromFileName;
 
         public Block[,,] blocksByPos;
-        public Dictionary<BlockPos, Block> FluidBlocksByPos;
+        public Dictionary<int, Block> FluidBlocksByPos;
         public BlockLayerConfig blockLayerConfig;
         int mapheight;
 
@@ -43,7 +44,7 @@ namespace Vintagestory.ServerMods
             mapheight = blockAccessor.MapSizeY;
 
             blocksByPos = new Block[SizeX + 1, SizeY + 1, SizeZ + 1];
-            FluidBlocksByPos = new Dictionary<BlockPos, Block>();
+            FluidBlocksByPos = new ();
 
             for (int i = 0; i < Indices.Count; i++)
             {
@@ -59,7 +60,7 @@ namespace Vintagestory.ServerMods
 
                 if (block.ForFluidsLayer)
                 {
-                    FluidBlocksByPos.Add(new BlockPos(dx,dy,dz), block);
+                    FluidBlocksByPos.Add((int)index, block);
                 }
                 else
                 {
@@ -110,8 +111,9 @@ namespace Vintagestory.ServerMods
             Unpack(worldForCollectibleResolve.Api);
             if (genBlockLayers == null) genBlockLayers = worldForCollectibleResolve.Api.ModLoader.GetModSystem<GenBlockLayers>();
 
-            BlockPos curPos = new BlockPos();
-            BlockPos localCurrentPos = new BlockPos();
+            BlockPos curPos = new BlockPos(startPos.dimension);
+            BlockPos localCurrentPos = new BlockPos(startPos.dimension);
+            BlockPos tmpPos = new BlockPos(startPos.dimension);
             int placed = 0;
             const int chunksize = GlobalConstants.ChunkSize;
 
@@ -142,7 +144,7 @@ namespace Vintagestory.ServerMods
 
                     int maxY = -1;
                     int underWaterDepth = -1;
-                    var aboveLiqBlock = blockAccessor.GetBlock(curPos.X, curPos.Y + SizeY, curPos.Z, BlockLayersAccess.Fluid);
+                    var aboveLiqBlock = blockAccessor.GetBlockAbove(curPos, SizeY, BlockLayersAccess.Fluid);
                     if (aboveLiqBlock != null && aboveLiqBlock.IsLiquid()) underWaterDepth++;
 
                     bool highestBlockinCol = true;
@@ -154,11 +156,11 @@ namespace Vintagestory.ServerMods
 
                         localCurrentPos.Set(x, y, z);
                         var block = blocksByPos[x, y, z];
-                        FluidBlocksByPos.TryGetValue(localCurrentPos, out var fluidBlock);
+                        FluidBlocksByPos.TryGetValue(localCurrentPos.ToSchematicIndex(), out var fluidBlock);
                         // use the fluid block if there is no solid block
                         block ??= fluidBlock;
 
-                        aboveLiqBlock = blockAccessor.GetBlock(curPos.X, curPos.Y, curPos.Z, BlockLayersAccess.Fluid);
+                        aboveLiqBlock = blockAccessor.GetBlock(curPos, BlockLayersAccess.Fluid);
                         if (aboveLiqBlock != null && aboveLiqBlock.IsLiquid()) underWaterDepth++;
 
                         if (block == null) continue;
@@ -172,7 +174,7 @@ namespace Vintagestory.ServerMods
                             {
                                 if (suppressSoilIfAirBelow && (y == 0 || blocksByPos[x, y - 1, z] == null)) // only check this on the bottom layer and if current newBlock is soil: any block in replaceblockids is assumed to be soil
                                 {
-                                    Block belowBlock = blockAccessor.GetBlock(curPos.X, curPos.Y - 1, curPos.Z, BlockLayersAccess.SolidBlocks);
+                                    Block belowBlock = blockAccessor.GetBlockBelow(curPos, 1, BlockLayersAccess.SolidBlocks);
                                     if (belowBlock.Replaceable > 3000)
                                     {
                                         int yy = y + 1;
@@ -180,7 +182,7 @@ namespace Vintagestory.ServerMods
                                         {
                                             Block placedBlock = blocksByPos[x, yy, z];
                                             if (placedBlock == null || !replaceWithBlockLayersBlockids.Contains(placedBlock.BlockId)) break;
-                                            blockAccessor.SetBlock(0, new BlockPos(curPos.X, startPos.Y + yy, curPos.Z), BlockLayersAccess.Solid);
+                                            blockAccessor.SetBlock(0, tmpPos.Set(curPos.X, startPos.Y + yy, curPos.Z), BlockLayersAccess.Solid);
                                             yy++;
                                         }
                                         continue;
@@ -188,7 +190,7 @@ namespace Vintagestory.ServerMods
                                 }
                                 if (depth == 0 && replaceWithBlockLayersBlockids.Length > 1)   // do not place top surface (typically grassy soil) directly beneath solid blocks other than logs, snow, ice
                                 {
-                                    Block aboveBlock = blockAccessor.GetBlock(curPos.X, curPos.Y + 1, curPos.Z, BlockLayersAccess.SolidBlocks);
+                                    Block aboveBlock = blockAccessor.GetBlockAbove(curPos, 1, BlockLayersAccess.SolidBlocks);
                                     if (aboveBlock.SideSolid[BlockFacing.DOWN.Index] && aboveBlock.BlockMaterial != EnumBlockMaterial.Wood && aboveBlock.BlockMaterial != EnumBlockMaterial.Snow && aboveBlock.BlockMaterial != EnumBlockMaterial.Ice)
                                     {
                                         depth++;
@@ -242,7 +244,7 @@ namespace Vintagestory.ServerMods
                             if (displaceWater) blockAccessor.SetBlock(0, curPos, BlockLayersAccess.Fluid);
                             else if (block.Id != 0 && !block.SideSolid.All)
                             {
-                                aboveLiqBlock = blockAccessor.GetBlock(curPos.X, curPos.Y + 1, curPos.Z, BlockLayersAccess.Fluid);
+                                aboveLiqBlock = blockAccessor.GetBlockAbove(curPos, 1, BlockLayersAccess.Fluid);
                                 if (aboveLiqBlock.Id != 0)
                                 {
                                     blockAccessor.SetBlock(aboveLiqBlock.BlockId, curPos, BlockLayersAccess.Fluid);
@@ -252,7 +254,7 @@ namespace Vintagestory.ServerMods
                             if (highestBlockinCol)
                             {
                                 // Make any plants, tallgrass etc above this schematic fall, but do not do this test in lower blocks in the schematic (e.g. tables in trader caravan)
-                                Block aboveBlock = blockAccessor.GetBlock(curPos.X, curPos.Y + 1, curPos.Z, BlockLayersAccess.Solid);
+                                Block aboveBlock = blockAccessor.GetBlockAbove(curPos, 1, BlockLayersAccess.Solid);
                                 if (aboveBlock.Id > 0)
                                 {
                                     aboveBlock.OnNeighbourBlockChange(worldgenWorldAccessor, curPos.UpCopy(), curPos);
@@ -343,7 +345,7 @@ namespace Vintagestory.ServerMods
         public virtual int PlaceReplacingBlocks(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos startPos, EnumReplaceMode mode, Dictionary<int, Dictionary<int, int>> replaceBlocks, int? rockBlockId, bool replaceMetaBlocks = true)
         {
             Unpack(worldForCollectibleResolve.Api);
-            BlockPos curPos = new BlockPos();
+            BlockPos curPos = new BlockPos(startPos.dimension);
             int placed = 0;
 
             const int chunksize = GlobalConstants.ChunkSize;

@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
@@ -13,20 +14,66 @@ namespace Vintagestory.GameContent
 
     /// <summary>
     /// Spawns an EntityBlockFalling when the user places a block that has air underneath it or if a neighbor block is
-    /// removed and causes air to be underneath it.
+    /// removed and causes air to be underneath it. Also has optional functionality to prevent a block being placed if it is unstable.
+    /// Uses the code "UnstableFalling".
     /// </summary>
+    [DocumentAsJson]
+    [AddDocumentationProperty("AttachableFaces", "The faces that this block could be attached from which will prevent it from falling.", "System.String[]", "Optional", "None")]
+    [AddDocumentationProperty("AttachmentAreas", "A list of attachment areas per face that determine what blocks can be attached to.", "System.Collections.Generic.Dictionary{System.String,Vintagestory.API.Datastructures.RotatableCube}", "Optional", "None")]
+    [AddDocumentationProperty("AttachmentArea", "A single attachment area that determine what blocks can be attached to. Used if AttachmentAreas is not supplied.", "Vintagestory.API.Mathtools.Cuboidi", "Optional", "None")]
+    [AddDocumentationProperty("AllowUnstablePlacement","Can this block be placed in an unstable position?","System.Boolean","Optional","False",true)]
     public class BlockBehaviorUnstableFalling : BlockBehavior
     {
+        /// <summary>
+        /// If true, then the block can be placed even in an position where it'll be unstable.
+        /// </summary>
+        [DocumentAsJson("Optional", "False")]
         bool ignorePlaceTest;
+
+        /// <summary>
+        /// A list of block types which this block can always be attached to, regardless if there is a correct attachment area.
+        /// </summary>
+        [DocumentAsJson("Optional", "None")]
         AssetLocation[] exceptions;
+
+        /// <summary>
+        /// Can this block fall horizontally?
+        /// </summary>
+        [DocumentAsJson("Optional", "False")]
         public bool fallSideways;
+
+        /// <summary>
+        /// A multiplier for the number of dust particles for the falling block. A value of 0 means no dust particles.
+        /// </summary>
+        [DocumentAsJson("Optional", "0")]
         float dustIntensity;
+
+        /// <summary>
+        /// If <see cref="fallSideways"/> is enabled, this is the chance that the block will fall sideways instead of straight down.
+        /// </summary>
+        [DocumentAsJson("Optional", "0.3")]
         float fallSidewaysChance = 0.3f;
 
+        /// <summary>
+        /// The path to the sound to play when the block falls.
+        /// </summary>
+        [DocumentAsJson("Optional", "None")]
         AssetLocation fallSound;
+
+        /// <summary>
+        /// A multiplier of damage dealt to an entity when hit by the falling block. Damage depends on falling height.
+        /// </summary>
+        [DocumentAsJson("Optional", "1")]
         float impactDamageMul;
+
+        /// <summary>
+        /// A set of attachment areas for the unstable block. 
+        /// </summary>
         Cuboidi[] attachmentAreas;
 
+        /// <summary>
+        /// The faces that this block could be attached from which will prevent it from falling.
+        /// </summary>
         BlockFacing[] attachableFaces;
 
         public BlockBehaviorUnstableFalling(Block block) : base(block)

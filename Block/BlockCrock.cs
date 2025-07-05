@@ -13,9 +13,6 @@ namespace Vintagestory.GameContent
 {
     public class BlockCrock : BlockCookedContainerBase, IBlockMealContainer, IContainedMeshSource
     {
-        public override string ContainerNameShort => Lang.Get("crock");
-        public override string ContainerNameShortPlural => Lang.Get("crocks");
-
         public override float GetContainingTransitionModifierContained(IWorldAccessor world, ItemSlot inSlot, EnumTransitionType transType)
         {
             float mul = 1;

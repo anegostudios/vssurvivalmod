@@ -150,7 +150,7 @@ namespace Vintagestory.GameContent
                 string apname = apap.AttachPoint.Code;
 
                 var seat = Seats.FirstOrDefault((seat) => seat.Config.APName == apname || seat.Config.SelectionBox == apname);
-                if (seat != null && CanSitOn(seat) && byEntity.TryMount(seat))
+                if (seat != null && CanSitOn(seat, seleBox - 1) && byEntity.TryMount(seat))
                 {
                     handled = EnumHandling.PreventSubsequent;
                     if (Api.Side == EnumAppSide.Server)
@@ -223,13 +223,24 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public bool CanSitOn(IMountableSeat seat)
+        public bool CanSitOn(IMountableSeat seat, int selectionBoxIndex = -1)
         {
             if (seat.Passenger != null) return false;
-
             var bha = entity.GetBehavior<EntityBehaviorAttachable>();
             if (bha != null)
             {
+                if (selectionBoxIndex == -1)
+                {
+                    var bhas = entity.GetBehavior<EntityBehaviorSelectionBoxes>();
+                    selectionBoxIndex = bhas.selectionBoxes.IndexOf(x => x.AttachPoint.Code == seat.Config.SelectionBox);
+                }
+                var targetSlot = bha.GetSlotFromSelectionBoxIndex(selectionBoxIndex);
+                var category = targetSlot?.Itemstack?.Item?.Attributes?["attachableToEntity"]["categoryCode"].AsString();
+                if (targetSlot?.Empty == false && category != "seat" &&  category != "saddle" && category != "pillion")
+                {
+                    return false;
+                }
+
                 var slot = bha.GetSlotConfigFromAPName(seat.Config.APName);
                 if (slot?.Empty == false)
                 {
@@ -419,7 +430,7 @@ namespace Vintagestory.GameContent
                 };
             }
 
-            if (eba.CanSitOn(seat))
+            if (eba.CanSitOn(seat, slotIndex))
             {
                 return new WorldInteraction[]
                 {
@@ -432,20 +443,6 @@ namespace Vintagestory.GameContent
             }
 
             return null;
-        }
-
-        private static bool canSit(EntityBehaviorSeatable eba, IMountableSeat[] seats, int slotIndex)
-        {
-            if (slotIndex >= 0)
-            {
-                IMountableSeat seat = getSeat(eba, seats, slotIndex);
-                if (seat != null && eba.CanSitOn(seat))
-                {
-                    return true;
-                }
-            }
-
-            return false;
         }
 
         private static IMountableSeat getSeat(EntityBehaviorSeatable eba, IMountableSeat[] seats, int slotIndex)

@@ -1,10 +1,21 @@
-﻿using Vintagestory.API.Client;
+﻿using Vintagestory.API;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 
 #nullable disable
 
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Passes functions to the <see cref="BEBehaviorJonasHydraulicPump"/> block entity behavior, and therefore requires that.
+    /// Uses the code "JonasHydraulicPump". This behavior has no properties.
+    /// </summary>
+    /// <example><code lang="json">
+    ///"behaviors": [
+	///	{ "name": "JonasHydraulicPump" }
+	///]
+    /// </code></example>
+    [DocumentAsJson]
     public class BlockBehaviorJonasHydraulicPump : BlockBehavior
     {
         public BlockBehaviorJonasHydraulicPump(Block block) : base(block)

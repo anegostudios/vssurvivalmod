@@ -1,94 +1,13 @@
-﻿using Newtonsoft.Json.Linq;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Vintagestory.API.Client;
+﻿using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
-using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Util;
-using Vintagestory.ServerMods;
-
-#nullable disable
 
 namespace Vintagestory.GameContent
 {
-    public class BlockAntlerMount : Block
+    public class BlockAntlerMount : BlockShapeMaterialFromAttributes
     {
-        string[] types;
-        string[] materials;
-        Dictionary<string, CompositeTexture> textures;
-        CompositeShape cshape;
-
-        public override void OnLoaded(ICoreAPI api)
-        {
-            base.OnLoaded(api);
-            LoadTypes();
-        }
-
-        public override void OnUnloaded(ICoreAPI api)
-        {
-            var antlerMeshes = ObjectCacheUtil.TryGet<Dictionary<string, MeshData>>(api, "AntlerMountMeshes");
-            if (antlerMeshes?.Count > 0)
-            {
-                foreach (var (_, meshref) in antlerMeshes)
-                {
-                    meshref.Dispose();
-                }
-                ObjectCacheUtil.Delete(api, "AntlerMountMeshes");
-            }
-            var antlerInvMeshes = ObjectCacheUtil.TryGet<Dictionary<string, MultiTextureMeshRef>>(api, "AntlerMountMeshesInventory");
-            if (antlerInvMeshes?.Count > 0)
-            {
-                foreach (var (_, meshref) in antlerInvMeshes)
-                {
-                    meshref.Dispose();
-                }
-                ObjectCacheUtil.Delete(api, "AntlerMountMeshesInventory");
-            }
-
-            base.OnUnloaded(api);
-        }
-
-        public void LoadTypes()
-        {
-            types = Attributes["types"].AsArray<string>();
-            cshape = Attributes["shape"].AsObject<CompositeShape>();
-            textures = Attributes["textures"].AsObject<Dictionary<string, CompositeTexture>>(null);
-            var grp = Attributes["materials"].AsObject<RegistryObjectVariantGroup>();
-
-            materials = grp.States;
-            if (grp.LoadFromProperties != null)
-            {
-                var prop = api.Assets.TryGet(grp.LoadFromProperties.WithPathPrefixOnce("worldproperties/").WithPathAppendixOnce(".json"))?.ToObject<StandardWorldProperty>();
-                materials = prop.Variants.Select(p => p.Code.Path).ToArray().Append(materials);
-            }
-
-            List<JsonItemStack> stacks = new List<JsonItemStack>();
-
-            foreach (var type in types)
-            {
-                foreach (var material in materials)
-                {
-                    var jstack = new JsonItemStack()
-                    {
-                        Code = this.Code,
-                        Type = EnumItemClass.Block,
-                        Attributes = new JsonObject(JToken.Parse("{ \"type\": \"" + type + "\", \"material\": \"" + material + "\" }"))
-                    };
-
-                    jstack.Resolve(api.World, Code + " type");
-                    stacks.Add(jstack);
-                }
-            }
-
-            this.CreativeInventoryStacks = new CreativeTabAndStackList[]
-            {
-                new CreativeTabAndStackList() { Stacks = stacks.ToArray(), Tabs = new string[]{ "general", "decorative" } }
-            };
-        }
-
+        public override string MeshKey => "AntlerMount";
         public override Cuboidf[] GetSelectionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
         {
             var bect = blockAccessor.GetBlockEntity(pos) as BlockEntityAntlerMount;
@@ -150,7 +69,7 @@ namespace Vintagestory.GameContent
             return attachingblock.CanAttachBlockAt(world.BlockAccessor, this, pos.AddCopy(facing), facing.Opposite);
         }
 
-        public override bool CanAttachBlockAt(IBlockAccessor blockAccessor, Block block, BlockPos pos, BlockFacing blockFace, Cuboidi attachmentArea = null)
+        public override bool CanAttachBlockAt(IBlockAccessor blockAccessor, Block block, BlockPos pos, BlockFacing blockFace, Cuboidi? attachmentArea = null)
         {
             return false;
         }
@@ -158,11 +77,31 @@ namespace Vintagestory.GameContent
 
         public override bool DoPlaceBlock(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ItemStack byItemStack)
         {
+            // bool result = true;
+            // bool preventDefault = false;
+            //
+            // foreach (BlockBehavior behavior in BlockBehaviors)
+            // {
+            //     EnumHandling handled = EnumHandling.PassThrough;
+            //
+            //     bool behaviorResult = behavior.DoPlaceBlock(world, byPlayer, blockSel, byItemStack, ref handled);
+            //
+            //     if (handled != EnumHandling.PassThrough)
+            //     {
+            //         result &= behaviorResult;
+            //         preventDefault = true;
+            //     }
+            //
+            //     if (handled == EnumHandling.PreventSubsequent) break;
+            // }
+            //
+            // if (preventDefault) return result;
             bool val = base.DoPlaceBlock(world, byPlayer, blockSel, byItemStack);
 
+            // world.BlockAccessor.SetBlock(BlockId, blockSel.Position, byItemStack);
             if (val)
             {
-                var bect = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityAntlerMount;
+                var bect = world.BlockAccessor.GetBlockEntity(blockSel.Position).GetBehavior<BEBehaviorShapeMaterialFromAttributes>();
                 if (bect != null)
                 {
                     for (int i = 0; i < 4; i++)
@@ -174,7 +113,7 @@ namespace Vintagestory.GameContent
 
                         if (attachingBlock.CanAttachBlockAt(world.BlockAccessor, this, attachingBlockPos, blockSel.Face, null))
                         {
-                            bect.MeshAngleRad = faceIndex * 90 * GameMath.DEG2RAD - GameMath.PIHALF;
+                            bect.MeshAngleY = faceIndex * 90 * GameMath.DEG2RAD - GameMath.PIHALF;
                             bect.OnBlockPlaced(byItemStack); // call again to regen mesh
                         }
                     }
@@ -182,59 +121,6 @@ namespace Vintagestory.GameContent
             }
 
             return val;
-        }
-
-
-        public Shape GetOrCreateShape(string type, string material)
-        {
-            ICoreClientAPI capi = api as ICoreClientAPI;
-
-            var rcshape = this.cshape.Clone();
-            rcshape.Base.Path = rcshape.Base.Path.Replace("{type}", type).Replace("{material}", material);
-            rcshape.Base.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/");
-            return capi.Assets.TryGet(rcshape.Base)?.ToObject<Shape>();
-        }
-
-        public MeshData GetOrCreateMesh(string type, string material, string cachekeyextra=null, ITexPositionSource overrideTexturesource = null)
-        {
-            var cMeshes = ObjectCacheUtil.GetOrCreate(api, "AntlerMountMeshes", () => new Dictionary<string, MeshData>());
-            ICoreClientAPI capi = api as ICoreClientAPI;
-
-            string key = type + "-" + material + cachekeyextra;
-            if (overrideTexturesource != null || !cMeshes.TryGetValue(key, out var mesh))
-            {
-                mesh = new MeshData(4, 3);
-
-                var rcshape = this.cshape.Clone();
-                rcshape.Base.Path = rcshape.Base.Path.Replace("{type}", type).Replace("{material}", material);
-                rcshape.Base.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/");
-
-                var shape = capi.Assets.TryGet(rcshape.Base)?.ToObject<Shape>();
-
-                var texSource = overrideTexturesource;
-                if (texSource == null)
-                {
-                    var stexSource = new ShapeTextureSource(capi, shape, rcshape.Base.ToString());
-                    texSource = stexSource;
-                    foreach (var val in textures)
-                    {
-                        var ctex = val.Value.Clone();
-                        ctex.Base.Path = ctex.Base.Path.Replace("{type}", type).Replace("{material}", material);
-                        ctex.Bake(capi.Assets);
-                        stexSource.textures[val.Key] = ctex;
-                    }
-                }
-                if (shape == null) return mesh;
-
-                capi.Tesselator.TesselateShape("AntlerMount block", shape, out mesh, texSource);
-
-                if (overrideTexturesource == null)
-                {
-                    cMeshes[key] = mesh;
-                }
-            }
-
-            return mesh;
         }
 
         public override void GetDecal(IWorldAccessor world, BlockPos pos, ITexPositionSource decalTexSource, ref MeshData decalModelData, ref MeshData blockModelData)
@@ -262,27 +148,6 @@ namespace Vintagestory.GameContent
             }
         }
 
-
-        public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
-        {
-            base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
-
-            Dictionary<string, MultiTextureMeshRef> meshRefs;
-            meshRefs = ObjectCacheUtil.GetOrCreate(capi, "AntlerMountMeshesInventory", () => new Dictionary<string, MultiTextureMeshRef>());
-
-            string type = itemstack.Attributes.GetString("type", "");
-            string material = itemstack.Attributes.GetString("material", "");
-            string key = type + "-" + material;
-
-            if (!meshRefs.TryGetValue(key, out MultiTextureMeshRef meshref))
-            {
-                MeshData mesh = GetOrCreateMesh(type, material);
-                meshref = capi.Render.UploadMultiTextureMesh(mesh);
-                meshRefs[key] = meshref;
-            }
-
-            renderinfo.ModelRef = meshref;
-        }
 
 
 
@@ -321,12 +186,6 @@ namespace Vintagestory.GameContent
             return drops;
         }
 
-        public override string GetHeldItemName(ItemStack itemStack)
-        {
-            string type = itemStack.Attributes.GetString("type", "square");
-            return Lang.Get("block-antlermount-" + type);
-        }
-
         public override string GetPlacedBlockName(IWorldAccessor world, BlockPos pos)
         {
             var bemount = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityAntlerMount;
@@ -343,12 +202,10 @@ namespace Vintagestory.GameContent
             return base.GetPlacedBlockInfo(world, pos, forPlayer) + "\n" + Lang.Get("Material: {0}", Lang.Get("material-" + bemount.Material));
         }
 
-        public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
+        public override string GetHeldItemName(ItemStack itemStack)
         {
-            base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
-
-            string wood = inSlot.Itemstack.Attributes.GetString("material", "oak");
-            dsc.AppendLine(Lang.Get("Material: {0}", Lang.Get("material-" + wood)));
+            string type = itemStack.Attributes.GetString("type", "square");
+            return Lang.Get("block-" + Code.Path + "-" + type);
         }
     }
 }

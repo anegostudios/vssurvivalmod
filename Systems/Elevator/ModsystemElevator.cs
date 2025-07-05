@@ -32,7 +32,7 @@ public class ModsystemElevator : ModSystem
             .BeginSubCommand("set-block-net")
             .WithAlias("sbn")
             .WithDescription("Set Elevator network code")
-            .WithArgs(parser.Word("netowrk code"), parser.WorldPosition("pos"), parser.OptionalInt("offset"))
+            .WithArgs(parser.Word("network code"), parser.WorldPosition("pos"), parser.OptionalInt("offset"))
             .HandleWith(OnsetBlockNetwork)
             .EndSubCommand()
             .EndSubCommand();

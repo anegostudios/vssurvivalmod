@@ -144,8 +144,12 @@ namespace Vintagestory.GameContent
             pathTraverser.WalkTowards(MainTarget, moveSpeed, targetDistance, OnGoalReached, OnStuck);
         }
 
-        public override bool ContinueExecute(float dt)
+        public override bool 
+            ContinueExecute(float dt)
         {
+            //Check if time is still valid for task.
+            if (!IsInValidDayTimeHours(false)) return false;
+
             if (taskState==1)
             {
                 entity.ServerPos.Motion.Set(0, 0, 0);

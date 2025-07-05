@@ -384,9 +384,12 @@ namespace Vintagestory.GameContent
 
         public override ItemStack CreateItemStackFromJson(ITreeAttribute stackAttr, IWorldAccessor world, string domain)
         {
+            bool makefull = stackAttr.HasAttribute("makefull");
+            stackAttr.RemoveAttribute("makefull");
+
             var stack = base.CreateItemStackFromJson(stackAttr, world, domain);
 
-            if (stackAttr.HasAttribute("makefull"))
+            if (makefull)
             {
                 var props = GetContainableProps(stack);
                 stack.StackSize = (int)(CapacityLitres * props.ItemsPerLitre);

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -8,9 +9,19 @@ using Vintagestory.API.Datastructures;
 
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Passes functions through to the <see cref="BEBehaviorGiveItemPerPlayer"/> block entity behavior. Therefore, requires that.
+    /// Uses the "GiveItemPerPlayer" code.
+    /// </summary>
+    [DocumentAsJson()]
     public class BlockBehaviorGiveItemPerPlayer : BlockBehavior
     {
+        /// <summary>
+        /// The lang code to use when hovering over this placed block.
+        /// </summary>
+        [DocumentAsJson("Required", "", true)]
         string interactionHelpCode;
+
         public BlockBehaviorGiveItemPerPlayer(Block block) : base(block)
         {
         }

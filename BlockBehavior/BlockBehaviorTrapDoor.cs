@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -9,12 +10,54 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Marks a block as an animated trapdoor. Requires the use of the <see cref="BEBehaviorTrapDoor"/> block entity behavior.
+    /// Uses the "TrapDoor" code.
+    /// </summary>
+    /// <example><code lang="json">
+    ///"behaviors": [
+	///	{
+	///		"name": "TrapDoor" 
+	///	}
+	///],
+    ///...
+    ///"attributes": {
+	///	"airtightByType": {
+	///		"trapdoor-solid*": true,
+	///		"*": false
+	///	},
+	///	"openSound": "sounds/block/door",
+	///	"closeSound": "sounds/block/door"
+	///}
+    /// </code></example>
+    [DocumentAsJson]
+    [AddDocumentationProperty("TriggerSound", "The sound to play when the trapdoor is opened or closed.", "System.String", "Optional", "sounds/block/door", true)]
     public class BlockBehaviorTrapDoor : StrongBlockBehavior
     {
+        /// <summary>
+        /// The sound to play when the trapdoor is opened.
+        /// </summary>
+        [DocumentAsJson("Optional", "sounds/block/door", true)]
         public AssetLocation OpenSound;
+
+        /// <summary>
+        /// The sound to play when the trapdoor is closed.
+        /// </summary>
+        [DocumentAsJson("Optional", "sounds/block/door", true)]
         public AssetLocation CloseSound;
+
+        /// <summary>
+        /// Can the trapdoor be opened by hand?
+        /// </summary>
+        [DocumentAsJson("Optional", "True", true)]
         public bool handopenable;
+
+        /// <summary>
+        /// Is the trapdoor classed as being airtight?
+        /// </summary>
+        [DocumentAsJson("Optional", "True", true)]
         public bool airtight;
+
         ICoreAPI api;
         public MeshData animatableOrigMesh;
         public Shape animatableShape;

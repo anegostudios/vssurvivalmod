@@ -1,4 +1,5 @@
-﻿using Vintagestory.API.Client;
+﻿using Vintagestory.API;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -47,10 +48,16 @@ namespace Vintagestory.GameContent
          }
     }
 
+    /// <summary>
+    /// Allows a block to have snowballs taken from it. Many blocks automatically receive this behavior if they have a snow layer or the SnowballableDecrementedBlockCode attribute.
+    /// Uses the code 'Snowballable'. 
+    /// </summary>
+    [DocumentAsJson()]
+    [AddDocumentationProperty("SnowballableDecrementedBlockCode", "When the block is harvested for snowballs, what block should it be replaced with?", "System.String", "Optional", "None", true)]
     public class BlockBehaviorSnowballable : BlockBehavior
     {
         public BlockBehaviorSnowballable(Block block) : base(block) { }
-
+            
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref EnumHandling handling)
         {   
             if (canPickSnowballFrom(block, blockSel.Position, byPlayer))

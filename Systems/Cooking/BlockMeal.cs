@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.Design.Serialization;
 using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
@@ -8,6 +9,7 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
+using Vintagestory.ServerMods;
 
 namespace Vintagestory.GameContent
 {
@@ -22,6 +24,8 @@ namespace Vintagestory.GameContent
         float GetQuantityServings(IWorldAccessor world, ItemStack containerStack);
 
         void SetQuantityServings(IWorldAccessor world, ItemStack containerStack, float quantityServings);
+        public CookingRecipe? GetCookingRecipe(IWorldAccessor world, ItemStack? containerStack);
+
     }
 
     public interface IBlockEntityMealContainer
@@ -740,6 +744,7 @@ namespace Vintagestory.GameContent
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
             if (inSlot.Itemstack is not ItemStack mealStack) return;
+            base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
             float temp = GetTemperature(world, mealStack);
             if (temp > 20)
             {
@@ -803,11 +808,23 @@ namespace Vintagestory.GameContent
         public string GetContainedInfo(ItemSlot inSlot)
         {
             CookingRecipe? recipe = GetCookingRecipe(api.World, inSlot.Itemstack);
-            if (recipe == null) return GetHeldItemName(inSlot.Itemstack) + PerishableInfoCompactContainer(api, inSlot);
-
             ItemStack[] stacks = GetNonEmptyContents(api.World, inSlot.Itemstack);
-            
-            return recipe.GetOutputName(api.World, stacks).UcFirst() + PerishableInfoCompactContainer(api, inSlot);
+
+            if (inSlot.Itemstack?.Block is not BlockMeal contBlock) return Lang.Get("unkown");
+
+            var emptyCode = contBlock.Attributes?["eatenBlock"].AsString();
+            string emptyName = new ItemStack(emptyCode == null ? contBlock : api.World.GetBlock(emptyCode)).GetName();
+
+            if (stacks.Length == 0) return Lang.GetWithFallback("contained-empty-container", "{0} (Empty)", emptyName);
+
+            string? outputName = recipe?.GetOutputName(api.World, stacks).UcFirst();
+            float servings = inSlot.Itemstack?.Attributes.GetFloat("quantityServings", 1) ?? 1;
+            if (MealMeshCache.ContentsRotten(stacks))
+            {
+                outputName = Lang.Get("Rotten Food");
+            }
+
+            return Lang.Get("contained-food-singleservingmax", Math.Round(servings, 1), outputName, emptyName, PerishableInfoCompactContainer(api, inSlot));
         }
 
 

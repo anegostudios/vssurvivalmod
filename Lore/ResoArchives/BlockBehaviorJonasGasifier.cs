@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Util;
@@ -7,6 +8,16 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Passes functions to the <see cref="BEBehaviorJonasGasifier"/> block entity behavior, and therefore requires that.
+    /// Uses the code "JonasGasifier". This behavior has no properties.
+    /// </summary>
+    /// <example><code lang="json">
+    ///"behaviors": [
+	///	{ "name": "JonasGasifier" }
+	///]
+    /// </code></example>
+    [DocumentAsJson]
     public class BlockBehaviorJonasGasifier : BlockBehavior
     {
         public BlockBehaviorJonasGasifier(Block block) : base(block)

@@ -198,14 +198,14 @@ namespace Vintagestory.GameContent
         public override void OnExchanged(Block block)
         {
             base.OnExchanged(block);
+            UpdateTransitionsFromBlock();
             transitionHoursLeft = GetHoursForNextStage();
-            if (Api?.Side == EnumAppSide.Server) UpdateTransitionsFromBlock();
         }
 
         public override void CreateBehaviors(Block block, IWorldAccessor worldForResolve)
         {
             base.CreateBehaviors(block, worldForResolve);
-            if (worldForResolve.Side == EnumAppSide.Server) UpdateTransitionsFromBlock();
+            UpdateTransitionsFromBlock();
         }
 
         protected virtual void UpdateTransitionsFromBlock()

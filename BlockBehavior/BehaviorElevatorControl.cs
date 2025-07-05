@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -7,6 +8,16 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent;
 
+/// <summary>
+/// Used in combination with the "BEBehaviorElevatorControl" to create an elevator.
+/// Uses the code "ElevatorControl", and has no properties.
+/// </summary>
+/// <example><code lang="json">
+///"behaviors": [
+///	{ "name": "ElevatorControl" }
+///],
+/// </code></example>
+[DocumentAsJson]
 public class BehaviorElevatorControl : BlockBehavior
 {
     private ICoreAPI api;

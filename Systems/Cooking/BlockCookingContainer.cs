@@ -273,7 +273,7 @@ namespace Vintagestory.GameContent
             bool isDirtyPot = Attributes["isDirtyPot"].AsBool(false);
             foreach (var recipe in recipes)
             {
-                if (isDirtyPot && recipe.CooksInto == null) continue;   // Prevent normal food from being cooked in a dirty pot
+                if (isDirtyPot && (recipe.CooksInto == null || recipe.IsFood)) continue;   // Prevent normal food from being cooked in a dirty pot
 
                 quantityServings = 0;
                 if (recipe.Matches(stacks, ref quantityServings) || quantityServings == -1) return recipe;

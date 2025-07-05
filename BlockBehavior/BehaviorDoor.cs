@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Text;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -10,14 +11,70 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// A block behavior for a door. Also requires the "door" block entity behavior type on a block to work.
+    /// Defined with the "Door" code.
+    /// </summary>
+    /// <example><code lang="json">
+    ///"behaviors": [
+    ///	{ "name": "Door" }
+    ///]
+    ///</code><code lang="json">
+    ///"attributes": {
+    ///	"widthByType": {
+    ///		"*": 1
+    ///	},
+    ///	"heightByType": {
+    ///		"*": 2
+    ///	},
+    ///	"openSoundByType": {
+    ///		"*": "sounds/block/cokeovendoor-open"
+    ///	},
+    ///	"closeSoundByType": {
+    ///		"*": "sounds/block/cokeovendoor-close"
+    ///	}
+    ///}
+    ///</code></example>
+    [DocumentAsJson]
+    [AddDocumentationProperty("TriggerSound", "Sets both OpenSound & CloseSound.", "Vintagestory.API.Common.AssetLocation", "Optional", "sounds/block/door", true)]
     public class BlockBehaviorDoor : StrongBlockBehavior, IMultiBlockColSelBoxes, IMultiBlockBlockProperties
     {
+        /// <summary>
+        /// The sound to play when the door is opened.
+        /// </summary>
+        [DocumentAsJson("Optional", "sounds/block/door", true)]
         public AssetLocation OpenSound;
+
+        /// <summary>
+        /// The sound to play when the door is closed.
+        /// </summary>
+        [DocumentAsJson("Optional", "sounds/block/door", true)]
         public AssetLocation CloseSound;
+
+        /// <summary>
+        /// The width of the multiblock instance for the door.
+        /// </summary>
+        [DocumentAsJson("Optional", "1", true)]
         public int width;
+
+        /// <summary>
+        /// The height of the multiblock instance for the door.
+        /// </summary>
+        [DocumentAsJson("Optional", "1", true)]
         public int height;
+        
+        /// <summary>
+        /// Can this door be opened by hand?
+        /// </summary>
+        [DocumentAsJson("Optional", "True", true)]
         public bool handopenable;
+
+        /// <summary>
+        /// Is this door airtight?
+        /// </summary>
+        [DocumentAsJson("Optional", "True", true)]
         public bool airtight;
+
         ICoreAPI api;
         public MeshData animatableOrigMesh;
         public Shape animatableShape;

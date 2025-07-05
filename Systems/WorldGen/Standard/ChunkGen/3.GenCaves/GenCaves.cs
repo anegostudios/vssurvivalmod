@@ -39,12 +39,9 @@ namespace Vintagestory.ServerMods
                     .HandleWith(CmdCaveGenTest)
                     .EndSubCommand();
 
-                if (TerraGenConfig.DoDecorationPass)
-                {
-                    api.Event.MapChunkGeneration(OnMapChunkGen, "standard");
-                    api.Event.MapChunkGeneration(OnMapChunkGen, "superflat");
-                    api.Event.InitWorldGenerator(initWorldGen, "superflat");
-                }
+                api.Event.MapChunkGeneration(OnMapChunkGen, "standard");
+                api.Event.MapChunkGeneration(OnMapChunkGen, "superflat");
+                api.Event.InitWorldGenerator(initWorldGen, "superflat");
             }
         }
 

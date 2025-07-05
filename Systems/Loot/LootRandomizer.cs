@@ -103,12 +103,11 @@ namespace Vintagestory.GameContent
             ItemSlot slot = fromPlayer.InventoryManager.GetInventory(networkMessage.InventoryId)?[networkMessage.SlotId];
             if (slot == null || slot.Empty) return;
 
-            if (!(slot.Itemstack.Collectible is ItemLootRandomizer))
+            if (slot.Itemstack.Collectible is not (ItemLootRandomizer or ItemStackRandomizer))
             {
-                fromPlayer.SendIngameError("noprivilege", "Not a loot randomizer");
+                fromPlayer.SendIngameError("noprivilege", "Not a loot or stack randomizer");
                 return;
             }
-
 
             slot.Itemstack.Attributes.SetFloat("totalChance", networkMessage.TotalChance);
         }

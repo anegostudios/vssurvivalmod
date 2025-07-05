@@ -327,6 +327,20 @@ namespace Vintagestory.GameContent
             string code = iatta.GetCategoryCode(itemslot.Itemstack);
             var slotConfig = wearableSlots[slotIndex];
 
+            var ebhs = entity.GetBehavior<EntityBehaviorSeatable>();
+            if (ebhs != null)
+            {
+                var seat = ebhs.SeatConfigs.IndexOf(x => x.SelectionBox == slotConfig.AttachmentPointCode);
+                if (seat > -1 && ebhs.Seats[seat].Passenger != null)
+                {
+                    if (Api is ICoreClientAPI capi)
+                    {
+                        capi.TriggerIngameError(this, "alreadyoccupied", Lang.Get("mount-interact-alreadyoccupied"));
+                    }
+                    return false;
+                }
+            }
+
             if (!slotConfig.CanHold(code)) return false;
             if (!targetSlot.Empty) return false;
 

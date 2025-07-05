@@ -1,4 +1,5 @@
-﻿using Vintagestory.API.Client;
+﻿using Vintagestory.API;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -8,16 +9,73 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Allows a block to be harvested with the right mouse button for set items.
+    /// Uses the code "harvestable".
+    /// </summary>
+    /// <example><code lang="json">
+    ///"behaviorsByType": {
+	///	"*-ripe": [
+	///		{
+	///			"name": "Harvestable",
+	///			"properties": {
+	///				"harvestTime": 0.6,
+	///				"harvestedStack": {
+	///					"type": "item",
+	///					"code": "fruit-{type}",
+	///					"quantity": { "avg": 4.4 }
+	///				},
+	///				"harvestedBlockCode": "bigberrybush-{type}-empty",
+	///				"exchangeBlock": true
+	///			}
+	///		}
+	///	]
+	///}
+    ///...
+    ///"attributes": {
+	///	"forageStatAffected": true
+	///}
+    /// </code></example>
+    [DocumentAsJson]
+    [AddDocumentationProperty("ForageStatAffected", "Should the harvested stack amount be multiplied by the player's 'forageDropRate' stat?", "System.Boolean", "Optional", "False", true)]
     public class BlockBehaviorHarvestable : BlockBehavior
     {
+        /// <summary>
+        /// The amount of time, in seconds, it takes to harvest this block.
+        /// </summary>
+        [DocumentAsJson("Recommended", "0")]
         float harvestTime;
+
+        /// <summary>
+        /// Should this block be exchanged (true) or replaced (false)? If true, then any block entity at the same position will not be deleted.
+        /// </summary>
+        [DocumentAsJson("Optional", "False")]
         bool exchangeBlock;
+
+        /// <summary>
+        /// An array of drops for when the block is harvested. If only using a single drop you can use <see cref="harvestedStack"/>, otherwise this property is required.
+        /// </summary>
+        [DocumentAsJson("Required")]
         public BlockDropItemStack[] harvestedStacks;
+
+        /// <summary>
+        /// A drop for when the block is harvested. If using more than a single drop, use <see cref="harvestedStacks"/>, otherwise this property is required.
+        /// </summary>
+        [DocumentAsJson("Required")]
         public BlockDropItemStack harvestedStack { get { return harvestedStacks[0]; } set { harvestedStacks[0] = value; } }
 
+        /// <summary>
+        /// The sound to play whilst the object is being harvested.
+        /// </summary>
+        [DocumentAsJson("Optional", "sounds/block/leafy-picking")]
         public AssetLocation harvestingSound;
 
+        /// <summary>
+        /// The block to replace this one after it is harvested.
+        /// </summary>
+        [DocumentAsJson("Optional", "None")]
         AssetLocation harvestedBlockCode;
+
         Block harvestedBlock;
         string interactionHelpCode;
 
@@ -117,7 +175,7 @@ namespace Vintagestory.GameContent
                 {
                     dropRate *= byPlayer.Entity.Stats.GetBlended("forageDropRate");
                 }
-
+                    
                 harvestedStacks.Foreach(harvestedStack => 
                 {
                     ItemStack stack = harvestedStack.GetNextItemStack(dropRate);

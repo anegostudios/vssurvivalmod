@@ -118,6 +118,17 @@ namespace Vintagestory.GameContent
             return false;
         }
 
+        public override bool DoCheckPlayerInventory(IPlayerInventoryManager inventoryManager)
+        {
+            rwatcher.DoCheckPlayerInventory(inventoryManager);
+            if (rwatcher.Dirty)
+            {
+                rwatcher.Dirty = false;
+                return true;
+            }
+
+            return false;
+        }
 
     }
 }

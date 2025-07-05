@@ -9,6 +9,7 @@
 
 using System;
 using System.Linq;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -26,14 +27,57 @@ namespace Vintagestory.ServerMods
         Vertical
     }
 
+    /// <summary>
+    /// Allows complex rotation of a block depending on placement angle.
+    /// Also has behavior of placing the block in the crafting grid to set a 'slab placement mode'.
+    /// Requires the "rot" variant with the 6 directional states.
+    /// Uses the "OmniRotatable" code.
+    /// </summary>
+    /// <example><code lang="json">
+    ///"behaviors": [
+	///	{
+	///		"name": "OmniRotatable",
+	///		"properties": {
+	///			"rotateSides": true,
+	///			"facing": "block"
+	///		}
+	///	}
+	///]
+    /// </code>
+    /// <code lang="json">
+    ///"variantgroups": [
+	///	{
+	///		"code": "rot",
+	///		"states": [ "north", "east", "south", "west", "up", "down" ]
+	///	}
+	///]
+    /// </code></example>
+    [DocumentAsJson]
     public class BlockBehaviorOmniRotatable : BlockBehavior
     {
         private bool rotateH = false;
         private bool rotateV = false;
         private bool rotateV4 = false;
+
+        /// <summary>
+        /// Determines where to angle the block against. 
+        /// Set to "player" for placement based on the players angle. Set to "block" for placement based on the block side.
+        /// </summary>
+        [DocumentAsJson("Optional", "player")]
         private string facing = "player";
+
+        /// <summary>
+        /// If a slab placement mode has not been set, should the block be automatically rotated?
+        /// </summary>
+        [DocumentAsJson("Optional", "False")]
         private bool rotateSides = false;
+
+        /// <summary>
+        /// The chance that this block will drop its drops. Values over 1 will have no effect.
+        /// </summary>
+        [DocumentAsJson("Optional", "1")]
         private float dropChance = 1f;
+
 
         public string Rot => block.Variant["rot"];
 

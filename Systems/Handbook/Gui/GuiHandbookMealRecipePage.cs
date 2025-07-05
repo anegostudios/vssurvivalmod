@@ -88,7 +88,7 @@ namespace Vintagestory.GameContent
             {
                 dummySlot = new (new (capi.World.BlockAccessor.GetBlock("pie-perfect")), unspoilableInventory);
                 dummySlot.Itemstack!.Attributes.SetInt("pieSize", 4);
-                dummySlot.Itemstack.Attributes.SetInt("topCrustType", capi.World.Rand.Next(3));
+                dummySlot.Itemstack.Attributes.SetString("topCrustType", BlockPie.TopCrustTypes[capi.World.Rand.Next(BlockPie.TopCrustTypes.Length)].Code);
                 dummySlot.Itemstack.Attributes.SetInt("bakeLevel", 2);
             }
             else dummySlot = new (new (BlockMeal.AllMealBowls![capi.World.Rand.Next(BlockMeal.AllMealBowls.Length)]), unspoilableInventory);
@@ -120,7 +120,7 @@ namespace Vintagestory.GameContent
             if ((secondsVisible -= dt) <= 0)
             {
                 secondsVisible = 1;
-                if (isPie) dummySlot.Itemstack?.Attributes.SetInt("topCrustType", capi.World.Rand.Next(3));
+                if (isPie) dummySlot.Itemstack?.Attributes.SetString("topCrustType", BlockPie.TopCrustTypes[capi.World.Rand.Next(BlockPie.TopCrustTypes.Length)].Code);
                 else dummySlot.Itemstack = new (BlockMeal.AllMealBowls![capi.World.Rand.Next(BlockMeal.AllMealBowls.Length)]);
                 mealBlock?.SetContents(Recipe.Code!, dummySlot.Itemstack!, isPie ? BlockPie.GenerateRandomPie(capi, ref cachedValidStacks, Recipe) : Recipe.GenerateRandomMeal(capi, ref cachedValidStacks, allStacks, slots), 1);
             }

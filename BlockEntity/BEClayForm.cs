@@ -72,7 +72,7 @@ namespace Vintagestory.GameContent
                 workItemStack.ResolveBlockOrItem(api.World);
                 if (baseMaterial == null)
                 {
-                    baseMaterial = new ItemStack(api.World.GetItem(new AssetLocation("clay-" + workItemStack.Collectible.LastCodePart())));
+                    baseMaterial = new ItemStack(api.World.GetItem(AssetLocation.Create("clay-" + workItemStack.Collectible.Variant["type"], workItemStack.Collectible.Code.Domain)));
                 } else
                 {
                     baseMaterial.ResolveBlockOrItem(api.World);
@@ -113,7 +113,7 @@ namespace Vintagestory.GameContent
                 }
 
                 CreateInitialWorkItem();
-                workItemStack = new ItemStack(Api.World.GetItem(new AssetLocation("clayworkitem-" + slot.Itemstack.Collectible.LastCodePart())));
+                workItemStack = new ItemStack(Api.World.GetItem(AssetLocation.Create("clayworkitem-" + slot.Itemstack.Collectible.Variant["type"], slot.Itemstack.Collectible.Code.Domain)));
                 baseMaterial = slot.Itemstack.Clone();
                 baseMaterial.StackSize = 1;
             }
@@ -551,7 +551,7 @@ namespace Vintagestory.GameContent
             if (Api != null && workItemStack != null)
             {
                 workItemStack.ResolveBlockOrItem(Api.World);
-                var item = Api.World.GetItem(new AssetLocation("clay-" + workItemStack.Collectible.LastCodePart()));
+                var item = Api.World.GetItem(AssetLocation.Create("clay-" + workItemStack.Collectible.Variant["type"], workItemStack.Collectible.Code.Domain));
                 if (item == null)
                 {
                     Api.World.Logger.Notification("Clay form base mat is null! Clay form @ {0}/{1}/{2} corrupt. Will reset to blue clay", Pos.X, Pos.Y, Pos.Z);
@@ -725,7 +725,7 @@ namespace Vintagestory.GameContent
 
             if (ingredient.Collectible is ItemWorkItem)
             {
-                ingredient = new ItemStack(world.GetItem(new AssetLocation("clay-" + ingredient.Collectible.LastCodePart())));
+                ingredient = new ItemStack(world.GetItem(AssetLocation.Create("clay-" + ingredient.Collectible.Variant["type"], ingredient.Collectible.Code.Domain)));
             }
 
             List<ClayFormingRecipe> recipes = Api.GetClayformingRecipes()

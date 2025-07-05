@@ -995,7 +995,7 @@ namespace Vintagestory.GameContent
                     {
                         mealBlock = new ItemStack(capi.World.BlockAccessor.GetBlock("pie-perfect"));
                         mealBlock.Attributes.SetInt("pieSize", 4);
-                        mealBlock.Attributes.SetInt("topCrustType", capi.World.Rand.Next(3));
+                        mealBlock.Attributes.SetString("topCrustType", BlockPie.TopCrustTypes[capi.World.Rand.Next(BlockPie.TopCrustTypes.Length)].Code);
                         mealBlock.Attributes.SetInt("bakeLevel", 2);
                     }
                     else mealBlock = new ItemStack(BlockMeal.AllMealBowls[capi.World.Rand.Next(BlockMeal.AllMealBowls.Length)]);
@@ -1160,7 +1160,8 @@ namespace Vintagestory.GameContent
                         bloomeryStack.StackSize = val.Collectible.CombustibleProps.SmeltedRatio;
                         bloomeryables.Add(bloomeryStack);
                     }
-                    else if (val.Collectible.CombustibleProps.SmeltingType == EnumSmeltType.Fire && !kilnables.Any(s => s.Equals(capi.World, val, GlobalConstants.IgnoredStackAttributes)))
+
+                    if (val.Collectible.CombustibleProps.SmeltingType == EnumSmeltType.Fire && !kilnables.Any(s => s.Equals(capi.World, val, GlobalConstants.IgnoredStackAttributes)))
                     {
                         kilnables.Add(val);
                     }

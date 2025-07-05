@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -56,7 +57,19 @@ namespace Vintagestory.GameContent
             var be = GetBlockEntity<BlockEntityAnimalTrap>(pos);
             if (be != null && be.TrapState == EnumTrapState.Destroyed)
             {
-                return new ItemStack[] { new ItemStack(world.GetItem(new AssetLocation("cattailtops")), 6 + world.Rand.Next(8)) };
+                BlockDropItemStack[] destroyedDrops = Attributes?["destroyedDrops"]?.AsObject<BlockDropItemStack[]>(null);
+                if (destroyedDrops == null) return Array.Empty<ItemStack>();
+
+                List<ItemStack> todrop = new List<ItemStack>();
+                for (int i = 0; i < destroyedDrops.Length; i++)
+                {
+                    BlockDropItemStack dstack = destroyedDrops[i];
+                    dstack.Resolve(world, "Block ", Code);
+                    ItemStack stack = dstack.ToRandomItemstackForPlayer(byPlayer, world, dropQuantityMultiplier);
+                    if (stack != null) todrop.Add(stack);
+                    if (dstack.LastDrop) break;
+                }
+                return todrop.ToArray();
             }
 
             return base.GetDrops(world, pos, byPlayer, dropQuantityMultiplier);

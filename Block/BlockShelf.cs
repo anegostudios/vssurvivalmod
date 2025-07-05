@@ -28,9 +28,23 @@ namespace Vintagestory.GameContent
                         usableItemStacklist.Add(new ItemStack(obj));
                     }
 
-                    if (obj?.Attributes?["shelvable"]?.AsBool(false) ?? false)
+                    if (BlockEntityShelf.GetShelvableLayout(new ItemStack(obj)) != null)
                     {
-                        shelvableStacklist.Add(new ItemStack(obj));
+                        if (obj is BlockPie pieBlock)
+                        {
+                            var stack = new ItemStack(obj);
+
+                            stack.Attributes.SetInt("pieSize", 4);
+                            stack.Attributes.SetString("topCrustType", "square");
+                            stack.Attributes.SetInt("bakeLevel", pieBlock.Variant["state"] switch { "raw" => 0, "partbaked" => 1, "perfect" => 2, "charred" => 3, _ => 0 });
+
+                            ItemStack doughStack = new(api.World.GetItem("dough-spelt"), 2);
+                            ItemStack fillingStack = new(api.World.GetItem("fruit-redapple"), 2);
+                            pieBlock.SetContents(stack, [doughStack, fillingStack, fillingStack, fillingStack, fillingStack, doughStack]);
+                            stack.Attributes.SetFloat("quantityServings", 1);
+                            shelvableStacklist.Add(stack);
+                        }
+                        else shelvableStacklist.Add(new ItemStack(obj));
                     }
                 }
 
@@ -59,8 +73,8 @@ namespace Vintagestory.GameContent
                         {
                             var beshelf = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityShelf;
 
-                            if (usableItemStacklist.Any(stack => beshelf?.CanUse(stack, bs) == true) || beshelf?.CanPlace(bs, out bool canTake) == false) return null;
-                            else return sstacks;
+                            if (usableItemStacklist.All(stack => beshelf?.CanUse(stack, bs) == false)) return [.. usableItemStacklist.Where(stack => beshelf?.CanPlace(stack, bs, out bool canTake) == true)];
+                            else return null;
                         }
                     },
                     new WorldInteraction()
@@ -73,7 +87,7 @@ namespace Vintagestory.GameContent
                         {
                             var beshelf = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityShelf;
 
-                            if (usableItemStacklist.Any(stack => beshelf?.CanUse(stack, bs) == true) && beshelf?.CanPlace(bs, out bool canTake) == true) return sstacks;
+                            if (usableItemStacklist.Any(stack => beshelf?.CanUse(stack, bs) == true)) return [.. usableItemStacklist.Where(stack => beshelf?.CanPlace(stack, bs, out bool canTake) == true)];
                             else return null;
                         }
                     },
@@ -87,7 +101,7 @@ namespace Vintagestory.GameContent
                             var beshelf = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityShelf;
 
                             bool canTake = false;
-                            beshelf?.CanPlace(bs, out canTake);
+                            beshelf?.CanPlace(null, bs, out canTake);
                             return canTake;
                         }
                     }
@@ -109,7 +123,14 @@ namespace Vintagestory.GameContent
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
         {
-            return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer).Append(interactions);
+
+            var worldInteractions = base.GetPlacedBlockInteractionHelp(world, selection, forPlayer);
+            
+            var resp = world.Claims.TestAccess(forPlayer, selection.Position, EnumBlockAccessFlags.Use);
+            if(resp == EnumWorldAccessResponse.Granted)
+                worldInteractions.Append(interactions);
+
+            return worldInteractions;
         }
     }
 }

@@ -1,10 +1,31 @@
-﻿using Vintagestory.API.Common;
+﻿using Vintagestory.API;
+using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
 #nullable disable
 
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Automatically swaps between 'North/South' and 'West/East' variants based on placement rotation. Requires an "orientation" or "side" variant with the codes "ns" and "we".
+    /// Uses the code "NWOrientable", and has no properties.
+    /// </summary>
+    /// <example><code lang="json">
+    ///"behaviors": [
+	///	{
+	///		"name": "NWOrientable"
+	///	}
+	///]
+    /// </code>
+    /// <code lang="json">
+    ///"variantgroups": [
+	///	{
+	///		"code": "orientation",
+	///		"states": [ "ns", "we" ]
+	///	}
+	///]
+    /// </code></example>
+    [DocumentAsJson]
     public class BlockBehaviorNWOrientable : BlockBehavior
     {
         string variantCode = "orientation";

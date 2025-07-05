@@ -1,4 +1,5 @@
-﻿using Vintagestory.API.Client;
+﻿using Vintagestory.API;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.Systems;
@@ -7,6 +8,18 @@ using Vintagestory.Systems;
 
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Allows a block to be locked by a player with a padlock, preventing any interaction from any other players.
+    /// Uses the "lockable" code. This behavior has no properties.
+    /// </summary>
+    /// <example><code lang="json">
+    ///"behaviors": [
+	///	{
+	///		"name": "Lockable"
+	///	}
+	///]
+    /// </code></example>
+    [DocumentAsJson]
     public class BlockBehaviorLockable : BlockBehavior
     {
         public BlockBehaviorLockable(Block block) : base(block)

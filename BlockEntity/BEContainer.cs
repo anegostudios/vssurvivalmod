@@ -45,6 +45,7 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockPlaced(ItemStack byItemStack = null)
         {
+            base.OnBlockPlaced(byItemStack);
             BlockContainer container = byItemStack?.Block as BlockContainer;
             if (container != null)
             {

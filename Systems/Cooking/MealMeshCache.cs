@@ -1,11 +1,11 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 
 namespace Vintagestory.GameContent
@@ -105,7 +105,7 @@ namespace Vintagestory.GameContent
 
         public override void Dispose()
         {
-            if (capi!.ObjectCache.TryGetValue("pieMeshRefs", out var objPi) && objPi is Dictionary<int, MultiTextureMeshRef> meshRefs)
+            if (capi?.ObjectCache.TryGetValue("pieMeshRefs", out var objPi) == true && objPi is Dictionary<int, MultiTextureMeshRef> meshRefs)
             {
                 foreach (var (_, meshRef) in meshRefs)
                 {
@@ -133,7 +133,7 @@ namespace Vintagestory.GameContent
 
             ItemStack?[] contentStacks = pieBlock.GetContents(capi.World, pieStack);
 
-            string extrakey = "ct" + pieStack.Attributes.GetAsInt("topCrustType") + "-bl" + pieStack.Attributes.GetAsInt("bakeLevel", 0) + "-ps" + pieStack.Attributes.GetAsInt("pieSize");
+            string extrakey = "ct" + (BlockPie.GetTopCrustType(pieStack) ?? "full") + "-bl" + pieStack.Attributes.GetAsInt("bakeLevel", 0) + "-ps" + pieStack.Attributes.GetAsInt("pieSize");
 
             int mealhashcode = GetMealHashCode(pieBlock, contentStacks, null, extrakey);
 
@@ -236,9 +236,8 @@ namespace Vintagestory.GameContent
             shapeloc.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/");
             Shape shape = API.Common.Shape.TryGet(capi, shapeloc);
 
-            int topCrustType = pieStack?.Attributes.GetAsInt("topCrustType") ?? (int)EnumTopCrustType.Full;
-            string[] topCrusts = ["origin/base/top crust full/*", "origin/base/top crust square/*", "origin/base/top crust diagonal/*"];
-            string[] selectiveElements = ["origin/base/crust regular/*", "origin/base/filling/*", "origin/base/base-quarter/*", "origin/base/fillingquarter/*", topCrusts[topCrustType]];
+            string topCrustShapeElement = BlockPie.TopCrustTypes.First(type => type.Code.EqualsFast(BlockPie.GetTopCrustType(pieStack) ?? "full")).ShapeElement;
+            string[] selectiveElements = ["origin/base/crust regular/*", "origin/base/filling/*", "origin/base/base-quarter/*", "origin/base/fillingquarter/*", topCrustShapeElement];
 
             capi.Tesselator.TesselateShape("pie", shape, out MeshData mesh, this, null, 0, 0, 0, null, selectiveElements);
             if (transform != null) mesh.ModelTransform(transform);
@@ -467,7 +466,7 @@ namespace Vintagestory.GameContent
 
             if (stack.Block is BlockPie)
             {
-                extraKey += "ct" + stack.Attributes.GetAsInt("topCrustType") + "-bl" + stack.Attributes.GetAsInt("bakeLevel", 0) + "-ps" + stack.Attributes.GetAsInt("pieSize");
+                extraKey += "ct" + (BlockPie.GetTopCrustType(stack) ?? "full") + "-bl" + stack.Attributes.GetAsInt("bakeLevel", 0) + "-ps" + stack.Attributes.GetAsInt("pieSize");
             }
 
             return GetMealHashCode(stack.Block, contentStacks, translate, extraKey);

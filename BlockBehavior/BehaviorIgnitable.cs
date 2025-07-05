@@ -1,4 +1,5 @@
-﻿using Vintagestory.API.Common;
+﻿using Vintagestory.API;
+using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
 #nullable disable
@@ -46,7 +47,10 @@ namespace Vintagestory.GameContent
 
     }
 
-
+    /// <summary>
+    /// Used to alternate a block between "lit" and "extinct" variant states when ignited or extinguished.
+    /// Uses the "Ignitable" code. This behavior has no properties.
+    /// </summary>
     public class BlockBehaviorIgniteable : BlockBehavior
     {
         public BlockBehaviorIgniteable(Block block) : base(block)

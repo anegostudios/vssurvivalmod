@@ -4,6 +4,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
+using static OpenTK.Graphics.OpenGL.GL;
+using Vintagestory.ServerMods;
 
 #nullable disable
 
@@ -221,11 +223,26 @@ namespace Vintagestory.GameContent
             MeshData mesh = getMesh(stack);
             if (mesh != null) return mesh;
 
-            IContainedMeshSource meshSource = stack.Collectible?.GetCollectibleInterface<IContainedMeshSource>();
-
-            if (meshSource != null)
+            CompositeShape customShape = stack.Collectible.Attributes?["displayedShape"].AsObject<CompositeShape>(null, stack.Collectible.Code.Domain);
+            if (customShape != null)
             {
-                mesh = meshSource.GenMesh(stack, capi.BlockTextureAtlas, Pos);
+                string customkey = "displayedShape-" + customShape.ToString();
+                mesh = ObjectCacheUtil.GetOrCreate(capi, customkey, () =>
+                    capi.TesselatorManager.CreateMesh(
+                        "displayed item shape",
+                        customShape,
+                        (shape, name) => new ContainedTextureSource(capi, capi.BlockTextureAtlas, shape.Textures, string.Format("For displayed item {0}", stack.Collectible.Code)),
+                        null
+                ));
+            }
+            else
+            {
+                IContainedMeshSource meshSource = stack.Collectible?.GetCollectibleInterface<IContainedMeshSource>();
+
+                if (meshSource != null)
+                {
+                    mesh = meshSource.GenMesh(stack, capi.BlockTextureAtlas, Pos);
+                }
             }
 
             if (mesh == null)
@@ -243,20 +260,16 @@ namespace Vintagestory.GameContent
 
         protected void applyDefaultTranforms(ItemStack stack, MeshData mesh)
         {
-            if (stack.Collectible.Attributes?[AttributeTransformCode].Exists == true)
+            ModelTransform transform = stack.Collectible.Attributes?[AttributeTransformCode].AsObject<ModelTransform>();
+            if (AttributeTransformCode == "onshelfTransform") // special logic because shelves a little more complicated
             {
-                ModelTransform transform = stack.Collectible.Attributes?[AttributeTransformCode].AsObject<ModelTransform>();
+                transform = stack.Collectible.GetCollectibleInterface<IShelvable>()?.GetOnShelfTransform(stack) ?? transform;
+                transform ??= stack.Collectible.Attributes?["onDisplayTransform"].AsObject<ModelTransform>();
+            }
+            if (transform != null)
+            {
                 transform.EnsureDefaultValues();
                 mesh.ModelTransform(transform);
-            }
-            else if (AttributeTransformCode == "onshelfTransform") // fallback to onDisplayTransform for onshelfTransform if it does not exist
-            {
-                if (stack.Collectible.Attributes?["onDisplayTransform"].Exists == true)
-                {
-                    ModelTransform transform = stack.Collectible.Attributes?["onDisplayTransform"].AsObject<ModelTransform>();
-                    transform.EnsureDefaultValues();
-                    mesh.ModelTransform(transform);
-                }
             }
 
             if (stack.Class == EnumItemClass.Item && (stack.Item.Shape == null || stack.Item.Shape.VoxelizeTexture))

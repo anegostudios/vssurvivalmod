@@ -286,6 +286,9 @@ namespace Vintagestory.GameContent
             charNaked = !on;
             var bh = capi.World.Player.Entity.GetBehavior<EntityBehaviorPlayerInventory>();
             bh.hideClothing = charNaked;
+
+            var charclass = capi.World.Player.Entity.WatchedAttributes.GetString("characterClass", modSys.characterClasses[0].Code);
+            modSys.setCharacterClass(capi.World.Player.Entity, charclass);
             reTesselate();
         }
 

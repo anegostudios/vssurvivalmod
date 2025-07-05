@@ -1,10 +1,21 @@
-﻿using Vintagestory.API.Common;
+﻿using Vintagestory.API;
+using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
 #nullable disable
 
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// A simple block behavior that breaks a snow cover first, before breaking the block.
+    /// Uses the code "BreakSnowFirst". This behavior has no properties.
+    /// </summary>
+    /// <example><code lang="json">
+    ///"behaviorsByType": {
+	///	"*-snow": [ { "name": "BreakSnowFirst" } ]
+	///}
+    /// </code></example>
+    [DocumentAsJson]
     public class BlockBehaviorBreakSnowFirst : BlockBehavior
     {
         public BlockBehaviorBreakSnowFirst(Block block) : base(block)

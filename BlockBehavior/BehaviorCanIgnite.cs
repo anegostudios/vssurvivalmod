@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -9,6 +10,16 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Used if the attached block can ignite other blocks with Shift + Right Click.
+    /// This behavior uses the code "CanIgnite", and has no properties.
+    /// </summary>
+    /// <example><code lang="json">
+    ///"behaviorsbyType": {
+	///	"*-lit-*": [ { "name": "CanIgnite" } ]
+	///}
+    /// </code></example>
+    [DocumentAsJson]
     public class BlockBehaviorCanIgnite : BlockBehavior
     {
         static public List<ItemStack> CanIgniteStacks(ICoreAPI api, bool withFirestarter)

@@ -28,7 +28,7 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
-            if (blockSel != null && byEntity.World.BlockAccessor.GetBlock(blockSel.Position).FirstCodePart() == "skep") return;
+            if (blockSel != null && byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is BlockSkep) return;
 
             // Not ideal to code the aiming controls this way. Needs an elegant solution - maybe an event bus?
             byEntity.Attributes.SetInt("aiming", 1);
@@ -70,7 +70,6 @@ namespace Vintagestory.GameContent
             if (secondsUsed < 0.35f) return;
 
             float damage = 0.5f;
-            string rockType = slot.Itemstack.Collectible.FirstCodePart(1);
 
             ItemStack stack = slot.TakeOut(1);
             slot.MarkDirty();

@@ -1,10 +1,16 @@
-﻿using Vintagestory.API.Common;
+﻿using Vintagestory.API;
+using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
 #nullable disable
 
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Unused block behavior for slab placement. Consider using <see cref="Vintagestory.ServerMods.BlockBehaviorOmniRotatable"/> instead.
+    /// Uses the "slab" code. This behavior has no properties.
+    /// </summary>
+    [DocumentAsJson]
     public class BlockBehaviorSlab : BlockBehavior
     {
         public BlockBehaviorSlab(Block block) : base(block)

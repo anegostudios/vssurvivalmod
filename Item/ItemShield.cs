@@ -70,11 +70,9 @@ namespace Vintagestory.GameContent
         string[] IAttachableToEntity.GetKeepElements(ItemStack stack) => attrAtta.GetKeepElements(stack);
         string IAttachableToEntity.GetTexturePrefixCode(ItemStack stack)
         {
-            string wood = stack.Attributes.GetString("wood");
-            string metal = stack.Attributes.GetString("metal");
-            string color = stack.Attributes.GetString("color");
-            string deco = stack.Attributes.GetString("deco");
-            return attrAtta.GetTexturePrefixCode(stack) + "-" + stack.Attributes.GetString("metal") + "-" + stack.Attributes.GetString("color") + "-" + stack.Attributes.GetString("deco");
+            string[] attributes = ["wood", "metal", "color", "deco"];
+            attributes = [.. attributes.Select(code => stack.Attributes.GetString(code))];
+            return attrAtta.GetTexturePrefixCode(stack) + "-" + string.Join("-", attributes);
         }
 
         void IAttachableToEntity.CollectTextures(ItemStack itemstack, Shape intoShape, string texturePrefixCode, Dictionary<string, CompositeTexture> intoDict)

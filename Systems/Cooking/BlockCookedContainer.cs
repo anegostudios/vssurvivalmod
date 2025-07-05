@@ -98,7 +98,7 @@ namespace Vintagestory.GameContent
 
 
         MealMeshCache? meshCache;
-        float yoff = 2.5f;
+        public float yoff = 2.5f;
 
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
@@ -268,7 +268,7 @@ namespace Vintagestory.GameContent
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
             if (inSlot.Itemstack is not ItemStack cookedContStack) return;
-
+            base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
             float temp = GetTemperature(world, cookedContStack);
             if (temp > 20)
             {

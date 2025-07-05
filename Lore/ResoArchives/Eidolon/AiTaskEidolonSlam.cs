@@ -149,7 +149,11 @@ namespace Vintagestory.GameContent
 
         public override bool ContinueExecute(float dt)
         {
+
             base.ContinueExecute(dt);
+            
+            //Check if time is still valid for task.
+            if (!IsInValidDayTimeHours(false)) return false;
 
             if (animMeta != null)
             {

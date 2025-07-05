@@ -6,6 +6,7 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 using VSSurvivalMod.Systems.ChiselModes;
 
@@ -263,6 +264,10 @@ namespace Vintagestory.GameContent
                 return;
             }
 
+            if (api is ICoreServerAPI sapi && sapi.Server.Config.LogBlockBreakPlace)
+            {
+                sapi.Logger.Build("{0} converted {1} to a chiseledblock at {2}", byPlayer.PlayerName, block.Code.ToString(), blockSel.Position);
+            }
             Block chiseledblock = byEntity.World.GetBlock(new AssetLocation("chiseledblock"));
 
             byEntity.World.BlockAccessor.SetBlock(chiseledblock.BlockId, blockSel.Position);
@@ -433,6 +438,10 @@ namespace Vintagestory.GameContent
                     else
                     {
                         be.AddMaterial(mouseslot.Itemstack.Block, out _, false);
+                    }
+                    if (api is ICoreServerAPI sapi && sapi.Server.Config.LogBlockBreakPlace)
+                    {
+                        sapi.Logger.Build("{0} added chisel material {1} at {2}", byPlayer.PlayerName, mouseslot.Itemstack.Block.Code.ToString(), pos);
                     }
 
                     be.MarkDirty();

@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
@@ -7,6 +8,18 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
+
+    /// <summary>
+    /// Allows a block to be reinforced, which protects against it being broken as quickly. Appropriate blocks are automatically given this behavior.
+    /// This behavior is not added through the normal property, but instead a custom attribute. This behavior has no properties.
+    /// You can add the "reinforcable" attribute to force an object to be reinforcable.
+    /// </summary>
+    /// <example><code lang="json">
+    ///"attributes": {
+	///	"reinforcable": true
+	///}
+    /// </code></example>
+    [DocumentAsJson]
     public class BlockBehaviorReinforcable : BlockBehavior
     {
         public BlockBehaviorReinforcable(Block block) : base(block)

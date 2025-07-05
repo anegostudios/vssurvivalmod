@@ -134,8 +134,12 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public override bool ContinueExecute(float dt)
+        public override bool 
+            ContinueExecute(float dt)
         {
+            //Check if time is still valid for task.
+            if (!IsInValidDayTimeHours(false)) return false;
+
             if (pathTraverser.Active) return true;
 
             var sqdist = entity.ServerPos.SquareDistanceTo(targetEntity.ServerPos);

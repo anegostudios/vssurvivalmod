@@ -191,7 +191,7 @@ namespace Vintagestory.GameContent
                     if (HasAnyFilling && cStacks[5] != null)
                     {
                         ItemStack? stack = inv[0].Itemstack;
-                        stack?.Attributes.SetInt("topCrustType", (stack.Attributes.GetAsInt("topCrustType") + 1) % 3);
+                        stack = BlockPie.CycleTopCrustType(stack);
                         MarkDirty(true);
                     }
                 }
@@ -281,7 +281,7 @@ namespace Vintagestory.GameContent
                     } else
                     {
                         ItemStack? stack = inv[0].Itemstack;
-                        stack?.Attributes.SetInt("topCrustType", (stack.Attributes.GetAsInt("topCrustType") + 1) % 3);
+                        stack = BlockPie.CycleTopCrustType(stack);
                     }
                     return true;
                 }

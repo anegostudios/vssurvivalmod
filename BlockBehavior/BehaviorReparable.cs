@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -28,8 +29,19 @@ namespace Vintagestory.GameContent
 
 
     /// <summary>
-    /// Blocks which can be repaired using glue.  If not repaired, they will shatter (dropping nothing) when broken
+    /// Blocks which can be repaired using glue. If not repaired, they will shatter (dropping nothing) when broken. 
+    /// Requires use of the ShapeFromAttributes block entity behavior.
+    /// Uses the code "Reparable".
     /// </summary>
+    /// <example> <code lang="json">
+    ///"behaviors": [
+	///	{ "name": "Reparable" }
+	///]
+    /// </code>
+    /// </example>
+    [DocumentAsJson]
+    [AddDocumentationProperty("Reparability", "The amount of glue needed for a full repair (abstract units corresponding to 1 resin, PLUS ONE), " +
+        "e.g. 5 resin is shown as 6.   0 means unspecified (we don't use the repair system), -1 means cannot be repaired will alway shatter.", "System.Int32", "Recommended", "0")]
     public class BlockBehaviorReparable : BlockBehavior
     {
         public BlockBehaviorReparable(Block block) : base(block)
@@ -164,6 +176,13 @@ namespace Vintagestory.GameContent
 
                                         slot.MarkDirty();
                                     }
+                                    else if (slot.Itemstack.Collectible is ILiquidSource cont)
+                                    {
+                                        int itemsPerLitre = (int)(cont.GetContentProps(slot.Itemstack)?.ItemsPerLitre ?? 100);
+                                        cont.TryTakeContent(slot.Itemstack, itemsPerLitre);
+
+                                        slot.MarkDirty();
+                                    }
                                     else slot.TakeOut(1);
                                 }
 
@@ -223,6 +242,17 @@ namespace Vintagestory.GameContent
                 {
                     float standardAmount = outputItem.Attributes["repairGain"].AsFloat(0.2f);
                     return standardAmount * Math.Min(1f, mc.GetQuantityServings(world, stack));
+                }
+            }
+
+            if (stack.Collectible is ILiquidSource cont)
+            {
+                ItemStack lStack = cont.GetContent(stack);
+
+                if (lStack != null && lStack.ItemAttributes?["repairGain"].Exists == true)
+                {
+                    float standardAmount = lStack.ItemAttributes["repairGain"].AsFloat(0.2f);
+                    return standardAmount * Math.Min(1f, cont.GetContentProps(stack).ItemsPerLitre * lStack.StackSize);
                 }
             }
 

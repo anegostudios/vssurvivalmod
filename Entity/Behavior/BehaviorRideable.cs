@@ -87,7 +87,7 @@ namespace Vintagestory.GameContent
         }
         #endregion
 
-        public double LastDismountTotalHours { 
+        public double LastDismountTotalHours {
             get
             {
                 return entity.WatchedAttributes.GetDouble("lastDismountTotalHours");
@@ -124,8 +124,8 @@ namespace Vintagestory.GameContent
                 if (!entity.WatchedAttributes.HasAttribute("requiredSaddleBreaks") && api.Side == EnumAppSide.Server)
                 {
                     RemainingSaddleBreaks = GameMath.RoundRandom(api.World.Rand, attributes["saddleBreaksRequired"].AsObject<NatFloat>().nextFloat(1, api.World.Rand));
-                }               
-                
+                }
+
                 saddleBreakDayInterval = attributes["saddleBreakDayInterval"].AsFloat();
                 tamedEntityCode = attributes["tamedEntityCode"].AsString();
             }
@@ -133,9 +133,9 @@ namespace Vintagestory.GameContent
             rideableconfig = attributes.AsObject<RideableConfig>();
             foreach (var val in rideableconfig.Controls.Values) { val.RiderAnim?.Init(); }
 
-            
+
             capi = api as ICoreClientAPI;
-            curAnim = rideableconfig.Controls["idle"].RiderAnim;            
+            curAnim = rideableconfig.Controls["idle"].RiderAnim;
 
             if (capi != null)
             {
@@ -292,18 +292,29 @@ namespace Vintagestory.GameContent
             {
                 if (entity.OnGround) coyoteTimer = 0.15f;
 
-                if (seat.Passenger == null || !seat.Config.Controllable) continue;
+                if (seat.Passenger == null) continue;
 
                 var eplr = seat.Passenger as EntityPlayer;
 
                 if (eplr != null)
                 {
                     eplr.Controls.LeftMouseDown = seat.Controls.LeftMouseDown;
-                    eplr.HeadYawLimits = new AngleConstraint(entity.Pos.Yaw + seat.Config.MountRotation.Y * GameMath.DEG2RAD, GameMath.PIHALF);
-                    eplr.BodyYawLimits = new AngleConstraint(entity.Pos.Yaw + seat.Config.MountRotation.Y * GameMath.DEG2RAD, GameMath.PIHALF);
+                    if (eplr.HeadYawLimits == null)
+                    {
+                        eplr.BodyYawLimits = new AngleConstraint(entity.Pos.Yaw + seat.Config.MountRotation.Y * GameMath.DEG2RAD, seat.Config.BodyYawLimit ?? GameMath.PIHALF);
+                        eplr.HeadYawLimits = new AngleConstraint(entity.Pos.Yaw + seat.Config.MountRotation.Y * GameMath.DEG2RAD, GameMath.PIHALF);
+                    }
+                    else
+                    {
+                        eplr.BodyYawLimits.X = entity.Pos.Yaw + seat.Config.MountRotation.Y * GameMath.DEG2RAD;
+                        eplr.BodyYawLimits.Y = seat.Config.BodyYawLimit ?? GameMath.PIHALF;
+                        eplr.HeadYawLimits.X = entity.Pos.Yaw + seat.Config.MountRotation.Y * GameMath.DEG2RAD;
+                        eplr.HeadYawLimits.Y = GameMath.PIHALF;
+                    }
+
                 }
 
-                if (Controller != null) continue;
+                if (Controller != null || !seat.Config.Controllable) continue;
                 Controller = seat.Passenger;
 
                 var controls = seat.Controls;
@@ -366,7 +377,6 @@ namespace Vintagestory.GameContent
 
                 float str = ++seatsRowing == 1 ? 1 : 0.5f;
 
-                
 
                 if (scheme == EnumControlScheme.Hold)
                 {
@@ -589,6 +599,7 @@ namespace Vintagestory.GameContent
             eagent.Controls.StopAllMovement();
             eagent.Controls.WalkVector.Set(0, 0, 0);
             eagent.Controls.FlyVector.Set(0,0,0);
+            eagent.StopAnimation(curTurnAnim);
             shouldMove = false;
             if (curControlMeta != null && curControlMeta.Animation != "jump")
             {
@@ -615,7 +626,7 @@ namespace Vintagestory.GameContent
             }
 
             if (shouldMove)
-            {                
+            {
                 move(dt, eagent.Controls, curControlMeta.MoveSpeed);
             } else
             {
@@ -658,7 +669,7 @@ namespace Vintagestory.GameContent
                     }
 
                     trotSound.Start();
-                    
+
                 } else
                 {
                     trotSound.Stop();
@@ -735,7 +746,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        
+
 
 
 

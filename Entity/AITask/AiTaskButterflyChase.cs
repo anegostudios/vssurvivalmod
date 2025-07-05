@@ -104,6 +104,9 @@ namespace Vintagestory.GameContent
 
         public override bool ContinueExecute(float dt)
         {
+            //Check if time is still valid for task.
+            if (!IsInValidDayTimeHours(false)) return false;
+
             if (targetEntity == null) return false;
 
             targetPos.Set(targetEntity.ServerPos.X, targetEntity.ServerPos.Y + (fleeState ? 1 : 0), targetEntity.ServerPos.Z);

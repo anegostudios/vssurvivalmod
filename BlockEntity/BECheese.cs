@@ -96,7 +96,7 @@ namespace Vintagestory.GameContent
             if (inv[0].Empty) return true;
 
             tessThreadTesselator.TesselateShape(Block, (Api as ICoreClientAPI).TesselatorManager.GetCachedShape(inv[0].Itemstack.Item.Shape.Base), out MeshData modeldata);
-            modeldata.Scale(new Vec3f(0.5f, 0, 0.5f), 0.75f, 0.75f, 0.75f);
+            modeldata.Scale(new Vec3f(0.5f, 0, 0.5f), 1f, 1f, 1f);
             mesher.AddMeshData(modeldata);
             return true;
         }

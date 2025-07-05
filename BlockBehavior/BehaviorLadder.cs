@@ -1,4 +1,5 @@
-﻿using Vintagestory.API.Common;
+﻿using Vintagestory.API;
+using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
@@ -6,10 +7,48 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
+
+    /// <summary>
+    /// Used to control ladder behavior, including horizontal orientation, placement, collection. Note that this does not control how entities react to ladders (see "climbable" in blocktype).
+    /// Requires use of the 'horizontalorientation' variants.
+    /// Uses the code "Ladder".
+    /// </summary>
+    /// <example><code lang="json">
+    ///"behaviors": [
+	///	{
+	///		"name": "Ladder",
+	///		"properties": {
+	///			"isFlexibleByType": {
+	///				"ladder-rope-*": true
+	///			}
+	///		}
+	///	}
+	///]
+    /// </code>
+    /// <code>
+    ///"variantgroups": [
+	///	{
+	///		"code": "side",
+	///		"loadFromProperties": "abstract/horizontalorientation"
+	///	}
+	///]
+    /// </code></example>
+    [DocumentAsJson]
     public class BlockBehaviorLadder : BlockBehavior
     {
+
+        /// <summary>
+        /// What face variant should this block drop when mined?
+        /// </summary>
+        [DocumentAsJson("Optional", "north")]
         string dropBlockFace = "north";
+
         string ownFirstCodePart;
+
+        /// <summary>
+        /// Can the base of this ladder be collected with a right click? Flexible ladders also cannot be built upwards.
+        /// </summary>
+        [DocumentAsJson("Optional", "False")]
         public bool isFlexible;
 
         public string LadderType => block.Variant["material"];

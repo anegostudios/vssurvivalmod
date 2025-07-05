@@ -7,6 +7,8 @@ namespace Vintagestory.GameContent
 {
     public class EntityBehaviorRipHarvestable : EntityBehavior
     {
+        protected float ripHarvestChance = 0.25f;
+
         public EntityBehaviorRipHarvestable(Entity entity) : base(entity)
         {
         }
@@ -20,7 +22,7 @@ namespace Vintagestory.GameContent
             {
                 var eagent = damageSource.SourceEntity as EntityAgent;
                 var attackWeaponSlot = eagent?.RightHandItemSlot;
-                if (attackWeaponSlot?.Itemstack?.ItemAttributes != null && attackWeaponSlot.Itemstack.ItemAttributes.IsTrue("ripHarvest"))
+                if (attackWeaponSlot?.Itemstack?.ItemAttributes != null && attackWeaponSlot.Itemstack.ItemAttributes.IsTrue("ripHarvest") && entity.World.Rand.NextDouble() < ripHarvestChance)
                 {
                     var ebh = entity.GetBehavior<EntityBehaviorHarvestable>();
                     if (ebh != null)

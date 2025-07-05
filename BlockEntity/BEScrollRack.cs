@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Reflection;
+﻿using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -9,37 +7,35 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
-#nullable disable
-
 namespace Vintagestory.GameContent
 {
-
-    public class BlockEntityScrollRack : BlockEntityDisplay, IRotatable
+    public class BlockEntityScrollRack : BlockEntityDisplay
     {
         public override InventoryBase Inventory => inv;
         public override string InventoryClassName => "scrollrack";
         public override string AttributeTransformCode => "onscrollrackTransform";
-        public float MeshAngleRad { get; set; }
 
-        InventoryGeneric inv;
-        Block block;
-        MeshData mesh;
+        public float MeshAngleRad
+        {
+            get => bh?.MeshAngleY ?? 0;
+            set => bh!.MeshAngleY = value;
+        }
 
-        string type, material;
-        float[] mat;
+        InventoryGeneric? inv;
 
-        public string Type => type;
-        public string Material => material;
+        public string? Type => bh?.Type;
+        public string? Material => bh?.Material;
 
-        int[] UsableSlots;
+        int[]? UsableSlots;
         Cuboidf[] UsableSelectionBoxes;
+        private BEBehaviorShapeMaterialFromAttributes? bh;
 
         public BlockEntityScrollRack()
         {
             inv = new InventoryGeneric(12, "scrollrack-0", null, null);
         }
 
-        public int[] getOrCreateUsableSlots()
+        public int[]? getOrCreateUsableSlots()
         {
             if (UsableSlots == null) genUsableSlots();
             return UsableSlots;
@@ -64,16 +60,16 @@ namespace Vintagestory.GameContent
         {
             var left = isRack(BEBehaviorDoor.getAdjacentOffset(-1, 0, 0, MeshAngleRad, false));
 
-            var slotsBySide = (Block as BlockScrollRack).slotsBySide;
+            var slotsBySide = ((BlockScrollRack)Block).slotsBySide;
             List<int> usableSlots = new List<int>();
 
             usableSlots.AddRange(slotsBySide["mid"]);
             usableSlots.AddRange(slotsBySide["top"]);
             if (left) usableSlots.AddRange(slotsBySide["left"]);
 
-            this.UsableSlots = usableSlots.ToArray();
+            UsableSlots = usableSlots.ToArray();
 
-            var hitboxes = (Block as BlockScrollRack).slotsHitBoxes;
+            var hitboxes = ((BlockScrollRack)Block).slotsHitBoxes;
             UsableSelectionBoxes = new Cuboidf[hitboxes.Length];
             for (int i = 0; i < hitboxes.Length; i++)
             {
@@ -83,50 +79,24 @@ namespace Vintagestory.GameContent
 
         private bool isRack(Vec3i offset)
         {
-            var be = Api.World.BlockAccessor.GetBlockEntity<BlockEntityScrollRack>(Pos.AddCopy(offset));
-            return be != null && be.MeshAngleRad == MeshAngleRad;
-        }
-
-        void initShelf()
-        {
-            if (Api == null || type == null || Block is not BlockScrollRack rack) return;
-
-            if (Api.Side == EnumAppSide.Client)
-            {
-                mesh = rack.GetOrCreateMesh(type, material);
-                mat = Matrixf.Create().Translate(0.5f, 0.5f, 0.5f).RotateY(MeshAngleRad).Translate(-0.5f, -0.5f, -0.5f).Values;
-            }
-
-            type = "normal";
+            var be = Api.World.BlockAccessor
+                .GetBlockEntity<BlockEntityScrollRack>(Pos.AddCopy(offset))
+                ?.GetBehavior<BEBehaviorShapeMaterialFromAttributes>();
+            return be != null && be.MeshAngleY == MeshAngleRad;
         }
 
         public override void Initialize(ICoreAPI api)
         {
-            block = api.World.BlockAccessor.GetBlock(Pos);
+            bh = GetBehavior<BEBehaviorShapeMaterialFromAttributes>();
             base.Initialize(api);
-
-            if (mesh == null && type != null)
-            {
-                initShelf();
-            }
-        }
-
-        public override void OnBlockPlaced(ItemStack byItemStack = null)
-        {
-            base.OnBlockPlaced(byItemStack);
-
-            type ??= byItemStack?.Attributes.GetString("type");
-            material ??= byItemStack?.Attributes.GetString("material");
-
-            initShelf();
         }
 
         internal bool OnInteract(IPlayer byPlayer, BlockSelection blockSel)
         {
             getOrCreateUsableSlots();
-
-            var slotSides = (Block as BlockScrollRack).slotSide;
-            var oppositeSlotIndex = (Block as BlockScrollRack).oppositeSlotIndex;
+            var bsr = ((BlockScrollRack)Block);
+            var slotSides = bsr.slotSide;
+            var oppositeSlotIndex = bsr.oppositeSlotIndex;
             var slotside = slotSides[blockSel.SelectionBoxIndex];
             if (slotside == "bot" || slotside == "right")
             {
@@ -147,7 +117,7 @@ namespace Vintagestory.GameContent
 
             ItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
-            CollectibleObject colObj = slot.Itemstack?.Collectible;
+            CollectibleObject? colObj = slot.Itemstack?.Collectible;
             bool shelvable = colObj?.Attributes != null && colObj.Attributes["scrollrackable"].AsBool(false) == true;
 
             if (slot.Empty || !shelvable)
@@ -158,32 +128,26 @@ namespace Vintagestory.GameContent
                 }
                 return false;
             }
-            else
+
+            if (shelvable)
             {
-                if (shelvable)
+                AssetLocation? sound = slot.Itemstack?.Block?.Sounds?.Place;
+
+                var stackName = slot.Itemstack?.Collectible.Code;
+                if (TryPut(slot, blockSel))
                 {
-                    AssetLocation sound = slot.Itemstack?.Block?.Sounds?.Place;
-
-                    var stackName = slot.Itemstack?.Collectible.Code;
-                    if (TryPut(slot, blockSel))
-                    {
-                        Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
-                        Api.World.Logger.Audit("{0} Put 1x{1} into Scroll rack at {2}.",
-                            byPlayer.PlayerName,
-                            stackName,
-                            Pos
-                        );
-                        return true;
-                    }
-
-                    return false;
+                    Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
+                    Api.World.Logger.Audit("{0} Put 1x{1} into Scroll rack at {2}.",
+                        byPlayer.PlayerName,
+                        stackName,
+                        Pos
+                    );
+                    return true;
                 }
             }
 
             return false;
         }
-
-
 
         private bool TryPut(ItemSlot slot, BlockSelection blockSel)
         {
@@ -215,7 +179,7 @@ namespace Vintagestory.GameContent
                 ItemStack stack = inv[invIndex].TakeOut(1);
                 if (byPlayer.InventoryManager.TryGiveItemstack(stack))
                 {
-                    AssetLocation sound = stack.Block?.Sounds?.Place;
+                    AssetLocation? sound = stack.Block?.Sounds?.Place;
                     Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
                 }
 
@@ -239,7 +203,7 @@ namespace Vintagestory.GameContent
         protected override float[][] genTransformationMatrices()
         {
             tfMatrices = new float[Inventory.Count][];
-            var hitboxes = (Block as BlockScrollRack).slotsHitBoxes;
+            var hitboxes = ((BlockScrollRack)Block).slotsHitBoxes;
 
             for (int i = 0; i < Inventory.Count; i++)
             {
@@ -271,9 +235,6 @@ namespace Vintagestory.GameContent
         {
             base.ToTreeAttributes(tree);
 
-            tree.SetString("type", type);
-            tree.SetString("material", material);
-            tree.SetFloat("meshAngleRad", MeshAngleRad);
             tree.SetBool("usableSlotsDirty", UsableSlots == null);
         }
 
@@ -281,25 +242,13 @@ namespace Vintagestory.GameContent
         {
             base.FromTreeAttributes(tree, worldForResolving);
 
-            type = tree.GetString("type");
-            material = tree.GetString("material");
-            MeshAngleRad = tree.GetFloat("meshAngleRad");
             if (tree.GetBool("usableSlotsDirty")) UsableSlots = null;
 
-            initShelf();
+            bh?.Init();
 
             // Do this last!!!
             RedrawAfterReceivingTreeAttributes(worldForResolving);     // Redraw on client after we have completed receiving the update from server
         }
-
-
-        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
-        {
-            mesher.AddMeshData(mesh, mat);
-            base.OnTesselation(mesher, tessThreadTesselator);
-            return true;
-        }
-
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
         {
@@ -321,7 +270,7 @@ namespace Vintagestory.GameContent
             if (slot.Empty)
             {
                 // If we are a rack-edge slot and it is full in the other rack, show contents correctly - otherwise it shows 50/50 as empty depending on which of the two blocks the player is precisely looking at
-                var slotSides = (Block as BlockScrollRack).slotSide;
+                var slotSides = ((BlockScrollRack)Block).slotSide;
                 var slotside = slotSides[index];
                 if (slotside == "bot")
                 {
@@ -350,14 +299,6 @@ namespace Vintagestory.GameContent
             {
                 sb.AppendLine(slot.Itemstack.GetName());
             }
-        }
-
-        public void OnTransformed(IWorldAccessor worldAccessor, ITreeAttribute tree, int degreeRotation,
-            Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, EnumAxis? flipAxis)
-        {
-            MeshAngleRad = tree.GetFloat("meshAngleRad");
-            MeshAngleRad -= degreeRotation * GameMath.DEG2RAD;
-            tree.SetFloat("meshAngleRad", MeshAngleRad);
         }
 
         internal void clearUsableSlots()
