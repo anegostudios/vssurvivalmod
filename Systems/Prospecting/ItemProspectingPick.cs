@@ -126,7 +126,10 @@ namespace Vintagestory.GameContent
 			if (byEntity is EntityPlayer) byPlayer = world.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
 
 			Block block = world.BlockAccessor.GetBlock(blockSel.Position);
-			block.OnBlockBroken(world, blockSel.Position, byPlayer, 0);
+            float dropMul = 1f;
+            if (block.BlockMaterial == EnumBlockMaterial.Ore || block.BlockMaterial == EnumBlockMaterial.Stone) dropMul = 0;
+
+            block.OnBlockBroken(world, blockSel.Position, byPlayer, dropMul);
 
             if (!isPropickable(block)) return;
 
