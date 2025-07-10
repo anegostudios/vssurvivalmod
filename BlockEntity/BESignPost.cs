@@ -6,6 +6,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntitySignPost : BlockEntity
@@ -54,6 +56,7 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockRemoved()
         {
+            base.OnBlockRemoved();
             signRenderer?.Dispose();
             signRenderer = null;
         }

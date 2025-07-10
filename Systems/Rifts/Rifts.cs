@@ -10,6 +10,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
@@ -26,17 +28,25 @@ namespace Vintagestory.GameContent
         ICoreAPI api;
         ICoreClientAPI capi;
         ICoreServerAPI sapi;
-        RiftRenderer renderer;
+#pragma warning disable IDE0052 // Remove unread private members
+        RiftRenderer renderer; // No private member cannot be removed, stupid Visual Studio
+#pragma warning restore IDE0052 // Remove unread private members
 
         public Dictionary<int, Rift> riftsById = new Dictionary<int, Rift>();
+        /// <summary>
+        /// A collection of all the Rifts on a server, for thread-safe access (e.g. by TemporalStability when testing entity spawn positions off-thread)
+        /// Updated every time the riftsById change (normally once per 3 seconds)
+        /// </summary>
+        private List<Rift> serverRifts = new();
+        public List<Rift> ServerRifts { get { return serverRifts; } }
         public ILoadedSound[] riftSounds = new ILoadedSound[4];
-        public Rift[] nearestRifts = new Rift[0];
+        public Rift[] nearestRifts = Array.Empty<Rift>();
 
         public IServerNetworkChannel schannel;
 
-        public int despawnDistance = 240;
-        public int spawnMinDistance = 8;
-        public int spawnAddDistance = 230;
+        public int despawnDistance = 190;
+        public int spawnMinDistance = 16;
+        public int spawnAddDistance = 180;
 
         bool riftsEnabled = true;
 
@@ -168,7 +178,6 @@ namespace Vintagestory.GameContent
             bool modified = KillOldRifts(nearbyRiftsByPlayerUid);
             modified |= SpawnNewRifts(nearbyRiftsByPlayerUid);
 
-
             if (modified)
             {
                 BroadCastRifts();
@@ -185,6 +194,15 @@ namespace Vintagestory.GameContent
                     chunkIndexbyPlayer[player.PlayerUID] = index3d;
                 }
             }
+
+            UpdateServerRiftList();
+        }
+
+        private void UpdateServerRiftList()
+        {
+            var serverRiftsNew = new List<Rift>();
+            foreach (var rift in riftsById.Values) serverRiftsNew.Add(rift);
+            serverRifts = serverRiftsNew;
         }
 
         private bool SpawnNewRifts(Dictionary<string, List<Rift>> nearbyRiftsByPlayerUid)
@@ -192,6 +210,7 @@ namespace Vintagestory.GameContent
             var uids = nearbyRiftsByPlayerUid.Keys;
             int riftsSpawned = 0;
 
+            double totalDays = api.World.Calendar.TotalDays;
             foreach (var uid in uids)
             {
                 float cap = GetRiftCap(uid);
@@ -205,8 +224,9 @@ namespace Vintagestory.GameContent
                 if (api.World.Rand.NextDouble() < fract / 50.0) canSpawnCount++;
 
                 if (canSpawnCount <= 0) continue;
-                
-                if (api.World.Calendar.TotalDays < 2 && api.World.Calendar.GetDayLightStrength(plr.Entity.Pos.AsBlockPos) > 0.9f) continue;
+
+                var plrPos = plr.Entity.Pos;
+                if (totalDays < 2 && api.World.Calendar.GetDayLightStrength(plrPos.X, plrPos.Z) > 0.9f) continue;
 
                 for (int i = 0; i < canSpawnCount; i++)
                 {
@@ -216,7 +236,7 @@ namespace Vintagestory.GameContent
                     double dz = distance * Math.Sin(angle);
                     double dx = distance * Math.Cos(angle);
 
-                    Vec3d riftPos = plr.Entity.Pos.XYZ.Add(dx, 0, dz);
+                    Vec3d riftPos = plrPos.XYZ.Add(dx, 0, dz);
                     BlockPos pos = new BlockPos((int)riftPos.X, 0, (int)riftPos.Z);
                     pos.Y = api.World.BlockAccessor.GetTerrainMapheightAt(pos);
 
@@ -290,7 +310,7 @@ namespace Vintagestory.GameContent
             var pos = plr.Entity.Pos;
             float daylight = api.World.Calendar.GetDayLightStrength(pos.X, pos.Z);
 
-            return 5 * modRiftWeather.CurrentPattern.MobSpawnMul * GameMath.Clamp(1.1f - daylight, 0.35f, 1);
+            return 8 * modRiftWeather.CurrentPattern.MobSpawnMul * GameMath.Clamp(1.1f - daylight, 0.45f, 1);
         }
 
         private bool KillOldRifts(Dictionary<string, List<Rift>> nearbyRiftsByPlayerUid)
@@ -370,6 +390,7 @@ namespace Vintagestory.GameContent
             {
                 riftsById = new Dictionary<int, Rift>();
             }
+            else UpdateServerRiftList();
         }
 
         public void BroadCastRifts(IPlayer onlyToPlayer = null)
@@ -488,7 +509,7 @@ namespace Vintagestory.GameContent
                     .HandleWith(args => TextCommandResult.Success(riftsById.Count + " rifts loaded"))
                     .BeginSub("clear")
                         .WithDesc("Immediately remove all loaded rifts")
-                        .HandleWith(args => { riftsById.Clear(); BroadCastRifts(); return TextCommandResult.Success(); })
+                        .HandleWith(args => { riftsById.Clear(); serverRifts = new(); BroadCastRifts(); return TextCommandResult.Success("Rifts cleared"); })
                     .EndSub()
                     .BeginSub("fade")
                         .WithDesc("Slowly remove all loaded rifts, over a few minutes")
@@ -499,6 +520,7 @@ namespace Vintagestory.GameContent
                                 rift.DieAtTotalHours = Math.Min(rift.DieAtTotalHours, api.World.Calendar.TotalHours + 0.2);
                             }
 
+                            UpdateServerRiftList();
                             BroadCastRifts();
                             return TextCommandResult.Success();
                         })
@@ -543,6 +565,7 @@ namespace Vintagestory.GameContent
                                 riftsById[rift.RiftId] = rift;
                             }
 
+                            UpdateServerRiftList();
                             BroadCastRifts();
                             return TextCommandResult.Success("ok, " + cnt + " spawned.");
                         })
@@ -560,12 +583,13 @@ namespace Vintagestory.GameContent
                                 Position = riftPos,
                                 Size = size,
                                 SpawnedTotalHours = api.World.Calendar.TotalHours,
-                                DieAtTotalHours = api.World.Calendar.TotalHours + 8 + api.World.Rand.NextDouble() * 48
+                                DieAtTotalHours = api.World.Calendar.TotalHours + 16 + api.World.Rand.NextDouble() * 48
                             };
 
                             OnRiftSpawned?.Invoke(rift);
 
                             riftsById[rift.RiftId] = rift;
+                            UpdateServerRiftList();
                             BroadCastRifts();
 
                             return TextCommandResult.Success("ok, rift spawned.");

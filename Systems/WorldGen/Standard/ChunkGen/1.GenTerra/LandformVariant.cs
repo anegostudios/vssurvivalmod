@@ -5,6 +5,8 @@ using Vintagestory.API.Server;
 using Vintagestory.API.Common;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods.NoObf
 {
     public class LandformVariant : WorldPropertyVariant
@@ -51,7 +53,7 @@ namespace Vintagestory.ServerMods.NoObf
         [JsonProperty]
         public float[] TerrainYKeyThresholds;
         [JsonProperty]
-        public LandformVariant[] Mutations = new LandformVariant[0];
+        public LandformVariant[] Mutations = Array.Empty<LandformVariant>();
         // Mutation chance
         [JsonProperty]
         public float Chance = 0f;

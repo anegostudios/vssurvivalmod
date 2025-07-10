@@ -9,6 +9,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     public enum EnumGradeDistribution
@@ -179,7 +181,7 @@ namespace Vintagestory.ServerMods
                     if (block.Id != 0 && variant.addHandbookAttributes)
                     {
                         if (block.Attributes == null) block.Attributes = new JsonObject(JToken.Parse("{}"));
-                        int[] oreIds = block.Attributes["hostRockFor"].AsArray(new int[0]);
+                        int[] oreIds = block.Attributes["hostRockFor"].AsArray(Array.Empty<int>());
 
                         oreIds = oreIds.Append(placeBlocks.Select(b => b.BlockId).ToArray());
                         block.Attributes.Token["hostRockFor"] = JToken.FromObject(oreIds);
@@ -189,7 +191,7 @@ namespace Vintagestory.ServerMods
                         {
                             Block pblock = placeBlocks[i];
                             if (pblock.Attributes == null) pblock.Attributes = new JsonObject(JToken.Parse("{}"));
-                            oreIds = pblock.Attributes["hostRock"].AsArray(new int[0]);
+                            oreIds = pblock.Attributes["hostRock"].AsArray(Array.Empty<int>());
                             oreIds = oreIds.Append(block.BlockId);
                             pblock.Attributes.Token["hostRock"] = JToken.FromObject(oreIds);
                         }
@@ -356,7 +358,8 @@ namespace Vintagestory.ServerMods
                             {
                                 int surfaceY = heremapchunk.RainHeightMap[lz * chunksize + lx];
                                 int depth = surfaceY - posy;
-                                float chance = SurfaceBlockChance * Math.Max(0, 1.11f - depth / 9f);
+                                float seaLevelScale = 9f * (TerraGenConfig.seaLevel / 110f); // Default sea level for world height 256
+                                float chance = SurfaceBlockChance * Math.Max(0, 1.11f - depth / seaLevelScale);
                                 if (surfaceY < worldheight - 1 && DepositRand.NextFloat() < chance)
                                 {
                                     Block belowBlock = Api.World.Blocks[chunks[surfaceY / chunksize].Data.GetBlockIdUnsafe(((surfaceY % chunksize) * chunksize + lz) * chunksize + lx)];
@@ -448,9 +451,7 @@ namespace Vintagestory.ServerMods
                 oreBearingBlocks.Add(val);
             }
 
-            double minYAvg;
-            double maxYAvg;
-            GetYMinMax(pos, out minYAvg, out maxYAvg);
+            GetYMinMax(pos, out double minYAvg, out double maxYAvg);
 
             int q = 0;
             for (int ypos = 0; ypos < blockColumn.Length; ypos++)

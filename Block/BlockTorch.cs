@@ -9,6 +9,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockTorch : BlockGroundAndSideAttachable, IIgnitable
@@ -67,7 +69,6 @@ namespace Vintagestory.GameContent
                     {
                         ActionLangCode = "blockhelp-firepit-ignite",
                         MouseButton = EnumMouseButton.Right,
-                        HotKeyCode = "shift",
                         Itemstacks = canIgniteStacks.ToArray(),
                         GetMatchingStacks = (wi, bs, es) => {
                             return wi.Itemstacks;
@@ -107,6 +108,10 @@ namespace Vintagestory.GameContent
         {
             if (blockSel != null && byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is IIgnitable ign)
             {
+                if (byEntity is EntityPlayer player && !byEntity.World.Claims.TryAccess(player.Player, blockSel.Position, EnumBlockAccessFlags.Use))
+                {
+                    return;
+                }
                 if (isExtinct)
                 {
                     var state = ign.OnTryIgniteStack(byEntity, blockSel.Position, slot, 0);
@@ -131,6 +136,10 @@ namespace Vintagestory.GameContent
         {
             if (isExtinct && blockSel != null && byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is IIgnitable ign)
             {
+                if (byEntity is EntityPlayer player && !byEntity.World.Claims.TryAccess(player.Player, blockSel.Position, EnumBlockAccessFlags.Use))
+                {
+                    return false;
+                }
                 var state = ign.OnTryIgniteStack(byEntity, blockSel.Position, slot, secondsUsed);
                 if (state == EnumIgniteState.Ignitable)
                 {
@@ -185,7 +194,7 @@ namespace Vintagestory.GameContent
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {
-            if (Variant["state"] == "burnedout") return new ItemStack[0];
+            if (Variant["state"] == "burnedout") return Array.Empty<ItemStack>();
 
             Block block = world.BlockAccessor.GetBlock(CodeWithVariant("orientation", "up"));
             return new ItemStack[] { new ItemStack(block) };
@@ -224,7 +233,7 @@ namespace Vintagestory.GameContent
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
         {
-            if (Variant["state"] == "burnedout") return new WorldInteraction[0];
+            if (Variant["state"] == "burnedout") return Array.Empty<WorldInteraction>();
             return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer).Append(interactions);
         }
 

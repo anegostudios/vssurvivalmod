@@ -3,6 +3,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.GameContent;
 
+#nullable disable
+
 namespace VSSurvivalMod.Systems.ChiselModes
 {
     public class FlipChiselMode : ChiselMode

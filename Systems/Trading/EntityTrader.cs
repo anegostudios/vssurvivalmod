@@ -1,15 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
+﻿using System.IO;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
-using Vintagestory.API.Config;
-using Vintagestory.API.Datastructures;
-using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -25,7 +21,7 @@ namespace Vintagestory.GameContent
 
     public class EntityTrader : EntityTradingHumanoid, ITalkUtil
     {
-        public static OrderedDictionary<string, TraderPersonality> Personalities = new OrderedDictionary<string, TraderPersonality>()
+        public static API.Datastructures.OrderedDictionary<string, TraderPersonality> Personalities = new ()
         {
             { "formal", new TraderPersonality(1 * 1.5f, 1, 0.9f) },
             { "balanced", new TraderPersonality(1.2f * 1.5f, 0.9f, 1.1f) },

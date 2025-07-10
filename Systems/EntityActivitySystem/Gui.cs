@@ -14,6 +14,8 @@ using System.Collections.Generic;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 // Requirements:
 // Activity Collections
 // List/Add/Remove
@@ -225,7 +227,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public OrderedDictionary<AssetLocation, EntityActivityCollection> collections = new OrderedDictionary<AssetLocation, EntityActivityCollection>();
+        public API.Datastructures.OrderedDictionary<AssetLocation, EntityActivityCollection> collections = new ();
         private void Event_PlayerJoin(IServerPlayer player)
         {
             JsonSerializerSettings settings = new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.All };
@@ -306,7 +308,7 @@ namespace Vintagestory.GameContent
 
     public class GuiDialogActivityCollections : GuiDialog
     {
-        public OrderedDictionary<AssetLocation, EntityActivityCollection> collections = new OrderedDictionary<AssetLocation, EntityActivityCollection> ();
+        public API.Datastructures.OrderedDictionary<AssetLocation, EntityActivityCollection> collections = new ();
         protected ElementBounds clipBounds;
         protected GuiElementCellList<EntityActivityCollection> listElem;
         int selectedIndex = -1;
@@ -833,7 +835,6 @@ namespace Vintagestory.GameContent
         protected ElementBounds conditionsClipBounds;
         protected GuiElementCellList<IEntityAction> actionListElem;
         protected GuiElementCellList<IActionCondition> conditionsListElem;
-        bool isNew = false;
         public override string ToggleKeyCombinationCode => null;
 
         int selectedActionIndex = -1;
@@ -845,7 +846,6 @@ namespace Vintagestory.GameContent
         {
             if (entityActivity == null)
             {
-                isNew = true;
                 entityActivity = new EntityActivity();
             }
 

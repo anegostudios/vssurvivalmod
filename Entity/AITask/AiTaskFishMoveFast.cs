@@ -3,6 +3,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Datastructures;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     /// <summary>
@@ -156,8 +158,12 @@ namespace Vintagestory.GameContent
             bool ok = pathTraverser.WalkTowards(MainTarget, moveSpeed, targetDistance, OnGoalReached, OnStuck);
         }
 
-        public override bool ContinueExecute(float dt)
+        public override bool 
+            ContinueExecute(float dt)
         {
+            //Check if time is still valid for task.
+            if (!IsInValidDayTimeHours(false)) return false;
+
             base.ContinueExecute(dt);
 
             if (MainTarget.HorizontalSquareDistanceTo(entity.ServerPos.X, entity.ServerPos.Z) < 0.5)

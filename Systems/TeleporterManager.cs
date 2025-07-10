@@ -10,6 +10,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
@@ -62,8 +64,7 @@ namespace Vintagestory.GameContent
 
         internal TeleporterLocation GetOrCreateLocation(BlockPos pos)
         {
-            TeleporterLocation loc;
-            if (Locations.TryGetValue(pos, out loc))
+            if (Locations.TryGetValue(pos, out TeleporterLocation loc))
             {
                 return loc;
             }

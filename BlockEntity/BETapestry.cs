@@ -6,11 +6,15 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityTapestry : BlockEntity
     {
         bool rotten;
+        bool preserveType;
+        bool preserve;
         string type;
         MeshData meshData;
 
@@ -19,21 +23,6 @@ namespace Vintagestory.GameContent
 
         public string Type => type;
         public bool Rotten => rotten;
-
-        string[][] tapestryGroups = new string[][]
-        {
-            new string[] { "rot1" },
-            new string[] { "rot2" },
-            new string[] { "rot3" },
-
-            new string[] { "holy1", "schematic-c1", "schematic-c-bloody1", "forlorn1" },
-            new string[] { "holy2", "schematic-c2", "schematic-c-bloody2", "forlorn2" },
-
-            new string[] { "salvation11", "schematic-a11", "schematic-b11", "schematic-d11", "rotbeast11", "blackguard11" },
-            new string[] { "salvation12", "schematic-a12", "schematic-b12", "schematic-d12", "rotbeast12", "blackguard12" },
-            new string[] { "salvation21", "schematic-a21", "schematic-b21", "schematic-d21", "rotbeast21", "blackguard21" },
-            new string[] { "salvation22", "schematic-a22", "schematic-b22", "schematic-d22", "rotbeast22", "blackguard22" },
-        };
 
         public override void Initialize(ICoreAPI api)
         {
@@ -55,7 +44,9 @@ namespace Vintagestory.GameContent
 
             if (byItemStack != null)
             {
-                type = byItemStack?.Attributes?.GetString("type");
+                type = byItemStack.Attributes?.GetString("type");
+                preserveType = byItemStack.Attributes?.GetBool("preserveType") ?? false;
+                preserve = byItemStack.Attributes?.GetBool("preserve") ?? false;
             }
 
             genMesh();
@@ -76,6 +67,8 @@ namespace Vintagestory.GameContent
             base.FromTreeAttributes(tree, worldForResolving);
 
             rotten = tree.GetBool("rotten");
+            preserveType = tree.GetBool("preserveType");
+            preserve = tree.GetBool("preserve");
             type = tree.GetString("type");
             if (worldForResolving.Side == EnumAppSide.Client && Api != null && type != null)
             {
@@ -90,39 +83,46 @@ namespace Vintagestory.GameContent
             base.ToTreeAttributes(tree);
 
             tree.SetBool("rotten", rotten);
+            tree.SetBool("preserveType", preserveType);
+            tree.SetBool("preserve", preserve);
             tree.SetString("type", type);
         }
 
         public override void OnLoadCollectibleMappings(IWorldAccessor worldForNewMappings, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed, bool resolveImports)
         {
-            if(!resolveImports) return;
+            if(!resolveImports || preserve) return;
+            
             bool found = false;
 
             double val = ((double)(uint)schematicSeed / uint.MaxValue);
+            var blockGroups = Block.FirstCodePart() == "wallcarving" ? BlockTapestry.wallcarvingGroups : BlockTapestry.tapestryGroups;
 
-            for (int i = 0; !found && i < tapestryGroups.Length; i++)
+            if (!preserveType)
             {
-                for (int j = 0; !found && j < tapestryGroups[i].Length; j++)
+                for (int i = 0; !found && i < blockGroups.Length; i++)
                 {
-                    if (tapestryGroups[i][j] == type)
+                    for (int j = 0; !found && j < blockGroups[i].Length; j++)
                     {
-                        int rnd = GameMath.oaatHashMany(schematicSeed + ((i >= 3) ? 87987 : 0), 20);
-            
-                        uint seed2 = GameMath.Mod((uint)schematicSeed + (uint)rnd, uint.MaxValue);
-            
-                        val = ((double)seed2 / uint.MaxValue);
-            
-                        int len = tapestryGroups[i].Length;
-                        int pos = GameMath.oaatHashMany(j + schematicSeed, 20);
-            
-                        type = tapestryGroups[i][GameMath.Mod(pos, len)];
-                        found = true;
-            
+                        if (blockGroups[i][j] == type)
+                        {
+                            int rnd = GameMath.oaatHashMany(schematicSeed + ((i >= 3) ? 87987 : 0), 20);
+                
+                            uint seed2 = GameMath.Mod((uint)schematicSeed + (uint)rnd, uint.MaxValue);
+                
+                            val = ((double)seed2 / uint.MaxValue);
+                
+                            int len = blockGroups[i].Length;
+                            int pos = GameMath.oaatHashMany(j + schematicSeed, 20);
+                
+                            type = blockGroups[i][GameMath.Mod(pos, len)];
+                            found = true;
+                
+                        }
                     }
-                }
+                } 
             }
 
-            if (val < 0.6)
+            if (val < 0.6 && !preserveType)
             {
                 needsToDie = true;
                 if (didInitialize) {
@@ -130,7 +130,7 @@ namespace Vintagestory.GameContent
                 }
                 return;
             }
-
+            
             rotten = worldForNewMappings.Rand.NextDouble() < 0.75;
         }
 

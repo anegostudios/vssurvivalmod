@@ -4,6 +4,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     // When player detected at a range of "searchRange" then
@@ -80,11 +82,11 @@ namespace Vintagestory.GameContent
                 if (toofar || toonear) return true;
             }
 
-            if (whenInEmotionState == null && rand.NextDouble() > 0.5f) return false;
+            if (WhenInEmotionState == null && rand.NextDouble() > 0.5f) return false;
             if (lastSearchTotalMs + searchWaitMs > entity.World.ElapsedMilliseconds) return false;
             if (cooldownUntilMs > entity.World.ElapsedMilliseconds && !RecentlyAttacked) return false;
             // React immediately on hurt, otherwise only 1/10 chance of execution
-            if (rand.NextDouble() > executionChance && (whenInEmotionState == null || IsInEmotionState(whenInEmotionState) != true) && !RecentlyAttacked) return false;
+            if (rand.NextDouble() > executionChance && (WhenInEmotionState == null || IsInEmotionState(WhenInEmotionState) != true) && !RecentlyAttacked) return false;
 
             lastSearchTotalMs = entity.World.ElapsedMilliseconds;
             if (!RecentlyAttacked)
@@ -92,7 +94,7 @@ namespace Vintagestory.GameContent
                 attackedByEntity = null;
             }
 
-            if (retaliateAttacks && attackedByEntity != null && attackedByEntity.Alive && attackedByEntity.IsInteractable && IsTargetableEntity(attackedByEntity, searchRange, true))
+            if (retaliateAttacks && attackedByEntity != null && attackedByEntity.Alive && attackedByEntity.IsInteractable && IsTargetableEntity(attackedByEntity, searchRange, true) && !entity.ToleratesDamageFrom(attackedByEntity))
             {
                 targetEntity = attackedByEntity;
                 targetPos = targetEntity.ServerPos.XYZ;
@@ -132,10 +134,12 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        long jumpedMS = 0;
-        float lastPathUpdateSeconds;
-        public override bool ContinueExecute(float dt)
+        public override bool 
+            ContinueExecute(float dt)
         {
+            //Check if time is still valid for task.
+            if (!IsInValidDayTimeHours(false)) return false;
+
             if (pathTraverser.Active) return true;
 
             var sqdist = entity.ServerPos.SquareDistanceTo(targetEntity.ServerPos);

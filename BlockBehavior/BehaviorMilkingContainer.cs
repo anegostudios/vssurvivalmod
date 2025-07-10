@@ -1,11 +1,26 @@
 ﻿using System;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Allows a block to be used as a container for milking an entity. Must be on a block that has the "BlockLiquidContainerBase" class.
+    /// Uses the code "MilkingContainer", and has no properties.
+    /// </summary>
+    /// <example><code lang="json">
+    ///"behaviors": [
+	///	{
+	///		"name": "MilkingContainer"
+	///	}
+	///]
+    /// </code></example>
+    [DocumentAsJson]
     public class BlockBehaviorMilkingContainer : BlockBehavior
     {
         ICoreAPI api;
@@ -73,8 +88,6 @@ namespace Vintagestory.GameContent
                         tf.Translation.X += (float)GameMath.MurmurHash3Mod((int)(secondsUsed * 3), 0, 0, 10) / 600f;
                         tf.Translation.Y += (float)GameMath.MurmurHash3Mod(0, (int)(secondsUsed * 3), 0, 10) / 600f;
                     }
-
-                    byEntity.Controls.UsingHeldItemTransformBefore = tf;
                 }
 
 

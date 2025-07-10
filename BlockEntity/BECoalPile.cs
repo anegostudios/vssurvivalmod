@@ -9,6 +9,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityCoalPile : BlockEntityItemPile, ITexPositionSource, IHeatSource
@@ -118,6 +120,7 @@ namespace Vintagestory.GameContent
 
             burning = false;
             UnregisterGameTickListener(listenerId);
+            listenerId = 0;
             MarkDirty(true);
             Api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), Pos, 0, null, false, 16);
         }
@@ -221,7 +224,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            cokeConversionRate = inventory[0].Itemstack.ItemAttributes?["cokeConversionRate"].AsFloat(0) ?? 0;
+            cokeConversionRate = inventory[0].Itemstack?.ItemAttributes?["cokeConversionRate"].AsFloat(0) ?? 0;
             if (cokeConversionRate > 0)
             {
                 if (isCokable = TestCokable())
@@ -231,6 +234,7 @@ namespace Vintagestory.GameContent
                         inventory[0].Itemstack = new ItemStack(Api.World.GetItem(new AssetLocation("coke")), (int)(inventory[0].StackSize * cokeConversionRate));
                         burning = false;
                         UnregisterGameTickListener(listenerId);
+                        listenerId = 0;
                         MarkDirty(true);
                     } else
                     {
@@ -365,6 +369,7 @@ namespace Vintagestory.GameContent
                 if (listenerId != 0)
                 {
                     UnregisterGameTickListener(listenerId);
+                    listenerId = 0;
                 }
                 ambientSound?.Stop();
                 listenerId = 0;
@@ -426,7 +431,7 @@ namespace Vintagestory.GameContent
             if (world.Side == EnumAppSide.Server)
             {
                 ICoreServerAPI sapi = (world as IServerWorldAccessor).Api as ICoreServerAPI;
-                if (!sapi.Server.Config.AllowFallingBlocks) return false;
+                if (!sapi.World.Config.GetBool("allowFallingBlocks")) return false;
             }
 
             if (IsReplacableBeneath(world, pos) || IsReplacableBeneathAndSideways(world, pos))
@@ -443,7 +448,8 @@ namespace Vintagestory.GameContent
                     ItemStack remainingStack = inventory[0].Itemstack;
 
                     inventory[0].Itemstack = fallingStack;
-                    EntityBlockFalling entityblock = new EntityBlockFalling(Block, this, pos, null, 1, true, 0.05f);
+                    EntityBlockFalling entityblock = new EntityBlockFalling(Block, this, pos, null, 0, true, 0.5f);
+                    entityblock.maxSpawnHeightForParticles = 0.3f;
                     entityblock.DoRemoveBlock = false; // We want to split the pile, not remove it
                     world.SpawnEntity(entityblock);
                     entityblock.ServerPos.Y -= 0.25f;
@@ -505,8 +511,7 @@ namespace Vintagestory.GameContent
                     if (mesher is EntityBlockFallingRenderer) size = 2; // Haxy solution >.>
 
                     Shape shape = capi.TesselatorManager.GetCachedShape(new AssetLocation("block/basic/layers/" + GameMath.Clamp(size, 2, 16) + "voxel"));
-                    MeshData meshdata;
-                    capi.Tesselator.TesselateShape("coalpile", shape, out meshdata, this);
+                    capi.Tesselator.TesselateShape("coalpile", shape, out MeshData meshdata, this);
 
                     if (burning)
                     {
@@ -564,16 +569,6 @@ namespace Vintagestory.GameContent
             }
         }
 
-
-        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
-        {
-            base.GetBlockInfo(forPlayer, dsc);
-
-            /*if (!inventory[0].Empty)
-            {
-                dsc.AppendLine(string.Format("{0}x {1}", inventory[0].StackSize, inventory[0].Itemstack.GetName())) ;
-            }*/
-        }
 
         public float GetHeatStrength(IWorldAccessor world, BlockPos heatSourcePos, BlockPos heatReceiverPos)
         {

@@ -3,6 +3,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.GameContent;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods;
 
 public class ChiselBlockBulkSetMaterial : ModSystem

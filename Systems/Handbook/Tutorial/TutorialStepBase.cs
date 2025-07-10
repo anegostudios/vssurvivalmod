@@ -7,6 +7,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public delegate bool ItemStackMatcherDelegate(ItemStack stack);
@@ -226,6 +228,11 @@ namespace Vintagestory.GameContent
 
 
         public virtual bool OnAction(EnumEntityAction action, bool on)
+        {
+            return false;
+        }
+
+        public virtual bool DoCheckPlayerInventory(IPlayerInventoryManager inventoryManager)
         {
             return false;
         }

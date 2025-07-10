@@ -5,6 +5,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public enum EnumBlockStovePacket
@@ -207,16 +209,6 @@ namespace Vintagestory.GameContent
         public override bool OnPlayerRightClick(IPlayer byPlayer, BlockSelection blockSel)
         {
             return true;
-        }
-
-
-        public override void OnBlockBroken(IPlayer byPlayer = null)
-        {
-            
-            if (Api.World is IServerWorldAccessor)
-            {
-                Inventory.DropAll(Pos.ToVec3d().Add(0.5, 0.5, 0.5));
-            }
         }
 
         public override void OnReceivedClientPacket(IPlayer player, int packetid, byte[] data)

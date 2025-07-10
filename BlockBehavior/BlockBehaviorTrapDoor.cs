@@ -1,18 +1,63 @@
 ﻿using System.Text;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Marks a block as an animated trapdoor. Requires the use of the <see cref="BEBehaviorTrapDoor"/> block entity behavior.
+    /// Uses the "TrapDoor" code.
+    /// </summary>
+    /// <example><code lang="json">
+    ///"behaviors": [
+	///	{
+	///		"name": "TrapDoor" 
+	///	}
+	///],
+    ///...
+    ///"attributes": {
+	///	"airtightByType": {
+	///		"trapdoor-solid*": true,
+	///		"*": false
+	///	},
+	///	"openSound": "sounds/block/door",
+	///	"closeSound": "sounds/block/door"
+	///}
+    /// </code></example>
+    [DocumentAsJson]
+    [AddDocumentationProperty("TriggerSound", "The sound to play when the trapdoor is opened or closed.", "System.String", "Optional", "sounds/block/door", true)]
     public class BlockBehaviorTrapDoor : StrongBlockBehavior
     {
+        /// <summary>
+        /// The sound to play when the trapdoor is opened.
+        /// </summary>
+        [DocumentAsJson("Optional", "sounds/block/door", true)]
         public AssetLocation OpenSound;
+
+        /// <summary>
+        /// The sound to play when the trapdoor is closed.
+        /// </summary>
+        [DocumentAsJson("Optional", "sounds/block/door", true)]
         public AssetLocation CloseSound;
+
+        /// <summary>
+        /// Can the trapdoor be opened by hand?
+        /// </summary>
+        [DocumentAsJson("Optional", "True", true)]
         public bool handopenable;
+
+        /// <summary>
+        /// Is the trapdoor classed as being airtight?
+        /// </summary>
+        [DocumentAsJson("Optional", "True", true)]
         public bool airtight;
+
         ICoreAPI api;
         public MeshData animatableOrigMesh;
         public Shape animatableShape;
@@ -111,6 +156,13 @@ namespace Vintagestory.GameContent
 
         public override void GetDecal(IWorldAccessor world, BlockPos pos, ITexPositionSource decalTexSource, ref MeshData decalModelData, ref MeshData blockModelData, ref EnumHandling handled)
         {
+            var beh = world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorTrapDoor>();
+
+            if (beh.Opened)
+            {
+                decalModelData = decalModelData.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 90 * GameMath.DEG2RAD, 0, 0);
+                decalModelData = decalModelData.Scale(new Vec3f(0.5f, 0.5f, 0.5f), 1, -1f, 1);
+            }
             base.GetDecal(world, pos, decalTexSource, ref decalModelData, ref blockModelData, ref handled);
         }
 
@@ -140,10 +192,7 @@ namespace Vintagestory.GameContent
             var beh = block.GetBEBehavior<BEBehaviorTrapDoor>(pos);
             if (beh == null) return 0f;
 
-            if (beh.Opened) return 0f;
-            //if (face != beh.facingWhenClosed) return 0f;
-
-            if (block.Variant["style"] == "sleek-windowed") return 1.0f;
+            if (!beh.IsSideSolid(face)) return 0f;
 
             if (!airtight) return 0f;
 
@@ -156,10 +205,21 @@ namespace Vintagestory.GameContent
             var beh = block.GetBEBehavior<BEBehaviorTrapDoor>(pos);
             if (beh == null) return 0;
 
-            if (type == EnumRetentionType.Sound) return beh.Opened ? 0 : 3;
+            if (type == EnumRetentionType.Sound) return beh.IsSideSolid(facing) ? 3 : 0;
 
             if (!airtight) return 0;
-            return beh.Opened ? 3 : 1;
+            if (api.World.Config.GetBool("openDoorsNotSolid", false)) return beh.IsSideSolid(facing) ? getInsulation(pos) : 0;
+            return (beh.IsSideSolid(facing) || beh.IsSideSolid(facing.Opposite)) ? getInsulation(pos) : 3; // Also check opposite so the door can be facing inwards or outwards.
+        }
+
+        int getInsulation(BlockPos pos)
+        {
+            var mat = block.GetBlockMaterial(api.World.BlockAccessor, pos);
+            if (mat == EnumBlockMaterial.Ore || mat == EnumBlockMaterial.Stone || mat == EnumBlockMaterial.Soil || mat == EnumBlockMaterial.Ceramic)
+            {
+                return -1;
+            }
+            return 1;
         }
     }
 }

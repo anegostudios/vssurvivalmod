@@ -1,9 +1,11 @@
-using Vintagestory.API.Client;
 using System.Collections.Generic;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -31,7 +33,7 @@ namespace Vintagestory.GameContent
             this.capi = api;
 
             api.Input.RegisterHotKeyFirst("selectionhandbook", Lang.Get("Show Handbook for current selection"), GlKeys.H, HotkeyType.HelpAndOverlays, false, false, true);
-            api.Input.SetHotKeyHandler("selectionhandbook", OnSelectionHandbookHotkey);
+            api.Input.SetHotKeyHandler("selectionhandbook", OnSurvivalHandbookHotkey);
             api.Input.RegisterHotKeyFirst("handbook", Lang.Get("Show Survival handbook"), GlKeys.H, HotkeyType.HelpAndOverlays);
             api.Input.SetHotKeyHandler("handbook", OnSurvivalHandbookHotkey);
 
@@ -79,6 +81,33 @@ namespace Vintagestory.GameContent
         private List<GuiHandbookPage> onCreatePagesAsync()
         {
             var pages = new List<GuiHandbookPage>();
+            foreach (var recipe in capi.GetCookingRecipes())
+            {
+                if (capi.IsShuttingDown) break;
+
+                if (recipe.CooksInto == null)
+                {
+                    GuiHandbookMealRecipePage elem = new GuiHandbookMealRecipePage(capi, recipe, allstacks)
+                    {
+                        Visible = true
+                    };
+
+                    pages.Add(elem);
+                }
+            }
+
+            foreach (var recipe in BlockPie.GetHandbookRecipes(capi, allstacks))
+            {
+                if (capi.IsShuttingDown) break;
+
+                GuiHandbookMealRecipePage elem = new GuiHandbookMealRecipePage(capi, recipe, allstacks, 6, true)
+                {
+                    Visible = true
+                };
+
+                pages.Add(elem);
+            }
+
             foreach (ItemStack stack in allstacks)
             {
                 if (capi.IsShuttingDown) break;
@@ -139,39 +168,18 @@ namespace Vintagestory.GameContent
                 // dunno why
                 dialog.ignoreNextKeyPress = true;
 
-                if (capi.World.Player.InventoryManager.CurrentHoveredSlot?.Itemstack != null)
-                {
-                    ItemStack stack = capi.World.Player.InventoryManager.CurrentHoveredSlot.Itemstack;
-                    string pageCode = GuiHandbookItemStackPage.PageCodeForStack(stack);
+                ItemStack stack = capi.World.Player.InventoryManager.CurrentHoveredSlot?.Itemstack;
 
-                    if (!dialog.OpenDetailPageFor(pageCode))
-                    {
-                        dialog.OpenDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(new ItemStack(stack.Collectible)));
-                    }
+                if (key.Shift)
+                {
+                    BlockPos pos = capi.World.Player.CurrentBlockSelection?.Position;
+                    if (pos != null) stack = capi.World.BlockAccessor.GetBlock(pos).OnPickBlock(capi.World, pos);
                 }
-            }
 
-            return true;
-        }
-
-        private bool OnSelectionHandbookHotkey(KeyCombination key)
-        {
-            if (dialog.IsOpened())
-            {
-                dialog.TryClose();
-            }
-            else
-            {
-                dialog.TryOpen();
-                // dunno why
-                dialog.ignoreNextKeyPress = true;
-
-                if (capi.World.Player.CurrentBlockSelection != null)
+                if (stack != null)
                 {
-                    BlockPos pos = capi.World.Player.CurrentBlockSelection.Position;
-                    ItemStack stack = capi.World.BlockAccessor.GetBlock(pos).OnPickBlock(capi.World, pos);
-
-                    string pageCode = GuiHandbookItemStackPage.PageCodeForStack(stack);
+                    string pageCode = stack.Collectible.GetCollectibleInterface<IHandBookPageCodeProvider>()?.HandbookPageCodeForStack(capi.World, stack) ?? 
+                                      GuiHandbookItemStackPage.PageCodeForStack(stack);
 
                     if (!dialog.OpenDetailPageFor(pageCode))
                     {

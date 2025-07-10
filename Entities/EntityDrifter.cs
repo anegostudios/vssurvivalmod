@@ -3,6 +3,8 @@ using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class RemapAnimationManager : AnimationManager

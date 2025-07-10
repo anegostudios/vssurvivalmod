@@ -2,6 +2,8 @@
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public delegate void FruitingStateChangeDelegate(EnumFruitTreeState nowState);

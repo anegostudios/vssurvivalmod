@@ -3,6 +3,8 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent.Mechanics
 {
     public class PulverizerRenderer : MechBlockRenderer, ITexPositionSource
@@ -44,7 +46,6 @@ namespace Vintagestory.GameContent.Mechanics
 
         public PulverizerRenderer(ICoreClientAPI capi, MechanicalPowerMod mechanicalPowerMod, Block textureSoureBlock, CompositeShape shapeLoc) : base(capi, mechanicalPowerMod)
         {
-            MeshData toggleMesh, lPounderMesh, rPounderMesh;
 
             // 16 floats matrix, 4 floats light rgbs
             int count = (16 + 4) * 200;
@@ -53,7 +54,7 @@ namespace Vintagestory.GameContent.Mechanics
             AssetLocation loc = new AssetLocation("shapes/block/wood/mechanics/pulverizer-moving.json");
             Shape shape = API.Common.Shape.TryGet(capi, loc);
             Vec3f rot = new Vec3f(shapeLoc.rotateX, shapeLoc.rotateY + 90F, shapeLoc.rotateZ);
-            capi.Tesselator.TesselateShape(textureSoureBlock, shape, out toggleMesh, rot);
+            capi.Tesselator.TesselateShape(textureSoureBlock, shape, out MeshData toggleMesh, rot);
             toggleMesh.CustomFloats = matrixAndLightFloatsAxle = createCustomFloats(count);
             toggleMeshref = capi.Render.UploadMesh(toggleMesh);
 
@@ -75,8 +76,8 @@ namespace Vintagestory.GameContent.Mechanics
                 matrixAndLightFloatsLPounder[i] = createCustomFloats(count);
                 matrixAndLightFloatsRPounder[i] = createCustomFloats(count);
 
-                capi.Tesselator.TesselateShape("pulverizer-pounder-l", shapel, out lPounderMesh, this, rot);
-                capi.Tesselator.TesselateShape("pulverizer-pounder-r", shaper, out rPounderMesh, this, rot);
+                capi.Tesselator.TesselateShape("pulverizer-pounder-l", shapel, out MeshData lPounderMesh, this, rot);
+                capi.Tesselator.TesselateShape("pulverizer-pounder-r", shaper, out MeshData rPounderMesh, this, rot);
                 lPounderMesh.CustomFloats = matrixAndLightFloatsLPounder[i];
                 rPounderMesh.CustomFloats = matrixAndLightFloatsRPounder[i];
                 lPoundMeshrefs[i] = capi.Render.UploadMesh(lPounderMesh);

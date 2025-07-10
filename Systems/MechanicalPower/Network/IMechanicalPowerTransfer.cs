@@ -1,4 +1,6 @@
-﻿namespace Vintagestory.GameContent.Mechanics
+﻿
+#nullable disable
+namespace Vintagestory.GameContent.Mechanics
 {
     /// <summary>
     /// For nodes which can transfer power between 2 networks, for example Transmission or Large gear

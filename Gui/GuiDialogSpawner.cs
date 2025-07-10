@@ -7,6 +7,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     // We need a spawner block that spawns exactly 1 trader withing a configurable radius on solid ground

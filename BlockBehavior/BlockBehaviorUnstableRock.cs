@@ -8,6 +8,9 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Util;
 using System.Linq;
+using Vintagestory.API;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -89,22 +92,67 @@ namespace Vintagestory.GameContent
     In the same process we add a "custom collisionboxes" api. The beams system registeres collisionboxes for each loaded beam. Each custom collisionbox has a reference back to its owner.
     OBB collision system, WHEN?????
      */
+    /// <summary>
+    /// Makes a block potentially unstable, but can be held up using support beams. This behavior will only function if the "caveIns" world config is set to true.
+    /// Uses the code "UnstableRock".
+    /// </summary>
+    /// <example><code lang="json">
+    /// 
+    /// </code></example>
+    [DocumentAsJson]
+    [AddDocumentationProperty("UnstableRockStabilization", "The vertical stabilization that this block gives to nearby unstable rock blocks.", "System.Int32", "Optional", "0", true)]
     public class BlockBehaviorUnstableRock : BlockBehavior, IConditionalChiselable
     {
+        /// <summary>
+        /// The sound to play when the block begins to fall.
+        /// </summary>
+        [DocumentAsJson("Optional", "effect/rockslide")]
         protected AssetLocation fallSound = new AssetLocation("effect/rockslide");
+
+        /// <summary>
+        /// The multiplier of dust particles when the block falls.
+        /// </summary>
+        [DocumentAsJson("Optional", "1")]
         protected float dustIntensity = 1f;
+
+        /// <summary>
+        /// The damage multiplier when an entity is hit by a falling block. Damage also depends on how far the block has fell.
+        /// </summary>
+        [DocumentAsJson("Optional", "1")]
         protected float impactDamageMul = 1f;
+
+        /// <summary>
+        /// If set, then the block will be replaced with this when it begins to fall.
+        /// </summary>
+        [DocumentAsJson("Optional", "None")]
         protected AssetLocation collapsedBlockLoc;
+
         protected Block collapsedBlock;
+
+        /// <summary>
+        /// If the block is deemed unstable, what is the chance that it will fall? Unconnected blocks will fall regardless.
+        /// </summary>
+        [DocumentAsJson("Optional", "0.25")]
         protected float collapseChance = 0.25f;
 
         protected float maxSupportSearchDistanceSq = 6 * 6;
+
+        /// <summary>
+        /// The distance a support must be for it to support this block.
+        /// </summary>
+        [DocumentAsJson("Optional", "2")]
         protected float maxSupportDistance = 2;
+
+        /// <summary>
+        /// Currently unused.
+        /// </summary>
+        [DocumentAsJson("Obsolete")]
         protected float maxCollapseDistance = 1;
 
-        ICoreServerAPI sapi;
         ICoreAPI api;
-        bool Enabled => api.World.Config.GetString("caveIns") == "on" && (sapi == null || sapi.Server.Config.AllowFallingBlocks);
+        public bool AllowFallingBlocks;
+        public bool CaveIns;
+        bool Enabled => CaveIns && AllowFallingBlocks;
 
         public BlockBehaviorUnstableRock(Block block) : base(block)
         {
@@ -137,9 +185,11 @@ namespace Vintagestory.GameContent
         {
             base.OnLoaded(api);
 
-            sapi = api as ICoreServerAPI;
             this.api = api;
             collapsedBlock = collapsedBlockLoc == null ? block : (api.World.GetBlock(collapsedBlockLoc) ?? block);
+
+            AllowFallingBlocks = api.World.Config.GetBool("allowFallingBlocks");
+            CaveIns = api.World.Config.GetString("caveIns") == "on";
         }
 
 

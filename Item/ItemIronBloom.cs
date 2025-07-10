@@ -5,6 +5,8 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ItemIronBloom : Item, IAnvilWorkable
@@ -106,7 +108,7 @@ namespace Vintagestory.GameContent
 
 
 
-
+        public virtual int VoxelCountForHandbook(ItemStack stack) => 42;
 
         private void CreateVoxelsFromIronBloom(ref byte[,,] voxels)
         {

@@ -4,6 +4,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockWaterfall : BlockForFluidsLayer
@@ -73,7 +75,7 @@ namespace Vintagestory.GameContent
 
                     AdvancedParticleProperties bps = ParticleProperties[i];
                     bps.basePos.X = pos.X + TopMiddlePos.X;
-                    bps.basePos.Y = pos.Y;
+                    bps.basePos.Y = pos.InternalY;
                     bps.basePos.Z = pos.Z + TopMiddlePos.Z;
                     bps.WindAffectednes = windAffectednessAtPos * 0.25f;
 

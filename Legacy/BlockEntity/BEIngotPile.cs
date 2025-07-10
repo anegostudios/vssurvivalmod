@@ -4,6 +4,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityIngotPile : BlockEntityItemPile, ITexPositionSource
@@ -12,8 +14,7 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                object value = null;
-                Api.ObjectCache.TryGetValue("ingotpile-meshes", out value);
+                Api.ObjectCache.TryGetValue("ingotpile-meshes", out object value);
                 return (Dictionary<string, MeshData[]>)value;
             }
             set { Api.ObjectCache["ingotpile-meshes"] = value; }
@@ -110,8 +111,7 @@ namespace Vintagestory.GameContent
                 if (inventory[0].Itemstack == null) return true;
 
                 EnsureMeshExists();
-                MeshData[] mesh = null;
-                if (MetalType != null && meshesByType.TryGetValue(MetalType, out mesh))
+                if (MetalType != null && meshesByType.TryGetValue(MetalType, out MeshData[] mesh))
                 {
                     meshdata.AddMeshData(mesh[inventory[0].StackSize]);
                 }

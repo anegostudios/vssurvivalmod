@@ -9,6 +9,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public enum EnumBlockContainerPacketId
@@ -94,26 +96,25 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(api);
             LidOpenEntityId = new HashSet<long>();
-            Inventory.LateInitialize(InventoryClassName + "-" + Pos.X + "/" + Pos.Y + "/" + Pos.Z, api);
+            Inventory.LateInitialize(InventoryClassName + "-" + Pos, api);
             Inventory.ResolveBlocksOrItems();
-            Inventory.OnInventoryOpened += OnInventoryOpened;  
-            Inventory.OnInventoryClosed += OnInventoryClosed; 
+            Inventory.OnInventoryOpened += OnInventoryOpened;
+            Inventory.OnInventoryClosed += OnInventoryClosed;
 
-            string os = Block.Attributes?["openSound"]?.AsString();
-            string cs = Block.Attributes?["closeSound"]?.AsString();
-            AssetLocation opensound = os == null ? null : AssetLocation.Create(os, Block.Code.Domain);
-            AssetLocation closesound = cs == null ? null : AssetLocation.Create(cs, Block.Code.Domain);
-
-            OpenSound = opensound ?? this.OpenSound;
-            CloseSound = closesound ?? this.CloseSound;
+            var os = Block.Attributes?["openSound"]?.AsString();
+            var cs = Block.Attributes?["closeSound"]?.AsString();
+            var opensound = os == null ? null : AssetLocation.Create(os, Block.Code.Domain);
+            var closesound = cs == null ? null : AssetLocation.Create(cs, Block.Code.Domain);
+            OpenSound = opensound ?? OpenSound;
+            CloseSound = closesound ?? CloseSound;
         }
 
-        private void OnInventoryOpened(IPlayer player)
+        protected void OnInventoryOpened(IPlayer player)
         {
             LidOpenEntityId.Add(player.Entity.EntityId);
         }
 
-        private void OnInventoryClosed(IPlayer player)
+        protected void OnInventoryClosed(IPlayer player)
         {
             LidOpenEntityId.Remove(player.Entity.EntityId);
         }
@@ -128,11 +129,10 @@ namespace Vintagestory.GameContent
                 {
                     invDialog = null;
                     capi.Network.SendBlockEntityPacket(Pos, (int)EnumBlockEntityPacketId.Close, null);
-                    capi.Network.SendPacketClient(Inventory.Close(byPlayer));
                 };
 
                 invDialog.TryOpen();
-                capi.Network.SendPacketClient(Inventory.Open(byPlayer));
+                capi.Network.SendPacketClient(Inventory.Open(byPlayer));    // radfast 3.3.2025: I'm not sure this packet has any effect, as the inventory is still closed on the server side at this point, meaning its Id won't be found in PlayerInventoryManager.Inventories. It's the following line's packet which has the effect of causing the inventory to be opened on the server side
                 capi.Network.SendBlockEntityPacket(Pos, (int)EnumBlockEntityPacketId.Open, null);
             }
             else
@@ -143,16 +143,6 @@ namespace Vintagestory.GameContent
 
         public override void OnReceivedClientPacket(IPlayer player, int packetid, byte[] data)
         {
-            if (packetid < 1000)
-            {
-                Inventory.InvNetworkUtil.HandleClientPacket(player, packetid, data);
-
-                // Tell server to save this chunk to disk again
-                Api.World.BlockAccessor.GetChunkAtBlockPos(Pos).MarkModified();
-
-                return;
-            }
-
             if (packetid == (int)EnumBlockEntityPacketId.Close)
             {
                 player.InventoryManager?.CloseInventory(Inventory);
@@ -163,6 +153,23 @@ namespace Vintagestory.GameContent
                     data,
                     (IServerPlayer)player
                 );
+            }
+
+
+            if (!Api.World.Claims.TryAccess(player, Pos, EnumBlockAccessFlags.Use))
+            {
+                Api.World.Logger.Audit("Player {0} sent an inventory packet to openable container at {1} but has no claim access. Rejected.", player.PlayerName, Pos);
+                return;
+            }
+
+            if (packetid < 1000)
+            {
+                Inventory.InvNetworkUtil.HandleClientPacket(player, packetid, data);
+
+                // Tell server to save this chunk to disk again
+                Api.World.BlockAccessor.GetChunkAtBlockPos(Pos).MarkModified();
+
+                return;
             }
 
             if (packetid == (int)EnumBlockEntityPacketId.Open)
@@ -259,6 +266,11 @@ namespace Vintagestory.GameContent
         {
             if (invDialog?.IsOpened() == true) invDialog?.TryClose();
             invDialog?.Dispose();
+
+            if (Api is ICoreServerAPI sapi)
+            {
+                Inventory.openedByPlayerGUIds?.Clear();
+            }
         }
 
 

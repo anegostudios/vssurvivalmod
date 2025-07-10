@@ -1,12 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -47,19 +50,44 @@ namespace Vintagestory.GameContent
         protected ILoadedSound trotSound;
         protected ILoadedSound gallopSound;
         protected ICoreClientAPI capi;
-
-
-        
-
-
-        ControlMeta curControlMeta = null;
-        bool shouldMove = false;
+        protected AssetLocation trotSoundLoc, gallopSoundLoc;
+        protected ControlMeta curControlMeta = null;
+        protected bool shouldMove = false;
         public AnimationMetaData curAnim;
+        protected string curTurnAnim = null;
+        protected EnumControlScheme scheme;
 
-        string curTurnAnim = null;
-        EnumControlScheme scheme;
+        #region Semitamed animals
 
-        public double lastDismountTotalHours { 
+        protected float saddleBreakDayInterval;
+        protected string tamedEntityCode;
+
+        public int RemainingSaddleBreaks
+        {
+            get
+            {
+                return entity.WatchedAttributes.GetInt("remainingSaddleBreaksRequired");
+            }
+            set
+            {
+                entity.WatchedAttributes.SetInt("remainingSaddleBreaksRequired", value);
+            }
+        }
+
+        public double LastSaddleBreakTotalDays
+        {
+            get
+            {
+                return entity.WatchedAttributes.GetDouble("lastSaddlebreakTotalDays");
+            }
+            set
+            {
+                entity.WatchedAttributes.SetDouble("lastSaddlebreakTotalDays", value);
+            }
+        }
+        #endregion
+
+        public double LastDismountTotalHours {
             get
             {
                 return entity.WatchedAttributes.GetDouble("lastDismountTotalHours");
@@ -83,13 +111,31 @@ namespace Vintagestory.GameContent
         public override void Initialize(EntityProperties properties, JsonObject attributes)
         {
             base.Initialize(properties, attributes);
+            api = entity.Api;
+
+            var gs = attributes?["gallopSound"].AsString();
+            var ts = attributes?["trotSound"].AsString();
+            if (gs != null) gallopSoundLoc = AssetLocation.Create(gs, entity.Code.Domain);
+            if (ts != null) trotSoundLoc = AssetLocation.Create(ts, entity.Code.Domain);
+
+            // /entity spawn semitameddeer-elk-male-adult 1
+            if (attributes["saddleBreaksRequired"].Exists)
+            {
+                if (!entity.WatchedAttributes.HasAttribute("requiredSaddleBreaks") && api.Side == EnumAppSide.Server)
+                {
+                    RemainingSaddleBreaks = GameMath.RoundRandom(api.World.Rand, attributes["saddleBreaksRequired"].AsObject<NatFloat>().nextFloat(1, api.World.Rand));
+                }
+
+                saddleBreakDayInterval = attributes["saddleBreakDayInterval"].AsFloat();
+                tamedEntityCode = attributes["tamedEntityCode"].AsString();
+            }
 
             rideableconfig = attributes.AsObject<RideableConfig>();
             foreach (var val in rideableconfig.Controls.Values) { val.RiderAnim?.Init(); }
 
-            api = entity.Api;
+
             capi = api as ICoreClientAPI;
-            curAnim = rideableconfig.Controls["idle"].RiderAnim;            
+            curAnim = rideableconfig.Controls["idle"].RiderAnim;
 
             if (capi != null)
             {
@@ -142,9 +188,6 @@ namespace Vintagestory.GameContent
                     entity.WatchedAttributes.RegisterModifiedListener(ebc.InventoryClassName, updateControlScheme);
                 }
             }
-
-            
-            
         }
 
         private void Inventory_SlotModified(int obj)
@@ -173,7 +216,7 @@ namespace Vintagestory.GameContent
 
         private bool TaskManager_OnShouldExecuteTask(IAiTask task)
         {
-            if (task is AiTaskWander && api.World.Calendar.TotalHours - lastDismountTotalHours < 24) return false;
+            if (task is AiTaskWander && api.World.Calendar.TotalHours - LastDismountTotalHours < 24) return false;
 
             return !Seats.Any(seat => seat.Passenger != null);
         }
@@ -249,23 +292,41 @@ namespace Vintagestory.GameContent
             {
                 if (entity.OnGround) coyoteTimer = 0.15f;
 
-                if (seat.Passenger == null || !seat.Config.Controllable) continue;
+                if (seat.Passenger == null) continue;
 
                 var eplr = seat.Passenger as EntityPlayer;
 
                 if (eplr != null)
                 {
                     eplr.Controls.LeftMouseDown = seat.Controls.LeftMouseDown;
-                    eplr.HeadYawLimits = new AngleConstraint(entity.Pos.Yaw + seat.Config.MountRotation.Y * GameMath.DEG2RAD, GameMath.PIHALF);
-                    eplr.BodyYawLimits = new AngleConstraint(entity.Pos.Yaw + seat.Config.MountRotation.Y * GameMath.DEG2RAD, GameMath.PIHALF);
+                    if (eplr.HeadYawLimits == null)
+                    {
+                        eplr.BodyYawLimits = new AngleConstraint(entity.Pos.Yaw + seat.Config.MountRotation.Y * GameMath.DEG2RAD, seat.Config.BodyYawLimit ?? GameMath.PIHALF);
+                        eplr.HeadYawLimits = new AngleConstraint(entity.Pos.Yaw + seat.Config.MountRotation.Y * GameMath.DEG2RAD, GameMath.PIHALF);
+                    }
+                    else
+                    {
+                        eplr.BodyYawLimits.X = entity.Pos.Yaw + seat.Config.MountRotation.Y * GameMath.DEG2RAD;
+                        eplr.BodyYawLimits.Y = seat.Config.BodyYawLimit ?? GameMath.PIHALF;
+                        eplr.HeadYawLimits.X = entity.Pos.Yaw + seat.Config.MountRotation.Y * GameMath.DEG2RAD;
+                        eplr.HeadYawLimits.Y = GameMath.PIHALF;
+                    }
+
                 }
 
-                if (Controller != null) continue;
+                if (Controller != null || !seat.Config.Controllable) continue;
                 Controller = seat.Passenger;
 
                 var controls = seat.Controls;
                 bool canride = true;
                 bool canturn = true;
+
+                if (RemainingSaddleBreaks > 0)
+                {
+                    if (api.World.Rand.NextDouble() < 0.05) angularMotionWild = ((float)api.World.Rand.NextDouble() * 2 - 1) / 10f;
+                    angularMotion = angularMotionWild;
+                    canturn = false;
+                }
 
                 if (CanRide != null && (controls.Jump || controls.TriesToMove))
                 {
@@ -316,7 +377,6 @@ namespace Vintagestory.GameContent
 
                 float str = ++seatsRowing == 1 ? 1 : 0.5f;
 
-                
 
                 if (scheme == EnumControlScheme.Hold)
                 {
@@ -357,13 +417,62 @@ namespace Vintagestory.GameContent
 
             this.ShouldSprint = shouldSprint;
 
+
             return new Vec2d(linearMotion, angularMotion);
         }
 
+        float angularMotionWild = 1/10f;
 
         protected void updateRidingState()
         {
             if (!AnyMounted()) return;
+
+            if (RemainingSaddleBreaks > 0)
+            {
+                ForwardSpeed = 1;
+                if (api.World.Rand.NextDouble() < 0.05) jumpNow = true;
+                ShouldSprint = true;
+
+                if (api.World.ElapsedMilliseconds - mountedTotalMs > 4000)
+                {
+                    foreach (var seat in Seats)
+                    {
+                        if (seat?.Passenger == null) continue;
+                        var eagent = seat.Passenger as EntityAgent;
+
+                        if (api.World.Rand.NextDouble() < 0.5) eagent.ReceiveDamage(new DamageSource()
+                        {
+                            CauseEntity = entity,
+                            DamageTier = 1,
+                            Source = EnumDamageSource.Entity,
+                            SourcePos = this.Position.XYZ,
+                            Type = EnumDamageType.BluntAttack
+                        }, 1 + api.World.Rand.Next(8) / 4f);
+
+                        eagent.TryUnmount();
+                    }
+
+                    jumpNow = false;
+                    ShouldSprint = false;
+                    ForwardSpeed = 0;
+                    eagent.StopAnimation(rideableconfig.Controls["sprint"].Animation);
+                    Stop();
+
+
+                    if (api.World.Calendar.TotalDays - LastSaddleBreakTotalDays > saddleBreakDayInterval)
+                    {
+                        RemainingSaddleBreaks--;
+                        LastSaddleBreakTotalDays = api.World.Calendar.TotalDays;
+                        if (RemainingSaddleBreaks <= 0)
+                        {
+                            ConvertToTamedAnimal();
+                            return;
+                        }
+                    }
+
+                    return;
+                }
+            }
 
             bool wasMidJump = IsInMidJump;
             IsInMidJump &= (entity.World.ElapsedMilliseconds - lastJumpMs < 500 || !entity.OnGround) && !entity.Swimming;
@@ -459,11 +568,38 @@ namespace Vintagestory.GameContent
             }
         }
 
+        private void ConvertToTamedAnimal()
+        {
+            var api = entity.World.Api;
+
+            if (api.Side == EnumAppSide.Client) return;
+            var etype = api.World.GetEntityType(AssetLocation.Create(tamedEntityCode, entity.Code.Domain));
+            if (etype == null) return;
+
+            var entitytamed = api.World.ClassRegistry.CreateEntity(etype);
+            entitytamed.ServerPos.SetFrom(entity.Pos);
+            entitytamed.WatchedAttributes = (SyncedTreeAttribute)entity.WatchedAttributes.Clone();
+
+            entity.Die(EnumDespawnReason.Expire);
+            api.World.SpawnEntity(entitytamed);
+        }
+
+        public override void OnEntityDeath(DamageSource damageSourceForDeath)
+        {
+            foreach (var seat in Seats)
+            {
+                (seat?.Entity as EntityAgent)?.TryUnmount();
+            }
+
+            base.OnEntityDeath(damageSourceForDeath);
+        }
+
         public void Stop()
         {
             eagent.Controls.StopAllMovement();
             eagent.Controls.WalkVector.Set(0, 0, 0);
             eagent.Controls.FlyVector.Set(0,0,0);
+            eagent.StopAnimation(curTurnAnim);
             shouldMove = false;
             if (curControlMeta != null && curControlMeta.Animation != "jump")
             {
@@ -484,14 +620,13 @@ namespace Vintagestory.GameContent
 
             updateRidingState();
 
-
             if (!AnyMounted() && eagent.Controls.TriesToMove && eagent?.MountedOn != null)
             {
                 eagent.TryUnmount();
             }
 
             if (shouldMove)
-            {                
+            {
                 move(dt, eagent.Controls, curControlMeta.MoveSpeed);
             } else
             {
@@ -526,7 +661,7 @@ namespace Vintagestory.GameContent
                     {
                         trotSound = capi.World.LoadSound(new SoundParams()
                         {
-                            Location = new AssetLocation("sounds/creature/hooved/trot"),
+                            Location = trotSoundLoc,
                             DisposeOnFinish = false,
                             Position = entity.Pos.XYZ.ToVec3f(),
                             ShouldLoop = true,
@@ -534,7 +669,7 @@ namespace Vintagestory.GameContent
                     }
 
                     trotSound.Start();
-                    
+
                 } else
                 {
                     trotSound.Stop();
@@ -549,7 +684,7 @@ namespace Vintagestory.GameContent
                     {
                         gallopSound = capi.World.LoadSound(new SoundParams()
                         {
-                            Location = new AssetLocation("sounds/creature/hooved/gallop"),
+                            Location = gallopSoundLoc,
                             DisposeOnFinish = false,
                             Position = entity.Pos.XYZ.ToVec3f(),
                             ShouldLoop = true,
@@ -611,18 +746,18 @@ namespace Vintagestory.GameContent
             }
         }
 
-        
+
 
 
 
         public override string PropertyName() => "rideable";
         public void Dispose() { }
 
-        public void DidUnnmount(EntityAgent entityAgent)
+        public void DidUnmount(EntityAgent entityAgent)
         {
             Stop();
 
-            lastDismountTotalHours = entity.World.Calendar.TotalHours;
+            LastDismountTotalHours = entity.World.Calendar.TotalHours;
             foreach (var meta in rideableconfig.Controls.Values)
             {
                 if (meta.RiderAnim?.Animation != null)
@@ -637,9 +772,30 @@ namespace Vintagestory.GameContent
             }
         }
 
+        long mountedTotalMs;
         public void DidMount(EntityAgent entityAgent)
         {
             updateControlScheme();
+            mountedTotalMs = api.World.ElapsedMilliseconds;
+        }
+
+        public override bool ToleratesDamageFrom(Entity eOther, ref EnumHandling handling)
+        {
+            if (eOther != null && Controller == eOther)
+            {
+                handling = EnumHandling.PreventDefault;
+                return true;
+            }
+            return false;
+        }
+
+        public override void GetInfoText(StringBuilder infotext)
+        {
+            if (RemainingSaddleBreaks > 0)
+            {
+                infotext.AppendLine(Lang.Get("{0} saddle breaks required every {1} days to fully tame.", RemainingSaddleBreaks, saddleBreakDayInterval));
+            }
+            base.GetInfoText(infotext);
         }
     }
 

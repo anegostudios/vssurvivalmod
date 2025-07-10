@@ -4,6 +4,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockSeaweed : BlockWaterPlant
@@ -30,17 +32,21 @@ namespace Vintagestory.GameContent
 
         public override void OnJsonTesselation(ref MeshData sourceMesh, ref int[] lightRgbsByCorner, BlockPos pos, Block[] chunkExtBlocks, int extIndex3d)
         {
+            var blockAccessor = api.World.BlockAccessor;
             int windData =
-                ((api.World.BlockAccessor.GetBlockBelow(pos, 1, BlockLayersAccess.Solid) is BlockSeaweed) ? 1 : 0)
-                + ((api.World.BlockAccessor.GetBlockBelow(pos, 2, BlockLayersAccess.Solid) is BlockSeaweed) ? 1 : 0)
-                + ((api.World.BlockAccessor.GetBlockBelow(pos, 3, BlockLayersAccess.Solid) is BlockSeaweed) ? 1 : 0)
-                + ((api.World.BlockAccessor.GetBlockBelow(pos, 4, BlockLayersAccess.Solid) is BlockSeaweed) ? 1 : 0)
+                ((blockAccessor.GetBlockBelow(pos, 1, BlockLayersAccess.Solid) is BlockSeaweed) ? 1 : 0)
+                + ((blockAccessor.GetBlockBelow(pos, 2, BlockLayersAccess.Solid) is BlockSeaweed) ? 1 : 0)
+                + ((blockAccessor.GetBlockBelow(pos, 3, BlockLayersAccess.Solid) is BlockSeaweed) ? 1 : 0)
+                + ((blockAccessor.GetBlockBelow(pos, 4, BlockLayersAccess.Solid) is BlockSeaweed) ? 1 : 0)
             ;
 
-            for (int i = 0; i < sourceMesh.FlagsCount; i++)
+            var sourceMeshXyz = sourceMesh.xyz;
+            var sourceMeshFlags = sourceMesh.Flags;
+            var sourceFlagsCount = sourceMesh.FlagsCount;
+            for (int i = 0; i < sourceFlagsCount; i++)
             {
-                float y = sourceMesh.xyz[i * 3 + 1];
-                VertexFlags.ReplaceWindData(ref sourceMesh.Flags[i], windData + (y > 0 ? 1 : 0));
+                float y = sourceMeshXyz[i * 3 + 1];
+                VertexFlags.ReplaceWindData(ref sourceMeshFlags[i], windData + (y > 0 ? 1 : 0));
             }
         }
 

@@ -2,6 +2,8 @@
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods.NoObf
 {
     public class TreeGenConfig
@@ -25,8 +27,8 @@ namespace Vintagestory.ServerMods.NoObf
 
         internal void Init(AssetLocation location, ILogger logger)
         {
-            if (trunks == null) trunks = new TreeGenTrunk[0];
-            if (branches == null) branches = new TreeGenBranch[0];
+            if (trunks == null) trunks = System.Array.Empty<TreeGenTrunk>();
+            if (branches == null) branches = System.Array.Empty<TreeGenBranch>();
 
             for (int i = 1; i < trunks.Length; i++)
             {

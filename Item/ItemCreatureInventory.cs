@@ -8,6 +8,8 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Datastructures;
 using Newtonsoft.Json.Linq;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ItemCreatureInventory : Item, ITexPositionSource

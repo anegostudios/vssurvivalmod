@@ -5,6 +5,8 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class EntityBehaviorHideWaterSurface : EntityBehavior, IRenderer, ITexPositionSource
@@ -90,7 +92,7 @@ namespace Vintagestory.GameContent
 
             // We only render into the depth texture
             // We can abuse the shadow map shader for this
-            var prog = capi.Shader.GetProgram((int)EnumShaderProgram.Shadowmapgeneric);
+            var prog = capi.Shader.GetProgram((int)EnumShaderProgram.Chunkshadowmap);
 
             prog.Use();
             

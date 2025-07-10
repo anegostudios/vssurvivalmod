@@ -11,6 +11,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 using Vintagestory.ServerMods;
+
+#nullable disable
 using static Vintagestory.GameContent.MobExtraSpawnsDeva;
 
 namespace Vintagestory.GameContent;
@@ -76,10 +78,25 @@ public class ModSystemDevastationEffects : ModSystem, IRenderer
         base.Start(api);
 
         api.Event.OnGetWindSpeed += Event_OnGetWindSpeed;
+        api.Event.OnGetClimate += Event_OnGetClimate;
 
         api.Network.GetChannel("devastation")
             .RegisterMessageType<ErelAnnoyedPacket>()
         ;
+    }
+
+    private void Event_OnGetClimate(ref ClimateCondition climate, BlockPos pos, EnumGetClimateMode mode = EnumGetClimateMode.WorldGenValues, double totalDays = 0)
+    {
+        if(DevaLocationPresent == null) return;
+        float distsq = pos.HorDistanceSqTo(DevaLocationPresent.X, DevaLocationPresent.Z);
+        float devaRangeness = distsq / (790 * 790);
+        if (devaRangeness < 1.1)
+        {
+            float weatherAttenuate = Math.Max(0, 1.1f - devaRangeness) * 1.7f;
+            climate.Rainfall = Math.Max(0, climate.Rainfall - weatherAttenuate);
+            climate.RainCloudOverlay = Math.Max(0, climate.RainCloudOverlay - weatherAttenuate);
+            climate.Temperature = GameMath.Mix(climate.Temperature, 17, GameMath.Clamp(weatherAttenuate, 0, 1));
+        }
     }
 
     private void Event_OnGetWindSpeed(Vec3d pos, ref Vec3d windSpeed)
@@ -154,14 +171,6 @@ public class ModSystemDevastationEffects : ModSystem, IRenderer
         });
     }
 
-    private void Event_OnGetClimate(ref ClimateCondition climate, BlockPos pos, EnumGetClimateMode mode = EnumGetClimateMode.WorldGenValues, double totalDays = 0)
-    {
-        if (devaRangeness < 1.1)
-        {
-            climate.Rainfall = Math.Max(0, climate.Rainfall - weatherAttenuate);
-            climate.RainCloudOverlay = Math.Max(0, climate.RainCloudOverlay - weatherAttenuate);
-        }
-    }
 
     // Client side disable rain and near lighting in the devastation area. It doesn't matter if it still rains server side
     private void DevastationEffects_OnGetBlendedWeatherData(WeatherDataSnapshot obj)
@@ -496,7 +505,7 @@ public class ModSystemDevastationEffects : ModSystem, IRenderer
                     player.Entity.Stats.Set("gliderLiftMax", "deva", -1.01f);
                 }
 
-                if (sapi.World.Rand.NextDouble() < 10.15 && distance > 25)
+                if (sapi.World.Rand.NextDouble() < 0.1 && distance > 25)
                 {
                     trySpawnMobsForPlayer(player);
                 }
@@ -620,7 +629,7 @@ public class ModSystemDevastationEffects : ModSystem, IRenderer
         var rnd = sapi.World.Rand;
 
         var plrPos = player.Entity.ServerPos.XYZ;
-        part.WalkEntities(plrPos, range + 5, (e) =>
+        part.WalkEntities(plrPos, range + 15, (e) =>
         {
             foreach (var vg in mobConfig.VariantGroups)
             {
@@ -635,12 +644,12 @@ public class ModSystemDevastationEffects : ModSystem, IRenderer
         }, EnumEntitySearchType.Creatures);
 
         var keys = mobConfig.VariantGroups.Keys.ToArray().Shuffle(rnd);
+        float spawnCapMul = 1 + Math.Max(0, (sapi.World.AllOnlinePlayers.Length-1) * sapi.Server.Config.SpawnCapPlayerScaling);
 
         foreach (var groupcode in keys)
         {
-            float allowedCount = mobConfig.Quantities[groupcode];
-            int nowCount = 0;
-            spawnCountsByGroup.TryGetValue(groupcode, out nowCount);
+            float allowedCount = spawnCapMul * mobConfig.Quantities[groupcode];
+            spawnCountsByGroup.TryGetValue(groupcode, out int nowCount);
 
             if (nowCount < allowedCount)
             {
@@ -682,7 +691,6 @@ public class ModSystemDevastationEffects : ModSystem, IRenderer
     private void DoSpawn(EntityProperties entityType, Vec3d spawnPosition)
     {
         Entity entity = sapi.ClassRegistry.CreateEntity(entityType);
-        EntityAgent agent = entity as EntityAgent;
         entity.ServerPos.SetPosWithDimension(spawnPosition);
         entity.Pos.SetFrom(entity.ServerPos);
         entity.PositionBeforeFalling.Set(entity.ServerPos.X, entity.ServerPos.Y, entity.ServerPos.Z);

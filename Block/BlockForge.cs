@@ -7,6 +7,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockForge : Block, IIgnitable
@@ -133,7 +135,7 @@ namespace Vintagestory.GameContent
             if (secondsIgniting > 0.25f && (int)(30 * secondsIgniting) % 9 == 1)
             {
                 Random rand = byEntity.World.Rand;
-                Vec3d dpos = new Vec3d(pos.X + 2 / 8f + 4 / 8f * rand.NextDouble(), pos.Y + 7 / 8f, pos.Z + 2 / 8f + 4 / 8f * rand.NextDouble());
+                Vec3d dpos = new Vec3d(pos.X + 2 / 8f + 4 / 8f * rand.NextDouble(), pos.InternalY + 7 / 8f, pos.Z + 2 / 8f + 4 / 8f * rand.NextDouble());
 
                 Block blockFire = byEntity.World.GetBlock(new AssetLocation("fire"));
 

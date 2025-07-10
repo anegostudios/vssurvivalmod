@@ -10,6 +10,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     public delegate bool TryGenerateHandler(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos pos, string locationCode);
@@ -71,14 +73,14 @@ namespace Vintagestory.ServerMods
 
         [JsonProperty]
         public AssetLocation[] ReplaceWithBlocklayers;
-        internal int[] replacewithblocklayersBlockids = new int[0];
+        internal int[] replacewithblocklayersBlockids = Array.Empty<int>();
 
         internal Dictionary<int, Dictionary<int, int>> resolvedRockTypeRemaps = null;
 
         public void Init(ICoreServerAPI api, WorldGenStoryStructuresConfig scfg, RockStrataConfig rockstrata, BlockLayerConfig blockLayerConfig)
         {
             schematicData = LoadSchematics<BlockSchematicPartial>(api, Schematics, null)[0];
-            schematicData.Init(api.World.BlockAccessor);
+            //schematicData.Init(api.World.BlockAccessor);     // radfast note: do not Init() here for performance; .Init() will be called in BlockSchematicStructure.Unpack()
             schematicData.blockLayerConfig = blockLayerConfig;
 
             scfg.SchematicYOffsets.TryGetValue("story/" + schematicData.FromFileName.Replace(".json", ""), out var offset);
@@ -159,10 +161,12 @@ namespace Vintagestory.ServerMods
         public bool SuppressTrees = false;
         [JsonProperty]
         public bool SuppressWaterfalls = false;
+        [JsonProperty]
+        public int StoryMaxFromCenter = 0;
 
 
         internal BlockSchematicStructure[][] schematicDatas;
-        internal int[] replacewithblocklayersBlockids = new int[0];
+        internal int[] replacewithblocklayersBlockids = Array.Empty<int>();
         internal HashSet<int> insideblockids = new HashSet<int>();
 
         internal Dictionary<int, Dictionary<int, int>> resolvedRockTypeRemaps = null;
@@ -509,7 +513,7 @@ namespace Vintagestory.ServerMods
             int num = rand.NextInt(schematicDatas.Length);
             int orient = rand.NextInt(4);
             BlockSchematicStructure schematic = schematicDatas[num][orient];
-            schematic.Unpack(worldForCollectibleResolve.Api);
+            schematic.Unpack(worldForCollectibleResolve.Api, orient);
 
             startPos = startPos.AddCopy(0, schematic.OffsetY, 0);
 
@@ -517,7 +521,7 @@ namespace Vintagestory.ServerMods
             {
                 orient = FindClearEntranceRotation(blockAccessor, schematicDatas[num], startPos);
                 schematic = schematicDatas[num][orient];
-                schematic.Unpack(worldForCollectibleResolve.Api);
+                schematic.Unpack(worldForCollectibleResolve.Api, orient);
             }
 
             int wdthalf = (int)Math.Ceiling(schematic.SizeX / 2f);
@@ -529,6 +533,9 @@ namespace Vintagestory.ServerMods
             tmpPos.Set(startPos.X + wdthalf, 0, startPos.Z + lenhalf);
             int centerY = blockAccessor.GetTerrainMapheightAt(startPos);
 
+            // check if we are to deep underwater
+            if (centerY < worldForCollectibleResolve.SeaLevel - MaxBelowSealevel)
+                return false;
             // Probe all 4 corners + center if they either touch the surface or are sightly below ground
 
             tmpPos.Set(startPos.X, 0, startPos.Z);
@@ -622,6 +629,7 @@ namespace Vintagestory.ServerMods
 
             // Ensure not deeply submerged in water  =>  actually, that's now OK!
 
+
             tmpPos.Set(startPos.X, startPos.Y + 1, startPos.Z);
             if (blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid).IsLiquid()) return false;
 
@@ -658,7 +666,7 @@ namespace Vintagestory.ServerMods
             int num = rand.NextInt(schematicDatas.Length);
             int orient = rand.NextInt(4);
             BlockSchematicStructure schematic = schematicDatas[num][orient];
-            schematic.Unpack(worldForCollectibleResolve.Api);
+            schematic.Unpack(worldForCollectibleResolve.Api, orient);
 
             startPos = startPos.AddCopy(0, schematic.OffsetY, 0);
 
@@ -666,7 +674,7 @@ namespace Vintagestory.ServerMods
             {
                 orient = FindClearEntranceRotation(blockAccessor, schematicDatas[num], startPos);
                 schematic = schematicDatas[num][orient];
-                schematic.Unpack(worldForCollectibleResolve.Api);
+                schematic.Unpack(worldForCollectibleResolve.Api, orient);
             }
 
             int wdthalf = (int)Math.Ceiling(schematic.SizeX / 2f);
@@ -677,6 +685,10 @@ namespace Vintagestory.ServerMods
 
             tmpPos.Set(startPos.X + wdthalf, 0, startPos.Z + lenhalf);
             int centerY = blockAccessor.GetTerrainMapheightAt(tmpPos);
+
+            // check if we are to deep underwater
+            if (centerY < worldForCollectibleResolve.SeaLevel - MaxBelowSealevel)
+                return false;
 
             // Probe all 4 corners + center if they are on the same height
             tmpPos.Set(startPos.X, 0, startPos.Z);
@@ -696,7 +708,6 @@ namespace Vintagestory.ServerMods
             if (diff != 0) return false;
 
             startPos.Y = centerY + 1 + schematic.OffsetY;
-
 
             // Ensure not floating on water
             tmpPos.Set(startPos.X + wdthalf, startPos.Y - 1, startPos.Z + lenhalf);
@@ -768,15 +779,16 @@ namespace Vintagestory.ServerMods
 
             BlockSchematicStructure[] schematicStruc = schematicDatas[num];
             BlockPos targetPos = pos.Copy();
-            schematicStruc[0].Unpack(worldForCollectibleResolve.Api);
+            schematicStruc[0].Unpack(worldForCollectibleResolve.Api, 0);
 
             if (schematicStruc[0].PathwayStarts.Length > 0)
             {
                 return tryGenerateAttachedToCave(blockAccessor, worldForCollectibleResolve, schematicStruc, targetPos, locationCode);
             }
 
-            BlockSchematicStructure schematic = schematicStruc[rand.NextInt(4)];
-            schematic.Unpack(worldForCollectibleResolve.Api);
+            int orient = rand.NextInt(4);
+            BlockSchematicStructure schematic = schematicStruc[orient];
+            schematic.Unpack(worldForCollectibleResolve.Api, orient);
 
             BlockPos placePos = schematic.AdjustStartPos(targetPos.Copy(), Origin);
 
@@ -851,7 +863,7 @@ namespace Vintagestory.ServerMods
 
             // 3. Random pathway
             BlockSchematicStructure schematic = schematicStruc[0];
-            schematic.Unpack(worldForCollectibleResolve.Api);
+            schematic.Unpack(worldForCollectibleResolve.Api, 0);
             int pathwayNum = rand.NextInt(schematic.PathwayStarts.Length);
             int targetDistance = -1;
             BlockFacing targetFacing = null;
@@ -861,7 +873,7 @@ namespace Vintagestory.ServerMods
             for (int targetOrientation = 0; targetOrientation < 4; targetOrientation++)
             {
                 schematic = schematicStruc[targetOrientation];
-                schematic.Unpack(worldForCollectibleResolve.Api);
+                schematic.Unpack(worldForCollectibleResolve.Api, targetOrientation);
                 // Try every rotation
                 pathway = schematic.PathwayOffsets[pathwayNum];
                 // This is the facing we are currently checking
@@ -1040,7 +1052,7 @@ namespace Vintagestory.ServerMods
             // Definition: Max structure size is 256x256x256
             //int maxStructureSize = 256;
 
-            int minDistSq = mingroupDistance * mingroupDistance;
+            long minDistSq = (long)mingroupDistance * mingroupDistance;
 
             int minrx = GameMath.Clamp(x1 / regSize, 0, mapRegionSizeX);
             int minrz = GameMath.Clamp(z1 / regSize, 0, mapRegionSizeZ);

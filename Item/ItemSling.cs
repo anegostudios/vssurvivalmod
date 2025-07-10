@@ -8,6 +8,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ItemSling : Item
@@ -106,16 +108,6 @@ namespace Vintagestory.GameContent
                 (byEntity as EntityPlayer)?.Player?.InventoryManager.BroadcastHotbarSlot();
             }
 
-            if (byEntity.World is IClientWorldAccessor)
-            {
-                ModelTransform tf = new ModelTransform();
-                tf.EnsureDefaultValues();
-
-                float rot = (float)Math.Max(0, secondsUsed) * GameMath.TWOPI * 85;
-                tf.Rotation.Set(rot, 0, 0);
-                byEntity.Controls.UsingHeldItemTransformAfter = tf;
-            }
-
             return true;
         }
 
@@ -178,6 +170,8 @@ namespace Vintagestory.GameContent
                 damage += arrowSlot.Itemstack.Collectible.Attributes["damage"].AsFloat(0);
             }
 
+            if (byEntity != null) damage *= byEntity.Stats.GetBlended("rangedWeaponsDamage");
+
             ItemStack stack = arrowSlot.TakeOut(1);
             arrowSlot.MarkDirty();
 
@@ -193,24 +187,7 @@ namespace Vintagestory.GameContent
             ((EntityThrownStone)entity).ProjectileStack = stack;
             
 
-            float acc = Math.Max(0.001f, (1 - byEntity.Attributes.GetFloat("aimingAccuracy", 0)));
-            double rndpitch = byEntity.WatchedAttributes.GetDouble("aimingRandPitch", 1) * acc * 0.75;
-            double rndyaw = byEntity.WatchedAttributes.GetDouble("aimingRandYaw", 1) * acc * 0.75;
-            
-            Vec3d pos = byEntity.ServerPos.XYZ.Add(0, byEntity.LocalEyePos.Y, 0);
-            Vec3d aheadPos = pos.AheadCopy(1, byEntity.SidedPos.Pitch + rndpitch, byEntity.SidedPos.Yaw + rndyaw);
-            Vec3d velocity = (aheadPos - pos) * byEntity.Stats.GetBlended("bowDrawingStrength") * 0.8f;
-
-            
-            entity.ServerPos.SetPosWithDimension(byEntity.SidedPos.BehindCopy(0.21).XYZ.Add(0, byEntity.LocalEyePos.Y, 0));
-            entity.ServerPos.Motion.Set(velocity);
-
-            
-
-            entity.Pos.SetFrom(entity.ServerPos);
-            entity.World = byEntity.World;
-
-            byEntity.World.SpawnEntity(entity);
+            EntityProjectile.SpawnThrownEntity(entity, byEntity, 0.75, 0, 0, byEntity.Stats.GetBlended("bowDrawingStrength") * 0.8f);
 
             slot.Itemstack.Collectible.DamageItem(byEntity.World, byEntity, slot);
 

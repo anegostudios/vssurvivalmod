@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 
+#nullable disable
+
 namespace Vintagestory.GameContent;
 
 public class EntityElevatorSeat : EntityRideableSeat
@@ -44,7 +46,7 @@ public class EntityElevatorSeat : EntityRideableSeat
         {
             return false;
         }
-        return entityAgent is EntityPlayer;
+        return base.CanMount(entityAgent);
     }
 
     public override void DidMount(EntityAgent entityAgent)
@@ -66,6 +68,6 @@ public class EntityElevatorSeat : EntityRideableSeat
 
     protected override void tryTeleportToFreeLocation()
     {
-        Passenger?.TeleportTo(Passenger.ServerPos.Add(0, 0.1, 0));
+        Passenger?.TeleportTo(Passenger.ServerPos.Add(0, 0.2, 0));
     }
 }

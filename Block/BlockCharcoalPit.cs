@@ -8,7 +8,7 @@ namespace Vintagestory.GameContent
 {
     public class BlockCharcoalPit : Block, IIgnitable
     { 
-        WorldInteraction[] interactions;
+        WorldInteraction[] interactions = null!;
 
         public override void OnLoaded(ICoreAPI api)
         {
@@ -27,7 +27,7 @@ namespace Vintagestory.GameContent
                         HotKeyCode = "shift",
                         Itemstacks = canIgniteStacks.ToArray(),
                         GetMatchingStacks = (wi, bs, es) => {
-                            BlockEntityCharcoalPit becp = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityCharcoalPit;
+                            BlockEntityCharcoalPit? becp = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityCharcoalPit;
                             if (becp?.Lit == false)
                             {
                                 return wi.Itemstacks;
@@ -41,14 +41,14 @@ namespace Vintagestory.GameContent
 
         EnumIgniteState IIgnitable.OnTryIgniteStack(EntityAgent byEntity, BlockPos pos, ItemSlot slot, float secondsIgniting)
         {
-            BlockEntityCharcoalPit becp = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityCharcoalPit;
-            if (becp.Lit) return secondsIgniting > 2 ? EnumIgniteState.IgniteNow : EnumIgniteState.Ignitable;
+            BlockEntityCharcoalPit? becp = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityCharcoalPit;
+            if (becp?.Lit == true) return secondsIgniting > 2 ? EnumIgniteState.IgniteNow : EnumIgniteState.Ignitable;
             return EnumIgniteState.NotIgnitable;
         }
 
         public EnumIgniteState OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting)
         {
-            BlockEntityCharcoalPit becp = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityCharcoalPit;
+            BlockEntityCharcoalPit? becp = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityCharcoalPit;
             if (becp == null || becp.Lit) return EnumIgniteState.NotIgnitablePreventDefault;
 
             return secondsIgniting > 3 ? EnumIgniteState.IgniteNow : EnumIgniteState.Ignitable;
@@ -56,11 +56,19 @@ namespace Vintagestory.GameContent
 
         public void OnTryIgniteBlockOver(EntityAgent byEntity, BlockPos pos, float secondsIgniting, ref EnumHandling handling)
         {
-            BlockEntityCharcoalPit becp = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityCharcoalPit;
+            BlockEntityCharcoalPit? becp = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityCharcoalPit;
 
             if (becp != null && !becp.Lit) becp.IgniteNow();
 
             handling = EnumHandling.PreventDefault;
+        }
+
+        public int GetFirewoodQuantity(IWorldAccessor world, BlockPos pos, ref NatFloat efficiency)
+        {
+            var beg = world.BlockAccessor.GetBlockEntity<BlockEntityGroundStorage>(pos);
+            efficiency = beg?.Inventory[0]?.Itemstack?.ItemAttributes?["efficiency"]?.AsObject<NatFloat?>(null) ?? NatFloat.createUniform(0.75f, 0.25f);
+            
+            return beg?.Inventory[0]?.StackSize ?? 0;
         }
 
 

@@ -2,6 +2,8 @@
 using Vintagestory.API.MathTools;
 using Vintagestory.GameContent.Mechanics;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class HelveHammerRenderer : IRenderer
@@ -10,20 +12,20 @@ namespace Vintagestory.GameContent
         internal bool ShouldRotateManual;
         internal bool ShouldRotateAutomated;
 
-        
+
         BEHelveHammer be;
 
         private ICoreClientAPI api;
         private BlockPos pos;
-        
 
-        MeshRef meshref;
+
+        MultiTextureMeshRef meshref;
         public Matrixf ModelMat = new Matrixf();
 
         public float AngleRad;
         internal bool Obstructed;
 
-        
+
 
         public HelveHammerRenderer(ICoreClientAPI coreClientAPI, BEHelveHammer be, BlockPos pos, MeshData mesh)
         {
@@ -31,7 +33,7 @@ namespace Vintagestory.GameContent
             this.pos = pos;
             this.be = be;
 
-            meshref = coreClientAPI.Render.UploadMesh(mesh);
+            meshref = coreClientAPI.Render.UploadMultiTextureMesh(mesh);
         }
 
         public double RenderOrder
@@ -52,7 +54,7 @@ namespace Vintagestory.GameContent
             Vec3d camPos = api.World.Player.Entity.CameraPos;
 
             rpi.GlDisableCullFace();
-            
+
             float rotY = be.facing.HorizontalAngleIndex * 90;
             float offx = be.facing == BlockFacing.NORTH || be.facing == BlockFacing.WEST ? -1 / 16f : 17 / 16f;
 
@@ -69,12 +71,10 @@ namespace Vintagestory.GameContent
             if (stage == EnumRenderStage.Opaque)
             {
                 IStandardShaderProgram prog = rpi.PreparedStandardShader(pos.X, pos.Y, pos.Z);
-                prog.Tex2D = api.BlockTextureAtlas.AtlasTextures[0].TextureId;
-
                 prog.ModelMatrix = ModelMat.Values;
                 prog.ViewMatrix = rpi.CameraMatrixOriginf;
                 prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
-                rpi.RenderMesh(meshref);
+                rpi.RenderMultiTextureMesh(meshref, "tex");
                 prog.Stop();
 
                 AngleRad = be.Angle;
@@ -83,11 +83,10 @@ namespace Vintagestory.GameContent
                 IRenderAPI rapi = api.Render;
                 shadowMvpMat.Set(rapi.CurrentProjectionMatrix).Mul(rapi.CurrentModelviewMatrix).Mul(ModelMat.Values);
 
-                rapi.CurrentActiveShader.BindTexture2D("tex2d", api.BlockTextureAtlas.AtlasTextures[0].TextureId, 0);
                 rapi.CurrentActiveShader.UniformMatrix("mvpMatrix", shadowMvpMat.Values);
                 rapi.CurrentActiveShader.Uniform("origin", new Vec3f());
 
-                rpi.RenderMesh(meshref);
+                rpi.RenderMultiTextureMesh(meshref, "tex2d");
             }
 
         }

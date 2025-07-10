@@ -5,6 +5,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 
@@ -456,7 +458,7 @@ namespace Vintagestory.GameContent
 
             (owningEntity as EntityTradingHumanoid).TalkUtil?.Talk(EnumTalkType.Goodbye);
 
-            capi.Network.SendPacketClient(capi.World.Player.InventoryManager.CloseInventory(traderInventory));
+            capi.World.Player.InventoryManager.CloseInventoryAndSync(traderInventory);
 
             SingleComposer.GetSlotGrid("traderSellingSlots")?.OnGuiClosed(capi);
             SingleComposer.GetSlotGrid("playerBuyingSlots")?.OnGuiClosed(capi);
@@ -464,7 +466,7 @@ namespace Vintagestory.GameContent
             SingleComposer.GetSlotGrid("playerSellingSlots")?.OnGuiClosed(capi);
 
             auctionSlotInv[0].Itemstack = null;
-            capi.World.Player.InventoryManager.CloseInventory(auctionSlotInv);
+            capi.World.Player.InventoryManager.CloseInventoryAndSync(auctionSlotInv);
 
             auctionSys.DidLeaveAuctionHouse();
         }

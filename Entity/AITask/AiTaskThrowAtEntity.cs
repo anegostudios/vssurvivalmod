@@ -5,6 +5,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class AiTaskThrowAtEntity : AiTaskBaseTargetable
@@ -52,11 +54,11 @@ namespace Vintagestory.GameContent
         public override bool ShouldExecute()
         {
             // React immediately on hurt, otherwise only 1/10 chance of execution
-            if (rand.NextDouble() > 0.1f && (whenInEmotionState == null || IsInEmotionState(whenInEmotionState) != true)) return false;
+            if (rand.NextDouble() > 0.1f && (WhenInEmotionState == null || IsInEmotionState(WhenInEmotionState) != true)) return false;
 
             if (!PreconditionsSatisifed()) return false;
             if (lastSearchTotalMs + searchWaitMs > entity.World.ElapsedMilliseconds) return false;
-            if (whenInEmotionState == null && rand.NextDouble() > 0.5f) return false;
+            if (WhenInEmotionState == null && rand.NextDouble() > 0.5f) return false;
             if (cooldownUntilMs > entity.World.ElapsedMilliseconds) return false;
 
             float range = maxDist;
@@ -101,8 +103,12 @@ namespace Vintagestory.GameContent
 
 
 
-        public override bool ContinueExecute(float dt)
+        public override bool 
+            ContinueExecute(float dt)
         {
+            //Check if time is still valid for task.
+            if (!IsInValidDayTimeHours(false)) return false;
+
             float desiredYaw = getAimYaw(targetEntity);
             desiredYaw = GameMath.Clamp(desiredYaw, spawnAngleRad - maxTurnAngleRad, spawnAngleRad + maxTurnAngleRad);
 
@@ -169,7 +175,7 @@ namespace Vintagestory.GameContent
 
                 entitypr.Pos.SetFrom(entitypr.ServerPos);
                 entitypr.World = entity.World;
-                entity.World.SpawnEntity(entitypr);
+                entity.World.SpawnPriorityEntity(entitypr);
             }
 
             return accum < durationMs / 1000f;

@@ -7,6 +7,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent.Mechanics
 {
     /// <summary>
@@ -169,18 +171,16 @@ namespace Vintagestory.GameContent.Mechanics
             
             MeshData meshTop = ObjectCacheUtil.GetOrCreate(capi, "pulverizertopmesh-"+rotateY, () =>
             {
-                MeshData mesh;
                 Shape shapeTop = API.Common.Shape.TryGet(capi, "shapes/block/wood/mechanics/pulverizer-top.json");
-                capi.Tesselator.TesselateShape(Block, shapeTop, out mesh, new Vec3f(0, rotateY, 0));
+                capi.Tesselator.TesselateShape(Block, shapeTop, out MeshData mesh, new Vec3f(0, rotateY, 0));
 
                 return mesh;
             });
 
             MeshData meshBase = ObjectCacheUtil.GetOrCreate(capi, "pulverizerbasemesh-" + rotateY, () =>
             {
-                MeshData mesh;
                 Shape shapeBase = API.Common.Shape.TryGet(capi, "shapes/block/wood/mechanics/pulverizer-base.json");
-                capi.Tesselator.TesselateShape(Block, shapeBase, out mesh, new Vec3f(0, rotateY, 0));
+                capi.Tesselator.TesselateShape(Block, shapeBase, out MeshData mesh, new Vec3f(0, rotateY, 0));
 
                 return mesh;
             });

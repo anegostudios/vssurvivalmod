@@ -1,6 +1,8 @@
 ﻿using System;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     class WeightedOctavedNoise : NormalizedSimplexNoise

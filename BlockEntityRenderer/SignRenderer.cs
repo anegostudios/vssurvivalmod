@@ -4,6 +4,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntitySignRenderer : IRenderer
@@ -123,7 +125,20 @@ namespace Vintagestory.GameContent
 
         public virtual void SetNewText(string text, int color)
         {
-            if (translateable) text = Lang.Get(text);
+            if (translateable)
+            {
+                string translatedText = Lang.Get(text);
+                if (Lang.UsesNonLatinCharacters(Lang.CurrentLocale))
+                {
+                    string englishText = Lang.GetL(Lang.DefaultLocale, text);
+                    if (translatedText != englishText)   // If it has been translated, and it's a non-Latin font, use the configured standard font not the font stored in the sign/plaque
+                    {
+                        font.Fontname = GuiStyle.StandardFontName; // Asian languages probably can't use any fancy font such as Almendra; Github #4748
+                    }
+                }
+
+                text = translatedText;
+            }
 
             font.WithColor(ColorUtil.ToRGBADoubles(color));
             loadedTexture?.Dispose();
@@ -135,8 +150,7 @@ namespace Vintagestory.GameContent
 
                 double verPadding = verticalAlign == EnumVerticalAlign.Middle ? (TextHeight - api.Gui.Text.GetMultilineTextHeight(font, text, TextWidth)) : 0;
                 var bg = new TextBackground() { 
-                    VerPadding = (int)verPadding / 2,
-                    //FillColor = new double[] { 0, 0, 0, 0.35 }
+                    VerPadding = (int)verPadding / 2
                 };
                 
                 loadedTexture = api.Gui.TextTexture.GenTextTexture(

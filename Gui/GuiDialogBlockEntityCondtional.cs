@@ -4,6 +4,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class GuiDialogBlockEntityConditional : GuiDialogBlockEntity
@@ -124,7 +126,7 @@ namespace Vintagestory.GameContent
             }
 
             string display = "Ok";
-            ICommandArgumentParser test = new EntitiesArgParser("test", capi, true);
+            ICommandArgumentParser test = s.StartsWith("isBlock") ? new IsBlockArgParser("cond", capi, true) : new EntitiesArgParser("test", capi, true);
             TextCommandCallingArgs packedArgs = new TextCommandCallingArgs()
             {
                 Caller = new Caller()

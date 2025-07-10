@@ -7,6 +7,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class EidolonAnimManager : AnimationManager
@@ -144,7 +146,7 @@ namespace Vintagestory.GameContent
         {
             if (World.Side == EnumAppSide.Server)
             {
-                var uid = (damageSource.CauseEntity as EntityPlayer)?.PlayerUID;
+                var uid = (damageSource.GetCauseEntity() as EntityPlayer)?.PlayerUID;
                 if (uid != null) hurtByPlayerUids.Add(uid);
             }
 

@@ -1,19 +1,81 @@
-﻿using Vintagestory.API.Client;
+﻿using Vintagestory.API;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Allows a block to be harvested with the right mouse button for set items.
+    /// Uses the code "harvestable".
+    /// </summary>
+    /// <example><code lang="json">
+    ///"behaviorsByType": {
+	///	"*-ripe": [
+	///		{
+	///			"name": "Harvestable",
+	///			"properties": {
+	///				"harvestTime": 0.6,
+	///				"harvestedStack": {
+	///					"type": "item",
+	///					"code": "fruit-{type}",
+	///					"quantity": { "avg": 4.4 }
+	///				},
+	///				"harvestedBlockCode": "bigberrybush-{type}-empty",
+	///				"exchangeBlock": true
+	///			}
+	///		}
+	///	]
+	///}
+    ///...
+    ///"attributes": {
+	///	"forageStatAffected": true
+	///}
+    /// </code></example>
+    [DocumentAsJson]
+    [AddDocumentationProperty("ForageStatAffected", "Should the harvested stack amount be multiplied by the player's 'forageDropRate' stat?", "System.Boolean", "Optional", "False", true)]
     public class BlockBehaviorHarvestable : BlockBehavior
     {
+        /// <summary>
+        /// The amount of time, in seconds, it takes to harvest this block.
+        /// </summary>
+        [DocumentAsJson("Recommended", "0")]
         float harvestTime;
-        bool exchangeBlock;
-        public BlockDropItemStack harvestedStack;
 
+        /// <summary>
+        /// Should this block be exchanged (true) or replaced (false)? If true, then any block entity at the same position will not be deleted.
+        /// </summary>
+        [DocumentAsJson("Optional", "False")]
+        bool exchangeBlock;
+
+        /// <summary>
+        /// An array of drops for when the block is harvested. If only using a single drop you can use <see cref="harvestedStack"/>, otherwise this property is required.
+        /// </summary>
+        [DocumentAsJson("Required")]
+        public BlockDropItemStack[] harvestedStacks;
+
+        /// <summary>
+        /// A drop for when the block is harvested. If using more than a single drop, use <see cref="harvestedStacks"/>, otherwise this property is required.
+        /// </summary>
+        [DocumentAsJson("Required")]
+        public BlockDropItemStack harvestedStack { get { return harvestedStacks[0]; } set { harvestedStacks[0] = value; } }
+
+        /// <summary>
+        /// The sound to play whilst the object is being harvested.
+        /// </summary>
+        [DocumentAsJson("Optional", "sounds/block/leafy-picking")]
         public AssetLocation harvestingSound;
 
+        /// <summary>
+        /// The block to replace this one after it is harvested.
+        /// </summary>
+        [DocumentAsJson("Optional", "None")]
         AssetLocation harvestedBlockCode;
+
         Block harvestedBlock;
         string interactionHelpCode;
 
@@ -27,7 +89,13 @@ namespace Vintagestory.GameContent
 
             interactionHelpCode = properties["harvestTime"].AsString("blockhelp-harvetable-harvest");
             harvestTime = properties["harvestTime"].AsFloat(0);
-            harvestedStack = properties["harvestedStack"].AsObject<BlockDropItemStack>(null);
+            harvestedStacks = properties["harvestedStacks"].AsObject<BlockDropItemStack[]>(null);
+            BlockDropItemStack tempStack = properties["harvestedStack"].AsObject<BlockDropItemStack>(null);
+            if (harvestedStacks == null && tempStack != null)
+            {
+                harvestedStacks = new BlockDropItemStack[1];
+                harvestedStacks[0] = tempStack;
+            }
             exchangeBlock = properties["exchangeBlock"].AsBool(false);
 
             string code = properties["harvestingSound"].AsString("game:sounds/block/leafy-picking");
@@ -46,7 +114,7 @@ namespace Vintagestory.GameContent
         {
             base.OnLoaded(api);
 
-            harvestedStack?.Resolve(api.World, "harvestedStack of block ", block.Code);
+            harvestedStacks.Foreach(harvestedStack => harvestedStack?.Resolve(api.World, "harvestedStack of block ", block.Code));
 
             harvestedBlock = api.World.GetBlock(harvestedBlockCode);
             if (harvestedBlock == null)
@@ -64,7 +132,7 @@ namespace Vintagestory.GameContent
 
             handling = EnumHandling.PreventDefault;
 
-            if (harvestedStack != null)
+            if (harvestedStacks != null)
             {
                 world.PlaySoundAt(harvestingSound, blockSel.Position, 0, byPlayer);
                 return true;
@@ -88,7 +156,7 @@ namespace Vintagestory.GameContent
 
             if (world.Side == EnumAppSide.Client && world.Rand.NextDouble() < 0.25)
             {
-                world.SpawnCubeParticles(blockSel.Position.ToVec3d().Add(blockSel.HitPosition), harvestedStack.ResolvedItemstack, 0.25f, 1, 0.5f, byPlayer, new Vec3f(0, 1, 0));
+                world.SpawnCubeParticles(blockSel.Position.ToVec3d().Add(blockSel.HitPosition), harvestedStacks[0].ResolvedItemstack, 0.25f, 1, 0.5f, byPlayer, new Vec3f(0, 1, 0));
             }
 
             return world.Side == EnumAppSide.Client || secondsUsed < harvestTime;
@@ -99,7 +167,7 @@ namespace Vintagestory.GameContent
             handled = EnumHandling.PreventDefault;
 
 
-            if (secondsUsed > harvestTime - 0.05f && harvestedStack != null && world.Side == EnumAppSide.Server)
+            if (secondsUsed > harvestTime - 0.05f && harvestedStacks != null && world.Side == EnumAppSide.Server)
             {
                 float dropRate = 1;
 
@@ -107,27 +175,30 @@ namespace Vintagestory.GameContent
                 {
                     dropRate *= byPlayer.Entity.Stats.GetBlended("forageDropRate");
                 }
-
-                ItemStack stack = harvestedStack.GetNextItemStack(dropRate);
-                if (stack == null) return;
-                var origStack = stack.Clone();
-                var quantity = stack.StackSize;
-                if (!byPlayer.InventoryManager.TryGiveItemstack(stack))
+                    
+                harvestedStacks.Foreach(harvestedStack => 
                 {
-                    world.SpawnItemEntity(stack, blockSel.Position);
-                }
-                world.Logger.Audit("{0} Took {1}x{2} from {3} at {4}.",
-                    byPlayer.PlayerName,
-                    quantity,
-                    stack.Collectible.Code,
-                    block.Code,
-                    blockSel.Position
-                );
+                    ItemStack stack = harvestedStack.GetNextItemStack(dropRate);
+                    if (stack == null) return;
+                    var origStack = stack.Clone();
+                    var quantity = stack.StackSize;
+                    if (!byPlayer.InventoryManager.TryGiveItemstack(stack))
+                    {
+                        world.SpawnItemEntity(stack, blockSel.Position);
+                    }
+                    world.Logger.Audit("{0} Took {1}x{2} from {3} at {4}.",
+                        byPlayer.PlayerName,
+                        quantity,
+                        stack.Collectible.Code,
+                        block.Code,
+                        blockSel.Position
+                    );
 
-                TreeAttribute tree = new TreeAttribute();
-                tree["itemstack"] = new ItemstackAttribute(origStack.Clone());
-                tree["byentityid"] = new LongAttribute(byPlayer.Entity.EntityId);
-                world.Api.Event.PushEvent("onitemcollected", tree);
+                    TreeAttribute tree = new TreeAttribute();
+                    tree["itemstack"] = new ItemstackAttribute(origStack.Clone());
+                    tree["byentityid"] = new LongAttribute(byPlayer.Entity.EntityId);
+                    world.Api.Event.PushEvent("onitemcollected", tree);
+                });
 
                 if (harvestedBlock != null)
                 {
@@ -142,7 +213,7 @@ namespace Vintagestory.GameContent
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer, ref EnumHandling handled)
         {
-            if (harvestedStack != null)
+            if (harvestedStacks != null)
             {
                 bool notProtected = true;
 

@@ -3,6 +3,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ItemRustyGear : Item
@@ -27,8 +29,7 @@ namespace Vintagestory.GameContent
             Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
             if (block is BlockLooseGears)
             {
-                int q = 5;
-                if (int.TryParse(block.LastCodePart(), out q) && q < 5)
+                if (int.TryParse(block.LastCodePart(), out int q) && q < 5)
                 {
                     Block moregearsblock = byEntity.World.GetBlock(block.CodeWithPart((q + 1) + "", 1));
                     byEntity.World.BlockAccessor.SetBlock(moregearsblock.BlockId, blockSel.Position);
@@ -36,7 +37,7 @@ namespace Vintagestory.GameContent
                     slot.TakeOut(1);
                 }
 
-                
+
                 return;
             }
 

@@ -2,6 +2,8 @@
 using Vintagestory.API.MathTools;
 using Vintagestory.GameContent.Mechanics;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class QuernTopRenderer : IRenderer

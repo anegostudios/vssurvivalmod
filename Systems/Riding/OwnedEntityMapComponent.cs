@@ -3,6 +3,8 @@ using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class OwnedEntityMapComponent : MapComponent

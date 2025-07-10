@@ -7,6 +7,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class MushroomProps
@@ -62,7 +64,7 @@ namespace Vintagestory.GameContent
 
     public class BlockEntityMycelium : BlockEntity
     {
-        Vec3i[] grownMushroomOffsets = new Vec3i[0];
+        Vec3i[] grownMushroomOffsets = Array.Empty<Vec3i>();
 
         double mushroomsGrownTotalDays = 0;
         double mushroomsDiedTotalDays = -999999;
@@ -152,7 +154,7 @@ namespace Vintagestory.GameContent
 
                         if (!Api.World.BlockAccessor.GetBlock(pos).Code.Equals(mushroomBlockCode))
                         {
-                            grownMushroomOffsets = grownMushroomOffsets.RemoveEntry(i);
+                            grownMushroomOffsets = grownMushroomOffsets.RemoveAt(i);
                             i--;
                         }
                     }
@@ -178,7 +180,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            grownMushroomOffsets = new Vec3i[0];
+            grownMushroomOffsets = Array.Empty<Vec3i>();
         }
 
         bool setMushroomBlock(Block block)

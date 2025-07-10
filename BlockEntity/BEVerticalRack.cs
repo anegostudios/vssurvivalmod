@@ -4,6 +4,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityMoldRack : BlockEntityDisplay
@@ -24,11 +26,11 @@ namespace Vintagestory.GameContent
         public override void Initialize(ICoreAPI api)
         {
             block = api.World.BlockAccessor.GetBlock(Pos);
-            mat.RotateYDeg(block.Shape.rotateY);
             base.Initialize(api);
 
             if (api is ICoreClientAPI)
             {
+                mat.RotateYDeg(block.Shape.rotateY);
                 api.Event.RegisterEventBusListener(OnEventBusEvent);
             }
         }

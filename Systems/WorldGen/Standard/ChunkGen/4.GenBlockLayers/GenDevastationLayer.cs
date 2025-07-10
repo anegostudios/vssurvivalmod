@@ -8,6 +8,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.GameContent;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     public class GenDevastationLayer : ModStdWorldGen
@@ -121,7 +123,7 @@ namespace Vintagestory.ServerMods
 
         public BitmapRef BitmapCreateFromPng(IAsset asset)
         {
-            return new BitmapExternal(new MemoryStream(asset.Data));
+            return new BitmapExternal(asset.Data, asset.Data.Length, api.Logger);
         }
 
         private void OnChunkColumnGeneration(IChunkColumnGenerateRequest request)
@@ -134,7 +136,7 @@ namespace Vintagestory.ServerMods
             var rposz = request.ChunkZ * chunksize + chunksize / 2;
             double distancesq = cpos.HorDistanceSqTo(rposx, rposz);
             // add 100 and early exit if not within the area
-            if (distancesq >= (devastationRadius + 100) * (devastationRadius + 100)) return;
+            if (distancesq >= (devastationRadius + 200) * (devastationRadius + 200)) return;
 
             var rnd = api.World.Rand;
 

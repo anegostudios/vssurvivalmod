@@ -7,6 +7,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityLabeledChest : BlockEntityGenericTypedContainer
@@ -31,7 +33,7 @@ namespace Vintagestory.GameContent
         public override string DialogTitle {
             get
             {
-                if (text == null || text.Length == 0) return Lang.Get("Chest Contents");
+                if (text == null || text.Length == 0) return base.DialogTitle;
                 else return text.Replace("\r", "").Replace("\n", " ").Substring(0, Math.Min(text.Length, 15));
             }
         }

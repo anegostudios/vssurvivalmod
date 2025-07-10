@@ -5,6 +5,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent.Mechanics
 {
     public class BEBrake : BlockEntity
@@ -79,9 +81,8 @@ namespace Vintagestory.GameContent.Mechanics
                 return new Dictionary<string, MeshData>();
             });
 
-            MeshData mesh;
 
-            if (meshes.TryGetValue("" + rotY, out mesh))
+            if (meshes.TryGetValue("" + rotY, out MeshData mesh))
             {
                 return mesh;
             }

@@ -4,6 +4,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     [JsonObject(MemberSerialization.OptIn)]
@@ -17,6 +19,8 @@ namespace Vintagestory.GameContent
         protected float DurationIrlSeconds = -1;
         [JsonProperty]
         protected int OnAnimEnd;
+        [JsonProperty]
+        protected int OnInterrupt;
 
         double untilTotalHours;
         double secondsLeft;
@@ -28,17 +32,21 @@ namespace Vintagestory.GameContent
             this.vas = vas;
         }
 
-        public PlayAnimationAction(EntityActivitySystem vas, AnimationMetaData meta, float durationHours, float durationIrlSeconds, int onAnimEnd)
+        public PlayAnimationAction(EntityActivitySystem vas, AnimationMetaData meta, float durationHours, float durationIrlSeconds, int onAnimEnd, int onInterrupt)
         {
             this.meta = meta;
             this.DurationHours = durationHours;
             this.DurationIrlSeconds = durationIrlSeconds;
             this.OnAnimEnd = onAnimEnd;
+            this.OnInterrupt = onInterrupt;  
         }
 
-        public override void Pause()
+        public override void Pause(EnumInteruptionType interuptionType)
         {
-            vas.Entity.AnimManager.StopAnimation(meta.Animation);
+            if ((int)interuptionType > OnInterrupt)
+            {
+                vas.Entity.AnimManager.StopAnimation(meta.Animation);
+            }
         }
 
         public override void Resume()
@@ -107,11 +115,11 @@ namespace Vintagestory.GameContent
                 .AddStaticText("OR Duration (irl seconds. -1 to ignore)", CairoFont.WhiteDetailText(), b = b.BelowCopy(0, 10))
                 .AddNumberInput(b = b.BelowCopy(0, -5), null, CairoFont.WhiteDetailText(), "durationIrlSeconds")
 
-
                 .AddStaticText("On Animation End", CairoFont.WhiteDetailText(), b = b.BelowCopy(0, 10))
                 .AddDropDown(new string[] { "repeat", "stop" }, new string[] { "Repeat Animation", "Stop Action" }, OnAnimEnd, null, b = b.BelowCopy(0, -5), CairoFont.WhiteDetailText(), "onAnimEnd")
 
-
+                .AddStaticText("On Interruption", CairoFont.WhiteDetailText(), b = b.BelowCopy(0, 10))
+                .AddDropDown(new string[] { "0","1","2","3" }, new string[] { "Stop when talked to, trade is requested or asked to come", "Stop when trade is requested or asked to come", "Stop when asked to come", "Don't stop" }, OnInterrupt, null, b = b.BelowCopy(0, -5), CairoFont.WhiteDetailText(), "onInterrupt")
             ;
 
             singleComposer.GetTextInput("animation").SetValue(meta?.Animation ?? "");
@@ -123,7 +131,7 @@ namespace Vintagestory.GameContent
 
         public override IEntityAction Clone()
         {
-            return new PlayAnimationAction(vas, meta, DurationHours, DurationIrlSeconds, OnAnimEnd);
+            return new PlayAnimationAction(vas, meta, DurationHours, DurationIrlSeconds, OnAnimEnd, OnInterrupt);
         }
 
         public override bool StoreGuiEditFields(ICoreClientAPI capi, GuiComposer singleComposer)
@@ -137,6 +145,7 @@ namespace Vintagestory.GameContent
             DurationHours = (float)singleComposer.GetNumberInput("durationHours").GetValue();
             DurationIrlSeconds = (float)singleComposer.GetNumberInput("durationIrlSeconds").GetValue();
             OnAnimEnd = singleComposer.GetDropDown("onAnimEnd").SelectedIndices[0];
+            OnInterrupt = singleComposer.GetDropDown("onInterrupt").SelectedIndices[0];
             return true;
         }
 

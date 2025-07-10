@@ -5,6 +5,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     /// <summary>
@@ -17,7 +19,7 @@ namespace Vintagestory.GameContent
         public BlockPos pos;
         int defaultStorageType = (int)(EnumItemStorageFlags.General | EnumItemStorageFlags.Agriculture | EnumItemStorageFlags.Alchemy | EnumItemStorageFlags.Jewellery | EnumItemStorageFlags.Metallurgy | EnumItemStorageFlags.Outfit);
 
-        public ItemSlot[] CookingSlots { get { return HaveCookingContainer ? cookingSlots : new ItemSlot[0]; } }
+        public ItemSlot[] CookingSlots { get { return HaveCookingContainer ? cookingSlots : Array.Empty<ItemSlot>(); } }
 
         /// <summary>
         /// Returns the cooking slots

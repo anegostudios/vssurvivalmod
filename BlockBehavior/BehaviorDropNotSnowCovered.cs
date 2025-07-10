@@ -1,8 +1,24 @@
-﻿using Vintagestory.API.Common;
+﻿using Vintagestory.API;
+using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
+
+    /// <summary>
+    /// Drops the non-snow-covered block, when the snow covered version one is destroyed.
+    /// This behavior uses the "DropNotSnowCovered" code, and has no properties.
+    /// </summary>
+    /// <example><code lang="json">
+    ///"behaviors": [
+	///	{
+	///		"name": "DropNotSnowCovered"
+	///	}
+	///],
+    /// </code></example>
+    [DocumentAsJson]
     public class BlockBehaviorDropNotSnowCovered : BlockBehavior
     {
         public BlockBehaviorDropNotSnowCovered(Block block) : base(block)

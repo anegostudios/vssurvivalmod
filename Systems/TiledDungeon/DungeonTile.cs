@@ -1,5 +1,7 @@
 ﻿using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     public class DungeonTile : WorldGenStructureBase

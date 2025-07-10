@@ -7,6 +7,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockRockTyped : BlockShapeFromAttributes
@@ -93,7 +95,7 @@ namespace Vintagestory.GameContent
             var bect = GetBEBehavior<BEBehaviorShapeFromAttributes>(pos);
             var cprops = GetTypeProps(bect?.Type, null, bect);
 
-            return cprops?.Drops?.Select(drop => drop.GetNextItemStack(dropQuantityMultiplier)).ToArray() ?? new ItemStack[0];
+            return cprops?.Drops?.Select(drop => drop.GetNextItemStack(dropQuantityMultiplier)).ToArray() ?? System.Array.Empty<ItemStack>();
         }
 
         public override BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)

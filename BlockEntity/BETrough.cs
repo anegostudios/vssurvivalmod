@@ -10,6 +10,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ContentConfig
@@ -277,18 +279,16 @@ namespace Vintagestory.GameContent
 
 
             Vec3f rotation = new Vec3f(Block.Shape.rotateX, Block.Shape.rotateY, Block.Shape.rotateZ);
-            MeshData meshbase;
-            MeshData meshadd;
 
             blockTexPosSource = capi.Tesselator.GetTextureSource(Block);
             Shape shape = Shape.TryGet(Api, "shapes/" + shapeLoc + ".json");
-            capi.Tesselator.TesselateShape("betroughcontentsleft", shape, out meshbase, this, rotation);
+            capi.Tesselator.TesselateShape("betroughcontentsleft", shape, out MeshData meshbase, this, rotation);
 
             BlockTroughDoubleBlock doubleblock = Block as BlockTroughDoubleBlock;
 
             if (doubleblock != null)
             {
-                capi.Tesselator.TesselateShape("betroughcontentsright", shape, out meshadd, this, rotation.Add(0, 180, 0));
+                capi.Tesselator.TesselateShape("betroughcontentsright", shape, out MeshData meshadd, this, rotation.Add(0, 180, 0));
                 BlockFacing facing = doubleblock.OtherPartFacing();
                 meshadd.Translate(facing.Normalf);
                 meshbase.AddMeshData(meshadd);
@@ -392,41 +392,25 @@ namespace Vintagestory.GameContent
             dsc.AppendLine(Lang.Get("Portions: {0}", fillLevel));
 
             ItemStack contentsStack = config.Content.ResolvedItemstack ?? ResolveWildcardContent(config, forPlayer.Entity.World);
-            
-            if (contentsStack != null)
+
+            if (contentsStack == null) return;
+
+            dsc.AppendLine(Lang.Get(contentsStack.GetName()));
+
+            HashSet<string> creatureNames = new HashSet<string>();
+            foreach (var entityType in Api.World.EntityTypes)
             {
-                var cobj = contentsStack.Collectible;
-                var foodCat = cobj.NutritionProps?.FoodCategory ?? EnumFoodCategory.NoNutrition;
-                var foodTags = cobj.Attributes?["foodTags"].AsArray<string>();
+                var attr = entityType.Attributes;
+                if (attr?["creatureDiet"].AsObject<CreatureDiet>()?.Matches(contentsStack) != true) continue;
 
-                dsc.AppendLine(Lang.Get(contentsStack.GetName()));
+                if ((Block as BlockTroughBase)?.UnsuitableForEntity(entityType.Code.Path) == true) continue;
 
-                HashSet<string> creatureNames = new HashSet<string>();
-                foreach (var entityType in Api.World.EntityTypes)
-                {
-                    var attr = entityType.Attributes;
-                    if (attr?["creatureDiet"].Exists == true)
-                    {
-                        var diet = attr["creatureDiet"].AsObject<CreatureDiet>();
-                        if (diet.Matches(foodCat, foodTags))
-                        {
-                            string code = attr?["creatureDietGroup"].AsString() ?? attr?["handbook"]["groupcode"].AsString() ?? "item-creature-" + entityType.Code; 
-                            creatureNames.Add(Lang.Get(code));
-                        }
-                    }
-                }
-
-                if (creatureNames.Count > 0)
-                {
-                    dsc.AppendLine(Lang.Get("trough-suitable", string.Join(", ", creatureNames)));
-                }
-                else
-                {
-                    dsc.AppendLine(Lang.Get("trough-unsuitable"));
-                }
+                string code = attr?["creatureDietGroup"].AsString() ?? attr?["handbook"]["groupcode"].AsString() ?? "item-creature-" + entityType.Code;
+                creatureNames.Add(Lang.Get(code));
             }
 
+            if (creatureNames.Count <= 0) dsc.AppendLine(Lang.Get("trough-unsuitable"));
+            else dsc.AppendLine(Lang.Get("trough-suitable", string.Join(", ", creatureNames)));
         }
-
     }
 }

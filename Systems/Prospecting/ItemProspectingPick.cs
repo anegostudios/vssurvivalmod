@@ -11,6 +11,8 @@ using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 using Vintagestory.ServerMods;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ItemProspectingPick : Item
@@ -141,10 +143,9 @@ namespace Vintagestory.GameContent
 				{
 					string key = "ore-" + nblock.Variant["type"];
 
-					int q = 0;
-					quantityFound.TryGetValue(key, out q);
+                    quantityFound.TryGetValue(key, out int q);
 
-					quantityFound[key] = q + 1;
+                    quantityFound[key] = q + 1;
 				}
 			});
 
@@ -278,7 +279,7 @@ namespace Vintagestory.GameContent
                     int startY = vals[1];
                     int startZ = vals[2];
                     PrintProbeResults(world, splr, itemslot, new BlockPos(startX, startY, startZ));
-                    attr.value = new int[0];
+                    attr.value = Array.Empty<int>();
                 }
             }
         }
@@ -320,15 +321,13 @@ namespace Vintagestory.GameContent
 
                 int oreDist = map.GetUnpaddedColorLerped(posXInRegionOre, posZInRegionOre);
 
-                double ppt;
-                double totalFactor;
 
                 if (!ppws.depositsByCode.ContainsKey(val.Key))
                 {
                     continue;
                 }
 
-                ppws.depositsByCode[val.Key].GetPropickReading(pos, oreDist, blockColumn, out ppt, out totalFactor);
+                ppws.depositsByCode[val.Key].GetPropickReading(pos, oreDist, blockColumn, out double ppt, out double totalFactor);
 
                 if (totalFactor > 0)
                 {

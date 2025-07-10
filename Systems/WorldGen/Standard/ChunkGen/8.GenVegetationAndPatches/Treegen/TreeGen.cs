@@ -8,6 +8,8 @@ using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 using Vintagestory.ServerMods.NoObf;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     public class TreeGen : ITreeGenerator

@@ -6,6 +6,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 
@@ -53,7 +55,7 @@ namespace Vintagestory.GameContent
             this.vas = vas;
         }
 
-        public override void Pause()
+        public override void Pause(EnumInteruptionType interuptionType)
         {
             stop();
         }

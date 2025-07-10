@@ -4,6 +4,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     /// <summary>
@@ -200,7 +202,7 @@ namespace Vintagestory.GameContent
                     bps.Quantity.avg = i * 0.3f; // No cubes, medium fire, double smoke
                     bps.WindAffectednesAtPos = windAffectednessAtPos;
                     bps.basePos.X = pos.X + TopMiddlePos.X;
-                    bps.basePos.Y = pos.Y + TopMiddlePos.Y;
+                    bps.basePos.Y = pos.InternalY + TopMiddlePos.Y;
                     bps.basePos.Z = pos.Z + TopMiddlePos.Z;
 
                     manager.Spawn(bps);

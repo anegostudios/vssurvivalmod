@@ -4,6 +4,8 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+
+#nullable disable
 using static Vintagestory.API.Common.EntityAgent;
 
 namespace Vintagestory.GameContent

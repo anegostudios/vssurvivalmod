@@ -1,8 +1,21 @@
-﻿using Vintagestory.API.Client;
+﻿using Vintagestory.API;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Provides interaction for the JonasBoilerDoor block entity behavior.
+    /// Uses the "JonasBoilerDoor" code. This behavior has no properties.
+    /// </summary>
+    /// <example><code lang="json">
+    ///"behaviors": [
+	///	{ "name": "JonasBoilerDoor" }
+	///]
+    /// </code></example>
+    [DocumentAsJson]
     public class BlockBehaviorJonasBoilerDoor : BlockBehavior
     {
         

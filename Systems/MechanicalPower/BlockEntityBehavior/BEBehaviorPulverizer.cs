@@ -4,6 +4,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent.Mechanics
 {
     public class BEBehaviorMPPulverizer : BEBehaviorMPBase

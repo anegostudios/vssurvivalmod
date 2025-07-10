@@ -3,6 +3,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockFenceGate : BlockBaseDoor
@@ -157,14 +159,32 @@ namespace Vintagestory.GameContent
             BlockFacing nowFacing = BlockFacing.FromFirstLetter(Variant["type"]);
             BlockFacing rotatedFacing = BlockFacing.HORIZONTALS_ANGLEORDER[(nowFacing.HorizontalAngleIndex + angle / 90) % 4];
 
-            string type = Variant["type"];
-
+            string prevType = Variant["type"];
+            string newType = prevType;
             if (nowFacing.Axis != rotatedFacing.Axis)
             {
-                type = (type == "n" ? "w" : "n");
+                newType = (prevType == "n" ? "w" : "n");
             }
 
-            return CodeWithVariant("type", type);
+            var knowbOr = Variant["knobOrientation"];
+            if (prevType == "n" && newType == "w" && knowbOr == "right" && angle == 90)
+            {
+                knowbOr = "left";
+            }
+            else if (prevType == "n" && newType == "w" && knowbOr == "left" && angle == 90)
+            {
+                knowbOr = "right";
+            }
+            else if (prevType == "w" && newType == "n" && knowbOr == "right" && angle == 270)
+            {
+                knowbOr = "left";
+            }
+            else if (prevType == "w" && newType == "n" && knowbOr == "left" && angle == 270)
+            {
+                knowbOr = "right";
+            }
+
+            return CodeWithVariants(new string[] { "type", "knobOrientation" }, new string[] { newType , knowbOr});
         }
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)

@@ -1,5 +1,7 @@
 ﻿using Vintagestory.API.Datastructures;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     public abstract class MapLayerBase : NoiseBase

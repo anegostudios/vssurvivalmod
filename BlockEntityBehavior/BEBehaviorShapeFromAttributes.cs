@@ -6,6 +6,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class MSShapeFromAttrCacheHelper : ModSystem
@@ -15,6 +17,7 @@ namespace Vintagestory.GameContent
         public static bool IsInCache(ICoreClientAPI capi, Block block, IShapeTypeProps cprops, string overrideTextureCode)
         {
             var blockTextures = (block as BlockShapeFromAttributes).blockTextures;
+
 
             // Prio 0: Shape textures
             var shape = cprops.ShapeResolved;
@@ -112,6 +115,9 @@ namespace Vintagestory.GameContent
 
             loadMesh();
             Blockentity.MarkDirty(true);
+
+            Api.World.PlaySoundAt(Block.Sounds.Place, blockSel.Position, 0, player);
+            (Api.World as IClientWorldAccessor)?.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
         }
 
         #endregion
@@ -286,6 +292,12 @@ namespace Vintagestory.GameContent
         private bool RequiresTextureUploads()
         {
             var cprops = clutterBlock?.GetTypeProps(Type, null, this);
+
+            if (cprops == null) { 
+                // Ignore invalid clutter blocks
+                return false; 
+            }
+
             if (cprops?.Textures == null)
             {
                 if (overrideTextureCode == null) return false;

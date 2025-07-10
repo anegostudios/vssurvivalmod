@@ -7,6 +7,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     [JsonObject(MemberSerialization.OptIn)]
@@ -18,7 +20,6 @@ namespace Vintagestory.GameContent
         AssetLocation targetEntityCode;
         [JsonProperty]
         float searchRange;
-        EntityAgent entity;
 
         public LookatEntityAction() { }
 
@@ -51,7 +52,7 @@ namespace Vintagestory.GameContent
         private Entity getTarget(ICoreAPI api, Vec3d fromPos)
         {
             var ep = api.ModLoader.GetModSystem<EntityPartitioning>();
-            var targetEntity = ep.GetNearestEntity(fromPos, searchRange, (e) => e.WildCardMatch(targetEntityCode));
+            var targetEntity = ep.GetNearestEntity(fromPos, searchRange, (e) => e.WildCardMatch(targetEntityCode), EnumEntitySearchType.Creatures);
             return targetEntity;
         }
 

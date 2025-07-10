@@ -9,6 +9,8 @@ using Vintagestory.API.Config;
 using System.Collections.Generic;
 using System.Collections;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ItemCreature : Item

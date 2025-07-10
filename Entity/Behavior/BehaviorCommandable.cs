@@ -5,6 +5,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class EntityBehaviorCommandable : EntityBehavior
@@ -42,7 +44,25 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(properties, attributes);
 
-            GuardedName = GetGuardedEntity()?.GetName() ?? "";
+            try
+            {
+                SetGuardedName(0);
+            }
+            catch
+            {
+                entity.Api.Event.RegisterCallback(SetGuardedName, 1500);    // Try a second time later, if there was an exception, can happen if the guarded entity was not yet fully initialised
+            }
+        }
+
+        private void SetGuardedName(float dt)
+        {
+            Entity guarded = GetGuardedEntity();
+            if (guarded != null)
+            {
+                string name = guarded.GetName();
+                GuardedName = name ?? "";
+            }
+            else GuardedName = "";
         }
 
         public override void OnEntitySpawn()

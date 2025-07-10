@@ -9,6 +9,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockCrop : Block, IDrawYAdjustable
@@ -29,8 +31,7 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                int stage;
-                int.TryParse(LastCodePart(), out stage);
+                int.TryParse(LastCodePart(), out int stage);
                 return stage;
             }
         }
@@ -153,8 +154,7 @@ namespace Vintagestory.GameContent
 
         public int CurrentStage()
         {
-            int stage;
-            int.TryParse(LastCodePart(), out stage);
+            int.TryParse(LastCodePart(), out int stage);
             return stage;
         }
 

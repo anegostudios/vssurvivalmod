@@ -8,6 +8,8 @@ using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 using Vintagestory.ServerMods.NoObf;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
 
@@ -515,8 +517,7 @@ namespace Vintagestory.ServerMods
             int lx = posX % regionSize;
             int lz = posZ % regionSize;
 
-            IntDataMap2D map;
-            mapregion.BlockPatchMaps.TryGetValue(code, out map);
+            mapregion.BlockPatchMaps.TryGetValue(code, out IntDataMap2D map);
             if (map != null)
             {
                 float posXInRegionOre = GameMath.Clamp((float)lx / regionSize * noiseSizeDensityMap, 0, noiseSizeDensityMap - 1);
