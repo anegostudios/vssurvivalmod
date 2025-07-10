@@ -59,6 +59,7 @@ namespace Vintagestory.GameContent
         protected int minGeneration = 0; // Minimum generation for the animal to be rideable
         protected GaitMeta saddleBreakGait;
         protected string saddleBreakGaitCode;
+        protected bool vanillaGaits = false;
 
         ControlMeta curControlMeta = null;
         bool shouldMove = false;
@@ -163,6 +164,7 @@ namespace Vintagestory.GameContent
                 if (gait != null) RideableGaitOrder.Add(gait);
             }
 
+            vanillaGaits = RideableGaitOrder.Count(g => g.MoveSpeed > 0 && g.Backwards == false) == 2;
             saddleBreakGait = ebg.Gaits.FirstOrDefault(g => g.Value.Code == saddleBreakGaitCode).Value;
         }
 
@@ -439,7 +441,7 @@ namespace Vintagestory.GameContent
 
                 // Toggling this off so that the next press of the sprint key will be a fresh press
                 // Need this to allow cycling up with sprint rather than just treating it as a boolean toggle
-                controls.Sprint = false;
+                controls.Sprint = vanillaGaits && controls.Sprint;
 
                 // Detect if current press is a fresh press
                 bool forwardPressed = nowForwards && !prevForwardKey;
@@ -463,8 +465,9 @@ namespace Vintagestory.GameContent
                 }
 
                 // Cycle down with back
-                if (backwardPressed && nowMs - lastGaitChangeMs > 300)
+                if (backwardPressed && nowMs - lastGaitChangeMs > 300 || (!nowSprint && ebg.CurrentGait.IsSprint))
                 {
+                    controls.Sprint = false;
                     SlowDown();
 
                     lastGaitChangeMs = nowMs;
