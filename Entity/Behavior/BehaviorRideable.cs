@@ -561,7 +561,7 @@ namespace Vintagestory.GameContent
             }
             else if (!eagent.Swimming && wasSwimming)
             {
-                ebg.CurrentGait = ebg.Gaits["walk"];
+                ebg.CurrentGait = ForwardSpeed > 0 ? ebg.Gaits["walk"] : ebg.Gaits["walkback"];
             }
 
             wasSwimming = eagent.Swimming;
