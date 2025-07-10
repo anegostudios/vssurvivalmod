@@ -280,7 +280,7 @@ namespace Vintagestory.GameContent
 
             ForwardSpeed = Math.Sign(motion.X);
 
-            float yawMultiplier = ebg?.GetTurnRadius() ?? 3.5f;
+            float yawMultiplier = ebg.GetYawMult();
 
             AngularVelocity = motion.Y * yawMultiplier;
 
@@ -481,7 +481,7 @@ namespace Vintagestory.GameContent
                 if (canturn && (controls.Left || controls.Right))
                 {
                     float dir = controls.Left ? 1 : -1;
-                    angularMotion += str * dir * dt;
+                    angularMotion += ebg.GetYawMult() * dir * dt;
                 }
                 if (ebg.IsForward || ebg.IsBackward)
                 {

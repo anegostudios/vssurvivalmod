@@ -9,7 +9,7 @@ namespace Vintagestory.GameContent
     public record GaitMeta
     {
         public string Code { get; set; } // Unique identifier for the gait, ideally matched with rideable controls
-        public float TurnRadius { get; set; } = 3.5f;
+        public float YawMultiplier { get; set; } = 3.5f;
         public float MoveSpeed { get; set; } = 0f;
         public bool Backwards { get; set; } = false;
         public float StaminaCost { get; set; } = 0f;
@@ -35,12 +35,12 @@ namespace Vintagestory.GameContent
         public GaitMeta IdleGait;
         public GaitMeta FallbackGait => CurrentGait.FallbackGaitCode is null ? IdleGait : Gaits[CurrentGait.FallbackGaitCode];
 
-        public float GetTurnRadius() => CurrentGait?.TurnRadius ?? 3.5f; // Default turn radius if not set
+        public float GetYawMult() => CurrentGait?.YawMultiplier ?? 3.5f; // Default turn radius if not set
 
         public void SetIdle() => CurrentGait = IdleGait;
         public bool IsIdle => CurrentGait == IdleGait;
         public bool IsBackward => CurrentGait.Backwards;
-        public bool IsForward => !CurrentGait.Backwards && CurrentGait != IdleGait;        
+        public bool IsForward => !CurrentGait.Backwards && CurrentGait != IdleGait;
         public GaitMeta CascadingFallbackGait(int n)
         {
             var result = CurrentGait;
