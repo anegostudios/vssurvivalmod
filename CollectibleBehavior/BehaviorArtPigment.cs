@@ -9,6 +9,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class CollectibleBehaviorArtPigment : CollectibleBehavior
@@ -47,8 +49,8 @@ namespace Vintagestory.GameContent
 
         public override void Initialize(JsonObject properties)
         {
-            onmaterialsStrTmp = properties["paintableOnBlockMaterials"].AsArray<string>(new string[0]);
-            decorCodesTmp = properties["decorBlockCodes"].AsObject(new AssetLocation[0], collObj.Code.Domain);
+            onmaterialsStrTmp = properties["paintableOnBlockMaterials"].AsArray<string>(Array.Empty<string>());
+            decorCodesTmp = properties["decorBlockCodes"].AsObject(Array.Empty<AssetLocation>(), collObj.Code.Domain);
 
             consumeChance = properties["consumeChance"].AsFloat(0.15f);
 

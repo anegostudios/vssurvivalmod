@@ -3,21 +3,22 @@ using System.Text;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockCookedContainerBase : BlockContainer, IBlockMealContainer, IContainedInteractable, IContainedCustomName
+    public class BlockCookedContainerBase : BlockContainer, IBlockMealContainer, IContainedInteractable, IContainedCustomName, IHandBookPageCodeProvider
     {
-        public void SetContents(string recipeCode, float servings, ItemStack containerStack, ItemStack[] stacks)
+        public void SetContents(string? recipeCode, float servings, ItemStack containerStack, ItemStack[] stacks)
         {
             base.SetContents(containerStack, stacks);
 
             containerStack.Attributes.SetFloat("quantityServings", servings);
-            containerStack.Attributes.SetString("recipeCode", recipeCode);
+            if (recipeCode != null) containerStack.Attributes.SetString("recipeCode", recipeCode);
         }
 
 
-        public void SetContents(string recipeCode, ItemStack containerStack, ItemStack[] stacks, float quantityServings = 1)
+        public void SetContents(string? recipeCode, ItemStack containerStack, ItemStack?[] stacks, float quantityServings = 1)
         {
             base.SetContents(containerStack, stacks);
 
@@ -51,14 +52,14 @@ namespace Vintagestory.GameContent
         }
 
 
-        public CookingRecipe GetCookingRecipe(IWorldAccessor world, ItemStack containerStack)
+        public CookingRecipe? GetCookingRecipe(IWorldAccessor world, ItemStack? containerStack)
         {
             return api.GetCookingRecipe(GetRecipeCode(world, containerStack));
         }
 
-        public string GetRecipeCode(IWorldAccessor world, ItemStack containerStack)
+        public string? GetRecipeCode(IWorldAccessor world, ItemStack? containerStack)
         {
-            return containerStack.Attributes.GetString("recipeCode");
+            return containerStack?.Attributes.GetString("recipeCode");
         }
 
         /// <summary>
@@ -67,7 +68,7 @@ namespace Vintagestory.GameContent
         /// <param name="world"></param>
         /// <param name="containerStack"></param>
         /// <param name="code"></param>
-        public void SetRecipeCode(IWorldAccessor world, ItemStack containerStack, string code)
+        public void SetRecipeCode(IWorldAccessor world, ItemStack containerStack, string? code)
         {
             if (code == null)
             {
@@ -75,13 +76,13 @@ namespace Vintagestory.GameContent
                 containerStack.Attributes.RemoveAttribute("quantityServings");
                 containerStack.Attributes.RemoveAttribute("contents");
                 return;
-            } 
+            }
             containerStack.Attributes.SetString("recipeCode", code);
         }
 
-        internal float GetServings(IWorldAccessor world, ItemStack byItemStack)
+        internal float GetServings(IWorldAccessor world, ItemStack? byItemStack)
         {
-            return (float)byItemStack.Attributes.GetDecimal("quantityServings");
+            return (float)(byItemStack?.Attributes.GetDecimal("quantityServings") ?? 0);
         }
 
         internal void SetServings(IWorldAccessor world, ItemStack byItemStack, float value)
@@ -91,7 +92,7 @@ namespace Vintagestory.GameContent
 
         internal void SetServingsMaybeEmpty(IWorldAccessor world, ItemSlot potslot, float value)
         {
-            SetQuantityServings(world, potslot.Itemstack, value);
+            SetQuantityServings(world, potslot.Itemstack!, value);
             if (value <= 0f)
             {
                 string emptyCode = Attributes["emptiedBlockCode"].AsString();
@@ -103,9 +104,9 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public CookingRecipe GetMealRecipe(IWorldAccessor world, ItemStack containerStack)
+        public CookingRecipe? GetMealRecipe(IWorldAccessor world, ItemStack? containerStack)
         {
-            string recipecode = GetRecipeCode(world, containerStack);
+            string? recipecode = GetRecipeCode(world, containerStack);
             return api.GetCookingRecipe(recipecode);
         }
 
@@ -119,8 +120,7 @@ namespace Vintagestory.GameContent
 
             world.BlockAccessor.SetBlock(mealblock.BlockId, pos);
 
-            IBlockEntityMealContainer bemeal = api.World.BlockAccessor.GetBlockEntity(pos) as IBlockEntityMealContainer;
-            if (bemeal == null) return;
+            if (api.World.BlockAccessor.GetBlockEntity(pos) is not IBlockEntityMealContainer bemeal) return;
 
             if (tryMergeServingsIntoBE(bemeal, potslot)) return;
 
@@ -144,18 +144,65 @@ namespace Vintagestory.GameContent
         }
 
 
+        public override int GetMergableQuantity(ItemStack sinkStack, ItemStack sourceStack, EnumMergePriority priority)
+        {
+            if (priority != EnumMergePriority.AutoMerge &&
+                (sourceStack?.Block is IBlockMealContainer || (sourceStack?.Collectible?.Attributes?.IsTrue("mealContainer") ?? false)))
+                return Math.Max(1, Math.Min(MaxStackSize - sinkStack.StackSize, sourceStack.StackSize));
+
+            return base.GetMergableQuantity(sinkStack, sourceStack, priority);
+        }
+
+        public override void TryMergeStacks(ItemStackMergeOperation op)
+        {
+            if (op.SourceSlot.Itemstack!.Block is IBlockMealContainer || op.SourceSlot.Itemstack.Collectible.Attributes?.IsTrue("mealContainer") == true)
+            {
+                if (op.CurrentPriority != EnumMergePriority.DirectMerge)
+                {
+                    if (Math.Min(MaxStackSize - op.SinkSlot.Itemstack!.StackSize, op.SourceSlot.Itemstack.StackSize) > 0)
+                        base.TryMergeStacks(op);
+                    return;
+                }
+
+                ItemStack? bufferStack = null;
+                if (op.SourceSlot.Itemstack.StackSize > 1)
+                {
+                    bufferStack = op.SourceSlot.TakeOut(op.SourceSlot.Itemstack.StackSize - 1);
+                }
+
+                if (ServeIntoStack(op.SourceSlot, op.SinkSlot, op.World))
+                {
+                    // only do TryGive on server since it will sync to the client which otherwise causes duplicated ghost stacks
+                    if (api is ICoreServerAPI && op.ActingPlayer?.Entity.TryGiveItemStack(bufferStack) == false)
+                    {
+                        op.World.SpawnItemEntity(bufferStack, op.ActingPlayer.Entity.Pos.AsBlockPos);
+                    }
+                }
+                else
+                {
+                    DummySlot bufferSlot = new(bufferStack);
+                    bufferSlot.TryPutInto(op.World, op.SourceSlot);
+                    if (Math.Min(MaxStackSize - op.SinkSlot.Itemstack!.StackSize, op.SourceSlot.Itemstack.StackSize) > 0)
+                        base.TryMergeStacks(op);
+                }
+
+                return;
+            }
+
+            base.TryMergeStacks(op);
+        }
 
 
         private bool tryMergeServingsIntoBE(IBlockEntityMealContainer bemeal, ItemSlot potslot)
         {
             ItemStack[] myStacks = GetNonEmptyContents(api.World, potslot.Itemstack);
 
-            string hisRecipeCode = bemeal.RecipeCode;
+            string? hisRecipeCode = bemeal.RecipeCode;
             ItemStack[] hisStacks = bemeal.GetNonEmptyContentStacks();
             float hisServings = bemeal.QuantityServings;
 
-            string ownRecipeCode = GetRecipeCode(api.World, potslot.Itemstack);
-            float servingCapacity = (bemeal as BlockEntity).Block.Attributes["servingCapacity"].AsFloat(1);
+            string? ownRecipeCode = GetRecipeCode(api.World, potslot.Itemstack);
+            float servingCapacity = (bemeal as BlockEntity)?.Block.Attributes["servingCapacity"].AsFloat(1) ?? 1;
 
             // Empty
             if (hisStacks == null || hisServings == 0) return false;
@@ -202,20 +249,16 @@ namespace Vintagestory.GameContent
 
         public bool ServeIntoStack(ItemSlot bowlSlot, ItemSlot potslot, IWorldAccessor world)
         {
-            if (world.Side == EnumAppSide.Client) return true;
-
             float quantityServings = GetServings(world, potslot.Itemstack);
-            string ownRecipeCode = GetRecipeCode(world, potslot.Itemstack);
-            float servingCapacity = bowlSlot.Itemstack.Block.Attributes["servingCapacity"].AsFloat(1);
+            string? ownRecipeCode = GetRecipeCode(world, potslot.Itemstack);
+            float servingCapacity = bowlSlot.Itemstack?.Block.Attributes["servingCapacity"].AsFloat(1) ?? 1;
 
             // Merge existing servings
-            if (bowlSlot.Itemstack.Block is IBlockMealContainer)
+            if (bowlSlot.Itemstack?.Block is IBlockMealContainer mealcont)
             {
-                var mealcont = (bowlSlot.Itemstack.Block as IBlockMealContainer);
-
                 ItemStack[] myStacks = GetNonEmptyContents(api.World, potslot.Itemstack);
 
-                string hisRecipeCode = mealcont.GetRecipeCode(world, bowlSlot.Itemstack);
+                string? hisRecipeCode = mealcont.GetRecipeCode(world, bowlSlot.Itemstack);
                 ItemStack[] hisStacks = mealcont.GetNonEmptyContents(world, bowlSlot.Itemstack);
                 float hisServings = mealcont.GetQuantityServings(world, bowlSlot.Itemstack);
 
@@ -236,6 +279,8 @@ namespace Vintagestory.GameContent
                         }
                     }
 
+                    if (world.Side == EnumAppSide.Client) return true;
+
                     // Ok merge transition states
                     for (int i = 0; i < hisStacks.Length; i++)
                     {
@@ -243,38 +288,44 @@ namespace Vintagestory.GameContent
                         op.SourceSlot = new DummySlot(myStacks[i]);
                         op.SinkSlot = new DummySlot(hisStacks[i]);
                         hisStacks[i].Collectible.TryMergeStacks(op);
-
                     }
 
-                    // Now increase serving siize
+                    // Now increase serving size
                     float movedservings = Math.Min(remainingPlaceableServings, quantityServings);
                     mealcont.SetQuantityServings(world, bowlSlot.Itemstack, hisServings + movedservings);
 
                     SetServingsMaybeEmpty(world, potslot, quantityServings - movedservings);
 
-                    potslot.Itemstack.Attributes.RemoveAttribute("sealed");
+                    potslot.Itemstack?.Attributes.RemoveAttribute("sealed");
                     potslot.MarkDirty();
                     bowlSlot.MarkDirty();
-
-                    
 
                     return true;
                 }
             }
 
+            if (bowlSlot.Itemstack?.Block is BlockLiquidContainerTopOpened)
+            {
+                var content = GetContents(world, bowlSlot.Itemstack);
+                if (content?.Length > 0)
+                {
+                    return false;
+                }
+            }
 
+            if (world.Side == EnumAppSide.Client) return true;
             ItemStack[] stacks = GetContents(api.World, potslot.Itemstack);
-            string code = bowlSlot.Itemstack.Block.Attributes["mealBlockCode"].AsString();
+            string? code = bowlSlot.Itemstack?.Block.Attributes["mealBlockCode"].AsString();
             if (code == null) return false;
             Block mealblock = api.World.GetBlock(new AssetLocation(code));
 
             float servingsToTransfer = Math.Min(quantityServings, servingCapacity);
 
             ItemStack stack = new ItemStack(mealblock);
-            (mealblock as IBlockMealContainer).SetContents(ownRecipeCode, stack, stacks, servingsToTransfer);
+            (mealblock as IBlockMealContainer)?.SetContents(ownRecipeCode, stack, stacks, servingsToTransfer);
 
             SetServingsMaybeEmpty(world, potslot, quantityServings - servingsToTransfer);
-
+            potslot.Itemstack?.Attributes.RemoveAttribute("sealed");
             potslot.MarkDirty();
 
             bowlSlot.Itemstack = stack;
@@ -282,45 +333,47 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public virtual string ContainerNameShort => Lang.Get("pot");
-        public virtual string ContainerNameShortPlural => Lang.Get("pots");
-
-
         public string GetContainedName(ItemSlot inSlot, int quantity)
         {
-            return quantity == 1 ? Lang.Get("{0} {1}", quantity, ContainerNameShort) : Lang.Get("{0} {1}", quantity, ContainerNameShortPlural);
+            return GetHeldItemName(inSlot.Itemstack);
         }
 
         public string GetContainedInfo(ItemSlot inSlot)
         {
             var world = api.World;
 
-            CookingRecipe recipe = GetMealRecipe(world, inSlot.Itemstack);
-            float servings = inSlot.Itemstack.Attributes.GetFloat("quantityServings");
+            CookingRecipe? recipe = GetMealRecipe(world, inSlot.Itemstack);
+            float servings = inSlot.Itemstack?.Attributes.GetFloat("quantityServings") ?? 0;
 
             ItemStack[] stacks = GetNonEmptyContents(world, inSlot.Itemstack);
 
             if (stacks.Length == 0)
             {
-                return Lang.Get("Empty {0}", ContainerNameShort);
+                return Lang.GetWithFallback("contained-empty-container", "{0} (Empty)", inSlot.GetStackName());
             }
 
-            if (recipe != null)
+            if (inSlot.Itemstack?.Block is not Block contBlock) return Lang.Get("unknown");
+
+            var emptyCode = contBlock.Attributes?["emptiedBlockCode"].AsString();
+            string emptyName = new ItemStack(emptyCode == null ? contBlock : api.World.GetBlock(emptyCode)).GetName();
+
+            if (recipe != null || MealMeshCache.ContentsRotten(stacks))
             {
                 string message;
-                string outputName = recipe.GetOutputName(world, stacks);
-                if (recipe.CooksInto != null)
+                string outputName = recipe?.GetOutputName(world, stacks) ?? Lang.Get("Rotten Food");
+                if (recipe?.CooksInto != null)
                 {
                     message = "contained-nonfood-portions";
                     int index = outputName.IndexOf('\n');
                     if (index > 0) outputName = outputName.Substring(0, index);
                 }
-                else
+                else if (MealMeshCache.ContentsRotten(stacks))
                 {
-                    message = servings == 1 ? "contained-food-servings-singular" : "contained-food-servings-plural";
-                    // In 1.20 we need to use language plural format instead, here and all similar code!
+                    message = "contained-food-singleservingmax"; // This lets me show the "Rotten Food" name without the "1 serving of" text
+                    servings = 1;
                 }
-                return Lang.Get(message, Math.Round(servings, 1), outputName, ContainerNameShort, PerishableInfoCompactContainer(api, inSlot));
+                else message = "contained-food-servings";
+                return Lang.Get(message, Math.Round(servings, 1), outputName, emptyName, PerishableInfoCompactContainer(api, inSlot));
             }
 
             StringBuilder sb = new StringBuilder();
@@ -329,7 +382,7 @@ namespace Vintagestory.GameContent
                 if (sb.Length > 0) sb.Append(", ");
                 sb.Append(stack.GetName());
             }
-            var str = Lang.Get("contained-foodstacks-insideof", sb.ToString(), ContainerNameShort);
+            var str = Lang.Get("contained-foodstacks-insideof", sb.ToString(), emptyName);
             sb.Clear();
             sb.Append(str);
 
@@ -340,18 +393,19 @@ namespace Vintagestory.GameContent
 
 
 
-        public bool OnContainedInteractStart(BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        public virtual bool OnContainedInteractStart(BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
         {
             var targetSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
             if (targetSlot.Empty) return false;
 
             if ((targetSlot.Itemstack.Collectible.Attributes?.IsTrue("mealContainer") == true || targetSlot.Itemstack.Block is IBlockMealContainer) && GetServings(api.World, slot.Itemstack) > 0)
             {
+                bool served = false;
                 if (targetSlot.StackSize > 1)
                 {
                     targetSlot = new DummySlot(targetSlot.TakeOut(1));
                     byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
-                    ServeIntoStack(targetSlot, slot, api.World);
+                    served = ServeIntoStack(targetSlot, slot, api.World);
                     if (!byPlayer.InventoryManager.TryGiveItemstack(targetSlot.Itemstack, true))
                     {
                         api.World.SpawnItemEntity(targetSlot.Itemstack, byPlayer.Entity.ServerPos.XYZ);
@@ -359,12 +413,12 @@ namespace Vintagestory.GameContent
                 }
                 else
                 {
-                    ServeIntoStack(targetSlot, slot, api.World);
+                    served = ServeIntoStack(targetSlot, slot, api.World);
                 }
 
                 slot.MarkDirty();
                 be.MarkDirty(true);
-                return true;
+                return be is BlockEntityGroundStorage ? true : served;
             }
 
 
@@ -380,6 +434,12 @@ namespace Vintagestory.GameContent
         public void OnContainedInteractStop(float secondsUsed, BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
         {
 
+        }
+
+        public virtual string HandbookPageCodeForStack(IWorldAccessor world, ItemStack stack)
+        {
+            if (GetRecipeCode(world, stack) is string code) return "handbook-mealrecipe-" + code;
+            return GuiHandbookItemStackPage.PageCodeForStack(stack);
         }
     }
 

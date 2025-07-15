@@ -6,6 +6,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
@@ -164,23 +166,11 @@ namespace Vintagestory.GameContent
         }
 
 
-        void UpdateClients()
-        {
-            serverChannel.BroadcastPacket(new GameEffectsPacket()
-            {
-                SlomoActive = slowmoModeActive,
-                RainAndFogActive = rainAndFogActive,
-                GlitchPresent = glitchPresent
-            });
-        }
-
-
         private void OnServerTick(float dt)
         {
             if (glitchPresent)
             {
                 warp = GameMath.Clamp(warp + dt * 40, 0, 30);
-                // secondsPassedGlitchMode = GameMath.Clamp(secondsPassedGlitchMode - dt * 30, -60, 60);
             }
 
             if (slowmoModeActive)

@@ -8,12 +8,15 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent;
 
 public class ElevatorSystem
 {
     public EntityElevator Entity;
     public List<int> ControlPositions = new();
+    public bool ShouldUpdate = false;
 }
 
 public class EntityElevator : Entity, ISeatInstSupplier, IMountableListener, ICustomInteractionHelpPositioning
@@ -63,8 +66,6 @@ public class EntityElevator : Entity, ISeatInstSupplier, IMountableListener, ICu
         set => Attributes.SetString("networkCode", value);
     }
 
-    public bool IsActivated;
-
     public bool IsMoving => isMovingUp || isMovingDown;
 
     private const string UpAp = "UpAP";
@@ -106,6 +107,13 @@ public class EntityElevator : Entity, ISeatInstSupplier, IMountableListener, ICu
             if (NetworkCode != null)
             {
                 ElevatorSys = elevatorModSystem.RegisterElevator(NetworkCode, this);
+
+                // enable max height on old elevators which where already activated
+                // if we do not have the control poaints yet, those will also try to update it
+                if (Attributes.GetBool("isActivated") && !Attributes.HasAttribute("maxHeight") && ElevatorSys.ControlPositions?.Count > 0)
+                {
+                    Attributes.SetInt("maxHeight", ElevatorSys.ControlPositions.Last());
+                }
             }
 
             colliderBlockId = sapi.World.BlockAccessor.GetBlock("meta-collider").Id;
@@ -114,12 +122,9 @@ public class EntityElevator : Entity, ISeatInstSupplier, IMountableListener, ICu
 
     public override void OnGameTick(float dt)
     {
-        if (IsActivated)
+        if (World.Side == EnumAppSide.Server)
         {
-            if (World.Side == EnumAppSide.Server)
-            {
-                updatePosition(dt);
-            }
+            updatePosition(dt);
         }
 
         if (World.Side == EnumAppSide.Client)
@@ -300,9 +305,15 @@ public class EntityElevator : Entity, ISeatInstSupplier, IMountableListener, ICu
             {
                 if (Api is ICoreServerAPI)
                 {
-                    if (ElevatorSys != null && IsActivated)
+                    if (ElevatorSys != null)
                     {
-                        CurrentStopIndex = Math.Min(CurrentStopIndex + 1, ElevatorSys.ControlPositions.Count - 1);
+                        var i = Attributes.GetInt("maxHeight", 0);
+                        var indexOf = ElevatorSys.ControlPositions.IndexOf(i);
+                        var nextStopIndex = Math.Min(CurrentStopIndex + 1, ElevatorSys.ControlPositions.Count - 1);
+                        if (indexOf >= nextStopIndex)
+                        {
+                            CurrentStopIndex = nextStopIndex;
+                        }
                     }
                 }
                 else
@@ -316,7 +327,7 @@ public class EntityElevator : Entity, ISeatInstSupplier, IMountableListener, ICu
             {
                 if (Api is ICoreServerAPI)
                 {
-                    if (ElevatorSys != null && IsActivated)
+                    if (ElevatorSys != null)
                     {
                         CurrentStopIndex = Math.Max(CurrentStopIndex - 1, 0);
                     }
@@ -333,8 +344,12 @@ public class EntityElevator : Entity, ISeatInstSupplier, IMountableListener, ICu
 
     public void CallElevator(BlockPos position, int offset)
     {
-        if (!IsActivated) return;
-        var indexOf = ElevatorSys.ControlPositions.IndexOf(position.Y + offset);
+        var height = position.Y + offset;
+        if (Attributes.GetInt("maxHeight", 0) < height)
+        {
+            Attributes.SetInt("maxHeight", height);
+        }
+        var indexOf = ElevatorSys.ControlPositions.IndexOf(height);
         if (indexOf != -1)
         {
             CurrentStopIndex = indexOf;
@@ -357,7 +372,7 @@ public class EntityElevator : Entity, ISeatInstSupplier, IMountableListener, ICu
         return new EntityElevatorSeat(mountable, seatId, config);
     }
 
-    public void DidUnnmount(EntityAgent entityAgent)
+    public void DidUnmount(EntityAgent entityAgent)
     {
         MarkShapeModified();
     }
@@ -371,35 +386,12 @@ public class EntityElevator : Entity, ISeatInstSupplier, IMountableListener, ICu
         base.FromBytes(reader, isSync);
         CurrentStopIndex = Attributes.GetInt("currentStopIndex");
         lastStopIndex = CurrentStopIndex;
-        IsActivated = Attributes.GetBool("isActivated");
     }
 
     public override void ToBytes(BinaryWriter writer, bool forClient)
     {
         Attributes.SetInt("currentStopIndex", CurrentStopIndex);
-        Attributes.SetBool("isActivated", IsActivated);
         base.ToBytes(writer, forClient);
-    }
-
-    public void DeActivateElevator()
-    {
-        IsActivated = false;
-        Attributes.SetBool("isActivated", IsActivated);
-    }
-
-    public void ActivateElevator(BlockPos position, int offset)
-    {
-        if(IsActivated) return;
-
-        IsActivated = true;
-        Attributes.SetBool("isActivated", IsActivated);
-
-        var indexOf = ElevatorSys.ControlPositions.IndexOf(position.Y + offset);
-        if (indexOf != -1)
-        {
-            CurrentStopIndex = indexOf;
-            lastStopIndex = indexOf;
-        }
     }
 
     public override WorldInteraction[] GetInteractionHelp(IClientWorldAccessor world, EntitySelection es, IClientPlayer player)
@@ -441,17 +433,18 @@ public class EntityElevator : Entity, ISeatInstSupplier, IMountableListener, ICu
     public Vec3d GetInteractionHelpPosition()
     {
         var capi = Api as ICoreClientAPI;
-        if (capi.World.Player.CurrentEntitySelection == null) return null;
+        var selection = capi.World.Player.CurrentEntitySelection;
+        if (selection == null) return null;
 
-        var selebox = capi.World.Player.CurrentEntitySelection.SelectionBoxIndex - 1;
+        var selebox = selection.SelectionBoxIndex - 1;
         if (selebox < 0) return null;
 
-        var point = GetBehavior<EntityBehaviorSelectionBoxes>().selectionBoxes[selebox].AttachPoint;
+        var point = selection.Entity.GetBehavior<EntityBehaviorSelectionBoxes>().selectionBoxes[selebox].AttachPoint;
         var offset = 0.5;
         if (point.Code.Equals(UpAp) || point.Code.Equals(DownAp))
         {
             offset = 0.1;
         }
-        return GetBehavior<EntityBehaviorSelectionBoxes>().GetCenterPosOfBox(selebox)?.Add(0, offset, 0);
+        return selection.Entity.GetBehavior<EntityBehaviorSelectionBoxes>().GetCenterPosOfBox(selebox)?.Add(0, offset, 0);
     }
 }

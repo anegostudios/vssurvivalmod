@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -8,18 +9,22 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityGenericTypedContainer : BlockEntityOpenableContainer, IRotatable
     {
         internal InventoryGeneric inventory;
-        public string type = "normal-generic";
-        public string defaultType;
+        public string type = null;
+        public string defaultType = "normal-generic";
         public int quantitySlots = 16;
         public int quantityColumns = 4;
         public string inventoryClassName = "chest";
         public string dialogTitleLangCode = "chestcontents";
         public bool retrieveOnly = false;
+
+        public bool isPerPlayer;
 
         float meshangle;
         public virtual float MeshAngle
@@ -62,8 +67,9 @@ namespace Vintagestory.GameContent
 
         public override void Initialize(ICoreAPI api)
         {
-            defaultType = Block.Attributes?["defaultType"]?.AsString("normal-generic");
-            if (defaultType == null) defaultType = "normal-generic";
+            defaultType = Block.Attributes?["defaultType"]?.AsString() ?? defaultType;
+            type ??= defaultType;
+            
             // Newly placed
             if (inventory == null)
             {
@@ -71,17 +77,32 @@ namespace Vintagestory.GameContent
             }
 
             base.Initialize(api);
+
+            Inventory.OnInventoryOpened -= OnInventoryOpened;
+            Inventory.OnInventoryClosed -= OnInventoryClosed;
+        }
+
+        public override void OnPlacementBySchematic(ICoreServerAPI api, IBlockAccessor blockAccessor, BlockPos pos, Dictionary<int, Dictionary<int, int>> replaceBlocks, int centerrockblockid,
+            Block layerBlock, bool resolveImports)
+        {
+            base.OnPlacementBySchematic(api, blockAccessor, pos, replaceBlocks, centerrockblockid, layerBlock, resolveImports);
+            if (inventory is InventoryPerPlayer ipp)
+            {
+                ipp.OnPlacementBySchematic();
+            }
         }
 
         public override void OnBlockPlaced(ItemStack byItemStack = null)
         {
             if (byItemStack?.Attributes != null)
             {
-                string nowType = byItemStack.Attributes.GetString("type", defaultType);
+                var nowType = byItemStack.Attributes.GetString("type", defaultType);
+                var nowIsPerPlayer = byItemStack.Attributes.GetBool("isPerPlayer");
 
-                if (nowType != type)
+                if (nowType != type || nowIsPerPlayer != isPerPlayer)
                 {
-                    this.type = nowType;
+                    type = nowType;
+                    isPerPlayer = nowIsPerPlayer;
                     InitInventory(Block);
                     LateInitInventory();
                 }
@@ -91,14 +112,13 @@ namespace Vintagestory.GameContent
         }
 
 
-
-
-
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
             string prevType = type;
             type = tree.GetString("type", defaultType);
             MeshAngle = tree.GetFloat("meshAngle", MeshAngle);
+            bool prevIsPerPlayer = isPerPlayer;
+            isPerPlayer = tree.GetBool("isPerPlayer");
 
             if (inventory == null)
             {
@@ -125,7 +145,7 @@ namespace Vintagestory.GameContent
 
                     InitInventory(null);
                 }
-            } else if (type != prevType)
+            } else if (type != prevType || prevIsPerPlayer != isPerPlayer)
             {
                 InitInventory(Block);
 
@@ -148,9 +168,9 @@ namespace Vintagestory.GameContent
             base.ToTreeAttributes(tree);
 
             if (Block != null) tree.SetString("forBlockCode", Block.Code.ToShortString());
+            if (isPerPlayer) tree.SetBool("isPerPlayer", isPerPlayer);
 
-            if (type == null) type = defaultType; // No idea why. Somewhere something has no type. Probably some worldgen ruins
-
+            type ??= defaultType; // No idea why. Somewhere something has no type. Probably some worldgen ruins
             tree.SetString("type", type);
             tree.SetFloat("meshAngle", MeshAngle);
         }
@@ -179,7 +199,14 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            inventory = new InventoryGeneric(quantitySlots, null, null, null);
+            if (isPerPlayer)
+            {
+                inventory = new InventoryPerPlayer(quantitySlots, null, null);
+            }
+            else
+            {
+                inventory = new InventoryGeneric(quantitySlots, null, null);
+            }
             inventory.BaseWeight = 1f;
             inventory.OnGetSuitability = (sourceSlot, targetSlot, isMerge) => (isMerge ? (inventory.BaseWeight + 3) : (inventory.BaseWeight + 1)) + (sourceSlot.Inventory is InventoryBasePlayer ? 1 : 0);
             inventory.OnGetAutoPullFromSlot = GetAutoPullFromSlot;
@@ -199,15 +226,16 @@ namespace Vintagestory.GameContent
             }
 
             inventory.PutLocked = retrieveOnly;
-            inventory.OnInventoryClosed += OnInvClosed;
             inventory.OnInventoryOpened += OnInvOpened;
+            inventory.OnInventoryClosed += OnInvClosed;
         }
 
 
         public virtual void LateInitInventory()
         {
-            Inventory.LateInitialize(InventoryClassName + "-" + Pos.X + "/" + Pos.Y + "/" + Pos.Z, Api);
+            Inventory.LateInitialize(InventoryClassName + "-" + Pos, Api);
             Inventory.ResolveBlocksOrItems();
+            Inventory.Pos ??= Pos;
             container.LateInit();
             MarkDirty();
         }
@@ -225,6 +253,8 @@ namespace Vintagestory.GameContent
 
         protected virtual void OnInvOpened(IPlayer player)
         {
+            OnInventoryOpened(player);
+
             inventory.PutLocked = retrieveOnly && player.WorldData.CurrentGameMode != EnumGameMode.Creative;
 
             if (Api.Side == EnumAppSide.Client)
@@ -258,6 +288,8 @@ namespace Vintagestory.GameContent
 
         protected virtual void OnInvClosed(IPlayer player)
         {
+            OnInventoryClosed(player);
+
             if (LidOpenEntityId.Count == 0)
             {
                 CloseLid();
@@ -282,7 +314,7 @@ namespace Vintagestory.GameContent
 
             if (Api.World is IServerWorldAccessor)
             {
-                var data = BlockEntityContainerOpen.ToBytes("BlockEntityInventory", Lang.Get(dialogTitleLangCode), (byte)quantityColumns, inventory);
+                var data = BlockEntityContainerOpen.ToBytes("BlockEntityInventory", DialogTitle, (byte)quantityColumns, inventory);
                 ((ICoreServerAPI)Api).Network.SendBlockEntityPacket(
                     (IServerPlayer)byPlayer,
                     Pos,
@@ -319,7 +351,6 @@ namespace Vintagestory.GameContent
             {
                 return new Dictionary<string, MeshData>();
             });
-            MeshData mesh;
 
             string shapename = Block.Attributes?["shape"][type].AsString();
             if (shapename == null)
@@ -343,7 +374,7 @@ namespace Vintagestory.GameContent
             }
 
             string meshKey = type + block.Subtype + "-" + rndTexNum;
-            if (meshes.TryGetValue(meshKey, out mesh))
+            if (meshes.TryGetValue(meshKey, out MeshData mesh))
             {
                 if (animUtil != null && animUtil.renderer == null)
                 {
@@ -403,6 +434,15 @@ namespace Vintagestory.GameContent
             MeshAngle = tree.GetFloat("meshAngle");
             MeshAngle -= degreeRotation * GameMath.DEG2RAD;
             tree.SetFloat("meshAngle", MeshAngle);
+        }
+
+        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
+        {
+            base.GetBlockInfo(forPlayer, dsc);
+            if (isPerPlayer)
+            {
+                dsc.AppendLine(Lang.Get("blockdesc-perplayerloot"));
+            }
         }
     }
 }

@@ -2,6 +2,8 @@
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent.Mechanics
 {
     public class TransmissionBlockRenderer : MechBlockRenderer
@@ -13,21 +15,19 @@ namespace Vintagestory.GameContent.Mechanics
 
         public TransmissionBlockRenderer(ICoreClientAPI capi, MechanicalPowerMod mechanicalPowerMod, Block textureSoureBlock, CompositeShape shapeLoc) : base(capi, mechanicalPowerMod)
         {
-            MeshData blockMesh1;
-            MeshData blockMesh2 = null;
 
             AssetLocation loc = shapeLoc.Base.Clone().WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
 
             Shape shape = API.Common.Shape.TryGet(capi, loc);
             Vec3f rot = new Vec3f(shapeLoc.rotateX, shapeLoc.rotateY, shapeLoc.rotateZ);
 
-            capi.Tesselator.TesselateShape(textureSoureBlock, shape, out blockMesh1, rot);
+            capi.Tesselator.TesselateShape(textureSoureBlock, shape, out MeshData blockMesh1, rot);
 
             CompositeShape ovShapeCmp = new CompositeShape() { Base = new AssetLocation("shapes/block/wood/mechanics/transmission-rightgear.json") };
             //rot = new Vec3f(ovShapeCmp.rotateX, ovShapeCmp.rotateY, ovShapeCmp.rotateZ);
             rot = new Vec3f(shapeLoc.rotateX, shapeLoc.rotateY, shapeLoc.rotateZ);
             Shape ovshape = API.Common.Shape.TryGet(capi, ovShapeCmp.Base.Clone().WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json"));
-            capi.Tesselator.TesselateShape(textureSoureBlock, ovshape, out blockMesh2, rot);
+            capi.Tesselator.TesselateShape(textureSoureBlock, ovshape, out MeshData blockMesh2, rot);
 
             //blockMesh1.Rgba2 = null;
             //blockMesh2.Rgba2 = null;

@@ -1,4 +1,6 @@
-﻿namespace Vintagestory.GameContent
+﻿
+#nullable disable
+namespace Vintagestory.GameContent
 {
     public class DlgGenericComponent : DialogueComponent
     {

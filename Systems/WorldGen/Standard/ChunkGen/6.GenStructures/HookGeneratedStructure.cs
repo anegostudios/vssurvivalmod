@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using Newtonsoft.Json;
 using Vintagestory.API.Common;
 
+#nullable disable
+
 namespace Vintagestory.GameContent;
 
 public class HookGeneratedStructure

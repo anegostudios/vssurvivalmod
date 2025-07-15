@@ -1,0 +1,30 @@
+[*]
+charset = utf-8
+end_of_line = crlf
+trim_trailing_whitespace = true
+insert_final_newline = true
+indent_style = space
+indent_size = 4
+tab_width = 4
+
+[*.{yaml,yml,proto,sh}]
+indent_size = 2
+
+[*.cs]
+max_line_length = off
+
+### private Instance fields, properties are camelCase and start without _
+dotnet_naming_rule.private_instance_fields_should_be_camel_case.severity = suggestion
+dotnet_naming_rule.private_instance_fields_should_be_camel_case.symbols = private_instance_fields
+dotnet_naming_rule.private_instance_fields_should_be_camel_case.style = instance_field_style
+
+dotnet_naming_symbols.private_instance_fields.applicable_kinds = field, property
+dotnet_naming_symbols.private_instance_fields.applicable_accessibilities = private, internal, protected, protected_internal, private_protected
+
+dotnet_naming_style.instance_field_style.capitalization = camel_case
+###
+
+### Sonarlint specific, will only apply if you have sonarlint plugin installed
+# S1104: Fields should not have public accessibility 
+dotnet_diagnostic.S1104.severity = none
+###

@@ -6,6 +6,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public enum EnumTurretState
@@ -34,12 +36,8 @@ namespace Vintagestory.GameContent
     // Load bolt from turret pose
     public class AiTaskTurretMode : AiTaskBaseTargetable
     {
-        int durationMs;
-        int releaseAtMs;
         long lastSearchTotalMs;
         protected int searchWaitMs = 2000;
-        float accum = 0;
-        bool didThrow;
         float minTurnAnglePerSec;
         float maxTurnAnglePerSec;
         float curTurnRadPerSec;
@@ -69,8 +67,6 @@ namespace Vintagestory.GameContent
         public override void LoadConfig(JsonObject taskConfig, JsonObject aiConfig)
         {
             base.LoadConfig(taskConfig, aiConfig);
-            this.durationMs = taskConfig["durationMs"].AsInt(1500);
-            this.releaseAtMs = taskConfig["releaseAtMs"].AsInt(1000);
             this.projectileDamage = taskConfig["projectileDamage"].AsFloat(1f);
             this.projectileDamageTier = taskConfig["projectileDamageTier"].AsInt(1);
 
@@ -103,11 +99,11 @@ namespace Vintagestory.GameContent
         public override bool ShouldExecute()
         {
             // React immediately on hurt, otherwise only 1/10 chance of execution
-            if (rand.NextDouble() > 0.1f && (whenInEmotionState == null || IsInEmotionState(whenInEmotionState) != true)) return false;
+            if (rand.NextDouble() > 0.1f && (WhenInEmotionState == null || IsInEmotionState(WhenInEmotionState) != true)) return false;
 
             if (!PreconditionsSatisifed()) return false;
             if (lastSearchTotalMs + searchWaitMs > entity.World.ElapsedMilliseconds) return false;
-            if (whenInEmotionState == null && rand.NextDouble() > 0.5f) return false;
+            if (WhenInEmotionState == null && rand.NextDouble() > 0.5f) return false;
             if (cooldownUntilMs > entity.World.ElapsedMilliseconds) return false;
 
             lastSearchTotalMs = entity.World.ElapsedMilliseconds;
@@ -130,9 +126,6 @@ namespace Vintagestory.GameContent
         public override void StartExecute()
         {
             base.StartExecute();
-
-            accum = 0;
-            didThrow = false;
 
             ITreeAttribute pathfinder = entity?.Properties.Server?.Attributes?.GetTreeAttribute("pathfinder");
             if (pathfinder != null)
@@ -388,8 +381,12 @@ namespace Vintagestory.GameContent
             entity.World.PlaySoundAt("sounds/creature/bowtorn/release", entity, null, false, 32);
         }
 
-        public override bool ContinueExecute(float dt)
+        public override bool 
+            ContinueExecute(float dt)
         {
+            //Check if time is still valid for task.
+            if (!IsInValidDayTimeHours(false)) return false;
+
             currentStateTime += dt;
             updateState();
 

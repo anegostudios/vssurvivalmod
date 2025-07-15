@@ -3,6 +3,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class AiTaskFlyCircleIfEntity : AiTaskFlyCircle

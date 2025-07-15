@@ -4,6 +4,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockBunchOCandles : Block
@@ -90,7 +92,7 @@ namespace Vintagestory.GameContent
                         Vec3f dp = poses[j];
 
                         bps.basePos.X = pos.X + dp.X;
-                        bps.basePos.Y = pos.Y + dp.Y;
+                        bps.basePos.Y = pos.InternalY + dp.Y;
                         bps.basePos.Z = pos.Z + dp.Z;
                         manager.Spawn(bps);
                     }

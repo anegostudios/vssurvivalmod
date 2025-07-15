@@ -5,6 +5,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockReeds : BlockPlant
@@ -94,8 +96,7 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                float mul;
-                if (itemslot.Itemstack.Collectible.MiningSpeed.TryGetValue(EnumBlockMaterial.Plant, out mul)) dt *= mul;
+                if (itemslot.Itemstack.Collectible.MiningSpeed.TryGetValue(EnumBlockMaterial.Plant, out float mul)) dt *= mul;
             }
 
             float resistance = RequiredMiningTier == 0 ? remainingResistance - dt : remainingResistance;

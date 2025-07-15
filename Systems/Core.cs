@@ -12,6 +12,8 @@ using Vintagestory.API.Server;
 using Vintagestory.GameContent.Mechanics;
 using Vintagestory.ServerMods;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     [ProtoContract]
@@ -26,7 +28,7 @@ namespace Vintagestory.GameContent
         public float[] SunLightLevels = new float[] { 0.015f, 0.176f, 0.206f, 0.236f, 0.266f, 0.296f, 0.326f, 0.356f, 0.386f, 0.416f, 0.446f, 0.476f, 0.506f, 0.536f, 0.566f, 0.596f, 0.626f, 0.656f, 0.686f, 0.716f, 0.746f, 0.776f, 0.806f, 0.836f, 0.866f, 0.896f, 0.926f, 0.956f, 0.986f, 1f, 1f, 1f};
 
         [ProtoMember(2)]
-        public float[] BlockLightLevels = new float[] { 0.0175f, 0.06f, 0.12f, 0.18f, 0.254f, 0.289f, 0.324f, 0.359f, 0.394f, 0.429f, 0.464f, 0.499f, 0.534f, 0.569f, 0.604f, 0.639f, 0.674f, 0.709f, 0.744f, 0.779f, 0.814f, 0.849f, 0.884f, 0.919f, 0.954f, 0.989f, 1f, 1f, 1f, 1f, 1f, 1f };
+        public float[] BlockLightLevels = new float[] { 0.016f, 0.146f, 0.247f, 0.33f, 0.401f, 0.463f, 0.519f, 0.569f, 0.615f, 0.656f, 0.695f, 0.73f, 0.762f, 0.792f, 0.82f, 0.845f, 0.868f, 0.89f, 0.91f, 0.927f, 0.944f, 0.958f, 0.972f, 0.983f, 0.993f, 1f, 1f, 1f, 1f, 1f, 1f, 1f };
         [ProtoMember(3)]
         public float PerishSpeedModifier = 1f;
         [ProtoMember(4)]
@@ -51,7 +53,7 @@ namespace Vintagestory.GameContent
         {
             if (StartStacks == null)
             {
-                ResolvedStartStacks = new ItemStack[0];
+                ResolvedStartStacks = Array.Empty<ItemStack>();
                 return;
             }
 
@@ -145,12 +147,15 @@ namespace Vintagestory.GameContent
         public override void AssetsLoaded(ICoreAPI api)
         {
             metalsByCode = new Dictionary<string, MetalPropertyVariant>();
-            MetalProperty metals = api.Assets.TryGet("worldproperties/block/metal.json").ToObject<MetalProperty>();
-            for (int i = 0; i < metals.Variants.Length; i++)
+            var metalAssets = api.Assets.GetMany<MetalProperty>(api.Logger, "worldproperties/block/metal.json"); 
+            foreach (var metals in metalAssets.Values)
             {
-                // Metals currently don't have a domain
-                var metal = metals.Variants[i];
-                metalsByCode[metal.Code.Path] = metal;
+                for (int i = 0; i < metals.Variants.Length; i++)
+                {
+                    // Metals currently don't have a domain
+                    var metal = metals.Variants[i];
+                    metalsByCode[metal.Code.Path] = metal;
+                }
             }
 
             if (api is ICoreClientAPI capi)
@@ -206,6 +211,9 @@ namespace Vintagestory.GameContent
             AiTaskRegistry.Register<AiTaskThrowAtEntity>("throwatentity");
             AiTaskRegistry.Register<AiTaskStayInRange>("stayinrange");
             AiTaskRegistry.Register<AiTaskTurretMode>("turretmode");
+            AiTaskRegistry.Register<AiTaskFollowLeadHolder>("followleadholder");
+
+            EntityBehaviorPassivePhysicsMultiBox.InitServer(api);   // Needed to guarantee registration to the OnPhysicsThreadStart event before that event is fired, even if no entities with this behavior (i.e. boats) are yet loaded in the early game - it might be hours before we see one of these entities
         }
 
         private void Event_PlayerJoin(IServerPlayer byPlayer)
@@ -239,30 +247,34 @@ namespace Vintagestory.GameContent
 
         public float EarthAxialTilt = 23.44f * GameMath.DEG2RAD;
 
-        // This method was contributed by Eliam (Avdudia#0696) on Discord <3
+        // This method was contributed by Eliam  (Avdudia#0696) on Discord <3
         public SolarSphericalCoords GetSolarSphericalCoords(double posX, double posZ, float yearRel, float dayRel)
         {
             // Tyron: For your understanding, this would be the simple most spherical coord calculator - this is how the sun rises and sets if you were standing at the equator and without earth axial tilt
-            // return new SolarSphericalCoords(GameMath.TWOPI * GameMath.Mod(api.World.Calendar.HourOfDay / api.World.Calendar.HoursPerDay, 1f), 0);
+            // return new (GameMath.TWOPI * GameMath.Mod(api.World.Calendar.HourOfDay / api.World.Calendar.HoursPerDay, 1f), 0);
 
-            float latitude = (float)api.World.Calendar.OnGetLatitude(posZ);
+            double latitude = api.World.Calendar.OnGetLatitude(posZ) * Math.PI / 2.0;
 
             float hourAngle = GameMath.TWOPI * (dayRel - 0.5f);
 
             // The Sun's declination at any given moment
             // The number 10 is the approximate number of days after the December solstice to January 1
-            float declination = -EarthAxialTilt * GameMath.Cos(GameMath.TWOPI * (yearRel + 10 / 365f));
+            double declination = -EarthAxialTilt * Math.Cos(GameMath.TWOPI * (yearRel + 10 / 365f));
 
-            float zenithAngle = (float)Math.Acos(GameMath.Sin(latitude * GameMath.PIHALF) * GameMath.Sin(declination) + GameMath.Cos(latitude * GameMath.PIHALF) * GameMath.Cos(declination) * GameMath.Cos(hourAngle));
+            double sinLatitude = Math.Sin(latitude);    // For performance, we calculate and store some of the values used multiple times in the formulae
+            double cosLatitude = Math.Cos(latitude);
+            double sinDeclination = Math.Sin(declination);
+            double cosZenithAngle = GameMath.Clamp(sinLatitude * sinDeclination + cosLatitude * GameMath.Cos(declination) * GameMath.Cos(hourAngle), -1.0, 1.0);
+            double sinZenithAngle = Math.Sqrt(1.0 - cosZenithAngle * cosZenithAngle);    // This is a fast formula to obtain sin from cos; in theory sign would need adjusting outside the range 0-pi, but Math.Acos(cosZenithAngle) always returns a value in the range 0-pi
 
             // Added 1.e-10 to prevent division by 0
-            float b = ((GameMath.Sin(latitude * GameMath.PIHALF) * GameMath.Cos(zenithAngle)) - GameMath.Sin(declination)) / (GameMath.Cos(latitude * GameMath.PIHALF) * GameMath.Sin(zenithAngle) + 0.0000001f);
-            float azimuthAngle = (float)Math.Acos(GameMath.Clamp(b, -1, 1));
+            double b = ((sinLatitude * cosZenithAngle) - sinDeclination) / (cosLatitude * sinZenithAngle + 0.0000001f);
+            float azimuthAngle = (float)Math.Acos(GameMath.Clamp(b, -1.0, 1.0));
 
-            // The sign function gives the correct azimuth angle sign depending on the hour without using IF statement (branchless)
+            // The sign function gives the correct azimuth angle sign depending on the hour without using IF statement (branchless)     radfast note: ahem, look at the source code for Math.Sign()
             azimuthAngle = (GameMath.PI + Math.Sign(hourAngle) * azimuthAngle) % GameMath.TWOPI;
 
-            return new SolarSphericalCoords(GameMath.TWOPI - zenithAngle, GameMath.TWOPI - azimuthAngle);
+            return new SolarSphericalCoords(GameMath.TWOPI - (float)Math.Acos(cosZenithAngle), GameMath.TWOPI - azimuthAngle);
         }
 
 
@@ -564,6 +576,11 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockGenericTypedContainerTrunk", typeof(BlockGenericTypedContainerTrunk));
 
             api.RegisterBlockClass("BlockClutter", typeof(BlockClutter));
+            api.RegisterBlockClass("BlockFigurehead", typeof(BlockFigurehead));
+            api.RegisterBlockClass("BlockShapeMaterialFromAttributes", typeof(BlockShapeMaterialFromAttributes));
+            api.RegisterBlockClass("BlockMaterialFromAttributes", typeof(BlockMaterialFromAttributes));
+            
+            
             api.RegisterBlockClass("ToggleCollisionBox", typeof(BlockToggleCollisionBox));
 
             api.RegisterBlockClass("BlockClutterBookshelf", typeof(BlockClutterBookshelf));
@@ -589,7 +606,7 @@ namespace Vintagestory.GameContent
 
             api.RegisterBlockClass("BlockRandomizer", typeof(BlockRandomizer));
             api.RegisterBlockClass("BlockScrollRack", typeof(BlockScrollRack));
-            api.RegisterBlockClass("BlockBasketTrap", typeof(BlockBasketTrap));
+            api.RegisterBlockClass("BlockBasketTrap", typeof(BlockAnimalTrap));
             api.RegisterBlockClass("BlockAntlerMount", typeof(BlockAntlerMount));
 
             api.RegisterBlockClass("BlockRockTyped", typeof(BlockRockTyped));
@@ -698,6 +715,8 @@ namespace Vintagestory.GameContent
             api.RegisterBlockEntityBehaviorClass("CropProp", typeof(BEBehaviorCropProp));
 
             api.RegisterBlockEntityBehaviorClass("GiveItemPerPlayer", typeof(BEBehaviorGiveItemPerPlayer));
+            api.RegisterBlockEntityBehaviorClass("MaterialFromAttributes", typeof(BEBehaviorMaterialFromAttributes));
+            api.RegisterBlockEntityBehaviorClass("ShapeMaterialFromAttributes", typeof(BEBehaviorShapeMaterialFromAttributes));
         }
 
         private void RegisterDefaultCollectibleBehaviors()
@@ -707,6 +726,8 @@ namespace Vintagestory.GameContent
             api.RegisterCollectibleBehaviorClass("BoatableGenericTypedContainer", typeof(CollectibleBehaviorBoatableGenericTypedContainer));
             api.RegisterCollectibleBehaviorClass("BoatableCrate", typeof(CollectibleBehaviorBoatableCrate));
             api.RegisterCollectibleBehaviorClass("EntityDeconstructTool", typeof(EntityDeconstructTool));
+            api.RegisterCollectibleBehaviorClass("HealingItem", typeof(BehaviorHealingItem));
+            api.RegisterCollectibleBehaviorClass("Squeezable", typeof(CollectibleBehaviorSqueezable));
         }
 
 
@@ -834,7 +855,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockEntityClass("ScrollRack", typeof(BlockEntityScrollRack));
             api.RegisterBlockEntityClass("AntlerMount", typeof(BlockEntityAntlerMount));
 
-            api.RegisterBlockEntityClass("BasketTrap", typeof(BlockEntityBasketTrap));
+            api.RegisterBlockEntityClass("BasketTrap", typeof(BlockEntityAnimalTrap));
             api.RegisterBlockEntityClass("AnimalBasket", typeof(BlockEntityAnimalBasket));
             api.RegisterBlockEntityClass("TileConnector", typeof(BETileConnector));
             api.RegisterBlockEntityClass("JonasLensTower", typeof(BEJonasLensTower));
@@ -930,6 +951,8 @@ namespace Vintagestory.GameContent
             api.RegisterItemClass("ItemMedallion", typeof(ItemMedallion));
 
             api.RegisterItemClass("ItemSkillTimeswitch", typeof(ItemSkillTimeswitch));
+            api.RegisterItemClass("ItemAnchor", typeof(ItemAnchor));
+            api.RegisterItemClass("ItemEgg", typeof(ItemEgg));
         }
 
 
@@ -975,6 +998,7 @@ namespace Vintagestory.GameContent
             api.RegisterEntityBehaviorClass("commandable", typeof(EntityBehaviorCommandable));
             api.RegisterEntityBehaviorClass("conversable", typeof(EntityBehaviorConversable));
             api.RegisterEntityBehaviorClass("boss", typeof(EntityBehaviorBoss));
+            api.RegisterEntityBehaviorClass("bossErel", typeof(EntityBehaviorErelBoss));
             api.RegisterEntityBehaviorClass("antlergrowth", typeof(EntityBehaviorAntlerGrowth));
             api.RegisterEntityBehaviorClass("idleanimations", typeof(EntityBehaviorIdleAnimations));
             api.RegisterEntityBehaviorClass("rideable", typeof(EntityBehaviorRideable));
@@ -993,6 +1017,9 @@ namespace Vintagestory.GameContent
             api.RegisterEntityBehaviorClass("activitydriven", typeof(EntityBehaviorActivityDriven));
             api.RegisterEntityBehaviorClass("villagerinventory", typeof(EntityBehaviorVillagerInv));
             api.RegisterEntityBehaviorClass("ownable", typeof(EntityBehaviorOwnable));
+
+            api.RegisterEntityBehaviorClass("ripharvestable", typeof(EntityBehaviorRipHarvestable));
+            api.RegisterEntityBehaviorClass("writingsurface", typeof(EntityBehaviorWritingSurface));
         }
     }
 }

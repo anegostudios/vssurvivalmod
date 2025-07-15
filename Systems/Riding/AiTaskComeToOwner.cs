@@ -1,8 +1,11 @@
 ﻿using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
+
     public class AiTaskComeToOwner : AiTaskStayCloseToEntity
     {
         long lastExecutedMs;

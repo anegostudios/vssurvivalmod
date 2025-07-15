@@ -12,9 +12,23 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using System.Diagnostics;
+using Vintagestory.API;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Allows a creature to be contained inside of this block, as well as catching and releasing the entity.
+    /// Note that this behavior is built around use with the reed chest, and may have unexpected results with other blocks.
+    /// This behavior uses the code "CreatureContainer", and has no properties.
+    /// </summary>
+    /// <example><code lang="json">
+    ///"behaviors": [
+	///	{ "name": "CreatureContainer" }
+	///]
+    /// </code></example>
+    [DocumentAsJson]
     public class BlockBehaviorCreatureContainer : BlockBehavior
     {
         public double CreatureSurvivalDays = 1;
@@ -47,7 +61,7 @@ namespace Vintagestory.GameContent
         {
             if (HasAnimal(itemstack))
             {
-                string shapepath = itemstack.Collectible.Attributes["creatureContainedShape"][itemstack.Attributes.GetString("type")].AsString();
+                string shapepath = itemstack.Collectible.Attributes?["creatureContainedShape"][itemstack.Attributes.GetString("type")].AsString();
 
                 if (GetStillAliveDays(capi.World, itemstack) > 0)
                 {
@@ -72,12 +86,13 @@ namespace Vintagestory.GameContent
 
                         if (wiggle > 0)
                         {
-                            shapepath += "-wiggle";
+                            if (shapepath != null) shapepath += "-wiggle";
                             renderinfo.Transform = renderinfo.Transform.Clone();
                             var wiggleX = (float)api.World.Rand.NextDouble() * 4 - 2;
                             var wiggleZ = (float)api.World.Rand.NextDouble() * 4 - 2;
                             if (target != EnumItemRenderTarget.Gui) { wiggleX /= 25; wiggleZ /= 25; }
                             if (target == EnumItemRenderTarget.Ground) { wiggleX /= 4; wiggleZ /= 4; }
+                            renderinfo.Transform.EnsureDefaultValues();
                             renderinfo.Transform.Translation.X += wiggleX;
                             renderinfo.Transform.Translation.Z += wiggleZ;
                         }
@@ -85,16 +100,17 @@ namespace Vintagestory.GameContent
                 }
 
 
-                MultiTextureMeshRef meshref;
-
-                if (!containedMeshrefs.TryGetValue(shapepath, out meshref))
+                if (shapepath != null)
                 {
-                    var shape = capi.Assets.TryGet(new AssetLocation(shapepath).WithPathPrefix("shapes/").WithPathAppendixOnce(".json")).ToObject<Shape>();
-                    capi.Tesselator.TesselateShape(block, shape, out var meshdata, new Vec3f(0, 270, 0));
-                    containedMeshrefs[shapepath] = meshref = capi.Render.UploadMultiTextureMesh(meshdata);
-                }
+                    if (!containedMeshrefs.TryGetValue(shapepath, out MultiTextureMeshRef meshref))
+                    {
+                        var shape = capi.Assets.TryGet(new AssetLocation(shapepath).WithPathPrefix("shapes/").WithPathAppendixOnce(".json")).ToObject<Shape>();
+                        capi.Tesselator.TesselateShape(block, shape, out var meshdata, new Vec3f(0, 270, 0));
+                        containedMeshrefs[shapepath] = meshref = capi.Render.UploadMultiTextureMesh(meshdata);
+                    }
 
-                renderinfo.ModelRef = meshref;
+                    renderinfo.ModelRef = meshref;
+                }
             }
 
             base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
@@ -167,15 +183,19 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            if (entitySel != null)
+            if (entitySel != null && entitySel.Entity.Alive && entitySel.Entity is not EntityBoat)
             {
-                if (!IsCatchable(entitySel.Entity))
+                if (!IsCatchableAtThisGeneration(entitySel.Entity))
                 {
-                    if (entitySel.Entity is not EntityBoat)
-                    {
-                        (byEntity.Api as ICoreClientAPI)?.TriggerIngameError(this, "notcatchable", Lang.Get("This animal is too large, or too wild to catch with a basket"));
-                    }
-                    
+                    (byEntity.Api as ICoreClientAPI)?.TriggerIngameError(this, "toowildtocatch", Lang.Get("animaltrap-toowildtocatch-error"));
+
+                    return;
+                }
+
+                if (!IsCatchableInThisTrap(entitySel.Entity))
+                {
+                    (byEntity.Api as ICoreClientAPI)?.TriggerIngameError(this, "notcatchable", Lang.Get("animaltrap-notcatchable-error"));
+
                     return;
                 }
 
@@ -203,18 +223,40 @@ namespace Vintagestory.GameContent
                     return;
                 }
 
+                ItemStack leftOverBaskets = null;
+                if (slot.StackSize > 1)
+                {
+                    leftOverBaskets = slot.TakeOut(slot.StackSize - 1);
+                }
+
                 CatchCreature(slot, entitySel.Entity);
                 slot.TryFlipWith(emptyBackpackSlot);
+
+                if (slot.Empty) slot.Itemstack = leftOverBaskets;
+                else if (!byEntity.TryGiveItemStack(leftOverBaskets))
+                {
+                    byEntity.World.SpawnItemEntity(leftOverBaskets, byEntity.ServerPos.XYZ);
+                }
+
                 slot.MarkDirty();
                 emptyBackpackSlot.MarkDirty();
+
+
 
                 return;
             }
         }
 
-        private bool IsCatchable(Entity entity)
-        {       
-            return entity.Properties.Attributes?.IsTrue("basketCatchable") == true && entity.Properties.Attributes["trapChance"].AsFloat() > 0 && entity.WatchedAttributes.GetAsInt("generation") > 4 && entity.Alive;
+        private bool IsCatchableInThisTrap(Entity entity)
+        {
+            return TrapChances.FromEntityAttr(entity) is Dictionary<string, TrapChances> trapChancesByTrapType &&
+                   trapChancesByTrapType.TryGetValue(block.Attributes["traptype"].AsString("small"), out var trapMeta) &&
+                   trapMeta.TrapChance > 0;
+        }
+
+        private bool IsCatchableAtThisGeneration(Entity entity)
+        {
+            return entity.WatchedAttributes.GetAsInt("generation") >= (entity.Properties.Attributes?["trapPickupGeneration"].AsInt(5) ?? 5);
         }
 
         public static void CatchCreature(ItemSlot slot, Entity entity)
@@ -280,14 +322,6 @@ namespace Vintagestory.GameContent
                 entity.Attributes.SetString("origin", "playerplaced");
                 entity.Attributes.SetDouble("totalDaysCaught", stack.Attributes.GetDouble("totalDaysCaught"));
                 entity.Attributes.SetDouble("totalDaysReleased", world.Calendar.TotalDays);
-                /*if (entity.Attributes?.IsTrue("setGuardedEntityAttribute") == true)
-                {
-                    entity.WatchedAttributes.SetLong("guardedEntityId", byEntity.EntityId);
-                    if (byEntity is EntityPlayer eplr)
-                    {
-                        entity.WatchedAttributes.SetString("guardedPlayerUid", eplr.PlayerUID);
-                    }
-                }*/
 
                 world.SpawnEntity(entity);
                 if (GetStillAliveDays(world, slot.Itemstack) < 0)

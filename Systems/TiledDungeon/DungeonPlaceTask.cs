@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using ProtoBuf;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods;
 
 [ProtoContract]

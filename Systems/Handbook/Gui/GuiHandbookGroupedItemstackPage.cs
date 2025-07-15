@@ -3,6 +3,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 
@@ -35,7 +37,7 @@ namespace Vintagestory.GameContent
             capi.Render.Render2DTexturePremultipliedAlpha(
                 Texture.TextureId,
                 (x + size + GuiElement.scaled(25)),
-                y + size / 4 - 3,
+                y + size / 4 - GuiElement.scaled(3),
                 Texture.Width,
                 Texture.Height,
                 50

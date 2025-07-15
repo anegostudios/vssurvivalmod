@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -8,7 +9,7 @@ namespace Vintagestory.GameContent;
 
 public class BlockCoral : BlockWaterPlant
 {
-    private Block saltwater;
+    private Block saltwater = null!;
 
     public override bool skipPlantCheck { get; set; } = true;
 
@@ -19,13 +20,13 @@ public class BlockCoral : BlockWaterPlant
     }
 
     public override bool TryPlaceBlockForWorldGenUnderwater(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, IRandom worldGenRand,
-        int minWaterDepth, int maxWaterDepth, BlockPatchAttributes attributes = null)
+        int minWaterDepth, int maxWaterDepth, BlockPatchAttributes? attributes = null)
     {
         if(attributes == null) return false;
-        var minStepsGrow = attributes.CoralMinSize ?? 800;
-        var randomStepsGrow = attributes.CoralRandomSize ?? 400;
-        var seaWeedChance = attributes.CoralPlantsChance ?? 0.03f;
-        var replaceOtherPatches = attributes.CoralReplaceOtherPatches ?? 0.03f;
+        var minStepsGrow = attributes.CoralMinSize != -1 ? attributes.CoralMinSize : 800;
+        var randomStepsGrow = attributes.CoralRandomSize != -1 ? attributes.CoralRandomSize : 400;
+        var seaWeedChance = attributes.CoralPlantsChance != -1 ? attributes.CoralPlantsChance : 0.03f;
+        var replaceOtherPatches = attributes.CoralReplaceOtherPatches != -1 ? attributes.CoralReplaceOtherPatches : 0.03f;
 
         var shape = new NaturalShape(worldGenRand);
         var grow = randomStepsGrow == 0 ? 0 : worldGenRand.NextInt(randomStepsGrow);
@@ -52,7 +53,7 @@ public class BlockCoral : BlockWaterPlant
                             blockAccessor.SetBlock(saltwater.BlockId, tmpPos);
                             tmpPos.Down();
                             block = blockAccessor.GetBlock(tmpPos);
-                        } while (block is BlockWaterPlant);
+                        } while (block is BlockWaterPlant and not BlockCoral);
                     }
                     else
                     {
@@ -66,7 +67,7 @@ public class BlockCoral : BlockWaterPlant
                     if (depth >= minWaterDepth)
                     {
                         // spawn seaweed
-                        if (attributes?.CoralPlants?.Count > 0)
+                        if (attributes.CoralPlants?.Count > 0)
                         {
                             var blockType = worldGenRand.NextFloat();
                             if (blockType <= seaWeedChance)
@@ -98,10 +99,10 @@ public class BlockCoral : BlockWaterPlant
     private static void SpawnSeaPlantWeighted(IBlockAccessor blockAccessor, IRandom worldGenRand, BlockPatchAttributes attributes, BlockPos tmpPos,
         int depth)
     {
-        var totalWeight = attributes.CoralPlants.Sum(c => c.Value.Chance);
+        var totalWeight = attributes.CoralPlants!.Sum(c => c.Value.Chance);
         var chancePlant = worldGenRand.NextFloat() * totalWeight;
         var chanceSum = 0f;
-        foreach (var conf in attributes.CoralPlants.Values)
+        foreach (var conf in attributes.CoralPlants!.Values)
         {
             chanceSum += conf.Chance;
             if (chancePlant < chanceSum)
@@ -117,15 +118,23 @@ public class BlockCoral : BlockWaterPlant
 
     public void PlaceCoral(IBlockAccessor blockAccessor, BlockPos pos, IRandom worldGenRand, int depth, int minDepth, BlockPatchAttributes attributes)
     {
-        var verticalGrowChance = attributes?.CoralVerticalGrowChance ?? 0.6f;
-        var shelveChance = attributes?.CoralShelveChance ?? 0.3f;
-        var structureChance = attributes?.CoralStructureChance ?? 0.5f;
-        var coralBaseHeight = attributes?.CoralBaseHeight ?? 2;
+        var verticalGrowChance = attributes.CoralVerticalGrowChance != -1 ? attributes.CoralVerticalGrowChance : 0.6f;
+        var shelveChance = attributes.CoralShelveChance != -1 ? attributes.CoralShelveChance :  0.3f;
+        var structureChance = attributes.CoralStructureChance != -1 ? attributes.CoralStructureChance : 0.5f;
+        var barnacleChance = attributes.CoralDecorChance != -1 ? attributes.CoralDecorChance : 0.5f;
+        var coralBaseHeight = attributes.CoralBaseHeight;
 
         // replace 0-x ground with coralblock (full)
         pos.Add(0, - (coralBaseHeight - 1), 0);
         for (var i = 0; i < coralBaseHeight; i++)
         {
+            var block = blockAccessor.GetBlock(pos);
+            if (block is BlockCoral) // prevent spawning multiple layers of base coral when reefs overlap
+            {
+                pos.Up();
+                break;
+            }
+
             var coralBase = GetRandomBlock(worldGenRand, attributes.CoralBaseBlock);
             blockAccessor.SetBlock(coralBase.BlockId, pos);
             pos.Up();
@@ -144,7 +153,6 @@ public class BlockCoral : BlockWaterPlant
             {
                 var nextInt = worldGenRand.NextInt(sides.Count);
                 var shelfBlocks = GetRandomShelve(worldGenRand, attributes.CoralShelveBlock);
-                ;
                 GetRandomShelve(worldGenRand, attributes.CoralShelveBlock);
                 blockAccessor.SetBlock(shelfBlocks[sides[nextInt]].BlockId, pos);
                 canSpawnOntop = false;
@@ -165,8 +173,35 @@ public class BlockCoral : BlockWaterPlant
             if (depth > 0)
             {
                 // spawn a coral-[brain,fan,...] on top of structure or coralblock
-                var coral = GetRandomBlock(worldGenRand, attributes.CoralBlock);
-                blockAccessor.SetBlock(coral.BlockId, pos);
+                chance = worldGenRand.NextFloat();
+                if (chance < attributes.CoralChance)
+                {
+                    var coral = GetRandomBlock(worldGenRand, attributes.CoralBlock);
+                    blockAccessor.SetBlock(coral.BlockId, pos);
+                }
+                
+                if(attributes.StructureDecorBlock != null)
+                {
+                    chance = worldGenRand.NextFloat();
+                    if (chance < barnacleChance)
+                    {
+                        var decorBlock = GetRandomBlock(worldGenRand, attributes.StructureDecorBlock);
+                        blockAccessor.SetDecor(decorBlock, pos.DownCopy(), BlockFacing.UP);
+                    }
+                }
+                if (attributes.CoralDecorBlock != null)
+                {
+                    var sides = GetSolidSides(blockAccessor, pos);
+                    foreach (var side in sides)
+                    {
+                        chance = worldGenRand.NextFloat();
+                        if (chance < barnacleChance)
+                        {
+                            var decorBlock = GetRandomBlock(worldGenRand, attributes.CoralDecorBlock);
+                            blockAccessor.SetDecor(decorBlock, pos.AddCopy(BlockFacing.HORIZONTALS[side]), BlockFacing.HORIZONTALS[side].Opposite);
+                        }
+                    }
+                }
             }
         }
 
@@ -190,9 +225,21 @@ public class BlockCoral : BlockWaterPlant
                 continue;
             }
 
-            var nextInt = worldGenRand.NextInt(sides.Count);
+            var sideIndex = sides[worldGenRand.NextInt(sides.Count)];
+            
+            chance = worldGenRand.NextFloat();
+            if (chance < barnacleChance)
+            {
+                var decorBlock = GetRandomBlock(worldGenRand, attributes.CoralDecorBlock);
+                blockAccessor.SetDecor(decorBlock, pos.AddCopy(BlockFacing.HORIZONTALS[sideIndex]), BlockFacing.HORIZONTALS[sideIndex].Opposite);
+                
+                pos.Up();
+                depth--;
+                continue;
+            } 
+            
             var shelfBlocksId = GetRandomShelve(worldGenRand, attributes.CoralShelveBlock);
-            blockAccessor.SetBlock(shelfBlocksId[sides[nextInt]].BlockId, pos);
+            blockAccessor.SetBlock(shelfBlocksId[sideIndex].BlockId, pos);
             pos.Up();
             depth--;
         }

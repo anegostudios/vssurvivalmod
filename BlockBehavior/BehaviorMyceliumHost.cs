@@ -1,12 +1,26 @@
-﻿using Vintagestory.API.Common;
+﻿using Vintagestory.API;
+using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Allows a block to have mushrooms naturally spawn on it.
+    /// Uses the code "MyceliumHost", and has no properties.
+    /// </summary>
+    /// <example><code lang="json">
+    ///"behaviors": [
+	///	{
+	///		"name": "MyceliumHost"
+	///	}
+	///]
+    /// </code></example>
+    [DocumentAsJson]
     public class BehaviorMyceliumHost : BlockBehavior
     {
         
-
         public BehaviorMyceliumHost(Block block) : base(block)
         {
         }

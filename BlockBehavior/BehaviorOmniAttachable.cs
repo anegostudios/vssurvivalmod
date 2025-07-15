@@ -1,13 +1,76 @@
 ﻿using System.Collections.Generic;
+using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Allows a block to be attached to any face, including vertical faces. 
+    /// Requires states from "abstract/horizontalorientation", as well as additional "up" and "down" states.
+    /// Uses the code "OmniAttachable".
+    /// </summary>
+    /// <example>
+    /// <code lang="json">
+    ///"behaviors": [
+	///	{
+	///		"name": "OmniAttachable",
+	///		"properties": {
+	///			"facingCode": "position",
+	///			"attachmentAreas": {
+	///				"down": {
+	///					"x1": 7,
+	///					"y1": 15,
+	///					"z1": 7,
+	///					"x2": 8,
+	///					"y2": 15,
+	///					"z2": 8
+	///				},
+	///				"up": {
+	///					...
+	///				},
+	///				"north": {
+	///					...
+	///				},
+	///				"east": {
+	///					...
+	///				},
+	///				"south": {
+	///					...
+	///				},
+	///				"west": {
+	///					...
+	///				}
+	///			}
+	///		}
+	///	}
+	///],
+    /// </code>
+    /// <code lang="json">
+    ///"variantgroups": [
+	///	{
+	///		"code": "position",
+	///		"states": [ "up", "down" ],
+	///		"loadFromProperties": "abstract/horizontalorientation"
+	///	}
+	///]
+    /// </code></example>
+    [DocumentAsJson]
     public class BlockBehaviorOmniAttachable : BlockBehavior
     {
+        /// <summary>
+        /// The variant code that defines the required states.
+        /// </summary>
+        [DocumentAsJson("Optional", "orientation")]
         public string facingCode = "orientation";
+
+        /// <summary>
+        /// A set of attachment cuboids for each attached face.
+        /// </summary>
+        [DocumentAsJson("Optional", "None")]
         Dictionary<string, Cuboidi> attachmentAreas;
 
         public BlockBehaviorOmniAttachable(Block block) : base(block)

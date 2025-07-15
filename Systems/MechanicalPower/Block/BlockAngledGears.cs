@@ -2,6 +2,8 @@
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent.Mechanics
 {
     public class BlockAngledGears : BlockMPBase
@@ -165,7 +167,6 @@ namespace Vintagestory.GameContent.Mechanics
                 BlockEntity largeGearBE = validLargeGear ? largeGearEdge.GearPlaced(world, blockSel.Position) : null;
 
                 Block toPlaceBlock = getGearBlock(world, validLargeGear, firstFace, secondFace);
-                //world.BlockAccessor.RemoveBlockEntity(blockSel.Position);  //## needed in 1.12, but not with new chunk BlockEntity Dictionary in 1.13
                 world.BlockAccessor.SetBlock(toPlaceBlock.BlockId, blockSel.Position);
     
                 if (secondFace != null)
@@ -176,6 +177,7 @@ namespace Vintagestory.GameContent.Mechanics
                 }
 
                 BEBehaviorMPAngledGears beAngledGear = world.BlockAccessor.GetBlockEntity(blockSel.Position)?.GetBehavior<BEBehaviorMPAngledGears>();
+                if (beAngledGear == null) return true; //fixes CTD when trying to place above block limit without an error message, to match other blocks
                 if (largeGearBE?.GetBehavior<BEBehaviorMPBase>() is BEBehaviorMPLargeGear3m largeGear) beAngledGear.AddToLargeGearNetwork(largeGear, firstFace);
 
                 //do this last even for the first face so that both neighbours are correctly set

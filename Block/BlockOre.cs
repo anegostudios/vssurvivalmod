@@ -3,6 +3,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockOre : Block
@@ -93,7 +95,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnBlockExploded(IWorldAccessor world, BlockPos pos, BlockPos explosionCenter, EnumBlastType blastType)
+        public override void OnBlockExploded(IWorldAccessor world, BlockPos pos, BlockPos explosionCenter, EnumBlastType blastType, string ignitedByPlayerUid)
         {
             EnumHandling handled = EnumHandling.PassThrough;
 
@@ -108,9 +110,9 @@ namespace Vintagestory.GameContent
             // The explosion code uses the bulk block accessor for greater performance
             world.BulkBlockAccessor.SetBlock(0, pos);
 
-            double dropChancce = ExplosionDropChance(world, pos, blastType);
+            double dropChance = ExplosionDropChance(world, pos, blastType);
 
-            if (world.Rand.NextDouble() < dropChancce)
+            if (world.Rand.NextDouble() < dropChance)
             {
                 ItemStack[] drops = GetDrops(world, pos, null);
 

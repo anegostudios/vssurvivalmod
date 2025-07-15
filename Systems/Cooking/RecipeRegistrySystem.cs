@@ -6,6 +6,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Server;
 using Newtonsoft.Json.Linq;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public static class ApiAdditions

@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public enum EnumConditionLogicOp
@@ -24,9 +26,9 @@ namespace Vintagestory.GameContent
         [JsonProperty]
         public string Code { get; set; }
         [JsonProperty]
-        public IActionCondition[] Conditions { get; set; } = new IActionCondition[0];
+        public IActionCondition[] Conditions { get; set; } = Array.Empty<IActionCondition>();
         [JsonProperty]
-        public IEntityAction[] Actions { get; set; } = new IEntityAction[0];
+        public IEntityAction[] Actions { get; set; } = Array.Empty<IEntityAction>();
         [JsonProperty]
         public EnumConditionLogicOp ConditionsOp { get; set; } = EnumConditionLogicOp.AND;
 
@@ -83,9 +85,9 @@ namespace Vintagestory.GameContent
             Priority = origPriority;
         }
 
-        public void Pause()
+        public void Pause(EnumInteruptionType interuptionType)
         {
-            CurrentAction?.Pause();
+            CurrentAction?.Pause(interuptionType);
         }
 
         public void Resume()

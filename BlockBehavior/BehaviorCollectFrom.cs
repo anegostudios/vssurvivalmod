@@ -1,9 +1,26 @@
 ﻿using System.Linq;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// When this block is right clicked, harvest its drops and replace it with an empty version.
+    /// Uses the code "CollectFrom". This behavior has no properties.
+    /// 
+    /// Note that this behavior requires a variant which ends in "-empty", and also requires at least two drops. The first drop should be the item to collect, the second drop is the block itself. See 'henbox.json' for an example.
+    /// </summary>
+    /// <example><code lang="json">
+    ///"behaviors": [
+	///	{
+	///		"name": "CollectFrom"
+	///	}
+	///]
+    /// </code></example>
+    [DocumentAsJson]
     public class BehaviorCollectFrom : BlockBehavior
     {
         

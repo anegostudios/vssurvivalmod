@@ -2,6 +2,8 @@
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent.Mechanics
 {
     public class BlockCreativeRotor : BlockMPBase, IMPPowered
@@ -78,7 +80,7 @@ namespace Vintagestory.GameContent.Mechanics
                 {
                     ActionLangCode = "blockhelp-creativerotor-power",
                     MouseButton = EnumMouseButton.Right,
-                    Itemstacks = new ItemStack[0]
+                    Itemstacks = System.Array.Empty<ItemStack>()
                 }
             };
         }

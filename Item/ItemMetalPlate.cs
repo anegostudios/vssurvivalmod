@@ -4,6 +4,8 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ItemMetalPlate : Item, IAnvilWorkable
@@ -19,8 +21,7 @@ namespace Vintagestory.GameContent
             string metalcode = Variant["metal"];
             int tier = 0;
 
-            MetalPropertyVariant var;
-            if (api.ModLoader.GetModSystem<SurvivalCoreSystem>().metalsByCode.TryGetValue(metalcode, out var))
+            if (api.ModLoader.GetModSystem<SurvivalCoreSystem>().metalsByCode.TryGetValue(metalcode, out MetalPropertyVariant var))
             {
                 tier = var.Tier - 1;
             }
@@ -90,6 +91,8 @@ namespace Vintagestory.GameContent
             return workItemStack;
         }
 
+
+        public virtual int VoxelCountForHandbook(ItemStack stack) => 81;
 
         public static void CreateVoxels(ref byte[,,] voxels)
         {

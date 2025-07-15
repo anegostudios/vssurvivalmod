@@ -2,6 +2,8 @@
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent.Mechanics
 {
     public class BlockWindmillRotor : BlockMPBase, IMPPowered
@@ -73,7 +75,7 @@ namespace Vintagestory.GameContent.Mechanics
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
         {
             BEBehaviorWindmillRotor be = world.BlockAccessor.GetBlockEntity(selection.Position)?.GetBehavior<BEBehaviorWindmillRotor>();
-            if (be != null && be.SailLength >= 3) return new WorldInteraction[0];
+            if (be != null && be.SailLength >= 3) return System.Array.Empty<WorldInteraction>();
 
 
             return new WorldInteraction[]

@@ -2,8 +2,11 @@
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -55,9 +58,9 @@ namespace Vintagestory.GameContent
                 var rotvec = modelmat.TransformVector(new Vec4f(0, 0, 0, 1));
                 return
                     new Matrixf()
-                    .RotateDeg(config.MountRotation)
                     .Translate(-rotvec.X, -rotvec.Y, -rotvec.Z) // Relative to SeatPosition, so let's substract that offset
                     .Mul(modelmat)
+                    .RotateDeg(config.MountRotation)
                 ;
             }
         }
@@ -72,7 +75,7 @@ namespace Vintagestory.GameContent
             {
                 var esr = Entity.Properties.Client.Renderer as EntityShapeRenderer;
 
-                modelmat.RotateY(-GameMath.PIHALF + Entity.Pos.Yaw + GameMath.PI);
+                modelmat.RotateY(GameMath.PIHALF + Entity.Pos.Yaw);
                 modelmat.Translate(0, 0.6, 0);
                 if (esr != null)
                 {
@@ -84,14 +87,28 @@ namespace Vintagestory.GameContent
 
                 apap.Mul(modelmat);
                 if (config.MountOffset != null) modelmat.Translate(config.MountOffset);
-
+                
                 modelmat.Translate(-0.5, 0, -0.5);
-                modelmat.RotateY(GameMath.PIHALF - Entity.Pos.Yaw);
+
+                modelmat.RotateY(GameMath.PIHALF - Entity.Pos.Yaw);                    
             }
         }
 
         public EntityRideableSeat(IMountable mountablesupplier, string seatId, SeatConfig config) : base(mountablesupplier, seatId, config)
         {
+        }
+
+        public override bool CanMount(EntityAgent entityAgent)
+        {
+            if (entityAgent is not EntityPlayer player) return false;
+
+            var ebho = Entity.GetBehavior<EntityBehaviorOwnable>();
+            if (ebho != null && !ebho.IsOwner(player))
+            {
+                (player.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "requiersownership", Lang.Get("mount-interact-requiresownership"));
+                return false;
+            }
+            return true;
         }
 
         public static IMountableSeat GetMountable(IWorldAccessor world, TreeAttribute tree)
@@ -129,6 +146,8 @@ namespace Vintagestory.GameContent
 
             ebh = Entity as IMountableListener;
             ebh?.DidMount(entityAgent);
+
+            Entity.Api.Event.TriggerEntityMounted(entityAgent, this);
         }
 
         public override void DidUnmount(EntityAgent entityAgent)
@@ -146,10 +165,12 @@ namespace Vintagestory.GameContent
             base.DidUnmount(entityAgent);
 
             var ebh = mountedEntity as IMountableListener;
-            ebh?.DidUnnmount(entityAgent);
+            ebh?.DidUnmount(entityAgent);
 
             ebh = Entity as IMountableListener;
-            ebh?.DidUnnmount(entityAgent);
+            ebh?.DidUnmount(entityAgent);
+
+            Entity.Api.Event.TriggerEntityUnmounted(entityAgent, this);
         }
 
         protected virtual void tryTeleportToFreeLocation()

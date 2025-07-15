@@ -9,6 +9,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityStoneCoffin : BlockEntityContainer
@@ -44,7 +46,6 @@ namespace Vintagestory.GameContent
         int tickCounter;
 
         int tempStoneCoffin;
-        BlockPos tmpPos = new BlockPos();
         BlockPos[] particlePositions = new BlockPos[7];
 
         public override InventoryBase Inventory => inv;
@@ -300,8 +301,8 @@ namespace Vintagestory.GameContent
 
         public int CoffinTemperature => tempStoneCoffin;
 
-        string[] selectiveElementsMain = new string[0];
-        string[] selectiveElementsSecondary = new string[0];
+        string[] selectiveElementsMain = Array.Empty<string>();
+        string[] selectiveElementsSecondary = Array.Empty<string>();
 
         void updateSelectiveElements()
         {
@@ -476,7 +477,7 @@ namespace Vintagestory.GameContent
                     {
                         particles = smokeParticles;
                         particles.Quantity.avg = 0.2f;
-                        particles.basePos.Set(pos.X + 0.5, pos.Y + 0.75, pos.Z + 0.5);
+                        particles.basePos.Set(pos.X + 0.5, pos.InternalY + 0.75, pos.Z + 0.5);
                         particles.Velocity[1].avg = (float)(0.3 + 0.3 * rnd.NextDouble()) * 2;
                         particles.PosOffset[1].var = 0.2f;
                         particles.Velocity[0].avg = (float)(rnd.NextDouble() - 0.5) / 4;
@@ -486,7 +487,7 @@ namespace Vintagestory.GameContent
                     else
                     {
                         particles.Quantity.avg = GameMath.Sqrt(0.5f * (index == 0 ? 0.5f : (index == 1 ? 5 : 0.6f)))/2f;
-                        particles.basePos.Set(pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5);
+                        particles.basePos.Set(pos.X + 0.5, pos.InternalY + 0.5, pos.Z + 0.5);
                         particles.Velocity[1].avg = (float)(0.5 + 0.5 * rnd.NextDouble()) * 2;
                         particles.PosOffset[1].var = 1;
                         particles.Velocity[0].avg = (float)(rnd.NextDouble() - 0.5);
@@ -567,11 +568,9 @@ namespace Vintagestory.GameContent
 
             Shape shape = capi.TesselatorManager.GetCachedShape(Block.Shape.Base);
 
-            MeshData meshdataMain;
-            MeshData meshdataSecondary;
 
-            tessThreadTesselator.TesselateShape(Block, shape, out meshdataMain, null, null, selectiveElementsMain);
-            tessThreadTesselator.TesselateShape(Block, shape, out meshdataSecondary, null, null, selectiveElementsSecondary);
+            tessThreadTesselator.TesselateShape(Block, shape, out MeshData meshdataMain, null, null, selectiveElementsMain);
+            tessThreadTesselator.TesselateShape(Block, shape, out MeshData meshdataSecondary, null, null, selectiveElementsSecondary);
             if (blockScs.Orientation == BlockFacing.EAST)
             {
                 meshdataMain.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, -GameMath.PIHALF, 0);

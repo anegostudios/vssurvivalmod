@@ -1,6 +1,8 @@
 ﻿using Vintagestory.API.Client.Tesselation;
 using Vintagestory.API.Common;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockVariheight : Block

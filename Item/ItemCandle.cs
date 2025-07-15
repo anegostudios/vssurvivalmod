@@ -3,6 +3,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ItemCandle: Item
@@ -33,8 +35,7 @@ namespace Vintagestory.GameContent
 
             if (targetedBlock.FirstCodePart() == firstcodepart)
             {
-                int stage = 1;
-                int.TryParse(targetedBlock.LastCodePart(), out stage);
+                int.TryParse(targetedBlock.LastCodePart(), out int stage);
                 if (stage == 9) return;
 
                 nextblock = world.GetBlock(targetedBlock.CodeWithPart("" + (stage + 1), 1));

@@ -8,6 +8,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ItemBow : Item
@@ -62,7 +64,8 @@ namespace Vintagestory.GameContent
             {
                 if (invslot is ItemSlotCreative) return true;
 
-                if (invslot.Itemstack != null && invslot.Itemstack.Collectible.Code.PathStartsWith("arrow-"))
+                ItemStack stack = invslot.Itemstack;
+                if (stack != null && stack.Collectible != null && stack.Collectible.Code.PathStartsWith("arrow-") && stack.StackSize > 0)
                 {
                     slot = invslot;
                     return false;
@@ -206,7 +209,7 @@ namespace Vintagestory.GameContent
             entityarrow.World = byEntity.World;
             entityarrow.SetRotation();
 
-            byEntity.World.SpawnEntity(entityarrow);
+            byEntity.World.SpawnPriorityEntity(entityarrow);
 
             slot.Itemstack.Collectible.DamageItem(byEntity.World, byEntity, slot);
             slot.MarkDirty();

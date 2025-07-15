@@ -7,6 +7,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class EntityBehaviorIdleAnimations : EntityBehavior

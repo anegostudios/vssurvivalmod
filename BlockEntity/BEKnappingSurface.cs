@@ -11,6 +11,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityKnappingSurface : BlockEntity
@@ -23,7 +25,7 @@ namespace Vintagestory.GameContent
         // Temporary data, generated on be creation
 
         
-        Cuboidf[] selectionBoxes = new Cuboidf[0];
+        Cuboidf[] selectionBoxes = Array.Empty<Cuboidf>();
         KnappingRenderer workitemRenderer;
         
 
@@ -417,6 +419,7 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockRemoved()
         {
+            base.OnBlockRemoved();
             workitemRenderer?.Dispose();
             workitemRenderer = null;
 

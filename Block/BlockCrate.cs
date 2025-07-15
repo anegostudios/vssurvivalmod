@@ -9,6 +9,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class CrateTypeProperties
@@ -175,10 +177,6 @@ namespace Vintagestory.GameContent
         public override bool IsEmpty(ItemStack bagstack)
         {
             bool empty = base.IsEmpty(bagstack);
-            if (empty)
-            {
-                int a = 1;
-            }
             return empty;
         }
 
@@ -312,6 +310,7 @@ namespace Vintagestory.GameContent
         public string Subtype => Props.VariantByGroup == null ? "" : Variant[Props.VariantByGroup];
         public string SubtypeInventory => Props?.VariantByGroupInventory == null ? "" : Variant[Props.VariantByGroupInventory];
 
+        public int RequiresBehindSlots { get; set; } = 0;
 
         private Vec3f origin = new Vec3f(0.5f, 0.5f, 0.5f);
 
@@ -577,8 +576,7 @@ namespace Vintagestory.GameContent
             if (shape == null) return new MeshData();
 
             curType = type;
-            MeshData mesh;
-            tesselator.TesselateShape("crate", shape, out mesh, this, rotation == null ? new Vec3f(Shape.rotateX, Shape.rotateY, Shape.rotateZ) : rotation);
+            tesselator.TesselateShape("crate", shape, out MeshData mesh, this, rotation == null ? new Vec3f(Shape.rotateX, Shape.rotateY, Shape.rotateZ) : rotation);
 
             if (label != null && Props.Labels.TryGetValue(label, out var labelProps))
             {
@@ -619,15 +617,13 @@ namespace Vintagestory.GameContent
 
         protected MeshData genContentMesh(ICoreClientAPI capi, ItemStack contentStack, Vec3f rotation = null)
         {
-            float fillHeight;
 
-            var contentSource = BlockBarrel.getContentTexture(capi, contentStack, out fillHeight);
+            var contentSource = BlockBarrel.getContentTexture(capi, contentStack, out float fillHeight);
 
             if (contentSource != null)
             {
                 Shape shape = API.Common.Shape.TryGet(api, "shapes/block/wood/crate/contents.json");
-                MeshData contentMesh;
-                capi.Tesselator.TesselateShape("cratecontents", shape, out contentMesh, contentSource, rotation);
+                capi.Tesselator.TesselateShape("cratecontents", shape, out MeshData contentMesh, contentSource, rotation);
                 contentMesh.Translate(0, fillHeight * 1.1f, 0);
                 return contentMesh;
             }
@@ -726,8 +722,7 @@ namespace Vintagestory.GameContent
             BlockEntityGenericTypedContainer be = capi.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityGenericTypedContainer;
             if (be != null)
             {
-                CompositeTexture tex;
-                if (!Textures.TryGetValue(be.type + "-lid", out tex))
+                if (!Textures.TryGetValue(be.type + "-lid", out CompositeTexture tex))
                 {
                     Textures.TryGetValue(be.type + "-top", out tex);
                 }

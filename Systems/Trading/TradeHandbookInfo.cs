@@ -8,6 +8,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.Util;
 using Vintagestory.ServerMods;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class TradeHandbookInfo : ModSystem
@@ -96,7 +98,7 @@ namespace Vintagestory.GameContent
                 ExtraHandbookSection section = bh.ExtraHandBookSections?.FirstOrDefault(ele => ele.Title == title);
                 if (section == null)
                 {
-                    section = new ExtraHandbookSection() { Title = title, TextParts = new string[0] };
+                    section = new ExtraHandbookSection() { Title = title, TextParts = Array.Empty<string>() };
                     if (bh.ExtraHandBookSections != null) bh.ExtraHandBookSections.Append(section);
                     else bh.ExtraHandBookSections = new ExtraHandbookSection[] { section };
                 }

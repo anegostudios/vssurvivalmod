@@ -1,14 +1,31 @@
-﻿using Vintagestory.API.Client;
+﻿using Vintagestory.API;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Allows a block to be picked up with a right click.
+    /// Uses the code "RightClickPickup".
+    /// </summary>
+    [DocumentAsJson]
     public class BlockBehaviorRightClickPickup : BlockBehavior
     {
+        /// <summary>
+        /// If true, uses the blocks defined drops instead of simply collecting the block. Otherwise, uses the default 'pick block' feature.
+        /// </summary>
+        [DocumentAsJson("Optional", "False")]
         bool dropsPickupMode = false;
+
+        /// <summary>
+        /// The sound to play when the block is collected.
+        /// </summary>
+        [DocumentAsJson("Optional", "None")]
         AssetLocation pickupSound;
 
         public BlockBehaviorRightClickPickup(Block block) : base(block)

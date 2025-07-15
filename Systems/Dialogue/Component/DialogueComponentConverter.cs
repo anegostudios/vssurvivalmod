@@ -4,6 +4,8 @@ using System;
 using System.Collections.Generic;
 using Vintagestory.API.Datastructures;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class DialogueConditionComponentJsonConverter : JsonConverter

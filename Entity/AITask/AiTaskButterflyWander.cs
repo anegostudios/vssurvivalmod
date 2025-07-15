@@ -3,6 +3,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class AiTaskButterflyWander : AiTaskBase
@@ -74,8 +76,12 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool ContinueExecute(float dt)
+        public override bool 
+            ContinueExecute(float dt)
         {
+            //Check if time is still valid for task.
+            if (!IsInValidDayTimeHours(false)) return false;
+
             if (entity.OnGround || entity.World.Rand.NextDouble() < 0.03)
             {
                 ReadjustFlyHeight();
@@ -85,7 +91,7 @@ namespace Vintagestory.GameContent
 
             double dy = desiredYPos - entity.ServerPos.Y;
             double yMot = GameMath.Clamp(dy, -1, 1);
-            float yawDist = GameMath.AngleRadDistance(entity.ServerPos.Yaw, desiredYaw);
+            float yawDist = GameMath.AngleRadDistance(desiredYaw, entity.ServerPos.Yaw);
 
             if (!entity.FeetInLiquid)
             {
@@ -98,7 +104,6 @@ namespace Vintagestory.GameContent
                     entity.ServerPos.Motion.Y = 0.02f;
                 }
             }
-
 
             double cosYaw = Math.Cos(entity.ServerPos.Yaw);
             double sinYaw = Math.Sin(entity.ServerPos.Yaw);

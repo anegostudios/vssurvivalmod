@@ -3,6 +3,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     
@@ -36,6 +38,11 @@ namespace Vintagestory.GameContent
         }
 
         public virtual void OnBlockLookedAt(BlockSelection blockSel)
+        {
+
+        }
+
+        public virtual void DoCheckPlayerInventory(IPlayerInventoryManager inventoryManager)
         {
 
         }

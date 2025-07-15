@@ -3,6 +3,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockSupportBeam : Block
@@ -22,7 +24,7 @@ namespace Vintagestory.GameContent
         public override Cuboidf[] GetSelectionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
         {
             var be = api.World.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorSupportBeam>();
-            if (be != null) return be.GetCollisionBoxes();
+            if (be != null) return be.GetSelectionBoxes();
 
             return base.GetSelectionBoxes(blockAccessor, pos);
         }
@@ -31,7 +33,7 @@ namespace Vintagestory.GameContent
         {
             var be = api.World.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorSupportBeam>();
             if (be != null) return be.GetCollisionBoxes();
-
+            
             return base.GetCollisionBoxes(blockAccessor, pos);
         }
 

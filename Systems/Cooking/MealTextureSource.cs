@@ -8,8 +8,8 @@ namespace Vintagestory.GameContent
     public class MealTextureSource : ITexPositionSource
     {
         public Block textureSourceBlock;
-        public ItemStack ForStack;
-        public string[] customTextureMapping;
+        public ItemStack? ForStack;
+        public string[]? customTextureMapping;
         private ICoreClientAPI capi;
         ITexPositionSource blockTextureSource;
 
@@ -48,9 +48,9 @@ namespace Vintagestory.GameContent
                 if (ForStack != null)
                 {
                     string itemcode = ForStack.Collectible.Code.Path;
-                    JsonObject mappingListCollection = textureSourceBlock.Attributes?["textureMapping"];
+                    JsonObject? mappingListCollection = textureSourceBlock.Attributes?["textureMapping"];
 
-                    string[] mapping = mappingListCollection?[itemcode]?.AsArray<string>(null);
+                    string[]? mapping = mappingListCollection?[itemcode]?.AsArray<string>(null);
                     if (customTextureMapping != null) mapping = customTextureMapping;
 
                     if (mapping != null && mapping[0] == textureCode)

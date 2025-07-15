@@ -7,6 +7,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent.Mechanics
 {
     [ProtoContract]
@@ -94,8 +96,7 @@ namespace Vintagestory.GameContent.Mechanics
             nodes[pos] = node;
 
             Vec3i chunkpos = new Vec3i(pos.X / chunksize, pos.Y / chunksize, pos.Z / chunksize);
-            int q;
-            inChunks.TryGetValue(chunkpos, out q);
+            inChunks.TryGetValue(chunkpos, out int q);
             inChunks[chunkpos] = q + 1;
         }
 
@@ -110,8 +111,7 @@ namespace Vintagestory.GameContent.Mechanics
             nodes.Remove(pos);
 
             Vec3i chunkpos = new Vec3i(pos.X / chunksize, pos.Y / chunksize, pos.Z / chunksize);
-            int q;
-            inChunks.TryGetValue(chunkpos, out q);
+            inChunks.TryGetValue(chunkpos, out int q);
             if (q <= 1)
             {
                 inChunks.Remove(chunkpos);
@@ -222,11 +222,10 @@ namespace Vintagestory.GameContent.Mechanics
             float totalResistance = 0f;
             float speedTmp = speed;
 
-            float resistance;
             foreach (IMechanicalPowerNode powerNode in nodes.Values)
             {
                 float r = powerNode.GearedRatio;
-                totalTorque += r * powerNode.GetTorque(tick, speedTmp * r, out resistance);
+                totalTorque += r * powerNode.GetTorque(tick, speedTmp * r, out float resistance);
                 totalResistance += r * resistance;
                 totalResistance += speed * speed * r * r / 1000f;  //this creates an air resistance effect - very fast turning networks will quickly slow if torque is removed
             }

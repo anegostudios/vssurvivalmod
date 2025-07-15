@@ -4,6 +4,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     public class DepositBlock

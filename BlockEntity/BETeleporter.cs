@@ -9,6 +9,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class TeleportingEntity
@@ -32,6 +34,7 @@ namespace Vintagestory.GameContent
         public long lastOwnPlayerCollideMs = 0;
 
         public bool tpLocationIsOffset;
+        public Vec3d tmpPosVec = new Vec3d();
 
         public BlockEntityTeleporterBase()
         {
@@ -48,8 +51,7 @@ namespace Vintagestory.GameContent
 
         public virtual void OnEntityCollide(Entity entity)
         {
-            TeleportingEntity tpe;
-            if (!tpingEntities.TryGetValue(entity.EntityId, out tpe))
+            if (!tpingEntities.TryGetValue(entity.EntityId, out TeleportingEntity tpe))
             {
                 tpingEntities[entity.EntityId] = tpe = new TeleportingEntity()
                 {
@@ -93,9 +95,12 @@ namespace Vintagestory.GameContent
 
                 if (Api.World.ElapsedMilliseconds - val.Value.LastCollideMs > 100)
                 {
+                    // round the position since the entity is placed at y.12506xxxx and the teleporter collisionbox is y.125 so without it GetCollidingBlock does round y to 5 decimals, and so we get a null block back and assume they left the tl and abort teleporting
+                    tmpPosVec.Set(val.Value.Entity.Pos);
+                    tmpPosVec.Y = Math.Round(tmpPosVec.Y, 3); 
                     // Make sure its not just server lag
-                    Block block = Api.World.CollisionTester.GetCollidingBlock(Api.World.BlockAccessor, val.Value.Entity.SelectionBox, val.Value.Entity.Pos.XYZ, true);
-                    if (block == null || block.GetType() != this.Block.GetType())
+                    Block block = Api.World.CollisionTester.GetCollidingBlock(Api.World.BlockAccessor, val.Value.Entity.CollisionBox, tmpPosVec, true);
+                    if (block == null || block.GetType() != Block.GetType())
                     {
                         toremove.Add(val.Key);
                         continue;

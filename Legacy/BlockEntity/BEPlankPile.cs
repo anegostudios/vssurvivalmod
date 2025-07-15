@@ -4,6 +4,8 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     class BlockEntityPlankPile : BlockEntityItemPile, ITexPositionSource

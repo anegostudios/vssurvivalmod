@@ -1,11 +1,16 @@
-﻿using System.Text;
+﻿using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+
+#nullable disable
 
 
 namespace Vintagestory.GameContent
@@ -18,32 +23,44 @@ namespace Vintagestory.GameContent
         Destroyed
     }
 
-    public class BlockEntityBasketTrap : BlockEntityDisplay, IAnimalFoodSource, IPointOfInterest
+    public class TrapChances
+    {
+        public float TrapChance;
+        public float TrapDestroyChance;
+        
+        public static Dictionary<string, TrapChances> FromEntityAttr(Entity entity)
+        {
+            return entity.Properties.Attributes?["trappable"].AsObject<Dictionary<string, TrapChances>>();
+        }
+
+        public static bool IsTrappable(Entity entity, string traptype)
+        {
+            return entity.Properties.Attributes?["trappable"]?[traptype].Exists == true;
+        }
+    }
+
+    public class BlockEntityAnimalTrap : BlockEntityDisplay, IAnimalFoodSource, IPointOfInterest
     {
         protected ICoreServerAPI sapi;
+        protected CompositeShape destroyedShape;
+        protected CompositeShape trappedShape; // Only used for the block breaking decal
+        protected BlockEntityAnimationUtil animUtil => GetBehavior<BEBehaviorAnimatable>().animUtil;
+        protected float rotationYDeg;
+        protected float[] rotMat;
+        protected string traptype;
+        protected ModelTransform baitTransform;
+        protected float foodTagMinWeight;
 
-        InventoryGeneric inv;
+        protected InventoryGeneric inv;
         public override InventoryBase Inventory => inv;
         public override string InventoryClassName => "baskettrap";
         public override int DisplayedItems => TrapState == EnumTrapState.Ready ? 1 : 0;
         public override string AttributeTransformCode => "baskettrap";
-
-        AssetLocation destroyedShapeLoc;
-        AssetLocation trappedShapeLoc; // Only used for the block breaking decal
-
-        BlockEntityAnimationUtil animUtil
-        {
-            get { return GetBehavior<BEBehaviorAnimatable>().animUtil; }
-        }
-
+        public EnumTrapState TrapState;
         public Vec3d Position => Pos.ToVec3d().Add(0.5, 0.25, 0.5);
         public string Type => inv.Empty ? "nothing" : "food";
 
-
-        public EnumTrapState TrapState;
-        float rotationYDeg;
-        float[] rotMat;
-
+        
         public float RotationYDeg
         {
             get { return rotationYDeg; }
@@ -53,18 +70,24 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public BlockEntityBasketTrap()
+        public BlockEntityAnimalTrap()
         {
             inv = new InventoryGeneric(1, null, null);
         }
 
         public override void Initialize(ICoreAPI api)
         {
+            traptype = Block.Attributes["traptype"].AsString("small");
+            foodTagMinWeight = Block.Attributes["foodTagMinWeight"].AsFloat(0.1f);
+            baitTransform = Block.Attributes["baitTransform"].AsObject<ModelTransform>(ModelTransform.NoTransform);
+
             base.Initialize(api);
             inv.LateInitialize("baskettrap-" + Pos, api);
 
-            destroyedShapeLoc = AssetLocation.Create(Block.Attributes["destroyedShape"].AsString(), Block.Code.Domain).WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
-            trappedShapeLoc = AssetLocation.Create(Block.Attributes["trappedShape"].AsString(), Block.Code.Domain).WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
+            destroyedShape = Block.Attributes["destroyedShape"].AsObject<CompositeShape>(null, Block.Code.Domain);
+            trappedShape = Block.Attributes["trappedShape"].AsObject<CompositeShape>(null, Block.Code.Domain);
+            destroyedShape.Bake(api.Assets, api.Logger);
+            trappedShape.Bake(api.Assets, api.Logger);
 
             sapi = api as ICoreServerAPI;
             if (api.Side == EnumAppSide.Client)
@@ -95,7 +118,7 @@ namespace Vintagestory.GameContent
 
         public bool Interact(IPlayer player, BlockSelection blockSel)
         {
-            if (TrapState == EnumTrapState.Ready || TrapState == EnumTrapState.Destroyed) return true;
+            if (TrapState is EnumTrapState.Ready or EnumTrapState.Destroyed) return true;
 
             if (inv[0].Empty)
             {
@@ -118,7 +141,8 @@ namespace Vintagestory.GameContent
                         blockSel.Position
                     );
                 }
-            } else
+            }
+            else
             {
                 if (!player.InventoryManager.TryGiveItemstack(inv[0].Itemstack))
                 {
@@ -140,23 +164,35 @@ namespace Vintagestory.GameContent
         private void tryReadyTrap(IPlayer player)
         {
             var heldSlot = player.InventoryManager.ActiveHotbarSlot;
-            if (heldSlot.Empty) return;
+            if (heldSlot?.Empty != false) return;
 
-            var collobj = heldSlot?.Itemstack.Collectible;
-            if (!heldSlot.Empty && (collobj.NutritionProps != null || collobj.Attributes?["foodTags"].Exists == true))
+            var collobj = heldSlot.Itemstack.Collectible;
+
+            if ((collobj.NutritionProps == null && collobj.Attributes?["foodTags"].Exists != true) ||
+                !Api.World.EntityTypes.Any(type => type.Attributes?["creatureDiet"].AsObject<CreatureDiet>()?.Matches(heldSlot.Itemstack, true, 0.5f) == true))
             {
-                TrapState = EnumTrapState.Ready;
-                inv[0].Itemstack = heldSlot.TakeOut(1);
-                heldSlot.MarkDirty();
-                MarkDirty(true);
+                (Api as ICoreClientAPI)?.TriggerIngameError(this, "unappetizingbait", Lang.Get("animaltrap-unappetizingbait-error"));
+                return;
             }
+
+            if (Block.Attributes?["excludeFoodTags"].AsArray<string>()?.Any(tag => collobj.Attributes?["foodTags"].AsArray<string>()?.Contains(tag) == true) == true)
+            {
+                (Api as ICoreClientAPI)?.TriggerIngameError(this, "cannotfitintrap", Lang.Get("animaltrap-cannotfitintrap-error"));
+                return;
+            }
+
+            TrapState = EnumTrapState.Ready;
+            inv[0].Itemstack = heldSlot.TakeOut(1);
+            heldSlot.MarkDirty();
+            MarkDirty(true);
         }
 
         public bool IsSuitableFor(Entity entity, CreatureDiet diet)
         {
             if (TrapState != EnumTrapState.Ready) return false;
-            bool catchable = entity.Properties.Attributes?.IsTrue("basketCatchable") == true;
-            bool dietMatches = diet.Matches(inv[0].Itemstack);
+            if (inv[0]?.Itemstack == null || diet == null) return false;
+            bool catchable = TrapChances.IsTrappable(entity, traptype);
+            bool dietMatches = diet.Matches(inv[0].Itemstack, false, foodTagMinWeight);
             return catchable && dietMatches;
         }
 
@@ -170,8 +206,10 @@ namespace Vintagestory.GameContent
         {
             animUtil?.StartAnimation(new AnimationMetaData() { Animation = "triggered", Code = "triggered" });
 
-            float trapChance = entity.Properties.Attributes["trapChance"].AsFloat(0.5f);
-            if (Api.World.Rand.NextDouble() < trapChance)
+            var trapChancesByTrapType = TrapChances.FromEntityAttr(entity);
+            if (!trapChancesByTrapType.TryGetValue(traptype, out var trapMeta)) return;
+
+            if (Api.World.Rand.NextDouble() < trapMeta.TrapChance)
             {
                 var jstack = Block.Attributes["creatureContainer"].AsObject<JsonItemStack>();
                 jstack.Resolve(Api.World, "creature container of " + Block.Code);
@@ -182,7 +220,7 @@ namespace Vintagestory.GameContent
             {
                 inv[0].Itemstack = null;
 
-                float trapDestroyChance = entity.Properties.Attributes["trapDestroyChance"].AsFloat(0f);
+                float trapDestroyChance = trapMeta.TrapDestroyChance;
                 if (Api.World.Rand.NextDouble() < trapDestroyChance)
                 {
                     TrapState = EnumTrapState.Destroyed;
@@ -269,13 +307,25 @@ namespace Vintagestory.GameContent
 
             for (int i = 0; i < 1; i++)
             {
-                tfMatrices[i] =
-                    new Matrixf()
-                    .Translate(0.5f, 0.1f, 0.5f)
-                    .Scale(0.75f, 0.75f, 0.75f)
+                tfMatrices[i] = new float[16];
+                if (inv[i].Empty) continue;
+
+                var attr = inv[i].Itemstack.Collectible.Attributes;
+                var itemInTrapTransform = attr?["inTrapTransform"][traptype].AsObject<ModelTransform>(null) ?? attr?["inTrapTransform"].AsObject<ModelTransform>(null);
+                if (itemInTrapTransform == null)
+                {
+                    var groundTf = inv[i].Itemstack.Collectible.GroundTransform.Clone();
+                    groundTf.ScaleXYZ *= 0.2f;
+                    itemInTrapTransform = groundTf;
+                }
+
+                var tf = new Matrixf().Set(baitTransform.AsMatrix)
+                    .Translate(0.5f, 0, 0.5f)
+                    .RotateYDeg(RotationYDeg - 90)
                     .Translate(-0.5f, 0, -0.5f)
-                    .Values
-                ;
+                    .Values;
+
+                Mat4f.Mul(tfMatrices[i], tf, itemInTrapTransform.AsMatrix);
             }
 
             return tfMatrices;
@@ -286,7 +336,7 @@ namespace Vintagestory.GameContent
         {
             if (TrapState == EnumTrapState.Destroyed)
             {
-                mesher.AddMeshData(GetOrCreateMesh(destroyedShapeLoc), rotMat);
+                mesher.AddMeshData(GetOrCreateMesh(destroyedShape, tessThreadTesselator.GetTextureSource(Block)), rotMat);
                 return true;
             }
 
@@ -300,27 +350,24 @@ namespace Vintagestory.GameContent
             switch (TrapState)
             {
                 case EnumTrapState.Empty:
-                case EnumTrapState.Ready: return GetOrCreateMesh(Block.Shape.Base.Clone().WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json"));
-                case EnumTrapState.Trapped: return GetOrCreateMesh(trappedShapeLoc, texSource);
-                case EnumTrapState.Destroyed: return GetOrCreateMesh(destroyedShapeLoc, texSource);
+                case EnumTrapState.Ready: return GetOrCreateMesh(Block.Shape);
+                case EnumTrapState.Trapped: return GetOrCreateMesh(trappedShape, texSource);
+                case EnumTrapState.Destroyed: return GetOrCreateMesh(destroyedShape, texSource);
             }
 
             return null;
         }
 
-        public MeshData GetOrCreateMesh(AssetLocation loc, ITexPositionSource texSource = null)
+        public MeshData GetOrCreateMesh(CompositeShape cshape, ITexPositionSource texSource = null)
         {
-            return ObjectCacheUtil.GetOrCreate(Api, "destroyedBasketTrap-" + loc + (texSource == null ? "-d" : "-t"), () =>
-            {
-                var shape = Api.Assets.Get<Shape>(loc);
-                if (texSource == null)
-                {
-                    texSource = new ShapeTextureSource(capi, shape, loc.ToShortString());
-                }
-
-                (Api as ICoreClientAPI).Tesselator.TesselateShape("basket trap decal", Api.Assets.Get<Shape>(loc), out var meshdata, texSource);
-                return meshdata;
-            });
+            string key = Block.Variant["material"] + "BasketTrap-" + cshape.ToString();
+            return ObjectCacheUtil.GetOrCreate(capi, key, () =>
+                capi.TesselatorManager.CreateMesh(
+                    "basket trap decal",
+                    cshape,
+                    (shape, name) => new ShapeTextureSource(capi, shape, name),
+                    texSource
+            ));
         }
     }
 }

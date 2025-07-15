@@ -5,6 +5,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class GuiDialogBlockEntityFirepit : GuiDialogBlockEntity
@@ -144,6 +146,8 @@ namespace Vintagestory.GameContent
             if (outputTextElem.QuantityTextLines > 2)
             {
                 outputTextElem.Bounds.fixedOffsetY = -outputTextElem.Font.GetFontExtents().Height / RuntimeEnv.GUIScale * 0.65;
+                outputTextElem.Font.WithFontSize(12);
+                outputTextElem.RecomposeText();
             }
             outputTextElem.Bounds.CalcWorldBounds();
 

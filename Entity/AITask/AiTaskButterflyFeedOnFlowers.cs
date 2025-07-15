@@ -4,6 +4,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class AiTaskButterflyFeedOnFlowers : AiTaskBase
@@ -98,8 +100,12 @@ namespace Vintagestory.GameContent
             feedTime = 3 + rand.NextDouble() * 10;
         }
 
-        public override bool ContinueExecute(float dt)
+        public override bool 
+            ContinueExecute(float dt)
         {
+            //Check if time is still valid for task.
+            if (!IsInValidDayTimeHours(false)) return false;
+
             if (taskState==1)
             {
                 entity.ServerPos.Motion.Set(0, 0, 0);

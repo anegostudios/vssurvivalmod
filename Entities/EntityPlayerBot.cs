@@ -5,6 +5,8 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class EntityPlayerBot : EntityAnimalBot
@@ -184,6 +186,12 @@ namespace Vintagestory.GameContent
 
         public EntityBehaviorArmorStandInventory(Entity entity) : base(entity)
         {
+        }
+
+        protected override void Inventory_SlotModified(int slotid)
+        {
+            base.Inventory_SlotModified(slotid);
+            storeInv();
         }
     }
 

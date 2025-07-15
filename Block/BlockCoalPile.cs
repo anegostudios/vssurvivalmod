@@ -7,6 +7,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public interface IBlockItemPile
@@ -26,7 +28,7 @@ namespace Vintagestory.GameContent
         public BlockCoalPile()
         {
             CollisionBoxesByFillLevel = new Cuboidf[9][];
-            CollisionBoxesByFillLevel[0] = new Cuboidf[0];
+            CollisionBoxesByFillLevel[0] = Array.Empty<Cuboidf>();
 
             for (int i = 1; i < CollisionBoxesByFillLevel.Length; i++)
             {
@@ -127,15 +129,24 @@ namespace Vintagestory.GameContent
 
         public override BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)
         {
-            return new BlockDropItemStack[0];
+            return Array.Empty<BlockDropItemStack>();
         }
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {
             // Handled by BlockEntityItemPile
-            return new ItemStack[0];
+            return Array.Empty<ItemStack>();
         }
 
+
+        public override bool CanAcceptFallOnto(IWorldAccessor world, BlockPos pos, Block fallingBlock, TreeAttribute blockEntityAttributes)
+        {
+            if (fallingBlock is BlockCoalPile)
+            {
+                return world.BlockAccessor.GetBlockEntity(pos) is BlockEntityCoalPile;
+            }
+            return false;
+        }
 
         public override bool OnFallOnto(IWorldAccessor world, BlockPos pos, Block block, TreeAttribute blockEntityAttributes)
         {
@@ -194,7 +205,7 @@ namespace Vintagestory.GameContent
             if (secondsIgniting > 0.25f && (int)(30 * secondsIgniting) % 9 == 1)
             {
                 Random rand = byEntity.World.Rand;
-                Vec3d dpos = new Vec3d(pos.X + 2 / 8f + 4 / 8f * rand.NextDouble(), pos.Y + 7 / 8f, pos.Z + 2 / 8f + 4 / 8f * rand.NextDouble());
+                Vec3d dpos = new Vec3d(pos.X + 2 / 8f + 4 / 8f * rand.NextDouble(), pos.InternalY + 7 / 8f, pos.Z + 2 / 8f + 4 / 8f * rand.NextDouble());
 
                 Block blockFire = byEntity.World.GetBlock(new AssetLocation("fire"));
 

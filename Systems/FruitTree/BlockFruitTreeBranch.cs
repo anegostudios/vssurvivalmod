@@ -8,6 +8,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class FruitTreeShape
@@ -55,8 +57,7 @@ namespace Vintagestory.GameContent
                 }
 
                 // Prio 2: Get from currently tesselating shape
-                AssetLocation texturePath=null;
-                if (curTessShape?.Textures.TryGetValue(textureCode, out texturePath) == true)
+                if (curTessShape?.Textures.TryGetValue(textureCode, out AssetLocation texturePath) == true)
                 {
                     return capi.BlockTextureAtlas[texturePath];
                 }
@@ -356,7 +357,7 @@ namespace Vintagestory.GameContent
                 }
 
                 sb.AppendLine();
-                sb.AppendLine("Values are averages, as they can vary slightly for each tree.");
+                sb.AppendLine(Lang.Get("handbook-fruittree-note-averages"));
 
                 float marginTop = 7;
 

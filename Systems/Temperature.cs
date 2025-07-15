@@ -5,6 +5,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 
@@ -146,7 +148,7 @@ namespace Vintagestory.GameContent
                 updateTemperature(ref cond, pos, yearRel, hourOfDay, totalDays);
 
                 entries.Add(
-                    string.Format("{0}.{1}.{2} {3}:00", (int)(totalDays % daysPerMonth) + 1, (int)month + 1, (int)(totalDays / daysPerYear + 1386), (int)hourOfDay)
+                    string.Format("{0}.{1}.{2} {3}:00", (int)(totalDays % daysPerMonth) + 1, (int)month + 1, (int)(totalDays / daysPerYear + IGameCalendar.StartYear), (int)hourOfDay)
                     +
                     ";" + cond.Temperature
                 );

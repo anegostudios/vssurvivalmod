@@ -18,8 +18,6 @@
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="protobuf-net" Version="2.4.7" />
-    <PackageReference Include="OpenTK.Windowing.GraphicsLibraryFramework" Version="4.8.2" />
   </ItemGroup>
 
   <ItemGroup>

@@ -4,8 +4,11 @@ using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -14,9 +17,9 @@ namespace Vintagestory.GameContent
         public ContentConfig[] contentConfigs;
         public WorldInteraction[] placeInteractionHelp;
 
-        public BlockPos RootOffset = new BlockPos();
+        public Vec3i RootOffset = new Vec3i(0, 0, 0);
 
-        protected string[] unsuitableEntityCodesBeginsWith = new string[0];
+        protected string[] unsuitableEntityCodesBeginsWith = Array.Empty<string>();
         protected string[] unsuitableEntityCodesExact;
         protected string   unsuitableEntityFirstLetters = "";
 
@@ -73,18 +76,18 @@ namespace Vintagestory.GameContent
                     MouseButton = EnumMouseButton.Right,
                     Itemstacks = allowedstacks.ToArray(),
                     GetMatchingStacks = (wi, bs, es) => {
-                        BlockEntityTrough betr = api.World.BlockAccessor.GetBlockEntity(bs.Position + RootOffset) as BlockEntityTrough;
+                        BlockEntityTrough betr = api.World.BlockAccessor.GetBlockEntity(bs.Position.AddCopy(RootOffset)) as BlockEntityTrough;
                         if (betr?.IsFull != false) return null;
 
                         ItemStack[] stacks = betr.GetNonEmptyContentStacks();
-                        if (stacks != null && stacks.Length != 0) return stacks;
+                        if (stacks != null && stacks.Length != 0) return [.. wi.Itemstacks.Where(stack => stack.Equals(api.World, stacks[0], GlobalConstants.IgnoredStackAttributes))];
 
                         return wi.Itemstacks;
                     }
                 }
             };
 
-            string[] codes = Attributes?["unsuitableFor"].AsArray<string>(new string[0]);
+            string[] codes = Attributes?["unsuitableFor"].AsArray<string>(Array.Empty<string>());
             if (codes.Length > 0) AiTaskBaseTargetable.InitializeTargetCodes(codes, ref unsuitableEntityCodesExact, ref unsuitableEntityCodesBeginsWith, ref unsuitableEntityFirstLetters); ;
         }
 

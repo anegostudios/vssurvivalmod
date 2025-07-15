@@ -4,6 +4,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BookShelfVariantGroup
@@ -13,7 +15,7 @@ namespace Vintagestory.GameContent
 
         public TextureAtlasPosition texPos { get; set; }
 
-        public OrderedDictionary<string, BookShelfTypeProps> typesByCode = new OrderedDictionary<string, BookShelfTypeProps>();
+        public API.Datastructures.OrderedDictionary<string, BookShelfTypeProps> typesByCode = new ();
         public BlockClutterBookshelf block;
 
         public Vec3f Rotation { get; set; } = new Vec3f();

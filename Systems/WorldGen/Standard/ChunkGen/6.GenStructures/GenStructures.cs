@@ -7,6 +7,8 @@ using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 using Vintagestory.GameContent;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     public class GenStructuresPosPass : ModStdWorldGen
@@ -91,6 +93,8 @@ namespace Vintagestory.ServerMods
         }
 
 
+        BlockPos spawnPos;
+
         public void initWorldGen()
         {
             LoadGlobalConfig(api);
@@ -132,11 +136,20 @@ namespace Vintagestory.ServerMods
                 if(api.Assets.Exists(new AssetLocation(path)))
                 {
                     asset = api.Assets.Get(path);
-
                     var storyStructuresConfig = asset.ToObject<WorldGenStructuresConfig>();
                     storyStructuresConfig.Init(api);
                     StoryStructures[storyStructure.Code] = storyStructuresConfig.Structures;
                 }
+            }
+
+
+            var df = api.WorldManager.SaveGame.DefaultSpawn;
+            if (df != null)
+            {
+                spawnPos = new BlockPos(df.x, df.y ?? 0, df.z);
+            } else
+            {
+                spawnPos = api.World.BlockAccessor.MapSize.AsBlockPos / 2;
             }
         }
 
@@ -279,12 +292,22 @@ namespace Vintagestory.ServerMods
                     }
 
                     if (startPos.Y <= 0) continue;
+                                
+                    if (!BlockSchematicStructure.SatisfiesMinSpawnDistance(struc.MinSpawnDistance, startPos, spawnPos))
+                    {
+                        continue;
+                    }
 
                     // check if in storylocation and if we can still generate this structure
                     if (locationCode != null)
                     {
                         location = GetIntersectingStructure(chunkX * chunksize + chunksize / 2, chunkZ * chunksize + chunksize / 2);
                         if (location.SchematicsSpawned?.TryGetValue(struc.Group, out var spawnedSchematics) == true && spawnedSchematics >= struc.StoryLocationMaxAmount)
+                        {
+                            continue;
+                        }
+
+                        if (struc.StoryMaxFromCenter != 0 &&  !startPos.InRangeHorizontally(location.CenterPos.X, location.CenterPos.Z, struc.StoryMaxFromCenter))
                         {
                             continue;
                         }
@@ -378,7 +401,7 @@ namespace Vintagestory.ServerMods
                         AllowUseEveryone = true
                     });
                 }
-            });
+            }, spawnPos);
         }
     }
 }

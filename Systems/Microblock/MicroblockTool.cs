@@ -10,6 +10,8 @@ using Vintagestory.API.Util;
 using Vintagestory.GameContent;
 using Vintagestory.ServerMods.WorldEdit;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     public static class ChiselToolRegisterUtil
@@ -247,8 +249,7 @@ namespace Vintagestory.ServerMods
                 BlockPos dpos = tmpPos.Set((int)(voxelWorldX / 16), (int)(voxelWorldY / 16), (int)(voxelWorldZ / 16));
                 dvoxelpos.Set((int)GameMath.Mod(voxelWorldX, 16), (int)GameMath.Mod(voxelWorldY, 16), (int)GameMath.Mod(voxelWorldZ, 16));
 
-                ChiselBlockInEdit editData;
-                if (!blocksInEdit.TryGetValue(dpos, out editData))
+                if (!blocksInEdit.TryGetValue(dpos, out ChiselBlockInEdit editData))
                 {
                     bool isNew = false;
 

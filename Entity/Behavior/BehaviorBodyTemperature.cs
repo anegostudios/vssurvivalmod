@@ -1,10 +1,14 @@
 ﻿using System;
+using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -239,9 +243,21 @@ namespace Vintagestory.GameContent
 
                 bool rainExposed = api.World.BlockAccessor.GetRainMapHeightAt(plrpos) <= plrpos.Y;
 
+                float wetnessFromRain = conds.Rainfall * (rainExposed ? 0.06f : 0) * (conds.Temperature < -1 ? 0.05f : 1); /* Get wet 20 times slower with snow */
+                if (wetnessFromRain > 0 && eplr != null)
+                {
+                    var charInv = eplr.Player.InventoryManager.GetOwnInventory(GlobalConstants.characterInvClassName);
+                    var headSlot = charInv?.FirstOrDefault(slot => (slot as ItemSlotCharacter).Type == EnumCharacterDressType.Head);
+
+                    if (headSlot != null && !headSlot.Empty)
+                    {
+                        wetnessFromRain *= GameMath.Clamp(1 - headSlot.Itemstack.ItemAttributes["rainProtectionPerc"].AsFloat(0), 0, 1);
+                    }
+                }
+
                 Wetness = GameMath.Clamp(
                     Wetness
-                    + conds.Rainfall * (rainExposed ? 0.06f : 0) * (conds.Temperature < -1 ? 0.05f : 1) /* Get wet 20 times slower with snow */
+                    + wetnessFromRain
                     + (entity.Swimming ? 1 : 0)
                     - (float)Math.Max(0, (api.World.Calendar.TotalHours - LastWetnessUpdateTotalHours) * GameMath.Clamp(nearHeatSourceStrength, 1, 2))
                 , 0, 1);
@@ -276,7 +292,7 @@ namespace Vintagestory.GameContent
                 }
 
                 if (entity.IsOnFire) tempChange = Math.Max(25, tempChange);
-
+ 
 
                 float tempUpdateHoursPassed = (float)(api.World.Calendar.TotalHours - BodyTempUpdateTotalHours);
                 if (tempUpdateHoursPassed > 0.01)

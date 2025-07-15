@@ -10,6 +10,8 @@ using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 using Vintagestory.Datastructures;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]

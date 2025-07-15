@@ -10,6 +10,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityStaticTranslocator : BlockEntityTeleporterBase
@@ -81,7 +83,23 @@ namespace Vintagestory.GameContent
                 float rotY = Block.Shape.rotateY;
                 animUtil.InitializeAnimator("translocator", null, null, new Vec3f(0, rotY, 0));
 
-                translocatingSound = (api as ICoreClientAPI).World.LoadSound(new SoundParams()
+                updateSoundState();
+            }
+        }
+
+
+
+        public void updateSoundState()
+        {
+            if (translocVolume > 0) startSound();
+            else stopSound();
+        }
+
+        public void startSound()
+        {
+            if (translocatingSound == null && Api?.Side == EnumAppSide.Client)
+            {
+                translocatingSound = (Api as ICoreClientAPI).World.LoadSound(new SoundParams()
                 {
                     Location = new AssetLocation("sounds/effect/translocate-active.ogg"),
                     ShouldLoop = true,
@@ -90,8 +108,21 @@ namespace Vintagestory.GameContent
                     DisposeOnFinish = false,
                     Volume = 0.5f
                 });
+
+                translocatingSound.Start();
             }
         }
+
+        public void stopSound()
+        {
+            if (translocatingSound != null)
+            {
+                translocatingSound.Stop();
+                translocatingSound.Dispose();
+                translocatingSound = null;
+            }
+        }
+
 
         public void DoActivate()
         {
@@ -252,16 +283,12 @@ namespace Vintagestory.GameContent
                 translocPitch = Math.Max(translocPitch - dt, 0.5f);
             }
 
-
-            if (translocatingSound.IsPlaying)
+            updateSoundState();
+            
+            if (translocVolume > 0)
             {
                 translocatingSound.SetVolume(translocVolume);
                 translocatingSound.SetPitch(translocPitch);
-                if (translocVolume <= 0) translocatingSound.Stop();
-            }
-            else
-            {
-                if (translocVolume > 0) translocatingSound.Start();
             }
         }
 
@@ -311,7 +338,6 @@ namespace Vintagestory.GameContent
                 }
             }
         }
-
 
         ITreeAttribute chunkGenParams()
         {
@@ -444,7 +470,7 @@ namespace Vintagestory.GameContent
         private BlockPos FindTranslocator(Cuboidi location, Dictionary<Vec2i, IServerChunk[]> columnsByChunkCoordinate, int centerCx, int centerCz)
         {
             const int chunksize = GlobalConstants.ChunkSize;
-            
+            var chunkCoord = new Vec2i(0, 0);
             for (int x = location.X1; x < location.X2; x++)
             {
                 for (int y = location.Y1; y < location.Y2; y++)
@@ -453,9 +479,9 @@ namespace Vintagestory.GameContent
                     {
                         int cx = x / chunksize;
                         int cz = z / chunksize;
-
-                        IServerChunk[] chunks;
-                        if (!columnsByChunkCoordinate.TryGetValue(new Vec2i(cx, cz), out chunks))
+                        chunkCoord.X = cx;
+                        chunkCoord.Y = cz;
+                        if (!columnsByChunkCoordinate.TryGetValue(chunkCoord, out IServerChunk[] chunks))
                         {
                             continue;
                         }
@@ -562,6 +588,12 @@ namespace Vintagestory.GameContent
                 if (tpLocation.X == 0 && tpLocation.Z == 0) tpLocation = null; // For safety
             }
 
+            if (!findNextChunk && FullyRepaired && !canTeleport && tpLocation == null)
+            {
+                // resume searching for an exit if the TL was unloaded during search
+                findNextChunk = true;
+            }
+
             if (worldAccessForResolve != null && worldAccessForResolve.Side == EnumAppSide.Client)
             {
                 somebodyIsTeleportingReceivedTotalMs = worldAccessForResolve.ElapsedMilliseconds;
@@ -620,10 +652,9 @@ namespace Vintagestory.GameContent
                         case 3: shapeCode = "repairstate3"; break;
                     }
 
-                    MeshData meshdata;
                     Shape shape = Shape.TryGet(Api, "shapes/block/machine/statictranslocator/" + shapeCode + ".json");
 
-                    tessThreadTesselator.TesselateShape(ownBlock, shape, out meshdata, new Vec3f(0, rotY, 0));
+                    tessThreadTesselator.TesselateShape(ownBlock, shape, out MeshData meshdata, new Vec3f(0, rotY, 0));
 
                     return meshdata;
                 });
