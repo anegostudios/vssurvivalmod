@@ -1,14 +1,15 @@
 ﻿using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockLayered : Block
     {
         public Block GetNextLayer(IWorldAccessor world)
         {
-            int layer;
-            int.TryParse(Code.Path.Split('-')[1], out layer);
+            int.TryParse(Code.Path.Split('-')[1], out int layer);
 
             string basecode = CodeWithoutParts(1);
 

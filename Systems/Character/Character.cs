@@ -1,4 +1,5 @@
-﻿using ProtoBuf;
+using Newtonsoft.Json.Linq;
+using ProtoBuf;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,6 +10,8 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -37,8 +40,6 @@ namespace Vintagestory.GameContent
         public string VoiceType;
         public string VoicePitch;
     }
-
-
 
     public class SeraphRandomizerConstraints
     {
@@ -194,8 +195,9 @@ namespace Vintagestory.GameContent
         private void loadCharacterClasses()
         {
             onLoadedUniversal();
-            traits = api.Assets.Get("config/traits.json").ToObject<List<Trait>>();
-            characterClasses = api.Assets.Get("config/characterclasses.json").ToObject<List<CharacterClass>>();
+            LoadTraits();
+            LoadClasses();
+
 
             foreach (var trait in traits)
             {
@@ -225,6 +227,118 @@ namespace Vintagestory.GameContent
                     }
                 }
             }
+        }
+
+        private void LoadTraits()
+        {
+            traits = [];
+            Dictionary<AssetLocation, JToken> files = api.Assets.GetMany<JToken>(api.Logger, "config/traits");
+            int traitQuantity = 0;
+
+            string[] vanillaTraitsInOrder = ["focused", "resourceful", "fleetfooted", "bowyer", "forager", "pilferer", "furtive",
+                "precise", "technical", "soldier", "hardy", "clothier", "mender", "merciless", "farsighted", "claustrophobic",
+                "frail", "nervous", "ravenous", "nearsighted", "heavyhanded", "kind", "weak", "civil", "improviser", "tinkerer"];
+            HashSet<string> vanillaTraits = [.. vanillaTraitsInOrder];
+
+            foreach ((AssetLocation path, JToken fileToken) in files)
+            {
+                if (fileToken is JObject)
+                {
+                    Trait trait = fileToken.ToObject<Trait>(path.Domain);
+                    if (traits.Find(element => element.Code == trait.Code) != null)
+                    {
+                        api.World.Logger.Warning($"Trying to add character trait from domain '{path.Domain}', but character trait with code '{trait.Code}' already exists. Will add it anyway, but it can cause undefined behavior.");
+                    }
+                    traits.Add(trait);
+                    traitQuantity++;
+                }
+                if (fileToken is JArray fileArray)
+                {
+                    int traitIndex = 0;
+                    foreach (JToken traitToken in fileArray)
+                    {
+                        Trait trait = traitToken.ToObject<Trait>(path.Domain);
+                        if (traits.Find(element => element.Code == trait.Code) != null)
+                        {
+                            api.World.Logger.Warning($"Trying to add character trait from domain '{path.Domain}', but character trait with code '{trait.Code}' already exists. Will add it anyway, but it can cause undefined behavior.");
+                        }
+                        if (path.Domain == "game")
+                        {
+                            vanillaTraits.Remove(trait.Code);
+                            if (vanillaTraitsInOrder.IndexOf(trait.Code) != traitIndex)
+                            {
+                                api.World.Logger.Warning($"Order of vanilla character traits has changed. Dont remove vanilla character traits or add new traits between or before vanilla traits. That will cause incompatibility with other mods that change traits, that can result in crashes.");
+                            }
+                        }
+                        traits.Add(trait);
+                        traitQuantity++;
+                        traitIndex++;
+                    }
+                }
+            }
+
+            if (vanillaTraits.Count > 0)
+            {
+                api.World.Logger.Warning($"Failed to find vanilla traits: {vanillaTraits.Aggregate((a, b) => $"{a}, {b}")}, dont remove vanilla traits, it will cause incompatibility with other mods that change traits or classes, that can result in crashes.");
+            }
+
+            api.World.Logger.Event($"{traitQuantity} traits loaded from {files.Count} files");
+        }
+
+        private void LoadClasses()
+        {
+            characterClasses = [];                                                           
+            Dictionary<AssetLocation, JToken> files = api.Assets.GetMany<JToken>(api.Logger, "config/characterclasses");
+            int classQuantity = 0;
+
+            string[] vanillaClassesInOrder = ["commoner", "hunter", "malefactor", "clockmaker", "blackguard", "tailor"];
+            HashSet<string> vanillaClasses = [.. vanillaClassesInOrder];
+
+            foreach ((AssetLocation path, JToken file) in files)
+            {
+                if (file is JObject)
+                {
+                    CharacterClass characterClass = file.ToObject<CharacterClass>(path.Domain);
+                    if (!characterClass.Enabled) continue;
+                    if (characterClasses.Find(element => element.Code == characterClass.Code) != null)
+                    {
+                        api.World.Logger.Warning($"Trying to add character class from domain '{path.Domain}', but character class with code '{characterClass.Code}' already exists. Will add it anyway, but it can cause undefined behavior.");
+                    }
+                    characterClasses.Add(characterClass);
+                    classQuantity++;
+                }
+                if (file is JArray fileArray)
+                {
+                    int classIndex = 0;
+                    foreach (JToken classToken in fileArray)
+                    {
+                        CharacterClass characterClass = classToken.ToObject<CharacterClass>(path.Domain);
+                        if (!characterClass.Enabled) continue;
+                        if (characterClasses.Find(element => element.Code == characterClass.Code) != null)
+                        {
+                            api.World.Logger.Warning($"Trying to add character class from domain '{path.Domain}', but character class with code '{characterClass.Code}' already exists. Will add it anyway, but it can cause undefined behavior.");
+                        }
+                        if (path.Domain == "game")
+                        {
+                            vanillaClasses.Remove(characterClass.Code);
+                            if (vanillaClassesInOrder.IndexOf(characterClass.Code) != classIndex)
+                            {
+                                api.World.Logger.Warning($"Order of vanilla character classes has changed. Dont remove vanilla character classes (set 'enabled' attribute to 'false' instead) or add new classes between or before vanilla classes. That will cause incompatibility with other mods that change classes, that can result in crashes.");
+                            }
+                        }
+                        characterClasses.Add(characterClass);
+                        classQuantity++;
+                        classIndex++;
+                    }
+                }
+            }
+
+            if (vanillaClasses.Count > 0)
+            {
+                api.World.Logger.Warning($"Failed to find vanilla classes: {vanillaClasses.Aggregate((a, b) => $"{a}, {b}")}, dont remove vanilla classes (set 'enabled' attribute to 'false' instead), it will cause incompatibility with other mods that change classes, that can result in crashes.");
+            }
+
+            api.World.Logger.Event($"{classQuantity} classes loaded from {files.Count} files");
         }
 
 
@@ -268,9 +382,8 @@ namespace Vintagestory.GameContent
                         ItemStack stack = jstack.ResolvedItemstack?.Clone();
                         if (stack == null) continue;
 
-                        EnumCharacterDressType dresstype;
                         string strdress = stack.ItemAttributes["clothescategory"].AsString();
-                        if (!Enum.TryParse(strdress, true, out dresstype))
+                        if (!Enum.TryParse(strdress, true, out EnumCharacterDressType dresstype))
                         {
                             eplayer.TryGiveItemStack(stack);
                         }
@@ -319,8 +432,7 @@ namespace Vintagestory.GameContent
 
             foreach (var traitcode in allTraits)
             {
-                Trait trait;
-                if (TraitsByCode.TryGetValue(traitcode, out trait))
+                if (TraitsByCode.TryGetValue(traitcode, out Trait trait))
                 {
                     foreach (var val in trait.Attributes)
                     {
@@ -392,10 +504,9 @@ namespace Vintagestory.GameContent
             if (recipe.RequiresTrait == null) return true;
 
             string classcode = player.Entity.WatchedAttributes.GetString("characterClass");
-            CharacterClass charclass;
             if (classcode == null) return true;
 
-            if (characterClassesByCode.TryGetValue(classcode, out charclass))
+            if (characterClassesByCode.TryGetValue(classcode, out CharacterClass charclass))
             {
                 if (charclass.Traits.Contains(recipe.RequiresTrait)) return true;
 
@@ -409,10 +520,9 @@ namespace Vintagestory.GameContent
         public bool HasTrait(IPlayer player, string trait)
         {
             string classcode = player.Entity.WatchedAttributes.GetString("characterClass");
-            CharacterClass charclass;
             if (classcode == null) return true;
 
-            if (characterClassesByCode.TryGetValue(classcode, out charclass))
+            if (characterClassesByCode.TryGetValue(classcode, out CharacterClass charclass))
             {
                 if (charclass.Traits.Contains(trait)) return true;
 
@@ -445,6 +555,26 @@ namespace Vintagestory.GameContent
                 setCharacterClass(byPlayer.Entity, characterClasses[0].Code, false);
             }
 
+            var classChangeMonths = sapi.World.Config.GetDecimal("allowClassChangeAfterMonths", -1);
+            var allowOneFreeClassChange = sapi.World.Config.GetBool("allowOneFreeClassChange");
+           
+            // allow players that already played on the server to also reselect their character like new players
+            if(allowOneFreeClassChange && byPlayer.ServerData.LastCharacterSelectionDate == null)
+            {
+                byPlayer.Entity.WatchedAttributes.SetBool("allowcharselonce", true);
+            }
+            else if(classChangeMonths >= 0)
+            {
+                var date = DateTime.UtcNow;
+                var lastDateChange = byPlayer.ServerData.LastCharacterSelectionDate ?? byPlayer.ServerData.FirstJoinDate ?? "1/1/1970 00:00 AM";
+                var monthsPassed = date.Subtract(DateTimeOffset.Parse(lastDateChange).UtcDateTime).TotalDays / 30.0;
+                if (classChangeMonths < monthsPassed)
+                {
+                    byPlayer.Entity.WatchedAttributes.SetBool("allowcharselonce", true);
+                }
+            }
+                
+
             sapi.Network.GetChannel("charselection").SendPacket(new CharacterSelectedState() { DidSelect = didSelect }, byPlayer);
         }
 
@@ -461,19 +591,20 @@ namespace Vintagestory.GameContent
 
             foreach (var skinpart in skinMod.AvailableSkinParts)
             {
-                int index = api.World.Rand.Next(skinpart.Variants.Length);
-                string variantCode = null;
+                var variants = skinpart.Variants.Where(v => v.Category == "standard").ToArray();
 
-                if (preSelection.TryGetValue(skinpart.Code, out variantCode))
+                int index = api.World.Rand.Next(variants.Length);
+
+                if (preSelection.TryGetValue(skinpart.Code, out string variantCode))
                 {
-                    index = skinpart.Variants.IndexOf(val => val.Code == variantCode);
+                    index = variants.IndexOf(val => val.Code == variantCode);
                 }
                 else
                 {
                     if (currentConstraints.TryGetValue(skinpart.Code, out var partConstraints))
                     {
-                        variantCode = partConstraints.SelectRandom(api.World.Rand, skinpart.Variants);
-                        index = skinpart.Variants.IndexOf(val => val.Code == variantCode);
+                        variantCode = partConstraints.SelectRandom(api.World.Rand, variants);
+                        index = variants.IndexOf(val => val.Code == variantCode);
                     }
 
                     if ((skinpart.Code == "mustache" || skinpart.Code == "beard") && !mustached)
@@ -483,7 +614,7 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-                if (variantCode == null) variantCode = skinpart.Variants[index].Code;
+                if (variantCode == null) variantCode = variants[index].Code;
 
                 skinMod.selectSkinPart(skinpart.Code, variantCode, true, playVoice);
 
@@ -507,8 +638,10 @@ namespace Vintagestory.GameContent
 
         private void onCharacterSelection(IServerPlayer fromPlayer, CharacterSelectionPacket p)
         {
-            bool didSelectBefore = SerializerUtil.Deserialize(fromPlayer.GetModdata("createCharacter"), false);
-            if (didSelectBefore && (fromPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative))
+            bool didSelectBefore = fromPlayer.GetModData<bool>("createCharacter", false);
+            bool allowSelect = !didSelectBefore || fromPlayer.Entity.WatchedAttributes.GetBool("allowcharselonce") || fromPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative;
+
+            if (!allowSelect)
             {
                 fromPlayer.Entity.WatchedAttributes.MarkPathDirty("skinConfig");
                 fromPlayer.BroadcastPlayerData(true);
@@ -517,8 +650,7 @@ namespace Vintagestory.GameContent
 
             if (p.DidSelect)
             {
-                fromPlayer.SetModdata("createCharacter", SerializerUtil.Serialize(true));
-                fromPlayer.Entity.WatchedAttributes.RemoveAttribute("allowcharselonce");
+                fromPlayer.SetModData<bool>("createCharacter", true);
 
                 setCharacterClass(fromPlayer.Entity, p.CharacterClass, !didSelectBefore || fromPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative);
 
@@ -529,8 +661,21 @@ namespace Vintagestory.GameContent
                 {
                     bh.selectSkinPart(skinpart.Key, skinpart.Value, false);
                 }
-            }
 
+                var date = DateTime.UtcNow;
+                fromPlayer.ServerData.LastCharacterSelectionDate = date.ToShortDateString() + " " + date.ToShortTimeString();
+
+                // allow players that just joined to immediately re select the class
+                var allowOneFreeClassChange = sapi.World.Config.GetBool("allowOneFreeClassChange");
+                if (!didSelectBefore && allowOneFreeClassChange)
+                {
+                    fromPlayer.ServerData.LastCharacterSelectionDate = null;
+                }
+                else
+                {
+                    fromPlayer.Entity.WatchedAttributes.RemoveAttribute("allowcharselonce");
+                }
+            }
             fromPlayer.Entity.WatchedAttributes.MarkPathDirty("skinConfig");
             fromPlayer.BroadcastPlayerData(true);
         }

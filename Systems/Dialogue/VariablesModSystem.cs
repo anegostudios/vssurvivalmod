@@ -8,6 +8,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     [ProtoContract]
@@ -57,7 +59,10 @@ namespace Vintagestory.GameContent
             this.Api = api;
             api.Network.RegisterChannel("variable").RegisterMessageType<VariableData>();
 
-            api.ChatCommands.GetOrCreate("debug").BeginSubCommand("clearvariables").HandleWith(cmdClearVariables);
+            api.ChatCommands.GetOrCreate("debug")
+                .BeginSubCommand("clearvariables")
+                .WithDescription("clearvariables")
+                .HandleWith(cmdClearVariables);
 
             OnDialogueControllerInit += setDefaultVariables;
         }
@@ -88,8 +93,7 @@ namespace Vintagestory.GameContent
                 case EnumActivityVariableScope.Group:
                     {
                         var groupCode = callingEntity.WatchedAttributes.GetString("groupCode");
-                        EntityVariables variables = null;
-                        if (!VarData.GroupVariables.TryGetValue(groupCode, out variables))
+                        if (!VarData.GroupVariables.TryGetValue(groupCode, out EntityVariables variables))
                         {
                             VarData.GroupVariables[groupCode] = variables = new EntityVariables();
                         }
@@ -100,8 +104,7 @@ namespace Vintagestory.GameContent
                 case EnumActivityVariableScope.Player:
                     {
                         var uid = (callingEntity as EntityPlayer).Player.PlayerUID;
-                        EntityVariables variables = null;
-                        if (!VarData.PlayerVariables.TryGetValue(uid, out variables))
+                        if (!VarData.PlayerVariables.TryGetValue(uid, out EntityVariables variables))
                         {
                             VarData.PlayerVariables[uid] = variables = new EntityVariables();
                         }
@@ -124,8 +127,7 @@ namespace Vintagestory.GameContent
 
         public void SetPlayerVariable(string playerUid, string name, string value)
         {
-            EntityVariables variables = null;
-            if (!VarData.PlayerVariables.TryGetValue(playerUid, out variables))
+            if (!VarData.PlayerVariables.TryGetValue(playerUid, out EntityVariables variables))
             {
                 VarData.PlayerVariables[playerUid] = variables = new EntityVariables();
             }
@@ -153,8 +155,7 @@ namespace Vintagestory.GameContent
                 case EnumActivityVariableScope.Group:
                     {
                         var groupCode = callingEntity.WatchedAttributes.GetString("groupCode");
-                        EntityVariables variables = null;
-                        if (!VarData.GroupVariables.TryGetValue(groupCode, out variables))
+                        if (!VarData.GroupVariables.TryGetValue(groupCode, out EntityVariables variables))
                         {
                             return null;
                         }
@@ -164,8 +165,7 @@ namespace Vintagestory.GameContent
                 case EnumActivityVariableScope.Player:
                     {
                         var uid = (callingEntity as EntityPlayer).Player.PlayerUID;
-                        EntityVariables variables = null;
-                        if (!VarData.PlayerVariables.TryGetValue(uid, out variables))
+                        if (!VarData.PlayerVariables.TryGetValue(uid, out EntityVariables variables))
                         {
                             return null;
                         }
@@ -190,8 +190,7 @@ namespace Vintagestory.GameContent
 
         public string GetPlayerVariable(string playerUid, string name)
         {
-            EntityVariables variables = null;
-            if (!VarData.PlayerVariables.TryGetValue(playerUid, out variables))
+            if (!VarData.PlayerVariables.TryGetValue(playerUid, out EntityVariables variables))
             {
                 return null;
             }

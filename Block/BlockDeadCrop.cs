@@ -3,6 +3,8 @@ using Vintagestory.API.Client.Tesselation;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockDeadCrop : Block, IDrawYAdjustable

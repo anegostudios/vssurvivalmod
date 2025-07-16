@@ -1,6 +1,8 @@
 ﻿using Vintagestory.API.Client;
 using Vintagestory.API.Datastructures;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     /// <summary>
@@ -15,8 +17,6 @@ namespace Vintagestory.GameContent
 
         public GuiDialogItemStackRandomizer(float totalChance, ICoreClientAPI capi) : base("Item Stack Randomizer", capi)
         {
-            double pad = GuiElementItemSlotGrid.unscaledSlotPadding;
-
             ElementBounds chanceInputBounds = ElementBounds.Fixed(0, 70, 60, 30);
 
             ElementBounds leftButton = ElementBounds.Fixed(EnumDialogArea.LeftFixed, 0, 0, 0, 0).WithFixedPadding(10, 1);

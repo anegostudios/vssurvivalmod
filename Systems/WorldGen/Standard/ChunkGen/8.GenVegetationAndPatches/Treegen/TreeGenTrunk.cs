@@ -3,6 +3,8 @@ using System.Reflection;
 using System.Runtime.Serialization;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods.NoObf
 {
     public class TreeGenTrunk : TreeGenBranch

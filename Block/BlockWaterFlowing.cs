@@ -4,6 +4,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockWaterflowing : BlockForFluidsLayer
@@ -60,7 +62,7 @@ namespace Vintagestory.GameContent
             AdvancedParticleProperties bps = ParticleProperties[0];
 
             bps.basePos.X = pos.X;
-            bps.basePos.Y = pos.Y;
+            bps.basePos.Y = pos.InternalY;
             bps.basePos.Z = pos.Z;
 
             bps.Velocity[0].avg = (float)PushVector.X * 500;

@@ -6,6 +6,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public enum EnumTransactionResult
@@ -209,22 +211,6 @@ namespace Vintagestory.GameContent
             }
         }
 
-        // wtf is this for?
-        /*private ResolvedTradeItem GetTradeItemByName(string name, TradeList tradeList)
-        {
-            if (name == null) return null;
-
-            for (int i = 0; i < tradeList.List.Length; i++)
-            {
-                TradeItem item = tradeList.List[i];
-                string itemname = item.Name == null ? i + "" : item.Name;
-                if (itemname.Equals(name)) return item.Resolve(Api.World);
-            }
-
-            return null;
-        }*/
-
-
 
         public override void FromTreeAttributes(ITreeAttribute tree)
         {
@@ -352,8 +338,7 @@ namespace Vintagestory.GameContent
                 ItemSlotTrade tradeSlot = GetSellingConditionsSlot(slot.Itemstack);
 
                 int tradeslotid = GetSlotId(tradeSlot);
-                int stock;
-                if (!Stocks.TryGetValue(tradeslotid, out stock))
+                if (!Stocks.TryGetValue(tradeslotid, out int stock))
                 {
                     stock = slot.TradeItem.Stock;
                 }
@@ -392,8 +377,7 @@ namespace Vintagestory.GameContent
                 }
 
                 int tradeslotid = GetSlotId(tradeSlot);
-                int stock;
-                if (!Stocks.TryGetValue(tradeslotid, out stock))
+                if (!Stocks.TryGetValue(tradeslotid, out int stock))
                 {
                     stock = tradeItem.Stock;
                 }
@@ -517,8 +501,7 @@ namespace Vintagestory.GameContent
                 int pieceValue = CurrencyValuePerItem(invslot);
                 if (pieceValue != 0)
                 {
-                    List<ItemSlot> slots = null;
-                    if (!moneys.TryGetValue(pieceValue, out slots)) slots = new List<ItemSlot>();
+                    if (!moneys.TryGetValue(pieceValue, out List<ItemSlot> slots)) slots = new List<ItemSlot>();
 
                     slots.Add(invslot);
 
@@ -778,7 +761,6 @@ namespace Vintagestory.GameContent
                 slots[i + 36].Itemstack = null;
             }
 
-            traderEntity.tradingWithPlayer = null;
             return p;
         }
 

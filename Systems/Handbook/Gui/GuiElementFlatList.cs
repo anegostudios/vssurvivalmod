@@ -4,6 +4,8 @@ using Vintagestory.API.Client;
 using System;
 using System.Linq;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public interface IFlatListItemInteractable : IFlatListItem

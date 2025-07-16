@@ -4,6 +4,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BEBehaviorFruiting : BlockEntityBehavior
@@ -64,7 +66,7 @@ namespace Vintagestory.GameContent
 
             // Read the properties
 
-            fruitCodeBases = properties["fruitCodeBases"].AsArray<string>(new string[0]);
+            fruitCodeBases = properties["fruitCodeBases"].AsArray<string>(Array.Empty<string>());
             if (fruitCodeBases.Length == 0) return;
 
             positionsCount = properties["positions"].AsInt(0);

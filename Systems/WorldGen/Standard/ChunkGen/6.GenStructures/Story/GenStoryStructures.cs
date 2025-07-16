@@ -10,6 +10,8 @@ using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 using Vintagestory.ServerMods;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     [ProtoContract]
@@ -21,14 +23,13 @@ namespace Vintagestory.GameContent
 
     public class GenStoryStructures : ModStdWorldGen
     {
-        private WorldGenStoryStructuresConfig scfg;
+        internal WorldGenStoryStructuresConfig scfg;
         private LCGRandom strucRand; // Deterministic random
         private LCGRandom grassRand; // Deterministic random
 
-        public OrderedDictionary<string, StoryStructureLocation> storyStructureInstances = new OrderedDictionary<string, StoryStructureLocation>();
+        public API.Datastructures.OrderedDictionary<string, StoryStructureLocation> storyStructureInstances = new ();
         public bool StoryStructureInstancesDirty = false;
 
-        private Cuboidi[] structureLocations;
         private IWorldGenBlockAccessor worldgenBlockAccessor;
 
         private ICoreServerAPI api;
@@ -224,7 +225,6 @@ namespace Vintagestory.GameContent
                 });
             }
 
-            structureLocations = storyStructureInstances.Select(val => val.Value.Location).ToArray();
             StoryStructureInstancesDirty = true;
 
             return TextCommandResult.Success("Ok, story structure location moved to this position. Regenerating chunks at the location should make it appear now.");
@@ -237,8 +237,37 @@ namespace Vintagestory.GameContent
 
             strucRand = new LCGRandom(api.WorldManager.Seed + 1095);
 
-            var asset = api.Assets.Get("worldgen/storystructures.json");
-            scfg = asset.ToObject<WorldGenStoryStructuresConfig>();
+            var assets = api.Assets.GetMany<WorldGenStoryStructuresConfig>(api.Logger, "worldgen/storystructures.json");
+
+            scfg = new WorldGenStoryStructuresConfig();
+            scfg.SchematicYOffsets = new Dictionary<string, int>();
+            scfg.RocktypeRemapGroups = new Dictionary<string, Dictionary<AssetLocation, AssetLocation>>();
+            var structures = new List<WorldGenStoryStructure>();
+
+            foreach (var (code, conf) in assets)
+            {
+                foreach (var remap in conf.RocktypeRemapGroups)
+                {
+                    if (scfg.RocktypeRemapGroups.TryGetValue(remap.Key, out var remapGroup))
+                    {
+                        foreach (var (source, target) in remap.Value)
+                        {
+                            remapGroup.TryAdd(source, target);
+                        }
+                    }
+                    else
+                    {
+                        scfg.RocktypeRemapGroups.TryAdd(remap.Key, remap.Value);
+                    }
+                }
+                foreach (var remap in conf.SchematicYOffsets)
+                {
+                    scfg.SchematicYOffsets.TryAdd(remap.Key, remap.Value);
+                }
+                structures.AddRange(conf.Structures);
+            }
+
+            scfg.Structures = structures.ToArray();
 
             grassRand = new LCGRandom(api.WorldManager.Seed);
             grassDensity = new ClampedSimplexNoise(new double[] { 4 }, new double[] { 0.5 }, grassRand.NextInt());
@@ -250,6 +279,16 @@ namespace Vintagestory.GameContent
 
             blockLayerConfig = BlockLayerConfig.GetInstance(api);
             scfg.Init(api, blockLayerConfig.RockStrata, blockLayerConfig);
+
+            var distScale = api.World.Config.GetDecimal("storyStructuresDistScaling", 1);
+            foreach (var struc in scfg.Structures)
+            {
+                struc.MinSpawnDistX = (int)(struc.MinSpawnDistX * distScale);
+                struc.MinSpawnDistZ = (int)(struc.MinSpawnDistZ * distScale);
+
+                struc.MaxSpawnDistX = (int)(struc.MaxSpawnDistX * distScale);
+                struc.MaxSpawnDistZ = (int)(struc.MaxSpawnDistZ * distScale);
+            }
 
             DetermineStoryStructures();
             // reset strucRand after DetermineStoryStructures was run
@@ -274,7 +313,7 @@ namespace Vintagestory.GameContent
 
         public string GetStoryStructureCodeAt(int x, int z, int category)
         {
-            if (structureLocations == null)
+            if (storyStructureInstances == null)
             {
                 return null;
             }
@@ -300,7 +339,7 @@ namespace Vintagestory.GameContent
 
         public StoryStructureLocation GetStoryStructureAt(int x, int z)
         {
-            if (structureLocations == null)
+            if (storyStructureInstances == null)
             {
                 return null;
             }
@@ -336,8 +375,6 @@ namespace Vintagestory.GameContent
 
         protected void DetermineStoryStructures()
         {
-            var occupiedLocations = new List<Cuboidi>();
-
             var data = api.WorldManager.SaveGame.GetData<List<string>>("attemptedToGenerateStoryLocation");
             data ??= new List<string>();
             var i = 0;
@@ -350,7 +387,12 @@ namespace Vintagestory.GameContent
                     storyStruc.LandformRadius = storyStructure.LandformRadius;
                     storyStruc.GenerationRadius = storyStructure.GenerationRadius;
                     storyStruc.SkipGenerationFlags = storyStructure.SkipGenerationFlags;
-                    occupiedLocations.Add(storyStruc.Location);
+
+                    var schem = storyStructure.schematicData;
+                    var minX = storyStruc.CenterPos.X - schem.SizeX / 2;
+                    var minZ = storyStruc.CenterPos.Z - schem.SizeZ / 2;
+                    var cuboidi = new Cuboidi(minX, storyStruc.CenterPos.Y, minZ, minX + schem.SizeX, storyStruc.CenterPos.Y + schem.SizeY, minZ + schem.SizeZ);
+                    storyStruc.Location = cuboidi;
                 }
                 else
                 {
@@ -359,7 +401,7 @@ namespace Vintagestory.GameContent
                     if (!data.Contains(storyStructure.Code))
                     {
                         strucRand.SetWorldSeed(api.WorldManager.Seed + 1095 + i);
-                        TryAddStoryLocation(storyStructure, ref occupiedLocations);
+                        TryAddStoryLocation(storyStructure);
                         data.Add(storyStructure.Code);
                     }
                 }
@@ -367,14 +409,13 @@ namespace Vintagestory.GameContent
                 i++;
             }
 
-            structureLocations = occupiedLocations.ToArray();
             StoryStructureInstancesDirty = true;
 
             api.WorldManager.SaveGame.StoreData("attemptedToGenerateStoryLocation", data);
             SetupForceLandform();
         }
 
-        private void TryAddStoryLocation(WorldGenStoryStructure storyStructure, ref List<Cuboidi> occupiedLocations)
+        private void TryAddStoryLocation(WorldGenStoryStructure storyStructure)
         {
             BlockPos basePos = null;
             StoryStructureLocation dependentLocation = null;
@@ -468,6 +509,8 @@ namespace Vintagestory.GameContent
                         if (api.WorldManager.BlockingTestMapChunkExists(x, z))
                         {
                             var blockingLoadChunk = api.WorldManager.BlockingLoadChunkColumn(x, z);
+                            if (blockingLoadChunk == null) continue;
+
                             foreach (var chunk in blockingLoadChunk)
                             {
                                 if (chunk.BlocksPlaced > 0 || chunk.BlocksRemoved > 0)
@@ -516,7 +559,6 @@ namespace Vintagestory.GameContent
                 DirX = dirX,
                 SkipGenerationFlags = storyStructure.SkipGenerationFlags
             };
-            occupiedLocations.Add(cuboidi);
         }
 
         private void SetupForceLandform()
@@ -563,12 +605,36 @@ namespace Vintagestory.GameContent
 
         private void Event_SaveGameLoaded()
         {
-            var strucs = api.WorldManager.SaveGame.GetData<OrderedDictionary<string, StoryStructureLocation>>("storystructurelocations");
+            var strucs = api.WorldManager.SaveGame.GetData<API.Datastructures.OrderedDictionary<string, StoryStructureLocation>>("storystructurelocations");
             if (strucs != null)
             {
                 storyStructureInstances = strucs;
-                structureLocations = storyStructureInstances.Select(val => val.Value.Location).ToArray();
             }
+
+            if (GameVersion.IsLowerVersionThan(api.WorldManager.SaveGame.CreatedGameVersion, "1.21.0-pre.3"))
+            {
+                var upgraded = api.WorldManager.SaveGame.GetData<bool>("storyLocUpgrade-1.21.0-pre.3");
+                if(!upgraded)
+                    UpdateOldStoryClaims();
+            }
+        }
+
+        private void UpdateOldStoryClaims()
+        {
+            // in versions before 1.21.0-pre.3 we used custom code specific to tobias and the village to prevent stealing/interacting with things
+            // as of 1.21.0-pre.3 we now have a traverse permission which will allow access to open doors and trapdoors if set, so we want to use that from now on
+            foreach (var landClaim in api.World.Claims.All)
+            {
+                if (landClaim.ProtectionLevel == 10 &&
+                    landClaim.AllowUseEveryone &&
+                    landClaim.LastKnownOwnerName is "custommessage-nadiya" or "custommessage-tobias" or "custommessage-treasurehunter")
+                {
+                    landClaim.AllowUseEveryone = false;
+                    landClaim.AllowTraverseEveryone = true;
+                }
+            }
+
+            api.WorldManager.SaveGame.StoreData("storyLocUpgrade-1.21.0-pre.3", true);
         }
 
         private void OnWorldGenBlockAccessor(IChunkProviderThread chunkProvider)
@@ -579,7 +645,7 @@ namespace Vintagestory.GameContent
         private void OnChunkColumnGen(IChunkColumnGenerateRequest request)
         {
             if (!genStoryStructures) return;
-            if (structureLocations == null) return;
+            if (storyStructureInstances == null) return;
 
             var chunks = request.Chunks;
             int chunkX = request.ChunkX;
@@ -587,12 +653,11 @@ namespace Vintagestory.GameContent
             tmpCuboid.Set(chunkX * chunksize, 0, chunkZ * chunksize, chunkX * chunksize + chunksize, chunks.Length * chunksize, chunkZ * chunksize + chunksize);
             worldgenBlockAccessor.BeginColumn();
 
-            for (int i = 0; i < structureLocations.Length; i++)
+            foreach (var (strucCode, strucInst) in storyStructureInstances)
             {
-                var strucloc = structureLocations[i];
+                var strucloc = strucInst.Location;
                 if (!strucloc.Intersects(tmpCuboid)) continue;
 
-                var strucInst = storyStructureInstances.GetValueAtIndex(i);
                 if (!strucInst.DidGenerate)
                 {
                     strucInst.DidGenerate = true;
@@ -600,7 +665,7 @@ namespace Vintagestory.GameContent
                 }
                 var startPos = new BlockPos(strucloc.X1, strucloc.Y1, strucloc.Z1, 0);
 
-                var structure = scfg.Structures[i];
+                var structure = scfg.Structures.First(s => s.Code == strucCode);
 
                 switch (structure.Placement)
                 {
@@ -713,9 +778,10 @@ namespace Vintagestory.GameContent
                             {
                                 Areas = new List<Cuboidi>() { strucloc },
                                 Description = structure.BuildProtectionDesc,
-                                ProtectionLevel = 10,
+                                ProtectionLevel = structure.ProtectionLevel,
                                 LastKnownOwnerName = structure.BuildProtectionName,
-                                AllowUseEveryone = true
+                                AllowUseEveryone = structure.AllowUseEveryone,
+                                AllowTraverseEveryone = structure.AllowTraverseEveryone
                             });
                         }
                     }
@@ -731,9 +797,10 @@ namespace Vintagestory.GameContent
                             {
                                 Areas = new List<Cuboidi>() { struclocDeva },
                                 Description = structure.BuildProtectionDesc,
-                                ProtectionLevel = 10,
+                                ProtectionLevel = structure.ProtectionLevel,
                                 LastKnownOwnerName = structure.BuildProtectionName,
-                                AllowUseEveryone = true
+                                AllowUseEveryone = structure.AllowUseEveryone,
+                                AllowTraverseEveryone = structure.AllowTraverseEveryone
                             });
                         }
                     }
@@ -755,9 +822,10 @@ namespace Vintagestory.GameContent
                                 {
                                     Areas = new List<Cuboidi>() { cuboidi },
                                     Description = structure.BuildProtectionDesc,
-                                    ProtectionLevel = 10,
+                                    ProtectionLevel = structure.ProtectionLevel,
                                     LastKnownOwnerName = structure.BuildProtectionName,
-                                    AllowUseEveryone = true
+                                    AllowUseEveryone = structure.AllowUseEveryone,
+                                    AllowTraverseEveryone = structure.AllowTraverseEveryone
                                 });
                             }
                         }
@@ -1086,7 +1154,7 @@ namespace Vintagestory.GameContent
                     var struc = structures[ix];
                     var offset = offsets[ix];
                     BlockPos posPlace = pos.AddCopy(offset.X, offset.Y, offset.Z);
-                    struc.PlaceRespectingBlockLayers(blockAccessor, api.World, posPlace, 0, 0, 0, 0, null, new int[0], GenStructures.ReplaceMetaBlocks, true, false, true);
+                    struc.PlaceRespectingBlockLayers(blockAccessor, api.World, posPlace, 0, 0, 0, 0, null, Array.Empty<int>(), GenStructures.ReplaceMetaBlocks, true, false, true);
                     pos.Y += struc.SizeY;
 
                     entranceMinX = Math.Min(entranceMinX, posPlace.X);
@@ -1095,26 +1163,31 @@ namespace Vintagestory.GameContent
                     entranceMaxZ = Math.Max(entranceMaxZ, posPlace.Z+struc.SizeY);
                 }
 
-                var entranceRegion = blockAccessor.GetMapRegion(pos.X / blockAccessor.RegionSize, pos.Z / blockAccessor.RegionSize);
-
-                var location = new Cuboidi(entranceMinX, posY, entranceMinZ, entranceMaxX, pos.Y, entranceMaxZ);
-                entranceRegion.AddGeneratedStructure(new GeneratedStructure()
+                // if we do not find a suitable entrance we do not need to add a landclaim and GeneratedStructure entry since it will not exceed the landclaim the RA already created
+                if (bestIndices.Count > 0)
                 {
-                    Code = param,
-                    Group = hookStruct.group,
-                    Location = location.Clone()
-                });
+                    var entranceRegion = blockAccessor.GetMapRegion(pos.X / blockAccessor.RegionSize, pos.Z / blockAccessor.RegionSize);
 
-                if (hookStruct.buildProtected)
-                {
-                    api.World.Claims.Add(new LandClaim
+                    var location = new Cuboidi(entranceMinX, posY, entranceMinZ, entranceMaxX, pos.Y, entranceMaxZ);
+                    entranceRegion.AddGeneratedStructure(new GeneratedStructure()
                     {
-                        Areas = new List<Cuboidi> { location },
-                        Description = hookStruct.buildProtectionDesc,
-                        ProtectionLevel = 10,
-                        LastKnownOwnerName = hookStruct.buildProtectionName,
-                        AllowUseEveryone = true
+                        Code = param,
+                        Group = hookStruct.group,
+                        Location = location.Clone()
                     });
+
+                    if (hookStruct.buildProtected)
+                    {
+                        api.World.Claims.Add(new LandClaim
+                        {
+                            Areas = new List<Cuboidi> { location },
+                            Description = hookStruct.buildProtectionDesc,
+                            ProtectionLevel = hookStruct.ProtectionLevel,
+                            LastKnownOwnerName = hookStruct.buildProtectionName,
+                            AllowUseEveryone = hookStruct.AllowUseEveryone,
+                            AllowTraverseEveryone = hookStruct.AllowTraverseEveryone
+                        });
+                    }
                 }
             }
 
@@ -1162,7 +1235,7 @@ namespace Vintagestory.GameContent
 
                 }
             }
-            else replaceblockids = new int[0];
+            else replaceblockids = Array.Empty<int>();
 
             int climateUpLeft, climateUpRight, climateBotLeft, climateBotRight;
             IMapRegion region = mapchunk.MapRegion;
@@ -1190,6 +1263,14 @@ namespace Vintagestory.GameContent
                 Location = locationEnd.Clone()
             });
             // do not protect/land claim the top room since it rarely requires players to dig up some blocks
+        }
+
+        public void FinalizeRegeneration(int chunkMidX, int chunkMidZ)
+        {
+            // We need to hard-code finalizing the Devastation Tower in dim2 at the end of a /wgen regen command
+            // because the normal condition for it to be generated (i.e. generate a DevastationLayer chunk column after all the columns in the dim2 land area around the tower are already generated) may not be met
+
+            api.ModLoader.GetModSystem<Timeswitch>().AttemptGeneration(worldgenBlockAccessor);
         }
     }
 }

@@ -2,11 +2,13 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
+using System.Xml.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -15,8 +17,60 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
+    public class ModSystemChiselCommands : ModSystem
+    {
+        ICoreAPI api;
+        public override bool ShouldLoad(EnumAppSide forSide) => forSide == EnumAppSide.Client;
+        public override void StartClientSide(ICoreClientAPI api)
+        {
+            this.api = api;
+            api.ChatCommands
+                .GetOrCreate("debug")
+                .BeginSubCommand("chisel")
+                    .WithDescription("chisel")
+                    .BeginSubCommand("genshape")
+                        .WithDescription("Export a json model file from a chiseled block")
+                        .WithArgs(api.ChatCommands.Parsers.WorldPosition("pos"))
+                        .HandleWith(onGenShape)
+                    .EndSubCommand()
+                .EndSubCommand()
+            ;
+        }
+
+        private TextCommandResult onGenShape(TextCommandCallingArgs args)
+        {
+            var pos = (args[0] as Vec3d);
+            var be = api.World.BlockAccessor.GetBlockEntity<BlockEntityMicroBlock>(pos.AsBlockPos);
+            if (be == null)
+            {
+                return TextCommandResult.Error("This block is not a microblock");
+            }
+
+            var shape = be.GenShape();
+            var text = JsonUtil.ToPrettyString<Shape>(shape);
+            text = 
+                text
+                .Replace("Textures", "textures")
+                .Replace("Elements", "elements")
+                .Replace("Name", "name")
+                .Replace("From", "from")
+                .Replace("To", "to")
+                .Replace("Texture", "texture")
+                .Replace("Faces", "faces")
+                .Replace("Uv", "uv")
+                .Replace("Enabled", "enabled")
+                .Replace("game:", "")
+            ;
+
+            File.WriteAllText("microblockshapefile.json", text);
+            return TextCommandResult.Success("shape file microblockshapefile.json generated");
+        }
+    }
+
     public partial class BlockEntityMicroBlock : BlockEntity, IRotatable, IAcceptsDecor, IMaterialExchangeable
     {
         protected static ThreadLocal<CuboidWithMaterial[]> tmpCuboidTL = new ThreadLocal<CuboidWithMaterial[]>(() =>
@@ -30,7 +84,7 @@ namespace Vintagestory.GameContent
         protected static uint[] defaultOriginalVoxelCuboids => new uint[] { ToUint(0, 0, 0, 16, 16, 16, 0) };
 
         // Set up two unmodifiable default values instead of spamming new objects
-        private static Cuboidf[] noSelectionBox = new Cuboidf[0];
+        private static Cuboidf[] noSelectionBox = Array.Empty<Cuboidf>();
         private static byte[] singleByte255 = new byte[] { 255 };
         private static Vec3f centerBase = new Vec3f(0.5f, 0, 0.5f);
 
@@ -86,6 +140,48 @@ namespace Vintagestory.GameContent
         /// </summary>
         public float VolumeRel => totalVoxels / (16f * 16f * 16f);
 
+
+        public Shape GenShape()
+        {
+            Shape shape = new Shape();
+            CuboidWithMaterial cwm = new CuboidWithMaterial();
+
+            shape.Elements = new ShapeElement[VoxelCuboids.Count];
+            shape.Textures = new Dictionary<string, AssetLocation>();
+            shape.TextureWidth = 16;
+            shape.TextureHeight = 16;
+
+            for (int i = 0; i < VoxelCuboids.Count; i++)
+            {
+                FromUint(VoxelCuboids[i], cwm);
+                var elem = new ShapeElement();
+                elem.Name = "Cuboid" + i;
+                elem.From = [cwm.X1, cwm.Y1, cwm.Z1];
+                elem.To = [cwm.X2, cwm.Y2, cwm.Z2];
+
+                var block = Api.World.Blocks[BlockIds[cwm.Material]];
+
+                elem.Faces = new Dictionary<string, ShapeElementFace>();
+                foreach (var facing in BlockFacing.ALLFACES)
+                {
+                    string texCode = block.Code.ToShortString();
+
+                    CompositeTexture ctex;
+                    if (!block.Textures.TryGetValue(facing.Code, out ctex))
+                    {
+                        block.Textures.TryGetValue("all", out ctex);
+                    }
+
+                    shape.Textures[texCode] = ctex.Base.Path.Replace("*","1");
+
+                    elem.Faces[facing.Code] = new ShapeElementFace() { Texture = texCode, Uv = new float[4] { 0,0,16,16 } };
+                }
+
+                shape.Elements[i] = elem;
+            }
+
+            return shape;
+        }
 
         public override void Initialize(ICoreAPI api)
         {
@@ -275,7 +371,17 @@ namespace Vintagestory.GameContent
         {
             base.GetBlockInfo(forPlayer, dsc);
 
-            dsc.AppendLine(GetPlacedBlockName());
+            
+            if (BlockName?.IndexOf('\n') > 0) {
+                dsc.AppendLine(Lang.Get(BlockName.Substring(BlockName.IndexOf('\n') + 1))); 
+            }
+            else
+            {
+                if (forPlayer.Entity?.RightHandItemSlot?.Itemstack?.Collectible is ItemChisel)
+                {
+                    dsc.AppendLine(Lang.Get("block-chiseledblock"));
+                }
+            }
 
             if (forPlayer?.CurrentBlockSelection?.Face != null && BlockIds != null)
             {
@@ -307,7 +413,8 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                return blockName.Substring(blockName.IndexOf('\n') + 1);
+                int nind = blockName.IndexOf('\n');
+                return Lang.Get(nind > 0 ? blockName.Substring(0, nind) : blockName);
             }
         }
 
@@ -1124,8 +1231,7 @@ namespace Vintagestory.GameContent
 
             for (int i = 0; i < BlockIds.Length; i++)
             {
-                AssetLocation code;
-                if (oldBlockIdMapping != null && oldBlockIdMapping.TryGetValue(BlockIds[i], out code))
+                if (oldBlockIdMapping != null && oldBlockIdMapping.TryGetValue(BlockIds[i], out AssetLocation code))
                 {
                     Block block = worldForNewMappings.GetBlock(code);
                     if (block == null)
@@ -1151,8 +1257,7 @@ namespace Vintagestory.GameContent
             {
                 for (int i = 0; i < DecorIds.Length; i++)
                 {
-                    AssetLocation code;
-                    if (oldBlockIdMapping.TryGetValue(DecorIds[i], out code))
+                    if (oldBlockIdMapping.TryGetValue(DecorIds[i], out AssetLocation code))
                     {
                         Block block = worldForNewMappings.GetBlock(code);
                         if (block == null)
@@ -1383,7 +1488,7 @@ namespace Vintagestory.GameContent
                 hasTopSoil |= block.RenderPass == EnumChunkRenderPass.TopSoil;
                 hasFrostable |= block.Frostable;
             }
-            if (hasTopSoil) mesh.CustomFloats = new CustomMeshDataPartFloat() { InterleaveOffsets = new int[] { 0 }, InterleaveSizes = new int[] { 2 }, InterleaveStride = 8 };
+            if (hasTopSoil) mesh.CustomShorts = new CustomMeshDataPartShort() { InterleaveOffsets = new int[] { 0 }, InterleaveSizes = new int[] { 2 }, InterleaveStride = 4, Conversion = DataConversion.NormalizedFloat };
 
             RefList<VoxelMaterial> decorMatList = loadDecor(capi, voxelCuboids, decorIds, pos, mesh, decorRotations);
 
@@ -1585,10 +1690,9 @@ namespace Vintagestory.GameContent
                         matList.Add(VoxelMaterial.FromBlock(capi, capi.World.GetBlock(id), blockPos, true));
                     }
 
-                    int x0, y0, z0, x1, y1, z1, material;
                     for (int i = 0; i < voxelCuboids.Count; i++)
                     {
-                        FromUint(voxelCuboids[i], out x0, out y0, out z0, out x1, out y1, out z1, out material);
+                        FromUint(voxelCuboids[i], out int x0, out int y0, out int z0, out int x1, out int y1, out int z1, out int material);
                         if (material >= materials.Length) break;
 
                         FillCuboidFace(voxels, x0, y0, z0, x1, y1, z1, matOffset + material, face);
@@ -1914,8 +2018,7 @@ namespace Vintagestory.GameContent
                 xyz.Y--;
                 xyz.X = posPacked - 1;
 
-                float halfSizeX, halfSizeY, halfSizeZ;
-                converter(width, length, out halfSizeX, out halfSizeY, out halfSizeZ);
+                converter(width, length, out float halfSizeX, out float halfSizeY, out float halfSizeZ);
 
                 const float V2F = 1f / 16f;
                 float posX = xyz.X * V2F;
@@ -1961,10 +2064,10 @@ namespace Vintagestory.GameContent
                         flags
                     );
 
-                    if (targetMesh.CustomFloats != null)
+                    if (targetMesh.CustomShorts != null)
                     {
-                        if (topsoiltpos == null) targetMesh.CustomFloats.Add(0, 0);
-                        else targetMesh.CustomFloats.Add(topsoiltpos.x1 + uRel * texWidth - subPixelPaddingx, topsoiltpos.y1 + vRel * texHeight - subPixelPaddingy);
+                        if (topsoiltpos == null) targetMesh.CustomShorts.Add(0, 0);
+                        else targetMesh.CustomShorts.AddPackedUV(topsoiltpos.x1 + uRel * texWidth, topsoiltpos.y1 + vRel * texHeight);
                     }
                 }
 
@@ -2041,9 +2144,9 @@ namespace Vintagestory.GameContent
                         );
                     }
 
-                    if (targetMesh.CustomFloats != null)
+                    if (targetMesh.CustomShorts != null)
                     {
-                        targetMesh.CustomFloats.Add(0, 0, 0, 0, 0, 0, 0, 0);
+                        targetMesh.CustomShorts.Add(0, 0, 0, 0, 0, 0, 0, 0);
                     }
 
                     faceOffset = face * 6;
@@ -2260,13 +2363,11 @@ namespace Vintagestory.GameContent
                     if (oldMajorityName == BlockName) BlockName = null;    // Clear the old BlockName if auto-generated, so that it gets regenerated because the result of auto-generation may change after materials are replaced
                 }
 
-                Dictionary<int, int> replaceByBlock;
                 for (int i = 0; i < BlockIds.Length; i++)
                 {
-                    if (replaceBlocks.TryGetValue(BlockIds[i], out replaceByBlock))
+                    if (replaceBlocks.TryGetValue(BlockIds[i], out Dictionary<int, int> replaceByBlock))
                     {
-                        int newBlockId;
-                        if (replaceByBlock.TryGetValue(centerrockblockid, out newBlockId))
+                        if (replaceByBlock.TryGetValue(centerrockblockid, out int newBlockId))
                         {
                             BlockIds[i] = blockAccessor.GetBlock(newBlockId).Id;
                         }
@@ -2274,6 +2375,8 @@ namespace Vintagestory.GameContent
                 }
             }
 
+            if (!resolveImports) return;
+            
             int newMatIndex = -1;
             int len = BlockIds.Length;
             for (int i = 0; i < len; i++)

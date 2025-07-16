@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using Newtonsoft.Json;
 using Vintagestory.API.Common;
 
+#nullable disable
+
 namespace Vintagestory.GameContent;
 
 public class HookGeneratedStructure
@@ -30,6 +32,12 @@ public class HookGeneratedStructure
     public string buildProtectionDesc;
     [JsonProperty]
     public string buildProtectionName;
+    [JsonProperty]
+    public bool AllowUseEveryone = true;
+    [JsonProperty]
+    public bool AllowTraverseEveryone = true;
+    [JsonProperty]
+    public int ProtectionLevel = 10;
     [JsonProperty]
     public string group;
 }

@@ -4,6 +4,8 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     [JsonObject(MemberSerialization.OptIn)]

@@ -5,6 +5,8 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 
@@ -56,7 +58,7 @@ namespace Vintagestory.GameContent
                 }
                 else
                 {
-                    startStopButton.Text = Lang.Get(prevProgress > 0 ? "Resume Tutorial" : "Start Tutorial");
+                    startStopButton.Text = Lang.Get(prevProgress > 0 ? "button-tutorial-resume" : "Start Tutorial");
                 }
             }
 
@@ -162,6 +164,8 @@ namespace Vintagestory.GameContent
 
         public override void Dispose()
         {
+            base.Dispose();
+
             startStopButton?.Dispose();
             startStopButton = null;
 

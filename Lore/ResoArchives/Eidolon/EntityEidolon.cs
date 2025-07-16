@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -6,6 +6,8 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -32,8 +34,8 @@ namespace Vintagestory.GameContent
 
         static EntityEidolon()
         {
-            AiTaskRegistry.Register("eidolonslam", typeof(AiTaskEidolonSlam));
-            AiTaskRegistry.Register("eidolonmeleeattack", typeof(AiTaskEidolonMeleeAttack));
+            AiTaskRegistry.Register<AiTaskEidolonSlam>("eidolonslam");
+            AiTaskRegistry.Register<AiTaskEidolonMeleeAttack>("eidolonmeleeattack");
         }
 
         public EntityEidolon()
@@ -144,7 +146,7 @@ namespace Vintagestory.GameContent
         {
             if (World.Side == EnumAppSide.Server)
             {
-                var uid = (damageSource.CauseEntity as EntityPlayer)?.PlayerUID;
+                var uid = (damageSource.GetCauseEntity() as EntityPlayer)?.PlayerUID;
                 if (uid != null) hurtByPlayerUids.Add(uid);
             }
 

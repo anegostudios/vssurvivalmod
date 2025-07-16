@@ -1,11 +1,38 @@
-﻿using Vintagestory.API.Common;
+﻿using Vintagestory.API;
+using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Used to rotate a block that has a 'top' face, such as a wooden log. Requires a "rotation" variant group with "ud", "ns", "we" states.
+    /// Uses the "pillar" code.
+    /// </summary>
+    /// <example><code lang="json">
+    ///"behaviors": [
+	///	{
+	///		"name": "Pillar"
+	///	}
+	///]
+    /// </code>
+    /// <code lang="json">
+    ///"variantgroups": [
+	///	{
+	///		"code": "rotation",
+	///		"states": [ "ud", "ns", "we" ]
+	///	}
+	///]
+    /// </code></example>
+    [DocumentAsJson]
     public class BlockBehaviorPillar : BlockBehavior
     {
+        /// <summary>
+        /// Swaps placement between horizontal and vertical.
+        /// </summary>
+        [DocumentAsJson("Optional", "False")]
         bool invertedPlacement;
 
         public BlockBehaviorPillar(Block block) : base(block)

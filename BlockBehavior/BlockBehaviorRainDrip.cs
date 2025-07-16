@@ -1,11 +1,26 @@
 ﻿using System;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Makes a block emit steam particles, and also marks some water blocks as 'boiling'.
+    /// Uses the code "Steaming". This behavior has no properties.
+    /// </summary>
+    /// <example>
+    /// <code lang="json">
+    ///"behaviors": [
+	///	{ "name": "Steaming" },
+	///]
+    /// </code>
+    /// </example>
+    [DocumentAsJson]
     public class BlockBehaviorSteaming : BlockBehavior
     {
         SimpleParticleProperties steamParticles;
@@ -57,6 +72,16 @@ namespace Vintagestory.GameContent
     }
 
 
+    /// <summary>
+    /// Makes a block emit rain particles during or after rainy weather.
+    /// Uses the "RainDrip" code. This behavior has no properties.
+    /// </summary>
+    /// <example><code lang="json">
+    ///"behaviors": [
+	///	{ "name": "RainDrip" },
+	///]
+    /// </code></example>
+    [DocumentAsJson]
     public class BlockBehaviorRainDrip : BlockBehavior
     {
         private Random random;

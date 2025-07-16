@@ -1,7 +1,9 @@
-﻿using System;
+using System;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -19,12 +21,8 @@ namespace Vintagestory.GameContent
 
         float targetTolerangeRange;
 
-        public AiTaskFlyWander(EntityAgent entity) : base(entity) { }
-
-        public override void LoadConfig(JsonObject taskConfig, JsonObject aiConfig)
+        public AiTaskFlyWander(EntityAgent entity, JsonObject taskConfig, JsonObject aiConfig) : base(entity, taskConfig, aiConfig)
         {
-            base.LoadConfig(taskConfig, aiConfig);
-
             stayNearSpawn = taskConfig["stayNearSpawn"].AsBool(false);
             radius = taskConfig["radius"].AsFloat(10f);
             height = taskConfig["height"].AsFloat(5f);
@@ -88,9 +86,12 @@ namespace Vintagestory.GameContent
             targetPos = fromPos.AddCopy(rndx, 0, rndz);
         }
 
-        double targetMotionYaw;
-        public override bool ContinueExecute(float dt)
+        public override bool 
+            ContinueExecute(float dt)
         {
+            //Check if time is still valid for task.
+            if (!IsInValidDayTimeHours(false)) return false;
+
             if (entity.OnGround || entity.World.Rand.NextDouble() < 0.03)
             {
                 ReadjustFlyHeight();

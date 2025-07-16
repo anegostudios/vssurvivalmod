@@ -8,6 +8,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class TapestryTextureSource : ITexPositionSource
@@ -33,6 +35,8 @@ namespace Vintagestory.GameContent
                 AssetLocation texturePath;
 
                 if (textureCode == "ropedcloth" || type == null || type == "") texturePath = new AssetLocation("block/cloth/ropedcloth");
+                else if (textureCode == "stone") texturePath = new AssetLocation("block/stone/rock/granite1");
+                else if (textureCode == "carving") texturePath = new AssetLocation("block/stone/wallcarving/" + type);
                 else texturePath = new AssetLocation("block/cloth/tapestry/" + type);
 
                 AssetLocation cachedPath = texturePath.Clone();
@@ -50,7 +54,7 @@ namespace Vintagestory.GameContent
                     IAsset texAsset = capi.Assets.TryGet(texturePath.Clone().WithPathPrefixOnce("textures/").WithPathAppendixOnce(".png"));
                     if (texAsset == null)
                     {
-                        capi.World.Logger.Warning("Tapestry type '{0}' defined texture '{1}', but no such texture found.", type, texturePath);
+                        capi.World.Logger.Warning("Tapestry/Wallcarving type '{0}' defined texture '{1}', but no such texture found.", type, texturePath);
                         return null;
                     }
                     
@@ -94,7 +98,7 @@ namespace Vintagestory.GameContent
 
         public TVec2i(int x, int y, string intcomp) : base(x,y)
         {
-            this.IntComp = intcomp;
+            IntComp = intcomp;
         }
     }
 
@@ -104,10 +108,8 @@ namespace Vintagestory.GameContent
         BlockFacing orientation;
         bool noLoreEvent;
 
-        static Vec2i left = new Vec2i(-1, 0);
-        static Vec2i right = new Vec2i(1, 0);
-        static Vec2i up = new Vec2i(0, 1);
-        static Vec2i down = new Vec2i(0, -1);
+        public static string[][] tapestryGroups;
+        public static string[][] wallcarvingGroups;
 
         static Dictionary<string, TVec2i[]> neighbours2x1 = new Dictionary<string, TVec2i[]>()
         {
@@ -159,23 +161,31 @@ namespace Vintagestory.GameContent
             capi = api as ICoreClientAPI;
             orientation = BlockFacing.FromCode(Variant["side"]);
 
-            noLoreEvent = Attributes?.IsTrue("noLoreEvent") == true;
+            noLoreEvent = Attributes.IsTrue("noLoreEvent") == true;
+            if(tapestryGroups == null)
+                tapestryGroups = Attributes["tapestryGroups"].AsObject<string[][]>();
+
+            if (wallcarvingGroups == null)
+                wallcarvingGroups = Attributes["wallcarvingGroups"].AsObject<string[][]>();
         }
 
-
+        public override void OnUnloaded(ICoreAPI api)
+        {
+            base.OnUnloaded(api);
+            tapestryGroups = null;
+        }
 
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
             base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
 
             Dictionary<string, MultiTextureMeshRef> tapestryMeshes;
-            tapestryMeshes = ObjectCacheUtil.GetOrCreate(capi, "tapestryMeshesInventory", () => new Dictionary<string, MultiTextureMeshRef>());
+            tapestryMeshes = ObjectCacheUtil.GetOrCreate(capi, FirstCodePart() + "MeshesInventory", () => new Dictionary<string, MultiTextureMeshRef>());
             renderinfo.NormalShaded = false;
-            MultiTextureMeshRef meshref;
 
             string type = itemstack.Attributes.GetString("type", "");
 
-            if (!tapestryMeshes.TryGetValue(type, out meshref))
+            if (!tapestryMeshes.TryGetValue(type, out MultiTextureMeshRef meshref))
             {
                 MeshData mesh = genMesh(false, type, 0, true);
                 meshref = capi.Render.UploadMultiTextureMesh(mesh);
@@ -188,6 +198,7 @@ namespace Vintagestory.GameContent
 
         public static string GetBaseCode(string type)
         {
+            if (type.Length == 0) return null;
             int substr = 0;
             if (char.IsDigit(type[type.Length - 1])) substr++;
             if (char.IsDigit(type[type.Length - 2])) substr++;
@@ -206,6 +217,8 @@ namespace Vintagestory.GameContent
                 if (beTas.Rotten || beTas.Type == null) return;
 
                 string baseCode = GetBaseCode(beTas.Type);
+                if (baseCode == null) return;
+
                 var id = GetLoreChapterId(baseCode);
                 if (id < 0) return;
 
@@ -214,6 +227,9 @@ namespace Vintagestory.GameContent
 
                 switch (size)
                 {
+                    case "1x1":
+                        TryDiscoverLore(byPlayer, id);
+                        return;
                     case "2x1":
                         neighbours = neighbours2x1;
                         break;
@@ -233,37 +249,37 @@ namespace Vintagestory.GameContent
                         neighbours = neighbours2x2;
                         break;
                     default:
-                        throw new Exception("invalid tapestry json config - missing size attribute for size '" + size + "'");
+                        throw new Exception("invalid " + FirstCodePart() + " json config - missing size attribute for size '" + size + "'");
                 }
 
                 string intComp = beTas.Type.Substring(baseCode.Length);
                 TVec2i[] vecs = neighbours[intComp];
 
-                if (isComplete(blockSel.Position, baseCode, vecs)) {
-
-                    ModJournal jour = api.ModLoader.GetModSystem<ModJournal>();
-
-                    if (baseCode == "schematic-c-bloody") baseCode = "schematic-c";
-
-                    var discovery = new LoreDiscovery() { Code = LoreCode, ChapterIds = new List<int>() { id } };
-
-                    jour.TryDiscoverLore(discovery, byPlayer as IServerPlayer);
+                if (isComplete(blockSel.Position, baseCode, vecs))
+                {
+                    TryDiscoverLore(byPlayer, id);
                 }
             }
+        }
+
+        private void TryDiscoverLore(IPlayer byPlayer, int id)
+        {
+            var jour = api.ModLoader.GetModSystem<ModJournal>();
+            var discovery = new LoreDiscovery() { Code = LoreCode, ChapterIds = new List<int>() { id } };
+            jour.TryDiscoverLore(discovery, byPlayer as IServerPlayer);
         }
 
         public string LoreCode
         {
             get
             {
-                return "tapestry";
+                return FirstCodePart();
             }
         }
 
-
         public int GetLoreChapterId(string baseCode)
         {
-            if (!Attributes["loreChapterIds"][baseCode].Exists) throw new Exception("incomplete tapestry json configuration - missing lore piece id");
+            if (!Attributes["loreChapterIds"][baseCode].Exists) throw new Exception("incomplete " + FirstCodePart() + " json configuration - missing lore piece id");
             return Attributes["loreChapterIds"][baseCode].AsInt();
         }
 
@@ -303,11 +319,10 @@ namespace Vintagestory.GameContent
 
         public MeshData genMesh(bool rotten, string type, int rotVariant, bool inventory = false)
         {
-            MeshData mesh;
 
             TapestryTextureSource txs = new TapestryTextureSource(capi, rotten, type, rotVariant);
             Shape shape = capi.TesselatorManager.GetCachedShape(inventory ? ShapeInventory.Base : Shape.Base);
-            capi.Tesselator.TesselateShape("tapestryblock", shape, out mesh, txs);
+            capi.Tesselator.TesselateShape(FirstCodePart() + "block", shape, out MeshData mesh, txs);
 
             return mesh;
         }
@@ -318,7 +333,7 @@ namespace Vintagestory.GameContent
 
             BlockEntityTapestry bet = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityTapestry;
 
-            if (bet.Rotten) return new ItemStack[0];
+            if (bet.Rotten) return Array.Empty<ItemStack>();
 
             stacks[0].Attributes.SetString("type", bet?.Type);
 
@@ -337,15 +352,11 @@ namespace Vintagestory.GameContent
 
             return stack;
         }
-        public override string GetPlacedBlockInfo(IWorldAccessor world, BlockPos pos, IPlayer forPlayer)
-        {
-            return base.GetPlacedBlockInfo(world, pos, forPlayer);
-        }
 
         public override string GetHeldItemName(ItemStack itemStack)
         {
             string type = itemStack.Attributes.GetString("type", "");
-            return Lang.Get("tapestry-name", Lang.GetMatching("tapestry-" + type));
+            return Lang.Get(FirstCodePart() + "-name", Lang.GetMatching(FirstCodePart() + "-" + type));
         }
 
         public override string GetPlacedBlockName(IWorldAccessor world, BlockPos pos)
@@ -354,7 +365,7 @@ namespace Vintagestory.GameContent
             if (bet?.Rotten == true) return Lang.Get("Rotten Tapestry");
 
             string type = bet?.Type;
-            return Lang.Get("tapestry-name", Lang.GetMatching("tapestry-" + type));
+            return Lang.Get(FirstCodePart() + "-name", Lang.GetMatching(FirstCodePart() + "-" + type));
         }
 
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
@@ -375,11 +386,15 @@ namespace Vintagestory.GameContent
         {
             string type = slot.Itemstack.Attributes.GetString("type", "");
             string baseCode = GetBaseCode(type);
+            if (baseCode == null) return "unknown";
+
             string size = Attributes["sizes"][baseCode].AsString();
             string intComp = type.Substring(baseCode.Length);
 
             switch (size)
             {
+                case "1x1":
+                    return "";
                 case "2x1":
                     switch (intComp)
                     {
@@ -429,10 +444,8 @@ namespace Vintagestory.GameContent
                         default: return "unknown";
                     }
                 default:
-                    throw new Exception("invalid tapestry json config - missing size attribute for size '" + size + "'");
+                    throw new Exception("invalid " + FirstCodePart() + " json config - missing size attribute for size '" + size + "'");
             }
         }
-
-
     }
 }

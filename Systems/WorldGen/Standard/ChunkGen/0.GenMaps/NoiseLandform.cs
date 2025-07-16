@@ -3,6 +3,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.ServerMods.NoObf;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     class NoiseLandforms : NoiseBase
@@ -35,7 +37,7 @@ namespace Vintagestory.ServerMods
                 {
                     quantityMutations += variant.Mutations.Length;
                 }
-            }
+                }
 
             landforms.LandFormsByIndex = new LandformVariant[quantityMutations + landforms.Variants.Length];
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -6,301 +6,292 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
-namespace Vintagestory.GameContent
+namespace Vintagestory.GameContent;
+
+#nullable disable
+
+public class AiTaskFlyDiveAttack : AiTaskBaseTargetable
 {
-    public class AiTaskFlyDiveAttack : AiTaskBaseTargetable
+    public bool Enabled { get; set; } = true;
+
+    protected float damage = 2f;
+    protected EnumDamageType damageType = EnumDamageType.BluntAttack;
+    protected int damageTier = 0;
+    protected float knockbackStrength = 1f;
+    protected long lastCheckOrAttackMs;
+    protected float seekingRangeVer = 25f;
+    protected float seekingRangeHor = 25f;
+    protected float damageRange = 5f;
+    protected float moveSpeed = 0.04f;
+    protected TimeSpan attemptToExecuteCooldownMs = TimeSpan.FromMilliseconds(1500);
+    protected TimeSpan targetRetentionTime = TimeSpan.FromSeconds(30);
+    protected const float minVerticalDistance = 9;
+    protected const float minHorizontalDistance = 20;
+    protected const float sensePlayerRange = 15;
+    protected float diveRange = 20;
+    protected float requireMinRange = 30;
+    protected float diveHeight = 30;
+    protected float timeSwitchProbability = 0.5f;
+    protected long globalAttackCooldownMs = 3000;
+
+    protected HashSet<long> didDamageEntity = new();
+    protected EntityPos targetPos = new();
+    protected EntityBehaviorHealth? healthBehavior;
+    protected float damageAccum = 0f;
+    protected bool diving = false;
+    protected bool impacted = false;
+    protected double diveDistance = 1;
+    protected bool shouldUseTimeSwitchThisTime;
+
+    protected int CurrentDimension => entity.Pos.Dimension;
+    protected int TargetDimension => targetEntity?.Pos.Dimension ?? CurrentDimension;
+
+
+    public AiTaskFlyDiveAttack(EntityAgent entity, JsonObject taskConfig, JsonObject aiConfig) : base(entity, taskConfig, aiConfig)
     {
-        public EnumDamageType damageType = EnumDamageType.BluntAttack;
-        public int damageTier = 0;
+        healthBehavior = entity.GetBehavior<EntityBehaviorHealth>();
+        moveSpeed = taskConfig["moveSpeed"].AsFloat(0.04f);
+        damage = taskConfig["damage"].AsFloat(2);
+        knockbackStrength = taskConfig["knockbackStrength"].AsFloat(GameMath.Sqrt(damage / 2f));
+        seekingRangeHor = taskConfig["seekingRangeHor"].AsFloat(25);
+        seekingRangeVer = taskConfig["seekingRangeVer"].AsFloat(25);
+        damageRange = taskConfig["damageRange"].AsFloat(2);
+        damageType = Enum.Parse<EnumDamageType>(taskConfig["damageType"].AsString("BluntAttack"));
+        damageTier = taskConfig["damageTier"].AsInt(0);
+        attemptToExecuteCooldownMs = TimeSpan.FromMilliseconds(taskConfig["attemptToExecuteCooldownMs"].AsInt(1500));
+        targetRetentionTime = TimeSpan.FromSeconds(taskConfig["targetRetentionTimeSec"].AsInt(30));
+        diveHeight = taskConfig["diveHeight"].AsFloat(30);
+        timeSwitchProbability = taskConfig["timeSwitchProbability"].AsFloat(0.5f);
+        globalAttackCooldownMs = taskConfig["globalAttackCooldownMs"].AsInt(3000);
+    }
 
-        protected long lastCheckOrAttackMs;
-        protected float damage = 2f;
-        protected float knockbackStrength = 1f;
-        protected float seekingRangeVer = 25f;
-        protected float seekingRangeHor = 25f;
-        protected float damageRange = 5f;
-        protected float moveSpeed = 0.04f;
-        protected HashSet<long> didDamageEntity = new HashSet<long>();
-        protected EntityPos targetPos = new EntityPos();
-        protected Vec3d beginAttackPos;
+    public override bool ShouldExecute()
+    {
+        if (!Enabled) return false;
 
-        protected float diveRange = 20;
-        protected float requireMinRange = 30;
-
-        public bool Enabled = true;
-
-        public AiTaskFlyDiveAttack(EntityAgent entity) : base(entity)
+        long elapsedMs = entity.World.ElapsedMilliseconds;
+        if (cooldownUntilMs > elapsedMs)
         {
+            return false;
         }
 
-        public override void LoadConfig(JsonObject taskConfig, JsonObject aiConfig)
-        {
-            base.LoadConfig(taskConfig, aiConfig);
+        cooldownUntilMs = entity.World.ElapsedMilliseconds + (long)attemptToExecuteCooldownMs.TotalMilliseconds;
 
-            moveSpeed = taskConfig["moveSpeed"].AsFloat(0.04f);
-            damage = taskConfig["damage"].AsFloat(2);
-            knockbackStrength = taskConfig["knockbackStrength"].AsFloat(GameMath.Sqrt(damage / 2f));
-            seekingRangeHor = taskConfig["seekingRangeHor"].AsFloat(25);
-            seekingRangeVer = taskConfig["seekingRangeVer"].AsFloat(25);
-            damageRange = taskConfig["damageRange"].AsFloat(2);
-            string strdt = taskConfig["damageType"].AsString();
-            if (strdt != null)
-            {
-                this.damageType = (EnumDamageType)Enum.Parse(typeof(EnumDamageType), strdt, true);
-            }
-            this.damageTier = taskConfig["damageTier"].AsInt(0);
+        if (!PreconditionsSatisifed()) return false;
+
+        if (!checkGlobalAttackCooldown())
+        {
+            return false;
         }
 
-        public override void OnEntityLoaded() { }
-        public override bool ShouldExecute()
+        Vec3d pos = entity.ServerPos.XYZ.Add(0, entity.SelectionBox.Y2 / 2, 0).Ahead(entity.SelectionBox.XSize / 2, 0, entity.ServerPos.Yaw);
+
+        if (entity.World.ElapsedMilliseconds - attackedByEntityMs > (long)targetRetentionTime.TotalMilliseconds)
         {
-            if (!Enabled) return false;
+            attackedByEntity = null;
+        }
 
-            long ellapsedMs = entity.World.ElapsedMilliseconds;
-            if (cooldownUntilMs > ellapsedMs)
+        if (retaliateAttacks && attackedByEntity != null && attackedByEntity.Alive && attackedByEntity.IsInteractable && IsTargetableEntity(attackedByEntity, sensePlayerRange, true))
+        {
+            targetEntity = attackedByEntity;
+        }
+        else
+        {
+            targetEntity = entity.World.GetNearestEntity(pos, seekingRangeHor, seekingRangeVer, (e) =>
             {
-                return false;
-            }
+                return IsTargetableEntity(e, seekingRangeHor) && hasDirectContact(e, seekingRangeHor, seekingRangeVer);
+            });
+        }
 
-            // Don't try too often
-            cooldownUntilMs = entity.World.ElapsedMilliseconds + 1500;
+        lastCheckOrAttackMs = entity.World.ElapsedMilliseconds;
 
-            if (!PreconditionsSatisifed()) return false;
+        bool targetOk = targetEntity != null && entity.ServerPos.Y - targetEntity.ServerPos.Y > minVerticalDistance && entity.ServerPos.HorDistanceTo(targetEntity.ServerPos) > minHorizontalDistance;
+        return targetOk;
+    }
+    public override void StartExecute()
+    {
+        didDamageEntity.Clear();
+        targetPos.SetFrom(targetEntity.ServerPos);
+        diving = false;
+        impacted = false;
+        base.StartExecute();
+    }
+    public override bool 
+        ContinueExecute(float dt)
+    {
+        //Check if time is still valid for task.
+        if (!IsInValidDayTimeHours(false)) return false;
 
-            Vec3d pos = entity.ServerPos.XYZ.Add(0, entity.SelectionBox.Y2 / 2, 0).Ahead(entity.SelectionBox.XSize / 2, 0, entity.ServerPos.Yaw);
+        if (timeoutExceeded())
+        {
+            return false;
+        }
+        
+        updateTargetPosition();
 
-            if (entity.World.ElapsedMilliseconds - attackedByEntityMs > 30000)
-            {
-                attackedByEntity = null;
-            }
-            if (retaliateAttacks && attackedByEntity != null && attackedByEntity.Alive && attackedByEntity.IsInteractable && IsTargetableEntity(attackedByEntity, 15, true))
-            {
-                targetEntity = attackedByEntity;
-            }
-            else
-            {
-                targetEntity = entity.World.GetNearestEntity(pos, seekingRangeHor, seekingRangeVer, (e) =>
-                {
-                    return IsTargetableEntity(e, seekingRangeHor) && hasDirectContact(e, seekingRangeHor, seekingRangeVer);
-                });
-            }
-            
-            lastCheckOrAttackMs = entity.World.ElapsedMilliseconds;
-
-            bool targetOk = targetEntity != null && entity.ServerPos.Y - targetEntity.ServerPos.Y > 9 && entity.ServerPos.HorDistanceTo(targetEntity.ServerPos) > 20;
-            return targetOk;
+        if (impacted)
+        {
+            return onImpact();
         }
 
 
-        public override void StartExecute()
+        if (!diving)
         {
-            didDamageEntity.Clear();
+            // If too close, fly up
+            if (entity.ServerPos.Y - targetPos.Y < diveHeight)
+            {
+                entity.ServerPos.Motion.Y = 0.15f;
+                entity.ServerPos.Motion.X *= 0.9f;
+                entity.ServerPos.Motion.Z *= 0.9f;
+
+                followTargetOnFlyUp();
+
+                return true;
+            }
+
+            // Far enough, start dive
+            entity.AnimManager.StopAnimation("fly-idle");
+            entity.AnimManager.StopAnimation("fly-flapactive");
+            entity.AnimManager.StopAnimation("fly-flapcruise");
+            entity.AnimManager.StartAnimation("dive");
+
+            diveDistance = distanceToTarget();
+
+            diving = true;
+        }
+
+        followTarget();
+
+        if (entity.Collided)
+        {
+            entity.AnimManager.StopAnimation("dive");
+            entity.AnimManager.StartAnimation("slam");
+            impacted = true;
+
+            attackEntities();
+
+            return onImpact();
+        }
+
+        damageAccum += dt;
+        if (damageAccum > 0.2f)
+        {
+            attackEntities();
+
+            damageAccum = 0;
+        }
+
+        return true;
+
+    }
+    public override void FinishExecute(bool cancelled)
+    {
+        pathTraverser.Stop();
+        //entity.AnimManager.StartAnimation("fly-flapactive-fast");
+        entity.AnimManager.StartAnimation("fly-idle");
+        entity.AnimManager.StopAnimation("slam");
+
+        (entity as EntityErel).LastAttackTime = entity.World.ElapsedMilliseconds;
+
+        base.FinishExecute(cancelled);
+    }
+
+    protected bool checkGlobalAttackCooldown()
+    {
+        long lastAttack = (entity as EntityErel).LastAttackTime;
+        long currentTime = entity.World.ElapsedMilliseconds;
+
+        return currentTime - lastAttack > globalAttackCooldownMs;
+    }
+    protected void updateTargetPosition()
+    {
+        if (targetEntity.Pos.Dimension == entity.Pos.Dimension)
+        {
             targetPos.SetFrom(targetEntity.ServerPos);
-            diving = false;
-            impact = false;
-            base.StartExecute();
         }
+    }
 
-        float damageAccum = 0f;
-        bool diving = false;
-        bool impact = false;
+    protected bool onImpact()
+    {
+        entity.ServerPos.Roll = 0;
+        entity.ServerPos.Motion.Set(0, 0, 0);
 
-        public override bool ContinueExecute(float dt)
+        RunningAnimation state = entity.AnimManager.GetAnimationState("slam");
+
+        if (state != null && state.AnimProgress > 0.5f)
         {
-            // Update target position for as long as the target is in the same dimension
-            if (targetEntity.Pos.Dimension == entity.Pos.Dimension)
-            {
-                targetPos.SetFrom(targetEntity.ServerPos);
-            }
-
-            if (!impact)
-            {
-                var hordist = entity.ServerPos.HorDistanceTo(targetPos);
-                if (!diving && entity.ServerPos.Y - targetPos.Y < hordist * 1.35f)
-                {
-                    entity.ServerPos.Motion.Y = 0.15f;
-                    entity.ServerPos.Motion.X *= 0.9f;
-                    entity.ServerPos.Motion.Z *= 0.9f;
-                    return true;
-                }
-
-                if (!diving)
-                {
-                    entity.AnimManager.StopAnimation("fly-idle");
-                    entity.AnimManager.StopAnimation("fly-flapactive");
-                    entity.AnimManager.StopAnimation("fly-flapcruise");
-                    entity.AnimManager.StartAnimation("dive");
-                }
-
-                diving = true;
-
-
-                var offs = (targetPos.XYZ - entity.ServerPos.XYZ);
-                var dir = offs.Normalize();
-                entity.ServerPos.Motion.X = dir.X * moveSpeed * 10;
-                entity.ServerPos.Motion.Y = dir.Y * moveSpeed * 10;
-                entity.ServerPos.Motion.Z = dir.Z * moveSpeed * 10;
-
-                double speed = entity.ServerPos.Motion.Length();
-                entity.ServerPos.Roll = (float)Math.Asin(GameMath.Clamp(-dir.Y / speed, -1, 1));
-                entity.ServerPos.Yaw = (float)Math.Atan2(offs.X, offs.Z);
-
-
-                damageAccum += dt;
-                if (damageAccum > 0.2f)
-                {
-                    damageAccum = 0;
-
-                    List<Entity> attackableEntities = new List<Entity>();
-                    var ep = entity.Api.ModLoader.GetModSystem<EntityPartitioning>();
-                    ep.GetNearestEntity(entity.ServerPos.XYZ, damageRange + 1, (e) =>
-                    {
-                        if (IsTargetableEntity(e, damageRange) && hasDirectContact(e, damageRange, damageRange) && !didDamageEntity.Contains(entity.EntityId))
-                        {
-                            attackableEntities.Add(e);
-                        }
-                        return false;
-                    }, EnumEntitySearchType.Creatures);
-
-
-                    foreach (var attackEntity in attackableEntities)
-                    {
-                        attackEntity.ReceiveDamage(
-                            new DamageSource()
-                            {
-                                Source = EnumDamageSource.Entity,
-                                SourceEntity = entity,
-                                Type = damageType,
-                                DamageTier = damageTier,
-                                KnockbackStrength = knockbackStrength
-                            },
-                            damage * GlobalConstants.CreatureDamageModifier
-                        );
-
-                        if (entity is IMeleeAttackListener imal)
-                        {
-                            imal.DidAttack(attackEntity);
-                        }
-
-                        didDamageEntity.Add(entity.EntityId);
-                    }
-                }
-
-
-                if (entity.Collided)
-                {
-                    entity.AnimManager.StopAnimation("dive");
-                    entity.AnimManager.StartAnimation("slam");
-                    impact = true;
-                }
-            }
-
-            if (impact)
-            {
-                entity.ServerPos.Roll = 0;
-                entity.ServerPos.Motion.Set(0, 0, 0);
-            }
-            if (!impact) return true;
-
-            var state = entity.AnimManager.GetAnimationState("slam");
-
-            if (state != null && state.AnimProgress > 0.5f)
-            {
-                entity.AnimManager.StartAnimation("takeoff");
-            }
-
-            return state == null || state.AnimProgress < 0.6f;
+            entity.AnimManager.StartAnimation("takeoff");
         }
 
-        public override void FinishExecute(bool cancelled)
+        return state == null || state.AnimProgress < 0.6f;
+    }
+    protected void followTargetOnFlyUp()
+    {
+        Vec3d targetVector = targetPos.XYZ - entity.ServerPos.XYZ;
+        Vec3d direction = targetVector.Normalize();
+
+        double speed = entity.ServerPos.Motion.Length();
+        entity.ServerPos.Roll = -15 * GameMath.DEG2RAD;// (float)Math.Asin(GameMath.Clamp(direction.Y / speed, -1, 1));
+        entity.ServerPos.Yaw = (float)Math.Atan2(targetVector.X, targetVector.Z);
+    }
+    protected void followTarget()
+    {
+        Vec3d targetVector = targetPos.XYZ - entity.ServerPos.XYZ;
+        Vec3d direction = targetVector.Normalize();
+        entity.ServerPos.Motion.X = direction.X * moveSpeed * 10;
+        entity.ServerPos.Motion.Y = direction.Y * moveSpeed * 10;
+        entity.ServerPos.Motion.Z = direction.Z * moveSpeed * 10;
+
+        double speed = entity.ServerPos.Motion.Length();
+        if (speed > 0.01)
         {
-            pathTraverser.Stop();
-            entity.AnimManager.StartAnimation("fly-flapactive-fast");
-
-            base.FinishExecute(cancelled);
+            entity.ServerPos.Roll = (float)Math.Asin(GameMath.Clamp(-direction.Y / speed, -1, 1));
         }
-
-
-        int approachPoints;
-        protected virtual Vec3d[] getSwoopPath(Entity target, int its)
+        entity.ServerPos.Yaw = (float)Math.Atan2(targetVector.X, targetVector.Z);
+    }
+    protected void attackEntities()
+    {
+        List<Entity> attackableEntities = new();
+        EntityPartitioning ep = entity.Api.ModLoader.GetModSystem<EntityPartitioning>();
+        ep.GetNearestEntity(entity.ServerPos.XYZ, damageRange + 1, (e) =>
         {
-            bool withDive = true;
-            var targetPos = target.ServerPos.XYZ.AddCopy(target.LocalEyePos);
-            var selfPos = entity.ServerPos.XYZ;
-
-            // Approach
-            var deltaVec = (targetPos - entity.ServerPos.XYZ);
-            var approachDist = deltaVec.HorLength();
-            var unitDist = deltaVec.Normalize();
-
-            int apprinterval = 3;
-            approachPoints = Math.Max(0, (int)((approachDist - diveRange*0.8f) / apprinterval));
-
-            //int outits = 0;// (simplifiedOut ? its / 3 : its);
-            Vec3d[] points = new Vec3d[(withDive ? its : 0) + approachPoints];
-
-            // Get within 20 blocks first
-            for (int i = 0; i < approachPoints; i++)
+            if (IsTargetableEntity(e, damageRange) && hasDirectContact(e, damageRange, damageRange) && !didDamageEntity.Contains(entity.EntityId))
             {
-                float p = (float)i / approachPoints;
-                points[i] = new Vec3d(selfPos.X + unitDist.X*i*apprinterval, targetPos.Y + 30*p, selfPos.Z + unitDist.Z*i*apprinterval);
+                attackableEntities.Add(e);
             }
-
-            // Swoop in
-            if (withDive)
-            {
-                var start1 = approachPoints <= 0 ? selfPos : points[approachPoints - 1];
-                var end1 = new Vec3d(targetPos.X, selfPos.Y, targetPos.Z);
-
-                var start2 = end1;
-                var end2 = targetPos;
-
-                var delta1 = end1 - start1;
-                var delta2 = end2 - start2;
+            return false;
+        }, EnumEntitySearchType.Creatures);
 
 
-                for (int i = 0; i < its; i++)
+        foreach (Entity attackEntity in attackableEntities)
+        {
+            attackEntity.ReceiveDamage(
+                new DamageSource()
                 {
-                    double p = (double)i / its;
+                    Source = EnumDamageSource.Entity,
+                    SourceEntity = entity,
+                    Type = damageType,
+                    DamageTier = damageTier,
+                    KnockbackStrength = knockbackStrength
+                },
+                damage * GlobalConstants.CreatureDamageModifier
+            );
 
-                    var mid1 = start1 + p * delta1;
-                    var mid2 = start2 + p * delta2;
-
-                    points[approachPoints + i] = (1 - p) * mid1 + p * mid2;
-                }
-            }
-
-            // Swoop out
-            /*start1 = points[its - 1];
-            var offs = (target.ServerPos.XYZ - entity.ServerPos.XYZ) * 1;
-            end1 = new Vec3d(targetPos.X + offs.X, targetPos.Y, targetPos.Z + offs.Z);
-
-            start2 = end1;
-            end2 = new Vec3d(targetPos.X + offs.X * 1.3f, targetPos.Y + (beginAttackPos.Y - targetPos.Y) * 0.5f, targetPos.Z + offs.Z * 1.3f);
-
-            delta1 = end1 - start1;
-            delta2 = end2 - start2;
-
-
-            for (int i = 0; i < outits; i++)
+            if (entity is IMeleeAttackListener imal)
             {
-                double p = (double)i / outits;
-
-                var mid1 = start1 + p * delta1;
-                var mid2 = start2 + p * delta2;
-
-                points[approachPoints+its + i] = (1 - p) * mid1 + p * mid2;
+                imal.DidAttack(attackEntity);
             }
-            */
-#if DEBUG
-            var zero = Vec3f.Zero;
-            for (int i = 0; i < points.Length; i++)
-            {
-                entity.World.SpawnParticles(1, ColorUtil.WhiteArgb, points[i], points[i], zero, zero, 3, 0, 1);
-            }
-#endif
 
-            return points;
+            didDamageEntity.Add(entity.EntityId);
         }
+    }
+
+    protected double distanceToTarget()
+    {
+        double xDistance = entity.ServerPos.X - targetEntity.Pos.X;
+        double yDistance = entity.ServerPos.Y - targetEntity.Pos.Y;
+        double zDistance = entity.ServerPos.Z - targetEntity.Pos.Z;
+
+        return Math.Sqrt(xDistance * xDistance + yDistance * yDistance + zDistance * zDistance);
     }
 }

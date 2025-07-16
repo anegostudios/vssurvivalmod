@@ -11,6 +11,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class CodeAndChance
@@ -30,7 +32,8 @@ namespace Vintagestory.GameContent
     public class BlockEntityFarmland : BlockEntity, IFarmlandBlockEntity, IAnimalFoodSource, ITexPositionSource
     {
         protected static Random rand = new Random();
-        public static OrderedDictionary<string, float> Fertilities = new OrderedDictionary<string, float>{
+        public static API.Datastructures.OrderedDictionary<string, float> Fertilities = new ()
+        {
             { "verylow", 5 },
             { "low", 25 },
             { "medium", 50 },
@@ -306,8 +309,7 @@ namespace Vintagestory.GameContent
             float dist = 99;
             if (searchNearbyWater)
             {
-                EnumWaterSearchResult res;
-                dist = GetNearbyWaterDistance(out res, 0);
+                dist = GetNearbyWaterDistance(out EnumWaterSearchResult res, 0);
                 if (res == EnumWaterSearchResult.Deferred) return false; // Wait with updating until neighbouring chunks are loaded
                 if (res != EnumWaterSearchResult.Found) dist = 99;
 
@@ -460,8 +462,7 @@ namespace Vintagestory.GameContent
             {
                 if (!nearbyWaterTested)
                 {
-                    EnumWaterSearchResult res;
-                    waterDistance = GetNearbyWaterDistance(out res, (float)hourIntervall);
+                    waterDistance = GetNearbyWaterDistance(out EnumWaterSearchResult res, (float)hourIntervall);
                     if (res == EnumWaterSearchResult.Deferred) return; // Wait with updating until neighbouring chunks are loaded
                     if (res == EnumWaterSearchResult.NotFound) waterDistance = 99;
                     nearbyWaterTested = true;
@@ -700,7 +701,8 @@ namespace Vintagestory.GameContent
             return 0f;
         }
 
-        public bool TryPlant(Block block)
+        
+        public bool TryPlant(Block block, ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel)
         {
             if (CanPlant() && block.CropProps != null)
             {
@@ -709,7 +711,7 @@ namespace Vintagestory.GameContent
 
                 foreach (CropBehavior behavior in block.CropProps.Behaviors)
                 {
-                    behavior.OnPlanted(Api);
+                    behavior.OnPlanted(Api, itemslot, byEntity, blockSel);
                 }
 
                 return true;
@@ -837,8 +839,7 @@ namespace Vintagestory.GameContent
 
         internal int GetCropStage(Block block)
         {
-            int stage;
-            int.TryParse(block.LastCodePart(), out stage);
+            int.TryParse(block.LastCodePart(), out int stage);
             return stage;
         }
 

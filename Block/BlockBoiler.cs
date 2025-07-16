@@ -5,6 +5,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockBoiler : BlockLiquidContainerBase, IIgnitable
@@ -144,7 +146,7 @@ namespace Vintagestory.GameContent
                         AdvancedParticleProperties bps = props[i];
                         bps.WindAffectednesAtPos = windAffectednessAtPos;
                         bps.basePos.X = pos.X + firepitBlock.TopMiddlePos.X;
-                        bps.basePos.Y = pos.Y + firepitBlock.TopMiddlePos.Y;
+                        bps.basePos.Y = pos.InternalY + firepitBlock.TopMiddlePos.Y;
                         bps.basePos.Z = pos.Z + firepitBlock.TopMiddlePos.Z;
 
                         manager.Spawn(bps);

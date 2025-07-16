@@ -7,6 +7,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityLocustNest : BlockEntitySpawner
@@ -81,9 +83,12 @@ namespace Vintagestory.GameContent
             {
                 if (Api.World.Rand.NextDouble() < 0.25 && insideLocustCount > 0)
                 {
+                    var entityCodes = Data.EntityCodes;
+                    if (entityCodes.Length == 0) return;     // Apparently can sometimes occur, on TOPS seen a few times per month. For the likely cause see BESpawner.cs line 100 which can write a 0-length entityCodes to the tree
+
                     ICoreServerAPI sapi = Api as ICoreServerAPI;
-                    int rnd = sapi.World.Rand.Next(Data.EntityCodes.Length);
-                    EntityProperties type = Api.World.GetEntityType(new AssetLocation(Data.EntityCodes[rnd]));
+                    int rnd = sapi.World.Rand.Next(entityCodes.Length);
+                    EntityProperties type = Api.World.GetEntityType(new AssetLocation(entityCodes[rnd]));
 
                     if (type == null) return;
 
@@ -147,8 +152,12 @@ namespace Vintagestory.GameContent
             herdId = tree.GetLong("herdId");
             insideLocustCount = tree.GetInt("insideLocustCount");
 
-            // Maybe an old nest
-            if (Data.EntityCodes != null && Data.EntityCodes.Length > 0 && Data.EntityCodes[0] == "locust")
+            // Maybe an old or broken nest
+            if (Data.EntityCodes == null || Data.EntityCodes.Length == 0)
+            {
+                Data.EntityCodes = new string[] { "locust-bronze" };
+            }
+            else if (Data.EntityCodes[0] == "locust")
             {
                 Data.EntityCodes[0] = "locust-bronze";
             }

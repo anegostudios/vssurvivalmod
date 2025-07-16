@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     class MapLayerOceans : MapLayerBase
@@ -26,10 +28,10 @@ namespace Vintagestory.ServerMods
             noiseOcean = new NoiseOcean(seed, scale, landCoverRate);
             this.requireLandAt = requireLandAt;
             this.scale = scale;
-            int woctaves = 4;
-            float wscale = 2f * TerraGenConfig.oceanMapScale;
+            int woctaves = 3;
+            float wscale = scale;
             float wpersistence = 0.9f;
-            wobbleIntensity = TerraGenConfig.oceanMapScale * 1.5f * 1.2f;
+            wobbleIntensity = TerraGenConfig.oceanMapScale * scale / TerraGenConfig.oceanMapScale;
             noisegenX = NormalizedSimplexNoise.FromDefaultOctaves(woctaves, 1 / wscale, wpersistence, seed + 2);
             noisegenY = NormalizedSimplexNoise.FromDefaultOctaves(woctaves, 1 / wscale, wpersistence, seed + 1231296);
             this.requiresSpawnOffset = requiresSpawnOffset;

@@ -7,6 +7,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 using Vintagestory.Essentials;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 
@@ -97,11 +99,11 @@ namespace Vintagestory.GameContent
         }
 
 
-        public void Pause()
+        public void Pause(EnumInteruptionType interuptionType)
         {
             foreach (var val in ActiveActivitiesBySlot.Values)
             {
-                val?.Pause();
+                val?.Pause(interuptionType);
             }
         }
 

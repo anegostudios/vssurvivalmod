@@ -1,6 +1,8 @@
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent;
 
 class BlockCandle : BlockBunchOCandles

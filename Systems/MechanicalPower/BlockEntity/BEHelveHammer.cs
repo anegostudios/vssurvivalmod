@@ -5,6 +5,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent.Mechanics
 {
     // Concept:
@@ -129,8 +131,7 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 if (textureCode == "metal")
                 {
-                    CompositeTexture ctex;
-                    if (hammerStack.Item.Textures.TryGetValue(textureCode, out ctex))
+                    if (hammerStack.Item.Textures.TryGetValue(textureCode, out CompositeTexture ctex))
                     {
                         AssetLocation texturePath = ctex.Base;
                         return capi.BlockTextureAtlas[texturePath];
@@ -202,10 +203,9 @@ namespace Vintagestory.GameContent.Mechanics
         {
             Block block = Api.World.BlockAccessor.GetBlock(Pos);
             if (block.BlockId == 0) return null;
-            MeshData mesh;
             ITesselatorAPI mesher = ((ICoreClientAPI)Api).Tesselator;
             Shape shape = API.Common.Shape.TryGet(Api, "shapes/block/wood/mechanics/helvehammer.json");
-            mesher.TesselateShape("helvehammerhead", shape, out mesh, this, new Vec3f(0, block.Shape.rotateY, 0));
+            mesher.TesselateShape("helvehammerhead", shape, out MeshData mesh, this, new Vec3f(0, block.Shape.rotateY, 0));
 
             return mesh;
         }

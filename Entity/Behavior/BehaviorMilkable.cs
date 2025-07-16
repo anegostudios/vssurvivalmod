@@ -7,6 +7,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class EntityBehaviorMilkable : EntityBehavior
@@ -21,6 +23,7 @@ namespace Vintagestory.GameContent
 
         float lactatingDaysAfterBirth = 21;
         float yieldLitres = 10f;
+        ItemStack liquidStack;
 
         long lastIsMilkingStateTotalMs;
 
@@ -36,7 +39,15 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(properties, attributes);
 
+            liquidStack = new ItemStack(entity.World.GetItem(new AssetLocation("milkportion")));
+            lactatingDaysAfterBirth = attributes["lactatingDaysAfterBirth"].AsFloat(21);
             yieldLitres = attributes["yieldLitres"].AsFloat(10);
+            JsonItemStack liquidJsonStack = attributes["liquidStack"].AsObject<JsonItemStack>();
+            
+            if (liquidJsonStack?.Resolve(entity.World, "milking liquid stack") ?? false)
+            {
+                liquidStack = liquidJsonStack.ResolvedItemstack;
+            }
         }
 
         public override string PropertyName()
@@ -198,7 +209,7 @@ namespace Vintagestory.GameContent
 
             if (entity.World.Side == EnumAppSide.Server)
             {
-                ItemStack contentStack = new ItemStack(byEntity.World.GetItem(new AssetLocation("milkportion")));
+                ItemStack contentStack = liquidStack.Clone();
                 contentStack.StackSize = 999999;
 
                 if (slot.Itemstack.StackSize == 1)
@@ -237,7 +248,7 @@ namespace Vintagestory.GameContent
             if (!entity.Alive) return;
 
             bhmul = entity.GetBehavior<EntityBehaviorMultiply>();
-            // Can only be milked for 21 days after giving birth
+            // Can only be milked for a specific amount of time after giving birth
             double lactatingDaysLeft = lactatingDaysAfterBirth - Math.Max(0, entity.World.Calendar.TotalDays - bhmul.TotalDaysLastBirth);
 
             if (bhmul != null && lactatingDaysLeft > 0)
@@ -252,7 +263,7 @@ namespace Vintagestory.GameContent
                     }
 
                     int generation = entity.WatchedAttributes.GetInt("generation", 0);
-                    if (generation < 4f)
+                    if (generation < 3)
                     {
                         if (generation == 0)
                         {

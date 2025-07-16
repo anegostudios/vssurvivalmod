@@ -14,6 +14,8 @@ using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 using Vintagestory.ServerMods;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class CmdTimeswitch
@@ -29,30 +31,31 @@ namespace Vintagestory.GameContent
             cmdapi
                 .Create("timeswitch")
                 .WithDescription("Timeswitch and dimensions switching commands")
-                .RequiresPrivilege(Privilege.chat)
+                .RequiresPrivilege(Privilege.controlserver)
                 .BeginSubCommand("toggle")
-                        .WithDescription("Toggle timeswitch state for the calling player")
-                        .RequiresPlayer()
-                        .HandleWith(ToggleState)
+                    .RequiresPrivilege(Privilege.chat)
+                    .WithDescription("Toggle timeswitch state for the calling player")
+                    .RequiresPlayer()
+                    .HandleWith(ToggleState)
                 .EndSubCommand()
                 .BeginSubCommand("start")
-                        .WithDescription("Start the system (to be used by a proximity trigger")
-                        .HandleWith(Start)
+                    .WithDescription("Start the system (to be used by a proximity trigger")
+                    .HandleWith(Start)
                 .EndSubCommand()
                 .BeginSubCommand("setpos")
-                        .WithDescription("Set the chunk column used for timeswitching")
-                        .WithArgs(parsers.WorldPosition("column position"))
-                        .HandleWith(SetPos)
+                    .WithDescription("Set the chunk column used for timeswitching")
+                    .WithArgs(parsers.WorldPosition("column position"))
+                    .HandleWith(SetPos)
                 .EndSubCommand()
                 .BeginSubCommand("copy")
-                        .WithDescription("Copy blocks from normal dimension to timeswitch dimension")
-                        .WithAdditionalInformation("(Destructive of the timeswitch dimension! Use argument 'confirm' to confirm)")
-                        .WithArgs(parsers.OptionalWord("confirmation"))
-                        .HandleWith(CopyBlocks)
+                    .WithDescription("Copy blocks from normal dimension to timeswitch dimension")
+                    .WithAdditionalInformation("(Destructive of the timeswitch dimension! Use argument 'confirm' to confirm)")
+                    .WithArgs(parsers.OptionalWord("confirmation"))
+                    .HandleWith(CopyBlocks)
                 .EndSubCommand()
                 .BeginSubCommand("relight")
-                        .WithDescription("Relight the alternate dimension")
-                        .HandleWith(Relight)
+                    .WithDescription("Relight the alternate dimension")
+                    .HandleWith(Relight)
                 .EndSubCommand()
             ;
         }

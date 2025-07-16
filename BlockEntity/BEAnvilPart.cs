@@ -9,15 +9,15 @@ namespace Vintagestory.GameContent
 {
     public class BlockEntityAnvilPart : BlockEntityContainer
     {
-        public MultiTextureMeshRef BaseMeshRef;
-        public MultiTextureMeshRef FluxMeshRef;
-        public MultiTextureMeshRef TopMeshRef;
+        public MultiTextureMeshRef? BaseMeshRef;
+        public MultiTextureMeshRef? FluxMeshRef;
+        public MultiTextureMeshRef? TopMeshRef;
 
 
         InventoryGeneric inv;
 
         public int hammerHits;
-        AnvilPartRenderer renderer;
+        AnvilPartRenderer? renderer;
 
         public override InventoryBase Inventory => inv;
 
@@ -41,28 +41,24 @@ namespace Vintagestory.GameContent
 
         void updateMeshRefs()
         {
-            if (Api.Side == EnumAppSide.Server) return;
-
-            var capi = Api as ICoreClientAPI;
+            if (Api is not ICoreClientAPI capi) return;
 
             BaseMeshRef = capi.TesselatorManager.GetDefaultBlockMeshRef(Block);
             
             if (!inv[1].Empty && FluxMeshRef == null)
             {
-                MeshData meshdata;
-                capi.Tesselator.TesselateShape(Block, API.Common.Shape.TryGet(Api, "shapes/block/metal/anvil/build-flux.json"), out meshdata);
+                capi.Tesselator.TesselateShape(Block, API.Common.Shape.TryGet(Api, "shapes/block/metal/anvil/build-flux.json"), out MeshData meshdata);
                 FluxMeshRef = capi.Render.UploadMultiTextureMesh(meshdata);
             }
             
             if (!inv[2].Empty && TopMeshRef == null)
             {
-                MeshData meshdata;
-                capi.Tesselator.TesselateShape(Block, API.Common.Shape.TryGet(Api, "shapes/block/metal/anvil/build-top.json"), out meshdata);
+                capi.Tesselator.TesselateShape(Block, API.Common.Shape.TryGet(Api, "shapes/block/metal/anvil/build-top.json"), out MeshData meshdata);
                 TopMeshRef = capi.Render.UploadMultiTextureMesh(meshdata);
             }
         }
 
-        public override void OnBlockPlaced(ItemStack byItemStack = null)
+        public override void OnBlockPlaced(ItemStack? byItemStack = null)
         {
             if (byItemStack != null)
             {
@@ -102,7 +98,7 @@ namespace Vintagestory.GameContent
             {
                 if (triggerMessage && Api is ICoreClientAPI capi)
                 {
-                    capi.TriggerIngameError(this, "toocold", Lang.Get("Bottom half to cold to weld, reheat the part on the forge."));
+                    capi.TriggerIngameError(this, "bottomtoocold", Lang.GetWithFallback("weldanvil-bottomtoocold", "Bottom half to cold to weld, reheat the part on the forge."));
                 }
                 return false;
             }
@@ -111,7 +107,7 @@ namespace Vintagestory.GameContent
             {
                 if (triggerMessage && Api is ICoreClientAPI capi)
                 {
-                    capi.TriggerIngameError(this, "fluxmissing", Lang.Get("Add powdered borax as flux first."));
+                    capi.TriggerIngameError(this, "fluxmissing", Lang.GetWithFallback("weldanvil-fluxmissing", "Must apply powdered borax as next step."));
                 }
                 return false;
             }
@@ -120,16 +116,16 @@ namespace Vintagestory.GameContent
             {
                 if (triggerMessage && Api is ICoreClientAPI capi)
                 {
-                    capi.TriggerIngameError(this, "tophalfmissing", Lang.Get("Add the top half anvil first."));
+                    capi.TriggerIngameError(this, "tophalfmissing", Lang.GetWithFallback("weldanvil-tophalfmissing", "Add the top half anvil first."));
                 }
                 return false;
             }
 
-            if (inv[2].Itemstack.Collectible.GetTemperature(Api.World, inv[0].Itemstack) < 800)
+            if (inv[2].Itemstack.Collectible.GetTemperature(Api.World, inv[2].Itemstack) < 800)
             {
                 if (triggerMessage && Api is ICoreClientAPI capi)
                 {
-                    capi.TriggerIngameError(this, "toocold", Lang.Get("Top half to cold to weld, reheat the part on the forge."));
+                    capi.TriggerIngameError(this, "toptoocold", Lang.GetWithFallback("weldanvil-toptoocold", "Top half to cold to weld, reheat the part on the forge."));
                 }
                 return false;
             }
@@ -144,13 +140,9 @@ namespace Vintagestory.GameContent
 
             ItemSlot hotbarslot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
-            if (inv[0].Itemstack.Collectible.GetTemperature(Api.World, inv[0].Itemstack) < 800) {
-
-                if (Api.Side == EnumAppSide.Client)
-                {
-                    (Api as ICoreClientAPI).TriggerIngameError(this, "toocold", Lang.Get("Too cold to weld, reheat the part on the forge."));
-                }
-
+            if (inv[0].Itemstack.Collectible.GetTemperature(Api.World, inv[0].Itemstack) < 800)
+            {
+                (Api as ICoreClientAPI)?.TriggerIngameError(this, "bottomtoocold", Lang.GetWithFallback("weldanvil-bottomtoocold", "Bottom half to cold to weld, reheat the part on the forge."));
                 return false;
             }
 
@@ -162,29 +154,37 @@ namespace Vintagestory.GameContent
                     updateMeshRefs();
                     return true;
 
-                } else
+                } 
+                else
                 {
-                    if (Api.Side == EnumAppSide.Client)
-                    {
-                        (Api as ICoreClientAPI).TriggerIngameError(this, "toocold", Lang.Get("Must apply powdered borax as next step."));
-                    }
+                    (Api as ICoreClientAPI)?.TriggerIngameError(this, "fluxmissing", Lang.GetWithFallback("weldanvil-fluxmissing", "Must apply powdered borax as next step."));
                     return false;
                 }
             }
 
             if (inv[2].Empty)
             {
-                if (hotbarslot.Itemstack?.Block is BlockAnvilPart && hotbarslot.Itemstack.Block.Variant["part"] == "top")
+                if (hotbarslot.Itemstack?.Block is BlockAnvilPart partBlock && partBlock.Variant["part"] == "top")
                 {
-                    Api.World.PlaySoundAt(Block.Sounds.Place, Pos, 0, byPlayer);
-                    inv[2].Itemstack = hotbarslot.TakeOut(1);
-                    updateMeshRefs();
-                    return true;
+                    if (partBlock.Variant["metal"] == Block.Variant["metal"])
+                    {
+                        Api.World.PlaySoundAt(partBlock.Sounds.Place, Pos, 0, byPlayer);
+                        inv[2].Itemstack = hotbarslot.TakeOut(1);
+                        updateMeshRefs();
+                        return true;
+                    }
+                    else
+                    {
+                        (Api as ICoreClientAPI)?.TriggerIngameError(this, "wrongmetal", Lang.Get("weldanvil-wrongmetal"));
+                        return false;
+                    }
                 }
-
-                return false;
+                else
+                {
+                    (Api as ICoreClientAPI)?.TriggerIngameError(this, "tophalfmissing", Lang.Get("weldanvil-tophalfmissing"));
+                    return false;
+                }
             }
-
 
             return true;
         }

@@ -8,6 +8,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ItemOpenedBeenade : Item
@@ -27,7 +29,7 @@ namespace Vintagestory.GameContent
                 {
                     if (block.Code == null) continue;
 
-                    if (block is BlockSkep && block.FirstCodePart(1).Equals("populated"))
+                    if (block is BlockSkep && block.Variant["type"].Equals("populated"))
                     {
                         stacks.Add(new ItemStack(block));
                     }
@@ -61,7 +63,7 @@ namespace Vintagestory.GameContent
             }
 
             Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
-            if (block is BlockSkep && block.FirstCodePart(1).Equals("populated"))
+            if (block is BlockSkep && block.Variant["type"].Equals("populated"))
             {
                 handling = EnumHandHandling.PreventDefaultAction;
             }
@@ -79,8 +81,6 @@ namespace Vintagestory.GameContent
                 float offset = GameMath.Clamp(secondsUsed * 3, 0, 2f);
 
                 tf.Translation.Set(-offset, offset / 4f, 0);
-
-                byEntity.Controls.UsingHeldItemTransformBefore = tf;
             }
 
             SimpleParticleProperties bees = BlockEntityBeehive.Bees;
@@ -123,7 +123,7 @@ namespace Vintagestory.GameContent
             }
 
             Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
-            bool ok = block is BlockSkep && block.FirstCodePart(1).Equals("populated");
+            bool ok = block is BlockSkep && block.Variant["type"].Equals("populated");
             if (!ok) return;
 
             if (secondsUsed < 3.9f) return;
@@ -134,10 +134,10 @@ namespace Vintagestory.GameContent
 
             IPlayer byPlayer = null;
             if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
-            byPlayer?.InventoryManager.TryGiveItemstack(new ItemStack(byEntity.World.GetItem(new AssetLocation("beenade-closed"))));
+            byPlayer?.InventoryManager.TryGiveItemstack(new ItemStack(byEntity.World.GetItem(CodeWithVariant("type", "closed"))));
 
-            Block skepemtpyblock = byEntity.World.GetBlock(new AssetLocation("skep-empty-" + block.LastCodePart()));
-            byEntity.World.BlockAccessor.SetBlock(skepemtpyblock.BlockId, blockSel.Position);
+            Block emptySkepBlock = byEntity.World.GetBlock(block.CodeWithVariant("type", "empty"));
+            byEntity.World.BlockAccessor.SetBlock(emptySkepBlock.BlockId, blockSel.Position);
         }
 
 

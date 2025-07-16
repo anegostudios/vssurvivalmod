@@ -1,16 +1,47 @@
 ﻿using System.Collections.Generic;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Allows a block to cycle through variants when using a wrench.
+    /// Uses the code "WrenchOrientable".
+    /// </summary>
+    /// <example>
+    /// <code lang="json">
+    ///"behaviorsByType": {
+	///	"*": [
+	///		{
+	///			"name": "WrenchOrientable",
+	///			"properties": {
+	///				"baseCode": "log-placed-{wood}"
+	///			}
+	///		}
+	///	]
+	///},
+    /// </code></example>
+    [DocumentAsJson]
     public class BlockBehaviorWrenchOrientable : BlockBehavior
     {
         public static Dictionary<string, SortedSet<AssetLocation>> VariantsByType = new ();
 
+        /// <summary>
+        /// The code of the block that should be cycled through when used with a wrench. Required if not using a block class which inherits IWrenchOrientable.
+        /// </summary>
+        [DocumentAsJson("Required")]
         public string BaseCode;
+
+        /// <summary>
+        /// Should the block hide the placed block interaction help when in survival mode?
+        /// </summary>
+        [DocumentAsJson("Optional", "False")]
         bool hideInteractionHelpInSurvival;
+
         private static List<ItemStack> wrenchItems = new List<ItemStack>();
 
         public BlockBehaviorWrenchOrientable(Block block) : base(block)
@@ -45,7 +76,7 @@ namespace Vintagestory.GameContent
                     MouseButton = EnumMouseButton.Right
                 } };
             }
-            else return new WorldInteraction[0];
+            else return System.Array.Empty<WorldInteraction>();
         }
 
         public override void Initialize(JsonObject properties)

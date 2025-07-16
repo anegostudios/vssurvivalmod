@@ -8,6 +8,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.ServerMods;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 
@@ -53,7 +55,7 @@ namespace Vintagestory.GameContent
 
         public string CurrentTutorial { get; private set; }
 
-        public OrderedDictionary<string, ITutorial> Tutorials = new OrderedDictionary<string, ITutorial>();
+        public API.Datastructures.OrderedDictionary<string, ITutorial> Tutorials = new ();
 
         public override bool ShouldLoad(EnumAppSide forSide)
         {
@@ -289,9 +291,15 @@ namespace Vintagestory.GameContent
         }
         private void onClientTick200ms(float dt)
         {
-            if (capi.World.Player.CurrentBlockSelection == null) return;
+            if (capi.World.Player.InventoryManager is IPlayerInventoryManager invMan)
+            {
+                onStateUpdate((step) => step.DoCheckPlayerInventory(invMan));
+            }
 
-            onStateUpdate((step) => step.OnBlockLookedAt(capi.World.Player.CurrentBlockSelection));
+            if (capi.World.Player.CurrentBlockSelection is BlockSelection blockSel)
+            {
+                onStateUpdate((step) => step.OnBlockLookedAt(blockSel));
+            }
         }
 
         void reloadTutorialPage()

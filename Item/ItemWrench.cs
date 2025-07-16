@@ -6,6 +6,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public interface IExtraWrenchModes
@@ -41,7 +43,6 @@ namespace Vintagestory.GameContent
             {
                 var block = api.World.BlockAccessor.GetBlock(blockSelection.Position);
                 var iewm = block.GetInterface<IExtraWrenchModes>(api.World, blockSelection.Position);
-
                 return iewm?.GetExtraWrenchModes(byPlayer, blockSelection);
             }
 
@@ -76,6 +77,9 @@ namespace Vintagestory.GameContent
             var skillItems = GetExtraWrenchModes(byPlayer, blockSelection);
             if (skillItems != null && skillItems.Length > 0)
             {
+#if DEBUG
+                api.World.Logger.Debug("Set wrench tool mode " + toolMode);
+#endif
                 var block = api.World.BlockAccessor.GetBlock(blockSelection.Position);
                 slot.Itemstack.Attributes.SetInt("toolMode-" + block.Id, toolMode);
                 return;
@@ -91,6 +95,14 @@ namespace Vintagestory.GameContent
         {
             if (blockSel == null) return;
             var player = (byEntity as EntityPlayer)?.Player;
+
+            if (!byEntity.World.Claims.TryAccess(player, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                api.World.BlockAccessor.MarkBlockEntityDirty(blockSel.Position.AddCopy(blockSel.Face));
+                api.World.BlockAccessor.MarkBlockDirty(blockSel.Position.AddCopy(blockSel.Face));
+                return;
+            }
+
 
             if (handleModedInteract(slot, blockSel, player, 1))
             {
@@ -136,6 +148,16 @@ namespace Vintagestory.GameContent
             if (handling == EnumHandHandling.PreventDefault) return;
             if (blockSel == null) return;
 
+            var player = (byEntity as EntityPlayer)?.Player;
+
+            if (!byEntity.World.Claims.TryAccess(player, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                api.World.BlockAccessor.MarkBlockEntityDirty(blockSel.Position.AddCopy(blockSel.Face));
+                api.World.BlockAccessor.MarkBlockDirty(blockSel.Position.AddCopy(blockSel.Face));
+                return;
+            }
+
+
             var decors = api.World.BlockAccessor.GetSubDecors(blockSel.Position);
             if (decors != null)
             {
@@ -160,7 +182,6 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            var player = (byEntity as EntityPlayer)?.Player;
 
             if (handleModedInteract(slot, blockSel, player, 0))
             {
@@ -184,13 +205,6 @@ namespace Vintagestory.GameContent
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
             if (byPlayer == null) return false;
 
-            if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
-            {
-                api.World.BlockAccessor.MarkBlockEntityDirty(blockSel.Position.AddCopy(blockSel.Face));
-                api.World.BlockAccessor.MarkBlockDirty(blockSel.Position.AddCopy(blockSel.Face));
-                return false;
-            }
-
             var block = api.World.BlockAccessor.GetBlock(blockSel.Position);
             var iwre = block.GetInterface<IWrenchOrientable>(api.World, blockSel.Position);
             if (iwre != null)
@@ -211,10 +225,9 @@ namespace Vintagestory.GameContent
                     break;
                 }
             }
+
             // advance to the next element, if at end take first
-            var newcode = types.MoveNext()
-                ? types.Current
-                : BlockBehaviorWrenchOrientable.VariantsByType[bhWOrientable.BaseCode].First();
+            var newcode = types.MoveNext() ? types.Current : BlockBehaviorWrenchOrientable.VariantsByType[bhWOrientable.BaseCode].First();
             var newblock = api.World.GetBlock(newcode);
 
             api.World.BlockAccessor.ExchangeBlock(newblock.Id, blockSel.Position);
@@ -229,7 +242,6 @@ namespace Vintagestory.GameContent
         {
             api.World.PlaySoundAt(block.Sounds.Place, blockSel.Position, 0, byPlayer);
             (api.World as IClientWorldAccessor)?.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
-
             iwre.Rotate(byPlayer.Entity, blockSel, dir);
         }
     }

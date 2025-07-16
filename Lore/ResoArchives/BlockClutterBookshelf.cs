@@ -8,6 +8,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 
@@ -16,7 +18,7 @@ namespace Vintagestory.GameContent
         string classtype;
         public override string ClassType => classtype;
 
-        public OrderedDictionary<string, BookShelfVariantGroup> variantGroupsByCode = new OrderedDictionary<string, BookShelfVariantGroup>();
+        public API.Datastructures.OrderedDictionary<string, BookShelfVariantGroup> variantGroupsByCode = new ();
         public override IEnumerable<IShapeTypeProps> AllTypes
         {
             get
@@ -35,7 +37,7 @@ namespace Vintagestory.GameContent
 
         public override void LoadTypes()
         {
-            variantGroupsByCode = Attributes["variantGroups"].AsObject<OrderedDictionary<string, BookShelfVariantGroup>>();
+            variantGroupsByCode = Attributes["variantGroups"].AsObject<API.Datastructures.OrderedDictionary<string, BookShelfVariantGroup>>();
             basePath = Attributes["shapeBasePath"].AsString();
             classtype = Attributes["classtype"].AsString("bookshelf");
 

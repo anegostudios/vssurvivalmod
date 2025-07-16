@@ -1,4 +1,7 @@
-﻿using System;
+﻿
+#nullable disable
+
+using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
@@ -6,16 +9,17 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public abstract class GuiDialogTextInput : GuiDialogGeneric
+    public class GuiDialogTextInput : GuiDialogGeneric
     {
         double textareaFixedY;
         public Action<string> OnTextChanged;
         public Action OnCloseCancel;
         public float FontSize;
 
-        bool didSave;
+        protected bool didSave;
+        protected TextAreaConfig signConfig;
+        public Action<string> OnSave;
 
-        TextAreaConfig signConfig;
 
         public GuiDialogTextInput(string DialogTitle, string text, ICoreClientAPI capi, TextAreaConfig signConfig) : base(DialogTitle, capi)
         {
@@ -25,7 +29,7 @@ namespace Vintagestory.GameContent
 
             FontSize = signConfig.FontSize;
 
-            ElementBounds textAreaBounds = ElementBounds.Fixed(0, 0, signConfig.MaxWidth, signConfig.MaxHeight);
+            ElementBounds textAreaBounds = ElementBounds.Fixed(0, 0, signConfig.MaxWidth + 4, signConfig.MaxHeight - 2);
             textareaFixedY = textAreaBounds.fixedY;
 
             // Clipping bounds for textarea
@@ -36,7 +40,7 @@ namespace Vintagestory.GameContent
             ElementBounds cancelButtonBounds = ElementBounds.FixedSize(0, 0).FixedUnder(clippingBounds, 2 * 5).WithAlignment(EnumDialogArea.LeftFixed).WithFixedPadding(8, 2).WithFixedAlignmentOffset(-1, 0);
             ElementBounds fontSizeBounds = ElementBounds.FixedSize(45, 22).FixedUnder(clippingBounds, 2 * 5).WithAlignment(EnumDialogArea.CenterFixed).WithFixedAlignmentOffset(3, 0);
             ElementBounds saveButtonBounds = ElementBounds.FixedSize(0, 0).FixedUnder(clippingBounds, 2 * 5).WithAlignment(EnumDialogArea.RightFixed).WithFixedPadding(8, 2);
-            ElementBounds bgBounds = ElementBounds.FixedSize(signConfig.MaxWidth + 20, 220).WithFixedPadding(GuiStyle.ElementToDialogPadding);
+            ElementBounds bgBounds = ElementBounds.FixedSize(signConfig.MaxWidth + 32, 220).WithFixedPadding(GuiStyle.ElementToDialogPadding);
 
             // 3. Finally Dialog
             ElementBounds dialogBounds = ElementStdBounds.AutosizedMainDialog.WithAlignment(EnumDialogArea.RightMiddle)
@@ -47,6 +51,7 @@ namespace Vintagestory.GameContent
             font.LineHeightMultiplier = 0.9;
 
             string[] sizes = new string[] { "14", "18", "20", "24", "28", "32", "36", "40" };
+            if (!sizes.Contains(""+signConfig.FontSize)) sizes = sizes.Append(""+signConfig.FontSize);
 
             SingleComposer = capi.Gui
                 .CreateCompo("blockentitytexteditordialog", dialogBounds)
@@ -66,7 +71,8 @@ namespace Vintagestory.GameContent
                 .Compose()
             ;
 
-            SingleComposer.GetTextArea("text").SetMaxHeight(signConfig.MaxHeight);
+            SingleComposer.GetTextArea("text").SetMaxHeight((int)(signConfig.MaxHeight * RuntimeEnv.GUIScale));
+
 
             if (signConfig.WithScrollbar)
             {
@@ -75,11 +81,10 @@ namespace Vintagestory.GameContent
                 );
             }
 
-            if (text.Length > 0)
+            if (text != null && text.Length > 0)
             {
                 SingleComposer.GetTextArea("text").SetValue(text);
             }
-
 
         }
 
@@ -144,8 +149,6 @@ namespace Vintagestory.GameContent
             if (!didSave) OnCloseCancel?.Invoke();
             base.OnGuiClosed();
         }
-
-        public abstract void OnSave(string text);
     }
 
     public class GuiDialogBlockEntityTextInput : GuiDialogTextInput
@@ -154,9 +157,10 @@ namespace Vintagestory.GameContent
         public GuiDialogBlockEntityTextInput(string DialogTitle, BlockPos blockEntityPos, string text, ICoreClientAPI capi, TextAreaConfig signConfig) : base(DialogTitle, text, capi, signConfig)
         {
             this.blockEntityPos = blockEntityPos;
+            this.OnSave = save;
         }
 
-        public override void OnSave(string text)
+        public void save(string text)
         {
             byte[] data = SerializerUtil.Serialize(new EditSignPacket()
             {

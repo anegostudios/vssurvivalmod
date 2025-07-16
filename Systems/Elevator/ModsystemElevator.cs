@@ -1,8 +1,11 @@
 using System.Collections.Generic;
+using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.CommandAbbr;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+
+#nullable disable
 
 namespace Vintagestory.GameContent;
 
@@ -29,7 +32,7 @@ public class ModsystemElevator : ModSystem
             .BeginSubCommand("set-block-net")
             .WithAlias("sbn")
             .WithDescription("Set Elevator network code")
-            .WithArgs(parser.Word("netowrk code"), parser.WorldPosition("pos"), parser.OptionalInt("offset"))
+            .WithArgs(parser.Word("network code"), parser.WorldPosition("pos"), parser.OptionalInt("offset"))
             .HandleWith(OnsetBlockNetwork)
             .EndSubCommand()
             .EndSubCommand();
@@ -106,22 +109,28 @@ public class ModsystemElevator : ModSystem
     public void RegisterControl(string networkCode, BlockPos pos, int offset)
     {
         var entityElevator = GetElevator(networkCode);
-        if (entityElevator?.ControlPositions.Contains(pos.Y + offset) == false)
+        var height = pos.Y + offset;
+        if (entityElevator?.ControlPositions.Contains(height) == false)
         {
-            entityElevator.ControlPositions.Add(pos.Y + offset);
+            entityElevator.ControlPositions.Add(height);
             entityElevator.ControlPositions.Sort();
+
+            // logic to set the new maxHeight for existing elevators
+            // if the elevator is not yet loaded it will try to update on init
+            if (entityElevator.Entity != null)
+            {
+                if (entityElevator.Entity.Attributes.GetBool("isActivated"))
+                {
+                    if (!entityElevator.Entity.Attributes.HasAttribute("maxHeight"))
+                    {
+                        entityElevator.ShouldUpdate = true;
+                    }
+                    if (entityElevator.ShouldUpdate && entityElevator.Entity.Attributes.GetInt("maxHeight") < height)
+                    {
+                        entityElevator.Entity.Attributes.SetInt("maxHeight", entityElevator.ControlPositions.Last());
+                    }
+                }
+            }
         }
-    }
-
-    public void ActivateElevator(string networkCode, BlockPos position, int offset)
-    {
-        var entityElevator = GetElevator(networkCode);
-        entityElevator.Entity.ActivateElevator(position, offset);
-    }
-
-    public void DeActivateElevator(string networkCode)
-    {
-        var entityElevator = GetElevator(networkCode);
-        entityElevator.Entity.DeActivateElevator();
     }
 }

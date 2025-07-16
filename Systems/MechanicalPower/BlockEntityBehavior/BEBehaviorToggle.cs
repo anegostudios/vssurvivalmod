@@ -5,6 +5,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent.Mechanics
 {
     public class BEBehaviorMPToggle : BEBehaviorMPBase
@@ -121,8 +123,7 @@ namespace Vintagestory.GameContent.Mechanics
             return ObjectCacheUtil.GetOrCreate(Api, Block.Code + "-" + orient + "-stand", () =>
             {
                 Shape shape = API.Common.Shape.TryGet(capi, toggleStandLoc);
-                MeshData mesh;
-                capi.Tesselator.TesselateShape(Block, shape, out mesh);
+                capi.Tesselator.TesselateShape(Block, shape, out MeshData mesh);
 
                 if (orient == "ns")
                 {

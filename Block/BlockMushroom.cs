@@ -1,7 +1,9 @@
-﻿using Vintagestory.API.Client;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -74,11 +76,11 @@ namespace Vintagestory.GameContent
 
             var block = blockAccessor.GetBlock(rootPos);
 
-            if (!block.HasBehavior<BehaviorMyceliumHost>())
+            if (!block.HasBehavior<BlockBehaviorMyceliumHost>())
             {
                 rootPos.Down();
                 block = blockAccessor.GetBlock(rootPos);
-                if (!block.HasBehavior<BehaviorMyceliumHost>()) return false;
+                if (!block.HasBehavior<BlockBehaviorMyceliumHost>()) return false;
             }
 
             blockAccessor.SpawnBlockEntity("Mycelium", rootPos);

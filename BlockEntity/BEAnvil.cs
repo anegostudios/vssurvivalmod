@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -10,6 +11,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -149,7 +152,7 @@ namespace Vintagestory.GameContent
 
         public bool CanWorkCurrent
         {
-            get { return workItemStack != null && (workItemStack.Collectible as IAnvilWorkable).CanWork(WorkItemStack); }
+            get { return workItemStack != null && workItemStack.Collectible.GetCollectibleInterface<IAnvilWorkable>().CanWork(WorkItemStack); }
         }
 
         public ItemStack WorkItemStack
@@ -179,8 +182,7 @@ namespace Vintagestory.GameContent
             }
 
             string metalType = Block.Variant["metal"];
-            MetalPropertyVariant var;
-            if (api.ModLoader.GetModSystem<SurvivalCoreSystem>().metalsByCode.TryGetValue(metalType, out var))
+            if (api.ModLoader.GetModSystem<SurvivalCoreSystem>().metalsByCode.TryGetValue(metalType, out MetalPropertyVariant var))
             {
                 OwnMetalTier = var.Tier;
             }
@@ -230,7 +232,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            rotation = (rotation + 90) % 360;
+            rotation = (rotation + (ccw ? 270 : 90)) % 360;
 
             this.Voxels = rotVoxels;
             RegenMeshAndSelectionBoxes();
@@ -255,9 +257,7 @@ namespace Vintagestory.GameContent
             if (slot.Itemstack == null) return false;
             ItemStack stack = slot.Itemstack;
 
-            IAnvilWorkable workableobj = stack.Collectible as IAnvilWorkable;
-
-
+            IAnvilWorkable workableobj = stack.Collectible.GetCollectibleInterface<IAnvilWorkable>();
 
             if (workableobj == null) return false;
             int requiredTier = workableobj.GetRequiredAnvilTier(stack);
@@ -444,7 +444,7 @@ namespace Vintagestory.GameContent
             SmithingRecipe recipe = SelectedRecipe;
 
 
-            EnumHelveWorkableMode? mode = (workItemStack?.Collectible as IAnvilWorkable)?.GetHelveWorkableMode(workItemStack, this);
+            EnumHelveWorkableMode? mode = workItemStack?.Collectible.GetCollectibleInterface<IAnvilWorkable>()?.GetHelveWorkableMode(workItemStack, this);
 
             StringBuilder sb = new StringBuilder();
             sb.AppendLine("Workitem: " + workItemStack);
@@ -465,7 +465,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            var mode = (workItemStack.Collectible as IAnvilWorkable).GetHelveWorkableMode(workItemStack, this);
+            var mode = workItemStack.Collectible.GetCollectibleInterface<IAnvilWorkable>()?.GetHelveWorkableMode(workItemStack, this);
             if (mode == EnumHelveWorkableMode.NotWorkable) return;
 
             rotation = 0;
@@ -621,7 +621,7 @@ namespace Vintagestory.GameContent
             ItemStack ditchedStack;
             if (SelectedRecipe == null)
             {
-                ditchedStack = returnOnCancelStack ?? (workItemStack.Collectible as IAnvilWorkable).GetBaseMaterial(workItemStack);
+                ditchedStack = returnOnCancelStack ?? workItemStack.Collectible.GetCollectibleInterface<IAnvilWorkable>().GetBaseMaterial(workItemStack);
                 float temp = workItemStack.Collectible.GetTemperature(Api.World, workItemStack);
                 ditchedStack.Collectible.SetTemperature(Api.World, ditchedStack, temp);
             }
@@ -982,6 +982,7 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockRemoved()
         {
+            base.OnBlockRemoved();
             workitemRenderer?.Dispose();
             workitemRenderer = null;
             if (Api is ICoreClientAPI capi) capi.Event.ColorsPresetChanged -= RegenMeshAndSelectionBoxes;
@@ -1018,8 +1019,7 @@ namespace Vintagestory.GameContent
 
             if (Api?.Side == EnumAppSide.Client)
             {
-                MeshData newMesh;
-                ((ICoreClientAPI)Api).Tesselator.TesselateBlock(Block, out newMesh);
+                ((ICoreClientAPI)Api).Tesselator.TesselateBlock(Block, out MeshData newMesh);
 
                 currentMesh = newMesh; // Needed so we don't get race conditions
 
@@ -1163,7 +1163,8 @@ namespace Vintagestory.GameContent
 
         internal void OpenDialog(ItemStack ingredient)
         {
-            List<SmithingRecipe> recipes = (ingredient.Collectible as IAnvilWorkable).GetMatchingRecipes(ingredient);
+            IAnvilWorkable workableobj = ingredient.Collectible.GetCollectibleInterface<IAnvilWorkable>();
+            List<SmithingRecipe> recipes = workableobj.GetMatchingRecipes(ingredient);
 
             List<ItemStack> stacks = recipes
                 .Select(r => r.Output.ResolvedItemstack)
@@ -1187,6 +1188,13 @@ namespace Vintagestory.GameContent
                 Pos,
                 Api as ICoreClientAPI
             );
+
+            for (int i = 0; i < recipes.Count; i++)
+            {
+                ItemStack[] ingredCount = [ingredient.GetEmptyClone()];
+                ingredCount[0].StackSize = (int)Math.Ceiling(recipes[i].Voxels.Cast<bool>().Count(voxel => voxel) / (double)workableobj.VoxelCountForHandbook(ingredient));
+                (dlg as GuiDialogBlockEntityRecipeSelector).SetIngredientCounts(i, ingredCount);
+            }
 
             dlg.TryOpen();
         }
@@ -1249,6 +1257,7 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockUnloaded()
         {
+            base.OnBlockUnloaded();
             workitemRenderer?.Dispose();
             dlg?.TryClose();
             dlg?.Dispose();

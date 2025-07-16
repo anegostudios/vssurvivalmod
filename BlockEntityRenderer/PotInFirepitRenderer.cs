@@ -2,6 +2,8 @@
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class PotInFirepitRenderer : IInFirepitRenderer
@@ -38,12 +40,10 @@ namespace Vintagestory.GameContent
             else
             {
                 string basePath = potBlock.Code.PathStartsWith("dirtyclaypot") ? "shapes/block/clay/pot-dirty-" : "shapes/block/clay/pot-";    // hard-coding for dirty pot seems reasonable here, as the shape paths are already hard-coded
-                MeshData potMesh;
-                capi.Tesselator.TesselateShape(potBlock, Shape.TryGet(capi, basePath + "opened-empty.json"), out potMesh);
+                capi.Tesselator.TesselateShape(potBlock, Shape.TryGet(capi, basePath + "opened-empty.json"), out MeshData potMesh);
                 potRef = capi.Render.UploadMultiTextureMesh(potMesh);
 
-                MeshData lidMesh;
-                capi.Tesselator.TesselateShape(potBlock, Shape.TryGet(capi, basePath + "part-lid.json"), out lidMesh);
+                capi.Tesselator.TesselateShape(potBlock, Shape.TryGet(capi, basePath + "part-lid.json"), out MeshData lidMesh);
                 lidRef = capi.Render.UploadMultiTextureMesh(lidMesh);
             }
         }

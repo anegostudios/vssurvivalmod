@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
@@ -6,6 +6,9 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.Util;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -88,7 +91,8 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            entity.GetBehavior<EntityBehaviorSeatable>().CanSit += EntityBehaviorMortallyWoundable_CanSit;
+            var seatable = entity.GetBehavior<EntityBehaviorSeatable>();
+            if (seatable != null) seatable.CanSit += EntityBehaviorMortallyWoundable_CanSit;
         }
 
         private bool EntityBehaviorMortallyWoundable_CanSit(EntityAgent eagent, out string errorMessage)
@@ -183,6 +187,7 @@ namespace Vintagestory.GameContent
                 if (HealthHealed > healingRequiredForRescue)
                 {
                     recover();
+                    HealthHealed = 0;
                 }
             }
         }
@@ -223,6 +228,12 @@ namespace Vintagestory.GameContent
             HealthState = EnumEntityHealthState.Dead;
             entity.Die();
         }
+        
+        public override void OnEntityDeath(DamageSource damageSourceForDeath)
+        {
+            HealthState = EnumEntityHealthState.Dead;
+            base.OnEntityDeath(damageSourceForDeath);
+        }
 
 
         public override void GetInfoText(StringBuilder infotext)
@@ -242,7 +253,18 @@ namespace Vintagestory.GameContent
 
         public override WorldInteraction[] GetInteractionHelp(IClientWorldAccessor world, EntitySelection es, IClientPlayer player, ref EnumHandling handled)
         {
-            return base.GetInteractionHelp(world, es, player, ref handled);
+            var wis = base.GetInteractionHelp(world, es, player, ref handled);
+            if (HealthState == EnumEntityHealthState.MortallyWounded && entity.Alive)
+            {
+                double hoursleft = MortallyWoundedTotalHours + remainAliveHours - entity.World.Calendar.TotalHours;
+                if (hoursleft > 0)
+                {
+                    if (wis == null) wis = Array.Empty<WorldInteraction>();
+                    wis = wis.Append(EntityBehaviorPlayerRevivable.GetReviveInteractionHelp(world.Api));
+                }
+            }
+
+            return wis;
         }
 
         public override string PropertyName()

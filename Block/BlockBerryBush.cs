@@ -5,6 +5,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockBerryBush : BlockPlant
@@ -84,7 +86,7 @@ namespace Vintagestory.GameContent
         {
             BlockEntityBerryBush bebush = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityBerryBush;
 
-            if (!bebush.Pruned && byPlayer?.InventoryManager?.ActiveHotbarSlot?.Itemstack?.Collectible?.Tool == EnumTool.Shears)
+            if ((!bebush?.Pruned ?? false) && byPlayer?.InventoryManager?.ActiveHotbarSlot?.Itemstack?.Collectible?.Tool == EnumTool.Shears)
             {
                 bebush.Prune();
                 return true;

@@ -3,6 +3,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.ServerMods;
 
+#nullable disable
+
 namespace Vintagestory.GameContent;
 
 public class BlockDevastationGrowth : Block

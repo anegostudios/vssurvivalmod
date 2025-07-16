@@ -8,6 +8,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class CachedMeshRef
@@ -35,10 +37,9 @@ namespace Vintagestory.GameContent
                 // Probably displayed in the hand book, which calls .Clone() each frame - cannot store any meshref id here
                 CachedMeshRef ccmr = ObjectCacheUtil.GetOrCreate(capi, "clearWorkItem" + Variant["metal"], () =>
                 {
-                    int textureid;
                     byte[,,] voxels = new byte[16, 6, 16];
                     ItemIngot.CreateVoxelsFromIngot(capi, ref voxels);
-                    MeshData mesh = GenMesh(capi, itemstack, voxels, out textureid);
+                    MeshData mesh = GenMesh(capi, itemstack, voxels, out int textureid);
 
                     return new CachedMeshRef()
                     {
@@ -63,9 +64,8 @@ namespace Vintagestory.GameContent
 
             CachedMeshRef cmr = ObjectCacheUtil.GetOrCreate(capi, "" + meshrefId, () =>
             {
-                int textureid;
                 byte[,,] voxels = GetVoxels(itemstack);
-                MeshData mesh = GenMesh(capi, itemstack, voxels, out textureid);
+                MeshData mesh = GenMesh(capi, itemstack, voxels, out int textureid);
 
                 return new CachedMeshRef()
                 {
@@ -204,6 +204,8 @@ namespace Vintagestory.GameContent
 
 
 
+        public virtual int VoxelCountForHandbook(ItemStack stack) => GetVoxels(stack).Cast<byte>().Count(voxel => voxel == (byte)EnumVoxelMaterial.Metal);
+
         public static byte[,,] GetVoxels(ItemStack workitemStack)
         {
             return BlockEntityAnvil.deserializeVoxels(workitemStack.Attributes.GetBytes("voxels"));
@@ -233,8 +235,7 @@ namespace Vintagestory.GameContent
             string metalcode = Variant["metal"];
             int tier = 0;
 
-            MetalPropertyVariant var;
-            if (api.ModLoader.GetModSystem<SurvivalCoreSystem>().metalsByCode.TryGetValue(metalcode, out var))
+            if (api.ModLoader.GetModSystem<SurvivalCoreSystem>().metalsByCode.TryGetValue(metalcode, out MetalPropertyVariant var))
             {
                 tier = var.Tier - 1;
             }

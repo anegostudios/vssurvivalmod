@@ -1,6 +1,8 @@
-﻿using Vintagestory.API.Common;
+using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -18,24 +20,19 @@ namespace Vintagestory.GameContent
 
         public JsonObject taskConfig;
 
-        public AiTaskButterflyChase(EntityAgent entity) : base(entity)
+        public AiTaskButterflyChase(EntityAgent entity, JsonObject taskConfig, JsonObject aiConfig) : base(entity, taskConfig, aiConfig)
         {
-
+            this.taskConfig = taskConfig;
         }
 
-        public AiTaskButterflyChase(EntityAgent entity, EntityButterfly chaseTarget) : base(entity)
+        public AiTaskButterflyChase(EntityAgent entity, EntityButterfly chaseTarget) : base(entity, JsonObject.FromJson("{}"), JsonObject.FromJson("{}"))
         {
             
             chaseTime = (float)entity.World.Rand.NextDouble() * 7 + 6;
             targetEntity = chaseTarget;
             targetPos.Set(targetEntity.ServerPos.X, targetEntity.ServerPos.Y, targetEntity.ServerPos.Z);
-        }
 
-        public override void LoadConfig(JsonObject taskConfig, JsonObject aiConfig)
-        {
-            this.taskConfig = taskConfig;
-
-            base.LoadConfig(taskConfig, aiConfig);
+            this.taskConfig = JsonObject.FromJson("{}");
         }
 
         public override bool ShouldExecute()
@@ -102,6 +99,9 @@ namespace Vintagestory.GameContent
 
         public override bool ContinueExecute(float dt)
         {
+            //Check if time is still valid for task.
+            if (!IsInValidDayTimeHours(false)) return false;
+
             if (targetEntity == null) return false;
 
             targetPos.Set(targetEntity.ServerPos.X, targetEntity.ServerPos.Y + (fleeState ? 1 : 0), targetEntity.ServerPos.Z);

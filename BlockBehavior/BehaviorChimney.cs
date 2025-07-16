@@ -1,5 +1,8 @@
-﻿using Vintagestory.API.Common;
+﻿using Vintagestory.API;
+using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -8,6 +11,16 @@ namespace Vintagestory.GameContent
         bool EmitsSmoke(BlockPos pos);
     }
 
+    /// <summary>
+    /// If this block is placed directly above a smoke emitter (such as a firepit or pit kiln), smoke particles will be emitted.
+    /// Uses the code "chimney" and has no properties.
+    /// </summary>
+    /// <example><code lang="json">
+    ///"behaviors": [
+	///	{ "name": "Chimney" }
+	///] 
+    /// </code></example>
+    [DocumentAsJson]
     public class BlockBehaviorChimney : BlockBehavior
     {
         public BlockBehaviorChimney(Block block) : base(block)

@@ -5,6 +5,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class LootItem
@@ -214,7 +216,7 @@ namespace Vintagestory.GameContent
                 return new ItemStack[] { new ItemStack(this) };
             }
 
-            if (lootList == null) return new ItemStack[0];
+            if (lootList == null) return System.Array.Empty<ItemStack>();
 
             return lootList.GenerateLoot(world, byPlayer);
         }

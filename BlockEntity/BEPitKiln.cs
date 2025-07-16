@@ -10,6 +10,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     // The first 4 slots are the ground storage contents
@@ -67,6 +69,8 @@ namespace Vintagestory.GameContent
                 BurningUntilTotalHours = Math.Min(api.World.Calendar.TotalHours + BurnTimeHours, BurningUntilTotalHours);
             }
 
+            base.Initialize(api);
+
             bh.OnFireTick = (dt) => {
                 if (api.World.Calendar.TotalHours >= BurningUntilTotalHours)
                 {
@@ -88,8 +92,6 @@ namespace Vintagestory.GameContent
 
                 return block?.CombustibleProps != null && block.CombustibleProps.BurnDuration > 0 && (!IsAreaLoaded() || upblock.Replaceable >= 6000);
             };
-
-            base.Initialize(api);
 
             DetermineBuildStages();
 
@@ -219,7 +221,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public float GetHeatStrength(IWorldAccessor world, BlockPos heatSourcePos, BlockPos heatReceiverPos)
+        public override float GetHeatStrength(IWorldAccessor world, BlockPos heatSourcePos, BlockPos heatReceiverPos)
         {
             return Lit ? 10 : 0;
         }
@@ -253,7 +255,13 @@ namespace Vintagestory.GameContent
         protected bool IsValidPitKiln()
         {
             var world = Api.World;
-            
+
+            Block liquidblock = world.BlockAccessor.GetBlock(Pos, BlockLayersAccess.Fluid);
+            if (liquidblock.BlockId != 0)
+            {
+                return false;
+            }
+
             foreach (var face in BlockFacing.HORIZONTALS.Append(BlockFacing.DOWN))
             {
                 BlockPos npos = Pos.AddCopy(face);
@@ -469,10 +477,8 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public bool CanIgnite()
-        {
-            return IsComplete && IsValidPitKiln() && !GetBehavior<BEBehaviorBurning>().IsBurning;
-        }
+        public override bool CanIgnite => IsComplete && IsValidPitKiln() && !GetBehavior<BEBehaviorBurning>().IsBurning;
+        
 
         public void TryIgnite(IPlayer byPlayer)
         {
@@ -507,16 +513,15 @@ namespace Vintagestory.GameContent
 
         public override string[] getContentSummary()
         {
-            OrderedDictionary<string, int> dict = new OrderedDictionary<string, int>();
+            API.Datastructures.OrderedDictionary<string, int> dict = new ();
 
             for (int i = 0; i < 4; i++)
             {
                 ItemSlot slot = inventory[i];
                 if (slot.Empty) continue;
 
-                int cnt;
                 string stackName = slot.Itemstack.GetName();
-                if (!dict.TryGetValue(stackName, out cnt)) cnt = 0;
+                if (!dict.TryGetValue(stackName, out int cnt)) cnt = 0;
 
                 dict[stackName] = cnt + slot.StackSize;
             }

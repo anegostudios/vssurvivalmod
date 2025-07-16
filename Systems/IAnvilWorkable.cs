@@ -1,6 +1,8 @@
 ﻿using System.Collections.Generic;
 using Vintagestory.API.Common;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public enum EnumHelveWorkableMode
@@ -36,5 +38,11 @@ namespace Vintagestory.GameContent
 
         EnumHelveWorkableMode GetHelveWorkableMode(ItemStack stack, BlockEntityAnvil beAnvil);
 
+        /// <summary>
+        /// This method is used by the handbook to determine how many of an item is needed when smithing the recipe
+        /// </summary>
+        /// <param name="stack"></param>
+        /// <returns>Total number of metal voxels added by the ItemStack in question.</returns>
+        int VoxelCountForHandbook(ItemStack stack);
     }
 }

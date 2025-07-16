@@ -7,6 +7,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ItemPlantableSeed : Item
@@ -47,24 +49,28 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
         {
-            if (blockSel == null) return;
+            if (blockSel == null)
+            {
+                base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
+                return;
+            }
 
             BlockPos pos = blockSel.Position;
 
-            string lastCodePart = itemslot.Itemstack.Collectible.LastCodePart();
+            string croptype = itemslot.Itemstack.Collectible.Variant["type"];
 
-            if (lastCodePart == "bellpepper") return;
+            if (croptype == "bellpepper") return;
 
             BlockEntity be = byEntity.World.BlockAccessor.GetBlockEntity(pos);
             if (be is BlockEntityFarmland)
             {
-                Block cropBlock = byEntity.World.GetBlock(CodeWithPath("crop-" + lastCodePart + "-1"));
+                Block cropBlock = byEntity.World.GetBlock(CodeWithPath("crop-" + croptype + "-1"));
                 if (cropBlock == null) return;
 
                 IPlayer byPlayer = null;
                 if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
 
-                bool planted = ((BlockEntityFarmland)be).TryPlant(cropBlock);
+                bool planted = ((BlockEntityFarmland)be).TryPlant(cropBlock, itemslot, byEntity, blockSel);
                 if (planted)
                 {
                     byEntity.World.PlaySoundAt(new AssetLocation("sounds/block/plant"), pos, 0.4375, byPlayer);
@@ -79,6 +85,11 @@ namespace Vintagestory.GameContent
                 }
 
                 if (planted) handHandling = EnumHandHandling.PreventDefault;
+                return;
+            }
+            else
+            {
+                base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
             }
         }
 
@@ -86,7 +97,7 @@ namespace Vintagestory.GameContent
         {
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
 
-            Block cropBlock = world.GetBlock(CodeWithPath("crop-" + inSlot.Itemstack.Collectible.LastCodePart() + "-1"));
+            Block cropBlock = world.GetBlock(CodeWithPath("crop-" + inSlot.Itemstack.Collectible.Variant["type"] + "-1"));
             if (cropBlock == null || cropBlock.CropProps == null) return;
 
             dsc.AppendLine(Lang.Get("soil-nutrition-requirement") + cropBlock.CropProps.RequiredNutrient);

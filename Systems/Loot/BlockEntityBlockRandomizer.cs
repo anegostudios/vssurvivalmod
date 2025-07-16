@@ -8,6 +8,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityBlockRandomizer : BlockEntityContainer
@@ -121,12 +123,26 @@ namespace Vintagestory.GameContent
 
             if (packetid == 1130)
             {
+                if (!fromPlayer.HasPrivilege("controlserver"))
+                {
+                    (fromPlayer as IServerPlayer).SendIngameError("noprivilege", "No privilege to set up a loot randomizer");
+                    return;
+                }
+
                 TreeAttribute tree = new TreeAttribute();
                 tree.FromBytes(data);
                 for (int i = 0; i < 10; i++)
                 {
                     var stree = tree["stack" + i] as TreeAttribute;
-                    if (stree == null) continue;
+                    if (stree == null)
+                    {
+                        Chances[i] = 0;
+                        if (!inventory[i].Empty)
+                        {
+                            inventory[i].Itemstack = null;
+                        }
+                        continue;
+                    }
 
                     Chances[i] = stree.GetFloat("chance");
 
@@ -172,11 +188,9 @@ namespace Vintagestory.GameContent
                     {
                         if (replaceBlocks != null)
                         {
-                            Dictionary<int, int> replaceByBlock;
-                            if (replaceBlocks.TryGetValue(block.Id, out replaceByBlock))
+                            if (replaceBlocks.TryGetValue(block.Id, out Dictionary<int, int> replaceByBlock))
                             {
-                                int newBlockId;
-                                if (replaceByBlock.TryGetValue(centerrockblockid, out newBlockId))
+                                if (replaceByBlock.TryGetValue(centerrockblockid, out int newBlockId))
                                 {
                                     block = blockAccessor.GetBlock(newBlockId);
                                 }

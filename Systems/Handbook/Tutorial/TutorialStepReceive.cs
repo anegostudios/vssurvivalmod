@@ -4,6 +4,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class TutorialStepLookatBlock : TutorialStepGeneric
@@ -99,7 +101,8 @@ namespace Vintagestory.GameContent
                 //case EnumReceiveType.Craft: vtmlCode = Lang.Get(text, stats); break;   // Commented out because "0/4 collected" looks wrong for crafting items, and crafting is usually all or nothing
                 default: vtmlCode = Lang.Get(text, rwatcher.QuantityAchieved >= rwatcher.QuantityGoal ? rwatcher.QuantityGoal : rwatcher.QuantityGoal - rwatcher.QuantityAchieved); break;
             }
-
+            
+            vtmlCode = Lang.Get("tutorialstep-numbered", index + 1, vtmlCode);
             return VtmlUtil.Richtextify(capi, vtmlCode, font);
         }
 
@@ -115,6 +118,17 @@ namespace Vintagestory.GameContent
             return false;
         }
 
+        public override bool DoCheckPlayerInventory(IPlayerInventoryManager inventoryManager)
+        {
+            rwatcher.DoCheckPlayerInventory(inventoryManager);
+            if (rwatcher.Dirty)
+            {
+                rwatcher.Dirty = false;
+                return true;
+            }
+
+            return false;
+        }
 
     }
 }

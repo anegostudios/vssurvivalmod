@@ -1,10 +1,13 @@
-﻿using System;
+using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -69,6 +72,10 @@ namespace Vintagestory.GameContent
 
         public Entity Controller => MountedBy;
 
+        public Entity OnEntity => null;
+
+        public EntityControls ControllingControls => null;
+
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
@@ -85,7 +92,7 @@ namespace Vintagestory.GameContent
             if (MountedBy == null && (mountedByEntityId != 0 || mountedByPlayerUid != null))
             {
                 var entity = mountedByPlayerUid != null ? api.World.PlayerByUid(mountedByPlayerUid)?.Entity : api.World.GetEntityById(mountedByEntityId) as EntityAgent;
-                if (entity != null)
+                if (entity?.SidedProperties != null) // Player entity might not be initialized if we load a sleeping player from spawnchunks
                 {
                     entity.TryMount(this);
                 }
@@ -193,7 +200,7 @@ namespace Vintagestory.GameContent
             mountedByEntityId = 0;
             mountedByPlayerUid = null;
 
-            Api.Event.UnregisterGameTickListener(restingListener);
+            UnregisterGameTickListener(restingListener);
             restingListener = 0;
         }
 
@@ -215,17 +222,30 @@ namespace Vintagestory.GameContent
             mountedByPlayerUid = (entityAgent as EntityPlayer)?.PlayerUID;
             mountedByEntityId = MountedBy.EntityId;
 
-            if (Api?.Side == EnumAppSide.Server)
+            if (entityAgent.Api?.Side == EnumAppSide.Server)
             {
                 if (restingListener == 0)
                 {
+                    var oldapi = this.Api;
+                    this.Api = entityAgent.Api;   // in case this.Api is currently null if this is called by LoadEntity method for entityAgent; a null Api here would cause RegisterGameTickListener to throw an exception
                     restingListener = RegisterGameTickListener(RestPlayer, 200);
+                    this.Api = oldapi;
                 }
-                hoursTotal = Api.World.Calendar.TotalHours;
+                hoursTotal = entityAgent.Api.World.Calendar.TotalHours;
             }
 
-            EntityBehaviorTiredness ebt = MountedBy?.GetBehavior("tiredness") as EntityBehaviorTiredness;
-            if (ebt != null) ebt.IsSleeping = true;
+            if (MountedBy != null)
+            {
+                entityAgent.Api.Event.EnqueueMainThreadTask(() => // Might not be initialized yet if this is loaded from spawnchunks
+                {
+                    if (MountedBy != null)
+                    {
+                        EntityBehaviorTiredness ebt = MountedBy.GetBehavior("tiredness") as EntityBehaviorTiredness;
+                        if (ebt != null) ebt.IsSleeping = true;
+                    }
+                }, "issleeping");
+            }
+            
 
             MarkDirty(false);
         }

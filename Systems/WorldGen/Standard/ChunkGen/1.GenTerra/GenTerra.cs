@@ -12,6 +12,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.ServerMods.NoObf;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     public class GenTerra : ModStdWorldGen
@@ -73,22 +75,22 @@ namespace Vintagestory.ServerMods
             return 0;
         }
 
-        public override void StartServerSide(ICoreServerAPI api)
+        public override void AssetsFinalize(ICoreAPI coreApi)
         {
-            this.api = api;
+            // Sea level needs to be initialized at least before GenDeposits.AssetsFinalize
+            this.api = (ICoreServerAPI)coreApi;
 
-            api.Event.ServerRunPhase(EnumServerRunPhase.ModsAndConfigReady, loadGamePre);
-            api.Event.InitWorldGenerator(initWorldGen, "standard");
-            api.Event.ChunkColumnGeneration(OnChunkColumnGen, EnumWorldGenPass.Terrain, "standard");
-        }
-
-        private void loadGamePre()
-        {
             if (api.WorldManager.SaveGame.WorldType != "standard") return;
 
             TerraGenConfig.seaLevel = (int)(0.4313725490196078 * api.WorldManager.MapSizeY);
             api.WorldManager.SetSeaLevel(TerraGenConfig.seaLevel);
             Climate.Sealevel = TerraGenConfig.seaLevel;
+        }
+
+        public override void StartServerSide(ICoreServerAPI api)
+        {
+            api.Event.InitWorldGenerator(initWorldGen, "standard");
+            api.Event.ChunkColumnGeneration(OnChunkColumnGen, EnumWorldGenPass.Terrain, "standard");
         }
 
         public void initWorldGen()
@@ -101,6 +103,7 @@ namespace Vintagestory.ServerMods
                 On a client, meanwhile, there will be at least the main rendering loop and the chunktesselator active.
              */
             maxThreads = Math.Clamp(Environment.ProcessorCount - (api.Server.IsDedicated ? 4 : 6), 1, api.Server.Config.HostedMode ? 4 : 10);  // We leave at least 4-6 threads free to avoid lag spikes due to CPU unavailability
+            if (api.Server.ReducedServerThreads && maxThreads > 1) maxThreads = 2;
 
             regionMapSize = (int)Math.Ceiling((double)api.WorldManager.MapSizeX / api.WorldManager.RegionSize);
             noiseScale = Math.Max(1, api.WorldManager.MapSizeY / 256f);
@@ -145,10 +148,10 @@ namespace Vintagestory.ServerMods
             for (int i = 0; i < chunksize * chunksize; i++) columnResults[i].ColumnBlockSolidities = new BitArray(api.WorldManager.MapSizeY);
 
             borderIndicesByCardinal = new int[8];
-            borderIndicesByCardinal[Cardinal.NorthEast.Index] = (chunksize - 1) * chunksize + 0;
-            borderIndicesByCardinal[Cardinal.SouthEast.Index] = 0 + 0;
-            borderIndicesByCardinal[Cardinal.SouthWest.Index] = 0 + chunksize - 1;
-            borderIndicesByCardinal[Cardinal.NorthWest.Index] = (chunksize - 1) * chunksize + chunksize - 1;
+            borderIndicesByCardinal[Cardinal.NorthEast] = (chunksize - 1) * chunksize + 0;
+            borderIndicesByCardinal[Cardinal.SouthEast] = 0 + 0;
+            borderIndicesByCardinal[Cardinal.SouthWest] = 0 + chunksize - 1;
+            borderIndicesByCardinal[Cardinal.NorthWest] = (chunksize - 1) * chunksize + chunksize - 1;
 
             landforms = null;  // Reset this, useful when /wgen regen command reloads all the generators because landforms gets reloaded from file there
         }
@@ -173,42 +176,31 @@ namespace Vintagestory.ServerMods
                 var neibHeightMaps = request.NeighbourTerrainHeight;
 
                 // Ignore diagonals if direct adjacent faces are available, otherwise the corners get weighted too strongly
-                if (neibHeightMaps[Cardinal.North.Index] != null)
+                if (neibHeightMaps[Cardinal.North] != null)
                 {
-                    neibHeightMaps[Cardinal.NorthEast.Index] = null;
-                    neibHeightMaps[Cardinal.NorthWest.Index] = null;
+                    neibHeightMaps[Cardinal.NorthEast] = null;
+                    neibHeightMaps[Cardinal.NorthWest] = null;
                 }
-                if (neibHeightMaps[Cardinal.East.Index] != null)
+                if (neibHeightMaps[Cardinal.East] != null)
                 {
-                    neibHeightMaps[Cardinal.NorthEast.Index] = null;
-                    neibHeightMaps[Cardinal.SouthEast.Index] = null;
+                    neibHeightMaps[Cardinal.NorthEast] = null;
+                    neibHeightMaps[Cardinal.SouthEast] = null;
                 }
-                if (neibHeightMaps[Cardinal.South.Index] != null)
+                if (neibHeightMaps[Cardinal.South] != null)
                 {
-                    neibHeightMaps[Cardinal.SouthWest.Index] = null;
-                    neibHeightMaps[Cardinal.SouthEast.Index] = null;
+                    neibHeightMaps[Cardinal.SouthWest] = null;
+                    neibHeightMaps[Cardinal.SouthEast] = null;
                 }
-                if (neibHeightMaps[Cardinal.West.Index] != null)
+                if (neibHeightMaps[Cardinal.West] != null)
                 {
-                    neibHeightMaps[Cardinal.SouthWest.Index] = null;
-                    neibHeightMaps[Cardinal.NorthWest.Index] = null;
-                }
-
-                //Bitmap bmp = new Bitmap(32, 32);
-
-                string sides = "";
-                for (int i = 0; i < Cardinal.ALL.Length; i++)
-                {
-                    var neibMap = neibHeightMaps[i];
-                    if (neibMap == null) continue;
-
-                    sides += Cardinal.ALL[i].Code + "_";
+                    neibHeightMaps[Cardinal.SouthWest] = null;
+                    neibHeightMaps[Cardinal.NorthWest] = null;
                 }
 
                 for (int dx = 0; dx < chunksize; dx++)
                 {
-                    borderIndicesByCardinal[Cardinal.North.Index] = (chunksize - 1) * chunksize + dx;
-                    borderIndicesByCardinal[Cardinal.South.Index] = 0 + dx;
+                    borderIndicesByCardinal[Cardinal.North] = (chunksize - 1) * chunksize + dx;
+                    borderIndicesByCardinal[Cardinal.South] = 0 + dx;
 
                     for (int dz = 0; dz < chunksize; dz++)
                     {
@@ -216,8 +208,8 @@ namespace Vintagestory.ServerMods
                         double ypos = 0;
                         float maxWeight = 0;
 
-                        borderIndicesByCardinal[Cardinal.East.Index] = dz * chunksize + 0;
-                        borderIndicesByCardinal[Cardinal.West.Index] = dz * chunksize + chunksize - 1;
+                        borderIndicesByCardinal[Cardinal.East] = dz * chunksize + 0;
+                        borderIndicesByCardinal[Cardinal.West] = dz * chunksize + chunksize - 1;
 
                         for (int i = 0; i < Cardinal.ALL.Length; i++)
                         {
@@ -232,19 +224,19 @@ namespace Vintagestory.ServerMods
                                     distToEdge = (float)dz / chunksize;
                                     break;
                                 case 1: // NE: Positive X, negative Z
-                                    distToEdge = (1 - (float)dx / chunksize) + (float)dz / chunksize;
+                                    distToEdge = 1 - (dx + 1f) / chunksize + (float)dz / chunksize;
                                     break;
                                 case 2: // E: Positive X
-                                    distToEdge = 1 - (float)dx / chunksize;
+                                    distToEdge = 1 - (dx + 1f) / chunksize;
                                     break;
                                 case 3: // SE: Positive X, positive Z
-                                    distToEdge = (1 - (float)dx / chunksize) + (1 - (float)dz / chunksize);
+                                    distToEdge = 1 - (dx + 1f) / chunksize + 1 - (dz + 1f) / chunksize;
                                     break;
                                 case 4: // S: Positive Z
-                                    distToEdge = 1 - (float)dz / chunksize;
+                                    distToEdge = 1 - (dz + 1f) / chunksize;
                                     break;
                                 case 5: // SW: Negative X, positive Z
-                                    distToEdge = (float)dx / chunksize + 1 - (float)dz / chunksize;
+                                    distToEdge = (float)dx / chunksize + 1 - (dz + 1f) / chunksize;
                                     break;
                                 case 6: // W: Negative X
                                     distToEdge = (float)dx / chunksize;
@@ -254,8 +246,8 @@ namespace Vintagestory.ServerMods
                                     break;
                             }
 
-
-                            float cardinalWeight = (float)Math.Pow((float)(1 - GameMath.Clamp(distToEdge, 0, 1)), 2);
+                            float baseWeight = Math.Max(0, 1 - distToEdge);
+                            float cardinalWeight = baseWeight * baseWeight;
                             var neibYPos = neibMap[borderIndicesByCardinal[i]] + 0.5f;
 
                             ypos += neibYPos * Math.Max(0.0001, cardinalWeight);
@@ -264,14 +256,8 @@ namespace Vintagestory.ServerMods
                         }
 
                         taperMap[dz * chunksize + dx] = new WeightedTaper() { TerrainYPos = (float)(ypos / Math.Max(0.0001, sumWeight)), Weight = maxWeight };
-
-                        // East: Positive X
-                        // South: Positive Z
-                        //bmp.SetPixel(dx, dz, Color.FromArgb(255, (int)(maxWeight * 255), 0, 0));
                     }
                 }
-
-                // bmp.Save("chunk-" + request.ChunkX + "-" + request.ChunkZ + "-"+sides+".png");
             }
 
             if (landforms == null)    // This only needs to be done once, but cannot be done during initWorldGen() because NoiseLandforms.landforms is sometimes not yet setup at that point (depends on random order of ModSystems registering to events)
@@ -344,14 +330,12 @@ namespace Vintagestory.ServerMods
             LerpedWeightedIndex2DMap landLerpMap = GetOrLoadLerpedLandformMap(mapchunk, chunkX / regionChunkSize, chunkZ / regionChunkSize);
 
             // Terrain octaves
-            double[] octNoiseX0, octNoiseX1, octNoiseX2, octNoiseX3;
-            double[] octThX0, octThX1, octThX2, octThX3;
 
             float[] landformWeights = tempDataThreadLocal.Value.landformWeights;
-            GetInterpolatedOctaves(landLerpMap.WeightsAt(baseX, baseZ, landformWeights), out octNoiseX0, out octThX0);
-            GetInterpolatedOctaves(landLerpMap.WeightsAt(baseX + chunkPixelSize, baseZ, landformWeights), out octNoiseX1, out octThX1);
-            GetInterpolatedOctaves(landLerpMap.WeightsAt(baseX, baseZ + chunkPixelSize, landformWeights), out octNoiseX2, out octThX2);
-            GetInterpolatedOctaves(landLerpMap.WeightsAt(baseX + chunkPixelSize, baseZ + chunkPixelSize, landformWeights), out octNoiseX3, out octThX3);
+            GetInterpolatedOctaves(landLerpMap.WeightsAt(baseX, baseZ, landformWeights), out double[] octNoiseX0, out double[] octThX0);
+            GetInterpolatedOctaves(landLerpMap.WeightsAt(baseX + chunkPixelSize, baseZ, landformWeights), out double[] octNoiseX1, out double[] octThX1);
+            GetInterpolatedOctaves(landLerpMap.WeightsAt(baseX, baseZ + chunkPixelSize, landformWeights), out double[] octNoiseX2, out double[] octThX2);
+            GetInterpolatedOctaves(landLerpMap.WeightsAt(baseX + chunkPixelSize, baseZ + chunkPixelSize, landformWeights), out double[] octNoiseX3, out double[] octThX3);
             float[][] terrainYThresholds = this.terrainYThresholds;
 
             // Store heightmap in the map chunk
@@ -578,9 +562,8 @@ namespace Vintagestory.ServerMods
 
         LerpedWeightedIndex2DMap GetOrLoadLerpedLandformMap(IMapChunk mapchunk, int regionX, int regionZ)
         {
-            LerpedWeightedIndex2DMap map;
             // 1. Load?
-            LandformMapByRegion.TryGetValue(regionZ * regionMapSize + regionX, out map);
+            LandformMapByRegion.TryGetValue(regionZ * regionMapSize + regionX, out LerpedWeightedIndex2DMap map);
             if (map != null) return map;
 
             IntDataMap2D lmap = mapchunk.MapRegion.LandformMap;

@@ -8,8 +8,9 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -86,7 +87,7 @@ namespace Vintagestory.GameContent
         private long listenerId;
         private float burnHoursPerItem;
         private BlockFacing[] facings = (BlockFacing[])BlockFacing.ALLFACES.Clone();
-        public bool CanIgnite => burnHoursPerItem > 0 && inventory[0].Itemstack?.Collectible.CombustibleProps?.BurnTemperature > 200;
+        public virtual bool CanIgnite => burnHoursPerItem > 0 && inventory[0].Itemstack?.Collectible.CombustibleProps?.BurnTemperature > 200;
         public int Layers => inventory[0].StackSize == 1 ? 1 : (int)(inventory[0].StackSize * StorageProps.ModelItemsToStackSizeRatio);
         public bool IsBurning => burning;
 
@@ -102,6 +103,7 @@ namespace Vintagestory.GameContent
                     case EnumGroundStorageLayout.Halves: return 2;
                     case EnumGroundStorageLayout.WallHalves: return 2;
                     case EnumGroundStorageLayout.Quadrants: return 4;
+                    case EnumGroundStorageLayout.Messy12: return 1; // Pretend its only one, but we'll render 12
                     case EnumGroundStorageLayout.Stacking: return 1;
                 }
 
@@ -128,11 +130,13 @@ namespace Vintagestory.GameContent
                     case EnumGroundStorageLayout.Halves: return 2;
                     case EnumGroundStorageLayout.WallHalves: return 2;
                     case EnumGroundStorageLayout.Quadrants: return 4;
+                    case EnumGroundStorageLayout.Messy12: return 12;
                     case EnumGroundStorageLayout.Stacking: return StorageProps.StackingCapacity;
                     default: return 1;
                 }
             }
         }
+
 
         public override InventoryBase Inventory
         {
@@ -328,7 +332,7 @@ namespace Vintagestory.GameContent
             return null;
         }
 
-        // For trailer making
+        #region For trailer making
         /*void initMealRandomizer()
         {
             RegisterGameTickListener(Every50ms, 150);
@@ -580,7 +584,7 @@ namespace Vintagestory.GameContent
             updateMeshes();
             MarkDirty(true);
         }*/
-
+        #endregion
         public Cuboidf[] GetSelectionBoxes()
         {
             return selBoxes;
@@ -625,6 +629,12 @@ namespace Vintagestory.GameContent
                 switch (StorageProps.Layout)
                 {
                     case EnumGroundStorageLayout.SingleCenter:
+                        if (StorageProps.RandomizeCenterRotation)
+                        {
+                            double randomX = Api.World.Rand.NextDouble() * 6.28 - 3.14;
+                            double randomZ = Api.World.Rand.NextDouble() * 6.28 - 3.14;
+                            MeshAngle = (float)Math.Atan2(randomX, randomZ);
+                        }
                         ok = putOrGetItemSingle(inventory[0], player, bs);
                         break;
 
@@ -646,6 +656,7 @@ namespace Vintagestory.GameContent
                         ok = putOrGetItemSingle(inventory[pos], player, bs);
                         break;
 
+                    case EnumGroundStorageLayout.Messy12:
                     case EnumGroundStorageLayout.Stacking:
                         ok = putOrGetItemStacking(player, bs);
                         break;
@@ -692,15 +703,13 @@ namespace Vintagestory.GameContent
         public ItemSlot GetSlotAt(BlockSelection bs)
         {
             if (StorageProps == null) return null;
+            var hitPos = rotatedOffset(bs.HitPosition.ToVec3f(), -MeshAngle);
 
             switch (StorageProps.Layout)
             {
-                case EnumGroundStorageLayout.SingleCenter:
-                    return inventory[0];
-
                 case EnumGroundStorageLayout.Halves:
                 case EnumGroundStorageLayout.WallHalves:
-                    if (bs.HitPosition.X < 0.5)
+                    if (hitPos.X < 0.5)
                     {
                         return inventory[0];
                     }
@@ -710,10 +719,12 @@ namespace Vintagestory.GameContent
                     }
 
                 case EnumGroundStorageLayout.Quadrants:
-                    var hitPos = rotatedOffset(bs.HitPosition.ToVec3f(),-MeshAngle);
                     int pos = ((hitPos.X > 0.5) ? 2 : 0) + ((hitPos.Z > 0.5) ? 1 : 0);
                     return inventory[pos];
 
+
+                case EnumGroundStorageLayout.SingleCenter:
+                case EnumGroundStorageLayout.Messy12:
                 case EnumGroundStorageLayout.Stacking:
                     return inventory[0];
             }
@@ -797,17 +808,19 @@ namespace Vintagestory.GameContent
                 return true;
             }
 
+            ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
+
+            bool equalStack = inventory[0].Empty || hotbarSlot.Itemstack != null && hotbarSlot.Itemstack.Equals(Api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes);
+
             BlockPos abovePos = Pos.UpCopy();
-            BlockEntity be = Api.World.BlockAccessor.GetBlockEntity(abovePos);
-            if (be is BlockEntityGroundStorage beg)
+            var beg = Block.GetBlockEntity<BlockEntityGroundStorage>(abovePos);
+            if (TotalStackSize >= Capacity && ((beg != null && equalStack) ||
+                (hotbarSlot.Empty && beg?.inventory[0].Itemstack?.Equals(Api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes) == true)))
             {
                 return beg.OnPlayerInteractStart(byPlayer, bs);
             }
 
             bool sneaking = byPlayer.Entity.Controls.ShiftKey;
-
-
-            ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
             if (sneaking && hotbarSlot.Empty) return false;
 
@@ -818,17 +831,30 @@ namespace Vintagestory.GameContent
 
                 if (aboveblock.IsReplacableBy(pileblock))
                 {
-                    BlockGroundStorage bgs = pileblock as BlockGroundStorage;
-                    var bsc = bs.Clone();
-                    bsc.Position.Up();
-                    bsc.Face = null;
-                    return bgs.CreateStorage(Api.World, bsc, byPlayer);
+                    if (!equalStack && bs.Face != BlockFacing.UP) return false;
+
+                    int stackHeight = 1;
+                    if (StorageProps.MaxStackingHeight > 0)
+                    {
+                        BlockPos tempPos = Pos.Copy();
+                        while (Block.GetBlockEntity<BlockEntityGroundStorage>(tempPos.Down())?.inventory[0].Itemstack?.Equals(Api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes) == true)
+                        {
+                            stackHeight++;
+                        }
+                    }
+
+                    if (StorageProps.MaxStackingHeight < 0 || stackHeight < StorageProps.MaxStackingHeight || !equalStack)
+                    {
+                        BlockGroundStorage bgs = pileblock as BlockGroundStorage;
+                        var bsc = bs.Clone();
+                        bsc.Position = Pos;
+                        bsc.Face = BlockFacing.UP;
+                        return bgs.CreateStorage(Api.World, bsc, byPlayer);
+                    }
                 }
 
                 return false;
             }
-
-            bool equalStack = inventory[0].Empty || hotbarSlot.Itemstack != null && hotbarSlot.Itemstack.Equals(Api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes);
 
             if (sneaking && !equalStack)
             {
@@ -860,16 +886,21 @@ namespace Vintagestory.GameContent
 
             if (invSlot.Empty)
             {
-                if (hotbarSlot.TryPutInto(Api.World, invSlot, TransferQuantity) > 0)
+                bool putBulk = player.Entity.Controls.CtrlKey;
+
+                if (hotbarSlot.TryPutInto(Api.World, invSlot, putBulk ? BulkTransferQuantity : TransferQuantity) > 0)
                 {
                     Api.World.PlaySoundAt(StorageProps.PlaceRemoveSound.WithPathPrefixOnce("sounds/"), Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, null, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
                 }
+
                 Api.World.Logger.Audit("{0} Put {1}x{2} into new Ground storage at {3}.",
                     player.PlayerName,
                     TransferQuantity,
                     invSlot.Itemstack.Collectible.Code,
                     Pos
                 );
+
+                Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
                 return true;
             }
 
@@ -903,6 +934,9 @@ namespace Vintagestory.GameContent
                     invSlot.Itemstack.Collectible.Code,
                     Pos
                 );
+
+                Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
+
                 MarkDirty();
 
                 Cuboidf[] collBoxes = Api.World.BlockAccessor.GetBlock(Pos).GetCollisionBoxes(Api.World.BlockAccessor, Pos);
@@ -931,6 +965,7 @@ namespace Vintagestory.GameContent
                 {
                     Api.World.SpawnItemEntity(stack, Pos);
                 }
+
                 Api.World.Logger.Audit("{0} Took {1}x{2} from Ground storage at {3}.",
                     player.PlayerName,
                     q,
@@ -943,6 +978,7 @@ namespace Vintagestory.GameContent
             {
                 Api.World.BlockAccessor.SetBlock(0, Pos);
             }
+            else Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
 
             Api.World.PlaySoundAt(StorageProps.PlaceRemoveSound, Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, null, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
 
@@ -967,9 +1003,65 @@ namespace Vintagestory.GameContent
             }
 
             ItemSlot hotbarSlot = player.InventoryManager.ActiveHotbarSlot;
+
+            if (ourSlot?.Itemstack?.Collectible is ILiquidInterface liquidCnt1 && hotbarSlot?.Itemstack?.Collectible is ILiquidInterface liquidCnt2)
+            {
+                BlockLiquidContainerBase heldLiquidContainer = hotbarSlot.Itemstack.Collectible as BlockLiquidContainerBase;
+
+                CollectibleObject obj = hotbarSlot.Itemstack.Collectible;
+                bool singleTake = player.WorldData.EntityControls.ShiftKey;
+                bool singlePut = player.WorldData.EntityControls.CtrlKey;
+
+
+                if (obj is ILiquidSource liquidSource && liquidSource.AllowHeldLiquidTransfer && !singleTake)
+                {
+                    ItemStack contentStackToMove = liquidSource.GetContent(hotbarSlot.Itemstack);
+
+                    int moved = heldLiquidContainer.TryPutLiquid(
+                        containerStack: ourSlot.Itemstack,
+                        liquidStack: contentStackToMove,
+                        desiredLitres: singlePut ? liquidSource.TransferSizeLitres : liquidSource.CapacityLitres);
+
+                    if (moved > 0)
+                    {
+                        heldLiquidContainer.SplitStackAndPerformAction(player.Entity, hotbarSlot, delegate (ItemStack stack)
+                        {
+                            liquidSource.TryTakeContent(stack, moved);
+                            return moved;
+                        });
+                        heldLiquidContainer.DoLiquidMovedEffects(player, contentStackToMove, moved, BlockLiquidContainerBase.EnumLiquidDirection.Pour);
+
+                        BlockGroundStorage.IsUsingContainedBlock = true;
+                        isUsingSlot = ourSlot;
+                        return true;
+                    }
+                }
+
+                if (obj is ILiquidSink liquidSink && liquidSink.AllowHeldLiquidTransfer && !singlePut)
+                {
+                    ItemStack owncontentStack = heldLiquidContainer.GetContent(ourSlot.Itemstack);
+                    if (owncontentStack != null)
+                    {
+                        ItemStack liquidStackForParticles = owncontentStack.Clone();
+                        float litres = (singleTake ? liquidSink.TransferSizeLitres : liquidSink.CapacityLitres);
+                        int moved = heldLiquidContainer.SplitStackAndPerformAction(player.Entity, hotbarSlot, (ItemStack stack) => liquidSink.TryPutLiquid(stack, owncontentStack, litres));
+                        if (moved > 0)
+                        {
+                            heldLiquidContainer.TryTakeContent(ourSlot.Itemstack, moved);
+                            heldLiquidContainer.DoLiquidMovedEffects(player, liquidStackForParticles, moved, BlockLiquidContainerBase.EnumLiquidDirection.Fill);
+
+                            BlockGroundStorage.IsUsingContainedBlock = true;
+                            isUsingSlot = ourSlot;
+                            return true;
+                        }
+                    }
+                }
+            }
+
             if (!hotbarSlot.Empty && !inventory.Empty)
             {
-                bool layoutEqual = StorageProps.Layout == hotbarSlot.Itemstack.Collectible.GetBehavior<CollectibleBehaviorGroundStorable>()?.StorageProps.Layout;
+                var hotbarlayout = hotbarSlot.Itemstack.Collectible.GetBehavior<CollectibleBehaviorGroundStorable>()?.StorageProps.Layout;
+                bool layoutEqual = StorageProps.Layout == hotbarlayout || (StorageProps.Layout == EnumGroundStorageLayout.Quadrants && hotbarlayout == EnumGroundStorageLayout.Messy12);
                 if (!layoutEqual) return false;
             }
 
@@ -1062,6 +1154,7 @@ namespace Vintagestory.GameContent
                 if (listenerId != 0)
                 {
                     UnregisterGameTickListener(listenerId);
+                    listenerId = 0;
                 }
                 ambientSound?.Stop();
                 listenerId = 0;
@@ -1153,7 +1246,7 @@ namespace Vintagestory.GameContent
                     if (temperature > 20)
                     {
                         var f = slot.Itemstack?.Attributes.GetFloat("hoursHeatReceived") ?? 0;
-                        dsc.AppendLine(Lang.Get("Temperature: {0:0.##}°C", temperature));
+                        dsc.AppendLine(Lang.Get("temperature-precise", temperature));
                         if (f > 0) dsc.AppendLine(Lang.Get("Fired for {0:0.##} hours", f));
                     }
                 }
@@ -1162,12 +1255,11 @@ namespace Vintagestory.GameContent
 
         public virtual string[] getContentSummary()
         {
-            OrderedDictionary<string, int> dict = new OrderedDictionary<string, int>();
+            OrderedDictionary<string, int> dict = new ();
 
             foreach (var slot in inventory)
             {
                 if (slot.Empty) continue;
-                int cnt;
 
                 string stackName = slot.Itemstack.GetName();
 
@@ -1176,7 +1268,7 @@ namespace Vintagestory.GameContent
                     stackName = ccn.GetContainedInfo(slot);
                 }
 
-                if (!dict.TryGetValue(stackName, out cnt)) cnt = 0;
+                if (!dict.TryGetValue(stackName, out int cnt)) cnt = 0;
 
                 dict[stackName] = cnt + slot.StackSize;
             }
@@ -1184,7 +1276,7 @@ namespace Vintagestory.GameContent
             return dict.Select(elem => Lang.Get("{0}x {1}", elem.Value, elem.Key)).ToArray();
         }
 
-        public override bool OnTesselation(ITerrainMeshPool meshdata, ITesselatorAPI tesselator)
+        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
             float temp = 0;
             if (!Inventory.Empty)
@@ -1226,7 +1318,7 @@ namespace Vintagestory.GameContent
             NeedsRetesselation = false;
             lock (inventoryLock)
             {
-                return base.OnTesselation(meshdata, tesselator);
+                return base.OnTesselation(mesher, tesselator);
             }
         }
 
@@ -1270,6 +1362,7 @@ namespace Vintagestory.GameContent
         {
             switch (StorageProps.Layout)
             {
+                case EnumGroundStorageLayout.Messy12:
                 case EnumGroundStorageLayout.SingleCenter:
                     offs[0] = new Vec3f();
                     break;
@@ -1301,27 +1394,85 @@ namespace Vintagestory.GameContent
 
         protected override string getMeshCacheKey(ItemStack stack)
         {
-            return (StorageProps.ModelItemsToStackSizeRatio > 0 ? stack.StackSize : 1) + "x" + base.getMeshCacheKey(stack);
+            return (StorageProps.Layout == EnumGroundStorageLayout.Messy12 ? "messy12-" : "") + (StorageProps.ModelItemsToStackSizeRatio > 0 ? stack.StackSize : 1) + "x" + base.getMeshCacheKey(stack);
         }
 
         protected override MeshData getOrCreateMesh(ItemStack stack, int index)
         {
             if(stack.Class == EnumItemClass.Block)
             {
-                MeshRefs[index] = capi.TesselatorManager.GetDefaultBlockMeshRef(stack.Block);
+                if (stack.Block is IBlockMealContainer be)
+                {
+                    var mealMeshCache = capi.ModLoader.GetModSystem<MealMeshCache>();
+                    var key = mealMeshCache.GetMealHashCode(stack);
+                    Dictionary<int, MultiTextureMeshRef> meshrefs;
+                    if (capi!.ObjectCache.TryGetValue("cookedMeshRefs", out var obj))
+                    {
+                        meshrefs = obj as Dictionary<int, MultiTextureMeshRef> ?? [];
+                        if(!meshrefs.TryGetValue(key, out MeshRefs[index]))
+                        {
+                            if (be is BlockCookedContainer bc)
+                            {
+                                MeshRefs[index] = mealMeshCache!.GetOrCreateMealInContainerMeshRef(stack.Block, be.GetCookingRecipe(capi.World, stack), be.GetNonEmptyContents(capi.World, stack), new Vec3f(0, bc.yoff/16f, 0));
+                            }
+                            else
+                            {
+                                MeshRefs[index] = mealMeshCache!.GetOrCreateMealInContainerMeshRef(stack.Block, be.GetCookingRecipe(capi.World, stack), be.GetNonEmptyContents(capi.World, stack));
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    MeshRefs[index] = capi.TesselatorManager.GetDefaultBlockMeshRef(stack.Block);
+                }
             }
             // shingle/bricks are items but uses Stacking layout to get the mesh, so this should be not needed atm
             else if(stack.Class == EnumItemClass.Item && StorageProps.Layout != EnumGroundStorageLayout.Stacking)
             {
                 MeshRefs[index] = capi.TesselatorManager.GetDefaultItemMeshRef(stack.Item);
             }
+
+            if (StorageProps.Layout == EnumGroundStorageLayout.Messy12)
+            {
+                string key = getMeshCacheKey(stack);
+                var mesh = getMesh(stack);
+                if (mesh != null)
+                {
+                    return mesh;
+                }
+
+                var meshDataOne = getDefaultMesh(stack);
+                applyDefaultTranforms(stack, meshDataOne);
+
+                var rnd = new Random(0);
+
+                var meshData12 = meshDataOne.Clone().Clear();
+                for (int i = 0; i < stack.StackSize; i++)
+                {
+                    float rndx = (float)rnd.NextDouble() * 0.9f - 0.45f;
+                    float rndz = (float)rnd.NextDouble() * 0.9f - 0.45f;
+                    meshDataOne.Rotate(new Vec3f(0.5f, 0, 0.5f), 0, GameMath.TWOPI * (float)rnd.NextDouble(), 0);
+                    float rndscale = 1 + ((float)rnd.NextDouble() * 0.02f - 0.01f);
+                    meshDataOne.Scale(new Vec3f(0.5f, 0, 0.5f), 1 * rndscale, 1 * rndscale, 1 * rndscale);
+                    meshData12.AddMeshData(meshDataOne, rndx, 0, rndz);
+                }
+
+                MeshCache[key] = meshData12;
+
+                return meshData12;
+            }
+
             if (StorageProps.Layout == EnumGroundStorageLayout.Stacking)
             {
                 var key = getMeshCacheKey(stack);
                 var mesh = getMesh(stack);
-                
 
-                if (mesh != null) return mesh;
+                if (mesh != null)
+                {
+                    UploadedMeshCache.TryGetValue(key, out MeshRefs[index]);
+                    return mesh;
+                }
 
                 var loc = StorageProps.StackingModel.Clone().WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
                 nowTesselatingShape = Shape.TryGet(capi, loc);
@@ -1467,7 +1618,7 @@ namespace Vintagestory.GameContent
                     besg.TryIgnite();
                     if (Api.World.Rand.NextDouble() < 0.75) break;
                 }
-                else if (((ICoreServerAPI)Api).Server.Config.AllowFireSpread && 0.5f > Api.World.Rand.NextDouble())
+                else if (Api.World.Config.GetBool("allowFireSpread") && 0.5f > Api.World.Rand.NextDouble())
                 {
                     var didSpread = bh.TrySpreadTo(blockPos);
                     if (didSpread && Api.World.Rand.NextDouble() < 0.75) break;
@@ -1510,11 +1661,6 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockUnloaded();
             renderer?.Dispose();
-            if (listenerId != 0)
-            {
-                Api.Event.UnregisterGameTickListener(listenerId);
-                listenerId = 0;
-            }
             ambientSound?.Stop();
         }
 
@@ -1522,15 +1668,10 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockRemoved();
             renderer?.Dispose();
-            if (listenerId != 0)
-            {
-                Api.Event.UnregisterGameTickListener(listenerId);
-                listenerId = 0;
-            }
             ambientSound?.Stop();
         }
 
-        public float GetHeatStrength(IWorldAccessor world, BlockPos heatSourcePos, BlockPos heatReceiverPos)
+        public virtual float GetHeatStrength(IWorldAccessor world, BlockPos heatSourcePos, BlockPos heatReceiverPos)
         {
             return IsBurning ? 10 : 0;
         }

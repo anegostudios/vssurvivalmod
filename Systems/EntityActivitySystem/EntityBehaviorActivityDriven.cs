@@ -5,14 +5,31 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Sorted by priority
+    /// </summary>
+    public enum EnumInteruptionType
+    {
+        None,
+        BeingTalkedTo,
+        TradeRequested,
+        AskedToCome,
+        Combat,
+        Death
+    }
+
     public class EntityBehaviorActivityDriven : EntityBehavior
     {
         ICoreAPI Api;
         public EntityActivitySystem ActivitySystem;
 
-        public event ActionBoolReturn OnShouldRunActivitySystem;
+        public delegate EnumInteruptionType ActivitySystemInterruptionHandler();
+
+        public event ActivitySystemInterruptionHandler OnShouldRunActivitySystem;
 
         public EntityBehaviorActivityDriven(Entity entity) : base(entity)
         {
@@ -86,6 +103,8 @@ namespace Vintagestory.GameContent
 
         public override void OnGameTick(float deltaTime)
         {
+            if (!entity.Alive) return;
+
             if (!AiRuntimeConfig.RunAiActivities)
             {
                 if (wasRunAiActivities)
@@ -93,8 +112,10 @@ namespace Vintagestory.GameContent
                     ActivitySystem.CancelAll();
                 }
                 wasRunAiActivities = false;
+
                 return;
             }
+
             wasRunAiActivities = AiRuntimeConfig.RunAiActivities;
 
             base.OnGameTick(deltaTime);
@@ -103,18 +124,18 @@ namespace Vintagestory.GameContent
             {
                 bool wasActive = active;
                 active = true;
-                foreach (ActionBoolReturn act in OnShouldRunActivitySystem.GetInvocationList())
+                EnumInteruptionType interuptionType = EnumInteruptionType.None;
+                foreach (ActivitySystemInterruptionHandler act in OnShouldRunActivitySystem.GetInvocationList())
                 {
-                    if (!act.Invoke())
-                    {
-                        active = false;
-                        break;
-                    }
+                    var result = act.Invoke();
+                    if (result > interuptionType) interuptionType = result;
                 }
+
+                active = interuptionType == EnumInteruptionType.None;
 
                 if (wasActive && !active)
                 {
-                    ActivitySystem.Pause();
+                    ActivitySystem.Pause(interuptionType);
                 }
                 if (!wasActive && active)
                 {

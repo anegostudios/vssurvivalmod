@@ -5,6 +5,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public enum EnumCropStressType
@@ -43,7 +45,7 @@ namespace Vintagestory.GameContent
                 val.Initialize(api, val.properties);
             }
 
-            Inventory.LateInitialize(InventoryClassName + "-" + Pos.X + "/" + Pos.Y + "/" + Pos.Z, api);
+            Inventory.LateInitialize(InventoryClassName + "-" + Pos, api);
             Inventory.Pos = Pos;
             Inventory.ResolveBlocksOrItems();
             //Inventory.OnAcquireTransitionSpeed = Inventory_OnAcquireTransitionSpeed;
@@ -54,7 +56,7 @@ namespace Vintagestory.GameContent
 
         public ItemStack[] GetDrops(IPlayer byPlayer, float dropQuantityMultiplier)
         {
-            if (inv[0].Empty) return new ItemStack[0];
+            if (inv[0].Empty) return System.Array.Empty<ItemStack>();
             ItemStack[] drops = inv[0].Itemstack.Block.GetDrops(Api.World, Pos, byPlayer, dropQuantityMultiplier);
 
             // Minor hack to make dead crop always drop seeds

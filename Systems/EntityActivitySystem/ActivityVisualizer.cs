@@ -5,6 +5,8 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.Essentials;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class VisualizerLabel

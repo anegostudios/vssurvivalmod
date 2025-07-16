@@ -1,7 +1,9 @@
-﻿using System;
+using System;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -22,15 +24,8 @@ namespace Vintagestory.GameContent
         protected float curTurnRadPerSec;
 
 
-        public AiTaskButterflyWander(EntityAgent entity) : base(entity)
+        public AiTaskButterflyWander(EntityAgent entity, JsonObject taskConfig, JsonObject aiConfig) : base(entity, taskConfig, aiConfig)
         {
-
-        }
-
-        public override void LoadConfig(JsonObject taskConfig, JsonObject aiConfig)
-        {
-            base.LoadConfig(taskConfig, aiConfig);
-
             moveSpeed = taskConfig["movespeed"].AsFloat(0.03f);
 
             maxHeight = taskConfig["maxHeight"].AsFloat(7f);
@@ -74,8 +69,12 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool ContinueExecute(float dt)
+        public override bool 
+            ContinueExecute(float dt)
         {
+            //Check if time is still valid for task.
+            if (!IsInValidDayTimeHours(false)) return false;
+
             if (entity.OnGround || entity.World.Rand.NextDouble() < 0.03)
             {
                 ReadjustFlyHeight();
@@ -85,7 +84,7 @@ namespace Vintagestory.GameContent
 
             double dy = desiredYPos - entity.ServerPos.Y;
             double yMot = GameMath.Clamp(dy, -1, 1);
-            float yawDist = GameMath.AngleRadDistance(entity.ServerPos.Yaw, desiredYaw);
+            float yawDist = GameMath.AngleRadDistance(desiredYaw, entity.ServerPos.Yaw);
 
             if (!entity.FeetInLiquid)
             {
@@ -98,7 +97,6 @@ namespace Vintagestory.GameContent
                     entity.ServerPos.Motion.Y = 0.02f;
                 }
             }
-
 
             double cosYaw = Math.Cos(entity.ServerPos.Yaw);
             double sinYaw = Math.Sin(entity.ServerPos.Yaw);

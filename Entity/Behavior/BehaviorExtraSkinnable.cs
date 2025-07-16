@@ -8,6 +8,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public enum EnumSkinnableType
@@ -36,6 +38,8 @@ namespace Vintagestory.GameContent
 
     public class SkinnablePartVariant
     {
+        public string Category = "standard";
+
         public string Code;
         public CompositeShape Shape;
         public AssetLocation Texture;
@@ -81,10 +85,8 @@ namespace Vintagestory.GameContent
 
                 foreach (SkinnablePart part in AvailableSkinParts)
                 {
-                    SkinnablePartVariant variant;
-
                     string code = appliedTree.GetString(part.Code);
-                    if (code != null && part.VariantsByCode.TryGetValue(code, out variant))
+                    if (code != null && part.VariantsByCode.TryGetValue(code, out SkinnablePartVariant variant))
                     {
                         appliedTemp.Add(variant.AppliedCopy(part.Code));
                     }
@@ -114,25 +116,27 @@ namespace Vintagestory.GameContent
             entity.WatchedAttributes.RegisterModifiedListener("voicepitch", onVoiceConfigChanged);
 
             AvailableSkinParts = properties.Attributes["skinnableParts"].AsObject<SkinnablePart[]>();
-            foreach (var val in AvailableSkinParts)
+            AvailableSkinParts = entity.Api.ModLoader.GetModSystem<ModSystemSkinnableAdditions>().AppendAdditions(AvailableSkinParts);
+
+            foreach (var part in AvailableSkinParts)
             {
-                string partCode = val.Code;
-                val.VariantsByCode = new Dictionary<string, SkinnablePartVariant>();
+                string partCode = part.Code;
+                part.VariantsByCode = new Dictionary<string, SkinnablePartVariant>();
 
-                AvailableSkinPartsByCode[val.Code] = val;
+                AvailableSkinPartsByCode[part.Code] = part;
 
-                if (val.Type == EnumSkinnableType.Texture && entity.Api.Side == EnumAppSide.Client)
+                if (part.Type == EnumSkinnableType.Texture && entity.Api.Side == EnumAppSide.Client)
                 {
                     ICoreClientAPI capi = entity.Api as ICoreClientAPI;
 
                     LoadedTexture texture = new LoadedTexture(capi);
-                    foreach (var variant in val.Variants)
+                    foreach (var variant in part.Variants)
                     {
                         AssetLocation textureLoc;
 
-                        if (val.TextureTemplate != null)
+                        if (part.TextureTemplate != null)
                         {
-                            textureLoc = val.TextureTemplate.Clone();
+                            textureLoc = part.TextureTemplate.Clone();
                             textureLoc.Path = textureLoc.Path.Replace("{code}", variant.Code);
                         }
                         else
@@ -163,13 +167,13 @@ namespace Vintagestory.GameContent
 
                         c = Math.Max(1, c);
                         variant.Color = ColorUtil.ColorFromRgba((int)(b/c), (int)(g/c), (int)(r/c), 255);
-                        val.VariantsByCode[variant.Code] = variant;
+                        part.VariantsByCode[variant.Code] = variant;
                     }
                 } else
                 {
-                    foreach (var variant in val.Variants)
+                    foreach (var variant in part.Variants)
                     {
-                        val.VariantsByCode[variant.Code] = variant;
+                        part.VariantsByCode[variant.Code] = variant;
                     }
                 }
             }
@@ -252,13 +256,10 @@ namespace Vintagestory.GameContent
                 shapeIsCloned = true;
             }
 
-            //var AppliedSkinParts = this.AppliedSkinParts;    // AppliedSkinParts.get_ is costly and we call this every frame! So we at least hold it locally and call it only once not twice. It clears and rebuilds the list each time from Dictionaries... // wtf? this is not called every fame
-
             foreach (var skinpart in AppliedSkinParts)
             {
-                SkinnablePart part;
-                AvailableSkinPartsByCode.TryGetValue(skinpart.PartCode, out part);
-                
+                AvailableSkinPartsByCode.TryGetValue(skinpart.PartCode, out SkinnablePart part);
+
                 if (part?.Type == EnumSkinnableType.Shape)
                 {
                     entityShape = addSkinPart(skinpart, entityShape, part.DisableElements, shapePathForLogging);
@@ -267,8 +268,7 @@ namespace Vintagestory.GameContent
 
             foreach (var val in AppliedSkinParts)
             {
-                SkinnablePart part;
-                AvailableSkinPartsByCode.TryGetValue(val.PartCode, out part);
+                AvailableSkinPartsByCode.TryGetValue(val.PartCode, out SkinnablePart part);
 
                 if (part != null && part.Type == EnumSkinnableType.Texture && part.TextureTarget != null && part.TextureTarget != mainTextureCode)
                 {

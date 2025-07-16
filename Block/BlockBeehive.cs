@@ -3,6 +3,8 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockBeehive : Block
@@ -32,7 +34,7 @@ namespace Vintagestory.GameContent
 
         BlockPos atPos = new BlockPos();
 
-        Cuboidf[] nocoll = new Cuboidf[0];
+        Cuboidf[] nocoll = System.Array.Empty<Cuboidf>();
 
         public override Cuboidf[] GetParticleCollisionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
         {

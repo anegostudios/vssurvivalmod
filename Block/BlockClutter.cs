@@ -11,6 +11,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ClutterTypeProps : IShapeTypeProps
@@ -86,7 +88,7 @@ namespace Vintagestory.GameContent
                 ColSelBoxesByHashkey = this.ColSelBoxesByHashkey.ToDictionary(kv => kv.Key, kv => kv.Value?.Select(box => box?.Clone()).ToArray()),
                 ShapePath = this.ShapePath?.Clone(),
                 ShapeResolved = this.ShapeResolved?.Clone(),
-                Randomize = this.Randomize,
+                RandomizeYSize = this.RandomizeYSize,
                 Climbable = this.Climbable,
                 LightHsv = this.LightHsv?.ToArray(),
                 Textures = this.Textures?.ToDictionary(kv => kv.Key, kv => kv.Value?.Clone()),

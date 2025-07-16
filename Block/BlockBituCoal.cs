@@ -4,6 +4,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.ServerMods;
 
+#nullable disable
+
 namespace Vintagestory.GameContent;
 
 public class BlockBituCoal: BlockOre

@@ -7,6 +7,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ItemClay : Item
@@ -27,7 +29,7 @@ namespace Vintagestory.GameContent
         {
             var plr = byEntity as EntityPlayer;
             var pos = plr?.BlockSelection?.Position;
-            if (pos != null && plr.Controls.HandUse != EnumHandInteract.None)
+            if (pos != null && (plr.Controls.HandUse != EnumHandInteract.None || plr.Controls.RightMouseDown))
             {
                 if (api.World.BlockAccessor.GetBlock(pos) is BlockClayForm)
                 {
