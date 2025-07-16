@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Common;
+using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
 #nullable disable
@@ -10,13 +10,8 @@ namespace Vintagestory.GameContent
     {
         long lastExecutedMs;
 
-        public AiTaskComeToOwner(EntityAgent entity) : base(entity)
+        public AiTaskComeToOwner(EntityAgent entity, JsonObject taskConfig, JsonObject aiConfig) : base(entity, taskConfig, aiConfig)
         {
-        }
-
-        public override void LoadConfig(JsonObject taskConfig, JsonObject aiConfig)
-        {
-            base.LoadConfig(taskConfig, aiConfig);
             minSeekSeconds = 10f;
         }
 

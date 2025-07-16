@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using ProtoBuf;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -792,13 +793,15 @@ namespace Vintagestory.GameContent
             var claims = sapi.World.Claims.Get(struclocDeva.Center.AsBlockPos);
             if (claims == null || claims.Length == 0)
             {
+                var storyStructureConf = genGenStoryStructures.scfg.Structures.First(s => s.Code == genStoryStructLoc.Code);
                 sapi.World.Claims.Add(new LandClaim()
                 {
                     Areas = new List<Cuboidi>() { struclocDeva },
                     Description = "Past Dimension",
-                    ProtectionLevel = 10,
+                    ProtectionLevel = storyStructureConf.ProtectionLevel,
                     LastKnownOwnerName = "custommessage-thepast",
-                    AllowUseEveryone = true
+                    AllowUseEveryone = storyStructureConf.AllowUseEveryone,
+                    AllowTraverseEveryone = storyStructureConf.AllowTraverseEveryone
                 });
             }
         }

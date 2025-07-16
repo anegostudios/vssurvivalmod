@@ -5,7 +5,7 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockTrapdoor : Block
+    public class BlockTrapdoor : Block, IClaimTraverseable
     {
         public override int GetRetention(BlockPos pos, BlockFacing facing, EnumRetentionType type)
         {

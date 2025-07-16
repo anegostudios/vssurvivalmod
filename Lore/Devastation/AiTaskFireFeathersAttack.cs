@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
@@ -38,14 +38,8 @@ public class AiTaskFireFeathersAttack : AiTaskFlyCircle
     protected float minHorizontalDistance = 10;
     protected long globalAttackCooldownMs = 3000;
 
-    public AiTaskFireFeathersAttack(EntityAgent entity) : base(entity)
+    public AiTaskFireFeathersAttack(EntityAgent entity, JsonObject taskConfig, JsonObject aiConfig) : base(entity, taskConfig, aiConfig)
     {
-    }
-
-    public override void LoadConfig(JsonObject taskConfig, JsonObject aiConfig)
-    {
-        base.LoadConfig(taskConfig, aiConfig);
-
         fireAfterMs = taskConfig["fireAfterMs"].AsInt(1000);
         durationMs = taskConfig["durationMs"].AsInt(1000);
         seekingRangeHor = taskConfig["seekingRangeHor"].AsFloat(25);

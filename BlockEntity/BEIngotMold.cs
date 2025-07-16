@@ -9,8 +9,6 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
-#nullable disable
-
 namespace Vintagestory.GameContent
 {
     public interface ILiquidMetalSink
@@ -25,14 +23,14 @@ namespace Vintagestory.GameContent
     public class BlockEntityIngotMold : BlockEntity, ILiquidMetalSink, ITemperatureSensitive, ITexPositionSource, IRotatable
     {
         protected long lastPouringMarkdirtyMs;
-        protected IngotMoldRenderer ingotRenderer;
+        protected IngotMoldRenderer? ingotRenderer;
 
-        public MeshData MoldMeshLeft;
-        public MeshData MoldMeshRight;
-        public ItemStack MoldLeft;
-        public ItemStack MoldRight;
-        public ItemStack ContentsLeft;
-        public ItemStack ContentsRight;
+        public MeshData? MoldMeshLeft;
+        public MeshData? MoldMeshRight;
+        public ItemStack? MoldLeft;
+        public ItemStack? MoldRight;
+        public ItemStack? ContentsLeft;
+        public ItemStack? ContentsRight;
         public int FillLevelLeft = 0;
         public int FillLevelRight = 0;
         public int QuantityMolds = 1;
@@ -55,11 +53,11 @@ namespace Vintagestory.GameContent
 
         bool BothShattered => ShatteredLeft && ShatteredRight;
 
-        public ItemStack SelectedMold
+        public ItemStack? SelectedMold
         {
             get => IsRightSideSelected ? MoldRight : MoldLeft; set => (IsRightSideSelected ? ref MoldRight : ref MoldLeft) = value;
         }
-        public ItemStack SelectedContents
+        public ItemStack? SelectedContents
         {
             get => IsRightSideSelected ? ContentsRight : ContentsLeft; set => (IsRightSideSelected ? ref ContentsRight : ref ContentsLeft) = value;
         }
@@ -77,7 +75,7 @@ namespace Vintagestory.GameContent
         public bool SelectedIsFull => IsRightSideSelected ? IsFullRight : IsFullLeft;
 
 
-        ICoreClientAPI capi;
+        ICoreClientAPI? capi;
         public float MeshAngle;
 
         public override void Initialize(ICoreAPI api)
@@ -208,14 +206,16 @@ namespace Vintagestory.GameContent
             return [ .. GetStateAwareMoldSided(MoldLeft, ShatteredLeft), .. GetStateAwareMoldSided(MoldRight, ShatteredRight), ];
         }
 
-        public ItemStack[] GetStateAwareMoldSided(ItemStack mold, bool shattered)
+        public ItemStack[] GetStateAwareMoldSided(ItemStack? mold, bool shattered)
         {
-            List<ItemStack> molds = new List<ItemStack>();
+            if (mold == null) return [];
+
+            List<ItemStack> molds = [];
 
             if (!shattered) molds.Add(mold.Clone());
             else
             {
-                if (mold.Block.Attributes?["shatteredDrops"].AsObject<BlockDropItemStack[]>(null) is BlockDropItemStack[] shatteredDrops)
+                if (mold.Block.Attributes?["shatteredDrops"].AsObject<BlockDropItemStack[]?>(null) is BlockDropItemStack[] shatteredDrops)
                 {
                     for (int i = 0; i < shatteredDrops.Length; i++)
                     {
@@ -229,20 +229,25 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            return molds.ToArray();
+            return [.. molds];
         }
 
         public ItemStack[] GetStateAwareMoldedStacks()
         {
-            return new ItemStack[] { GetStateAwareContentsLeft(), GetStateAwareContentsRight() };
+            List<ItemStack> moldedStacks = [];
+
+            if (GetStateAwareContentsLeft() is ItemStack leftStack) moldedStacks.Add(leftStack);
+            if (GetStateAwareContentsRight() is ItemStack rightStack) moldedStacks.Add(rightStack);
+
+            return [.. moldedStacks];
         }
 
-        public ItemStack GetSelectedStateAwareContents()
+        public ItemStack? GetSelectedStateAwareContents()
         {
             return GetStateAwareContentsSided(SelectedContents, SelectedFillLevel, SelectedShattered, SelectedIsHardened);
         }
 
-        public ItemStack GetStateAwareContentsLeft()
+        public ItemStack? GetStateAwareContentsLeft()
         {
             return GetStateAwareContentsSided(ContentsLeft, FillLevelLeft, ShatteredLeft, IsHardenedLeft);
         }
@@ -251,18 +256,18 @@ namespace Vintagestory.GameContent
         /// Retrieves the molded ingot, will always return null for incomplete pours. Has a chance of returning metal bits if retrieved while still hot.
         /// </summary>
         /// <returns></returns>
-        public ItemStack GetStateAwareContentsRight()
+        public ItemStack? GetStateAwareContentsRight()
         {
             return GetStateAwareContentsSided(ContentsRight, FillLevelRight, ShatteredRight, IsHardenedRight);
         }
 
-        public ItemStack GetStateAwareContentsSided(ItemStack contents, int fillLevel, bool shattered, bool isHardened)
+        public ItemStack? GetStateAwareContentsSided(ItemStack? contents, int fillLevel, bool shattered, bool isHardened)
         {
             if (contents != null && isHardened)
             {
                 if (shattered)
                 {
-                    var shatteredStack = contents?.Collectible.Attributes?["shatteredStack"].AsObject<JsonItemStack>();
+                    var shatteredStack = contents.Collectible.Attributes?["shatteredStack"].AsObject<JsonItemStack>();
                     shatteredStack?.Resolve(Api.World, "shatteredStack for" + contents.Collectible.Code);
 
                     if (shatteredStack?.ResolvedItemstack is ItemStack stack)
@@ -290,7 +295,7 @@ namespace Vintagestory.GameContent
         /// Retrieves the chiseled stack, for use when the player is removing hardened pours by chisel
         /// </summary>
         /// <returns></returns>
-        public ItemStack GetChiseledStack(ItemStack contents, int fillLevel, bool shattered, bool isHardened)
+        public ItemStack? GetChiseledStack(ItemStack? contents, int fillLevel, bool shattered, bool isHardened)
         {
             if (contents != null && fillLevel > 0 && !shattered && isHardened)
             {
@@ -314,7 +319,7 @@ namespace Vintagestory.GameContent
 
             SetSelectedSide(hitPosition);
 
-            ItemStack drop = GetSelectedStateAwareContents();
+            ItemStack? drop = GetSelectedStateAwareContents();
             if (drop != null && SelectedIsHardened && !SelectedShattered)
             {
                 Api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), Pos, -0.5, byPlayer, false);
@@ -347,6 +352,7 @@ namespace Vintagestory.GameContent
             if (FillLevelLeft != 0 && FillLevelRight != 0) return false;
 
             SetSelectedSide(hitPosition);
+            if (SelectedMold == null) return false;
 
             var itemStack = new ItemStack(SelectedMold.Block);
             var placeSound = SelectedMold.Block.Sounds?.Place;
@@ -354,6 +360,16 @@ namespace Vintagestory.GameContent
             {
                 if (!IsRightSideSelected && QuantityMolds > 1)
                 {
+                    if (MoldRight == null)
+                    {
+                        QuantityMolds--;
+
+                        ContentsRight = null;
+                        FillLevelRight = 0;
+                        ShatteredRight = false;
+                        return false;
+                    }
+
                     MoldLeft = MoldRight;
                     MoldMeshLeft = MoldMeshRight;
                     ContentsLeft = ContentsRight;
@@ -377,7 +393,7 @@ namespace Vintagestory.GameContent
                     itemStack.Collectible.Code,
                     Pos
                 );
-                if (QuantityMolds == 0)
+                if (QuantityMolds <= 0)
                 {
                     Api.World.BlockAccessor.SetBlock(0, Pos);
                 }
@@ -403,11 +419,13 @@ namespace Vintagestory.GameContent
             if (QuantityMolds >= 2) return false;
 
             QuantityMolds++;
-            MoldRight = byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack?.Clone() ?? new ItemStack(Block);
+            MoldRight = byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack?.Clone();
+
+            if (MoldRight == null) return false;
 
             if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
             {
-                byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack.StackSize--;
+                byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack!.StackSize--;
                 if (byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack.StackSize == 0)
                 {
                     byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack = null;
@@ -434,7 +452,7 @@ namespace Vintagestory.GameContent
 
             if (BothShattered)
             {
-                capi.Event.UnregisterRenderer(ingotRenderer, EnumRenderStage.Opaque);
+                capi?.Event.UnregisterRenderer(ingotRenderer, EnumRenderStage.Opaque);
                 return;
             }
 
@@ -509,13 +527,15 @@ namespace Vintagestory.GameContent
 
 
         #region Mesh gen
-        ITexPositionSource tmpTextureSource;
-        AssetLocation metalTexLoc;
-        public Size2i AtlasSize => capi.BlockTextureAtlas.Size;
+        ITexPositionSource? tmpTextureSource;
+        AssetLocation? metalTexLoc;
+        public Size2i AtlasSize => capi?.BlockTextureAtlas.Size ?? new();
         public TextureAtlasPosition this[string textureCode]
         {
             get
             {
+                if (capi == null || tmpTextureSource == null) return new();
+
                 if (textureCode == "metal")
                 {
                     return capi.BlockTextureAtlas[metalTexLoc];
@@ -525,11 +545,11 @@ namespace Vintagestory.GameContent
             }
         }
 
-        MeshData shatteredMeshLeft;
-        MeshData shatteredMeshRight;
+        MeshData? shatteredMeshLeft;
+        MeshData? shatteredMeshRight;
 
-        public static Vec3f left = new Vec3f(-4 / 16f, 0, 0);
-        public static Vec3f right = new Vec3f(3 / 16f, 0, 0);
+        public static readonly Vec3f left = new(-4 / 16f, 0, 0);
+        public static readonly Vec3f right = new(3 / 16f, 0, 0);
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
@@ -580,18 +600,18 @@ namespace Vintagestory.GameContent
             if (ShatteredLeft && shatteredMeshLeft == null)
             {
                 metalTexLoc = ContentsLeft == null ? new AssetLocation("block/transparent") : new AssetLocation("block/metal/ingot/" + ContentsLeft.Collectible.LastCodePart());
-                capi.Tesselator.TesselateShape("shatteredmold", getShatteredShape(MoldLeft?.Block ?? Block), out shatteredMeshLeft, this);
+                capi?.Tesselator.TesselateShape("shatteredmold", getShatteredShape(MoldLeft?.Block ?? Block), out shatteredMeshLeft, this);
             }
             if (ShatteredRight && shatteredMeshRight == null)
             {
                 metalTexLoc = ContentsRight == null ? new AssetLocation("block/transparent") : new AssetLocation("block/metal/ingot/" + ContentsRight.Collectible.LastCodePart());
-                capi.Tesselator.TesselateShape("shatteredmold", getShatteredShape(MoldRight?.Block ?? Block), out shatteredMeshRight, this);
+                capi?.Tesselator.TesselateShape("shatteredmold", getShatteredShape(MoldRight?.Block ?? Block), out shatteredMeshRight, this);
             }
         }
 
         private Shape getShatteredShape(Block block)
         {
-            tmpTextureSource = capi.Tesselator.GetTextureSource(block);
+            tmpTextureSource = capi?.Tesselator.GetTextureSource(block);
             var cshape = block.Attributes["shatteredShape"].AsObject<CompositeShape>();
             cshape.Base.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/");
             return Shape.TryGet(Api, cshape.Base);
@@ -649,7 +669,7 @@ namespace Vintagestory.GameContent
             MeshAngle = tree.GetFloat("meshAngle");
 
             MoldLeft = tree.GetItemstack("moldLeft");
-            if (MoldLeft == null) // Set the values for pre 1.21 blocks
+            if (worldForResolving != null && MoldLeft == null) // Set the values for pre 1.21 blocks
             {
                 MoldLeft = new ItemStack(Block);
                 if (ShatteredLeft) FillLevelLeft = (int)(FillLevelLeft * (0.7f + worldForResolving.Rand.NextDouble() * 0.1f));
@@ -701,7 +721,7 @@ namespace Vintagestory.GameContent
                     string state = SelectedIsLiquid ? Lang.Get("liquid") : (SelectedIsHardened ? Lang.Get("hardened") : Lang.Get("soft"));
 
                     string matkey = "material-" + metalContent?.Collectible.Variant["metal"];
-                    string mat = Lang.HasTranslation(matkey) ? Lang.Get(matkey) : metalContent?.GetName();
+                    string? mat = Lang.HasTranslation(matkey) ? Lang.Get(matkey) : metalContent?.GetName();
                     string temp = SelectedTemperature < 21 ? Lang.Get("Cold") : Lang.Get("{0}°C", (int)SelectedTemperature);
                     string contents = Lang.GetWithFallback("metalmold-blockinfo-unitsofmetal", "{0}/{4} units of {1} {2} ({3})", SelectedFillLevel, state, mat, temp, RequiredUnits);
                     dsc.AppendLine((metalContent != null ? contents : Lang.GetWithFallback("metalmold-blockinfo-emptymold", "0/{0} units of metal", RequiredUnits)) + "\n");
@@ -744,8 +764,8 @@ namespace Vintagestory.GameContent
         public void ShatterMoldSided(bool shatterRight)
         {
             Api.World.PlaySoundAt(new AssetLocation("sounds/block/ceramicbreak"), Pos, -0.4);
-            (shatterRight ? MoldRight : MoldLeft).Block.SpawnBlockBrokenParticles(Pos);
-            (shatterRight ? MoldRight : MoldLeft).Block.SpawnBlockBrokenParticles(Pos);
+            (shatterRight ? MoldRight : MoldLeft)?.Block.SpawnBlockBrokenParticles(Pos);
+            (shatterRight ? MoldRight : MoldLeft)?.Block.SpawnBlockBrokenParticles(Pos);
             (shatterRight ? ref ShatteredRight : ref ShatteredLeft) = true;
             MarkDirty(true);
         }
@@ -758,7 +778,7 @@ namespace Vintagestory.GameContent
             if (Api.World.Rand.NextDouble() < leftbreakchance)
             {
                 FillLevelLeft = (int)(FillLevelLeft * (0.7f + Api.World.Rand.NextDouble() * 0.1f));
-                ContentsLeft.Collectible.SetTemperature(Api.World, ContentsLeft, 20, false);
+                ContentsLeft?.Collectible.SetTemperature(Api.World, ContentsLeft, 20, false);
                 ShatterMoldSided(false);
             } else
             {
@@ -778,7 +798,7 @@ namespace Vintagestory.GameContent
             if (Api.World.Rand.NextDouble() < rightbreakchance)
             {
                 FillLevelRight = (int)(FillLevelRight * (0.7f + Api.World.Rand.NextDouble() * 0.1f));
-                ContentsRight.Collectible.SetTemperature(Api.World, ContentsRight, 20, false);
+                ContentsRight?.Collectible.SetTemperature(Api.World, ContentsRight, 20, false);
                 ShatterMoldSided(true);
             }
             else

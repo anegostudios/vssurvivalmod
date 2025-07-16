@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -96,9 +96,6 @@ namespace Vintagestory.GameContent
 
             base.OnNeighbourBlockChange(world, pos, neibpos, ref handled);
         }
-
-
-
 
         public virtual bool IsAttached(IBlockAccessor blockAccessor, BlockPos pos)
         {

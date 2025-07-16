@@ -11,7 +11,7 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockBed : Block
+    public class BlockBed : Block, IClaimTraverseable
     {
         public static IMountableSeat GetMountable(IWorldAccessor world, TreeAttribute tree)
         {

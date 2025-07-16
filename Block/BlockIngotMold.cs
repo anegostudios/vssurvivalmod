@@ -7,28 +7,25 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
-#nullable disable
-
 namespace Vintagestory.GameContent
 {
     public class BlockIngotMold : Block
     {
-        WorldInteraction[] interactionsLeft;
-        WorldInteraction[] interactionsRight;
+        WorldInteraction[] interactionsLeft = null!;
+        WorldInteraction[] interactionsRight = null!;
 
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
 
             if (api.Side != EnumAppSide.Client) return;
-            ICoreClientAPI capi = api as ICoreClientAPI;
 
             if (LastCodePart() == "raw") return;
 
             interactionsLeft = ObjectCacheUtil.GetOrCreate(api, "ingotmoldBlockInteractionsLeft", () =>
             {
-                List<ItemStack> smeltedContainerStacks = new List<ItemStack>();
-                List<ItemStack> chiselStacks = new List<ItemStack>();
+                List<ItemStack> smeltedContainerStacks = [];
+                List<ItemStack> chiselStacks = [];
 
                 foreach (CollectibleObject obj in api.World.Collectibles)
                 {
@@ -36,10 +33,7 @@ namespace Vintagestory.GameContent
                     {
                         smeltedContainerStacks.Add(new ItemStack(obj));
                     }
-                }
 
-                foreach (CollectibleObject obj in api.World.Collectibles)
-                {
                     if (obj.Tool is EnumTool.Chisel)
                     {
                         chiselStacks.Add(new ItemStack(obj));
@@ -52,10 +46,10 @@ namespace Vintagestory.GameContent
                         ActionLangCode = "blockhelp-ingotmold-pour",
                         HotKeyCode = "shift",
                         MouseButton = EnumMouseButton.Right,
-                        Itemstacks = smeltedContainerStacks.ToArray(),
+                        Itemstacks = [.. smeltedContainerStacks],
                         GetMatchingStacks = (wi, bs, es) =>
                         {
-                            BlockEntityIngotMold beim = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityIngotMold;
+                            BlockEntityIngotMold? beim = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityIngotMold;
                             return (beim != null && !beim.IsFullLeft && !beim.ShatteredLeft) ? wi.Itemstacks : null;
                         }
                     },
@@ -66,7 +60,7 @@ namespace Vintagestory.GameContent
                         MouseButton = EnumMouseButton.Right,
                         ShouldApply = (wi, bs, es) =>
                         {
-                            BlockEntityIngotMold beim = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityIngotMold;
+                            BlockEntityIngotMold? beim = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityIngotMold;
                             return beim != null && beim.IsFullLeft && beim.IsHardenedLeft && !beim.ShatteredLeft;
                         }
                     },
@@ -75,10 +69,10 @@ namespace Vintagestory.GameContent
                         ActionLangCode = "blockhelp-ingotmold-chiselmoldforbits",
                         HotKeyCode = null,
                         MouseButton = EnumMouseButton.Left,
-                        Itemstacks = chiselStacks.ToArray(),
+                        Itemstacks = [.. chiselStacks],
                         GetMatchingStacks = (wi, bs, es) =>
                         {
-                            BlockEntityIngotMold beim = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityIngotMold;
+                            BlockEntityIngotMold? beim = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityIngotMold;
                             return (beim != null && beim.FillLevelLeft > 0 && beim.IsHardenedLeft && ! beim.ShatteredLeft) ? wi.Itemstacks : null;
                         }
                     },
@@ -90,7 +84,7 @@ namespace Vintagestory.GameContent
                         MouseButton = EnumMouseButton.Right,
                         ShouldApply = (wi, bs, es) =>
                         {
-                            BlockEntityIngotMold beim = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityIngotMold;
+                            BlockEntityIngotMold? beim = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityIngotMold;
                             return beim != null && beim.ContentsLeft == null && ! beim.ShatteredLeft;
                         }
                     },
@@ -98,11 +92,11 @@ namespace Vintagestory.GameContent
                     {
                         ActionLangCode = "blockhelp-ingotmold-placemold",
                         HotKeyCode = "shift",
-                        Itemstacks = new ItemStack[] { new ItemStack(this) },
+                        Itemstacks = [new(this)],
                         MouseButton = EnumMouseButton.Right,
                         GetMatchingStacks = (wi, bs, es) =>
                         {
-                            BlockEntityIngotMold beim = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityIngotMold;
+                            BlockEntityIngotMold? beim = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityIngotMold;
                             return (beim != null && beim.QuantityMolds < 2) ? wi.Itemstacks : null;
                         }
                     }
@@ -113,8 +107,8 @@ namespace Vintagestory.GameContent
 
             interactionsRight = ObjectCacheUtil.GetOrCreate(api, "ingotmoldBlockInteractionsRight", () =>
             {
-                List<ItemStack> smeltedContainerStacks = new List<ItemStack>();
-                List<ItemStack> chiselStacks = new List<ItemStack>();
+                List<ItemStack> smeltedContainerStacks = [];
+                List<ItemStack> chiselStacks = [];
 
                 foreach (CollectibleObject obj in api.World.Collectibles)
                 {
@@ -122,10 +116,7 @@ namespace Vintagestory.GameContent
                     {
                         smeltedContainerStacks.Add(new ItemStack(obj));
                     }
-                }
 
-                foreach (CollectibleObject obj in api.World.Collectibles)
-                {
                     if (obj.Tool is EnumTool.Chisel)
                     {
                         chiselStacks.Add(new ItemStack(obj));
@@ -138,10 +129,10 @@ namespace Vintagestory.GameContent
                         ActionLangCode = "blockhelp-ingotmold-pour",
                         HotKeyCode = "shift",
                         MouseButton = EnumMouseButton.Right,
-                        Itemstacks = smeltedContainerStacks.ToArray(),
+                        Itemstacks = [.. smeltedContainerStacks],
                         GetMatchingStacks = (wi, bs, es) =>
                         {
-                            BlockEntityIngotMold beim = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityIngotMold;
+                            BlockEntityIngotMold? beim = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityIngotMold;
                             return (beim != null && beim.QuantityMolds > 1 && !beim.IsFullRight && !beim.ShatteredRight) ? wi.Itemstacks : null;
                         }
                     },
@@ -152,7 +143,7 @@ namespace Vintagestory.GameContent
                         MouseButton = EnumMouseButton.Right,
                         ShouldApply = (wi, bs, es) =>
                         {
-                            BlockEntityIngotMold beim = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityIngotMold;
+                            BlockEntityIngotMold? beim = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityIngotMold;
                             return beim != null && beim.QuantityMolds > 1 && beim.IsFullRight && beim.IsHardenedRight && !beim.ShatteredRight;
                         }
                     },
@@ -161,10 +152,10 @@ namespace Vintagestory.GameContent
                         ActionLangCode = "blockhelp-ingotmold-chiselmoldforbits",
                         HotKeyCode = null,
                         MouseButton = EnumMouseButton.Left,
-                        Itemstacks = chiselStacks.ToArray(),
+                        Itemstacks = [.. chiselStacks],
                         GetMatchingStacks = (wi, bs, es) =>
                         {
-                            BlockEntityIngotMold beim = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityIngotMold;
+                            BlockEntityIngotMold? beim = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityIngotMold;
                             return (beim != null && beim.QuantityMolds > 1 && beim.FillLevelRight > 0 && beim.IsHardenedRight && !beim.ShatteredRight) ? wi.Itemstacks : null;
                         }
                     },
@@ -176,7 +167,7 @@ namespace Vintagestory.GameContent
                         MouseButton = EnumMouseButton.Right,
                         ShouldApply = (wi, bs, es) =>
                         {
-                            BlockEntityIngotMold beim = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityIngotMold;
+                            BlockEntityIngotMold? beim = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityIngotMold;
                             return beim != null && beim.QuantityMolds > 1 && beim.ContentsRight == null && !beim.ShatteredRight;
                         }
                     }
@@ -191,13 +182,13 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        Cuboidf[] oneMoldBoxes = new Cuboidf[] { new Cuboidf(0, 0, 0, 1, 0.1875f, 1)  };
-        Cuboidf[] twoMoldBoxesNS = new Cuboidf[] { new Cuboidf(0, 0, 0, 0.5f, 0.1875f, 1), new Cuboidf(0.5f, 0, 0, 1, 0.1875f, 1) };
-        Cuboidf[] twoMoldBoxesEW = new Cuboidf[] { new Cuboidf(0, 0, 0, 1, 0.1875f, 0.5f), new Cuboidf(0, 0, 0.5f, 1, 0.1875f, 1) };
+        readonly Cuboidf[] oneMoldBoxes = [new(0, 0, 0, 1, 0.1875f, 1)];
+        readonly Cuboidf[] twoMoldBoxesNS = [new(0, 0, 0, 0.5f, 0.1875f, 1), new(0.5f, 0, 0, 1, 0.1875f, 1)];
+        readonly Cuboidf[] twoMoldBoxesEW = [new (0, 0, 0, 1, 0.1875f, 0.5f), new(0, 0, 0.5f, 1, 0.1875f, 1)];
 
         public override Cuboidf[] GetSelectionBoxes(IBlockAccessor world, BlockPos pos)
         {
-            BlockEntityIngotMold beim = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityIngotMold;
+            BlockEntityIngotMold? beim = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityIngotMold;
 
             if (beim == null || beim.QuantityMolds == 1)
             {
@@ -230,9 +221,9 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            if (byEntity.World.BlockAccessor.GetBlockEntity(blockSel?.Position.AddCopy(blockSel.Face.Opposite)) is BlockEntityIngotMold beim)
+            if (byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position.AddCopy(blockSel.Face.Opposite)) is BlockEntityIngotMold beim)
             {
-                if (byEntity.World.PlayerByUid((byEntity as EntityPlayer).PlayerUID) is IPlayer byPlayer)
+                if (byEntity.World.PlayerByUid((byEntity as EntityPlayer)?.PlayerUID) is IPlayer byPlayer)
                 {
                     if (beim.OnPlayerInteract(byPlayer, blockSel.Face, blockSel.HitPosition))
                     {
@@ -246,7 +237,7 @@ namespace Vintagestory.GameContent
         {
             if (world.BlockAccessor.GetBlockEntity(blockSel?.Position) is BlockEntityIngotMold beim)
             {
-                return beim.OnPlayerInteract(byPlayer, blockSel.Face, blockSel.HitPosition);
+                return beim.OnPlayerInteract(byPlayer, blockSel!.Face, blockSel.HitPosition);
             }
 
             return base.OnBlockInteractStart(world, byPlayer, blockSel);
@@ -274,7 +265,7 @@ namespace Vintagestory.GameContent
             if (creatureType == EnumAICreatureType.LandCreature || creatureType == EnumAICreatureType.Humanoid)
             {
                 var beim = GetBlockEntity<BlockEntityIngotMold>(pos);
-                if (beim?.TemperatureLeft > 300 || beim.TemperatureRight > 300) return 10000f;
+                if (beim?.TemperatureLeft > 300 || beim?.TemperatureRight > 300) return 10000f;
             }
 
             return 0;
@@ -306,7 +297,7 @@ namespace Vintagestory.GameContent
                     beim.SetSelectedSide(blockSel.HitPosition);
                     if (byPlayer?.InventoryManager is IPlayerInventoryManager invMan && invMan.OffhandTool is EnumTool.Hammer && invMan.ActiveTool is EnumTool.Chisel)
                     {
-                        ItemStack drop = beim.GetChiseledStack(beim.SelectedContents, beim.SelectedFillLevel, beim.SelectedShattered, beim.SelectedIsHardened);
+                        ItemStack? drop = beim.GetChiseledStack(beim.SelectedContents, beim.SelectedFillLevel, beim.SelectedShattered, beim.SelectedIsHardened);
 
                         if (drop != null)
                         {
@@ -347,7 +338,7 @@ namespace Vintagestory.GameContent
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
         {
-            List<ItemStack> stacks = new List<ItemStack>();
+            List<ItemStack> stacks = [];
 
             if (world.BlockAccessor.GetBlockEntity(pos) is BlockEntityIngotMold beim)
             {
@@ -366,7 +357,7 @@ namespace Vintagestory.GameContent
                 stacks.Add(new ItemStack(this));
             }
 
-            return stacks.ToArray();
+            return [.. stacks];
         }
 
 

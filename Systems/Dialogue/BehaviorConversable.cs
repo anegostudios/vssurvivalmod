@@ -1,4 +1,4 @@
-﻿using ProperVersion;
+using ProperVersion;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -114,10 +114,19 @@ namespace Vintagestory.GameContent
                     var jstack = data.AsObject<JsonItemStack>();
                     jstack.Resolve(entity.World, "conversable giveitem trigger");
                     ItemStack itemstack = jstack.ResolvedItemstack;
+                    var quantity = itemstack.StackSize;
                     if (!triggeringEntity.TryGiveItemStack(itemstack))
                     {
                         entity.World.SpawnItemEntity(itemstack, triggeringEntity.Pos.XYZ);
                     }
+
+                    entity.Api.World.Logger.Audit("{0} Got from {1} {2}x{3} at {4}.",
+                        triggeringEntity is EntityPlayer epl ? epl.Player.PlayerName : entity.GetName(),
+                        entity.GetName(),
+                        quantity,
+                        itemstack.Collectible.Code,
+                        entity.SidedPos.AsBlockPos
+                    );
                 }
             }
 
@@ -154,6 +163,13 @@ namespace Vintagestory.GameContent
                     {
                         slot.TakeOut(jstack.Quantity);
                         slot.MarkDirty();
+                        entity.Api.World.Logger.Audit("{0} Gave to {1} {2}x{3} at {4}.",
+                            triggeringEntity is EntityPlayer epl ? epl.Player.PlayerName : entity.GetName(),
+                            entity.GetName(),
+                            jstack.Quantity,
+                            jstack.Code,
+                            entity.SidedPos.AsBlockPos
+                        );
                     }
                 }
             }
@@ -233,7 +249,7 @@ namespace Vintagestory.GameContent
             if (value == "unlockdoor" && triggeringEntity is EntityPlayer player)
             {
                 var doorCode = data["doorcode"].AsString();
-                
+
                 var stl = world.Api.ModLoader.GetModSystem<StoryLockableDoor>();
                 stl.Add(doorCode, player);
             }
@@ -470,7 +486,7 @@ namespace Vintagestory.GameContent
                     var sapi = entity.World.Api as ICoreServerAPI;
                     if (splr != null && splr.ConnectionState == EnumClientState.Playing)
                     {
-                        var tasklook = new AiTaskLookAtEntity(eagent);
+                        var tasklook = new AiTaskLookAtEntity(eagent, JsonObject.FromJson("{}"), JsonObject.FromJson("{}"));
                         tasklook.manualExecute = true;
                         tasklook.targetEntity = gototask.targetEntity;
                         AiTaskManager tmgr = entity.GetBehavior<EntityBehaviorTaskAI>()?.TaskManager;
@@ -563,7 +579,7 @@ namespace Vintagestory.GameContent
                     {
                         gotoaccum = 0;
                         gototask = null;
-                        var tasklook = new AiTaskLookAtEntity(eagent);
+                        var tasklook = new AiTaskLookAtEntity(eagent, JsonObject.FromJson("{}"), JsonObject.FromJson("{}"));
                         tasklook.manualExecute = true;
                         tasklook.targetEntity = entityplr;
                         tmgr.ExecuteTask(tasklook, 1);

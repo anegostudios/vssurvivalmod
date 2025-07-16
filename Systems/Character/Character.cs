@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Linq;
 using ProtoBuf;
 using System;
 using System.Collections.Generic;
@@ -231,52 +231,114 @@ namespace Vintagestory.GameContent
 
         private void LoadTraits()
         {
-            traits = new List<Trait>();
+            traits = [];
             Dictionary<AssetLocation, JToken> files = api.Assets.GetMany<JToken>(api.Logger, "config/traits");
             int traitQuantity = 0;
 
-            foreach (var val in files)
+            string[] vanillaTraitsInOrder = ["focused", "resourceful", "fleetfooted", "bowyer", "forager", "pilferer", "furtive",
+                "precise", "technical", "soldier", "hardy", "clothier", "mender", "merciless", "farsighted", "claustrophobic",
+                "frail", "nervous", "ravenous", "nearsighted", "heavyhanded", "kind", "weak", "civil", "improviser", "tinkerer"];
+            HashSet<string> vanillaTraits = [.. vanillaTraitsInOrder];
+
+            foreach ((AssetLocation path, JToken fileToken) in files)
             {
-                if (val.Value is JObject)
+                if (fileToken is JObject)
                 {
-                    traits.Add(val.Value.ToObject<Trait>(val.Key.Domain));
+                    Trait trait = fileToken.ToObject<Trait>(path.Domain);
+                    if (traits.Find(element => element.Code == trait.Code) != null)
+                    {
+                        api.World.Logger.Warning($"Trying to add character trait from domain '{path.Domain}', but character trait with code '{trait.Code}' already exists. Will add it anyway, but it can cause undefined behavior.");
+                    }
+                    traits.Add(trait);
                     traitQuantity++;
                 }
-                if (val.Value is JArray)
+                if (fileToken is JArray fileArray)
                 {
-                    foreach (var token in (val.Value as JArray))
+                    int traitIndex = 0;
+                    foreach (JToken traitToken in fileArray)
                     {
-                        traits.Add(token.ToObject<Trait>(val.Key.Domain));
+                        Trait trait = traitToken.ToObject<Trait>(path.Domain);
+                        if (traits.Find(element => element.Code == trait.Code) != null)
+                        {
+                            api.World.Logger.Warning($"Trying to add character trait from domain '{path.Domain}', but character trait with code '{trait.Code}' already exists. Will add it anyway, but it can cause undefined behavior.");
+                        }
+                        if (path.Domain == "game")
+                        {
+                            vanillaTraits.Remove(trait.Code);
+                            if (vanillaTraitsInOrder.IndexOf(trait.Code) != traitIndex)
+                            {
+                                api.World.Logger.Warning($"Order of vanilla character traits has changed. Dont remove vanilla character traits or add new traits between or before vanilla traits. That will cause incompatibility with other mods that change traits, that can result in crashes.");
+                            }
+                        }
+                        traits.Add(trait);
                         traitQuantity++;
+                        traitIndex++;
                     }
                 }
             }
-            api.World.Logger.Event("{0} traits loaded from {1} files", traitQuantity, files.Count);
+
+            if (vanillaTraits.Count > 0)
+            {
+                api.World.Logger.Warning($"Failed to find vanilla traits: {vanillaTraits.Aggregate((a, b) => $"{a}, {b}")}, dont remove vanilla traits, it will cause incompatibility with other mods that change traits or classes, that can result in crashes.");
+            }
+
+            api.World.Logger.Event($"{traitQuantity} traits loaded from {files.Count} files");
         }
 
         private void LoadClasses()
         {
-            characterClasses = new List<CharacterClass>();
+            characterClasses = [];                                                           
             Dictionary<AssetLocation, JToken> files = api.Assets.GetMany<JToken>(api.Logger, "config/characterclasses");
             int classQuantity = 0;
 
-            foreach (var val in files)
+            string[] vanillaClassesInOrder = ["commoner", "hunter", "malefactor", "clockmaker", "blackguard", "tailor"];
+            HashSet<string> vanillaClasses = [.. vanillaClassesInOrder];
+
+            foreach ((AssetLocation path, JToken file) in files)
             {
-                if (val.Value is JObject)
+                if (file is JObject)
                 {
-                    characterClasses.Add(val.Value.ToObject<CharacterClass>(val.Key.Domain));
+                    CharacterClass characterClass = file.ToObject<CharacterClass>(path.Domain);
+                    if (!characterClass.Enabled) continue;
+                    if (characterClasses.Find(element => element.Code == characterClass.Code) != null)
+                    {
+                        api.World.Logger.Warning($"Trying to add character class from domain '{path.Domain}', but character class with code '{characterClass.Code}' already exists. Will add it anyway, but it can cause undefined behavior.");
+                    }
+                    characterClasses.Add(characterClass);
                     classQuantity++;
                 }
-                if (val.Value is JArray)
+                if (file is JArray fileArray)
                 {
-                    foreach (var token in (val.Value as JArray))
+                    int classIndex = 0;
+                    foreach (JToken classToken in fileArray)
                     {
-                        characterClasses.Add(token.ToObject<CharacterClass>(val.Key.Domain));
+                        CharacterClass characterClass = classToken.ToObject<CharacterClass>(path.Domain);
+                        if (!characterClass.Enabled) continue;
+                        if (characterClasses.Find(element => element.Code == characterClass.Code) != null)
+                        {
+                            api.World.Logger.Warning($"Trying to add character class from domain '{path.Domain}', but character class with code '{characterClass.Code}' already exists. Will add it anyway, but it can cause undefined behavior.");
+                        }
+                        if (path.Domain == "game")
+                        {
+                            vanillaClasses.Remove(characterClass.Code);
+                            if (vanillaClassesInOrder.IndexOf(characterClass.Code) != classIndex)
+                            {
+                                api.World.Logger.Warning($"Order of vanilla character classes has changed. Dont remove vanilla character classes (set 'enabled' attribute to 'false' instead) or add new classes between or before vanilla classes. That will cause incompatibility with other mods that change classes, that can result in crashes.");
+                            }
+                        }
+                        characterClasses.Add(characterClass);
                         classQuantity++;
+                        classIndex++;
                     }
                 }
             }
-            api.World.Logger.Event("{0} classes loaded from {1} files", classQuantity, files.Count);
+
+            if (vanillaClasses.Count > 0)
+            {
+                api.World.Logger.Warning($"Failed to find vanilla classes: {vanillaClasses.Aggregate((a, b) => $"{a}, {b}")}, dont remove vanilla classes (set 'enabled' attribute to 'false' instead), it will cause incompatibility with other mods that change classes, that can result in crashes.");
+            }
+
+            api.World.Logger.Event($"{classQuantity} classes loaded from {files.Count} files");
         }
 
 

@@ -14,42 +14,25 @@ public class BlockFigurehead : BlockMaterialFromAttributes, IAttachableToEntity,
 
     public int RequiresBehindSlots { get; set; }
 
-    public bool IsAttachable(Entity toEntity, ItemStack itemStack)
-    {
-        return true;
-    }
+    public bool IsAttachable(Entity toEntity, ItemStack itemStack) => true;
 
     public void CollectTextures(ItemStack stack, Shape shape, string texturePrefixCode, Dictionary<string, CompositeTexture> intoDict)
     {
+        var material = stack.Attributes.GetString("material", "oak");
+        foreach (var key in shape.Textures.Keys)
+        {
+            var ctex = TexturesBMFA[key].Clone();
+            ctex.Base.Path = ctex.Base.Path.Replace("{material}", material);
+            ctex.Bake(api.Assets);
+            intoDict[key] = ctex;
+        }
     }
 
-    public string GetCategoryCode(ItemStack stack)
-    {
-        return Attributes["attachableToEntity"]["categoryCode"].AsString();
-    }
-
-    public CompositeShape GetAttachedShape(ItemStack stack, string slotCode)
-    {
-        var material = stack.Attributes.GetString("material");
-        var shape = Shape.Clone();
-        shape.Base.Path = shape.Base.Path.Replace("{material}", material);
-        return shape;
-    }
-
-    public string[] GetDisableElements(ItemStack stack)
-    {
-        return Array.Empty<string>();
-    }
-
-    public string[] GetKeepElements(ItemStack stack)
-    {
-        return Array.Empty<string>();
-    }
-
-    public string GetTexturePrefixCode(ItemStack stack)
-    {
-        return string.Empty;
-    }
+    public string GetCategoryCode(ItemStack stack) => Attributes["attachableToEntity"]["categoryCode"].AsString();
+    public CompositeShape GetAttachedShape(ItemStack stack, string slotCode) => Shape;
+    public string[] GetDisableElements(ItemStack stack) => [];
+    public string[] GetKeepElements(ItemStack stack) => [];
+    public string GetTexturePrefixCode(ItemStack stack) => string.Empty;
 
     public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
     {
@@ -61,8 +44,8 @@ public class BlockFigurehead : BlockMaterialFromAttributes, IAttachableToEntity,
 
     public override string GetHeldItemName(ItemStack itemStack)
     {
-        var material = itemStack.Attributes.GetString("material");
-        return Lang.GetMatching($"block-{Code.Path}-{material}");
+        var material = itemStack.Attributes.GetString("material", "oak");
+        return Lang.GetMatching($"block-{Code.Path}-{material}", Lang.Get("material-" + material));
     }
 
     public void Rotate(EntityAgent byEntity, BlockSelection blockSel, int dir)

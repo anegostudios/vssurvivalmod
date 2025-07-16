@@ -1,5 +1,6 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 
 #nullable disable
 
@@ -9,7 +10,7 @@ namespace Vintagestory.GameContent
     {
         public bool AllowExecute;
 
-        public AiTaskFlyLeave(EntityAgent entity) : base(entity)
+        public AiTaskFlyLeave(EntityAgent entity, JsonObject taskConfig, JsonObject aiConfig) : base(entity, taskConfig, aiConfig)
         {
         }
 

@@ -2198,7 +2198,7 @@ namespace Vintagestory.GameContent
             {
                 AddPaddingAndRichText(storableComps, capi, "handbook-storable-moldrack");
             }
-            if (stack.ItemAttributes?.IsTrue("shelvable") == true)
+            if (BlockEntityShelf.GetShelvableLayout(stack) != null)
             {
                 AddPaddingAndRichText(storableComps, capi, "handbook-storable-shelves");
             }

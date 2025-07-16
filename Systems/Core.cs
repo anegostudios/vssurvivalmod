@@ -1,4 +1,4 @@
-﻿using ProtoBuf;
+using ProtoBuf;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -147,7 +147,7 @@ namespace Vintagestory.GameContent
         public override void AssetsLoaded(ICoreAPI api)
         {
             metalsByCode = new Dictionary<string, MetalPropertyVariant>();
-            var metalAssets = api.Assets.GetMany<MetalProperty>(api.Logger, "worldproperties/block/metal.json"); 
+            var metalAssets = api.Assets.GetMany<MetalProperty>(api.Logger, "worldproperties/block/metal.json");
             foreach (var metals in metalAssets.Values)
             {
                 for (int i = 0; i < metals.Variants.Length; i++)
@@ -212,6 +212,7 @@ namespace Vintagestory.GameContent
             AiTaskRegistry.Register<AiTaskStayInRange>("stayinrange");
             AiTaskRegistry.Register<AiTaskTurretMode>("turretmode");
             AiTaskRegistry.Register<AiTaskFollowLeadHolder>("followleadholder");
+            AiTaskRegistry.Register<AiTaskFollowLeadHolderR>("followleadholder-r");
 
             EntityBehaviorPassivePhysicsMultiBox.InitServer(api);   // Needed to guarantee registration to the OnPhysicsThreadStart event before that event is fired, even if no entities with this behavior (i.e. boats) are yet loaded in the early game - it might be hours before we see one of these entities
         }
@@ -579,8 +580,8 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockFigurehead", typeof(BlockFigurehead));
             api.RegisterBlockClass("BlockShapeMaterialFromAttributes", typeof(BlockShapeMaterialFromAttributes));
             api.RegisterBlockClass("BlockMaterialFromAttributes", typeof(BlockMaterialFromAttributes));
-            
-            
+
+
             api.RegisterBlockClass("ToggleCollisionBox", typeof(BlockToggleCollisionBox));
 
             api.RegisterBlockClass("BlockClutterBookshelf", typeof(BlockClutterBookshelf));
@@ -644,7 +645,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockBehaviorClass("PushEventOnBlockBroken", typeof(BlockBehaviorPushEventOnBlockBroken));
             api.RegisterBlockBehaviorClass("RightClickPickup", typeof(BlockBehaviorRightClickPickup));
             api.RegisterBlockBehaviorClass("SneakPlacing", typeof(BlockBehaviorSneakPlacing));
-            api.RegisterBlockBehaviorClass("CollectFrom", typeof(BehaviorCollectFrom));
+            api.RegisterBlockBehaviorClass("CollectFrom", typeof(BlockBehaviorCollectFrom));
             api.RegisterBlockBehaviorClass("Lockable", typeof(BlockBehaviorLockable));
             api.RegisterBlockBehaviorClass("DropNotSnowCovered", typeof(BlockBehaviorDropNotSnowCovered));
             api.RegisterBlockBehaviorClass("CanAttach", typeof(BlockBehaviorCanAttach));
@@ -652,11 +653,10 @@ namespace Vintagestory.GameContent
             api.RegisterBlockBehaviorClass("HeatSource", typeof(BlockBehaviorHeatSource));
             api.RegisterBlockBehaviorClass("BreakSnowFirst", typeof(BlockBehaviorBreakSnowFirst));
             api.RegisterBlockBehaviorClass("RopeTieable", typeof(BlockBehaviorRopeTieable));
-            api.RegisterBlockBehaviorClass("MyceliumHost", typeof(BehaviorMyceliumHost));
+            api.RegisterBlockBehaviorClass("MyceliumHost", typeof(BlockBehaviorMyceliumHost));
             api.RegisterBlockBehaviorClass("WrenchOrientable", typeof(BlockBehaviorWrenchOrientable));
-            api.RegisterBlockBehaviorClass("ElevatorControl", typeof(BehaviorElevatorControl));
+            api.RegisterBlockBehaviorClass("ElevatorControl", typeof(BlockBehaviorElevatorControl));
             api.RegisterBlockBehaviorClass("RainDrip", typeof(BlockBehaviorRainDrip));
-            api.RegisterBlockBehaviorClass("WorldEditFixGhostBlockPlace", typeof(BlockBehaviorWorldEditFixGhostBlockPlace));
             api.RegisterBlockBehaviorClass("Steaming", typeof(BlockBehaviorSteaming));
             api.RegisterBlockBehaviorClass("BlockEntityInteract", typeof(BlockBehaviorBlockEntityInteract));
             api.RegisterBlockBehaviorClass("Door", typeof(BlockBehaviorDoor));
@@ -695,6 +695,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockEntityBehaviorClass("Fruiting", typeof(BEBehaviorFruiting));
             api.RegisterBlockEntityBehaviorClass("SupportBeam", typeof(BEBehaviorSupportBeam));
             api.RegisterBlockEntityBehaviorClass("Door", typeof(BEBehaviorDoor));
+            api.RegisterBlockEntityBehaviorClass("DoorBarLock", typeof(BEBehaviorDoorBarLock));
             api.RegisterBlockEntityBehaviorClass("TrapDoor", typeof(BEBehaviorTrapDoor));
             api.RegisterBlockEntityBehaviorClass("ShapeFromAttributes", typeof(BEBehaviorShapeFromAttributes));
             api.RegisterBlockEntityBehaviorClass("ClutterBookshelf", typeof(BEBehaviorClutterBookshelf));
@@ -1008,6 +1009,7 @@ namespace Vintagestory.GameContent
             api.RegisterEntityBehaviorClass("seraphinventory", typeof(EntityBehaviorSeraphInventory));
             api.RegisterEntityBehaviorClass("armorstandinventory", typeof(EntityBehaviorArmorStandInventory));
             api.RegisterEntityBehaviorClass("mortallywoundable", typeof(EntityBehaviorMortallyWoundable));
+            api.RegisterEntityBehaviorClass("playerrevivable", typeof(EntityBehaviorPlayerRevivable));
             api.RegisterEntityBehaviorClass("selectionboxes", typeof(EntityBehaviorSelectionBoxes));
             api.RegisterEntityBehaviorClass("hidewatersurface", typeof(EntityBehaviorHideWaterSurface));
             api.RegisterEntityBehaviorClass("creaturecarrier", typeof(EntityBehaviorCreatureCarrier));

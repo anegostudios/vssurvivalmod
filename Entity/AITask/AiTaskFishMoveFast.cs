@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Datastructures;
@@ -24,9 +24,6 @@ namespace Vintagestory.GameContent
         NatFloat wanderRangeVertical = NatFloat.createStrongerInvexp(3, 10);
 
 
-        public bool TeleportWhenOutOfRange = true;
-        public double TeleportInGameHours = 1;
-
         public float WanderRangeMul
         {
             get { return entity.Attributes.GetFloat("wanderRangeMul", 1); }
@@ -40,19 +37,8 @@ namespace Vintagestory.GameContent
         }
 
 
-        public AiTaskFishMoveFast(EntityAgent entity) : base(entity)
+        public AiTaskFishMoveFast(EntityAgent entity, JsonObject taskConfig, JsonObject aiConfig) : base(entity, taskConfig, aiConfig)
         {
-        }
-
-        public override void OnEntityLoaded()
-        {
-
-        }
-
-        public override void LoadConfig(JsonObject taskConfig, JsonObject aiConfig)
-        {
-            base.LoadConfig(taskConfig, aiConfig);
-
             float wanderRangeMin=3, wanderRangeMax=30;
 
             targetDistance = taskConfig["targetDistance"].AsFloat(0.12f);
@@ -142,7 +128,7 @@ namespace Vintagestory.GameContent
         public override bool ShouldExecute()
         {
             if (!entity.Swimming) return false;
-            if (rand.NextDouble() > wanderChance && !entity.CollidedHorizontally && !entity.CollidedVertically) return false;            
+            if (rand.NextDouble() > wanderChance && !entity.CollidedHorizontally && !entity.CollidedVertically) return false;
 
             MainTarget = loadNextWanderTarget();
 
@@ -158,7 +144,7 @@ namespace Vintagestory.GameContent
             bool ok = pathTraverser.WalkTowards(MainTarget, moveSpeed, targetDistance, OnGoalReached, OnStuck);
         }
 
-        public override bool 
+        public override bool
             ContinueExecute(float dt)
         {
             //Check if time is still valid for task.
@@ -195,6 +181,6 @@ namespace Vintagestory.GameContent
             done = true;
         }
 
-        
+
     }
 }

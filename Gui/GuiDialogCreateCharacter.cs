@@ -159,9 +159,9 @@ namespace Vintagestory.GameContent
                             if (!Lang.HasTranslation("skinpart-" + code + "-" + v.Code))
                             {
                                 System.Diagnostics.Debug.WriteLine("\"" + names[i] + "\": \"" + v.Code + "\",");
-                            }                            
+                            }
                         }
-#endif                       
+#endif
 
                         createCharacterComposer.AddRichtext(Lang.Get("skinpart-" + code), CairoFont.WhiteSmallText(), bounds = bounds.BelowCopy(0, 10).WithFixedSize(210, 22));
 
@@ -287,8 +287,11 @@ namespace Vintagestory.GameContent
             var bh = capi.World.Player.Entity.GetBehavior<EntityBehaviorPlayerInventory>();
             bh.hideClothing = charNaked;
 
-            var charclass = capi.World.Player.Entity.WatchedAttributes.GetString("characterClass", modSys.characterClasses[0].Code);
-            modSys.setCharacterClass(capi.World.Player.Entity, charclass);
+            if (modSys != null)
+            {
+                var charclass = capi.World.Player.Entity.WatchedAttributes.GetString("characterClass", modSys.characterClasses[0].Code);
+                modSys.setCharacterClass(capi.World.Player.Entity, charclass);
+            }
             reTesselate();
         }
 

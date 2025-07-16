@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Common;
+using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -34,11 +34,19 @@ namespace Vintagestory.GameContent
         WeatherSystemServer wsys;
 
 
-        public AiTaskButterflyRest(EntityAgent entity) : base(entity)
+        public AiTaskButterflyRest(EntityAgent entity, JsonObject taskConfig, JsonObject aiConfig) : base(entity, taskConfig, aiConfig)
         {
             (entity.Api as ICoreServerAPI).Event.DidBreakBlock += Event_DidBreakBlock;
 
             wsys = entity.Api.ModLoader.GetModSystem<WeatherSystemServer>();
+
+            targetDistance = taskConfig["targetDistance"].AsFloat(0.07f);
+
+            moveSpeed = taskConfig["movespeed"].AsFloat(0.03f);
+
+            searchFrequency = taskConfig["searchFrequency"].AsFloat(0.07f);
+
+            cooldownUntilTotalHours = entity.World.Calendar.TotalHours + mincooldownHours + entity.World.Rand.NextDouble() * (maxcooldownHours - mincooldownHours);
         }
 
         public override void OnEntityDespawn(EntityDespawnData reason)
@@ -52,20 +60,6 @@ namespace Vintagestory.GameContent
             {
                 taskState = 4;
             }
-        }
-
-        public override void LoadConfig(JsonObject taskConfig, JsonObject aiConfig)
-        {
-            base.LoadConfig(taskConfig, aiConfig);
-
-
-            targetDistance = taskConfig["targetDistance"].AsFloat(0.07f);
-
-            moveSpeed = taskConfig["movespeed"].AsFloat(0.03f);
-
-            searchFrequency = taskConfig["searchFrequency"].AsFloat(0.07f);
-
-            cooldownUntilTotalHours = entity.World.Calendar.TotalHours + mincooldownHours + entity.World.Rand.NextDouble() * (maxcooldownHours - mincooldownHours);
         }
 
         public override bool ShouldExecute()

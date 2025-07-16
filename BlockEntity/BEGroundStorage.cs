@@ -808,38 +808,53 @@ namespace Vintagestory.GameContent
                 return true;
             }
 
+            ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
+
+            bool equalStack = inventory[0].Empty || hotbarSlot.Itemstack != null && hotbarSlot.Itemstack.Equals(Api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes);
+
             BlockPos abovePos = Pos.UpCopy();
-            BlockEntity be = Api.World.BlockAccessor.GetBlockEntity(abovePos);
-            if (be is BlockEntityGroundStorage beg)
+            var beg = Block.GetBlockEntity<BlockEntityGroundStorage>(abovePos);
+            if (TotalStackSize >= Capacity && ((beg != null && equalStack) ||
+                (hotbarSlot.Empty && beg?.inventory[0].Itemstack?.Equals(Api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes) == true)))
             {
                 return beg.OnPlayerInteractStart(byPlayer, bs);
             }
 
             bool sneaking = byPlayer.Entity.Controls.ShiftKey;
 
-
-            ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
-
             if (sneaking && hotbarSlot.Empty) return false;
 
-            if (sneaking && TotalStackSize >= Capacity && StorageProps.Layout == EnumGroundStorageLayout.Stacking)
+            if (sneaking && TotalStackSize >= Capacity)
             {
                 Block pileblock = Api.World.BlockAccessor.GetBlock(Pos);
                 Block aboveblock = Api.World.BlockAccessor.GetBlock(abovePos);
 
                 if (aboveblock.IsReplacableBy(pileblock))
                 {
-                    BlockGroundStorage bgs = pileblock as BlockGroundStorage;
-                    var bsc = bs.Clone();
-                    bsc.Position.Up();
-                    bsc.Face = null;
-                    return bgs.CreateStorage(Api.World, bsc, byPlayer);
+                    if (!equalStack && bs.Face != BlockFacing.UP) return false;
+
+                    int stackHeight = 1;
+                    if (StorageProps.MaxStackingHeight > 0)
+                    {
+                        BlockPos tempPos = Pos.Copy();
+                        while (Block.GetBlockEntity<BlockEntityGroundStorage>(tempPos.Down())?.inventory[0].Itemstack?.Equals(Api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes) == true)
+                        {
+                            stackHeight++;
+                        }
+                    }
+
+                    if (StorageProps.MaxStackingHeight < 0 || stackHeight < StorageProps.MaxStackingHeight || !equalStack)
+                    {
+                        BlockGroundStorage bgs = pileblock as BlockGroundStorage;
+                        var bsc = bs.Clone();
+                        bsc.Position = Pos;
+                        bsc.Face = BlockFacing.UP;
+                        return bgs.CreateStorage(Api.World, bsc, byPlayer);
+                    }
                 }
 
                 return false;
             }
-
-            bool equalStack = inventory[0].Empty || hotbarSlot.Itemstack != null && hotbarSlot.Itemstack.Equals(Api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes);
 
             if (sneaking && !equalStack)
             {
@@ -877,12 +892,15 @@ namespace Vintagestory.GameContent
                 {
                     Api.World.PlaySoundAt(StorageProps.PlaceRemoveSound.WithPathPrefixOnce("sounds/"), Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, null, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
                 }
+
                 Api.World.Logger.Audit("{0} Put {1}x{2} into new Ground storage at {3}.",
                     player.PlayerName,
                     TransferQuantity,
                     invSlot.Itemstack.Collectible.Code,
                     Pos
                 );
+
+                Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
                 return true;
             }
 
@@ -916,6 +934,9 @@ namespace Vintagestory.GameContent
                     invSlot.Itemstack.Collectible.Code,
                     Pos
                 );
+
+                Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
+
                 MarkDirty();
 
                 Cuboidf[] collBoxes = Api.World.BlockAccessor.GetBlock(Pos).GetCollisionBoxes(Api.World.BlockAccessor, Pos);
@@ -944,6 +965,7 @@ namespace Vintagestory.GameContent
                 {
                     Api.World.SpawnItemEntity(stack, Pos);
                 }
+
                 Api.World.Logger.Audit("{0} Took {1}x{2} from Ground storage at {3}.",
                     player.PlayerName,
                     q,
@@ -956,6 +978,7 @@ namespace Vintagestory.GameContent
             {
                 Api.World.BlockAccessor.SetBlock(0, Pos);
             }
+            else Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
 
             Api.World.PlaySoundAt(StorageProps.PlaceRemoveSound, Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, null, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
 

@@ -1,7 +1,8 @@
-﻿using System;
+using System;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
 #nullable disable
@@ -10,7 +11,7 @@ namespace Vintagestory.GameContent
 {
     public class AiTaskEidolonMeleeAttack : AiTaskMeleeAttack
     {
-        public AiTaskEidolonMeleeAttack(EntityAgent entity) : base(entity)
+        public AiTaskEidolonMeleeAttack(EntityAgent entity, JsonObject taskConfig, JsonObject aiConfig) : base(entity, taskConfig, aiConfig)
         {
             attackRange = 4.25f;
             turnToTarget = false;

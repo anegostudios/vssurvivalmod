@@ -1,4 +1,4 @@
-﻿using System.Linq;
+using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -14,7 +14,10 @@ namespace Vintagestory.GameContent
     public class EntityRideableSeat : EntitySeat
     {
         public override EnumMountAngleMode AngleMode => EnumMountAngleMode.FixateYaw;
-        public override AnimationMetaData SuggestedAnimation => (mountedEntity as EntityBehaviorRideable).curAnim;
+        public override AnimationMetaData SuggestedAnimation =>
+            CanControl ?
+            (mountedEntity as EntityBehaviorRideable).curAnim :
+            (mountedEntity as EntityBehaviorRideable).curAnimPassanger;
 
         protected EntityPos seatPos = new EntityPos();
         protected Matrixf modelmat = new Matrixf();
@@ -85,12 +88,12 @@ namespace Vintagestory.GameContent
                 }
                 modelmat.Translate(0, -0.6, 0); // This probably needs to be the height above ground level right after applying apap transform
 
+                modelmat.Translate(-0.5, 0.5, -0.5);    // These values found empirically, to prevent weird motion within the seat by the pillion passenger, because its attachment point also has rotation angles: essentially we are moving the mounted player to a more sensible origin for the rotations
                 apap.Mul(modelmat);
                 if (config.MountOffset != null) modelmat.Translate(config.MountOffset);
-                
-                modelmat.Translate(-0.5, 0, -0.5);
+                modelmat.Translate(-1.0, -0.5, -1.0);
 
-                modelmat.RotateY(GameMath.PIHALF - Entity.Pos.Yaw);                    
+                modelmat.RotateY(GameMath.PIHALF - Entity.Pos.Yaw);
             }
         }
 

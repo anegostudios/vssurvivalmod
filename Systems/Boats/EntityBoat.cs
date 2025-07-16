@@ -583,7 +583,7 @@ namespace Vintagestory.GameContent
                     continue;
                 }
 
-                if (controls.Left == controls.Right)
+                if (controls.Left == controls.Right && capi == null)    // If we do this client-side, for a non-controlling player it seems some ticks the controls are 0 and so the rudder gets reset to center.  If the controls really are 0 then the server will tell the clients to stop the animations anyhow
                 {
                     StopAnimation("turnLeft");
                     StopAnimation("turnRight");

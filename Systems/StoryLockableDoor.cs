@@ -11,7 +11,7 @@ namespace Vintagestory.Systems;
 [ProtoContract]
 public class StoryLockableDoors
 {
-    [ProtoMember(1)] 
+    [ProtoMember(1)]
     public Dictionary<string, HashSet<string>> StoryLockedLocationCodes { get; set; } = null!;
 }
 
@@ -41,7 +41,7 @@ public class StoryLockableDoor : ModSystem
                     .WithArgs(sapi.ChatCommands.Parsers.WorldPosition("target"), sapi.ChatCommands.Parsers.OptionalWord("code"))
                     .HandleWith(OnLockCmd)
                 .EndSubCommand()
-            
+
                 .BeginSubCommand("clear")
                     .WithDescription("Clear everyone who activated a story lock trigger for the specified code")
                     .WithArgs(sapi.ChatCommands.Parsers.Word("code"))
@@ -107,6 +107,7 @@ public class StoryLockableDoor : ModSystem
         clientChannel = api.Network.RegisterChannel("storylockeddoors");
         clientChannel.RegisterMessageType(typeof(StoryLockableDoors));
         clientChannel.SetMessageHandler<StoryLockableDoors>(OnUpdate);
+        StoryLockedLocationCodes = new Dictionary<string, HashSet<string>>();
     }
 
     private void OnUpdate(StoryLockableDoors packet)
@@ -116,8 +117,11 @@ public class StoryLockableDoor : ModSystem
 
     private void OnPlayerJoin(IServerPlayer byPlayer)
     {
-        var message = new StoryLockableDoors() { StoryLockedLocationCodes = StoryLockedLocationCodes };
-        serverChannel.SendPacket(message, byPlayer);
+        if (StoryLockedLocationCodes.Count > 0)
+        {
+            var message = new StoryLockableDoors() { StoryLockedLocationCodes = StoryLockedLocationCodes };
+            serverChannel.SendPacket(message, byPlayer);
+        }
     }
 
     private void Event_GameWorldSave()

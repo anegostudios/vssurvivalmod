@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -101,6 +101,7 @@ namespace Vintagestory.GameContent
     /// </code></example>
     [DocumentAsJson]
     [AddDocumentationProperty("UnstableRockStabilization", "The vertical stabilization that this block gives to nearby unstable rock blocks.", "System.Int32", "Optional", "0", true)]
+    [AddDocumentationProperty("MaxCollapseDistance", "Obsolete. No longer used.", "System.Single", "Obsolete", "1", false)]
     public class BlockBehaviorUnstableRock : BlockBehavior, IConditionalChiselable
     {
         /// <summary>
@@ -143,12 +144,6 @@ namespace Vintagestory.GameContent
         [DocumentAsJson("Optional", "2")]
         protected float maxSupportDistance = 2;
 
-        /// <summary>
-        /// Currently unused.
-        /// </summary>
-        [DocumentAsJson("Obsolete")]
-        protected float maxCollapseDistance = 1;
-
         ICoreAPI api;
         public bool AllowFallingBlocks;
         public bool CaveIns;
@@ -164,7 +159,6 @@ namespace Vintagestory.GameContent
             dustIntensity = properties["dustIntensity"].AsFloat(1);
             collapseChance = properties["collapseChance"].AsFloat(0.25f);
             maxSupportDistance = (float)properties["maxSupportDistance"].AsFloat(2f);
-            maxCollapseDistance = (float)properties["maxCollapseDistance"].AsFloat(1f);
 
             string sound = properties["fallSound"].AsString(null);
             if (sound != null)

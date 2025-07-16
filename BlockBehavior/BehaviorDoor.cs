@@ -37,7 +37,7 @@ namespace Vintagestory.GameContent
     ///</code></example>
     [DocumentAsJson]
     [AddDocumentationProperty("TriggerSound", "Sets both OpenSound & CloseSound.", "Vintagestory.API.Common.AssetLocation", "Optional", "sounds/block/door", true)]
-    public class BlockBehaviorDoor : StrongBlockBehavior, IMultiBlockColSelBoxes, IMultiBlockBlockProperties
+    public class BlockBehaviorDoor : StrongBlockBehavior, IMultiBlockColSelBoxes, IMultiBlockBlockProperties, IClaimTraverseable
     {
         /// <summary>
         /// The sound to play when the door is opened.
@@ -62,7 +62,7 @@ namespace Vintagestory.GameContent
         /// </summary>
         [DocumentAsJson("Optional", "1", true)]
         public int height;
-        
+
         /// <summary>
         /// Can this door be opened by hand?
         /// </summary>

@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+using System;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -9,8 +8,6 @@ using Vintagestory.API.Datastructures;
 
 namespace Vintagestory.GameContent;
 
-#nullable disable
-
 public class HealOverTimeConfig
 {
     public float Health { get; set; } = 1;
@@ -19,19 +16,24 @@ public class HealOverTimeConfig
     public int Ticks { get; set; } = 10;
     public float EffectDurationSec { get; set; } = 10;
     public bool CancelInAir { get; set; } = true;
+    public AssetLocation? Sound { get; set; } = new AssetLocation("game:sounds/player/poultice");
+    public AssetLocation? AppliedSound { get; set; } = new AssetLocation("game:sounds/player/poultice-applied");
+    public float SoundRange { get; set; } = 8;
+    public bool CanRevive { get; set; } = true;
+    public bool AffectedByArmor { get; set; } = true;
 }
-
-
 
 public class BehaviorHealingItem : CollectibleBehavior, ICanHealCreature
 {
-    IProgressBar renderer;
+    public HealOverTimeConfig Config { get; set; } = new();
+
+    protected IProgressBar? progressBarRender;
+    protected ILoadedSound? applicationSound;
+    protected ICoreAPI? api;
 
     public BehaviorHealingItem(CollectibleObject collectable) : base(collectable)
     {
     }
-
-    public HealOverTimeConfig Config { get; set; } = new();
 
     public override void Initialize(JsonObject properties)
     {
@@ -42,7 +44,11 @@ public class BehaviorHealingItem : CollectibleBehavior, ICanHealCreature
 
     public override void OnLoaded(ICoreAPI api)
     {
-        applicationSound = (api as ICoreClientAPI)?.World.LoadSound(new SoundParams() { DisposeOnFinish = false, Location = new AssetLocation("game:sounds/player/poultice"), ShouldLoop = true, Range = 8 });
+        if (Config.Sound != null)
+        {
+            applicationSound = (api as ICoreClientAPI)?.World.LoadSound(new SoundParams() { DisposeOnFinish = false, Location = Config.Sound, ShouldLoop = true, Range = Config.SoundRange });
+        }
+
         this.api = api;
     }
 
@@ -51,13 +57,13 @@ public class BehaviorHealingItem : CollectibleBehavior, ICanHealCreature
         handHandling = EnumHandHandling.PreventDefault;
         handling = EnumHandling.PreventSubsequent;
 
-        api.World.RegisterCallback(_ => applicationSound?.Stop(), (int)GetApplicationTime(byEntity) * 1000);
+        api?.World.RegisterCallback(_ => applicationSound?.Stop(), (int)GetApplicationTime(byEntity) * 1000);
 
-        if (api.Side == EnumAppSide.Client)
+        if (api?.Side == EnumAppSide.Client)
         {
-            var mspb = api.ModLoader.GetModSystem<ModSystemProgressBar>();
-            mspb.RemoveProgressbar(renderer);
-            renderer = mspb.AddProgressbar();
+            ModSystemProgressBar progressBarSystem = api.ModLoader.GetModSystem<ModSystemProgressBar>();
+            progressBarSystem.RemoveProgressbar(progressBarRender);
+            progressBarRender = progressBarSystem.AddProgressbar();
         }
     }
 
@@ -78,9 +84,9 @@ public class BehaviorHealingItem : CollectibleBehavior, ICanHealCreature
         handling = EnumHandling.Handled;
 
         float progress = secondsUsed / (GetApplicationTime(byEntity) + (byEntity.World.Side == EnumAppSide.Client ? 0.3f : 0));
-        if (renderer != null)
+        if (progressBarRender != null)
         {
-            renderer.Progress = progress;
+            progressBarRender.Progress = progress;
         }
         return progress < 1;
     }
@@ -88,14 +94,14 @@ public class BehaviorHealingItem : CollectibleBehavior, ICanHealCreature
     public override bool OnHeldInteractCancel(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason, ref EnumHandling handled)
     {
         applicationSound?.Stop();
-        api.ModLoader.GetModSystem<ModSystemProgressBar>()?.RemoveProgressbar(renderer);
+        api?.ModLoader.GetModSystem<ModSystemProgressBar>()?.RemoveProgressbar(progressBarRender);
         return base.OnHeldInteractCancel(secondsUsed, slot, byEntity, blockSel, entitySel, cancelReason, ref handled);
     }
 
     public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection? entitySel, ref EnumHandling handling)
     {
         applicationSound?.Stop();
-        api.ModLoader.GetModSystem<ModSystemProgressBar>()?.RemoveProgressbar(renderer);
+        api?.ModLoader.GetModSystem<ModSystemProgressBar>()?.RemoveProgressbar(progressBarRender);
 
         handling = EnumHandling.Handled;
 
@@ -104,46 +110,34 @@ public class BehaviorHealingItem : CollectibleBehavior, ICanHealCreature
             return;
         }
 
-        Entity targetEntity = getTargetEntity(slot, byEntity, entitySel);
+        Entity targetEntity = GetTargetEntity(slot, byEntity, entitySel);
 
-        var hotBh = targetEntity.GetBehavior<BehaviorDamageOverTime>();
-        hotBh.ApplyEffect(
-            EnumDamageSource.Internal,
-            EnumDamageType.Heal,
-            0,
-            Config.Health,
-            TimeSpan.FromSeconds(Config.EffectDurationSec),
-            Config.Ticks
-        );
+        EntityBehaviorPlayerRevivable? revivableBehavior = targetEntity.GetBehavior<EntityBehaviorPlayerRevivable>();
+        if (revivableBehavior != null && Config.CanRevive && !targetEntity.Alive)
+        {
+            revivableBehavior.AttemptRevive();
+        }
+        else
+        {
+            DamageSource damageSource = new()
+            {
+                Source = EnumDamageSource.Internal,
+                Type = EnumDamageType.Heal,
+                DamageTier = 0,
+                Duration = TimeSpan.FromSeconds(Config.EffectDurationSec),
+                TicksPerDuration = Config.Ticks
+            };
 
-        byEntity.World.PlaySoundAt(new AssetLocation("sounds/player/poultice-applied"), byEntity, null, false, 8);
+            targetEntity.ReceiveDamage(damageSource, Config.Health);
+        }
+
+        if (Config.AppliedSound != null)
+        {
+            byEntity.World.PlaySoundAt(Config.AppliedSound, byEntity, null, false, Config.SoundRange);
+        }
 
         slot.TakeOut(1);
         slot.MarkDirty();
-    }
-
-    private static Entity getTargetEntity(ItemSlot slot, EntityAgent byEntity, EntitySelection? entitySel)
-    {
-        Entity targetEntity = byEntity;
-        Entity selectedEntity = entitySel?.Entity;
-
-        if (selectedEntity != null)
-        {
-            EntityBehaviorHealth? selectedEntityHealthBehavior = selectedEntity.GetBehavior<EntityBehaviorHealth>();
-
-            if (
-                byEntity.Controls.CtrlKey &&
-                !byEntity.Controls.Forward &&
-                !byEntity.Controls.Backward &&
-                !byEntity.Controls.Left &&
-                !byEntity.Controls.Right &&
-                selectedEntityHealthBehavior.IsHealable(byEntity, slot))
-            {
-                targetEntity = selectedEntity;
-            }
-        }
-
-        return targetEntity;
     }
 
     public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
@@ -153,44 +147,46 @@ public class BehaviorHealingItem : CollectibleBehavior, ICanHealCreature
 
     public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot, ref EnumHandling handling)
     {
-        return new WorldInteraction[] {
+        return [
             new()
             {
                 ActionLangCode = "game:heldhelp-heal",
                 MouseButton = EnumMouseButton.Right,
             }
-        };
+        ];
     }
 
-    public bool CanHeal(Entity entity)
+    public virtual WorldInteraction[] GetHealInteractionHelp(IClientWorldAccessor world, EntitySelection es, IClientPlayer player)
     {
-        int minGenerationToAllowHealing = entity.Properties.Attributes?["minGenerationToAllowHealing"].AsInt(-1) ?? -1;
-        return minGenerationToAllowHealing >= 0 && minGenerationToAllowHealing >= entity.WatchedAttributes.GetInt("generation", 0);
-    }
-
-    public WorldInteraction[] GetHealInteractionHelp(IClientWorldAccessor world, EntitySelection es, IClientPlayer player)
-    {
-        return new WorldInteraction[] {
+        return [
             new()
             {
                 ActionLangCode = "heldhelp-heal",
                 HotKeyCode = "sprint",
                 MouseButton = EnumMouseButton.Right,
             }
-        };
+        ];
     }
 
-    private ILoadedSound? applicationSound;
-    private ICoreAPI api = null!;
-
-    private float GetApplicationTime(Entity byEntity)
+    public virtual bool CanHeal(Entity target)
     {
-        float healingEffectiveness = byEntity.Stats.GetBlended("healingeffectivness");
-        healingEffectiveness = Math.Clamp(healingEffectiveness, 0, 2) - 1;
+        int minGenerationToAllowHealing = target.Properties.Attributes?["minGenerationToAllowHealing"].AsInt(-1) ?? -1;
+        return target is EntityPlayer || (minGenerationToAllowHealing >= 0 && minGenerationToAllowHealing >= target.WatchedAttributes.GetInt("generation", 0));
+    }
+
+    protected virtual float GetApplicationTime(Entity byEntity)
+    {
+        float healingEffectiveness = 0;
+
+        if (Config.AffectedByArmor)
+        {
+            healingEffectiveness = byEntity.Stats.GetBlended("healingeffectivness");
+            healingEffectiveness = Math.Clamp(healingEffectiveness, 0, 2) - 1;
+        }
 
         if (healingEffectiveness < 0)
         {
-            return Config.ApplicationTimeSec + (Config.MaxApplicationTimeSec - Config.ApplicationTimeSec) * (-healingEffectiveness);
+            return Config.ApplicationTimeSec + (Config.ApplicationTimeSec - Config.MaxApplicationTimeSec) * healingEffectiveness;
         }
 
         if (healingEffectiveness > 0)
@@ -199,6 +195,33 @@ public class BehaviorHealingItem : CollectibleBehavior, ICanHealCreature
         }
 
         return Config.ApplicationTimeSec;
+    }
+
+    protected virtual Entity GetTargetEntity(ItemSlot slot, EntityAgent byEntity, EntitySelection? entitySelection)
+    {
+        Entity targetEntity = byEntity;
+        Entity? selectedEntity = entitySelection?.Entity;
+
+        if (selectedEntity == null)
+        {
+            return targetEntity;
+        }
+
+        EntityBehaviorHealth? selectedEntityHealthBehavior = selectedEntity.GetBehavior<EntityBehaviorHealth>();
+
+        if (
+            byEntity.Controls.CtrlKey &&
+            !byEntity.Controls.Forward &&
+            !byEntity.Controls.Backward &&
+            !byEntity.Controls.Left &&
+            !byEntity.Controls.Right &&
+            selectedEntityHealthBehavior != null &&
+            selectedEntityHealthBehavior.IsHealable(byEntity, slot))
+        {
+            targetEntity = selectedEntity;
+        }
+
+        return targetEntity;
     }
 }
 

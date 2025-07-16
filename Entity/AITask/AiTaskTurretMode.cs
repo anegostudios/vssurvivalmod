@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Text;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -60,13 +60,8 @@ namespace Vintagestory.GameContent
 
         EntityProjectile prevProjectile;
 
-        public AiTaskTurretMode(EntityAgent entity) : base(entity)
+        public AiTaskTurretMode(EntityAgent entity, JsonObject taskConfig, JsonObject aiConfig) : base(entity, taskConfig, aiConfig)
         {
-        }
-
-        public override void LoadConfig(JsonObject taskConfig, JsonObject aiConfig)
-        {
-            base.LoadConfig(taskConfig, aiConfig);
             this.projectileDamage = taskConfig["projectileDamage"].AsFloat(1f);
             this.projectileDamageTier = taskConfig["projectileDamageTier"].AsInt(1);
 

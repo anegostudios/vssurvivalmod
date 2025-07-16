@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Numerics;
 using Vintagestory.API.Client;
@@ -16,7 +16,7 @@ public abstract class AiTaskTargetableAt : AiTaskBaseTargetable
     public Vec3d SpawnPos;
     public Vec3d CenterPos;
 
-    protected AiTaskTargetableAt(EntityAgent entity) : base(entity)
+    protected AiTaskTargetableAt(EntityAgent entity, JsonObject taskConfig, JsonObject aiConfig) : base(entity, taskConfig, aiConfig)
     {
     }
 
@@ -65,14 +65,8 @@ public class AiTaskFlyCircle : AiTaskTargetableAt
     protected double desiredRadius;
 
 
-    public AiTaskFlyCircle(EntityAgent entity) : base(entity)
+    public AiTaskFlyCircle(EntityAgent entity, JsonObject taskConfig, JsonObject aiConfig) : base(entity, taskConfig, aiConfig)
     {
-    }
-
-    public override void LoadConfig(JsonObject taskConfig, JsonObject aiConfig)
-    {
-        base.LoadConfig(taskConfig, aiConfig);
-
         stayNearSpawn = taskConfig["stayNearSpawn"].AsBool(false);
         minRadius = taskConfig["minRadius"].AsFloat(10f);
         maxRadius = taskConfig["maxRadius"].AsFloat(20f);
@@ -121,6 +115,11 @@ public class AiTaskFlyCircle : AiTaskTargetableAt
         double dz = entity.ServerPos.Z - CenterPos.Z;
         double currentRadius = Math.Sqrt(dx * dx + dz * dz);
         double radialOffset = desiredRadius - currentRadius;
+
+        if (Math.Abs(dx) + Math.Abs(dz) <= double.Epsilon)
+        {
+            return entity.Alive;
+        }
 
         Vector3 radius = Vector3.Normalize(new((float)dx, 0, (float)dz)) * (float)desiredRadius;
         Vector3 tangent = Vector3.Cross(radius, new(0, -direction, 0));

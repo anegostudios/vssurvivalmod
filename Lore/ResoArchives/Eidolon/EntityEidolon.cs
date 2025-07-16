@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -34,8 +34,8 @@ namespace Vintagestory.GameContent
 
         static EntityEidolon()
         {
-            AiTaskRegistry.Register("eidolonslam", typeof(AiTaskEidolonSlam));
-            AiTaskRegistry.Register("eidolonmeleeattack", typeof(AiTaskEidolonMeleeAttack));
+            AiTaskRegistry.Register<AiTaskEidolonSlam>("eidolonslam");
+            AiTaskRegistry.Register<AiTaskEidolonMeleeAttack>("eidolonmeleeattack");
         }
 
         public EntityEidolon()

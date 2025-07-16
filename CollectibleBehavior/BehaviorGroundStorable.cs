@@ -52,7 +52,7 @@ namespace Vintagestory.GameContent
 
         public float ModelItemsToStackSizeRatio = 1;
         public Dictionary<string, AssetLocation> StackingTextures;
-        public int MaxStackingHeight = 1;
+        public int MaxStackingHeight = -1;
         public int StackingCapacity = 1;
         public int TransferQuantity = 1;
         public int BulkTransferQuantity = 4;

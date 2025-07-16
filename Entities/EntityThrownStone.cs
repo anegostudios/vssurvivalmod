@@ -1,4 +1,5 @@
-﻿using System.IO;
+using CompactExifLib;
+using System.IO;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
@@ -8,7 +9,7 @@ using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
-    public class EntityThrownStone : Entity
+    public class EntityThrownStone : Entity, IProjectile
     {
         protected bool beforeCollided;
         protected bool stuck;
@@ -41,6 +42,24 @@ namespace Vintagestory.GameContent
         {
             get { return false; }
         }
+
+        #region IProjectile
+        Entity? IProjectile.FiredBy { get => FiredBy; set => FiredBy = value; }
+        float IProjectile.Damage { get => Damage; set => Damage = value; }
+        int IProjectile.DamageTier { get => DamageTier; set => DamageTier = value; }
+        EnumDamageType IProjectile.DamageType { get; set; }
+        bool IProjectile.IgnoreInvFrames { get; set; }
+        ItemStack? IProjectile.ProjectileStack { get => ProjectileStack; set => ProjectileStack = value; }
+        ItemStack? IProjectile.WeaponStack { get; set; }
+        float IProjectile.DropOnImpactChance { get; set; }
+        bool IProjectile.DamageStackOnImpact { get; set; }
+        bool IProjectile.NonCollectible { get => NonCollectible; set => NonCollectible = value; }
+        bool IProjectile.EntityHit { get; }
+        float IProjectile.Weight { get => Properties.Weight; set => Properties.Weight = value; }
+        bool IProjectile.Stuck { get => stuck; set => stuck = value; }
+
+        void IProjectile.PreInitialize() { }
+        #endregion
 
         public override void Initialize(EntityProperties properties, ICoreAPI api, long InChunkIndex3d)
         {

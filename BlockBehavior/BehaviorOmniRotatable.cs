@@ -1,4 +1,4 @@
-﻿// RotateBehavior by Milo Christiansen
+// RotateBehavior by Milo Christiansen
 //
 // To the extent possible under law, the person who associated CC0 with
 // this project has waived all copyright and related or neighboring rights
@@ -146,7 +146,7 @@ namespace Vintagestory.ServerMods
             {
                 // Simple 6 state rotator.
 
-                if (facing == "block")
+                if (facing.Equals("block", StringComparison.CurrentCultureIgnoreCase))
                 {
                     var x = Math.Abs(blockSel.HitPosition.X - 0.5);
                     var y = Math.Abs(blockSel.HitPosition.Y - 0.5);

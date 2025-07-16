@@ -203,7 +203,7 @@ namespace Vintagestory.GameContent
             }
             BlockPos posBelow = pos.DownCopy();
             Block belowBlock = world.BlockAccessor.GetBlock(posBelow);
-            if (!belowBlock.CanAttachBlockAt(world.BlockAccessor, this, posBelow, BlockFacing.UP) && (belowBlock != this || FillLevel(world.BlockAccessor, posBelow) != 1)) return false;
+            if (!belowBlock.CanAttachBlockAt(world.BlockAccessor, this, posBelow, BlockFacing.UP)) return false;
 
             var storageProps = player.InventoryManager.ActiveHotbarSlot.Itemstack.Collectible.GetBehavior<CollectibleBehaviorGroundStorable>()?.StorageProps;
             if (storageProps != null && storageProps.CtrlKey && !player.Entity.Controls.CtrlKey)
@@ -298,6 +298,13 @@ namespace Vintagestory.GameContent
                 if (!block.CanAttachBlockAt(world.BlockAccessor, this, bpos, facing.Opposite))
                 {
                     world.BlockAccessor.BreakBlock(pos, null);
+                }
+
+                var belowBlock = world.BlockAccessor.GetBlock(pos.DownCopy());
+                if (!belowBlock.CanAttachBlockAt(world.BlockAccessor, this, pos.DownCopy(), BlockFacing.UP))
+                {
+                    world.BlockAccessor.BreakBlock(pos, null);
+                    return;
                 }
             } else
             {
@@ -400,7 +407,8 @@ namespace Vintagestory.GameContent
                 {
                     var canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(api, true).ToArray();
 
-                    var collObj = beg.Inventory[0].Itemstack.Collectible;
+                    var collObj = beg.Inventory[0].Itemstack?.Collectible;
+                    if (collObj == null) base.GetPlacedBlockInteractionHelp(world, selection, forPlayer).Append(liquidInteractions);
 
                     return new WorldInteraction[]
                     {

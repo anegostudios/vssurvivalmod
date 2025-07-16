@@ -33,5 +33,11 @@ public class HookGeneratedStructure
     [JsonProperty]
     public string buildProtectionName;
     [JsonProperty]
+    public bool AllowUseEveryone = true;
+    [JsonProperty]
+    public bool AllowTraverseEveryone = true;
+    [JsonProperty]
+    public int ProtectionLevel = 10;
+    [JsonProperty]
     public string group;
 }

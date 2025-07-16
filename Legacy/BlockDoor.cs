@@ -6,7 +6,7 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockDoor : BlockBaseDoor
+    public class BlockDoor : BlockBaseDoor, IClaimTraverseable
     {
         bool airtight;
 

@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Common;
+using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -25,9 +25,19 @@ namespace Vintagestory.GameContent
 
         double feedTime;
 
-        public AiTaskButterflyFeedOnFlowers(EntityAgent entity) : base(entity)
+        public AiTaskButterflyFeedOnFlowers(EntityAgent entity, JsonObject taskConfig, JsonObject aiConfig) : base(entity, taskConfig, aiConfig)
         {
             (entity.Api as ICoreServerAPI).Event.DidBreakBlock += Event_DidBreakBlock;
+
+            targetDistance = taskConfig["targetDistance"].AsFloat(0.07f);
+
+            moveSpeed = taskConfig["movespeed"].AsFloat(0.03f);
+
+            searchFrequency = taskConfig["searchFrequency"].AsFloat(0.07f);
+
+            awaitReached = taskConfig["awaitReached"].AsBool(true);
+
+
         }
 
         public override void OnEntityDespawn(EntityDespawnData reason)
@@ -41,22 +51,6 @@ namespace Vintagestory.GameContent
             {
                 taskState = 4;
             }
-        }
-
-        public override void LoadConfig(JsonObject taskConfig, JsonObject aiConfig)
-        {
-            base.LoadConfig(taskConfig, aiConfig);
-
-
-            targetDistance = taskConfig["targetDistance"].AsFloat(0.07f);
-
-            moveSpeed = taskConfig["movespeed"].AsFloat(0.03f);
-
-            searchFrequency = taskConfig["searchFrequency"].AsFloat(0.07f);
-
-            awaitReached = taskConfig["awaitReached"].AsBool(true);
-
-
         }
 
         public override bool ShouldExecute()

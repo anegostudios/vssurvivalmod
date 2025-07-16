@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -19,13 +19,6 @@ namespace Vintagestory.ServerMods
         public static void Register(ModSystem mod)
         {
             ((WorldEdit.WorldEdit)mod).RegisterTool("chiselbrush", typeof(MicroblockTool));
-        }
-    }
-
-    internal class BlockBehaviorWorldEditFixGhostBlockPlace : BlockBehavior
-    {
-        public BlockBehaviorWorldEditFixGhostBlockPlace(Block block) : base(block)
-        {
         }
     }
 

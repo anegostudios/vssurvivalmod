@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -35,7 +35,11 @@ namespace Vintagestory.GameContent
 
         public override void OnGameTick(float dt)
         {
-            if (!eagent.ServerControls.TriesToMove && !eagent.Controls.IsFlying && !eagent.Controls.Gliding && eagent.RightHandItemSlot?.Empty == true && !eagent.Swimming && bhtiredness?.IsSleeping != true)
+            if (!entity.Alive) return;
+
+            bool triesToMove = eagent.ServerControls.TriesToMove;
+            if (eagent.MountedOn != null) triesToMove |= eagent.MountedOn.MountSupplier.Position.Motion.LengthSq() > 0.0001f;
+            if (!triesToMove && !eagent.Controls.IsFlying && !eagent.Controls.Gliding && eagent.RightHandItemSlot?.Empty == true && !eagent.Swimming && bhtiredness?.IsSleeping != true)
             {
                 secondsIdleAccum += dt;
                 if (secondsIdleAccum > 20 && eagent.World.Rand.NextDouble() < 0.004)

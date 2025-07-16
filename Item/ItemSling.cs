@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
@@ -182,10 +182,11 @@ namespace Vintagestory.GameContent
 
             EntityProperties type = byEntity.World.GetEntityType(new AssetLocation("thrownstone-" + stack.Collectible.Variant["rock"]));
             Entity entity = byEntity.World.ClassRegistry.CreateEntity(type);
-            ((EntityThrownStone)entity).FiredBy = byEntity;
-            ((EntityThrownStone)entity).Damage = damage;
-            ((EntityThrownStone)entity).ProjectileStack = stack;
-            
+            IProjectile projectile = entity as IProjectile;
+            projectile.FiredBy = byEntity;
+            projectile.Damage = damage;
+            projectile.ProjectileStack = stack;
+            projectile.WeaponStack = slot.Itemstack;
 
             EntityProjectile.SpawnThrownEntity(entity, byEntity, 0.75, 0, 0, byEntity.Stats.GetBlended("bowDrawingStrength") * 0.8f);
 

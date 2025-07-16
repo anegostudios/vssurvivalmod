@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using Vintagestory.API.Client;
@@ -11,7 +11,7 @@ using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
-    public class EntityProjectile : Entity
+    public class EntityProjectile : Entity, IProjectile
     {
         protected bool beforeCollided;
         protected bool stuck;
@@ -33,6 +33,7 @@ namespace Vintagestory.GameContent
         public ItemStack WeaponStack;
         public float DropOnImpactChance = 0f;
         public bool DamageStackOnImpact = false;
+        public bool IgnoreInvFrames = false;
 
         public bool EntityHit { get; protected set; }
 
@@ -51,6 +52,24 @@ namespace Vintagestory.GameContent
         {
             get { return false; }
         }
+
+        #region IProjectile
+        Entity IProjectile.FiredBy { get => FiredBy; set => FiredBy = value; }
+        float IProjectile.Damage { get => Damage; set => Damage = value; }
+        int IProjectile.DamageTier { get => DamageTier; set => DamageTier = value; }
+        EnumDamageType IProjectile.DamageType { get => DamageType; set => DamageType = value; }
+        bool IProjectile.IgnoreInvFrames { get => IgnoreInvFrames; set => IgnoreInvFrames = value; }
+        ItemStack IProjectile.ProjectileStack { get => ProjectileStack; set => ProjectileStack = value; }
+        ItemStack IProjectile.WeaponStack { get => WeaponStack; set => WeaponStack = value; }
+        float IProjectile.DropOnImpactChance { get => DropOnImpactChance; set => DropOnImpactChance = value; }
+        bool IProjectile.DamageStackOnImpact { get => DamageStackOnImpact; set => DamageStackOnImpact = value; }
+        bool IProjectile.NonCollectible { get => NonCollectible; set => NonCollectible = value; }
+        bool IProjectile.EntityHit { get => EntityHit; }
+        float IProjectile.Weight { get => Weight; set => Weight = value; }
+        bool IProjectile.Stuck { get => stuck; set => stuck = value; }
+
+        void IProjectile.PreInitialize() => SetInitialRotation();
+        #endregion
 
         public override void Initialize(EntityProperties properties, ICoreAPI api, long InChunkIndex3d)
         {
@@ -429,7 +448,7 @@ namespace Vintagestory.GameContent
             entity.Pos.SetFrom(entity.ServerPos);
             entity.World = byEntity.World;
 
-            if (entity is EntityProjectile enpr) enpr.SetRotation();
+            (entity as IProjectile)?.PreInitialize();
 
             byEntity.World.SpawnPriorityEntity(entity);
         }

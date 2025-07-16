@@ -28,13 +28,13 @@ namespace Vintagestory.GameContent
         /// </summary>
         public BEBehaviorDoor LeftDoor
         {
-            get 
+            get
             {
                 if (leftDoorOffset != null)
                 {
                     var door = BlockBehaviorDoor.getDoorAt(Api.World, Pos.AddCopy(leftDoorOffset));
                     if (door == null) leftDoorOffset = null;
-                    
+
                     return door;
                 }
 
@@ -53,7 +53,7 @@ namespace Vintagestory.GameContent
                 {
                     var door = BlockBehaviorDoor.getDoorAt(Api.World, Pos.AddCopy(rightDoorOffset));
                     if (door == null) rightDoorOffset = null;
-                    
+
                     return door;
                 }
 
@@ -89,12 +89,6 @@ namespace Vintagestory.GameContent
             {
                 ToggleDoorWing(true);
             }
-        }
-
-
-        public BlockPos getAdjacentPosition(int right, int back = 0, int up = 0)
-        {
-            return Pos.AddCopy(getAdjacentOffset(right, back, up, RotateYRad, invertHandles));
         }
 
         public Vec3i getAdjacentOffset(int right, int back = 0, int up = 0)
@@ -199,7 +193,7 @@ namespace Vintagestory.GameContent
             {
                 if (doorBh.animatableOrigMesh == null)
                 {
-                    string animkey = "door-" + Block.Variant["style"];
+                    string animkey = Block.Shape.ToString();
                     doorBh.animatableOrigMesh = animUtil.CreateMesh(animkey, null, out Shape shape, null);
                     doorBh.animatableShape = shape;
                     doorBh.animatableDictKey = animkey;

@@ -116,7 +116,7 @@ namespace Vintagestory.GameContent
 
             var answer = Text.FirstOrDefault(elem => elem.Id == id);
 
-            if (answer == null)
+            if (answer == null || !conditionsMet(answer.Conditions))
             {
                 api.Logger.Warning($"Got invalid answer index: {id} for {controller.NPCEntity.Code}");
                 return;

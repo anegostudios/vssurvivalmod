@@ -69,6 +69,8 @@ namespace Vintagestory.GameContent
                 BurningUntilTotalHours = Math.Min(api.World.Calendar.TotalHours + BurnTimeHours, BurningUntilTotalHours);
             }
 
+            base.Initialize(api);
+
             bh.OnFireTick = (dt) => {
                 if (api.World.Calendar.TotalHours >= BurningUntilTotalHours)
                 {
@@ -90,8 +92,6 @@ namespace Vintagestory.GameContent
 
                 return block?.CombustibleProps != null && block.CombustibleProps.BurnDuration > 0 && (!IsAreaLoaded() || upblock.Replaceable >= 6000);
             };
-
-            base.Initialize(api);
 
             DetermineBuildStages();
 

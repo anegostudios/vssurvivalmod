@@ -248,7 +248,7 @@ namespace Vintagestory.GameContent
             if (!entity.Alive) return;
 
             bhmul = entity.GetBehavior<EntityBehaviorMultiply>();
-            // Can only be milked for 21 days after giving birth
+            // Can only be milked for a specific amount of time after giving birth
             double lactatingDaysLeft = lactatingDaysAfterBirth - Math.Max(0, entity.World.Calendar.TotalDays - bhmul.TotalDaysLastBirth);
 
             if (bhmul != null && lactatingDaysLeft > 0)
@@ -263,7 +263,7 @@ namespace Vintagestory.GameContent
                     }
 
                     int generation = entity.WatchedAttributes.GetInt("generation", 0);
-                    if (generation < 4f)
+                    if (generation < 3)
                     {
                         if (generation == 0)
                         {

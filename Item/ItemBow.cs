@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
@@ -187,12 +187,15 @@ namespace Vintagestory.GameContent
             if (stack.ItemAttributes != null) breakChance = stack.ItemAttributes["breakChanceOnImpact"].AsFloat(0.5f);
 
             EntityProperties type = byEntity.World.GetEntityType(new AssetLocation(stack.ItemAttributes["arrowEntityCode"].AsString("arrow-" + stack.Collectible.Variant["material"])));
-            var entityarrow = byEntity.World.ClassRegistry.CreateEntity(type) as EntityProjectile;
+            Entity entityToSpawn = byEntity.World.ClassRegistry.CreateEntity(type);
+            var entityarrow = entityToSpawn as IProjectile;
             entityarrow.FiredBy = byEntity;
             entityarrow.Damage = damage;
             entityarrow.DamageTier = Attributes["damageTier"].AsInt(0);
             entityarrow.ProjectileStack = stack;
             entityarrow.DropOnImpactChance = 1 - breakChance;
+            entityarrow.IgnoreInvFrames = Attributes["ignoreInvFrames"].AsBool(false);
+            entityarrow.WeaponStack = slot.Itemstack;
 
             float acc = Math.Max(0.001f, 1 - byEntity.Attributes.GetFloat("aimingAccuracy", 0));
             double rndpitch = byEntity.WatchedAttributes.GetDouble("aimingRandPitch", 1) * acc * 0.75f;
@@ -203,13 +206,13 @@ namespace Vintagestory.GameContent
             Vec3d velocity = (aheadPos - pos) * byEntity.Stats.GetBlended("bowDrawingStrength");
 
 
-            entityarrow.ServerPos.SetPosWithDimension(byEntity.SidedPos.BehindCopy(0.21).XYZ.Add(0, byEntity.LocalEyePos.Y, 0));
-            entityarrow.ServerPos.Motion.Set(velocity);
-            entityarrow.Pos.SetFrom(entityarrow.ServerPos);
-            entityarrow.World = byEntity.World;
-            entityarrow.SetRotation();
+            entityToSpawn.ServerPos.SetPosWithDimension(byEntity.SidedPos.BehindCopy(0.21).XYZ.Add(0, byEntity.LocalEyePos.Y, 0));
+            entityToSpawn.ServerPos.Motion.Set(velocity);
+            entityToSpawn.Pos.SetFrom(entityToSpawn.ServerPos);
+            entityToSpawn.World = byEntity.World;
+            entityarrow.PreInitialize();
 
-            byEntity.World.SpawnPriorityEntity(entityarrow);
+            byEntity.World.SpawnPriorityEntity(entityToSpawn);
 
             slot.Itemstack.Collectible.DamageItem(byEntity.World, byEntity, slot);
             slot.MarkDirty();

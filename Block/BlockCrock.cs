@@ -203,7 +203,6 @@ namespace Vintagestory.GameContent
             return mesh;
         }
 
-
         public override void OnCreatedByCrafting(ItemSlot[] allInputslots, ItemSlot outputSlot, GridRecipe byRecipe)
         {
             if (outputSlot.Itemstack == null) return;

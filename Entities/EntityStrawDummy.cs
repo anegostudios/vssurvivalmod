@@ -9,7 +9,7 @@ namespace Vintagestory.GameContent
     {
         public override void OnInteract(EntityAgent byEntity, ItemSlot slot, Vec3d hitPosition, EnumInteractMode mode)
         {
-            if (!Alive || World.Side == EnumAppSide.Client || mode == 0)
+            if (!Api.World.Claims.TryAccess(((EntityPlayer)byEntity).Player, Pos.AsBlockPos, EnumBlockAccessFlags.Use) || !Alive || World.Side == EnumAppSide.Client || mode == 0)
             {
                 base.OnInteract(byEntity, slot, hitPosition, mode);
                 return;
@@ -18,7 +18,9 @@ namespace Vintagestory.GameContent
             string owneruid = WatchedAttributes.GetString("ownerUid", null);
             string agentUid = (byEntity as EntityPlayer)?.PlayerUID;
 
-            if (agentUid != null && (owneruid == null || owneruid == "" || owneruid == agentUid) && byEntity.Controls.ShiftKey)
+            if (agentUid != null &&
+                (owneruid == null || owneruid == "" || owneruid == agentUid) &&
+                byEntity.Controls.ShiftKey)
             {
                 ItemStack stack = new ItemStack(byEntity.World.GetItem(new AssetLocation("strawdummy")));
                 if (!byEntity.TryGiveItemStack(stack))

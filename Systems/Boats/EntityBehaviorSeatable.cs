@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
@@ -36,6 +36,18 @@ namespace Vintagestory.GameContent
         public Entity Controller { get; set; }
 
         public Entity OnEntity => entity;
+
+        public EntityControls ControllingControls
+        {
+            get
+            {
+                foreach (var seat in Seats)
+                {
+                    if (seat.CanControl) return seat.Controls;
+                }
+                return null;
+            }
+        }
 
         public EntityBehaviorSeatable(Entity entity) : base(entity)
         {

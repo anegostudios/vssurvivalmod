@@ -13,7 +13,7 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityGenericTypedContainer : BlockEntityOpenableContainer, IRotatable
+    public class BlockEntityGenericTypedContainer : BlockEntityOpenableContainer, IRotatable, IClaimTraverseable
     {
         internal InventoryGeneric inventory;
         public string type = null;
@@ -69,7 +69,7 @@ namespace Vintagestory.GameContent
         {
             defaultType = Block.Attributes?["defaultType"]?.AsString() ?? defaultType;
             type ??= defaultType;
-            
+
             // Newly placed
             if (inventory == null)
             {
@@ -443,6 +443,11 @@ namespace Vintagestory.GameContent
             {
                 dsc.AppendLine(Lang.Get("blockdesc-perplayerloot"));
             }
+        }
+
+        public bool AllowTraverse()
+        {
+            return retrieveOnly || isPerPlayer;
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
@@ -19,14 +19,8 @@ public class AiTaskFlyCircleTarget : AiTaskFlyCircle
     protected int TargetDimension => targetEntity?.Pos.Dimension ?? CurrentDimension;
     protected int OtherDimension => CurrentDimension == Dimensions.NormalWorld ? 2 : Dimensions.NormalWorld;
 
-    public AiTaskFlyCircleTarget(EntityAgent entity) : base(entity)
+    public AiTaskFlyCircleTarget(EntityAgent entity, JsonObject taskConfig, JsonObject aiConfig) : base(entity, taskConfig, aiConfig)
     {
-    }
-
-    public override void LoadConfig(JsonObject taskConfig, JsonObject aiConfig)
-    {
-        base.LoadConfig(taskConfig, aiConfig);
-
         seekingRangeHor = taskConfig["seekingRangeHor"].AsFloat(25);
         seekingRangeVer = taskConfig["seekingRangeVer"].AsFloat(25);
         cooldownTime = TimeSpan.FromMilliseconds(taskConfig["cooldownMs"].AsInt(1000));

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -73,6 +73,8 @@ namespace Vintagestory.GameContent
         public Entity Controller => MountedBy;
 
         public Entity OnEntity => null;
+
+        public EntityControls ControllingControls => null;
 
         public override void Initialize(ICoreAPI api)
         {

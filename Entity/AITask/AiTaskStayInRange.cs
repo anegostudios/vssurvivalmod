@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -53,12 +53,8 @@ namespace Vintagestory.GameContent
         protected Dictionary<long, int> futilityCounters;
         float executionChance;
 
-        public AiTaskStayInRange(EntityAgent entity) : base(entity) { }
-
-        public override void LoadConfig(JsonObject taskConfig, JsonObject aiConfig)
+        public AiTaskStayInRange(EntityAgent entity, JsonObject taskConfig, JsonObject aiConfig) : base(entity, taskConfig, aiConfig)
         {
-            base.LoadConfig(taskConfig, aiConfig);
-
             moveSpeed = taskConfig["movespeed"].AsFloat(0.02f);
             searchRange = taskConfig["searchRange"].AsFloat(25);
             targetRange = taskConfig["targetRange"].AsFloat(15);

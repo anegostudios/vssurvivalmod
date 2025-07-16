@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -24,15 +24,8 @@ namespace Vintagestory.GameContent
         protected float curTurnRadPerSec;
 
 
-        public AiTaskButterflyWander(EntityAgent entity) : base(entity)
+        public AiTaskButterflyWander(EntityAgent entity, JsonObject taskConfig, JsonObject aiConfig) : base(entity, taskConfig, aiConfig)
         {
-
-        }
-
-        public override void LoadConfig(JsonObject taskConfig, JsonObject aiConfig)
-        {
-            base.LoadConfig(taskConfig, aiConfig);
-
             moveSpeed = taskConfig["movespeed"].AsFloat(0.03f);
 
             maxHeight = taskConfig["maxHeight"].AsFloat(7f);

@@ -15,8 +15,12 @@ namespace Vintagestory.GameContent
             if (blockSel == null) return;
             IPlayer player = byEntity.World.PlayerByUid((byEntity as EntityPlayer)?.PlayerUID);
 
+            var x = (int)(blockSel.Position.X + (blockSel.DidOffset ? 0 : blockSel.Face.Normali.X) + 0.5f);
+            var y = blockSel.Position.Y + (blockSel.DidOffset ? 0 : blockSel.Face.Normali.Y);
+            var z = (int)(blockSel.Position.Z + (blockSel.DidOffset ? 0 : blockSel.Face.Normali.Z) + 0.5f);
 
-            if (!byEntity.World.Claims.TryAccess(player, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            var blockPos = new BlockPos(x,y,z);
+            if (!byEntity.World.Claims.TryAccess(player, blockPos, EnumBlockAccessFlags.BuildOrBreak))
             {
                 slot.MarkDirty();
                 return;
@@ -27,21 +31,21 @@ namespace Vintagestory.GameContent
                 slot.TakeOut(1);
                 slot.MarkDirty();
             }
-            
+
             EntityProperties type = byEntity.World.GetEntityType(new AssetLocation("strawdummy"));
             Entity entity = byEntity.World.ClassRegistry.CreateEntity(type);
 
             if (entity != null)
             {
-                entity.ServerPos.X = blockSel.Position.X + (blockSel.DidOffset ? 0 : blockSel.Face.Normali.X) + 0.5f;
-                entity.ServerPos.Y = blockSel.Position.Y + (blockSel.DidOffset ? 0 : blockSel.Face.Normali.Y);
-                entity.ServerPos.Z = blockSel.Position.Z + (blockSel.DidOffset ? 0 : blockSel.Face.Normali.Z) + 0.5f;
+                entity.ServerPos.X = x;
+                entity.ServerPos.Y = y;
+                entity.ServerPos.Z = z;
                 entity.ServerPos.Yaw = byEntity.SidedPos.Yaw + GameMath.PIHALF;
                 if (player?.PlayerUID != null)
                 {
                     entity.WatchedAttributes.SetString("ownerUid", player.PlayerUID);
                 }
-                
+
                 entity.Pos.SetFrom(entity.ServerPos);
 
                 byEntity.World.PlaySoundAt(new AssetLocation("sounds/block/torch"), entity, player);
@@ -61,7 +65,7 @@ namespace Vintagestory.GameContent
                     ActionLangCode = "heldhelp-place",
                     MouseButton = EnumMouseButton.Right
                 }
-            }.Append(base.GetHeldInteractionHelp(inSlot)); 
+            }.Append(base.GetHeldInteractionHelp(inSlot));
         }
     }
 }

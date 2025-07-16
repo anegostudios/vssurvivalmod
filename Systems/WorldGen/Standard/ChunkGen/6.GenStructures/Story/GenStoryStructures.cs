@@ -23,7 +23,7 @@ namespace Vintagestory.GameContent
 
     public class GenStoryStructures : ModStdWorldGen
     {
-        private WorldGenStoryStructuresConfig scfg;
+        internal WorldGenStoryStructuresConfig scfg;
         private LCGRandom strucRand; // Deterministic random
         private LCGRandom grassRand; // Deterministic random
 
@@ -237,8 +237,37 @@ namespace Vintagestory.GameContent
 
             strucRand = new LCGRandom(api.WorldManager.Seed + 1095);
 
-            var asset = api.Assets.Get("worldgen/storystructures.json");
-            scfg = asset.ToObject<WorldGenStoryStructuresConfig>();
+            var assets = api.Assets.GetMany<WorldGenStoryStructuresConfig>(api.Logger, "worldgen/storystructures.json");
+
+            scfg = new WorldGenStoryStructuresConfig();
+            scfg.SchematicYOffsets = new Dictionary<string, int>();
+            scfg.RocktypeRemapGroups = new Dictionary<string, Dictionary<AssetLocation, AssetLocation>>();
+            var structures = new List<WorldGenStoryStructure>();
+
+            foreach (var (code, conf) in assets)
+            {
+                foreach (var remap in conf.RocktypeRemapGroups)
+                {
+                    if (scfg.RocktypeRemapGroups.TryGetValue(remap.Key, out var remapGroup))
+                    {
+                        foreach (var (source, target) in remap.Value)
+                        {
+                            remapGroup.TryAdd(source, target);
+                        }
+                    }
+                    else
+                    {
+                        scfg.RocktypeRemapGroups.TryAdd(remap.Key, remap.Value);
+                    }
+                }
+                foreach (var remap in conf.SchematicYOffsets)
+                {
+                    scfg.SchematicYOffsets.TryAdd(remap.Key, remap.Value);
+                }
+                structures.AddRange(conf.Structures);
+            }
+
+            scfg.Structures = structures.ToArray();
 
             grassRand = new LCGRandom(api.WorldManager.Seed);
             grassDensity = new ClampedSimplexNoise(new double[] { 4 }, new double[] { 0.5 }, grassRand.NextInt());
@@ -481,7 +510,7 @@ namespace Vintagestory.GameContent
                         {
                             var blockingLoadChunk = api.WorldManager.BlockingLoadChunkColumn(x, z);
                             if (blockingLoadChunk == null) continue;
-                            
+
                             foreach (var chunk in blockingLoadChunk)
                             {
                                 if (chunk.BlocksPlaced > 0 || chunk.BlocksRemoved > 0)
@@ -581,6 +610,31 @@ namespace Vintagestory.GameContent
             {
                 storyStructureInstances = strucs;
             }
+
+            if (GameVersion.IsLowerVersionThan(api.WorldManager.SaveGame.CreatedGameVersion, "1.21.0-pre.3"))
+            {
+                var upgraded = api.WorldManager.SaveGame.GetData<bool>("storyLocUpgrade-1.21.0-pre.3");
+                if(!upgraded)
+                    UpdateOldStoryClaims();
+            }
+        }
+
+        private void UpdateOldStoryClaims()
+        {
+            // in versions before 1.21.0-pre.3 we used custom code specific to tobias and the village to prevent stealing/interacting with things
+            // as of 1.21.0-pre.3 we now have a traverse permission which will allow access to open doors and trapdoors if set, so we want to use that from now on
+            foreach (var landClaim in api.World.Claims.All)
+            {
+                if (landClaim.ProtectionLevel == 10 &&
+                    landClaim.AllowUseEveryone &&
+                    landClaim.LastKnownOwnerName is "custommessage-nadiya" or "custommessage-tobias" or "custommessage-treasurehunter")
+                {
+                    landClaim.AllowUseEveryone = false;
+                    landClaim.AllowTraverseEveryone = true;
+                }
+            }
+
+            api.WorldManager.SaveGame.StoreData("storyLocUpgrade-1.21.0-pre.3", true);
         }
 
         private void OnWorldGenBlockAccessor(IChunkProviderThread chunkProvider)
@@ -724,9 +778,10 @@ namespace Vintagestory.GameContent
                             {
                                 Areas = new List<Cuboidi>() { strucloc },
                                 Description = structure.BuildProtectionDesc,
-                                ProtectionLevel = 10,
+                                ProtectionLevel = structure.ProtectionLevel,
                                 LastKnownOwnerName = structure.BuildProtectionName,
-                                AllowUseEveryone = true
+                                AllowUseEveryone = structure.AllowUseEveryone,
+                                AllowTraverseEveryone = structure.AllowTraverseEveryone
                             });
                         }
                     }
@@ -742,9 +797,10 @@ namespace Vintagestory.GameContent
                             {
                                 Areas = new List<Cuboidi>() { struclocDeva },
                                 Description = structure.BuildProtectionDesc,
-                                ProtectionLevel = 10,
+                                ProtectionLevel = structure.ProtectionLevel,
                                 LastKnownOwnerName = structure.BuildProtectionName,
-                                AllowUseEveryone = true
+                                AllowUseEveryone = structure.AllowUseEveryone,
+                                AllowTraverseEveryone = structure.AllowTraverseEveryone
                             });
                         }
                     }
@@ -766,9 +822,10 @@ namespace Vintagestory.GameContent
                                 {
                                     Areas = new List<Cuboidi>() { cuboidi },
                                     Description = structure.BuildProtectionDesc,
-                                    ProtectionLevel = 10,
+                                    ProtectionLevel = structure.ProtectionLevel,
                                     LastKnownOwnerName = structure.BuildProtectionName,
-                                    AllowUseEveryone = true
+                                    AllowUseEveryone = structure.AllowUseEveryone,
+                                    AllowTraverseEveryone = structure.AllowTraverseEveryone
                                 });
                             }
                         }
@@ -1125,9 +1182,10 @@ namespace Vintagestory.GameContent
                         {
                             Areas = new List<Cuboidi> { location },
                             Description = hookStruct.buildProtectionDesc,
-                            ProtectionLevel = 10,
+                            ProtectionLevel = hookStruct.ProtectionLevel,
                             LastKnownOwnerName = hookStruct.buildProtectionName,
-                            AllowUseEveryone = true
+                            AllowUseEveryone = hookStruct.AllowUseEveryone,
+                            AllowTraverseEveryone = hookStruct.AllowTraverseEveryone
                         });
                     }
                 }

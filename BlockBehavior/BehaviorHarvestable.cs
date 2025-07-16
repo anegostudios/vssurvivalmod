@@ -1,4 +1,4 @@
-﻿using Vintagestory.API;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -77,6 +77,11 @@ namespace Vintagestory.GameContent
         AssetLocation harvestedBlockCode;
 
         Block harvestedBlock;
+
+        /// <summary>
+        /// The code to use for the interaction help of this block.
+        /// </summary>
+        [DocumentAsJson("Optional", "blockhelp-harvetable-harvest")]
         string interactionHelpCode;
 
         public BlockBehaviorHarvestable(Block block) : base(block)
@@ -87,7 +92,7 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(properties);
 
-            interactionHelpCode = properties["harvestTime"].AsString("blockhelp-harvetable-harvest");
+            interactionHelpCode = properties["interactionHelpCode"].AsString("blockhelp-harvetable-harvest");
             harvestTime = properties["harvestTime"].AsFloat(0);
             harvestedStacks = properties["harvestedStacks"].AsObject<BlockDropItemStack[]>(null);
             BlockDropItemStack tempStack = properties["harvestedStack"].AsObject<BlockDropItemStack>(null);
@@ -95,7 +100,7 @@ namespace Vintagestory.GameContent
             {
                 harvestedStacks = new BlockDropItemStack[1];
                 harvestedStacks[0] = tempStack;
-            }
+            } 
             exchangeBlock = properties["exchangeBlock"].AsBool(false);
 
             string code = properties["harvestingSound"].AsString("game:sounds/block/leafy-picking");

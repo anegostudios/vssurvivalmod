@@ -18,12 +18,12 @@ namespace Vintagestory.GameContent;
 ///],
 /// </code></example>
 [DocumentAsJson]
-public class BehaviorElevatorControl : BlockBehavior
+public class BlockBehaviorElevatorControl : BlockBehavior
 {
     private ICoreAPI api;
     private SimpleParticleProperties particleProperties;
 
-    public BehaviorElevatorControl(Block block) : base(block)
+    public BlockBehaviorElevatorControl(Block block) : base(block)
     {
     }
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -47,15 +47,9 @@ public class AiTaskFlyDiveAttack : AiTaskBaseTargetable
     protected int TargetDimension => targetEntity?.Pos.Dimension ?? CurrentDimension;
 
 
-    public AiTaskFlyDiveAttack(EntityAgent entity) : base(entity)
+    public AiTaskFlyDiveAttack(EntityAgent entity, JsonObject taskConfig, JsonObject aiConfig) : base(entity, taskConfig, aiConfig)
     {
         healthBehavior = entity.GetBehavior<EntityBehaviorHealth>();
-    }
-
-    public override void LoadConfig(JsonObject taskConfig, JsonObject aiConfig)
-    {
-        base.LoadConfig(taskConfig, aiConfig);
-
         moveSpeed = taskConfig["moveSpeed"].AsFloat(0.04f);
         damage = taskConfig["damage"].AsFloat(2);
         knockbackStrength = taskConfig["knockbackStrength"].AsFloat(GameMath.Sqrt(damage / 2f));

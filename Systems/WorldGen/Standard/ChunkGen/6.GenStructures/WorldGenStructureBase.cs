@@ -30,6 +30,12 @@ namespace Vintagestory.ServerMods
         [JsonProperty]
         public string BuildProtectionName = null;
         [JsonProperty]
+        public bool AllowUseEveryone = true;
+        [JsonProperty]
+        public bool AllowTraverseEveryone = true;
+        [JsonProperty]
+        public int ProtectionLevel = 10;
+        [JsonProperty]
         public string RockTypeRemapGroup = null; // For rocktyped ruins
         [JsonProperty]
         public Dictionary<AssetLocation, AssetLocation> RockTypeRemaps = null;  // For rocktyped ruins

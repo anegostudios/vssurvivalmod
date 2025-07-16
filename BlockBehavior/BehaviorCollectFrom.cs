@@ -1,4 +1,4 @@
-﻿using System.Linq;
+using System.Linq;
 using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -21,11 +21,11 @@ namespace Vintagestory.GameContent
 	///]
     /// </code></example>
     [DocumentAsJson]
-    public class BehaviorCollectFrom : BlockBehavior
+    public class BlockBehaviorCollectFrom : BlockBehavior
     {
         
 
-        public BehaviorCollectFrom(Block block) : base(block)
+        public BlockBehaviorCollectFrom(Block block) : base(block)
         {
         }
 

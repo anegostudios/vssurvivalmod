@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -34,14 +34,14 @@ public sealed class EntityErel : EntityAgent
 
     static EntityErel()
     {
-        AiTaskRegistry.Register("flycircle", typeof(AiTaskFlyCircle));
-        AiTaskRegistry.Register("flycircleifentity", typeof(AiTaskFlyCircleIfEntity));
-        AiTaskRegistry.Register("flycircletarget", typeof(AiTaskFlyCircleTarget));
-        AiTaskRegistry.Register("flywander", typeof(AiTaskFlyWander));
-        AiTaskRegistry.Register("flyswoopattack", typeof(AiTaskFlySwoopAttack));
-        AiTaskRegistry.Register("flydiveattack", typeof(AiTaskFlyDiveAttack));
-        AiTaskRegistry.Register("firefeathersattack", typeof(AiTaskFireFeathersAttack));
-        AiTaskRegistry.Register("flyleave", typeof(AiTaskFlyLeave));
+        AiTaskRegistry.Register<AiTaskFlyCircle>("flycircle");
+        AiTaskRegistry.Register<AiTaskFlyCircleIfEntity>("flycircleifentity");
+        AiTaskRegistry.Register<AiTaskFlyCircleTarget>("flycircletarget");
+        AiTaskRegistry.Register<AiTaskFlyWander>("flywander");
+        AiTaskRegistry.Register<AiTaskFlySwoopAttack>("flyswoopattack");
+        AiTaskRegistry.Register<AiTaskFlyDiveAttack>("flydiveattack");
+        AiTaskRegistry.Register<AiTaskFireFeathersAttack>("firefeathersattack");
+        AiTaskRegistry.Register<AiTaskFlyLeave>("flyleave");
     }
     public EntityErel()
     {

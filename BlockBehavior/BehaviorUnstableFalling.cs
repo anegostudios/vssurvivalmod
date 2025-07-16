@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -22,14 +22,9 @@ namespace Vintagestory.GameContent
     [AddDocumentationProperty("AttachmentAreas", "A list of attachment areas per face that determine what blocks can be attached to.", "System.Collections.Generic.Dictionary{System.String,Vintagestory.API.Datastructures.RotatableCube}", "Optional", "None")]
     [AddDocumentationProperty("AttachmentArea", "A single attachment area that determine what blocks can be attached to. Used if AttachmentAreas is not supplied.", "Vintagestory.API.Mathtools.Cuboidi", "Optional", "None")]
     [AddDocumentationProperty("AllowUnstablePlacement","Can this block be placed in an unstable position?","System.Boolean","Optional","False",true)]
+    [AddDocumentationProperty("IgnorePlaceTest","(Obsolete) Please use the AllowUnstablePlacement attribute instead.","System.Boolean","Obsolete","",false)]
     public class BlockBehaviorUnstableFalling : BlockBehavior
     {
-        /// <summary>
-        /// If true, then the block can be placed even in an position where it'll be unstable.
-        /// </summary>
-        [DocumentAsJson("Optional", "False")]
-        bool ignorePlaceTest;
-
         /// <summary>
         /// A list of block types which this block can always be attached to, regardless if there is a correct attachment area.
         /// </summary>
@@ -112,7 +107,6 @@ namespace Vintagestory.GameContent
                 attachmentAreas[4] = properties["attachmentArea"].AsObject<Cuboidi>(null);
             }
 
-            ignorePlaceTest = properties["ignorePlaceTest"].AsBool(false);
             exceptions = properties["exceptions"].AsObject(System.Array.Empty<AssetLocation>(), block.Code.Domain);
             fallSideways = properties["fallSideways"].AsBool(false);
             dustIntensity = properties["dustIntensity"].AsFloat(0);
@@ -130,13 +124,16 @@ namespace Vintagestory.GameContent
         public override bool CanPlaceBlock(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref EnumHandling handling, ref string failureCode)
         {
             handling = EnumHandling.PassThrough;
-            if (ignorePlaceTest) return true;
+            if (block.Attributes?["allowUnstablePlacement"].AsBool() == true) return true;
 
             Cuboidi attachmentArea = attachmentAreas[4];
 
             BlockPos pos = blockSel.Position.DownCopy();
             Block onBlock = world.BlockAccessor.GetBlock(pos);
-            if (blockSel != null && !IsAttached(world.BlockAccessor, blockSel.Position) && !onBlock.CanAttachBlockAt(world.BlockAccessor, block, pos, BlockFacing.UP, attachmentArea) && block.Attributes?["allowUnstablePlacement"].AsBool() != true && !onBlock.WildCardMatch(exceptions))
+            if (blockSel != null &&
+                !IsAttached(world.BlockAccessor, blockSel.Position) &&
+                !onBlock.CanAttachBlockAt(world.BlockAccessor, block, pos, BlockFacing.UP, attachmentArea) &&
+                !onBlock.WildCardMatch(exceptions))
             {
                 handling = EnumHandling.PreventSubsequent;
                 failureCode = "requiresolidground";

@@ -24,7 +24,6 @@ namespace Vintagestory.GameContent
     {
         public BlockBehaviorLockable(Block block) : base(block)
         {
-            
         }
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref EnumHandling handling)
@@ -62,6 +61,12 @@ namespace Vintagestory.GameContent
 
                 handling = EnumHandling.PreventSubsequent;
                 return false;
+            }
+
+            var bedbl = blockEntity?.GetBehavior<BEBehaviorDoorBarLock>();
+            if (bedbl != null)
+            {
+                return bedbl.OnBlockInteractStart(world, byPlayer, blockSel, ref handling);
             }
             return base.OnBlockInteractStart(world, byPlayer, blockSel, ref handling);
         }

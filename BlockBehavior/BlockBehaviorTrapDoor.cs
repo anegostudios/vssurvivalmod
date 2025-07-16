@@ -17,7 +17,7 @@ namespace Vintagestory.GameContent
     /// <example><code lang="json">
     ///"behaviors": [
 	///	{
-	///		"name": "TrapDoor" 
+	///		"name": "TrapDoor"
 	///	}
 	///],
     ///...
@@ -32,7 +32,7 @@ namespace Vintagestory.GameContent
     /// </code></example>
     [DocumentAsJson]
     [AddDocumentationProperty("TriggerSound", "The sound to play when the trapdoor is opened or closed.", "System.String", "Optional", "sounds/block/door", true)]
-    public class BlockBehaviorTrapDoor : StrongBlockBehavior
+    public class BlockBehaviorTrapDoor : StrongBlockBehavior, IClaimTraverseable
     {
         /// <summary>
         /// The sound to play when the trapdoor is opened.
@@ -130,7 +130,7 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        
+
         public override Cuboidf[] GetCollisionBoxes(IBlockAccessor blockAccessor, BlockPos pos, ref EnumHandling handled)
         {
             handled = EnumHandling.PreventSubsequent;

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
@@ -30,11 +30,8 @@ namespace Vintagestory.GameContent
         float yawInaccuracy;
         bool immobile;
 
-        public AiTaskThrowAtEntity(EntityAgent entity) : base(entity) { }
-
-        public override void LoadConfig(JsonObject taskConfig, JsonObject aiConfig)
+        public AiTaskThrowAtEntity(EntityAgent entity, JsonObject taskConfig, JsonObject aiConfig) : base(entity, taskConfig, aiConfig)
         {
-            base.LoadConfig(taskConfig, aiConfig);
             this.durationMs = taskConfig["durationMs"].AsInt(1500);
             this.releaseAtMs = taskConfig["releaseAtMs"].AsInt(1000);
             this.projectileDamage = taskConfig["projectileDamage"].AsFloat(1f);

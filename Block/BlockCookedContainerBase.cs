@@ -147,7 +147,8 @@ namespace Vintagestory.GameContent
         public override int GetMergableQuantity(ItemStack sinkStack, ItemStack sourceStack, EnumMergePriority priority)
         {
             if (priority != EnumMergePriority.AutoMerge &&
-                (sourceStack?.Block is IBlockMealContainer || (sourceStack?.Collectible?.Attributes?.IsTrue("mealContainer") ?? false)))
+                (sourceStack?.Block is IBlockMealContainer || (sourceStack?.Collectible?.Attributes?.IsTrue("mealContainer") ?? false)) &&
+                GetServings(api.World, sinkStack) > 0)
                 return Math.Max(1, Math.Min(MaxStackSize - sinkStack.StackSize, sourceStack.StackSize));
 
             return base.GetMergableQuantity(sinkStack, sourceStack, priority);

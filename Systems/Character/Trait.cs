@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using Vintagestory.API.Common;
 
 #nullable disable
@@ -21,9 +21,9 @@ namespace Vintagestory.GameContent
 
     public class CharacterClass
     {
+        public bool Enabled = true;
         public string Code;
         public string[] Traits;
         public JsonItemStack[] Gear;
     }
-
 }

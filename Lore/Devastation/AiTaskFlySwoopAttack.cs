@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -52,16 +52,11 @@ public class AiTaskFlySwoopAttack : AiTaskBaseTargetable
     protected int CurrentDimension => entity.Pos.Dimension;
     protected int TargetDimension => targetEntity?.Pos.Dimension ?? CurrentDimension;
 
-    public AiTaskFlySwoopAttack(EntityAgent entity) : base(entity)
+    public AiTaskFlySwoopAttack(EntityAgent entity, JsonObject taskConfig, JsonObject aiConfig) : base(entity, taskConfig, aiConfig)
     {
         healthBehavior = entity.GetBehavior<EntityBehaviorHealth>();
 
         timeSwitchRandom = new NatFloat(0.5f, 0.5f, EnumDistribution.UNIFORM);
-    }
-
-    public override void LoadConfig(JsonObject taskConfig, JsonObject aiConfig)
-    {
-        base.LoadConfig(taskConfig, aiConfig);
 
         moveSpeed = taskConfig["moveSpeed"].AsFloat(0.04f);
         damage = taskConfig["damage"].AsFloat(2);

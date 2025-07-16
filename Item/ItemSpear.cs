@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -136,14 +136,16 @@ namespace Vintagestory.GameContent
 
 
             EntityProperties type = byEntity.World.GetEntityType(new AssetLocation(Attributes["spearEntityCode"].AsString()));
-            EntityProjectile enpr = byEntity.World.ClassRegistry.CreateEntity(type) as EntityProjectile;
-            enpr.FiredBy = byEntity;
-            enpr.Damage = damage;
-            enpr.DamageTier = Attributes["damageTier"].AsInt(0);
-            enpr.ProjectileStack = stack;
-            enpr.DropOnImpactChance = 1.1f;
-            enpr.DamageStackOnImpact = true;
-            enpr.Weight = 0.3f;
+            Entity enpr = byEntity.World.ClassRegistry.CreateEntity(type);
+            IProjectile projectile = enpr as IProjectile;
+            projectile.FiredBy = byEntity;
+            projectile.Damage = damage;
+            projectile.DamageTier = Attributes["damageTier"].AsInt(0);
+            projectile.ProjectileStack = stack;
+            projectile.DropOnImpactChance = 1.1f;
+            projectile.DamageStackOnImpact = true;
+            projectile.Weight = 0.3f;
+            projectile.IgnoreInvFrames = Attributes["ignoreInvFrames"].AsBool(false);
 
             EntityProjectile.SpawnThrownEntity(enpr, byEntity, 0.75, -0.2, 0, 0.65 * byEntity.Stats.GetBlended("bowDrawingStrength"), 0.15);
             byEntity.StartAnimation("throw");

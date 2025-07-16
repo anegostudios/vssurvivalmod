@@ -1,4 +1,4 @@
-﻿using Vintagestory.API;
+using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
@@ -18,10 +18,10 @@ namespace Vintagestory.GameContent
 	///]
     /// </code></example>
     [DocumentAsJson]
-    public class BehaviorMyceliumHost : BlockBehavior
+    public class BlockBehaviorMyceliumHost : BlockBehavior
     {
         
-        public BehaviorMyceliumHost(Block block) : base(block)
+        public BlockBehaviorMyceliumHost(Block block) : base(block)
         {
         }
 

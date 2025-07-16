@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -14,13 +14,8 @@ namespace Vintagestory.GameContent
         long goalReachedEllapsedMs;
         ClothSystem cs;
 
-        public AiTaskFollowLeadHolder(EntityAgent entity) : base(entity)
+        public AiTaskFollowLeadHolder(EntityAgent entity, JsonObject taskConfig, JsonObject aiConfig) : base(entity, taskConfig, aiConfig)
         {
-        }
-
-        public override void LoadConfig(JsonObject taskConfig, JsonObject aiConfig)
-        {
-            base.LoadConfig(taskConfig, aiConfig);
             minGeneration = taskConfig["minGeneration"].AsInt(0);
             cm = entity.World.Api.ModLoader.GetModSystem<ClothManager>();
         }

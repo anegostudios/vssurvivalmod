@@ -3,15 +3,39 @@ using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockCookingContainer : Block, IInFirepitRendererSupplier
+    public class BlockCookingContainer : Block, IInFirepitRendererSupplier, IAttachableToEntity
     {
         public int MaxServingSize = 6;
         Cuboidi? attachmentArea;
+        IAttachableToEntity attrAtta;
+
+        #region IAttachableToEntity
+
+        public int RequiresBehindSlots { get; set; } = 0;
+        public bool IsAttachable(Entity toEntity, ItemStack itemStack) => true;
+        string IAttachableToEntity.GetCategoryCode(ItemStack stack) => attrAtta?.GetCategoryCode(stack);
+        CompositeShape IAttachableToEntity.GetAttachedShape(ItemStack stack, string slotCode) => attrAtta.GetAttachedShape(stack, slotCode);
+        string[] IAttachableToEntity.GetDisableElements(ItemStack stack) => attrAtta.GetDisableElements(stack);
+        string[] IAttachableToEntity.GetKeepElements(ItemStack stack) => attrAtta.GetKeepElements(stack);
+        string IAttachableToEntity.GetTexturePrefixCode(ItemStack stack) => attrAtta.GetTexturePrefixCode(stack);
+
+        void IAttachableToEntity.CollectTextures(ItemStack itemstack, Shape intoShape, string texturePrefixCode, Dictionary<string, CompositeTexture> intoDict)
+        {
+            var color = itemstack.Block.Variant["color"];
+            var type = itemstack.Block.Variant["type"];
+
+            var pot = api.World.GetBlock(CodeWithVariants(["color", "type"], [color, type]));
+            var side = intoShape.Elements[0].StepParentName.Last();
+            intoShape.Textures["ceramic"+side] = pot.Textures["ceramic"].Base;
+        }
+
+        #endregion
 
         public override void OnLoaded(ICoreAPI api)
         {
@@ -20,6 +44,8 @@ namespace Vintagestory.GameContent
             attachmentArea = Attributes?["attachmentArea"].AsObject<Cuboidi?>(null);
 
             MaxServingSize = Attributes?["maxServingSize"].AsInt(6) ?? 6;
+
+            attrAtta = IAttachableToEntity.FromAttributes(this);
         }
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
@@ -60,7 +86,7 @@ namespace Vintagestory.GameContent
 
             return false;
         }
-        
+
 
 
         public override float GetMeltingDuration(IWorldAccessor world, ISlotProvider cookingSlotsProvider, ItemSlot inputSlot)
@@ -160,7 +186,7 @@ namespace Vintagestory.GameContent
 
             if (cookedPerishProps != null) CarryOverFreshness(api, cookingSlotsProvider.Slots, stacks, cookedPerishProps);
 
-            
+
             if (recipe.CooksInto != null)
             {
                 for (int i = 0; i < cookingSlotsProvider.Slots.Length; i++)
@@ -211,7 +237,7 @@ namespace Vintagestory.GameContent
             if (inputSlot.Itemstack.Collectible is not BlockCookingContainer) return null;
 
             ItemStack[] stacks = GetCookingStacks(cookingSlotsProvider);
-            
+
             CookingRecipe? recipe = GetMatchingCookingRecipe(world, stacks, out int quantity);
 
             if (recipe != null)
@@ -258,10 +284,10 @@ namespace Vintagestory.GameContent
 
             if (!stacks.All(stack => stack == null)) return Lang.Get("mealcreation-norecipe");
             return null;
-        
+
         }
 
-        
+
 
 
 
@@ -302,7 +328,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        
+
 
 
         public ItemStack[] GetCookingStacks(ISlotProvider cookingSlotsProvider, bool clone = true)

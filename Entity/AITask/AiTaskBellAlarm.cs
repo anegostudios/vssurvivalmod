@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -32,14 +32,9 @@ namespace Vintagestory.GameContent
 
         List<Entity> spawnedEntities = new List<Entity>();
 
-        public AiTaskBellAlarm(EntityAgent entity) : base(entity)
+        public AiTaskBellAlarm(EntityAgent entity, JsonObject taskConfig, JsonObject aiConfig) : base(entity, taskConfig, aiConfig)
         {
             sapi = entity.World.Api as ICoreServerAPI;
-        }
-
-        public override void LoadConfig(JsonObject taskConfig, JsonObject aiConfig)
-        {
-            base.LoadConfig(taskConfig, aiConfig);
 
             spawnRange = taskConfig["spawnRange"].AsInt(12);
             spawnIntervalMsMin = taskConfig["spawnIntervalMsMin"].AsInt(2500);

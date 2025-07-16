@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -21,12 +21,8 @@ namespace Vintagestory.GameContent
 
         float targetTolerangeRange;
 
-        public AiTaskFlyWander(EntityAgent entity) : base(entity) { }
-
-        public override void LoadConfig(JsonObject taskConfig, JsonObject aiConfig)
+        public AiTaskFlyWander(EntityAgent entity, JsonObject taskConfig, JsonObject aiConfig) : base(entity, taskConfig, aiConfig)
         {
-            base.LoadConfig(taskConfig, aiConfig);
-
             stayNearSpawn = taskConfig["stayNearSpawn"].AsBool(false);
             radius = taskConfig["radius"].AsFloat(10f);
             height = taskConfig["height"].AsFloat(5f);

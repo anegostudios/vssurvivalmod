@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Common;
+using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
 #nullable disable
@@ -13,6 +13,7 @@ namespace Vintagestory.GameContent
 
         public override bool ShouldReceiveClientParticleTicks(IWorldAccessor world, IPlayer byPlayer, BlockPos pos, ref EnumHandling handling)
         {
+            handling = EnumHandling.PreventSubsequent;
             return false;
         }
     }

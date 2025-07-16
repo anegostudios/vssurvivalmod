@@ -27,7 +27,7 @@ namespace Vintagestory.ServerMods
 
         // Used by worldgen
         public int NowQuantity;
-        
+
 
         public bool ShouldGenerate => NowQuantity < MaxQuantity;
     }
@@ -65,6 +65,12 @@ namespace Vintagestory.ServerMods
         public string BuildProtectionDesc = null;
         [JsonProperty]
         public string BuildProtectionName = null;
+        [JsonProperty]
+        public bool AllowUseEveryone = true;
+        [JsonProperty]
+        public bool AllowTraverseEveryone = true;
+        [JsonProperty]
+        public int ProtectionLevel = 10;
         [JsonProperty]
         public Dictionary<AssetLocation, AssetLocation> RockTypeRemaps = null;
         [JsonProperty]
@@ -151,7 +157,7 @@ namespace Vintagestory.ServerMods
         public bool TryGenerate(IBlockAccessor blockAccessor, IWorldAccessor worldForCollectibleResolve, BlockPos pos, int climateUpLeft, int climateUpRight, int climateBotLeft, int climateBotRight, DidGenerate didGenerateStructure, BlockPos spawnPos)
         {
             if (!WorldGenStructure.SatisfiesMinDistance(pos, worldForCollectibleResolve, MinGroupDistance, Group)) return false;
-            
+
 
             rand.InitPositionSeed(pos.X, pos.Z);
 

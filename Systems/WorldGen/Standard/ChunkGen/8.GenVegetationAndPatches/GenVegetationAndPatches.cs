@@ -6,6 +6,7 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+using Vintagestory.GameContent;
 using Vintagestory.ServerMods.NoObf;
 
 #nullable disable
@@ -147,8 +148,8 @@ namespace Vintagestory.ServerMods
             var genStoryStructures = sapi.World.Config.GetAsString("loreContent", "true").ToBool(true);
             if (!genStoryStructures) return;
 
-            asset = sapi.Assets.Get("worldgen/storystructures.json");
-            var stcfg = asset.ToObject<WorldGenStoryStructuresConfig>();
+            var genStorySys = sapi.ModLoader.GetModSystem<GenStoryStructures>();
+            var stcfg = genStorySys.scfg;
             StoryStructurePatches = new Dictionary<string, BlockPatchConfig>();
             foreach (var storyStructure in stcfg.Structures)
             {

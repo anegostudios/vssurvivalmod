@@ -1,4 +1,5 @@
-﻿using System.IO;
+using CompactExifLib;
+using System.IO;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
@@ -9,7 +10,7 @@ using Vintagestory.GameContent;
 
 namespace Vintagestory.GameContent
 {
-    public class EntityThrownBeenade : Entity
+    public class EntityThrownBeenade : Entity, IProjectile
     {
         bool beforeCollided;
         bool stuck;
@@ -24,6 +25,24 @@ namespace Vintagestory.GameContent
         {
             get { return false; }
         }
+
+        #region IProjectile
+        Entity IProjectile.FiredBy { get => FiredBy; set => FiredBy = value; }
+        float IProjectile.Damage { get => Damage; set => Damage = value; }
+        int IProjectile.DamageTier { get; set; }
+        EnumDamageType IProjectile.DamageType { get; set; }
+        bool IProjectile.IgnoreInvFrames { get; set; }
+        ItemStack IProjectile.ProjectileStack { get => ProjectileStack; set => ProjectileStack = value; }
+        ItemStack IProjectile.WeaponStack { get; set; }
+        float IProjectile.DropOnImpactChance { get; set; }
+        bool IProjectile.DamageStackOnImpact { get; set; }
+        bool IProjectile.NonCollectible { get; set; }
+        bool IProjectile.EntityHit { get; }
+        float IProjectile.Weight { get; set; }
+        bool IProjectile.Stuck { get => stuck; set => stuck = value; }
+
+        void IProjectile.PreInitialize() { }
+        #endregion
 
         public override void Initialize(EntityProperties properties, ICoreAPI api, long InChunkIndex3d)
         {
