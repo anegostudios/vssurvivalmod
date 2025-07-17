@@ -1113,7 +1113,7 @@ namespace Vintagestory.GameContent
                 ItemStack stack = firstSlot.Itemstack;
                 int sumQ = inventory.Sum(s => s.StackSize);
 
-                if (firstSlot.Itemstack.Collectible is IContainedCustomName ccn)
+                if (firstSlot.Itemstack.Collectible.GetCollectibleInterface<IContainedCustomName>() is IContainedCustomName ccn)
                 {
                     string name = ccn.GetContainedName(firstSlot, sumQ);
                     if (name != null) return name;
@@ -1135,7 +1135,7 @@ namespace Vintagestory.GameContent
 
             ItemStack stack = inventory.FirstNonEmptySlot.Itemstack;
             // Only add supplemental info for non-BlockEntities (otherwise it will be wrong or will get into a recursive loop, because right now this BEGroundStorage is the BlockEntity)
-            if (contentSummary.Length == 1 && !(stack.Collectible is IContainedCustomName) && stack.Class == EnumItemClass.Block && ((Block)stack.Collectible).EntityClass == null)
+            if (contentSummary.Length == 1 && !(stack.Collectible.GetCollectibleInterface<IContainedCustomName>() is IContainedCustomName) && stack.Class == EnumItemClass.Block && ((Block)stack.Collectible).EntityClass == null)
             {
                 string detailedInfo = stack.Block.GetPlacedBlockInfo(Api.World, Pos, forPlayer);
                 if (detailedInfo != null && detailedInfo.Length > 0) dsc.Append(detailedInfo);
@@ -1171,7 +1171,7 @@ namespace Vintagestory.GameContent
 
                 string stackName = slot.Itemstack.GetName();
 
-                if (slot.Itemstack.Collectible is IContainedCustomName ccn)
+                if (slot.Itemstack.Collectible.GetCollectibleInterface<IContainedCustomName>() is IContainedCustomName ccn)
                 {
                     stackName = ccn.GetContainedInfo(slot);
                 }
