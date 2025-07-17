@@ -15,64 +15,28 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class ModSystemStopRaiseShieldAnim : ModSystem
+    public class ItemShield : ItemShieldBase, IContainedMeshSource, IAttachableToEntity
     {
-        ICoreClientAPI capi;
-        public override bool ShouldLoad(EnumAppSide forSide) => forSide == EnumAppSide.Client;
+        public const string ShieldMeshRefsKey = "shieldmeshrefs";
+        private float offY;
+        private float curOffY = 0;
+        private ICoreClientAPI capi;
 
-        public override void StartClientSide(ICoreClientAPI api)
-        {
-            capi = api;
-            api.Event.AfterActiveSlotChanged += Event_AfterActiveSlotChanged;
-        }
-
-        public override void AssetsFinalize(ICoreAPI api)
-        {
-            capi.World.Player.InventoryManager.GetHotbarInventory().SlotModified += ModSystemStopRaiseShieldAnim_SlotModified;
-        }
-
-        private void ModSystemStopRaiseShieldAnim_SlotModified(int slotid)
-        {
-            maybeStopRaiseShield();
-        }
-        private void Event_AfterActiveSlotChanged(ActiveSlotChangeEventArgs obj)
-        {
-            maybeStopRaiseShield();
-        }
-
-        private void maybeStopRaiseShield()
-        {
-            var eplr = capi.World.Player.Entity;
-            if (!(eplr.RightHandItemSlot.Itemstack?.Item is ItemShield) && eplr.AnimManager.IsAnimationActive("raiseshield-right"))
-            {
-                eplr.AnimManager.StopAnimation("raiseshield-right");
-            }
-        }
-    }
-
-    public class ItemShield : Item, IContainedMeshSource, IAttachableToEntity
-    {
-        float offY;
-        float curOffY = 0;
-        ICoreClientAPI capi;
-
-        Dictionary<int, MultiTextureMeshRef> meshrefs => ObjectCacheUtil.GetOrCreate(api, "shieldmeshrefs", () => new Dictionary<int, MultiTextureMeshRef>());
-        Dictionary<string, Dictionary<string, int>> durabilityGains;
+        private Dictionary<int, MultiTextureMeshRef> meshrefs => ObjectCacheUtil.GetOrCreate(api, ShieldMeshRefsKey, () => new Dictionary<int, MultiTextureMeshRef>());
+        private Dictionary<string, Dictionary<string, int>> durabilityGains;
         public string Construction => Variant["construction"];
 
-
-        IAttachableToEntity attrAtta;
         #region IAttachableToEntity
         public int RequiresBehindSlots { get; set; } = 0;
-        string IAttachableToEntity.GetCategoryCode(ItemStack stack) => attrAtta?.GetCategoryCode(stack);
-        CompositeShape IAttachableToEntity.GetAttachedShape(ItemStack stack, string slotCode) => attrAtta.GetAttachedShape(stack, slotCode);
-        string[] IAttachableToEntity.GetDisableElements(ItemStack stack) => attrAtta.GetDisableElements(stack);
-        string[] IAttachableToEntity.GetKeepElements(ItemStack stack) => attrAtta.GetKeepElements(stack);
+        string IAttachableToEntity.GetCategoryCode(ItemStack stack) => AttachableToEntity?.GetCategoryCode(stack);
+        CompositeShape IAttachableToEntity.GetAttachedShape(ItemStack stack, string slotCode) => AttachableToEntity?.GetAttachedShape(stack, slotCode);
+        string[] IAttachableToEntity.GetDisableElements(ItemStack stack) => AttachableToEntity?.GetDisableElements(stack);
+        string[] IAttachableToEntity.GetKeepElements(ItemStack stack) => AttachableToEntity?.GetKeepElements(stack);
         string IAttachableToEntity.GetTexturePrefixCode(ItemStack stack)
         {
             string[] attributes = ["wood", "metal", "color", "deco"];
             attributes = [.. attributes.Select(code => stack.Attributes.GetString(code))];
-            return attrAtta.GetTexturePrefixCode(stack) + "-" + string.Join("-", attributes);
+            return AttachableToEntity?.GetTexturePrefixCode(stack) + "-" + string.Join("-", attributes);
         }
 
         void IAttachableToEntity.CollectTextures(ItemStack itemstack, Shape intoShape, string texturePrefixCode, Dictionary<string, CompositeTexture> intoDict)
@@ -87,7 +51,6 @@ namespace Vintagestory.GameContent
         public bool IsAttachable(Entity toEntity, ItemStack itemStack) => true;
         #endregion
 
-
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
@@ -98,20 +61,18 @@ namespace Vintagestory.GameContent
             durabilityGains = Attributes["durabilityGains"].AsObject<Dictionary<string, Dictionary<string, int>>>();
 
             AddAllTypesToCreativeInventory();
-
-            attrAtta = IAttachableToEntity.FromAttributes(this);
         }
 
         public override void OnUnloaded(ICoreAPI api)
         {
-            if (api.ObjectCache.ContainsKey("shieldmeshrefs") && meshrefs.Count > 0)
+            if (api.ObjectCache.ContainsKey(ShieldMeshRefsKey) && meshrefs.Count > 0)
             {
                 foreach (var (_, meshRef) in meshrefs)
                 {
                     meshRef.Dispose();
                 }
 
-                ObjectCacheUtil.Delete(api, "shieldmeshrefs");
+                ObjectCacheUtil.Delete(api, ShieldMeshRefsKey);
             }
             base.OnUnloaded(api);
         }
@@ -123,22 +84,18 @@ namespace Vintagestory.GameContent
             foreach (var val in durabilityGains)
             {
                 string mat = itemstack.Attributes.GetString(val.Key);
-                if (mat != null)
-                {
-                    val.Value.TryGetValue(mat, out var matgain);
-                    gain += matgain;
-                }
+                if (mat == null) continue;
+                val.Value.TryGetValue(mat, out var matgain);
+                gain += matgain;
             }
 
             return base.GetMaxDurability(itemstack) + gain;
         }
 
-        public void AddAllTypesToCreativeInventory()
+        private void AddAllTypesToCreativeInventory()
         {
             if (Construction == "crude" || Construction == "blackguard") return;
-
             List<JsonItemStack> stacks = new List<JsonItemStack>();
-
             var vg = Attributes["variantGroups"].AsObject<Dictionary<string, string[]>>();
 
             foreach (var metal in vg["metal"])
@@ -179,7 +136,6 @@ namespace Vintagestory.GameContent
             };
         }
 
-
         private JsonItemStack genJstack(string json)
         {
             var jstack = new JsonItemStack()
@@ -208,30 +164,6 @@ namespace Vintagestory.GameContent
 
             base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
         }
-
-
-        public override void OnHeldIdle(ItemSlot slot, EntityAgent byEntity)
-        {
-            string onhand = (byEntity.LeftHandItemSlot == slot) ? "left" : "right";
-            string notonhand = (byEntity.LeftHandItemSlot == slot) ? "right" : "left";
-
-            if (byEntity.Controls.Sneak && !byEntity.Controls.RightMouseDown)
-            {
-                if (!byEntity.AnimManager.IsAnimationActive("raiseshield-" + onhand))
-                {
-                    byEntity.AnimManager.StartAnimation("raiseshield-" + onhand);
-                }
-            } else
-            {
-                if (byEntity.AnimManager.IsAnimationActive("raiseshield-" + onhand)) byEntity.AnimManager.StopAnimation("raiseshield-" + onhand);
-            }
-
-            if (byEntity.AnimManager.IsAnimationActive("raiseshield-" + notonhand)) byEntity.AnimManager.StopAnimation("raiseshield-" + notonhand);
-
-            base.OnHeldIdle(slot, byEntity);
-        }
-
-
 
         public MeshData GenMesh(ItemStack itemstack, ITextureAtlasAPI targetAtlas)
         {
@@ -269,7 +201,6 @@ namespace Vintagestory.GameContent
             switch (Construction)
             {
                 case "crude":
-                    break;
                 case "blackguard":
                     break;
                 case "woodmetal":
@@ -341,7 +272,6 @@ namespace Vintagestory.GameContent
                 case "blackguard":
                     return Lang.Get("Blackguard shield");
             }
-
             return base.GetHeldItemName(itemStack);
         }
 
@@ -349,28 +279,6 @@ namespace Vintagestory.GameContent
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
-
-            var attr = inSlot.Itemstack?.ItemAttributes?["shield"];
-            if (attr == null || !attr.Exists) return;
-
-            if (attr["protectionChance"]["active-projectile"].Exists)
-            {
-                float pacchance = attr["protectionChance"]["active-projectile"].AsFloat(0);
-                float ppachance = attr["protectionChance"]["passive-projectile"].AsFloat(0);
-                float pflatdmgabsorb = attr["projectileDamageAbsorption"].AsFloat(0);
-                dsc.AppendLine("<strong>" + Lang.Get("Projectile protection") + "</strong>");
-                dsc.AppendLine(Lang.Get("shield-stats", (int)(100 * pacchance), (int)(100 * ppachance), pflatdmgabsorb));
-                dsc.AppendLine();
-            }
-
-            float flatdmgabsorb = attr["damageAbsorption"].AsFloat(0);
-            float acchance = attr["protectionChance"]["active"].AsFloat(0);
-            float pachance = attr["protectionChance"]["passive"].AsFloat(0);
-
-            dsc.AppendLine("<strong>" + Lang.Get("Melee attack protection") + "</strong>");
-            dsc.AppendLine(Lang.Get("shield-stats", (int)(100 * acchance), (int)(100 * pachance), flatdmgabsorb));
-            dsc.AppendLine();
-
             switch (Construction)
             {
                 case "woodmetal":
@@ -382,8 +290,6 @@ namespace Vintagestory.GameContent
                     dsc.AppendLine(Lang.Get("shield-metaltype", Lang.Get("material-" + inSlot.Itemstack.Attributes.GetString("metal"))));
                     break;
             }
-
-
         }
 
         public MeshData GenMesh(ItemStack itemstack, ITextureAtlasAPI targetAtlas, BlockPos atBlockPos)
