@@ -8,6 +8,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 using System.Collections.Generic;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     [ProtoContract]

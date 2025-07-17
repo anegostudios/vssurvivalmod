@@ -1,5 +1,7 @@
 ﻿using Vintagestory.API.Common;
 
+#nullable disable
+
 namespace Vintagestory.GameContent.Mechanics
 {
     public class BlockHelveHammer : Block

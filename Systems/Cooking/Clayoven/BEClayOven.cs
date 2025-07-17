@@ -6,6 +6,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public enum EnumOvenContentMode
@@ -555,12 +557,7 @@ namespace Vintagestory.GameContent
 
                     if (resultStack != null)
                     {
-                        var collObjCb = ovenInv[slotIndex].Itemstack.Collectible as IBakeableCallback;
-
-                        if (collObjCb != null)
-                        {
-                            collObjCb.OnBaked(ovenInv[slotIndex].Itemstack, resultStack);
-                        }
+                        ovenInv[slotIndex].Itemstack.Collectible.GetCollectibleInterface<IBakeableCallback>()?.OnBaked(ovenInv[slotIndex].Itemstack, resultStack);
 
                         ovenInv[slotIndex].Itemstack = resultStack;
                         bakingData[slotIndex] = new OvenItemData(resultStack);
@@ -673,6 +670,10 @@ namespace Vintagestory.GameContent
             if (ovenTemperature <= 25)
             {
                 sb.AppendLine(Lang.Get("Temperature: {0}", Lang.Get("Cold")));
+                if (!IsBurning)
+                {
+                    sb.AppendLine(Lang.Get("clayoven-preheat-warning"));
+                }
             }
             else
             {
@@ -691,7 +692,7 @@ namespace Vintagestory.GameContent
                 {
                     ItemStack stack = ovenInv[index].Itemstack;
                     sb.Append(stack.GetName());
-                    sb.AppendLine(string.Format(" ({0}°C)", (int)bakingData[index].temp));
+                    sb.AppendLine(" (" + Lang.Get("{0}°C", (int)bakingData[index].temp) + ")");
                 }
             }
         }
@@ -827,7 +828,9 @@ namespace Vintagestory.GameContent
                 MeshData mesh = getMesh(stack);
                 if (mesh != null) return mesh;
 
-                var loc = AssetLocation.Create(Block.Attributes["ovenFuelShape"].AsString(), Block.Code.Domain).WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
+                string shapeLoc = FuelSlot?.Itemstack?.Collectible?.Attributes?["ovenFuelShape"].AsString() ?? Block.Attributes["ovenFuelShape"].AsString();
+
+                var loc = AssetLocation.Create(shapeLoc, Block.Code.Domain).WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
                 nowTesselatingShape = Shape.TryGet(capi, loc);
                 nowTesselatingObj = stack.Collectible;
 
@@ -878,7 +881,7 @@ namespace Vintagestory.GameContent
                 AdvancedParticleProperties bps = particles[i];
                 bps.WindAffectednesAtPos = 0f;
                 bps.basePos.X = pos.X;
-                bps.basePos.Y = pos.Y + (fireFull ? 3 / 32f : 1 / 32f);
+                bps.basePos.Y = pos.InternalY + (fireFull ? 3 / 32f : 1 / 32f);
                 bps.basePos.Z = pos.Z;
 
                 //i >= 4 is flames; i < 4 is smoke

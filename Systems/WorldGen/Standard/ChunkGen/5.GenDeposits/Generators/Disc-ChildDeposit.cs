@@ -5,6 +5,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
 
@@ -71,10 +73,9 @@ namespace Vintagestory.ServerMods
                 
                 int index3d = ((targetPos.Y % chunksize) * chunksize + lz) * chunksize + lx;
                 int blockId = chunks[targetPos.Y / chunksize].Data.GetBlockIdUnsafe(index3d);
-                
-                ResolvedDepositBlock resolvedPlaceBlock;
 
-                if (placeBlockByInBlockId.TryGetValue(blockId, out resolvedPlaceBlock))
+
+                if (placeBlockByInBlockId.TryGetValue(blockId, out ResolvedDepositBlock resolvedPlaceBlock))
                 {
                     Block placeblock = resolvedPlaceBlock.Blocks[depositGradeIndex];
 
@@ -85,7 +86,7 @@ namespace Vintagestory.ServerMods
                     else
                     {
                         chunks[targetPos.Y / chunksize].Data[index3d] = placeblock.BlockId;
-                    }                    
+                    }
 
                     if (shouldGenSurfaceDeposit)
                     {

@@ -8,6 +8,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class PlantContainerProps {
@@ -63,8 +65,7 @@ namespace Vintagestory.GameContent
                 AssetLocation textureLoc = null;
                 if (curContProps.Textures != null)
                 {
-                    CompositeTexture compTex;
-                    if (curContProps.Textures.TryGetValue(textureCode, out compTex))
+                    if (curContProps.Textures.TryGetValue(textureCode, out CompositeTexture compTex))
                     {
                         textureLoc = compTex.Base;
                     }
@@ -95,12 +96,11 @@ namespace Vintagestory.GameContent
                 ItemStack content = GetContents();
                 if (content.Class == EnumItemClass.Item)
                 {
-                    TextureAtlasPosition texPos;
                     textureLoc = content.Item.Textures[textureCode].Base;
                     BitmapRef bmp = capi.Assets.TryGet(textureLoc.Clone().WithPathPrefixOnce("textures/").WithPathAppendixOnce(".png"))?.ToBitmap(capi);
                     if (bmp != null)
                     {
-                        capi.BlockTextureAtlas.GetOrInsertTexture(textureLoc, out _, out texPos, () => bmp);
+                        capi.BlockTextureAtlas.GetOrInsertTexture(textureLoc, out _, out TextureAtlasPosition texPos, () => bmp);
                         bmp.Dispose();
                         return texPos;
                     }
@@ -214,10 +214,9 @@ namespace Vintagestory.GameContent
             });
 
 
-            MeshData mesh;
             string key = Block.Code.ToString() + (hasSoil ? "soil" : "empty");
 
-            if (meshes.TryGetValue(key, out mesh))
+            if (meshes.TryGetValue(key, out MeshData mesh))
             {
                 return mesh;
             }
@@ -259,11 +258,10 @@ namespace Vintagestory.GameContent
 
             float fillHeight = Block.Attributes == null ? 0.4f : Block.Attributes["fillHeight"].AsFloat(0.4f);
 
-            MeshData[] meshwithVariants;
             string containersize = this.ContainerSize;
             string key = content?.ToString() + "-" + containersize + "f" + fillHeight;
 
-            if (meshes.TryGetValue(key, out meshwithVariants))
+            if (meshes.TryGetValue(key, out MeshData[] meshwithVariants))
             {
                 return meshwithVariants;
             }

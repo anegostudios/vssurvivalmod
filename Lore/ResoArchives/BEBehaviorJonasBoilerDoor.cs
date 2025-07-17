@@ -5,6 +5,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BEBehaviorJonasBoilerDoor : BlockEntityBehavior
@@ -41,7 +43,7 @@ namespace Vintagestory.GameContent
             cp.ControlData = animData;
 
             animData.AnimationSpeed = on ? 1 : 0;
-            cp.Trigger();   
+            cp.Trigger();
         }
 
         private EnumWorldAccessResponse Event_OnTestBlockAccess(IPlayer player, BlockSelection blockSel, EnumBlockAccessFlags accessType, ref string claimant, EnumWorldAccessResponse response)
@@ -79,7 +81,7 @@ namespace Vintagestory.GameContent
                 Blockentity.MarkDirty(true);
                 return;
             }
-            
+
             if (on && heatAccum <= 0)
             {
                 on = false;

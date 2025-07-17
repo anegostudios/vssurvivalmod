@@ -5,6 +5,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class CollectibleBehaviorContainer : CollectibleBehavior
@@ -38,7 +40,7 @@ namespace Vintagestory.GameContent
         public virtual ItemStack[] GetContents(IWorldAccessor world, ItemStack itemstack)
         {
             ITreeAttribute treeAttr = itemstack.Attributes.GetTreeAttribute("contents");
-            if (treeAttr == null) return new ItemStack[0];
+            if (treeAttr == null) return System.Array.Empty<ItemStack>();
 
             ItemStack[] stacks = new ItemStack[treeAttr.Count];
             foreach (var val in treeAttr)

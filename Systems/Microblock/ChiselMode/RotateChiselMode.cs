@@ -7,6 +7,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.GameContent;
 
+#nullable disable
+
 namespace VSSurvivalMod.Systems.ChiselModes
 {
     public class RotateChiselMode : ChiselMode

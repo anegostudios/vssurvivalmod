@@ -5,6 +5,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ItemScythe : ItemShears
@@ -123,8 +125,6 @@ namespace Vintagestory.GameContent
                     tf.Translation.Y += b * 2 / 0.75f;
                     tf.Translation.Z += b * 2;
                 }
-
-                byEntity.Controls.UsingHeldItemTransformBefore = tf;
             }
 
             performActions(secondsPassed, byEntity, slot, blockSelection);

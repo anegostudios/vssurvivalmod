@@ -6,6 +6,11 @@ using Vintagestory.API.Util;
 using Vintagestory.API.Client;
 using System;
 using Vintagestory.API.MathTools;
+using System.Linq;
+using System.Numerics;
+using Vintagestory.API.Server;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -31,10 +36,11 @@ namespace Vintagestory.GameContent
 
         public string VoiceSound
         {
-            get {
+            get
+            {
                 if (!WatchedAttributes.HasAttribute("voiceSound"))
                 {
-                    var sounds = Properties.Attributes["voiceSounds"].AsStringArray();
+                    var sounds = Properties.Attributes["voiceSounds"].AsArray<string>();
                     var index = Api.World.Rand.Next(sounds.Length);
                     var sound = sounds[index];
                     WatchedAttributes.SetString("voiceSound", sound);
@@ -44,7 +50,8 @@ namespace Vintagestory.GameContent
 
                 return WatchedAttributes.GetString("voiceSound");
             }
-            set {
+            set
+            {
                 WatchedAttributes.SetString("voiceSound", value);
                 TalkUtil.soundName = AssetLocation.Create(value, Code.Domain);
             }
@@ -55,32 +62,36 @@ namespace Vintagestory.GameContent
 
         public override void Initialize(EntityProperties properties, ICoreAPI api, long InChunkIndex3d)
         {
-            base.Initialize(properties, api, InChunkIndex3d);
+            (AnimManager as PersonalizedAnimationManager).All = true;    // Do the PersonalizedAnimationManager init steps first, as base.Initialize() may need to start a personalized animation
 
-            if (World.Api.Side == EnumAppSide.Server)
+            string personality = null;
+            if (api.Side == EnumAppSide.Server)
             {
-                if (Properties.Attributes["personality"].Exists)
+                var personalityAttribute = properties.Attributes["personality"];
+                if (personalityAttribute.Exists)
                 {
-                    Personality = Properties.Attributes["personality"].AsString();
+                    personality = personalityAttribute.AsString();
                 }
                 else
                 {
-                    Personality = Personalities.GetKeyAtIndex(World.Rand.Next(Personalities.Count));
+                    personality = Personalities.GetKeyAtIndex(api.World.Rand.Next(Personalities.Count));
                 }
 
-                (AnimManager as PersonalizedAnimationManager).Personality = this.Personality;
+                (AnimManager as PersonalizedAnimationManager).Personality = personality;
+                WatchedAttributes.SetString("personality", personality);
             }
 
-            (AnimManager as PersonalizedAnimationManager).All = true;
+            base.Initialize(properties, api, InChunkIndex3d);
 
             if (api.Side == EnumAppSide.Client)
             {
+                personality = Personality;
                 bool isMultiSoundVoice = true;
                 talkUtil = new EntityTalkUtil(api as ICoreClientAPI, this, isMultiSoundVoice);
                 TalkUtil.soundName = AssetLocation.Create(VoiceSound, Code.Domain);
             }
 
-            this.Personality = this.Personality; // to update the talkutil
+            Personality = personality; // to update the talkutil
         }
 
         MusicTrack track;
@@ -118,7 +129,7 @@ namespace Vintagestory.GameContent
             }
             if (packetid == (int)EntityServerPacketId.Talk)
             {
-                TalkUtil.Talk((EnumTalkType)(SerializerUtil.Deserialize<int>(data)));
+                TalkUtil.Talk((EnumTalkType)SerializerUtil.Deserialize<int>(data));
             }
         }
 
@@ -142,7 +153,8 @@ namespace Vintagestory.GameContent
             Api.Event.EnqueueMainThreadTask(() => { if (track != null) track.loading = true; }, "settrackloading");
 
             long longMsPassed = Api.World.ElapsedMilliseconds - startLoadingMs;
-            handlerId = Api.Event.RegisterCallback((dt) => {
+            handlerId = Api.Event.RegisterCallback((dt) =>
+            {
                 if (sound.IsDisposed)
                 {
                     handlerId = 0;
@@ -194,12 +206,41 @@ namespace Vintagestory.GameContent
 
                     track.Sound.SetVolume(volume);
                     track.Sound.SetPitch(GameMath.Clamp(1 - capi.Render.ShaderUniforms.GlitchStrength, 0.1f, 1));
-                } else
+                }
+                else
                 {
                     TalkUtil.ShouldDoIdleTalk = true;
                 }
             }
         }
+
+        
+
+        protected string hairStylingCategory = "nadiyan";
+        
+
+        protected override int Dialog_DialogTriggers(EntityAgent triggeringEntity, string value, JsonObject data)
+        {
+            if (value == "openhairstyling")
+            {
+                ConversableBh.Dialog?.TryClose();
+                Api.ModLoader.GetModSystem<ModSystemNPCHairStyling>().handleHairstyling(this, triggeringEntity, hairStylingCategory);
+                return 0;
+            }
+
+            return base.Dialog_DialogTriggers(triggeringEntity, value, data);
+        }
+
+        public override void OnReceivedClientPacket(IServerPlayer player, int packetid, byte[] data)
+        {
+            if (packetid == PlayerStoppedInteracting)
+            {
+                interactingWithPlayer.Remove(player.Entity);
+            }
+
+            base.OnReceivedClientPacket(player, packetid, data);
+        }
+
 
         public override void PlayEntitySound(string type, IPlayer dualCallByPlayer = null, bool randomizePitch = true, float range = 24)
         {
@@ -231,7 +272,7 @@ namespace Vintagestory.GameContent
         {
             base.FromBytes(reader, forClient);
 
-            (AnimManager as PersonalizedAnimationManager).Personality = this.Personality;
+            (AnimManager as PersonalizedAnimationManager).Personality = Personality;
         }
 
         public override string GetInfoText()

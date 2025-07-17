@@ -3,6 +3,8 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ToolTextures
@@ -17,12 +19,13 @@ namespace Vintagestory.GameContent
         public static Dictionary<Item, ToolTextures> ToolTextureSubIds(ICoreAPI api)
         {
             Dictionary<Item, ToolTextures> toolTextureSubIds;
-            object obj;
 
-            if (api.ObjectCache.TryGetValue("toolTextureSubIds", out obj)) {
+            if (api.ObjectCache.TryGetValue("toolTextureSubIds", out object obj))
+            {
 
                 toolTextureSubIds = obj as Dictionary<Item, ToolTextures>;
-            } else
+            }
+            else
             {
                 api.ObjectCache["toolTextureSubIds"] = toolTextureSubIds = new Dictionary<Item, ToolTextures>();
             }

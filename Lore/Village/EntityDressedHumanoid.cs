@@ -7,6 +7,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 
@@ -123,8 +125,6 @@ namespace Vintagestory.GameContent
 
         public override void OnTesselation(ref Shape entityShape, string shapePathForLogging)
         {
-            var sw = new System.Diagnostics.Stopwatch();
-            sw.Start();
             var capi = Api as ICoreClientAPI;
 
             // Reset textures to default    
@@ -136,8 +136,6 @@ namespace Vintagestory.GameContent
                 val.Value.Bake(capi.Assets);
             }
 
-            long time1 = sw.ElapsedMilliseconds;
-
             // Make a copy so we don't mess up the original
             Shape newShape = entityShape.Clone();
             entityShape = newShape;
@@ -145,7 +143,6 @@ namespace Vintagestory.GameContent
             string[] outfitCodes = OutfitCodes;
             TexturedWeightedCompositeShape[] cshapes = humanoidOutfits.Outfit2Shapes(OutfitConfigFileName, OutfitCodes);
 
-            long time2 = sw.ElapsedMilliseconds;
             var slots = OutfitSlots;
 
             if (slots != null)
@@ -170,8 +167,6 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            long time3 = sw.ElapsedMilliseconds;
-
             for (int i = 0; i < outfitCodes.Length; i++)
             {
                 var twcshape = cshapes[i];
@@ -194,14 +189,10 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            long time4 = sw.ElapsedMilliseconds;
-
             //entityShape.InitForAnimations(Api.Logger, shapePathForLogging, "head");   // unnecessary to InitForAnimations here as animations will be initialized, for "head", in the base.OnTesselation() call below, as cloned is true
 
             bool cloned = true;
             base.OnTesselation(ref entityShape, shapePathForLogging, ref cloned);
-            long time5 = sw.ElapsedMilliseconds;
-            Api.Logger.VerboseDebug("Villager tesselation " + time5 + "ms : " + time1 + "," + (time2 - time1) + "," + (time3 - time2) + "," + (time4 - time3) + "," + (time5 - time4));
         }
 
 

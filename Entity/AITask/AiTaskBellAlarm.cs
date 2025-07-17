@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -7,12 +7,14 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class AiTaskBellAlarm : AiTaskBase
     {
         string[] seekEntityCodesExact = new string[] { "player" };
-        string[] seekEntityCodesBeginsWith = new string[0];
+        string[] seekEntityCodesBeginsWith = Array.Empty<string>();
 
         int spawnRange;
         float seekingRange = 12;
@@ -30,14 +32,9 @@ namespace Vintagestory.GameContent
 
         List<Entity> spawnedEntities = new List<Entity>();
 
-        public AiTaskBellAlarm(EntityAgent entity) : base(entity)
+        public AiTaskBellAlarm(EntityAgent entity, JsonObject taskConfig, JsonObject aiConfig) : base(entity, taskConfig, aiConfig)
         {
             sapi = entity.World.Api as ICoreServerAPI;
-        }
-
-        public override void LoadConfig(JsonObject taskConfig, JsonObject aiConfig)
-        {
-            base.LoadConfig(taskConfig, aiConfig);
 
             spawnRange = taskConfig["spawnRange"].AsInt(12);
             spawnIntervalMsMin = taskConfig["spawnIntervalMsMin"].AsInt(2500);
@@ -45,7 +42,7 @@ namespace Vintagestory.GameContent
             spawnMaxQuantity = taskConfig["spawnMaxQuantity"].AsInt(5);
             seekingRange = taskConfig["seekingRange"].AsFloat(12);
 
-            var spawnMobLocs = taskConfig["spawnMobs"].AsObject<AssetLocation[]>(new AssetLocation[0]);
+            var spawnMobLocs = taskConfig["spawnMobs"].AsObject<AssetLocation[]>(Array.Empty<AssetLocation>());
             List<EntityProperties> props = new List<EntityProperties>();
             foreach (var val in spawnMobLocs)
             {
@@ -148,6 +145,9 @@ namespace Vintagestory.GameContent
 
         public override bool ContinueExecute(float dt)
         {
+            //Check if time is still valid for task.
+            if (!IsInValidDayTimeHours(false)) return false;
+
             spawnAccum += dt;
 
             if (spawnAccum > nextSpawnIntervalMs/1000f)

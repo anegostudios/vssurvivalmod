@@ -5,6 +5,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 using System;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class TextAreaConfig
@@ -49,10 +51,12 @@ namespace Vintagestory.GameContent
         WorldInteraction[] interactions;
 
         public TextAreaConfig signConfig;
+        protected bool isWallSign;
 
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
+            isWallSign = Variant["attachment"] == "wall";    // For performance, do this test only once, not multiple times every tick if entities need to check this collisionbox
 
             signConfig = new TextAreaConfig();
             if (Attributes != null)
@@ -87,7 +91,7 @@ namespace Vintagestory.GameContent
 
         public override Cuboidf[] GetCollisionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
         {
-            if (Variant["attachment"] == "wall") return base.GetCollisionBoxes(blockAccessor, pos);
+            if (isWallSign) return base.GetCollisionBoxes(blockAccessor, pos);
 
             BlockEntitySign besign = blockAccessor.GetBlockEntity(pos) as BlockEntitySign;
             if (besign != null) return besign.colSelBox;
@@ -96,7 +100,7 @@ namespace Vintagestory.GameContent
 
         public override Cuboidf[] GetSelectionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
         {
-            if (Variant["attachment"] == "wall") return base.GetCollisionBoxes(blockAccessor, pos);
+            if (isWallSign) return base.GetCollisionBoxes(blockAccessor, pos);
 
             BlockEntitySign besign = blockAccessor.GetBlockEntity(pos) as BlockEntitySign;
             if (besign != null) return besign.colSelBox;
@@ -121,15 +125,12 @@ namespace Vintagestory.GameContent
                 return true;
             }
 
-
-
             if (!CanPlaceBlock(world, byPlayer, bs, ref failureCode))
             {
                 return false;
             }
 
             BlockFacing[] horVer = SuggestedHVOrientation(byPlayer, bs);
-
             AssetLocation blockCode = CodeWithParts(horVer[0].Code);
             Block block = world.BlockAccessor.GetBlock(blockCode);
             world.BlockAccessor.SetBlock(block.BlockId, bs.Position);
@@ -146,7 +147,6 @@ namespace Vintagestory.GameContent
                 float roundRad = ((int)Math.Round(angleHor / deg45)) * deg45;
                 bect.MeshAngleRad = roundRad;
             }
-
 
             return true;
         }

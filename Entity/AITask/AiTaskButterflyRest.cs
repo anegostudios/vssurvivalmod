@@ -1,8 +1,10 @@
-﻿using Vintagestory.API.Common;
+using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -32,11 +34,19 @@ namespace Vintagestory.GameContent
         WeatherSystemServer wsys;
 
 
-        public AiTaskButterflyRest(EntityAgent entity) : base(entity)
+        public AiTaskButterflyRest(EntityAgent entity, JsonObject taskConfig, JsonObject aiConfig) : base(entity, taskConfig, aiConfig)
         {
             (entity.Api as ICoreServerAPI).Event.DidBreakBlock += Event_DidBreakBlock;
 
             wsys = entity.Api.ModLoader.GetModSystem<WeatherSystemServer>();
+
+            targetDistance = taskConfig["targetDistance"].AsFloat(0.07f);
+
+            moveSpeed = taskConfig["movespeed"].AsFloat(0.03f);
+
+            searchFrequency = taskConfig["searchFrequency"].AsFloat(0.07f);
+
+            cooldownUntilTotalHours = entity.World.Calendar.TotalHours + mincooldownHours + entity.World.Rand.NextDouble() * (maxcooldownHours - mincooldownHours);
         }
 
         public override void OnEntityDespawn(EntityDespawnData reason)
@@ -52,33 +62,17 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void LoadConfig(JsonObject taskConfig, JsonObject aiConfig)
-        {
-            base.LoadConfig(taskConfig, aiConfig);
-
-
-            targetDistance = taskConfig["targetDistance"].AsFloat(0.07f);
-
-            moveSpeed = taskConfig["movespeed"].AsFloat(0.03f);
-
-            searchFrequency = taskConfig["searchFrequency"].AsFloat(0.07f);
-
-            cooldownUntilTotalHours = entity.World.Calendar.TotalHours + mincooldownHours + entity.World.Rand.NextDouble() * (maxcooldownHours - mincooldownHours);
-        }
-
         public override bool ShouldExecute()
         {
             if (rand.NextDouble() > searchFrequency) return false;
 
             reason = EnumRestReason.NoReason;
 
-            float dayLightStrength = entity.World.Calendar.GetDayLightStrength(entity.Pos.X, entity.Pos.Z);
-
             if (cooldownUntilTotalHours < entity.World.Calendar.TotalHours)
             {
                 reason = EnumRestReason.TakingABreak;
             }
-            else if (dayLightStrength < 0.6)
+            else if (entity.World.Calendar.GetDayLightStrength(entity.Pos.X, entity.Pos.Z) < 0.6)
             {
                 // Hardcoded: Rest at night 
                 reason = EnumRestReason.Night;
@@ -144,8 +138,12 @@ namespace Vintagestory.GameContent
             pathTraverser.WalkTowards(MainTarget, moveSpeed, targetDistance, OnGoalReached, OnStuck);
         }
 
-        public override bool ContinueExecute(float dt)
+        public override bool 
+            ContinueExecute(float dt)
         {
+            //Check if time is still valid for task.
+            if (!IsInValidDayTimeHours(false)) return false;
+
             if (taskState==1)
             {
                 entity.ServerPos.Motion.Set(0, 0, 0);

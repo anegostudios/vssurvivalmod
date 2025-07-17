@@ -3,6 +3,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.GameContent;
 
+#nullable disable
+
 namespace Vintagestory.Client.NoObf;
 
 public class StoryGenFailedSystem : ModSystem

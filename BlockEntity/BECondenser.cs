@@ -6,6 +6,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityCondenser : BlockEntityLiquidContainer
@@ -131,19 +133,13 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-
-        public override void OnBlockBroken(IPlayer byPlayer = null)
-        {
-            base.OnBlockBroken(byPlayer);
-        }
-
         private void genBucketMesh()
         {
             if (Api == null || inventory == null) return;
             if (inventory.Count < 2 || inventory[1].Empty || Api.Side == EnumAppSide.Server) return;
 
             var stack = inventory[1].Itemstack;
-            var meshSource = stack.Collectible as IContainedMeshSource;
+            IContainedMeshSource meshSource = stack.Collectible?.GetCollectibleInterface<IContainedMeshSource>();
             if (meshSource != null)
             {
                 bucketMeshTmp = meshSource.GenMesh(stack, (Api as ICoreClientAPI).BlockTextureAtlas, Pos);
@@ -173,8 +169,7 @@ namespace Vintagestory.GameContent
             }
             if (inventory[1].Empty)
             {
-                lastReceivedDistillateTotalMs = Api.World.ElapsedMilliseconds;
-                lastReceivedDistillate = props.DistilledStack.ResolvedItemstack.Clone();
+                lastReceivedDistillateTotalMs = -99999;
                 return false;
             }
 
@@ -196,7 +191,7 @@ namespace Vintagestory.GameContent
             else
             {
                 ItemStack currentLiquidStack = bucketBlock.GetContent(bucketStack);
-                if (!currentLiquidStack.Equals(Api.World, distilledStack, GlobalConstants.IgnoredStackAttributes))
+                if (!currentLiquidStack.Equals(Api.World, distilledStack, GlobalConstants.IgnoredStackAttributes) || bucketBlock.IsFull(bucketStack))
                 {
                     lastReceivedDistillateTotalMs = -99999;
                     return false;
@@ -256,8 +251,8 @@ namespace Vintagestory.GameContent
             {
                 for (int i = 0; i < mesh.CustomInts.Count; i++)
                 {
-                    mesh.CustomInts.Values[i] |= 1 << 27; // Disable water wavy
-                    mesh.CustomInts.Values[i] |= 1 << 26; // Enabled weak foam
+                    mesh.CustomInts.Values[i] |= 1 << VertexFlags.LiquidWeakWaveBitMask; // Enable weak water wavy
+                    mesh.CustomInts.Values[i] |= 1 << VertexFlags.LiquidWeakFoamBitMask; // Enabled weak foamd
                 }
             }
 

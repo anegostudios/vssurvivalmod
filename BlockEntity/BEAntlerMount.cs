@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Text;
+﻿using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -9,66 +8,41 @@ using Vintagestory.API.MathTools;
 namespace Vintagestory.GameContent
 {
 
-    public class BlockEntityAntlerMount : BlockEntityDisplay, IRotatable
+    public class BlockEntityAntlerMount : BlockEntityDisplay
     {
         public override InventoryBase Inventory => inv;
         public override string InventoryClassName => "antlermount";
         public override string AttributeTransformCode => "onAntlerMountTransform";
-        public float MeshAngleRad { get; set; }
+        public float MeshAngleRad
+        {
+            get => bh?.MeshAngleY ?? 0;
+            set => bh!.MeshAngleY = value;
+        }
 
         InventoryGeneric inv;
-        MeshData mesh;
+        private BEBehaviorShapeMaterialFromAttributes? bh;
 
-        string type, material;
-        float[] mat;
-
-        public string Type => type;
-        public string Material => material;
+        public string? Type => bh?.Type;
+        public string? Material => bh?.Material;
 
 
         public BlockEntityAntlerMount()
         {
-            inv = new InventoryGeneric(1, "antlermount-0", null, null);
-        }
-
-        void init()
-        {
-            if (Api == null || !(Block is BlockAntlerMount)) return;
-            if (type == null) type = "square";
-
-            if (Api.Side == EnumAppSide.Client)
-            {
-                mesh = (Block as BlockAntlerMount).GetOrCreateMesh(type, material, "rot"+MeshAngleRad);
-                mat = Matrixf.Create().Translate(0.5f, 0.5f, 0.5f).RotateY(MeshAngleRad).Translate(-0.5f, -0.5f, -0.5f).Values;
-            }
+            inv = new InventoryGeneric(1, "antlermount-0", null);
         }
 
         public override void Initialize(ICoreAPI api)
         {
+            bh = GetBehavior<BEBehaviorShapeMaterialFromAttributes>();
             base.Initialize(api);
-
-            if (mesh == null && type != null)
-            {
-                init();
-            }
-        }
-
-        public override void OnBlockPlaced(ItemStack byItemStack = null)
-        {
-            base.OnBlockPlaced(byItemStack);
-
-            type ??= byItemStack?.Attributes.GetString("type");
-            material ??= byItemStack?.Attributes.GetString("material");
-
-            init();
         }
 
         internal bool OnInteract(IPlayer byPlayer, BlockSelection blockSel)
         {
             ItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
-            CollectibleObject colObj = slot.Itemstack?.Collectible;
-            bool shelvable = colObj?.Attributes != null && colObj.Attributes["antlerMountable"].AsBool(false) == true;
+            CollectibleObject? colObj = slot.Itemstack?.Collectible;
+            bool shelvable = colObj?.Attributes != null && colObj.Attributes["antlerMountable"].AsBool();
 
             if (slot.Empty || !shelvable)
             {
@@ -78,34 +52,28 @@ namespace Vintagestory.GameContent
                 }
                 return false;
             }
-            else
+
+            if (shelvable)
             {
-                if (shelvable)
+                AssetLocation? sound = slot.Itemstack?.Block?.Sounds?.Place;
+                var stackCode = slot.Itemstack?.Collectible.Code;
+                if (TryPut(slot))
                 {
-                    AssetLocation sound = slot.Itemstack?.Block?.Sounds?.Place;
-                    var stackCode = slot.Itemstack?.Collectible.Code;
-                    if (TryPut(slot, blockSel))
-                    {
-                        Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
+                    Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
 
-                        Api.World.Logger.Audit("{0} Put 1x{1} on to AntlerMount at {2}.",
-                            byPlayer.PlayerName,
-                            stackCode,
-                            blockSel.Position
-                        );
-                        return true;
-                    }
-
-                    return false;
+                    Api.World.Logger.Audit("{0} Put 1x{1} on to AntlerMount at {2}.",
+                        byPlayer.PlayerName,
+                        stackCode,
+                        blockSel.Position
+                    );
+                    return true;
                 }
             }
 
             return false;
         }
 
-
-
-        private bool TryPut(ItemSlot slot, BlockSelection blockSel)
+        private bool TryPut(ItemSlot slot)
         {
             int invIndex = 0;
 
@@ -128,7 +96,7 @@ namespace Vintagestory.GameContent
                 ItemStack stack = inv[invIndex].TakeOut(1);
                 if (byPlayer.InventoryManager.TryGiveItemstack(stack))
                 {
-                    AssetLocation sound = stack.Block?.Sounds?.Place;
+                    AssetLocation? sound = stack.Block?.Sounds?.Place;
                     Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
                 }
 
@@ -167,38 +135,15 @@ namespace Vintagestory.GameContent
             return tfMatrices;
         }
 
-
-        public override void ToTreeAttributes(ITreeAttribute tree)
-        {
-            base.ToTreeAttributes(tree);
-
-            tree.SetString("type", type);
-            tree.SetString("material", material);
-            tree.SetFloat("meshAngleRad", MeshAngleRad);
-        }
-
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
             base.FromTreeAttributes(tree, worldForResolving);
 
-            type = tree.GetString("type");
-            material = tree.GetString("material");
-            MeshAngleRad = tree.GetFloat("meshAngleRad");
-
-            init();
+            bh?.Init();
 
             // Do this last!!!
             RedrawAfterReceivingTreeAttributes(worldForResolving);     // Redraw on client after we have completed receiving the update from server
         }
-
-
-        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
-        {
-            mesher.AddMeshData(mesh, mat);
-            base.OnTesselation(mesher, tessThreadTesselator);
-            return true;
-        }
-
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
         {
@@ -209,7 +154,7 @@ namespace Vintagestory.GameContent
             }
 
             int index = 0;
-            if (index < 0 || index >= inv.Count)
+            if (index >= inv.Count)
             {
                 base.GetBlockInfo(forPlayer, sb);
                 return;
@@ -225,14 +170,5 @@ namespace Vintagestory.GameContent
                 sb.AppendLine(slot.Itemstack.GetName());
             }
         }
-
-        public void OnTransformed(IWorldAccessor worldAccessor, ITreeAttribute tree, int degreeRotation,
-            Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, EnumAxis? flipAxis)
-        {
-            MeshAngleRad = tree.GetFloat("meshAngleRad");
-            MeshAngleRad -= degreeRotation * GameMath.DEG2RAD;
-            tree.SetFloat("meshAngleRad", MeshAngleRad);
-        }
-
     }
 }

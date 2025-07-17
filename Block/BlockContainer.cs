@@ -5,6 +5,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockContainer : Block
@@ -85,7 +87,7 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                return new ItemStack[0];
+                return System.Array.Empty<ItemStack>();
             }
         }
 
@@ -177,7 +179,7 @@ namespace Vintagestory.GameContent
                 BlockEntity entity = world.BlockAccessor.GetBlockEntity(pos);
                 if (entity != null)
                 {
-                    entity.OnBlockBroken();
+                    entity.OnBlockBroken(byPlayer);
                 }
             }
 
@@ -191,16 +193,25 @@ namespace Vintagestory.GameContent
 
             ItemStack[] stacks = GetContents(world, inslot.Itemstack);
 
-            for (int i = 0; stacks != null && i < stacks.Length; i++)
+            if (inslot.Itemstack.Attributes.GetBool("timeFrozen"))
             {
-                var stack = stacks[i];
-                if (stack == null) continue;
+                foreach (var stack in stacks) stack?.Attributes.SetBool("timeFrozen", true);
+                return null;
+            }
 
-                ItemSlot dummySlot = GetContentInDummySlot(inslot, stack);
-                stack.Collectible.UpdateAndGetTransitionStates(world, dummySlot);
-                if (dummySlot.Itemstack == null)
+            if (stacks != null)
+            {
+                for (int i = 0; i < stacks.Length; i++)
                 {
-                    stacks[i] = null;
+                    var stack = stacks[i];
+                    if (stack == null) continue;
+
+                    ItemSlot dummySlot = GetContentInDummySlot(inslot, stack);
+                    stack.Collectible.UpdateAndGetTransitionStates(world, dummySlot);
+                    if (dummySlot.Itemstack == null)
+                    {
+                        stacks[i] = null;
+                    }
                 }
             }
 
@@ -230,11 +241,6 @@ namespace Vintagestory.GameContent
                 {
                     mul = inslot.Inventory.InvokeTransitionSpeedDelegates(transType, stack, mulByConfig);
                 }
-                /*var pref = inslot.Inventory?.OnAcquireTransitionSpeed;
-                if (pref != null)
-                {
-                    mul = pref(transType, stack, mulByConfig);
-                }*/
 
                 return mul * GetContainingTransitionModifierContained(api.World, inslot, transType);
             };
@@ -249,9 +255,12 @@ namespace Vintagestory.GameContent
         {
             ItemStack[] stacks = GetContents(world, itemstack);
 
-            for (int i = 0; stacks != null && i < stacks.Length; i++)
+            if (stacks != null)
             {
-                stacks[i]?.Collectible.SetTemperature(world, stacks[i], temperature, delayCooldown);
+                for (int i = 0; i < stacks.Length; i++)
+                {
+                    stacks[i]?.Collectible.SetTemperature(world, stacks[i], temperature, delayCooldown);
+                }
             }
 
             base.SetTemperature(world, itemstack, temperature, delayCooldown);
@@ -273,7 +282,7 @@ namespace Vintagestory.GameContent
             {
                 float val = mul * GetContainingTransitionModifierContained(world, inSlot, transType);
 
-                val *= inSlot.Inventory.GetTransitionSpeedMul(transType, inSlot.Itemstack);
+                if (inSlot.Inventory != null) val *= inSlot.Inventory.GetTransitionSpeedMul(transType, inSlot.Itemstack);
 
                 return val;
             };

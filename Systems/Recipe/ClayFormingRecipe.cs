@@ -1,7 +1,45 @@
-﻿using Vintagestory.API.Common;
+﻿using Vintagestory.API;
+using Vintagestory.API.Common;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Creates a recipe that can be created using clay. This class takes all of its properties from the <see cref="LayeredVoxelRecipe{T}"/> class.
+    /// </summary>
+    /// <example>
+    /// <code language="json">
+    ///{
+    ///  "ingredient": {
+    ///    "type": "item",
+    ///    "code": "clay-*",
+    ///    "name": "type",
+    ///    "allowedVariants": [ "blue", "fire", "red" ]
+    ///  },
+    ///  "pattern": [
+    ///    [
+    ///      "#####",
+    ///      "#####",
+    ///      "#####",
+    ///      "#####",
+    ///      "#####"
+    ///    ],
+    ///    [
+    ///      "#####",
+    ///      "#___#",
+    ///      "#___#",
+    ///      "#___#",
+    ///      "#####"
+    ///    ]
+    ///  ],
+    ///  "name": "Bowl",
+    ///  "output": {
+    ///    "type": "block",
+    ///    "code": "bowl-raw"
+    ///  }
+    ///}</code></example>
+    [DocumentAsJson]
     public class ClayFormingRecipe : LayeredVoxelRecipe<ClayFormingRecipe>, IByteSerializable
     {
         public override int QuantityLayers => 16;

@@ -1,11 +1,24 @@
-﻿using Vintagestory.API.Common;
+﻿using Vintagestory.API;
+using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Specifies that this block works as a container. Note that it requires a block entity class which implements BlockEntityOpenableContainer.
+    /// Used with the code "Container". This behavior does not use any properties.
+    /// </summary>
+    /// <example><code lang="json">
+    ///"behaviors": [
+	///	{ "name": "Container" }
+	///]
+    /// </code></example>
+    [DocumentAsJson]
     public class BlockBehaviorContainer : BlockBehavior
     {
         public BlockBehaviorContainer(Block block) : base(block)
@@ -42,7 +55,7 @@ namespace Vintagestory.GameContent
                 {
                     if (players[i].InventoryManager.HasInventory(container.Inventory))
                     {
-                        players[i].InventoryManager.CloseInventory(container.Inventory);
+                        players[i].InventoryManager.CloseInventoryAndSync(container.Inventory);
                     }
                 }
             }

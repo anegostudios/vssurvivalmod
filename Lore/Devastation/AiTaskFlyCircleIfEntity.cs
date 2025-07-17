@@ -1,7 +1,9 @@
-﻿using System;
+using System;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -10,14 +12,8 @@ namespace Vintagestory.GameContent
         protected float seekingRangeVer = 25f;
         protected float seekingRangeHor = 25f;
 
-        public AiTaskFlyCircleIfEntity(EntityAgent entity) : base(entity)
+        public AiTaskFlyCircleIfEntity(EntityAgent entity, JsonObject taskConfig, JsonObject aiConfig) : base(entity, taskConfig, aiConfig)
         {
-        }
-
-        public override void LoadConfig(JsonObject taskConfig, JsonObject aiConfig)
-        {
-            base.LoadConfig(taskConfig, aiConfig);
-
             seekingRangeHor = taskConfig["seekingRangeHor"].AsFloat(25);
             seekingRangeVer = taskConfig["seekingRangeVer"].AsFloat(25);
         }

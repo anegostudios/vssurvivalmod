@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -10,6 +10,8 @@ using Vintagestory.API.Util;
 using Vintagestory.GameContent;
 using Vintagestory.ServerMods.WorldEdit;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     public static class ChiselToolRegisterUtil
@@ -17,13 +19,6 @@ namespace Vintagestory.ServerMods
         public static void Register(ModSystem mod)
         {
             ((WorldEdit.WorldEdit)mod).RegisterTool("chiselbrush", typeof(MicroblockTool));
-        }
-    }
-
-    internal class BlockBehaviorWorldEditFixGhostBlockPlace : BlockBehavior
-    {
-        public BlockBehaviorWorldEditFixGhostBlockPlace(Block block) : base(block)
-        {
         }
     }
 
@@ -247,8 +242,7 @@ namespace Vintagestory.ServerMods
                 BlockPos dpos = tmpPos.Set((int)(voxelWorldX / 16), (int)(voxelWorldY / 16), (int)(voxelWorldZ / 16));
                 dvoxelpos.Set((int)GameMath.Mod(voxelWorldX, 16), (int)GameMath.Mod(voxelWorldY, 16), (int)GameMath.Mod(voxelWorldZ, 16));
 
-                ChiselBlockInEdit editData;
-                if (!blocksInEdit.TryGetValue(dpos, out editData))
+                if (!blocksInEdit.TryGetValue(dpos, out ChiselBlockInEdit editData))
                 {
                     bool isNew = false;
 

@@ -3,6 +3,8 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent.Mechanics
 {
     public class CreativeRotorRenderer : MechBlockRenderer
@@ -20,25 +22,21 @@ namespace Vintagestory.GameContent.Mechanics
 
         public CreativeRotorRenderer(ICoreClientAPI capi, MechanicalPowerMod mechanicalPowerMod, Block textureSoureBlock, CompositeShape shapeLoc) : base(capi, mechanicalPowerMod)
         {
-            MeshData blockMesh1;
-            MeshData blockMesh2 = null;
-            MeshData blockMesh3 = null;
-            MeshData blockMesh4 = null;
 
             AssetLocation loc = new AssetLocation("shapes/block/metal/mechanics/creativerotor-axle.json");
 
             Shape shape = API.Common.Shape.TryGet(capi, loc);
             Vec3f rot = new Vec3f(shapeLoc.rotateX, shapeLoc.rotateY, shapeLoc.rotateZ);
 
-            capi.Tesselator.TesselateShape(textureSoureBlock, shape, out blockMesh1, rot);
+            capi.Tesselator.TesselateShape(textureSoureBlock, shape, out MeshData blockMesh1, rot);
 
             rot = new Vec3f(shapeLoc.rotateX, shapeLoc.rotateY, shapeLoc.rotateZ);
             Shape ovshape = API.Common.Shape.TryGet(capi, new AssetLocation("shapes/block/metal/mechanics/creativerotor-contra.json"));
-            capi.Tesselator.TesselateShape(textureSoureBlock, ovshape, out blockMesh2, rot);
+            capi.Tesselator.TesselateShape(textureSoureBlock, ovshape, out MeshData blockMesh2, rot);
             Shape ovshape2 = API.Common.Shape.TryGet(capi, new AssetLocation("shapes/block/metal/mechanics/creativerotor-spinbar.json"));
-            capi.Tesselator.TesselateShape(textureSoureBlock, ovshape2, out blockMesh3, rot);
+            capi.Tesselator.TesselateShape(textureSoureBlock, ovshape2, out MeshData blockMesh3, rot);
             Shape ovshape3 = API.Common.Shape.TryGet(capi, new AssetLocation("shapes/block/metal/mechanics/creativerotor-spinball.json"));
-            capi.Tesselator.TesselateShape(textureSoureBlock, ovshape3, out blockMesh4, rot);
+            capi.Tesselator.TesselateShape(textureSoureBlock, ovshape3, out MeshData blockMesh4, rot);
 
             //blockMesh1.Rgba2 = null;
             //blockMesh2.Rgba2 = null;

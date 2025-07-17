@@ -7,9 +7,11 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
-    public class BlockBed : Block
+    public class BlockBed : Block, IClaimTraverseable
     {
         public static IMountableSeat GetMountable(IWorldAccessor world, TreeAttribute tree)
         {

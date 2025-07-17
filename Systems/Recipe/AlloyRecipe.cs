@@ -1,24 +1,68 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// This is used to define what metals can be mixed together to create another type of metal inside of a crucible.
+    /// </summary>
+    /// <example>
+    /// <code language="json">
+    ///{
+    ///	"ingredients": [
+    ///		{
+    ///			"type": "item",
+    ///			"code": "ingot-copper",
+    ///			"minratio": 0.5,
+    ///			"maxratio": 0.7
+    ///		},
+    ///		{
+    ///			"type": "item",
+    ///			"code": "ingot-zinc",
+    ///			"minratio": 0.2,
+    ///			"maxratio": 0.3
+    ///		},
+    ///		{
+    ///			"type": "item",
+    ///			"code": "ingot-bismuth",
+    ///			"minratio": 0.1,
+    ///			"maxratio": 0.2
+    ///		}
+    ///	],
+    ///	"output": {
+    ///		"type": "item",
+    ///		"code": "ingot-bismuthbronze"
+    ///	}
+    ///}
+    ///</code>
+    ///</example>
+    [DocumentAsJson]
     public class AlloyRecipe : IByteSerializable
     {
         /// <summary>
-        /// The ingredients for this alloy.
+        /// <!--<jsonoptional>Required</jsonoptional>-->
+        /// The ingredients for this alloy, defined as an item stack with a minimum and maximum range.
         /// </summary>
-        public MetalAlloyIngredient[] Ingredients;
+        [DocumentAsJson] public MetalAlloyIngredient[] Ingredients;
 
         /// <summary>
+        /// <!--<jsonoptional>Required</jsonoptional>-->
         /// The output for the alloy.
         /// </summary>
-        public JsonItemStack Output;
+        [DocumentAsJson] public JsonItemStack Output;
 
-        public bool Enabled = true;
+
+        ///<summary>
+        /// <!--<jsonoptional>Optional</jsonoptional><jsondefault>true</jsondefault>-->
+        /// Should this recipe be loaded in the game?
+        ///</summary>
+        [DocumentAsJson] public bool Enabled = true;
 
         /// <summary>
         /// Makes a check to see if the input for the recipe is valid.
@@ -112,7 +156,7 @@ namespace Vintagestory.GameContent
                 {
                     if (stack.Class == mergedStacks[j].stack.Class && stack.Id == mergedStacks[j].stack.Id)
                     {
-                        mergedStacks[j].stackSize += stackSize;
+                        mergedStacks[j].stackSize = Math.Round(mergedStacks[j].stackSize + stackSize, 2);
                         exists = true;
                         break;
                     }

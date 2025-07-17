@@ -3,12 +3,14 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ActivityModSystem : ModSystem
     {
-        public static OrderedDictionary<string, Type> ActionTypes = new OrderedDictionary<string, Type>();
-        public static OrderedDictionary<string, Type> ConditionTypes = new OrderedDictionary<string, Type>();
+        public static OrderedDictionary<string, Type> ActionTypes = new ();
+        public static OrderedDictionary<string, Type> ConditionTypes = new ();
         public static bool Debug = false;
 
         public override bool ShouldLoad(ICoreAPI api) => true;

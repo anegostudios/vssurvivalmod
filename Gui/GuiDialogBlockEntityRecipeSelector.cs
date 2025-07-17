@@ -5,6 +5,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class GuiDialogBlockEntityRecipeSelector : GuiDialogGeneric
@@ -41,11 +43,12 @@ namespace Vintagestory.GameContent
                     Code = stack.Collectible.Code.Clone(),
                     Name = stack.GetName(),
                     Description = desc,
+                    Data = null,
                     RenderHandler = (AssetLocation code, float dt, double posX, double posY) => {
                         // No idea why the weird offset and size multiplier
                         double scsize = GuiElement.scaled(size - 5);
 
-                        capi.Render.RenderItemstackToGui(dummySlot, posX + scsize/2, posY + scsize / 2, 100, (float)GuiElement.scaled(GuiElementPassiveItemSlot.unscaledItemSize), ColorUtil.WhiteArgb);
+                        capi.Render.RenderItemstackToGui(dummySlot, posX + scsize / 2, posY + scsize / 2, 100, (float)GuiElement.scaled(GuiElementPassiveItemSlot.unscaledItemSize), ColorUtil.WhiteArgb);
                     }
                 });
             }
@@ -78,7 +81,8 @@ namespace Vintagestory.GameContent
             double innerWidth = Math.Max(300, cols * size);
             ElementBounds skillGridBounds = ElementBounds.Fixed(0, 30, innerWidth, rows * size);
 
-            ElementBounds textBounds = ElementBounds.Fixed(0, rows*size + 50, innerWidth, 33);
+            ElementBounds nameBounds = ElementBounds.Fixed(0, rows*size + 50, innerWidth, 33);
+            ElementBounds descBounds = nameBounds.BelowCopy(0, 10, 0, 0);
 
             ElementBounds bgBounds = ElementBounds.Fill.WithFixedPadding(GuiStyle.ElementToDialogPadding);
             bgBounds.BothSizing = ElementSizing.FitToChildren;
@@ -91,13 +95,19 @@ namespace Vintagestory.GameContent
                 .AddDialogTitleBar(Lang.Get("Select Recipe"), OnTitleBarClose)
                 .BeginChildElements(bgBounds)
                     .AddSkillItemGrid(skillItems, cols, rows, OnSlotClick, skillGridBounds, "skillitemgrid")
-                    .AddDynamicText("", CairoFont.WhiteSmallishText(), textBounds, "name")
-                    .AddDynamicText("", CairoFont.WhiteDetailText(), textBounds.BelowCopy(0,10,0,0), "desc")
+                    .AddDynamicText("", CairoFont.WhiteSmallishText(), nameBounds, "name")
+                    .AddDynamicText("", CairoFont.WhiteDetailText(), descBounds, "desc")
+                    .AddDynamicText("", CairoFont.WhiteDetailText(), descBounds.BelowCopy(0, 20, 0, 0), "ingredient")
                 .EndChildElements()
                 .Compose()
             ;
 
             SingleComposer.GetSkillItemGrid("skillitemgrid").OnSlotOver = OnSlotOver;
+        }
+
+        public void SetIngredientCounts(int num, ItemStack[] ingredStacks)
+        {
+            skillItems[num].Data = ingredStacks;
         }
 
         private void OnSlotOver(int num)
@@ -109,6 +119,9 @@ namespace Vintagestory.GameContent
                 prevSlotOver = num;
                 SingleComposer.GetDynamicText("name").SetNewText(skillItems[num].Name);
                 SingleComposer.GetDynamicText("desc").SetNewText(skillItems[num].Description);
+                string requires = "";
+                if (skillItems[num].Data is ItemStack[] ingredients) requires = Lang.Get("recipeselector-requiredcount", ingredients[0].StackSize, ingredients[0].GetName().ToLower());
+                SingleComposer.GetDynamicText("ingredient").SetNewText(requires);
             }
         }
 

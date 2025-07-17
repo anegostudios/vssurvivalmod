@@ -7,6 +7,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 
@@ -27,7 +29,8 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(api);
 
-            Inventory.LateInitialize(InventoryClassName + "-" + Pos.X + "/" + Pos.Y + "/" + Pos.Z, api);
+            var inventoryClassName = InventoryClassName + "-" + Pos;
+            Inventory.LateInitialize(inventoryClassName, api);
             Inventory.Pos = Pos;
 
             container.Init(Api, ()=>Pos, ()=>MarkDirty(true));
@@ -42,6 +45,7 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockPlaced(ItemStack byItemStack = null)
         {
+            base.OnBlockPlaced(byItemStack);
             BlockContainer container = byItemStack?.Block as BlockContainer;
             if (container != null)
             {
@@ -62,8 +66,18 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockBroken(IPlayer byPlayer = null)
         {
-            if (Api.World is IServerWorldAccessor)
+            if (Api is ICoreServerAPI sapi)
             {
+                if (!Inventory.Empty)
+                {
+                    StringBuilder sb = new($"{byPlayer?.PlayerName} broke container {Block.Code} at {Pos} dropped: ");
+                    foreach (var slot in Inventory)
+                    {
+                        if (slot.Itemstack == null) continue;
+                        sb.Append(slot.Itemstack.StackSize).Append("x ").Append(slot.Itemstack.Collectible?.Code).Append(", ");
+                    }
+                    sapi.Logger.Audit(sb.ToString());
+                }
                 Inventory.DropAll(Pos.ToVec3d().Add(0.5, 0.5, 0.5));
             }
 
@@ -126,8 +140,7 @@ namespace Vintagestory.GameContent
             if (Inventory is InventoryGeneric)
             {
                 InventoryGeneric inv = Inventory as InventoryGeneric;
-                float rateMul;
-                if (inv.TransitionableSpeedMulByType != null && inv.TransitionableSpeedMulByType.TryGetValue(EnumTransitionType.Perish, out rateMul))
+                if (inv.TransitionableSpeedMulByType != null && inv.TransitionableSpeedMulByType.TryGetValue(EnumTransitionType.Perish, out float rateMul))
                 {
                     rate *= rateMul;
                 }

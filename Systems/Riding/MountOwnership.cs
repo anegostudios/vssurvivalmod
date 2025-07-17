@@ -8,6 +8,8 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
 
@@ -44,6 +46,7 @@ namespace Vintagestory.GameContent
 
         ICoreServerAPI sapi;
         ICoreClientAPI capi;
+        private IServerNetworkChannel serverNetworkChannel;
 
         public override void Start(ICoreAPI api)
         {
@@ -62,7 +65,7 @@ namespace Vintagestory.GameContent
             api.Event.GameWorldSave += Event_GameWorldSave;
             api.Event.PlayerJoin += Event_PlayerJoin;
             api.Event.OnEntityDeath += Event_EntityDeath;
-
+            serverNetworkChannel = sapi.Network.GetChannel("entityownership");
             AiTaskRegistry.Register<AiTaskComeToOwner>("cometoowner");
         }
 
@@ -75,7 +78,7 @@ namespace Vintagestory.GameContent
         {
             if (OwnerShipsByPlayerUid.TryGetValue(player.PlayerUID, out var playerShipsByPlayerUid))
             {
-                sapi.Network.GetChannel("entityownership").SendPacket(new EntityOwnershipPacket { OwnerShipByGroup = playerShipsByPlayerUid }, player);
+                serverNetworkChannel.SendPacket(new EntityOwnershipPacket { OwnerShipByGroup = playerShipsByPlayerUid }, player);
             }
         }
 
@@ -120,9 +123,8 @@ namespace Vintagestory.GameContent
 
             var player = (byEntity as EntityPlayer).Player as IServerPlayer;
 
-            Dictionary<string, EntityOwnership> playerShipsByPlayerUid;
 
-            OwnerShipsByPlayerUid.TryGetValue(player.PlayerUID, out playerShipsByPlayerUid);
+            OwnerShipsByPlayerUid.TryGetValue(player.PlayerUID, out Dictionary<string, EntityOwnership> playerShipsByPlayerUid);
             if (playerShipsByPlayerUid == null)
             {
                 OwnerShipsByPlayerUid[player.PlayerUID] = playerShipsByPlayerUid = new Dictionary<string, EntityOwnership>();
@@ -134,8 +136,8 @@ namespace Vintagestory.GameContent
                 prevOwnedEntity?.WatchedAttributes.RemoveAttribute("ownedby");
             }
 
-            playerShipsByPlayerUid[group] = new EntityOwnership() { 
-                EntityId = toEntity.EntityId, 
+            playerShipsByPlayerUid[group] = new EntityOwnership() {
+                EntityId = toEntity.EntityId,
                 Pos = toEntity.ServerPos,
                 Name = toEntity.GetName(),
                 Color = "#0e9d51"

@@ -1,5 +1,7 @@
 ﻿using System.Collections.Generic;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     public struct XZ
@@ -17,7 +19,6 @@ namespace Vintagestory.ServerMods
     class NoiseOcean : NoiseBase
     {
         float landcover;
-        List<XZ> requireLandAt;
         float scale;
 
         public NoiseOcean(long seed, float scale, float landcover) : base(seed)

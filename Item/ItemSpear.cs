@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -6,6 +6,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -134,35 +136,18 @@ namespace Vintagestory.GameContent
 
 
             EntityProperties type = byEntity.World.GetEntityType(new AssetLocation(Attributes["spearEntityCode"].AsString()));
-            EntityProjectile enpr = byEntity.World.ClassRegistry.CreateEntity(type) as EntityProjectile;
-            enpr.FiredBy = byEntity;
-            enpr.Damage = damage;
-            enpr.DamageTier = Attributes["damageTier"].AsInt(0);
-            enpr.ProjectileStack = stack;
-            enpr.DropOnImpactChance = 1.1f;
-            enpr.DamageStackOnImpact = true;
-            enpr.Weight = 0.3f;
+            Entity enpr = byEntity.World.ClassRegistry.CreateEntity(type);
+            IProjectile projectile = enpr as IProjectile;
+            projectile.FiredBy = byEntity;
+            projectile.Damage = damage;
+            projectile.DamageTier = Attributes["damageTier"].AsInt(0);
+            projectile.ProjectileStack = stack;
+            projectile.DropOnImpactChance = 1.1f;
+            projectile.DamageStackOnImpact = true;
+            projectile.Weight = 0.3f;
+            projectile.IgnoreInvFrames = Attributes["ignoreInvFrames"].AsBool(false);
 
-
-            float acc = (1 - byEntity.Attributes.GetFloat("aimingAccuracy", 0));
-            double rndpitch = byEntity.WatchedAttributes.GetDouble("aimingRandPitch", 1) * acc * 0.75;
-            double rndyaw = byEntity.WatchedAttributes.GetDouble("aimingRandYaw", 1) * acc * 0.75;
-
-            Vec3d pos = byEntity.ServerPos.XYZ.Add(0, byEntity.LocalEyePos.Y - 0.2, 0);
-
-            Vec3d aheadPos = pos.AheadCopy(1, byEntity.ServerPos.Pitch + rndpitch, byEntity.ServerPos.Yaw + rndyaw);
-            Vec3d velocity = (aheadPos - pos) * 0.65 * byEntity.Stats.GetBlended("bowDrawingStrength");
-            Vec3d spawnPos = byEntity.ServerPos.BehindCopy(0.15).XYZ.Add(byEntity.LocalEyePos.X, byEntity.LocalEyePos.Y - 0.2, byEntity.LocalEyePos.Z);
-
-            enpr.ServerPos.SetPosWithDimension(spawnPos);
-            enpr.ServerPos.Motion.Set(velocity);
-
-
-            enpr.Pos.SetFrom(enpr.ServerPos);
-            enpr.World = byEntity.World;
-            enpr.SetRotation();
-
-            byEntity.World.SpawnEntity(enpr);
+            EntityProjectile.SpawnThrownEntity(enpr, byEntity, 0.75, -0.2, 0, 0.65 * byEntity.Stats.GetBlended("bowDrawingStrength"), 0.15);
             byEntity.StartAnimation("throw");
 
             if (byEntity is EntityPlayer) RefillSlotIfEmpty(slot, byEntity, (itemstack) => itemstack.Collectible is ItemSpear);

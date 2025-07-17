@@ -6,6 +6,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.GameContent;
 
+#nullable disable
+
 namespace VSSurvivalMod.Systems.ChiselModes
 {
     public class RenameChiselMode : ChiselMode

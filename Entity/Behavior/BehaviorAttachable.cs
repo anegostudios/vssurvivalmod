@@ -1,6 +1,4 @@
-﻿using Cairo;
-using System;
-using System.Collections;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
@@ -11,6 +9,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -66,7 +66,8 @@ namespace Vintagestory.GameContent
         public SeatConfig SeatConfig;
         public string Code;
         public string[] ForCategoryCodes;
-        public string[] CanMergeWith;
+        public string[] BehindSlots; // Needed so that the Elk can occupy 2 spaces
+
         public string AttachmentPointCode;
         public Dictionary<string, StepParentElementTo> StepParentTo;
         public string ProvidesSeatId = null;
@@ -143,15 +144,20 @@ namespace Vintagestory.GameContent
                     }
                     continue;
                 }
-                
-                var attrseatconfig = itemslot.Itemstack?.ItemAttributes?["attachableToEntity"]?["seatConfig"]?.AsObject<SeatConfig>();
+
+                var attrseatconfig = itemslot.Itemstack?.ItemAttributes?["attachableToEntity"]?["seatConfigBySlotCode"][slotcfg.Code]?.AsObject<SeatConfig>(); 
+                if (attrseatconfig == null)
+                {
+                    attrseatconfig = itemslot.Itemstack?.ItemAttributes?["attachableToEntity"]?["seatConfig"]?.AsObject<SeatConfig>();
+                }
+
                 if (attrseatconfig != null)
                 {
                     attrseatconfig.SeatId = "attachableseat-" + i;
                     attrseatconfig.APName = slotcfg.AttachmentPointCode;
 
                     slotcfg.SeatConfig = attrseatconfig;
-                    
+
                     ivsm.RegisterSeat(slotcfg.SeatConfig);
                     slotcfg.ProvidesSeatId = slotcfg.SeatConfig.SeatId;
                 } else
@@ -182,6 +188,7 @@ namespace Vintagestory.GameContent
 
             return base.TryGiveItemStack(itemstack, ref handling);
         }
+
         public override void OnInteract(EntityAgent byEntity, ItemSlot itemslot, Vec3d hitPosition, EnumInteractMode mode, ref EnumHandling handled)
         {
             int seleBox = (byEntity as EntityPlayer).EntitySelection?.SelectionBoxIndex ?? -1;
@@ -212,7 +219,7 @@ namespace Vintagestory.GameContent
                     return;
                 }
             }
-            
+
             var iai = slot.Itemstack?.Collectible.GetCollectibleInterface<IAttachedInteractions>();
             if (iai != null)
             {
@@ -282,11 +289,25 @@ namespace Vintagestory.GameContent
             {
                 return false;
             }
-            
-            if (slot.StackSize == 0 || byEntity.TryGiveItemStack(slot.Itemstack))
+
+            var ebho = entity.GetBehavior<EntityBehaviorOwnable>();
+            if (ebho != null && !ebho.IsOwner(byEntity))
+            {
+                (entity.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "requiersownership", Lang.Get("mount-interact-requiresownership"));
+                return false;
+            }
+
+            bool wasEmptyAlready = slot.StackSize == 0;
+            if (wasEmptyAlready || byEntity.TryGiveItemStack(slot.Itemstack))
             {
                 IAttachedListener attached = slot.Itemstack?.Collectible.GetCollectibleInterface<IAttachedListener>();
                 attached?.OnDetached(slot, slotIndex, entity, byEntity);
+
+                if (Api.Side == EnumAppSide.Server && !wasEmptyAlready)
+                {
+                    slot.Itemstack.StackSize = 1;
+                    Api.World.Logger.Audit("{0} removed from a {1} at {2}, slot {4}: {3}", byEntity?.GetName(), entity.Code.ToShortString(), entity.ServerPos.AsBlockPos, slot.Itemstack?.ToString(), slotIndex);
+                }
 
                 slot.Itemstack = null;
                 storeInv();
@@ -306,8 +327,65 @@ namespace Vintagestory.GameContent
             string code = iatta.GetCategoryCode(itemslot.Itemstack);
             var slotConfig = wearableSlots[slotIndex];
 
+            var ebhs = entity.GetBehavior<EntityBehaviorSeatable>();
+            if (ebhs != null)
+            {
+                var seat = ebhs.SeatConfigs.IndexOf(x => x.SelectionBox == slotConfig.AttachmentPointCode);
+                if (seat > -1 && ebhs.Seats[seat].Passenger != null)
+                {
+                    if (Api is ICoreClientAPI capi)
+                    {
+                        capi.TriggerIngameError(this, "alreadyoccupied", Lang.Get("mount-interact-alreadyoccupied"));
+                    }
+                    return false;
+                }
+            }
+
             if (!slotConfig.CanHold(code)) return false;
             if (!targetSlot.Empty) return false;
+
+            if (iatta.RequiresBehindSlots > 0)
+            {
+                if (slotConfig.BehindSlots.Length < iatta.RequiresBehindSlots)
+                {
+                    (entity.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "notenoughspace", Lang.Get("mount-interact-requiresbehindslots", iatta.RequiresBehindSlots));
+                    return false;
+                }
+
+                var behindSlotIndex = wearableSlots.IndexOf(sc => sc.Code == slotConfig.BehindSlots[0]);
+                if (behindSlotIndex >= 0)
+                {
+                    var slot = inv[behindSlotIndex];
+                    if (!slot.Empty)
+                    {
+                        (entity.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "alreadyoccupied", Lang.Get("mount-interact-alreadyoccupiedbehind", iatta.RequiresBehindSlots+1));
+                        return false;
+                    }
+                }
+            }
+
+            var inFrontSlotIndex = wearableSlots.IndexOf(sc => sc.BehindSlots?.Contains(slotConfig.Code) == true);
+            if (inFrontSlotIndex >= 0)
+            {
+                var slot = inv[inFrontSlotIndex];
+                if (!slot.Empty)
+                {
+                    var inFrontiatta = IAttachableToEntity.FromCollectible(slot.Itemstack.Collectible);
+                    if (inFrontiatta.RequiresBehindSlots > 0)
+                    {
+                        (entity.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "alreadyoccupied", Lang.Get("mount-interact-alreadyoccupiedinfront", iatta.RequiresBehindSlots));
+                        return false;
+                    }
+                }
+            }
+
+
+            var ebho = entity.GetBehavior<EntityBehaviorOwnable>();
+            if (ebho != null && !ebho.IsOwner(byEntity))
+            {
+                (entity.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "requiersownership", Lang.Get("mount-interact-requiresownership"));
+                return false;
+            }
 
             // Cannot attach something where a player already sits on
             var bhs = entity.GetBehavior<EntityBehaviorSeatable>();
@@ -320,9 +398,11 @@ namespace Vintagestory.GameContent
 
             if (entity.World.Side == EnumAppSide.Server)
             {
+                string auditLog = String.Format("{0} attached to a {1} at {2}, slot {4}: {3}", byEntity?.GetName(), entity.Code.ToShortString(), entity.ServerPos.AsBlockPos, itemslot.Itemstack.ToString(), slotIndex);
                 var moved = itemslot.TryPutInto(entity.World, targetSlot) > 0;
                 if (moved)
                 {
+                    Api.World.Logger.Audit(auditLog);
                     ial?.OnAttached(itemslot, slotIndex, entity, byEntity);
                     storeInv();
                 }
@@ -330,7 +410,7 @@ namespace Vintagestory.GameContent
                 return moved;
             }
 
-            return true;           
+            return true;
         }
 
 
@@ -492,7 +572,7 @@ namespace Vintagestory.GameContent
 
             if (stacks.Count == 0) return null;
 
-            
+
 
 
             return new WorldInteraction[]

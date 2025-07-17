@@ -4,6 +4,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using System.Linq;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ItemNugget : Item
@@ -45,7 +47,9 @@ namespace Vintagestory.GameContent
             int outstacksize = CombustibleProps.SmeltedStack.ResolvedItemstack.StackSize;
             float units = outstacksize * 100f / instacksize;
 
-            string metalname = CombustibleProps.SmeltedStack.ResolvedItemstack.GetName().Replace(" ingot", "");
+            string metal = CombustibleProps.SmeltedStack.ResolvedItemstack.Collectible?.Variant?["metal"];
+            string metalname = Lang.Get("material-" + metal);
+            if (metal == null) metalname = CombustibleProps.SmeltedStack.ResolvedItemstack.GetName();
 
             string str = Lang.Get("game:smeltdesc-" + smelttype + "ore-plural", units.ToString("0.#"), metalname);
             dsc.AppendLine(str);

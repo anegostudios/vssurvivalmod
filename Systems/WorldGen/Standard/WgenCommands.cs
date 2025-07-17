@@ -14,6 +14,8 @@ using Vintagestory.API.Util;
 using Vintagestory.GameContent;
 using Vintagestory.ServerMods.NoObf;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     static class RandomExtensions
@@ -184,32 +186,31 @@ namespace Vintagestory.ServerMods
                 .EndSubCommand()
                 .BeginSubCommand("pregen")
                     .WithDescription("Pregenerate chunks around the player or around world center when executed from console.")
-                    .RequiresPlayer()
                     .WithArgs(parsers.OptionalInt("chunk_range", 2))
                     .HandleWith(OnCmdPregen)
                 .EndSubCommand()
                 .BeginSubCommand("delrock")
                     .WithDescription("Delete all rocks in specified chunk range around the player. Good for testing ore generation.")
                     .RequiresPlayer()
-                    .WithArgs(parsers.IntRange("chunk_range",1,50))
+                    .WithArgs(parsers.IntRange("chunk_range",0,50))
                     .HandleWith(OnCmdDelrock)
                 .EndSubCommand()
                 .BeginSubCommand("delrockc")
                     .WithDescription("Delete all rocks in specified chunk range around the world center. Good for testing ore generation.")
                     .RequiresPlayer()
-                    .WithArgs(parsers.IntRange("chunk_range",1,50))
+                    .WithArgs(parsers.IntRange("chunk_range",0,50))
                     .HandleWith(OnCmdDelrockc)
                 .EndSubCommand()
                 .BeginSubCommand("del")
                     .WithDescription("Delete chunks around the player")
                     .RequiresPlayer()
-                    .WithArgs(parsers.IntRange("chunk_range",1,50), parsers.OptionalWord("landform"))
+                    .WithArgs(parsers.IntRange("chunk_range",0,50), parsers.OptionalWord("landform"))
                     .HandleWith(OnCmdDel)
                 .EndSubCommand()
                     .BeginSubCommand("delr")
                     .WithDescription("Delete chunks around the player and the map regions. This will allow that changed terrain can generate for example at story locations.")
                     .RequiresPlayer()
-                    .WithArgs(parsers.IntRange("chunk_range",1,50))
+                    .WithArgs(parsers.IntRange("chunk_range",0,50))
                     .HandleWith(OnCmdDelr)
                 .EndSubCommand()
                 .BeginSubCommand("delrange")
@@ -532,10 +533,8 @@ namespace Vintagestory.ServerMods
                                 indices[i].Index = provincesByIndex[indices[i].Index].ColorInt;
                             }
 
-                            int[] colors;
-                            float[] weights;
-                            map.Split(indices, out colors, out weights);
-                            outColors[z * outSize + x] = ColorUtil.ColorAverage(colors, weights);
+                                map.Split(indices, out int[] colors, out float[] weights);
+                                outColors[z * outSize + x] = ColorUtil.ColorAverage(colors, weights);
                         }
                     }
 
@@ -572,9 +571,7 @@ namespace Vintagestory.ServerMods
                                 {
                                     indices[i].Index = landformsByIndex[indices[i].Index].ColorInt;
                                 }
-                                int[] colors;
-                                float[] weights;
-                                map.Split(indices, out colors, out weights);
+                                map.Split(indices, out int[] colors, out float[] weights);
                                 outColors[z * outSize + x] = ColorUtil.ColorAverage(colors, weights);
                             }
                         }
@@ -1260,7 +1257,7 @@ namespace Vintagestory.ServerMods
                         RockStratum stratum = null;
 
 
-                        OrderedDictionary<int, int> stratathicknesses = new OrderedDictionary<int, int>();
+                        API.Datastructures.OrderedDictionary<int, int> stratathicknesses = new ();
 
                         while (ylower <= yupper)
                         {
@@ -1775,14 +1772,14 @@ namespace Vintagestory.ServerMods
         {
             int chunkMidX;
             int chunkMidZ;
-            var player = caller.Player as IServerPlayer;
-            if (player.PlayerUID.Equals("console"))
+            if (caller.Type == EnumCallerType.Console)
             {
                 chunkMidX = api.WorldManager.MapSizeX / GlobalConstants.ChunkSize / 2;
                 chunkMidZ = api.WorldManager.MapSizeX / GlobalConstants.ChunkSize / 2;
             }
             else
             {
+                var player = caller.Player as IServerPlayer;
                 chunkMidX = (int)player.Entity.Pos.X / GlobalConstants.ChunkSize;
                 chunkMidZ = (int)player.Entity.Pos.Z / GlobalConstants.ChunkSize;
             }
@@ -1797,7 +1794,6 @@ namespace Vintagestory.ServerMods
                     coords.Add(new Vec2i(chunkMidX + x, chunkMidZ + z));
                 }
             }
-
 
             LoadColumnsSlow(caller, coords, 0);
             return TextCommandResult.Success("Type /debug chunk queue to see current generating queue size");
@@ -1823,8 +1819,14 @@ namespace Vintagestory.ServerMods
                         break;
                     }
                 }
-
-                player.SendMessage(caller.FromChatGroupId, string.Format("Ok, added {0} columns, {1} left to add, waiting until these are done.", qadded, coords.Count - startIndex), EnumChatType.CommandSuccess);
+                if (caller.Type == EnumCallerType.Console)
+                {
+                    api.Logger.Notification("Ok, added {0} columns, {1} left to add, waiting until these are done.", qadded, coords.Count - startIndex);
+                }
+                else
+                {
+                    player.SendMessage(caller.FromChatGroupId, string.Format("Ok, added {0} columns, {1} left to add, waiting until these are done.", qadded, coords.Count - startIndex), EnumChatType.CommandSuccess);
+                }
             }
 
             if (startIndex < coords.Count)
@@ -1832,7 +1834,14 @@ namespace Vintagestory.ServerMods
                 api.World.RegisterCallback((dt) => LoadColumnsSlow(caller, coords, startIndex), 1000);
             } else
             {
-                player.SendMessage(caller.FromChatGroupId, string.Format("Ok, {0} columns, generated!", coords.Count), EnumChatType.CommandSuccess);
+                if (caller.Type == EnumCallerType.Console)
+                {
+                    api.Logger.Notification("Ok, {0} columns, generated!", coords.Count);
+                }
+                else
+                {
+                    player.SendMessage(caller.FromChatGroupId, string.Format("Ok, {0} columns, generated!", coords.Count), EnumChatType.CommandSuccess);
+                }
             }
         }
 
@@ -1858,20 +1867,7 @@ namespace Vintagestory.ServerMods
 
                 NoiseLandforms.LoadLandforms(api);
 
-                api.ModLoader.GetModSystem<GenTerra>().initWorldGen();
-                api.ModLoader.GetModSystem<GenMaps>().initWorldGen();
-                api.ModLoader.GetModSystem<GenRockStrataNew>().initWorldGen(seedDiff);
-
-                if (TerraGenConfig.DoDecorationPass)
-                {
-                    api.ModLoader.GetModSystem<GenVegetationAndPatches>().initWorldGen();
-                    api.ModLoader.GetModSystem<GenPonds>().initWorldGen();
-                    api.ModLoader.GetModSystem<GenBlockLayers>().InitWorldGen();
-                    api.ModLoader.GetModSystem<GenCaves>().initWorldGen();
-                    api.ModLoader.GetModSystem<GenDeposits>().reloadWorldGen();
-                    api.ModLoader.GetModSystem<GenStructures>().initWorldGen();
-                    api.ModLoader.GetModSystem<GenStoryStructures>().InitWorldGen();
-                }
+                api.Event.TriggerInitWorldGen();
 
                 msg = Regen(caller, range, false,landform, aroundPlayer, deleteRegion);
             } else
@@ -1997,6 +1993,7 @@ namespace Vintagestory.ServerMods
 
                             if (leftToLoad <= 0 && !sent)
                             {
+                                modSys.FinalizeRegeneration(chunkMidX, chunkMidZ);
                                 sent = true;
                                 player.SendMessage(caller.FromChatGroupId, "Regen complete", EnumChatType.CommandSuccess);
 
@@ -2201,7 +2198,7 @@ namespace Vintagestory.ServerMods
             var pos = args.Caller.Player.CurrentBlockSelection?.Position.AddCopy(0,struc.OffsetY ?? 0,0) ?? args.Caller.Pos.AsBlockPos.AddCopy(0,struc.OffsetY ?? 0,0);
 
             var schematic = struc.schematicDatas[schematicNum][schematicRot];
-            schematic.Unpack(api);
+
             var chunkX = pos.X / _chunksize;
             var chunkZ = pos.Z / _chunksize;
             var chunkY = pos.Y / _chunksize;

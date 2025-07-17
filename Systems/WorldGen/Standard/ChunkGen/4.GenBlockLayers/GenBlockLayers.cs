@@ -5,6 +5,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
 
@@ -19,7 +21,8 @@ namespace Vintagestory.ServerMods
         ClampedSimplexNoise grassHeight;
         int boilingWaterBlockId;
 
-        public int[] layersUnderWater = new int[0];
+        public int[] layersUnderWaterTmp = new int[1];
+        public int[] layersUnderWater = Array.Empty<int>();
         public BlockLayerConfig blockLayerConfig;
         public SimplexNoise distort2dx;
         public SimplexNoise distort2dz;
@@ -258,6 +261,7 @@ namespace Vintagestory.ServerMods
             int j = 0;
 
             bool underWater = false;
+            bool isOcean = false;
             bool underIce = false;
             bool first = true;
             int startPosY = pos.Y;
@@ -275,7 +279,13 @@ namespace Vintagestory.ServerMods
 
                 if (blockId != 0)
                 {
-                    if (blockId == GlobalConfig.waterBlockId || blockId == boilingWaterBlockId || blockId == GlobalConfig.saltWaterBlockId)
+                    if (blockId == GlobalConfig.saltWaterBlockId)
+                    {
+                        isOcean = true;
+                        underWater = true;
+                        continue;
+                    }
+                    if (blockId == GlobalConfig.waterBlockId || blockId == boilingWaterBlockId)
                     {
                         underWater = true;
                         continue;
@@ -293,7 +303,7 @@ namespace Vintagestory.ServerMods
                         chunks[0].MapChunk.TopRockIdMap[lz * chunksize + lx] = blockId;
                         if (underIce) break;   // radfast 30.1.24: Note, under ice we do not set the sea/lake floor layers (gravel etc), for consistency with legacy worldgen prior to 1.19.4
 
-                        LoadBlockLayers(posRand, rainRel, temp, unscaledTemp, startPosY + posyoffs, pos, blockId);
+                        LoadBlockLayers(posRand, rainRel, temp, unscaledTemp, startPosY + posyoffs, pos, blockId, isOcean);
                         first = false;
 
                         if (!underWater) heightMap[lz * chunksize + lx] = (ushort)(pos.Y + 1);
@@ -376,7 +386,7 @@ namespace Vintagestory.ServerMods
         }
 
 
-        private void LoadBlockLayers(double posRand, float rainRel, float temperature, int unscaledTemp, int posY, BlockPos pos, int firstBlockId)
+        private void LoadBlockLayers(double posRand, float rainRel, float temperature, int unscaledTemp, int posY, BlockPos pos, int firstBlockId, bool isOcean)
         {
             float heightRel = ((float)posY - TerraGenConfig.seaLevel) / ((float)mapheight - TerraGenConfig.seaLevel);
             float fertilityRel = Climate.GetFertilityFromUnscaledTemp((int)(rainRel * 255), unscaledTemp, heightRel) / 255f;
@@ -423,12 +433,21 @@ namespace Vintagestory.ServerMods
                 if (BlockLayersIds.Count >= depth) break;
             }
 
-
-            int lakeBedId = blockLayerConfig.LakeBedLayer.GetSuitable(temperature, rainRel, (float)posY / api.WorldManager.MapSizeY, rnd, firstBlockId);
-            if (lakeBedId == 0) layersUnderWater = new int[0];
-            else layersUnderWater = new int[] { lakeBedId };
+            int lakeBedId;
+            if (isOcean)
+            {
+                lakeBedId = blockLayerConfig.OceanBedLayer.GetSuitable(temperature, rainRel, (float)pos.Y / api.WorldManager.MapSizeY, rnd, firstBlockId);
+            }
+            else
+            {
+                lakeBedId = blockLayerConfig.LakeBedLayer.GetSuitable(temperature, rainRel, (float)pos.Y / api.WorldManager.MapSizeY, rnd, firstBlockId);
+            }
+            if (lakeBedId == 0) layersUnderWater = Array.Empty<int>();
+            else
+            {
+                layersUnderWaterTmp[0] = lakeBedId;
+                layersUnderWater = layersUnderWaterTmp;
+            }
         }
-
-
     }
 }

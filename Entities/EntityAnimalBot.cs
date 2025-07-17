@@ -6,6 +6,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.Essentials;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     #region Npc commands
@@ -193,8 +195,7 @@ namespace Vintagestory.GameContent
 
         public void Stop()
         {
-            AnimationMetaData animData;
-            entity.Properties.Client.AnimationsByMetaCode.TryGetValue(AnimCode, out animData);
+            entity.Properties.Client.AnimationsByMetaCode.TryGetValue(AnimCode, out AnimationMetaData animData);
             if (animData?.Code != null)
             {
                 entity.AnimManager.StopAnimation(animData.Code);
@@ -207,8 +208,7 @@ namespace Vintagestory.GameContent
 
         public bool IsFinished()
         {
-            AnimationMetaData animData;
-            entity.Properties.Client.AnimationsByMetaCode.TryGetValue(AnimCode, out animData);
+            entity.Properties.Client.AnimationsByMetaCode.TryGetValue(AnimCode, out AnimationMetaData animData);
 
             return !entity.AnimManager.ActiveAnimationsByAnimCode.ContainsKey(AnimCode) && (animData?.Animation == null || !entity.AnimManager.ActiveAnimationsByAnimCode.ContainsKey(animData?.Animation));
         }

@@ -3,6 +3,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.GameContent;
 
+#nullable disable
+
 namespace Vintagestory.API.Common
 {
     public class ItemSlotBarrelInput : ItemSlot

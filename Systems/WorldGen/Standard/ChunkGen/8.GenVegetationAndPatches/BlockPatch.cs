@@ -6,6 +6,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods.NoObf
 {
     public enum EnumBlockPatchPlacement
@@ -235,6 +237,8 @@ namespace Vintagestory.ServerMods.NoObf
 
                 pos.X = posX + (int)OffsetX.nextFloat(1f, rnd);
                 pos.Z = posZ + (int)OffsetZ.nextFloat(1f, rnd);
+                if(!blockAccessor.IsValidPos(pos)) continue;
+
                 if (modSys != null && !isStoryPatch && modSys.GetIntersectingStructure(pos, ModStdWorldGen.SkipPatchesgHashCode) != null) continue;
 
                 int index = GameMath.Mod((int)BlockCodeIndex.nextFloat(1f, rnd), blocks.Length);
@@ -293,8 +297,7 @@ namespace Vintagestory.ServerMods.NoObf
 
         private Block[] getBlocks(int firstBlockId)
         {
-            Block[] blocks;
-            if (BlocksByRockType == null || !BlocksByRockType.TryGetValue(firstBlockId, out blocks))
+            if (BlocksByRockType == null || !BlocksByRockType.TryGetValue(firstBlockId, out Block[] blocks))
             {
                 blocks = Blocks;
             }

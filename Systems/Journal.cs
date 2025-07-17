@@ -9,6 +9,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 // Each player has a Journal
 // Each Journal has journal entries
 // Each journal entry has one or more chapters
@@ -243,14 +245,23 @@ namespace Vintagestory.GameContent
                          .RequiresPlayer()
                          .HandleWith(args =>
                          {
-                             Journal journal;
-                             if (!journalsByPlayerUid.TryGetValue(args.Caller.Player.PlayerUID, out journal))
+                             if (journalsByPlayerUid.TryGetValue(args.Caller.Player.PlayerUID, out var journal))
                              {
-                                 journalsByPlayerUid[args.Caller.Player.PlayerUID] = journal = new Journal();
+                                 journal.Entries.Clear();
                              }
-            
-                             journal.Entries.Clear();
-            
+                             else
+                             {
+                                 journalsByPlayerUid[args.Caller.Player.PlayerUID] = new Journal();
+                             }
+
+                             if (loreDiscoveryiesByPlayerUid.TryGetValue(args.Caller.Player.PlayerUID, out var loreDiscovery))
+                             {
+                                 loreDiscovery.Clear();
+                             }
+                             else
+                             {
+                                 loreDiscoveryiesByPlayerUid[args.Caller.Player.PlayerUID] = new Dictionary<string, LoreDiscovery>();
+                             }
                              return TextCommandResult.Success("Cleared.");
                          })
                      .EndSubCommand()
@@ -261,8 +272,9 @@ namespace Vintagestory.GameContent
 
         private void OnGameGettingSaved()
         {
-            sapi.WorldManager.SaveGame.StoreData("journalItemsByPlayerUid", SerializerUtil.Serialize(journalsByPlayerUid));
-            sapi.WorldManager.SaveGame.StoreData("loreDiscoveriesByPlayerUid", SerializerUtil.Serialize(loreDiscoveryiesByPlayerUid));
+            using FastMemoryStream ms = new();
+            sapi.WorldManager.SaveGame.StoreData("journalItemsByPlayerUid", SerializerUtil.Serialize(journalsByPlayerUid, ms));
+            sapi.WorldManager.SaveGame.StoreData("loreDiscoveriesByPlayerUid", SerializerUtil.Serialize(loreDiscoveryiesByPlayerUid, ms));
         }
 
 
@@ -343,8 +355,7 @@ namespace Vintagestory.GameContent
 
         private void OnPlayerJoin(IServerPlayer byPlayer)
         {
-            Journal journal;
-            if (journalsByPlayerUid.TryGetValue(byPlayer.PlayerUID, out journal))
+            if (journalsByPlayerUid.TryGetValue(byPlayer.PlayerUID, out Journal journal))
             {
                 serverChannel.SendPacket(journal, byPlayer);
             }
@@ -354,8 +365,7 @@ namespace Vintagestory.GameContent
 
         public void AddOrUpdateJournalEntry(IServerPlayer forPlayer, JournalEntry entry)
         {
-            Journal journal;
-            if (!journalsByPlayerUid.TryGetValue(forPlayer.PlayerUID, out journal))
+            if (!journalsByPlayerUid.TryGetValue(forPlayer.PlayerUID, out Journal journal))
             {
                 journalsByPlayerUid[forPlayer.PlayerUID] = journal = new Journal();
             }
@@ -422,8 +432,7 @@ namespace Vintagestory.GameContent
         {
             string playerUid = plr.PlayerUID;
 
-            Journal journal;
-            if (!journalsByPlayerUid.TryGetValue(playerUid, out journal))
+            if (!journalsByPlayerUid.TryGetValue(playerUid, out Journal journal))
             {
                 journalsByPlayerUid[playerUid] = journal = new Journal();
             }
@@ -451,8 +460,7 @@ namespace Vintagestory.GameContent
 
             bool anyAdded = false;
 
-            Dictionary<string, LoreDiscovery> discoveredLore;
-            loreDiscoveryiesByPlayerUid.TryGetValue(plr.PlayerUID, out discoveredLore);
+            loreDiscoveryiesByPlayerUid.TryGetValue(plr.PlayerUID, out Dictionary<string, LoreDiscovery> discoveredLore);
             if (discoveredLore == null)
             {
                 loreDiscoveryiesByPlayerUid[plr.PlayerUID] = discoveredLore = new Dictionary<string, LoreDiscovery>();
@@ -514,8 +522,7 @@ namespace Vintagestory.GameContent
             var plr = args.Caller.Player as IServerPlayer;
             JournalAsset[] journalAssets = sapi.World.AssetManager.GetMany<JournalAsset>(sapi.World.Logger, "config/lore/").Values.ToArray();
 
-            Journal journal;
-            if (!journalsByPlayerUid.TryGetValue(plr.PlayerUID, out journal))
+            if (!journalsByPlayerUid.TryGetValue(plr.PlayerUID, out Journal journal))
             {
                 journalsByPlayerUid[plr.PlayerUID] = journal = new Journal();
             }
@@ -569,8 +576,7 @@ namespace Vintagestory.GameContent
         /// <returns></returns>
         private LoreDiscovery getNextUndiscoveredChapter(IPlayer plr, JournalAsset asset)
         {
-            Dictionary<string, LoreDiscovery> discoveredLore;
-            loreDiscoveryiesByPlayerUid.TryGetValue(plr.PlayerUID, out discoveredLore);
+            loreDiscoveryiesByPlayerUid.TryGetValue(plr.PlayerUID, out Dictionary<string, LoreDiscovery> discoveredLore);
             if (discoveredLore == null)
             {
                 loreDiscoveryiesByPlayerUid[plr.PlayerUID] = discoveredLore = new Dictionary<string, LoreDiscovery>();
@@ -618,8 +624,7 @@ namespace Vintagestory.GameContent
 
         public bool DidDiscoverLore(string playerUid, string code, int chapterId)
         {
-            Journal journal;
-            if (!journalsByPlayerUid.TryGetValue(playerUid, out journal))
+            if (!journalsByPlayerUid.TryGetValue(playerUid, out Journal journal))
             {
                 return false;
             }

@@ -1,9 +1,11 @@
-﻿using System;
+using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -90,7 +92,7 @@ namespace Vintagestory.GameContent
 
             // We only render into the depth texture
             // We can abuse the shadow map shader for this
-            var prog = capi.Shader.GetProgram((int)EnumShaderProgram.Shadowmapgeneric);
+            var prog = capi.Shader.GetProgram(capi.Render.UseSSBOs ? (int)EnumShaderProgram.Chunkshadowmap_NoSSBOs : (int)EnumShaderProgram.Chunkshadowmap);
 
             prog.Use();
             

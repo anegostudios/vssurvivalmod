@@ -7,6 +7,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ItemPoultice : Item, ICanHealCreature
@@ -52,6 +54,12 @@ namespace Vintagestory.GameContent
                 if (byEntity.Controls.CtrlKey && !byEntity.Controls.Forward && !byEntity.Controls.Backward && !byEntity.Controls.Left && !byEntity.Controls.Right && ebh?.IsHealable(byEntity) == true)
                 {
                     targetEntity = entitySel.Entity;
+                }
+
+                if (health > 0)
+                {
+                    float healingEffectivness = targetEntity.Stats.GetBlended("healingeffectivness");
+                    health *= Math.Max(0, healingEffectivness);
                 }
 
                 targetEntity.ReceiveDamage(new DamageSource()

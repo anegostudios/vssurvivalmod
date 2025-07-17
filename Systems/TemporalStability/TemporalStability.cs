@@ -13,6 +13,8 @@ using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 using Vintagestory.ServerMods;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     
@@ -35,6 +37,8 @@ namespace Vintagestory.GameContent
             public float QuantityMul;
             [JsonProperty]
             public Dictionary<string, AssetLocation[]> variantGroups;
+            [JsonProperty]
+            public Dictionary<string, float> variantQuantityMuls;
 
             public Dictionary<string, EntityProperties[]> resolvedVariantGroups;
 
@@ -392,7 +396,6 @@ namespace Vintagestory.GameContent
                             e.Attributes.SetBool("ignoreDaylightFlee", true);
                         }
                     }
-
                 }
 
                 double activeDaysLeft = data.stormActiveTotalDays - api.World.Calendar.TotalDays;
@@ -506,12 +509,13 @@ namespace Vintagestory.GameContent
             var rareSpawns = mobConfig.rareSpawns.Variants.Shuffle(api.World.Rand);
             var spawnPattern = mobConfig.spawnsByStormStrength.spawnPatterns[data.spawnPatternCode];
             var variantGroups = mobConfig.spawnsByStormStrength.variantGroups;
+            var variantMuls = mobConfig.spawnsByStormStrength.variantQuantityMuls;
             var resovariantGroups = mobConfig.spawnsByStormStrength.resolvedVariantGroups;
             Dictionary<string, int> rareSpawnCounts = new Dictionary<string, int>();
             Dictionary<string, int> mainSpawnCountsByGroup = new Dictionary<string, int>();
 
             var plrPos = plr.Entity.ServerPos.XYZ;
-            part.WalkEntities(plrPos, range + 12, (e) =>
+            part.WalkEntities(plrPos, range + 30, (e) =>
             {
                 foreach (var vg in variantGroups)
                 {
@@ -539,9 +543,8 @@ namespace Vintagestory.GameContent
             }
 
             foreach (var rspc in rareSpawnCounts)
-            {   
-                int prevcnt = 0;
-                plrdict.TryGetValue(rspc.Key, out prevcnt);
+            {
+                plrdict.TryGetValue(rspc.Key, out int prevcnt);
                 rareSpawnCounts.TryGetValue(rspc.Key, out int cnt);
                 plrdict[rspc.Key] = cnt + prevcnt;
             }
@@ -549,8 +552,13 @@ namespace Vintagestory.GameContent
             foreach (var group in spawnPattern.GroupWeights)
             {
                 int allowedCount = (int)Math.Round((2 + stormStr * 8) * group.Value);
-                int nowCount = 0;
-                mainSpawnCountsByGroup.TryGetValue(group.Key, out nowCount);
+
+                if (variantMuls.TryGetValue(group.Key, out var mul))
+                {
+                    allowedCount = (int)Math.Round(allowedCount * mul);
+                }
+
+                mainSpawnCountsByGroup.TryGetValue(group.Key, out int nowCount);
 
                 if (nowCount < allowedCount)
                 {
@@ -770,35 +778,37 @@ namespace Vintagestory.GameContent
             // Moved from EntitySpawner to here. Make mobs spawn at any light level if temporally unstable. A bit of an ugly hack, i know
             int herelightLevel = api.World.BlockAccessor.GetLightLevel((int)spawnPosition.X, (int)spawnPosition.Y, (int)spawnPosition.Z, sc.LightLevelType);
 
-            if (temporalStabilityEnabled && type.Attributes?["spawnCloserDuringLowStability"].AsBool() == true)
+            if (type.Attributes?["spawnCloserDuringLowStability"].AsBool() == true)
             {
                 // Below 25% begin reducing range
-                double mod = Math.Min(1, 4 * byPlayer.Entity.WatchedAttributes.GetDouble("temporalStability", 1));
+                double mod = !temporalStabilityEnabled ? 1 : Math.Min(1, 4 * byPlayer.Entity.WatchedAttributes.GetDouble("temporalStability", 1));
 
                 mod = Math.Min(mod, Math.Max(0, 1 - 2 * data.stormGlitchStrength));
 
-                int surfaceY = api.World.BlockAccessor.GetTerrainMapheightAt(spawnPosition.AsBlockPos);
-                bool isSurface = spawnPosition.Y >= surfaceY - 5;
+                // Drifters, Shivers and Bowtorns have LightLevelType = OnlyBlockLight
+                // So this prevents spawning of mobs near light sources, assuming decent self stability and no storm active
+                if (herelightLevel * mod > sc.MaxLightLevel || herelightLevel * mod < sc.MinLightLevel) return false;
 
-                float riftDist = NearestRiftDistance(spawnPosition);
+                int sunlightLevel = api.World.BlockAccessor.GetLightLevel((int)spawnPosition.X, (int)spawnPosition.Y, (int)spawnPosition.Z, EnumLightLevelType.OnlySunLight);
+                bool isSurface = sunlightLevel >= 16;
 
-                // Still allow some mobs to spawn during daylight, but therefore must be very close to the rift
-                float minl = GameMath.Mix(0, sc.MinLightLevel, (float)mod);
-                float maxl = GameMath.Mix(32, sc.MaxLightLevel, (float)mod);
-                if (minl > herelightLevel || maxl < herelightLevel)
+                if (isSurface)
                 {
-                    if (!isSurface || riftDist >= 5 || api.World.Rand.NextDouble() > 0.05)
+                    float riftDist = NearestRiftDistance(spawnPosition);
+
+                    var sunpos = api.World.Calendar.GetSunPosition(spawnPosition, api.World.Calendar.TotalDays);
+                    bool isDaytime = sunpos.Y >= 0;
+
+                    if (isDaytime)
                     {
-                        return false;
+                        return riftDist < 6 && api.World.Rand.NextDouble() < 0.07;
+                    } else
+                    {
+                        return riftDist < 20;
                     }
                 }
 
                 double sqdist = byPlayer.Entity.ServerPos.SquareDistanceTo(spawnPosition);
-
-                if (isSurface)
-                {
-                    return riftDist < 24;
-                }
 
                 // Force a maximum distance
                 if (mod < 0.5)
@@ -817,7 +827,8 @@ namespace Vintagestory.GameContent
 
         private float NearestRiftDistance(Vec3d pos)
         {
-            var nrift = riftSys.riftsById.Values.Nearest(rift => rift.Position.SquareDistanceTo(pos));
+            Rift nrift = riftSys.ServerRifts.Nearest(rift => rift.Position.SquareDistanceTo(pos));
+
             if (nrift != null)
             {
                 return nrift.Position.DistanceTo(pos);

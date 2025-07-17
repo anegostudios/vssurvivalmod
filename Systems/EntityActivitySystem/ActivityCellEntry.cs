@@ -4,6 +4,8 @@ using Vintagestory.API.Common;
 using Cairo;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 
 // Requirements:
 // Activity Collections
@@ -41,8 +43,6 @@ namespace Vintagestory.GameContent
         bool composed = false;
         public bool Selected;
         Action<int> onClick;
-        float accum1Sec;
-        string prevExpireText;
 
         public ActivityCellEntry(ICoreClientAPI capi, ElementBounds bounds, string name, string detail, Action<int> onClick, float leftColWidth=200, float rightColWidth=300) : base(capi, bounds)
         {

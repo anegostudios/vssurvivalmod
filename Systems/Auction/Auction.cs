@@ -11,6 +11,8 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public enum EnumAuctionState
@@ -29,7 +31,7 @@ namespace Vintagestory.GameContent
 
         protected AuctionsData auctionsData = new AuctionsData();
 
-        protected OrderedDictionary<long, Auction> auctions => auctionsData.auctions;
+        protected API.Datastructures.OrderedDictionary<long, Auction> auctions => auctionsData.auctions;
 
         protected IServerNetworkChannel serverCh => sapi.Network.GetChannel("auctionHouse");
         protected IClientNetworkChannel clientCh => capi.Network.GetChannel("auctionHouse");
@@ -310,16 +312,15 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (expiredAuctions > 0 || activeAuctions > 0 || readyPurchasedAuctions > 0 || enroutePurchasedAuctions > 0 || soldAuctions > 0)
+            if (expiredAuctions + activeAuctions + readyPurchasedAuctions + enroutePurchasedAuctions + soldAuctions > 0)
             {
                 StringBuilder sb = new StringBuilder();
-                sb.Append(Lang.Get("Auction House: You have "));
-                bool comma = false;
-                if (soldAuctions > 0) { sb.Append(comma ? ", " : ""); sb.Append(Lang.Get("{0} sold auctions", soldAuctions)); comma = true; }
-                if (expiredAuctions > 0) { sb.Append(comma ? ", " : ""); sb.Append(Lang.Get("{0} expired auctions", expiredAuctions)); comma = true; }
-                if (activeAuctions > 0) { sb.Append(comma ? ", " : ""); sb.Append(Lang.Get("{0} active auctions", activeAuctions)); comma = true; }
-                if (enroutePurchasedAuctions > 0) { sb.Append(comma ? ", " : ""); sb.Append(Lang.Get("{0} purchased auctions en-route", readyPurchasedAuctions)); comma = true; }
-                if (readyPurchasedAuctions > 0) { sb.Append(comma ? ", " : ""); sb.Append(Lang.Get("{0} purchased auctions ready for pick-up", readyPurchasedAuctions)); comma = true; }
+                sb.Append(Lang.Get("Auction House: You have") + " ");
+                if (activeAuctions > 0) { sb.AppendLine(Lang.Get("{0} active auctions", activeAuctions)); }
+                if (soldAuctions > 0) { sb.AppendLine(Lang.Get("{0} sold auctions", soldAuctions)); }
+                if (expiredAuctions > 0) { sb.AppendLine(Lang.Get("{0} expired auctions", expiredAuctions)); }
+                if (enroutePurchasedAuctions > 0) { sb.AppendLine(Lang.Get("{0} purchased auctions en-route", readyPurchasedAuctions)); }
+                if (readyPurchasedAuctions > 0) { sb.AppendLine(Lang.Get("{0} purchased auctions ready for pick-up", readyPurchasedAuctions)); }
 
                 byPlayer.SendMessage(GlobalConstants.GeneralChatGroup, sb.ToString(), EnumChatType.Notification);
             }
@@ -329,7 +330,7 @@ namespace Vintagestory.GameContent
         {
             if (createAuctionSlotByPlayer.TryGetValue(byPlayer.PlayerUID, out var inv))
             {
-                byPlayer.InventoryManager.CloseInventory(createAuctionSlotByPlayer[byPlayer.PlayerUID]);
+                byPlayer.InventoryManager.CloseInventoryAndSync(createAuctionSlotByPlayer[byPlayer.PlayerUID]);
                 createAuctionSlotByPlayer.Remove(byPlayer.PlayerUID);
             }
         }
@@ -409,8 +410,7 @@ namespace Vintagestory.GameContent
                             inv.DropAll(fromPlayer.Entity.Pos.XYZ);
                         }
 
-                        float debt = 0;
-                        auctionsData.DebtToTraderByPlayer.TryGetValue(fromPlayer.PlayerUID, out debt);
+                        auctionsData.DebtToTraderByPlayer.TryGetValue(fromPlayer.PlayerUID, out float debt);
 
                         serverCh.SendPacket(new AuctionActionResponsePacket() { Action = pkt.Action, AuctionId = pkt.AuctionId, ErrorCode = failureCode }, fromPlayer);
                         serverCh.SendPacket(new DebtPacket() { TraderDebt = debt }, fromPlayer);
@@ -514,9 +514,8 @@ namespace Vintagestory.GameContent
             if (sellerName == null) sellerName = sellerEntity.Properties.Code.ToShortString();
 
 
-            float debt;
             string uid = (sellerEntity as EntityPlayer)?.PlayerUID ?? "";
-            auctionsData.DebtToTraderByPlayer.TryGetValue(uid, out debt);
+            auctionsData.DebtToTraderByPlayer.TryGetValue(uid, out float debt);
 
             float traderCutGears = price * SalesCutRate + debt;
 

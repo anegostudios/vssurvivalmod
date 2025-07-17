@@ -1,6 +1,8 @@
 ﻿using System.Collections.Generic;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     public class TiledDungeonConfig

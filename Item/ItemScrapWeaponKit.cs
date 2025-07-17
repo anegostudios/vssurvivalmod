@@ -4,6 +4,8 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ItemScrapWeaponKit : Item
@@ -80,7 +82,6 @@ namespace Vintagestory.GameContent
                 }
 
                 tf.Translation.Set(nowx - Math.Min(1.5f, secondsUsed*4), nowy, 0);
-                byEntity.Controls.UsingHeldItemTransformBefore = tf;
 
                 curX = nowx;
                 curY = nowy;

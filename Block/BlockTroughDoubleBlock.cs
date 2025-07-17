@@ -3,6 +3,8 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockTroughDoubleBlock : BlockTroughBase
@@ -10,10 +12,9 @@ namespace Vintagestory.GameContent
 
         public override void OnLoaded(ICoreAPI api)
         {
-            if (LastCodePart(1) == "feet")
+            if (Variant["part"] == "large-feet")
             {
-                BlockFacing facing = BlockFacing.FromCode(LastCodePart()).Opposite;
-                RootOffset = new BlockPos(facing.Normali);
+                RootOffset.Set(BlockFacing.FromCode(Variant["side"]).Opposite.Normali);
             }
 
             base.OnLoaded(api);
@@ -23,15 +24,15 @@ namespace Vintagestory.GameContent
 
         public BlockFacing OtherPartFacing()
         {
-            BlockFacing facing = BlockFacing.FromCode(LastCodePart());
-            if (LastCodePart(1) == "feet") facing = facing.Opposite;
+            BlockFacing facing = BlockFacing.FromCode(Variant["side"]);
+            if (Variant["part"] == "large-feet") facing = facing.Opposite;
             return facing;
         }
 
         public BlockPos OtherPartPos(BlockPos pos)
         {
-            BlockFacing facing = BlockFacing.FromCode(LastCodePart());
-            if (LastCodePart(1) == "feet") facing = facing.Opposite;
+            BlockFacing facing = BlockFacing.FromCode(Variant["side"]);
+            if (Variant["part"] == "large-feet") facing = facing.Opposite;
 
             return pos.AddCopy(facing);
         }
@@ -48,10 +49,10 @@ namespace Vintagestory.GameContent
 
                 string code = horVer[0].Opposite.Code;
 
-                Block orientedBlock = world.BlockAccessor.GetBlock(CodeWithParts("head", code));
+                Block orientedBlock = world.BlockAccessor.GetBlock(CodeWithVariants(["part", "side"], ["large-head", code]));
                 orientedBlock.DoPlaceBlock(world, byPlayer, new BlockSelection() { Position = secondPos, Face = blockSel.Face }, itemstack);
 
-                AssetLocation feetCode = CodeWithParts("feet", code);
+                AssetLocation feetCode = CodeWithVariants(["part", "side"], ["large-feet", code]);
                 orientedBlock = world.BlockAccessor.GetBlock(feetCode);
                 orientedBlock.DoPlaceBlock(world, byPlayer, blockSel, itemstack);
                 return true;
@@ -63,9 +64,7 @@ namespace Vintagestory.GameContent
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
             if (blockSel != null) {
-                BlockPos pos = blockSel.Position;
-
-                BlockEntityTrough betr = world.BlockAccessor.GetBlockEntity(pos + RootOffset) as BlockEntityTrough;
+                BlockEntityTrough betr = world.BlockAccessor.GetBlockEntity(blockSel.Position.AddCopy(RootOffset)) as BlockEntityTrough;
                 
                 bool ok = betr?.OnInteract(byPlayer, blockSel) == true;
                 if (ok && world.Side == EnumAppSide.Client)
@@ -83,16 +82,14 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockRemoved(IWorldAccessor world, BlockPos pos)
         {
-            string headfoot = LastCodePart(1);
-
-            BlockFacing facing = BlockFacing.FromCode(LastCodePart());
-            if (LastCodePart(1) == "feet") facing = facing.Opposite;
+            BlockFacing facing = BlockFacing.FromCode(Variant["side"]);
+            if (Variant["part"] == "large-feet") facing = facing.Opposite;
 
             Block secondPlock = world.BlockAccessor.GetBlock(pos.AddCopy(facing));
 
-            if (secondPlock is BlockTroughDoubleBlock && secondPlock.LastCodePart(1) != headfoot)
+            if (secondPlock is BlockTroughDoubleBlock && secondPlock.Variant["part"] != Variant["part"])
             {
-                if (LastCodePart(1) == "feet")
+                if (Variant["part"] == "large-feet")
                 {
                     (world.BlockAccessor.GetBlockEntity(pos.AddCopy(facing)) as BlockEntityTrough)?.OnBlockBroken();
                 }
@@ -109,13 +106,13 @@ namespace Vintagestory.GameContent
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {
-            return new ItemStack[] { new ItemStack(world.BlockAccessor.GetBlock(CodeWithParts("head", "north"))) };
+            return new ItemStack[] { new ItemStack(world.BlockAccessor.GetBlock(CodeWithVariants(["part", "side"], ["large-head", "north"]))) };
         }
 
 
         public override AssetLocation GetRotatedBlockCode(int angle)
         {
-            BlockFacing beforeFacing = BlockFacing.FromCode(LastCodePart());
+            BlockFacing beforeFacing = BlockFacing.FromCode(Variant["side"]);
             int rotatedIndex = GameMath.Mod(beforeFacing.HorizontalAngleIndex - angle / 90, 4);
             BlockFacing nowFacing = BlockFacing.HORIZONTALS_ANGLEORDER[rotatedIndex];
 
@@ -124,12 +121,12 @@ namespace Vintagestory.GameContent
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {
-            return new ItemStack(world.BlockAccessor.GetBlock(CodeWithParts("head", "north")));
+            return new ItemStack(world.BlockAccessor.GetBlock(CodeWithVariants(["part", "side"], ["large-head", "north"])));
         }
 
         public override AssetLocation GetHorizontallyFlippedBlockCode(EnumAxis axis)
         {
-            BlockFacing facing = BlockFacing.FromCode(LastCodePart());
+            BlockFacing facing = BlockFacing.FromCode(Variant["side"]);
             if (facing.Axis == axis)
             {
                 return CodeWithParts(facing.Opposite.Code);
@@ -146,9 +143,9 @@ namespace Vintagestory.GameContent
 
         public override string GetPlacedBlockInfo(IWorldAccessor world, BlockPos pos, IPlayer forPlayer)
         {
-            if (LastCodePart(1) == "feet")
+            if (Variant["part"] == "large-feet")
             {
-                BlockFacing facing = BlockFacing.FromCode(LastCodePart()).Opposite;
+                BlockFacing facing = BlockFacing.FromCode(Variant["side"]).Opposite;
                 pos = pos.AddCopy(facing);
             }
 

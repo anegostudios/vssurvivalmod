@@ -4,6 +4,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent;
 
 public class BEBehaviorElevatorControl: BlockEntityBehavior
@@ -13,25 +15,17 @@ public class BEBehaviorElevatorControl: BlockEntityBehavior
 
     public int Offset { get; set; } = -1;
 
-    public bool EnableElevator;
-
     public BEBehaviorElevatorControl(BlockEntity blockentity) : base(blockentity)
     {
     }
 
-    public void OnInteract(BlockPos position, bool deactivate = false)
+    public void OnInteract(BlockPos position, bool resetToHere = false)
     {
         if(NetworkCode == null) return;
-        if (EnableElevator)
+        if (resetToHere)
         {
-            if (deactivate)
-            {
-                elevatorModSystem.DeActivateElevator(NetworkCode);
-            }
-            else
-            {
-                elevatorModSystem.ActivateElevator(NetworkCode, position, Offset);
-            }
+            var elevatorSystem = elevatorModSystem.GetElevator(NetworkCode);
+            elevatorSystem?.Entity.Attributes.SetInt("maxHeight", position.Y + Offset);
         }
         else
         {
@@ -43,8 +37,6 @@ public class BEBehaviorElevatorControl: BlockEntityBehavior
     public override void Initialize(ICoreAPI api, JsonObject properties)
     {
         base.Initialize(api, properties);
-
-        EnableElevator = properties["canEnableElevator"].AsBool();
 
         if (api.Side == EnumAppSide.Server)
         {

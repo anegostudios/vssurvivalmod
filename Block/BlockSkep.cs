@@ -1,7 +1,9 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -16,17 +18,21 @@ namespace Vintagestory.GameContent
             return Variant["type"] == "empty";
         }
 
+        public override void OnBlockPlaced(IWorldAccessor world, BlockPos blockPos, ItemStack? byItemStack = null)
+        {
+            base.OnBlockPlaced(world, blockPos, byItemStack);
+
+            if (byItemStack?.Attributes.GetBool("harvestable") == true) GetBlockEntity<BlockEntityBeehive>(blockPos).Harvestable = true;
+        }
+
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
-            string collectibleCode = byPlayer.InventoryManager.ActiveHotbarSlot?.Itemstack?.Collectible.Code.Path;
-            if (collectibleCode == "beenade-opened" || collectibleCode == "beenade-closed") return false;
+            var collObj = byPlayer.InventoryManager.ActiveHotbarSlot?.Itemstack?.Collectible;
+            if (collObj is ItemClosedBeenade or ItemOpenedBeenade) return false;
 
-
-
-            if (byPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative && byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack?.Collectible.Code.Path.Contains("honeycomb") == true)
+            if (byPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative && collObj?.FirstCodePart() == "honeycomb")
             {
-                BlockEntityBeehive beh = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityBeehive;
-                if (beh != null && !beh.Harvestable)
+                if (world.BlockAccessor.GetBlockEntity(blockSel.Position) is BlockEntityBeehive beh && !beh.Harvestable)
                 {
                     beh.Harvestable = true;
                     beh.MarkDirty(true);
@@ -34,7 +40,7 @@ namespace Vintagestory.GameContent
                 return true;
             }
 
-            if (byPlayer.InventoryManager.TryGiveItemstack(new ItemStack(this)))
+            if (byPlayer.InventoryManager.TryGiveItemstack(new(world.BlockAccessor.GetBlock(CodeWithVariant("side", "east")))))
             {
                 world.BlockAccessor.SetBlock(0, blockSel.Position);
                 world.PlaySoundAt(new AssetLocation("sounds/block/planks"), blockSel.Position, -0.5, byPlayer, false);
@@ -61,10 +67,7 @@ namespace Vintagestory.GameContent
 
             if (world.Side == EnumAppSide.Server && !IsEmpty() && world.Rand.NextDouble() < beemobSpawnChance)     // Only test the chance and spawn the entity on the server side
             {
-                EntityProperties type = world.GetEntityType(new AssetLocation("beemob"));
-                Entity entity = world.ClassRegistry.CreateEntity(type);
-
-                if (entity != null)
+                if (world.ClassRegistry.CreateEntity(world.GetEntityType("beemob")) is Entity entity)
                 {
                     entity.ServerPos.X = pos.X + 0.5f;
                     entity.ServerPos.Y = pos.Y + 0.5f;
@@ -81,24 +84,27 @@ namespace Vintagestory.GameContent
 
         public override BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)
         {
-            return GetHandbookDropsFromBreakDrops(handbookStack, forPlayer);
+            bool harvestable = handbookStack.Attributes.GetBool("harvestable");
+            ItemStack[]? stacks = harvestable ? getHarvestableDrops(api.World, forPlayer.Entity.Pos.XYZ.AsBlockPos, forPlayer) : GetDrops(api.World, forPlayer.Entity.Pos.XYZ.AsBlockPos, forPlayer);
+            if (stacks == null) return [];
+
+            return [.. stacks.Select(stack => new BlockDropItemStack(stack))];
         }
 
-        public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
+        public override ItemStack[]? GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
         {
-            if (IsEmpty())
+            if (IsEmpty() || GetBlockEntity<BlockEntityBeehive>(pos)?.Harvestable != true)
             {
-                return new ItemStack[] { new ItemStack(this) };
+                return [new(world.BlockAccessor.GetBlock(CodeWithVariant("side", "east")))];
             }
 
-            BlockEntityBeehive beh = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityBeehive;
-            if (beh == null || !beh.Harvestable)
-            {
-                return new ItemStack[] { new ItemStack(this) };
-            }
+            return getHarvestableDrops(world, pos, byPlayer, dropQuantityMultiplier);
+        }
 
+        private ItemStack[]? getHarvestableDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
+        {
             if (Drops == null) return null;
-            List<ItemStack> todrop = new List<ItemStack>();
+            List<ItemStack> todrop = [];
 
             for (int i = 0; i < Drops.Length; i++)
             {
@@ -111,40 +117,74 @@ namespace Vintagestory.GameContent
                 if (Drops[i].LastDrop) break;
             }
 
-            return todrop.ToArray();
+            return [.. todrop];
+        }
+
+
+        public override string GetHeldItemName(ItemStack itemStack)
+        {
+            if (itemStack.Attributes.GetBool("harvestable")) return Lang.GetMatching(Code.Domain + AssetLocation.LocationSeparator + "block-" + CodeWithVariant("type", "harvestable").Path);
+
+            return base.GetHeldItemName(itemStack);
+        }
+
+        public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
+        {
+            var stack = base.OnPickBlock(world, pos);
+
+            if (GetBlockEntity<BlockEntityBeehive>(pos)?.Harvestable == true) stack.Attributes.SetBool("harvestable", true);
+
+            return stack;
         }
 
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
         {
-            var wi = new WorldInteraction()
-            {
-                ActionLangCode = Variant["type"] == "populated" ? "blockhelp-skep-putinbagslot" : "blockhelp-skep-pickup",
-                MouseButton = EnumMouseButton.Right
-            };
+            WorldInteraction[] wi = 
+            [
+                new() {
+                    ActionLangCode = Variant["type"] == "populated" ? "blockhelp-skep-putinbagslot" : "blockhelp-skep-pickup",
+                    MouseButton = EnumMouseButton.Right
+                }
+            ];
 
-            BlockEntityBeehive beh = world.BlockAccessor.GetBlockEntity(selection.Position) as BlockEntityBeehive;
-            if (beh?.Harvestable == true)
+            if (GetBlockEntity<BlockEntityBeehive>(selection.Position)?.Harvestable == true)
             {
-                return new WorldInteraction[]
-                {
-                    wi,
-                    new WorldInteraction()
-                    {
+                wi.Append(
+                [
+                    new() {
                         ActionLangCode = "blockhelp-skep-harvest",
                         MouseButton = EnumMouseButton.Left
                     }
-                }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
-
+                ]);
             }
-            else
+
+            return wi.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
+        }
+
+        public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
+        {
+            var orientation = Variant["side"];
+            var key = "beehive-" + Variant["material"] + "-harvestablemesh-" + orientation;
+
+            MeshData mesh;
+            if (!api.ObjectCache.ContainsKey(key))
             {
-                return new WorldInteraction[] { wi }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
+                Block fullSkep = capi.World.GetBlock(CodeWithVariant("type", "populated"));
 
+                capi.Tesselator.TesselateShape(
+                    fullSkep,
+                    API.Common.Shape.TryGet(api, "shapes/block/beehive/skep-harvestable.json"),
+                    out mesh,
+                    new Vec3f(0, BlockFacing.FromCode(orientation).HorizontalAngleIndex * 90 - 90, 0)
+                );
+                api.ObjectCache[key] = mesh;
             }
+            else mesh = (MeshData)api.ObjectCache[key];
 
+            if (itemstack.Attributes.GetBool("harvestable")) renderinfo.ModelRef = capi.Render.UploadMultiTextureMesh(mesh);
 
-
+            base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
         }
     }
 }

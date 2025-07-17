@@ -1,15 +1,49 @@
-﻿using Vintagestory.API.Client;
+﻿using Vintagestory.API;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Allows a block to swap between a set of states on activation. Note that this behavior has some small hardcoding for legacy trapdoors.
+    /// This behavior is used with the code "ExchangeOnInteract".
+    /// </summary>
+    /// <example><code lang="json">
+    ///"behaviors": [
+	///	{
+	///		"name": "ExchangeOnInteract",
+	///		"properties": {
+	///			"exchangeStates": [ "*-closed-*", "*-opened-*" ],
+	///			"sound": "block/door",
+	///			"actionLangCode": "blockhelp-trapdoor-openclose"
+	///		}
+	///	}
+	///]
+    ///</code></example>
+    [DocumentAsJson]
     public class BlockBehaviorExchangeOnInteract : BlockBehavior
     {
+        /// <summary>
+        /// The list of block codes to iterate over upon interaction.
+        /// </summary>
+        [DocumentAsJson("Required")]
         AssetLocation[] blockCodes;
+
+        /// <summary>
+        /// The soudn to play when this block with exchanged.
+        /// </summary>
+        [DocumentAsJson("Required")]
         string sound;
+
+        /// <summary>
+        /// The lang code to show text when hovering over this block. 
+        /// </summary>
+        [DocumentAsJson("Required")]
         string actionlangcode;
 
         public BlockBehaviorExchangeOnInteract(Block block) : base(block)

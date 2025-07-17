@@ -18,7 +18,7 @@ namespace Vintagestory.GameContent
         /// </summary>
         public bool AllowMixing = true;
         public EnumPiePartType PartType;
-        public AssetLocation Texture;
+        public required AssetLocation Texture;
     }
 
     // Idea:
@@ -41,9 +41,8 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                var pieBlock = (inv[0].Itemstack.Block as BlockPie);
-                ItemStack[] cStacks = pieBlock.GetContents(Api.World, inv[0].Itemstack);
-                return cStacks[1] != null || cStacks[2] != null || cStacks[3] != null || cStacks[4] != null;
+                ItemStack?[]? cStacks = (inv[0].Itemstack?.Block as BlockPie)?.GetContents(Api.World, inv[0].Itemstack);
+                return cStacks?[1] != null || cStacks?[2] != null || cStacks?[3] != null || cStacks?[4] != null;
             }
         }
 
@@ -51,9 +50,8 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                var pieBlock = (inv[0].Itemstack.Block as BlockPie);
-                ItemStack[] cStacks = pieBlock.GetContents(Api.World, inv[0].Itemstack);
-                return cStacks[1] != null && cStacks[2] != null && cStacks[3] != null && cStacks[4] != null;
+                ItemStack?[]? cStacks = (inv[0].Itemstack?.Block as BlockPie)?.GetContents(Api.World, inv[0].Itemstack);
+                return cStacks?[1] != null && cStacks?[2] != null && cStacks?[3] != null && cStacks?[4] != null;
             }
         }
 
@@ -61,17 +59,16 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                var pieBlock = (inv[0].Itemstack.Block as BlockPie);
-                ItemStack[] cStacks = pieBlock.GetContents(Api.World, inv[0].Itemstack);
-                return cStacks[5] != null;
+                return (inv[0].Itemstack?.Block as BlockPie)?.GetContents(Api.World, inv[0].Itemstack)[5] != null;
             }
         }
 
+        public string? State => (inv[0].Itemstack?.Block as BlockPie)?.State;
 
 
-        MealMeshCache ms;
-        MeshData mesh;
-        ICoreClientAPI capi;
+
+        MealMeshCache? ms;
+        MeshData? mesh;
 
         public BlockEntityPie() : base()
         {
@@ -83,8 +80,6 @@ namespace Vintagestory.GameContent
             base.Initialize(api);
 
             ms = api.ModLoader.GetModSystem<MealMeshCache>();
-
-            capi = api as ICoreClientAPI;
 
             loadMesh();
         }
@@ -100,31 +95,24 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void OnBlockPlaced(ItemStack byItemStack = null)
+        public override void OnBlockPlaced(ItemStack? byItemStack = null)
         {
             if (byItemStack != null)
             {
                 inv[0].Itemstack = byItemStack.Clone();
-                inv[0].Itemstack.StackSize = 1;
+                inv[0].Itemstack!.StackSize = 1;
             }
         }
 
-        public int SlicesLeft {
-            get
-            {
-                if (inv[0].Empty) return 0;
-                return inv[0].Itemstack.Attributes.GetAsInt("pieSize");
-            }
-        }
+        public int SlicesLeft => inv[0].Itemstack?.Attributes.GetAsInt("pieSize") ?? 0;
 
-        public ItemStack TakeSlice()
+        public ItemStack? TakeSlice()
         {
-            if (inv[0].Empty) return null;
+            if (inv[0].Itemstack?.Clone() is not ItemStack stack) return null;
 
-            int size = inv[0].Itemstack.Attributes.GetAsInt("pieSize");
+            int size = SlicesLeft;
+            float servings = inv[0].Itemstack?.Attributes.GetFloat("quantityServings") ?? 0;
             MarkDirty(true);
-
-            ItemStack stack = inv[0].Itemstack.Clone();
 
             if (size <= 1)
             {
@@ -137,7 +125,11 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                inv[0].Itemstack.Attributes.SetInt("pieSize", size - 1);
+                inv[0].Itemstack?.Attributes.SetInt("pieSize", size - 1);
+                if (inv[0].Itemstack?.Attributes.HasAttribute("quantityServings") == true)
+                {
+                    inv[0].Itemstack?.Attributes.SetFloat("quantityServings", servings - 0.25f);
+                }
 
                 stack.Attributes.SetInt("pieSize", 1);
                 stack.Attributes.SetFloat("quantityServings", 0.25f);
@@ -151,33 +143,36 @@ namespace Vintagestory.GameContent
             return stack;
         }
 
-        public void OnPlaced(IPlayer byPlayer)
+        public void OnPlaced(IPlayer? byPlayer)
         {
-            ItemStack doughStack = byPlayer.InventoryManager.ActiveHotbarSlot.TakeOut(2);
-            if (doughStack == null) return;
+            if (byPlayer?.InventoryManager.ActiveHotbarSlot.TakeOut(2) is not ItemStack doughStack) return;
 
-            inv[0].Itemstack = new ItemStack(Block);
-            (inv[0].Itemstack.Block as BlockPie).SetContents(inv[0].Itemstack, new ItemStack[6] { doughStack, null, null, null, null, null });
-            inv[0].Itemstack.Attributes.SetInt("pieSize", 4);
-            inv[0].Itemstack.Attributes.SetBool("bakeable", false);
+            ItemStack pie = new(Block);
+            (pie.Block as BlockPie)?.SetContents(pie, [doughStack, null, null, null, null, null]);
+            pie.Attributes.SetInt("pieSize", 4);
+            pie.Attributes.SetBool("bakeable", false);
+            if (State != "raw" && !pie.Attributes.HasAttribute("quantityServings"))
+            {
+                pie.Attributes.SetFloat("quantityServings", pie.Attributes.GetAsInt("pieSize") * 0.25f);
+            }
+            inv[0].Itemstack = pie;
 
             loadMesh();
         }
 
         public bool OnInteract(IPlayer byPlayer)
         {
-            var pieBlock = inv[0].Itemstack.Block as BlockPie;
+            if (inv[0].Itemstack?.Block is not BlockPie pieBlock) return false;
 
-            ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
+            ItemSlot? hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
             EnumTool? tool = hotbarSlot?.Itemstack?.Collectible.Tool;
             if (tool == EnumTool.Knife || tool == EnumTool.Sword)
             {
                 if (pieBlock.State != "raw")
                 {
-                    if (Api.Side == EnumAppSide.Server)
+                    if (Api.Side == EnumAppSide.Server && TakeSlice() is ItemStack slicestack)
                     {
-                        ItemStack slicestack = TakeSlice();
                         if (!byPlayer.InventoryManager.TryGiveItemstack(slicestack))
                         {
                             Api.World.SpawnItemEntity(slicestack, Pos);
@@ -195,19 +190,13 @@ namespace Vintagestory.GameContent
                     ItemStack[] cStacks = pieBlock.GetContents(Api.World, inv[0].Itemstack);
                     if (HasAnyFilling && cStacks[5] != null)
                     {
-                        ItemStack stack = inv[0].Itemstack;
-                        stack.Attributes.SetInt("topCrustType", (stack.Attributes.GetAsInt("topCrustType") + 1) % 3);
+                        ItemStack? stack = inv[0].Itemstack;
+                        stack = BlockPie.CycleTopCrustType(stack);
                         MarkDirty(true);
                     }
                 }
 
                 return true;
-            }
-
-
-            if (pieBlock.State != "raw")
-            {
-                return false;
             }
 
             // Filling rules:
@@ -218,7 +207,7 @@ namespace Vintagestory.GameContent
             //    a.) be of same foodcat
             //    b.) have props.AllowMixing set to true
 
-            if (!hotbarSlot.Empty)
+            if (hotbarSlot?.Empty == false && pieBlock.State == "raw")
             {
                 bool added = TryAddIngredientFrom(hotbarSlot, byPlayer);
                 if (added)
@@ -227,15 +216,15 @@ namespace Vintagestory.GameContent
                     MarkDirty(true);
                 }
 
-                inv[0].Itemstack.Attributes.SetBool("bakeable", HasAllFilling);
+                inv[0].Itemstack?.Attributes.SetBool("bakeable", HasAllFilling);
 
                 return added;
             } else
             {
-                if (SlicesLeft == 1 && !inv[0].Itemstack.Attributes.HasAttribute("quantityServings"))
+                if (SlicesLeft == 1 && inv[0].Itemstack?.Attributes.HasAttribute("quantityServings") != true)
                 {
-                    inv[0].Itemstack.Attributes.SetBool("bakeable", false);
-                    inv[0].Itemstack.Attributes.SetFloat("quantityServings", 0.25f);
+                    inv[0].Itemstack?.Attributes.SetBool("bakeable", false);
+                    inv[0].Itemstack?.Attributes.SetFloat("quantityServings", 0.25f);
                 }
 
                 if (Api.Side == EnumAppSide.Server)
@@ -246,10 +235,10 @@ namespace Vintagestory.GameContent
                     }
                     Api.World.Logger.Audit("{0} Took 1x{1} at {2}.",
                         byPlayer.PlayerName,
-                        inv[0].Itemstack.Collectible.Code,
+                        inv[0].Itemstack?.Collectible.Code,
                         Pos
                     );
-                    this.inv[0].Itemstack = null;
+                    inv[0].Itemstack = null;
                 }
 
                 Api.World.BlockAccessor.SetBlock(0, Pos);
@@ -258,9 +247,10 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        private bool TryAddIngredientFrom(ItemSlot slot, IPlayer byPlayer = null)
+        private bool TryAddIngredientFrom(ItemSlot slot, IPlayer? byPlayer = null)
         {
-            var pieProps = slot.Itemstack.ItemAttributes?["inPieProperties"]?.AsObject<InPieProperties>(null, slot.Itemstack.Collectible.Code.Domain);
+            var capi = Api as ICoreClientAPI;
+            var pieProps = slot.Itemstack?.ItemAttributes?["inPieProperties"]?.AsObject<InPieProperties?>(null, slot.Itemstack.Collectible.Code.Domain);
             if (pieProps == null)
             {
                 if (byPlayer != null && capi != null) capi.TriggerIngameError(this, "notpieable", Lang.Get("This item can not be added to pies"));
@@ -273,10 +263,9 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            var pieBlock = (inv[0].Itemstack.Block as BlockPie);
-            if (pieBlock == null) return false;
+            if (inv[0].Itemstack?.Block is not BlockPie pieBlock) return false;
 
-            ItemStack[] cStacks = pieBlock.GetContents(Api.World, inv[0].Itemstack);
+            ItemStack?[] cStacks = pieBlock.GetContents(Api.World, inv[0].Itemstack);
 
             bool isFull = cStacks[1] != null && cStacks[2] != null && cStacks[3] != null && cStacks[4] != null;
             bool hasFilling = cStacks[1] != null || cStacks[2] != null || cStacks[3] != null || cStacks[4] != null;
@@ -291,8 +280,8 @@ namespace Vintagestory.GameContent
                         pieBlock.SetContents(inv[0].Itemstack, cStacks);
                     } else
                     {
-                        ItemStack stack = inv[0].Itemstack;
-                        stack.Attributes.SetInt("topCrustType", (stack.Attributes.GetAsInt("topCrustType") + 1) % 3);
+                        ItemStack? stack = inv[0].Itemstack;
+                        stack = BlockPie.CycleTopCrustType(stack);
                     }
                     return true;
                 }
@@ -314,11 +303,11 @@ namespace Vintagestory.GameContent
                 return true;
             }
 
-            var foodCats = cStacks.Select(stack => stack?.Collectible.NutritionProps?.FoodCategory ?? stack?.ItemAttributes?["nutritionPropsWhenInMeal"]?.AsObject<FoodNutritionProperties>()?.FoodCategory ?? EnumFoodCategory.Vegetable).ToArray();
-            var stackprops = cStacks.Select(stack => stack?.ItemAttributes["inPieProperties"]?.AsObject<InPieProperties>(null, stack.Collectible.Code.Domain)).ToArray();
+            var foodCats = cStacks.Select(BlockPie.FillingFoodCategory).ToArray();
+            var stackprops = cStacks.Select(stack => stack?.ItemAttributes?["inPieProperties"]?.AsObject<InPieProperties?>(null, stack.Collectible.Code.Domain)).ToArray();
 
-            ItemStack cstack = slot.Itemstack;
-            EnumFoodCategory foodCat = slot.Itemstack?.Collectible.NutritionProps?.FoodCategory ?? slot.Itemstack?.ItemAttributes?["nutritionPropsWhenInMeal"]?.AsObject<FoodNutritionProperties>()?.FoodCategory ?? EnumFoodCategory.Vegetable;
+            ItemStack? cstack = slot.Itemstack;
+            EnumFoodCategory foodCat = BlockPie.FillingFoodCategory(slot.Itemstack);
 
             bool equal = true;
             bool foodCatEquals = true;
@@ -349,7 +338,7 @@ namespace Vintagestory.GameContent
                 return false;
             } else
             {
-                if (!stackprops[1].AllowMixing)
+                if (stackprops[1]?.AllowMixing == false)
                 {
                     if (byPlayer != null && capi != null) capi.TriggerIngameError(this, "piefullfilling", Lang.Get("You really want to mix these to ingredients?! That would taste horrible!"));
                     return false;
@@ -371,7 +360,7 @@ namespace Vintagestory.GameContent
         void loadMesh()
         {
             if (Api == null || Api.Side == EnumAppSide.Server || inv[0].Empty) return;
-            mesh = ms.GetPieMesh(inv[0].Itemstack);
+            mesh = ms!.GetPieMesh(inv[0].Itemstack);
         }
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
@@ -399,7 +388,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void OnBlockBroken(IPlayer byPlayer = null)
+        public override void OnBlockBroken(IPlayer? byPlayer = null)
         {
             //base.OnBlockBroken(); - dont drop inventory contents, the GetDrops() method already handles pie dropping
         }

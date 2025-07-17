@@ -7,6 +7,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockEntityCrock : BlockEntityContainer, IBlockEntityMealContainer
@@ -77,10 +79,9 @@ namespace Vintagestory.GameContent
         public static MeshData GetMesh(ITesselatorAPI tesselator, ICoreAPI api, BlockCrock block, ItemStack[] stacks, string recipeCode, Vec3f rot)
         {
             Dictionary<string, MeshData> meshes = ObjectCacheUtil.GetOrCreate(api, "blockCrockMeshes", () => new Dictionary<string, MeshData>());
-            MeshData mesh = null;
-            
-            
-            
+
+
+
             AssetLocation labelLoc = block.LabelForContents(recipeCode, stacks);
 
             if (labelLoc == null)
@@ -89,7 +90,7 @@ namespace Vintagestory.GameContent
             }
 
             string key = labelLoc.ToShortString() + block.Code.ToShortString() + "/" + rot.Y + "/" + rot.X + "/" + rot.Z;
-            if (meshes.TryGetValue(key, out mesh))
+            if (meshes.TryGetValue(key, out MeshData mesh))
             {
                 return mesh;
             }

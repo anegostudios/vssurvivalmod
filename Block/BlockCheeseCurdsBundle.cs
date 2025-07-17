@@ -4,6 +4,8 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockCheeseCurdsBundle : Block
@@ -93,8 +95,7 @@ namespace Vintagestory.GameContent
             {
                 Shape shape = GetShape(state);
                 ICoreClientAPI capi = api as ICoreClientAPI;
-                MeshData mesh;
-                capi.Tesselator.TesselateShape(this, shape, out mesh, new Vec3f(0, angle * GameMath.RAD2DEG, 0));
+                capi.Tesselator.TesselateShape(this, shape, out MeshData mesh, new Vec3f(0, angle * GameMath.RAD2DEG, 0));
 
                 meshes[key] = mesh;
             }
@@ -157,9 +158,20 @@ namespace Vintagestory.GameContent
             }
 
             if (beccb.State == EnumCurdsBundleState.BundledStick && beccb.Squuezed)
-            {
+            {              
                 beccb.State = EnumCurdsBundleState.Opened;
                 api.World.PlaySoundAt(Sounds.Place, blockSel.Position, -0.5, byPlayer);
+
+                ItemStack stick = new ItemStack(api.World.GetItem(new AssetLocation("stick")));
+                if (!byPlayer.InventoryManager.TryGiveItemstack(stick, true))
+                {
+                    api.World.SpawnItemEntity(stick, byPlayer.Entity.Pos.XYZ.Add(0, 0.5, 0));
+                }
+                api.World.Logger.Audit("{0} Took 1x{1} at {2}.",
+                    byPlayer.PlayerName,
+                    stick.Collectible.Code,
+                    blockSel.Position
+                );
                 return true;
             }
 

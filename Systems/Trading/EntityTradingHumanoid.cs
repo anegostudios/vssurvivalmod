@@ -11,17 +11,21 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class EntityTradingHumanoid : EntityDressedHumanoid {
+        public const int PlayerStoppedInteracting = 1212;
+
         public InventoryTrader Inventory;
         public TradeProperties TradeProps;
-        public EntityPlayer tradingWithPlayer;
+        public List<EntityPlayer> interactingWithPlayer = new List<EntityPlayer>();
         protected GuiDialog dlg;
         protected int tickCount = 0;
         protected double doubleRefreshIntervalDays = 7;
 
-        EntityBehaviorConversable ConversableBh => GetBehavior<EntityBehaviorConversable>();
+        protected EntityBehaviorConversable ConversableBh => GetBehavior<EntityBehaviorConversable>();
 
         public virtual EntityTalkUtil TalkUtil { get; }
 
@@ -113,7 +117,7 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                World.Logger.Warning("Trader TradeProps not set during trader entity spawn. Won't have any items for sale/purchase.");
+                //World.Logger.Warning("Trader TradeProps not set during trader entity spawn. Won't have any items for sale/purchase.");
             }
         }
 
@@ -139,10 +143,10 @@ namespace Vintagestory.GameContent
         protected void setupTaskBlocker()
         {
             var taskAi = GetBehavior<EntityBehaviorTaskAI>();
-            if (taskAi != null) taskAi.TaskManager.OnShouldExecuteTask += (task) => tradingWithPlayer == null;
+            if (taskAi != null) taskAi.TaskManager.OnShouldExecuteTask += (task) => interactingWithPlayer.Count == 0;
 
             var actAi = GetBehavior<EntityBehaviorActivityDriven>();
-            if (actAi != null) actAi.OnShouldRunActivitySystem += () => tradingWithPlayer == null;
+            if (actAi != null) actAi.OnShouldRunActivitySystem += () => interactingWithPlayer.Count > 0 ? EnumInteruptionType.TradeRequested : EnumInteruptionType.None;
         }
 
         protected void RefreshBuyingSellingInventory(float refreshChance = 1.1f)
@@ -259,14 +263,22 @@ namespace Vintagestory.GameContent
         }
 
 
-        protected int Dialog_DialogTriggers(EntityAgent triggeringEntity, string value, JsonObject data)
+        protected virtual int Dialog_DialogTriggers(EntityAgent triggeringEntity, string value, JsonObject data)
         {
             if (value == "opentrade")
             {
-                ConversableBh.Dialog?.TryClose();
-                TryOpenTradeDialog(triggeringEntity);
-                tradingWithPlayer = triggeringEntity as EntityPlayer;
-                return 0;
+                if (Alive && triggeringEntity.Pos.SquareDistanceTo(this.Pos) <= 7) {
+                    ConversableBh.Dialog?.TryClose();
+                    TryOpenTradeDialog(triggeringEntity);
+                    interactingWithPlayer.Add(triggeringEntity as EntityPlayer);
+                } else
+                {
+                    if (World.Side == EnumAppSide.Server) {
+                        var plr = (triggeringEntity as EntityPlayer).Player as IServerPlayer;
+                        (Api as ICoreServerAPI).Network.SendEntityPacket(plr, this.EntityId, PlayerStoppedInteracting);
+                    }
+                    return 0;
+                }
             }
 
             return -1;
@@ -274,35 +286,33 @@ namespace Vintagestory.GameContent
 
         void TryOpenTradeDialog(EntityAgent forEntity)
         {
-            if (!Alive) return;
-            if (World.Side == EnumAppSide.Client)
+            if (World.Side != EnumAppSide.Client) return;
+            
+            EntityPlayer entityplr = forEntity as EntityPlayer;
+            IPlayer player = World.PlayerByUid(entityplr.PlayerUID);
+
+            ICoreClientAPI capi = (ICoreClientAPI)Api;
+
+            if (dlg?.IsOpened() != true)
             {
-                EntityPlayer entityplr = forEntity as EntityPlayer;
-                IPlayer player = World.PlayerByUid(entityplr.PlayerUID);
-
-                ICoreClientAPI capi = (ICoreClientAPI)Api;
-
-                if (forEntity.Pos.SquareDistanceTo(this.Pos) <= 5 && dlg?.IsOpened() != true)
+                // Will break all kinds of things if we allow multiple concurrent of these dialogs
+                if (capi.Gui.OpenedGuis.FirstOrDefault(dlg => dlg is GuiDialogTrader && dlg.IsOpened()) == null)
                 {
-                    // Will break all kinds of things if we allow multiple concurrent of these dialogs
-                    if (capi.Gui.OpenedGuis.FirstOrDefault(dlg => dlg is GuiDialogTrader && dlg.IsOpened()) == null)
-                    {
-                        capi.Network.SendEntityPacket(this.EntityId, 1001);
-                        player.InventoryManager.OpenInventory(Inventory);
+                    capi.Network.SendEntityPacket(this.EntityId, 1001);
+                    player.InventoryManager.OpenInventory(Inventory);
 
-                        dlg = new GuiDialogTrader(Inventory, this, World.Api as ICoreClientAPI);
-                        dlg.TryOpen();
-                    }
-                    else
-                    {
-                        capi.TriggerIngameError(this, "onlyonedialog", Lang.Get("Can only trade with one trader at a time"));
-                    }
+                    dlg = new GuiDialogTrader(Inventory, this, World.Api as ICoreClientAPI);
+                    dlg.TryOpen();
                 }
                 else
                 {
-                    // Ensure inventory promptly closed server-side if the client didn't open the GUI
-                    capi.Network.SendPacketClient(capi.World.Player.InventoryManager.CloseInventory(Inventory));
+                    capi.TriggerIngameError(this, "onlyonedialog", Lang.Get("Can only trade with one trader at a time"));
                 }
+            }
+            else
+            {
+                // Ensure inventory promptly closed server-side if the client didn't open the GUI
+                capi.World.Player.InventoryManager.CloseInventoryAndSync(Inventory);
             }
         }
 
@@ -342,6 +352,13 @@ namespace Vintagestory.GameContent
         {
             base.OnReceivedServerPacket(packetid, data);
 
+            if (packetid == PlayerStoppedInteracting)
+            {
+                dlg?.TryClose();
+                interactingWithPlayer.Remove((Api as ICoreClientAPI).World.Player.Entity);
+                (Api as ICoreClientAPI).World.Player.InventoryManager.CloseInventoryAndSync(Inventory);
+            }
+
             if (packetid == 1234)
             {
                 TreeAttribute tree = new TreeAttribute();
@@ -368,7 +385,7 @@ namespace Vintagestory.GameContent
                     double lastRefreshTotalDays = WatchedAttributes.GetDouble("lastRefreshTotalDays", World.Calendar.TotalDays - 10);
                     int maxRefreshes = 10;
 
-                    while (World.Calendar.TotalDays - lastRefreshTotalDays > doubleRefreshIntervalDays && tradingWithPlayer == null && maxRefreshes-- > 0)
+                    while (World.Calendar.TotalDays - lastRefreshTotalDays > doubleRefreshIntervalDays && interactingWithPlayer.Count == 0 && maxRefreshes-- > 0)
                     {
                         int traderAssets = Inventory.GetTraderAssets();
                         double giveRel = 0.07 + World.Rand.NextDouble() * 0.21;
@@ -393,11 +410,24 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (tradingWithPlayer != null && (tradingWithPlayer.Pos.SquareDistanceTo(Pos) > 5 || Inventory.openedByPlayerGUIds.Count == 0 || !Alive))
+            if (interactingWithPlayer.Count > 0)
             {
-                dlg?.TryClose();
-                IPlayer tradingPlayer = tradingWithPlayer?.Player;
-                if (tradingPlayer != null) Inventory.Close(tradingPlayer);
+                for (int i = 0; i < interactingWithPlayer.Count; i++)
+                {
+                    var eplr = interactingWithPlayer[i];
+
+                    if (!Alive || eplr.Pos.SquareDistanceTo(Pos) > 5)
+                    {
+                        interactingWithPlayer.Remove(eplr);
+                        Inventory.Close(eplr.Player);
+                        i--;
+                    }
+                }
+
+                if (Api is ICoreClientAPI capi && !interactingWithPlayer.Contains(capi.World.Player.Entity))
+                {
+                    dlg?.TryClose();
+                }
             }
         }
 

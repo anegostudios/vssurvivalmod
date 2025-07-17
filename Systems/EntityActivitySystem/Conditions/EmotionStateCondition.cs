@@ -3,6 +3,8 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     [JsonObject(MemberSerialization.OptIn)]
@@ -36,6 +38,17 @@ namespace Vintagestory.GameContent
 
         public bool ConditionSatisfied(Entity e)
         {
+            if (emotionState.Contains(","))
+            {
+                var states = emotionState.Split(',');
+                foreach (var state in states)
+                {
+                    if (e.GetBehavior<EntityBehaviorEmotionStates>().IsInEmotionState(emotionState)) return true;
+                }
+
+                return false;
+            }
+
             return e.GetBehavior<EntityBehaviorEmotionStates>().IsInEmotionState(emotionState);
         }
 

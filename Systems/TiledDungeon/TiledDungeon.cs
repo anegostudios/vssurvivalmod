@@ -3,6 +3,8 @@ using Newtonsoft.Json;
 using Vintagestory.API.Common;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.ServerMods
 {
     public class TiledDungeon

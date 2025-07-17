@@ -1,16 +1,29 @@
 using System.Collections.Generic;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent;
 
-public class BehaviorElevatorControl : BlockBehavior
+/// <summary>
+/// Used in combination with the "BEBehaviorElevatorControl" to create an elevator.
+/// Uses the code "ElevatorControl", and has no properties.
+/// </summary>
+/// <example><code lang="json">
+///"behaviors": [
+///	{ "name": "ElevatorControl" }
+///],
+/// </code></example>
+[DocumentAsJson]
+public class BlockBehaviorElevatorControl : BlockBehavior
 {
     private ICoreAPI api;
     private SimpleParticleProperties particleProperties;
 
-    public BehaviorElevatorControl(Block block) : base(block)
+    public BlockBehaviorElevatorControl(Block block) : base(block)
     {
     }
 
@@ -21,7 +34,6 @@ public class BehaviorElevatorControl : BlockBehavior
             this.api = api;
             particleProperties = new SimpleParticleProperties()
             {
-                // AddPos = new Vec3d(0, 0.1f, 0),
                 MinQuantity = 3,
                 OpacityEvolve = EvolvingNatFloat.create(EnumTransformFunction.LINEAR, -75),
                 ParticleModel = EnumParticleModel.Quad,
@@ -73,36 +85,23 @@ public class BehaviorElevatorControl : BlockBehavior
     public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer,
         ref EnumHandling handling)
     {
-        var beBehaviorElevatorControl = block.GetBEBehavior<BEBehaviorElevatorControl>(selection.Position);
-        if (beBehaviorElevatorControl?.EnableElevator == true)
+        var isCreative = forPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative;
+        var interactions = new List<WorldInteraction>();
+        if (isCreative)
         {
-            var isCreative = forPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative;
-            var interactions = new List<WorldInteraction>();
-            if (isCreative)
-            {
-                interactions.Add(new WorldInteraction()
-                {
-                    ActionLangCode = "elevator-disable",
-                    MouseButton = EnumMouseButton.Right,
-                    HotKeyCode = "sneak"
-                });
-            }
-
             interactions.Add(new WorldInteraction()
             {
-                ActionLangCode = "elevator-enable",
-                MouseButton = EnumMouseButton.Right
+                ActionLangCode = "elevator-reset",
+                MouseButton = EnumMouseButton.Right,
+                HotKeyCode = "sneak"
             });
-            return interactions.ToArray();
         }
 
-        return new WorldInteraction[]
+        interactions.Add(new WorldInteraction()
         {
-            new WorldInteraction()
-            {
-                ActionLangCode = "elevator-call",
-                MouseButton = EnumMouseButton.Right
-            }
-        };
+            ActionLangCode = "elevator-call",
+            MouseButton = EnumMouseButton.Right
+        });
+        return interactions.ToArray();
     }
 }

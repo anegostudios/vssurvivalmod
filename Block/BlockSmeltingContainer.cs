@@ -4,6 +4,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class BlockSmeltingContainer : Block
@@ -94,7 +96,7 @@ namespace Vintagestory.GameContent
 
             AlloyRecipe alloy = GetMatchingAlloy(world, stacks);
 
-            Block block = world.GetBlock(CodeWithPath(FirstCodePart() + "-smelted"));
+            Block block = world.GetBlock(CodeWithVariant("type", "smelted"));
             ItemStack outputStack = new ItemStack(block);
 
             if (alloy != null)
@@ -121,7 +123,7 @@ namespace Vintagestory.GameContent
 
             if (match != null)
             {
-                ((BlockSmeltedContainer)block).SetContents(outputStack, match.output, (int)(match.stackSize * 100));
+                ((BlockSmeltedContainer)block).SetContents(outputStack, match.output, (int)Math.Round(match.stackSize * 100, 0));
                 outputStack.Collectible.SetTemperature(world, outputStack, GetIngredientsTemperature(world, stacks));
                 outputSlot.Itemstack = outputStack;
                 inputSlot.Itemstack = null;
@@ -156,13 +158,13 @@ namespace Vintagestory.GameContent
                 if (alloy != null)
                 {
                     double quantity = alloy.GetTotalOutputQuantity(stacks);
-                    return Lang.Get("Will create {0} units of {1}", (int)Math.Round(quantity * 100, 4), GetMetal(alloy.Output.ResolvedItemstack));
+                    return Lang.Get("Will create {0} units of {1}", (int)Math.Round(quantity * 100, 0), GetMetal(alloy.Output.ResolvedItemstack));
                 }
 
                 MatchedSmeltableStack match = GetSingleSmeltableStack(stacks);
                 if (match != null)
                 {
-                    return Lang.Get("Will create {0} units of {1}", (int)Math.Round(match.stackSize * 100, 4), GetMetal(match.output));
+                    return Lang.Get("Will create {0} units of {1}", (int)Math.Round(match.stackSize * 100, 0), GetMetal(match.output));
                 }
 
                 return null;

@@ -2,6 +2,8 @@ using System;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent;
 
 public class BlockCrowfoot : BlockSeaweed
@@ -22,7 +24,7 @@ public class BlockCrowfoot : BlockSeaweed
     {
         var belowPos = pos.DownCopy();
         var height = attributes?.Height ?? NatFloat.createGauss(2, 2);
-        var flowChance = attributes?.FlowerChance ?? 0.7f;
+        var flowChance = attributes != null && attributes.FlowerChance != -1 ? attributes.FlowerChance : 0.7f;
 
         Block block;
 

@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Linq;
+﻿using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -10,29 +9,33 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityBookshelf : BlockEntityDisplay, IRotatable
+    public class BlockEntityBookshelf : BlockEntityDisplay
     {
         public override InventoryBase Inventory => inv;
         public override string InventoryClassName => "bookshelf";
         public override string AttributeTransformCode => "onshelfTransform";
 
-        public float MeshAngleRad { get; set; }
+        public float MeshAngleRad
+        {
+            get => bh?.MeshAngleY ?? 0;
+            set => bh!.MeshAngleY = value;
+        }
 
         InventoryGeneric inv;
-        Block block;
-        MeshData mesh;
+        Block block = null!;
+        MeshData? mesh;
 
-        string type, material;
-        float[] mat;
+        float[]? mat;
+        private BEBehaviorShapeMaterialFromAttributes? bh;
 
-        public string Type => type;
-        public string Material => material;
+        public string? Type => bh?.Type;
+        public string? Material => bh?.Material;
 
-        public int[] UsableSlots {
+        public int[]? UsableSlots {
             get {
                 var bs = block as BlockBookshelf;
-                if (bs == null) return new int[0];
-                bs.UsableSlots.TryGetValue(type, out var slots);
+                if (bs == null) return System.Array.Empty<int>();
+                bs.UsableSlots.TryGetValue(Type!, out var slots);
                 return slots;
             }
         }
@@ -44,17 +47,17 @@ namespace Vintagestory.GameContent
 
         void initShelf()
         {
-            if (Api == null || type == null || Block is not BlockBookshelf bookshelf) return;
+            if (Api == null || Type == null || Block is not BlockBookshelf bookshelf) return;
 
             if (Api.Side == EnumAppSide.Client)
             {
-                mesh = bookshelf.GetOrCreateMesh(type, material);
+                mesh = bookshelf.GetOrCreateMesh(Type, Material!);
                 mat = Matrixf.Create().Translate(0.5f, 0.5f, 0.5f).RotateY(MeshAngleRad).Translate(-0.5f, -0.5f, -0.5f).Values;
             }
 
-            if (!bookshelf.UsableSlots.ContainsKey(type))
+            if (!bookshelf.UsableSlots.ContainsKey(Type))
             {
-                type = bookshelf.UsableSlots.First().Key;
+                bh!.Type = bookshelf.UsableSlots.First().Key;
             }
 
             var usableslots = UsableSlots;
@@ -69,21 +72,19 @@ namespace Vintagestory.GameContent
 
         public override void Initialize(ICoreAPI api)
         {
+            bh = GetBehavior<BEBehaviorShapeMaterialFromAttributes>();
             block = api.World.BlockAccessor.GetBlock(Pos);
             base.Initialize(api);
 
-            if (mesh == null && type != null)
+            if (mesh == null && Type != null)
             {
                 initShelf();
             }
         }
 
-        public override void OnBlockPlaced(ItemStack byItemStack = null)
+        public override void OnBlockPlaced(ItemStack? byItemStack = null)
         {
             base.OnBlockPlaced(byItemStack);
-
-            type ??= byItemStack?.Attributes.GetString("type");
-            material ??= byItemStack?.Attributes.GetString("material");
 
             initShelf();
         }
@@ -92,8 +93,8 @@ namespace Vintagestory.GameContent
         {
             ItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
-            CollectibleObject colObj = slot.Itemstack?.Collectible;
-            bool shelvable = colObj?.Attributes != null && colObj.Attributes["bookshelveable"].AsBool(false) == true;
+            CollectibleObject? colObj = slot.Itemstack?.Collectible;
+            bool shelvable = colObj?.Attributes != null && colObj.Attributes["bookshelveable"].AsBool();
 
             if (slot.Empty || !shelvable)
             {
@@ -103,26 +104,22 @@ namespace Vintagestory.GameContent
                 }
                 return false;
             }
-            else
+
+            if (shelvable)
             {
-                if (shelvable)
+                AssetLocation? sound = slot.Itemstack?.Block?.Sounds?.Place;
+
+                if (TryPut(slot, blockSel))
                 {
-                    AssetLocation sound = slot.Itemstack?.Block?.Sounds?.Place;
-
-                    if (TryPut(slot, blockSel))
-                    {
-                        Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
-                        var blockSelSelectionBoxIndex = blockSel.SelectionBoxIndex - 5;
-                        Api.World.Logger.Audit("{0} Put 1x{1} into Bookshelf slotid {2} at {3}.",
-                            byPlayer.PlayerName,
-                            inv[blockSelSelectionBoxIndex].Itemstack.Collectible.Code,
-                            blockSelSelectionBoxIndex,
-                            Pos
-                        );
-                        return true;
-                    }
-
-                    return false;
+                    Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
+                    var blockSelSelectionBoxIndex = blockSel.SelectionBoxIndex - 5;
+                    Api.World.Logger.Audit("{0} Put 1x{1} into Bookshelf slotid {2} at {3}.",
+                        byPlayer.PlayerName,
+                        inv[blockSelSelectionBoxIndex].Itemstack.Collectible.Code,
+                        blockSelSelectionBoxIndex,
+                        Pos
+                    );
+                    return true;
                 }
             }
 
@@ -161,7 +158,7 @@ namespace Vintagestory.GameContent
                 ItemStack stack = inv[index].TakeOut(1);
                 if (byPlayer.InventoryManager.TryGiveItemstack(stack))
                 {
-                    AssetLocation sound = stack.Block?.Sounds?.Place;
+                    AssetLocation? sound = stack.Block?.Sounds?.Place;
                     Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
                 }
                 Api.World.Logger.Audit("{0} Took 1x{1} from Bookshelf slotid {2} at {3}.",
@@ -210,38 +207,15 @@ namespace Vintagestory.GameContent
             return tfMatrices;
         }
 
-
-        public override void ToTreeAttributes(ITreeAttribute tree)
-        {
-            base.ToTreeAttributes(tree);
-
-            tree.SetString("type", type);
-            tree.SetString("material", material);
-            tree.SetFloat("meshAngleRad", MeshAngleRad);
-        }
-
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
             base.FromTreeAttributes(tree, worldForResolving);
-
-            type = tree.GetString("type");
-            material = tree.GetString("material");
-            MeshAngleRad = tree.GetFloat("meshAngleRad");
 
             initShelf();
 
             // Do this last!!!
             RedrawAfterReceivingTreeAttributes(worldForResolving);     // Redraw on client after we have completed receiving the update from server
         }
-
-
-        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
-        {
-            mesher.AddMeshData(mesh, mat);
-            base.OnTesselation(mesher, tessThreadTesselator);
-            return true;
-        }
-
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
         {
@@ -268,14 +242,6 @@ namespace Vintagestory.GameContent
             {
                 sb.AppendLine(slot.Itemstack.GetName());
             }
-        }
-
-        public void OnTransformed(IWorldAccessor worldAccessor, ITreeAttribute tree, int degreeRotation,
-            Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, EnumAxis? flipAxis)
-        {
-            MeshAngleRad = tree.GetFloat("meshAngleRad");
-            MeshAngleRad -= degreeRotation * GameMath.DEG2RAD;
-            tree.SetFloat("meshAngleRad", MeshAngleRad);
         }
     }
 }

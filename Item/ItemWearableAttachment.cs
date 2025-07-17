@@ -7,6 +7,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
     public class ItemWearableAttachment : Item, IContainedMeshSource, ITexPositionSource
@@ -22,11 +24,11 @@ namespace Vintagestory.GameContent
         public override void OnUnloaded(ICoreAPI api)
         {
             var meshRefs = ObjectCacheUtil.TryGet<Dictionary<string, MultiTextureMeshRef>>(api, "wearableAttachmentMeshRefs");
-            if (meshRefs?.Count > 0)
+            if (meshRefs != null && meshRefs.Count > 0)
             {
-                foreach (var (_, meshRef) in meshRefs)
+                foreach (var meshRef in meshRefs.Values)
                 {
-                    meshRef.Dispose();
+                    meshRef?.Dispose();
                 }
                 ObjectCacheUtil.Delete(api, "wearableAttachmentMeshRefs");
             }
@@ -44,10 +46,9 @@ namespace Vintagestory.GameContent
             get
             {
                 AssetLocation texturePath = null;
-                CompositeTexture tex;
 
                 // Prio 1: Get from collectible textures
-                if (Textures.TryGetValue(textureCode, out tex))
+                if (Textures.TryGetValue(textureCode, out CompositeTexture tex))
                 {
                     texturePath = tex.Baked.BakedName;
                 }
@@ -157,7 +158,7 @@ namespace Vintagestory.GameContent
                 newShape = new Shape()
                 {
                     Elements = entityShape.CloneElements(),
-                    Animations = entityShape.Animations,
+                    Animations = entityShape.CloneAnimations(),
                     AnimationsByCrc32 = entityShape.AnimationsByCrc32,
                     JointsById = entityShape.JointsById,
                     TextureWidth = entityShape.TextureWidth,

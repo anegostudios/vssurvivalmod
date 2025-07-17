@@ -3,8 +3,10 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 using Vintagestory.Client.NoObf;
-using Vintagestory.GameContent;
+
+#nullable disable
 
 namespace Vintagestory.API.Common;
 
@@ -19,8 +21,15 @@ public class EntityBehaviorPassivePhysicsMultiBox : EntityBehaviorPassivePhysics
 
     public EntityBehaviorPassivePhysicsMultiBox(Entity entity) : base(entity)
     {
-        mcollisionTester ??= new MultiCollisionTester();
+        mcollisionTester ??= new MultiCollisionTester();   // Required on clientside
     }
+
+    public static void InitServer(ICoreServerAPI sapi)
+    {
+        mcollisionTester = new MultiCollisionTester();
+        sapi.Event.PhysicsThreadStart += () => mcollisionTester = new MultiCollisionTester();
+    }
+
 
     public double RenderOrder => 0.5;
     public int RenderRange => 99;
@@ -148,14 +157,6 @@ public class EntityBehaviorPassivePhysicsMultiBox : EntityBehaviorPassivePhysics
             }
         }
     }
-
-    private void revert(float dtFac, EntityPos prevPos)
-    {
-        entity.SidedPos.SetPos(prevPos.XYZ);
-        AdjustCollisionBoxesToYaw(dtFac, false, prevPos.Yaw);
-    }
-
-
 
 
     private bool PushoutOfCollisionbox(float dt, Cuboidd collBox)

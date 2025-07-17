@@ -5,6 +5,8 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
+#nullable disable
+
 namespace Vintagestory.GameContent.Mechanics
 {
     public class MechPowerPath {
@@ -414,8 +416,7 @@ namespace Vintagestory.GameContent.Mechanics
                     SetPropagationDirection(new MechPowerPath(powerOutFacing, 1));
                 }
 
-                Vec3i missingChunkPos;
-                bool chunksLoaded = spreadTo(Api, newNetwork, neibPos, new MechPowerPath(GetPropagationDirection(), this.gearedRatio), out missingChunkPos);
+                bool chunksLoaded = spreadTo(Api, newNetwork, neibPos, new MechPowerPath(GetPropagationDirection(), this.gearedRatio), out Vec3i missingChunkPos);
                 if (network == null)
                 {
                     if (DEBUG) Api.Logger.Notification("Incomplete chunkloading, possible issues with mechanical network around block " + neibPos);

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -8,13 +9,17 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
+#nullable disable
+
 namespace Vintagestory.GameContent
 {
-    public class BlockSmeltedContainer : Block
+    public class BlockSmeltedContainer : Block, IGroundStoredParticleEmitter
     {
         public static SimpleParticleProperties smokeHeld;
         public static SimpleParticleProperties smokePouring;
         public static SimpleParticleProperties bigMetalSparks;
+
+        Vec3d gsSmokePos = new Vec3d(0.45, 0.44, 0.45);
 
         static BlockSmeltedContainer()
         {
@@ -61,41 +66,16 @@ namespace Vintagestory.GameContent
             bigMetalSparks.VertexFlags = 128;
         }
 
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+
+            gsSmokePos.Y = CollisionBoxes.FirstOrDefault().MaxY;
+        }
+
         public override string GetHeldTpUseAnimation(ItemSlot activeHotbarSlot, Entity forEntity)
         {
             return "pour";
-        }
-
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
-        {
-            return base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref failureCode);
-            /*(if (!byPlayer.Entity.Controls.Sneak || world.BlockAccessor.GetBlockEntity(blockSel.Position.DownCopy()) is ILiquidMetalSink)
-            {
-                failureCode = "__ignore__";
-                return false;
-            }
-
-            if (!CanPlaceBlock(world, byPlayer, blockSel, ref failureCode)) return false;
-
-            if (world.BlockAccessor.GetBlock(blockSel.Position.DownCopy()).CanAttachBlockAt(world.BlockAccessor, this, blockSel.Position, BlockFacing.UP))
-            {
-                DoPlaceBlock(world, byPlayer, blockSel, itemstack);
-
-                BlockEntity be = world.BlockAccessor.GetBlockEntity(blockSel.Position);
-                if (be is BlockEntitySmeltedContainer)
-                {
-                    BlockEntitySmeltedContainer belmc = (BlockEntitySmeltedContainer)be;
-                    KeyValuePair<ItemStack, int> contents = GetContents(world, itemstack);
-                    contents.Key.Collectible.SetTemperature(world, contents.Key, GetTemperature(world, itemstack));
-                    belmc.contents = contents.Key.Clone();
-                    belmc.units = contents.Value;
-                }
-                return true;
-            }
-
-            failureCode = "requiresolidground";
-
-            return false;*/
         }
 
 
@@ -193,20 +173,6 @@ namespace Vintagestory.GameContent
             EntityPlayer eplr = byEntity as EntityPlayer;
             var player = eplr.Player;
 
-            if (byEntity.World is IClientWorldAccessor)
-            {
-                ModelTransform tf = new ModelTransform();
-                tf.EnsureDefaultValues();
-
-                tf.Origin.Set(0.5f, 0.2f, 0.5f);
-                tf.Translation.Set(0, 0, -Math.Min(0.25f, speed * secondsUsed / 4));
-                tf.Scale = 1f + Math.Min(0.25f, speed * secondsUsed / 4);
-                tf.Rotation.X = Math.Max(-110, -secondsUsed * 90 * speed);
-                byEntity.Controls.UsingHeldItemTransformBefore = tf;
-
-                
-            }
-
             if (secondsUsed > 1 / speed)
             {
                 if (!slot.Itemstack.Attributes.HasAttribute("nowPouringEntityId"))
@@ -294,7 +260,7 @@ namespace Vintagestory.GameContent
         {
             base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
 
-            if (target == EnumItemRenderTarget.HandTp)
+            if (target == EnumItemRenderTarget.HandTp || target == EnumItemRenderTarget.HandTpOff)
             {
                 long eid = itemstack.Attributes.GetLong("nowPouringEntityId");
                 if (eid != 0)
@@ -307,7 +273,6 @@ namespace Vintagestory.GameContent
                         SpawnPouringParticles(entity);
                     }
                 }
-
             }
         }
 
@@ -347,7 +312,7 @@ namespace Vintagestory.GameContent
                 bigMetalSparks.Bounciness = 0.6f;
                 bigMetalSparks.MinQuantity = 1;
                 bigMetalSparks.AddQuantity = 1;
-                bigMetalSparks.MinPos = new Vec3d(eplr.Pos.X + endVec[0], eplr.Pos.Y + endVec[1], eplr.Pos.Z + endVec[2]);
+                bigMetalSparks.MinPos = new Vec3d(eplr.Pos.X + endVec[0], eplr.Pos.InternalY + endVec[1], eplr.Pos.Z + endVec[2]);
                 bigMetalSparks.AddPos.Set(0, 0, 0);
                 bigMetalSparks.MinSize = 0.75f;
 
@@ -426,13 +391,14 @@ namespace Vintagestory.GameContent
             KeyValuePair<ItemStack, int> contents = GetContents(api.World, itemStack);
 
             string mat = contents.Key?.Collectible?.Variant["metal"];
+            string contentsLocalized = mat == null ? contents.Key?.GetName() : Lang.Get("material-" + mat);
 
             if (HasSolidifed(itemStack, contents.Key, api.World))
             {
-                return Lang.Get("Crucible (Contains solidified {0})", mat == null ? contents.Key?.GetName() : Lang.Get("material-" + mat));
+                return Lang.GetWithFallback("crucible-smelted-solid", "Crucible (Contains solidified {0})", contentsLocalized, base.GetHeldItemName(itemStack));
             } else
             {
-                return Lang.Get("Crucible (Contains molten {0})", mat == null ? contents.Key?.GetName() : Lang.Get("material-" + mat));
+                return Lang.GetWithFallback("crucible-smelted-molten", "Crucible (Contains molten {0})", contentsLocalized, base.GetHeldItemName(itemStack));
             }
         }
 
@@ -479,23 +445,30 @@ namespace Vintagestory.GameContent
             return ownStack.Collectible.GetTemperature(world, ownStack) < 0.9 * contentstack.Collectible.GetMeltingPoint(world, null, null);
         }
 
-        internal void SetContents(ItemStack stack, ItemStack output, int units)
+        public void SetContents(ItemStack stack, ItemStack output, int units)
         {
             stack.Attributes.SetItemstack("output", output);
             stack.Attributes.SetInt("units", units);
         }
 
-        KeyValuePair<ItemStack, int> GetContents(IWorldAccessor world, ItemStack stack)
+        public KeyValuePair<ItemStack, int> GetContents(IWorldAccessor world, ItemStack stack)
         {
             ItemStack outstack = stack.Attributes.GetItemstack("output");
-            if (outstack != null)
-            {
-                outstack.ResolveBlockOrItem(world);
-            }
-            return new KeyValuePair<ItemStack, int>(
-                outstack,
-                stack.Attributes.GetInt("units")
-            );
+            outstack?.ResolveBlockOrItem(world);
+            return new KeyValuePair<ItemStack, int>(outstack, stack.Attributes.GetInt("units"));
+        }
+
+        public virtual bool ShouldSpawnGSParticles(IWorldAccessor world, ItemStack stack)
+        {
+            var contents = GetContents(world, stack).Key;
+
+            return contents != null && !HasSolidifed(stack, contents, world) && world.Rand.NextDouble() <= 0.05;
+        }
+
+        public virtual void DoSpawnGSParticles(IAsyncParticleManager manager, BlockPos pos, Vec3f offset)
+        {
+            smokeHeld.MinPos = pos.ToVec3d().AddCopy(gsSmokePos).AddCopy(offset);
+            manager.Spawn(smokeHeld);
         }
     }
 }

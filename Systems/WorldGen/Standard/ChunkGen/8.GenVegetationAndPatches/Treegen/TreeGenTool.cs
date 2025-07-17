@@ -1,10 +1,11 @@
-﻿using System;
-using System.Globalization;
+﻿using System.Globalization;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.ServerMods.WorldEdit;
+
+#nullable disable
 
 namespace Vintagestory.ServerMods
 {
@@ -18,7 +19,7 @@ namespace Vintagestory.ServerMods
 
     internal class TreeGenTool : ToolBase
     {
-        private readonly LCGRandom _rand;
+        private readonly IRandom _rand;
         private TreeGeneratorsUtil _treeGenerators;
 
         public float MinTreeSize
@@ -57,7 +58,7 @@ namespace Vintagestory.ServerMods
 
         public TreeGenTool(WorldEditWorkspace workspace, IBlockAccessorRevertable blockAccess) : base(workspace, blockAccess)
         {
-            _rand = new LCGRandom();
+            _rand = new NormalRandom();
             if (!workspace.FloatValues.ContainsKey("std.treeToolMinTreeSize")) MinTreeSize = 0.7f;
             if (!workspace.FloatValues.ContainsKey("std.treeToolMaxTreeSize")) MaxTreeSize = 1.3f;
             if (!workspace.StringValues.ContainsKey("std.treeToolTreeVariant")) TreeVariant = null;
@@ -182,7 +183,6 @@ namespace Vintagestory.ServerMods
             {
                 _treeGenerators = new TreeGeneratorsUtil(worldEdit.sapi);
             }
-            _rand.SetWorldSeed(worldEdit.sapi.World.Seed);
 
             if (TreeVariant == null)
             {
@@ -190,8 +190,6 @@ namespace Vintagestory.ServerMods
                 WorldEdit.WorldEdit.Bad(player, "Please select a tree variant first.");
                 return;
             }
-
-            blockSelection.Position.Add(blockSelection.Face.Opposite); // - prevented trees from growing o.O   - seems to work again and with this disabled trees float in the air 0.O
 
             ba.ReadFromStagedByDefault = true;
 

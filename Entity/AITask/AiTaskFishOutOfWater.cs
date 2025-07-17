@@ -1,7 +1,9 @@
-﻿using System;
+using System;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+
+#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -32,16 +34,9 @@ namespace Vintagestory.GameContent
         NatFloat wanderRangeVertical = NatFloat.createStrongerInvexp(3, 10);
 
 
-        public AiTaskFishOutOfWater(EntityAgent entity) : base(entity)
-        {
-
-        }
-
-        public override void LoadConfig(JsonObject taskConfig, JsonObject aiConfig)
+        public AiTaskFishOutOfWater(EntityAgent entity, JsonObject taskConfig, JsonObject aiConfig) : base(entity, taskConfig, aiConfig)
         {
             this.taskConfig = taskConfig;
-
-            base.LoadConfig(taskConfig, aiConfig);
 
             moveSpeed = taskConfig["movespeed"].AsFloat(0.03f);
         }
@@ -132,8 +127,12 @@ namespace Vintagestory.GameContent
         {
         }
 
-        public override bool ContinueExecute(float dt)
+        public override bool 
+            ContinueExecute(float dt)
         {
+            //Check if time is still valid for task.
+            if (!IsInValidDayTimeHours(false)) return false;
+
             if (entity.Swimming) return false;
 
             outofWaterAccum += dt;
