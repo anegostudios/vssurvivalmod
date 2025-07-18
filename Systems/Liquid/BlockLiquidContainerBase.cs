@@ -17,7 +17,9 @@ namespace Vintagestory.GameContent
     public abstract class BlockLiquidContainerBase : BlockContainer, ILiquidSource, ILiquidSink
     {
         protected float capacityLitresFromAttributes = 10;
+        protected float drinkSpeedFromAttributes = 1;
         public virtual float CapacityLitres => capacityLitresFromAttributes;
+        public virtual float DrinkSpeed => drinkSpeedFromAttributes;
         public virtual int ContainerSlotId => 0;
 
         public virtual float TransferSizeLitres => 1;
@@ -25,7 +27,7 @@ namespace Vintagestory.GameContent
         public virtual bool CanDrinkFrom => Attributes["canDrinkFrom"].AsBool() == true;
         public virtual bool IsTopOpened => Attributes["isTopOpened"].AsBool() == true;
         public virtual bool AllowHeldLiquidTransfer => Attributes["allowHeldLiquidTransfer"].AsBool() == true;
-        
+
         Dictionary<string, ItemStack[]> recipeLiquidContents = new Dictionary<string, ItemStack[]>();
 
         public override void OnHandbookRecipeRender(ICoreClientAPI capi, GridRecipe gridRecipe, ItemSlot dummyslot, double x, double y, double z, double size)
@@ -125,9 +127,22 @@ namespace Vintagestory.GameContent
                     capacityLitresFromAttributes = props.CapacityLitres;
                 }
             }
-
-            
-
+            if (Attributes?["drinkSpeed"].Exists == true)
+            {
+                drinkSpeedFromAttributes = Attributes["drinkSpeed"].AsInt(1);
+            } else
+            {
+                var props = Attributes?["drinkSpeed"]?.AsObject<LiquidTopOpenContainerProps>(null, Code.Domain);
+                if (props != null)
+                {
+                    drinkSpeedFromAttributes = props.DrinkSpeed;
+                }
+            }
+            if (drinkSpeedFromAttributes > capacityLitresFromAttributes)
+            {
+                drinkSpeedFromAttributes = capacityLitresFromAttributes;
+                api.Logger.Warning($"Drink speed {drinkSpeedFromAttributes} is greater than capacity {capacityLitresFromAttributes} for {Code}, setting drink speed to capacity.");
+            }
 
             if (api.Side != EnumAppSide.Client) return;
             ICoreClientAPI capi = api as ICoreClientAPI;
@@ -143,7 +158,7 @@ namespace Vintagestory.GameContent
                 }
 
                 var lcstacks = liquidContainerStacks.ToArray();
-                
+
 
                 return new WorldInteraction[] {
                     new WorldInteraction()
@@ -349,7 +364,7 @@ namespace Vintagestory.GameContent
             if (beContainer == null) return;
 
             new DummySlot(content).TryPutInto(api.World, beContainer.Inventory[GetContainerSlotId(pos)], content.StackSize);
-            
+
             beContainer.Inventory[GetContainerSlotId(pos)].MarkDirty();
             beContainer.MarkDirty(true);
         }
@@ -595,7 +610,7 @@ namespace Vintagestory.GameContent
 
                     return true;
                 }
-                
+
             }
 
 
@@ -735,7 +750,10 @@ namespace Vintagestory.GameContent
 
             if (byEntity.World is IServerWorldAccessor && nutriProps != null && secondsUsed >= 0.95f)
             {
-                float drinkCapLitres = 1f;
+                var containableProps = GetContainableProps(slot.Itemstack);
+                var contentsDrinkSpeed = containableProps.DrinkSpeed;
+                var minContentLitres = 1.0f / containableProps.ItemsPerLitre;
+                var drinkCapLitres = Math.Min(minContentLitres, DrinkSpeed * contentsDrinkSpeed);
 
                 float litresEach = GetCurrentLitres(slot.Itemstack);
                 float litresTotal = litresEach * slot.StackSize;
@@ -825,8 +843,8 @@ namespace Vintagestory.GameContent
 
             int moved = SplitStackAndPerformAction(byEntity, itemslot, (stack) => TryPutLiquid(stack, contentStack, CapacityLitres));
 
-            if (moved > 0) 
-            { 
+            if (moved > 0)
+            {
                 DoLiquidMovedEffects(byPlayer, contentStack, moved, EnumLiquidDirection.Fill);
             }
 
@@ -1141,7 +1159,7 @@ namespace Vintagestory.GameContent
                     base.TryMergeStacks(op);
                     return;
                 }
-                
+
                 op.MovedQuantity = 0;
                 return;
             }
@@ -1310,6 +1328,5 @@ namespace Vintagestory.GameContent
             return dsc.ToString();
         }
     }
-
 
 }
