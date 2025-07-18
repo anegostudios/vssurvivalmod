@@ -930,6 +930,7 @@ namespace Vintagestory.GameContent
             api.RegisterItemClass("ItemTreeSeed", typeof(ItemTreeSeed));
             api.RegisterItemClass("ItemDough", typeof(ItemDough));
             api.RegisterItemClass("ItemSling", typeof(ItemSling));
+            api.RegisterItemClass("ItemShieldBase", typeof(ItemShieldBase));
             api.RegisterItemClass("ItemShield", typeof(ItemShield));
 
             api.RegisterItemClass("ItemPressedMash", typeof(ItemPressedMash));
