@@ -2202,6 +2202,10 @@ namespace Vintagestory.GameContent
             {
                 AddPaddingAndRichText(storableComps, capi, "handbook-storable-shelves");
             }
+            if (stack.ItemAttributes?.IsTrue("bookshelvable") == true)
+            {
+                AddPaddingAndRichText(storableComps, capi, "handbook-storable-bookshelf");
+            }
             if (stack.ItemAttributes?.IsTrue("displaycaseable") == true)
             {
                 AddPaddingAndRichText(storableComps, capi, "handbook-storable-displaycase");
@@ -2217,6 +2221,14 @@ namespace Vintagestory.GameContent
             if (stack.ItemAttributes?["waterTightContainerProps"].Exists == true)
             {
                 AddPaddingAndRichText(storableComps, capi, "handbook-storable-barrel");
+            }
+            if (stack.ItemAttributes?.IsTrue("antlermountable") == true)
+            {
+                AddPaddingAndRichText(storableComps, capi, "handbook-storable-antlermount");
+            }
+            if (stack.ItemAttributes?.IsTrue("scrollrackable") == true)
+            {
+                AddPaddingAndRichText(storableComps, capi, "handbook-storable-scrollrack");
             }
 
             if (storableComps.Count > 0)
