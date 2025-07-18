@@ -9,6 +9,7 @@ namespace Vintagestory.GameContent
     public class LiquidTopOpenContainerProps
     {
         public float CapacityLitres = 10;
+        public float DrinkSpeed = 1;
         public float TransferSizeLitres = 0.01f;
         public AssetLocation EmptyShapeLoc;
         public AssetLocation OpaqueContentShapeLoc;
@@ -34,6 +35,7 @@ namespace Vintagestory.GameContent
         public int MaxStackSize;
         public int GlowLevel;
         public FoodNutritionProperties NutritionPropsPerLitre;
+        public float DrinkSpeed = 1;
         public FoodNutritionProperties NutritionPropsPerLitreWhenInMeal = null;
 
         public enum EnumSpilledAction { PlaceBlock, DropContents };
