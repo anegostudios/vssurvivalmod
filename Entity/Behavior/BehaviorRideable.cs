@@ -455,7 +455,7 @@ namespace Vintagestory.GameContent
                 // Toggling this off so that the next press of the sprint key will be a fresh press
                 // Need this to allow cycling up with sprint rather than just treating it as a boolean
                 // Only applies if there are more than two gaits specified for this mount
-                controls.Sprint = onlyTwoGaits && controls.Sprint;
+                controls.Sprint = onlyTwoGaits && controls.Sprint && scheme == EnumControlScheme.Hold;
 
                 // Detect if current press is a fresh press
                 bool forwardPressed = nowForwards && !prevForwardKey;
@@ -478,7 +478,8 @@ namespace Vintagestory.GameContent
                 }
 
                 // Cycle down with back or when letting go of sprint when there are only two gaits
-                if (backwardPressed && nowMs - lastGaitChangeMs > 300 || (!nowSprint && ebg.CurrentGait.IsSprint))
+                bool cycleDown = backwardPressed || (!nowSprint && ebg.CurrentGait.IsSprint && scheme == EnumControlScheme.Hold);
+                if (cycleDown && nowMs - lastGaitChangeMs > 300)
                 {
                     controls.Sprint = false;
                     SlowDown();
