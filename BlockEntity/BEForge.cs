@@ -6,6 +6,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.Client.NoObf;
 
 #nullable disable
 
@@ -39,8 +40,19 @@ namespace Vintagestory.GameContent
                 ICoreClientAPI capi = (ICoreClientAPI)api;
                 capi.Event.RegisterRenderer(renderer = new ForgeContentsRenderer(Pos, capi), EnumRenderStage.Opaque, "forge");
                 renderer.SetContents(contents, fuelLevel, burning, true);
-
                 RegisterGameTickListener(OnClientTick, 50);
+
+                // Regen mesh on transform change
+                api.Event.RegisterEventBusListener(
+                    (string _, ref EnumHandling _, IAttribute _) =>
+                        renderer.RegenMesh(), filterByEventName: "genjsontransform");
+                // Add inForgeTransform to .tfedit extra transforms
+                if (!GuiDialogTransformEditor.extraTransforms?.Any(x => x.AttributeName == "inForgeTransform") == true)
+                    GuiDialogTransformEditor.extraTransforms.Add(new TransformConfig
+                    {
+                        Title = Lang.Get("transform-inforge"),
+                        AttributeName = "inForgeTransform"
+                    });
             }
 
             RegisterGameTickListener(OnCommonTick, 200);
