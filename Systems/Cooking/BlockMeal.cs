@@ -278,7 +278,7 @@ namespace Vintagestory.GameContent
             else
             {
                 string? recipeCode = GetRecipeCode(api.World, foodSourceStack);
-                servingsLeft = Consume(byEntity.World, player, slot, stacks, servingsLeft, recipeCode == null || recipeCode == "");
+                servingsLeft = Consume(byEntity.World, player, slot, stacks, servingsLeft, string.IsNullOrEmpty(recipeCode));
             }
 
             if (servingsLeft <= 0)
