@@ -122,8 +122,8 @@ namespace Vintagestory.GameContent
             slot.Itemstack.TempAttributes.SetBool("isAnvilAction", true);
             var state = byEntity.AnimManager.GetAnimationState(anim);
 
-            byEntity.AnimManager.RegisterFrameCallback(new AnimFrameCallback() { Animation = anim, Frame = framesound, Callback = () => strikeAnvilSound(byEntity, merge) });
-            byEntity.AnimManager.RegisterFrameCallback(new AnimFrameCallback() { Animation = anim, Frame = framehitaction, Callback = () => strikeAnvil(byEntity, slot) });
+            byEntity.AnimManager.RegisterFrameCallback(new AnimFrameCallback() { Animation = anim, Frame = framesound, Callback = () => strikeAnvilSound(byEntity, merge, slot.Itemstack) });
+            byEntity.AnimManager.RegisterFrameCallback(new AnimFrameCallback() { Animation = anim, Frame = framehitaction, Callback = () => strikeAnvil(byEntity, slot, slot.Itemstack) });
         }
 
         public override bool OnHeldAttackCancel(float secondsPassed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
@@ -162,13 +162,15 @@ namespace Vintagestory.GameContent
         }
 
 
-        protected virtual void strikeAnvil(EntityAgent byEntity, ItemSlot slot)
+        protected virtual void strikeAnvil(EntityAgent byEntity, ItemSlot slot, ItemStack strikingItem)
         {
             IPlayer byPlayer = (byEntity as EntityPlayer).Player;
             if (byPlayer == null) return;
 
             var blockSel = byPlayer.CurrentBlockSelection;
             if (blockSel == null) return;
+
+            if (strikingItem != byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack) return;
 
             BlockEntity be = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position);
             if (be is BlockEntityAnvilPart bep)
@@ -191,12 +193,13 @@ namespace Vintagestory.GameContent
             slot.Itemstack?.TempAttributes.SetBool("isAnvilAction", false);
         }
 
-        protected virtual void strikeAnvilSound(EntityAgent byEntity, bool merge)
+        protected virtual void strikeAnvilSound(EntityAgent byEntity, bool merge, ItemStack strikingItem)
         {
             IPlayer byPlayer = (byEntity as EntityPlayer).Player;
             if (byPlayer == null) return;
             var blockSel = byPlayer.CurrentBlockSelection;
             if (blockSel == null) return;
+            if (strikingItem != byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack) return;
 
             byPlayer.Entity.World.PlaySoundAt(
                 merge ? new AssetLocation("sounds/effect/anvilmergehit") : new AssetLocation("sounds/effect/anvilhit"),

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -74,20 +74,20 @@ namespace Vintagestory.GameContent
             meshRef3?.Dispose();
 
             meshRef1 = tesselate(
-                new CompositeShape() { Base = new AssetLocation("entity/structure/echochamber1") }, 
-                new AssetLocation("textures/entity/echochamber/echochamber1.png"), 
+                new CompositeShape() { Base = new AssetLocation("entity/nonliving/echochamber1") }, 
+                new AssetLocation("textures/entity/nonliving/echochamber/echochamber1.png"), 
                 out echoTexture1
             );
 
             meshRef2 = tesselate(
-                new CompositeShape() { Base = new AssetLocation("entity/structure/echochamber2") },
-                new AssetLocation("textures/entity/echochamber/echochamber2.png"),
+                new CompositeShape() { Base = new AssetLocation("entity/nonliving/echochamber2") },
+                new AssetLocation("textures/entity/nonliving/echochamber/echochamber2.png"),
                 out echoTexture2
             );
 
             meshRef3 = tesselate(
-                new CompositeShape() { Base = new AssetLocation("entity/structure/echochamber3") },
-                new AssetLocation("textures/entity/echochamber/echochamber3.png"),
+                new CompositeShape() { Base = new AssetLocation("entity/nonliving/echochamber3") },
+                new AssetLocation("textures/entity/nonliving/echochamber/echochamber3.png"),
                 out echoTexture3
             );
 

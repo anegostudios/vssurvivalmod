@@ -134,6 +134,7 @@ namespace Vintagestory.GameContent
             if (currentMesh == null)
             {
                 currentMesh = getMesh(tesselator);
+                if (Sealed && Block is BlockCrock crockBlock) currentMesh.AddMeshData(crockBlock.GenSealMesh(Api as ICoreClientAPI));
                 if (currentMesh == null) return false;
             }
 

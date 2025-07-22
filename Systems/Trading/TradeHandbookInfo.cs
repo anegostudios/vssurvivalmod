@@ -1,20 +1,17 @@
 ﻿using Newtonsoft.Json.Linq;
 using System;
- using System.Linq;
+using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.Util;
-using Vintagestory.ServerMods;
-
-#nullable disable
 
 namespace Vintagestory.GameContent
 {
     public class TradeHandbookInfo : ModSystem
     {
-        ICoreClientAPI capi;
+        ICoreClientAPI capi = null!;
 
         public override double ExecuteOrder()
         {
@@ -37,10 +34,10 @@ namespace Vintagestory.GameContent
         {
             foreach (var entitytype in capi.World.EntityTypes)
             {
-                TradeProperties tradeProps = null;
+                TradeProperties? tradeProps = null;
 
                 var stringpath = entitytype.Attributes?["tradePropsFile"].AsString();
-                AssetLocation filepath=null;
+                AssetLocation? filepath = null;
 
                 if (entitytype.Attributes?["tradeProps"].Exists == true || stringpath != null)
                 {
@@ -53,7 +50,7 @@ namespace Vintagestory.GameContent
                         }
                         else
                         {
-                            tradeProps = entitytype.Attributes["tradeProps"].AsObject<TradeProperties>(null, entitytype.Code.Domain);
+                            tradeProps = entitytype.Attributes?["tradeProps"].AsObject<TradeProperties?>(null, entitytype.Code.Domain);
                         }
                     }
                     catch (Exception e)
@@ -95,15 +92,15 @@ namespace Vintagestory.GameContent
 
                 var bh = collobj.GetBehavior<CollectibleBehaviorHandbookTextAndExtraInfo>();
 
-                ExtraHandbookSection section = bh.ExtraHandBookSections?.FirstOrDefault(ele => ele.Title == title);
+                ExtraHandbookSection? section = bh.ExtraHandBookSections?.FirstOrDefault(ele => ele.Title == title);
                 if (section == null)
                 {
-                    section = new ExtraHandbookSection() { Title = title, TextParts = Array.Empty<string>() };
+                    section = new ExtraHandbookSection() { Title = title, TextParts = [] };
                     if (bh.ExtraHandBookSections != null) bh.ExtraHandBookSections.Append(section);
-                    else bh.ExtraHandBookSections = new ExtraHandbookSection[] { section };
+                    else bh.ExtraHandBookSections = [section];
                 }
 
-                section.TextParts = section.TextParts.Append(traderName);
+                if (!section.TextParts.Contains(traderName)) section.TextParts = section.TextParts.Append(traderName);
             }
         }
     }

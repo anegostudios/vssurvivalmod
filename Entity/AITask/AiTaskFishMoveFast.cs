@@ -62,7 +62,7 @@ namespace Vintagestory.GameContent
             int tries = 9;
             Vec4d bestTarget = null;
             Vec4d curTarget = new Vec4d();
-            BlockPos tmpPos = new BlockPos();
+            BlockPos tmpPos = new BlockPos(entity.ServerPos.Dimension);
 
             if (FailedConsecutivePathfinds > 10)
             {
@@ -85,13 +85,13 @@ namespace Vintagestory.GameContent
                 dz = wanderRangeHorizontal.nextFloat() * (rand.Next(2) * 2 - 1) * wRangeMul;
 
                 curTarget.X = entity.ServerPos.X + dx;
-                curTarget.Y = entity.ServerPos.Y + dy;
+                curTarget.Y = entity.ServerPos.InternalY + dy;
                 curTarget.Z = entity.ServerPos.Z + dz;
                 curTarget.W = 1;
 
                 Block block;
 
-                block = entity.World.BlockAccessor.GetBlock((int)curTarget.X, (int)curTarget.Y, (int)curTarget.Z, BlockLayersAccess.Fluid);
+                block = entity.World.BlockAccessor.GetBlockRaw((int)curTarget.X, (int)curTarget.Y, (int)curTarget.Z, BlockLayersAccess.Fluid);
                 if (!block.IsLiquid()) curTarget.W = 0;
                 else curTarget.W = 1 / (Math.Abs(dy) + 1);  //prefer not too much vertical change when underwater
 

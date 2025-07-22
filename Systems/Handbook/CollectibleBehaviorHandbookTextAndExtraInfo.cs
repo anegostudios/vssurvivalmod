@@ -714,7 +714,7 @@ namespace Vintagestory.GameContent
                         case EnumTransitionType.Cure:
                             components.Add(verticalSpace);
                             addedItemStack = true;
-                            components.Add(new RichTextComponent(capi, Lang.Get("After {0} hours, cures into", prop.TransitionHours.avg) + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
+                            components.Add(new RichTextComponent(capi, Lang.Get("After {0} hours, cures into", prop.FreshHours.avg + prop.TransitionHours.avg) + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
                             var compc = new ItemstackTextComponent(capi, prop.TransitionedStack.ResolvedItemstack, 40, 10, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
                             compc.PaddingLeft = TinyIndent;
                             components.Add(compc);
@@ -723,7 +723,7 @@ namespace Vintagestory.GameContent
                         case EnumTransitionType.Ripen:
                             components.Add(verticalSpace);
                             addedItemStack = true;
-                            components.Add(new RichTextComponent(capi, Lang.Get("After {0} hours of open storage, ripens into", prop.TransitionHours.avg) + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
+                            components.Add(new RichTextComponent(capi, Lang.Get("After {0} hours of open storage, ripens into", prop.FreshHours.avg + prop.TransitionHours.avg) + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
                             var compr = new ItemstackTextComponent(capi, prop.TransitionedStack.ResolvedItemstack, 40, 10, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
                             compr.PaddingLeft = TinyIndent;
                             components.Add(compr);
@@ -732,7 +732,7 @@ namespace Vintagestory.GameContent
                         case EnumTransitionType.Dry:
                             components.Add(verticalSpace);
                             addedItemStack = true;
-                            components.Add(new RichTextComponent(capi, Lang.Get("After {0} hours of open storage, dries into", prop.TransitionHours.avg) + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
+                            components.Add(new RichTextComponent(capi, Lang.Get("After {0} hours of open storage, dries into", prop.FreshHours.avg + prop.TransitionHours.avg) + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
                             var compd = new ItemstackTextComponent(capi, prop.TransitionedStack.ResolvedItemstack, 40, 10, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
                             compd.PaddingLeft = TinyIndent;
                             components.Add(compd);
@@ -741,16 +741,28 @@ namespace Vintagestory.GameContent
                         case EnumTransitionType.Melt:
                             components.Add(verticalSpace);
                             addedItemStack = true;
-                            components.Add(new RichTextComponent(capi, Lang.Get("After {0} hours of open storage, melts into", prop.TransitionHours.avg) + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
+                            components.Add(new RichTextComponent(capi, Lang.Get("After {0} hours of open storage, melts into", prop.FreshHours.avg + prop.TransitionHours.avg) + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
                             var compm = new ItemstackTextComponent(capi, prop.TransitionedStack.ResolvedItemstack, 40, 10, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
                             compm.PaddingLeft = TinyIndent;
                             components.Add(compm);
                             break;
 
                         case EnumTransitionType.Convert:
+                            components.Add(verticalSpace);
+                            addedItemStack = true;
+                            components.Add(new RichTextComponent(capi, Lang.Get("handbook-processesinto-convert", prop.FreshHours.avg + prop.TransitionHours.avg) + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
+                            var compco = new ItemstackTextComponent(capi, prop.TransitionedStack.ResolvedItemstack, 40, 10, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                            compco.PaddingLeft = TinyIndent;
+                            components.Add(compco);
                             break;
 
                         case EnumTransitionType.Perish:
+                            components.Add(verticalSpace);
+                            addedItemStack = true;
+                            components.Add(new RichTextComponent(capi, Lang.Get("handbook-processesinto-perish", prop.FreshHours.avg + prop.TransitionHours.avg) + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
+                            var compp = new ItemstackTextComponent(capi, prop.TransitionedStack.ResolvedItemstack, 40, 10, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                            compp.PaddingLeft = TinyIndent;
+                            components.Add(compp);
                             break;
 
                     }
@@ -1143,6 +1155,8 @@ namespace Vintagestory.GameContent
             List<ItemStack> ripenables = new List<ItemStack>();
             List<ItemStack> dryables = new List<ItemStack>();
             List<ItemStack> meltables = new List<ItemStack>();
+            List<ItemStack> convertables = new List<ItemStack>();
+            List<ItemStack> perishables = new List<ItemStack>();
             List<ItemStack> juiceables = new List<ItemStack>();
             List<ItemStack> squeezables = new List<ItemStack>();
             List<ItemStack> distillables = new List<ItemStack>();
@@ -1352,9 +1366,17 @@ namespace Vintagestory.GameContent
                                 break;
 
                             case EnumTransitionType.Convert:
+                                if (transitionedStack != null && transitionedStack.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes) && !curables.Any(s => s.Equals(capi.World, transitionedStack, GlobalConstants.IgnoredStackAttributes)))
+                                {
+                                    convertables.Add(val);
+                                }
                                 break;
 
                             case EnumTransitionType.Perish:
+                                if (transitionedStack != null && transitionedStack.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes) && !curables.Any(s => s.Equals(capi.World, transitionedStack, GlobalConstants.IgnoredStackAttributes)))
+                                {
+                                    perishables.Add(val);
+                                }
                                 break;
 
                         }
@@ -1370,7 +1392,7 @@ namespace Vintagestory.GameContent
             string customCreatedBy = stack.Collectible.Attributes?["handbook"]?["createdBy"]?.AsString(null);
             string bakingInitialIngredient = collObj.Attributes?["bakingProperties"]?.AsObject<BakingProperties>()?.InitialCode;
 
-            if (grecipes.Count > 0 || cookrecipes.Count > 0 || metalworkables.Count > 0 || knappables.Count > 0 || clayformables.Count > 0 || anvilweldable || customCreatedBy != null || bakables.Count > 0 || bloomeryables.Count > 0 || kilnables.Count > 0 || barrelRecipestext.Count > 0 || grindables.Count > 0 || curables.Count > 0 || ripenables.Count > 0 || dryables.Count > 0 || meltables.Count > 0 || crushables.Count > 0 || bakingInitialIngredient != null || juiceables.Count > 0 || squeezables.Count > 0 || distillables.Count > 0 || smashables.Count > 0)
+            if (grecipes.Count > 0 || cookrecipes.Count > 0 || metalworkables.Count > 0 || knappables.Count > 0 || clayformables.Count > 0 || anvilweldable || customCreatedBy != null || bakables.Count > 0 || bloomeryables.Count > 0 || kilnables.Count > 0 || barrelRecipestext.Count > 0 || grindables.Count > 0 || curables.Count > 0 || ripenables.Count > 0 || dryables.Count > 0 || meltables.Count > 0 || convertables.Count > 0 || perishables.Count > 0 || crushables.Count > 0 || bakingInitialIngredient != null || juiceables.Count > 0 || squeezables.Count > 0 || distillables.Count > 0 || smashables.Count > 0)
             {
                 AddHeading(components, capi, "Created by", ref haveText);
 
@@ -1640,6 +1662,50 @@ namespace Vintagestory.GameContent
                         if (dstack == null) continue;
 
                         SlideshowItemstackTextComponent comp = new SlideshowItemstackTextComponent(capi, dstack, meltables, 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                        comp.PaddingLeft = firstPadding;
+                        firstPadding = 0;
+                        components.Add(comp);
+                    }
+
+                    components.Add(new RichTextComponent(capi, "\n", CairoFont.WhiteSmallText()));
+                }
+
+                if (convertables.Count > 0)
+                {
+                    components.Add(verticalSpace);
+                    verticalSpace = verticalSpaceSmall;
+                    AddSubHeading(components, capi, openDetailPageFor, "handbook-createdby-converting", null);
+
+                    int firstPadding = TinyPadding;
+                    while (convertables.Count > 0)
+                    {
+                        ItemStack dstack = convertables[0];
+                        convertables.RemoveAt(0);
+                        if (dstack == null) continue;
+
+                        SlideshowItemstackTextComponent comp = new SlideshowItemstackTextComponent(capi, dstack, convertables, 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                        comp.PaddingLeft = firstPadding;
+                        firstPadding = 0;
+                        components.Add(comp);
+                    }
+
+                    components.Add(new RichTextComponent(capi, "\n", CairoFont.WhiteSmallText()));
+                }
+
+                if (perishables.Count > 0)
+                {
+                    components.Add(verticalSpace);
+                    verticalSpace = verticalSpaceSmall;
+                    AddSubHeading(components, capi, openDetailPageFor, "handbook-createdby-perishing", null);
+
+                    int firstPadding = TinyPadding;
+                    while (perishables.Count > 0)
+                    {
+                        ItemStack dstack = perishables[0];
+                        perishables.RemoveAt(0);
+                        if (dstack == null) continue;
+
+                        SlideshowItemstackTextComponent comp = new SlideshowItemstackTextComponent(capi, dstack, perishables, 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
                         comp.PaddingLeft = firstPadding;
                         firstPadding = 0;
                         components.Add(comp);
@@ -2202,6 +2268,14 @@ namespace Vintagestory.GameContent
             {
                 AddPaddingAndRichText(storableComps, capi, "handbook-storable-shelves");
             }
+            if (stack.ItemAttributes?.IsTrue("bookshelveable") == true)
+            {
+                AddPaddingAndRichText(storableComps, capi, "handbook-storable-bookshelf");
+            }
+            if (stack.ItemAttributes?.IsTrue("scrollrackable") == true)
+            {
+                AddPaddingAndRichText(storableComps, capi, "handbook-storable-scrollrack");
+            }
             if (stack.ItemAttributes?.IsTrue("displaycaseable") == true)
             {
                 AddPaddingAndRichText(storableComps, capi, "handbook-storable-displaycase");
@@ -2210,6 +2284,10 @@ namespace Vintagestory.GameContent
             {
                 AddPaddingAndRichText(storableComps, capi, "handbook-storable-toolrack");
             }
+            if (stack.ItemAttributes?.IsTrue("antlerMountable") == true)
+            {
+                AddPaddingAndRichText(storableComps, capi, "handbook-storable-antlermount");
+            }
             if (stack.Collectible.HasBehavior<CollectibleBehaviorGroundStorable>())
             {
                 AddPaddingAndRichText(storableComps, capi, "handbook-storable-ground");
@@ -2217,6 +2295,10 @@ namespace Vintagestory.GameContent
             if (stack.ItemAttributes?["waterTightContainerProps"].Exists == true)
             {
                 AddPaddingAndRichText(storableComps, capi, "handbook-storable-barrel");
+            }
+            if (stack.ItemAttributes?.IsTrue("crockable") == true)
+            {
+                AddPaddingAndRichText(storableComps, capi, "handbook-storable-crock");
             }
 
             if (storableComps.Count > 0)

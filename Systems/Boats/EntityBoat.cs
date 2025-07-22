@@ -785,6 +785,13 @@ namespace Vintagestory.GameContent
             return text;
         }
 
+        // We add to the horizontal range, because boats are so large it is easy for players to be interacting with them out of normal range from the boat's center position
+        public override bool InRangeOf(Vec3d position, float horRangeSq, float vertRange)
+        {
+            return SidedPos.InRangeOf(position, horRangeSq + 64, vertRange);
+        }
+
+
 
 
     }

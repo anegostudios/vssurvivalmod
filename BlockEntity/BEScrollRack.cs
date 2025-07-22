@@ -11,7 +11,7 @@ namespace Vintagestory.GameContent
 {
     public class BlockEntityScrollRack : BlockEntityDisplay
     {
-        public override InventoryBase Inventory => inv;
+        public override InventoryBase Inventory => inv!;
         public override string InventoryClassName => "scrollrack";
         public override string AttributeTransformCode => "onscrollrackTransform";
 
@@ -152,7 +152,7 @@ namespace Vintagestory.GameContent
         private bool TryPut(ItemSlot slot, BlockSelection blockSel)
         {
             int boxIndex = blockSel.SelectionBoxIndex;
-            if (boxIndex < 0 || boxIndex >= inv.Count) return false;
+            if (boxIndex < 0 || boxIndex >= Inventory.Count) return false;
             if (!UsableSlots.Contains(boxIndex)) return false;
 
             int invIndex = boxIndex;
@@ -170,13 +170,13 @@ namespace Vintagestory.GameContent
         private bool TryTake(IPlayer byPlayer, BlockSelection blockSel)
         {
             int boxIndex = blockSel.SelectionBoxIndex;
-            if (boxIndex < 0 || boxIndex >= inv.Count) return false;
+            if (boxIndex < 0 || boxIndex >= Inventory.Count) return false;
 
             int invIndex = boxIndex;
 
-            if (!inv[invIndex].Empty)
+            if (!Inventory[invIndex].Empty)
             {
-                ItemStack stack = inv[invIndex].TakeOut(1);
+                ItemStack stack = Inventory[invIndex].TakeOut(1);
                 if (byPlayer.InventoryManager.TryGiveItemstack(stack))
                 {
                     AssetLocation? sound = stack.Block?.Sounds?.Place;
@@ -260,13 +260,13 @@ namespace Vintagestory.GameContent
 
             int index = forPlayer.CurrentBlockSelection.SelectionBoxIndex;
 
-            if (index < 0 || index >= inv.Count)
+            if (index < 0 || index >= Inventory.Count)
             {
                 base.GetBlockInfo(forPlayer, sb);
                 return;
             }
 
-            ItemSlot slot = inv[index];
+            ItemSlot slot = Inventory[index];
             if (slot.Empty)
             {
                 // If we are a rack-edge slot and it is full in the other rack, show contents correctly - otherwise it shows 50/50 as empty depending on which of the two blocks the player is precisely looking at
@@ -289,7 +289,7 @@ namespace Vintagestory.GameContent
                     {
                         float theirAngle = GameMath.NormaliseAngleRad(be.MeshAngleRad);
                         float ourAngle = GameMath.NormaliseAngleRad(MeshAngleRad);
-                        if (theirAngle == ourAngle) slot = be.inv[index - 2];
+                        if (theirAngle == ourAngle) slot = be.Inventory[index - 2];
                     }
                 }
 
@@ -304,10 +304,10 @@ namespace Vintagestory.GameContent
         internal void clearUsableSlots()
         {
             genUsableSlots();
-            for (int i = 0; i < inv.Count; i++)
+            for (int i = 0; i < Inventory.Count; i++)
             {
                 if (UsableSlots.Contains<int>(i)) continue;
-                ItemSlot slot = inv[i];
+                ItemSlot slot = Inventory[i];
                 if (slot.Empty) continue;
 
                 // Drop contents which can no longer be held if neighbour removed

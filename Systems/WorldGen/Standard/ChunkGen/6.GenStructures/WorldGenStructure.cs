@@ -77,6 +77,9 @@ namespace Vintagestory.ServerMods
 
         internal Dictionary<int, Dictionary<int, int>> resolvedRockTypeRemaps = null;
 
+        [JsonProperty]
+        public bool DisableSurfaceTerrainBlending;
+
         public void Init(ICoreServerAPI api, WorldGenStoryStructuresConfig scfg, RockStrataConfig rockstrata, BlockLayerConfig blockLayerConfig)
         {
             schematicData = LoadSchematics<BlockSchematicPartial>(api, Schematics, null)[0];
@@ -806,7 +809,7 @@ namespace Vintagestory.ServerMods
 
                 for (int i = 0; rockBlock == null && i < 10; i++)
                 {
-                    var block = blockAccessor.GetBlock(
+                    var block = blockAccessor.GetBlockRaw(
                         placePos.X + rand.NextInt(schematic.SizeX),
                         placePos.Y + rand.NextInt(schematic.SizeY),
                         placePos.Z + rand.NextInt(schematic.SizeZ),

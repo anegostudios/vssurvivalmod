@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -63,7 +63,7 @@ namespace Vintagestory.GameContent
             var loc = new AssetLocation("textures/block/metal/tarnished/rust.png");
             capi.Render.GetOrLoadTexture(loc, ref rustTexture);
 
-            shape = Shape.TryGet(capi, "shapes/entity/supermech/thunderlord.json");
+            shape = Shape.TryGet(capi, "shapes/entity/lore/supermech/thunderlord.json");
 
             tripodAnim = new AnimationUtil(capi, tripodPos);
             tripodAnim.InitializeShapeAndAnimator("tripod", shape, capi.Tesselator.GetTextureSource(block), null, out var _);

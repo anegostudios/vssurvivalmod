@@ -14,6 +14,7 @@ namespace Vintagestory.GameContent
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
+            PlacedPriorityInteract = true;
 
             if (api.Side != EnumAppSide.Client) return;
 

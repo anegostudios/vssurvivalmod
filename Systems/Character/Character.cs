@@ -2,6 +2,7 @@ using Newtonsoft.Json.Linq;
 using ProtoBuf;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
@@ -265,7 +266,11 @@ namespace Vintagestory.GameContent
                         if (path.Domain == "game")
                         {
                             vanillaTraits.Remove(trait.Code);
-                            if (vanillaTraitsInOrder.IndexOf(trait.Code) != traitIndex)
+                            if (!vanillaTraitsInOrder.Contains(trait.Code))
+                            {
+                                api.World.Logger.Warning($"Instead of json patching in new traits into vanilla asset, add 'traits.json' into 'config' folder in your mod domain with new traits.");
+                            }
+                            else if (vanillaTraitsInOrder.IndexOf(trait.Code) != traitIndex)
                             {
                                 api.World.Logger.Warning($"Order of vanilla character traits has changed. Dont remove vanilla character traits or add new traits between or before vanilla traits. That will cause incompatibility with other mods that change traits, that can result in crashes.");
                             }
@@ -321,7 +326,11 @@ namespace Vintagestory.GameContent
                         if (path.Domain == "game")
                         {
                             vanillaClasses.Remove(characterClass.Code);
-                            if (vanillaClassesInOrder.IndexOf(characterClass.Code) != classIndex)
+                            if (!vanillaClassesInOrder.Contains(characterClass.Code))
+                            {
+                                api.World.Logger.Warning($"Instead of json patching in new classes into vanilla asset, add 'characterclasses.json' into 'config' folder in your mod domain with new classes.");
+                            }
+                            else if (vanillaClassesInOrder.IndexOf(characterClass.Code) != classIndex)
                             {
                                 api.World.Logger.Warning($"Order of vanilla character classes has changed. Dont remove vanilla character classes (set 'enabled' attribute to 'false' instead) or add new classes between or before vanilla classes. That will cause incompatibility with other mods that change classes, that can result in crashes.");
                             }

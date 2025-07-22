@@ -7,7 +7,7 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    abstract public class BlockBaseDoor : Block
+    abstract public class BlockBaseDoor : Block, IClaimTraverseable
     {
         public abstract string GetKnobOrientation();
         public abstract BlockFacing GetDirection();
@@ -50,7 +50,7 @@ namespace Vintagestory.GameContent
             }
             if (preventDefault) return false;
 
-            
+
             if (this is BlockDoor)
             {
                 blockSel = blockSel.Clone();

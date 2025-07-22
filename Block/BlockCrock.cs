@@ -150,6 +150,7 @@ namespace Vintagestory.GameContent
 
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
+            bool isSealed = itemstack.Attributes.GetBool("sealed") == true;
             ItemStack[] contents = GetNonEmptyContents(capi.World, itemstack);
             string recipeCode = itemstack.Attributes.GetString("recipeCode");
             AssetLocation loc = LabelForContents(recipeCode, contents);
@@ -160,10 +161,11 @@ namespace Vintagestory.GameContent
                 return new Dictionary<string, MultiTextureMeshRef>();
             });
 
-            string key = Code.ToShortString() + loc.ToShortString();
+            string key = Code.ToShortString() + loc.ToShortString() + (isSealed ? "sealed" : "");
             if (!meshrefs.TryGetValue(key, out MultiTextureMeshRef? meshref))
             {
                 MeshData mesh = GenMesh(capi, loc, new Vec3f(0, 270, 0));
+                if (isSealed) mesh.AddMeshData(GenSealMesh(capi));
                 meshrefs[key] = meshref = capi.Render.UploadMultiTextureMesh(mesh);
             }
 
@@ -172,20 +174,25 @@ namespace Vintagestory.GameContent
 
         public virtual string GetMeshCacheKey(ItemStack itemstack)
         {
+            bool isSealed = itemstack.Attributes.GetBool("sealed") == true;
             ItemStack[] contents = GetNonEmptyContents(api.World, itemstack);
             string recipeCode = itemstack.Attributes.GetString("recipeCode");
             AssetLocation loc = LabelForContents(recipeCode, contents);
 
-            return Code.ToShortString() + loc.ToShortString();
+            return Code.ToShortString() + loc.ToShortString() + (isSealed ? "sealed" : "");
         }
 
 
         public MeshData GenMesh(ItemStack itemstack, ITextureAtlasAPI targetAtlas, BlockPos? forBlockPos = null)
         {
+            var capi = (ICoreClientAPI)api;
             ItemStack[] contents = GetNonEmptyContents(api.World, itemstack);
             string recipeCode = itemstack.Attributes.GetString("recipeCode");
-            
-            return GenMesh((ICoreClientAPI)api, LabelForContents(recipeCode, contents));
+            var mesh = GenMesh(capi, LabelForContents(recipeCode, contents));
+            if (itemstack.Attributes.GetBool("sealed") == true) mesh.AddMeshData(GenSealMesh(capi));
+
+
+            return mesh;
         }
 
         public MeshData GenMesh(ICoreClientAPI capi, AssetLocation labelLoc, Vec3f? rot = null)
@@ -203,19 +210,15 @@ namespace Vintagestory.GameContent
             return mesh;
         }
 
-        public override void OnCreatedByCrafting(ItemSlot[] allInputslots, ItemSlot outputSlot, GridRecipe byRecipe)
+        public MeshData GenSealMesh(ICoreClientAPI capi)
         {
-            if (outputSlot.Itemstack == null) return;
+            var tesselator = capi.Tesselator;
 
-            for (int i = 0; i < allInputslots.Length; i++)
-            {
-                ItemSlot slot = allInputslots[i];
-                if (slot.Itemstack?.Collectible is BlockCrock)
-                {
-                    outputSlot.Itemstack.Attributes = slot.Itemstack.Attributes.Clone();
-                    outputSlot.Itemstack.Attributes.SetBool("sealed", true);
-                }
-            }
+            Shape shape = API.Common.Shape.TryGet(capi, AssetLocation.Create("shapes/block/clay/crock/seal.json", Code.Domain));
+
+            tesselator.TesselateShape(this, shape, out MeshData mesh);
+
+            return mesh;
         }
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)

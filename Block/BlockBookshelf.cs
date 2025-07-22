@@ -42,7 +42,7 @@ namespace Vintagestory.GameContent
 
                 for (int i = 0; i < 14; i++)
                 {
-                    if (!beshelf.UsableSlots.Contains(i)) { 
+                    if (!beshelf.UsableSlots.Contains(i)) {
                         cubs.Add(new Cuboidf());
                         continue;
                     }
@@ -51,8 +51,8 @@ namespace Vintagestory.GameContent
                     float y = (i / 7) * 7.5f / 16f;
                     float z = 6.5f / 16f;
                     var cub = new Cuboidf(x, y + 1f/16f, 1/16f, x + 1.9f/16f, y + 7/16f, z);
-                    
-                    
+
+
 
                     cubs.Add(cub);
                 }
@@ -75,7 +75,7 @@ namespace Vintagestory.GameContent
         public override void GetDecal(IWorldAccessor world, BlockPos pos, ITexPositionSource decalTexSource, ref MeshData decalModelData, ref MeshData blockModelData)
         {
             var beb = GetBlockEntity<BlockEntityBookshelf>(pos);
-            if (beb != null)
+            if (beb?.Type != null && beb.Material != null)
             {
                 var mat = Matrixf.Create().Translate(0.5f, 0.5f, 0.5f).RotateY(beb.MeshAngleRad).Translate(-0.5f, -0.5f, -0.5f).Values;
                 blockModelData = GetOrCreateMesh(beb.Type, beb.Material).Clone().MatrixTransform(mat);

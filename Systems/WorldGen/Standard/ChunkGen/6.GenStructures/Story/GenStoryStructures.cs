@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using ProtoBuf;
@@ -719,7 +719,7 @@ namespace Vintagestory.GameContent
 
                         for (var j = 0; rockBlock == null && j < 10; j++)
                         {
-                            var block = worldgenBlockAccessor.GetBlock(chunkX * chunksize + lx, posY, chunkZ * chunksize + lz, BlockLayersAccess.Solid);
+                            var block = worldgenBlockAccessor.GetBlockRaw(chunkX * chunksize + lx, posY, chunkZ * chunksize + lz, BlockLayersAccess.Solid);
 
                             if (block.BlockMaterial == EnumBlockMaterial.Stone)
                             {
@@ -749,7 +749,7 @@ namespace Vintagestory.GameContent
                     }
 
                 }
-                int blocksPlaced = structure.schematicData.PlacePartial(chunks, worldgenBlockAccessor, api.World, chunkX, chunkZ, startPos, EnumReplaceMode.ReplaceAll, structure.Placement, GenStructures.ReplaceMetaBlocks, GenStructures.ReplaceMetaBlocks,structure.resolvedRockTypeRemaps, structure.replacewithblocklayersBlockids, rockBlock);
+                int blocksPlaced = structure.schematicData.PlacePartial(chunks, worldgenBlockAccessor, api.World, chunkX, chunkZ, startPos, EnumReplaceMode.ReplaceAll, structure.Placement, GenStructures.ReplaceMetaBlocks, GenStructures.ReplaceMetaBlocks,structure.resolvedRockTypeRemaps, structure.replacewithblocklayersBlockids, rockBlock, structure.DisableSurfaceTerrainBlending);
                 if (blocksPlaced > 0)
                 {
                     if (structure.Placement is EnumStructurePlacement.Surface or EnumStructurePlacement.SurfaceRuin)

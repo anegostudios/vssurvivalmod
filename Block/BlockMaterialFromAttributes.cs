@@ -100,26 +100,32 @@ public class BlockMaterialFromAttributes : Block
         renderinfo.ModelRef = meshref;
     }
 
-    public virtual MeshData GetOrCreateMesh(string material)
+    public virtual MeshData GetOrCreateMesh(string material, ITexPositionSource? overrideTexturesource = null)
     {
         var cMeshes = ObjectCacheUtil.GetOrCreate(api, MeshKey, () => new Dictionary<string, MeshData>());
         ICoreClientAPI capi = (ICoreClientAPI)api;
 
         string key = Variant["type"] + material;
-        if (!cMeshes.TryGetValue(key, out var mesh))
+        if (overrideTexturesource != null || !cMeshes.TryGetValue(key, out var mesh))
         {
             var rcshape = Shape.Clone();
 
             mesh = capi.TesselatorManager.CreateMesh(
                 Code + " block",
                 rcshape,
-                (shape, name) => new ShapeTextureSource(capi, shape, name, TexturesBMFA, (p) => p.Replace("{material}", material))
+                (shape, name) => new ShapeTextureSource(capi, shape, name, TexturesBMFA, (p) => p.Replace("{material}", material)),
+                overrideTexturesource
             );
+
+            if (overrideTexturesource == null)
+            {
+                cMeshes[key] = mesh;
+            }
         }
 
         return mesh;
     }
-    
+
     public override bool DoPlaceBlock(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ItemStack byItemStack)
     {
         bool val = base.DoPlaceBlock(world, byPlayer, blockSel, byItemStack);
@@ -142,7 +148,14 @@ public class BlockMaterialFromAttributes : Block
         }
 
         return val;
-    }    public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
+    }
+
+    public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
+    {
+        return new ItemStack[] { OnPickBlock(world, pos) };
+    }
+
+    public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
     {
         var stack = base.OnPickBlock(world, pos);
         var beshelf = world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMaterialFromAttributes>();

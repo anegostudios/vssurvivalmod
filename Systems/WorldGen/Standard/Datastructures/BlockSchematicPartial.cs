@@ -22,7 +22,7 @@ namespace Vintagestory.ServerMods
         public virtual int PlacePartial(IServerChunk[] chunks, IWorldGenBlockAccessor blockAccessor,
             IWorldAccessor worldForResolve, int chunkX, int chunkZ, BlockPos startPos, EnumReplaceMode mode, EnumStructurePlacement? structurePlacement,
             bool replaceMeta, bool resolveImports, Dictionary<int, Dictionary<int, int>> resolvedRockTypeRemaps = null,
-            int[] replaceWithBlockLayersBlockids = null, Block rockBlock = null)
+            int[] replaceWithBlockLayersBlockids = null, Block rockBlock = null, bool disableSurfaceTerrainBlending = false)
         {
             Unpack(worldForResolve.Api);
             const int chunksize = GlobalConstants.ChunkSize;
@@ -102,7 +102,7 @@ namespace Vintagestory.ServerMods
 
                 // surface sits on top of terrain and so needs to blend with existing one better
                 // do not place grass or loose rocks below terrain if there was a solid blocks
-                if (structurePlacement is EnumStructurePlacement.Surface)
+                if (!disableSurfaceTerrainBlending && structurePlacement is EnumStructurePlacement.Surface)
                 {
                     var oldBlock = blockAccessor.GetBlock(chunkData[posIndex]);
                     // if we have solid blocks at the same pos keep the old one to blend in better with the terrain

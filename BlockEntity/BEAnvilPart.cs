@@ -74,6 +74,9 @@ namespace Vintagestory.GameContent
 
             hammerHits++;
 
+            ItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
+            slot.Itemstack?.Collectible.DamageItem(Api.World, byPlayer.Entity, slot);
+
             float temp = inv[2].Itemstack.Collectible.GetTemperature(Api.World, inv[2].Itemstack);
             if (temp > 800)
             {

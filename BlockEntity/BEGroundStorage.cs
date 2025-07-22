@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -1206,12 +1206,8 @@ namespace Vintagestory.GameContent
                 ItemStack stack = firstSlot.Itemstack;
                 int sumQ = inventory.Sum(s => s.StackSize);
 
-                if (firstSlot.Itemstack.Collectible is IContainedCustomName ccn)
-                {
-                    string name = ccn.GetContainedName(firstSlot, sumQ);
-                    if (name != null) return name;
-                }
-
+                string name = firstSlot.Itemstack.Collectible.GetCollectibleInterface<IContainedCustomName>()?.GetContainedName(firstSlot, sumQ);
+                if (name != null) return name;
 
                 if (sumQ == 1) return stack.GetName();
                 return contentSummary[0];
@@ -1228,7 +1224,7 @@ namespace Vintagestory.GameContent
 
             ItemStack stack = inventory.FirstNonEmptySlot.Itemstack;
             // Only add supplemental info for non-BlockEntities (otherwise it will be wrong or will get into a recursive loop, because right now this BEGroundStorage is the BlockEntity)
-            if (contentSummary.Length == 1 && !(stack.Collectible is IContainedCustomName) && stack.Class == EnumItemClass.Block && ((Block)stack.Collectible).EntityClass == null)
+            if (contentSummary.Length == 1 && stack.Collectible.GetCollectibleInterface<IContainedCustomName>() == null && stack.Class == EnumItemClass.Block && ((Block)stack.Collectible).EntityClass == null)
             {
                 string detailedInfo = stack.Block.GetPlacedBlockInfo(Api.World, Pos, forPlayer);
                 if (detailedInfo != null && detailedInfo.Length > 0) dsc.Append(detailedInfo);
@@ -1263,10 +1259,7 @@ namespace Vintagestory.GameContent
 
                 string stackName = slot.Itemstack.GetName();
 
-                if (slot.Itemstack.Collectible is IContainedCustomName ccn)
-                {
-                    stackName = ccn.GetContainedInfo(slot);
-                }
+                stackName = slot.Itemstack.Collectible.GetCollectibleInterface<IContainedCustomName>()?.GetContainedInfo(slot) ?? stackName;
 
                 if (!dict.TryGetValue(stackName, out int cnt)) cnt = 0;
 

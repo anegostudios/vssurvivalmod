@@ -186,12 +186,22 @@ namespace Vintagestory.GameContent
 
             if (!blockBroken)
             {
+                BlockFacing blockFacing = BlockFacing.FromCode(Block.LastCodePart()).Opposite;
+                var feetPos = Pos.AddCopy(facing);
+
                 foreach (BlockFacing facing in BlockFacing.HORIZONTALS)
                 {
-                    Vec3d placepos = Pos.ToVec3d().AddCopy(facing).Add(0.5, 0.001, 0.5);
-                    if (!Api.World.CollisionTester.IsColliding(Api.World.BlockAccessor, entityAgent.SelectionBox, placepos, false))
+                    Vec3d placePos = Pos.ToVec3d().AddCopy(facing).Add(0.5, 0.001, 0.5);
+                    Vec3d placePosFeet = feetPos.ToVec3d().AddCopy(facing).Add(0.5, 0.001, 0.5);
+
+                    if (!Api.World.CollisionTester.IsColliding(Api.World.BlockAccessor, entityAgent.SelectionBox, placePos, false))
                     {
-                        entityAgent.TeleportTo(placepos);
+                        entityAgent.TeleportTo(placePos);
+                        break;
+                    }
+                    if (!Api.World.CollisionTester.IsColliding(Api.World.BlockAccessor, entityAgent.SelectionBox, placePosFeet, false))
+                    {
+                        entityAgent.TeleportTo(placePosFeet);
                         break;
                     }
                 }
@@ -245,7 +255,7 @@ namespace Vintagestory.GameContent
                     }
                 }, "issleeping");
             }
-            
+
 
             MarkDirty(false);
         }

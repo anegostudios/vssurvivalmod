@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
@@ -86,8 +86,8 @@ namespace Vintagestory.GameContent
                     for (int dz = -4; dz <= 4; dz++)
                     {
                         var targetPos = Passenger.ServerPos.XYZ.AsBlockPos.ToVec3d().Add(dx + 0.5, dy + 0.1, dz + 0.5);
-                        var block = ba.GetMostSolidBlock((int)targetPos.X, (int)(targetPos.Y - 0.15), (int)targetPos.Z);
-                        var upfblock = ba.GetBlock((int)targetPos.X, (int)(targetPos.Y), (int)targetPos.Z, BlockLayersAccess.Fluid);
+                        var block = ba.GetBlockRaw((int)targetPos.X, (int)(targetPos.Y - 0.15), (int)targetPos.Z, BlockLayersAccess.MostSolid);
+                        var upfblock = ba.GetBlockRaw((int)targetPos.X, (int)(targetPos.Y), (int)targetPos.Z, BlockLayersAccess.Fluid);
                         if (upfblock.Id == 0 && block.SideSolid[BlockFacing.UP.Index] && !world.CollisionTester.IsColliding(ba, Passenger.CollisionBox, targetPos, false))
                         {
                             var dist = targetPos.DistanceTo(Passenger.ServerPos.XYZ);

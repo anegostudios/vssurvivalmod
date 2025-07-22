@@ -338,28 +338,13 @@ namespace Vintagestory.GameContent
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
         {
-            List<ItemStack> stacks = [];
-
             if (world.BlockAccessor.GetBlockEntity(pos) is BlockEntityIngotMold beim)
             {
-                if (beim.GetStateAwareMolds() is ItemStack[] molds)
-                {
-                    stacks.AddRange(molds);
-                }
-
-                if (beim.GetStateAwareMoldedStacks() is ItemStack[] contents)
-                {
-                    stacks.AddRange(contents);
-                }
-            }
-            else
-            {
-                stacks.Add(new ItemStack(this));
+                return [ .. beim.GetStateAwareMolds(), .. beim.GetStateAwareMoldedStacks(), ];
             }
 
-            return [.. stacks];
+            return [ new ItemStack(this) ];
         }
-
 
         public override string GetPlacedBlockName(IWorldAccessor world, BlockPos pos)
         {
@@ -392,7 +377,8 @@ namespace Vintagestory.GameContent
 
             if (val && world.BlockAccessor.GetBlockEntity(blockSel.Position) is BlockEntityIngotMold beim)
             {
-                beim.MoldLeft = byItemStack ?? byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack ?? new ItemStack(this);
+                beim.MoldLeft = byItemStack?.Clone() ?? byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack?.Clone() ?? new ItemStack(this);
+                if (beim.MoldLeft != null) beim.MoldLeft.StackSize = 1;
 
                 var targetPos = blockSel.DidOffset ? blockSel.Position.AddCopy(blockSel.Face.Opposite) : blockSel.Position;
                 var dx = byPlayer.Entity.Pos.X - (targetPos.X + blockSel.HitPosition.X);

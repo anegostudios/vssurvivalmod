@@ -422,6 +422,7 @@ namespace Vintagestory.GameContent
             MoldRight = byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack?.Clone();
 
             if (MoldRight == null) return false;
+            MoldRight.StackSize = 1;
 
             if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
             {

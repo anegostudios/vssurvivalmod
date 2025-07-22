@@ -1,10 +1,10 @@
-using System;
 using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
+using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent;
 
@@ -46,6 +46,19 @@ public class BlockFigurehead : BlockMaterialFromAttributes, IAttachableToEntity,
     {
         var material = itemStack.Attributes.GetString("material", "oak");
         return Lang.GetMatching($"block-{Code.Path}-{material}", Lang.Get("material-" + material));
+    }
+    public override void GetDecal(IWorldAccessor world, BlockPos pos, ITexPositionSource decalTexSource, ref MeshData decalModelData, ref MeshData blockModelData)
+    {
+        var beb = GetBEBehavior<BEBehaviorMaterialFromAttributes>(pos);
+        if (beb != null)
+        {
+            var mat = Matrixf.Create().Translate(0.5f, 0.5f, 0.5f).RotateY(beb.MeshAngleY).Translate(-0.5f, -0.5f, -0.5f).Values;
+            blockModelData = GetOrCreateMesh(beb.Material).Clone().MatrixTransform(mat);
+            decalModelData = GetOrCreateMesh(beb.Material, decalTexSource).Clone().MatrixTransform(mat);
+            return;
+        }
+
+        base.GetDecal(world, pos, decalTexSource, ref decalModelData, ref blockModelData);
     }
 
     public void Rotate(EntityAgent byEntity, BlockSelection blockSel, int dir)

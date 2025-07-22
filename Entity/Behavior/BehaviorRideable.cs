@@ -455,7 +455,7 @@ namespace Vintagestory.GameContent
                 // Toggling this off so that the next press of the sprint key will be a fresh press
                 // Need this to allow cycling up with sprint rather than just treating it as a boolean
                 // Only applies if there are more than two gaits specified for this mount
-                controls.Sprint = onlyTwoGaits && controls.Sprint;
+                controls.Sprint = onlyTwoGaits && controls.Sprint && scheme == EnumControlScheme.Hold;
 
                 // Detect if current press is a fresh press
                 bool forwardPressed = nowForwards && !prevForwardKey;
@@ -478,7 +478,8 @@ namespace Vintagestory.GameContent
                 }
 
                 // Cycle down with back or when letting go of sprint when there are only two gaits
-                if (backwardPressed && nowMs - lastGaitChangeMs > 300 || (!nowSprint && ebg.CurrentGait.IsSprint))
+                bool cycleDown = backwardPressed || (!nowSprint && ebg.CurrentGait.IsSprint && scheme == EnumControlScheme.Hold);
+                if (cycleDown && nowMs - lastGaitChangeMs > 300)
                 {
                     controls.Sprint = false;
                     SlowDown();
@@ -818,8 +819,8 @@ namespace Vintagestory.GameContent
                 controls.FlyVector.Set(controls.WalkVector);
 
                 Vec3d pos = entity.Pos.XYZ;
-                Block inblock = entity.World.BlockAccessor.GetBlock((int)pos.X, (int)(pos.Y), (int)pos.Z, BlockLayersAccess.Fluid);
-                Block aboveblock = entity.World.BlockAccessor.GetBlock((int)pos.X, (int)(pos.Y + 1), (int)pos.Z, BlockLayersAccess.Fluid);
+                Block inblock = entity.World.BlockAccessor.GetBlockRaw((int)pos.X, (int)(pos.Y), (int)pos.Z, BlockLayersAccess.Fluid);
+                Block aboveblock = entity.World.BlockAccessor.GetBlockRaw((int)pos.X, (int)(pos.Y + 1), (int)pos.Z, BlockLayersAccess.Fluid);
                 float waterY = (int)pos.Y + inblock.LiquidLevel / 8f + (aboveblock.IsLiquid() ? 9 / 8f : 0);
                 float bottomSubmergedness = waterY - (float)pos.Y;
 

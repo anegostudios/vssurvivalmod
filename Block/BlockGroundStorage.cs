@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
@@ -356,6 +356,9 @@ namespace Vintagestory.GameContent
                 if (slot != null)
                 {
                     return slot.Itemstack.Collectible.GetRandomColor(capi, slot.Itemstack);
+                } else
+                {
+                    return 0;
                 }
             }
 

@@ -56,6 +56,7 @@ namespace Vintagestory.GameContent
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
+            PlacedPriorityInteract = true;
             isWallSign = Variant["attachment"] == "wall";    // For performance, do this test only once, not multiple times every tick if entities need to check this collisionbox
 
             signConfig = new TextAreaConfig();

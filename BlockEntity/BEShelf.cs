@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -362,13 +362,9 @@ namespace Vintagestory.GameContent
                 {
                     sb.Append(PerishableInfoCompact(Api, inv[i], ripenRate));
                 }
-                else if (stack?.Collectible is IContainedCustomName ccn)
-                {
-                    sb.AppendLine(ccn.GetContainedInfo(inv[i]));
-                }
                 else
                 {
-                    sb.AppendLine(stack?.GetName() ?? Lang.Get("unknown"));
+                    sb.AppendLine(stack?.Collectible.GetCollectibleInterface<IContainedCustomName>()?.GetContainedInfo(inv[i]) ?? stack?.GetName() ?? Lang.Get("unknown"));
                 }
             }
         }

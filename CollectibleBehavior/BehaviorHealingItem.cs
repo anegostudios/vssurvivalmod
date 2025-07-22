@@ -16,11 +16,13 @@ public class HealOverTimeConfig
     public int Ticks { get; set; } = 10;
     public float EffectDurationSec { get; set; } = 10;
     public bool CancelInAir { get; set; } = true;
+    public bool CancelWhileSwimming { get; set; } = false;
     public AssetLocation? Sound { get; set; } = new AssetLocation("game:sounds/player/poultice");
     public AssetLocation? AppliedSound { get; set; } = new AssetLocation("game:sounds/player/poultice-applied");
     public float SoundRange { get; set; } = 8;
     public bool CanRevive { get; set; } = true;
     public bool AffectedByArmor { get; set; } = true;
+    public float DelayToCancelSec { get; set; } = 0.5f;
 }
 
 public class BehaviorHealingItem : CollectibleBehavior, ICanHealCreature
@@ -30,6 +32,8 @@ public class BehaviorHealingItem : CollectibleBehavior, ICanHealCreature
     protected IProgressBar? progressBarRender;
     protected ILoadedSound? applicationSound;
     protected ICoreAPI? api;
+
+    protected float secondsUsedToCancel = 0;
 
     public BehaviorHealingItem(CollectibleObject collectable) : base(collectable)
     {
@@ -54,6 +58,11 @@ public class BehaviorHealingItem : CollectibleBehavior, ICanHealCreature
 
     public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling, ref EnumHandling handling)
     {
+        if (CancelApplication(byEntity))
+        {
+            return;
+        }
+
         handHandling = EnumHandHandling.PreventDefault;
         handling = EnumHandling.PreventSubsequent;
 
@@ -65,11 +74,22 @@ public class BehaviorHealingItem : CollectibleBehavior, ICanHealCreature
             progressBarSystem.RemoveProgressbar(progressBarRender);
             progressBarRender = progressBarSystem.AddProgressbar();
         }
+
+        secondsUsedToCancel = 0;
     }
 
     public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandling handling)
     {
-        if (Config.CancelInAir && !byEntity.OnGround)
+        if (!CancelApplication(byEntity))
+        {
+            secondsUsedToCancel = 0;
+        }
+        else
+        {
+            if (secondsUsedToCancel == 0) secondsUsedToCancel = secondsUsed;
+        }
+
+        if (CancelApplication(byEntity) && secondsUsed - secondsUsedToCancel > 0.5)
         {
             return false;
         }
@@ -223,5 +243,7 @@ public class BehaviorHealingItem : CollectibleBehavior, ICanHealCreature
 
         return targetEntity;
     }
+
+    protected virtual bool CancelApplication(Entity entity) => !entity.OnGround && !entity.Swimming && Config.CancelInAir || entity.Swimming && Config.CancelWhileSwimming;
 }
 

@@ -131,7 +131,7 @@ namespace Vintagestory.GameContent
             int tries = 10;
             while (tries-- > 0)
             {
-                Block block = entity.World.BlockAccessor.GetBlock((int)entity.ServerPos.X, terrainYPos, (int)entity.ServerPos.Z, BlockLayersAccess.Fluid);
+                Block block = entity.World.BlockAccessor.GetBlockRaw((int)entity.ServerPos.X, terrainYPos, (int)entity.ServerPos.Z, BlockLayersAccess.Fluid);
                 if (block.IsLiquid())
                 {
                     terrainYPos++;

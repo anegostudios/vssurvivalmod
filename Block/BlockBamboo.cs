@@ -33,7 +33,7 @@ namespace Vintagestory.GameContent
                 lockFreeBa = api.World.GetLockFreeBlockAccessor();
             }
 
-            if (Variant["part"] == "segment1") (api as ICoreServerAPI)?.RegisterTreeGenerator(AssetLocation.Create(FirstCodePart() + "-grown-" + Variant["color"], domain), this);
+            if (Variant["type"] == "grown" && Variant["part"] == "segment1") (api as ICoreServerAPI)?.RegisterTreeGenerator(AssetLocation.Create(FirstCodePart() + "-grown-" + Variant["color"], domain), this);
 
             if (RandomDrawOffset > 0)
             {

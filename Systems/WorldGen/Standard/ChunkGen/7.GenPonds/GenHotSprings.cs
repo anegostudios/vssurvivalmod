@@ -1,4 +1,4 @@
-﻿using ProtoBuf;
+using ProtoBuf;
 using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
@@ -122,7 +122,7 @@ namespace Vintagestory.ServerMods
                         checks++;
                         sum += surfaceY;
 
-                        Block fluidBlock = wgenBlockAccessor.GetBlock(baseX + lx, surfaceY + 1, baseZ + lz, BlockLayersAccess.Fluid);
+                        Block fluidBlock = wgenBlockAccessor.GetBlockRaw(baseX + lx, surfaceY + 1, baseZ + lz, BlockLayersAccess.Fluid);
                         lakeHere |= (fluidBlock.Id != 0 && fluidBlock.LiquidCode != "boilingwater");   // Suppress hot springs also in lakeice, saltwater etc.
                     }
                 }

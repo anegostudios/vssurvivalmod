@@ -126,7 +126,7 @@ namespace Vintagestory.GameContent
         public override void GetDecal(IWorldAccessor world, BlockPos pos, ITexPositionSource decalTexSource, ref MeshData decalModelData, ref MeshData blockModelData)
         {
             var beb = GetBlockEntity<BlockEntityAntlerMount>(pos);
-            if (beb != null)
+            if (beb?.Type != null && beb.Material != null)
             {
                 var mat = Matrixf.Create().Translate(0.5f, 0.5f, 0.5f).RotateY(beb.MeshAngleRad).Translate(-0.5f, -0.5f, -0.5f).Values;
                 blockModelData = GetOrCreateMesh(beb.Type, beb.Material).Clone().MatrixTransform(mat);
