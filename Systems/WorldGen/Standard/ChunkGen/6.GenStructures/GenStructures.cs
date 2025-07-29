@@ -45,7 +45,7 @@ namespace Vintagestory.ServerMods
 
         public event PeventSchematicAtDelegate OnPreventSchematicPlaceAt;
 
-        WorldGenStructuresConfig scfg;
+        internal WorldGenStructuresConfig scfg;
 
         public WorldGenVillageConfig vcfg;
 
@@ -386,7 +386,7 @@ namespace Vintagestory.ServerMods
                         }
                         Cuboidi loc = struc.LastPlacedSchematicLocation;
 
-                        string code = struc.Code + (struc.LastPlacedSchematic == null ? "" : "/" + struc.LastPlacedSchematic.FromFileName);
+                        string code = (struc.LastPlacedSchematic == null ? "" : struc.LastPlacedSchematic.FromFileName) + "/" + struc.Code;
 
                         region.AddGeneratedStructure(new GeneratedStructure() { Code = code, Group = struc.Group, Location = loc.Clone(), SuppressTreesAndShrubs = struc.SuppressTrees, SuppressRivulets = struc.SuppressWaterfalls });
 
@@ -444,7 +444,7 @@ namespace Vintagestory.ServerMods
 
             return struc.TryGenerate(blockAccessor, api.World, pos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, (loc, schematic) =>
             {
-                string code = struc.Code + (schematic == null ? "" : "/" + schematic.FromFileName);
+                string code = (schematic == null ? "" : schematic.FromFileName) + "/" + struc.Code;
 
                 region.AddGeneratedStructure(new GeneratedStructure() { Code = code, Group = struc.Group, Location = loc.Clone() });
 

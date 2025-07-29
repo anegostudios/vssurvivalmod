@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
@@ -9,21 +9,21 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockCookingContainer : Block, IInFirepitRendererSupplier, IAttachableToEntity
+    public class BlockCookingContainer : Block, IInFirepitRendererSupplier, IAttachableToEntity, IContainedCustomName
     {
         public int MaxServingSize = 6;
         Cuboidi? attachmentArea;
-        IAttachableToEntity attrAtta;
+        IAttachableToEntity? attrAtta;
 
         #region IAttachableToEntity
 
         public int RequiresBehindSlots { get; set; } = 0;
-        public bool IsAttachable(Entity toEntity, ItemStack itemStack) => true;
-        string IAttachableToEntity.GetCategoryCode(ItemStack stack) => attrAtta?.GetCategoryCode(stack);
-        CompositeShape IAttachableToEntity.GetAttachedShape(ItemStack stack, string slotCode) => attrAtta.GetAttachedShape(stack, slotCode);
-        string[] IAttachableToEntity.GetDisableElements(ItemStack stack) => attrAtta.GetDisableElements(stack);
-        string[] IAttachableToEntity.GetKeepElements(ItemStack stack) => attrAtta.GetKeepElements(stack);
-        string IAttachableToEntity.GetTexturePrefixCode(ItemStack stack) => attrAtta.GetTexturePrefixCode(stack);
+        public bool IsAttachable(Entity toEntity, ItemStack itemStack) => attrAtta != null;
+        string? IAttachableToEntity.GetCategoryCode(ItemStack stack) => attrAtta?.GetCategoryCode(stack);
+        CompositeShape? IAttachableToEntity.GetAttachedShape(ItemStack stack, string slotCode) => attrAtta?.GetAttachedShape(stack, slotCode);
+        string[]? IAttachableToEntity.GetDisableElements(ItemStack stack) => attrAtta?.GetDisableElements(stack);
+        string[]? IAttachableToEntity.GetKeepElements(ItemStack stack) => attrAtta?.GetKeepElements(stack);
+        string? IAttachableToEntity.GetTexturePrefixCode(ItemStack stack) => attrAtta?.GetTexturePrefixCode(stack);
 
         void IAttachableToEntity.CollectTextures(ItemStack itemstack, Shape intoShape, string texturePrefixCode, Dictionary<string, CompositeTexture> intoDict)
         {
@@ -168,6 +168,7 @@ namespace Vintagestory.GameContent
             {
                 for (int i = 0; i < stacks.Length; i++)
                 {
+                    stacks[i].StackSize = stacks[i].StackSize / quantityServings;
                     CookingRecipeIngredient? ingred = recipe.GetIngrendientFor(stacks[i]);
                     ItemStack? cookedStack = ingred?.GetMatchingStack(stacks[i])?.CookedStack?.ResolvedItemstack.Clone();
                     if (cookedStack != null)
@@ -365,6 +366,16 @@ namespace Vintagestory.GameContent
         public override int GetRandomColor(ICoreClientAPI capi, ItemStack stack)
         {
             return capi.BlockTextureAtlas.GetRandomColor(Textures["ceramic"].Baked.TextureSubId);
+        }
+
+        public string? GetContainedName(ItemSlot inSlot, int quantity)
+        {
+            return null;
+        }
+
+        public string GetContainedInfo(ItemSlot inSlot)
+        {
+            return Lang.GetWithFallback("contained-empty-container", "{0} (Empty)", inSlot.GetStackName());
         }
     }
 }

@@ -26,7 +26,7 @@ namespace Vintagestory.GameContent
         int cols = 4;
         int curTab = 0;
 
-        
+
         ModSystemAuction auctionSys;
         InventoryGeneric auctionSlotInv;
 
@@ -46,7 +46,7 @@ namespace Vintagestory.GameContent
                 listElem?.ReloadCells(auctions);
                 updateScrollbarBounds();
             };
-            auctionSys.curTraderClient = owningEntity as EntityTrader;
+            auctionSys.curTraderClient = owningEntity as EntityTradingHumanoid;
 
             this.traderInventory = traderInventory;
             this.owningEntity = owningEntity;
@@ -65,7 +65,7 @@ namespace Vintagestory.GameContent
             Compose();
         }
 
-        
+
 
         public void Compose()
         {
@@ -203,7 +203,7 @@ namespace Vintagestory.GameContent
                 ElementBounds button = ElementBounds.Fixed(EnumDialogArea.RightFixed, 0, 0, 0, 0).WithFixedPadding(8, 5);
                 string placeStr = Lang.Get("Place Auction");
                 string cancelStr = Lang.Get("Cancel Auction");
-                
+
                 double placelen = CairoFont.ButtonText().GetTextExtents(placeStr).Width / RuntimeEnv.GUIScale;
                 double cancellen = CairoFont.ButtonText().GetTextExtents(cancelStr).Width / RuntimeEnv.GUIScale;
 
@@ -323,12 +323,12 @@ namespace Vintagestory.GameContent
                 SingleComposer.GetButton("cancelAuction").Visible = auction?.State == EnumAuctionState.Active;
                 SingleComposer.GetButton("retrieveItems").Visible = auction?.State == EnumAuctionState.Expired || (sold && auction.SellerUid != capi.World.Player.PlayerUID);
                 SingleComposer.GetButton("collectFunds").Visible = sold && auction.SellerUid == capi.World.Player.PlayerUID;
-                
+
             }
 
         }
 
-        
+
 
         private bool OnCreateAuction()
         {
@@ -350,7 +350,7 @@ namespace Vintagestory.GameContent
             curTab = tab;
             Compose();
         }
-        
+
 
 
         #region Local goods
@@ -379,7 +379,7 @@ namespace Vintagestory.GameContent
                 CalcAndUpdateAssetsDisplay();
             }
 
-            
+
         }
 
         private bool OnBuySellClicked()
@@ -389,7 +389,7 @@ namespace Vintagestory.GameContent
             {
                 capi.Gui.PlaySound(new AssetLocation("sounds/effect/cashregister"), false, 0.25f);
                 (owningEntity as EntityTradingHumanoid).TalkUtil?.Talk(EnumTalkType.Purchase);
-            } 
+            }
 
             if (result == EnumTransactionResult.PlayerNotEnoughAssets)
             {

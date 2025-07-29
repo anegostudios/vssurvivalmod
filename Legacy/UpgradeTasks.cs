@@ -1,27 +1,24 @@
-﻿using ProtoBuf;
+using ProtoBuf;
 using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.GameContent;
-
-#nullable disable
 
 namespace Vintagestory.ServerMods
 {
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
     class UpgradeHerePacket
     {
-        public BlockPos Pos;
+        public required BlockPos Pos;
     }
 
     public class UpgradeTasks : ModSystem
     {
-        ICoreAPI api;
-        ICoreClientAPI capi;
+        ICoreAPI api = null!;
+        ICoreClientAPI capi = null!;
 
         public override bool ShouldLoad(EnumAppSide forSide)
         {
@@ -52,9 +49,9 @@ namespace Vintagestory.ServerMods
                 if (bs == null) return;
 
                 Block block = api.World.BlockAccessor.GetBlock(bs.Position);
-                if (block.Code == null) return;
+                if (block.Code == null || (block.Variant["color"] != null && block.Variant["state"] != null)) return;
 
-                string[] parts = block.Code.Path.Split(new char[] { '-' }, 3);
+                string[] parts = block.Code.Path.Split(['-'], 3);
 
                 if ((parts[0] == "clayplanter" || parts[0] == "flowerpot") && parts.Length >= 3)
                 {
@@ -87,19 +84,19 @@ namespace Vintagestory.ServerMods
         private TextCommandResult OnSetChiselMat(TextCommandCallingArgs textCommandCallingArgs)
         {
             var player = textCommandCallingArgs.Caller.Player;
-            BlockPos pos = player.CurrentBlockSelection?.Position;
+            BlockPos? pos = player.CurrentBlockSelection?.Position;
             if (pos == null)
             {
                 return TextCommandResult.Success("Look at a block first");
             }
 
-            BlockEntityChisel bechisel = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityChisel;
+            BlockEntityChisel? bechisel = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityChisel;
             if (bechisel == null)
             {
                 return TextCommandResult.Success("Not looking at a chiseled block");
             }
 
-            Block block = player.InventoryManager?.ActiveHotbarSlot?.Itemstack?.Block;
+            Block? block = player.InventoryManager?.ActiveHotbarSlot?.Itemstack?.Block;
 
             if (block == null)
             {
@@ -138,7 +135,7 @@ namespace Vintagestory.ServerMods
             int endZ = Math.Max(workspace.StartMarker.Z, workspace.EndMarker.Z);
             BlockPos pos = new BlockPos(textCommandCallingArgs.Caller.Player.Entity.Pos.Dimension);
 
-            Dictionary<string, Block> blocksByName = new Dictionary<string, Block>();
+            Dictionary<string, Block> blocksByName = [];
             foreach (var block in api.World.Blocks)
             {
                 if (block.IsMissing) continue;
@@ -158,11 +155,11 @@ namespace Vintagestory.ServerMods
                         Block block = api.World.BlockAccessor.GetBlock(pos);
                         if (block is BlockChisel)
                         {
-                            BlockEntityChisel bechisel = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityChisel;
-                            if (bechisel.BlockIds != null && bechisel.BlockIds.Length > 0 && bechisel.BlockIds[0] == graniteBlockId)
+                            BlockEntityChisel? bechisel = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityChisel;
+                            if (bechisel?.BlockIds != null && bechisel.BlockIds.Length > 0 && bechisel.BlockIds[0] == graniteBlockId)
                             {
 
-                                if (blocksByName.TryGetValue(bechisel.BlockName, out Block matblock))
+                                if (blocksByName.TryGetValue(bechisel.BlockName, out Block? matblock))
                                 {
                                     bechisel.BlockIds[0] = matblock.Id;
                                     bechisel.MarkDirty(true);
@@ -200,16 +197,23 @@ namespace Vintagestory.ServerMods
         void FixOldPlantContainers(BlockPos pos)
         {
             Block block = api.World.BlockAccessor.GetBlock(pos);
-            string[] parts = block.Code.Path.Split(new char[] { '-' }, 3);
+            if (block.Variant["color"] != null && block.Variant["state"] != null) return;
+            string[] parts = block.Code.Path.Split(['-'], 3);
 
             if ((parts[0] == "clayplanter" || parts[0] == "flowerpot") && parts.Length >= 3)
             {
                 Block potblock = api.World.GetBlock(new AssetLocation(parts[0] + "-" + parts[1]));
+                potblock ??= api.World.GetBlock(new AssetLocation(parts[0] + "-blue-fired"));
+
+                if (potblock == null) return;
+
                 api.World.BlockAccessor.SetBlock(potblock.Id, pos);
 
                 var bepcont = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityPlantContainer;
 
-                Block plantBlock = null;
+                if (bepcont == null) return;
+
+                Block? plantBlock = null;
 
                 if (plantBlock == null)
                 {
@@ -237,17 +241,22 @@ namespace Vintagestory.ServerMods
         {
             Block block = api.World.GetBlock(blockid);
             if (block.Code == null) return;
+            if (block.Variant["color"] != null && block.Variant["state"] != null) return;
 
-            string[] parts =  block.Code.Path.Split(new char[] { '-' }, 3);
+            string[] parts =  block.Code.Path.Split(['-'], 3);
             if (parts.Length < 3) return;
 
             if ((parts[0] == "clayplanter" || parts[1] == "flowerpot") && parts.Length >= 3)
             {
                 Block potblock = api.World.GetBlock(new AssetLocation(parts[0] + "-" + parts[1]));
+                potblock ??= api.World.GetBlock(new AssetLocation(parts[0] + "-blue-fired"));
+
+                if (potblock == null) return;
+
                 ItemStack potStack = new ItemStack(potblock);
                 api.World.SpawnItemEntity(potStack, pos);
 
-                Block plantBlock = null;
+                Block? plantBlock = null;
 
                 if (plantBlock == null)
                 {

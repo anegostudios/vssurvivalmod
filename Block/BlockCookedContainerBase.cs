@@ -1,5 +1,5 @@
-﻿using System;
-using System.Text;
+using System;
+using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
@@ -358,10 +358,11 @@ namespace Vintagestory.GameContent
             var emptyCode = contBlock.Attributes?["emptiedBlockCode"].AsString();
             string emptyName = new ItemStack(emptyCode == null ? contBlock : api.World.GetBlock(emptyCode)).GetName();
 
-            if (recipe != null || MealMeshCache.ContentsRotten(stacks))
+            if (servings > 0)
             {
-                string message;
-                string outputName = recipe?.GetOutputName(world, stacks) ?? Lang.Get("Rotten Food");
+                string message = "contained-food-servings";
+                string outputName = recipe?.GetOutputName(world, stacks) ?? stacks[0].GetName();
+
                 if (recipe?.CooksInto != null)
                 {
                     message = "contained-nonfood-portions";
@@ -371,25 +372,14 @@ namespace Vintagestory.GameContent
                 else if (MealMeshCache.ContentsRotten(stacks))
                 {
                     message = "contained-food-singleservingmax"; // This lets me show the "Rotten Food" name without the "1 serving of" text
+                    outputName = Lang.Get("Rotten Food");
                     servings = 1;
                 }
-                else message = "contained-food-servings";
+                
                 return Lang.Get(message, Math.Round(servings, 1), outputName, emptyName, PerishableInfoCompactContainer(api, inSlot));
             }
 
-            StringBuilder sb = new StringBuilder();
-            foreach (var stack in stacks)
-            {
-                if (sb.Length > 0) sb.Append(", ");
-                sb.Append(stack.GetName());
-            }
-            var str = Lang.Get("contained-foodstacks-insideof", sb.ToString(), emptyName);
-            sb.Clear();
-            sb.Append(str);
-
-            sb.Append(PerishableInfoCompactContainer(api, inSlot));
-
-            return sb.ToString();
+            return Lang.Get("contained-foodstacks-insideof", Lang.Get("meal-ingredientlist-" + stacks.Length, [.. stacks.Select(stack => Lang.Get("{0}x {1}", stack.StackSize, stack.GetName()))]), emptyName) + PerishableInfoCompactContainer(api, inSlot);
         }
 
 

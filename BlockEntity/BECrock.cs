@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
@@ -134,7 +134,7 @@ namespace Vintagestory.GameContent
             if (currentMesh == null)
             {
                 currentMesh = getMesh(tesselator);
-                if (Sealed && Block is BlockCrock crockBlock) currentMesh.AddMeshData(crockBlock.GenSealMesh(Api as ICoreClientAPI));
+                if (Sealed && Block is BlockCrock crockBlock && crockBlock.GenSealMesh(Api as ICoreClientAPI) is MeshData sealMesh) currentMesh.AddMeshData(sealMesh);
                 if (currentMesh == null) return false;
             }
 

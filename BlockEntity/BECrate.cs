@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
@@ -26,7 +26,6 @@ namespace Vintagestory.GameContent
 
         MeshData ownMesh;
         MeshData labelMesh;
-        ICoreClientAPI capi;
 
         Cuboidf selBoxCrate;
         Cuboidf selBoxLabel;
@@ -36,6 +35,7 @@ namespace Vintagestory.GameContent
         ItemStack labelStack;
         ModSystemLabelMeshCache labelCacheSys;
 
+        public bool Labelled => label != null && label != "";
 
         public virtual float MeshAngle
         {
@@ -79,8 +79,7 @@ namespace Vintagestory.GameContent
 
         public override void Initialize(ICoreAPI api)
         {
-            ownBlock = Block as BlockCrate;
-            capi = api as ICoreClientAPI;
+            ownBlock = (BlockCrate)Block;
 
             bool isNewlyplaced = inventory == null;
             if (isNewlyplaced)
@@ -121,82 +120,122 @@ namespace Vintagestory.GameContent
             base.OnBlockPlaced();
         }
 
-
-
         public bool OnBlockInteractStart(IPlayer byPlayer, BlockSelection blockSel)
         {
             bool put = byPlayer.Entity.Controls.ShiftKey;
             bool take = !put;
             bool bulk = byPlayer.Entity.Controls.CtrlKey;
 
-            ItemSlot ownSlot = inventory.FirstNonEmptySlot;
-            var hotbarslot = byPlayer.InventoryManager.ActiveHotbarSlot;
+            ItemSlot hotbarslot = byPlayer.InventoryManager.ActiveHotbarSlot;
+            if (hotbarslot == null) throw new Exception("Interact called when byPlayer has null ActiveHotbarSlot");
 
-            bool drawIconLabel = put && hotbarslot?.Itemstack?.ItemAttributes?["pigment"]?["color"].Exists == true && blockSel.SelectionBoxIndex == 1;
+            bool drawIconLabel = bulk && Labelled && hotbarslot.Itemstack?.ItemAttributes?["pigment"]?["color"].Exists == true && blockSel.SelectionBoxIndex == 1;
 
             if (drawIconLabel)
             {
-                if (!inventory.Empty)
+                if (inventory.Empty && labelStack != null)
+                {
+                    FreeAtlasSpace();
+                    labelStack = null;
+                    labelMesh = null;
+                    MarkDirty(true);
+                    return true;
+                }
+                else if (!Inventory.Empty)
                 {
                     JsonObject jobj = hotbarslot.Itemstack.ItemAttributes["pigment"]["color"];
                     int r = jobj["red"].AsInt();
                     int g = jobj["green"].AsInt();
                     int b = jobj["blue"].AsInt();
+                    int newLabelColor = ColorUtil.ToRgba(255, (int)GameMath.Clamp(r * 1.2f, 0, 255), (int)GameMath.Clamp(g * 1.2f, 0, 255), (int)GameMath.Clamp(b * 1.2f, 0, 255));
 
-                    // Remove previous label from atlas
-                    FreeAtlasSpace();
+                    if (labelStack == null || labelColor != newLabelColor)
+                    {
+                        // Remove previous label from atlas
+                        FreeAtlasSpace();
 
-                    labelColor = ColorUtil.ToRgba(255, (int)GameMath.Clamp(r * 1.2f, 0, 255), (int)GameMath.Clamp(g * 1.2f, 0, 255), (int)GameMath.Clamp(b * 1.2f, 0, 255));
-                    labelStack = inventory.FirstNonEmptySlot.Itemstack.Clone();
-                    labelMesh = null;
+                        labelColor = newLabelColor;
+                        labelStack = inventory.FirstNonEmptySlot.Itemstack.Clone();
+                        labelStack.Attributes.RemoveAttribute("temperature");
+                        labelStack.Attributes.RemoveAttribute("transitionstate");
+                        // In theory this might be a good use case for setting timeFrozen = true, but in practice that's not in the list of global ignored itemstack attributes, 
+                        // so would cause crates to lose their label later by failing the equality check
+                        labelMesh = null;
 
-                    byPlayer.Entity.World.PlaySoundAt(new AssetLocation("sounds/player/chalkdraw"), blockSel.Position.X + blockSel.HitPosition.X, blockSel.Position.InternalY + blockSel.HitPosition.Y, blockSel.Position.Z + blockSel.HitPosition.Z, byPlayer, true, 8);
+                        byPlayer.Entity.World.PlaySoundAt(new AssetLocation("sounds/player/chalkdraw"), blockSel.Position.X + blockSel.HitPosition.X, blockSel.Position.InternalY + blockSel.HitPosition.Y, blockSel.Position.Z + blockSel.HitPosition.Z, byPlayer, true, 8);
 
-                    MarkDirty(true);
+                        MarkDirty(true);
+                        return true;
+                    }
                 }
-                else
+                else if (take)
                 {
                     (Api as ICoreClientAPI)?.TriggerIngameError(this, "empty", Lang.Get("Can't draw item symbol on an empty crate. Put something inside the crate first"));
                 }
-
-                return true;
             }
 
-            if (take && ownSlot != null)
+            if (take)
             {
-                ItemStack stack = bulk ? ownSlot.TakeOutWhole() : ownSlot.TakeOut(1);
-                var quantity = bulk ? stack.StackSize : 1;
-                if (!byPlayer.InventoryManager.TryGiveItemstack(stack, true))
+                int i = 0;
+                for (; i < inventory.Count; ++i) if (!inventory[i].Empty) break;
+                if (i >= inventory.Count) return true; // Can't take. Crate is empty.
+
+                ItemSlot ownSlot = inventory[i];
+                int requestedQuantity = bulk ? ownSlot.Itemstack.Collectible.MaxStackSize : 1;
+                for (; i < inventory.Count && ownSlot.StackSize < requestedQuantity; ++i)
                 {
-                    Api.World.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5f + blockSel.Face.Normalf.X, 0.5f + blockSel.Face.Normalf.Y, 0.5f + blockSel.Face.Normalf.Z));
+                    inventory[i].TryPutInto(Api.World, ownSlot, requestedQuantity - ownSlot.StackSize);
+                }
+                ItemStack stack = ownSlot.TakeOut(requestedQuantity);
+
+                int originalQuantity = stack.StackSize;
+                bool gave = byPlayer.InventoryManager.TryGiveItemstack(stack, true);
+                int taken = originalQuantity - stack.StackSize;
+                if (gave)
+                {
+                    if (taken == 0) taken = originalQuantity;
+                    if (originalQuantity > taken)
+                    {
+                        new DummySlot(stack).TryPutInto(Api.World, ownSlot, originalQuantity - taken);
+                    }
+                    didMoveItems(stack, byPlayer);
                 }
                 else
                 {
-                    didMoveItems(stack, byPlayer);
+                    new DummySlot(stack).TryPutInto(Api.World, ownSlot, originalQuantity - taken);
                 }
-                Api.World.Logger.Audit("{0} Took {1}x{2} from Crate at {3}.",
-                    byPlayer.PlayerName,
-                    quantity,
-                    stack?.Collectible.Code,
-                    Pos
-                );
 
-                if (inventory.Empty)
+                if (taken == 0)
                 {
-                    FreeAtlasSpace();
-                    labelStack = null;
-                    labelMesh = null;
+                    (Api as ICoreClientAPI)?.TriggerIngameError(this, "invfull", Lang.Get("item-take-error-invfull"));
                 }
+                else
+                {
+                    Api.Logger.Audit("{0} Took {1}x{2} from " + Block?.Code + " at {3}.",
+                        byPlayer.PlayerName,
+                        taken,
+                        stack?.Collectible.Code,
+                        Pos
+                    );
 
-                ownSlot.MarkDirty();
-                MarkDirty();
+                    ownSlot.MarkDirty();
+                    MarkDirty();
+                }
+                return true;
             }
 
             if (put && !hotbarslot.Empty)
             {
+                ItemSlot ownSlot = inventory.FirstNonEmptySlot;
                 var quantity = bulk ? hotbarslot.StackSize : 1;
                 if (ownSlot == null)
                 {
+                    if (!hotbarslot.Itemstack.Equals(Api.World, labelStack, GlobalConstants.IgnoredStackAttributes))
+                    {
+                        FreeAtlasSpace();
+                        labelStack = null;
+                        labelMesh = null;
+                    }
                     if (hotbarslot.TryPutInto(Api.World, inventory[0], quantity) > 0)
                     {
                         didMoveItems(inventory[0].Itemstack, byPlayer);
@@ -247,7 +286,7 @@ namespace Vintagestory.GameContent
         {
             if (Api.Side == EnumAppSide.Client) loadOrCreateMesh();
 
-            capi?.World.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+            (Api as ICoreClientAPI)?.World.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
             AssetLocation sound = stack?.Block?.Sounds?.Place;
             Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
         }
@@ -303,14 +342,14 @@ namespace Vintagestory.GameContent
         {
             if (selBoxCrate == null)
             {
-                selBoxCrate = ownBlock.SelectionBoxes[0].RotatedCopy(0, ((int)Math.Round(rotAngleY * GameMath.RAD2DEG / 90)) * 90, 0, new Vec3d(0.5, 0, 0.5));
-                selBoxLabel = ownBlock.SelectionBoxes[1].RotatedCopy(0, rotAngleY * GameMath.RAD2DEG, 0, new Vec3d(0.5, 0, 0.5));
+                selBoxCrate = Block.SelectionBoxes[0].RotatedCopy(0, ((int)Math.Round(rotAngleY * GameMath.RAD2DEG / 90)) * 90, 0, new Vec3d(0.5, 0, 0.5));
+                selBoxLabel = Block.SelectionBoxes[1].RotatedCopy(0, rotAngleY * GameMath.RAD2DEG, 0, new Vec3d(0.5, 0, 0.5));
             }
 
             if (Api.Side == EnumAppSide.Client)
             {
-                var hotbarslot = (Api as ICoreClientAPI).World.Player.InventoryManager.ActiveHotbarSlot;
-                if (hotbarslot?.Itemstack?.ItemAttributes?["pigment"]?["color"].Exists == true)
+                ItemSlot hotbarslot = ((ICoreClientAPI)Api).World.Player.InventoryManager.ActiveHotbarSlot;
+                if (Labelled && hotbarslot.Itemstack?.ItemAttributes?["pigment"]?["color"].Exists == true)
                 {
                     return new Cuboidf[] { selBoxCrate, selBoxLabel };
                 }
@@ -439,12 +478,8 @@ namespace Vintagestory.GameContent
 
         private void loadOrCreateMesh()
         {
+            Block ??= Api.World.BlockAccessor.GetBlock(Pos) as BlockCrate;
             BlockCrate block = Block as BlockCrate;
-            if (Block == null)
-            {
-                block = Api.World.BlockAccessor.GetBlock(Pos) as BlockCrate;
-                Block = block;
-            }
             if (block == null) return;
 
             string cacheKey = "crateMeshes" + block.FirstCodePart();
@@ -481,7 +516,7 @@ namespace Vintagestory.GameContent
             labelCacheSys.RequestLabelTexture(labelColor, Pos, labelStack, (texSubId) =>
             {
                 GenLabelMeshWithItemStack(texSubId);
-                MarkDirty(true);
+                ((ICoreClientAPI)Api).Event.EnqueueMainThreadTask(() => MarkDirty(true), "markcratedirty");
                 requested = false;
             });
         }
@@ -492,6 +527,7 @@ namespace Vintagestory.GameContent
 
         void GenLabelMeshWithItemStack(int textureSubId)
         {
+            ICoreClientAPI capi = (ICoreClientAPI)Api;
             var texPos = capi.BlockTextureAtlas.Positions[textureSubId];
             labelMesh = ownBlock.GenLabelMesh(capi, label, texPos, true, null);
             labelMesh.Rotate(origin, 0, rotAngleY + GameMath.PI, 0).Scale(origin, rndScale, rndScale, rndScale);

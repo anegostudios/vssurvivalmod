@@ -849,7 +849,9 @@ namespace Vintagestory.GameContent
                 return null;
             }
 
-            schematic.FromFileName = asset.Name;
+            schematic.FromFileName =
+                asset.Location.Domain == GlobalConstants.DefaultDomain ?
+                    asset.Name : $"{asset.Location.Domain}:{asset.Name}";
             return schematic;
         }
 

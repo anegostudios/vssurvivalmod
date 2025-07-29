@@ -397,12 +397,8 @@ namespace Vintagestory.GameContent
             var beg = world.BlockAccessor.GetBlockEntity(selection.Position) as BlockEntityGroundStorage;
             if (beg?.StorageProps != null)
             {
-                WorldInteraction[] liquidInteractions = Array.Empty<WorldInteraction>();
-                ItemSlot slotLiquidContainer = beg.Inventory.FirstOrDefault(slot => !slot.Empty && slot.Itemstack.Collectible is BlockLiquidContainerBase);
-                if (slotLiquidContainer != null)
-                {
-                    liquidInteractions = (slotLiquidContainer.Itemstack.Collectible as BlockLiquidContainerBase).interactions;
-                }
+                WorldInteraction[] liquidInteractions = (beg.Inventory.FirstOrDefault(slot => !slot.Empty && slot.Itemstack.Collectible is BlockLiquidContainerBase)?
+                                                                      .Itemstack.Collectible as BlockLiquidContainerBase)?.interactions ?? [];
 
                 int bulkquantity = beg.StorageProps.BulkTransferQuantity;
 
@@ -411,7 +407,7 @@ namespace Vintagestory.GameContent
                     var canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(api, true).ToArray();
 
                     var collObj = beg.Inventory[0].Itemstack?.Collectible;
-                    if (collObj == null) base.GetPlacedBlockInteractionHelp(world, selection, forPlayer).Append(liquidInteractions);
+                    if (collObj == null) return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer).Append(liquidInteractions);
 
                     return new WorldInteraction[]
                     {
@@ -435,7 +431,7 @@ namespace Vintagestory.GameContent
                             ActionLangCode = "blockhelp-groundstorage-addone",
                             MouseButton = EnumMouseButton.Right,
                             HotKeyCode = "shift",
-                            Itemstacks = new ItemStack[] { new ItemStack(collObj, 1) }
+                            Itemstacks = [new (collObj, 1)]
                         },
                         new WorldInteraction()
                         {
@@ -448,8 +444,8 @@ namespace Vintagestory.GameContent
                         {
                             ActionLangCode = "blockhelp-groundstorage-addbulk",
                             MouseButton = EnumMouseButton.Right,
-                            HotKeyCodes = new string[] {"ctrl", "shift" },
-                            Itemstacks = new ItemStack[] { new ItemStack(collObj, bulkquantity) }
+                            HotKeyCodes = ["ctrl", "shift"],
+                            Itemstacks = [new (collObj, bulkquantity)]
                         },
                         new WorldInteraction()
                         {

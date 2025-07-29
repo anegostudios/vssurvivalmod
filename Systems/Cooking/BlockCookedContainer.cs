@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -125,43 +125,64 @@ namespace Vintagestory.GameContent
 
         public override TransitionState[]? UpdateAndGetTransitionStates(IWorldAccessor world, ItemSlot inslot)
         {
+            if (inslot.Itemstack is not ItemStack cookedContStack) return null;
+
+            ItemStack[] stacks = GetNonEmptyContents(world, cookedContStack);
+            foreach (var stack in stacks) stack.StackSize *= (int)(cookedContStack.Attributes.TryGetFloat("quantityServings") ?? 1);
+            SetContents(cookedContStack, stacks);
+
             TransitionState[]? states = base.UpdateAndGetTransitionStates(world, inslot);
 
-            if (inslot.Itemstack is ItemStack cookedContStack)
+            stacks = GetNonEmptyContents(world, cookedContStack);
+            if (stacks.Length == 0 || MealMeshCache.ContentsRotten(stacks))
             {
-                ItemStack[] stacks = GetNonEmptyContents(world, cookedContStack);
-
-                if (stacks.Length == 0 || MealMeshCache.ContentsRotten(stacks))
+                for (int i = 0; i < stacks.Length; i++)
                 {
-                    cookedContStack.Attributes.RemoveAttribute("recipeCode");
-                    cookedContStack.Attributes.RemoveAttribute("quantityServings");
+                    var transProps = stacks[i].Collectible.GetTransitionableProperties(world, stacks[i], null);
+                    var spoilProps = transProps?.FirstOrDefault(props => props.Type == EnumTransitionType.Perish);
+                    if (spoilProps == null) continue;
+                    stacks[i] = stacks[i].Collectible.OnTransitionNow(GetContentInDummySlot(inslot, stacks[i]), spoilProps);
                 }
+                SetContents(cookedContStack, stacks);
 
-                if (stacks.Length == 0 && Attributes?["emptiedBlockCode"]?.AsString() is string emptiedBlockCode && world.GetBlock(new AssetLocation(emptiedBlockCode)) is Block block)
-                {
-                    inslot.Itemstack = new ItemStack(block);
-                    inslot.MarkDirty();
-                }
+                cookedContStack.Attributes.RemoveAttribute("recipeCode");
+                cookedContStack.Attributes.RemoveAttribute("quantityServings");
             }
 
+            foreach (var stack in stacks) stack.StackSize /= (int)(cookedContStack.Attributes.TryGetFloat("quantityServings") ?? 1);
+            SetContents(cookedContStack, stacks);
+
+            if (stacks.Length == 0 && Attributes?["emptiedBlockCode"]?.AsString() is string emptiedBlockCode && world.GetBlock(new AssetLocation(emptiedBlockCode)) is Block block)
+            {
+                inslot.Itemstack = new ItemStack(block);
+                inslot.MarkDirty();
+            }
 
             return states;
         }
 
-        
 
 
-        public override string GetHeldItemName(ItemStack itemStack)
+
+        public override string GetHeldItemName(ItemStack? itemStack)
         {
             ItemStack[] contentStacks = GetContents(api.World, itemStack);
-            string code = "mealrecipe-name-" + itemStack.Collectible.GetCollectibleInterface<IBlockMealContainer>().GetRecipeCode(api.World, itemStack);
+            string? recipeCode = itemStack?.Collectible.GetCollectibleInterface<IBlockMealContainer>()?.GetRecipeCode(api.World, itemStack);
+            string code = Lang.Get("mealrecipe-name-" + recipeCode + "-in-container");
 
-            if (MealMeshCache.ContentsRotten(contentStacks))
+            if (recipeCode == null)
             {
-                code = "Rotten Food";
+                if (MealMeshCache.ContentsRotten(contentStacks))
+                {
+                    code = Lang.Get("Rotten Food");
+                }
+                else
+                {
+                    code = contentStacks[0].GetName();
+                }
             }
 
-            return Lang.GetMatching(Code?.Domain + AssetLocation.LocationSeparator + ItemClass.Name() + "-" + Code?.Path, Lang.Get(code));
+            return Lang.GetMatching(Code?.Domain + AssetLocation.LocationSeparator + ItemClass.Name() + "-" + Code?.Path, code);
         }
 
         public override void OnHeldIdle(ItemSlot slot, EntityAgent byEntity)
@@ -301,7 +322,17 @@ namespace Vintagestory.GameContent
 
             if (cookedContStack.Attributes.GetBool("timeFrozen")) return;
 
-            ItemSlot slot = BlockCrock.GetDummySlotForFirstPerishableStack(api.World, stacks, null, inSlot.Inventory);
+            DummyInventory dummyInv = new DummyInventory(api);
+
+            ItemSlot slot = BlockCrock.GetDummySlotForFirstPerishableStack(api.World, stacks, null, dummyInv);
+            dummyInv.OnAcquireTransitionSpeed += (transType, stack, mul) =>
+            {
+                float val = mul * GetContainingTransitionModifierContained(world, inSlot, transType);
+
+                if (inSlot.Inventory != null) val *= inSlot.Inventory.GetTransitionSpeedMul(transType, cookedContStack);
+
+                return val;
+            };
             slot.Itemstack?.Collectible.AppendPerishableInfoText(slot, dsc, world);
         }
 

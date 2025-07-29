@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.Common.Collectible.Block;
@@ -125,7 +126,9 @@ namespace Vintagestory.ServerMods
             }
 
             schematic.OffsetY = offsety;
-            schematic.FromFileName = asset.Name;
+            schematic.FromFileName =
+                asset.Location.Domain == GlobalConstants.DefaultDomain ?
+                    asset.Name : $"{asset.Location.Domain}:{asset.Name}";
             schematic.MaxYDiff = struc?.MaxYDiff ?? 3;
             schematic.MaxBelowSealevel = struc?.MaxBelowSealevel ?? 3;
             schematic.StoryLocationMaxAmount = struc?.StoryLocationMaxAmount;
@@ -386,7 +389,9 @@ namespace Vintagestory.ServerMods
                         continue;
                     }
 
-                    schematic.FromFileName = asset.Name;
+                    schematic.FromFileName =
+                        asset.Location.Domain == GlobalConstants.DefaultDomain ?
+                        asset.Name : $"{asset.Location.Domain}:{asset.Name}";
                     schematics.Add(schematic);
                 }
             }

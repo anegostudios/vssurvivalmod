@@ -40,7 +40,7 @@ namespace Vintagestory.GameContent
         public Dictionary<string, InventoryGeneric> createAuctionSlotByPlayer = new Dictionary<string, InventoryGeneric>();
 
         public Action OnCellUpdateClient;
-        public EntityTrader curTraderClient;
+        public EntityTradingHumanoid curTraderClient;
         public float debtClient;
 
         /// <summary>
@@ -136,7 +136,7 @@ namespace Vintagestory.GameContent
             if (pkt.ErrorCode != null)
             {
                 capi.TriggerIngameError(this, pkt.ErrorCode, Lang.Get("auctionerror-" + pkt.ErrorCode));
-                curTraderClient?.talkUtil.Talk(EnumTalkType.Complain);
+                curTraderClient?.TalkUtil.Talk(EnumTalkType.Complain);
             } else
             {
                 if (pkt.Action == EnumAuctionAction.PurchaseAuction || (pkt.Action == EnumAuctionAction.RetrieveAuction && pkt.MoneyReceived))
@@ -144,7 +144,7 @@ namespace Vintagestory.GameContent
                     capi.Gui.PlaySound(new AssetLocation("sounds/effect/cashregister"), false, 0.25f);
                 }
 
-                curTraderClient?.talkUtil.Talk(EnumTalkType.Purchase);
+                curTraderClient?.TalkUtil.Talk(EnumTalkType.Purchase);
             }
         }
 
@@ -505,8 +505,7 @@ namespace Vintagestory.GameContent
 
             failureCode = null;
             InventoryTrader.DeductFromEntity(sapi, sellerEntity, depositCost);
-            (auctioneerEntity as EntityTrader).Inventory?.GiveToTrader(depositCost);
-
+            (auctioneerEntity as EntityTradingHumanoid).Inventory?.GiveToTrader(depositCost);
 
             long id = ++auctionsData.nextAuctionId;
 
@@ -572,7 +571,7 @@ namespace Vintagestory.GameContent
                 }
 
                 InventoryTrader.DeductFromEntity(sapi, buyerEntity, totalcost);
-                (auctioneerEntity as EntityTrader).Inventory?.GiveToTrader((int)(auction.Price * SalesCutRate + deliveryCosts));
+                (auctioneerEntity as EntityTradingHumanoid).Inventory?.GiveToTrader((int)(auction.Price * SalesCutRate + deliveryCosts));
 
                 string buyerName = buyerEntity.GetBehavior<EntityBehaviorNameTag>()?.DisplayName;
                 if (buyerName == null) buyerName = buyerEntity.Properties.Code.ToShortString();

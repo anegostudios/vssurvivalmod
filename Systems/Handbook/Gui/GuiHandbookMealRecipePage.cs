@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
@@ -523,7 +523,7 @@ namespace Vintagestory.GameContent
 
         public override float GetTextMatchWeight(string searchText)
         {
-            string specialKeywords = isPie ? "pie recipes" : "cooking recipes meal recipes";
+            string specialKeywords = Lang.Get("handbook-mealrecipe-" + (isPie ? "pie" : "meal") + "searchkeywords");
             if (titleCached.Equals(searchText, StringComparison.InvariantCultureIgnoreCase)) return 4;
             if (titleCached.StartsWith(searchText + " ", StringComparison.InvariantCultureIgnoreCase)) return 3.5f;
             if (titleCached.StartsWith(searchText, StringComparison.InvariantCultureIgnoreCase)) return 3f;

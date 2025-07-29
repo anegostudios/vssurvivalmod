@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
@@ -118,7 +118,7 @@ namespace Vintagestory.GameContent
             {
                 state = EnumCharcoalPitState.Unsealed;
                 finishedAfterTotalHours = Api.World.Calendar.TotalHours + BurnHours;
-                float burnChance = Math.Max(0.5f, 1f - (0.1f * holes.Count - 1));
+                float burnChance = Math.Clamp(1f - (0.1f * (holes.Count - 1)), 0.5f, 1f);
 
                 foreach (BlockPos holePos in holes)
                 {
@@ -126,12 +126,12 @@ namespace Vintagestory.GameContent
 
                     Block block = Api.World.BlockAccessor.GetBlock(holePos);
 
-                    var byEntity = Api.World.PlayerByUid(startedByPlayerUid).Entity;
+                    var byEntity = Api.World.PlayerByUid(startedByPlayerUid)?.Entity ?? Api.World.NearestPlayer(Pos.X, Pos.InternalY, Pos.Z)?.Entity;
                     IIgnitable ign = block.GetInterface<IIgnitable>(Api.World, holePos);
 
-                    if (ign?.OnTryIgniteBlock(byEntity, holePos, 10) is EnumIgniteState.Ignitable or EnumIgniteState.IgniteNow)
+                    if (byEntity != null && ign?.OnTryIgniteBlock(byEntity, holePos, 10) is EnumIgniteState.Ignitable or EnumIgniteState.IgniteNow)
                     {
-                        if (Api.World.Rand.NextDouble() > burnChance)
+                        if (Api.World.Rand.NextDouble() < burnChance)
                         {
                             EnumHandling useless = EnumHandling.PassThrough;
                             ign.OnTryIgniteBlockOver(byEntity, holePos, 10, ref useless);
@@ -142,7 +142,7 @@ namespace Vintagestory.GameContent
                         foreach (BlockFacing facing in BlockFacing.ALLFACES)
                         {
                             facing.IterateThruFacingOffsets(firePos);  // This must be the first command in the loop, to ensure all facings will be properly looped through regardless of any 'continue;' statements
-                            if (Api.World.BlockAccessor.GetBlock(firePos).BlockId == 0 && Api.World.Rand.NextDouble() > burnChance)
+                            if (Api.World.BlockAccessor.GetBlock(firePos).BlockId == 0 && Api.World.Rand.NextDouble() < burnChance)
                             {
                                 Api.World.BlockAccessor.SetBlock(fireBlockId, firePos);
                                 BlockEntity befire = Api.World.BlockAccessor.GetBlockEntity(firePos);

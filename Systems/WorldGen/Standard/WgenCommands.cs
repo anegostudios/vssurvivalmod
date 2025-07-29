@@ -49,6 +49,12 @@ namespace Vintagestory.ServerMods
             return side == EnumAppSide.Server;
         }
 
+        public override double ExecuteOrder()
+        {
+            // run this after GenStructures so we can load the config from there
+            return 0.33;
+        }
+
         public override void StartServerSide(ICoreServerAPI api)
         {
             this.api = api;
@@ -95,10 +101,7 @@ namespace Vintagestory.ServerMods
             _chunksize = GlobalConstants.ChunkSize;
             _regionChunkSize = api.WorldManager.RegionSize / _chunksize;
 
-            var asset = api.Assets.Get("worldgen/structures.json");
-            _scfg = asset.ToObject<WorldGenStructuresConfig>();
-
-            _scfg.Init(api);
+            _scfg = api.ModLoader.GetModSystem<GenStructures>().scfg;
 
             // only allow commands in survival since it needs the structures and possible applied patches from mods for testing, also replaceblocklayers makes more sense in survival
             var parsers = api.ChatCommands.Parsers;
@@ -2154,7 +2157,8 @@ namespace Vintagestory.ServerMods
                 for (var i = 0; i < _scfg.Structures.Length; i++)
                 {
                     var structure = _scfg.Structures[i];
-                    sb.AppendLine($"{i}: Name: {structure.Name} - Code: {structure.Code} - Group: {structure.Group}");
+                    var domain = structure.Schematics.FirstOrDefault()?.Domain;
+                    sb.AppendLine($"{i}: Name: {structure.Name} - Code: {domain}:{structure.Code} - Group: {structure.Group}");
                     sb.AppendLine($"     YOff: {structure.OffsetY} - MinGroupDist: {structure.MinGroupDistance}");
                 }
 
@@ -2198,7 +2202,7 @@ namespace Vintagestory.ServerMods
             var pos = args.Caller.Player.CurrentBlockSelection?.Position.AddCopy(0,struc.OffsetY ?? 0,0) ?? args.Caller.Pos.AsBlockPos.AddCopy(0,struc.OffsetY ?? 0,0);
 
             var schematic = struc.schematicDatas[schematicNum][schematicRot];
-
+            schematic.Unpack(api, schematicRot);
             var chunkX = pos.X / _chunksize;
             var chunkZ = pos.Z / _chunksize;
             var chunkY = pos.Y / _chunksize;

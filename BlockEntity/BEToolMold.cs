@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -626,7 +626,7 @@ namespace Vintagestory.GameContent
                 ITexPositionSource tmpTextureSource = ((ICoreClientAPI)Api).Tesselator.GetTextureSource(Block);
                 ITesselatorAPI mesher = ((ICoreClientAPI)Api).Tesselator;
 
-                Shape shape = Shape.TryGet(Api, "shapes/block/clay/mold/" + Block.Variant["tooltype"] + ".json");
+                Shape shape = Shape.TryGet(Api, Block.Shape.Base.Clone().WithPathPrefix("shapes/").WithPathAppendix(".json"));
                 mesher.TesselateShape(Block.Variant["color"] + Block.Variant["tooltype"] + "toolmold", shape, out MeshData mesh, tmpTextureSource, new Vec3f(cShape.rotateX, cShape.rotateY, cShape.rotateZ));
 
                 return mesh;
