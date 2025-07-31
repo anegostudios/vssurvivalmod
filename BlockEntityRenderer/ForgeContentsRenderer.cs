@@ -33,7 +33,7 @@ namespace Vintagestory.GameContent
 
         Matrixf ModelMat = new Matrixf();
 
-        
+
 
         public double RenderOrder
         {
@@ -62,7 +62,7 @@ namespace Vintagestory.GameContent
         {
             this.pos = pos;
             this.capi = capi;
-            
+
             Block block = capi.World.GetBlock(new AssetLocation("forge"));
 
             coaltexpos = capi.BlockTextureAtlas.GetPosition(block, "coal");
@@ -99,7 +99,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        void RegenMesh()
+        public void RegenMesh()
         {
             workItemMeshRef?.Dispose();
             workItemMeshRef = null;
@@ -185,7 +185,7 @@ namespace Vintagestory.GameContent
             prog.AddRenderFlags = 0;
             prog.ExtraGodray = 0;
             prog.OverlayOpacity = 0;
-            
+
 
             if (stack != null && workItemMeshRef != null)
             {
@@ -198,13 +198,13 @@ namespace Vintagestory.GameContent
                 prog.NormalShaded = 1;
                 prog.RgbaLightIn = lightrgbs;
                 prog.RgbaGlowIn = new Vec4f(glowColor[0], glowColor[1], glowColor[2], extraGlow / 255f);
-                
+
                 prog.ExtraGlow = extraGlow;
                 prog.Tex2D = textureId;
                 prog.ModelMatrix = ModelMat.Identity().Translate(pos.X - camPos.X, pos.Y - camPos.Y + 10 / 16f + fuelLevel * 0.65f, pos.Z - camPos.Z).Values;
                 prog.ViewMatrix = rpi.CameraMatrixOriginf;
                 prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
-                
+
                 rpi.RenderMesh(workItemMeshRef);
             }
 
@@ -234,7 +234,7 @@ namespace Vintagestory.GameContent
                 prog.TempGlowMode = 1;
 
                 int glow = 255 - (int)(flicker * 50);
-                
+
                 prog.ExtraGlow = burning ? glow : 0;
 
                 // The coal or embers
@@ -245,7 +245,7 @@ namespace Vintagestory.GameContent
                 prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
 
                 rpi.RenderMesh(burning ? emberQuadRef : coalQuadRef);
-                
+
             }
 
 
