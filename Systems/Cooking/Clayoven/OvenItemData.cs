@@ -41,10 +41,11 @@ namespace Vintagestory.GameContent
             this.BrowningPoint = browning;
             this.TimeToBake = time;
             this.BakedLevel = baked;
-            this.CurHeightMul = risen;
-            this.temp = tCurrent;
             this.CurXMul = risenx;
+            this.CurHeightMul = risen;
             this.CurZMul = risenz;
+            this.temp = tCurrent;
+            
         }
 
         public OvenItemData(ItemStack stack)

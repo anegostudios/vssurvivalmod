@@ -174,7 +174,7 @@ namespace Vintagestory.GameContent
         {
             ItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
-            if (slot.Empty)
+            if (slot.Empty && !IsBurning)
             {
                 if (TryTake(byPlayer))
                 {
@@ -183,11 +183,30 @@ namespace Vintagestory.GameContent
                 }
                 return false;
             }
+            if (!slot.Empty && slot.Itemstack.Collectible.HasBehavior<BlockBehaviorCanIgnite>())
+            {
+                if (IsBurning)
+                {
+                    if (capi != null)
+                    {
+                        capi.TriggerIngameError(this, "ovenislit", Lang.Get("ovenalreadylit"));
+                        return false;
+                    }
+                }
+                else if (!burning && !HasFuel)
+                {
+                    capi.TriggerIngameError(this, "ovenneedsfuel", Lang.Get("ovenneedsfuel"));
+                    return false;
+                }
+                return false;
+            }
             else
             {
-                CollectibleObject colObj = slot.Itemstack.Collectible;
-                if (colObj.Attributes?.IsTrue("isClayOvenFuel") == true)
+                CollectibleObject colObj = slot.Itemstack?.Collectible;
+                CombustibleProperties combProps = colObj?.CombustibleProps;
+                if (colObj?.Attributes?.IsTrue("isClayOvenFuel") == true && !IsBurning)
                 {
+                    
                     if (TryAddFuel(slot))
                     {
                         AssetLocation sound = slot.Itemstack?.Block?.Sounds?.Place;
@@ -200,7 +219,28 @@ namespace Vintagestory.GameContent
                     return false;
 
                 }
-                else if (colObj.Attributes?["bakingProperties"] != null || colObj.CombustibleProps?.SmeltingType == EnumSmeltType.Bake && colObj.CombustibleProps.MeltingPoint < maxBakingTemperatureAccepted)  //Can't meaningfully bake anything requiring heat over 260 in the basic clay oven
+                else if (/*slot.Empty && */ IsBurning)
+                {
+                    if (capi != null)
+                    {
+                        capi.TriggerIngameError(this, "ovenwaittillout", Lang.Get("ovenwaittillout"));
+                    }
+                    return false;
+                }
+                else if (!slot.Empty && colObj != null &&
+                    (!slot.Itemstack.Attributes.GetBool("bakeable", true)
+                    || !colObj.Attributes["bakingProperties"].Exists))
+                {
+                    if (capi != null)
+                    {
+                        capi.TriggerIngameError(this, "notbakeable", Lang.Get("itemnotbakeable"));
+                    }
+                    return true;
+                }
+                else if (slot.Itemstack.Attributes.GetBool("bakeable", true) ||
+                          (combProps != null && combProps.SmeltingType == EnumSmeltType.Bake &&
+                          combProps.MeltingPoint < maxBakingTemperatureAccepted))
+                //Can't meaningfully bake anything requiring heat over 260 in the basic clay oven
                 {
                     if (slot.Itemstack.Equals(Api.World, lastRemoved, GlobalConstants.IgnoredStackAttributes) && !ovenInv[0].Empty)
                     {
@@ -230,14 +270,18 @@ namespace Vintagestory.GameContent
                             if (slot.Itemstack.Block?.GetBehavior<BlockBehaviorCanIgnite>() == null)
                             {
                                 ICoreClientAPI capi = Api as ICoreClientAPI;
-                                if (capi != null && (slot.Empty || slot.Itemstack.Attributes.GetBool("bakeable", true) == false)) capi.TriggerIngameError(this, "notbakeable", Lang.Get("This item is not bakeable."));
-                                else if (capi != null && !slot.Empty) capi.TriggerIngameError(this, "notbakeable", burning ? Lang.Get("Wait until the fire is out") : Lang.Get("Oven is full"));
-
+                                if (capi != null)
+                                {
+                                    if (slot.Itemstack.Collectible.Attributes["bakingProperties"].Exists)
+                                    {
+                                        capi.TriggerIngameError(this, "ovenisfull", Lang.Get("ovenisfull"));
+                                        
+                                    }
+                                }
                                 return true;
                             }
                         }
                     }
-
                     return false;
                 }
                 else if (TryTake(byPlayer))
@@ -339,8 +383,9 @@ namespace Vintagestory.GameContent
                         stack.Collectible.Code,
                         Pos
                     );
-
-                    bakingData[index].CurHeightMul = 1; // Reset risenLevel to avoid brief render of unwanted size on next item inserted, if server/client not perfectly in sync - note this only really works if the newly inserted item can be assumed to have risenLevel of 0 i.e. dough
+                    bakingData[index].CurXMul = 1;
+                    bakingData[index].CurHeightMul = 1;
+                    bakingData[index].CurZMul = 1;// Reset risenLevel to avoid brief render of unwanted size on next item inserted, if server/client not perfectly in sync - note this only really works if the newly inserted item can be assumed to have risenLevel of 0 i.e. dough
                     updateMesh(index);
                     MarkDirty(true);
                     return true;
@@ -540,7 +585,7 @@ namespace Vintagestory.GameContent
             float nowHeightMulStaged = (int)(heightMul * BakingStageThreshold) / (float)BakingStageThreshold;
             float nowZMulStaged = (int)(ZMul * BakingStageThreshold) / (float)BakingStageThreshold;
 
-            bool reDraw = (nowHeightMulStaged != bakeData.CurHeightMul /*|| nowXMulStaged != bakeData.CurXMul || nowZMulStaged != bakeData.CurZMul*/);
+            bool reDraw = (nowHeightMulStaged != bakeData.CurHeightMul || nowXMulStaged != bakeData.CurXMul || nowZMulStaged != bakeData.CurZMul);
 
             bakeData.CurHeightMul = nowHeightMulStaged;
             bakeData.CurXMul = nowXMulStaged;
@@ -553,6 +598,8 @@ namespace Vintagestory.GameContent
                 float nowTemp = bakeData.temp;
                 string resultCode = bakeProps?.ResultCode;
 
+
+                
                 if (resultCode != null)
                 {
                     ItemStack resultStack = null;
