@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Common;
+using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
 #nullable disable
@@ -28,28 +28,34 @@ namespace Vintagestory.GameContent
         /// The current temperature of this item (may be less than the oven temperature if it was recently placed)
         /// </summary>
         public float temp;
+        public float CurZMul;
+        public float CurXMul;
 
         public OvenItemData()
         {
 
         }
 
-        public OvenItemData(float browning, float time, float baked = 0f, float risen = 0f, float tCurrent = 20f)
+        public OvenItemData(float browning, float time, float baked = 0f, float risen = 0f, float tCurrent = 20f, float risenx = 0f, float risenz = 0f)
         {
             this.BrowningPoint = browning;
             this.TimeToBake = time;
             this.BakedLevel = baked;
             this.CurHeightMul = risen;
             this.temp = tCurrent;
+            this.CurXMul = risenx;
+            this.CurZMul = risenz;
         }
 
         public OvenItemData(ItemStack stack)
         {
             BakingProperties bakeprops = BakingProperties.ReadFrom(stack);
-            this.BrowningPoint = bakeprops.Temp ?? 160;
+            this.BrowningPoint = bakeprops?.Temp ?? 160;
             this.TimeToBake = stack.Collectible.CombustibleProps?.MeltingDuration * 10f ?? 150f;
-            this.BakedLevel = bakeprops.LevelFrom;
-            this.CurHeightMul = bakeprops.StartScaleY;
+            this.BakedLevel = bakeprops?.LevelFrom ?? 1f;
+            this.CurXMul = bakeprops?.StartScaleX ?? 1f;
+            this.CurHeightMul = bakeprops?.StartScaleY ?? 1f;
+            this.CurZMul = bakeprops?.StartScaleZ ?? 1f;
             this.temp = 20f;
         }
 
@@ -60,7 +66,9 @@ namespace Vintagestory.GameContent
                 tree.GetFloat("tbake" + i),
                 tree.GetFloat("baked" + i),
                 tree.GetFloat("heightmul" + i),
-                tree.GetFloat("temp" + i)
+                tree.GetFloat("temp" + i),
+                tree.GetFloat("xmul" + i),
+                tree.GetFloat("zmul" + i)
             );
         }
 
@@ -71,6 +79,8 @@ namespace Vintagestory.GameContent
             tree.SetFloat("baked" + i, this.BakedLevel);
             tree.SetFloat("heightmul" + i, this.CurHeightMul);
             tree.SetFloat("temp" + i, this.temp);
+            tree.SetFloat("xmul" + i, this.CurXMul);
+            tree.SetFloat("zmul" + i, this.CurZMul);
         }
     }
 

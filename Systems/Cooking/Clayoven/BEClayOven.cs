@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using System.Linq.Expressions;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -92,7 +93,13 @@ namespace Vintagestory.GameContent
                 if (slot == null) return EnumOvenContentMode.Firewood;
 
                 BakingProperties bakingProps = BakingProperties.ReadFrom(slot.Itemstack);
-                if (bakingProps == null) return EnumOvenContentMode.Firewood;
+                ;
+                if (bakingProps == null)
+                {
+                    return HasFuel ? EnumOvenContentMode.Firewood :
+                        EnumOvenContentMode.Quadrants;
+                }
+                ;
 
                 return bakingProps.LargeItem ? EnumOvenContentMode.SingleCenter : EnumOvenContentMode.Quadrants;
             }
@@ -519,16 +526,25 @@ namespace Vintagestory.GameContent
             var bakeProps = BakingProperties.ReadFrom(slot.Itemstack);
             float levelFrom = bakeProps?.LevelFrom ?? 0f;
             float levelTo = bakeProps?.LevelTo ?? 1f;
+            float startXMul = bakeProps?.StartScaleX ?? 1f;
+            float endXMul = bakeProps?.EndScaleX ?? 1f;
             float startHeightMul = bakeProps?.StartScaleY ?? 1f;
             float endHeightMul = bakeProps?.EndScaleY ?? 1f;
-
+            float startZMul = bakeProps?.StartScaleZ ?? 1f;
+            float endZMul = bakeProps?.EndScaleZ ?? 1f;
             float progress = GameMath.Clamp((currentLevel - levelFrom) / (levelTo - levelFrom), 0, 1);
+            float XMul = GameMath.Mix(startHeightMul, endHeightMul, progress);
             float heightMul = GameMath.Mix(startHeightMul, endHeightMul, progress);
+            float ZMul = GameMath.Mix(startHeightMul, endHeightMul, progress);
+            float nowXMulStaged = (int)(XMul * BakingStageThreshold) / (float)BakingStageThreshold;
             float nowHeightMulStaged = (int)(heightMul * BakingStageThreshold) / (float)BakingStageThreshold;
+            float nowZMulStaged = (int)(ZMul * BakingStageThreshold) / (float)BakingStageThreshold;
 
-            bool reDraw = nowHeightMulStaged != bakeData.CurHeightMul;
+            bool reDraw = (nowHeightMulStaged != bakeData.CurHeightMul /*|| nowXMulStaged != bakeData.CurXMul || nowZMulStaged != bakeData.CurZMul*/);
 
             bakeData.CurHeightMul = nowHeightMulStaged;
+            bakeData.CurXMul = nowXMulStaged;
+            bakeData.CurZMul = nowZMulStaged;
 
             // see if increasing the partBaked by delta, has moved this stack up to the next "bakedStage", i.e. a different item
 
@@ -540,20 +556,11 @@ namespace Vintagestory.GameContent
                 if (resultCode != null)
                 {
                     ItemStack resultStack = null;
-                    if (slot.Itemstack.Class == EnumItemClass.Block)
-                    {
-                        Block block = Api.World.GetBlock(new AssetLocation(resultCode));
-                        if (block != null)
-                        {
-                            resultStack = new ItemStack(block);
-                        }
-                    }
-                    else
-                    {
-                        Item item = Api.World.GetItem(new AssetLocation(resultCode));
-                        if (item != null) resultStack = new ItemStack(item);
-                    }
 
+                    CollectibleObject collObj = Api.World.GetBlock(new AssetLocation(resultCode)) != null ? Api.World.GetBlock(new AssetLocation(resultCode)) :
+                      Api.World.GetItem(new AssetLocation(resultCode));
+
+                    if (collObj != null) resultStack = new(collObj);
 
                     if (resultStack != null)
                     {
@@ -784,13 +791,15 @@ namespace Vintagestory.GameContent
                 Vec3f off = offs[i];
 
                 float scaleY = OvenContentMode == EnumOvenContentMode.Firewood ? 0.9f : bakingData[i].CurHeightMul;
+                float scaleX = OvenContentMode == EnumOvenContentMode.Firewood ? 0.9f : bakingData[i].CurXMul;
+                float scaleZ = OvenContentMode == EnumOvenContentMode.Firewood ? 0.9f : bakingData[i].CurZMul;
 
                 tfMatrices[i] =
                     new Matrixf()
                     .Translate(off.X, off.Y, off.Z)
                     .Translate(0.5f, 0, 0.5f)
                     .RotateYDeg(rotationDeg + (OvenContentMode == EnumOvenContentMode.Firewood ? 270 : 0))
-                    .Scale(0.9f, scaleY, 0.9f)
+                    .Scale(scaleX, scaleY, scaleZ)
                     .Translate(-0.5f, 0, -0.5f)
                     .Values
                 ;
@@ -801,17 +810,21 @@ namespace Vintagestory.GameContent
 
         protected override string getMeshCacheKey(ItemStack stack)
         {
+            string scaleX = "";
             string scaleY = "";
+            string scaleZ = "";
             for (int i = 0; i < bakingData.Length; i++)
             {
                 if (Inventory[i].Itemstack == stack)
                 {
                     scaleY = "-" + bakingData[i].CurHeightMul;
+                    scaleX = "-" + bakingData[i].CurHeightMul;
+                    scaleZ = "-" + bakingData[i].CurHeightMul;
                     break;
                 }
             }
 
-            return (OvenContentMode == EnumOvenContentMode.Firewood ? stack.StackSize + "x" : "") + base.getMeshCacheKey(stack) + scaleY;
+            return (OvenContentMode == EnumOvenContentMode.Firewood ? stack.StackSize + "x" : "") + base.getMeshCacheKey(stack) + scaleY + scaleX + scaleZ;
         }
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
