@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Common;
@@ -146,7 +146,7 @@ namespace Vintagestory.GameContent
 
                 activity.OnTick(accum);
 
-                Entity.World.FrameProfiler.Mark("behavior-activitydriven-tick-" + activity.Code);
+                Entity.World.FrameProfiler.Mark("behavior-activitydriven-tick-", activity.Code);
             }
 
             accum = 0;

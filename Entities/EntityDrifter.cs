@@ -90,8 +90,7 @@ public class EntityDrifter : EntityHumanoid
 
         if (EntityId % oddsToAlter == 0)
         {
-            float collisionBoxX = properties.Attributes["alternativeCollisionBoxX"].AsFloat(0.9f);
-            float collisionBoxY = properties.Attributes["alternativeCollisionBoxY"].AsFloat(0.6f);
+            float[] collisionBox = properties.Attributes["alternativeCollisionBox"].AsArray([0.9f, 0.6f]);
 
             Dictionary<string, string> animationsRemapping = new()
             {
@@ -123,8 +122,8 @@ public class EntityDrifter : EntityHumanoid
                 alternativeDieAnimationMetaData.TriggeredBy = trigger;
             }
 
-            properties.CollisionBoxSize = new API.MathTools.Vec2f(collisionBoxX, collisionBoxY);
-            properties.SelectionBoxSize = new API.MathTools.Vec2f(collisionBoxX, collisionBoxY);
+            properties.CollisionBoxSize = new API.MathTools.Vec2f(collisionBox[0], collisionBox[1]);
+            properties.SelectionBoxSize = new API.MathTools.Vec2f(collisionBox[0], collisionBox[1]);
 
             string idleAnimationCode = properties.Attributes["idleAnimationCode"].AsString("idle");
             string alternativeIdleAnimationCode = properties.Attributes["alternativeIdleAnimationCode"].AsString("crawlidle");

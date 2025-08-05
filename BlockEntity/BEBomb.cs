@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -132,7 +132,7 @@ namespace Vintagestory.GameContent
         {
             int rad = (int)Math.Ceiling(BlastRadius);
             Cuboidi exploArea = new Cuboidi(Pos.AddCopy(-rad, -rad, -rad), Pos.AddCopy(rad, rad, rad));
-            List<LandClaim> claims = (Api as ICoreServerAPI).WorldManager.SaveGame.LandClaims;
+            List<LandClaim> claims = (Api as ICoreServerAPI).WorldManager.LandClaims;
             var player = Api.World.PlayerByUid(ignitedByPlayerUid);
             for (int i = 0; i < claims.Count; i++)
             {

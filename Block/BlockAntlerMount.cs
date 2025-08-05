@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Client;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
@@ -157,33 +157,6 @@ namespace Vintagestory.GameContent
             if (beshelf != null) return beshelf.OnInteract(byPlayer, blockSel);
 
             return base.OnBlockInteractStart(world, byPlayer, blockSel);
-        }
-
-        public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
-        {
-            var stack = base.OnPickBlock(world, pos);
-            var beshelf = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityAntlerMount;
-            if (beshelf != null)
-            {
-                stack.Attributes.SetString("type", beshelf.Type);
-                stack.Attributes.SetString("material", beshelf.Material);
-            }
-
-            return stack;
-        }
-
-        public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
-        {
-            return new ItemStack[] { OnPickBlock(world, pos) };
-        }
-
-        public override BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)
-        {
-            var drops = base.GetDropsForHandbook(handbookStack, forPlayer);
-            drops[0] = drops[0].Clone();
-            drops[0].ResolvedItemstack.SetFrom(handbookStack);
-
-            return drops;
         }
 
         public override string GetPlacedBlockName(IWorldAccessor world, BlockPos pos)

@@ -179,6 +179,15 @@ public class BlockShapeMaterialFromAttributes : Block
         return new ItemStack[] { OnPickBlock(world, pos) };
     }
 
+    public override BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)
+    {
+        var drops = base.GetDropsForHandbook(handbookStack, forPlayer);
+        drops[0] = drops[0].Clone();
+        drops[0].ResolvedItemstack.SetFrom(handbookStack);
+
+        return drops;
+    }
+
     public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
     {
         var stack = base.OnPickBlock(world, pos);

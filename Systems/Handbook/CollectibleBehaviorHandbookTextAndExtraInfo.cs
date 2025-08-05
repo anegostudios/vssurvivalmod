@@ -108,7 +108,8 @@ namespace Vintagestory.GameContent
             haveText = addIngredientForInfo(capi, allStacks, openDetailPageFor, stack, components, marginTop, containers, fuels, molds, haveText);
             haveText = addCreatedByInfo(capi, allStacks, openDetailPageFor, stack, components, marginTop, containers, fuels, molds, haveText);
             addExtraSections(capi, stack, components, marginTop);
-            addStorableInfo(capi, stack, components, marginTop);
+            addStorableInfo(capi, allStacks, openDetailPageFor, stack, components, marginTop);
+            addStoredInInfo(capi, allStacks, openDetailPageFor, stack, components, marginTop);
 
             collObj.GetCollectibleInterface<ICustomHandbookPageContent>()?.OnHandbookPageComposed(components, inSlot, capi, allStacks, openDetailPageFor);
 
@@ -571,6 +572,23 @@ namespace Vintagestory.GameContent
                         components.Add(new ItemstackTextComponent(capi, new ItemStack(capi.World.GetBlock("cokeovendoor-closed-north")), 40, 0, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs))));
                         components.Add(new RichTextComponent(capi, "\n", CairoFont.WhiteSmallText()) { VerticalAlign = EnumVerticalAlign.Middle });
                     }
+                }
+            }
+
+
+            // Carburizes into
+            if (collObj.Attributes?["carburizableProps"]?["carburizedOutput"]?.Exists == true)
+            {
+                JsonItemStack carburizedJStack = stack.ItemAttributes["carburizableProps"]["carburizedOutput"].AsObject<JsonItemStack>(null, stack.Collectible.Code.Domain);
+                if (carburizedJStack?.Resolve(Api.World, "carburizable handbook") == true && !carburizedJStack.ResolvedItemstack.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes))
+                {
+                    AddHeading(components, capi, "carburizesdesc-title", ref haveText);
+
+                    var cmp = new ItemstackTextComponent(capi, carburizedJStack.ResolvedItemstack, 40, 10, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                    cmp.ShowStacksize = true;
+                    cmp.PaddingLeft = TinyIndent;
+                    components.Add(cmp);
+                    components.Add(new ClearFloatTextComponent(capi, marginBottom));  //nice margin below the item graphic
                 }
             }
 
@@ -1149,6 +1167,7 @@ namespace Vintagestory.GameContent
             List<ItemStack> bakables = new List<ItemStack>();
             List<ItemStack> bloomeryables = new List<ItemStack>();
             List<ItemStack> kilnables = new List<ItemStack>();
+            List<ItemStack> carburizables = new List<ItemStack>();
             List<ItemStack> grindables = new List<ItemStack>();
             List<ItemStack> crushables = new List<ItemStack>();
             List<ItemStack> curables = new List<ItemStack>();
@@ -1237,11 +1256,21 @@ namespace Vintagestory.GameContent
                 {
                     foreach (var beehiveStack in beehiveKilnProps.Values)
                     {
-                        if (beehiveStack?.Resolve(capi.World, "beehivekiln-burn") != null && beehiveStack.ResolvedItemstack.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes) && !kilnables.Any(s => s.Equals(capi.World, val, GlobalConstants.IgnoredStackAttributes)))
+                        if (beehiveStack?.Resolve(capi.World, "beehivekiln-burn") == true && beehiveStack.ResolvedItemstack.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes) && !kilnables.Any(s => s.Equals(capi.World, val, GlobalConstants.IgnoredStackAttributes)))
                         {
                             kilnables.Add(val);
                             break;
                         }
+                    }
+                }
+
+                JsonItemStack carburizedJStack = val.ItemAttributes?["carburizableProps"]?["carburizedOutput"]?.AsObject<JsonItemStack>(null, stack.Collectible.Code.Domain);
+                if (carburizedJStack?.Resolve(Api.World, "carburizable handbook") == true)
+                {
+                    ItemStack carburizedStack = carburizedJStack.ResolvedItemstack;
+                    if (carburizedStack != null && carburizedStack.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes) && !carburizables.Any(s => s.Equals(capi.World, carburizedStack, GlobalConstants.IgnoredStackAttributes)))
+                    {
+                        carburizables.Add(val);
                     }
                 }
 
@@ -1392,7 +1421,7 @@ namespace Vintagestory.GameContent
             string customCreatedBy = stack.Collectible.Attributes?["handbook"]?["createdBy"]?.AsString(null);
             string bakingInitialIngredient = collObj.Attributes?["bakingProperties"]?.AsObject<BakingProperties>()?.InitialCode;
 
-            if (grecipes.Count > 0 || cookrecipes.Count > 0 || metalworkables.Count > 0 || knappables.Count > 0 || clayformables.Count > 0 || anvilweldable || customCreatedBy != null || bakables.Count > 0 || bloomeryables.Count > 0 || kilnables.Count > 0 || barrelRecipestext.Count > 0 || grindables.Count > 0 || curables.Count > 0 || ripenables.Count > 0 || dryables.Count > 0 || meltables.Count > 0 || convertables.Count > 0 || perishables.Count > 0 || crushables.Count > 0 || bakingInitialIngredient != null || juiceables.Count > 0 || squeezables.Count > 0 || distillables.Count > 0 || smashables.Count > 0)
+            if (grecipes.Count > 0 || cookrecipes.Count > 0 || metalworkables.Count > 0 || knappables.Count > 0 || clayformables.Count > 0 || anvilweldable || customCreatedBy != null || bakables.Count > 0 || bloomeryables.Count > 0 || kilnables.Count > 0 || carburizables.Count > 0 || barrelRecipestext.Count > 0 || grindables.Count > 0 || curables.Count > 0 || ripenables.Count > 0 || dryables.Count > 0 || meltables.Count > 0 || convertables.Count > 0 || perishables.Count > 0 || crushables.Count > 0 || bakingInitialIngredient != null || juiceables.Count > 0 || squeezables.Count > 0 || distillables.Count > 0 || smashables.Count > 0)
             {
                 AddHeading(components, capi, "Created by", ref haveText);
 
@@ -1511,6 +1540,30 @@ namespace Vintagestory.GameContent
 
                     components.Add(new RichTextComponent(capi, "\n", CairoFont.WhiteSmallText()));
                 }
+
+                if (carburizables.Count > 0)
+                {
+                    components.Add(verticalSpace);
+                    verticalSpace = verticalSpaceSmall;
+                    AddSubHeading(components, capi, openDetailPageFor, "handbook-createdby-carburizing", "gamemechanicinfo-steelmaking");
+
+                    int firstPadding = TinyPadding;
+                    while (carburizables.Count > 0)
+                    {
+                        ItemStack dstack = carburizables[0];
+                        carburizables.RemoveAt(0);
+                        if (dstack == null) continue;
+
+                        SlideshowItemstackTextComponent comp = new SlideshowItemstackTextComponent(capi, dstack, carburizables, 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                        comp.ShowStackSize = true;
+                        comp.PaddingLeft = firstPadding;
+                        firstPadding = 0;
+                        components.Add(comp);
+                    }
+
+                    components.Add(new RichTextComponent(capi, "\n", CairoFont.WhiteSmallText()));
+                }
+
                 if (grindables.Count > 0)
                 {
                     components.Add(verticalSpace);
@@ -2255,67 +2308,206 @@ namespace Vintagestory.GameContent
             return barrelRecipesTexts;
         }
 
-        protected void addStorableInfo(ICoreClientAPI capi, ItemStack stack, List<RichTextComponentBase> components, float marginTop)
+        protected void addStorableInfo(ICoreClientAPI capi, ItemStack[] allStacks, ActionConsumable<string> openDetailPageFor, ItemStack stack, List<RichTextComponentBase> components, float marginTop)
         {
-            List<RichTextComponentBase> storableComps = new List<RichTextComponentBase>();
+            List<ItemStack> foodStorables = new List<ItemStack>();
+            List<ItemStack> liquidStorables = new List<ItemStack>();
+            List<ItemStack> displayStorables = new List<ItemStack>();
+            bool groundStorable = stack.Collectible.HasBehavior<CollectibleBehaviorGroundStorable>();
 
+            foreach (var val in allStacks)
+            {
+                if ((val.Collectible is BlockShelf && BlockEntityShelf.GetShelvableLayout(stack) != null) ||
+                    (val.Collectible is BlockToolRack && (stack.Collectible.Tool != null || stack.ItemAttributes?["rackable"].AsBool() == true)))
+                {
+                    if (!displayStorables.Any(s => s.Equals(capi.World, val, GlobalConstants.IgnoredStackAttributes))) displayStorables.Add(val);
+                }
 
-            if (stack.ItemAttributes?.IsTrue("moldrackable") == true)
-            {
-                AddPaddingAndRichText(storableComps, capi, "handbook-storable-moldrack");
-            }
-            if (BlockEntityShelf.GetShelvableLayout(stack) != null)
-            {
-                AddPaddingAndRichText(storableComps, capi, "handbook-storable-shelves");
-            }
-            if (stack.ItemAttributes?.IsTrue("bookshelveable") == true)
-            {
-                AddPaddingAndRichText(storableComps, capi, "handbook-storable-bookshelf");
-            }
-            if (stack.ItemAttributes?.IsTrue("scrollrackable") == true)
-            {
-                AddPaddingAndRichText(storableComps, capi, "handbook-storable-scrollrack");
-            }
-            if (stack.ItemAttributes?.IsTrue("displaycaseable") == true)
-            {
-                AddPaddingAndRichText(storableComps, capi, "handbook-storable-displaycase");
-            }
-            if (stack.Collectible.Tool != null || stack.ItemAttributes?["rackable"].AsBool() == true)
-            {
-                AddPaddingAndRichText(storableComps, capi, "handbook-storable-toolrack");
-            }
-            if (stack.ItemAttributes?.IsTrue("antlerMountable") == true)
-            {
-                AddPaddingAndRichText(storableComps, capi, "handbook-storable-antlermount");
-            }
-            if (stack.Collectible.HasBehavior<CollectibleBehaviorGroundStorable>())
-            {
-                AddPaddingAndRichText(storableComps, capi, "handbook-storable-ground");
-            }
-            if (stack.ItemAttributes?["waterTightContainerProps"].Exists == true)
-            {
-                AddPaddingAndRichText(storableComps, capi, "handbook-storable-barrel");
-            }
-            if (stack.ItemAttributes?.IsTrue("crockable") == true)
-            {
-                AddPaddingAndRichText(storableComps, capi, "handbook-storable-crock");
+                if (stack.ItemAttributes is not JsonObject attr) continue;
+
+                if ((val.Collectible is BlockMoldRack && attr["moldrackable"].AsBool()) ||
+                    (val.Collectible is BlockBookshelf && attr["bookshelveable"].AsBool()) ||
+                    (val.Collectible is BlockScrollRack && attr["scrollrackable"].AsBool()) ||
+                    (attr["displaycaseable"].AsBool() && (val.Collectible as BlockDisplayCase)?.height >= attr["displaycase"]["minHeight"].AsFloat(0.25f)) ||
+                    (val.Collectible is BlockAntlerMount && attr["antlerMountable"].AsBool()))
+                {
+                    if (!displayStorables.Any(s => s.Equals(capi.World, val, GlobalConstants.IgnoredStackAttributes))) displayStorables.Add(val);
+                }
+
+                if (val.Collectible.GetCollectibleInterface<ILiquidInterface>() is ILiquidInterface contBlock && contBlock.GetCurrentLitres(val) <= 0 && attr["waterTightContainerProps"].Exists)
+                {
+                    if (!liquidStorables.Any(s => s.Equals(capi.World, val, GlobalConstants.IgnoredStackAttributes))) liquidStorables.Add(val);
+                }
+
+                if (val.Collectible is BlockCrock && attr["crockable"].AsBool())
+                {
+                    if (!foodStorables.Any(s => s.Equals(capi.World, val, GlobalConstants.IgnoredStackAttributes))) foodStorables.Add(val);
+
+                }
             }
 
-            if (storableComps.Count > 0)
+            if (!(foodStorables.Count > 0 || displayStorables.Count > 0 || liquidStorables.Count > 0 || groundStorable)) return;
+
+            var verticalSpaceSmall = new ClearFloatTextComponent(capi, SmallPadding);
+            var verticalSpace = new ClearFloatTextComponent(capi, TinyPadding + 1);   // The first bullet point has a smaller space than any later ones
+
+            bool haveText = components.Count > 0;
+            components.Add(verticalSpace);
+            verticalSpace = verticalSpaceSmall;
+
+            AddHeading(components, capi, "Storable in/on", ref haveText);
+
+            if (groundStorable)
             {
-                bool haveText = components.Count > 0;
-                AddHeading(components, capi, "Storable in/on", ref haveText);
-                components.AddRange(storableComps);
+                components.Add(verticalSpace);
+                verticalSpace = verticalSpaceSmall;
+                var comp = new RichTextComponent(capi, "", CairoFont.WhiteSmallText());
+                comp.PaddingLeft = TinyIndent;
+                components.Add(comp);
+                components.AddRange(VtmlUtil.Richtextify(capi, Lang.Get("handbook-storable-ground") + "\n", CairoFont.WhiteSmallText()));
+            }
+
+            if (displayStorables.Count > 0)
+            {
+                components.Add(verticalSpace);
+                verticalSpace = verticalSpaceSmall;
+                AddSubHeading(components, capi, openDetailPageFor, "handbook-storable-displaycontainers", null);
+
+                int firstPadding = TinyPadding;
+
+                while (displayStorables.Count > 0)
+                {
+                    ItemStack dstack = displayStorables[0];
+                    displayStorables.RemoveAt(0);
+                    if (dstack == null) continue;
+
+                    SlideshowItemstackTextComponent comp = new SlideshowItemstackTextComponent(capi, dstack, displayStorables, 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                    comp.PaddingLeft = firstPadding;
+                    firstPadding = 0;
+                    components.Add(comp);
+                }
+
+                components.Add(new RichTextComponent(capi, "\n", CairoFont.WhiteSmallText()));
+            }
+
+            if (liquidStorables.Count > 0)
+            {
+                components.Add(verticalSpace);
+                verticalSpace = verticalSpaceSmall;
+                AddSubHeading(components, capi, openDetailPageFor, "handbook-storable-liquidcontainers", null);
+
+                int firstPadding = TinyPadding;
+
+                while (liquidStorables.Count > 0)
+                {
+                    ItemStack dstack = liquidStorables[0];
+                    liquidStorables.RemoveAt(0);
+                    if (dstack == null) continue;
+
+                    SlideshowItemstackTextComponent comp = new SlideshowItemstackTextComponent(capi, dstack, liquidStorables, 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                    comp.PaddingLeft = firstPadding;
+                    firstPadding = 0;
+                    components.Add(comp);
+                }
+
+                components.Add(new RichTextComponent(capi, "\n", CairoFont.WhiteSmallText()));
+            }
+
+            if (foodStorables.Count > 0)
+            {
+                components.Add(verticalSpace);
+                verticalSpace = verticalSpaceSmall;
+                AddSubHeading(components, capi, openDetailPageFor, "handbook-storable-foodcontainers", null);
+
+                int firstPadding = TinyPadding;
+
+                while (foodStorables.Count > 0)
+                {
+                    ItemStack dstack = foodStorables[0];
+                    foodStorables.RemoveAt(0);
+                    if (dstack == null) continue;
+
+                    SlideshowItemstackTextComponent comp = new SlideshowItemstackTextComponent(capi, dstack, foodStorables, 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                    comp.PaddingLeft = firstPadding;
+                    firstPadding = 0;
+                    components.Add(comp);
+                }
+
+                components.Add(new RichTextComponent(capi, "\n", CairoFont.WhiteSmallText()));
             }
         }
 
-        private void AddPaddingAndRichText(List<RichTextComponentBase> storableComps, ICoreClientAPI capi, string text)
+        protected void addStoredInInfo(ICoreClientAPI capi, ItemStack[] allStacks, ActionConsumable<string> openDetailPageFor, ItemStack stack, List<RichTextComponentBase> components, float marginTop)
         {
-            storableComps.Add(new ClearFloatTextComponent(capi, TinyPadding));
-            var spacer = new RichTextComponent(capi, "", CairoFont.WhiteSmallText());
-            spacer.PaddingLeft = TinyIndent;
-            storableComps.Add(spacer);
-            storableComps.AddRange(VtmlUtil.Richtextify(capi, Lang.Get(text), CairoFont.WhiteSmallText()));
+            List<ItemStack> storables = new List<ItemStack>();
+
+            foreach (var val in allStacks)
+            {
+                if ((stack.Collectible is BlockShelf && BlockEntityShelf.GetShelvableLayout(val) != null) ||
+                    (stack.Collectible is BlockToolRack && (val.Collectible.Tool != null || val.ItemAttributes?["rackable"].AsBool() == true)))
+                {
+                    if (!storables.Any(s => s.Equals(capi.World, val, GlobalConstants.IgnoredStackAttributes))) storables.Add(val);
+                }
+
+                if (val.ItemAttributes is not JsonObject attr) continue;
+
+                if ((stack.Collectible is BlockMoldRack && attr["moldrackable"].AsBool()) ||
+                    (stack.Collectible is BlockBookshelf && attr["bookshelveable"].AsBool()) ||
+                    (stack.Collectible is BlockScrollRack && attr["scrollrackable"].AsBool()) ||
+                    (attr["displaycaseable"].AsBool() && (stack.Collectible as BlockDisplayCase)?.height >= attr["displaycase"]["minHeight"].AsFloat(0.25f)) ||
+                    (stack.Collectible is BlockAntlerMount && attr["antlerMountable"].AsBool()) ||
+                    (stack.Collectible.GetCollectibleInterface<ILiquidInterface>() != null && BlockLiquidContainerBase.GetContainableProps(val) is WaterTightContainableProps liquidProps && liquidProps.WhenFilled == null) ||
+                    (stack.Collectible is BlockCrock && attr["crockable"].AsBool()))
+                {
+                    if (!storables.Any(s => s.Equals(capi.World, val, GlobalConstants.IgnoredStackAttributes))) storables.Add(val);
+                }
+            }
+
+            if (storables.Count > 0)
+            {
+                bool haveText = components.Count > 0;
+                components.Add(new ClearFloatTextComponent(capi, SmallPadding));
+                AddHeading(components, capi, "handbook-storedin", ref haveText);
+
+                int firstPadding = TinyPadding;
+
+                while (storables.Count > 0)
+                {
+                    ItemStack dstack = storables[0];
+                    storables.RemoveAt(0);
+                    if (dstack == null) continue;
+
+                    if (dstack.Collectible is BlockPie)
+                    {
+
+                        List<CookingRecipe> pierecipes = [.. BlockPie.GetHandbookRecipes(capi, allStacks)];
+
+                        while (pierecipes.Count > 0)
+                        {
+                            CookingRecipe recipe = pierecipes[0];
+                            pierecipes.RemoveAt(0);
+                            if (recipe == null) continue;
+
+                            ItemStack mealBlock = dstack.Clone();
+                            mealBlock.Attributes.SetInt("pieSize", 4);
+                            mealBlock.Attributes.SetString("topCrustType", BlockPie.TopCrustTypes[capi.World.Rand.Next(BlockPie.TopCrustTypes.Length)].Code);
+                            mealBlock.Attributes.SetInt("bakeLevel", 2);
+                            var validStacks = cachedValidStacks.GetValueOrDefault(recipe.Code);
+                            MealstackTextComponent mealComp = new MealstackTextComponent(capi, ref validStacks, mealBlock, recipe, 40, EnumFloat.Inline, allStacks, (cs) => openDetailPageFor("handbook-mealrecipe-" + recipe.Code + "-pie"), 6, true);
+                            cachedValidStacks[recipe.Code] = validStacks;
+                            components.Add(mealComp);
+                        }
+                        continue;
+                    }
+
+                    SlideshowItemstackTextComponent comp = new SlideshowItemstackTextComponent(capi, dstack, storables, 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                    comp.PaddingLeft = firstPadding;
+                    firstPadding = 0;
+                    components.Add(comp);
+                }
+
+                components.Add(new RichTextComponent(capi, "\n", CairoFont.WhiteSmallText()));
+            }
         }
 
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)

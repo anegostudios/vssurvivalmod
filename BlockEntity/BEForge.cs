@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
@@ -39,8 +39,10 @@ namespace Vintagestory.GameContent
                 ICoreClientAPI capi = (ICoreClientAPI)api;
                 capi.Event.RegisterRenderer(renderer = new ForgeContentsRenderer(Pos, capi), EnumRenderStage.Opaque, "forge");
                 renderer.SetContents(contents, fuelLevel, burning, true);
-
                 RegisterGameTickListener(OnClientTick, 50);
+
+                // Regen mesh on transform change
+                api.Event.RegisterEventBusListener((string _, ref EnumHandling _, IAttribute _) => renderer.RegenMesh(), filterByEventName: "genjsontransform");
             }
 
             RegisterGameTickListener(OnCommonTick, 200);

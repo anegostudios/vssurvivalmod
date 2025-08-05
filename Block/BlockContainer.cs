@@ -24,7 +24,7 @@ namespace Vintagestory.GameContent
 
         public virtual void SetContents(ItemStack containerStack, ItemStack[] stacks)
         {
-            if (stacks == null || stacks.Length == 0)
+            if (stacks == null || stacks.Length == 0 || stacks.All(x => x == null))
             {
                 containerStack.Attributes.RemoveAttribute("contents");
                 return;

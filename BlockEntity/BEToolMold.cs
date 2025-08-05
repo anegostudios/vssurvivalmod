@@ -80,9 +80,8 @@ namespace Vintagestory.GameContent
 
         protected virtual void OnLoadWithoutMeshAngle(ICoreServerAPI sapi)
         {
-            if (hasMeshAngle == true || (Block.Code.Domain != GlobalConstants.DefaultDomain && Block.FirstCodePart() != "toolmold")) return;
+            if (hasMeshAngle || (Block.Code.Domain != GlobalConstants.DefaultDomain && Block.FirstCodePart() != "toolmold")) return;
 
-            int blockID = 0;
             string code = Block.Code.SecondCodePart();
             AssetLocation loc = null;
 
@@ -102,10 +101,15 @@ namespace Vintagestory.GameContent
             {
                 loc = new AssetLocation("toolmold-blue-" + Block.CodeEndWithoutParts(2));
             }
+            // for chunks that where not loaded on the initial start after the update the remapper will already have remapped those blocks
+            else
+            {
+                loc = Block.Code;
+            }
 
-            blockID = sapi.World.BlockAccessor.GetBlock(loc)?.BlockId ?? 0;
+            var blockID = sapi.World.BlockAccessor.GetBlock(loc)?.BlockId ?? 0;
             if (blockID != 0)
-            { 
+            {
                 sapi.World.BlockAccessor.ExchangeBlock(blockID, Pos);
                 switch (code)
                 {
@@ -411,7 +415,7 @@ namespace Vintagestory.GameContent
                     return stack;
                 }
             }
-            
+
             return null;
         }
 
@@ -626,7 +630,7 @@ namespace Vintagestory.GameContent
                 ITexPositionSource tmpTextureSource = ((ICoreClientAPI)Api).Tesselator.GetTextureSource(Block);
                 ITesselatorAPI mesher = ((ICoreClientAPI)Api).Tesselator;
 
-                Shape shape = Shape.TryGet(Api, Block.Shape.Base.Clone().WithPathPrefix("shapes/").WithPathAppendix(".json"));
+                Shape shape = Shape.TryGet(Api, Block.Shape.Base.Clone().WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json"));
                 mesher.TesselateShape(Block.Variant["color"] + Block.Variant["tooltype"] + "toolmold", shape, out MeshData mesh, tmpTextureSource, new Vec3f(cShape.rotateX, cShape.rotateY, cShape.rotateZ));
 
                 return mesh;

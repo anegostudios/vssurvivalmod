@@ -145,7 +145,7 @@ namespace Vintagestory.GameContent
                     continue;
                 }
 
-                var attrseatconfig = itemslot.Itemstack?.ItemAttributes?["attachableToEntity"]?["seatConfigBySlotCode"][slotcfg.Code]?.AsObject<SeatConfig>(); 
+                var attrseatconfig = itemslot.Itemstack?.ItemAttributes?["attachableToEntity"]?["seatConfigBySlotCode"][slotcfg.Code]?.AsObject<SeatConfig>();
                 if (attrseatconfig == null)
                 {
                     attrseatconfig = itemslot.Itemstack?.ItemAttributes?["attachableToEntity"]?["seatConfig"]?.AsObject<SeatConfig>();
@@ -403,7 +403,7 @@ namespace Vintagestory.GameContent
                 if (moved)
                 {
                     Api.World.Logger.Audit(auditLog);
-                    ial?.OnAttached(itemslot, slotIndex, entity, byEntity);
+                    ial?.OnAttached(targetSlot, slotIndex, entity, byEntity);
                     storeInv();
                 }
 

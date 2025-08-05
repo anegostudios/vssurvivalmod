@@ -1,4 +1,4 @@
-﻿using Cairo;
+using Cairo;
 using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
@@ -45,6 +45,7 @@ namespace Vintagestory.API.Client
 
         int slots;
         bool isPie;
+        public bool RandomBowlBlock { get; set; } = true;
 
         /// <summary>
         /// Flips through given array of item stacks every second
@@ -116,25 +117,16 @@ namespace Vintagestory.API.Client
             bool mouseover = bounds.PointInside(relx, rely);
 
             IBlockMealContainer? mealBlock = dummySlot.Itemstack?.Collectible as IBlockMealContainer;
-            if (mealBlock == null)
-            {
-                if (isPie)
-                {
-                    dummySlot.Itemstack = new (capi.World.BlockAccessor.GetBlock("pie-perfect"));
-                    dummySlot.Itemstack.Attributes.SetInt("pieSize", 4);
-                    dummySlot.Itemstack.Attributes.SetString("topCrustType", BlockPie.TopCrustTypes[capi.World.Rand.Next(BlockPie.TopCrustTypes.Length)].Code);
-                    dummySlot.Itemstack.Attributes.SetInt("bakeLevel", 2);
-                }
-                else dummySlot.Itemstack = new (BlockMeal.AllMealBowls![capi.World.Rand.Next(BlockMeal.AllMealBowls.Length)]);
-                mealBlock = dummySlot.Itemstack.Collectible as IBlockMealContainer;
-                if (mealBlock == null) return;
-            }
+            if (mealBlock == null) return;
 
             if (!mouseover && (secondsVisible -= deltaTime) <= 0)
             {
                 secondsVisible = 1;
-                if (isPie) dummySlot.Itemstack?.Attributes.SetString("topCrustType", BlockPie.TopCrustTypes[capi.World.Rand.Next(BlockPie.TopCrustTypes.Length)].Code);
-                else dummySlot.Itemstack = new (BlockMeal.AllMealBowls![capi.World.Rand.Next(BlockMeal.AllMealBowls.Length)]);
+                if (RandomBowlBlock)
+                {
+                    if (isPie) dummySlot.Itemstack?.Attributes.SetString("topCrustType", BlockPie.TopCrustTypes[capi.World.Rand.Next(BlockPie.TopCrustTypes.Length)].Code);
+                    else dummySlot.Itemstack = new(BlockMeal.AllMealBowls![capi.World.Rand.Next(BlockMeal.AllMealBowls.Length)]);
+                }
                 mealBlock.SetContents(recipe.Code!, dummySlot.Itemstack!, isPie ? BlockPie.GenerateRandomPie(capi, ref cachedValidStacks, recipe, ingredient) : recipe.GenerateRandomMeal(capi, ref cachedValidStacks, allstacks, slots, ingredient), 1);
             }
 

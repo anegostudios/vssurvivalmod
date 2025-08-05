@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -242,6 +242,53 @@ namespace Vintagestory.GameContent
                 ItemStack outstack = SelectedRecipe.Output.ResolvedItemstack.Clone();
                 selectedRecipeId = -1;
                 selectedRecipe = null;
+
+                if (outstack.Collectible.GetBehavior<CollectibleBehaviorGroundStorable>()?.StorageProps is GroundStorageProperties gsprops)
+                {
+                    Api.World.BlockAccessor.SetBlock(Api.World.GetBlock("groundstorage").BlockId, Pos);
+                    int stackSize = outstack.StackSize;
+
+                    if (stackSize == 1 && gsprops.Layout is EnumGroundStorageLayout.Quadrants or EnumGroundStorageLayout.Halves or EnumGroundStorageLayout.SingleCenter)
+                    {
+                        BlockEntityGroundStorage begs = Api.World.BlockAccessor.GetBlockEntity<BlockEntityGroundStorage>(Pos);
+
+                        var slot = new DummySlot(outstack);
+                        begs.DetermineStorageProperties(slot);
+                        GroundStorageProperties storageProps = begs.StorageProps.Clone();
+                        storageProps.Layout = EnumGroundStorageLayout.SingleCenter;
+                        begs.ForceStorageProps(storageProps);
+                        begs.DetermineStorageProperties(slot);
+
+                        begs.Inventory[0].Itemstack = outstack.Clone();
+                        begs.Inventory[0].MarkDirty();
+                        return;
+                    }
+
+                    if ((stackSize == 2 && gsprops.Layout is EnumGroundStorageLayout.Halves) ||
+                        stackSize == 4 && gsprops.Layout is EnumGroundStorageLayout.Quadrants)
+                    {
+                        BlockEntityGroundStorage begs = Api.World.BlockAccessor.GetBlockEntity<BlockEntityGroundStorage>(Pos);
+
+                        begs.DetermineStorageProperties(new DummySlot(outstack));
+                        outstack.StackSize = 1;
+                        for (int i = 0; i < stackSize; i++)
+                        {
+                            begs.Inventory[i].Itemstack = outstack.Clone();
+                            begs.Inventory[i].MarkDirty();
+                        }
+                        return;
+                    }
+
+                    if (stackSize <= gsprops.StackingCapacity && gsprops.Layout is EnumGroundStorageLayout.Stacking)
+                    {
+                        BlockEntityGroundStorage begs = Api.World.BlockAccessor.GetBlockEntity<BlockEntityGroundStorage>(Pos);
+
+                        begs.DetermineStorageProperties(new DummySlot(outstack));
+                        begs.Inventory[0].Itemstack = outstack.Clone();
+                        begs.Inventory[0].MarkDirty();
+                        return;
+                    }
+                }
 
                 if (outstack.StackSize == 1 && outstack.Class == EnumItemClass.Block)
                 {

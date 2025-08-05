@@ -99,7 +99,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        void RegenMesh()
+        public void RegenMesh()
         {
             workItemMeshRef?.Dispose();
             workItemMeshRef = null;

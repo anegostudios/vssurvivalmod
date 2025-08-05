@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -447,8 +447,12 @@ namespace Vintagestory.GameContent
                     int q = GameMath.RoundRandom(world.Rand, be.VolumeRel * 4 * dropQuantityMultiplier);
                     if (q <= 0) return System.Array.Empty<ItemStack>();
 
-                    var stack = new ItemStack(world.GetItem(AssetLocation.Create("stone-" + rocktype, Code.Domain)));
-                    while (q-- > 0) world.SpawnItemEntity(stack.Clone(), pos);
+                    Item item = world.GetItem(AssetLocation.Create("stone-" + rocktype, Code.Domain));
+                    if (item != null)
+                    {
+                        var stack = new ItemStack(world.GetItem(AssetLocation.Create("stone-" + rocktype, Code.Domain)));
+                        while (q-- > 0) world.SpawnItemEntity(stack.Clone(), pos);
+                    }
                 }
             }
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
@@ -684,6 +684,7 @@ namespace Vintagestory.GameContent
 
             if (Api?.Side == EnumAppSide.Client)
             {
+                GenMeshes();
                 Api.World.BlockAccessor.MarkBlockDirty(Pos);
             }
         }

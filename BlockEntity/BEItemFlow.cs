@@ -36,14 +36,13 @@ namespace Vintagestory.GameContent
 
         private static AssetLocation hopperOpen = new AssetLocation("sounds/block/hopperopen");
         private static AssetLocation hopperTumble = new AssetLocation("sounds/block/hoppertumble");
-        public override AssetLocation OpenSound => hopperOpen;
-        public override AssetLocation CloseSound => null;
 
         public virtual float ItemFlowRate => itemFlowRate;
 
         public BlockEntityItemFlow() : base()
         {
-
+            OpenSound = hopperOpen;
+            CloseSound = null;
         }
 
         public override InventoryBase Inventory

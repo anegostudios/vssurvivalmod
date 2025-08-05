@@ -897,7 +897,7 @@ namespace Vintagestory.GameContent
             if (inslot.Itemstack is not ItemStack mealStack) return null;
 
             ItemStack[] stacks = GetNonEmptyContents(world, mealStack);
-            foreach (var stack in stacks) stack.StackSize *= (int)(mealStack.Attributes.TryGetFloat("quantityServings") ?? 1);
+            foreach (var stack in stacks) stack.StackSize *= (int)Math.Max(1, mealStack.Attributes.TryGetFloat("quantityServings") ?? 1);
             SetContents(mealStack, stacks);
 
             TransitionState[]? states = base.UpdateAndGetTransitionStates(world, inslot);
@@ -918,7 +918,7 @@ namespace Vintagestory.GameContent
                 mealStack.Attributes.RemoveAttribute("quantityServings");
             }
 
-            foreach (var stack in stacks) stack.StackSize /= (int)(mealStack.Attributes.TryGetFloat("quantityServings") ?? 1);
+            foreach (var stack in stacks) stack.StackSize /= (int)Math.Max(1, mealStack.Attributes.TryGetFloat("quantityServings") ?? 1);
             SetContents(mealStack, stacks);
 
             if (stacks.Length == 0 && AssetLocation.CreateOrNull(Attributes?["eatenBlock"]?.AsString()) is AssetLocation loc && world.GetBlock(loc) is Block block)
@@ -943,7 +943,7 @@ namespace Vintagestory.GameContent
                 {
                     code = Lang.Get("Rotten Food");
                 }
-                else
+                else if (contentStacks.Length > 0)
                 {
                     code = contentStacks[0].GetName();
                 }

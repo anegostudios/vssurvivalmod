@@ -45,6 +45,8 @@ namespace Vintagestory.GameContent
         protected EnumVerticalAlign verticalAlign;
         protected int TextWidth = 208;
         protected int TextHeight = 96;
+        protected float DefaultFontSize;
+        protected string SurfaceName = "leftplaque";
 
         int tempColor;
         ItemStack tempStack;
@@ -52,19 +54,19 @@ namespace Vintagestory.GameContent
 
         public float FontSize
         {
-            get { return entity.WatchedAttributes.GetFloat("fontSize"); }
-            set { entity.WatchedAttributes.SetFloat("fontSize", value); }
+            get { return entity.WatchedAttributes.GetFloat(SurfaceName + "_fontSize", DefaultFontSize); }
+            set { entity.WatchedAttributes.SetFloat(SurfaceName + "_fontSize", value); }
         }
         public string Text
         {
-            get { return entity.WatchedAttributes.GetString("writingSurfaceText"); }
-            set { entity.WatchedAttributes.SetString("writingSurfaceText", value); }
+            get { return entity.WatchedAttributes.GetString(SurfaceName + "_writingSurfaceText"); }
+            set { entity.WatchedAttributes.SetString(SurfaceName + "_writingSurfaceText", value); }
         }
 
         public int Color
         {
-            get { return entity.WatchedAttributes.GetInt("textColor"); }
-            set { entity.WatchedAttributes.SetInt("textColor", value); }
+            get { return entity.WatchedAttributes.GetInt(SurfaceName + "_textColor", 255 << 24); }
+            set { entity.WatchedAttributes.SetInt(SurfaceName + "_textColor", value); }
         }
 
 
@@ -76,7 +78,7 @@ namespace Vintagestory.GameContent
             if (capi != null)
             {
                 capi.Event.ReloadTextures += Event_ReloadTextures;
-                entity.WatchedAttributes.RegisterModifiedListener("writingSurfaceText", entity.MarkShapeModified);
+                entity.WatchedAttributes.RegisterModifiedListener(SurfaceName + "_writingSurfaceText", entity.MarkShapeModified);
                 signTextConfig = attributes["fontConfig"].AsObject<TextAreaConfig>();
                 font = new CairoFont(signTextConfig.FontSize, signTextConfig.FontName, new double[] { 0, 0, 0, 0.8 });
                 if (signTextConfig.BoldFont) font.WithWeight(Cairo.FontWeight.Bold);
@@ -84,11 +86,8 @@ namespace Vintagestory.GameContent
                 verticalAlign = signTextConfig.VerticalAlign;
                 TextWidth = signTextConfig.MaxWidth;
                 TextHeight = signTextConfig.MaxHeight;
-                FontSize = signTextConfig.FontSize;
+                DefaultFontSize = signTextConfig.FontSize;
             }
-
-            Color = 255 << 24;
-            Text = null;
         }
 
         private void Event_ReloadTextures()
@@ -207,7 +206,7 @@ namespace Vintagestory.GameContent
                     foreach (var face in ele.FacesResolved)
                     {
                         if (face == null) continue;
-                        face.Texture = "oak";
+                        face.Texture = "transparent";
                     }
 
                 }
@@ -239,7 +238,7 @@ namespace Vintagestory.GameContent
 
             loadedTexture = api.Gui.TextTexture.GenTextTexture(Text, font, TextWidth, TextHeight, bg, EnumTextOrientation.Center, false);
                 
-            string textureCode = "writingsurface-" + entity.EntityId;
+            string textureCode = "writingsurface-" + SurfaceName + "-" + entity.EntityId;
             
             if (texPos == null)
             {
