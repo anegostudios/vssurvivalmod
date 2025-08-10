@@ -1,5 +1,4 @@
 using System;
-using System.Linq.Expressions;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -219,7 +218,7 @@ namespace Vintagestory.GameContent
                     return false;
 
                 }
-                else if (/*slot.Empty && */ IsBurning)
+                else if (slot.Empty && IsBurning)
                 {
                     if (capi != null)
                     {
@@ -865,8 +864,8 @@ namespace Vintagestory.GameContent
                 if (Inventory[i].Itemstack == stack)
                 {
                     scaleY = "-" + bakingData[i].CurHeightMul;
-                    scaleX = "-" + bakingData[i].CurHeightMul;
-                    scaleZ = "-" + bakingData[i].CurHeightMul;
+                    scaleX = "-" + bakingData[i].CurXMul;
+                    scaleZ = "-" + bakingData[i].CurZMul;
                     break;
                 }
             }

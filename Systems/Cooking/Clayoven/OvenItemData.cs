@@ -28,7 +28,15 @@ namespace Vintagestory.GameContent
         /// The current temperature of this item (may be less than the oven temperature if it was recently placed)
         /// </summary>
         public float temp;
+
+        /// <summary>
+        /// How close is the item to fully risen (fully done == 1.0, greater values ignored)
+        /// </summary>
         public float CurZMul;
+
+        /// <summary>
+        /// How close is the item to fully risen (fully done == 1.0, greater values ignored)
+        /// </summary>
         public float CurXMul;
 
         public OvenItemData()
