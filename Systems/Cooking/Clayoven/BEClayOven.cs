@@ -236,9 +236,7 @@ namespace Vintagestory.GameContent
                     }
                     return true;
                 }
-                else if (slot.Itemstack.Attributes.GetBool("bakeable", true) ||
-                          (combProps != null && combProps.SmeltingType == EnumSmeltType.Bake &&
-                          combProps.MeltingPoint < maxBakingTemperatureAccepted))
+                else if (colObj.Attributes?["bakingProperties"] != null || colObj.CombustibleProps?.SmeltingType == EnumSmeltType.Bake && colObj.CombustibleProps.MeltingPoint < maxBakingTemperatureAccepted)
                 //Can't meaningfully bake anything requiring heat over 260 in the basic clay oven
                 {
                     if (slot.Itemstack.Equals(Api.World, lastRemoved, GlobalConstants.IgnoredStackAttributes) && !ovenInv[0].Empty)
@@ -577,9 +575,9 @@ namespace Vintagestory.GameContent
             float startZMul = bakeProps?.StartScaleZ ?? 1f;
             float endZMul = bakeProps?.EndScaleZ ?? 1f;
             float progress = GameMath.Clamp((currentLevel - levelFrom) / (levelTo - levelFrom), 0, 1);
-            float XMul = GameMath.Mix(startHeightMul, endHeightMul, progress);
+            float XMul = GameMath.Mix(startXMul, endXMul, progress);
             float heightMul = GameMath.Mix(startHeightMul, endHeightMul, progress);
-            float ZMul = GameMath.Mix(startHeightMul, endHeightMul, progress);
+            float ZMul = GameMath.Mix(startZMul, endZMul, progress);
             float nowXMulStaged = (int)(XMul * BakingStageThreshold) / (float)BakingStageThreshold;
             float nowHeightMulStaged = (int)(heightMul * BakingStageThreshold) / (float)BakingStageThreshold;
             float nowZMulStaged = (int)(ZMul * BakingStageThreshold) / (float)BakingStageThreshold;
@@ -836,9 +834,12 @@ namespace Vintagestory.GameContent
             {
                 Vec3f off = offs[i];
 
-                float scaleY = OvenContentMode == EnumOvenContentMode.Firewood ? 0.9f : bakingData[i].CurHeightMul;
-                float scaleX = OvenContentMode == EnumOvenContentMode.Firewood ? 0.9f : bakingData[i].CurXMul;
-                float scaleZ = OvenContentMode == EnumOvenContentMode.Firewood ? 0.9f : bakingData[i].CurZMul;
+                bool isFirewood = OvenContentMode == EnumOvenContentMode.Firewood;
+                float defaultScale = 0.9f;
+
+                float scaleY = isFirewood ? defaultScale : (bakingData[i].CurHeightMul != 0 ? bakingData[i].CurHeightMul : defaultScale);
+                float scaleX = isFirewood ? defaultScale : (bakingData[i].CurXMul != 0 ? bakingData[i].CurXMul : defaultScale);
+                float scaleZ = isFirewood ? defaultScale : (bakingData[i].CurZMul != 0 ? bakingData[i].CurZMul : defaultScale);
 
                 tfMatrices[i] =
                     new Matrixf()
