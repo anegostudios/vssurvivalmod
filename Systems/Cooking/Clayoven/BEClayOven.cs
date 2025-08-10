@@ -10,6 +10,12 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
+    /* New Lang Key:
+     * "The Oven Is Already Lit.": "The Oven Is Already Lit.",
+     * "The Oven Needs Fuel.": "The Oven Needs Fuel.",
+     * 
+     */
+"Wait until the fire is out": "Wait until the fire is out",
     public enum EnumOvenContentMode
     {
         Firewood,
@@ -188,13 +194,13 @@ namespace Vintagestory.GameContent
                 {
                     if (capi != null)
                     {
-                        capi.TriggerIngameError(this, "ovenislit", Lang.Get("ovenalreadylit"));
+                        capi.TriggerIngameError(this, "ovenislit", Lang.Get("The Oven Is Already Lit."));
                         return false;
                     }
                 }
                 else if (!burning && !HasFuel)
                 {
-                    capi.TriggerIngameError(this, "ovenneedsfuel", Lang.Get("ovenneedsfuel"));
+                    capi.TriggerIngameError(this, "ovenneedsfuel", Lang.Get("The Oven Needs Fuel."));
                     return false;
                 }
                 return false;
@@ -222,7 +228,7 @@ namespace Vintagestory.GameContent
                 {
                     if (capi != null)
                     {
-                        capi.TriggerIngameError(this, "ovenwaittillout", Lang.Get("ovenwaittillout"));
+                        capi.TriggerIngameError(this, "ovenwaittillout", Lang.Get("Wait until the fire is out"));
                     }
                     return false;
                 }
@@ -232,8 +238,9 @@ namespace Vintagestory.GameContent
                 {
                     if (capi != null)
                     {
-                        capi.TriggerIngameError(this, "notbakeable", Lang.Get("itemnotbakeable"));
+                        capi.TriggerIngameError(this, "notbakeable", Lang.Get("This item is not bakeable."));
                     }
+	
                     return true;
                 }
                 else if (colObj.Attributes?["bakingProperties"] != null || colObj.CombustibleProps?.SmeltingType == EnumSmeltType.Bake && colObj.CombustibleProps.MeltingPoint < maxBakingTemperatureAccepted)
@@ -271,8 +278,8 @@ namespace Vintagestory.GameContent
                                 {
                                     if (slot.Itemstack.Collectible.Attributes["bakingProperties"].Exists)
                                     {
-                                        capi.TriggerIngameError(this, "ovenisfull", Lang.Get("ovenisfull"));
-                                        
+                                        capi.TriggerIngameError(this, "ovenisfull", Lang.Get("Oven is full"));
+
                                     }
                                 }
                                 return true;
