@@ -15,7 +15,7 @@ namespace Vintagestory.GameContent
      * "The Oven Needs Fuel.": "The Oven Needs Fuel.",
      * 
      */
-"Wait until the fire is out": "Wait until the fire is out",
+
     public enum EnumOvenContentMode
     {
         Firewood,
