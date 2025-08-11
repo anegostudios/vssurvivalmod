@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -64,7 +64,7 @@ namespace Vintagestory.GameContent.Mechanics
                 }
             }
 
-            base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier);
+            // Do not call base.OnBlockBroken if the principal block was broken (and it causes an issue when attempting to spawn particles for the top block)
         }
 
         public override Cuboidf GetParticleBreakBox(IBlockAccessor blockAccess, BlockPos pos, BlockFacing facing)

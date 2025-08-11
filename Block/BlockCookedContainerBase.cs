@@ -357,8 +357,9 @@ namespace Vintagestory.GameContent
 
             var emptyCode = contBlock.Attributes?["emptiedBlockCode"].AsString();
             string emptyName = new ItemStack(emptyCode == null ? contBlock : api.World.GetBlock(emptyCode)).GetName();
+            bool rotten = MealMeshCache.ContentsRotten(stacks);
 
-            if (servings > 0)
+            if (servings > 0 || rotten)
             {
                 string message = "contained-food-servings";
                 string outputName = recipe?.GetOutputName(world, stacks) ?? stacks[0].GetName();
@@ -369,7 +370,7 @@ namespace Vintagestory.GameContent
                     int index = outputName.IndexOf('\n');
                     if (index > 0) outputName = outputName.Substring(0, index);
                 }
-                else if (MealMeshCache.ContentsRotten(stacks))
+                else if (rotten)
                 {
                     message = "contained-food-singleservingmax"; // This lets me show the "Rotten Food" name without the "1 serving of" text
                     outputName = Lang.Get("Rotten Food");

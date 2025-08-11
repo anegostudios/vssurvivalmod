@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -37,7 +37,7 @@ namespace Vintagestory.GameContent
             this.modSys = modSys;
         }
 
-        public string variantCategory = "standard";
+        public string[] variantCategories = ["standard"];
 
         protected virtual bool AllowClassSelection => true;
         protected virtual bool AllowKeepCurrent => false;
@@ -120,7 +120,7 @@ namespace Vintagestory.GameContent
 
                     AppliedSkinnablePartVariant appliedVar = skinMod.AppliedSkinParts.FirstOrDefault(sp => sp.PartCode == code);
 
-                    var variants = skinpart.Variants.Where(p => p.Category == variantCategory || (AllowKeepCurrent && p.Code == appliedVar.Code)).ToArray();
+                    var variants = skinpart.Variants.Where(p => variantCategories.Contains(p.Category) || (AllowKeepCurrent && p.Code == appliedVar.Code)).ToArray();
 
                     if (skinpart.Type == EnumSkinnableType.Texture && !skinpart.UseDropDown)
                     {

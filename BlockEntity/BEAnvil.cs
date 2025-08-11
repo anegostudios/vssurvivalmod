@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -433,7 +432,7 @@ namespace Vintagestory.GameContent
             {
                 slagPieces.Color = workItemStack.Collectible.GetRandomColor(Api as ICoreClientAPI, workItemStack);
                 slagPieces.MinPos = Pos.ToVec3d().AddCopy(voxelPos.X / 16f, voxYOff + voxelPos.Y / 16f + 0.0625f, voxelPos.Z / 16f);
-
+                slagPieces.ColorByItem = workItemStack.Item;
                 Api.World.SpawnParticles(slagPieces, byPlayer);
             }
         }

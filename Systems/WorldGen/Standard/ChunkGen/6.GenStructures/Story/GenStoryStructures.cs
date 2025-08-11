@@ -667,33 +667,49 @@ namespace Vintagestory.GameContent
 
                 var structure = scfg.Structures.First(s => s.Code == strucCode);
 
-                switch (structure.Placement)
+                if (structure.UseWorldgenHeight)
                 {
-                    case EnumStructurePlacement.SurfaceRuin:
+                    int h;
+                    if (strucInst.WorldgenHeight >= 0)
                     {
-                        int h;
-                        if (strucInst.WorldgenHeight >= 0)
-                        {
-                            h = strucInst.WorldgenHeight;
-                        }
-                        else
-                        {
-                            h = chunks[0].MapChunk.WorldGenTerrainHeightMap[(startPos.Z % chunksize) * chunksize + (startPos.X % chunksize)];
-                            strucInst.WorldgenHeight = h;
-                            strucloc.Y1 = h - structure.schematicData.SizeY + structure.schematicData.OffsetY;
-                            strucloc.Y2 = strucloc.Y1 + structure.schematicData.SizeY;
-                            StoryStructureInstancesDirty = true;
-                        }
-                        startPos.Y = h - structure.schematicData.SizeY + structure.schematicData.OffsetY;
-                        break;
+                        h = strucInst.WorldgenHeight;
                     }
-                    case EnumStructurePlacement.Surface:
-                        strucloc.Y1 = api.World.SeaLevel + structure.schematicData.OffsetY;
+                    else
+                    {
+                        h = chunks[0].MapChunk.WorldGenTerrainHeightMap[(startPos.Z % chunksize) * chunksize + (startPos.X % chunksize)];
+                        strucInst.WorldgenHeight = h;
+                        strucloc.Y1 = h + structure.schematicData.OffsetY;
                         strucloc.Y2 = strucloc.Y1 + structure.schematicData.SizeY;
                         StoryStructureInstancesDirty = true;
+                    }
 
-                        startPos.Y = strucloc.Y1;
-                        break;
+                    startPos.Y = h + structure.schematicData.OffsetY;
+                }
+                else if(structure.Placement == EnumStructurePlacement.SurfaceRuin)
+                {
+                    int h;
+                    if (strucInst.WorldgenHeight >= 0)
+                    {
+                        h = strucInst.WorldgenHeight;
+                    }
+                    else
+                    {
+                        h = chunks[0].MapChunk.WorldGenTerrainHeightMap[(startPos.Z % chunksize) * chunksize + (startPos.X % chunksize)];
+                        strucInst.WorldgenHeight = h;
+                        strucloc.Y1 = h - structure.schematicData.SizeY + structure.schematicData.OffsetY;
+                        strucloc.Y2 = strucloc.Y1 + structure.schematicData.SizeY;
+                        StoryStructureInstancesDirty = true;
+                    }
+                    startPos.Y = h - structure.schematicData.SizeY + structure.schematicData.OffsetY;
+                    break;
+                }
+                else if(structure.Placement == EnumStructurePlacement.Surface)
+                {
+                    strucloc.Y1 = api.World.SeaLevel + structure.schematicData.OffsetY;
+                    strucloc.Y2 = strucloc.Y1 + structure.schematicData.SizeY;
+                    StoryStructureInstancesDirty = true;
+
+                    startPos.Y = strucloc.Y1;
                 }
 
                 Block rockBlock = null;

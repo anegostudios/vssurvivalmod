@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
@@ -46,7 +46,7 @@ namespace Vintagestory.GameContent
         int tickCounter;
 
         int tempStoneCoffin;
-        BlockPos[] particlePositions = new BlockPos[7];
+        BlockPos[] particlePositions = new BlockPos[8];
 
         public override InventoryBase Inventory => inv;
         public override string InventoryClassName => "stonecoffin";
@@ -109,6 +109,7 @@ namespace Vintagestory.GameContent
             particlePositions[5] = Pos.AddCopy(blockScs.Orientation.GetCCW()).Add(blockScs.Orientation.Opposite);
 
             particlePositions[6] = Pos.UpCopy(1).Add(blockScs.Orientation.Opposite);
+            particlePositions[7] = Pos.UpCopy(1);
 
             inv.SetSecondaryPos(Pos.AddCopy(blockScs.Orientation.Opposite));
         }
@@ -334,6 +335,10 @@ namespace Vintagestory.GameContent
             if (receivesHeat)
             {
                 Vec3d pos = Pos.ToVec3d().Add(0.5, 0.5, 0.5).Add(blockScs.Orientation.Opposite.Normalf.X, 0, blockScs.Orientation.Opposite.Normalf.Z);
+                if (msOpp.InCompleteBlockCount(Api.World, Pos.AddCopy(blockScs.Orientation.Opposite)) == 0)
+                {
+                    pos = Pos.AddCopy(blockScs.Orientation.Opposite).ToVec3d().Add(0.5, 0.5, 0.5).Add(blockScs.Orientation.Normalf.X, 0, blockScs.Orientation.Normalf.Z); ;
+                }
                 Entity[] entities = Api.World.GetEntitiesAround(pos, 2.5f, 1, e => e.Alive && e is EntityAgent);
 
                 foreach (var entity in entities) entity.ReceiveDamage(new DamageSource() { DamageTier = 1, SourcePos = pos, SourceBlock = Block, Type = EnumDamageType.Fire }, 4);

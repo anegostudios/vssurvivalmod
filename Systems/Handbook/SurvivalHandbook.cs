@@ -170,7 +170,7 @@ namespace Vintagestory.GameContent
 
                 ItemStack stack = capi.World.Player.InventoryManager.CurrentHoveredSlot?.Itemstack;
 
-                if (key.Shift)
+                if (key?.Shift == true)
                 {
                     BlockPos pos = capi.World.Player.CurrentBlockSelection?.Position;
                     if (pos != null) stack = capi.World.BlockAccessor.GetBlock(pos).OnPickBlock(capi.World, pos);

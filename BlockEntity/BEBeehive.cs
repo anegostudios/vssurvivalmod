@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -231,7 +231,7 @@ namespace Vintagestory.GameContent
             int minZ = -8 + 8 * (scanIteration % 2);
             int size = 8;
 
-            Api.World.BlockAccessor.WalkBlocks(Pos.AddCopy(minX, -5, minZ), Pos.AddCopy(minX + size - 1, 5, minZ + size - 1), (block, x, y, z) =>
+            Api.World.BlockAccessor.WalkBlocks(Pos.AddCopy(minX, -7, minZ), Pos.AddCopy(minX + size - 1, 4, minZ + size - 1), (block, x, y, z) =>
             {
                 if (block.Id == 0) return;
 

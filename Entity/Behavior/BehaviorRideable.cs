@@ -328,7 +328,7 @@ namespace Vintagestory.GameContent
 
         public void SetNextGait(bool forward, GaitMeta nextGait = null)
         {
-            if (api.Side != EnumAppSide.Server) return;
+            //if (api.Side == EnumAppSide.Server) return;     // radfast: in 1.21.0-rc.4 for more responsive motion, we change gait immediately on client side as well as server side
 
             nextGait ??= GetNextGait(forward);
 
@@ -467,10 +467,10 @@ namespace Vintagestory.GameContent
                 if (forwardPressed && ebg.IsIdle) SpeedUp();
 
                 // Handle backward to idle change without sprint key
-                if (forwardPressed && ebg.IsBackward) ebg.SetIdle();
+                else if (forwardPressed && ebg.IsBackward) ebg.SetIdle();
 
                 // Cycle up with sprint
-                if (ebg.IsForward && sprintPressed && nowMs - lastGaitChangeMs > 300)
+                else if (ebg.IsForward && sprintPressed && nowMs - lastGaitChangeMs > 300)
                 {
                     SpeedUp();
 
@@ -668,7 +668,7 @@ namespace Vintagestory.GameContent
                 }
 
                 curControlMeta = nowControlMeta;
-                eagent.AnimManager.StartAnimation(nowControlMeta);
+                if (api.Side == EnumAppSide.Server) eagent.AnimManager.StartAnimation(nowControlMeta);
             }
 
             if (api.Side == EnumAppSide.Server)

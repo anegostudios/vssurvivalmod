@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Common;
+using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using System.IO;
@@ -224,7 +224,7 @@ namespace Vintagestory.GameContent
             if (value == "openhairstyling")
             {
                 ConversableBh.Dialog?.TryClose();
-                Api.ModLoader.GetModSystem<ModSystemNPCHairStyling>().handleHairstyling(this, triggeringEntity, hairStylingCategory);
+                Api.ModLoader.GetModSystem<ModSystemNPCHairStyling>().handleHairstyling(this, triggeringEntity, ["standard", hairStylingCategory]);
                 return 0;
             }
 

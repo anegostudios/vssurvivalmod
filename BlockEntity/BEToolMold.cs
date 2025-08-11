@@ -32,7 +32,7 @@ namespace Vintagestory.GameContent
         public bool IsHardened => Temperature < 0.3f * MetalContent?.Collectible.GetMeltingPoint(Api.World, null, new DummySlot(MetalContent));
         public bool IsLiquid => Temperature > 0.8f * MetalContent?.Collectible.GetMeltingPoint(Api.World, null, new DummySlot(MetalContent));
         public bool IsFull => FillLevel >= requiredUnits;
-        public bool CanReceiveAny => !Shattered && Block.Variant["materialtype"] == "fired";
+        public bool CanReceiveAny => !Shattered && (Block.Variant["materialtype"] == "fired" || Block.Code.Path.Contains("burned"));
         public bool IsHot => Temperature >= 200;
         public bool BreaksWhenFilled => breaksWhenFilled;
 
@@ -624,14 +624,14 @@ namespace Vintagestory.GameContent
 
         private void GenMeshes()
         {
-            MoldMesh = ObjectCacheUtil.GetOrCreate(Api, Block.Variant["color"] + Block.Variant["tooltype"] + "toolmold", () =>
+            MoldMesh = ObjectCacheUtil.GetOrCreate(Api, Block.Code.ToString(), () =>
             {
                 CompositeShape cShape = Block.Shape;
                 ITexPositionSource tmpTextureSource = ((ICoreClientAPI)Api).Tesselator.GetTextureSource(Block);
                 ITesselatorAPI mesher = ((ICoreClientAPI)Api).Tesselator;
 
                 Shape shape = Shape.TryGet(Api, Block.Shape.Base.Clone().WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json"));
-                mesher.TesselateShape(Block.Variant["color"] + Block.Variant["tooltype"] + "toolmold", shape, out MeshData mesh, tmpTextureSource, new Vec3f(cShape.rotateX, cShape.rotateY, cShape.rotateZ));
+                mesher.TesselateShape(Block.Code.ToString(), shape, out MeshData mesh, tmpTextureSource, new Vec3f(cShape.rotateX, cShape.rotateY, cShape.rotateZ));
 
                 return mesh;
             });

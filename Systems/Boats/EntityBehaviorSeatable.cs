@@ -27,6 +27,7 @@ namespace Vintagestory.GameContent
         public IMountableSeat[] Seats { get; set; }
         public SeatConfig[] SeatConfigs;
         public EntityPos Position => entity.SidedPos;
+        public double StepPitch => (entity.Properties.Client.Renderer as EntityShapeRenderer).stepPitch;
         ICoreAPI Api => entity.Api;
 
         bool interactMountAnySeat;

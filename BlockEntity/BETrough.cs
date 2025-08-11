@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -405,7 +405,7 @@ namespace Vintagestory.GameContent
 
                 if ((Block as BlockTroughBase)?.UnsuitableForEntity(entityType.Code.Path) == true) continue;
 
-                string code = attr?["creatureDietGroup"].AsString() ?? attr?["handbook"]["groupcode"].AsString() ?? "item-creature-" + entityType.Code;
+                string code = attr?["creatureDietGroup"].AsString() ?? attr?["handbook"]["groupcode"].AsString() ?? entityType.Code.Domain + ":item-creature-" + entityType.Code.Path;
                 creatureNames.Add(Lang.Get(code));
             }
 

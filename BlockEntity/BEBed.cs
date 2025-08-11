@@ -31,6 +31,7 @@ namespace Vintagestory.GameContent
         public bool DoTeleportOnUnmount { get; set; } = true;
 
         public EntityPos SeatPosition => Position; // Since we have only one seat, it can be the same as the base position
+        public double StepPitch => 0;
         public EntityPos Position
         {
             get

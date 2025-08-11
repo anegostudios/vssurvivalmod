@@ -49,7 +49,7 @@ namespace Vintagestory.GameContent
         public bool IsFullLeft => FillLevelLeft >= RequiredUnits;
         public bool IsFullRight => FillLevelRight >= RequiredUnits;
         public bool IsHot => TemperatureLeft >= 200 || TemperatureRight >= 200;
-        public bool CanReceiveAny => !BothShattered && (MoldLeft?.Block?.Variant["type"] == "fired" || MoldRight?.Block.Variant["type"] == "fired");
+        public bool CanReceiveAny => !BothShattered && (MoldLeft?.Block?.Variant["type"] == "fired" || MoldLeft?.Block?.Code.Path.Contains("burned") == true || MoldRight?.Block.Variant["type"] == "fired" || MoldRight?.Block?.Code.Path.Contains("burned") == true);
 
         bool BothShattered => ShatteredLeft && ShatteredRight;
 
@@ -620,27 +620,27 @@ namespace Vintagestory.GameContent
 
         private void GenMeshes()
         {
-            MoldMeshLeft = ObjectCacheUtil.GetOrCreate(Api, (MoldLeft?.Block ?? Block).Variant["color"] + "ingotmold", () =>
+            MoldMeshLeft = ObjectCacheUtil.GetOrCreate(Api, (MoldLeft?.Block ?? Block).Code.ToString(), () =>
             {
 
                 ITexPositionSource tmpTextureSource = ((ICoreClientAPI)Api).Tesselator.GetTextureSource(MoldLeft?.Block ?? Block);
                 ITesselatorAPI mesher = ((ICoreClientAPI)Api).Tesselator;
 
                 var shape = Shape.TryGet(Api, "shapes/block/clay/mold/ingot.json");
-                mesher.TesselateShape((MoldLeft?.Block ?? Block).Variant["color"] + "ingotmold", shape, out MeshData mesh, tmpTextureSource);
+                mesher.TesselateShape((MoldLeft?.Block ?? Block).Code.ToString(), shape, out MeshData mesh, tmpTextureSource);
 
                 return mesh;
             });
             if (MoldRight != null)
             {
-                MoldMeshRight = ObjectCacheUtil.GetOrCreate(Api, (MoldRight?.Block ?? Block).Variant["color"] + "ingotmold", () =>
+                MoldMeshRight = ObjectCacheUtil.GetOrCreate(Api, (MoldRight?.Block ?? Block).Code.ToString(), () =>
                 {
 
                     ITexPositionSource tmpTextureSource = ((ICoreClientAPI)Api).Tesselator.GetTextureSource(MoldRight?.Block ?? Block);
                     ITesselatorAPI mesher = ((ICoreClientAPI)Api).Tesselator;
 
                     var shape = Shape.TryGet(Api, "shapes/block/clay/mold/ingot.json");
-                    mesher.TesselateShape((MoldRight?.Block ?? Block).Variant["color"] + "ingotmold", shape, out MeshData mesh, tmpTextureSource);
+                    mesher.TesselateShape((MoldRight?.Block ?? Block).Code.ToString(), shape, out MeshData mesh, tmpTextureSource);
 
                     return mesh;
                 });
@@ -748,19 +748,16 @@ namespace Vintagestory.GameContent
         {
             ContentsLeft?.Collectible.OnStoreCollectibleMappings(Api.World, new DummySlot(ContentsLeft), blockIdMapping, itemIdMapping);
             ContentsRight?.Collectible.OnStoreCollectibleMappings(Api.World, new DummySlot(ContentsRight), blockIdMapping, itemIdMapping);
+            MoldLeft?.Collectible.OnStoreCollectibleMappings(Api.World, new DummySlot(MoldLeft), blockIdMapping, itemIdMapping);
+            MoldRight?.Collectible.OnStoreCollectibleMappings(Api.World, new DummySlot(MoldRight), blockIdMapping, itemIdMapping);
         }
 
         public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed, bool resolveImports)
         {
-            if (ContentsLeft?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve) == false)
-            {
-                ContentsLeft = null;
-            }
-
-            if (ContentsRight?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve) == false)
-            {
-                ContentsRight = null;
-            }
+            if (ContentsLeft?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve) == false) ContentsLeft = null;
+            if (ContentsRight?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve) == false) ContentsRight = null;
+            if (MoldLeft?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve) == false) MoldLeft = null;
+            if (MoldRight?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve) == false) MoldRight = null;
         }
 
         public void ShatterMoldSided(bool shatterRight)

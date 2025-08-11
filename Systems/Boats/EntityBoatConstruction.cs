@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -32,7 +32,7 @@ namespace Vintagestory.GameContent
         public string[] AddElements;
         public string[] RemoveElements;
         public ConstructionIgredient[] RequireStacks;
-        public string ActionLangCode = "construct";
+        public string ActionLangCode = "rollers-construct";
     }
 
     public class EntityBoatConstruction : Entity

@@ -67,6 +67,9 @@ namespace Vintagestory.ServerMods
         [JsonProperty]
         public bool ExcludeSchematicSizeProtect;
 
+        [JsonProperty]
+        public bool UseWorldgenHeight;
+
 
         internal BlockSchematicPartial schematicData;
 

@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using Vintagestory.API;
@@ -234,8 +234,8 @@ namespace Vintagestory.GameContent
                 bool isWildCard = ValidStacks[i].Code.Path.Contains('*');
                 bool found =
                     (isWildCard && inputStack.Collectible.WildCardMatch(ValidStacks[i].Code))
-                    || (!isWildCard && inputStack.Equals(world, ValidStacks[i].ResolvedItemstack, GlobalConstants.IgnoredStackAttributes))
-                    || (ValidStacks[i].CookedStack?.ResolvedItemstack is ItemStack cookedStack && inputStack.Equals(world, cookedStack, GlobalConstants.IgnoredStackAttributes))
+                    || (!isWildCard && inputStack.Equals(world, ValidStacks[i].ResolvedItemstack, [.. GlobalConstants.IgnoredStackAttributes, "timeFrozen"]))
+                    || (ValidStacks[i].CookedStack?.ResolvedItemstack is ItemStack cookedStack && inputStack.Equals(world, cookedStack, [.. GlobalConstants.IgnoredStackAttributes, "timeFrozen"]))
                 ;
 
                 if (found) return ValidStacks[i];

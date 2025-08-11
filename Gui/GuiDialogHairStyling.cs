@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -27,9 +27,9 @@ namespace Vintagestory.GameContent
             return code == "hairbase" || code == "hairextra" || code == "mustache" || code == "beard";
         }
 
-        public GuiDialogHairStyling(ICoreClientAPI capi, long entityId, string categorycode, Dictionary<string, int> dictionary) : base(capi, null)
+        public GuiDialogHairStyling(ICoreClientAPI capi, long entityId, string[] categorycodes, Dictionary<string, int> dictionary) : base(capi, null)
         {
-            this.variantCategory = categorycode;
+            this.variantCategories = categorycodes;
             this.hairStylingCost = dictionary;
             this.entityId = entityId;
 

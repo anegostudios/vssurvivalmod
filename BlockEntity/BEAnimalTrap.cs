@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
@@ -120,6 +120,11 @@ namespace Vintagestory.GameContent
         {
             if (TrapState is EnumTrapState.Ready or EnumTrapState.Destroyed) return true;
 
+            if (!Api.World.Claims.TryAccess(player, blockSel.Position, EnumBlockAccessFlags.Use))
+            {
+                return false;
+            }
+
             if (inv[0].Empty)
             {
                 var stack = new ItemStack(Block);
@@ -164,18 +169,15 @@ namespace Vintagestory.GameContent
         private void tryReadyTrap(IPlayer player)
         {
             var heldSlot = player.InventoryManager.ActiveHotbarSlot;
-            if (heldSlot?.Empty != false) return;
+            if (heldSlot?.Empty != false || Block is not BlockAnimalTrap blockTrap) return;
 
-            var collobj = heldSlot.Itemstack.Collectible;
-
-            if ((collobj.NutritionProps == null && collobj.Attributes?["foodTags"].Exists != true) ||
-                !Api.World.EntityTypes.Any(type => type.Attributes?["creatureDiet"].AsObject<CreatureDiet>()?.Matches(heldSlot.Itemstack, true, 0.5f) == true))
+            if (!blockTrap.IsAppetizingBait(Api, heldSlot.Itemstack))
             {
                 (Api as ICoreClientAPI)?.TriggerIngameError(this, "unappetizingbait", Lang.Get("animaltrap-unappetizingbait-error"));
                 return;
             }
 
-            if (Block.Attributes?["excludeFoodTags"].AsArray<string>()?.Any(tag => collobj.Attributes?["foodTags"].AsArray<string>()?.Contains(tag) == true) == true)
+            if (!blockTrap.CanFitBait(Api, heldSlot.Itemstack))
             {
                 (Api as ICoreClientAPI)?.TriggerIngameError(this, "cannotfitintrap", Lang.Get("animaltrap-cannotfitintrap-error"));
                 return;

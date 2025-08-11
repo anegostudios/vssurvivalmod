@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Common;
+using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
 #nullable disable
@@ -84,7 +84,7 @@ namespace Vintagestory.GameContent
 
         public override int GetRetention(BlockPos pos, BlockFacing facing, EnumRetentionType type)
         {
-            return 3;
+            return facing == BlockFacing.UP ? 0 : 3;
         }
 
 

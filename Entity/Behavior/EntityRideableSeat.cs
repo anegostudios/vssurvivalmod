@@ -48,8 +48,13 @@ namespace Vintagestory.GameContent
             {
                 loadAttachPointTransform();
                 var rotvec = modelmat.TransformVector(new Vec4f(0, 0f, 0, 1));
-                seatPos.Yaw = Entity.Pos.Yaw;
-                return seatPos.SetFrom(mountedEntity.Position).Add(rotvec.X, rotvec.Y, rotvec.Z);
+                seatPos.SetFrom(mountedEntity.Position).Add(rotvec.X, rotvec.Y, rotvec.Z);
+
+                //seatPos.Yaw = Entity.Pos.Yaw;       // radfast 10.8.25: this was never being applied (because it was previously the line before .SetFrom() and .SetFrom() resets the Yaw).  Left here in case we actually want to apply it?
+
+                seatPos.Pitch = (float)mountedEntity.StepPitch * 0.55f;    // If the elk is pitching forward or back due to stepping down/up, apply some of that pitch to the rider position also
+
+                return seatPos;
             }
         }
 

@@ -1,18 +1,15 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection.Emit;
 using System.Text;
-using Vintagestory.Common;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
-using System.Diagnostics;
-using Vintagestory.API;
 
 #nullable disable
 
@@ -61,7 +58,8 @@ namespace Vintagestory.GameContent
         {
             if (HasAnimal(itemstack))
             {
-                string shapepath = itemstack.Collectible.Attributes?["creatureContainedShape"][itemstack.Attributes.GetString("type")].AsString();
+                string type = itemstack.Attributes.GetString("type", "");
+                string shapepath = itemstack.Collectible.Attributes?["creatureContainedShape"][type].AsString();
 
                 if (GetStillAliveDays(capi.World, itemstack) > 0)
                 {
@@ -102,11 +100,20 @@ namespace Vintagestory.GameContent
 
                 if (shapepath != null)
                 {
-                    if (!containedMeshrefs.TryGetValue(shapepath, out MultiTextureMeshRef meshref))
+                    if (!containedMeshrefs.TryGetValue(shapepath + type, out MultiTextureMeshRef meshref))
                     {
                         var shape = capi.Assets.TryGet(new AssetLocation(shapepath).WithPathPrefix("shapes/").WithPathAppendixOnce(".json")).ToObject<Shape>();
-                        capi.Tesselator.TesselateShape(block, shape, out var meshdata, new Vec3f(0, 270, 0));
-                        containedMeshrefs[shapepath] = meshref = capi.Render.UploadMultiTextureMesh(meshdata);
+                        ITexPositionSource texSource = capi.Tesselator.GetTextureSource(block);
+                        if (block is BlockGenericTypedContainer)
+                        {
+                            texSource = new GenericContainerTextureSource()
+                            {
+                                blockTextureSource = texSource,
+                                curType = type
+                            };
+                        }
+                        capi.Tesselator.TesselateShape("creature container shape", shape, out var meshdata, texSource, new Vec3f(0, 270, 0));
+                        containedMeshrefs[shapepath + type] = meshref = capi.Render.UploadMultiTextureMesh(meshdata);
                     }
 
                     renderinfo.ModelRef = meshref;
@@ -163,6 +170,12 @@ namespace Vintagestory.GameContent
         {
             IServerPlayer plr = (byEntity as EntityPlayer).Player as IServerPlayer;
             ICoreServerAPI sapi = api as ICoreServerAPI;
+            var selPos = blockSel?.Position ?? entitySel?.Position?.AsBlockPos;
+
+            if (selPos == null || !api.World.Claims.TryAccess((byEntity as EntityPlayer).Player, selPos , EnumBlockAccessFlags.Use))
+            {
+                return;
+            }
 
             if (HasAnimal(slot.Itemstack))
             {

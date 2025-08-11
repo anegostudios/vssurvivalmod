@@ -1,8 +1,13 @@
-﻿using System;
+using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 #nullable disable
 
@@ -88,6 +93,21 @@ namespace Vintagestory.GameContent
 
             base.GetDecal(world, pos, decalTexSource, ref decalModelData, ref blockModelData);
 
+        }
+
+        public bool IsAppetizingBait(ICoreAPI api, ItemStack baitStack)
+        {
+            var collobj = baitStack.Collectible;
+
+            return (collobj.NutritionProps != null || collobj.Attributes?["foodTags"].Exists == true) &&
+                api.World.EntityTypes.Any(type => type.Attributes?["creatureDiet"].AsObject<CreatureDiet>()?.Matches(baitStack, true, 0.5f) == true);
+        }
+
+        public bool CanFitBait(ICoreAPI api, ItemStack baitStack)
+        {
+            var collobj = baitStack.Collectible;
+
+            return Attributes?["excludeFoodTags"].AsArray<string>()?.Any(tag => collobj.Attributes?["foodTags"].AsArray<string>()?.Contains(tag) == true) != true;
         }
     }
 }

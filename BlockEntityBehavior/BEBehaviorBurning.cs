@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -102,16 +102,11 @@ namespace Vintagestory.GameContent
             fireBlock = Api.World.GetBlock(new AssetLocation("fire"));
             if (fireBlock == null) fireBlock = new Block();
 
+            capi = api as ICoreClientAPI;
+
             if (IsBurning)
             {
                 initSoundsAndTicking();
-            }
-
-            capi = api as ICoreClientAPI;
-
-            if (capi != null)
-            {
-                capi.Event.RegisterAsyncParticleSpawner(onAsyncParticles);
             }
 
             AllowFireSpread = Api.World.Config.GetBool("allowFireSpread");
@@ -184,6 +179,7 @@ namespace Vintagestory.GameContent
         {
             if (IsBurning) return;
             IsBurning = true;
+            unloaded = false;
             if (Api != null) initSoundsAndTicking();
         }
 
@@ -205,6 +201,11 @@ namespace Vintagestory.GameContent
             Api.World.BlockAccessor.MarkBlockDirty(Pos);
 
             particleFacing = BlockFacing.FromNormal(new Vec3i(FirePos.X - FuelPos.X, FirePos.Y - FuelPos.Y, FirePos.Z - FuelPos.Z));
+
+            if (capi != null)
+            {
+                capi.Event.RegisterAsyncParticleSpawner(onAsyncParticles);
+            }
         }
 
 

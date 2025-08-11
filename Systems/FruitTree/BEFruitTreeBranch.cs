@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -132,8 +132,14 @@ namespace Vintagestory.GameContent
             }
         }
 
+        bool beingBrokenLoopPrevention = false;
         public override void OnBlockBroken(IPlayer byPlayer)
         {
+            if (beingBrokenLoopPrevention)
+            {
+                Api.Logger.Error(new System.Exception("Fruit tree branch would endlessly loop here")); return;
+            }
+            beingBrokenLoopPrevention = true;
             base.OnBlockBroken(byPlayer);
 
             foreach (var facing in BlockFacing.ALLFACES)
@@ -163,7 +169,7 @@ namespace Vintagestory.GameContent
                     var bh = be.GetBehavior<FruitTreeGrowingBranchBH>();
                     if (bh == null)
                     {
-                        bh = new FruitTreeGrowingBranchBH(this);
+                        bh = new FruitTreeGrowingBranchBH(be);
                         bh.Initialize(Api, null);
                         be.Behaviors.Add(bh);
                     }

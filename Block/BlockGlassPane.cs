@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Client;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
@@ -135,7 +135,12 @@ namespace Vintagestory.GameContent
 
         public override int GetRetention(BlockPos pos, BlockFacing facing, EnumRetentionType type)
         {
-            return 1;
+            string orient = Variant["type"];
+
+            if (orient == "ns" && (facing == BlockFacing.NORTH || facing == BlockFacing.SOUTH)) return 1;
+            if (orient == "ew" && (facing == BlockFacing.EAST || facing == BlockFacing.WEST)) return 1;
+
+            return 0;
         }
     }
 }

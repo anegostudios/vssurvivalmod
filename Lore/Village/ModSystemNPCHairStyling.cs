@@ -1,4 +1,4 @@
-﻿using ProtoBuf;
+using ProtoBuf;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -89,7 +89,7 @@ namespace Vintagestory.GameContent
         GuiDialogHairStyling hairStylingDialog;
         ICoreAPI Api;
 
-        public void handleHairstyling(EntityTradingHumanoid hairstylingNpc, EntityAgent triggeringEntity, string hairStylingCategory)
+        public void handleHairstyling(EntityTradingHumanoid hairstylingNpc, EntityAgent triggeringEntity, string[] hairStylingCategories)
         {
             var eplr = triggeringEntity as EntityPlayer;
             if (hairstylingNpc.Alive && triggeringEntity.Pos.SquareDistanceTo(hairstylingNpc.Pos) <= 7 && !hairstylingNpc.interactingWithPlayer.Contains(eplr))
@@ -98,7 +98,7 @@ namespace Vintagestory.GameContent
 
                 if (Api is ICoreClientAPI capi)
                 {
-                    hairStylingDialog = new GuiDialogHairStyling(capi, hairstylingNpc.EntityId, hairStylingCategory, GetPricesByCode(triggeringEntity));
+                    hairStylingDialog = new GuiDialogHairStyling(capi, hairstylingNpc.EntityId, hairStylingCategories, GetPricesByCode(triggeringEntity));
                     hairStylingDialog.TryOpen();
                     hairStylingDialog.OnClosed += () =>
                     {

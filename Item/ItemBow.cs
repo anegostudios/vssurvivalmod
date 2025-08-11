@@ -82,6 +82,14 @@ namespace Vintagestory.GameContent
             base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
             if (handling == EnumHandHandling.PreventDefault) return;
 
+            var controls = byEntity.MountedOn?.Controls ?? byEntity.Controls;
+            if (controls.CtrlKey 
+                && (entitySel?.SelectionBoxIndex ?? -1) >= 0 
+                && entitySel.Entity?.GetBehavior<EntityBehaviorAttachable>() != null)
+            {
+                return;
+            }
+
             ItemSlot invslot = GetNextArrow(byEntity);
             if (invslot == null) return;
 

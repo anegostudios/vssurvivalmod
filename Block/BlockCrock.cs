@@ -251,7 +251,7 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < gridRecipe.resolvedIngredients.Length; i++)
             {
                 ItemStack stack = gridRecipe.resolvedIngredients[i].ResolvedItemstack;
-                if (stack?.Collectible is BlockCrock) isSealed = inputStack.Attributes.GetBool("sealed");
+                if (stack?.Collectible is BlockCrock) isSealed = stack.Attributes.GetBool("sealed");
                 else if (stack?.ItemAttributes["canSealCrock"].AsBool(false) == true) sealingRecipe = true;
             }
 
