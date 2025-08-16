@@ -64,7 +64,7 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {
-            return new ItemStack(world.GetBlock(new AssetLocation("angledgears-s")));  
+            return new ItemStack(world.GetBlock(new AssetLocation("angledgears-s")));
         }
 
 
@@ -168,7 +168,7 @@ namespace Vintagestory.GameContent.Mechanics
 
                 Block toPlaceBlock = getGearBlock(world, validLargeGear, firstFace, secondFace);
                 world.BlockAccessor.SetBlock(toPlaceBlock.BlockId, blockSel.Position);
-    
+
                 if (secondFace != null)
                 {
                     BlockPos secondPos = blockSel.Position.AddCopy(secondFace);
@@ -236,7 +236,7 @@ namespace Vintagestory.GameContent.Mechanics
                 BlockEntity be = world.BlockAccessor.GetBlockEntity(pos);
                 BEBehaviorMPBase bemp = be.GetBehavior<BEBehaviorMPBase>();
                 bemp.LeaveNetwork();
-                
+
 
                 //check for connect to adjacent valid facings, similar to TryPlaceBlock
                 BlockFacing firstFace = BlockFacing.FromFirstLetter(orients[0]);
@@ -292,6 +292,46 @@ namespace Vintagestory.GameContent.Mechanics
 
                 //#TODO: do a firstface/second face axle check as in TryPlaceBlock()
             }
+        }
+
+        public override AssetLocation GetRotatedBlockCode(int angle)
+        {
+            var last = LastCodePart();
+            string first;
+            string second = string.Empty;
+            if (last.Length > 1)
+            {
+                first = last.Substring(0, 1);
+                second = last.Substring(1);
+            }
+            else
+            {
+                first = last;
+            }
+
+            if (first != "u" &&  first != "d")
+            {
+                var beforeFacing = BlockFacing.FromFirstLetter(first);
+                int rotatedIndex = GameMath.Mod(beforeFacing.HorizontalAngleIndex - angle / 90, 4);
+                var nowFacing = BlockFacing.HORIZONTALS_ANGLEORDER[rotatedIndex];
+                first = nowFacing.Code.Substring(0, 1);
+            }
+
+            if (second != "u" &&  second != "d")
+            {
+                var beforeFacing = BlockFacing.FromFirstLetter(second);
+                int rotatedIndex = GameMath.Mod(beforeFacing.HorizontalAngleIndex - angle / 90, 4);
+                var nowFacing = BlockFacing.HORIZONTALS_ANGLEORDER[rotatedIndex];
+                second = nowFacing.Code.Substring(0, 1);
+            }
+            var newOrientation = CodeWithParts(first+second);
+
+            if (api.World.GetBlock(newOrientation) == null)
+            {
+                return CodeWithParts(second+first);
+            }
+
+            return newOrientation;
         }
     }
 }

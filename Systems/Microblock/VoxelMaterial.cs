@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -76,7 +76,7 @@ namespace Vintagestory.GameContent
                 {
                     BlockFacing facing = BlockFacing.ALLFACES[i];
 
-                    if (block.HasTiles && block.FastTextureVariants[i] is BakedCompositeTexture[] tiles)
+                    if (block.HasTiles && block.FastTextureVariants[i] is BakedCompositeTexture[] tiles && posForRnd != null)
                     {
                         int positionSelector = BakedCompositeTexture.GetTiledTexturesSelector(tiles, i, posForRnd.X, posForRnd.Y, posForRnd.Z);
                         int textureSubId = tiles[GameMath.Mod(positionSelector, tiles.Length)].TextureSubId;

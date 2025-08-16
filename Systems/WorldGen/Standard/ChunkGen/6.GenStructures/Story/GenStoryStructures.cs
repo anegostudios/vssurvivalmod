@@ -701,7 +701,6 @@ namespace Vintagestory.GameContent
                         StoryStructureInstancesDirty = true;
                     }
                     startPos.Y = h - structure.schematicData.SizeY + structure.schematicData.OffsetY;
-                    break;
                 }
                 else if(structure.Placement == EnumStructurePlacement.Surface)
                 {

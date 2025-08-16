@@ -182,7 +182,7 @@ public class BehaviorHealingItem : CollectibleBehavior, ICanHealCreature
             new()
             {
                 ActionLangCode = "heldhelp-heal",
-                HotKeyCode = "sprint",
+                HotKeyCode = "ctrl",
                 MouseButton = EnumMouseButton.Right,
             }
         ];

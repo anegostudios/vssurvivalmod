@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -110,7 +110,7 @@ namespace Vintagestory.GameContent
                 new WorldInteraction()
                 {
                     ActionLangCode = "heldhelp-heal",
-                    HotKeyCode = "sprint",
+                    HotKeyCode = "ctrl",
                     MouseButton = EnumMouseButton.Right,
                 }
             };

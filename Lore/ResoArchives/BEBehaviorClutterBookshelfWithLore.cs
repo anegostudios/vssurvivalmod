@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -77,7 +77,7 @@ namespace Vintagestory.GameContent
 
             if (LoreCode != null)
             {
-                mesher.AddMeshData(genMesh(new AssetLocation("shapes/block/clutter/"+ Type +"-book.json")));
+                mesher.AddMeshData(genMesh(new AssetLocation("shapes/block/clutter/" + Type + "-book.json")));
             }
 
             return base.OnTesselation(mesher, tessThreadTesselator);
@@ -100,9 +100,9 @@ namespace Vintagestory.GameContent
                 var shape = Api.Assets.TryGet(assetLocation).ToObject<Shape>();
                 (Api as ICoreClientAPI).Tesselator.TesselateShape(Block, shape, out var mesh, new Vec3f(rotateX * GameMath.RAD2DEG, rotateY * GameMath.RAD2DEG, rotateZ * GameMath.RAD2DEG));
 
-                if (Variant == "doublesidedold" || Variant == "full")
+                if (Variant == "half")
                 {
-                    mesh.Translate(0.5f, 0, 0);
+                    mesh.Translate(-0.5f * GameMath.Sin(rotateY), 0, -0.5f * GameMath.Cos(rotateY));
                 }
 
                 return mesh;

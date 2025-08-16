@@ -1,7 +1,9 @@
-﻿using System;
+using Cairo;
+using ProtoBuf;
+using SkiaSharp;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using ProtoBuf;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -78,6 +80,7 @@ namespace Vintagestory.GameContent
     public class ItemSkillTimeswitch : Item, ISkillItemRenderer
     {
         LoadedTexture iconTex;
+        LoadedTexture slotTex;
         ICoreClientAPI capi;
 
         public static float timeSwitchCooldown;
@@ -99,6 +102,16 @@ namespace Vintagestory.GameContent
             timeSwitchCooldown = Timeswitch.CooldownTime / (capi.World.Player.WorldData.CurrentGameMode != EnumGameMode.Survival ? 3 : 1);  // reduce the cooldown in Creative mode
         }
 
+
+        protected Context genContext(ImageSurface surface)
+        {
+            Context ctx = new Context(surface);
+            ctx.SetSourceRGBA(0, 0, 0, 0);
+            ctx.Paint();
+            ctx.Antialias = Antialias.Best;
+            return ctx;
+        }
+
         public override void OnLoaded(ICoreAPI api)
         {
             if (api.Side != EnumAppSide.Client) return;
@@ -112,6 +125,38 @@ namespace Vintagestory.GameContent
                 {
                     return capi.Gui.LoadSvgWithPadding(iconloc, 64, 64, 5, ColorUtil.WhiteArgb);
                 });
+
+                slotTex = new LoadedTexture(capi);
+
+                double absSlotWidth = GuiElement.scaled(GuiElementPassiveItemSlot.unscaledSlotSize);
+                double absSlotHeight = GuiElement.scaled(GuiElementPassiveItemSlot.unscaledSlotSize);
+
+                ImageSurface slotSurface = new ImageSurface(Format.Argb32, (int)absSlotWidth, (int)absSlotWidth);
+                Context slotCtx = genContext(slotSurface);
+
+                double[] bgcolor = GuiStyle.DialogSlotBackColor;
+                double[] fontcolor = GuiStyle.DialogSlotFrontColor;
+
+                slotCtx.SetSourceRGBA(bgcolor);
+                GuiElement.RoundRectangle(slotCtx, 0, 0, absSlotWidth, absSlotHeight, GuiStyle.ElementBGRadius);
+                slotCtx.Fill();
+
+                slotCtx.SetSourceRGBA(fontcolor);
+                GuiElement.RoundRectangle(slotCtx, 0, 0, absSlotWidth, absSlotHeight, GuiStyle.ElementBGRadius);
+                slotCtx.LineWidth = GuiElement.scaled(4.5);
+                slotCtx.Stroke();
+                slotSurface.BlurFull(GuiElement.scaled(4));
+                slotSurface.BlurFull(GuiElement.scaled(4));
+
+                slotCtx.SetSourceRGBA(0, 0, 0, 0.8);
+                GuiElement.RoundRectangle(slotCtx, 0, 0, absSlotWidth, absSlotHeight, 1);
+                slotCtx.LineWidth = GuiElement.scaled(4.5);
+                slotCtx.Stroke();
+
+                capi.Gui.LoadOrUpdateCairoTexture(slotSurface, true, ref slotTex);
+
+                slotCtx.Dispose();
+                slotSurface.Dispose();
             }
 
             base.OnLoaded(api);
@@ -129,6 +174,9 @@ namespace Vintagestory.GameContent
             y += shakey;
 
             float guiscale = 8f / 13f * RuntimeEnv.GUIScale;
+
+            capi.Render.Render2DTexture(slotTex.TextureId, x - (float)GuiElement.scaled(4), y - (float)GuiElement.scaled(5), slotTex.Width * guiscale, slotTex.Height * guiscale, z-300);
+
             capi.Render.Render2DTexture(iconTex.TextureId, x, y, iconTex.Width * guiscale, iconTex.Height * guiscale, z);
 
             double delta = iconTex.Height * 8f / 13f * GameMath.Clamp(timeSwitchCooldown / Timeswitch.CooldownTime * 2.5f, 0, 1);

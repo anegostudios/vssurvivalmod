@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Client;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
@@ -108,7 +108,7 @@ namespace Vintagestory.GameContent
                 {
                     ActionLangCode = "Set Beam Start/End Point (Snap to 16x16 grid)",
                     MouseButton = EnumMouseButton.Right,
-                    HotKeyCode = "sprint"
+                    HotKeyCode = "ctrl"
                 },
                 new WorldInteraction()
                 {

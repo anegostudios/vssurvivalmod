@@ -1,9 +1,11 @@
-﻿using System.Text;
+﻿using System.Collections.Generic;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 
 #nullable disable
 
@@ -18,7 +20,7 @@ namespace Vintagestory.GameContent.Mechanics
         public MechPowerPath()
         {
         }
-        
+
         /// <summary>
         /// Specify fromPos where it matters (e.g. when SetPropagationDir using a direction taken from a neighbour
         /// </summary>
@@ -422,7 +424,7 @@ namespace Vintagestory.GameContent.Mechanics
                     if (DEBUG) Api.Logger.Notification("Incomplete chunkloading, possible issues with mechanical network around block " + neibPos);
                     return null;
                 }
- 
+
                 if (!chunksLoaded)
                 {
                     network.AwaitChunkThenDiscover(missingChunkPos);
@@ -537,8 +539,16 @@ namespace Vintagestory.GameContent.Mechanics
             return new MechPowerPath[] { entryDir, new MechPowerPath(entryDir.OutFacing.Opposite, entryDir.gearingRatio, Position, !entryDir.invert) };
         }
 
+        #endregion
 
-#endregion
+        public override void OnPlacementBySchematic(ICoreServerAPI api, IBlockAccessor blockAccessor, BlockPos pos, Dictionary<int, Dictionary<int, int>> replaceBlocks, int centerrockblockid, Block layerBlock, bool resolveImports)
+        {
+            base.OnPlacementBySchematic(api, blockAccessor, pos, replaceBlocks, centerrockblockid, layerBlock, resolveImports);
+            foreach (var blockFacing in BlockFacing.ALLFACES)
+            {
+                tryConnect(blockFacing);
+            }
+        }
     }
 
 

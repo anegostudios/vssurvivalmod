@@ -1653,13 +1653,24 @@ namespace Vintagestory.GameContent
         public override void OnBlockUnloaded()
         {
             base.OnBlockUnloaded();
-            renderer?.Dispose();
-            ambientSound?.Stop();
+            Dispose();
         }
 
         public override void OnBlockRemoved()
         {
             base.OnBlockRemoved();
+            Dispose();
+        }
+
+        protected virtual void Dispose()
+        {
+            if (UploadedMeshCache != null)
+            {
+                foreach (var mesh in UploadedMeshCache.Values)
+                {
+                    mesh?.Dispose();
+                }
+            }
             renderer?.Dispose();
             ambientSound?.Stop();
         }

@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -38,12 +38,12 @@ namespace Vintagestory.GameContent
 
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
+            base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
             var meshref = genCombinedMesh(itemstack);
             if (meshref != null)
             {
                 renderinfo.ModelRef = meshref;
             }
-            base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
         }
 
         private MultiTextureMeshRef genCombinedMesh(ItemStack itemstack)
@@ -56,13 +56,14 @@ namespace Vintagestory.GameContent
             if (cachedRefs.TryGetValue(type, out var meshref)) return meshref;
 
             var mesh = GetOrCreateMesh(GetTypeProps(type, itemstack, null));
+
             var loc = new AssetLocation("shapes/block/clutter/" + type + "-book.json");
             var shape = api.Assets.TryGet(loc).ToObject<Shape>();
             (api as ICoreClientAPI).Tesselator.TesselateShape(this, shape, out var bookmesh);
+            if (itemstack.Attributes.GetString("variant") == "half") bookmesh.Translate(0, 0, -0.5f);
+            bookmesh.AddMeshData(mesh);   // We add the shelf-mesh to the bookmesh, not the other way around, as we want to leave the shelf-mesh untouched for use when tesselating blocks (e.g. if a player removed a lore book from the shelf, the block mesh then has no book)
 
-            mesh.AddMeshData(bookmesh);
-
-            return cachedRefs[type] = (api as ICoreClientAPI).Render.UploadMultiTextureMesh(mesh);
+            return cachedRefs[type] = (api as ICoreClientAPI).Render.UploadMultiTextureMesh(bookmesh);
         }
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)

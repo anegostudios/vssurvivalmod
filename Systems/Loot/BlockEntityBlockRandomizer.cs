@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using Vintagestory.API.Client;
@@ -218,12 +218,17 @@ namespace Vintagestory.GameContent
                         {
                             ba.SetBlock(block.Id, pos);
                             BlockEntity be;
-                            if (blockAccessor is IWorldGenBlockAccessor && block.EntityClass != null)
+                            if (blockAccessor is IWorldGenBlockAccessor)
                             {
-                                blockAccessor.SpawnBlockEntity(block.EntityClass, pos);
+                                if (block.EntityClass != null) blockAccessor.SpawnBlockEntity(block.EntityClass, pos);
+                                be = blockAccessor.GetBlockEntity(pos);
+                                // radfast 15.8.25: Don't initialise block entities during worldgen, initialisation will be handled by SupplyChunks.mainThreadLoadChunkColumn()
                             }
-                            be = blockAccessor.GetBlockEntity(pos);
-                            be?.Initialize(api);
+                            else
+                            {
+                                be = blockAccessor.GetBlockEntity(pos);
+                                be?.Initialize(api);
+                            }
                             be?.OnBlockPlaced(inventory[i].Itemstack);
                         }
 

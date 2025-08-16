@@ -59,10 +59,13 @@ public class GroundStorageRenderer : IRenderer
         prog.ViewMatrix = rpi.CameraMatrixOriginf;
         prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
 
-        for (var index = 0; index < groundStorage.MeshRefs.Length; index++)
+        var meshes = groundStorage.MeshRefs;
+        for (var index = 0; index < meshes.Length; index++)
         {
             var stack = groundStorage.Inventory[index]?.Itemstack;
-            if (stack == null || groundStorage.MeshRefs == null) continue;
+            var meshRef = groundStorage.MeshRefs[index];
+
+            if (stack == null || meshRef == null || meshRef.Disposed) continue;
 
 
             var glowColor = ColorUtil.GetIncandescenceColorAsColor4f(itemTemps[index]);
@@ -98,11 +101,7 @@ public class GroundStorageRenderer : IRenderer
             prog.ExtraGlow = gi;
             prog.AverageColor = ColorUtil.ToRGBAVec4f(capi.BlockTextureAtlas.GetAverageColor((stack.Item?.FirstTexture ?? stack.Block.FirstTextureInventory).Baked.TextureSubId));
 
-            var meshRef = groundStorage.MeshRefs[index];
-            if (meshRef != null && !meshRef.Disposed)
-            {
-                rpi.RenderMultiTextureMesh(meshRef, "tex");
-            }
+            rpi.RenderMultiTextureMesh(meshRef, "tex");
         }
 
         prog.TempGlowMode = 0;
