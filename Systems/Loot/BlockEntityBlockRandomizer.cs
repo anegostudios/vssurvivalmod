@@ -216,20 +216,20 @@ namespace Vintagestory.GameContent
                         }
                         else
                         {
-                            ba.SetBlock(block.Id, pos);
-                            BlockEntity be;
+                            // radfast 15.8.25: We don't want to initialise block entities during worldgen, (1) it should be on the main thread; (2) SupplyChunks.mainThreadLoadChunkColumn() might call .Initialize() a second time
+                            var placedStack = inventory[i].Itemstack;
                             if (blockAccessor is IWorldGenBlockAccessor)
                             {
-                                if (block.EntityClass != null) blockAccessor.SpawnBlockEntity(block.EntityClass, pos);
-                                be = blockAccessor.GetBlockEntity(pos);
-                                // radfast 15.8.25: Don't initialise block entities during worldgen, initialisation will be handled by SupplyChunks.mainThreadLoadChunkColumn()
+                                ba.SetBlock(block.Id, pos);
+                                if (block.EntityClass != null) ba.SpawnBlockEntity(block.EntityClass, pos, placedStack);
                             }
                             else
                             {
-                                be = blockAccessor.GetBlockEntity(pos);
+                                ba.SetBlock(block.Id, pos);
+                                BlockEntity be = blockAccessor.GetBlockEntity(pos);
                                 be?.Initialize(api);
+                                be?.OnBlockPlaced(placedStack);
                             }
-                            be?.OnBlockPlaced(inventory[i].Itemstack);
                         }
 
                     }
