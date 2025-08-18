@@ -434,7 +434,7 @@ namespace Vintagestory.GameContent
 
         public bool CanIgnite()
         {
-            return !FuelSlot.Empty && !burning;
+            return HasFuel && !burning; 
         }
 
         #endregion
