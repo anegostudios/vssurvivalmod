@@ -18,14 +18,18 @@
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="protobuf-net" Version="2.4.9" />
+    <PackageReference Include="protobuf-net" Version="2.4.7" />
     <PackageReference Include="OpenTK.Windowing.GraphicsLibraryFramework" Version="4.9.4" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Cairo\Cairo.csproj" />
     <ProjectReference Include="..\VintagestoryApi\VintagestoryAPI.csproj" />
     <ProjectReference Include="..\VSCreativeMod\VSCreativeMod.csproj" />
-    <ProjectReference Include="..\VSEssentials\VSEssentialsMod.csproj" />
+    <ProjectReference Include="..\VSEssentialsMod\VSEssentialsMod.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="CairoSharp">
+      <HintPath>..\Lib\cairo-sharp.dll</HintPath>
+    </Reference>
   </ItemGroup>
 </Project>

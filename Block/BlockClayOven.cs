@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -51,7 +51,7 @@ namespace Vintagestory.GameContent
             base.OnLoaded(api);
 
             if (api.Side != EnumAppSide.Client) return;
-            
+
             ICoreClientAPI capi = api as ICoreClientAPI;
 
             if (capi != null) interactions = ObjectCacheUtil.GetOrCreate(api, "ovenInteractions", () =>
@@ -128,7 +128,7 @@ namespace Vintagestory.GameContent
                     }
                 };
             });
-            
+
             InitializeParticles();
         }
 
@@ -147,8 +147,8 @@ namespace Vintagestory.GameContent
         EnumIgniteState IIgnitable.OnTryIgniteStack(EntityAgent byEntity, BlockPos pos, ItemSlot slot, float secondsIgniting)
         {
             BlockEntityOven beo = byEntity.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityOven;
-            if (beo.IsBurning) return secondsIgniting > 2 ? EnumIgniteState.IgniteNow : EnumIgniteState.Ignitable;
-            return EnumIgniteState.NotIgnitable;
+            if (!beo.IsBurning) return secondsIgniting > 2 ? EnumIgniteState.IgniteNow : EnumIgniteState.Ignitable;
+            return EnumIgniteState.NotIgnitablePreventDefault;
         }
 
         public EnumIgniteState OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting)

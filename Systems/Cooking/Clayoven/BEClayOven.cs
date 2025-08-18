@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -10,6 +10,12 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
+    /* New Lang Key:
+     * "The Oven Is Already Lit.": "The Oven Is Already Lit.",
+     * "The Oven Needs Fuel.": "The Oven Needs Fuel.",
+     * 
+     */
+
     public enum EnumOvenContentMode
     {
         Firewood,
@@ -92,7 +98,13 @@ namespace Vintagestory.GameContent
                 if (slot == null) return EnumOvenContentMode.Firewood;
 
                 BakingProperties bakingProps = BakingProperties.ReadFrom(slot.Itemstack);
-                if (bakingProps == null) return EnumOvenContentMode.Firewood;
+                ;
+                if (bakingProps == null)
+                {
+                    return HasFuel ? EnumOvenContentMode.Firewood :
+                        EnumOvenContentMode.Quadrants;
+                }
+                ;
 
                 return bakingProps.LargeItem ? EnumOvenContentMode.SingleCenter : EnumOvenContentMode.Quadrants;
             }
@@ -167,7 +179,7 @@ namespace Vintagestory.GameContent
         {
             ItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
-            if (slot.Empty)
+            if (slot.Empty && !IsBurning)
             {
                 if (TryTake(byPlayer))
                 {
@@ -176,11 +188,30 @@ namespace Vintagestory.GameContent
                 }
                 return false;
             }
+            if (!slot.Empty && slot.Itemstack.Collectible.HasBehavior<BlockBehaviorCanIgnite>())
+            {
+                if (IsBurning)
+                {
+                    if (capi != null)
+                    {
+                        capi.TriggerIngameError(this, "ovenislit", Lang.Get("The Oven Is Already Lit."));
+                        return false;
+                    }
+                }
+                else if (!burning && !HasFuel)
+                {
+                    capi.TriggerIngameError(this, "ovenneedsfuel", Lang.Get("The Oven Needs Fuel."));
+                    return false;
+                }
+                return false;
+            }
             else
             {
-                CollectibleObject colObj = slot.Itemstack.Collectible;
-                if (colObj.Attributes?.IsTrue("isClayOvenFuel") == true)
+                CollectibleObject colObj = slot.Itemstack?.Collectible;
+                CombustibleProperties combProps = colObj?.CombustibleProps;
+                if (colObj?.Attributes?.IsTrue("isClayOvenFuel") == true && !IsBurning)
                 {
+                    
                     if (TryAddFuel(slot))
                     {
                         AssetLocation sound = slot.Itemstack?.Block?.Sounds?.Place;
@@ -193,7 +224,27 @@ namespace Vintagestory.GameContent
                     return false;
 
                 }
-                else if (colObj.Attributes?["bakingProperties"] != null || colObj.CombustibleProps?.SmeltingType == EnumSmeltType.Bake && colObj.CombustibleProps.MeltingPoint < maxBakingTemperatureAccepted)  //Can't meaningfully bake anything requiring heat over 260 in the basic clay oven
+                else if (slot.Empty && IsBurning)
+                {
+                    if (capi != null)
+                    {
+                        capi.TriggerIngameError(this, "ovenwaittillout", Lang.Get("Wait until the fire is out"));
+                    }
+                    return false;
+                }
+                else if (!slot.Empty && colObj != null &&
+                    (!slot.Itemstack.Attributes.GetBool("bakeable", true)
+                    || !colObj.Attributes["bakingProperties"].Exists))
+                {
+                    if (capi != null)
+                    {
+                        capi.TriggerIngameError(this, "notbakeable", Lang.Get("This item is not bakeable."));
+                    }
+	
+                    return true;
+                }
+                else if (colObj.Attributes?["bakingProperties"] != null || colObj.CombustibleProps?.SmeltingType == EnumSmeltType.Bake && colObj.CombustibleProps.MeltingPoint < maxBakingTemperatureAccepted)
+                //Can't meaningfully bake anything requiring heat over 260 in the basic clay oven
                 {
                     if (slot.Itemstack.Equals(Api.World, lastRemoved, GlobalConstants.IgnoredStackAttributes) && !ovenInv[0].Empty)
                     {
@@ -223,14 +274,18 @@ namespace Vintagestory.GameContent
                             if (slot.Itemstack.Block?.GetBehavior<BlockBehaviorCanIgnite>() == null)
                             {
                                 ICoreClientAPI capi = Api as ICoreClientAPI;
-                                if (capi != null && (slot.Empty || slot.Itemstack.Attributes.GetBool("bakeable", true) == false)) capi.TriggerIngameError(this, "notbakeable", Lang.Get("This item is not bakeable."));
-                                else if (capi != null && !slot.Empty) capi.TriggerIngameError(this, "notbakeable", burning ? Lang.Get("Wait until the fire is out") : Lang.Get("Oven is full"));
+                                if (capi != null)
+                                {
+                                    if (slot.Itemstack.Collectible.Attributes["bakingProperties"].Exists)
+                                    {
+                                        capi.TriggerIngameError(this, "ovenisfull", Lang.Get("Oven is full"));
 
+                                    }
+                                }
                                 return true;
                             }
                         }
                     }
-
                     return false;
                 }
                 else if (TryTake(byPlayer))
@@ -332,8 +387,9 @@ namespace Vintagestory.GameContent
                         stack.Collectible.Code,
                         Pos
                     );
-
-                    bakingData[index].CurHeightMul = 1; // Reset risenLevel to avoid brief render of unwanted size on next item inserted, if server/client not perfectly in sync - note this only really works if the newly inserted item can be assumed to have risenLevel of 0 i.e. dough
+                    bakingData[index].CurXMul = 1;
+                    bakingData[index].CurHeightMul = 1;
+                    bakingData[index].CurZMul = 1;// Reset risenLevel to avoid brief render of unwanted size on next item inserted, if server/client not perfectly in sync - note this only really works if the newly inserted item can be assumed to have risenLevel of 0 i.e. dough
                     updateMesh(index);
                     MarkDirty(true);
                     return true;
@@ -378,7 +434,7 @@ namespace Vintagestory.GameContent
 
         public bool CanIgnite()
         {
-            return !FuelSlot.Empty && !burning;
+            return HasFuel && !burning; 
         }
 
         #endregion
@@ -519,16 +575,25 @@ namespace Vintagestory.GameContent
             var bakeProps = BakingProperties.ReadFrom(slot.Itemstack);
             float levelFrom = bakeProps?.LevelFrom ?? 0f;
             float levelTo = bakeProps?.LevelTo ?? 1f;
+            float startXMul = bakeProps?.StartScaleX ?? 1f;
+            float endXMul = bakeProps?.EndScaleX ?? 1f;
             float startHeightMul = bakeProps?.StartScaleY ?? 1f;
             float endHeightMul = bakeProps?.EndScaleY ?? 1f;
-
+            float startZMul = bakeProps?.StartScaleZ ?? 1f;
+            float endZMul = bakeProps?.EndScaleZ ?? 1f;
             float progress = GameMath.Clamp((currentLevel - levelFrom) / (levelTo - levelFrom), 0, 1);
+            float XMul = GameMath.Mix(startXMul, endXMul, progress);
             float heightMul = GameMath.Mix(startHeightMul, endHeightMul, progress);
+            float ZMul = GameMath.Mix(startZMul, endZMul, progress);
+            float nowXMulStaged = (int)(XMul * BakingStageThreshold) / (float)BakingStageThreshold;
             float nowHeightMulStaged = (int)(heightMul * BakingStageThreshold) / (float)BakingStageThreshold;
+            float nowZMulStaged = (int)(ZMul * BakingStageThreshold) / (float)BakingStageThreshold;
 
-            bool reDraw = nowHeightMulStaged != bakeData.CurHeightMul;
+            bool reDraw = (nowHeightMulStaged != bakeData.CurHeightMul || nowXMulStaged != bakeData.CurXMul || nowZMulStaged != bakeData.CurZMul);
 
             bakeData.CurHeightMul = nowHeightMulStaged;
+            bakeData.CurXMul = nowXMulStaged;
+            bakeData.CurZMul = nowZMulStaged;
 
             // see if increasing the partBaked by delta, has moved this stack up to the next "bakedStage", i.e. a different item
 
@@ -537,23 +602,16 @@ namespace Vintagestory.GameContent
                 float nowTemp = bakeData.temp;
                 string resultCode = bakeProps?.ResultCode;
 
+
+                
                 if (resultCode != null)
                 {
                     ItemStack resultStack = null;
-                    if (slot.Itemstack.Class == EnumItemClass.Block)
-                    {
-                        Block block = Api.World.GetBlock(new AssetLocation(resultCode));
-                        if (block != null)
-                        {
-                            resultStack = new ItemStack(block);
-                        }
-                    }
-                    else
-                    {
-                        Item item = Api.World.GetItem(new AssetLocation(resultCode));
-                        if (item != null) resultStack = new ItemStack(item);
-                    }
 
+                    CollectibleObject collObj = Api.World.GetBlock(new AssetLocation(resultCode)) != null ? Api.World.GetBlock(new AssetLocation(resultCode)) :
+                      Api.World.GetItem(new AssetLocation(resultCode));
+
+                    if (collObj != null) resultStack = new(collObj);
 
                     if (resultStack != null)
                     {
@@ -783,14 +841,19 @@ namespace Vintagestory.GameContent
             {
                 Vec3f off = offs[i];
 
-                float scaleY = OvenContentMode == EnumOvenContentMode.Firewood ? 0.9f : bakingData[i].CurHeightMul;
+                bool isFirewood = OvenContentMode == EnumOvenContentMode.Firewood;
+                float defaultScale = 0.9f;
+
+                float scaleY = isFirewood ? defaultScale : (bakingData[i].CurHeightMul != 0 ? bakingData[i].CurHeightMul : defaultScale);
+                float scaleX = isFirewood ? defaultScale : (bakingData[i].CurXMul != 0 ? bakingData[i].CurXMul : defaultScale);
+                float scaleZ = isFirewood ? defaultScale : (bakingData[i].CurZMul != 0 ? bakingData[i].CurZMul : defaultScale);
 
                 tfMatrices[i] =
                     new Matrixf()
                     .Translate(off.X, off.Y, off.Z)
                     .Translate(0.5f, 0, 0.5f)
                     .RotateYDeg(rotationDeg + (OvenContentMode == EnumOvenContentMode.Firewood ? 270 : 0))
-                    .Scale(0.9f, scaleY, 0.9f)
+                    .Scale(scaleX, scaleY, scaleZ)
                     .Translate(-0.5f, 0, -0.5f)
                     .Values
                 ;
@@ -801,17 +864,21 @@ namespace Vintagestory.GameContent
 
         protected override string getMeshCacheKey(ItemStack stack)
         {
+            string scaleX = "";
             string scaleY = "";
+            string scaleZ = "";
             for (int i = 0; i < bakingData.Length; i++)
             {
                 if (Inventory[i].Itemstack == stack)
                 {
                     scaleY = "-" + bakingData[i].CurHeightMul;
+                    scaleX = "-" + bakingData[i].CurXMul;
+                    scaleZ = "-" + bakingData[i].CurZMul;
                     break;
                 }
             }
 
-            return (OvenContentMode == EnumOvenContentMode.Firewood ? stack.StackSize + "x" : "") + base.getMeshCacheKey(stack) + scaleY;
+            return (OvenContentMode == EnumOvenContentMode.Firewood ? stack.StackSize + "x" : "") + base.getMeshCacheKey(stack) + scaleY + scaleX + scaleZ;
         }
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
