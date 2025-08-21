@@ -601,6 +601,10 @@ namespace Vintagestory.GameContent
                     if (slot?.Itemstack?.Collectible.GetCollectibleInterface<IGroundStoredParticleEmitter>() is IGroundStoredParticleEmitter gsParticleEmitter)
                     {
                         int slotId = begs.Inventory.GetSlotId(slot);
+                        if (slotId < 0 || slotId >= offs.Length)
+                        {
+                            continue;
+                        }
                         Vec3f offset = new Matrixf().RotateY(begs.MeshAngle).TransformVector(new Vec4f(offs[slotId].X, offs[slotId].Y, offs[slotId].Z, 1)).XYZ;
 
                         if (gsParticleEmitter.ShouldSpawnGSParticles(begs.Api.World, slot.Itemstack)) gsParticleEmitter.DoSpawnGSParticles(manager, pos, offset);

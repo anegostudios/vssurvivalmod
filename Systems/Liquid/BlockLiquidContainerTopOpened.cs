@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -185,7 +185,7 @@ namespace Vintagestory.GameContent
                 {
                     containerMesh.CustomInts = new CustomMeshDataPartInt(containerMesh.FlagsCount);
                     containerMesh.CustomInts.Count = containerMesh.FlagsCount;
-                    containerMesh.CustomInts.Values.Fill(0x4000000); // light foam only
+                    containerMesh.CustomInts.Values.Fill(VertexFlags.LiquidWeakFoamBitMask); // light foam only
 
                     containerMesh.CustomFloats = new CustomMeshDataPartFloat(containerMesh.FlagsCount * 2);
                     containerMesh.CustomFloats.Count = containerMesh.FlagsCount * 2;

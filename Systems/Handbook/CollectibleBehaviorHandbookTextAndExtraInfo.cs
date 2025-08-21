@@ -1918,7 +1918,7 @@ namespace Vintagestory.GameContent
                 {
                     components.Add(verticalSpace);
                     verticalSpace = verticalSpaceSmall;
-                    AddSubHeading(components, capi, openDetailPageFor, "Cooking (in pot)", null);
+                    AddSubHeading(components, capi, openDetailPageFor, "handbook-createdby-potcooking", null);
 
                     foreach (var rec in cookrecipes)
                     {

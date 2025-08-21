@@ -636,7 +636,11 @@ namespace Vintagestory.GameContent
             if (inslot.Itemstack is not ItemStack crockStack) return null;
 
             ItemStack[] stacks = GetNonEmptyContents(world, crockStack);
-            foreach (var stack in stacks) stack.StackSize *= (int)Math.Max(1, crockStack.Attributes.TryGetFloat("quantityServings") ?? 1);
+            foreach (var stack in stacks)
+            {
+                stack.StackSize *= (int)Math.Max(1, crockStack.Attributes.TryGetFloat("quantityServings") ?? 1);
+            }
+
             SetContents(crockStack, stacks);
 
             TransitionState[]? states = base.UpdateAndGetTransitionStates(world, inslot);
@@ -648,7 +652,9 @@ namespace Vintagestory.GameContent
                 {
                     var transProps = stacks[i].Collectible.GetTransitionableProperties(world, stacks[i], null);
                     var spoilProps = transProps?.FirstOrDefault(props => props.Type == EnumTransitionType.Perish);
+
                     if (spoilProps == null) continue;
+
                     stacks[i] = stacks[i].Collectible.OnTransitionNow(GetContentInDummySlot(inslot, stacks[i]), spoilProps);
                 }
                 SetContents(crockStack, stacks);
@@ -657,7 +663,11 @@ namespace Vintagestory.GameContent
                 crockStack.Attributes.RemoveAttribute("quantityServings");
             }
 
-            foreach (var stack in stacks) stack.StackSize /= (int)Math.Max(1, crockStack.Attributes.TryGetFloat("quantityServings") ?? 1);
+            foreach (var stack in stacks)
+            {
+                stack.StackSize /= (int)Math.Max(1, crockStack.Attributes.TryGetFloat("quantityServings") ?? 1);
+            }
+
             SetContents(crockStack, stacks);
 
             return states;

@@ -1,6 +1,7 @@
-﻿using System;
+using System;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
 #nullable disable
@@ -102,20 +103,22 @@ namespace Vintagestory.GameContent
                     q = depth * (1 - distToCraterEdge);
 
                     tmpPos.Y = surfaceY;
-                    Block surfaceblock = blAcc.GetBlock(tmpPos);
-                    tmpPos.Up();
-                    Block abovesurfaceblock = blAcc.GetBlock(tmpPos);
-                    //No need for tmpPos.Down() here, tmpPos.Y will be set again by the lines below, under all code paths
+                    Block surfaceblock = GetBlockAndBEdata(blAcc, tmpPos, out ItemStack surfaceBEStack, out TreeAttribute surfaceBETree);
+                    tmpPos.Y++;
+                    Block abovesurfaceblock = GetBlockAndBEdata(blAcc, tmpPos, out ItemStack aboveBEStack, out TreeAttribute aboveBETree);
+                    tmpPos.Y++;
+                    Block above2surfaceblock = GetBlockAndBEdata(blAcc, tmpPos, out ItemStack above2BEStack, out TreeAttribute above2BETree);
 
-                    for (int i = -1; i <= (int)q; i++)
+                    for (int i = -2; i <= (int)q; i++)
                     {
                         tmpPos.Y = surfaceY - i;
                         int id = i == (int)q ? surfaceblock.BlockId : 0;
 
                         Block bblock = blAcc.GetBlock(tmpPos, BlockLayersAccess.Fluid);
-                        if (!bblock.IsLiquid())
+                        if (!bblock.IsLiquid())   // true for no fluid block, i.e. the normal case
                         {
                             blAcc.SetBlock(id, tmpPos);
+                            if (id > 0) MaybeSpawnBlockEntity(surfaceblock, blAcc, tmpPos, surfaceBEStack, surfaceBETree);  // Restore its blockEntity if appropriate
                         }
                     }
 
@@ -126,8 +129,17 @@ namespace Vintagestory.GameContent
                     if (abovesurfaceblock.BlockId > 0)
                     {
                         blAcc.SetBlock(abovesurfaceblock.BlockId, tmpPos);
-                        if (abovesurfaceblock.EntityClass != null) blAcc.SpawnBlockEntity(abovesurfaceblock.EntityClass, tmpPos);   // Restore its blockEntity if appropriate
+                        MaybeSpawnBlockEntity(abovesurfaceblock, blAcc, tmpPos, aboveBEStack, aboveBETree);
                     }
+
+                    tmpPos.Y++;
+
+                    if (above2surfaceblock.BlockId > 0)
+                    {
+                        blAcc.SetBlock(above2surfaceblock.BlockId, tmpPos);
+                        MaybeSpawnBlockEntity(above2surfaceblock, blAcc, tmpPos, above2BEStack, above2BETree);
+                    }
+
                 }
             }
 
@@ -159,6 +171,63 @@ namespace Vintagestory.GameContent
 
 
             return true;
+        }
+
+        private Block GetBlockAndBEdata(IBlockAccessor blAcc, BlockPos pos, out ItemStack BEStack, out TreeAttribute BETree)
+        {
+            BEStack = null;
+            BETree = null;
+            Block block = blAcc.GetBlock(pos, BlockLayersAccess.Solid);
+            try
+            {
+                if (block.EntityClass != null)
+                {
+                    // Try to re-build a good ItemStack for this BlockEntity to be supplied to .SpawnBlockEntity below, to rebuild the exact same BE (necessary to avoid ? blocks for microblocks, for example)
+                    // Priorities:
+                    //   1. the be.stackForWorldgen - this is a BE not yet fully placed, being placed by a BlockRandomizer or similar (possibly even by another meteorite in the tiny chance two are close to each other)
+                    //   2. recreate the tree - this works for a BE which has been placed by a schematic, for example a microblock in a ruin (even though not yet initialised because the chunk column is probably still generating if we are here)
+                    //   3. worst case, try .OnPickBlock - depending on the block type, this works OK for some blocks, but for others this will probably not work if the chunk has not already generated (it probably hasn't been generated, but some chance the meteorite is displacing blocks in a neighbouring chunk, for example)
+                    var be = blAcc.GetBlockEntity(pos);
+                    if (be != null)
+                    {
+                        BEStack = be.stackForWorldgen;
+                        if (BEStack == null)
+                        {
+                            BETree = new TreeAttribute();
+                            be.ToTreeAttributes(BETree);
+                        }
+                    }
+                    if (BEStack == null && BETree == null) BEStack = block.OnPickBlock(api.World, pos);
+                }
+            }
+            catch   // Just in case modded BlockEntity are not expecting to be dealt with in this way
+            {
+                // May result in ? blocks after all, but that's better than crashing!
+                BEStack = null;
+                BETree = null;
+            }
+            return block;
+        }
+
+        private void MaybeSpawnBlockEntity(Block block, IBlockAccessor blAcc, BlockPos pos, ItemStack BEStack, TreeAttribute BETree)
+        {
+            if (block.EntityClass != null)
+            {
+                try
+                {
+                    blAcc.SpawnBlockEntity(block.EntityClass, pos, BEStack);
+                    if (BETree != null)
+                    {
+                        BlockEntity be = blAcc.GetBlockEntity(pos);
+                        BETree.SetInt("posy", pos.Y);
+                        be?.FromTreeAttributes(BETree, api.World);
+                    }
+                }
+                catch (Exception e)   // Just in case modded BlockEntity are not expecting to be dealt with in this way
+                {
+                    api.Logger.Error(e);
+                }
+            }
         }
 
         private bool IsSolid(IBlockAccessor blAcc, int x, int y, int z)

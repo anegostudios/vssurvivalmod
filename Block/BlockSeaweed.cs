@@ -1,6 +1,7 @@
-﻿using System;
+using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -8,11 +9,43 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
+    public class PlantAirParticles : ParticlesProviderBase
+    {
+        Random rand = new Random();
+        public Vec3d BasePos = new Vec3d();
+        public Vec3d AddPos = new Vec3d();
+
+        public override bool DieInAir => false;
+        public override bool DieInLiquid => false; public override float GravityEffect => 1f; public override float LifeLength => 2.25f; public override bool SwimOnLiquid => true;
+        public override Vec3d Pos => new Vec3d(BasePos.X + rand.NextDouble() * AddPos.X, BasePos.Y + rand.NextDouble() * AddPos.Y, BasePos.Z + AddPos.Z * rand.NextDouble());
+
+        public override float Quantity => 1;
+
+        public override int GetRgbaColor(ICoreClientAPI capi)
+        {
+            return ColorUtil.HsvToRgba(110, 40 + rand.Next(50), 200 + rand.Next(30), 50 + rand.Next(40));
+        }
+
+        public override float Size => 0.07f;
+
+        public override EvolvingNatFloat SizeEvolve => new EvolvingNatFloat(EnumTransformFunction.LINEAR, 0.2f);
+
+        public override EvolvingNatFloat OpacityEvolve => new EvolvingNatFloat(EnumTransformFunction.QUADRATIC, -6);
+
+        public override Vec3f GetVelocity(Vec3d pos)
+        {
+            return new Vec3f(((float)rand.NextDouble() - 0.5f)/4f, (float)(rand.NextDouble() + 1f) / 10f , ((float)rand.NextDouble() - 0.5f)/4f);
+        }
+    }
+
+
     public class BlockSeaweed : BlockWaterPlant
     {
         public override string RemapToLiquidsLayer { get { return "water-still-7"; } }
 
         protected Block[] blocks;
+
+        PlantAirParticles splashParticleProps = new PlantAirParticles();
 
         public override void OnLoaded(ICoreAPI api)
         {
@@ -28,6 +61,22 @@ namespace Vintagestory.GameContent
         {
             Block blockBelow = blockAccessor.GetBlockBelow(pos, 1, BlockLayersAccess.Solid);
             return (blockBelow.Fertility > 0) || (blockBelow is BlockSeaweed && blockBelow.Variant["part"] == "section");
+        }
+
+        public override void OnAsyncClientParticleTick(IAsyncParticleManager manager, BlockPos pos, float windAffectednessAtPos, float secondsTicking)
+        {
+            if (api.World.Rand.NextDouble() < 0.0025)
+            {
+                splashParticleProps.BasePos.Set(pos.X + 0.33f, pos.Y, pos.Z + 0.33f);
+                splashParticleProps.AddPos.Set(0.33f,1,0.33f);
+                manager.Spawn(splashParticleProps);
+            }
+        }
+
+        public override bool ShouldReceiveClientParticleTicks(IWorldAccessor world, IPlayer player, BlockPos pos, out bool isWindAffected)
+        {
+            isWindAffected = false;
+            return true;
         }
 
         public override void OnJsonTesselation(ref MeshData sourceMesh, ref int[] lightRgbsByCorner, BlockPos pos, Block[] chunkExtBlocks, int extIndex3d)

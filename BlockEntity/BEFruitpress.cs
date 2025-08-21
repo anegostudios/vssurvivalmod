@@ -1,4 +1,4 @@
-﻿using ProtoBuf;
+using ProtoBuf;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -905,7 +905,7 @@ namespace Vintagestory.GameContent
                 // Liquid mesh part
                 bucketMeshTmp.CustomInts = new CustomMeshDataPartInt(bucketMeshTmp.FlagsCount);
                 bucketMeshTmp.CustomInts.Count = bucketMeshTmp.FlagsCount;
-                bucketMeshTmp.CustomInts.Values.Fill(0x4000000); // light foam only
+                bucketMeshTmp.CustomInts.Values.Fill(VertexFlags.LiquidWeakFoamBitMask); // light foam only
 
                 bucketMeshTmp.CustomFloats = new CustomMeshDataPartFloat(bucketMeshTmp.FlagsCount * 2);
                 bucketMeshTmp.CustomFloats.Count = bucketMeshTmp.FlagsCount * 2;

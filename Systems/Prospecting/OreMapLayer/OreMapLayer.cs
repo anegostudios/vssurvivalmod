@@ -1,4 +1,4 @@
-﻿using Cairo;
+using Cairo;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -103,7 +103,7 @@ namespace Vintagestory.GameContent
                     .AddShadedDialogBG(bgBounds, false)
                     .AddDialogTitleBar(Lang.Get("maplayer-prospecting"), () => { guiDialogWorldMap.Composers[key].Enabled = false; })
                     .BeginChildElements(bgBounds)
-                        .AddDropDown(values, names, 0, onSelectionChanged, ElementBounds.Fixed(0, 30, 160, 35))
+                        .AddDropDown(values, names, Math.Max(0, values.IndexOf(filterByOreCode)), onSelectionChanged, ElementBounds.Fixed(0, 30, 160, 35))
                     .EndChildElements()
                     .Compose()
             ;

@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -67,7 +67,7 @@ namespace Vintagestory.GameContent
                 if ((entity.World as IClientWorldAccessor).Player.WorldData.CurrentGameMode != EnumGameMode.Creative) // In creative mode health is displayed on all creatures anyway
                 {
                     var ebh = entity.GetBehavior<EntityBehaviorHealth>();
-                    if (ebh != null) infotext.AppendLine(Lang.Get("Health: {0:0.##}/{1}", ebh.Health, ebh.MaxHealth));
+                    if (ebh != null) infotext.AppendLine(Lang.Get("ownableentity-health", ebh.Health, ebh.MaxHealth));
                 }
             }
         }

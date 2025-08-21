@@ -128,7 +128,11 @@ namespace Vintagestory.GameContent
             if (inslot.Itemstack is not ItemStack cookedContStack) return null;
 
             ItemStack[] stacks = GetNonEmptyContents(world, cookedContStack);
-            foreach (var stack in stacks) stack.StackSize *= (int)Math.Max(1, cookedContStack.Attributes.TryGetFloat("quantityServings") ?? 1);
+            foreach (var stack in stacks)
+            {
+                stack.StackSize *= (int)Math.Max(1, cookedContStack.Attributes.TryGetFloat("quantityServings") ?? 1);
+            }
+
             SetContents(cookedContStack, stacks);
 
             TransitionState[]? states = base.UpdateAndGetTransitionStates(world, inslot);
@@ -140,7 +144,9 @@ namespace Vintagestory.GameContent
                 {
                     var transProps = stacks[i].Collectible.GetTransitionableProperties(world, stacks[i], null);
                     var spoilProps = transProps?.FirstOrDefault(props => props.Type == EnumTransitionType.Perish);
+
                     if (spoilProps == null) continue;
+
                     stacks[i] = stacks[i].Collectible.OnTransitionNow(GetContentInDummySlot(inslot, stacks[i]), spoilProps);
                 }
                 SetContents(cookedContStack, stacks);
@@ -149,7 +155,11 @@ namespace Vintagestory.GameContent
                 cookedContStack.Attributes.RemoveAttribute("quantityServings");
             }
 
-            foreach (var stack in stacks) stack.StackSize /= (int)Math.Max(1, cookedContStack.Attributes.TryGetFloat("quantityServings") ?? 1);
+            foreach (var stack in stacks)
+            {
+                stack.StackSize /= (int)Math.Max(1, cookedContStack.Attributes.TryGetFloat("quantityServings") ?? 1);
+            }
+
             SetContents(cookedContStack, stacks);
 
             if (stacks.Length == 0 && Attributes?["emptiedBlockCode"]?.AsString() is string emptiedBlockCode && world.GetBlock(new AssetLocation(emptiedBlockCode)) is Block block)

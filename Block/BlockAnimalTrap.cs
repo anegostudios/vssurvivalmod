@@ -60,7 +60,9 @@ namespace Vintagestory.GameContent
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
         {
             var be = GetBlockEntity<BlockEntityAnimalTrap>(pos);
-            if (be != null && be.TrapState == EnumTrapState.Destroyed)
+            if (be?.TrapState == EnumTrapState.Trapped) return [];
+
+            if (be?.TrapState == EnumTrapState.Destroyed)
             {
                 BlockDropItemStack[] destroyedDrops = Attributes?["destroyedDrops"]?.AsObject<BlockDropItemStack[]>(null);
                 if (destroyedDrops == null) return Array.Empty<ItemStack>();

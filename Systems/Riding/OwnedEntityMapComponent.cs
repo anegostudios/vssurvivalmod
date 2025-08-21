@@ -1,6 +1,7 @@
-﻿using System;
+using System;
 using System.Text;
 using Vintagestory.API.Client;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
 #nullable disable
@@ -115,7 +116,7 @@ namespace Vintagestory.GameContent
             if (Math.Abs(viewPos.X - mouseX) < sc && Math.Abs(viewPos.Y - mouseY) < sc)
             {
                 hoverText.AppendLine(entity.Name);
-                hoverText.AppendLine("Owned by you");
+                hoverText.AppendLine(Lang.Get("ownableentity-mapmarker-ownedbyyou"));
             }
         }
     }

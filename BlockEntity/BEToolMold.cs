@@ -224,7 +224,8 @@ namespace Vintagestory.GameContent
 
         protected virtual bool TryTakeContents(IPlayer byPlayer)
         {
-            if (Shattered) return false;
+            if (Shattered || MetalContent == null || FillLevel == 0) return false;
+
             if (BreaksWhenFilled)
             {
                 (Api as ICoreClientAPI)?.TriggerIngameError(this, "breakswhenfilledrightclicked", Lang.Get("toolmold-breakswhenfilled-error"));
@@ -233,7 +234,7 @@ namespace Vintagestory.GameContent
 
             if (Api is ICoreServerAPI) MarkDirty();
 
-            if (MetalContent != null && IsFull && IsHardened)
+            if (IsFull && IsHardened)
             {
                 Api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), Pos, -0.5, byPlayer, false);
 

@@ -1,4 +1,4 @@
-﻿using Vintagestory.API;
+using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -318,7 +318,7 @@ namespace Vintagestory.GameContent
 
             return
                 SideSolid(blockAccess, pos, ownFacing)
-                || SideSolid(blockAccess, upPos, BlockFacing.UP)
+                || SideSolid(blockAccess, pos, BlockFacing.UP)
                 || (pos.Y < blockAccess.MapSizeY - 1 && blockAccess.GetBlock(upPos) == forBlock && HasSupportUp(forBlock, blockAccess, upPos))
             ;
         }
@@ -332,7 +332,7 @@ namespace Vintagestory.GameContent
 
             return
                 SideSolid(blockAccess, pos, ownFacing)
-                || SideSolid(blockAccess, downPos, BlockFacing.DOWN)
+                || SideSolid(blockAccess, pos, BlockFacing.DOWN)
                 || (pos.Y > 0 && blockAccess.GetBlock(downPos) == forBlock && HasSupportDown(forBlock, blockAccess, downPos))
             ;
         }

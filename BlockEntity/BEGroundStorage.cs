@@ -793,6 +793,48 @@ namespace Vintagestory.GameContent
                 selBoxes[0] = colBoxes[0];
             }
 
+            if (StorageProps.Layout is EnumGroundStorageLayout.Stacking or EnumGroundStorageLayout.Messy12 or EnumGroundStorageLayout.SingleCenter)
+            {
+                int fullSlots = inventory.Count(slot => !slot.Empty);
+
+                if (fullSlots == 1)
+                {
+                    if (StorageProps.Layout is EnumGroundStorageLayout.Stacking or EnumGroundStorageLayout.SingleCenter)
+                    {
+                        overrideLayout = null;
+                    }
+
+                    if (overrideLayout == null) inventory.FirstNonEmptySlot.TryFlipWith(inventory[0]);
+                }
+                else if (fullSlots > 1)
+                {
+                    if (overrideLayout is EnumGroundStorageLayout.SingleCenter or EnumGroundStorageLayout.Stacking or EnumGroundStorageLayout.Messy12)
+                    {
+                        overrideLayout = null;
+                    }
+                    else if (fullSlots > 2 && overrideLayout is EnumGroundStorageLayout.Halves or EnumGroundStorageLayout.WallHalves)
+                    {
+                        overrideLayout = null;
+                    }
+
+                    if (StorageProps.Layout is EnumGroundStorageLayout.Stacking &&
+                        inventory.All(slot =>
+                                      slot.Empty ||
+                                      slot.Itemstack.Equals(Api.World, inventory.FirstNonEmptySlot.Itemstack, GlobalConstants.IgnoredStackAttributes)))
+                    {
+                        for (int i = 0; i < inventory.Count; i++) inventory[i].TryPutInto(Api.World, inventory[0]);
+
+                        fullSlots = inventory.Count(slot => !slot.Empty);
+                        if (fullSlots == 1) overrideLayout = null;
+                        else if (fullSlots > 1) overrideLayout = EnumGroundStorageLayout.Quadrants;
+                    }
+                    else
+                    {
+                        overrideLayout ??= EnumGroundStorageLayout.Quadrants;
+                    }
+                }
+            }
+
             if (overrideLayout != null)
             {
                 StorageProps = StorageProps.Clone();
@@ -1061,7 +1103,14 @@ namespace Vintagestory.GameContent
             if (!hotbarSlot.Empty && !inventory.Empty)
             {
                 var hotbarlayout = hotbarSlot.Itemstack.Collectible.GetBehavior<CollectibleBehaviorGroundStorable>()?.StorageProps.Layout;
-                bool layoutEqual = StorageProps.Layout == hotbarlayout || (StorageProps.Layout == EnumGroundStorageLayout.Quadrants && hotbarlayout == EnumGroundStorageLayout.Messy12);
+                bool layoutEqual = StorageProps.Layout == hotbarlayout;
+
+                if (StorageProps.Layout == EnumGroundStorageLayout.Quadrants && hotbarlayout == EnumGroundStorageLayout.Messy12)
+                {
+                    layoutEqual = true;
+                    overrideLayout = EnumGroundStorageLayout.Quadrants;
+                }
+
                 if (!layoutEqual) return false;
             }
 
@@ -1357,6 +1406,7 @@ namespace Vintagestory.GameContent
             {
                 case EnumGroundStorageLayout.Messy12:
                 case EnumGroundStorageLayout.SingleCenter:
+                case EnumGroundStorageLayout.Stacking:
                     offs[0] = new Vec3f();
                     break;
 
@@ -1377,10 +1427,6 @@ namespace Vintagestory.GameContent
                     offs[2] = new Vec3f(0.25f, 0, -0.25f);
                     // Bot right
                     offs[3] = new Vec3f(0.25f, 0, 0.25f);
-                    break;
-
-                case EnumGroundStorageLayout.Stacking:
-                    offs[0] = new Vec3f();
                     break;
             }
         }

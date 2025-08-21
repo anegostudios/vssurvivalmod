@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -92,13 +92,14 @@ namespace Vintagestory.GameContent
         {
             if(!resolveImports || preserve) return;
             
-            bool found = false;
-
-            double val = ((double)(uint)schematicSeed / uint.MaxValue);
-            var blockGroups = Block.FirstCodePart() == "wallcarving" ? BlockTapestry.wallcarvingGroups : BlockTapestry.tapestryGroups;
+            bool wallcarving = Block.FirstCodePart() == "wallcarving";
 
             if (!preserveType)
             {
+                bool found = false;
+                double val = (double)(uint)schematicSeed / uint.MaxValue;
+                var blockGroups = wallcarving ? BlockTapestry.wallcarvingGroups : BlockTapestry.tapestryGroups;
+
                 for (int i = 0; !found && i < blockGroups.Length; i++)
                 {
                     for (int j = 0; !found && j < blockGroups[i].Length; j++)
@@ -109,29 +110,26 @@ namespace Vintagestory.GameContent
                 
                             uint seed2 = GameMath.Mod((uint)schematicSeed + (uint)rnd, uint.MaxValue);
                 
-                            val = ((double)seed2 / uint.MaxValue);
+                            val = (double)seed2 / uint.MaxValue;
                 
                             int len = blockGroups[i].Length;
                             int pos = GameMath.oaatHashMany(j + schematicSeed, 20);
                 
                             type = blockGroups[i][GameMath.Mod(pos, len)];
                             found = true;
-                
                         }
                     }
-                } 
-            }
-
-            if (val < 0.6 && !preserveType)
-            {
-                needsToDie = true;
-                if (didInitialize) {
-                    Api.World.BlockAccessor.SetBlock(0, Pos);
                 }
-                return;
+
+                if (val < 0.6)
+                {
+                    needsToDie = true;
+                    if (didInitialize) Api.World.BlockAccessor.SetBlock(0, Pos);
+                    return;
+                }
             }
             
-            rotten = worldForNewMappings.Rand.NextDouble() < 0.75;
+            if (!wallcarving) rotten = worldForNewMappings.Rand.NextDouble() < 0.75;
         }
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)

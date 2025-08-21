@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -130,15 +130,11 @@ namespace Vintagestory.GameContent
                 ElementBounds traderMoneyBounds = offerTextBounds.FlatCopy().WithFixedOffset(0, offerTextBounds.fixedHeight);
                 ElementBounds playerMoneyBounds = costTextBounds.FlatCopy().WithFixedOffset(0, costTextBounds.fixedHeight);
 
-
-                double daysLeft = (owningEntity as EntityTradingHumanoid).NextRefreshTotalDays();
-                string daysLeftString = daysLeft < 1 ? Lang.Get("Delievery of new goods in less than 1 day") : Lang.Get("Delievery of new goods in {0} days", (int)daysLeft);
-
                 CairoFont deliveryTextFont = CairoFont.WhiteDetailText();
                 deliveryTextFont.Color[3] *= 0.7;
 
                 SingleComposer
-                    .AddStaticText(daysLeftString, deliveryTextFont, ElementBounds.Fixed(pad, 20 + pad, 430, 25))
+                    .AddStaticText(Lang.Get("trader-newgoodsdelivery", (owningEntity as EntityTradingHumanoid).NextRefreshTotalDays()), deliveryTextFont, ElementBounds.Fixed(pad, 20 + pad, 430, 25))
 
                     .AddStaticText(Lang.Get("You can Buy"), CairoFont.WhiteDetailText(), ElementBounds.Fixed(pad, 50 + pad, 200, 25))
                     .AddStaticText(Lang.Get("You can Sell"), CairoFont.WhiteDetailText(), ElementBounds.Fixed(leftTopSlotBounds.fixedWidth + pad + 20, 50 + pad, 200, 25))

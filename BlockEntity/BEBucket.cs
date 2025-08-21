@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -67,8 +67,8 @@ namespace Vintagestory.GameContent
             {
                 for (int i = 0; i < mesh.CustomInts.Count; i++)
                 {
-                    mesh.CustomInts.Values[i] |= 1 << VertexFlags.LiquidWeakWaveBitMask; // Enable weak water wavy
-                    mesh.CustomInts.Values[i] |= 1 << VertexFlags.LiquidWeakFoamBitMask; // Enabled weak foamd
+                    mesh.CustomInts.Values[i] |= VertexFlags.LiquidWeakWaveBitMask; // Enable weak water wavy
+                    mesh.CustomInts.Values[i] |= VertexFlags.LiquidWeakFoamBitMask; // Enabled weak foamd
                 }
             }
 
