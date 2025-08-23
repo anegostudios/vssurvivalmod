@@ -54,7 +54,7 @@ namespace Vintagestory.GameContent
         {
             if (mode == EnumGetClimateMode.WorldGenValues) return;
 
-            double yearRel = totalDays / api.World.Calendar.DaysPerYear % 1;
+            double yearRel = api.World.Calendar.YearRel;
             double hourOfDay = (totalDays % 1) * api.World.Calendar.HoursPerDay;
 
             updateTemperature(ref climate, pos, yearRel, hourOfDay, totalDays);
@@ -140,8 +140,7 @@ namespace Vintagestory.GameContent
                 cond.Temperature = (float)starttemp;
 
                 double totalDays = totalhours / hoursPerday;
-                double year = totalDays / daysPerYear;
-                double yearRel = year % 1;
+                double yearRel = api.World.Calendar.YearRel;
                 double hourOfDay = totalhours % hoursPerday;
                 double month = yearRel * monthsPerYear;
 
@@ -159,4 +158,5 @@ namespace Vintagestory.GameContent
             File.WriteAllText("temperatureplot.csv", string.Join("\r\n", entries));
         }
     }
+
 }
