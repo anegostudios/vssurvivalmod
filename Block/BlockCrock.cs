@@ -483,7 +483,7 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-                string? facts = BlockMeal.AllMealBowls?[0]?.GetContentNutritionFacts(world, inSlot, null);
+                string? facts = BlockMeal.AllMealBowls(api)?[0]?.GetContentNutritionFacts(world, inSlot, null);
                 if (facts != null)
                 {
                     dsc.Append(facts);
@@ -571,7 +571,7 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-                string? facts = BlockMeal.AllMealBowls?[0]?.GetContentNutritionFacts(world, new DummySlot(OnPickBlock(world, pos)), null);
+                string? facts = BlockMeal.AllMealBowls(api)?[0]?.GetContentNutritionFacts(world, new DummySlot(OnPickBlock(world, pos)), null);
 
                 if (facts != null)
                 {

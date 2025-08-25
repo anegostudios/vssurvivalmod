@@ -793,52 +793,88 @@ namespace Vintagestory.GameContent
                 selBoxes[0] = colBoxes[0];
             }
 
-            if (StorageProps.Layout is EnumGroundStorageLayout.Stacking or EnumGroundStorageLayout.Messy12 or EnumGroundStorageLayout.SingleCenter)
-            {
-                int fullSlots = inventory.Count(slot => !slot.Empty);
-
-                if (fullSlots == 1)
-                {
-                    if (StorageProps.Layout is EnumGroundStorageLayout.Stacking or EnumGroundStorageLayout.SingleCenter)
-                    {
-                        overrideLayout = null;
-                    }
-
-                    if (overrideLayout == null) inventory.FirstNonEmptySlot.TryFlipWith(inventory[0]);
-                }
-                else if (fullSlots > 1)
-                {
-                    if (overrideLayout is EnumGroundStorageLayout.SingleCenter or EnumGroundStorageLayout.Stacking or EnumGroundStorageLayout.Messy12)
-                    {
-                        overrideLayout = null;
-                    }
-                    else if (fullSlots > 2 && overrideLayout is EnumGroundStorageLayout.Halves or EnumGroundStorageLayout.WallHalves)
-                    {
-                        overrideLayout = null;
-                    }
-
-                    if (StorageProps.Layout is EnumGroundStorageLayout.Stacking &&
-                        inventory.All(slot =>
-                                      slot.Empty ||
-                                      slot.Itemstack.Equals(Api.World, inventory.FirstNonEmptySlot.Itemstack, GlobalConstants.IgnoredStackAttributes)))
-                    {
-                        for (int i = 0; i < inventory.Count; i++) inventory[i].TryPutInto(Api.World, inventory[0]);
-
-                        fullSlots = inventory.Count(slot => !slot.Empty);
-                        if (fullSlots == 1) overrideLayout = null;
-                        else if (fullSlots > 1) overrideLayout = EnumGroundStorageLayout.Quadrants;
-                    }
-                    else
-                    {
-                        overrideLayout ??= EnumGroundStorageLayout.Quadrants;
-                    }
-                }
-            }
+            FixBrokenStorageLayout();
 
             if (overrideLayout != null)
             {
                 StorageProps = StorageProps.Clone();
                 StorageProps.Layout = (EnumGroundStorageLayout)overrideLayout;
+            }
+        }
+
+        protected virtual void FixBrokenStorageLayout()
+        {
+            // Stacking and WallHalves are incompatible with other types so we want to make sure they don't mix
+            if (StorageProps.Layout is EnumGroundStorageLayout.Stacking or EnumGroundStorageLayout.WallHalves ||
+                overrideLayout is EnumGroundStorageLayout.Stacking or EnumGroundStorageLayout.WallHalves)
+            {
+                overrideLayout = null;
+            }
+
+            var currentLayout = overrideLayout ?? StorageProps.Layout;
+            int totalSlots = UsableSlots(currentLayout);
+            if (totalSlots <= 0) return; // This should never happen, but just in case
+
+            // Everything should be visible and interactable in any of these cases
+            if (totalSlots >= 4) return;
+            if (totalSlots == 1 && !inventory[0].Empty) return;
+            if (totalSlots == 2 && !inventory[0].Empty && !inventory[1].Empty) return;
+
+            ItemSlot[] fullSlots = [.. inventory.Where(slot => !slot.Empty)];
+            if (fullSlots.Length <= 0) return; // Again, should never happen, but better safe than sorry
+
+            // Flip the items into the first slot if possible
+            if (fullSlots.Length == 1)
+            {
+                inventory[0].TryFlipWith(fullSlots[0]);
+                if (!inventory[0].Empty) return;
+            }
+
+            // Try to collect all the items into the first slot if layout is stacking
+            if (currentLayout is EnumGroundStorageLayout.Stacking &&
+                inventory.All(slot => slot.Empty || slot.Itemstack.Equals(Api.World, fullSlots[0].Itemstack, GlobalConstants.IgnoredStackAttributes)))
+            {
+                for (int i = 0; i < fullSlots.Length; i++) fullSlots[i].TryPutInto(Api.World, inventory[0]);
+
+                fullSlots = [.. inventory.Where(slot => !slot.Empty)];
+
+                if (fullSlots.Length == 1) return;
+            }
+
+            // Try to move everything into the first two slots if they are all the layout displays
+            if (totalSlots == 2 && fullSlots.Length == 2)
+            {
+                fullSlots[0].TryPutInto(Api.World, inventory[0]); // Shift the first item to the first slot
+
+                fullSlots[1].TryPutInto(Api.World, inventory[1]); // Shift the second item to the second slot
+
+                if (!inventory[0].Empty && !inventory[1].Empty) return; // Everything is moved into the first two visible slots
+            }
+
+            // Make sure to cancel the override if it will cause issues with display
+            if (fullSlots.Length > 2 && overrideLayout is EnumGroundStorageLayout.Halves)
+            {
+                overrideLayout = null;
+            }
+
+            // Assign Quadrants as an override to make sure things display, if necessary
+            if (StorageProps.Layout != EnumGroundStorageLayout.Quadrants)
+            {
+                overrideLayout ??= EnumGroundStorageLayout.Quadrants;
+            }
+        }
+
+        public int UsableSlots(EnumGroundStorageLayout layout)
+        {
+            switch (layout)
+            {
+                case EnumGroundStorageLayout.SingleCenter: return 1;
+                case EnumGroundStorageLayout.Halves: return 2;
+                case EnumGroundStorageLayout.WallHalves: return 2;
+                case EnumGroundStorageLayout.Quadrants: return 4;
+                case EnumGroundStorageLayout.Messy12: return 1;
+                case EnumGroundStorageLayout.Stacking: return 1;
+                default: return 0;
             }
         }
 
@@ -852,7 +888,9 @@ namespace Vintagestory.GameContent
 
             ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
-            bool equalStack = inventory[0].Empty || hotbarSlot.Itemstack != null && hotbarSlot.Itemstack.Equals(Api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes);
+            bool sneaking = byPlayer.Entity.Controls.ShiftKey;
+
+            bool equalStack = inventory[0].Empty || !sneaking || (hotbarSlot.Itemstack != null && hotbarSlot.Itemstack.Equals(Api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes));
 
             BlockPos abovePos = Pos.UpCopy();
             var beg = Block.GetBlockEntity<BlockEntityGroundStorage>(abovePos);
@@ -861,8 +899,6 @@ namespace Vintagestory.GameContent
             {
                 return beg.OnPlayerInteractStart(byPlayer, bs);
             }
-
-            bool sneaking = byPlayer.Entity.Controls.ShiftKey;
 
             if (sneaking && hotbarSlot.Empty) return false;
 

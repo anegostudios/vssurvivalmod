@@ -1,4 +1,4 @@
-﻿using Cairo;
+using Cairo;
 using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
@@ -88,7 +88,7 @@ namespace Vintagestory.GameContent
 
             if (showStackSize)
             {
-                float litreFloat = (float)itemstack.StackSize / props.ItemsPerLitre;
+                float litreFloat = (float)itemstack.StackSize / props?.ItemsPerLitre ?? 1;
                 string litres;
                 if (litreFloat < 0.1)
                 {

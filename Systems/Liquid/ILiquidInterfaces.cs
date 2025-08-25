@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Common;
+using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
 #nullable disable
@@ -46,7 +46,7 @@ namespace Vintagestory.GameContent
         /// <param name="world"></param>
         /// <param name="containerStack"></param>
         /// <returns></returns>
-        WaterTightContainableProps GetContentProps(ItemStack containerStack);
+        WaterTightContainableProps? GetContentProps(ItemStack containerStack);
 
         /// <summary>
         /// Retrives the containable properties of the container block at given position
@@ -54,7 +54,7 @@ namespace Vintagestory.GameContent
         /// <param name="world"></param>
         /// <param name="pos"></param>
         /// <returns></returns>
-        WaterTightContainableProps GetContentProps(BlockPos pos);
+        WaterTightContainableProps? GetContentProps(BlockPos pos);
 
         /// <summary>
         /// Returns the containing itemstack of the liquid source stack
@@ -62,7 +62,7 @@ namespace Vintagestory.GameContent
         /// <param name="world"></param>
         /// <param name="containerStack"></param>
         /// <returns></returns>
-        ItemStack GetContent(ItemStack containerStack);
+        ItemStack? GetContent(ItemStack containerStack);
 
         /// <summary>
         /// Returns the containing itemstack of a placed liquid source block
@@ -70,7 +70,7 @@ namespace Vintagestory.GameContent
         /// <param name="world"></param>
         /// <param name="pos"></param>
         /// <returns></returns>
-        ItemStack GetContent(BlockPos pos);
+        ItemStack? GetContent(BlockPos pos);
     }
 
 

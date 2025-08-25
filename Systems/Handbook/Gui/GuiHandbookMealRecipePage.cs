@@ -86,12 +86,15 @@ namespace Vintagestory.GameContent
             unspoilableInventory = new CreativeInventoryTab(1, "not-used", null);
             if (isPie)
             {
-                dummySlot = new (new (capi.World.BlockAccessor.GetBlock("pie-perfect")), unspoilableInventory);
+                dummySlot = new(new(capi.World.BlockAccessor.GetBlock("pie-perfect")), unspoilableInventory);
                 dummySlot.Itemstack!.Attributes.SetInt("pieSize", 4);
                 dummySlot.Itemstack.Attributes.SetString("topCrustType", BlockPie.TopCrustTypes[capi.World.Rand.Next(BlockPie.TopCrustTypes.Length)].Code);
                 dummySlot.Itemstack.Attributes.SetInt("bakeLevel", 2);
             }
-            else dummySlot = new (new (BlockMeal.AllMealBowls![capi.World.Rand.Next(BlockMeal.AllMealBowls.Length)]), unspoilableInventory);
+            else
+            {
+                dummySlot = new(new(BlockMeal.RandomMealBowl(capi)), unspoilableInventory);
+            }
 
             Title = Lang.Get(isPie ? ("pie-" + recipe.Code + "-perfect") : ("mealrecipe-name-" + recipe.Code));
 
@@ -121,7 +124,7 @@ namespace Vintagestory.GameContent
             {
                 secondsVisible = 1;
                 if (isPie) dummySlot.Itemstack?.Attributes.SetString("topCrustType", BlockPie.TopCrustTypes[capi.World.Rand.Next(BlockPie.TopCrustTypes.Length)].Code);
-                else dummySlot.Itemstack = new (BlockMeal.AllMealBowls![capi.World.Rand.Next(BlockMeal.AllMealBowls.Length)]);
+                else dummySlot.Itemstack = new (BlockMeal.RandomMealBowl(capi));
                 mealBlock?.SetContents(Recipe.Code!, dummySlot.Itemstack!, isPie ? BlockPie.GenerateRandomPie(capi, ref cachedValidStacks, Recipe) : Recipe.GenerateRandomMeal(capi, ref cachedValidStacks, allStacks, slots), 1);
             }
 

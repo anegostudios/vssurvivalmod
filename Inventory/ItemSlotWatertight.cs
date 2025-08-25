@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 
@@ -34,6 +34,7 @@ namespace Vintagestory.GameContent
             {
                 ItemStack contentStack = liqCntBlock.GetContent(sourceSlot.Itemstack);
                 var liqProps = BlockLiquidContainerBase.GetContainableProps(contentStack);
+                float itemsPerLitre = liqProps?.ItemsPerLitre ?? 1;
 
                 bool stackable = !Empty && itemstack.Equals(world, contentStack, GlobalConstants.IgnoredStackAttributes);
 
@@ -42,8 +43,8 @@ namespace Vintagestory.GameContent
                     ItemStack bucketStack = sourceSlot.Itemstack;
 
                     float toMoveLitres = (op?.ActingPlayer?.Entity.Controls.ShiftKey ?? false) ? liqCntBlock.CapacityLitres : liqCntBlock.TransferSizeLitres;
-                    float curDestLitres = StackSize / liqProps.ItemsPerLitre;
-                    float curSrcLitres = contentStack.StackSize / liqProps.ItemsPerLitre;
+                    float curDestLitres = StackSize / itemsPerLitre;
+                    float curSrcLitres = contentStack.StackSize / itemsPerLitre;
 
                     toMoveLitres = Math.Min(toMoveLitres, curSrcLitres);
 
@@ -52,7 +53,7 @@ namespace Vintagestory.GameContent
 
                     if (toMoveLitres > 0)
                     {
-                        int moveQuantity = (int)(liqProps.ItemsPerLitre * toMoveLitres);
+                        int moveQuantity = (int)(itemsPerLitre * toMoveLitres);
                         ItemStack takenContentStack = liqCntBlock.TryTakeContent(bucketStack, moveQuantity / bucketStack.StackSize);
 
                         takenContentStack.StackSize *= bucketStack.StackSize;

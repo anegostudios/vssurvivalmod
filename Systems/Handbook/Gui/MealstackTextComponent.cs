@@ -125,7 +125,7 @@ namespace Vintagestory.API.Client
                 if (RandomBowlBlock)
                 {
                     if (isPie) dummySlot.Itemstack?.Attributes.SetString("topCrustType", BlockPie.TopCrustTypes[capi.World.Rand.Next(BlockPie.TopCrustTypes.Length)].Code);
-                    else dummySlot.Itemstack = new(BlockMeal.AllMealBowls![capi.World.Rand.Next(BlockMeal.AllMealBowls.Length)]);
+                    else dummySlot.Itemstack = new(BlockMeal.AllMealBowls(api)![capi.World.Rand.Next(BlockMeal.AllMealBowls(api).Length)]);
                 }
                 mealBlock.SetContents(recipe.Code!, dummySlot.Itemstack!, isPie ? BlockPie.GenerateRandomPie(capi, ref cachedValidStacks, recipe, ingredient) : recipe.GenerateRandomMeal(capi, ref cachedValidStacks, allstacks, slots, ingredient), 1);
             }

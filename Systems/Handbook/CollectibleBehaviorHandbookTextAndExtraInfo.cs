@@ -1028,7 +1028,10 @@ namespace Vintagestory.GameContent
                         mealBlock.Attributes.SetString("topCrustType", BlockPie.TopCrustTypes[capi.World.Rand.Next(BlockPie.TopCrustTypes.Length)].Code);
                         mealBlock.Attributes.SetInt("bakeLevel", 2);
                     }
-                    else mealBlock = new ItemStack(BlockMeal.AllMealBowls[capi.World.Rand.Next(BlockMeal.AllMealBowls.Length)]);
+                    else
+                    {
+                        mealBlock = new ItemStack(BlockMeal.RandomMealBowl(capi));
+                    }
                     var validStacks = cachedValidStacks.GetValueOrDefault(recipe.Code);
                     MealstackTextComponent comp = new MealstackTextComponent(capi, ref validStacks, mealBlock, recipe, 40, EnumFloat.Inline, allStacks, (cs) => openDetailPageFor("handbook-mealrecipe-" + recipe.Code + (isPie ? "-pie" : "")), slots, isPie, maxstack);
                     cachedValidStacks[recipe.Code] = validStacks;
@@ -1264,7 +1267,7 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-                JsonItemStack carburizedJStack = val.ItemAttributes?["carburizableProps"]?["carburizedOutput"]?.AsObject<JsonItemStack>(null, stack.Collectible.Code.Domain);
+                JsonItemStack carburizedJStack = val.ItemAttributes?["carburizableProps"]?["carburizedOutput"]?.AsObject<JsonItemStack>(null, val.Collectible.Code.Domain);
                 if (carburizedJStack?.Resolve(Api.World, "carburizable handbook") == true)
                 {
                     ItemStack carburizedStack = carburizedJStack.ResolvedItemstack;
@@ -1939,7 +1942,7 @@ namespace Vintagestory.GameContent
                                 if (rs.Collectible.Attributes?["waterTightContainerProps"].Exists == true)
                                 {
                                     var props = BlockLiquidContainerBase.GetContainableProps(rs);
-                                    rs.StackSize *= (int)(props.ItemsPerLitre * ingred.PortionSizeLitres);
+                                    rs.StackSize *= (int)((props?.ItemsPerLitre ?? 1) * ingred.PortionSizeLitres);
                                 }
 
 

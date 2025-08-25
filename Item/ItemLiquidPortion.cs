@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Common;
+using Vintagestory.API.Common;
 
 #nullable disable
 
@@ -13,7 +13,7 @@ namespace Vintagestory.GameContent
             if (entityItem.World.Side == EnumAppSide.Server)
             {
                 WaterTightContainableProps props = BlockLiquidContainerBase.GetContainableProps(entityItem.Itemstack);
-                float litres = (float)entityItem.Itemstack.StackSize / props.ItemsPerLitre;
+                float litres = (float)entityItem.Itemstack.StackSize / (props?.ItemsPerLitre ?? 1);
 
                 entityItem.World.SpawnCubeParticles(entityItem.SidedPos.XYZ, entityItem.Itemstack, 0.75f, (int)(litres * 2), 0.45f);
                 entityItem.World.PlaySoundAt(new AssetLocation("sounds/environment/smallsplash"), (float)entityItem.SidedPos.X, (float)entityItem.SidedPos.InternalY, (float)entityItem.SidedPos.Z, null);

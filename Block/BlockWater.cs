@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -103,7 +103,7 @@ namespace Vintagestory.GameContent
                 Vec3d pos = entityItem.ServerPos.XYZ;
 
                 WaterTightContainableProps props = BlockLiquidContainerBase.GetContainableProps(entityItem.Itemstack);
-                float litres = (float)entityItem.Itemstack.StackSize / props.ItemsPerLitre;
+                float litres = (float)entityItem.Itemstack.StackSize / (props?.ItemsPerLitre ?? 1f);
 
                 entityItem.World.SpawnCubeParticles(pos, entityItem.Itemstack, 0.75f, Math.Min(100, (int)(2 * litres)), 0.45f);
                 entityItem.World.PlaySoundAt(new AssetLocation("sounds/environment/smallsplash"), (float)pos.X, (float)pos.Y, (float)pos.Z, null);

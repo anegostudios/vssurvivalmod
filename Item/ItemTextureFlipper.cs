@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
+using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -53,6 +54,18 @@ namespace Vintagestory.GameContent
             capi = api as ICoreClientAPI;
         }
 
+        public override void OnUnloaded(ICoreAPI api)
+        {
+            base.OnUnloaded(api);
+            if (capi != null) DisposeMeshes();
+        }
+
+        public virtual void DisposeMeshes()
+        {
+            foreach (var meshref in skillTextures.Values) meshref?.Dispose();
+            skillTextures.Clear();
+        }
+
         public override int GetToolMode(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSelection)
         {
             return base.GetToolMode(slot, byPlayer, blockSelection);
@@ -70,6 +83,9 @@ namespace Vintagestory.GameContent
                 if (block == null) return null;
                 var textures = block.GetAvailableTextures(pos);
                 if (textures == null) return null;
+
+                if (capi.Gui.LoadedGuis.FirstOrDefault(dlg => dlg.ToggleKeyCombinationCode == "toolmodeselect")?.IsOpened() == true) return null;
+
                 skillitems = new SkillItem[textures.Count];
                 int i = 0;
                 foreach (var val in textures)
@@ -82,6 +98,7 @@ namespace Vintagestory.GameContent
                         RenderHandler = renderSkillItem
                     };
                 }
+                DisposeMeshes();
 
                 this.pos = pos;
             }
@@ -118,7 +135,7 @@ namespace Vintagestory.GameContent
             if (block != null)
             {
                 var textures = block.GetAvailableTextures(pos);
-                if (textures == null) return;
+                if (textures == null || toolMode >= textures.Count) return;
                 block.FlipTexture(pos, textures.GetKeyAtIndex(toolMode));
             }
 

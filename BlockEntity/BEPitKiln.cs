@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -218,6 +218,12 @@ namespace Vintagestory.GameContent
 
                 selBoxes[0] = colBoxes[0];
             }
+        }
+
+        protected override void FixBrokenStorageLayout()
+        {
+            // Skip this since we haven't changed any storage layouts for clay items in vanilla and the
+            // fuel will physically hide most items in the kiln anyway even if there were a display issue
         }
 
 

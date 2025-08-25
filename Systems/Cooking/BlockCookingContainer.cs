@@ -104,7 +104,7 @@ namespace Vintagestory.GameContent
                     if (stack.Collectible?.Attributes?["waterTightContainerProps"].Exists == true)
                     {
                         var props = BlockLiquidContainerBase.GetContainableProps(stack);
-                        portionSize = (int)(stack.StackSize / props.ItemsPerLitre);
+                        portionSize = (int)(stack.StackSize / props?.ItemsPerLitre ?? 1);
                     }
 
                     duration += 20 * portionSize;
@@ -258,7 +258,7 @@ namespace Vintagestory.GameContent
 
                     if (outStack?.Collectible.Attributes?["waterTightContainerProps"].Exists == true)
                     {
-                        float litreFloat = quantity / BlockLiquidContainerBase.GetContainableProps(outStack).ItemsPerLitre;
+                        float litreFloat = quantity / BlockLiquidContainerBase.GetContainableProps(outStack)?.ItemsPerLitre ?? 1;
                         string litres;
 
                         if (litreFloat < 0.1)

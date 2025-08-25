@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
@@ -76,7 +76,7 @@ namespace Vintagestory.GameContent
                     else stacks[0] = new ItemStack(capi.World.GetBlock(new AssetLocation(contentCode)));
 
                     var props = GetContainableProps(stacks[0]);
-                    stacks[0].StackSize = (int)(props.ItemsPerLitre * litres);
+                    stacks[0].StackSize = (int)((props?.ItemsPerLitre ?? 1) * litres);
                 }
             }
 
@@ -256,9 +256,9 @@ namespace Vintagestory.GameContent
         }
 
 
-        public WaterTightContainableProps GetContentProps(ItemStack containerStack)
+        public WaterTightContainableProps? GetContentProps(ItemStack containerStack)
         {
-            ItemStack stack = GetContent(containerStack);
+            ItemStack? stack = GetContent(containerStack);
             return GetContainableProps(stack);
         }
 
@@ -274,11 +274,12 @@ namespace Vintagestory.GameContent
 
             float litres = containerBlock.TransferSizeLitres;
             var liqProps = GetContainableProps(contentStack);
-            int stacksize = (int)(liqProps.ItemsPerLitre * litres);
+            float itemsPerLitre = liqProps?.ItemsPerLitre ?? 1;
+            int stacksize = (int)(itemsPerLitre * litres);
 
             if (maxCapacity)
             {
-                stacksize = (int)(containerBlock.CapacityLitres * liqProps.ItemsPerLitre);
+                stacksize = (int)(containerBlock.CapacityLitres * itemsPerLitre);
             }
 
             return stacksize;
@@ -287,7 +288,7 @@ namespace Vintagestory.GameContent
 
 
 
-        public static WaterTightContainableProps GetContainableProps(ItemStack stack)
+        public static WaterTightContainableProps? GetContainableProps(ItemStack? stack)
         {
             try
             {
@@ -307,7 +308,7 @@ namespace Vintagestory.GameContent
         /// <param name="world"></param>
         /// <param name="pos"></param>
         /// <returns></returns>
-        public WaterTightContainableProps GetContentProps(BlockPos pos)
+        public WaterTightContainableProps? GetContentProps(BlockPos pos)
         {
             BlockEntityContainer becontainer = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityContainer;
             if (becontainer == null) return null;
@@ -361,7 +362,7 @@ namespace Vintagestory.GameContent
         /// <param name="world"></param>
         /// <param name="containerStack"></param>
         /// <returns></returns>
-        public ItemStack GetContent(ItemStack containerStack)
+        public ItemStack? GetContent(ItemStack containerStack)
         {
             ItemStack[] stacks = GetContents(api.World, containerStack);
             int id = GetContainerSlotId(containerStack);
@@ -374,7 +375,7 @@ namespace Vintagestory.GameContent
         /// <param name="world"></param>
         /// <param name="pos"></param>
         /// <returns></returns>
-        public ItemStack GetContent(BlockPos pos)
+        public ItemStack? GetContent(BlockPos pos)
         {
             BlockEntityContainer becontainer = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityContainer;
             if (becontainer == null) return null;
@@ -392,7 +393,7 @@ namespace Vintagestory.GameContent
             if (makefull)
             {
                 var props = GetContainableProps(stack);
-                stack.StackSize = (int)(CapacityLitres * props.ItemsPerLitre);
+                stack.StackSize = (int)(CapacityLitres * (props?.ItemsPerLitre ?? 1));
             }
 
             return stack;
@@ -518,10 +519,12 @@ namespace Vintagestory.GameContent
         {
             if (liquidStack == null) return 0;
 
-            var props = GetContainableProps(liquidStack);
-            int desiredItems = (int)(props.ItemsPerLitre * desiredLitres);
+            WaterTightContainableProps props = GetContainableProps(liquidStack);
+
+            float itemsPerLitre = props?.ItemsPerLitre ?? 1;
+            int desiredItems = (int)(itemsPerLitre * desiredLitres);
             float availItems = liquidStack.StackSize;
-            float maxItems = CapacityLitres * props.ItemsPerLitre;
+            float maxItems = CapacityLitres * itemsPerLitre;
 
             ItemStack stack = GetContent(pos);
             if (stack == null)
@@ -630,10 +633,10 @@ namespace Vintagestory.GameContent
             if (player == null) return;
 
             WaterTightContainableProps props = GetContainableProps(contentStack);
-            float litresMoved = moved / props.ItemsPerLitre;
+            float litresMoved = moved / (props?.ItemsPerLitre ?? 1);
 
             (player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
-            api.World.PlaySoundAt(dir == EnumLiquidDirection.Fill ? props.FillSound : props.PourSound, player.Entity, player, true, 16, GameMath.Clamp(litresMoved / 5f, 0.35f, 1f));
+            api.World.PlaySoundAt(dir == EnumLiquidDirection.Fill ? props?.FillSound ?? "sounds/effect/water-fill.ogg" : props?.PourSound ?? "sounds/effect/water-pour.ogg", player.Entity, player, true, 16, GameMath.Clamp(litresMoved / 5f, 0.35f, 1f));
             api.World.SpawnCubeParticles(player.Entity.Pos.AheadCopy(0.25).XYZ.Add(0, player.Entity.SelectionBox.Y2 / 2, 0), contentStack, 0.75f, (int)litresMoved * 2, 0.45f);
         }
 
@@ -697,7 +700,7 @@ namespace Vintagestory.GameContent
                         if (targetCntBlock.TryPutLiquid(blockSel.Position, contentStack, targetCntBlock.CapacityLitres) > 0)
                         {
                             TryTakeContent(itemslot.Itemstack, 1);
-                            byEntity.World.PlaySoundAt(props.FillSpillSound, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, byPlayer);
+                            byEntity.World.PlaySoundAt(props?.FillSpillSound ?? "sounds/block/water", blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, byPlayer);
                         }
 
                     }
@@ -820,7 +823,6 @@ namespace Vintagestory.GameContent
             var contentStack = props.WhenFilled.Stack.ResolvedItemstack;
             if (contentStack == null) return false;
             contentStack = contentStack.Clone();
-            var cprops = GetContainableProps(contentStack);
             contentStack.StackSize = 999999;
 
             int moved = SplitStackAndPerformAction(byEntity, itemslot, (stack) => TryPutLiquid(stack, contentStack, CapacityLitres));
@@ -1181,7 +1183,7 @@ namespace Vintagestory.GameContent
 
             float litres = rprops["requiresLitres"].AsFloat();
             var props = GetContainableProps(contentStack);
-            int q = (int)(props.ItemsPerLitre * litres) / inputStack.StackSize;
+            int q = (int)((props?.ItemsPerLitre ?? 1) * litres) / inputStack.StackSize;
 
             bool a = contentStack.Class.ToString().ToLowerInvariant() == contentType.ToLowerInvariant();
             bool b = WildcardUtil.Match(new AssetLocation(contentCode), contentStack.Collectible.Code);
@@ -1204,7 +1206,7 @@ namespace Vintagestory.GameContent
             ItemStack contentStack = GetContent(stackInSlot.Itemstack);
             float litres = rprops["requiresLitres"].AsFloat();
             var props = GetContainableProps(contentStack);
-            int q = (int)(props.ItemsPerLitre * litres / stackInSlot.StackSize);
+            int q = (int)((props?.ItemsPerLitre ?? 1) * litres / stackInSlot.StackSize);
 
             if (rprops.IsTrue("consumeContainer"))
             {

@@ -326,7 +326,7 @@ namespace Vintagestory.GameContent
                 dsc.AppendLine(Lang.Get(message, Math.Round(servings, 1), outputName));
             }
 
-            string? nutriFacts = BlockMeal.AllMealBowls?[0]?.GetContentNutritionFacts(api.World, inSlot, stacks, null);
+            string? nutriFacts = BlockMeal.AllMealBowls(api)?[0]?.GetContentNutritionFacts(api.World, inSlot, stacks, null);
 
             if (nutriFacts != null && recipe?.CooksInto == null) dsc.AppendLine(nutriFacts);
 

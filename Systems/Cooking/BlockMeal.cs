@@ -44,15 +44,32 @@ namespace Vintagestory.GameContent
 
         Vec3d gsSmokePos = new Vec3d(0.5, 0.125, 0.5);
 
-        public static BlockMeal[]? AllMealBowls => mealBowls;
-        static BlockMeal[]? mealBowls;
+        public static BlockMeal[]? AllMealBowls(ICoreAPI api)
+        {
+            return ObjectCacheUtil.TryGet<BlockMeal[]>(api, "allMealBowls");
+        }
+
+        public static BlockMeal RandomMealBowl(ICoreAPI api)
+        {
+            var allMealBowls = AllMealBowls(api);
+            return allMealBowls![api.World.Rand.Next(allMealBowls.Length)];
+        }
+
 
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
 
             if (CollisionBoxes[0] != null) gsSmokePos.Y = CollisionBoxes[0].MaxY;
-            mealBowls = api.World.Blocks.Where(b =>  b is BlockMeal && b.FirstCodePart().Contains("bowl")).Cast<BlockMeal>().ToArray();
+
+            BlockMeal[] mealBowls = ObjectCacheUtil.GetOrCreate(api, "allMealBowls", () => {
+                List<BlockMeal> mealList = new();
+                foreach (var b in api.World.Blocks)
+                {
+                    if (b is BlockMeal bm && b.FirstCodePart().Contains("bowl")) mealList.Add(bm);
+                }
+                return mealList.ToArray();
+            });
 
             meshCache = api.ModLoader.GetModSystem<MealMeshCache>();
         }

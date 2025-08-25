@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Client;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 
@@ -31,7 +31,8 @@ namespace Vintagestory.GameContent
                     if (liqslot.Itemstack.Item?.Code?.Path == "cottagecheeseportion")
                     {
                         var props = BlockLiquidContainerBase.GetContainableProps(liqslot.Itemstack);
-                        float curLitres = liqslot.Itemstack.StackSize / props.ItemsPerLitre;
+                        float itemsPerLitre = props?.ItemsPerLitre ?? 1;
+                        float curLitres = liqslot.Itemstack.StackSize / itemsPerLitre;
 
                         if (curLitres < 25)
                         {
@@ -42,7 +43,7 @@ namespace Vintagestory.GameContent
 
                         if (api.World.Side == EnumAppSide.Server)
                         {
-                            ItemStack ccStack = beba.Inventory[1].TakeOut((int)(25 * props.ItemsPerLitre));
+                            ItemStack ccStack = beba.Inventory[1].TakeOut((int)(25 * itemsPerLitre));
 
                             BlockCheeseCurdsBundle block = api.World.GetBlock(new AssetLocation("curdbundle")) as BlockCheeseCurdsBundle;
                             ItemStack bundleStack = new ItemStack(block);

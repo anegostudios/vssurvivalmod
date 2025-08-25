@@ -111,7 +111,7 @@ namespace Vintagestory.GameContent
             if (entityAgent is not EntityPlayer player) return false;
 
             var ebho = Entity.GetBehavior<EntityBehaviorOwnable>();
-            if (ebho != null && !ebho.IsOwner(player))
+            if (ebho != null && !ebho.IsOwner(player) && config.Controllable)
             {
                 (player.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "requiersownership", Lang.Get("mount-interact-requiresownership"));
                 return false;

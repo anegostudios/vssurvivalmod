@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.GameContent;
@@ -94,7 +94,7 @@ namespace Vintagestory.API.Common
                 {
                     var lprops = BlockLiquidContainerBase.GetContainableProps(liqSlotStack);
 
-                    float curSourceLitres = liqSlotStack.StackSize / lprops.ItemsPerLitre;
+                    float curSourceLitres = liqSlotStack.StackSize / (lprops?.ItemsPerLitre ?? 1);
                     float curTargetLitres = sink.GetCurrentLitres(sourceSlot.Itemstack);
 
                     float toMoveLitres = op.CtrlDown ? sink.TransferSizeLitres : (sink.CapacityLitres - curTargetLitres);
@@ -112,7 +112,7 @@ namespace Vintagestory.API.Common
                         sourceSlot.MarkDirty();
 
                         var pos = op.ActingPlayer?.Entity?.Pos;
-                        if (pos != null) op.World.PlaySoundAt(lprops.PourSound, pos.X, pos.InternalY, pos.Z);
+                        if (pos != null) op.World.PlaySoundAt(lprops?.PourSound ?? "sounds/effect/water-pour.ogg", pos.X, pos.InternalY, pos.Z);
                     }
                 }
 
@@ -144,10 +144,11 @@ namespace Vintagestory.API.Common
                     ItemStack bucketStack = sourceSlot.Itemstack;
 
                     var lprops = BlockLiquidContainerBase.GetContainableProps(bucketContents);
+                    float itemsPerLitre = lprops?.ItemsPerLitre ?? 1;
 
                     float toMoveLitres = op.CtrlDown ? source.TransferSizeLitres : source.CapacityLitres;
-                    float curSourceLitres = bucketContents.StackSize / lprops.ItemsPerLitre * bucketStack.StackSize;
-                    float curDestLitres = liquidSlot.StackSize / lprops.ItemsPerLitre;
+                    float curSourceLitres = bucketContents.StackSize / itemsPerLitre * bucketStack.StackSize;
+                    float curDestLitres = liquidSlot.StackSize / itemsPerLitre;
 
                     // Cap by source amount
                     toMoveLitres = Math.Min(toMoveLitres, curSourceLitres);
@@ -156,7 +157,7 @@ namespace Vintagestory.API.Common
 
                     if (toMoveLitres > 0)
                     {
-                        int moveQuantity = (int)(toMoveLitres * lprops.ItemsPerLitre);
+                        int moveQuantity = (int)(toMoveLitres * itemsPerLitre);
                         ItemStack takenContentStack = source.TryTakeContent(bucketStack, moveQuantity / bucketStack.StackSize);
 
                         takenContentStack.StackSize *= bucketStack.StackSize;
@@ -167,7 +168,7 @@ namespace Vintagestory.API.Common
                         op.MovedQuantity = moveQuantity;
 
                         var pos = op.ActingPlayer?.Entity?.Pos;
-                        if (pos != null) op.World.PlaySoundAt(lprops.FillSound, pos.X, pos.InternalY, pos.Z);
+                        if (pos != null) op.World.PlaySoundAt(lprops?.FillSound ?? "sounds/effect/water-fill.ogg", pos.X, pos.InternalY, pos.Z);
                     }
 
                     return;

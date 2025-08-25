@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -283,7 +283,7 @@ namespace Vintagestory.GameContent
             string temppretty = Lang.Get("{0}°C", temp);
             if (temp < 20) temppretty = Lang.Get("Cold");
 
-            string? nutriFacts = BlockMeal.AllMealBowls?[0]?.GetContentNutritionFacts(Api.World, inventory[0], contentStacks, forPlayer.Entity);
+            string? nutriFacts = BlockMeal.AllMealBowls(Api)?[0]?.GetContentNutritionFacts(Api.World, inventory[0], contentStacks, forPlayer.Entity);
 
 
             if (servings == 1)
