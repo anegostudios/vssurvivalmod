@@ -170,7 +170,7 @@ namespace Vintagestory.GameContent
 
                 track.loading = false;
 
-            }, (int)Math.Max(0, 500 - longMsPassed));
+            }, (int)Math.Max(0, 500 - longMsPassed), true);
         }
 
         public override void OnEntityDespawn(EntityDespawnData despawn)

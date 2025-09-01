@@ -1,5 +1,6 @@
-﻿using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Linq;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -176,10 +177,17 @@ namespace Vintagestory.GameContent
 
                                         slot.MarkDirty();
                                     }
-                                    else if (slot.Itemstack.Collectible is ILiquidSource cont)
+                                    else if (slot.Itemstack.Collectible is BlockLiquidContainerBase cont)
                                     {
-                                        int itemsPerLitre = (int)(cont.GetContentProps(slot.Itemstack)?.ItemsPerLitre ?? 100);
-                                        cont.TryTakeContent(slot.Itemstack, itemsPerLitre);
+                                        var lStack = cont.GetContent(slot.Itemstack);
+                                        float standardAmount = lStack.ItemAttributes["repairGain"].AsFloat(0.2f);
+                                        float itemsPerLitre = cont.GetContentProps(lStack)?.ItemsPerLitre ?? 100;
+
+                                        int moved = (int)(repairQuantity / standardAmount * itemsPerLitre);
+                                        cont.SplitStackAndPerformAction(byPlayer.Entity, slot, (stack) =>
+                                        {
+                                            return cont.TryTakeContent(stack, moved)?.StackSize ?? 0;
+                                        });
 
                                         slot.MarkDirty();
                                     }
@@ -245,14 +253,14 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (stack.Collectible is ILiquidSource cont)
+            if (stack.Collectible is BlockLiquidContainerBase cont)
             {
                 ItemStack lStack = cont.GetContent(stack);
 
                 if (lStack != null && lStack.ItemAttributes?["repairGain"].Exists == true)
                 {
                     float standardAmount = lStack.ItemAttributes["repairGain"].AsFloat(0.2f);
-                    return standardAmount * Math.Min(1f, cont.GetContentProps(stack).ItemsPerLitre * lStack.StackSize);
+                    return standardAmount * Math.Min(1f, lStack.StackSize / cont.GetContentProps(stack).ItemsPerLitre);
                 }
             }
 

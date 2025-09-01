@@ -79,7 +79,7 @@ namespace Vintagestory.GameContent
         AssetLocation projectileCode;
 
         public float creatureSpawnChance = 0f;
-        public float creatureSpawnCount = 4.5f;
+        public float creatureSpawnCount = 6.5f;
         AssetLocation creatureCode;
 
         public float spawnRange;

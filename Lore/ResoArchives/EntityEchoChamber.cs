@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Client;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
@@ -15,21 +15,9 @@ namespace Vintagestory.GameContent
 
             if (Api.Side == EnumAppSide.Client && Api.World.Rand.NextDouble() < 0.05)
             {
-                Api.World.SpawnParticles(new SimpleParticleProperties()
-                {
-                    MinPos = Pos.XYZ.AddCopy(-0.5, 0.1f, -0.5),
-                    AddPos = new Vec3d(1, 0.1f, 1),
-                    MinQuantity = 3,
-                    OpacityEvolve = EvolvingNatFloat.create(EnumTransformFunction.LINEAR, -75),
-                    ParticleModel = EnumParticleModel.Quad,
-                    GravityEffect = 0,
-                    LifeLength = 6,
-                    MinSize = 0.125f,
-                    MaxSize = 0.125f,
-                    MinVelocity = new Vec3f(-0.125f/2f, 0.5f/16f, -0.125f/2f),
-                    AddVelocity = new Vec3f(0.25f/2f, 1/16f, 0.25f/2f),
-                    Color = ColorUtil.ColorFromRgba(200, 250, 250, 75)
-                });
+                var lhp = GuiStyle.LoreHintParticles.Clone(Api.World);
+                lhp.MinPos = Pos.XYZ.AddCopy(-0.5, 0.1f, -0.5);
+                Api.World.SpawnParticles(lhp);
             }
         }
     }

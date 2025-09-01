@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
@@ -11,7 +12,7 @@ using Vintagestory.API.Util;
 namespace Vintagestory.GameContent
 {
 
-    public class BlockCookedContainer : BlockCookedContainerBase, IInFirepitRendererSupplier, IContainedMeshSource, IContainedInteractable, IGroundStoredParticleEmitter
+    public class BlockCookedContainer : BlockCookedContainerBase, IInFirepitRendererSupplier, IContainedMeshSource, IContainedInteractable, IGroundStoredParticleEmitter, IAttachableToEntity
     {
         public static SimpleParticleProperties smokeHeld;
         public static SimpleParticleProperties foodSparks;
@@ -20,12 +21,37 @@ namespace Vintagestory.GameContent
 
         WorldInteraction[]? interactions;
 
+        IAttachableToEntity? attrAtta;
+
+        #region IAttachableToEntity
+
+        public int RequiresBehindSlots { get; set; } = 0;
+        public bool IsAttachable(Entity toEntity, ItemStack itemStack) => attrAtta != null;
+        string? IAttachableToEntity.GetCategoryCode(ItemStack stack) => attrAtta?.GetCategoryCode(stack);
+        CompositeShape? IAttachableToEntity.GetAttachedShape(ItemStack stack, string slotCode) => attrAtta?.GetAttachedShape(stack, slotCode);
+        string[]? IAttachableToEntity.GetDisableElements(ItemStack stack) => attrAtta?.GetDisableElements(stack);
+        string[]? IAttachableToEntity.GetKeepElements(ItemStack stack) => attrAtta?.GetKeepElements(stack);
+        string? IAttachableToEntity.GetTexturePrefixCode(ItemStack stack) => attrAtta?.GetTexturePrefixCode(stack);
+
+        void IAttachableToEntity.CollectTextures(ItemStack itemstack, Shape intoShape, string texturePrefixCode, Dictionary<string, CompositeTexture> intoDict)
+        {
+            var color = itemstack.Block.Variant["color"];
+            var type = itemstack.Block.Variant["type"];
+
+            var pot = api.World.GetBlock(CodeWithVariants(["color", "type"], [color, type]));
+            var side = intoShape.Elements[0].StepParentName.Last();
+            intoShape.Textures["ceramic" + side] = pot.Textures["ceramic"].Base;
+        }
+
+        #endregion
 
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
 
             if (CollisionBoxes[0] != null) gsSmokePos.Y = CollisionBoxes[0].MaxY;
+
+            attrAtta = IAttachableToEntity.FromAttributes(this);
 
             if (api is not ICoreClientAPI capi) return;
 

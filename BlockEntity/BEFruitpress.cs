@@ -415,7 +415,7 @@ namespace Vintagestory.GameContent
                         return true;
                     }
                 }
-                else if (juiceableLitresLeft + juiceableLitresTransfered >= juiceableLitresCapacity)
+                else if (Math.Round(juiceableLitresLeft + juiceableLitresTransfered, 2, MidpointRounding.ToZero) >= juiceableLitresCapacity)
                 {
                     (Api as ICoreClientAPI)?.TriggerIngameError(this, "fullcontainer", Lang.Get("Container is full, press out juice and remove the mash before adding more"));
                     return false;
@@ -427,14 +427,14 @@ namespace Vintagestory.GameContent
                     return false;
                 }
 
-                float transferableLitres = (float)handStack.Attributes.GetDecimal("juiceableLitresLeft");
-                float usedLitres = (float)handStack.Attributes.GetDecimal("juiceableLitresTransfered");
+                double transferableLitres = handStack.Attributes.GetDecimal("juiceableLitresLeft");
+                double usedLitres = handStack.Attributes.GetDecimal("juiceableLitresTransfered");
                 int removeItems;
                 if (hprops.LitresPerItem == null)
                 {
                     // the juiceableLitresLeft and juiceableLitresTransfered are per item if we have a stack of multiple
                     // so we check if the press is full and only remove and add the liters for one item at a time
-                    if (juiceableLitresLeft + juiceableLitresTransfered + transferableLitres + usedLitres > juiceableLitresCapacity)
+                    if (Math.Round(juiceableLitresLeft + juiceableLitresTransfered + transferableLitres + usedLitres, 2, MidpointRounding.ToZero) > juiceableLitresCapacity)
                     {
                         (Api as ICoreClientAPI)?.TriggerIngameError(this, "fullcontainer", Lang.Get("Container is full, press out juice and remove the mash before adding more"));
                         return false;
@@ -452,7 +452,7 @@ namespace Vintagestory.GameContent
                         foreach (var state in targetTransitionStates) targetStatesByType[state.Props.Type] = state;
 
                         // We're mixing based on total litres because we don't really have a stack size to compare
-                        float t = (transferableLitres + usedLitres) / (transferableLitres + usedLitres + (float)juiceableLitresLeft + (float)juiceableLitresTransfered);
+                        float t = (float)((transferableLitres + usedLitres) / (transferableLitres + usedLitres + juiceableLitresLeft + juiceableLitresTransfered));
 
                         foreach (var sourceState in sourceTransitionStates)
                         {
@@ -469,7 +469,7 @@ namespace Vintagestory.GameContent
                     // 1, 4, or the whole stack, and then subtracting 1 from that total until we have an amount that can fit
                     int desiredTransferAmount = Math.Min(handStack.StackSize, byPlayer.Entity.Controls.ShiftKey ? 1 : byPlayer.Entity.Controls.CtrlKey ? handStack.Item.MaxStackSize : 4);
 
-                    while (desiredTransferAmount * (float)hprops.LitresPerItem + juiceableLitresLeft + juiceableLitresTransfered > juiceableLitresCapacity) desiredTransferAmount -= 1;
+                    while (Math.Round(desiredTransferAmount * (double)hprops.LitresPerItem + juiceableLitresLeft + juiceableLitresTransfered, 2, MidpointRounding.ToZero) > juiceableLitresCapacity) desiredTransferAmount -= 1;
 
                     if (desiredTransferAmount <= 0)
                     {
@@ -477,7 +477,7 @@ namespace Vintagestory.GameContent
                         return false;
                     }
 
-                    transferableLitres = desiredTransferAmount * (float)hprops.LitresPerItem;
+                    transferableLitres = desiredTransferAmount * (double)hprops.LitresPerItem;
                     removeItems = desiredTransferAmount;
                 }
 

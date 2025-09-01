@@ -99,7 +99,7 @@ namespace Vintagestory.GameContent
 
             capi.SendChatMessage("/timeswitch toggle");
             capi.World.AddCameraShake(0.25f);
-            timeSwitchCooldown = Timeswitch.CooldownTime / (capi.World.Player.WorldData.CurrentGameMode != EnumGameMode.Survival ? 3 : 1);  // reduce the cooldown in Creative mode
+            timeSwitchCooldown = Timeswitch.CooldownTime / (capi.World.Player.WorldData.CurrentGameMode != EnumGameMode.Survival ? 2 : 1);  // reduce the cooldown in Creative mode
         }
 
         public override void OnLoaded(ICoreAPI api)

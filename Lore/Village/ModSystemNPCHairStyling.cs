@@ -99,9 +99,15 @@ namespace Vintagestory.GameContent
                 if (Api is ICoreClientAPI capi)
                 {
                     hairStylingDialog = new GuiDialogHairStyling(capi, hairstylingNpc.EntityId, hairStylingCategories, GetPricesByCode(triggeringEntity));
+                    hairStylingDialog.charNaked = false;
                     hairStylingDialog.TryOpen();
                     hairStylingDialog.OnClosed += () =>
                     {
+                        var bh = capi.World.Player.Entity.GetBehavior<EntityBehaviorPlayerInventory>();
+                        bh.hideClothing = false;
+                        var essr = capi.World.Player.Entity.Properties.Client.Renderer as EntityShapeRenderer;
+                        essr.TesselateShape();
+
                         hairstylingNpc.interactingWithPlayer.Remove(eplr);
                         capi.Network.SendEntityPacket(hairstylingNpc.EntityId, EntityTradingHumanoid.PlayerStoppedInteracting);
                     };

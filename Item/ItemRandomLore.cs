@@ -1,8 +1,9 @@
-﻿using System.Text;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
@@ -10,8 +11,15 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class ItemRandomLore : ItemBook
+    public class ItemRandomLore : ItemBook, IGroundStoredParticleEmitter
     {
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+            lorehintParticleProps = GuiStyle.LoreHintParticles.Clone(api.World);
+            lorehintParticleProps.AddPos.Y = 0.2f;
+        }
 
         public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
@@ -60,6 +68,18 @@ namespace Vintagestory.GameContent
             }.Append(base.GetHeldInteractionHelp(inSlot));
         }
 
+
+        private SimpleParticleProperties lorehintParticleProps;
+        public bool ShouldSpawnGSParticles(IWorldAccessor world, ItemStack stack) => true;
+
+        public void DoSpawnGSParticles(IAsyncParticleManager manager, BlockPos pos, Vec3f offset)
+        {
+            if (api.World.Rand.NextDouble() < /*0.05*/ 0.1) // for some reason this lad spawns less than e.g. the library resonator?
+            {
+                lorehintParticleProps.MinPos = pos.ToVec3d();
+                manager.Spawn(lorehintParticleProps);
+            }
+        }
     }
 
 

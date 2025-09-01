@@ -43,7 +43,7 @@ public class GroundStorageRenderer : IRenderer
             UpdateTemps();
         }
 
-        if (!groundStorage.UseRenderer || groundStorage.Inventory.Empty || outOfRange) return;
+        if (!groundStorage.UseRenderer || groundStorage.Inventory.Empty || outOfRange || groundStorage.StorageProps == null) return;
 
         var rpi = capi.Render;
         var camPos = capi.World.Player.Entity.CameraPos;

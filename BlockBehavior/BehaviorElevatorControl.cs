@@ -21,7 +21,7 @@ namespace Vintagestory.GameContent;
 public class BlockBehaviorElevatorControl : BlockBehavior
 {
     private ICoreAPI api;
-    private SimpleParticleProperties particleProperties;
+    private SimpleParticleProperties lorehintParticleProps;
 
     public BlockBehaviorElevatorControl(Block block) : base(block)
     {
@@ -32,19 +32,7 @@ public class BlockBehaviorElevatorControl : BlockBehavior
         if (api.Side == EnumAppSide.Client)
         {
             this.api = api;
-            particleProperties = new SimpleParticleProperties()
-            {
-                MinQuantity = 3,
-                OpacityEvolve = EvolvingNatFloat.create(EnumTransformFunction.LINEAR, -75),
-                ParticleModel = EnumParticleModel.Quad,
-                GravityEffect = 0,
-                LifeLength = 6,
-                MinSize = 0.125f,
-                MaxSize = 0.125f,
-                MinVelocity = new Vec3f(-0.125f / 2f, 0.5f / 16f, -0.125f / 2f),
-                AddVelocity = new Vec3f(0.25f / 2f, 1 / 16f, 0.25f / 2f),
-                Color = ColorUtil.ColorFromRgba(200, 250, 250, 75)
-            };
+            lorehintParticleProps = GuiStyle.LoreHintParticles.Clone(api.World);
         }
     }
 
@@ -58,8 +46,8 @@ public class BlockBehaviorElevatorControl : BlockBehavior
     {
         if (api.World.Rand.NextDouble() < 0.05)
         {
-            particleProperties.MinPos = pos.ToVec3d().AddCopy(0.5, 0.1f, 0.5);
-            manager.Spawn(particleProperties);
+            lorehintParticleProps.MinPos = pos.ToVec3d().AddCopy(0.5, 0.1f, 0.5);
+            manager.Spawn(lorehintParticleProps);
         }
     }
 

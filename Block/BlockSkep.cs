@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -150,16 +150,17 @@ namespace Vintagestory.GameContent
 
             if (GetBlockEntity<BlockEntityBeehive>(selection.Position)?.Harvestable == true)
             {
-                wi.Append(
+                wi =
                 [
+                    ..wi,
                     new() {
                         ActionLangCode = "blockhelp-skep-harvest",
                         MouseButton = EnumMouseButton.Left
                     }
-                ]);
+                ];
             }
 
-            return wi.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
+            return [ ..wi, ..base.GetPlacedBlockInteractionHelp(world, selection, forPlayer)];
         }
 
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -78,6 +78,17 @@ namespace Vintagestory.GameContent
         void IAttachableToEntity.CollectTextures(ItemStack itemstack, Shape intoShape, string texturePrefixCode, Dictionary<string, CompositeTexture> intoDict)
         {
             ContainedTextureSource cnts = genTextureSource(itemstack, null);
+            if (cnts == null)
+            {
+                string wood = itemstack.Attributes.GetString("wood");
+                string metal = itemstack.Attributes.GetString("metal");
+                string color = itemstack.Attributes.GetString("color");
+                string deco = itemstack.Attributes.GetString("deco");
+
+                api.Logger.Warning(GetHeldItemName(itemstack) + " (" + Code.ToShortString() + "-" + wood + "-" + metal + "-" + color + "-" + deco + ") could not create textures, may render with unknown textures");
+                return;
+            }
+
             foreach (var val in cnts.Textures)
             {
                 intoShape.Textures[val.Key] = val.Value;

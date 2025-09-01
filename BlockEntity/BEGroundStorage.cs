@@ -48,7 +48,7 @@ namespace Vintagestory.GameContent
         protected EnumGroundStorageLayout? overrideLayout;
 
         public int TransferQuantity => StorageProps?.TransferQuantity ?? 1;
-        public int BulkTransferQuantity => StorageProps.Layout == EnumGroundStorageLayout.Stacking ? StorageProps.BulkTransferQuantity : 1;
+        public int BulkTransferQuantity => StorageProps?.Layout == EnumGroundStorageLayout.Stacking ? StorageProps.BulkTransferQuantity : 1;
 
         protected virtual int invSlotCount => 4;
         protected Cuboidf[] colBoxes;
@@ -88,7 +88,7 @@ namespace Vintagestory.GameContent
         private float burnHoursPerItem;
         private BlockFacing[] facings = (BlockFacing[])BlockFacing.ALLFACES.Clone();
         public virtual bool CanIgnite => burnHoursPerItem > 0 && inventory[0].Itemstack?.Collectible.CombustibleProps?.BurnTemperature > 200;
-        public int Layers => inventory[0].StackSize == 1 ? 1 : (int)(inventory[0].StackSize * StorageProps.ModelItemsToStackSizeRatio);
+        public int Layers => inventory[0].StackSize == 1 || StorageProps == null ? 1 : (int)(inventory[0].StackSize * StorageProps.ModelItemsToStackSizeRatio);
         public bool IsBurning => burning;
 
         public bool IsHot => burning;
@@ -124,6 +124,7 @@ namespace Vintagestory.GameContent
         public int Capacity
         {
             get {
+                if (StorageProps == null) return 1;
                 switch (StorageProps.Layout)
                 {
                     case EnumGroundStorageLayout.SingleCenter: return 1;
@@ -158,7 +159,7 @@ namespace Vintagestory.GameContent
             get
             {
                 // Prio 1: Get from list of explicility defined textures
-                if (StorageProps.Layout == EnumGroundStorageLayout.Stacking && StorageProps.StackingTextures != null)
+                if (StorageProps?.Layout == EnumGroundStorageLayout.Stacking && StorageProps.StackingTextures != null)
                 {
                     if (StorageProps.StackingTextures.TryGetValue(textureCode, out var texturePath))
                     {
@@ -735,7 +736,7 @@ namespace Vintagestory.GameContent
         public bool OnTryCreateKiln()
         {
             ItemStack stack = inventory.FirstNonEmptySlot.Itemstack;
-            if (stack == null) return false;
+            if (stack == null || StorageProps == null) return false;
 
             if (stack.StackSize > StorageProps.MaxFireable)
             {
@@ -757,13 +758,14 @@ namespace Vintagestory.GameContent
         {
             ItemStack sourceStack = inventory.FirstNonEmptySlot?.Itemstack ?? sourceSlot?.Itemstack;
 
+            var StorageProps = this.StorageProps;
             if (!forceStorageProps)
             {
                 if (StorageProps == null)
                 {
                     if (sourceStack == null) return;
 
-                    StorageProps = sourceStack.Collectible?.GetBehavior<CollectibleBehaviorGroundStorable>()?.StorageProps;
+                    StorageProps = this.StorageProps = sourceStack.Collectible?.GetBehavior<CollectibleBehaviorGroundStorable>()?.StorageProps;
                 }
             }
 
@@ -797,13 +799,15 @@ namespace Vintagestory.GameContent
 
             if (overrideLayout != null)
             {
-                StorageProps = StorageProps.Clone();
-                StorageProps.Layout = (EnumGroundStorageLayout)overrideLayout;
+                this.StorageProps = StorageProps.Clone();
+                this.StorageProps.Layout = (EnumGroundStorageLayout)overrideLayout;
             }
         }
 
         protected virtual void FixBrokenStorageLayout()
         {
+            if (StorageProps == null) return;
+
             // Stacking and WallHalves are incompatible with other types so we want to make sure they don't mix
             if (StorageProps.Layout is EnumGroundStorageLayout.Stacking or EnumGroundStorageLayout.WallHalves ||
                 overrideLayout is EnumGroundStorageLayout.Stacking or EnumGroundStorageLayout.WallHalves)
@@ -814,18 +818,20 @@ namespace Vintagestory.GameContent
             var currentLayout = overrideLayout ?? StorageProps.Layout;
             int totalSlots = UsableSlots(currentLayout);
             if (totalSlots <= 0) return; // This should never happen, but just in case
-
-            // Everything should be visible and interactable in any of these cases
-            if (totalSlots >= 4) return;
-            if (totalSlots == 1 && !inventory[0].Empty) return;
-            if (totalSlots == 2 && !inventory[0].Empty && !inventory[1].Empty) return;
+            if (totalSlots >= 4) return; // Everything should be visible and interactable in this case
 
             ItemSlot[] fullSlots = [.. inventory.Where(slot => !slot.Empty)];
             if (fullSlots.Length <= 0) return; // Again, should never happen, but better safe than sorry
 
+            // Everything should be visible and interactable in any of these cases
+            if (fullSlots.Length == 1 && totalSlots == 1 && !inventory[0].Empty) return;
+            if (fullSlots.Length == 2 && totalSlots == 2 && !inventory[0].Empty && !inventory[1].Empty) return;
+
             // Flip the items into the first slot if possible
             if (fullSlots.Length == 1)
             {
+                if (totalSlots == 2 && (!inventory[0].Empty || !inventory[1].Empty)) return; // Item is already visible
+
                 inventory[0].TryFlipWith(fullSlots[0]);
                 if (!inventory[0].Empty) return;
             }
@@ -901,6 +907,7 @@ namespace Vintagestory.GameContent
             }
 
             if (sneaking && hotbarSlot.Empty) return false;
+            if (StorageProps == null) return false;
 
             if (sneaking && TotalStackSize >= Capacity)
             {
@@ -1254,7 +1261,7 @@ namespace Vintagestory.GameContent
             base.ToTreeAttributes(tree);
 
             tree.SetBool("forceStorageProps", forceStorageProps);
-            if (forceStorageProps)
+            if (forceStorageProps && StorageProps != null)
             {
                 tree.SetString("storageProps", JsonUtil.ToString(StorageProps));
             }
@@ -1438,6 +1445,7 @@ namespace Vintagestory.GameContent
 
         public void GetLayoutOffset(Vec3f[] offs)
         {
+            if (StorageProps == null) return;
             switch (StorageProps.Layout)
             {
                 case EnumGroundStorageLayout.Messy12:
@@ -1469,7 +1477,7 @@ namespace Vintagestory.GameContent
 
         protected override string getMeshCacheKey(ItemStack stack)
         {
-            return (StorageProps.Layout == EnumGroundStorageLayout.Messy12 ? "messy12-" : "") + (StorageProps.ModelItemsToStackSizeRatio > 0 ? stack.StackSize : 1) + "x" + base.getMeshCacheKey(stack);
+            return (StorageProps?.Layout == EnumGroundStorageLayout.Messy12 ? "messy12-" : "") + (StorageProps?.ModelItemsToStackSizeRatio > 0 ? stack.StackSize : 1) + "x" + base.getMeshCacheKey(stack);
         }
 
         protected override MeshData getOrCreateMesh(ItemStack stack, int index)
@@ -1503,12 +1511,12 @@ namespace Vintagestory.GameContent
                 }
             }
             // shingle/bricks are items but uses Stacking layout to get the mesh, so this should be not needed atm
-            else if(stack.Class == EnumItemClass.Item && StorageProps.Layout != EnumGroundStorageLayout.Stacking)
+            else if(stack.Class == EnumItemClass.Item && StorageProps != null && StorageProps.Layout != EnumGroundStorageLayout.Stacking)
             {
                 MeshRefs[index] = capi.TesselatorManager.GetDefaultItemMeshRef(stack.Item);
             }
 
-            if (StorageProps.Layout == EnumGroundStorageLayout.Messy12)
+            if (StorageProps?.Layout == EnumGroundStorageLayout.Messy12)
             {
                 string key = getMeshCacheKey(stack);
                 var mesh = getMesh(stack);
@@ -1538,7 +1546,7 @@ namespace Vintagestory.GameContent
                 return meshData12;
             }
 
-            if (StorageProps.Layout == EnumGroundStorageLayout.Stacking)
+            if (StorageProps?.Layout == EnumGroundStorageLayout.Stacking)
             {
                 var key = getMeshCacheKey(stack);
                 var mesh = getMesh(stack);
@@ -1645,7 +1653,7 @@ namespace Vintagestory.GameContent
 
         private void OnBurningTickClient(float dt)
         {
-            if (burning && Api.World.Rand.NextDouble() < 0.93)
+            if (burning && Api.World.Rand.NextDouble() < 0.93 && StorageProps != null)
             {
                 var yOffset = Layers / (StorageProps.StackingCapacity * StorageProps.ModelItemsToStackSizeRatio);
                 var pos = Pos.ToVec3d().Add(0, yOffset, 0);

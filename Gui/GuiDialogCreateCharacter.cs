@@ -28,7 +28,7 @@ namespace Vintagestory.GameContent
         int rows = 7;
 
         float charZoom = 1f;
-        bool charNaked = true;
+        public bool charNaked = true;
 
         protected int dlgHeight = 433 + 80;
 

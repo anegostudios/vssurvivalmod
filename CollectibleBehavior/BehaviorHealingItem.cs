@@ -35,9 +35,7 @@ public class BehaviorHealingItem : CollectibleBehavior, ICanHealCreature
 
     protected float secondsUsedToCancel = 0;
 
-    public BehaviorHealingItem(CollectibleObject collectable) : base(collectable)
-    {
-    }
+    public BehaviorHealingItem(CollectibleObject collectable) : base(collectable) { }
 
     public override void Initialize(JsonObject properties)
     {

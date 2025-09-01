@@ -24,7 +24,7 @@ public class BlockFigurehead : BlockMaterialFromAttributes, IAttachableToEntity,
             var ctex = TexturesBMFA[key].Clone();
             ctex.Base.Path = ctex.Base.Path.Replace("{material}", material);
             ctex.Bake(api.Assets);
-            intoDict[key] = ctex;
+            intoDict[texturePrefixCode + key] = ctex;
         }
     }
 
@@ -50,7 +50,7 @@ public class BlockFigurehead : BlockMaterialFromAttributes, IAttachableToEntity,
     public override void GetDecal(IWorldAccessor world, BlockPos pos, ITexPositionSource decalTexSource, ref MeshData decalModelData, ref MeshData blockModelData)
     {
         var beb = GetBEBehavior<BEBehaviorMaterialFromAttributes>(pos);
-        if (beb != null)
+        if (beb?.Material != null)
         {
             var mat = Matrixf.Create().Translate(0.5f, 0.5f, 0.5f).RotateY(beb.MeshAngleY).Translate(-0.5f, -0.5f, -0.5f).Values;
             blockModelData = GetOrCreateMesh(beb.Material).Clone().MatrixTransform(mat);

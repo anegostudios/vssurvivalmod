@@ -254,6 +254,11 @@ namespace Vintagestory.GameContent
 
                         var slot = new DummySlot(outstack);
                         begs.DetermineStorageProperties(slot);
+                        if (begs.StorageProps == null)
+                        {
+                            Api.World.SpawnItemEntity(outstack, Pos);
+                            return;
+                        }
                         GroundStorageProperties storageProps = begs.StorageProps.Clone();
                         storageProps.Layout = EnumGroundStorageLayout.SingleCenter;
                         begs.ForceStorageProps(storageProps);
