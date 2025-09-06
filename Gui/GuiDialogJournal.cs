@@ -1,4 +1,4 @@
-﻿using OpenTK.Windowing.GraphicsLibraryFramework;
+using OpenTK.Windowing.GraphicsLibraryFramework;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -117,7 +117,12 @@ namespace Vintagestory.GameContent
 
             for (int p = 0; p < entry.Chapters.Count; p++)
             {
-                if (p > 0) fulltext.AppendLine();
+                if (p > 0)
+                {
+                    fulltext.AppendLine();    // The previous chapter text typically does not end with a newline
+                    fulltext.AppendLine();    // and let's add two more lines for a nice spacing (some chapters already have blank lines in them, so we want something larger here)
+                    fulltext.AppendLine();
+                }
                 fulltext.Append(Lang.Get(entry.Chapters[p].Text));
             }
 

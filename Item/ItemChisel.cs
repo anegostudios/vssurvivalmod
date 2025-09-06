@@ -426,6 +426,13 @@ namespace Vintagestory.GameContent
                 BlockEntityChisel be = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityChisel;
                 if (IsValidChiselingMaterial(api, pos, mouseslot.Itemstack.Block, byPlayer))
                 {
+                    var blockCode = string.Empty;
+                    var sapi = api as ICoreServerAPI;
+                    if (sapi?.Server.Config.LogBlockBreakPlace == true)
+                    {
+                        blockCode = mouseslot.Itemstack.Block.Code.ToString();
+                    }
+
                     if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
                     {
                         be.AddMaterial(mouseslot.Itemstack.Block, out bool isFull);
@@ -439,9 +446,9 @@ namespace Vintagestory.GameContent
                     {
                         be.AddMaterial(mouseslot.Itemstack.Block, out _, false);
                     }
-                    if (api is ICoreServerAPI sapi && sapi.Server.Config.LogBlockBreakPlace)
+                    if (sapi?.Server.Config.LogBlockBreakPlace == true)
                     {
-                        sapi.Logger.Build("{0} added chisel material {1} at {2}", byPlayer.PlayerName, mouseslot.Itemstack.Block.Code.ToString(), pos);
+                        sapi.Logger.Build("{0} added chisel material {1} at {2}", byPlayer.PlayerName, blockCode, pos);
                     }
 
                     be.MarkDirty();

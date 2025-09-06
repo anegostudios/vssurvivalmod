@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -192,6 +192,11 @@ namespace Vintagestory.GameContent
             if (transcribedby != null && transcribedby.Length > 0)
             {
                 dsc.AppendLine(Lang.Get("Transcribed by {0}", transcribedby.Length == 0 ? Lang.Get("Unknown author") : transcribedby));
+            }
+
+            if (editable)
+            {
+                dsc.AppendLine(Lang.Get("itembook-writable"));
             }
         }
 

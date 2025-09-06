@@ -144,24 +144,56 @@ namespace Vintagestory.GameContent
             // We cannot call the base method, otherwise we'll destroy the chiseled block
             //base.OnNeighbourBlockChange(world, pos, neibpos);
 
-            if (pos.X == neibpos.X && pos.Z == neibpos.Z && pos.Y + 1 == neibpos.Y && world.BlockAccessor.GetBlock(neibpos).Id != 0)
+            if (pos.X == neibpos.X && pos.Z == neibpos.Z)
             {
                 var bebeh = GetBEBehavior<BEBehaviorMicroblockSnowCover>(pos);
                 if (bebeh != null)
                 {
-                    bool markdirty = bebeh.SnowLevel != 0 || bebeh.SnowCuboids.Count > 0 || bebeh.GroundSnowCuboids.Count > 0;
+                    bool markdirty = false;
 
-                    if (Id != notSnowCovered.Id)
+                    Block neibBlock = world.BlockAccessor.GetBlock(neibpos);
+                    if (pos.Y + 1 == neibpos.Y)
                     {
-                        world.BlockAccessor.ExchangeBlock(notSnowCovered.Id, pos);
-                        markdirty = true;
+                        if (!neibBlock.RainPermeable)
+                        {
+                            // If we just placed above a block which is not rain permeable, then remove all snow on the chiselled block below
+                            // Note: if you place a non-rain permeable block 2 above, it doesn't notice until next snow layers update.  Not much we can do about that, the whole game is like that (seems reasonable actually, a higher block wouldn't displace any snow anyhow)
+
+                            markdirty = bebeh.SnowLevel != 0 || bebeh.SnowCuboids.Count > 0 || bebeh.GroundSnowCuboids.Count > 0;
+
+                            if (Id != notSnowCovered.Id)
+                            {
+                                world.BlockAccessor.ExchangeBlock(notSnowCovered.Id, pos);
+                                markdirty = true;
+                            }
+
+                            bebeh.SnowLevel = 0;
+                            bebeh.SnowCuboids.Clear();
+                            bebeh.GroundSnowCuboids.Clear();
+                        }
+                    }
+                    else
+                    {
+                        // If we changed the block below, and this chiselled block has voxels open on the base (we use SideIsSolid as a proxy)
+                        // then we want to: (A) remove GroundSnowCuboids if the block below isn't solid; (B) potentially build new GroundSnowCuboids if the block below is solid, because now they have something to rest on
+
+                        if (!SideIsSolid(pos, BlockFacing.indexDOWN))
+                        {
+                            if (!neibBlock.SideIsSolid(neibpos, BlockFacing.indexUP))
+                            {
+                                markdirty = bebeh.GroundSnowCuboids.Count > 0;
+                                bebeh.GroundSnowCuboids.Clear();
+                            }
+                            else markdirty = true;
+                        }
                     }
 
-                    bebeh.SnowLevel = 0;
-                    bebeh.SnowCuboids.Clear();
-                    bebeh.GroundSnowCuboids.Clear();
-
-                    if (markdirty) world.BlockAccessor.GetBlockEntity(pos).MarkDirty(true);
+                    if (markdirty)
+                    {
+                        BlockEntity be = world.BlockAccessor.GetBlockEntity(pos);
+                        be.MarkDirty(true);
+                        if (be is BlockEntityMicroBlock bem) bem.Mesh = null;     // Force an immediate mesh regeneration if it was marked dirty
+                    }
                 }
             }
         }

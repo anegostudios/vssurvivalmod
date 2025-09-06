@@ -35,12 +35,7 @@ namespace Vintagestory.GameContent
 
         void IAttachableToEntity.CollectTextures(ItemStack itemstack, Shape intoShape, string texturePrefixCode, Dictionary<string, CompositeTexture> intoDict)
         {
-            var color = itemstack.Block.Variant["color"];
-            var type = itemstack.Block.Variant["type"];
-
-            var pot = api.World.GetBlock(CodeWithVariants(["color", "type"], [color, type]));
-            var side = intoShape.Elements[0].StepParentName.Last();
-            intoShape.Textures["ceramic" + side] = pot.Textures["ceramic"].Base;
+            attrAtta?.CollectTextures(itemstack, intoShape, texturePrefixCode, intoDict);
         }
 
         #endregion

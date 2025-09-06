@@ -1,4 +1,4 @@
-﻿using ProtoBuf;
+using ProtoBuf;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -35,6 +35,9 @@ namespace Vintagestory.GameContent
 
     public class ModSystemEditableBook : ModSystem
     {
+        public const int MaxTitleLength = 80;
+        public const int MaxTextLength = 80000;
+
         Dictionary<string, ItemSlot> nowEditing = new Dictionary<string, ItemSlot>();
         ICoreAPI api;
 
@@ -108,6 +111,9 @@ namespace Vintagestory.GameContent
 
         public void EndEdit(IPlayer player, string text, string title, bool didSign)
         {
+            if (title != null && title.Length > MaxTitleLength) title = title.Substring(0, MaxTitleLength);
+            if (text != null && text.Length > MaxTextLength) text = text.Substring(0, MaxTextLength);
+
             if (nowEditing.TryGetValue(player.PlayerUID, out var slot))
             {
                 slot.Itemstack.Attributes.SetString("text", text);

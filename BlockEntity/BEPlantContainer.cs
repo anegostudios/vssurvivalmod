@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
@@ -269,10 +269,10 @@ namespace Vintagestory.GameContent
             curContProps = PlantContProps;
             if (curContProps == null) return null;
 
-            CompositeShape compoShape = curContProps.Shape;
+            CompositeShape compoShape = curContProps.Shape;   // Here it doesn't matter not to .Clone() the shape, because the shape in the curContProps is not used for any other purpose
             if (compoShape == null)
             {
-                compoShape = content.Class == EnumItemClass.Block ? content.Block.Shape : content.Item.Shape;
+                compoShape = content.Class == EnumItemClass.Block ? content.Block.Shape.Clone() : content.Item.Shape.Clone();   // We must .Clone() the shape here, because it would otherwise be the same shape object that is held in the Block / Item.  Later code in this method will made modifications to composhape.Path and we don't want to modify the .Path for all instances of this Block / Item: see Github #6813
             }
             ModelTransform transform = curContProps.Transform;
             if (transform == null)

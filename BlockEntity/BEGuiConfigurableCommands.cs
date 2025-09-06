@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -160,7 +160,7 @@ namespace Vintagestory.GameContent
                     if (clientDialog != null)
                     {
                         clientDialog.TryClose();
-                        clientDialog.Dispose();
+                        clientDialog?.Dispose();
                         clientDialog = null;
                         return true;
                     }

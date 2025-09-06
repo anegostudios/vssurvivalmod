@@ -364,6 +364,7 @@ namespace Vintagestory.GameContent
             }
 
             Api.World.BlockAccessor.SetBlock(fullSkep.BlockId, skepToPop);
+            Api.World.BlockAccessor.MarkBlockDirty(skepToPop);
             hivePopSize = EnumHivePopSize.Poor;
             this.skepToPop = null;
         }

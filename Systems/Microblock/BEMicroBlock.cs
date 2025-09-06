@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -2067,7 +2067,7 @@ namespace Vintagestory.GameContent
                     if (targetMesh.CustomShorts != null)
                     {
                         if (topsoiltpos == null) targetMesh.CustomShorts.Add(0, 0);
-                        else targetMesh.CustomShorts.AddPackedUV(topsoiltpos.x1 + uRel * texWidth, topsoiltpos.y1 + vRel * texHeight);
+                        else targetMesh.CustomShorts.AddPackedUV(topsoiltpos.x1 + uRel * texWidth, topsoiltpos.y1 + vRel * texHeight, uRel > 0, vRel > 0);
                     }
                 }
 

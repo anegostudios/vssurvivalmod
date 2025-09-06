@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -68,9 +68,11 @@ namespace Vintagestory.GameContent
 
             SingleComposer.GetTextInput("title").SetPlaceHolderText(Lang.Get("Book title"));
             SingleComposer.GetTextInput("title").SetValue(Title);
+            SingleComposer.GetTextInput("title").SetMaxLength(ModSystemEditableBook.MaxTitleLength);
 
             SingleComposer.GetTextArea("text").OnCaretPositionChanged = onCaretPositionChanged;
             SingleComposer.GetTextArea("text").Autoheight = false;
+            SingleComposer.GetTextArea("text").SetMaxLength(ModSystemEditableBook.MaxTextLength); // Usually not triggered because the standard book is limited to 90 pages
             updatePage(false);
             SingleComposer.GetTextArea("text").OnTryTextChangeText = onTryTextChange;
         }

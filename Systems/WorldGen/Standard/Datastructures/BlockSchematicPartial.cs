@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -205,7 +205,10 @@ namespace Vintagestory.ServerMods
                     if (blockAccessor is IWorldGenBlockAccessor)
                     {
                         blockAccessor.AddEntity(entity);
-                        entity.OnInitialized += () => entity.OnLoadCollectibleMappings(worldForResolve, BlockCodes, ItemCodes, schematicSeed, resolveImports);
+                        if (!entity.TryEarlyLoadCollectibleMappings(worldForResolve, BlockCodes, ItemCodes, schematicSeed, resolveImports))
+                        {
+                            entity.OnInitialized += () => entity.OnLoadCollectibleMappings(worldForResolve, BlockCodes, ItemCodes, schematicSeed, resolveImports);
+                        }
                     }
                     else
                     {
