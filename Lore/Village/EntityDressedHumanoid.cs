@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -226,7 +226,7 @@ namespace Vintagestory.GameContent
         {
             if (disableElements != null) entityShape.RemoveElements(disableElements);
 
-            AssetLocation shapePath = cshape.Base.CopyWithPath("shapes/" + cshape.Base.Path + ".json");
+            AssetLocation shapePath = cshape.Base.CopyWithPathPrefixAndAppendixOnce("shapes/", ".json");
             Shape gearshape = Shape.TryGet(Api, shapePath);
             if (gearshape == null)
             {

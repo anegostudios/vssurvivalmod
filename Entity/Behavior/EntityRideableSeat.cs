@@ -33,7 +33,7 @@ namespace Vintagestory.GameContent
                 {
                     modelmat.RotateY(GameMath.PIHALF + Entity.Pos.Yaw);
                     modelmat.RotateX((Entity.Properties.Client.Renderer as EntityShapeRenderer)?.nowSwivelRad ?? 0);
-                    modelmat.Translate(0f, config.EyeHeight, 0);
+                    modelmat.Translate(config.EyeOffsetX, config.EyeHeight, 0);
                     modelmat.RotateY(-GameMath.PIHALF - Entity.Pos.Yaw);
                 }
 

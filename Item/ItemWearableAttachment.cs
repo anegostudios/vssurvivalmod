@@ -184,7 +184,7 @@ namespace Vintagestory.GameContent
                     return null;
                 }
 
-                AssetLocation shapePath = compArmorShape.Base.CopyWithPath("shapes/" + compArmorShape.Base.Path + ".json");
+                AssetLocation shapePath = compArmorShape.Base.CopyWithPathPrefixAndAppendixOnce("shapes/", ".json");
 
                 Shape armorShape = API.Common.Shape.TryGet(capi, shapePath);
                 if (armorShape == null)
@@ -199,7 +199,7 @@ namespace Vintagestory.GameContent
                 {
                     foreach (var overlay in compArmorShape.Overlays)
                     {
-                        Shape oshape = API.Common.Shape.TryGet(capi, overlay.Base.CopyWithPath("shapes/" + overlay.Base.Path + ".json"));
+                        Shape oshape = API.Common.Shape.TryGet(capi, overlay.Base.CopyWithPathPrefixAndAppendixOnce("shapes/", ".json"));
                         if (oshape == null)
                         {
                             capi.World.Logger.Warning("Wearable shape {0} overlay {4} defined in {1} {2} not found or errored, was supposed to be at {3}. Item will be invisible.", compArmorShape.Base, itemstack.Class, itemstack.Collectible.Code, shapePath, overlay.Base);

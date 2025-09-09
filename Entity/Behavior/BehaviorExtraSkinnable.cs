@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using SkiaSharp;
 using Vintagestory.API.Client;
@@ -452,12 +452,12 @@ namespace Vintagestory.GameContent
 
             if (part.Shape == null && tmpl != null)
             {
-                shapePath = tmpl.Base.CopyWithPath("shapes/" + tmpl.Base.Path + ".json");
+                shapePath = tmpl.Base.CopyWithPathPrefixAndAppendixOnce("shapes/", ".json");
                 shapePath.Path = shapePath.Path.Replace("{code}", part.Code);
             }
             else
             {
-                shapePath = part.Shape.Base.CopyWithPath("shapes/" + part.Shape.Base.Path + ".json");
+                shapePath = part.Shape.Base.CopyWithPathPrefixAndAppendixOnce("shapes/", ".json");
             }
 
             Shape partShape = Shape.TryGet(api, shapePath);
