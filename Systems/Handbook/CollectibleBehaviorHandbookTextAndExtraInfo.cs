@@ -2211,9 +2211,9 @@ namespace Vintagestory.GameContent
             }
 
             string domainAndType = collObj.Code.Domain + ":" + stack.Class.Name();
-            string code = collObj.Code.ToShortString();
-            string langExtraSectionTitle = Lang.GetMatchingIfExists(domainAndType + "-handbooktitle-" + code);
-            string langExtraSectionText = Lang.GetMatchingIfExists(domainAndType + "-handbooktext-" + code);
+            string path = collObj.Code.Path;
+            string langExtraSectionTitle = Lang.GetMatchingIfExists(domainAndType + "-handbooktitle-" + path);
+            string langExtraSectionText = Lang.GetMatchingIfExists(domainAndType + "-handbooktext-" + path);
 
             if (langExtraSectionTitle != null || langExtraSectionText != null)
             {
