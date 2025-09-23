@@ -33,10 +33,9 @@ namespace Vintagestory.GameContent
 
         public int[]? UsableSlots {
             get {
-                var bs = block as BlockBookshelf;
-                if (bs == null) return System.Array.Empty<int>();
-                bs.UsableSlots.TryGetValue(Type!, out var slots);
-                return slots;
+                if (block is not BlockBookshelf bs || Type == null) return System.Array.Empty<int>();
+                bs.UsableSlots.TryGetValue(Type, out var slots);
+                return slots ?? System.Array.Empty<int>();
             }
         }
 
