@@ -1,11 +1,13 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics.Metrics;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
+using static OpenTK.Graphics.OpenGL.GL;
 
 namespace Vintagestory.GameContent
 {
@@ -213,6 +215,30 @@ namespace Vintagestory.GameContent
             return GetSelectionBoxes(blockAccessor, pos);
         }
 
+        public override void GetDecal(IWorldAccessor world, BlockPos pos, ITexPositionSource decalTexSource, ref MeshData decalModelData, ref MeshData blockModelData)
+        {
+            var be = GetBlockEntity<BlockEntityIngotMold>(pos);
+            if (be != null)
+            {
+                blockModelData = be.GetCurrentDecalMesh(be);
+                decalModelData = be.GetCurrentDecalMesh(decalTexSource);
+
+                if (be.QuantityMolds == 2)
+                {
+                    var side = be.IsRightSideSelected ? BlockEntityIngotMold.right : BlockEntityIngotMold.left;
+                    blockModelData.Translate(side);
+                    decalModelData.Translate(side);
+                }
+
+                blockModelData.Rotate(Vec3f.Half, 0, be.MeshAngle, 0);
+                decalModelData.Rotate(Vec3f.Half, 0, be.MeshAngle, 0);
+
+                return;
+            }
+
+            base.GetDecal(world, pos, decalTexSource, ref decalModelData, ref blockModelData);
+        }
+
         public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
             if (blockSel == null)
@@ -288,6 +314,25 @@ namespace Vintagestory.GameContent
             return base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref failureCode);
         }
 
+        public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
+        {
+            return GetBlockEntity<BlockEntityIngotMold>(pos)?.SelectedMold ?? base.OnPickBlock(world, pos);
+        }
+
+        public override BlockSounds GetSounds(IBlockAccessor blockAccessor, BlockSelection blockSel, ItemStack? stack = null)
+        {
+            return GetBlockEntity<BlockEntityIngotMold>(blockSel.Position)?.SelectedMold?.Block?.Sounds ?? base.GetSounds(blockAccessor, blockSel, stack);
+        }
+
+        public override float OnGettingBroken(IPlayer player, BlockSelection blockSel, ItemSlot itemslot, float remainingResistance, float dt, int counter)
+        {
+            var be = GetBlockEntity<BlockEntityIngotMold>(blockSel.Position);
+
+            be.BeingChiseled = player?.InventoryManager is IPlayerInventoryManager invMan && invMan.OffhandTool is EnumTool.Hammer && invMan.ActiveTool is EnumTool.Chisel;
+
+            return base.OnGettingBroken(player, blockSel, itemslot, remainingResistance, dt, counter);
+        }
+
         public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
         {
             if (world.BlockAccessor.GetBlockEntity(pos) is BlockEntityIngotMold beim)
@@ -322,6 +367,69 @@ namespace Vintagestory.GameContent
 
                             DamageItem(world, byPlayer.Entity, invMan.ActiveHotbarSlot);
                             DamageItem(world, byPlayer.Entity, byPlayer.Entity?.LeftHandItemSlot);
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        ItemStack[] drops = beim.GetStateAwareMoldSided(beim.SelectedMold, beim.SelectedShattered);
+
+                        if (drops.Length > 0)
+                        {
+                            foreach (var drop in drops)
+                            {
+                                if (SplitDropStacks)
+                                {
+                                    for (int k = 0; k < drop.StackSize; k++)
+                                    {
+                                        ItemStack stack = drop.Clone();
+                                        stack.StackSize = 1;
+                                        world.SpawnItemEntity(stack, pos, null);
+                                    }
+                                }
+                                else
+                                {
+                                    world.SpawnItemEntity(drop, pos, null);
+                                }
+                            }
+
+                            if (!beim.IsRightSideSelected && beim.QuantityMolds > 1)
+                            {
+                                if (beim.MoldRight == null)
+                                {
+                                    beim.QuantityMolds--;
+
+                                    beim.ContentsRight = null;
+                                    beim.FillLevelRight = 0;
+                                    beim.ShatteredRight = false;
+                                    return;
+                                }
+
+                                beim.MoldLeft = beim.MoldRight;
+                                beim.MoldMeshLeft = beim.MoldMeshRight;
+                                beim.ContentsLeft = beim.ContentsRight;
+                                beim.FillLevelLeft = beim.FillLevelRight;
+                                beim.ShatteredLeft = beim.ShatteredRight;
+                                world.BlockAccessor.ExchangeBlock(beim.MoldLeft.Block.BlockId, pos);
+                                beim.MoldRight = null;
+                                beim.ContentsRight = null;
+                                beim.FillLevelRight = 0;
+                                beim.ShatteredRight = false;
+                            }
+
+                            beim.QuantityMolds--;
+
+                            if (beim.QuantityMolds <= 0)
+                            {
+                                world.BlockAccessor.SetBlock(0, pos);
+                            }
+                            else
+                            {
+                                beim.MoldRight = null;
+                                beim.MarkDirty(true);
+                            }
+
+                            world.PlaySoundAt(beim.SelectedMold?.Block.Sounds?.GetBreakSound(byPlayer), pos, 0, byPlayer);
                             return;
                         }
                     }

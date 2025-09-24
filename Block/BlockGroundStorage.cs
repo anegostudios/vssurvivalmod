@@ -201,6 +201,8 @@ namespace Vintagestory.GameContent
             {
                 pos = pos.AddCopy(blockSel.Face);
             }
+
+            if (pos.Y >= api.World.BlockAccessor.MapSizeY) return false;
             BlockPos posBelow = pos.DownCopy();
             Block belowBlock = world.BlockAccessor.GetBlock(posBelow);
             if (!belowBlock.CanAttachBlockAt(world.BlockAccessor, this, posBelow, BlockFacing.UP)) return false;

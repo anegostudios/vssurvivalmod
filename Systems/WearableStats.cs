@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -258,14 +258,14 @@ namespace Vintagestory.GameContent
 
                 bool verticalAttack = Math.Abs(attackPitch) > 65 * GameMath.DEG2RAD;
                 double playerYaw = player.Entity.Pos.Yaw;
-                double playerPitch = player.Entity.Pos.Pitch;
+                double playerPitch = GameMath.PI - player.Entity.Pos.Pitch;
 
                 if (projectile)
                 {
                     var dx = dmgSource.SourceEntity.SidedPos.Motion.X;
                     var dy = dmgSource.SourceEntity.SidedPos.Motion.Y;
                     var dz = dmgSource.SourceEntity.SidedPos.Motion.Z;
-                    verticalAttack = Math.Sqrt(dx * dx + dz * dz) < Math.Abs(dy);
+                    verticalAttack = Math.Sqrt(dx * dx + dz * dz) * 1.2f < Math.Abs(dy);
                 }
 
                 bool inProtectionRange;

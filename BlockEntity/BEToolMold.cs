@@ -1,9 +1,11 @@
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Reflection.Emit;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -37,6 +39,9 @@ namespace Vintagestory.GameContent
         public bool BreaksWhenFilled => breaksWhenFilled;
 
         ICoreClientAPI capi;
+        /// <summary>
+        /// In radians
+        /// </summary>
         public float MeshAngle;
         bool hasMeshAngle = true; // We use this to convert pre-1.21 blocks to the new MeshAngle rotations
 
@@ -636,6 +641,57 @@ namespace Vintagestory.GameContent
 
                 return mesh;
             });
+        }
+
+        public bool BeingChiseled { get; set; }
+        public MeshData GetCurrentDecalMesh(ITexPositionSource texPositionSource)
+        {
+            MeshData mesh;
+
+            if (BeingChiseled)
+            {
+                int voxelY = (int)GameMath.Clamp(renderer.Level, 0, fillQuadsByLevel.Length - 1);
+
+                MeshData modeldata = QuadMeshUtil.GetQuad();
+                modeldata.Rgba = new byte[4 * 4];
+                modeldata.Rgba.Fill((byte)255);
+                modeldata.Flags = new int[4 * 4];
+
+                Cuboidf size = fillQuadsByLevel[voxelY];
+
+                modeldata.Uv =
+                [
+                    size.X2/64f, size.Z2/64f,
+                    size.X1/64f, size.Z2/64f,
+                    size.X1/64f, size.Z1/64f,
+                    size.X2/64f, size.Z1/64f
+                ];
+
+                var matrix = new Matrixf().Identity()
+                                          .Translate(0.5f, 1.0f / 16f + Math.Max(0, renderer.Level / 16f - 0.0625f / 3), 0.5f)
+                                          .RotateX(90 * GameMath.DEG2RAD)
+                                          .Scale(0.5f * size.Width / 16f, 0.5f * size.Length / 16f, 0.5f)
+                                          .Values;
+
+                modeldata.MatrixTransform(matrix);
+
+                mesh = modeldata.Clone();
+            }
+            else if (Shattered)
+            {
+                var cshape = Block.Attributes["shatteredShape"].AsObject<CompositeShape>();
+                cshape.Base.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/");
+                capi.Tesselator.TesselateShape("shatteredmold", Shape.TryGet(Api, cshape.Base), out mesh, texPositionSource);
+            }
+            else
+            {
+                CompositeShape cShape = Block.Shape;
+
+                Shape shape = Shape.TryGet(Api, Block.Shape.Base.Clone().WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json"));
+                ((ICoreClientAPI)Api).Tesselator.TesselateShape(Block.Code.ToString(), shape, out mesh, texPositionSource, new Vec3f(cShape.rotateX, cShape.rotateY, cShape.rotateZ));
+            }
+
+            return mesh;
         }
 
         #endregion

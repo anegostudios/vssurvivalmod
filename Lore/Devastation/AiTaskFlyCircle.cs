@@ -110,28 +110,28 @@ public class AiTaskFlyCircle : AiTaskTargetableAt
             UpdateFlyHeight();
         }
 
-        double dy = GameMath.Clamp(desiredYPos - entity.ServerPos.Y, -0.33, 0.33);
+        double dy = desiredYPos - entity.ServerPos.Y;
+        double yMot = GameMath.Clamp(dy, -0.33, 0.33);
+
         double dx = entity.ServerPos.X - CenterPos.X;
         double dz = entity.ServerPos.Z - CenterPos.Z;
         double currentRadius = Math.Sqrt(dx * dx + dz * dz);
-        double radialOffset = desiredRadius - currentRadius;
+        double offs = desiredRadius - currentRadius;
 
-        if (Math.Abs(dx) + Math.Abs(dz) <= double.Epsilon)
-        {
-            return entity.Alive;
-        }
+        float targetYaw = (float)Math.Atan2(dx, dz) + GameMath.PIHALF + 0.1f * (float)direction;
 
-        Vector3 radius = Vector3.Normalize(new((float)dx, 0, (float)dz)) * (float)desiredRadius;
-        Vector3 tangent = Vector3.Cross(radius, new(0, -direction, 0));
-        Vector3 walkDirection = Vector3.Normalize(tangent + radius * (float)radialOffset * dt * 100f);
+        if (offs < -1) targetYaw += GameMath.Clamp((float)-offs / 13f, 0f, GameMath.PIHALF);
+        if (offs > 1) targetYaw -= GameMath.Clamp((float)offs / 13f, 0f, GameMath.PIHALF);
 
-        float targetYaw = (float)Math.Atan2(-walkDirection.Z, walkDirection.X) + GameMath.PIHALF + 0.1f * direction;
+        entity.ServerPos.Yaw = targetYaw;
 
-        entity.ServerPos.Yaw += GameMath.AngleRadDistance(entity.ServerPos.Yaw, targetYaw) * dt;
-
-        entity.Controls.WalkVector.Set(walkDirection.X, dy, walkDirection.Z);
+        float bla = (float)GameMath.Clamp(offs / 20.0, -1, 1);
+        double cosYaw = Math.Cos(entity.ServerPos.Yaw - bla);
+        double sinYaw = Math.Sin(entity.ServerPos.Yaw - bla);
+        entity.Controls.WalkVector.Set(sinYaw, yMot, cosYaw);
         entity.Controls.WalkVector.Mul(moveSpeed);
-        if (dy < 0) entity.Controls.WalkVector.Mul(0.5);
+        if (yMot < 0) entity.Controls.WalkVector.Mul(0.5);
+
 
         if (entity.Swimming)
         {

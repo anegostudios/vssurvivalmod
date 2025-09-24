@@ -80,7 +80,10 @@ namespace Vintagestory.ServerMods
 
         private void growBranch(IRandom rand, int depth, BlockPos basePos, int treeSubType, float dx, float dy, float dz, float angleVerStart, float angleHorStart, float curWidth, float dieAt, float trunkWidthLoss, bool wideTrunk)
         {
-            if (depth > 30) { Console.WriteLine("TreeGen.growBranch() aborted, too many branches!"); return; }
+            if (depth > 30)
+            {
+                forestFloor.sapi.Logger.Warning("TreeGen.growBranch() aborted, too many branches!"); return;
+            }
 
             TreeGenBranch branch = branchesByDepth[Math.Min(depth, branchesByDepth.Count - 1)];
 

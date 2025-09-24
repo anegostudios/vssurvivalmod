@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -34,9 +34,6 @@ namespace Vintagestory.GameContent
 
             if (api.World.Side == EnumAppSide.Client)
             {
-                float rotY = Block.Shape.rotateY;
-                animUtil.InitializeAnimator("basereturnteleporter", null, null, new Vec3f(0, rotY, 0));
-
                 translocatingSound = (api as ICoreClientAPI).World.LoadSound(new SoundParams()
                 {
                     Location = new AssetLocation("sounds/effect/translocate-active.ogg"),
@@ -187,6 +184,17 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockRemoved();
             translocatingSound?.Dispose();
+        }
+
+        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
+        {
+            if (animUtil.animator == null)
+            {
+                float rotY = Block.Shape.rotateY;
+                animUtil.InitializeAnimator("basereturnteleporter", null, null, new Vec3f(0, rotY, 0));
+            }
+
+            return base.OnTesselation(mesher, tessThreadTesselator);
         }
     }
 

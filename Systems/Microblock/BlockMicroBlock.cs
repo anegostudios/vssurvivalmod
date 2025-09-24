@@ -571,7 +571,7 @@ namespace Vintagestory.GameContent
                     for (int i = 0; i < be.BlockIds.Length; i++)
                     {
                         block = world.Blocks[be.BlockIds[i]];
-                        if (block.BlockMaterial == EnumBlockMaterial.Soil)
+                        if (block.BlockMaterial == EnumBlockMaterial.Soil || block.BlockMaterial == EnumBlockMaterial.Sand || block.BlockMaterial == EnumBlockMaterial.Gravel)
                         {
                             be.RemoveMaterial(block);
                             removed = true;

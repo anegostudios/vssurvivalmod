@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -43,7 +43,6 @@ namespace Vintagestory.GameContent
                 updateMeshesAndRenderer(api as ICoreClientAPI);
 
                 RegisterGameTickListener(OnClientTick, 50);
-                animUtil?.InitializeAnimator("resonator", null, null, new Vec3f(0, getRotation(), 0));
             }
         }
 
@@ -303,5 +302,13 @@ namespace Vintagestory.GameContent
 
         }
 
+        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
+        {
+            if (animUtil?.animator == null)
+            {
+                animUtil?.InitializeAnimator("resonator", null, null, new Vec3f(0, getRotation(), 0));
+            }
+            return base.OnTesselation(mesher, tessThreadTesselator);
+        }
     }
 }

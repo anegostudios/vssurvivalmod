@@ -21,7 +21,7 @@ namespace Vintagestory.ServerMods
         /// The size of one row in the grid representing a tree's canopy outline (the grid is 33 x 33, the trunk is in the center i.e. at position (16, 16))
         /// </summary>
         public const int GridRowSize = 2 * Range + 1;
-        private ICoreServerAPI sapi;
+        internal ICoreServerAPI sapi;
         IServerWorldAccessor worldAccessor;
         private IBlockAccessor api;
 

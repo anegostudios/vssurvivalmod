@@ -180,7 +180,13 @@ namespace Vintagestory.GameContent
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer)
         {
             var drops = base.GetDrops(world, pos, byPlayer);
-            drops[0].StackSize = Math.Max(1, hurtByPlayerUids.Count);
+
+            if (hurtByPlayerUids.Count > 1)
+            {
+                int i = 1;
+                while (i++ < hurtByPlayerUids.Count) drops = drops.Append(drops[0].Clone());
+            }
+            
             return drops;
         }
 

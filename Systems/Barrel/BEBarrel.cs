@@ -90,9 +90,10 @@ namespace Vintagestory.GameContent
 
             ownBlock = Block as BlockBarrel;
 
-            if (ownBlock?.Attributes?["capacityLitres"].Exists == true)
+            JsonObject capacityAttribute = ownBlock?.Attributes?["capacityLitres"];
+            if (capacityAttribute != null && capacityAttribute.Exists)
             {
-                CapacityLitres = ownBlock.Attributes["capacityLitres"].AsInt(50);
+                CapacityLitres = capacityAttribute.AsInt(50);
                 (inventory[1] as ItemSlotLiquidOnly).CapacityLitres = CapacityLitres;
             }
 
@@ -135,9 +136,9 @@ namespace Vintagestory.GameContent
             ItemSlot[] inputSlots = new ItemSlot[] { inventory[0], inventory[1] };
             CurrentRecipe = null;
 
-            foreach (var recipe in Api.GetBarrelRecipes())
+            var barrelRecipes = Api.GetBarrelRecipes();
+            foreach (var recipe in barrelRecipes)
             {
-
                 if (recipe.Matches(inputSlots, out int outsize))
                 {
                     ignoreChange = true;
@@ -361,10 +362,13 @@ namespace Vintagestory.GameContent
 
             if (mesh.CustomInts != null)
             {
-                for (int i = 0; i < mesh.CustomInts.Count; i++)
+                int[] CustomInts = mesh.CustomInts.Values;
+                int count = mesh.CustomInts.Count;
+                for (int i = 0; i < CustomInts.Length; i++)
                 {
-                    mesh.CustomInts.Values[i] |= VertexFlags.LiquidWeakWaveBitMask; // Enable weak water wavy
-                    mesh.CustomInts.Values[i] |= VertexFlags.LiquidWeakFoamBitMask; // Enabled weak foam
+                    if (i >= count) break;
+                    CustomInts[i] |= VertexFlags.LiquidWeakWaveBitMask  // Enable weak water wavy
+                                    | VertexFlags.LiquidWeakFoamBitMask;  // Enabled weak foam
                 }
             }
 

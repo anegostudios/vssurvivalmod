@@ -10,15 +10,44 @@ using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent;
 
+public class ErelAnimManager : AnimationManager
+{
+    EntityErel entityErel;
+
+    public override void Init(ICoreAPI api, Entity entity)
+    {
+        base.Init(api, entity);
+
+        entityErel = entity as EntityErel; 
+    }
+
+    public override bool StartAnimation(AnimationMetaData animdata)
+    {
+        if (entityErel.StandingOnGround && animdata.Code == "hurt") return false;
+
+        return base.StartAnimation(animdata);
+    }
+
+    protected override void onReceivedServerAnimation(AnimationMetaData animmetadata)
+    {
+        if (entityErel.StandingOnGround && animmetadata.Code == "hurt") return;
+
+        base.onReceivedServerAnimation(animmetadata);
+    }
+}
+
 
 public sealed class EntityErel : EntityAgent
 {
-    public override bool CanSwivel => true;
-    public override bool CanSwivelNow => true;
+    public override bool CanSwivel => false;
+    public override bool CanSwivelNow => false;
     public override bool StoreWithChunk => false;
+    public override bool CanAttackInside => true;
     public override bool AllowOutsideLoadedRange => true;
     public override bool AlwaysActive => true;
     public long LastAttackTime { get; set; } = 0;
+
+    ErelAnimManager erelAnimManager;
 
     public double LastAnnoyedTotalDays
     {
@@ -46,6 +75,8 @@ public sealed class EntityErel : EntityAgent
     public EntityErel()
     {
         SimulationRange = 1024;
+
+        this.AnimManager = erelAnimManager = new ErelAnimManager();
     }
 
     public override void Initialize(EntityProperties properties, ICoreAPI api, long InChunkIndex3d)
@@ -63,6 +94,14 @@ public sealed class EntityErel : EntityAgent
 
         healthBehavior = GetBehavior<EntityBehaviorHealth>();
     }
+
+
+    public bool StandingOnGround {
+        get { return WatchedAttributes.GetBool("standingOnGround"); }
+        set { WatchedAttributes.SetBool("standingOnGround", value); }
+    }
+
+
     public override void AfterInitialized(bool onFirstSpawn)
     {
         base.AfterInitialized(onFirstSpawn);
@@ -298,7 +337,7 @@ public sealed class EntityErel : EntityAgent
 
         if (!Annoyed)
         {
-            if (healthBehavior.Health / healthBehavior.MaxHealth < 0.6)
+            if (healthBehavior.Health / healthBehavior.MaxHealth < 0.02)
             {
                 Api.World.PlaySoundAt("sounds/creature/erel/annoyed", this, null, false, 1024, 1);
                 AnimManager.StartAnimation("defeat");

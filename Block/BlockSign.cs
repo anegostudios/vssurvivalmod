@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -66,6 +66,7 @@ namespace Vintagestory.GameContent
             }
 
             if (api.Side != EnumAppSide.Client) return;
+            AfterSignRenderer.Registered = false;
 
             interactions = ObjectCacheUtil.GetOrCreate(api, "signBlockInteractions", () =>
             {

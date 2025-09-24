@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -43,8 +43,6 @@ namespace Vintagestory.GameContent
             protectionDistance = Block.Attributes?["protectionDistance"].AsInt(40) ?? 40;
 
             lastUpdateTotalDays = api.World.Calendar.TotalDays;
-
-            if (sapi == null) animUtil?.InitializeAnimator("riftward");
 
             if (sapi == null && On)
             {              
@@ -216,6 +214,16 @@ namespace Vintagestory.GameContent
             }
 
             dsc.AppendLine(Lang.Get("Rifts blocked: {0}", riftsBlocked));
+        }
+
+        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
+        {
+            if (animUtil?.animator == null)
+            {
+                animUtil?.InitializeAnimator("riftward");
+            }
+
+            return base.OnTesselation(mesher, tessThreadTesselator);
         }
     }
 }

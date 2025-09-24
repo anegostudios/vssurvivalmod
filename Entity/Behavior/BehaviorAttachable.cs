@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
@@ -97,6 +97,18 @@ namespace Vintagestory.GameContent
         public override string InventoryClassName => "wearablesInv";
 
         public EntityBehaviorAttachable(Entity entity) : base(entity) { }
+
+        public override bool TryEarlyLoadCollectibleMappings(IWorldAccessor worldForCollectibleResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, bool resolveImports, EntityProperties entityProperties, JsonObject behaviorConfig)
+        {
+            var wearableSlots = behaviorConfig["wearableSlots"].AsObject<WearableSlotConfig[]>();
+            inv = new InventoryGeneric(wearableSlots.Length, InventoryClassName + "-EarlyLoad-" + entity.EntityId, entity.Api, (id, inv) => new ItemSlotWearable(inv, wearableSlots[id].ForCategoryCodes));
+            loadInv();
+            if (!inv.Empty)
+            {
+                return base.TryEarlyLoadCollectibleMappings(worldForCollectibleResolve, oldBlockIdMapping, oldItemIdMapping, resolveImports, entityProperties, behaviorConfig);
+            }
+            return true;
+        }
 
         public override void Initialize(EntityProperties properties, JsonObject attributes)
         {
@@ -547,7 +559,10 @@ namespace Vintagestory.GameContent
 
                                 if (!slotConfig.CanHold(code)) continue;
 
-                                stacks.Add(jstack.ResolvedItemstack);
+                                if (jstack.ResolvedItemstack.Collectible != null)
+                                {
+                                    stacks.Add(jstack.ResolvedItemstack);
+                                }
                             }
                         }
                     }

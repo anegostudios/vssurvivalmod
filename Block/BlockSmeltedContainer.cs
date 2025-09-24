@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -95,7 +95,7 @@ namespace Vintagestory.GameContent
 
                     smokeHeld.MinPos = pos.AddCopy(-0.05, -0.05, -0.05);
                     byEntity.World.SpawnParticles(smokeHeld);
-                } 
+                }
             }
         }
 
@@ -292,17 +292,20 @@ namespace Vintagestory.GameContent
                 float rotZ = eplr.Properties.Client.Shape != null ? eplr.Properties.Client.Shape.rotateZ : 0;
                 float bodyPitch = eplr.WalkPitch;
 
+                float ry = bodyYaw + (90 + rotY) * GameMath.DEG2RAD;
 
                 var mat = new Matrixf()
                     .RotateX(eplr.SidedPos.Roll + rotX * GameMath.DEG2RAD)
-                    .RotateY(bodyYaw + (180 + rotY) * GameMath.DEG2RAD)
+                    .RotateY(ry)
                     .RotateZ(bodyPitch + rotZ * GameMath.DEG2RAD)
                     .Scale(eplr.Properties.Client.Size, eplr.Properties.Client.Size, eplr.Properties.Client.Size)
                     .Translate(-0.5f, 0, -0.5f)
                     .RotateX(eplr.sidewaysSwivelAngle)
                     .Translate(ap.PosX / 16f, ap.PosY / 16f, ap.PosZ / 16f)
                     .Mul(apap.AnimModelMatrix)
-                    .Translate(-0.15f, 0.0f, 0.15f)
+                    .RotateY(-ry)
+                    .Translate(-0.15f, -0.45f, -0.1f)
+                    .RotateY(ry)
                 ;
 
                 float[] pos = new float[4] { 0, 0f, 0, 1 };

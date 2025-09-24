@@ -111,13 +111,11 @@ public class AiTaskFireFeathersAttack : AiTaskFlyCircle
         accum = 0;
         projectilesFired = false;
     }
-    public override bool 
-        ContinueExecute(float dt)
+    public override bool ContinueExecute(float dt)
     {
         //Check if time is still valid for task.
         if (!IsInValidDayTimeHours(false)) return false;
 
-        followTarget();
 
         accum += dt;
         if (accum * 1000 > fireAfterMs)
@@ -135,7 +133,11 @@ public class AiTaskFireFeathersAttack : AiTaskFlyCircle
             projectilesFired = true;
         }
 
-        return base.ContinueExecute(dt) && accum * 1000 < durationMs;
+        var ok = base.ContinueExecute(dt) && accum * 1000 < durationMs;
+
+        lookatTarget();
+
+        return ok;
     }
     public override void FinishExecute(bool cancelled)
     {
@@ -144,19 +146,10 @@ public class AiTaskFireFeathersAttack : AiTaskFlyCircle
         base.FinishExecute(cancelled);
     }
 
-    protected void followTarget()
+    protected void lookatTarget()
     {
         Vec3d targetVector = targetEntity.Pos.XYZ - entity.ServerPos.XYZ;
         Vec3d direction = targetVector.Normalize();
-        //entity.ServerPos.Motion.X = direction.X * moveSpeed * 10;
-        //entity.ServerPos.Motion.Y = direction.Y * moveSpeed * 10;
-        //entity.ServerPos.Motion.Z = direction.Z * moveSpeed * 10;
-
-        double speed = entity.ServerPos.Motion.Length();
-        if (speed > 0.01)
-        {
-            //entity.ServerPos.Roll = (float)Math.Asin(GameMath.Clamp(-direction.Y / speed, -1, 1));
-        }
         entity.ServerPos.Yaw = (float)Math.Atan2(targetVector.X, targetVector.Z);
     }
 

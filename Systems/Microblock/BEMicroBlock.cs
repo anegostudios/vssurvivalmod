@@ -1625,7 +1625,7 @@ namespace Vintagestory.GameContent
 
             var matList = getOrCreateBlockMatRefList();
             matList.Clear();
-            matList.Add(VoxelMaterial.FromTexSource(capi, decalTexSource, true));
+            matList.Add(VoxelMaterial.FromTexSource(capi, decalTexSource, true, true));
 
             int* origVoxelBounds = stackalloc int[6];
             FromUint(originalVoxelCuboids[0],
@@ -2279,7 +2279,7 @@ namespace Vintagestory.GameContent
                 }
 
                 ref readonly var blockMat = ref blockMaterials[materialIndex];
-                if (blockMat.BlockId == 0) return;  // Necessary fix for any legacy ? microblocks in the Arctic (due to rockBlockId being 0 under lakeice)
+                if (blockMat.BlockId == 0 && !blockMat.ForDecal) return;  // Necessary fix for any legacy ? microblocks in the Arctic (due to rockBlockId being 0 under lakeice)
 
                 faceGenInfo.flags = faceGenInfo.facing.NormalPackedFlags | blockMat.Flags;
 

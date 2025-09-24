@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -10,15 +10,23 @@ namespace Vintagestory.GameContent
 {
     public class BlockFence : Block
     {
-        BlockBehaviorRopeTieable bbrt;
-
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
 
             CanStep = false;
 
-            bbrt = GetBehavior<BlockBehaviorRopeTieable>();
+            var attrParticleHeight = Attributes["particleCollBoxHeight"];
+            if (attrParticleHeight.Exists)
+            {
+                float hgt = attrParticleHeight.AsFloat(1);
+                ParticleCollisionBoxes = new Cuboidf[CollisionBoxes.Length];
+                for (int i = 0; i < ParticleCollisionBoxes.Length; i++)
+                {
+                    ParticleCollisionBoxes[i] = CollisionBoxes[i].Clone();
+                    ParticleCollisionBoxes[i].Y2 = hgt;
+                }
+            }
         }
 
         public override void OnJsonTesselation(ref MeshData sourceMesh, ref int[] lightRgbsByCorner, BlockPos pos, Block[] chunkExtBlocks, int extIndex3d)

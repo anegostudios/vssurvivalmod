@@ -6,9 +6,8 @@ using Vintagestory.API.Util;
 using Vintagestory.API.Client;
 using System;
 using Vintagestory.API.MathTools;
-using System.Linq;
-using System.Numerics;
 using Vintagestory.API.Server;
+using System.Collections.Generic;
 
 #nullable disable
 
@@ -180,6 +179,7 @@ namespace Vintagestory.GameContent
             Api.Event.UnregisterCallback(handlerId);
             wasStopped = true;
             base.OnEntityDespawn(despawn);
+            if (Api.Side == EnumAppSide.Server) Api.Logger.Debug("Villager " + GetName() + " de-spawned at " + ServerPos.AsBlockPos + " for reason " + despawn.Reason.ToString());
         }
 
 
@@ -262,10 +262,54 @@ namespace Vintagestory.GameContent
             base.OnHurt(dmgSource, damage);
         }
 
-
-        public override void OnEntitySpawn()
+        public override bool TryEarlyLoadCollectibleMappings(IWorldAccessor worldForNewMappings, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed, bool resolveImports)
         {
-            base.OnEntitySpawn();
+            bool result = base.TryEarlyLoadCollectibleMappings(worldForNewMappings, oldBlockIdMapping, oldItemIdMapping, schematicSeed, resolveImports);
+
+            // Some debug logging for 1.21.2
+            string name = "-";
+            try
+            {
+                name = WatchedAttributes.GetTreeAttribute("nametag")?.GetString("name") ?? "-";
+            }
+            catch (Exception) { }
+            string worldname = (worldForNewMappings is IServerWorldAccessor swa) ? swa.WorldName : "(unknown)";
+            worldForNewMappings.Logger.Log(EnumLogType.Worldgen, "In " + worldname + ", placed villager " + name + " at " + ServerPos.AsBlockPos);
+
+            return result;
+        }
+
+        public override void Die(EnumDespawnReason reason = EnumDespawnReason.Death, DamageSource damageSourceForDeath = null)
+        {
+            if (Api.Side == EnumAppSide.Server)
+            {
+                // Some debug logging for 1.21.2
+                string name = "-";
+                try
+                {
+                    name = WatchedAttributes.GetTreeAttribute("nametag")?.GetString("name") ?? "-";
+                }
+                catch (Exception) { }
+                if (reason == EnumDespawnReason.Death || reason == EnumDespawnReason.Removed)
+                {
+                    string worldname = (Api.World is IServerWorldAccessor swa) ? swa.WorldName : "(unknown)";
+                    if (reason == EnumDespawnReason.Death) Api?.Logger.Log(EnumLogType.Worldgen, "In " + worldname + ", villager " + name + " killed at " + ServerPos.AsBlockPos);
+                    else if (reason == EnumDespawnReason.Removed) Api?.Logger.Log(EnumLogType.Worldgen, "In " + worldname + ", villager " + name + " removed at " + ServerPos.AsBlockPos);
+                }
+                else Api?.Logger.Debug("Villager " + name + " de-spawned at " + ServerPos.AsBlockPos + " for reason " + reason.ToString());
+            }
+            base.Die(reason, damageSourceForDeath);
+        }
+
+        public override void OnEntityLoaded()
+        {
+            base.OnEntityLoaded();
+            if (Api.Side == EnumAppSide.Server)
+            {
+                bool dead = WatchedAttributes.GetInt("entityDead") == 1;
+                if (dead) Api.Logger.Debug("Villager " + GetName() + " loaded (but dead!) at " + ServerPos.AsBlockPos);
+                else Api.Logger.Debug("Villager " + GetName() + " loaded at " + ServerPos.AsBlockPos);
+            }
         }
 
         public override void FromBytes(BinaryReader reader, bool forClient)

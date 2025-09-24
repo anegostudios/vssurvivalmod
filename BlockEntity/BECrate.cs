@@ -89,10 +89,15 @@ namespace Vintagestory.GameContent
 
             base.Initialize(api);
 
-            if (api.Side == EnumAppSide.Client && !isNewlyplaced)
+            if (api.Side == EnumAppSide.Client)
             {
-                labelCacheSys = api.ModLoader.GetModSystem<ModSystemLabelMeshCache>();
-                loadOrCreateMesh();
+                rndScale = 1 + (GameMath.MurmurHash3Mod(Pos.X, Pos.Y, Pos.Z, 100) - 50) / 1000f;
+
+                if (!isNewlyplaced)
+                {
+                    labelCacheSys = api.ModLoader.GetModSystem<ModSystemLabelMeshCache>();
+                    ownMesh = null;
+                }
             }
         }
 
@@ -284,7 +289,7 @@ namespace Vintagestory.GameContent
 
         protected void didMoveItems(ItemStack stack, IPlayer byPlayer)
         {
-            if (Api.Side == EnumAppSide.Client) loadOrCreateMesh();
+            if (Api.Side == EnumAppSide.Client) ownMesh = null;  // Trigger regeneration of mesh
 
             (Api as ICoreClientAPI)?.World.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
             AssetLocation sound = stack?.Block?.Sounds?.Place;
@@ -391,7 +396,7 @@ namespace Vintagestory.GameContent
 
             if (Api != null && Api.Side == EnumAppSide.Client)
             {
-                loadOrCreateMesh();
+                ownMesh = null;  // Trigger regeneration of mesh
                 MarkDirty(true);
             }
 
@@ -523,7 +528,7 @@ namespace Vintagestory.GameContent
 
 
         static Vec3f origin = new Vec3f(0.5f, 0f, 0.5f);
-        float rndScale => 1 + (GameMath.MurmurHash3Mod(Pos.X, Pos.Y, Pos.Z, 100) - 50) / 1000f;
+        float rndScale = 1;
 
         void GenLabelMeshWithItemStack(int textureSubId)
         {
@@ -538,10 +543,10 @@ namespace Vintagestory.GameContent
             bool skipmesh = base.OnTesselation(mesher, tesselator);
             if (skipmesh) return true;
 
-
             if (ownMesh == null)
             {
-                return true;
+                loadOrCreateMesh();
+                if (ownMesh == null) return true;
             }
 
             if (labelMesh == null)

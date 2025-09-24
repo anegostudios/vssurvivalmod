@@ -145,8 +145,7 @@ public class AiTaskFlySwoopAttack : AiTaskBaseTargetable
         base.StartExecute();
     }
 
-    public override bool 
-        ContinueExecute(float dt)
+    public override bool ContinueExecute(float dt)
     {
         //Check if time is still valid for task.
         if (!IsInValidDayTimeHours(false)) return false;
@@ -218,11 +217,11 @@ public class AiTaskFlySwoopAttack : AiTaskBaseTargetable
             if (world.CollisionTester.IsColliding(entity.World.BlockAccessor, entity.CollisionBox, tmppos))
             {
 #if DEBUG
-                Vec3f zero = Vec3f.Zero;
+                /*Vec3f zero = Vec3f.Zero;
                 for (int k = i; k < swoopPath.Count; k++)
                 {
                     entity.World.SpawnParticles(1, ColorUtil.ColorFromRgba(0, 0, 255, 255), swoopPath[k], swoopPath[k], zero, zero, 3, 0, 1);
-                }
+                }*/
 #endif
                 return false;
             }

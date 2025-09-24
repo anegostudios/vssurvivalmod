@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
@@ -155,6 +155,7 @@ namespace Vintagestory.GameContent
             });
         }
 
+
         public override void OnEntityCollide(IWorldAccessor world, Entity entity, BlockPos pos, BlockFacing facing, Vec3d collideSpeed, bool isImpact)
         {
             if (world.Rand.NextDouble() < 0.05 && GetBlockEntity<BlockEntityToolMold>(pos)?.Temperature > 300)
@@ -175,9 +176,9 @@ namespace Vintagestory.GameContent
             return 0;
         }
 
-        public override Cuboidf[] GetSelectionBoxes(IBlockAccessor world, BlockPos pos)
+        public override Cuboidf[] GetSelectionBoxes(IBlockAccessor ba, BlockPos pos)
         {
-            var boxesRotated = getColSelRotatedBoxes(SelectionBoxes, (world.GetBlockEntity(pos) as BlockEntityToolMold)?.MeshAngle ?? 0);
+            var boxesRotated = getColSelRotatedBoxes(SelectionBoxes, (ba.GetBlockEntity(pos) as BlockEntityToolMold)?.MeshAngle ?? 0);
 
             if (RandomDrawOffset != 0 && boxesRotated?.Length >= 1)
             {
@@ -189,10 +190,10 @@ namespace Vintagestory.GameContent
 
             if (boxesRotated?.Length != 1) return boxesRotated;
 
-            var chunk = world.GetChunkAtBlockPos(pos);
+            var chunk = ba.GetChunkAtBlockPos(pos);
             if (chunk == null) return boxesRotated;
 
-            return chunk.AdjustSelectionBoxForDecor(world, pos, boxesRotated);
+            return chunk.AdjustSelectionBoxForDecor(ba, pos, boxesRotated);
         }
 
         public override Cuboidf[] GetCollisionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
@@ -211,6 +212,20 @@ namespace Vintagestory.GameContent
             }
 
             return boxesRotated;
+        }
+
+        public override void GetDecal(IWorldAccessor world, BlockPos pos, ITexPositionSource decalTexSource, ref MeshData decalModelData, ref MeshData blockModelData)
+        {
+            var be = GetBlockEntity<BlockEntityToolMold>(pos);
+            if (be != null && be.MeshAngle != 0)
+            {
+                blockModelData = be.GetCurrentDecalMesh(be).Rotate(Vec3f.Half, 0, be.MeshAngle, 0);
+                decalModelData = be.GetCurrentDecalMesh(decalTexSource).Rotate(Vec3f.Half, 0, be.MeshAngle, 0);
+
+                return;
+            }
+
+            base.GetDecal(world, pos, decalTexSource, ref decalModelData, ref blockModelData);
         }
 
         public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
@@ -278,6 +293,15 @@ namespace Vintagestory.GameContent
             }
 
             return val;
+        }
+
+        public override float OnGettingBroken(IPlayer player, BlockSelection blockSel, ItemSlot itemslot, float remainingResistance, float dt, int counter)
+        {
+            var be = GetBlockEntity<BlockEntityToolMold>(blockSel.Position);
+
+            be.BeingChiseled = player?.InventoryManager is IPlayerInventoryManager invMan && invMan.OffhandTool is EnumTool.Hammer && invMan.ActiveTool is EnumTool.Chisel;
+
+            return base.OnGettingBroken(player, blockSel, itemslot, remainingResistance, dt, counter);
         }
 
         public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)

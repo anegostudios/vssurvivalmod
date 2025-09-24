@@ -647,6 +647,51 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public bool BeingChiseled { get; set; }
+        public MeshData GetCurrentDecalMesh(ITexPositionSource texPositionSource)
+        {
+            MeshData mesh;
+
+            if (BeingChiseled)
+            {
+                MeshData modeldata = QuadMeshUtil.GetQuad();
+                modeldata.Uv =
+                [
+                    3/64f, 7/64f,
+                    0, 7/64f,
+                    0, 0,
+                    3/64f, 0
+                ];
+
+                modeldata.Rgba = new byte[4 * 4];
+                modeldata.Rgba.Fill((byte)255);
+                modeldata.Flags = new int[4 * 4];
+
+                var matrix = new Matrixf().Identity()
+                                          .Translate(0.5f, 1 / 16f + (IsRightSideSelected ? ingotRenderer.LevelRight : ingotRenderer.LevelLeft) / 850f, 0.5f)
+                                          .RotateX(90 * GameMath.DEG2RAD)
+                                          .Scale(0.5f * 3 / 16f, 0.5f * 7 / 16f, 0.5f);
+
+                modeldata.MatrixTransform(matrix.Values);
+
+                mesh = modeldata.Clone();
+            }
+            else if (SelectedShattered)
+            {
+                var cshape = (SelectedMold?.Block ?? Block).Attributes["shatteredShape"].AsObject<CompositeShape>();
+                cshape.Base.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/");
+                capi.Tesselator.TesselateShape("shatteredmold", Shape.TryGet(Api, cshape.Base), out mesh, texPositionSource);
+            }
+            else
+            {
+
+                var shape = Shape.TryGet(Api, "shapes/block/clay/mold/ingot.json");
+                capi.Tesselator.TesselateShape((SelectedMold?.Block ?? Block).Code.ToString(), shape, out mesh, texPositionSource);
+            }
+
+            return mesh;
+        }
+
 
         #endregion
 

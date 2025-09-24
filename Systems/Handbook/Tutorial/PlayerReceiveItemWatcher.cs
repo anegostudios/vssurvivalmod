@@ -56,7 +56,7 @@ namespace Vintagestory.GameContent
         {
             if (MatchEventName is "onitemcollected")
             {
-                var stacks = inventoryManager.Inventories.Where(val => val.Key is not GlobalConstants.creativeInvClassName and not GlobalConstants.groundInvClassName)
+                var stacks = inventoryManager.Inventories.Where(val => val.Value.ClassName is not GlobalConstants.creativeInvClassName and not GlobalConstants.groundInvClassName)
                                                          .Select(val => val.Value)
                                                          .SelectMany(inv => inv.Where(slot => slot?.Itemstack != null && StackMatcher(slot.Itemstack))
                                                                                .Select(slot => slot.Itemstack));

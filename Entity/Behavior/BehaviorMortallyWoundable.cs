@@ -103,9 +103,9 @@ namespace Vintagestory.GameContent
 
         private bool AnimManager_OnAnimationReceived(ref AnimationMetaData animationMeta, ref EnumHandling handling)
         {
-            if (HealthState != EnumEntityHealthState.Normal && animationMeta.Animation == "die")
+            if (HealthState != EnumEntityHealthState.Normal && animationMeta.Code == "die")
             {
-                animationMeta = entity.Properties.Client.Animations.FirstOrDefault(m => m.Animation == "dead");
+                animationMeta = entity.Properties.Client.Animations.FirstOrDefault(m => m.Code == "dead");
             }
 
             return true;
@@ -113,14 +113,18 @@ namespace Vintagestory.GameContent
 
         private bool AnimManager_OnStartAnimation(ref AnimationMetaData animationMeta, ref EnumHandling handling)
         {
-            if (HealthState == EnumEntityHealthState.MortallyWounded && !animationMeta.Animation.StartsWith("wounded-") && animationMeta.Animation != "die")
+            if (HealthState == EnumEntityHealthState.MortallyWounded && !animationMeta.Code.StartsWith("wounded-") && animationMeta.Code != "die")
             {
                 handling = EnumHandling.PreventDefault;
                 return true;
             }
-            if (HealthState != EnumEntityHealthState.Normal && animationMeta.Animation == "die")
+            if (HealthState != EnumEntityHealthState.Normal && animationMeta.Code == "die")
             {
-                animationMeta = entity.Properties.Client.Animations.FirstOrDefault(m => m.Animation == "dead");
+                animationMeta = entity.Properties.Client.Animations.FirstOrDefault(m => m.Code == "dead");
+                if (animationMeta == null)
+                {
+                    throw new Exception("MortallyWoundable behavior expected but did not find an animation with code \"dead\" for entity " + entity.Code);
+                }
             }
 
             return false;

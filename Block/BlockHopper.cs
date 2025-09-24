@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Common;
+using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 
@@ -29,21 +29,26 @@ namespace Vintagestory.GameContent
                 // Don't suck up everything instantly
                 if (world.Rand.NextDouble() < 0.9) return;
 
-                BlockEntity blockEntity = world.BlockAccessor.GetBlockEntity(pos);
-                if (inWorldItem.Alive && blockEntity is BlockEntityItemFlow beItemFlow)
+                api.Event.EnqueueMainThreadTask(() =>
                 {
-                    WeightedSlot ws = beItemFlow.inventory.GetBestSuitedSlot(inWorldItem.Slot);
+                    // Ensure these steps will occur on the main thread
 
-                    if (ws.slot != null) //we have determined there is room for this itemStack in this inventory.
+                    BlockEntity blockEntity = world.BlockAccessor.GetBlockEntity(pos);
+                    if (inWorldItem.Alive && blockEntity is BlockEntityItemFlow beItemFlow)
                     {
-                        inWorldItem.Slot.TryPutInto(api.World, ws.slot, 1);
-                        if (inWorldItem.Slot.StackSize <= 0)
+                        WeightedSlot ws = beItemFlow.inventory.GetBestSuitedSlot(inWorldItem.Slot);
+
+                        if (ws.slot != null) //we have determined there is room for this itemStack in this inventory.
                         {
-                            inWorldItem.Itemstack = null;
-                            inWorldItem.Alive = false;
+                            inWorldItem.Slot.TryPutInto(api.World, ws.slot, 1);    // This can invoke CollectibleObject.UpdateAndGetTransitionStates() which can invoke the Room Registry(!!)
+                            if (inWorldItem.Slot.StackSize <= 0)
+                            {
+                                inWorldItem.Itemstack = null;
+                                inWorldItem.Alive = false;
+                            }
                         }
                     }
-                }
+                }, "hopperitempickup");
             }
         }
 

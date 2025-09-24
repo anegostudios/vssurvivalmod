@@ -93,8 +93,10 @@ namespace Vintagestory.GameContent
             this.api = api;
             OpenSound = CloseSound = AssetLocation.Create(block.Attributes["triggerSound"].AsString("sounds/block/door"));
 
-            if (block.Attributes["openSound"].Exists) OpenSound = AssetLocation.Create(block.Attributes["openSound"].AsString("sounds/block/door"));
-            if (block.Attributes["closeSound"].Exists) CloseSound = AssetLocation.Create(block.Attributes["closeSound"].AsString("sounds/block/door"));
+            JsonObject soundAttribute = block.Attributes["openSound"];
+            if (soundAttribute.Exists) OpenSound = AssetLocation.Create(soundAttribute.AsString("sounds/block/door"));
+            soundAttribute = block.Attributes["closeSound"];
+            if (soundAttribute.Exists) CloseSound = AssetLocation.Create(soundAttribute.AsString("sounds/block/door"));
 
             base.OnLoaded(api);
         }

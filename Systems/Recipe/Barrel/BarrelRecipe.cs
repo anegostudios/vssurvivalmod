@@ -74,10 +74,8 @@ namespace Vintagestory.GameContent
         /// </summary>
         [DocumentAsJson] public double SealHours;
 
-
         IRecipeIngredient[] IRecipeBase<BarrelRecipe>.Ingredients => Ingredients;
         IRecipeOutput IRecipeBase<BarrelRecipe>.Output => Output;
-
 
         public bool Matches(ItemSlot[] inputSlots, out int outputStackSize)
         {
@@ -93,40 +91,40 @@ namespace Vintagestory.GameContent
 
 
 
-        List<KeyValuePair<ItemSlot, BarrelRecipeIngredient>> pairInput(ItemSlot[] inputStacks)
+        private List<KeyValuePair<ItemSlot, BarrelRecipeIngredient>> pairInput(ItemSlot[] inputStacks)
         {
-            List<BarrelRecipeIngredient> ingredientList = new List<BarrelRecipeIngredient>(Ingredients);
+            int stackCount = 0;
+            foreach (var val in inputStacks) if (!val.Empty) stackCount++;
+            var Ingredients = this.Ingredients;
+            if (stackCount != Ingredients.Length) return null;
 
-            Queue<ItemSlot> inputSlotsList = new Queue<ItemSlot>();
-            foreach (var val in inputStacks) if (!val.Empty) inputSlotsList.Enqueue(val);
+            int ingredientDone = -1;   // BarrelReceipe only has 2 ingredients, solid and liquid, so we only need 1 ingredientDone variable
+            List<KeyValuePair<ItemSlot, BarrelRecipeIngredient>> matched = null;
 
-            if (inputSlotsList.Count != Ingredients.Length) return null;
-
-            List<KeyValuePair<ItemSlot, BarrelRecipeIngredient>> matched = new List<KeyValuePair<ItemSlot, BarrelRecipeIngredient>>();
-
-            while (inputSlotsList.Count > 0)
+            foreach (ItemSlot inputSlot in inputStacks)
             {
-                ItemSlot inputSlot = inputSlotsList.Dequeue();
-                bool found = false;
+                if (inputSlot.Empty) continue;
+                bool slotMatched = false;
 
-                for (int i = 0; i < ingredientList.Count; i++)
+                int i = 0;
+                for (; i < Ingredients.Length; i++)
                 {
-                    BarrelRecipeIngredient ingred = ingredientList[i];
-
-                    if (ingred.SatisfiesAsIngredient(inputSlot.Itemstack))
+                    if (i == ingredientDone) continue;
+                    if (Ingredients[i].SatisfiesAsIngredient(inputSlot.Itemstack))
                     {
-                        matched.Add(new KeyValuePair<ItemSlot, BarrelRecipeIngredient>(inputSlot, ingred));
-                        found = true;
-                        ingredientList.RemoveAt(i);
+                        matched ??= new ();
+                        matched.Add(new KeyValuePair<ItemSlot, BarrelRecipeIngredient>(inputSlot, Ingredients[i]));
+                        ingredientDone = i;
+                        slotMatched = true;
                         break;
                     }
                 }
 
-                if (!found) return null;
+                if (!slotMatched) return null;
             }
 
             // We're missing ingredients
-            if (ingredientList.Count > 0)
+            if (matched.Count < Ingredients.Length)
             {
                 return null;
             }

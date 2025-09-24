@@ -68,9 +68,6 @@ public class BlockEntityTobiasTeleporter : BlockEntityTeleporterBase
         {
             RegisterGameTickListener(OnClientGameTick, 50);
 
-            float rotY = Block.Shape.rotateY;
-            animUtil.InitializeAnimator("tobiasteleporter", null, null, new Vec3f(0, rotY, 0));
-
             translocatingSound = (api as ICoreClientAPI).World.LoadSound(new SoundParams()
             {
                 Location = new AssetLocation("sounds/effect/translocate-active.ogg"),
@@ -279,5 +276,15 @@ public class BlockEntityTobiasTeleporter : BlockEntityTeleporterBase
             dsc.AppendLine(Lang.Get("Owned by {0}", OwnerName));
         }
 
+    }
+
+    public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
+    {
+        if (animUtil.animator == null)
+        {
+            float rotY = Block.Shape.rotateY;
+            animUtil.InitializeAnimator("tobiasteleporter", null, null, new Vec3f(0, rotY, 0));
+        }
+        return base.OnTesselation(mesher, tessThreadTesselator);
     }
 }

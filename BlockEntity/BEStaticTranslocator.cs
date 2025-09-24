@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
@@ -80,9 +80,6 @@ namespace Vintagestory.GameContent
             
             if (api.World.Side == EnumAppSide.Client)
             {
-                float rotY = Block.Shape.rotateY;
-                animUtil.InitializeAnimator("translocator", null, null, new Vec3f(0, rotY, 0));
-
                 updateSoundState();
             }
         }
@@ -630,6 +627,12 @@ namespace Vintagestory.GameContent
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
         {
+            if (animUtil.animator == null)
+            {
+                float rotY = Block.Shape.rotateY;
+                animUtil.InitializeAnimator("translocator", null, null, new Vec3f(0, rotY, 0));
+            }
+
             if (animUtil.activeAnimationsByAnimCode.Count > 0 || (animUtil.animator != null && animUtil.animator.ActiveAnimationCount > 0))
             {
                 return true;

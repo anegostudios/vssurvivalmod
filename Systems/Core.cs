@@ -179,6 +179,7 @@ namespace Vintagestory.GameContent
         {
             capi = api;
 
+            BlockEntitySignRenderer.RegisterAndReserveRenderOrderRange(api);
             api.RegisterEntityRendererClass("EchoChamber", typeof(EchoChamberRenderer));
 
             api.Event.LevelFinalize += () =>
@@ -226,6 +227,11 @@ namespace Vintagestory.GameContent
         {
             this.config = networkMessage;
             applyConfig();
+        }
+
+        public override void Dispose()
+        {
+            AfterSignRenderer.OnGameDisposed();
         }
 
         private EnumHemisphere GetHemisphere(double posX, double posZ)

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text;
@@ -297,6 +297,7 @@ namespace Vintagestory.GameContent
 
     public class BlockCrate : BlockContainer, ITexPositionSource, IAttachableToEntity, IWearableShapeSupplier
     {
+        private const string CrateBaseMeshesCache = "cratebasemeshes";
         public Size2i AtlasSize { get { return tmpTextureSource.AtlasSize; } }
 
         string curType;
@@ -545,6 +546,8 @@ namespace Vintagestory.GameContent
 
                 capi.ObjectCache.Remove(key);
             }
+
+            capi.ObjectCache.Remove(CrateBaseMeshesCache);
         }
 
 
@@ -576,18 +579,35 @@ namespace Vintagestory.GameContent
             if (shape == null) return new MeshData();
 
             curType = type;
-            tesselator.TesselateShape("crate", shape, out MeshData mesh, this, rotation == null ? new Vec3f(Shape.rotateX, Shape.rotateY, Shape.rotateZ) : rotation);
 
+            Vec3f rot = rotation == null ? new Vec3f(Shape.rotateX, Shape.rotateY, Shape.rotateZ) : rotation;
+            string meshkey = cshape.Base + "-" + Code.ToShortString() + "-" + type + "-x" + rot.X + "-y" + rot.Y + "-y" + rot.Z;
+            var meshCache = ObjectCacheUtil.GetOrCreate(capi, CrateBaseMeshesCache, () => new Dictionary<string, MeshData>());
+            if (!meshCache.TryGetValue(meshkey, out MeshData mesh))
+            {
+                // Only generate the base crate mesh if necessary, otherwise we can simply clone it
+                tesselator.TesselateShape("crate", shape, out mesh, this, rot);
+                meshCache[meshkey] = mesh;
+            }
+
+            bool meshcloned = false;
             if (label != null && Props.Labels.TryGetValue(label, out var labelProps))
             {
                 var meshLabel = GenLabelMesh(capi, label, tmpTextureSource[labelProps.Texture], false, rotation);
+                mesh = mesh.Clone();
                 mesh.AddMeshData(meshLabel);
+                meshcloned = true;
             }
 
             if (contentStack != null && lidState != "closed")
             {
                 var contentMesh = genContentMesh(capi, contentStack, rotation);
-                if (contentMesh != null) mesh.AddMeshData(contentMesh);
+                if (contentMesh != null)
+                {
+                    if (!meshcloned) mesh = mesh.Clone();
+                    mesh.AddMeshData(contentMesh);
+                    meshcloned = true;
+                }
             }
 
 

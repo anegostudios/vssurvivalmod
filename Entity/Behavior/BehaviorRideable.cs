@@ -8,6 +8,7 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 
 #nullable disable
 
@@ -38,7 +39,13 @@ namespace Vintagestory.GameContent
         public bool IsInMidJump;
         public event CanRideDelegate CanRide;
         public event CanRideDelegate CanTurn;
+        /// <summary>
+        /// This is the current animation for the rider
+        /// </summary>
         public AnimationMetaData curAnim;
+        /// <summary>
+        /// This is the current animation for any passenger who is not the rider, for example a pillion passenger
+        /// </summary>
         public AnimationMetaData curAnimPassanger;
 
         protected ICoreAPI api;
@@ -61,6 +68,9 @@ namespace Vintagestory.GameContent
         protected GaitMeta saddleBreakGait;
         protected string saddleBreakGaitCode;
         protected bool onlyTwoGaits = false;
+        protected bool prevPrevForwardsKey = false;  // Used to more reliably filter out long presses of Forwards sometimes detected as two presses (because there is a frame where the control is false, for unknown reasons)
+        protected bool prevPrevBackwardsKey = false;  // Used to more reliably filter out long presses of Backwards sometimes being detected as two presses (because there is a frame where the control is false, for unknown reasons)
+        protected GaitMeta CurrentGait;
 
         ControlMeta curControlMeta = null;
         bool shouldMove = false;
@@ -69,6 +79,7 @@ namespace Vintagestory.GameContent
         internal string curSoundCode = null;
 
         string curTurnAnim = null;
+        string curMoveAnim = null;
         EnumControlScheme scheme;
 
         #region Semitamed animals
@@ -145,12 +156,44 @@ namespace Vintagestory.GameContent
                 val.RiderAnim?.Init();
                 val.PassengerAnim?.Init();
             }
-            curAnim = Controls["idle"].RiderAnim;
-            curAnimPassanger = Controls["idle"].GetPassengerAnim();
+            SetPassengerAnimationsToIdle();
 
             capi?.Event.RegisterRenderer(this, EnumRenderStage.Before, "rideablesim");
-
+            if (api.Event is IServerEventAPI serverEvents)
+            {
+                serverEvents.MountGaitReceived += ReceiveGaitFromClient;
+            }
         }
+
+        private void SetPassengerAnimationsToIdle()
+        {
+            var idleControl = Controls["idle"];
+            curAnim = idleControl.RiderAnim;
+            curAnimPassanger = idleControl.GetPassengerAnim();
+        }
+
+        /// <summary>
+        /// Server-side method called when the server has received the gait from the client-authoritative client (i.e. the rider's client)
+        /// (Helps fix de-sync issues especially for multiplayer observers)
+        /// </summary>
+        /// <param name="mountEntity"></param>
+        /// <param name="gaitCode"></param>
+        private void ReceiveGaitFromClient(Entity mountEntity, string gaitCode)
+        {
+            if (mountEntity != entity || gaitCode == null) return;
+
+            foreach (var gait in RideableGaitOrder)
+            {
+                if (gait.Code == gaitCode)
+                {
+                    if (gait == ebg.IdleGait) Stop();
+                    else SetGait(gait);
+
+                    break;
+                }
+            }
+        }
+
         public override void AfterInitialized(bool onFirstSpawn)
         {
             base.AfterInitialized(onFirstSpawn);
@@ -224,6 +267,7 @@ namespace Vintagestory.GameContent
         {
             updateControlScheme();
             ebg?.SetIdle();
+            CurrentGait = ebg.IdleGait;
         }
 
         private void updateControlScheme()
@@ -269,6 +313,7 @@ namespace Vintagestory.GameContent
 
             if (capi.IsGamePaused) return;
 
+            CurrentGait ??= ebg.CurrentGait;   // Initialize CurrentGait if necessary
             updateAngleAndMotion(dt);
         }
 
@@ -283,18 +328,22 @@ namespace Vintagestory.GameContent
 
             if (jumpNow) updateRidingState();
 
-            ForwardSpeed = Math.Sign(motion.X);
+            if (motion != null)  // If it's null, it's another player riding the elk in multiplayer, the speed and yaw etc will be governed by packets from the other player
+            {
+                ForwardSpeed = Math.Sign(motion.X);
 
-            float yawMultiplier = ebg.GetYawMultiplier();
+                float yawMultiplier = ebg.GetYawMultiplier();
 
-            AngularVelocity = motion.Y * yawMultiplier;
+                AngularVelocity = motion.Y * yawMultiplier;
 
-            entity.SidedPos.Yaw += (float)motion.Y * dt * 30f;
-            entity.SidedPos.Yaw = entity.SidedPos.Yaw % GameMath.TWOPI;
+                entity.SidedPos.Yaw += (float)motion.Y * dt * 30f;
+                entity.SidedPos.Yaw = entity.SidedPos.Yaw % GameMath.TWOPI;
+            }
 
             if (entity.World.ElapsedMilliseconds - lastJumpMs < 2000 && entity.World.ElapsedMilliseconds - lastJumpMs > 200 && entity.OnGround)
             {
                 eagent.StopAnimation("jump");
+                eagent.AnimManager.AnimationsDirty = true;
             }
         }
 
@@ -304,7 +353,7 @@ namespace Vintagestory.GameContent
 
         public GaitMeta GetNextGait(bool forward, GaitMeta currentGait = null)
         {
-            currentGait ??= ebg.CurrentGait;
+            currentGait ??= CurrentGait;
 
             if (eagent.Swimming) return forward ? ebg.Gaits["swim"] : ebg.Gaits["swimback"];
 
@@ -325,13 +374,18 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public void SetGait(GaitMeta nextGait)
+        {
+            CurrentGait = nextGait;
+            ebg.CurrentGait = nextGait;
+            ForwardSpeed = nextGait.Backwards  ? - 1 : (nextGait == ebg.IdleGait ? 0 : 1);
+        }
+
         public void SetNextGait(bool forward, GaitMeta nextGait = null)
         {
-            //if (api.Side == EnumAppSide.Server) return;     // radfast: in 1.21.0-rc.4 for more responsive motion, we change gait immediately on client side as well as server side
-
             nextGait ??= GetNextGait(forward);
 
-            ebg.CurrentGait = nextGait;
+            CurrentGait = nextGait;
         }
 
         public GaitMeta GetFirstForwardGait()
@@ -342,6 +396,7 @@ namespace Vintagestory.GameContent
             // Find the first forward gait
             return RideableGaitOrder.FirstOrDefault(g => !g.Backwards && g.MoveSpeed > 0) ?? ebg.IdleGait;
         }
+
 
         public virtual Vec2d SeatsToMotion(float dt)
         {
@@ -388,6 +443,8 @@ namespace Vintagestory.GameContent
                 }
 
                 if (Controller != seat.Passenger) continue;
+                if (capi != null && seat.Passenger != capi.World.Player.Entity) CurrentGait = ebg.CurrentGait;   // sync from server to us (through WatchedAttributes system)  but don't let the server override if we are the controlling rider client
+
 
                 var controls = seat.Controls;
                 bool canride = true;
@@ -446,49 +503,63 @@ namespace Vintagestory.GameContent
 
                 float str = ++seatsRowing == 1 ? 1 : 0.5f;
 
-                // Detect if button currently being pressed
-                bool nowForwards = controls.Forward;
-                bool nowBackwards = controls.Backward;
-                bool nowSprint = controls.Sprint;
-
-                // Toggling this off so that the next press of the sprint key will be a fresh press
-                // Need this to allow cycling up with sprint rather than just treating it as a boolean
-                // Only applies if there are more than two gaits specified for this mount
-                controls.Sprint = onlyTwoGaits && controls.Sprint && scheme == EnumControlScheme.Hold;
-
-                // Detect if current press is a fresh press
-                bool forwardPressed = nowForwards && !prevForwardKey;
-                bool backwardPressed = nowBackwards && !prevBackwardKey;
-                bool sprintPressed = nowSprint && !prevSprintKey;
-                long nowMs = entity.World.ElapsedMilliseconds;
-
-                // This ensures we start moving without sprint key
-                if (forwardPressed && ebg.IsIdle) SpeedUp();
-
-                // Handle backward to idle change without sprint key
-                else if (forwardPressed && ebg.IsBackward) ebg.SetIdle();
-
-                // Cycle up with sprint
-                else if (ebg.IsForward && sprintPressed && nowMs - lastGaitChangeMs > 300)
+                // We only let a keypress change the gait and animations if we are a client: this is the client-authoritative system  (prevents de-sync as server and client may see keypresses in different ticks or not at all)
+                if (api.Side != EnumAppSide.Server)
                 {
-                    SpeedUp();
+                    // Detect if button currently being pressed
+                    bool nowForwards = controls.Forward;
+                    bool nowBackwards = controls.Backward;
+                    bool nowSprint = controls.Sprint;
 
-                    lastGaitChangeMs = nowMs;
+                    // Toggling this off so that the next press of the sprint key will be a fresh press
+                    // Need this to allow cycling up with sprint rather than just treating it as a boolean
+                    // Only applies if there are more than two gaits specified for this mount
+                    controls.Sprint = onlyTwoGaits && controls.Sprint && scheme == EnumControlScheme.Hold;
+
+                    // Detect if current press is a fresh press
+                    bool backwardPressed = nowBackwards && !prevBackwardKey && !prevPrevBackwardsKey;
+                    bool sprintPressed = nowSprint && !prevSprintKey;
+                    long nowMs = entity.World.ElapsedMilliseconds;
+
+                    // This ensures we start moving without sprint key
+                    if (nowForwards && !prevForwardKey)
+                    {
+                        if (ebg.IsIdleGait(CurrentGait) && !prevPrevForwardsKey)
+                        {
+                            SpeedUp();
+                            lastGaitChangeMs = nowMs;
+                        }
+
+                        // Handle backward to idle change without sprint key
+                        else if (ebg.IsBackwards(CurrentGait))
+                        {
+                            CurrentGait = ebg.IdleGait;
+                            lastGaitChangeMs = nowMs;
+                        }
+                    }
+
+                    // Cycle up with sprint
+                    else if (ebg.IsForwards(CurrentGait) && sprintPressed && nowMs - lastGaitChangeMs > 300)
+                    {
+                        SpeedUp();
+                        lastGaitChangeMs = nowMs;
+                    }
+
+                    // Cycle down with back or when letting go of sprint when there are only two gaits
+                    bool cycleDown = backwardPressed || (!nowSprint && CurrentGait.IsSprint && scheme == EnumControlScheme.Hold);
+                    if (cycleDown && nowMs - lastGaitChangeMs > 300)
+                    {
+                        controls.Sprint = false;
+                        SlowDown();
+                        lastGaitChangeMs = nowMs;
+                    }
+
+                    prevSprintKey = nowSprint;
+                    prevPrevForwardsKey = prevForwardKey;  //   Used to "de-bounce", as sometimes a long-ish press of the Forwards key has a frame client-side when nowForwards is false
+                    prevPrevBackwardsKey = prevBackwardKey;  //   Used to "de-bounce", as sometimes a long-ish press of the Backwards key has a frame client-side when nowForwards is false
+                    prevForwardKey = (scheme == EnumControlScheme.Press && nowForwards);
+                    prevBackwardKey = scheme == EnumControlScheme.Press && nowBackwards;
                 }
-
-                // Cycle down with back or when letting go of sprint when there are only two gaits
-                bool cycleDown = backwardPressed || (!nowSprint && ebg.CurrentGait.IsSprint && scheme == EnumControlScheme.Hold);
-                if (cycleDown && nowMs - lastGaitChangeMs > 300)
-                {
-                    controls.Sprint = false;
-                    SlowDown();
-
-                    lastGaitChangeMs = nowMs;
-                }
-
-                prevSprintKey = nowSprint;
-                prevForwardKey = scheme == EnumControlScheme.Press && nowForwards;
-                prevBackwardKey = scheme == EnumControlScheme.Press && nowBackwards;
 
                 #region Motion update
                 if (canturn && (controls.Left || controls.Right))
@@ -496,9 +567,10 @@ namespace Vintagestory.GameContent
                     float dir = controls.Left ? 1 : -1;
                     angularMotion += ebg.GetYawMultiplier() * dir * dt;
                 }
-                if (ebg.IsForward || ebg.IsBackward)
+
+                if (ebg.IsForwards(CurrentGait) || ebg.IsBackwards(CurrentGait))
                 {
-                    float dir = ebg.IsForward ? 1 : -1;
+                    float dir = ebg.IsForwards(CurrentGait) ? 1 : -1;
                     linearMotion += str * dir * dt * 2f;
                 }
                 #endregion
@@ -515,44 +587,12 @@ namespace Vintagestory.GameContent
 
             if (RemainingSaddleBreaks > 0)
             {
-                ForwardSpeed = 1;
                 if (api.World.Rand.NextDouble() < 0.05) jumpNow = true;
-                ebg.CurrentGait = saddleBreakGait;
+                SetGait(saddleBreakGait);
 
                 if (api.World.ElapsedMilliseconds - mountedTotalMs > 4000)
                 {
-                    foreach (var seat in Seats)
-                    {
-                        if (seat?.Passenger == null) continue;
-                        var eagent = seat.Passenger as EntityAgent;
-
-                        if (api.World.Rand.NextDouble() < 0.5) eagent.ReceiveDamage(new DamageSource()
-                        {
-                            CauseEntity = entity,
-                            DamageTier = 1,
-                            Source = EnumDamageSource.Entity,
-                            SourcePos = this.Position.XYZ,
-                            Type = EnumDamageType.BluntAttack
-                        }, 1 + api.World.Rand.Next(8) / 4f);
-
-                        eagent.TryUnmount();
-                    }
-
-                    jumpNow = false;
-                    ForwardSpeed = 0;
-                    Stop();
-
-                    if (api.World.Calendar.TotalDays - LastSaddleBreakTotalDays > saddleBreakDayInterval)
-                    {
-                        RemainingSaddleBreaks--;
-                        LastSaddleBreakTotalDays = api.World.Calendar.TotalDays;
-                        if (RemainingSaddleBreaks <= 0)
-                        {
-                            ConvertToTamedAnimal();
-                            return;
-                        }
-                    }
-
+                    DoSaddleBreak();
                     return;
                 }
             }
@@ -566,29 +606,31 @@ namespace Vintagestory.GameContent
                 foreach (var seat in Seats)
                 {
                     var anim = meta.GetSeatAnimation(seat);
-                    seat.Passenger?.AnimManager?.StopAnimation(anim.Animation);
+                    seat.Passenger?.AnimManager?.StopAnimation(anim.Code);
                 }
 
-                eagent.AnimManager.StopAnimation(meta.Animation);
+                eagent.AnimManager.StopAnimation(meta.Code);
             }
 
             // Handle transition from swimming to walking
             if (eagent.Swimming)
             {
-                ebg.CurrentGait = ForwardSpeed > 0 ? ebg.Gaits["swim"] : ebg.Gaits["swimback"];
+                if (ForwardSpeed > 0) CurrentGait = ebg.Gaits["swim"];
+                else if (ForwardSpeed < 0) CurrentGait = ebg.Gaits["swimback"];
             }
-            else if (!eagent.Swimming && wasSwimming)
+            else if (wasSwimming)
             {
-                ebg.CurrentGait = ForwardSpeed > 0 ? ebg.Gaits["walk"] : ebg.Gaits["walkback"];
+                if (ForwardSpeed > 0) CurrentGait = ebg.Gaits["walk"];
+                else if (ForwardSpeed < 0) CurrentGait = ebg.Gaits["walkback"];
             }
 
             wasSwimming = eagent.Swimming;
 
             eagent.Controls.Backward = ForwardSpeed < 0;
             eagent.Controls.Forward = ForwardSpeed >= 0;
-            eagent.Controls.Sprint = ebg.CurrentGait.IsSprint && ForwardSpeed > 0;
+            eagent.Controls.Sprint = CurrentGait.IsSprint && ForwardSpeed > 0;
 
-            string nowTurnAnim=null;
+            string nowTurnAnim =null;
             if (ForwardSpeed >= 0)
             {
                 if (AngularVelocity > 0.001)
@@ -603,14 +645,33 @@ namespace Vintagestory.GameContent
             // This update fixes idle turn animation not stopping when entity has separate idle turn animations
             if (nowTurnAnim != curTurnAnim)
             {
-                if (curTurnAnim != null) eagent.StopAnimation(curTurnAnim);
-                var anim = (ForwardSpeed == 0 ? "idle-" : "") + nowTurnAnim;
-                curTurnAnim = anim;
-                eagent.StartAnimation(anim);
+                if (curTurnAnim != null)
+                {
+                    eagent.StopAnimation(curTurnAnim);
+                    eagent.AnimManager.AnimationsDirty = true;
+                }
+                if (nowTurnAnim == null)
+                {
+                    curTurnAnim = null;
+                }
+                else
+                {
+                    var anim = (ForwardSpeed == 0 ? "idle-" : "") + nowTurnAnim;
+                    curTurnAnim = anim;
+                    eagent.StartAnimation(anim);
+                    curMoveAnim = null;
+                }
+            }
+            else if (curMoveAnim == null && curControlMeta != null)
+            {
+                // Restart normal motion animation after a turn
+                eagent.AnimManager.StartAnimation(curControlMeta);
+                curMoveAnim = curControlMeta.Animation;
             }
 
             ControlMeta nowControlMeta;
 
+            bool doRiders = false;
             shouldMove = ForwardSpeed != 0;
             if (!shouldMove && !jumpNow)
             {
@@ -624,7 +685,7 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                nowControlMeta = Controls.FirstOrDefault(c => c.Key == ebg.CurrentGait.Code).Value;
+                nowControlMeta = Controls.FirstOrDefault(c => c.Key == CurrentGait.Code).Value;
 
                 nowControlMeta ??= Controls["idle"];
 
@@ -654,25 +715,81 @@ namespace Vintagestory.GameContent
                 }
                 else
                 {
-                    curAnim = nowControlMeta.RiderAnim;
-                    curAnimPassanger = nowControlMeta.GetPassengerAnim();
+                    doRiders = true;
                 }
             }
 
-            if (nowControlMeta != curControlMeta)
-            {
-                if (curControlMeta != null && curControlMeta.Animation != "jump")
-                {
-                    eagent.StopAnimation(curControlMeta.Animation);
-                }
-
-                curControlMeta = nowControlMeta;
-                if (api.Side == EnumAppSide.Server) eagent.AnimManager.StartAnimation(nowControlMeta);
-            }
+            StartAnimationsForControl(nowControlMeta, doRiders);
 
             if (api.Side == EnumAppSide.Server)
             {
                 eagent.Controls.Sprint = false; // Uh, why does the elk speed up 2x with this on?
+            }
+        }
+
+        private void StartAnimationsForControl(ControlMeta nowControlMeta, bool doRiders)
+        {
+            if (nowControlMeta != curControlMeta)
+            {
+                if (curControlMeta == null)
+                {
+                    if (nowControlMeta.Code != "jump")
+                    {
+                        eagent.StopAnimation(Controls["idle"].Code);
+                        Controller?.StopAnimation(Controls["idle"].RiderAnim.Code);
+                        eagent.AnimManager.AnimationsDirty = true;
+                    }
+                }
+                else if (curControlMeta.Code != "jump")
+                {
+                    eagent.StopAnimation(curControlMeta.Code);
+                    eagent.AnimManager.AnimationsDirty = true;
+                }
+
+                curControlMeta = nowControlMeta;
+                if (api.Side == EnumAppSide.Client) nowControlMeta.ClientSide = true;
+                eagent.AnimManager.StartAnimation(nowControlMeta);
+                curMoveAnim = nowControlMeta.Animation;
+            }
+
+            if (doRiders)
+            {
+                curAnim = nowControlMeta.RiderAnim;
+                curAnimPassanger = nowControlMeta.GetPassengerAnim();
+            }
+        }
+
+        protected void DoSaddleBreak()
+        {
+            foreach (var seat in Seats)
+            {
+                if (seat?.Passenger == null) continue;
+                var eagent = seat.Passenger as EntityAgent;
+
+                if (api.World.Rand.NextDouble() < 0.5) eagent.ReceiveDamage(new DamageSource()
+                {
+                    CauseEntity = entity,
+                    DamageTier = 1,
+                    Source = EnumDamageSource.Entity,
+                    SourcePos = this.Position.XYZ,
+                    Type = EnumDamageType.BluntAttack
+                }, 1 + api.World.Rand.Next(8) / 4f);
+
+                eagent.TryUnmount();
+            }
+
+            jumpNow = false;
+            Stop();
+
+            if (api.World.Calendar.TotalDays - LastSaddleBreakTotalDays > saddleBreakDayInterval)
+            {
+                RemainingSaddleBreaks--;
+                LastSaddleBreakTotalDays = api.World.Calendar.TotalDays;
+                if (RemainingSaddleBreaks <= 0)
+                {
+                    ConvertToTamedAnimal();
+                    return;
+                }
             }
         }
 
@@ -706,16 +823,25 @@ namespace Vintagestory.GameContent
         {
             gaitSound?.Stop();
             ebg.SetIdle();
+            CurrentGait = ebg.IdleGait;
+            ForwardSpeed = 0;
             eagent.Controls.StopAllMovement();
             eagent.Controls.WalkVector.Set(0, 0, 0);
             eagent.Controls.FlyVector.Set(0,0,0);
-            eagent.StopAnimation(curTurnAnim);
-            shouldMove = false;
-            if (curControlMeta != null && curControlMeta.Animation != "jump")
+            if (curTurnAnim != null)
             {
-                eagent.StopAnimation(curControlMeta.Animation);
+                eagent.StopAnimation(curTurnAnim);
+                eagent.AnimManager.AnimationsDirty = true;
+                curTurnAnim = null;
+            }
+            shouldMove = false;
+            if (curControlMeta != null && curControlMeta.Code != "jump")
+            {
+                eagent.StopAnimation(curControlMeta.Code);
+                eagent.AnimManager.AnimationsDirty = true;
             }
             curControlMeta = null;
+            curMoveAnim = null;
             eagent.StartAnimation("idle");
         }
 
@@ -723,6 +849,8 @@ namespace Vintagestory.GameContent
 
         public override void OnGameTick(float dt)
         {
+            CurrentGait ??= ebg.CurrentGait;   // Initialize CurrentGait if necessary
+
             if (api.Side == EnumAppSide.Server)
             {
                 updateAngleAndMotion(dt);
@@ -740,7 +868,7 @@ namespace Vintagestory.GameContent
                 // Adjust move speed based based on gait and control meta
                 var curMoveSpeed = curControlMeta.MoveSpeed > 0
                     ? curControlMeta.MoveSpeed
-                    : ebg.CurrentGait.MoveSpeed * curControlMeta.MoveSpeedMultiplier;
+                    : CurrentGait.MoveSpeed * curControlMeta.MoveSpeedMultiplier;
 
                 move(dt, eagent.Controls, curMoveSpeed);
             } else
@@ -749,6 +877,8 @@ namespace Vintagestory.GameContent
             }
 
             updateSoundState(dt);
+
+            if (api.Side == EnumAppSide.Server) ebg.CurrentGait = CurrentGait;
         }
 
         float notOnGroundAccum;
@@ -761,9 +891,9 @@ namespace Vintagestory.GameContent
 
             gaitSound?.SetPosition((float)entity.Pos.X, (float)entity.Pos.Y, (float)entity.Pos.Z);
 
-            if (Controls.TryGetValue(ebg.CurrentGait.Code, out ControlMeta controlMeta))
+            if (Controls.TryGetValue(CurrentGait.Code, out ControlMeta controlMeta))
             {
-                var gaitMeta = ebg.CurrentGait;
+                var gaitMeta = CurrentGait;
 
                 curSoundCode = eagent.Swimming || notOnGroundAccum > 0.2 ? null : gaitMeta.Sound;
 
@@ -851,6 +981,7 @@ namespace Vintagestory.GameContent
                 if (meta.RiderAnim?.Animation != null)
                 {
                     entityAgent.StopAnimation(meta.RiderAnim.Animation);
+                    eagent.AnimManager.AnimationsDirty = true;
                 }
             }
 
@@ -901,6 +1032,7 @@ namespace Vintagestory.GameContent
         {
             base.StopAnimation(code);
             base.StopAnimation(code + animAppendix);
+            AnimationsDirty = true;
         }
 
         public override bool StartAnimation(AnimationMetaData animdata)

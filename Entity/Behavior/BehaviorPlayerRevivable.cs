@@ -6,7 +6,6 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
-using Vintagestory.API.Datastructures;
 using Vintagestory.API.Util;
 
 #nullable disable
@@ -45,7 +44,8 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            entity.Revive();
+            entityPlayer.Revive();
+            entityPlayer.LastReviveTotalHours = entityPlayer.World.Calendar.TotalHours - 2; // No respawn glow
         }
 
 

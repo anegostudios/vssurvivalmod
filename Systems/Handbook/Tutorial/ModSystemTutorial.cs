@@ -117,19 +117,19 @@ namespace Vintagestory.GameContent
             api.Event.RegisterGameTickListener(onClientTick200ms, 200);
             capi.Input.AddHotkeyListener(onHotkey);
             capi.Input.InWorldAction += Input_InWorldAction;
-            
+
             api.ChatCommands.Create("tutorial")
                 .WithDescription("Interact with the tutorial system")
                 .BeginSubCommand("hud")
                     .WithDescription("Toggle the tutorial HUD")
                     .HandleWith(ToggleHud)
                 .EndSubCommand()
-                
+
                 .BeginSubCommand("restart")
                     .WithDescription("Restart the currently selected tutorial")
                     .HandleWith(OnTutRestart)
                 .EndSubCommand()
-                
+
                 .BeginSubCommand("skip")
                     .WithDescription("Skip the currently selected tutorial")
                 .WithArgs(this.api.ChatCommands.Parsers.OptionalInt("skip_amount",1))
@@ -214,7 +214,7 @@ namespace Vintagestory.GameContent
         {
             currentTutorialInst?.Save();
         }
-        
+
 
         private void Event_LevelFinalize_Client()
         {
@@ -303,9 +303,12 @@ namespace Vintagestory.GameContent
         }
 
         void reloadTutorialPage()
-        {           
+        {
             GuiDialogHandbook hanndbookdlg = capi.Gui.OpenedGuis.FirstOrDefault(dlg => dlg is GuiDialogHandbook) as GuiDialogHandbook;
-            hanndbookdlg?.ReloadPage();
+            if (hanndbookdlg?.currentCatgoryCode == "tutorial")
+            {
+                hanndbookdlg.ReloadPage();
+            }
         }
 
 
@@ -339,7 +342,7 @@ namespace Vintagestory.GameContent
 
             if (tutorialModeActiveForPlayers.Contains(plr.PlayerUID))
             {
-                sapi.Network.GetChannel("tutorial").SendPacket(new ItemStackReceivedPacket() { 
+                sapi.Network.GetChannel("tutorial").SendPacket(new ItemStackReceivedPacket() {
                     eventname = eventName,
                     stackbytes = stack.ToBytes()
                 }, plr as IServerPlayer);

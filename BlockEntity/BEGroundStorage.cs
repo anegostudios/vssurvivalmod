@@ -914,6 +914,8 @@ namespace Vintagestory.GameContent
                 Block pileblock = Api.World.BlockAccessor.GetBlock(Pos);
                 Block aboveblock = Api.World.BlockAccessor.GetBlock(abovePos);
 
+                if (abovePos.Y >= Api.World.BlockAccessor.MapSizeY) return false;
+
                 if (aboveblock.IsReplacableBy(pileblock))
                 {
                     if (!equalStack && bs.Face != BlockFacing.UP) return false;
@@ -1432,8 +1434,7 @@ namespace Vintagestory.GameContent
 
                 tfMatrices[i] =
                     new Matrixf()
-                    .Translate(off.X, off.Y, off.Z)
-                    .Translate(0.5f, 0, 0.5f)
+                    .Translate(off.X + 0.5f, off.Y, off.Z + 0.5f)
                     .RotateY(MeshAngle)
                     .Translate(-0.5f, 0, -0.5f)
                     .Values

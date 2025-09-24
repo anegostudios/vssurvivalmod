@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -97,11 +97,6 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(api);
             inv.LateInitialize("curdsbundle-" + Pos, api);
-
-            if (api.Side == EnumAppSide.Client)
-            {
-                animUtil?.InitializeAnimator("curdbundle", (Block as BlockCheeseCurdsBundle).GetShape(EnumCurdsBundleState.BundledStick), null, animRot);
-            }
         }
 
         public override void OnBlockPlaced(ItemStack byItemStack = null)
@@ -224,6 +219,11 @@ namespace Vintagestory.GameContent
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
         {
+            if (animUtil?.animator == null)
+            {
+                animUtil?.InitializeAnimator("curdbundle", (Block as BlockCheeseCurdsBundle).GetShape(EnumCurdsBundleState.BundledStick), null, animRot);
+            }
+
             bool skipMesh = base.OnTesselation(mesher, tessThreadTesselator);
 
             if (!skipMesh)

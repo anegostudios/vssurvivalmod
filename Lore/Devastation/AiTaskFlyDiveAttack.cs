@@ -116,8 +116,8 @@ public class AiTaskFlyDiveAttack : AiTaskBaseTargetable
         impacted = false;
         base.StartExecute();
     }
-    public override bool 
-        ContinueExecute(float dt)
+    
+    public override bool ContinueExecute(float dt)
     {
         //Check if time is still valid for task.
         if (!IsInValidDayTimeHours(false)) return false;
@@ -128,9 +128,10 @@ public class AiTaskFlyDiveAttack : AiTaskBaseTargetable
         }
         
         updateTargetPosition();
-
+        
         if (impacted)
         {
+            entity.GetBehavior<EntityBehaviorTaskAI>()?.PathTraverser?.Stop();
             return onImpact();
         }
 
@@ -193,6 +194,10 @@ public class AiTaskFlyDiveAttack : AiTaskBaseTargetable
 
         (entity as EntityErel).LastAttackTime = entity.World.ElapsedMilliseconds;
 
+        var ee = (entity as EntityErel);
+        if (ee != null) ee.StandingOnGround = false;
+
+
         base.FinishExecute(cancelled);
     }
 
@@ -218,12 +223,15 @@ public class AiTaskFlyDiveAttack : AiTaskBaseTargetable
 
         RunningAnimation state = entity.AnimManager.GetAnimationState("slam");
 
-        if (state != null && state.AnimProgress > 0.5f)
+        if (state != null && state.AnimProgress > 0.9f)
         {
             entity.AnimManager.StartAnimation("takeoff");
         }
 
-        return state == null || state.AnimProgress < 0.6f;
+        var ee = (entity as EntityErel);
+        if (ee != null) ee.StandingOnGround = true;
+
+        return state == null || state.AnimProgress < 0.99f;
     }
     protected void followTargetOnFlyUp()
     {

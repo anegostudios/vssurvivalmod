@@ -242,6 +242,6 @@ public class BehaviorHealingItem : CollectibleBehavior, ICanHealCreature
         return targetEntity;
     }
 
-    protected virtual bool CancelApplication(Entity entity) => !entity.OnGround && !entity.Swimming && Config.CancelInAir || entity.Swimming && Config.CancelWhileSwimming;
+    protected virtual bool CancelApplication(Entity entity) => (!entity.OnGround && !entity.Swimming && Config.CancelInAir) || (entity.Swimming && Config.CancelWhileSwimming);
 }
 

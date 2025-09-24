@@ -1,3 +1,4 @@
+using OpenTK.Compute.OpenCL;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -153,13 +154,31 @@ namespace Vintagestory.GameContent
 
 
         #region Mesh generation
-
+        MeshData sealedMeshCached;
+        MeshData unsealedMeshCached;
         public MeshData GenMesh(ItemStack contentStack, ItemStack liquidContentStack, bool issealed, BlockPos forBlockPos = null)
         {
             ICoreClientAPI capi = api as ICoreClientAPI;
 
-            Shape shape = API.Common.Shape.TryGet(capi, issealed ? sealedShape : emptyShape);
-            capi.Tesselator.TesselateShape(this, shape, out MeshData barrelMesh);
+            MeshData barrelMesh;
+            if (issealed)
+            {
+                if (sealedMeshCached == null)
+                {
+                    Shape shape = API.Common.Shape.TryGet(capi, sealedShape);
+                    capi.Tesselator.TesselateShape(this, shape, out sealedMeshCached);
+                }
+                barrelMesh = sealedMeshCached;
+            }
+            else
+            {
+                if (unsealedMeshCached == null)
+                {
+                    Shape shape = API.Common.Shape.TryGet(capi, emptyShape);
+                    capi.Tesselator.TesselateShape(this, shape, out unsealedMeshCached);
+                }
+                barrelMesh = unsealedMeshCached;
+            }
 
             if (!issealed)
             {
@@ -173,18 +192,19 @@ namespace Vintagestory.GameContent
 
                 if (contentMesh != null)
                 {
+                    barrelMesh = barrelMesh.Clone();
                     barrelMesh.AddMeshData(contentMesh);
-                }
 
-                if (forBlockPos != null)
-                {
-                    // Water flags
-                    barrelMesh.CustomInts = new CustomMeshDataPartInt(barrelMesh.FlagsCount);
-                    barrelMesh.CustomInts.Values.Fill(VertexFlags.LiquidWeakFoamBitMask); // light foam only
-                    barrelMesh.CustomInts.Count = barrelMesh.FlagsCount;
+                    if (forBlockPos != null)
+                    {
+                        // Water flags
+                        barrelMesh.CustomInts = new CustomMeshDataPartInt(barrelMesh.FlagsCount);
+                        barrelMesh.CustomInts.Values.Fill(VertexFlags.LiquidWeakFoamBitMask); // light foam only
+                        barrelMesh.CustomInts.Count = barrelMesh.FlagsCount;
 
-                    barrelMesh.CustomFloats = new CustomMeshDataPartFloat(barrelMesh.FlagsCount * 2);
-                    barrelMesh.CustomFloats.Count = barrelMesh.FlagsCount * 2;
+                        barrelMesh.CustomFloats = new CustomMeshDataPartFloat(barrelMesh.FlagsCount * 2);
+                        barrelMesh.CustomFloats.Count = barrelMesh.FlagsCount * 2;
+                    }
                 }
             }
 
@@ -209,9 +229,10 @@ namespace Vintagestory.GameContent
 
         private MeshData getContentMeshFromAttributes(ItemStack contentStack, ItemStack liquidContentStack, BlockPos forBlockPos)
         {
-            if (liquidContentStack?.ItemAttributes?["inBarrelShape"].Exists == true)
+            JsonObject inBarrelShapeAttr = liquidContentStack?.ItemAttributes?["inBarrelShape"];
+            if (inBarrelShapeAttr != null && inBarrelShapeAttr.Exists)
             {
-                var loc = AssetLocation.Create(liquidContentStack.ItemAttributes?["inBarrelShape"].AsString(), contentStack.Collectible.Code.Domain).WithPathPrefixOnce("shapes").WithPathAppendixOnce(".json");
+                var loc = AssetLocation.Create(inBarrelShapeAttr.AsString(), contentStack.Collectible.Code.Domain).WithPathPrefixOnce("shapes").WithPathAppendixOnce(".json");
                 return getContentMesh(contentStack, forBlockPos, loc);
             }
 
@@ -221,6 +242,7 @@ namespace Vintagestory.GameContent
 
         protected MeshData getContentMesh(ItemStack stack, BlockPos forBlockPos, AssetLocation shapefilepath)
         {
+            if (stack == null) return null;
             ICoreClientAPI capi = api as ICoreClientAPI;
 
             WaterTightContainableProps props = GetContainableProps(stack);
@@ -240,7 +262,7 @@ namespace Vintagestory.GameContent
             }
 
 
-            if (stack != null && contentSource != null)
+            if (contentSource != null)
             {
                 Shape shape = API.Common.Shape.TryGet(capi, shapefilepath);
                 if (shape == null)
@@ -254,17 +276,29 @@ namespace Vintagestory.GameContent
 
                 if (props?.ClimateColorMap != null)
                 {
-                    int col = capi.World.ApplyColorMapOnRgba(props.ClimateColorMap, null, ColorUtil.WhiteArgb, 196, 128, false);
+                    int col;
                     if (forBlockPos != null)
                     {
                         col = capi.World.ApplyColorMapOnRgba(props.ClimateColorMap, null, ColorUtil.WhiteArgb, forBlockPos.X, forBlockPos.Y, forBlockPos.Z, false);
                     }
+                    else
+                    {
+                        col = capi.World.ApplyColorMapOnRgba(props.ClimateColorMap, null, ColorUtil.WhiteArgb, 196, 128, false);
+                    }
 
                     byte[] rgba = ColorUtil.ToBGRABytes(col);
+                    byte rgba0 = rgba[0];
+                    byte rgba1 = rgba[1];
+                    byte rgba2 = rgba[2];
+                    byte rgba3 = rgba[3];
 
-                    for (int i = 0; i < contentMesh.Rgba.Length; i++)
+                    var meshRgba = contentMesh.Rgba;
+                    for (int i = 0; i < meshRgba.Length; i+=4)
                     {
-                        contentMesh.Rgba[i] = (byte)((contentMesh.Rgba[i] * rgba[i % 4]) / 255);
+                        meshRgba[i + 0] = (byte)((meshRgba[i + 0] * rgba0) / 255);
+                        meshRgba[i + 1] = (byte)((meshRgba[i + 1] * rgba1) / 255);
+                        meshRgba[i + 2] = (byte)((meshRgba[i + 2] * rgba2) / 255);
+                        meshRgba[i + 3] = (byte)((meshRgba[i + 3] * rgba3) / 255);
                     }
                 }
 

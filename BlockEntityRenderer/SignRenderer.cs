@@ -1,4 +1,6 @@
-﻿using Vintagestory.API.Client;
+using System;
+using System.Drawing.Imaging;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
@@ -8,15 +10,54 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
+    public class AfterSignRenderer : IRenderer
+    {
+        public static bool Registered = false;
+
+        public double RenderOrder => BlockEntitySignRenderer.AfterSignRendererOrder;
+
+        public int RenderRange => 24;
+
+        public AfterSignRenderer()
+        {
+            Registered = true;
+        }
+
+        public void OnRenderFrame(float deltaTime, EnumRenderStage stage)
+        {
+            BlockEntitySignRenderer.AfterRenderFrameOnce();
+        }
+
+        public void Dispose()
+        {
+        }
+
+        public static void OnGameDisposed()
+        {
+            Registered = false;
+            BlockEntitySignRenderer.AfterRenderFrameOnce();   // Dispose of any shader, in case we exit the game at a strange time between the two renderers (e.g. due to an exception). Doesn't have to be 100% perfect, any code might throw an exception between shader.Use() and shader.Stop() - this is definitely "good enough"
+        }
+    }
+
     public class BlockEntitySignRenderer : IRenderer
     {
+        /// <summary>
+        /// Special value, intended to be immediately followed by AfterSignRendererOrder with no other renderers in between nor with the same values
+        /// </summary>
+        public static double SignRendererOrder = 1.101;
+        /// <summary>
+        /// Special value, intended to be immediately preceded by SignRendererOrder with no other renderers in between nor with the same values
+        /// </summary>
+        public static double AfterSignRendererOrder = 1.102;
+
+        private static readonly double[] blackColor = { 0, 0, 0, 0.8 };
         protected int TextWidth = 200;
         protected int TextHeight = 100;
 
         protected float QuadWidth = 14/16f;
         protected float QuadHeight = 6.5f/16f;
 
-
+        protected string text;
         protected CairoFont font;
         protected BlockPos pos;
         protected ICoreClientAPI api;
@@ -38,9 +79,16 @@ namespace Vintagestory.GameContent
         EnumVerticalAlign verticalAlign;
         internal bool translateable;
 
+        // Some static fields used for Performance control in OnRenderFrame()
+        private static float lastDt = -1;
+        private static int renderTextMaxCount;
+        public static IStandardShaderProgram progCached;
+
+
         public double RenderOrder
         {
-            get { return 1.1; } // 11.11.2020 - this was 0.5 but that causes issues with signs + chest animation
+            get { return SignRendererOrder; } // 11.11.2020 - this was 0.5 but that causes issues with signs + chest animation
+            // radfast 08.09.2025 - we use a unique RenderOrder, so that all signs render together, for efficiency in using the same shader
         }
 
         public int RenderRange
@@ -60,7 +108,7 @@ namespace Vintagestory.GameContent
             this.verticalAlign = config.VerticalAlign;
             this.TextWidth = config.MaxWidth;
 
-            font = new CairoFont(this.fontSize, config.FontName, new double[] { 0, 0, 0, 0.8 });
+            font = new CairoFont(this.fontSize, config.FontName, blackColor);
             if (config.BoldFont) font.WithWeight(Cairo.FontWeight.Bold);
             font.LineHeightMultiplier = 0.9f;
 
@@ -140,72 +188,104 @@ namespace Vintagestory.GameContent
                 text = translatedText;
             }
 
-            font.WithColor(ColorUtil.ToRGBADoubles(color));
+            font.Color = ColorUtil.ToRGBADoubles(color);
             loadedTexture?.Dispose();
             loadedTexture = null;
-
-            if (text.Length > 0)
-            {
-                font.UnscaledFontsize = fontSize / RuntimeEnv.GUIScale;
-
-                double verPadding = verticalAlign == EnumVerticalAlign.Middle ? (TextHeight - api.Gui.Text.GetMultilineTextHeight(font, text, TextWidth)) : 0;
-                var bg = new TextBackground() { 
-                    VerPadding = (int)verPadding / 2
-                };
-                
-                loadedTexture = api.Gui.TextTexture.GenTextTexture(
-                    text, 
-                    font, 
-                    TextWidth, 
-                    TextHeight,
-                    bg, 
-                    EnumTextOrientation.Center, 
-                    false
-                );
-            }
+            this.text = text;
         }
 
+        protected LoadedTexture RenderText()
+        {
+            font.UnscaledFontsize = fontSize / RuntimeEnv.GUIScale;
 
+            double verPadding = verticalAlign == EnumVerticalAlign.Middle ? (TextHeight - api.Gui.Text.GetMultilineTextHeight(font, text, TextWidth)) : 0;
+            var bg = new TextBackground()
+            {
+                VerPadding = (int)verPadding / 2
+            };
 
+            return api.Gui.TextTexture.GenTextTexture(
+                text,
+                font,
+                TextWidth,
+                TextHeight,
+                bg,
+                EnumTextOrientation.Center,
+                false
+            );
+        }
 
         public virtual void OnRenderFrame(float deltaTime, EnumRenderStage stage)
         {
-            if (loadedTexture == null) return;
-            if (!api.Render.DefaultFrustumCuller.SphereInFrustum(pos.X + 0.5, pos.Y + 0.5, pos.Z + 0.5, 1)) return;
+            if (loadedTexture == null)
+            {
+                if (text != null && text.Length > 0)
+                {
+                    if (lastDt != deltaTime)
+                    {
+                        lastDt = deltaTime;
+                        renderTextMaxCount = 32;
+                    }
+                    if (renderTextMaxCount-- <= 0) return;    // For performance, limit the number of new sign texts rendered each frame
+
+                    loadedTexture = RenderText();
+                }
+                else return;
+            }
+            if (!api.Render.DefaultFrustumCuller.SphereInFrustum(pos.X + 0.5, pos.InternalY + 0.5, pos.Z + 0.5, 1)) return;
 
             IRenderAPI rpi = api.Render;
             Vec3d camPos = api.World.Player.Entity.CameraPos;
 
-            rpi.GlDisableCullFace();
             rpi.GlToggleBlend(true, EnumBlendMode.PremultipliedAlpha);
+            var prog = progCached;
+            if (prog == null)
+            {
+                rpi.GlDisableCullFace();
 
-            IStandardShaderProgram prog = rpi.PreparedStandardShader(pos.X, pos.Y, pos.Z);
+                progCached = prog = rpi.PreparedStandardShader(pos.X, pos.InternalY, pos.Z);
 
+                prog.ViewMatrix = rpi.CameraMatrixOriginf;
+                prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
+                prog.NormalShaded = 0;
+                prog.ExtraGodray = 0;
+                prog.SsaoAttn = 0;
+                prog.AlphaTest = 0.05f;
+                prog.OverlayOpacity = 0;
+            }
+            else
+            {
+                prog.RgbaLightIn = api.World.BlockAccessor.GetLightRGBs(pos);
+            }
 
             prog.Tex2D = loadedTexture.TextureId;
-            prog.NormalShaded = 0;
             prog.ModelMatrix = ModelMat
                 .Identity()
-                .Translate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z)
-                .Translate(translateX, translateY, translateZ)
+                .Translate(pos.X - camPos.X + translateX, pos.InternalY - camPos.Y + translateY, pos.Z - camPos.Z + translateZ)
                 .RotateY(rotY * GameMath.DEG2RAD)
                 .Translate(offsetX, offsetY, offsetZ)
                 .Scale(0.5f * QuadWidth, 0.5f * QuadHeight, 0.5f * QuadWidth)
                 .Values
             ;
 
-            prog.ViewMatrix = rpi.CameraMatrixOriginf;
-            prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
-            prog.NormalShaded = 0;
-            prog.ExtraGodray = 0;
-            prog.SsaoAttn = 0;
-            prog.AlphaTest = 0.05f;
-            prog.OverlayOpacity = 0;
-
             rpi.RenderMesh(quadModelRef);
-            prog.Stop();
-
             rpi.GlToggleBlend(true, EnumBlendMode.Standard);
+        }
+
+        /// <summary>
+        /// To be called once after all OnRenderFrame() calls for the current frame.
+        /// (This is achieved by calling this from an AfterSignRenderer renderer)
+        /// </summary>
+        /// <param name="api"></param>
+        public static void AfterRenderFrameOnce()
+        {
+            if (progCached != null)
+            {
+                var prog = progCached;
+                progCached = null;
+                prog.Stop();
+            }
+            lastDt = -1;
         }
 
         public void Dispose()
@@ -215,5 +295,9 @@ namespace Vintagestory.GameContent
             quadModelRef?.Dispose();
         }
 
+        public static void RegisterAndReserveRenderOrderRange(ICoreClientAPI api)
+        {
+            api.Event.RegisterRenderer(new AfterSignRenderer(), EnumRenderStage.Opaque, "aftersign", SignRendererOrder, AfterSignRendererOrder, typeof(BlockEntitySignRenderer));
+        }
     }
 }

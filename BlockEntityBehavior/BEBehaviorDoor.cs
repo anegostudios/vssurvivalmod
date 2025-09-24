@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
@@ -198,6 +198,7 @@ namespace Vintagestory.GameContent
                     doorBh.animatableShape = shape;
                     doorBh.animatableDictKey = animkey;
                 }
+
                 if (doorBh.animatableOrigMesh != null)
                 {
                     animUtil.InitializeAnimator(doorBh.animatableDictKey, doorBh.animatableOrigMesh, doorBh.animatableShape, null);
