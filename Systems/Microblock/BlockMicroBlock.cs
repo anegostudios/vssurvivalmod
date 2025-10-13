@@ -555,36 +555,35 @@ namespace Vintagestory.GameContent
 
         public virtual bool TryToRemoveSoilFirst(IWorldAccessor world, BlockPos pos, IPlayer byPlayer)
         {
-            if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
+            if (byPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative) return false;
+
+            var be = GetBlockEntity<BlockEntityMicroBlock>(pos);
+            if (be?.BlockIds == null) return false;
+
+            bool removed = false;
+            Block block = null;
+
+            bool hasNonSoil = be.BlockIds.Any(bid => world.Blocks[bid].BlockMaterial != EnumBlockMaterial.Soil);
+
+            // If this microblock is a mix of soil and another material, remove the soil first and leave the rest intact
+            if (hasNonSoil)
             {
-                var be = GetBlockEntity<BlockEntityMicroBlock>(pos);
-                if (be == null) return false;
-
-                bool removed = false;
-                Block block = null;
-
-                bool hasNonSoil = be.BlockIds.Any(bid => world.Blocks[bid].BlockMaterial != EnumBlockMaterial.Soil);
-
-                // If this microblock is a mix of soil and another material, remove the soil first and leave the rest intact
-                if (hasNonSoil)
+                for (int i = 0; i < be.BlockIds.Length; i++)
                 {
-                    for (int i = 0; i < be.BlockIds.Length; i++)
+                    block = world.Blocks[be.BlockIds[i]];
+                    if (block.BlockMaterial == EnumBlockMaterial.Soil || block.BlockMaterial == EnumBlockMaterial.Sand || block.BlockMaterial == EnumBlockMaterial.Gravel)
                     {
-                        block = world.Blocks[be.BlockIds[i]];
-                        if (block.BlockMaterial == EnumBlockMaterial.Soil || block.BlockMaterial == EnumBlockMaterial.Sand || block.BlockMaterial == EnumBlockMaterial.Gravel)
-                        {
-                            be.RemoveMaterial(block);
-                            removed = true;
-                        }
+                        be.RemoveMaterial(block);
+                        removed = true;
                     }
+                }
 
-                    if (removed)
-                    {
-                        world.PlaySoundAt(block.Sounds?.GetBreakSound(byPlayer), pos, 0, byPlayer);
-                        SpawnBlockBrokenParticles(pos);
-                        be.MarkDirty(true);
-                        return true;
-                    }
+                if (removed)
+                {
+                    world.PlaySoundAt(block.Sounds?.GetBreakSound(byPlayer), pos, 0, byPlayer);
+                    SpawnBlockBrokenParticles(pos);
+                    be.MarkDirty(true);
+                    return true;
                 }
             }
 

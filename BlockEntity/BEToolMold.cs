@@ -646,6 +646,7 @@ namespace Vintagestory.GameContent
         public bool BeingChiseled { get; set; }
         public MeshData GetCurrentDecalMesh(ITexPositionSource texPositionSource)
         {
+            tmpTextureSource ??= capi.Tesselator.GetTextureSource(Block);
             MeshData mesh;
 
             if (BeingChiseled)

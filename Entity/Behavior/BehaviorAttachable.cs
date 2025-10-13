@@ -18,7 +18,6 @@ namespace Vintagestory.GameContent
     public interface IRopeTiedCreatureCarrier
     {
         bool TryMount(EntityAgent entity);
-
     }
 
     public class ItemSlotWearable : ItemSlot
@@ -275,18 +274,19 @@ namespace Vintagestory.GameContent
             entity.World.BlockAccessor.GetChunkAtBlockPos(entity.ServerPos.AsBlockPos).MarkModified();
         }
 
-        private bool TryRemoveAttachment(EntityAgent byEntity, int slotIndex)
+        private bool TryRemoveAttachment(EntityAgent byEntity, int selectionBoxIndex)
         {
-            var slot = GetSlotFromSelectionBoxIndex(slotIndex);
+            int slotIndex = GetSlotIndexFromSelectionBoxIndex(selectionBoxIndex);
+            ItemSlot slot = inv[slotIndex];
 
-            if (slot == null || slot.Empty) return false;
+            if (slot.Empty) return false;
 
             // Don't allow removal of seats where somebody sits on
             var ebh = entity.GetBehavior<EntityBehaviorSeatable>();
             if (ebh != null)
             {
                 var bhs = entity.GetBehavior<EntityBehaviorSelectionBoxes>();
-                var apap = bhs.selectionBoxes[slotIndex];
+                var apap = bhs.selectionBoxes[selectionBoxIndex];
                 string apname = apap.AttachPoint.Code;
                 var seat = ebh.Seats.FirstOrDefault((seat) => seat.Config.APName == apname || seat.Config.SelectionBox == apname);
                 if (seat?.Passenger != null)
@@ -329,15 +329,15 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-        private bool TryAttach(ItemSlot itemslot, int slotIndex, EntityAgent byEntity)
+        private bool TryAttach(ItemSlot itemslot, int selectionBoxIndex, EntityAgent byEntity)
         {
             var iatta = IAttachableToEntity.FromCollectible(itemslot.Itemstack.Collectible);
             if (iatta == null || !iatta.IsAttachable(entity, itemslot.Itemstack)) return false;
 
-            var targetSlot = GetSlotFromSelectionBoxIndex(slotIndex);
-
+            int slotIndex = GetSlotIndexFromSelectionBoxIndex(selectionBoxIndex);
+            ItemSlot targetSlot = inv[slotIndex];
             string code = iatta.GetCategoryCode(itemslot.Itemstack);
-            var slotConfig = wearableSlots[slotIndex];
+            WearableSlotConfig slotConfig = wearableSlots[slotIndex];
 
             var ebhs = entity.GetBehavior<EntityBehaviorSeatable>();
             if (ebhs != null)
@@ -426,19 +426,22 @@ namespace Vintagestory.GameContent
         }
 
 
-        public ItemSlot GetSlotFromSelectionBoxIndex(int seleBoxIndex)
+        public ItemSlot GetSlotFromSelectionBoxIndex(int boxIndex)
         {
-            var index = GetSlotIndexFromSelectionBoxIndex(seleBoxIndex);
+            var index = GetSlotIndexFromSelectionBoxIndex(boxIndex);
             if (index == -1) return null;
             return inv[index];
         }
 
-        public int GetSlotIndexFromSelectionBoxIndex(int seleBoxIndex)
+        public int GetSlotIndexFromSelectionBoxIndex(int boxIndex)
         {
-            var seleBoxes = entity.GetBehavior<EntityBehaviorSelectionBoxes>().selectionBoxes;
-            if (seleBoxes.Length <= seleBoxIndex || seleBoxIndex < 0) return -1;
+            if (boxIndex < 0) return -1;
 
-            string apCode = seleBoxes[seleBoxIndex].AttachPoint.Code;
+            var selectionBehavior = entity.GetBehavior<EntityBehaviorSelectionBoxes>();
+            ArgumentNullException.ThrowIfNull(selectionBehavior);
+
+            // Allow throwing if the index is out of bounds, since that shouldn't be happening
+            string apCode = selectionBehavior.selectionBoxes[boxIndex].AttachPoint.Code;
 
             return wearableSlots.IndexOf(elem => elem.AttachmentPointCode == apCode);
         }

@@ -310,6 +310,10 @@ namespace Vintagestory.GameContent
 
             string classname = slot.Itemstack.Attributes.GetString("classname");
             string creaturecode = slot.Itemstack.Attributes.GetString("creaturecode");
+            if (((IServerWorldAccessor)world).RemappedEntities.TryGetValue(creaturecode, out string remap))
+            {
+                creaturecode = remap; // If we don't do this here then the type won't resolve and we'll return early a couple lines later
+            }
             Entity entity = world.Api.ClassRegistry.CreateEntity(classname);
             var type = world.EntityTypes.FirstOrDefault(type => type.Code.ToShortString() == creaturecode);
             if (type == null) return false;

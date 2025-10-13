@@ -242,18 +242,6 @@ namespace Vintagestory.GameContent
             var bha = entity.GetBehavior<EntityBehaviorAttachable>();
             if (bha != null)
             {
-                if (selectionBoxIndex == -1)
-                {
-                    var bhas = entity.GetBehavior<EntityBehaviorSelectionBoxes>();
-                    selectionBoxIndex = bhas.selectionBoxes.IndexOf(x => x.AttachPoint.Code == seat.Config.SelectionBox);
-                }
-                var targetSlot = bha.GetSlotFromSelectionBoxIndex(selectionBoxIndex);
-                var category = targetSlot?.Itemstack?.Item?.Attributes?["attachableToEntity"]["categoryCode"].AsString();
-                if (targetSlot?.Empty == false && category != "seat" &&  category != "saddle" && category != "pillion")
-                {
-                    return false;
-                }
-
                 var slot = bha.GetSlotConfigFromAPName(seat.Config.APName);
                 if (slot?.Empty == false)
                 {

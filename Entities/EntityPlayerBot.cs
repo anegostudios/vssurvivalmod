@@ -193,6 +193,12 @@ namespace Vintagestory.GameContent
             base.Inventory_SlotModified(slotid);
             storeInv();
         }
+
+        protected override bool ShouldAddGearToShape(ItemSlot slot)
+        {
+            // Because these are already rendered in EntityShapeRenderer
+            return slot != (entity as EntityAgent).LeftHandItemSlot && slot != (entity as EntityAgent).RightHandItemSlot;
+        }
     }
 
     public class EntityBehaviorSeraphInventory : EntityBehaviorTexturedClothing

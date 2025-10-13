@@ -186,8 +186,16 @@ namespace Vintagestory.GameContent
             {
                 if (gait.Code == gaitCode)
                 {
-                    if (gait == ebg.IdleGait) Stop();
-                    else SetGait(gait);
+                    if (gait == CurrentGait) return;     // No action needed if the server already has this gait
+
+                    if (gait == ebg.IdleGait)
+                    {
+                        Stop();
+                    }
+                    else
+                    {
+                        SetGait(gait);
+                    }
 
                     break;
                 }
@@ -221,6 +229,11 @@ namespace Vintagestory.GameContent
             base.OnEntityDespawn(despawn);
 
             capi?.Event.UnregisterRenderer(this, EnumRenderStage.Before);
+
+            if (api.Event is IServerEventAPI serverEvents)
+            {
+                serverEvents.MountGaitReceived -= ReceiveGaitFromClient;
+            }
         }
 
 
@@ -328,17 +341,13 @@ namespace Vintagestory.GameContent
 
             if (jumpNow) updateRidingState();
 
-            if (motion != null)  // If it's null, it's another player riding the elk in multiplayer, the speed and yaw etc will be governed by packets from the other player
-            {
-                ForwardSpeed = Math.Sign(motion.X);
+            ForwardSpeed = Math.Sign(motion.X);
 
-                float yawMultiplier = ebg.GetYawMultiplier();
+            float yawMultiplier = ebg.GetYawMultiplier();
+            AngularVelocity = motion.Y * yawMultiplier;
 
-                AngularVelocity = motion.Y * yawMultiplier;
-
-                entity.SidedPos.Yaw += (float)motion.Y * dt * 30f;
-                entity.SidedPos.Yaw = entity.SidedPos.Yaw % GameMath.TWOPI;
-            }
+            entity.SidedPos.Yaw += (float)motion.Y * dt * 30f;
+            entity.SidedPos.Yaw = entity.SidedPos.Yaw % GameMath.TWOPI;
 
             if (entity.World.ElapsedMilliseconds - lastJumpMs < 2000 && entity.World.ElapsedMilliseconds - lastJumpMs > 200 && entity.OnGround)
             {
@@ -351,7 +360,7 @@ namespace Vintagestory.GameContent
         public void SpeedUp() => SetNextGait(true);
         public void SlowDown() => SetNextGait(false);
 
-        public GaitMeta GetNextGait(bool forward, GaitMeta currentGait = null)
+        public virtual GaitMeta GetNextGait(bool forward, GaitMeta currentGait = null)
         {
             currentGait ??= CurrentGait;
 
@@ -510,15 +519,19 @@ namespace Vintagestory.GameContent
                     bool nowForwards = controls.Forward;
                     bool nowBackwards = controls.Backward;
                     bool nowSprint = controls.Sprint;
+                    bool sprintPressed = nowSprint && !prevSprintKey;
+                    prevSprintKey = nowSprint;
 
-                    // Toggling this off so that the next press of the sprint key will be a fresh press
+                    // Toggling this control off for curb bridle so that the next press of the sprint key will be a fresh press
                     // Need this to allow cycling up with sprint rather than just treating it as a boolean
                     // Only applies if there are more than two gaits specified for this mount
-                    controls.Sprint = onlyTwoGaits && controls.Sprint && scheme == EnumControlScheme.Hold;
+                    if (scheme == EnumControlScheme.Press && !onlyTwoGaits)
+                    {
+                        prevSprintKey = false;
+                    }
 
                     // Detect if current press is a fresh press
                     bool backwardPressed = nowBackwards && !prevBackwardKey && !prevPrevBackwardsKey;
-                    bool sprintPressed = nowSprint && !prevSprintKey;
                     long nowMs = entity.World.ElapsedMilliseconds;
 
                     // This ensures we start moving without sprint key
@@ -538,8 +551,18 @@ namespace Vintagestory.GameContent
                         }
                     }
 
+                    if (scheme == EnumControlScheme.Hold)
+                    {
+                        if ((!nowForwards && ebg.IsForwards(CurrentGait)) || (!nowBackwards && ebg.IsBackwards(CurrentGait)))
+                        {
+                            // This only reached if Left or Right is being pressed, otherwise skipped entirely by the Controls.TriesToMove check earlier
+                            CurrentGait = ebg.IdleGait;
+                            lastGaitChangeMs = nowMs;
+                        }
+                    }
+
                     // Cycle up with sprint
-                    else if (ebg.IsForwards(CurrentGait) && sprintPressed && nowMs - lastGaitChangeMs > 300)
+                    if (sprintPressed && ebg.IsForwards(CurrentGait) && nowMs - lastGaitChangeMs > 300)
                     {
                         SpeedUp();
                         lastGaitChangeMs = nowMs;
@@ -554,7 +577,6 @@ namespace Vintagestory.GameContent
                         lastGaitChangeMs = nowMs;
                     }
 
-                    prevSprintKey = nowSprint;
                     prevPrevForwardsKey = prevForwardKey;  //   Used to "de-bounce", as sometimes a long-ish press of the Forwards key has a frame client-side when nowForwards is false
                     prevPrevBackwardsKey = prevBackwardKey;  //   Used to "de-bounce", as sometimes a long-ish press of the Backwards key has a frame client-side when nowForwards is false
                     prevForwardKey = (scheme == EnumControlScheme.Press && nowForwards);
@@ -626,6 +648,7 @@ namespace Vintagestory.GameContent
 
             wasSwimming = eagent.Swimming;
 
+            // radfast 27.9.25 - we should not be setting to the Controls, this needs future review
             eagent.Controls.Backward = ForwardSpeed < 0;
             eagent.Controls.Forward = ForwardSpeed >= 0;
             eagent.Controls.Sprint = CurrentGait.IsSprint && ForwardSpeed > 0;
@@ -1016,6 +1039,8 @@ namespace Vintagestory.GameContent
             }
             base.GetInfoText(infotext);
         }
+
+
     }
 
     public class ElkAnimationManager : AnimationManager

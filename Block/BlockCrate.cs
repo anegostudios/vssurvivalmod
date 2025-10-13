@@ -637,7 +637,6 @@ namespace Vintagestory.GameContent
 
         protected MeshData genContentMesh(ICoreClientAPI capi, ItemStack contentStack, Vec3f rotation = null)
         {
-
             var contentSource = BlockBarrel.getContentTexture(capi, contentStack, out float fillHeight);
 
             if (contentSource != null)
