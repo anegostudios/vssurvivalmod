@@ -97,6 +97,26 @@ namespace Vintagestory.GameContent
                 {
                     labelCacheSys = api.ModLoader.GetModSystem<ModSystemLabelMeshCache>();
                     ownMesh = null;
+                    PreLoadContentsTexture(api as ICoreClientAPI);
+                }
+            }
+        }
+
+        /// <summary>
+        /// On the client-side, if it's an opened crate with contents, then we want to ensure the content texture is loaded to the BlockTextureAtlas
+        /// </summary>
+        /// <param name="capi"></param>
+        protected virtual void PreLoadContentsTexture(ICoreClientAPI capi)
+        {
+            var contentStack = inventory.FirstNonEmptySlot?.Itemstack;
+            if (contentStack != null && LidState != "closed")
+            {
+                var contentSource = BlockBarrel.getContentTexture(capi, contentStack, out float fillHeight);
+                if (contentSource != null)
+                {
+                    var _ = contentSource["null"];    // GetOrInsert the content texture to the BlockTextureAtlas. Low cost if the texture is already there. If it needs to be inserted, that cannot be done during OnTesselation as that is off-thread
+                                                      // The texture code is irrelevant here, it is not used by ContainerTextureSource.cs, but in fact in shape crate/contents.json it is named "null"!!
+                                                      // This basically does nothing if the content texture is already present in the BlockTextureAtlas
                 }
             }
         }
@@ -289,7 +309,11 @@ namespace Vintagestory.GameContent
 
         protected void didMoveItems(ItemStack stack, IPlayer byPlayer)
         {
-            if (Api.Side == EnumAppSide.Client) ownMesh = null;  // Trigger regeneration of mesh
+            if (Api.Side == EnumAppSide.Client)
+            {
+                ownMesh = null;  // Trigger regeneration of mesh
+                PreLoadContentsTexture(Api as ICoreClientAPI);
+            }
 
             (Api as ICoreClientAPI)?.World.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
             AssetLocation sound = stack?.Block?.Sounds?.Place;
@@ -397,6 +421,7 @@ namespace Vintagestory.GameContent
             if (Api != null && Api.Side == EnumAppSide.Client)
             {
                 ownMesh = null;  // Trigger regeneration of mesh
+                PreLoadContentsTexture(Api as ICoreClientAPI);
                 MarkDirty(true);
             }
 

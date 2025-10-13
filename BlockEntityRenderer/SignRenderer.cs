@@ -253,11 +253,8 @@ namespace Vintagestory.GameContent
                 prog.AlphaTest = 0.05f;
                 prog.OverlayOpacity = 0;
             }
-            else
-            {
-                prog.RgbaLightIn = api.World.BlockAccessor.GetLightRGBs(pos);
-            }
 
+            prog.RgbaLightIn = api.World.BlockAccessor.GetLightRGBs(pos);
             prog.Tex2D = loadedTexture.TextureId;
             prog.ModelMatrix = ModelMat
                 .Identity()

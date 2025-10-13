@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
@@ -553,7 +553,7 @@ namespace Vintagestory.GameContent
             return 
             [
                 .. fillings.Select(entry => CreateRecipe(api.World, "mixed-" + entry.Key.ToString().ToLowerInvariant(), doughs, [.. entry.Value], crusts)),
-                .. noMixFillings.Select(stack => CreateRecipe(api.World, "single-" + stack.Collectible.Code.Path, doughs, [stack], crusts))
+                .. noMixFillings.Select(stack => CreateRecipe(api.World, "single-" + stack.Collectible.Code.ToShortString(), doughs, [stack], crusts))
             ];
         }
 
@@ -623,12 +623,21 @@ namespace Vintagestory.GameContent
 
                 foreach (var ingredient in recipe.Ingredients)
                 {
-                    HashSet<ItemStack?> ingredientStacks = new();
-                    List<AssetLocation> ingredientCodes = new();
+                    HashSet<ItemStack?> ingredientStacks = [];
+                    List<AssetLocation> ingredientCodes = [];
 
-                    foreach (var vstack in ingredient.ValidStacks.Select(stack => stack.ResolvedItemstack))
+                    ingredient.Resolve(api.World, "handbook meal recipes");
+                    foreach (var astack in ingredient.ValidStacks.Select(stack => stack.ResolvedItemstack))
                     {
-                        ItemStack stack = vstack.Clone();
+                        if (ingredient.GetMatchingStack(astack) is not CookingRecipeStack vstack) continue;
+
+                        ItemStack stack = astack.Clone();
+                        stack.StackSize = vstack.StackSize;
+
+                        if (BlockLiquidContainerBase.GetContainableProps(stack) is WaterTightContainableProps props)
+                        {
+                            stack.StackSize *= (int)(props.ItemsPerLitre * ingredient.PortionSizeLitres);
+                        }
 
                         ingredientStacks.Add(stack);
                     }

@@ -1,4 +1,4 @@
-﻿using ProtoBuf;
+using ProtoBuf;
 using System.Numerics;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -191,6 +191,8 @@ namespace Vintagestory.GameContent
         TextureAtlasPosition texPos = null;
         int textureSubId=0;
 
+        AssetLocationAndSource assetloc;
+
         public override void OnTesselation(ref Shape entityShape, string shapePathForLogging, ref bool shapeIsCloned, ref string[] willDeleteElements)
         {
             if (entity.World.Side == EnumAppSide.Server) return;
@@ -242,7 +244,7 @@ namespace Vintagestory.GameContent
             
             if (texPos == null)
             {
-                api.EntityTextureAtlas.AllocateTextureSpace(TextWidth, TextHeight, out textureSubId, out texPos, new AssetLocationAndSource(textureCode));
+                api.EntityTextureAtlas.AllocateTextureSpace(TextWidth, TextHeight, out textureSubId, out texPos, assetloc=new AssetLocationAndSource(textureCode));
             }
 
             var ctex = new CompositeTexture(textureCode);
@@ -266,6 +268,21 @@ namespace Vintagestory.GameContent
 
             shapeIsCloned = true;
         }
+
+        public override void OnEntityDespawn(EntityDespawnData despawn)
+        {
+            base.OnEntityDespawn(despawn);
+
+            // Note this typically gets called twice client-side when a chunk unloads, once when the client chunk unloads, and once when processing the server packet UnloadChunk(). Also assetloc might be null for other reasons, if a chunk near the world edge unloads before tesselating in the tesselation queue
+            if (assetloc != null) capi?.EntityTextureAtlas.FreeTextureSpace(assetloc);
+            assetloc = null;
+            textureSubId = 0;
+            texPos = null;
+            loadedTexture?.Dispose();
+            loadedTexture = null;
+        }
+
+
 
         public double RenderOrder => 0.36; // Liquid render is at 0.37
         public int RenderRange => 99;

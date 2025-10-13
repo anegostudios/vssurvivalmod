@@ -1,4 +1,3 @@
-﻿using Cairo;
 using ProtoBuf;
 using System;
 using System.Collections.Generic;
@@ -116,7 +115,12 @@ namespace Vintagestory.GameContent
             sapi.ChatCommands.Create("dweather")
                 .WithDescription("Show the current rift activity")
                 .RequiresPrivilege(Privilege.controlserver)
-                .HandleWith(_ => TextCommandResult.Success("Current rift activity: " + curPattern.Code));
+                .HandleWith(_ => TextCommandResult.Success("Current rift activity: " + curPattern.Code +
+                            "\nwill continue for " + (int)(curPattern.UntilTotalHours - sapi.World.Calendar.ElapsedHours + 0.5) + " more hours"))
+                .BeginSubCommand("reset")
+                .WithDescription("Reset the current rift activity")
+                .HandleWith(_ => { choosePattern(); return TextCommandResult.Success("Rift activity reset"); });
+
         }
 
         private void Event_PlayerJoin(IServerPlayer byPlayer)
@@ -139,19 +143,15 @@ namespace Vintagestory.GameContent
             try
             {
                 byte[] data = sapi.WorldManager.SaveGame.GetData("riftweather");
-                if (data == null)
+                string savegameVersion = sapi.WorldManager.SaveGame.LastSavedGameVersion;
+                if (data == null || GameVersion.IsLowerVersionThan(savegameVersion, "1.21.2"))   // Discard pre-1.21.2 saved curPattern as its UntilHours value will be wrong
                 {
-                    choosePattern();
                     return;
                 }
 
                 curPattern = SerializerUtil.Deserialize<CurrentPattern>(data);
             }
-            catch {
-                choosePattern();
-            }
-
-            if (curPattern.Code == null) choosePattern();
+            catch { }
         }
 
         void choosePattern()
@@ -159,12 +159,12 @@ namespace Vintagestory.GameContent
             float weightSum = 0;
             List<SpawnPattern> patterns = new List<SpawnPattern>();
 
-            double totalHours = sapi.World.Calendar.TotalHours;
+            double elapsedHours = sapi.World.Calendar.ElapsedHours;
 
             for (int i = 0; i < config.Patterns.Length; i++)
             {
                 SpawnPattern pattern = config.Patterns[i];
-                if (pattern.StartTotalHours < totalHours)
+                if (pattern.StartTotalHours <= elapsedHours)
                 {
                     patterns.Add(pattern);
                     weightSum += pattern.Chance;
@@ -186,7 +186,7 @@ namespace Vintagestory.GameContent
 
             curPattern = new CurrentPattern() { 
                 Code = chosenPattern.Code, 
-                UntilTotalHours = totalHours + chosenPattern.DurationHours.nextFloat(1, sapi.World.Rand)
+                UntilTotalHours = elapsedHours + chosenPattern.DurationHours.nextFloat(1, sapi.World.Rand)
             };
             
             sapi.Network.GetChannel("riftWeather").BroadcastPacket(new SpawnPatternPacket() { Pattern = curPattern });
@@ -194,6 +194,8 @@ namespace Vintagestory.GameContent
 
         private void onRunGame()
         {
+            if (curPattern == null) choosePattern();
+
             foreach (EntityProperties type in sapi.World.EntityTypes)
             {
                 if (type.Code.Path == "drifter-normal" || type.Code.Path == "drifter-deep")
@@ -217,7 +219,7 @@ namespace Vintagestory.GameContent
                 val.Value.Server.SpawnConditions.Runtime.MaxQuantity = Math.Max(0, (int)(defaultSpawnCaps[val.Key] * qmul));
             }
 
-            if (curPattern.UntilTotalHours < sapi.World.Calendar.TotalHours)
+            if (curPattern.UntilTotalHours < sapi.World.Calendar.ElapsedHours)
             {
                 choosePattern();
             }

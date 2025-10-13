@@ -20,7 +20,7 @@ namespace Vintagestory.GameContent
 
         int riftsBlocked = 0;
 
-        int protectionDistance = 40;
+        int protectionDistance = 50;
 
         public bool On { get; set; }
 
@@ -40,7 +40,7 @@ namespace Vintagestory.GameContent
                 RegisterGameTickListener(OnServerTick, 5000);
             }
 
-            protectionDistance = Block.Attributes?["protectionDistance"].AsInt(40) ?? 40;
+            protectionDistance = Block.Attributes?["protectionDistance"].AsInt(50) ?? 50;
 
             lastUpdateTotalDays = api.World.Calendar.TotalDays;
 
@@ -138,7 +138,7 @@ namespace Vintagestory.GameContent
 
             if (slot.Itemstack.ItemAttributes?.IsTrue("riftwardFuel") == true && fuelDays < 0.5)
             {
-                fuelDays += slot.Itemstack.ItemAttributes["rifwardfuelDays"].AsDouble(14);
+                fuelDays += slot.Itemstack.ItemAttributes["rifwardfuelDays"].AsDouble(21);
                 slot.TakeOut(1);
                 (Api as ICoreClientAPI)?.World.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
                 Activate();
@@ -151,7 +151,7 @@ namespace Vintagestory.GameContent
         {
             // Instead of preventing rift spawn, we set the size to 0, which makes it invisible and inactive, 
             // so as to still consume a "rift slot"
-            if (On && sapi.World.Rand.NextDouble() <= 0.95 && rift.Position.HorizontalSquareDistanceTo(Pos.X + 0.5, Pos.Z + 0.5) < protectionDistance * protectionDistance)
+            if (On && sapi.World.Rand.NextDouble() <= 0.975 && rift.Position.HorizontalSquareDistanceTo(Pos.X + 0.5, Pos.Z + 0.5) < protectionDistance * protectionDistance)
             {
                 rift.Size = 0;
                 riftsBlocked++;

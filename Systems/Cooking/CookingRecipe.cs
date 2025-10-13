@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -823,8 +823,8 @@ namespace Vintagestory.GameContent
 
                 foreach (var ingredient in Ingredients)
                 {
-                    HashSet<ItemStack?> ingredientStacks = new HashSet<ItemStack?>();
-                    List<AssetLocation> ingredientCodes = new List<AssetLocation>();
+                    HashSet<ItemStack?> ingredientStacks = [];
+                    List<AssetLocation> ingredientCodes = [];
 
                     ingredient.Resolve(api.World, "handbook meal recipes");
                     foreach (var astack in allstacks)
@@ -836,7 +836,7 @@ namespace Vintagestory.GameContent
 
                         if (BlockLiquidContainerBase.GetContainableProps(stack) is WaterTightContainableProps props)
                         {
-                            stack.StackSize = (int)(props.ItemsPerLitre * ingredient.PortionSizeLitres);
+                            stack.StackSize *= (int)(props.ItemsPerLitre * ingredient.PortionSizeLitres);
                         }
 
                         ingredientStacks.Add(stack);

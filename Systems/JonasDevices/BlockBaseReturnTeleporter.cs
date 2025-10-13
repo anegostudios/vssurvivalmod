@@ -100,8 +100,12 @@ namespace Vintagestory.GameContent
         {
             base.OnBlockPlaced(byItemStack);
 
-            var meta = new AnimationMetaData() { Animation = "deploy", Code = "deploy", AnimationSpeed = 1, EaseInSpeed = 3, EaseOutSpeed = 2, Weight = 1, BlendMode = EnumAnimationBlendMode.Average };
-            animUtil.StartAnimation(meta);
+            if (Api?.Side == EnumAppSide.Client)
+            {
+                animUtil.InitializeAnimator("basereturnteleporter", null, null, new Vec3f(0, Block.Shape.rotateY, 0));
+                var meta = new AnimationMetaData() { Animation = "deploy", Code = "deploy", AnimationSpeed = 1, EaseInSpeed = 3, EaseOutSpeed = 2, Weight = 1, BlendMode = EnumAnimationBlendMode.Average };
+                animUtil.StartAnimation(meta);
+            }
         }
 
         public void OnInteract(IPlayer byPlayer)

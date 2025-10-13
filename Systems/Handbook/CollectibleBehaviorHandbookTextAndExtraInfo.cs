@@ -930,7 +930,7 @@ namespace Vintagestory.GameContent
                     }
 
                     string metaltype = ingot.LastCodePart();
-                    if (mold.ItemAttributes?["drop"]?.AsObject<JsonItemStack>(null)?.Clone() is JsonItemStack dropStack)
+                    if (mold.ItemAttributes?["drop"]?.AsObject<JsonItemStack>(null, mold.Collectible.Code.Domain) is JsonItemStack dropStack)
                     {
                         dropStack.Code.Path = dropStack.Code.Path.Replace("{metal}", metaltype);
 
@@ -942,8 +942,6 @@ namespace Vintagestory.GameContent
                     }
                     else if (mold.ItemAttributes?["drops"].AsObject<JsonItemStack[]>(null, mold.Collectible.Code.Domain) is JsonItemStack[] dropStacks)
                     {
-                        List<ItemStack> stacks = new List<ItemStack>();
-
                         foreach (var dstack in dropStacks)
                         {
                             dstack.Code.Path = dstack.Code.Path.Replace("{metal}", metaltype);
@@ -1145,7 +1143,7 @@ namespace Vintagestory.GameContent
                     continue;
                 }
 
-                if (mold.ItemAttributes?["drop"]?.AsObject<JsonItemStack>(null)?.Clone() is JsonItemStack dropStack)
+                if (mold.ItemAttributes?["drop"]?.AsObject<JsonItemStack>(null, mold.Collectible.Code.Domain) is JsonItemStack dropStack)
                 {
                     metaltype = stack.Collectible.LastCodePart();
                     dropStack.Code.Path = dropStack.Code.Path.Replace("{metal}", metaltype);
@@ -1158,8 +1156,6 @@ namespace Vintagestory.GameContent
                 }
                 else if (mold.ItemAttributes?["drops"].AsObject<JsonItemStack[]>(null, mold.Collectible.Code.Domain) is JsonItemStack[] dropStacks)
                 {
-                    List<ItemStack> stacks = new List<ItemStack>();
-
                     foreach (var dstack in dropStacks)
                     {
                         metaltype = stack.Collectible.LastCodePart();
@@ -2108,34 +2104,23 @@ namespace Vintagestory.GameContent
                     {
                         if (j++ % 2 == 0) components.Add(verticalSpaceSmall);    // Reset the component model with a small vertical element every 2nd grid recipe, otherwise horizontal aligment gets messed up
 
-                        var comp = new SlideshowGridRecipeTextComponent(capi, val.Value.ToArray(), 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)), allStacks);
+                        var comp = new SlideshowGridRecipeTextComponent(capi, [.. val.Value], 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)), allStacks);
                         comp.VerticalAlign = EnumVerticalAlign.Top;
                         comp.PaddingRight = 8;
-                        comp.UnscaledMarginTop = 8;
                         comp.PaddingLeft = TinyPadding * 2 + (1 - j % 2) * 20;   // Add horizontal padding for every 2nd grid (i.e. the right hand side one when drawn)
 
                         components.Add(comp);
 
                         var ecomp = new RichTextComponent(capi, "=", CairoFont.WhiteMediumText());
-                        ecomp.VerticalAlign = EnumVerticalAlign.FixedOffset;
-                        ecomp.UnscaledMarginTop = 51;
+                        ecomp.VerticalAlign = EnumVerticalAlign.Middle;
                         ecomp.PaddingRight = 5;
                         var ocomp = new SlideshowItemstackTextComponent(capi, outputStacks, 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
                         ocomp.overrideCurrentItemStack = () => comp.CurrentVisibleRecipe.Recipe.Output.ResolvedItemstack;
-                        /*ocomp.overrideCurrentItemStack = () =>
-                        {
-                            ItemStack[] currentReturns = [.. comp.CurrentVisibleRecipe.Recipe.resolvedIngredients.Select(ingred => ingred?.ReturnedStack?.ResolvedItemstack).Where(stack => stack != null)];
-                            if (currentReturns.Length > 0 && currentReturns.Any(rstack => rstack.Satisfies(stack))) return currentReturns.FirstOrDefault(rstack => rstack.Satisfies(stack));
-                            else return comp.CurrentVisibleRecipe.Recipe.Output.ResolvedItemstack;
-                        };*/
-                        ocomp.VerticalAlign = EnumVerticalAlign.FixedOffset;
-                        ocomp.UnscaledMarginTop = 50;
+                        ocomp.VerticalAlign = EnumVerticalAlign.Middle;
                         ocomp.ShowStackSize = true;
                         var rcomp = new SlideshowItemstackTextComponent(capi, [null], 40, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
                         rcomp.overrideCurrentItemStack = () => comp.CurrentVisibleRecipe.Recipe.resolvedIngredients.Select(ingred => ingred?.ReturnedStack?.ResolvedItemstack).Where(stack => stack != null).FirstOrDefault();
-                        rcomp.VerticalAlign = EnumVerticalAlign.FixedOffset;
                         rcomp.PaddingLeft = -40;
-                        rcomp.UnscaledMarginTop = 108;
                         rcomp.ShowStackSize = true;
 
                         components.Add(ecomp);
