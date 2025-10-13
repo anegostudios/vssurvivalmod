@@ -539,20 +539,15 @@ namespace Vintagestory.GameContent
 
                 if (resultCode != null)
                 {
-                    ItemStack resultStack = null;
-                    if (slot.Itemstack.Class == EnumItemClass.Block)
-                    {
-                        Block block = Api.World.GetBlock(new AssetLocation(resultCode));
-                        if (block != null)
-                        {
-                            resultStack = new ItemStack(block);
-                        }
-                    }
-                    else
-                    {
-                        Item item = Api.World.GetItem(new AssetLocation(resultCode));
-                        if (item != null) resultStack = new ItemStack(item);
-                    }
+                    ItemStack resultStack = (ItemStack)null;
+                    
+                    Block block = this.Api.World.GetBlock(new AssetLocation(resultCode));
+                    if (block != null)
+                        resultStack = new ItemStack(block);
+                    
+                    Item item = this.Api.World.GetItem(new AssetLocation(resultCode));
+                    if (item != null)
+                        resultStack = new ItemStack(item);
 
 
                     if (resultStack != null)
