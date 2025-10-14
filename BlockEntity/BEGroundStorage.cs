@@ -76,7 +76,7 @@ namespace Vintagestory.GameContent
         public ModelTransform[] ModelTransformsRenderer = new ModelTransform[4];
 
         /// <summary>
-        /// Cache the upload meshes for stacking layout so it can be reused by the GroundStorageRenderer
+        /// For Stacking layout only, cache each uploaded mesh so that it can be reused by the GroundStorageRenderer
         /// </summary>
         private Dictionary<string, MultiTextureMeshRef> UploadedMeshCache =>
             ObjectCacheUtil.GetOrCreate(Api, "groundStorageUMC", () => new Dictionary<string, MultiTextureMeshRef>());
@@ -1554,27 +1554,34 @@ namespace Vintagestory.GameContent
 
                 if (mesh != null)
                 {
-                    UploadedMeshCache.TryGetValue(key, out MeshRefs[index]);
-                    return mesh;
+                    if (UploadedMeshCache.TryGetValue(key, out MeshRefs[index]))
+                    {
+                        return mesh;
+                    }
+                    /// if the key is not in the cache, then we need to re-upload the mesh and re-populate MeshRefs
                 }
 
-                var loc = StorageProps.StackingModel.Clone().WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
-                nowTesselatingShape = Shape.TryGet(capi, loc);
-                nowTesselatingObj = stack.Collectible;
-
-                if (nowTesselatingShape == null)
+                if (mesh == null)
                 {
-                    capi.Logger.Error("Stacking model shape for collectible " + stack.Collectible.Code + " not found. Block will be invisible!");
-                    return null;
-                }
+                    var loc = StorageProps.StackingModel.Clone().WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
+                    nowTesselatingShape = Shape.TryGet(capi, loc);
+                    nowTesselatingObj = stack.Collectible;
 
-                capi.Tesselator.TesselateShape("storagePile", nowTesselatingShape, out mesh, this, null, 0, 0, 0, (int)Math.Ceiling(StorageProps.ModelItemsToStackSizeRatio * stack.StackSize));
+                    if (nowTesselatingShape == null)
+                    {
+                        capi.Logger.Error("Stacking model shape for collectible " + stack.Collectible.Code + " not found. Block will be invisible!");
+                        return null;
+                    }
+
+                    capi.Tesselator.TesselateShape("storagePile", nowTesselatingShape, out mesh, this, null, 0, 0, 0, (int)Math.Ceiling(StorageProps.ModelItemsToStackSizeRatio * stack.StackSize));
+                }
 
                 MeshCache[key] = mesh;
 
                 if (UploadedMeshCache.TryGetValue(key, out var mr)) mr.Dispose();
-                UploadedMeshCache[key] = capi.Render.UploadMultiTextureMesh(mesh);
-                MeshRefs[index] = UploadedMeshCache[key];
+                var newMeshRef = capi.Render.UploadMultiTextureMesh(mesh);
+                UploadedMeshCache[key] = newMeshRef;
+                MeshRefs[index] = newMeshRef; ;
                 return mesh;
             }
 
@@ -1755,6 +1762,15 @@ namespace Vintagestory.GameContent
 
         protected virtual void Dispose()
         {
+            renderer?.Dispose();
+            ambientSound?.Stop();
+        }
+
+        public static void OnGameDispose(ICoreClientAPI capi)
+        {
+            if (capi == null) return; // Server side
+
+            Dictionary<string, MultiTextureMeshRef> UploadedMeshCache = ObjectCacheUtil.TryGet<Dictionary<string, MultiTextureMeshRef>>(capi, "groundStorageUMC");
             if (UploadedMeshCache != null)
             {
                 foreach (var mesh in UploadedMeshCache.Values)
@@ -1762,8 +1778,6 @@ namespace Vintagestory.GameContent
                     mesh?.Dispose();
                 }
             }
-            renderer?.Dispose();
-            ambientSound?.Stop();
         }
 
         public virtual float GetHeatStrength(IWorldAccessor world, BlockPos heatSourcePos, BlockPos heatReceiverPos)

@@ -301,7 +301,10 @@ namespace Vintagestory.GameContent
             if (block is BlockGroundStorage)
             {
                 if (!byEntity.Controls.ShiftKey) return;
-                if (api.World.BlockAccessor.GetBlockEntity(blockSel.Position) is not BlockEntityGroundStorage begs || begs?.GetSlotAt(blockSel) is not ItemSlot gsslot || gsslot.Empty) return;
+                if (api.World.BlockAccessor.GetBlockEntity(blockSel.Position) is not BlockEntityGroundStorage begs || begs.GetSlotAt(blockSel) is not ItemSlot gsslot || gsslot.Empty)
+                {
+                    return;
+                }
 
                 if (gsslot.Itemstack.ItemAttributes?.IsTrue("mealContainer") == true)
                 {

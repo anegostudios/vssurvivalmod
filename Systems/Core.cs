@@ -232,6 +232,7 @@ namespace Vintagestory.GameContent
         public override void Dispose()
         {
             AfterSignRenderer.OnGameDisposed();
+            BlockEntityGroundStorage.OnGameDispose(capi);   // Dispose of any uploaded meshes
         }
 
         private EnumHemisphere GetHemisphere(double posX, double posZ)

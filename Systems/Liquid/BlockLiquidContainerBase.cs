@@ -655,7 +655,7 @@ namespace Vintagestory.GameContent
             if (blockSel != null && api.World.BlockAccessor.GetBlockEntity(blockSel.Position) is BlockEntityGroundStorage begs)
             {
                 ItemSlot gslot = begs.GetSlotAt(blockSel);
-                if (!gslot.Empty && gslot.Itemstack.Collectible is ILiquidInterface)
+                if (gslot == null || !gslot.Empty && gslot.Itemstack.Collectible is ILiquidInterface)
                 {
                     return;
                 }

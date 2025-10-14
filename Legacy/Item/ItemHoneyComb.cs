@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
@@ -153,7 +153,7 @@ namespace Vintagestory.GameContent
                         {
                             ItemSlot squeezeIntoSlot = beg.GetSlotAt(blockSel);
 
-                            if (squeezeIntoSlot != null && squeezeIntoSlot?.Itemstack?.Block != null && CanSqueezeInto(squeezeIntoSlot.Itemstack.Block, null))
+                            if (squeezeIntoSlot != null && squeezeIntoSlot.Itemstack?.Block != null && CanSqueezeInto(squeezeIntoSlot.Itemstack.Block, null))
                             {
                                 blockCnt = squeezeIntoSlot.Itemstack.Block as BlockLiquidContainerTopOpened;
                                 blockCnt.TryPutLiquid(squeezeIntoSlot.Itemstack, honeyStack, ContainedHoneyLitres);
