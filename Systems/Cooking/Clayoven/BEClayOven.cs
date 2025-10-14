@@ -92,7 +92,18 @@ namespace Vintagestory.GameContent
                 if (slot == null) return EnumOvenContentMode.Firewood;
 
                 BakingProperties bakingProps = BakingProperties.ReadFrom(slot.Itemstack);
-                if (bakingProps == null) return EnumOvenContentMode.Firewood;
+                if (bakingProps == null)
+                {
+                    if (slot.Itemstack.Class == EnumItemClass.Item)
+                    {
+                        if (slot.Itemstack.Item.Code.Path.Contains("firewood"))
+                            return EnumOvenContentMode.Firewood;
+                        else
+                            return EnumOvenContentMode.Quadrants;
+                    }
+
+                    return EnumOvenContentMode.Firewood;
+                }
 
                 return bakingProps.LargeItem ? EnumOvenContentMode.SingleCenter : EnumOvenContentMode.Quadrants;
             }
