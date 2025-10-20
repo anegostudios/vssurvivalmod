@@ -120,6 +120,7 @@ namespace Vintagestory.GameContent
                     }
                 }
 
+                // Early exit optimization: already implemented
                 if (!slotMatched) return null;
             }
 
