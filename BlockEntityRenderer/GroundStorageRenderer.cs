@@ -20,17 +20,19 @@ public class GroundStorageRenderer : IRenderer
     private float accumDelta;
     private bool check500;
     private bool check450;
+    private bool initialized;
 
     public GroundStorageRenderer(ICoreClientAPI capi, BlockEntityGroundStorage groundStorage)
     {
         this.capi = capi;
         this.groundStorage = groundStorage;
-        capi.Event.RegisterRenderer(this, EnumRenderStage.Opaque);
+        // Lazy init: defer registration
         itemTemps = new int[groundStorage.Inventory.Count];
         UpdateTemps();
     }
 
     public void OnRenderFrame(float deltaTime, EnumRenderStage stage)
+        if (!initialized) { capi.Event.RegisterRenderer(this, EnumRenderStage.Opaque); initialized = true; }
     {
         accumDelta += deltaTime;
         var pos = capi.World.Player.Entity.Pos;
