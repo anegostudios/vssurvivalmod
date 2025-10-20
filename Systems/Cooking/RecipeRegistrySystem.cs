@@ -19,8 +19,8 @@ namespace Vintagestory.GameContent
 
         public static CookingRecipe GetCookingRecipe(this ICoreAPI api, string recipecode)
         {
-            var recipes = api.ModLoader.GetModSystem<RecipeRegistrySystem>().CookingRecipes;
-            return recipes.FirstOrDefault((rec) => recipecode == rec.Code);
+            var system = api.ModLoader.GetModSystem<RecipeRegistrySystem>();
+            return system.cookingRecipeByCode.TryGetValue(recipecode, out var recipe) ? recipe : null;
         }
 
         public static List<BarrelRecipe> GetBarrelRecipes(this ICoreAPI api)
@@ -149,6 +149,7 @@ namespace Vintagestory.GameContent
         /// List of all loaded clay forming recipes
         /// </summary>
         public List<ClayFormingRecipe> ClayFormingRecipes = new List<ClayFormingRecipe>();
+        private Dictionary<string, CookingRecipe> cookingRecipeByCode = new Dictionary<string, CookingRecipe>();
 
 
         public override double ExecuteOrder()
@@ -215,6 +216,7 @@ namespace Vintagestory.GameContent
         {
             if (!canRegister) throw new InvalidOperationException("Coding error: Can no long register cooking recipes. Register them during AssetsLoad/AssetsFinalize and with ExecuteOrder < 99999");
             CookingRecipes.Add(recipe);
+            if (recipe.Code != null) cookingRecipeByCode[recipe.Code] = recipe;
         }
 
         /// <summary>
