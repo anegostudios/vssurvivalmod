@@ -252,6 +252,7 @@ namespace Vintagestory.GameContent
         {
             if (!Inventory.Empty)
             {
+                bool anyChanged = false;
                 for (var index = 0; index < Inventory.Count; index++)
                 {
                     var slot = Inventory[index];
@@ -273,7 +274,7 @@ namespace Vintagestory.GameContent
                         DetermineStorageProperties(slot);
                         forceStorageProps = true;
                         slot.Itemstack.StackSize = size;
-                        slot.MarkDirty();
+                        anyChanged = true;
                     }
                     else
                     {
@@ -283,9 +284,15 @@ namespace Vintagestory.GameContent
                         }
 
                         itemStack.Collectible.SetTemperature(Api.World, itemStack, Math.Max(20, temperature - amountRel * 20), false);
+                        anyChanged = true;
                     }
                 }
-                MarkDirty(true);
+                
+                if (anyChanged)
+                {
+                    Inventory.MarkSlotsDirty();
+                    MarkDirty(true);
+                }
 
                 if (Inventory.Empty)
                 {
