@@ -115,7 +115,7 @@ namespace Vintagestory.GameContent
             inventory.pos = Pos;
             inventory.LateInitialize("smelting-" + Pos.X + "/" + Pos.Y + "/" + Pos.Z, api);
             
-            RegisterGameTickListener(OnBurnTick, 100);
+            RegisterGameTickListener(OnBurnTick, 200);
             RegisterGameTickListener(On500msTick, 500);
 
             if (api is ICoreClientAPI)
