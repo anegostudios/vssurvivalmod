@@ -52,6 +52,7 @@ namespace Vintagestory.GameContent
 
         protected virtual int invSlotCount => 4;
         protected Cuboidf[] colBoxes;
+        private bool colBoxesCached = false;
         protected Cuboidf[] selBoxes;
 
         ItemSlot isUsingSlot;
@@ -242,6 +243,7 @@ namespace Vintagestory.GameContent
                     renderer = new GroundStorageRenderer(capi, this);
                 }
                 updateMeshes();
+                colBoxesCached = false;
                 //initMealRandomizer();
             }
 
@@ -584,6 +586,7 @@ namespace Vintagestory.GameContent
 
             updateMeshes();
             MarkDirty(true);
+            colBoxesCached = false;
         }*/
         #endregion
         public Cuboidf[] GetSelectionBoxes()
@@ -593,7 +596,22 @@ namespace Vintagestory.GameContent
 
         public Cuboidf[] GetCollisionBoxes()
         {
+            if (colBoxesCached && colBoxes != null) return colBoxes;
+            colBoxesCached = true;
             return colBoxes;
+        }
+        public Cuboidf[] GetCollisionBoxes()
+        {
+            if (colBoxesCached && colBoxes != null) return colBoxes;
+            colBoxesCached = true;
+            return colBoxes;
+        }
+        public Cuboidf[] GetCollisionBoxes()
+        {
+            if (colBoxesCached && colBoxes != null) return colBoxes;
+            colBoxesCached = true;
+            return colBoxes;
+        }
         }
 
         public virtual bool OnPlayerInteractStart(IPlayer player, BlockSelection bs)
