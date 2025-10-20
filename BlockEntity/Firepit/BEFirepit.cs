@@ -263,6 +263,7 @@ namespace Vintagestory.GameContent
         public float changeTemperature(float fromTemp, float toTemp, float dt)
         {
             float diff = Math.Abs(fromTemp - toTemp);
+            if (diff < 0.5f) return toTemp;
 
             dt = dt + dt * (diff / 28);
 
