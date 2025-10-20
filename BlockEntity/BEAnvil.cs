@@ -108,6 +108,7 @@ namespace Vintagestory.GameContent
         public int rotation = 0;
         public float MeshAngle;
         MeshData currentMesh;
+        private int currentMeshHash;
 
         GuiDialog dlg;
         ItemStack returnOnCancelStack;
@@ -951,6 +952,60 @@ namespace Vintagestory.GameContent
 
         protected void RegenMeshAndSelectionBoxes()
         {
+            int newHash = HashCode.Combine(workItemStack?.GetHashCode() ?? 0, Voxels.GetHashCode(), rotation);
+            if (newHash == currentMeshHash && currentMesh != null) return;
+            currentMeshHash = newHash;
+
+            if (workitemRenderer != null)
+            {
+                workitemRenderer.RegenMesh(workItemStack, Voxels, recipeVoxels);
+            }
+        protected void RegenMeshAndSelectionBoxes()
+        {
+            int newHash = HashCode.Combine(workItemStack?.GetHashCode() ?? 0, Voxels.GetHashCode(), rotation);
+            if (newHash == currentMeshHash && currentMesh != null) return;
+            currentMeshHash = newHash;
+
+            if (workitemRenderer != null)
+            {
+                workitemRenderer.RegenMesh(workItemStack, Voxels, recipeVoxels);
+            }
+        protected void RegenMeshAndSelectionBoxes()
+        {
+            int newHash = HashCode.Combine(workItemStack?.GetHashCode() ?? 0, Voxels.GetHashCode(), rotation);
+            if (newHash == currentMeshHash && currentMesh != null) return;
+            currentMeshHash = newHash;
+
+            if (workitemRenderer != null)
+            {
+                workitemRenderer.RegenMesh(workItemStack, Voxels, recipeVoxels);
+            }
+        protected void RegenMeshAndSelectionBoxes()
+        {
+            int newHash = HashCode.Combine(workItemStack?.GetHashCode() ?? 0, Voxels.GetHashCode(), rotation);
+            if (newHash == currentMeshHash && currentMesh != null) return;
+            currentMeshHash = newHash;
+
+            if (workitemRenderer != null)
+            {
+                workitemRenderer.RegenMesh(workItemStack, Voxels, recipeVoxels);
+            }
+        protected void RegenMeshAndSelectionBoxes()
+        {
+            int newHash = HashCode.Combine(workItemStack?.GetHashCode() ?? 0, Voxels.GetHashCode(), rotation);
+            if (newHash == currentMeshHash && currentMesh != null) return;
+            currentMeshHash = newHash;
+
+            if (workitemRenderer != null)
+            {
+                workitemRenderer.RegenMesh(workItemStack, Voxels, recipeVoxels);
+            }
+        protected void RegenMeshAndSelectionBoxes()
+        {
+            int newHash = HashCode.Combine(workItemStack?.GetHashCode() ?? 0, Voxels.GetHashCode(), rotation);
+            if (newHash == currentMeshHash && currentMesh != null) return;
+            currentMeshHash = newHash;
+
             if (workitemRenderer != null)
             {
                 workitemRenderer.RegenMesh(workItemStack, Voxels, recipeVoxels);

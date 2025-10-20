@@ -20,6 +20,7 @@ public class GroundStorageRenderer : IRenderer
     private float accumDelta;
     private bool check500;
     private bool check450;
+    private static System.Collections.Generic.Dictionary<string, MeshRef> sharedMeshCache = new System.Collections.Generic.Dictionary<string, MeshRef>();
 
     public GroundStorageRenderer(ICoreClientAPI capi, BlockEntityGroundStorage groundStorage)
     {
