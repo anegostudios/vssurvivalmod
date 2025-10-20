@@ -112,6 +112,15 @@ namespace Vintagestory.GameContent
         GuiDialog dlg;
         ItemStack returnOnCancelStack;
 
+        private static readonly Stack<bool[,,]> voxelPool = new Stack<bool[,,]>(8);
+
+        private static bool[,,] GetVoxelArray()
+        {
+            lock (voxelPool)
+            {
+                return voxelPool.Count > 0 ? voxelPool.Pop() : new bool[16, 6, 16];
+            }
+        }
 
         public bool [,,] recipeVoxels
         {
@@ -120,7 +129,7 @@ namespace Vintagestory.GameContent
                 if (SelectedRecipe == null) return null;
 
                 bool[,,] origVoxels = SelectedRecipe.Voxels;
-                bool[,,] rotVoxels = new bool[origVoxels.GetLength(0), origVoxels.GetLength(1), origVoxels.GetLength(2)];
+                bool[,,] rotVoxels = GetVoxelArray();
 
                 if (rotation == 0) return origVoxels;
 
