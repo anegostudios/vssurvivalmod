@@ -26,14 +26,19 @@ public class GroundStorageRenderer : IRenderer
     {
         this.capi = capi;
         this.groundStorage = groundStorage;
-        // Lazy init: defer registration
+        // Lazy init: defer registration until first render
         itemTemps = new int[groundStorage.Inventory.Count];
         UpdateTemps();
     }
 
     public void OnRenderFrame(float deltaTime, EnumRenderStage stage)
-        if (!initialized) { capi.Event.RegisterRenderer(this, EnumRenderStage.Opaque); initialized = true; }
     {
+        if (!initialized)
+        {
+            capi.Event.RegisterRenderer(this, EnumRenderStage.Opaque);
+            initialized = true;
+        }
+
         accumDelta += deltaTime;
         var pos = capi.World.Player.Entity.Pos;
         var dist = groundStorage.Pos.DistanceSqTo(pos.X, pos.Y, pos.Z);
