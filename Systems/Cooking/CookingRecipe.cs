@@ -462,32 +462,23 @@ namespace Vintagestory.GameContent
 
         protected string ingredientName(ItemStack stack, EnumIngredientNameType NameType = EnumIngredientNameType.None)
         {
-            string code;
-
-            code = stack.Collectible.Code?.Domain + AssetLocation.LocationSeparator + "recipeingredient-" + stack.Class.ToString().ToLowerInvariant() + "-" + stack.Collectible.Code?.Path;
-
-            if (NameType == EnumIngredientNameType.InsturmentalCase)
-                code += "-insturmentalcase";
-
-            if (NameType == EnumIngredientNameType.Topping)
-                code += "-topping";
-
-            if (Lang.HasTranslation(code))
-            {
-                return Lang.GetMatching(code);
-            }
-
-            code = stack.Collectible.Code?.Domain + AssetLocation.LocationSeparator + "recipeingredient-" + stack.Class.ToString().ToLowerInvariant() + "-" + stack.Collectible.FirstCodePart();
-
-            if (NameType == EnumIngredientNameType.InsturmentalCase)
-                code += "-insturmentalcase";
-
-            if (NameType == EnumIngredientNameType.Topping)
-                code += "-topping";
-
-            return Lang.GetMatching(code);
+            var sb = StringBuilderPool.Get();
+            sb.Append(stack.Collectible.Code?.Domain).Append(AssetLocation.LocationSeparator)
+              .Append("recipeingredient-").Append(stack.Class.ToString().ToLowerInvariant())
+              .Append("-").Append(stack.Collectible.Code?.Path);
+            if (NameType == EnumIngredientNameType.InsturmentalCase) sb.Append("-insturmentalcase");
+            if (NameType == EnumIngredientNameType.Topping) sb.Append("-topping");
+            string code = sb.ToString();
+            StringBuilderPool.Return(sb);
+            if (Lang.HasTranslation(code)) return Lang.GetMatching(code);
+            sb = StringBuilderPool.Get();
+            sb.Append(stack.Collectible.Code?.Domain).Append(AssetLocation.LocationSeparator)
+              .Append("recipeingredient-").Append(stack.Class.ToString().ToLowerInvariant())
+              .Append("-").Append(stack.Collectible.FirstCodePart());
+            if (NameType == EnumIngredientNameType.InsturmentalCase) sb.Append("-insturmentalcase");
+            if (NameType == EnumIngredientNameType.Topping) sb.Append("-topping");
+            return StringBuilderPool.GetStringAndReturn(sb);
         }
-
         protected string getMainIngredientName(ItemStack itemstack, string code, bool secondary = false)
         {
             string t = secondary ? "secondary" : "primary";
