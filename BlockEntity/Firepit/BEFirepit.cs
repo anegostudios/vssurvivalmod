@@ -157,6 +157,10 @@ namespace Vintagestory.GameContent
         // Sync to client every 500ms
         private void On500msTick(float dt)
         {
+            if (IsBurning) { RegisterGameTickListener(OnBurnTick, 200); }
+            else { RegisterGameTickListener(OnBurnTick, 500); }
+
+        {
             if (Api is ICoreServerAPI && (IsBurning || prevFurnaceTemperature != furnaceTemperature))
             {
                 MarkDirty();
