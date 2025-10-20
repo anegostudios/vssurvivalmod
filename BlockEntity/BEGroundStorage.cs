@@ -1365,6 +1365,11 @@ namespace Vintagestory.GameContent
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
+            if (!NeedsRetesselation && MeshRefs != null && MeshRefs.Length > 0 && MeshRefs[0] != null)
+            {
+                return base.OnTesselation(mesher, tesselator);
+            }
+
             float temp = 0;
             if (!Inventory.Empty)
             {
