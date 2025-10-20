@@ -107,6 +107,7 @@ namespace Vintagestory.GameContent
         AnvilWorkItemRenderer workitemRenderer;
         public int rotation = 0;
         public float MeshAngle;
+        private bool batchingMarkDirty;
         MeshData currentMesh;
 
         GuiDialog dlg;
@@ -377,6 +378,7 @@ namespace Vintagestory.GameContent
             {
                 spawnParticles(voxelPos, voxelMat, byPlayer);
 
+                batchingMarkDirty = true;
                 switch (toolMode)
                 {
                     case 0: OnHit(voxelPos); break;
