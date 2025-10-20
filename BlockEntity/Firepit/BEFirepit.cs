@@ -18,6 +18,16 @@ namespace Vintagestory.GameContent
 
         // Temperature before the half second tick
         public float prevFurnaceTemperature = 20;
+        private float cachedTemperature = 20;
+        private double lastTempUpdate;
+
+        private float GetInterpolatedTemperature()
+        {
+            double now = Api.World.Calendar.TotalHours;
+            if (now - lastTempUpdate > 0.01) { cachedTemperature = furnaceTemperature; lastTempUpdate = now; return furnaceTemperature; }
+            float t = (float)((now - lastTempUpdate) / 0.01);
+            return cachedTemperature + (furnaceTemperature - cachedTemperature) * t;
+        }
 
         // Current temperature of the furnace
         public float furnaceTemperature = 20;
