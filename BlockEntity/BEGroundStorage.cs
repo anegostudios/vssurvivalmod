@@ -42,6 +42,17 @@ namespace Vintagestory.GameContent
         public object inventoryLock = new object(); // Because OnTesselation runs in another thread
 
         protected InventoryGeneric inventory;
+        private int cachedFirstNonEmptySlot = -1;
+
+        private int GetFirstNonEmptySlot()
+        {
+            if (cachedFirstNonEmptySlot >= 0 && !inventory[cachedFirstNonEmptySlot].Empty) return cachedFirstNonEmptySlot;
+            for (int i = 0; i < inventory.Count; i++)
+            {
+                if (!inventory[i].Empty) { cachedFirstNonEmptySlot = i; return i; }
+            }
+            return -1;
+        }
 
         public GroundStorageProperties StorageProps { get; protected set; }
         public bool forceStorageProps = false;
@@ -188,6 +199,7 @@ namespace Vintagestory.GameContent
 
             inventory.OnGetAutoPushIntoSlot = GetAutoPushIntoSlot;
             inventory.OnGetAutoPullFromSlot = GetAutoPullFromSlot;
+            inventory.SlotModified += (slotId) => cachedFirstNonEmptySlot = -1;
 
             colBoxes = new Cuboidf[] { new Cuboidf(0, 0, 0, 1, 0.25f, 1) };
             selBoxes = new Cuboidf[] { new Cuboidf(0, 0, 0, 1, 0.25f, 1) };
