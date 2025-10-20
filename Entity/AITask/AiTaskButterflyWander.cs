@@ -22,6 +22,8 @@ namespace Vintagestory.GameContent
         protected float minTurnAnglePerSec;
         protected float maxTurnAnglePerSec;
         protected float curTurnRadPerSec;
+        private Vec3d cachedTarget;
+        private double cacheTime;
 
 
         public AiTaskButterflyWander(EntityAgent entity, JsonObject taskConfig, JsonObject aiConfig) : base(entity, taskConfig, aiConfig)
@@ -61,7 +63,7 @@ namespace Vintagestory.GameContent
             desiredYaw = (float)(entity.ServerPos.Yaw + 2 * GameMath.TWOPI * (entity.World.Rand.NextDouble() - 0.5));
 
             desiredflyHeightAboveGround = 1 + 4 * (float)entity.World.Rand.NextDouble() + 4 * (float)(entity.World.Rand.NextDouble() * entity.World.Rand.NextDouble());
-            ReadjustFlyHeight();
+            if (cachedTarget == null || entity.World.Calendar.TotalHours - cacheTime > 0.1) { ReadjustFlyHeight(); cachedTarget = new Vec3d(entity.ServerPos.X, desiredYPos, entity.ServerPos.Z); cacheTime = entity.World.Calendar.TotalHours; } else { desiredYPos = cachedTarget.Y; }
 
             entity.Controls.Forward = true;
             curTurnRadPerSec = minTurnAnglePerSec + (float)entity.World.Rand.NextDouble() * (maxTurnAnglePerSec - minTurnAnglePerSec);
