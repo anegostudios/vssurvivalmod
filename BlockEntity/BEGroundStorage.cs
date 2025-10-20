@@ -1420,7 +1420,7 @@ namespace Vintagestory.GameContent
         {
             float[][] tfMatrices = new float[DisplayedItems][];
 
-            Vec3f[] offs = new Vec3f[DisplayedItems];
+            Span<Vec3f> offs = DisplayedItems <= 16 ? stackalloc Vec3f[DisplayedItems] : new Vec3f[DisplayedItems];
 
             lock (inventoryLock)
             {
@@ -1444,7 +1444,7 @@ namespace Vintagestory.GameContent
             return tfMatrices;
         }
 
-        public void GetLayoutOffset(Vec3f[] offs)
+        public void GetLayoutOffset(Span<Vec3f> offs)
         {
             if (StorageProps == null) return;
             switch (StorageProps.Layout)
