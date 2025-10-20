@@ -98,6 +98,7 @@ namespace Vintagestory.GameContent
         ItemStack workItemStack;
         public int SelectedRecipeId = -1;
         public byte[,,] Voxels = new byte[16, 6, 16]; // Only the first 2 bits of each byte are used and serialized
+        private bool voxelsDirty = false;
 
 
         // Temporary data
@@ -732,6 +733,7 @@ namespace Vintagestory.GameContent
             }
 
             Voxels[voxelPos.X, voxelPos.Y, voxelPos.Z] = 0;
+            voxelsDirty = true;
 
 
 
@@ -757,6 +759,7 @@ namespace Vintagestory.GameContent
 
                     Voxels[npos.X, npos.Y, npos.Z] = (byte)EnumVoxelMaterial.Metal;
                     Voxels[voxelPos.X, voxelPos.Y, voxelPos.Z] = 0;
+            voxelsDirty = true;
                     return;
                 }
                 else
@@ -790,6 +793,7 @@ namespace Vintagestory.GameContent
             {
                 Voxels[npos.X, npos.Y, npos.Z] = (byte)EnumVoxelMaterial.Metal;
                 Voxels[voxelPos.X, voxelPos.Y, voxelPos.Z] = (byte)EnumVoxelMaterial.Empty;
+            voxelsDirty = true;
                 return;
             }
 
@@ -912,6 +916,7 @@ namespace Vintagestory.GameContent
                         } else
                         {
                             Voxels[emptySpot.X, emptySpot.Y, emptySpot.Z] = (byte)EnumVoxelMaterial.Metal;
+            voxelsDirty = true;
                         }
 
 
@@ -939,6 +944,7 @@ namespace Vintagestory.GameContent
                     if (Voxels[spos.X, y, spos.Z] == (byte)EnumVoxelMaterial.Empty)
                     {
                         Voxels[spos.X, y, spos.Z] = (byte)EnumVoxelMaterial.Metal;
+            voxelsDirty = true;
                         return true;
                     }
                 }
@@ -1029,7 +1035,7 @@ namespace Vintagestory.GameContent
         public override void ToTreeAttributes(ITreeAttribute tree)
         {
             base.ToTreeAttributes(tree);
-            tree.SetBytes("voxels", serializeVoxels(Voxels));
+            if (voxelsDirty) { tree.SetBytes("voxels", serializeVoxels(Voxels)); voxelsDirty = false; }
             tree.SetItemstack("workItemStack", workItemStack);
             tree.SetInt("selectedRecipeId", SelectedRecipeId);
             tree.SetInt("rotation", rotation);
