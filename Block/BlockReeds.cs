@@ -135,8 +135,7 @@ namespace Vintagestory.GameContent
                 foreach (var bdrop in Drops)
                 {
                     ItemStack drop = bdrop.GetNextItemStack();
-                    if (drop != null)
-                    {
+                    if (drop != null && (byPlayer?.InventoryManager.ActiveTool == EnumTool.Knife || Variant["state"] == "normal")) {
                         world.SpawnItemEntity(drop, pos, null);
                     }
                 }
@@ -222,3 +221,4 @@ namespace Vintagestory.GameContent
     }
 
 }
+
