@@ -792,6 +792,7 @@ namespace Vintagestory.GameContent
                 float litre = contentStack.StackSize / props.ItemsPerLitre;
                 nutriProps.Health *= litre;
                 nutriProps.Satiety *= litre;
+                nutriProps.Intoxication *= litre;
                 nutriProps.EatenStack = new JsonItemStack();
                 nutriProps.EatenStack.ResolvedItemstack = itemstack.Clone();
                 nutriProps.EatenStack.ResolvedItemstack.StackSize = 1;
@@ -1315,3 +1316,4 @@ namespace Vintagestory.GameContent
 
 
 }
+
