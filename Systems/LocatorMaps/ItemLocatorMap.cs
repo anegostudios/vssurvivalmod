@@ -143,6 +143,7 @@ namespace Vintagestory.GameContent
                 Position = pos,
                 OwningPlayerUid = puid,
                 Title = Lang.Get(props.WaypointText),
+                Guid = Guid.NewGuid().ToString()
             }, player);
 
             var msg = attr.HasAttribute("randomX") ? Lang.Get("Approximate location of {0} added to your world map", Lang.Get(props.WaypointText)) : Lang.Get("Location of {0} added to your world map", Lang.Get(props.WaypointText));
@@ -168,3 +169,4 @@ namespace Vintagestory.GameContent
 
     }
 }
+
