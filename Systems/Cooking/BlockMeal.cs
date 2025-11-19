@@ -62,7 +62,8 @@ namespace Vintagestory.GameContent
 
             if (CollisionBoxes[0] != null) gsSmokePos.Y = CollisionBoxes[0].MaxY;
 
-            BlockMeal[] mealBowls = ObjectCacheUtil.GetOrCreate(api, "allMealBowls", () => {
+            BlockMeal[] mealBowls = ObjectCacheUtil.GetOrCreate(api, "allMealBowls", () =>
+            {
                 List<BlockMeal> mealList = new();
                 foreach (var b in api.World.Blocks)
                 {
@@ -814,7 +815,14 @@ namespace Vintagestory.GameContent
 
             if (!MealMeshCache.ContentsRotten(stacks))
             {
-                string facts = GetContentNutritionFacts(world, inSlot, null, recipe == null);
+                float servingsLeft = mealStack.Attributes.GetFloat("quantityServings", 1);
+                float[] nmul = GetNutritionHealthMul(null, inSlot, null);
+                // There's a bug that makes meals rarely have ingredient
+                // stack sizes of 0, but we still need to scale for meals with
+                // a stack size greater than 1 like pickled vegetables, so
+                // do so only conditionally.
+                bool mulWithStackSize = mealStack.StackSize > 0;
+                string facts = GetContentNutritionFacts(world, inSlot, stacks, null, mulWithStackSize, servingsLeft * nmul[0], servingsLeft * nmul[1]);
 
                 if (facts != null)
                 {
@@ -876,7 +884,8 @@ namespace Vintagestory.GameContent
                             world.SpawnItemEntity(stacks[i], entityItem.ServerPos.XYZ);
                         }
                     }
-                } else
+                }
+                else
                 {
                     ItemStack rndStack = stacks[world.Rand.Next(stacks.Length)];
                     world.SpawnCubeParticles(entityItem.ServerPos.XYZ, rndStack, 0.3f, 25, 1, null);
