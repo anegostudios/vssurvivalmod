@@ -242,7 +242,6 @@ namespace Vintagestory.GameContent
 
             ItemStack[] stacks = GetContents(api.World, newStack);
 
-
             // 1. Cook contents, if there is a cooked version of it
             /*for (int i = 0; i < stacks.Length; i++)
             {
@@ -260,21 +259,6 @@ namespace Vintagestory.GameContent
                     stacks[i] = cookedStack;
                 }
             }*/// This breaks pies by causing them to have cooked meat and stuff inside which the game doesn't know how to handle.
-
-
-            // Carry over and set perishable properties
-            TransitionableProperties[] tprops = newStack.Collectible.GetTransitionableProperties(api.World, newStack, null);
-
-            var perishProps = tprops.FirstOrDefault(p => p.Type == EnumTransitionType.Perish);
-            perishProps?.TransitionedStack.Resolve(api.World, "pie perished stack");
-
-            var inv = new DummyInventory(api, 4);
-            inv[0].Itemstack = stacks[0];
-            inv[1].Itemstack = stacks[1];
-            inv[2].Itemstack = stacks[2];
-            inv[3].Itemstack = stacks[3];
-
-            if (perishProps != null) CarryOverFreshness(api, inv.Slots, stacks, perishProps);
 
             SetContents(newStack, stacks);
         }

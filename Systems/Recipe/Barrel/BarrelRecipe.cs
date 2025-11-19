@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Util;
@@ -191,7 +192,7 @@ namespace Vintagestory.GameContent
 
             // Carry over freshness
             TransitionableProperties[] props = mixedStack.Collectible.GetTransitionableProperties(api.World, mixedStack, null);
-            TransitionableProperties perishProps = props != null && props.Length > 0 ? props[0] : null;
+            TransitionableProperties perishProps = props?.FirstOrDefault(p => p.Type == EnumTransitionType.Perish);
 
             if (perishProps != null)
             {
