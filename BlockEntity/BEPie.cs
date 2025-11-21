@@ -278,6 +278,8 @@ namespace Vintagestory.GameContent
                     {
                         cStacks[5] = slot.TakeOut(2);
                         pieBlock.SetContents(inv[0].Itemstack, cStacks);
+                        // crust attribute must exist to stack together
+                        inv[0].Itemstack.Attributes.SetString("topCrustType", "full");
                     } else
                     {
                         ItemStack? stack = inv[0].Itemstack;
