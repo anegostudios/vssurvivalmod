@@ -54,6 +54,7 @@ namespace Vintagestory.GameContent
                 double hoursPassed = Math.Min(2400, Api.World.Calendar.TotalHours - burnStartTotalHours);
                 while (hoursPassed > 8)
                 {
+                    hoursPassed -= 8;
                     burnStartTotalHours += 8;
                     inventory[0].TakeOut(1);
                     if (inventory.Empty)
@@ -95,7 +96,7 @@ namespace Vintagestory.GameContent
             var slot = byPlayer.InventoryManager.ActiveHotbarSlot;
             if (slot.Empty) return;
 
-            if (slot.Itemstack.Collectible.CombustibleProps != null && slot.Itemstack.Collectible.CombustibleProps.BurnTemperature >= 1100)
+            if (slot.Itemstack.Collectible.CombustibleProps != null && slot.Itemstack.Collectible.CombustibleProps.BurnTemperature >= 1100 && inventory[0].StackSize < 4)
             {
                 int moved = slot.TryPutInto(Api.World, inventory[0]);
                 if (moved > 0)
