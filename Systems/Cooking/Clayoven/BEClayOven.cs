@@ -223,7 +223,8 @@ namespace Vintagestory.GameContent
                             if (slot.Itemstack.Block?.GetBehavior<BlockBehaviorCanIgnite>() == null)
                             {
                                 ICoreClientAPI capi = Api as ICoreClientAPI;
-                                if (capi != null && (slot.Empty || slot.Itemstack.Attributes.GetBool("bakeable", true) == false)) capi.TriggerIngameError(this, "notbakeable", Lang.Get("This item is not bakeable."));
+                                bool hasBakingProps = BakingProperties.ReadFrom(slot.Itemstack) != null;
+                                if (capi != null && (slot.Empty || (hasBakingProps && slot.Itemstack.Attributes.GetBool("bakeable", true)) == false)) capi.TriggerIngameError(this, "notbakeable", Lang.Get("This item is not bakeable."));
                                 else if (capi != null && !slot.Empty) capi.TriggerIngameError(this, "notbakeable", burning ? Lang.Get("Wait until the fire is out") : Lang.Get("Oven is full"));
 
                                 return true;
