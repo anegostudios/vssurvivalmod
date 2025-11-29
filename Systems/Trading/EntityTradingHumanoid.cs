@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -137,6 +137,10 @@ namespace Vintagestory.GameContent
             {
                 setupTaskBlocker();
                 if (wasImported) reloadTradingList();
+                if (WatchedAttributes.HasAttribute("tradingPlayerUID"))
+                {
+                    WatchedAttributes.RemoveAttribute("tradingPlayerUID");
+                }
             }
         }
 
@@ -267,10 +271,28 @@ namespace Vintagestory.GameContent
         {
             if (value == "opentrade")
             {
-                if (Alive && triggeringEntity.Pos.SquareDistanceTo(this.Pos) <= 7) {
+                if (Alive && triggeringEntity.Pos.SquareDistanceTo(this.Pos) <= 7)
+                {
+                    if (WatchedAttributes.HasAttribute("tradingPlayerUID"))
+                    {
+                        if (Api is ICoreClientAPI capi)
+                        {
+                            capi.TriggerIngameError(this, "alreadyTrading",Lang.Get("trader-trading"));
+                        }
+
+                        return 0;
+                    }
+
                     ConversableBh.Dialog?.TryClose();
                     TryOpenTradeDialog(triggeringEntity);
-                    interactingWithPlayer.Add(triggeringEntity as EntityPlayer);
+                    if (triggeringEntity is EntityPlayer plr)
+                    {
+                        interactingWithPlayer.Add(plr);
+                        if (Api is ICoreServerAPI)
+                        {
+                            WatchedAttributes.SetString("tradingPlayerUID", plr.PlayerUID);
+                        }
+                    }
                 } else
                 {
                     if (World.Side == EnumAppSide.Server) {
@@ -287,7 +309,7 @@ namespace Vintagestory.GameContent
         void TryOpenTradeDialog(EntityAgent forEntity)
         {
             if (World.Side != EnumAppSide.Client) return;
-            
+
             EntityPlayer entityplr = forEntity as EntityPlayer;
             IPlayer player = World.PlayerByUid(entityplr.PlayerUID);
 
@@ -302,7 +324,9 @@ namespace Vintagestory.GameContent
                     player.InventoryManager.OpenInventory(Inventory);
 
                     dlg = new GuiDialogTrader(Inventory, this, World.Api as ICoreClientAPI);
+                    dlg.OnClosed += Dlg_OnClosed;
                     dlg.TryOpen();
+
                 }
                 else
                 {
@@ -316,7 +340,13 @@ namespace Vintagestory.GameContent
             }
         }
 
-
+        private void Dlg_OnClosed()
+        {
+            dlg = null;
+            var capi = Api as ICoreClientAPI;
+            interactingWithPlayer.Remove(capi.World.Player.Entity);
+            capi.Network.SendEntityPacket(EntityId, PlayerStoppedInteracting);
+        }
 
         public override void OnReceivedClientPacket(IServerPlayer player, int packetid, byte[] data)
         {
@@ -345,6 +375,15 @@ namespace Vintagestory.GameContent
             if (packetid == 1001)
             {
                 player.InventoryManager.OpenInventory(Inventory);
+            }
+
+            if (packetid == PlayerStoppedInteracting)
+            {
+                interactingWithPlayer.Remove(player.Entity);
+                if (WatchedAttributes.GetString("tradingPlayerUID") == player.PlayerUID)
+                {
+                    WatchedAttributes.RemoveAttribute("tradingPlayerUID");
+                }
             }
         }
 
@@ -419,6 +458,10 @@ namespace Vintagestory.GameContent
                     if (!Alive || eplr.Pos.SquareDistanceTo(Pos) > 5)
                     {
                         interactingWithPlayer.Remove(eplr);
+                        if (WatchedAttributes.GetString("tradingPlayerUID") == eplr.PlayerUID)
+                        {
+                            WatchedAttributes.RemoveAttribute("tradingPlayerUID");
+                        }
                         Inventory.Close(eplr.Player);
                         i--;
                     }
@@ -464,7 +507,5 @@ namespace Vintagestory.GameContent
 
             return WatchedAttributes["traderInventory"] as ITreeAttribute;
         }
-
     }
-
 }

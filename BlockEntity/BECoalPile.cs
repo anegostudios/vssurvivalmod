@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -8,12 +7,13 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+using Vintagestory.Common.Collectible.Block;
 
 #nullable disable
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityCoalPile : BlockEntityItemPile, ITexPositionSource, IHeatSource
+    public class BlockEntityCoalPile : BlockEntityItemPile, ITexPositionSource, IHeatSource, IExternalTickable
     {
         static SimpleParticleProperties smokeParticles;
         static SimpleParticleProperties smallMetalSparks;
@@ -89,6 +89,8 @@ namespace Vintagestory.GameContent
 
         public int BurnTemperature => inventory[0].Itemstack.Collectible.CombustibleProps.BurnTemperature;
 
+        public bool IsExternallyTicked { get; set; }
+
         public BlockEntityCoalPile()
         {
 
@@ -119,8 +121,7 @@ namespace Vintagestory.GameContent
             if (!burning) return;
 
             burning = false;
-            UnregisterGameTickListener(listenerId);
-            listenerId = 0;
+            UnregisterTickListener();
             MarkDirty(true);
             Api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), Pos, 0, null, false, 16);
         }
@@ -153,7 +154,10 @@ namespace Vintagestory.GameContent
                 listenerId = RegisterGameTickListener(onBurningTickClient, 100);
             } else
             {
-                listenerId = RegisterGameTickListener(onBurningTickServer, 10000);
+                if (!IsExternallyTicked)
+                {
+                    RegisterServerTickListener();
+                }
             }
         }
 
@@ -201,11 +205,32 @@ namespace Vintagestory.GameContent
         {
             double totalHoursPassed = startTotalHours - burnStartTotalHours;
             double burnHourTimeLeft = inventory[0].StackSize / 2f * BurnHoursPerLayer;
-            return (float)(burnHourTimeLeft - totalHoursPassed);
+            return (float)Math.Max(0, Math.Min(totalHoursPassed , burnHourTimeLeft));
         }
 
+        public void UnregisterTickListener()
+        {
+            if (listenerId != 0)
+            {
+                UnregisterGameTickListener(listenerId);
+                listenerId = 0;
+            }
+        }
 
-        private void onBurningTickServer(float dt)
+        public void RegisterServerTickListener()
+        {
+            if (listenerId == 0 && IsBurning)
+            {
+                listenerId = RegisterGameTickListener(OnBurningTickServer, 10000);
+            }
+        }
+
+        public void OnExternalTick(float dt)
+        {
+            OnBurningTickServer(dt);
+        }
+
+        private void OnBurningTickServer(float dt)
         {
             facings.Shuffle(Api.World.Rand);
 
@@ -233,8 +258,7 @@ namespace Vintagestory.GameContent
                     {
                         inventory[0].Itemstack = new ItemStack(Api.World.GetItem(new AssetLocation("coke")), (int)(inventory[0].StackSize * cokeConversionRate));
                         burning = false;
-                        UnregisterGameTickListener(listenerId);
-                        listenerId = 0;
+                        UnregisterTickListener();
                         MarkDirty(true);
                     } else
                     {
@@ -363,16 +387,12 @@ namespace Vintagestory.GameContent
             burning = tree.GetBool("burning");
             burnStartTotalHours = tree.GetDouble("lastTickTotalHours");
             isCokable = tree.GetBool("isCokable");
+            IsExternallyTicked = tree.GetBool("isExternallyTicked");
 
             if (!burning)
             {
-                if (listenerId != 0)
-                {
-                    UnregisterGameTickListener(listenerId);
-                    listenerId = 0;
-                }
+                UnregisterTickListener();
                 ambientSound?.Stop();
-                listenerId = 0;
             }
 
             if (Api != null && Api.Side == EnumAppSide.Client && !wasBurning && burning)
@@ -388,6 +408,7 @@ namespace Vintagestory.GameContent
             tree.SetBool("burning", burning);
             tree.SetDouble("lastTickTotalHours", burnStartTotalHours);
             tree.SetBool("isCokable", isCokable);
+            tree.SetBool("isExternallyTicked", IsExternallyTicked);
         }
 
 

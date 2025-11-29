@@ -9,12 +9,13 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
+using Vintagestory.Common.Collectible.Block;
 
 #nullable disable
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityGroundStorage : BlockEntityDisplay, IBlockEntityContainer, IRotatable, IHeatSource, ITemperatureSensitive
+    public class BlockEntityGroundStorage : BlockEntityDisplay, IBlockEntityContainer, IRotatable, IHeatSource, ITemperatureSensitive, IExternalTickable
     {
         static SimpleParticleProperties smokeParticles;
 
@@ -92,6 +93,8 @@ namespace Vintagestory.GameContent
         public bool IsBurning => burning;
 
         public bool IsHot => burning;
+
+        public bool IsExternallyTicked { get; set; }
 
         public override int DisplayedItems {
             get
@@ -248,6 +251,15 @@ namespace Vintagestory.GameContent
             UpdateBurningState();
         }
 
+        public override void CheckInventoryClearedMidTick()
+        {
+            if (Inventory.Empty)
+            {
+                // all slots are null, we need to destroy this GroundStorage BlockEntity
+                Api.World.BlockAccessor.SetBlock(0, Pos);
+            }
+        }
+
         public void CoolNow(float amountRel)
         {
             if (!Inventory.Empty)
@@ -287,16 +299,13 @@ namespace Vintagestory.GameContent
                 }
                 MarkDirty(true);
 
-                if (Inventory.Empty)
-                {
-                    Api.World.BlockAccessor.SetBlock(0, Pos);
-                }
+                CheckInventoryClearedMidTick();
             }
         }
 
         private void UpdateIgnitable()
         {
-            var cbhgs = Inventory[0].Itemstack?.Collectible.GetBehavior<CollectibleBehaviorGroundStorable>();
+            var cbhgs = Inventory[0].Itemstack?.Collectible?.GetBehavior<CollectibleBehaviorGroundStorable>();
             if (cbhgs != null)
             {
                 burnHoursPerItem = JsonObject.FromJson(cbhgs.propertiesAtString)["burnHoursPerItem"].AsFloat(burnHoursPerItem);
@@ -1239,19 +1248,16 @@ namespace Vintagestory.GameContent
 
             burning = tree.GetBool("burning");
             burnStartTotalHours = tree.GetDouble("lastTickTotalHours");
+            IsExternallyTicked = tree.GetBool("isExternallyTicked");
+
             if (Api?.Side == EnumAppSide.Client && !wasBurning && burning)
             {
                 UpdateBurningState();
             }
             if (!burning)
             {
-                if (listenerId != 0)
-                {
-                    UnregisterGameTickListener(listenerId);
-                    listenerId = 0;
-                }
+                UnregisterTickListener();
                 ambientSound?.Stop();
-                listenerId = 0;
             }
 
             // Do this last!!!  Prevents bug where initially drawn with wrong rotation
@@ -1276,6 +1282,7 @@ namespace Vintagestory.GameContent
             tree.SetDouble("lastTickTotalHours", burnStartTotalHours);
             tree.SetFloat("meshAngle", MeshAngle);
             tree.SetInt("attachFace", AttachFace?.Index ?? 0);
+            tree.SetBool("isExternallyTicked", IsExternallyTicked);
         }
 
         public override void OnBlockBroken(IPlayer byPlayer = null)
@@ -1615,17 +1622,16 @@ namespace Vintagestory.GameContent
             if (!burning) return;
 
             burning = false;
-            UnregisterGameTickListener(listenerId);
-            listenerId = 0;
+            UnregisterTickListener();
             MarkDirty(true);
             Api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), Pos, 0, null, false, 16);
         }
 
-        public float GetHoursLeft(double startTotalHours)
+        public float GetHoursLeft(double currentTotalHours)
         {
-            double totalHoursPassed = startTotalHours - burnStartTotalHours;
-            double burnHourTimeLeft = inventory[0].StackSize / 2f * burnHoursPerItem;
-            return (float)(burnHourTimeLeft - totalHoursPassed);
+            double totalHoursPassed = currentTotalHours - burnStartTotalHours;
+            double burnHourTimeLeft = inventory[0].StackSize * burnHoursPerItem;
+            return (float)Math.Max(0, Math.Min(totalHoursPassed , burnHourTimeLeft));
         }
 
         private void UpdateBurningState()
@@ -1655,8 +1661,33 @@ namespace Vintagestory.GameContent
                 listenerId = RegisterGameTickListener(OnBurningTickClient, 100);
             } else
             {
+                if (!IsExternallyTicked)
+                {
+                    RegisterServerTickListener();
+                }
+            }
+        }
+
+        public void UnregisterTickListener()
+        {
+            if (listenerId != 0)
+            {
+                UnregisterGameTickListener(listenerId);
+                listenerId = 0;
+            }
+        }
+
+        public void RegisterServerTickListener()
+        {
+            if (listenerId == 0 && IsBurning)
+            {
                 listenerId = RegisterGameTickListener(OnBurningTickServer, 10000);
             }
+        }
+
+        public void OnExternalTick(float dt)
+        {
+            OnBurningTickServer(dt);
         }
 
         private void OnBurningTickClient(float dt)

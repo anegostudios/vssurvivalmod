@@ -54,10 +54,8 @@ namespace Vintagestory.GameContent
 
         private float Inventory_OnAcquireTransitionSpeed1(EnumTransitionType transType, ItemStack stack, float mul)
         {
-            // Don't spoil while sealed
-            if (Sealed && CurrentRecipe != null && CurrentRecipe.SealHours > 0) return 0;
-
-            return mul;
+            // Don't spoil while sealed, otherwise no multiplication either way
+            return Sealed && CurrentRecipe?.SealHours > 0 ? 0 : 1;
         }
 
         private float GetSuitability(ItemSlot sourceSlot, ItemSlot targetSlot, bool isMerge)

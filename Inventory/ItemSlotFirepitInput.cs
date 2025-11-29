@@ -63,7 +63,7 @@ namespace Vintagestory.API.Common
             ItemSlot outslot = inventory[outputSlotId];
             if (outslot.Empty) return true;
 
-            ItemStack compareStack = sourceSlot.Itemstack.Collectible.CombustibleProps?.SmeltedStack?.ResolvedItemstack;
+            ItemStack compareStack = sourceSlot.Itemstack?.Collectible.CombustibleProps?.SmeltedStack?.ResolvedItemstack;
             if (compareStack == null) compareStack = sourceSlot.Itemstack;
             
             if (!outslot.Itemstack.Equals(inventory.Api.World, compareStack, GlobalConstants.IgnoredStackAttributes))

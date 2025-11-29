@@ -8,6 +8,8 @@ namespace Vintagestory.GameContent
         {
             setVars();
 
+            if (Code == "opentrade") return "welcomeback";
+
             return JumpTo != null ? JumpTo : "next";
         }
     }

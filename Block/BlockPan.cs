@@ -55,7 +55,7 @@ namespace Vintagestory.GameContent
             shapeEmpty = shapeEmpty?.WithPathPrefix("shapes/")?.WithPathAppendix(".json");
             shapeFull = shapeFull?.WithPathPrefix("shapes/")?.WithPathAppendix(".json");
 
-            bool skipManmade = !api.World.Config.GetAsBool("loreContent");
+            bool skipManmade = !api.World.Config.GetAsBool("loreContent", true);
 
             if (skipManmade)
             {

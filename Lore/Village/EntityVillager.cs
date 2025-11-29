@@ -236,6 +236,10 @@ namespace Vintagestory.GameContent
             if (packetid == PlayerStoppedInteracting)
             {
                 interactingWithPlayer.Remove(player.Entity);
+                if (WatchedAttributes.GetString("tradingPlayerUID") == player.PlayerUID)
+                {
+                    WatchedAttributes.RemoveAttribute("tradingPlayerUID");
+                }
             }
 
             base.OnReceivedClientPacket(player, packetid, data);

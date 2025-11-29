@@ -47,17 +47,16 @@ namespace Vintagestory.GameContent
 
         private float Inv_OnAcquireTransitionSpeed(EnumTransitionType transType, ItemStack stack, float baseMul)
         {
-            if (transType == EnumTransitionType.Dry || transType == EnumTransitionType.Melt) return container.Room?.ExitCount == 0 ? 2f : 0.5f;
+            if (transType is EnumTransitionType.Dry or EnumTransitionType.Melt)
+            {
+                // Since we can now have multiple OnAcquireTransitionSpeed invocations stacked we have to multiply this to offset the base 0.25f
+                return (container.Room?.ExitCount == 0 ? 2f : 0.5f) * 4f;
+            }
             if (Api == null) return 0;
 
-            if (transType == EnumTransitionType.Ripen)
-            {
-                float perishRate = container.GetPerishRate();
-                return GameMath.Clamp((1 - perishRate - 0.5f) * 3, 0, 1);
-            }
+            if (transType is not EnumTransitionType.Ripen) return 1;
 
-            return 1;
-
+            return GameMath.Clamp((1 - container.GetPerishRate() - 0.5f) * 3, 0, 1);
         }
 
         internal bool OnInteract(IPlayer byPlayer, BlockSelection blockSel)

@@ -171,5 +171,10 @@ namespace Vintagestory.GameContent
             if (creatureType == EnumAICreatureType.SeaCreature && !isBoiling) return 0;
             return isBoiling && creatureType != EnumAICreatureType.HeatProofCreature ? 99999f : 5f;
         }
+
+        public override void DetermineTopMiddlePos()
+        {
+            TopMiddlePos.Y = (Height + 1) / 8f;
+        }
     }
 }

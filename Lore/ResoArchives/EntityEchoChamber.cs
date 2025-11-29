@@ -9,13 +9,21 @@ namespace Vintagestory.GameContent
 {
     public class EntityLibraryResonator : EntityAgent
     {
+        SimpleParticleProperties lhp;
+
+        public override void OnEntityLoaded()
+        {
+            base.OnEntityLoaded();
+
+            lhp = GuiStyle.LoreHintParticles.Clone(Api.World);
+        }
+
         public override void OnGameTick(float dt)
         {
             base.OnGameTick(dt);
 
-            if (Api.Side == EnumAppSide.Client && Api.World.Rand.NextDouble() < 0.05)
+            if (Api.Side == EnumAppSide.Client && Api.World.Rand.NextDouble() < 0.05 && lhp != null)
             {
-                var lhp = GuiStyle.LoreHintParticles.Clone(Api.World);
                 lhp.MinPos = Pos.XYZ.AddCopy(-0.5, 0.1f, -0.5);
                 Api.World.SpawnParticles(lhp);
             }

@@ -8,6 +8,7 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.Common.Collectible.Block;
 
 #nullable disable
 
@@ -210,35 +211,47 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
 
     private void OnServerTick3s()
     {
+        var currentTotalHours = Api.World.Calendar.TotalHours;
+        var minHeatHours = float.MaxValue;
+        var fuelPos = new BlockPos(Pos.dimension);
+        for (var j = 0; j < 9; j++)
+        {
+            fuelPos.Set(particlePositions[j].X, particlePositions[j].Y-1, particlePositions[j].Z);
+            var blockEntity = Api.World.BlockAccessor.GetBlockEntity(fuelPos);
+            if (blockEntity == null && Api.World.BlockAccessor.GetChunkAtBlockPos(fuelPos) == null)
+            {
+                // if one of the fuel spots is not loaded we do not start ticking the kiln and also do not tick the fuel
+                return;
+            }
+
+            float heatHours = 0;
+            if (blockEntity is IExternalTickable xt)
+            {
+                xt.SetExternallyTicked();
+            }
+            if (blockEntity is BlockEntityCoalPile becp && becp.IsBurning)
+            {
+                heatHours = becp.GetHoursLeft(currentTotalHours);
+            }
+            else if (blockEntity is BlockEntityGroundStorage gs && gs.IsBurning)
+            {
+                heatHours = gs.GetHoursLeft(currentTotalHours);
+            }
+            // Api.Logger.Notification($"hh {j}: {heatHours:F3}");
+
+            minHeatHours = Math.Min(minHeatHours, heatHours);
+        }
         var markDirty = false;
 
-        var minHeatHours = float.MaxValue;
         var beforeReceiveHeat = receivesHeat;
         var beforeStructureComplete = StructureComplete;
 
         if (!receivesHeat)
         {
-            TotalHoursLastUpdate = Api.World.Calendar.TotalHours;
+            TotalHoursLastUpdate = currentTotalHours;
         }
 
-        receivesHeat = true;
-        for (int j = 0; j < 9; j++)
-        {
-            var pos = particlePositions[j].DownCopy();
-            var blockEntity = Api.World.BlockAccessor.GetBlockEntity(pos);
-            float heatHours = 0;
-            if (blockEntity is BlockEntityCoalPile becp && becp.IsBurning)
-            {
-                heatHours = becp.GetHoursLeft(TotalHoursLastUpdate);
-            }
-            else if (blockEntity is BlockEntityGroundStorage gs && gs.IsBurning)
-            {
-                heatHours = gs.GetHoursLeft(TotalHoursLastUpdate);
-            }
-
-            minHeatHours = Math.Min(minHeatHours, heatHours);
-            receivesHeat &= heatHours > 0;
-        }
+        receivesHeat = minHeatHours > 0;
 
         StructureComplete = structure.InCompleteBlockCount(Api.World, Pos) == 0;
         if (beforeReceiveHeat != receivesHeat || beforeStructureComplete != StructureComplete)
@@ -251,8 +264,9 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
             if (!StructureComplete || beBehaviorDoor.Opened)
             {
                 wasNotProcessing = true;
-                TotalHoursLastUpdate = Api.World.Calendar.TotalHours;
+                TotalHoursLastUpdate = currentTotalHours;
                 MarkDirty();
+                TickFuel();
                 return;
             }
 
@@ -260,15 +274,19 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
             if (wasNotProcessing)
             {
                 wasNotProcessing = false;
-                TotalHoursLastUpdate = Api.World.Calendar.TotalHours;
+                TotalHoursLastUpdate = currentTotalHours;
             }
 
-            var hoursPassed = Api.World.Calendar.TotalHours - TotalHoursLastUpdate;
+            var hoursPassed = currentTotalHours - TotalHoursLastUpdate;
 
             var heatHoursReceived = Math.Max(0, GameMath.Min((float)hoursPassed, minHeatHours));
+
+            // Api.Logger.Notification($"hhr: {heatHoursReceived:F3} hp: {hoursPassed:F3} mhh: {minHeatHours:F3}");
+            // Api.Logger.Notification($"TH:{TotalHoursHeatReceived:F3} T:{currentTotalHours:F3} NTH:{TotalHoursHeatReceived+heatHoursReceived:F3}");
+
             TotalHoursHeatReceived += heatHoursReceived;
             UpdateGroundStorage(heatHoursReceived);
-            TotalHoursLastUpdate = Api.World.Calendar.TotalHours;
+            TotalHoursLastUpdate = currentTotalHours;
             markDirty = true;
         }
 
@@ -293,6 +311,26 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
         if (markDirty)
         {
             MarkDirty();
+        }
+
+        TickFuel();
+    }
+
+    private void TickFuel()
+    {
+        var fuelPos = new BlockPos(0);
+        for (var j = 0; j < 9; j++)
+        {
+            fuelPos.Set(particlePositions[j].X, particlePositions[j].Y-1, particlePositions[j].Z);
+            var blockEntity = Api.World.BlockAccessor.GetBlockEntity(fuelPos);
+            if (blockEntity is BlockEntityCoalPile becp && becp.IsBurning)
+            {
+                becp.OnExternalTick(3);
+            }
+            else if (blockEntity is BlockEntityGroundStorage begs && begs.IsBurning)
+            {
+                begs.OnExternalTick(3);
+            }
         }
     }
 
@@ -474,6 +512,11 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
         StructureComplete = tree.GetBool("structureComplete");
         Orientation = BlockFacing.FromFirstLetter(tree.GetString("orientation"));
         TotalHoursHeatReceived = tree.GetDouble("totalHoursHeatReceived");
+
+        if (Api is ICoreClientAPI && structure.TransformedOffsets == null)    // In multiplayer, other players receiving this BE will not yet have called Init() - see also BlockBeeHiveKilnDoor.placeDoor() method which is called only on the client placing the door 
+        {
+            Init();
+        }
     }
 
     public override void ToTreeAttributes(ITreeAttribute tree)
@@ -494,6 +537,19 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
         if (Api is ICoreClientAPI capi)
         {
             highlightedStructure?.ClearHighlights(Api.World, capi.World.Player);
+        }
+
+        if (Api is ICoreServerAPI sapi)
+        {
+            for (int j = 0; j < 9; j++)
+            {
+                var pos = particlePositions[j].DownCopy();
+                var blockEntity = Api.World.BlockAccessor.GetBlockEntity(pos);
+                if (blockEntity is IExternalTickable xt)
+                {
+                    xt.SetInternallyTicked();
+                }
+            }
         }
     }
 

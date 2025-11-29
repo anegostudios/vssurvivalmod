@@ -55,7 +55,6 @@ namespace Vintagestory.GameContent
 
             inventory.LateInitialize("toolrack-" + Pos.ToString(), api);
             inventory.ResolveBlocksOrItems();
-            inventory.OnAcquireTransitionSpeed += Inventory_OnAcquireTransitionSpeed;
 
             if (api is ICoreClientAPI)
             {
@@ -71,11 +70,6 @@ namespace Vintagestory.GameContent
 
             loadToolMeshes();
             MarkDirty(true);
-        }
-
-        protected virtual float Inventory_OnAcquireTransitionSpeed(EnumTransitionType transType, ItemStack stack, float baseMul)
-        {
-            return baseMul;
         }
 
         void loadToolMeshes()

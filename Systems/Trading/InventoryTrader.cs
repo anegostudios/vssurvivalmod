@@ -112,6 +112,11 @@ namespace Vintagestory.GameContent
 
         public override object ActivateSlot(int slotId, ItemSlot mouseSlot, ref ItemStackMoveOperation op)
         {
+            if (traderEntity.WatchedAttributes.GetString("tradingPlayerUID") != op.ActingPlayer.PlayerUID)
+            {
+                return null;
+            }
+
             // Player clicked an item from the selling list, move to buying cart
             if (slotId <= 15)
             {

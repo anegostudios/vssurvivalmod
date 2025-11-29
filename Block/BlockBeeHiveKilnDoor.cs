@@ -24,6 +24,8 @@ public class BlockBeeHiveKilnDoor : BlockGeneric
 
     public bool placeDoor(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, BlockPos pos, IBlockAccessor ba)
     {
+        // In multiplayer, the following code is called only on the server and the client placing the block.  The MarkDirty() at the end should ensure other players are updated
+
         ba.SetBlock(BlockId, pos);
         var behaviorDoor = ba.GetBlockEntity(pos)?.GetBehavior<BEBehaviorDoor>();
         var blockEntityBeeHiveKiln = behaviorDoor.Blockentity as BlockEntityBeeHiveKiln;
@@ -43,6 +45,7 @@ public class BlockBeeHiveKilnDoor : BlockGeneric
         if (world.Side == EnumAppSide.Server)
         {
             GetBehavior<BlockBehaviorDoor>().placeMultiblockParts(world, pos);
+            blockEntityBeeHiveKiln.MarkDirty();
         }
 
         return true;

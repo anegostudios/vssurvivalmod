@@ -221,7 +221,7 @@ namespace Vintagestory.GameContent
             if (byEntity.World.Side == EnumAppSide.Client && GetTemperature(byEntity.World, slot.Itemstack) > 50 && byEntity.World.Rand.NextDouble() < 0.07)
             {
                 float sideWays = 0.35f;
-                
+
 
                 if ((byEntity as EntityPlayer)?.Player is IClientPlayer byPlayer && byPlayer.CameraMode != EnumCameraMode.FirstPerson)
                 {
@@ -358,16 +358,13 @@ namespace Vintagestory.GameContent
             ItemSlot slot = BlockCrock.GetDummySlotForFirstPerishableStack(api.World, stacks, null, dummyInv);
             dummyInv.OnAcquireTransitionSpeed += (transType, stack, mul) =>
             {
-                float val = mul * GetContainingTransitionModifierContained(world, inSlot, transType);
-
-                if (inSlot.Inventory != null) val *= inSlot.Inventory.GetTransitionSpeedMul(transType, cookedContStack);
-
-                return val;
+                float invMul = inSlot.Inventory?.GetTransitionSpeedMul(transType, cookedContStack) ?? 1;
+                return invMul * GetContainingTransitionModifierContained(world, inSlot, transType);
             };
             slot.Itemstack?.Collectible.AppendPerishableInfoText(slot, dsc, world);
         }
 
-        
+
 
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
@@ -458,7 +455,7 @@ namespace Vintagestory.GameContent
         public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing, int rndIndex = -1)
         {
             if (capi.World.BlockAccessor.GetBlockEntity(pos) is not BlockEntityCookedContainer bem || bem.GetNonEmptyContentStacks() is not ItemStack[] stacks || stacks.Length == 0)
-            { 
+            {
                 return base.GetRandomColor(capi, pos, facing, rndIndex);
             }
 
@@ -494,7 +491,7 @@ namespace Vintagestory.GameContent
 
             return rndStack.Collectible.GetRandomColor(capi, stack);
         }
-        
+
 
         public IInFirepitRenderer GetRendererWhenInFirepit(ItemStack stack, BlockEntityFirepit firepit, bool forOutputSlot)
         {
@@ -515,7 +512,7 @@ namespace Vintagestory.GameContent
 
         public override bool OnSmeltAttempt(InventoryBase inventorySmelting)
         {
-            if (Attributes?["isDirtyPot"]?.AsBool(false) == true)
+            if (Attributes?["isDirtyPot"]?.AsBool(false) == true && inventorySmelting.Count > 1)
             {
                 InventorySmelting inv = (InventorySmelting)inventorySmelting;
                 int quantityServings = (int)((float)(inv[1].Itemstack?.Attributes.GetDecimal("quantityServings") ?? 0) + 0.001f);  // forgive some rounding errors, but otherwise round down

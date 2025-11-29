@@ -462,11 +462,8 @@ namespace Vintagestory.GameContent
             ItemSlot mealSlot = GetDummySlotForFirstPerishableStack(api.World, stacks, null, dummyInv);
             dummyInv.OnAcquireTransitionSpeed += (transType, stack, mul) =>
             {
-                float val = mul * GetContainingTransitionModifierContained(world, inSlot, transType);
-
-                if (inSlot.Inventory != null) val *= inSlot.Inventory.GetTransitionSpeedMul(transType, crockStack);
-
-                return val;
+                float invMul = inSlot.Inventory?.GetTransitionSpeedMul(transType, crockStack) ?? 1;
+                return invMul * GetContainingTransitionModifierContained(world, inSlot, transType);
             };
 
 

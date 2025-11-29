@@ -775,11 +775,8 @@ namespace Vintagestory.GameContent
             ItemSlot slot = BlockCrock.GetDummySlotForFirstPerishableStack(api.World, stacks, null, dummyInv);
             dummyInv.OnAcquireTransitionSpeed += (transType, stack, mul) =>
             {
-                float val = mul * GetContainingTransitionModifierContained(world, inSlot, transType);
-
-                if (inSlot.Inventory != null) val *= inSlot.Inventory.GetTransitionSpeedMul(transType, mealStack);
-
-                return val;
+                float invMul = inSlot.Inventory?.GetTransitionSpeedMul(transType, mealStack) ?? 1;
+                return invMul * GetContainingTransitionModifierContained(world, inSlot, transType);
             };
 
             slot.Itemstack?.Collectible.AppendPerishableInfoText(slot, dsc, world);

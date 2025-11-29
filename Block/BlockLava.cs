@@ -85,7 +85,7 @@ namespace Vintagestory.GameContent
             base.OnServerGameTick(world, pos, extra);
 
             FireLocation fireLocation = (FireLocation)extra;
-            world.BlockAccessor.SetBlock(blockFire.BlockId,fireLocation.firePos);
+            world.BlockAccessor.SetBlock(blockFire.BlockId, fireLocation.firePos);
             BlockEntity befire = world.BlockAccessor.GetBlockEntity(fireLocation.firePos);
             befire?.GetBehavior<BEBehaviorBurning>()?.OnFirePlaced(fireLocation.facing, null);
         }
@@ -139,7 +139,7 @@ namespace Vintagestory.GameContent
             {
                 BlockPos npos = airBlockPos.AddCopy(facing);
                 Block block = world.BlockAccessor.GetBlock(npos);
-                
+
                 if (block.CombustibleProps != null && block.CombustibleProps.BurnTemperature <= GetTemperatureAtLocation(lavaPos, airBlockPos))
                 {
                     return facing;
@@ -165,7 +165,7 @@ namespace Vintagestory.GameContent
             if (LiquidLevel == 7)
             {
                 FireLocation fireLocation = FindFireLocation(world, pos);
-                if(fireLocation != null)
+                if (fireLocation != null)
                 {
                     extra = fireLocation;
                     return true;
@@ -210,6 +210,11 @@ namespace Vintagestory.GameContent
             }
 
             base.OnAsyncClientParticleTick(manager, pos, windAffectednessAtPos, secondsTicking);
+        }
+
+        public override void DetermineTopMiddlePos()
+        {
+            TopMiddlePos.Y = (Height + 1) / 8f;
         }
     }
 }

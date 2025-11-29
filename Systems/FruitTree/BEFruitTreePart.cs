@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -118,7 +118,7 @@ namespace Vintagestory.GameContent
 
                 // Prio 1: Config
                 DynFoliageProperties props = null;
-                blockFoliage.foliageProps?.TryGetValue(TreeType, out props);
+                blockFoliage?.foliageProps?.TryGetValue(TreeType, out props);
                 if (props != null)
                 {
                     string key = textureCode + "-" + FoliageUtil.FoliageStates[(int)FoliageState];

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -137,6 +137,7 @@ namespace Vintagestory.GameContent
                 }
             }
             firstTick = true;
+            if (blockAccess == null) return;    // Entity has been disposed (or perhaps not yet Initialized?)
 
             updateFreezingAnimState();
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Common;
@@ -167,6 +167,11 @@ namespace Vintagestory.GameContent
         }
 
         public virtual void DropContents(Vec3d atPos)
+        {
+
+        }
+
+        public virtual void CheckInventoryClearedMidTick()
         {
 
         }

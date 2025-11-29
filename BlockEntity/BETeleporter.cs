@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -51,6 +52,11 @@ namespace Vintagestory.GameContent
 
         public virtual void OnEntityCollide(Entity entity)
         {
+            // if the mountable is empty do not try to TP
+            if (entity.GetInterface<IMountable>()?.Seats.Any(s => s.Passenger != null) == false)
+            {
+                return;
+            }
             if (!tpingEntities.TryGetValue(entity.EntityId, out TeleportingEntity tpe))
             {
                 tpingEntities[entity.EntityId] = tpe = new TeleportingEntity()
@@ -88,23 +94,31 @@ namespace Vintagestory.GameContent
             foreach (var val in tpingEntities)
             {
                 if (val.Value == null) throw new Exception("BETeleporterBase: val.Value is null, it shouldn't be!");
-                if (val.Value.Entity == null) throw new Exception("BETeleporterBase: val.Value.Entity is null, it shouldn't be!");
-                if (val.Value.Entity.Teleporting) continue;
+                var entity = val.Value.Entity;
+                if (entity == null) throw new Exception("BETeleporterBase: val.Value.Entity is null, it shouldn't be!");
+                if (entity.Teleporting) continue;
 
                 val.Value.SecondsPassed += Math.Min(0.5f, dt);
 
                 if (Api.World.ElapsedMilliseconds - val.Value.LastCollideMs > 100)
                 {
                     // round the position since the entity is placed at y.12506xxxx and the teleporter collisionbox is y.125 so without it GetCollidingBlock does round y to 5 decimals, and so we get a null block back and assume they left the tl and abort teleporting
-                    tmpPosVec.Set(val.Value.Entity.Pos);
-                    tmpPosVec.Y = Math.Round(tmpPosVec.Y, 3); 
+                    tmpPosVec.Set(entity.Pos);
+                    tmpPosVec.Y = Math.Round(tmpPosVec.Y, 3);
                     // Make sure its not just server lag
-                    Block block = Api.World.CollisionTester.GetCollidingBlock(Api.World.BlockAccessor, val.Value.Entity.CollisionBox, tmpPosVec, true);
+                    Block block = Api.World.CollisionTester.GetCollidingBlock(Api.World.BlockAccessor, entity.CollisionBox, tmpPosVec, true);
                     if (block == null || block.GetType() != Block.GetType())
                     {
                         toremove.Add(val.Key);
                         continue;
                     }
+                }
+
+                // if the mountable is now empty do not try to TP
+                if (entity.GetInterface<IMountable>()?.Seats.Any(s => s.Passenger != null) == false)
+                {
+                    toremove.Add(val.Key);
+                    continue;
                 }
 
                 if (val.Value.SecondsPassed > 0.1 && !somebodyIsTeleporting)
@@ -113,7 +127,7 @@ namespace Vintagestory.GameContent
                     MarkDirty();
                 }
 
-                var tpTarget = GetTarget(val.Value.Entity);
+                var tpTarget = GetTarget(entity);
 
                 if (val.Value.SecondsPassed > 1.5 && tpTarget != null)
                 {
@@ -139,20 +153,19 @@ namespace Vintagestory.GameContent
                 {
                     var targetPos = tpTarget.Clone();
                     if (tpLocationIsOffset) targetPos.Add(Pos.X, Pos.Y, Pos.Z);
-                    val.Value.Entity.TeleportTo(targetPos); // Fugly, need some better exit pos thing
+                    entity.TeleportTo(targetPos); // Fugly, need some better exit pos thing
                     toremove.Add(val.Key);
 
-                    Entity e = val.Value.Entity;
-                    if (e is EntityPlayer)
+                    if (entity is EntityPlayer player)
                     {
-                        Api.World.Logger.Audit("Teleporting player {0} from {1} to {2}", (e as EntityPlayer).GetBehavior<EntityBehaviorNameTag>().DisplayName, e.Pos.AsBlockPos, tpTarget);
+                        Api.World.Logger.Audit("Teleporting player {0} from {1} to {2}", player.GetBehavior<EntityBehaviorNameTag>().DisplayName, entity.Pos.AsBlockPos, tpTarget);
                     }
                     else
                     {
-                        Api.World.Logger.Audit("Teleporting entity {0} from {1} to {2}", e.Code, e.Pos.AsBlockPos, tpTarget);
+                        Api.World.Logger.Audit("Teleporting entity {0} from {1} to {2}", entity.Code, entity.Pos.AsBlockPos, tpTarget);
                     }
 
-                    didTeleport(val.Value.Entity);
+                    didTeleport(entity);
 
                     somebodyIsTeleporting = false;
                     somebodyDidTeleport = true;

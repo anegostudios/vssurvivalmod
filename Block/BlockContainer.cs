@@ -235,13 +235,7 @@ namespace Vintagestory.GameContent
 
             dummyInv.OnAcquireTransitionSpeed += (transType, stack, mulByConfig) =>
             {
-                float mul = mulByConfig;
-
-                if (inslot.Inventory != null)
-                {
-                    mul = inslot.Inventory.InvokeTransitionSpeedDelegates(transType, stack, mulByConfig);
-                }
-
+                float mul = inslot.Inventory?.InvokeTransitionSpeedDelegates(transType, stack, mulByConfig) ?? 1;
                 return mul * GetContainingTransitionModifierContained(api.World, inslot, transType);
             };
 
@@ -280,11 +274,8 @@ namespace Vintagestory.GameContent
             ItemSlot slot = BlockCrock.GetDummySlotForFirstPerishableStack(api.World, stacks, null, dummyInv);
             dummyInv.OnAcquireTransitionSpeed += (transType, stack, mul) =>
             {
-                float val = mul * GetContainingTransitionModifierContained(world, inSlot, transType);
-
-                if (inSlot.Inventory != null) val *= inSlot.Inventory.GetTransitionSpeedMul(transType, inSlot.Itemstack);
-
-                return val;
+                float invMul = inSlot.Inventory?.GetTransitionSpeedMul(transType, inSlot.Itemstack) ?? 1;
+                return invMul * GetContainingTransitionModifierContained(world, inSlot, transType);
             };
 
             return BlockEntityShelf.PerishableInfoCompact(api, slot, 0, false).Replace("\r\n", "");

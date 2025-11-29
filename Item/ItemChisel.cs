@@ -334,6 +334,9 @@ namespace Vintagestory.GameContent
             // Otherwise if in creative mode, sure go ahead
             if (player?.WorldData.CurrentGameMode == EnumGameMode.Creative) return true;
 
+            // allow liquid to be chisel able in creative but disallow otherwise
+            if (block.BlockMaterial == EnumBlockMaterial.Liquid) return false;
+
             // Lastly go by the config value
             if (mode == "stonewood")
             {

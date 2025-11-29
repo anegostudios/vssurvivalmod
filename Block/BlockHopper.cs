@@ -29,11 +29,12 @@ namespace Vintagestory.GameContent
                 // Don't suck up everything instantly
                 if (world.Rand.NextDouble() < 0.9) return;
 
+                var tmpPos = pos.Copy();
                 api.Event.EnqueueMainThreadTask(() =>
                 {
                     // Ensure these steps will occur on the main thread
 
-                    BlockEntity blockEntity = world.BlockAccessor.GetBlockEntity(pos);
+                    BlockEntity blockEntity = world.BlockAccessor.GetBlockEntity(tmpPos);
                     if (inWorldItem.Alive && blockEntity is BlockEntityItemFlow beItemFlow)
                     {
                         WeightedSlot ws = beItemFlow.inventory.GetBestSuitedSlot(inWorldItem.Slot);

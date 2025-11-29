@@ -600,7 +600,7 @@ namespace Vintagestory.GameContent
 
 
         public string[] remainStationaryAnimations = new string[] { "sit-idle", "sit-write", "sit-tinker", "sitfloor", "sitedge", "sitchair", "sitchairtable", "eatsittable", "bowl-eatsittable" };
-        private bool remainStationaryOnCall()
+        protected bool remainStationaryOnCall()
         {
             var eagent = entity as EntityAgent;
             return
@@ -609,7 +609,12 @@ namespace Vintagestory.GameContent
             ;
         }
 
-        private bool beginConvoClient()
+
+        /// <summary>
+        /// Returns false if no dialog can be opened or is opened
+        /// </summary>
+        /// <returns></returns>
+        protected bool beginConvoClient()
         {
             ICoreClientAPI capi = entity.World.Api as ICoreClientAPI;
             EntityPlayer entityplr = capi.World.Player.Entity;
@@ -634,7 +639,6 @@ namespace Vintagestory.GameContent
             else
             {
                 capi.TriggerIngameError(this, "onlyonedialog", Lang.Get("Can only trade with one trader at a time"));
-                return false;
             }
 
 
@@ -686,7 +690,13 @@ namespace Vintagestory.GameContent
                 ICoreClientAPI capi = entity.World.Api as ICoreClientAPI;
                 EntityPlayer entityplr = capi.World.Player.Entity;
 
-                if (entityplr.Pos.SquareDistanceTo(entity.Pos) > StopTalkRangeSq || Dialog?.IsOpened() == true || !beginConvoClient())
+                bool inrange = entityplr.Pos.SquareDistanceTo(entity.Pos) <= StopTalkRangeSq;
+
+                // Begin the convo if we are in range and not already in convo
+                if (inrange && Dialog == null) beginConvoClient();
+
+                // If we can't make sure the server knows about it
+                if (!ControllerByPlayer.ContainsKey(entityplr.PlayerUID) || Dialog == null)
                 {
                     capi.Network.SendEntityPacket(this.entity.EntityId, CloseConvoPacketId);
                 }

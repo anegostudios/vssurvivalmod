@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -171,7 +171,7 @@ namespace Vintagestory.ServerMods
 
         private void OnChunkColumnGen(IChunkColumnGenerateRequest request)
         {
-            if (request.RequiresChunkBorderSmoothing)
+            if (request.RequiresChunkBorderSmoothing && !PreventSmoothing(request.ChunkX, request.ChunkZ))
             {
                 var neibHeightMaps = request.NeighbourTerrainHeight;
 
@@ -268,6 +268,13 @@ namespace Vintagestory.ServerMods
             }
 
             generate(request.Chunks, request.ChunkX, request.ChunkZ, request.RequiresChunkBorderSmoothing);
+        }
+
+        private bool PreventSmoothing(int chunkX, int chunkZ)
+        {
+            BoolRef result = new BoolRef();
+            api.Event.IsTerrainHeightSmoothingPrevented(chunkX, chunkZ, result);
+            return result.GetValue();
         }
 
         private void generate(IServerChunk[] chunks, int chunkX, int chunkZ, bool requiresChunkBorderSmoothing)

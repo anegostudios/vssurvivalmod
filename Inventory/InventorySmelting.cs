@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -144,11 +144,6 @@ namespace Vintagestory.GameContent
             }
         }
 
-
-        public override float GetTransitionSpeedMul(EnumTransitionType transType, ItemStack stack)
-        {
-            return base.GetTransitionSpeedMul(transType, stack);
-        }
 
         public void discardCookingSlots()
         {
