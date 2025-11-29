@@ -811,7 +811,9 @@ namespace Vintagestory.GameContent
 
             if (!MealMeshCache.ContentsRotten(stacks))
             {
-                string facts = GetContentNutritionFacts(world, inSlot, null, recipe == null);
+                float servingsLeft = mealStack.Attributes.GetFloat("quantityServings", 1);
+                float[] nmul = GetNutritionHealthMul(null, inSlot, null);
+                string facts = GetContentNutritionFacts(world, inSlot, stacks, null, false, servingsLeft * nmul[0], servingsLeft * nmul[1]);
 
                 if (facts != null)
                 {
