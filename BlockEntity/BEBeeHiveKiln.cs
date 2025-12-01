@@ -259,6 +259,13 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
             markDirty = true;
         }
 
+        /// Apply anti-cheese measure if the player tries to break the
+        /// structure itself instead of the door
+        if (beforeStructureComplete && !StructureComplete)
+        {
+            ApplyAccumulatedDamage();
+        }
+
         if (receivesHeat)
         {
             if (!StructureComplete || beBehaviorDoor.Opened)
@@ -293,19 +300,7 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
         // check damage every 7 * 24h = 168 ingame hours to damage - same time as cementation furnace
         if (TotalHoursHeatReceived >= KilnBreakAfterHours)
         {
-            TotalHoursHeatReceived = 0;
-            structure.WalkMatchingBlocks(Api.World, Pos, (block, pos) =>
-            {
-                var heatResistance = block.Attributes?["heatResistance"].AsFloat(1) ?? 1;
-
-                if (Api.World.Rand.NextDouble() > heatResistance)
-                {
-                    var nowBlock = Api.World.GetBlock(block.CodeWithVariant("state", "damaged"));
-                    Api.World.BlockAccessor.SetBlock(nowBlock.Id, pos);
-                    StructureComplete = false;
-                    markDirty = true;
-                }
-            });
+            ApplyAccumulatedDamage();
         }
 
         if (markDirty)
@@ -601,5 +596,34 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
         var rotateYRad = tree.GetFloat("rotateYRad");
         rotateYRad = (rotateYRad - degreeRotation * GameMath.DEG2RAD) % GameMath.TWOPI;
         tree.SetFloat("rotateYRad", rotateYRad);
+    }
+
+    /// Anti-cheese:
+    ///
+    /// Apply all accumulated damage before resetting the timer.
+    /// Prevents simply breaking and replacing components from
+    /// stopping all damage.
+    ///
+    /// This is important for the beehive kiln because its function is not
+    /// applied in discrete chunks like the cementation furnace, where breaking
+    /// it before the timer is up has no value and just wastes fuel.
+    public void ApplyAccumulatedDamage()
+    {
+        var timeMul = TotalHoursHeatReceived / KilnBreakAfterHours;
+        TotalHoursHeatReceived = 0;
+
+        structure.WalkMatchingBlocks(Api.World, Pos, (block, pos) =>
+        {
+            var heatResistance = block.Attributes?["heatResistance"].AsFloat(1) ?? 1;
+
+            if (Api.World.Rand.NextDouble() > 1 - ((1 - heatResistance) * timeMul))
+            {
+                var nowBlock = Api.World.GetBlock(block.CodeWithVariant("state", "damaged"));
+                Api.World.BlockAccessor.SetBlock(nowBlock.Id, pos);
+                StructureComplete = false;
+            }
+        });
+
+        MarkDirty();
     }
 }
