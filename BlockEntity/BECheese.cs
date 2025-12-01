@@ -55,6 +55,7 @@ namespace Vintagestory.GameContent
         public ItemStack TakeSlice()
         {
             if (inv[0].Empty) return null;
+            float freshness = inv[0].Itemstack.Collectible.UpdateAndGetTransitionState(Api.World, inv[0], EnumTransitionType.Perish).TransitionedHours;
             ItemCheese cheese = inv[0].Itemstack.Collectible as ItemCheese;
             MarkDirty(true);
 
@@ -63,26 +64,32 @@ namespace Vintagestory.GameContent
                 case "1slice":
                     {
                         ItemStack stack = inv[0].Itemstack.Clone();
+                        stack.Collectible.SetTransitionState(stack, EnumTransitionType.Perish, freshness);
                         inv[0].Itemstack = null;
-                        Api.World.BlockAccessor.SetBlock(0, Pos);            
+                        Api.World.BlockAccessor.SetBlock(0, Pos);
                         return stack;
                     }
                 case "2slice":
                     {
                         ItemStack stack = new ItemStack(Api.World.GetItem(cheese.CodeWithVariant("part", "1slice")));
+                        stack.Collectible.SetTransitionState(stack, EnumTransitionType.Perish, freshness);
                         inv[0].Itemstack = stack;
                         return stack.Clone();
                     }
                 case "3slice":
                     {
                         ItemStack stack = new ItemStack(Api.World.GetItem(cheese.CodeWithVariant("part", "1slice")));
+                        stack.Collectible.SetTransitionState(stack, EnumTransitionType.Perish, freshness);
                         inv[0].Itemstack = new ItemStack(Api.World.GetItem(cheese.CodeWithVariant("part", "2slice")));
+                        inv[0].Itemstack.Collectible.SetTransitionState(inv[0].Itemstack, EnumTransitionType.Perish, freshness);
                         return stack.Clone();
                     }
                 case "4slice":
                     {
                         ItemStack stack = new ItemStack(Api.World.GetItem(cheese.CodeWithVariant("part", "1slice")));
+                        stack.Collectible.SetTransitionState(stack, EnumTransitionType.Perish, freshness);
                         inv[0].Itemstack = new ItemStack(Api.World.GetItem(cheese.CodeWithVariant("part", "3slice"))); ;
+                        inv[0].Itemstack.Collectible.SetTransitionState(inv[0].Itemstack, EnumTransitionType.Perish, freshness);
                         return stack.Clone();
                     }
             }
