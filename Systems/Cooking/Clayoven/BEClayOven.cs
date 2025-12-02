@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -554,9 +555,17 @@ namespace Vintagestory.GameContent
                         if (item != null) resultStack = new ItemStack(item);
                     }
 
-
                     if (resultStack != null)
                     {
+                        TransitionableProperties[] tprops = resultStack.Collectible.GetTransitionableProperties(Api.World, slot.Itemstack, null);
+                        TransitionableProperties perishProps = tprops?.FirstOrDefault(p => p.Type == EnumTransitionType.Perish);
+
+                        // Carry over freshness
+                        if (perishProps != null)
+                        {
+                            CollectibleObject.CarryOverFreshness(Api, slot, resultStack, perishProps);
+                        }
+
                         ovenInv[slotIndex].Itemstack.Collectible.GetCollectibleInterface<IBakeableCallback>()?.OnBaked(ovenInv[slotIndex].Itemstack, resultStack);
 
                         ovenInv[slotIndex].Itemstack = resultStack;
