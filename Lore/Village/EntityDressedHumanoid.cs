@@ -141,6 +141,7 @@ namespace Vintagestory.GameContent
             entityShape = newShape;
 
             string[] outfitCodes = OutfitCodes;
+            if (outfitCodes == null || outfitCodes.Length == 0) return;
             TexturedWeightedCompositeShape[] cshapes = humanoidOutfits.Outfit2Shapes(OutfitConfigFileName, OutfitCodes);
 
             var slots = OutfitSlots;
