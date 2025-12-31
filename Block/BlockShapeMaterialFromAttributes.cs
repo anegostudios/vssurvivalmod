@@ -158,7 +158,7 @@ public class BlockShapeMaterialFromAttributes : Block
 
                 float intervalRad = GameMath.PIHALF;
                 float roundRad = ((int)Math.Round(angleHor / intervalRad)) * intervalRad;
-                bect.MeshAngleY = roundRad;
+                bect.MeshAngleY = GameMath.NormaliseAngleRad(roundRad);
                 bect.Init();
             }
         }

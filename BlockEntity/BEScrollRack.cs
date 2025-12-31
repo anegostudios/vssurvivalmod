@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -82,7 +83,11 @@ namespace Vintagestory.GameContent
             var be = Api.World.BlockAccessor
                 .GetBlockEntity<BlockEntityScrollRack>(Pos.AddCopy(offset))
                 ?.GetBehavior<BEBehaviorShapeMaterialFromAttributes>();
-            return be != null && be.MeshAngleY == MeshAngleRad;
+            if (be == null) return false;
+
+            float theirAngle = GameMath.NormaliseAngleRad(be.MeshAngleY);
+            float ourAngle = GameMath.NormaliseAngleRad(MeshAngleRad);
+            return Math.Abs(theirAngle - ourAngle) < 0.0001f;
         }
 
         public override void Initialize(ICoreAPI api)
