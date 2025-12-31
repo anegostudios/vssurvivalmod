@@ -651,7 +651,21 @@ namespace Vintagestory.GameContent
 
             if (BeingChiseled)
             {
-                int voxelY = (int)GameMath.Clamp(renderer.Level, 0, fillQuadsByLevel.Length - 1);
+                if (fillQuadsByLevel == null || fillQuadsByLevel.Length == 0)
+                {
+                    if (Block?.Attributes?["fillQuadsByLevel"].Exists == true)
+                    {
+                        fillQuadsByLevel = Block.Attributes["fillQuadsByLevel"].AsObject<Cuboidf[]>();
+                    }
+
+                    if (fillQuadsByLevel == null || fillQuadsByLevel.Length == 0)
+                    {
+                        fillQuadsByLevel = new Cuboidf[] { new Cuboidf(2, 0, 2, 14, 0, 14), };
+                    }
+                }
+
+                float level = renderer?.Level ?? ((float)FillLevel * fillHeight / Math.Max(1, requiredUnits));
+                int voxelY = (int)GameMath.Clamp(level, 0, fillQuadsByLevel.Length - 1);
 
                 MeshData modeldata = QuadMeshUtil.GetQuad();
                 modeldata.Rgba = new byte[4 * 4];
@@ -669,7 +683,7 @@ namespace Vintagestory.GameContent
                 ];
 
                 var matrix = new Matrixf().Identity()
-                                          .Translate(0.5f, 1.0f / 16f + Math.Max(0, renderer.Level / 16f - 0.0625f / 3), 0.5f)
+                                          .Translate(0.5f, 1.0f / 16f + Math.Max(0, level / 16f - 0.0625f / 3), 0.5f)
                                           .RotateX(90 * GameMath.DEG2RAD)
                                           .Scale(0.5f * size.Width / 16f, 0.5f * size.Length / 16f, 0.5f)
                                           .Values;
