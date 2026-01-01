@@ -303,7 +303,11 @@ namespace Vintagestory.GameContent
             }
 
             var sbp = api.ModLoader.GetModSystem<ModSystemSupportBeamPlacer>();
-            double beamDist = sbp.GetStableMostBeam(startPos, out var startend);
+            double beamDist = 99999;
+            if (sbp != null && sbp.GetSbData(startPos) != null)
+            {
+                beamDist = sbp.GetStableMostBeam(startPos, out var startend);
+            }
 
             searchResult.NearestSupportDistance = (float)Math.Min(searchResult.NearestSupportDistance, beamDist);
             searchResult.Instability = Math.Clamp(searchResult.NearestSupportDistance / (float)maxSupportDistance, 0, 99);

@@ -460,7 +460,7 @@ namespace Vintagestory.GameContent
         public double GetStableMostBeam(BlockPos blockpos, out StartEnd beamstartend)
         {
             var sbdata = GetSbData(blockpos);
-            if (sbdata.Beams == null || sbdata.Beams.Count == 0)
+            if (sbdata == null || sbdata.Beams == null || sbdata.Beams.Count == 0)
             {
                 beamstartend = null;
                 return 99999;
