@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Server;
@@ -13,6 +14,7 @@ namespace Vintagestory.ServerMods
     public class RecipeLoader : ModSystem
     {
         ICoreServerAPI api;
+        static readonly Regex PlaceholderRegex = new Regex(@"\{([^\{\}]+)\}", RegexOptions.Compiled);
 
         public override double ExecuteOrder()
         {
@@ -101,6 +103,22 @@ namespace Vintagestory.ServerMods
 
             if (nameToCodeMapping.Count > 0)
             {
+                List<string> emptyMappings = new List<string>();
+                foreach (var val2 in nameToCodeMapping)
+                {
+                    if (val2.Value == null || val2.Value.Length == 0)
+                    {
+                        emptyMappings.Add(val2.Key);
+                    }
+                }
+
+                if (emptyMappings.Count > 0)
+                {
+                    AddInvalidRecipe(className, path, "wildcard name(s) have no matches: " + string.Join(", ", emptyMappings));
+                    quantityIgnored++;
+                    return;
+                }
+
                 List<T> subRecipes = new List<T>();
 
                 int qCombs = 0;
@@ -145,12 +163,29 @@ namespace Vintagestory.ServerMods
                 if (subRecipes.Count == 0)
                 {
                     api.World.Logger.Warning("{1} file {0} make uses of wildcards, but no blocks or item matching those wildcards were found.", path, className);
+                    AddInvalidRecipe(className, path, "wildcards did not match any blocks or items");
+                    quantityIgnored++;
+                    return;
                 }
 
+                bool outputChecked = false;
                 foreach (T subRecipe in subRecipes)
                 {
+                    if (!outputChecked)
+                    {
+                        string[] placeholders = GetPlaceholders(subRecipe.Output?.Code);
+                        if (placeholders.Length > 0)
+                        {
+                            AddInvalidRecipe(className, path, "output contains unresolved placeholders " + string.Join(", ", placeholders));
+                            quantityIgnored++;
+                            return;
+                        }
+                        outputChecked = true;
+                    }
+
                     if (!subRecipe.Resolve(api.World, className + " " + path))
                     {
+                        AddInvalidRecipe(className, path, "failed to resolve output " + subRecipe.Output?.Code);
                         quantityIgnored++;
                         continue;
                     }
@@ -161,8 +196,17 @@ namespace Vintagestory.ServerMods
             }
             else
             {
+                string[] placeholders = GetPlaceholders(recipe.Output?.Code);
+                if (placeholders.Length > 0)
+                {
+                    AddInvalidRecipe(className, path, "output contains unresolved placeholders " + string.Join(", ", placeholders));
+                    quantityIgnored++;
+                    return;
+                }
+
                 if (!recipe.Resolve(api.World, className + " " + path))
                 {
+                    AddInvalidRecipe(className, path, "failed to resolve output " + recipe.Output?.Code);
                     quantityIgnored++;
                     return;
                 }
@@ -171,6 +215,29 @@ namespace Vintagestory.ServerMods
                 quantityRegistered++;
             }
         }
+
+        void AddInvalidRecipe(string className, AssetLocation path, string reason)
+        {
+            RecipeValidationErrors.Add(string.Format("{0} {1}: {2}", className, path.ToShortString(), reason));
+        }
+
+        static string[] GetPlaceholders(AssetLocation code)
+        {
+            if (code?.Path == null) return Array.Empty<string>();
+
+            MatchCollection matches = PlaceholderRegex.Matches(code.Path);
+            if (matches.Count == 0) return Array.Empty<string>();
+
+            string[] placeholders = new string[matches.Count];
+            for (int i = 0; i < matches.Count; i++)
+            {
+                placeholders[i] = matches[i].Value;
+            }
+
+            return placeholders;
+        }
+
+        
     }
 }
 
