@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -8,6 +8,7 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+using System.IO;
 
 #nullable disable
 
@@ -208,6 +209,49 @@ namespace Vintagestory.ServerMods
         }
 
 
+        // Fast hash function returning 0-1
+        float FastNoise(int x, int z)
+        {
+            uint hash = (uint)(x * 1619 + z * 31337);
+            hash = (hash ^ 61) ^ (hash >> 16);
+            hash = hash * 9;
+            hash = hash ^ (hash >> 4);
+            hash = hash * 0x27d4eb2d;
+            hash = hash ^ (hash >> 15);
+
+            // Convert to the range [0, 1]
+            return hash / (float)uint.MaxValue;
+        }
+
+        // With interpolation for smoothness, returns 0-1
+        float SmoothNoise(int x, int z, float frequency = 1f)
+        {
+            float fx = x * frequency;
+            float fz = z * frequency;
+
+            int ix = (int)Math.Floor(fx);
+            int iz = (int)Math.Floor(fz);
+            float tx = fx - ix;
+            float tz = fz - iz;
+
+            // Bilinear interpolation between 4 points
+            float n00 = FastNoise(ix, iz);
+            float n10 = FastNoise(ix + 1, iz);
+            float n01 = FastNoise(ix, iz + 1);
+            float n11 = FastNoise(ix + 1, iz + 1);
+
+            // Anti-aliasing
+            tx = tx * tx * (3 - 2 * tx);
+            tz = tz * tz * (3 - 2 * tz);
+
+            // Bi-linear interpolation
+            float nx0 = n00 * (1 - tx) + n10 * tx;
+            float nx1 = n01 * (1 - tx) + n11 * tx;
+            return nx0 * (1 - tz) + nx1 * tz;
+        }
+
+
+
 
 
         public override void GenDeposit(IBlockAccessor blockAccessor, IServerChunk[] chunks, int chunkX, int chunkZ, BlockPos depoCenterPos, ref Dictionary<BlockPos, DepositVariant> subDepositsToPlace)
@@ -216,9 +260,13 @@ namespace Vintagestory.ServerMods
             if (radius <= 0) return;
 
             // Let's deform that perfect circle a bit (+/- 25%)
-            float deform = GameMath.Clamp(DepositRand.NextFloat() - 0.5f, -0.25f, 0.25f);
-            radiusX = radius - (int)(radius * deform);
-            radiusZ = radius + (int)(radius * deform);
+            //float deform = GameMath.Clamp(DepositRand.NextFloat() - 0.5f, -0.25f, 0.25f);
+            //radiusX = radius - (int)(radius * deform);
+            //radiusZ = radius + (int)(radius * deform);
+
+            int deformation = (int)(radius * (DepositRand.NextFloat() - 0.5f) * 0.5f);
+            radiusX = radius - deformation;
+            radiusZ = radius + deformation;
 
             int baseX = chunkX * chunksize;
             int baseZ = chunkZ * chunksize;
@@ -274,6 +322,7 @@ namespace Vintagestory.ServerMods
             double val;
 
             int posy;
+
             for (int posx = minx; posx < maxx; posx++)
             {
                 lx = posx - baseX;
@@ -291,7 +340,12 @@ namespace Vintagestory.ServerMods
                     // Kinda weird mathematically speaking, but seems to work as a means to distort the perfect circleness of deposits ¯\_(ツ)_/¯
                     // Also not very efficient to use direct perlin noise in here :/
                     // But after ~10 hours of failing (=weird lines of missing deposit material) with a pre-generated 2d distortion map i give up >.>
-                    val = 1 - (radius > 3 ? DistortNoiseGen.Noise(posx / 3.0, posz / 3.0) * 0.2 : 0);
+                    //val = 1 - (radius > 3 ? DistortNoiseGen.Noise(posx / 3.0, posz / 3.0) * 0.2 : 0);
+
+                    val = 1 - (radius > 3 ? (SmoothNoise(posx, posz, 1.0f) * 0.2f) : 0);
+
+
+
                     double distanceToEdge = val - (xSq + distz * distz * zRadSqInv);
                     if (distanceToEdge < 0) continue;
 
@@ -324,7 +378,7 @@ namespace Vintagestory.ServerMods
 
                             Block placeblock = resolvedPlaceBlock.Blocks[gradeIndex];
 
-                            if (variant.WithBlockCallback || (WithLastLayerBlockCallback && y == hereThickness-1))
+                            if (variant.WithBlockCallback || (WithLastLayerBlockCallback && y == hereThickness - 1))
                             {
                                 targetPos.Y = posy;
                                 placeblock.TryPlaceBlockForWorldGen(blockAccessor, targetPos, BlockFacing.UP, DepositRand);
@@ -401,8 +455,13 @@ namespace Vintagestory.ServerMods
 
 
             IMapRegion reg = heremapchunk.MapRegion;
-            float yOffTop = reg.OreMapVerticalDistortTop.GetIntLerpedCorrectly(rdx * step + step * ((float)lx / chunksize), rdz * step + step * ((float)lz / chunksize)) - 20;
-            float yOffBot = reg.OreMapVerticalDistortBottom.GetIntLerpedCorrectly(rdx * step + step * ((float)lx / chunksize), rdz * step + step * ((float)lz / chunksize)) - 20;
+
+            // repetitive calculations and step are moved out of parentheses for optimization
+            var numx = step * (rdx + ((float)lx / chunksize));
+            var numz = step * (rdz + ((float)lz / chunksize));
+
+            float yOffTop = reg.OreMapVerticalDistortTop.GetIntLerpedCorrectly(numx, numz) - 20;
+            float yOffBot = reg.OreMapVerticalDistortBottom.GetIntLerpedCorrectly(numx, numz) - 20;
 
             float yRel = (float)pos.Y / worldheight;
             return yOffBot * (1 - yRel) + yOffTop * yRel;
