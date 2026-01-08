@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.MathTools;
+using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
 #nullable disable
@@ -10,6 +10,9 @@ namespace Vintagestory.ServerMods
         protected ICoreServerAPI api;
         protected int worldheight;
         public int airBlockId = 0;
+        public int basaltBlockId;
+        public int lavaBlockId;
+        
 
         protected abstract int chunkRange { get; }
 
@@ -25,6 +28,9 @@ namespace Vintagestory.ServerMods
         public virtual void initWorldGen()
         {
             LoadGlobalConfig(api);
+
+            basaltBlockId = GlobalConfig.basaltBlockId;
+            lavaBlockId = GlobalConfig.lavaBlockId;
 
             worldheight = api.WorldManager.MapSizeY;
             chunkRand = new LCGRandom(api.WorldManager.Seed);
