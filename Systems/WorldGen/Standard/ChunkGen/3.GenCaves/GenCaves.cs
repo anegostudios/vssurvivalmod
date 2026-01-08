@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -34,7 +34,7 @@ namespace Vintagestory.ServerMods
                 api.ChatCommands.GetOrCreate("dev")
                     .BeginSubCommand("gencaves")
                     .WithDescription(
-                        "Cave generator test tool. Deletes all chunks in the area and generates inverse caves around the world middle")
+                        "Cave generator test tool. Deletes all chunks in the area 10х10 and generates inverse caves around the player.")
                     .RequiresPrivilege(Privilege.controlserver)
                     .HandleWith(CmdCaveGenTest)
                     .EndSubCommand();
@@ -73,17 +73,22 @@ namespace Vintagestory.ServerMods
             }
         }
 
+
+        // command to test cave generation
         private TextCommandResult CmdCaveGenTest(TextCommandCallingArgs args)
         {
             caveRand = new LCGRandom(api.WorldManager.Seed + 123128);
             initWorldGen();
 
-
+            // replace the air block with granite to generate inverted caves
             airBlockId = api.World.GetBlock(new AssetLocation("rock-granite")).BlockId;
 
-            int baseChunkX = api.World.BlockAccessor.MapSizeX / 2 / chunksize;
-            int baseChunkZ = api.World.BlockAccessor.MapSizeZ / 2 / chunksize;
+            // take the player as the center
+            var player = args.Caller.Player as IServerPlayer;
+            int baseChunkX = (int)player.Entity.Pos.X / chunksize;
+            int baseChunkZ = (int)player.Entity.Pos.Z / chunksize;
 
+            // first check that all chunks are loaded
             for (int dx = -5; dx <= 5; dx++)
             {
                 for (int dz = -5; dz <= 5; dz++)
@@ -105,7 +110,7 @@ namespace Vintagestory.ServerMods
                 }
             }
 
-
+            // clear all chunks and start cave generation
             for (int dx = -5; dx <= 5; dx++)
             {
                 for (int dz = -5; dz <= 5; dz++)
@@ -126,14 +131,24 @@ namespace Vintagestory.ServerMods
                         }
                     }
 
+                    // Run lighting recalculation (like in GenLightSurvival)
+                    worldgenBlockAccessor.BeginColumn();
+                    api.WorldManager.SunFloodChunkColumnForWorldGen(chunks, chunkX, chunkZ);
+                    worldgenBlockAccessor.RunScheduledBlockLightUpdates(chunkX, chunkZ);
+
+
                     MarkDirty(chunkX, chunkZ, chunks);
                 }
             }
 
+            
+            // restore the air block id back
             airBlockId = 0;
 
             return TextCommandResult.Success("Generated and chunks force resend flags set");
         }
+
+
 
         private IServerChunk[] GetChunkColumn(int chunkX, int chunkZ)
         {
@@ -509,67 +524,31 @@ namespace Vintagestory.ServerMods
         {
             IMapChunk mapchunk = chunks[0].MapChunk;
 
-            // One extra size for checking if we run into water
-            horRadius++;
-            vertRadius+=2;
+            // Regular generation radius
+            float genHorRadius = horRadius;
+            float genVertRadius = vertRadius;
 
-            int mindx = (int)GameMath.Clamp(centerX - horRadius, 0, chunksize - 1);
-            int maxdx = (int)GameMath.Clamp(centerX + horRadius + 1, 0, chunksize - 1);
-            int mindy = (int)GameMath.Clamp(centerY - vertRadius * 0.7f, 1, worldheight - 1);
-            int maxdy = (int)GameMath.Clamp(centerY + vertRadius + 1, 1, worldheight - 1);
-            int mindz = (int)GameMath.Clamp(centerZ - horRadius, 0, chunksize - 1);
-            int maxdz = (int)GameMath.Clamp(centerZ + horRadius + 1, 0, chunksize - 1);
+            // Increased radius for fluid checks
+            float checkHorRadius = horRadius + 1;
+            float checkVertRadius = vertRadius + 2;
 
-            double xdistRel, ydistRel, zdistRel;
-            double hRadiusSq = horRadius * horRadius;
-            double vRadiusSq = vertRadius * vertRadius;
-            double distortStrength = GameMath.Clamp(vertRadius / 4.0, 0, 0.1);
+            // Compute common bounds for both radii
+            int mindx = (int)GameMath.Clamp(centerX - checkHorRadius, 0, chunksize - 1);
+            int maxdx = (int)GameMath.Clamp(centerX + checkHorRadius + 1, 0, chunksize - 1);
+            int mindz = (int)GameMath.Clamp(centerZ - checkHorRadius, 0, chunksize - 1);
+            int maxdz = (int)GameMath.Clamp(centerZ + checkHorRadius + 1, 0, chunksize - 1);
 
-            for (int lx = mindx; lx <= maxdx; lx++)
-            {
-                xdistRel = (lx - centerX) * (lx - centerX) / hRadiusSq;
+            // For Y use the check radius because it is larger
+            int mindy = (int)GameMath.Clamp(centerY - checkVertRadius * 0.7f, 1, worldheight - 1);
+            int maxdy = (int)GameMath.Clamp(centerY + checkVertRadius + 1, 1, worldheight - 1);
 
-                for (int lz = mindz; lz <= maxdz; lz++)
-                {
-                    zdistRel = (lz - centerZ) * (lz - centerZ) / hRadiusSq;
+            // Precompute squared radii for fast comparisons
+            double genHorRadiusSq = genHorRadius * genHorRadius;
+            double genVertRadiusSq = genVertRadius * genVertRadius;
+            double checkHorRadiusSq = checkHorRadius * checkHorRadius;
+            double checkVertRadiusSq = checkVertRadius * checkVertRadius;
 
-                    double heightrnd = (mapchunk.CaveHeightDistort[lz * chunksize + lx] - 127) * distortStrength;
-
-                    for (int y = mindy; y <= maxdy + 10; y++)
-                    {
-                        double yDist = y - centerY;
-                        double heightOffFac = yDist > 0 ? heightrnd * heightrnd : 0;
-
-                        ydistRel = yDist * yDist / (vRadiusSq + heightOffFac);
-
-                        if (xdistRel + ydistRel + zdistRel > 1.0 || y > worldheight - 1) continue;
-
-                        int ly = y % chunksize;
-                        var block = api.World.Blocks[chunks[y / chunksize].Data.GetFluid((ly * chunksize + lz) * chunksize + lx)];
-                        if (block.LiquidCode != null)
-                        {
-                            return false;
-                        }
-                    }
-                }
-            }
-
-
-            horRadius--;
-            vertRadius-=2;
-
-            mindx = (int)GameMath.Clamp(centerX - horRadius, 0, chunksize - 1);
-            maxdx = (int)GameMath.Clamp(centerX + horRadius + 1, 0, chunksize - 1);
-            mindz = (int)GameMath.Clamp(centerZ - horRadius, 0, chunksize - 1);
-            maxdz = (int)GameMath.Clamp(centerZ + horRadius + 1, 0, chunksize - 1);
-
-            mindy = (int)GameMath.Clamp(centerY - vertRadius * 0.7f, 1, worldheight - 1);
-            maxdy = (int)GameMath.Clamp(centerY + vertRadius + 1, 1, worldheight - 1);
-
-            hRadiusSq = horRadius * horRadius;
-            vRadiusSq = vertRadius * vertRadius;
-
-
+            // Get geologic activity once
             int geoActivity = getGeologicActivity(chunkX * chunksize + (int)centerX, chunkZ * chunksize + (int)centerZ);
             genHotSpring &= geoActivity > 128;
 
@@ -577,80 +556,171 @@ namespace Vintagestory.ServerMods
             {
                 var data = mapchunk.GetModdata<Dictionary<Vec3i, HotSpringGenData>>("hotspringlocations");
                 if (data == null) data = new Dictionary<Vec3i, HotSpringGenData>();
-                data[new Vec3i((int)centerX, (int)centerY, (int)centerZ)] = new HotSpringGenData() { horRadius = horRadius };
+                data[new Vec3i((int)centerX, (int)centerY, (int)centerZ)] = new HotSpringGenData() { horRadius = genHorRadius };
                 mapchunk.SetModdata("hotspringlocations", data);
             }
 
             int yLavaStart = (geoActivity * 16) / 128;
+            int chunksizeSq = chunksize * chunksize;
 
-
+            // Main loop - single pass
             for (int lx = mindx; lx <= maxdx; lx++)
             {
-                xdistRel = (lx - centerX) * (lx - centerX) / hRadiusSq;
+                double dx = lx - centerX;
+                double dxSq = dx * dx;
 
                 for (int lz = mindz; lz <= maxdz; lz++)
                 {
-                    zdistRel = (lz - centerZ) * (lz - centerZ) / hRadiusSq;
+                    double dz = lz - centerZ;
+                    double dzSq = dz * dz;
 
-                    double heightrnd = (mapchunk.CaveHeightDistort[lz * chunksize + lx] - 127) * distortStrength;
-                    int surfaceY = terrainheightmap[lz * chunksize + lx];
+                    int idx2d = lz * chunksize + lx;
 
-                    for (int y = maxdy + 10; y >= mindy; y--)
+                    // Compute distortion once for the column
+                    double distortStrength = GameMath.Clamp(genVertRadius / 4.0, 0, 0.1);
+                    double heightrnd = (mapchunk.CaveHeightDistort[idx2d] - 127) * distortStrength;
+                    int surfaceY = terrainheightmap[idx2d];
+
+                    // Compute maximum XZ distance for the check radius
+                    double checkXZDist = dxSq / checkHorRadiusSq + dzSq / checkHorRadiusSq;
+                    if (checkXZDist > 1.0) continue;
+
+                    // Compute Y range for the check radius
+                    double maxCheckDist = 1.0 - checkXZDist;
+                    double maxCheckYDist = Math.Sqrt(maxCheckDist * checkVertRadiusSq);
+                    int checkMindy = (int)Math.Max(mindy, centerY - maxCheckYDist);
+                    int checkMaxdy = (int)Math.Min(maxdy, centerY + maxCheckYDist);
+
+                    // Variables for tracking state
+                    bool hasLiquidInCheckRadius = false;
+                    bool needsGenInGenRadius = false;
+                    int firstGenY = -1;
+
+                    // Walk Y once from top down
+                    for (int y = checkMaxdy; y >= checkMindy; y--)
                     {
-                        double yDist = y - centerY;
-                        double heightOffFac = yDist > 0 ? heightrnd * heightrnd * Math.Min(1, Math.Abs(y - surfaceY) /10.0) : 0;
+                        double dy = y - centerY;
+                        double dySq = dy * dy;
 
-                        ydistRel = yDist * yDist / (vRadiusSq + heightOffFac);
-
-                        if (y > worldheight - 1 || xdistRel + ydistRel + zdistRel > 1.0) continue;
-
-                        if (terrainheightmap[lz * chunksize + lx] == y)
+                        // Check inclusion in check radius (for fluids)
+                        double checkYDistSq = dySq / checkVertRadiusSq;
+                        if (dxSq / checkHorRadiusSq + checkYDistSq + dzSq / checkHorRadiusSq <= 1.0)
                         {
-                            terrainheightmap[lz * chunksize + lx] = (ushort)(y - 1);
-                            rainheightmap[lz * chunksize + lx]--;
+                            // Fluid check
+                            if (!hasLiquidInCheckRadius && y >= 1 && y < worldheight)
+                            {
+                                int chunkY = y / chunksize;
+                                int localY = y % chunksize;
+                                var block = api.World.Blocks[chunks[chunkY].Data.GetFluid((localY * chunksize + lz) * chunksize + lx)];
+                                if (block.LiquidCode != null)
+                                {
+                                    return false; // Found fluid - exit immediately
+                                }
+                            }
                         }
 
-                        IChunkBlocks chunkBlockData = chunks[y / chunksize].Data;
-                        int index3d = ((y % chunksize) * chunksize + lz) * chunksize + lx;
-
-                        if (y == 11)
+                        // Check inclusion in generation radius (for setting blocks)
+                        if (!needsGenInGenRadius)
                         {
-                            if (basaltNoise.Noise(chunkX * chunksize + lx, chunkZ * chunksize + lz) > 0.65)
+                            double heightOffFac = dy > 0 ? heightrnd * heightrnd * Math.Min(1, Math.Abs(y - surfaceY) / 10.0) : 0;
+                            double genYDistSq = dySq / (genVertRadiusSq + heightOffFac);
+
+                            if (dxSq / genHorRadiusSq + genYDistSq + dzSq / genHorRadiusSq <= 1.0 && y < worldheight)
                             {
-                                chunkBlockData[index3d] = GlobalConfig.basaltBlockId;
-                                terrainheightmap[lz * chunksize + lx] = Math.Max(terrainheightmap[lz * chunksize + lx], (ushort)11);
-                                rainheightmap[lz * chunksize + lx] = Math.Max(rainheightmap[lz * chunksize + lx], (ushort)11);
+                                needsGenInGenRadius = true;
+                                firstGenY = y;
                             }
-                            else
+                        }
+                    }
+
+                    // If we need to generate in this column
+                    if (needsGenInGenRadius)
+                    {
+                        // Compute precise range for generation
+                        double genXZDist = dxSq / genHorRadiusSq + dzSq / genHorRadiusSq;
+                        double maxGenDist = 1.0 - genXZDist;
+
+                        if (maxGenDist > 0)
+                        {
+                            // For positive Y account for distortion
+                            double vertRadiusSqWithDistort = genVertRadiusSq;
+                            if (firstGenY > centerY)
                             {
-                                chunkBlockData[index3d] = 0;
-                                if (y > yLavaStart)
+                                double heightOffFac = heightrnd * heightrnd * Math.Min(1, Math.Abs(firstGenY - surfaceY) / 10.0);
+                                vertRadiusSqWithDistort += heightOffFac;
+                            }
+
+                            double maxGenYDist = Math.Sqrt(maxGenDist * vertRadiusSqWithDistort);
+                            int genMindy = (int)Math.Max(mindy, centerY - maxGenYDist);
+                            int genMaxdy = (int)Math.Min(maxdy, centerY + maxGenYDist);
+
+                            // Generate blocks in the column
+                            for (int y = genMaxdy; y >= genMindy; y--)
+                            {
+                                double dy = y - centerY;
+                                double dySq = dy * dy;
+
+                                // Check inclusion in ellipsoid with distortion
+                                double heightOffFac = dy > 0 ? heightrnd * heightrnd * Math.Min(1, Math.Abs(y - surfaceY) / 10.0) : 0;
+                                if (dxSq / genHorRadiusSq + dySq / (genVertRadiusSq + heightOffFac) + dzSq / genHorRadiusSq > 1.0)
+                                    continue;
+
+                                if (y > worldheight - 1) continue;
+
+                                // Update heightmaps
+                                if (surfaceY == y)
                                 {
-                                    chunkBlockData[index3d] = GlobalConfig.basaltBlockId;
-                                } else
-                                {
-                                    chunkBlockData.SetFluid(index3d, GlobalConfig.lavaBlockId);
+                                    terrainheightmap[idx2d] = (ushort)(y - 1);
+                                    rainheightmap[idx2d]--;
                                 }
 
-                                if (y <= yLavaStart) worldgenBlockAccessor.ScheduleBlockLightUpdate(new BlockPos(chunkX * chunksize + lx, y, chunkZ * chunksize + lz), airBlockId, GlobalConfig.lavaBlockId);
-                            }
+                                int chunkY = y / chunksize;
+                                int localY = y % chunksize;
+                                IChunkBlocks chunkBlockData = chunks[chunkY].Data;
+                                int index3d = localY * chunksizeSq + idx2d;
 
-                        }
-                        else if (y < 12)
-                        {
-                            chunkBlockData[index3d] = 0;
-                            if (y > yLavaStart)
-                            {
-                                chunkBlockData[index3d] = GlobalConfig.basaltBlockId;
+                                // Set block
+                                if (y == 11)
+                                {
+                                    if (basaltNoise.Noise(chunkX * chunksize + lx, chunkZ * chunksize + lz) > 0.65)
+                                    {
+                                        chunkBlockData[index3d] = basaltBlockId;
+                                        terrainheightmap[idx2d] = Math.Max(terrainheightmap[idx2d], (ushort)11);
+                                        rainheightmap[idx2d] = Math.Max(rainheightmap[idx2d], (ushort)11);
+                                    }
+                                    else
+                                    {
+                                        if (y > yLavaStart)
+                                        {
+                                            chunkBlockData[index3d] = basaltBlockId;
+                                        }
+                                        else
+                                        {
+                                            chunkBlockData.SetFluid(index3d, lavaBlockId);
+                                        }
+
+                                        if (y <= yLavaStart)
+                                            worldgenBlockAccessor.ScheduleBlockLightUpdate(
+                                                new BlockPos(chunkX * chunksize + lx, y, chunkZ * chunksize + lz),
+                                                airBlockId, lavaBlockId);
+                                    }
+                                }
+                                else if (y < 12)
+                                {
+                                    if (y > yLavaStart)
+                                    {
+                                        chunkBlockData[index3d] = basaltBlockId;
+                                    }
+                                    else
+                                    {
+                                        chunkBlockData.SetFluid(index3d, lavaBlockId);
+                                    }
+                                }
+                                else
+                                {
+                                    chunkBlockData[index3d] = airBlockId != 0 ? (ushort)airBlockId : (ushort)0;
+                                }
                             }
-                            else
-                            {
-                                chunkBlockData.SetFluid(index3d, GlobalConfig.lavaBlockId);
-                            }
-                        }
-                        else
-                        {
-                            chunkBlockData.SetBlockAir(index3d);
                         }
                     }
                 }
@@ -658,6 +728,8 @@ namespace Vintagestory.ServerMods
 
             return true;
         }
+
+
 
         private int getGeologicActivity(int posx, int posz)
         {
