@@ -60,7 +60,7 @@ namespace Vintagestory.GameContent
         /// <param name="world"></param>
         /// <param name="pos"></param>
         /// <returns></returns>
-        IInFirepitRenderer GetRendererWhenInFirepit(ItemStack stack, BlockEntityFirepit firepit, bool forOutputSlot);
+        IInFirepitRenderer GetRendererWhenInFirepit(ItemStack stack, BlockEntity firepit, bool forOutputSlot);
 
         /// <summary>
         /// The model type the firepit should be using while you render your custom item
@@ -69,7 +69,7 @@ namespace Vintagestory.GameContent
         /// <param name="world"></param>
         /// <param name="pos"></param>
         /// <returns></returns>
-        EnumFirepitModel GetDesiredFirepitModel(ItemStack stack, BlockEntityFirepit firepit, bool forOutputSlot);
+        EnumFirepitModel GetDesiredFirepitModel(ItemStack stack, BlockEntity firepit, bool forOutputSlot);
     }
 
 }
