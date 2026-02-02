@@ -25,7 +25,7 @@ namespace Vintagestory.GameContent
         public virtual bool CanDrinkFrom => Attributes["canDrinkFrom"].AsBool() == true;
         public virtual bool IsTopOpened => Attributes["isTopOpened"].AsBool() == true;
         public virtual bool AllowHeldLiquidTransfer => Attributes["allowHeldLiquidTransfer"].AsBool() == true;
-        
+
         Dictionary<string, ItemStack[]> recipeLiquidContents = new Dictionary<string, ItemStack[]>();
 
         public override void OnHandbookRecipeRender(ICoreClientAPI capi, GridRecipe gridRecipe, ItemSlot dummyslot, double x, double y, double z, double size)
@@ -117,7 +117,8 @@ namespace Vintagestory.GameContent
             if (Attributes?["capacityLitres"].Exists == true)
             {
                 capacityLitresFromAttributes = Attributes["capacityLitres"].AsInt(10);
-            } else
+            }
+            else
             {
                 var props = Attributes?["liquidContainerProps"]?.AsObject<LiquidTopOpenContainerProps>(null, Code.Domain);
                 if (props != null)
@@ -126,7 +127,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            
+
 
 
             if (api.Side != EnumAppSide.Client) return;
@@ -139,11 +140,11 @@ namespace Vintagestory.GameContent
                 foreach (CollectibleObject obj in api.World.Collectibles)
                 {
                     if (obj is BlockLiquidContainerBase blc && blc.IsTopOpened && blc.AllowHeldLiquidTransfer)
-                    liquidContainerStacks.Add(new ItemStack(obj));
+                        liquidContainerStacks.Add(new ItemStack(obj));
                 }
 
                 var lcstacks = liquidContainerStacks.ToArray();
-                
+
 
                 return new WorldInteraction[] {
                     new WorldInteraction()
@@ -314,7 +315,7 @@ namespace Vintagestory.GameContent
             if (becontainer == null) return null;
 
             int slotid = GetContainerSlotId(pos);
-            if (slotid >=becontainer.Inventory.Count) return null;
+            if (slotid >= becontainer.Inventory.Count) return null;
 
             ItemStack stack = becontainer.Inventory[slotid]?.Itemstack;
             if (stack == null) return null;
@@ -350,7 +351,7 @@ namespace Vintagestory.GameContent
             if (beContainer == null) return;
 
             new DummySlot(content).TryPutInto(api.World, beContainer.Inventory[GetContainerSlotId(pos)], content.StackSize);
-            
+
             beContainer.Inventory[GetContainerSlotId(pos)].MarkDirty();
             beContainer.MarkDirty(true);
         }
@@ -598,7 +599,7 @@ namespace Vintagestory.GameContent
 
                     return true;
                 }
-                
+
             }
 
 
@@ -749,13 +750,7 @@ namespace Vintagestory.GameContent
                     nutriProps.Health /= litresEach;
                 }
 
-                TransitionState state = UpdateAndGetTransitionState(api.World, slot, EnumTransitionType.Perish);
-                float spoilState = state != null ? state.TransitionLevel : 0;
-
-                float satLossMul = GlobalConstants.FoodSpoilageSatLossMul(spoilState, slot.Itemstack, byEntity);
-                float healthLossMul = GlobalConstants.FoodSpoilageHealthLossMul(spoilState, slot.Itemstack, byEntity);
-
-                byEntity.ReceiveSaturation(nutriProps.Satiety * satLossMul, nutriProps.FoodCategory);
+                byEntity.ReceiveSaturation(nutriProps.Satiety, nutriProps.FoodCategory);
 
                 IPlayer player = null;
                 if (byEntity is EntityPlayer) player = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
@@ -765,7 +760,7 @@ namespace Vintagestory.GameContent
 
                 //splitStackAndPerformAction(byEntity, slot, (stack) => TryTakeLiquid(stack, litresToDrink)?.StackSize ?? 0);
 
-                float healthChange = nutriProps.Health * healthLossMul;
+                float healthChange = nutriProps.Health;
 
                 float intox = byEntity.WatchedAttributes.GetFloat("intoxication");
                 byEntity.WatchedAttributes.SetFloat("intoxication", Math.Min(1.1f, intox + nutriProps.Intoxication));
@@ -790,8 +785,22 @@ namespace Vintagestory.GameContent
             {
                 var nutriProps = props.NutritionPropsPerLitre.Clone();
                 float litre = contentStack.StackSize / props.ItemsPerLitre;
-                nutriProps.Health *= litre;
-                nutriProps.Satiety *= litre;
+
+                float satLossMul = 1;
+                float healthLossMul = 1;
+
+                if (forEntity is EntityPlayer player)
+                {
+                    ItemSlot dummySlot = new DummySlot(contentStack);
+                    TransitionState state = contentStack.Collectible.UpdateAndGetTransitionState(api.World, dummySlot, EnumTransitionType.Perish);
+                    float spoilState = state != null ? state.TransitionLevel : 0;
+
+                    satLossMul = GlobalConstants.FoodSpoilageSatLossMul(spoilState, contentStack, player);
+                    healthLossMul = GlobalConstants.FoodSpoilageHealthLossMul(spoilState, contentStack, player);
+                }
+
+                nutriProps.Satiety *= litre * satLossMul;
+                nutriProps.Health *= litre * healthLossMul;
                 nutriProps.EatenStack = new JsonItemStack();
                 nutriProps.EatenStack.ResolvedItemstack = itemstack.Clone();
                 nutriProps.EatenStack.ResolvedItemstack.StackSize = 1;
@@ -827,8 +836,8 @@ namespace Vintagestory.GameContent
 
             int moved = SplitStackAndPerformAction(byEntity, itemslot, (stack) => TryPutLiquid(stack, contentStack, CapacityLitres));
 
-            if (moved > 0) 
-            { 
+            if (moved > 0)
+            {
                 DoLiquidMovedEffects(byPlayer, contentStack, moved, EnumLiquidDirection.Fill);
             }
 
@@ -933,7 +942,7 @@ namespace Vintagestory.GameContent
             }
 
 
-            int moved = SplitStackAndPerformAction(byEntity, containerSlot, (stack) => { SetContent(stack, null); return contentStack.StackSize; } );
+            int moved = SplitStackAndPerformAction(byEntity, containerSlot, (stack) => { SetContent(stack, null); return contentStack.StackSize; });
 
             DoLiquidMovedEffects(byPlayer, contentStack, moved, EnumLiquidDirection.Pour);
             return true;
@@ -1082,8 +1091,10 @@ namespace Vintagestory.GameContent
             float litres = GetCurrentLitres(inSlot.Itemstack);
             ItemStack contentStack = GetContent(inSlot.Itemstack);
 
-            if (litres <= 0) dsc.AppendLine(Lang.Get("Empty"));
-
+            if (litres <= 0)
+            {
+                dsc.AppendLine(Lang.Get("Empty"));
+            }
             else
             {
                 string incontainerrname = Lang.Get(contentStack.Collectible.Code.Domain + ":incontainer-" + contentStack.Class.ToString().ToLowerInvariant() + "-" + contentStack.Collectible.Code.Path);
@@ -1143,7 +1154,7 @@ namespace Vintagestory.GameContent
                     base.TryMergeStacks(op);
                     return;
                 }
-                
+
                 op.MovedQuantity = 0;
                 return;
             }
