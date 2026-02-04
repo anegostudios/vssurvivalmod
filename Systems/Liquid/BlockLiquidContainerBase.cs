@@ -25,7 +25,7 @@ namespace Vintagestory.GameContent
         public virtual bool CanDrinkFrom => Attributes["canDrinkFrom"].AsBool() == true;
         public virtual bool IsTopOpened => Attributes["isTopOpened"].AsBool() == true;
         public virtual bool AllowHeldLiquidTransfer => Attributes["allowHeldLiquidTransfer"].AsBool() == true;
-        
+
         Dictionary<string, ItemStack[]> recipeLiquidContents = new Dictionary<string, ItemStack[]>();
 
         public override void OnHandbookRecipeRender(ICoreClientAPI capi, GridRecipe gridRecipe, ItemSlot dummyslot, double x, double y, double z, double size)
@@ -117,7 +117,8 @@ namespace Vintagestory.GameContent
             if (Attributes?["capacityLitres"].Exists == true)
             {
                 capacityLitresFromAttributes = Attributes["capacityLitres"].AsInt(10);
-            } else
+            }
+            else
             {
                 var props = Attributes?["liquidContainerProps"]?.AsObject<LiquidTopOpenContainerProps>(null, Code.Domain);
                 if (props != null)
@@ -126,7 +127,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            
+
 
 
             if (api.Side != EnumAppSide.Client) return;
@@ -139,11 +140,11 @@ namespace Vintagestory.GameContent
                 foreach (CollectibleObject obj in api.World.Collectibles)
                 {
                     if (obj is BlockLiquidContainerBase blc && blc.IsTopOpened && blc.AllowHeldLiquidTransfer)
-                    liquidContainerStacks.Add(new ItemStack(obj));
+                        liquidContainerStacks.Add(new ItemStack(obj));
                 }
 
                 var lcstacks = liquidContainerStacks.ToArray();
-                
+
 
                 return new WorldInteraction[] {
                     new WorldInteraction()
@@ -314,7 +315,7 @@ namespace Vintagestory.GameContent
             if (becontainer == null) return null;
 
             int slotid = GetContainerSlotId(pos);
-            if (slotid >=becontainer.Inventory.Count) return null;
+            if (slotid >= becontainer.Inventory.Count) return null;
 
             ItemStack stack = becontainer.Inventory[slotid]?.Itemstack;
             if (stack == null) return null;
@@ -350,7 +351,7 @@ namespace Vintagestory.GameContent
             if (beContainer == null) return;
 
             new DummySlot(content).TryPutInto(api.World, beContainer.Inventory[GetContainerSlotId(pos)], content.StackSize);
-            
+
             beContainer.Inventory[GetContainerSlotId(pos)].MarkDirty();
             beContainer.MarkDirty(true);
         }
@@ -572,7 +573,6 @@ namespace Vintagestory.GameContent
 
             if (hotbarSlot.Empty || !(hotbarSlot.Itemstack.Collectible is ILiquidInterface)) return base.OnBlockInteractStart(world, byPlayer, blockSel);
 
-
             CollectibleObject obj = hotbarSlot.Itemstack.Collectible;
 
             bool singleTake = byPlayer.WorldData.EntityControls.ShiftKey;
@@ -598,7 +598,6 @@ namespace Vintagestory.GameContent
 
                     return true;
                 }
-                
             }
 
 
@@ -663,15 +662,23 @@ namespace Vintagestory.GameContent
 
             if (blockSel == null || byEntity.Controls.ShiftKey)
             {
-                if (byEntity.Controls.ShiftKey) base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
+                // We need to make sure we aren't doing anything
+                // with liquid handling before calling up to
+                // the base method because it will call out to
+                // tryEatBegin and hijack our control flow.
+                bool lookingAtLiquidContainer = blockSel != null && api.World.BlockAccessor.GetBlock(blockSel.Position) is BlockLiquidContainerBase;
+                bool shouldDrink = !lookingAtLiquidContainer && CanDrinkFrom && GetNutritionProperties(byEntity.World, itemslot.Itemstack, byEntity) != null;
 
-                if (handHandling != EnumHandHandling.PreventDefaultAction && CanDrinkFrom && GetNutritionProperties(byEntity.World, itemslot.Itemstack, byEntity) != null)
+                if (handHandling != EnumHandHandling.PreventDefaultAction && shouldDrink)
                 {
                     tryEatBegin(itemslot, byEntity, ref handHandling, "drink", 4);
                     return;
                 }
 
-                if (!byEntity.Controls.ShiftKey) base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
+                if (!byEntity.Controls.ShiftKey || (byEntity.Controls.ShiftKey && !lookingAtLiquidContainer))
+                {
+                    base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
+                }
 
                 return;
             }
@@ -827,8 +834,8 @@ namespace Vintagestory.GameContent
 
             int moved = SplitStackAndPerformAction(byEntity, itemslot, (stack) => TryPutLiquid(stack, contentStack, CapacityLitres));
 
-            if (moved > 0) 
-            { 
+            if (moved > 0)
+            {
                 DoLiquidMovedEffects(byPlayer, contentStack, moved, EnumLiquidDirection.Fill);
             }
 
@@ -933,7 +940,7 @@ namespace Vintagestory.GameContent
             }
 
 
-            int moved = SplitStackAndPerformAction(byEntity, containerSlot, (stack) => { SetContent(stack, null); return contentStack.StackSize; } );
+            int moved = SplitStackAndPerformAction(byEntity, containerSlot, (stack) => { SetContent(stack, null); return contentStack.StackSize; });
 
             DoLiquidMovedEffects(byPlayer, contentStack, moved, EnumLiquidDirection.Pour);
             return true;
@@ -1143,7 +1150,7 @@ namespace Vintagestory.GameContent
                     base.TryMergeStacks(op);
                     return;
                 }
-                
+
                 op.MovedQuantity = 0;
                 return;
             }
