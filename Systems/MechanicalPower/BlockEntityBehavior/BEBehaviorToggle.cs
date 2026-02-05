@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -85,9 +85,10 @@ namespace Vintagestory.GameContent.Mechanics
             }
 
             //Exponentially increase hammer resistance if the network is turning faster - should almost always prevent helvehammering at crazy speeds;
-            float speed = this.network == null ? 0f : Math.Abs(this.network.Speed * this.GearedRatio);
-            float speedLimiter = 5f * (float) Math.Exp(speed * 2.8 - 5.0);
-            return hasHammer ? 0.125f + speedLimiter : 0.0005f;
+            //float speed = this.network == null ? 0f : Math.Abs(this.network.Speed * this.GearedRatio);
+            //float speedLimiter = 5f * (float) Math.Exp(speed * 2.8 - 5.0);
+            // tyron 5dec 2025: disabled. Causes the mechanical network speed to oscillate heavily
+            return hasHammer ? 0.125f /*+ speedLimiter*/ : 0.0005f;
         }
 
         public override void JoinNetwork(MechanicalNetwork network)
@@ -127,7 +128,7 @@ namespace Vintagestory.GameContent.Mechanics
 
                 if (orient == "ns")
                 {
-                    mesh.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, GameMath.PIHALF, 0);
+                    mesh.Rotate(0, GameMath.PIHALF, 0);
                 }
 
                 return mesh;

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -87,7 +87,7 @@ namespace Vintagestory.GameContent
             BlockEntityPlantContainer bept = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityPlantContainer;
             if (bept != null)
             {
-                decalMesh.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, bept.MeshAngle, 0);
+                decalMesh.Rotate(0, bept.MeshAngle, 0);
             }
         }
 

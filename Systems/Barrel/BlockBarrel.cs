@@ -1,4 +1,3 @@
-using OpenTK.Compute.OpenCL;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -97,7 +96,7 @@ namespace Vintagestory.GameContent
             {
                 EnumHandling handled = EnumHandling.PassThrough;
 
-                behavior.OnBlockBroken(world, pos, byPlayer, ref handled);
+                behavior.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier, ref handled);
                 if (handled == EnumHandling.PreventDefault) preventDefault = true;
                 if (handled == EnumHandling.PreventSubsequent) return;
             }
@@ -476,6 +475,9 @@ namespace Vintagestory.GameContent
             {
                 return true;
             }
+
+            var hslot = byPlayer.InventoryManager.ActiveHotbarSlot;
+            if (!hslot.Empty && hslot.Itemstack.Collectible.HasBehavior<CollectibleBehaviorQuenchable>()) return false;
 
             bool handled = base.OnBlockInteractStart(world, byPlayer, blockSel);
 

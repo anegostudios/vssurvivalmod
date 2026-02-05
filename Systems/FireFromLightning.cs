@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Common;
+using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
@@ -28,7 +28,8 @@ namespace Vintagestory.GameContent
                 var rnd = api.World.Rand;
                 var npos = impactPos.AsBlockPos.Add(rnd.Next(2) - 1, rnd.Next(2) - 1, rnd.Next(2) - 1);
                 var block = api.World.BlockAccessor.GetBlock(npos);
-                if (block.CombustibleProps != null)
+                var combustibleProps = block.GetCombustibleProperties(api.World, null, npos);
+                if (combustibleProps != null)
                 {
                     foreach (var facing in BlockFacing.ALLFACES)
                     {

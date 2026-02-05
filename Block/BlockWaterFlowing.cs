@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -8,20 +8,30 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockWaterflowing : BlockForFluidsLayer
+    /// <summary>
+    /// Similar to BlockWater but with particles spawning
+    /// </summary>
+    public class BlockWaterflowing : BlockForFluidsLayer, IBlockFlowing
     {
+        public string Flow { get; set; }
+        public Vec3i FlowNormali { get; set; }
+        public bool IsLava => false;
+        public virtual bool HasNormalWaves => true;
+
         float particleQuantity = 0.2f;
         bool isBoiling;
 
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
+            Flow = Variant["flow"] is string f ? string.Intern(f) : null;
+            FlowNormali = Flow != null ? Cardinal.FromInitial(Flow)?.Normali : null;
 
             if (api.Side == EnumAppSide.Client)
             {
                 ICoreClientAPI capi = api as ICoreClientAPI;
-                capi.Settings.Int.AddWatcher("particleLevel", OnParticelLevelChanged);
-                OnParticelLevelChanged(0);
+                capi.Settings.Int.AddWatcher("particleLevel", OnClientParticleLevelChanged);
+                OnClientParticleLevelChanged(0);
             }
 
             ParticleProperties[0].SwimOnLiquid = true;
@@ -29,7 +39,7 @@ namespace Vintagestory.GameContent
             isBoiling = HasBehavior<BlockBehaviorSteaming>();
         }
 
-        private void OnParticelLevelChanged(int newValue)
+        public virtual void OnClientParticleLevelChanged(int newValue)
         {
             particleQuantity = 0.4f * (api as ICoreClientAPI).Settings.Int["particleLevel"] / 100f;
         }
@@ -65,23 +75,17 @@ namespace Vintagestory.GameContent
             bps.basePos.Y = pos.InternalY;
             bps.basePos.Z = pos.Z;
 
-            bps.Velocity[0].avg = (float)PushVector.X * 500;
-            bps.Velocity[1].avg = (float)PushVector.Y * 1000;
-            bps.Velocity[2].avg = (float)PushVector.Z * 500;
+            FastVec3f pushVector = GetPushVector(pos);
+            bps.Velocity[0].avg = pushVector.X * 500;
+            bps.Velocity[1].avg = pushVector.Y * 1000;
+            bps.Velocity[2].avg = pushVector.Z * 500;
 
             bps.GravityEffect.avg = 0.5f;
 
             bps.HsvaColor[3].avg = 180 * Math.Min(1, secondsTicking / 7f);
-            bps.Quantity.avg = 1;
 
             bps.PosOffset[1].avg = 2/16f;
             bps.PosOffset[1].var = LiquidLevel / 8f * 0.75f;
-            bps.SwimOnLiquid = true;
-
-            bps.Size.avg = 0.05f;
-            bps.Size.var = 0f;
-            bps.SizeEvolve = EvolvingNatFloat.create(EnumTransformFunction.LINEAR, 0.8f);
-
             manager.Spawn(bps);
         }
 

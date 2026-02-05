@@ -266,7 +266,7 @@ namespace Vintagestory.GameContent
 
                 var skillSlot = player.InventoryManager.GetHotbarInventory()[10];
 
-                if (WithinRange(player.Entity.ServerPos, deactivateRadius - 1))
+                if (WithinRange(player.Entity.Pos, deactivateRadius - 1))
                 {
                     if (!timeswitchStatesByPlayerUid.TryGetValue(player.PlayerUID, out TimeSwitchState state))
                     {
@@ -288,7 +288,7 @@ namespace Vintagestory.GameContent
                         player.SendMessage(GlobalConstants.GeneralChatGroup, Lang.GetL(player.LanguageCode, "message-timeswitch-controls"), EnumChatType.Notification);
                     }
                 }
-                else if (!WithinRange(player.Entity.ServerPos, deactivateRadius))
+                else if (!WithinRange(player.Entity.Pos, deactivateRadius))
                 {
                     if (!skillSlot.Empty)
                     {
@@ -296,7 +296,7 @@ namespace Vintagestory.GameContent
                         skillSlot.MarkDirty();
                     }
 
-                    if (player.Entity.ServerPos.Dimension == OtherDimension)
+                    if (player.Entity.Pos.Dimension == OtherDimension)
                     {
                         // Boot the player from the other dimension if has moved beyond deactivateRadius
                         ActivateTimeswitchServer(player, true, out string ignore);
@@ -397,7 +397,7 @@ namespace Vintagestory.GameContent
         private void ActivateTimeswitchClient(TimeSwitchState tsState)
         {
             EntityPlayer player = capi.World.Player.Entity;
-            if (tsState.forcedY != 0) player.SidedPos.Y = tsState.forcedY;
+            if (tsState.forcedY != 0) player.Pos.Y = tsState.forcedY;
             player.ChangeDimension(tsState.Activated ? OtherDimension : Dimensions.NormalWorld);
         }
 
@@ -439,7 +439,7 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            if (byPlayer.Entity.ServerPos.Dimension == Dimensions.NormalWorld)
+            if (byPlayer.Entity.Pos.Dimension == Dimensions.NormalWorld)
             {
                 if (!timeswitchStatesByPlayerUid.TryGetValue(byPlayer.PlayerUID, out TimeSwitchState state))
                 {
@@ -449,7 +449,7 @@ namespace Vintagestory.GameContent
                 if (!state.Enabled) return false;    // No error message in this case, the player is just a long way from the timeswitch and it has not yet been enabled
 
                 // Prevent activation of hotkey if too far from position (or if dim2 is not yet loaded)
-                if (!WithinRange(byPlayer.Entity.ServerPos, deactivateRadius))
+                if (!WithinRange(byPlayer.Entity.Pos, deactivateRadius))
                 {
                     failurereason = "outofrange";
                     return false;
@@ -471,14 +471,14 @@ namespace Vintagestory.GameContent
             bool forceYToWorldSurface = forced;
             if (genStoryStructLoc != null)
             {
-                double distanceFromTowerX = Math.Max(0, Math.Abs(byPlayer.Entity.ServerPos.X - genStoryStructLoc.CenterPos.X - 0.5) - 9.5);
-                double distanceFromTowerZ = Math.Max(0, Math.Abs(byPlayer.Entity.ServerPos.Z - genStoryStructLoc.CenterPos.Z - 0.5) - 9.5);
+                double distanceFromTowerX = Math.Max(0, Math.Abs(byPlayer.Entity.Pos.X - genStoryStructLoc.CenterPos.X - 0.5) - 9.5);
+                double distanceFromTowerZ = Math.Max(0, Math.Abs(byPlayer.Entity.Pos.Z - genStoryStructLoc.CenterPos.Z - 0.5) - 9.5);
                 int towerBlocksConeHeightY = storyTowerBaseY + (int)Math.Max(distanceFromTowerX, distanceFromTowerZ) * 3;    // 9.5 and 3 are values based on the 1.20 design of the exploded Devastation Area Tower
                                                                                                                              // Only raiseToWorldSurface outside the tower: either forced transition (on edge of active area) or player y-height is at or below a certain cone, and player is neither flying, gliding nor falling fast
-                forced |= byPlayer.Entity.ServerPos.Y <= towerBlocksConeHeightY && !byPlayer.Entity.Controls.IsFlying && !byPlayer.Entity.Controls.Gliding && byPlayer.Entity.ServerPos.Motion.Y > EntityBehaviorHealth.FallDamageYMotionThreshold;
+                forced |= byPlayer.Entity.Pos.Y <= towerBlocksConeHeightY && !byPlayer.Entity.Controls.IsFlying && !byPlayer.Entity.Controls.Gliding && byPlayer.Entity.Pos.Motion.Y > EntityBehaviorHealth.FallDamageYMotionThreshold;
             }
 
-            bool farFromTimeswitch = !WithinRange(byPlayer.Entity.ServerPos, deactivateRadius + 2 * GlobalConstants.ChunkSize);
+            bool farFromTimeswitch = !WithinRange(byPlayer.Entity.Pos, deactivateRadius + 2 * GlobalConstants.ChunkSize);
             int targetDimension = byPlayer.Entity.Pos.Dimension == Dimensions.NormalWorld ? OtherDimension : Dimensions.NormalWorld;
 
             if (timeswitchStatesByPlayerUid.TryGetValue(byPlayer.PlayerUID, out TimeSwitchState tsState))
@@ -511,7 +511,7 @@ namespace Vintagestory.GameContent
                 tsState.size = size;
                 serverChannel.BroadcastPacket(tsState);
 
-                spawnTeleportParticles(byPlayer.Entity.ServerPos);
+                spawnTeleportParticles(byPlayer.Entity.Pos);
 
 
                 return true;
@@ -590,7 +590,6 @@ namespace Vintagestory.GameContent
             if (entity == null) return;
 
             entity.Pos.Dimension = packet.dimension;
-            entity.ServerPos.Dimension = packet.dimension;
 
             long newchunkindex3d = capi.World.ChunkProvider.ChunkIndex3D(entity.Pos);
             capi.World.UpdateEntityChunk(entity, newchunkindex3d);
@@ -774,7 +773,7 @@ namespace Vintagestory.GameContent
             {
                 if (player.ConnectionState != EnumClientState.Playing) continue;
 
-                if (WithinRange(player.Entity.ServerPos, deactivateRadius + 2))
+                if (WithinRange(player.Entity.Pos, deactivateRadius + 2))
                 {
                     ForceSendChunkColumns(player);
                 }
@@ -871,8 +870,8 @@ namespace Vintagestory.GameContent
 
         private bool OtherDimensionPositionWouldCollide(EntityPlayer entity, int otherDim, bool allowTolerance)
         {
-            Vec3d tmpVec = entity.ServerPos.XYZ;
-            tmpVec.Y = entity.ServerPos.Y + otherDim * BlockPos.DimensionBoundary;
+            Vec3d tmpVec = entity.Pos.XYZ;
+            tmpVec.Y = entity.Pos.Y + otherDim * BlockPos.DimensionBoundary;
 
             var reducedBox = entity.CollisionBox.Clone();
             if (allowTolerance)
@@ -888,9 +887,9 @@ namespace Vintagestory.GameContent
 
         private void RaisePlayerToTerrainSurface(EntityPlayer entity, int targetDimension, TimeSwitchState tss)
         {
-            double px = entity.ServerPos.X;
-            double py = entity.ServerPos.Y;
-            double pz = entity.ServerPos.Z;
+            double px = entity.Pos.X;
+            double py = entity.Pos.Y;
+            double pz = entity.Pos.Z;
 
             Cuboidd entityBox = entity.CollisionBox.ToDouble().Translate(px, py, pz);
 

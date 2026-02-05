@@ -26,7 +26,7 @@ namespace Vintagestory.GameContent
         /// The sound to play when the block is collected.
         /// </summary>
         [DocumentAsJson("Optional", "None")]
-        AssetLocation pickupSound;
+        SoundAttributes pickupSound;
 
         public BlockBehaviorRightClickPickup(Block block) : base(block)
         {
@@ -37,12 +37,10 @@ namespace Vintagestory.GameContent
             base.Initialize(properties);
 
             dropsPickupMode = properties["dropsPickupMode"].AsBool(false);
-            string strloc = properties["sound"].AsString();
 
-            if (strloc == null) strloc = block.Attributes?["placeSound"].AsString();
-
-            pickupSound = strloc == null ? null : AssetLocation.Create(strloc, block.Code.Domain);
-
+            JsonObject jsonSound = properties["sound"];
+            if (!jsonSound.Exists) jsonSound = block.Attributes?["placeSound"];
+            pickupSound = jsonSound?.AsObject<SoundAttributes?>(null, block.Code.Domain, true) ?? new SoundAttributes();
         }
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref EnumHandling handling)
@@ -108,7 +106,7 @@ namespace Vintagestory.GameContent
                             world.BlockAccessor.SetBlock(0, blockSel.Position);
                             world.BlockAccessor.TriggerNeighbourBlockUpdate(blockSel.Position);
                         }
-                        world.PlaySoundAt(pickupSound ?? block.GetSounds(world.BlockAccessor, blockSel).Place, byPlayer, null);
+                        world.PlaySoundAt(pickupSound.Location != null ? pickupSound : block.GetSounds(world.BlockAccessor, blockSel).Place, byPlayer, null);
                     }
                 }
 

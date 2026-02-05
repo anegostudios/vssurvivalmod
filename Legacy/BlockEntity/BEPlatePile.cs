@@ -1,5 +1,6 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Util;
@@ -36,14 +37,14 @@ namespace Vintagestory.GameContent
             tmpBlock = Api.World.BlockAccessor.GetBlock(Pos);
             tmpTextureSource = ((ICoreClientAPI)Api).Tesselator.GetTextureSource(tmpBlock);
             Shape shape = API.Common.Shape.TryGet(Api, "shapes/block/metal/platepile.json");
-            MetalProperty metals = Api.Assets.TryGet("worldproperties/block/metal.json").ToObject<MetalProperty>();
+            var metals = Api.ModLoader.GetModSystem<SurvivalCoreSystem>().metalsByCode.Values.ToArray();
 
-            for (int i = 0; i < metals.Variants.Length; i++)
+            for (int i = 0; i < metals.Length; i++)
             {
                 ITesselatorAPI mesher = ((ICoreClientAPI)Api).Tesselator;
                 MeshData[] meshes = new MeshData[17];
 
-                tmpMetal = metals.Variants[i].Code;
+                tmpMetal = metals[i].Code;
 
                 for (int j = 0; j <= 16; j++)
                 {

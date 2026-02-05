@@ -33,7 +33,7 @@ namespace Vintagestory.GameContent
                     var lootSlot = ebh.Inventory.FirstNonEmptySlot;
                     if (lootSlot != null)
                     {
-                        entity.World.SpawnItemEntity(lootSlot.TakeOutWhole(), entity.ServerPos.XYZ);
+                        entity.World.SpawnItemEntity(lootSlot.TakeOutWhole(), entity.Pos.XYZ);
                     }
                 }
             }

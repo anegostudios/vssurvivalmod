@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -12,12 +12,6 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class CachedMeshRef
-    {
-        public MultiTextureMeshRef meshref;
-        public int TextureId;
-    }
-
     public class ItemWorkItem : Item, IAnvilWorkable
     {
         static int nextMeshRefId = 0;
@@ -35,21 +29,16 @@ namespace Vintagestory.GameContent
             if (!itemstack.Attributes.HasAttribute("voxels"))
             {
                 // Probably displayed in the hand book, which calls .Clone() each frame - cannot store any meshref id here
-                CachedMeshRef ccmr = ObjectCacheUtil.GetOrCreate(capi, "clearWorkItem" + Variant["metal"], () =>
+                MultiTextureMeshRef meshref = ObjectCacheUtil.GetOrCreate(capi, "clearWorkItem" + Variant["metal"], () =>
                 {
                     byte[,,] voxels = new byte[16, 6, 16];
                     ItemIngot.CreateVoxelsFromIngot(capi, ref voxels);
-                    MeshData mesh = GenMesh(capi, itemstack, voxels, out int textureid);
+                    MeshData mesh = GenMesh(capi, itemstack, voxels);
 
-                    return new CachedMeshRef()
-                    {
-                        meshref = capi.Render.UploadMultiTextureMesh(mesh),
-                        TextureId = textureid
-                    };
+                    return capi.Render.UploadMultiTextureMesh(mesh);
                 });
 
-                renderinfo.ModelRef = ccmr.meshref;
-                renderinfo.TextureId = ccmr.TextureId;
+                renderinfo.ModelRef = meshref;
 
                 base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
                 return;
@@ -62,20 +51,14 @@ namespace Vintagestory.GameContent
                 meshrefId = ++nextMeshRefId;
             }
 
-            CachedMeshRef cmr = ObjectCacheUtil.GetOrCreate(capi, "" + meshrefId, () =>
+            renderinfo.ModelRef = ObjectCacheUtil.GetOrCreate(capi, "" + meshrefId, () =>
             {
                 byte[,,] voxels = GetVoxels(itemstack);
-                MeshData mesh = GenMesh(capi, itemstack, voxels, out int textureid);
+                MeshData mesh = GenMesh(capi, itemstack, voxels);
 
-                return new CachedMeshRef()
-                {
-                    meshref = capi.Render.UploadMultiTextureMesh(mesh),
-                    TextureId = textureid
-                };
+                return capi.Render.UploadMultiTextureMesh(mesh);
             });
 
-            renderinfo.ModelRef = cmr.meshref;
-            renderinfo.TextureId = cmr.TextureId;
 
             itemstack.Attributes.SetInt("meshRefId", meshrefId);
 
@@ -83,9 +66,8 @@ namespace Vintagestory.GameContent
         }
 
 
-        public static MeshData GenMesh(ICoreClientAPI capi, ItemStack workitemStack, byte[,,] voxels, out int textureId)
+        public static MeshData GenMesh(ICoreClientAPI capi, ItemStack workitemStack, byte[,,] voxels)
         {
-            textureId = 0;
             if (workitemStack == null) return null;
 
             MeshData workItemMesh = new MeshData(24, 36, false, true);
@@ -124,8 +106,7 @@ namespace Vintagestory.GameContent
                 Values = new byte[metalVoxelMesh.VerticesCount]
             };
 
-            textureId = tposMetal.atlasTextureId;
-            for (int i = 0; i < 6; i++) metalVoxelMesh.AddTextureId(textureId);
+            for (int i = 0; i < 6; i++) metalVoxelMesh.AddTextureId(tposMetal.atlasTextureId);
 
             metalVoxelMesh.XyzFaces = (byte[])CubeMeshUtil.CubeFaceIndices.Clone();
             metalVoxelMesh.XyzFacesCount = 6;

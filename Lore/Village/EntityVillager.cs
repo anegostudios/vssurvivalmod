@@ -15,7 +15,7 @@ namespace Vintagestory.GameContent
 {
     public class EntityVillager : EntityTradingHumanoid, ITalkUtil
     {
-        public OrderedDictionary<string, TraderPersonality> Personalities => Properties.Attributes["personalities"].AsObject<OrderedDictionary<string, TraderPersonality>>();
+        public API.Datastructures.OrderedDictionary<string, TraderPersonality> Personalities => Properties.Attributes["personalities"].AsObject<API.Datastructures.OrderedDictionary<string, TraderPersonality>>();
 
         public EntityVillager()
         {
@@ -85,8 +85,8 @@ namespace Vintagestory.GameContent
             if (api.Side == EnumAppSide.Client)
             {
                 personality = Personality;
-                bool isMultiSoundVoice = true;
-                talkUtil = new EntityTalkUtil(api as ICoreClientAPI, this, isMultiSoundVoice);
+                
+                talkUtil = new EntityTalkUtil(api as ICoreClientAPI, this, properties.Attributes["isMultiSoundVoice"].AsBool(true));
                 TalkUtil.soundName = AssetLocation.Create(VoiceSound, Code.Domain);
             }
 
@@ -116,7 +116,12 @@ namespace Vintagestory.GameContent
 
                 startLoadingMs = Api.World.ElapsedMilliseconds;
                 wasStopped = false;
-                track = capi.StartTrack(AssetLocation.Create(pkt.SoundLocation), 99f, EnumSoundType.MusicGlitchunaffected, (s) => onTrackLoaded(s, pkt.SecondsPassed));
+
+                track = new MusicTrack() {
+                    Location = AssetLocation.Create(pkt.SoundLocation),
+                    Priority = 99f
+                };
+                capi.StartTrack(track, EnumSoundType.MusicGlitchunaffected, (s) => onTrackLoaded(s, pkt.SecondsPassed));
             }
             if (packetid == (int)EntityServerPacketId.StopMusic)
             {
@@ -169,7 +174,7 @@ namespace Vintagestory.GameContent
 
                 track.loading = false;
 
-            }, (int)Math.Max(0, 500 - longMsPassed), true);
+            }, (int)Math.Max(0, 500 - longMsPassed));
         }
 
         public override void OnEntityDespawn(EntityDespawnData despawn)
@@ -179,7 +184,7 @@ namespace Vintagestory.GameContent
             Api.Event.UnregisterCallback(handlerId);
             wasStopped = true;
             base.OnEntityDespawn(despawn);
-            if (Api.Side == EnumAppSide.Server) Api.Logger.Debug("Villager " + GetName() + " de-spawned at " + ServerPos.AsBlockPos + " for reason " + despawn.Reason.ToString());
+            if (Api.Side == EnumAppSide.Server) Api.Logger.Debug("Villager " + GetName() + " de-spawned at " + Pos.AsBlockPos + " for reason " + despawn.Reason.ToString());
         }
 
 
@@ -214,10 +219,10 @@ namespace Vintagestory.GameContent
             }
         }
 
-        
+
 
         protected string hairStylingCategory = "nadiyan";
-        
+
 
         protected override int Dialog_DialogTriggers(EntityAgent triggeringEntity, string value, JsonObject data)
         {
@@ -246,11 +251,11 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void PlayEntitySound(string type, IPlayer dualCallByPlayer = null, bool randomizePitch = true, float range = 24)
+        public override void PlayEntitySound(string type, IPlayer dualCallByPlayer = null)
         {
             if (type == "idle" && track != null && track.IsActive) return;
 
-            base.PlayEntitySound(type, dualCallByPlayer, randomizePitch, range);
+            base.PlayEntitySound(type, dualCallByPlayer);
         }
 
         public override void OnHurt(DamageSource dmgSource, float damage)
@@ -278,7 +283,7 @@ namespace Vintagestory.GameContent
             }
             catch (Exception) { }
             string worldname = (worldForNewMappings is IServerWorldAccessor swa) ? swa.WorldName : "(unknown)";
-            worldForNewMappings.Logger.Log(EnumLogType.Worldgen, "In " + worldname + ", placed villager " + name + " at " + ServerPos.AsBlockPos);
+            worldForNewMappings.Logger.Log(EnumLogType.Worldgen, "In " + worldname + ", placed villager " + name + " at " + Pos.AsBlockPos);
 
             return result;
         }
@@ -297,10 +302,10 @@ namespace Vintagestory.GameContent
                 if (reason == EnumDespawnReason.Death || reason == EnumDespawnReason.Removed)
                 {
                     string worldname = (Api.World is IServerWorldAccessor swa) ? swa.WorldName : "(unknown)";
-                    if (reason == EnumDespawnReason.Death) Api?.Logger.Log(EnumLogType.Worldgen, "In " + worldname + ", villager " + name + " killed at " + ServerPos.AsBlockPos);
-                    else if (reason == EnumDespawnReason.Removed) Api?.Logger.Log(EnumLogType.Worldgen, "In " + worldname + ", villager " + name + " removed at " + ServerPos.AsBlockPos);
+                    if (reason == EnumDespawnReason.Death) Api?.Logger.Log(EnumLogType.Worldgen, "In " + worldname + ", villager " + name + " killed at " + Pos.AsBlockPos);
+                    else if (reason == EnumDespawnReason.Removed) Api?.Logger.Log(EnumLogType.Worldgen, "In " + worldname + ", villager " + name + " removed at " + Pos.AsBlockPos);
                 }
-                else Api?.Logger.Debug("Villager " + name + " de-spawned at " + ServerPos.AsBlockPos + " for reason " + reason.ToString());
+                else Api?.Logger.Debug("Villager " + name + " de-spawned at " + Pos.AsBlockPos + " for reason " + reason.ToString());
             }
             base.Die(reason, damageSourceForDeath);
         }
@@ -311,8 +316,8 @@ namespace Vintagestory.GameContent
             if (Api.Side == EnumAppSide.Server)
             {
                 bool dead = WatchedAttributes.GetInt("entityDead") == 1;
-                if (dead) Api.Logger.Debug("Villager " + GetName() + " loaded (but dead!) at " + ServerPos.AsBlockPos);
-                else Api.Logger.Debug("Villager " + GetName() + " loaded at " + ServerPos.AsBlockPos);
+                if (dead) Api.Logger.Debug("Villager " + GetName() + " loaded (but dead!) at " + Pos.AsBlockPos);
+                else Api.Logger.Debug("Villager " + GetName() + " loaded at " + Pos.AsBlockPos);
             }
         }
 

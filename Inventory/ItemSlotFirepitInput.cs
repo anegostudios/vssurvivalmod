@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Config;
+using Vintagestory.API.Config;
 
 #nullable disable
 
@@ -63,7 +63,8 @@ namespace Vintagestory.API.Common
             ItemSlot outslot = inventory[outputSlotId];
             if (outslot.Empty) return true;
 
-            ItemStack compareStack = sourceSlot.Itemstack?.Collectible.CombustibleProps?.SmeltedStack?.ResolvedItemstack;
+            CombustibleProperties combustibleProps = sourceSlot.Itemstack?.Collectible.GetCombustibleProperties(inventory.Api.World, sourceSlot.Itemstack, null);
+            ItemStack compareStack = combustibleProps?.SmeltedStack?.ResolvedItemstack;
             if (compareStack == null) compareStack = sourceSlot.Itemstack;
             
             if (!outslot.Itemstack.Equals(inventory.Api.World, compareStack, GlobalConstants.IgnoredStackAttributes))

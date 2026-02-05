@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -42,7 +42,15 @@ namespace Vintagestory.GameContent
         [DocumentAsJson("Optional", "False")]
         bool hideInteractionHelpInSurvival;
 
-        private static List<ItemStack> wrenchItems = new List<ItemStack>();
+        public static ItemStack[] wrenchItems;
+
+        public static void loadWrenchItems(IWorldAccessor world)
+        {
+            // This is a potentially rather slow wildcard search of all items (especially if mods add many items) therefore we want to run this only once per game
+            Item[] wrenches = world.SearchItems(new AssetLocation("wrench-*"));
+            wrenchItems = new ItemStack[wrenches.Length];
+            for (int i = 0; i < wrenches.Length; i++) wrenchItems[i] = new ItemStack(wrenches[i]);
+        }
 
         public BlockBehaviorWrenchOrientable(Block block) : base(block)
         {
@@ -53,11 +61,7 @@ namespace Vintagestory.GameContent
             if (hideInteractionHelpInSurvival && forPlayer?.WorldData.CurrentGameMode == EnumGameMode.Survival) return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer, ref handling);
 
             handling = EnumHandling.PassThrough;
-            if (wrenchItems.Count == 0)   // This is a potentially rather slow wildcard search of all items (especially if mods add many items) therefore we want to run this only once per game
-            {
-                Item[] wrenches = world.SearchItems(new AssetLocation("wrench-*"));
-                foreach(Item item in wrenches) wrenchItems.Add(new ItemStack(item));
-            }
+            if (wrenchItems == null) loadWrenchItems(world);
 
             bool notProtected = true;
 
@@ -67,12 +71,12 @@ namespace Vintagestory.GameContent
                 if (resp != EnumWorldAccessResponse.Granted) notProtected = false;
             }
 
-            if (wrenchItems.Count > 0 && notProtected)
+            if (wrenchItems.Length > 0 && notProtected)
             {
                 return new WorldInteraction[] { new WorldInteraction()
                 {
                     ActionLangCode = "Rotate",
-                    Itemstacks = wrenchItems.ToArray(),
+                    Itemstacks = wrenchItems,
                     MouseButton = EnumMouseButton.Right
                 } };
             }
@@ -102,7 +106,7 @@ namespace Vintagestory.GameContent
 
         public override void OnUnloaded(ICoreAPI api)
         {
-            wrenchItems.Clear();
+            wrenchItems = null;
             VariantsByType.Clear();
         }
     }

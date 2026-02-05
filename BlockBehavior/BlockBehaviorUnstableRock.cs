@@ -46,7 +46,7 @@ namespace Vintagestory.GameContent
             int radint = (int)Math.Round(radius) + 1;
 
             var rnd = sapi.World.Rand;
-            BlockPos tmpPos = new BlockPos();
+            BlockPos tmpPos = new BlockPos(pos.dimension);
 
             while (cnt-- > 0) 
             {
@@ -187,9 +187,9 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, ref EnumHandling handling)
+        public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier, ref EnumHandling handling)
         {
-            base.OnBlockBroken(world, pos, byPlayer, ref handling);
+            base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier, ref handling);
             checkCollapsibleNeighbours(world, pos);
         }
 
@@ -443,7 +443,7 @@ namespace Vintagestory.GameContent
         // Lets define: A block vertically suppported, if it has 4 or more solid blocks below it (or has a support beam below)
         public static int getVerticalSupportStrength(IWorldAccessor world, BlockPos npos)
         {
-            BlockPos tmppos = new BlockPos();
+            BlockPos tmppos = new BlockPos(npos.dimension);
             IBlockAccessor blockAccessor = world.BlockAccessor;
             for (int i = 1; i < 5; i++)
             {

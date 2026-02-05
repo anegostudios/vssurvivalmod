@@ -1,4 +1,4 @@
-﻿using Vintagestory.API;
+using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -39,7 +39,7 @@ namespace Vintagestory.GameContent
             eventName = properties["eventName"]?.AsString();
         }
 
-        public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, ref EnumHandling handling)
+        public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier, ref EnumHandling handling)
         {
             handling = EnumHandling.PassThrough;
 

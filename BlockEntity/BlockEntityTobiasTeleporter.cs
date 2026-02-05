@@ -46,7 +46,7 @@ public class BlockEntityTobiasTeleporter : BlockEntityTeleporterBase
             else if(!string.IsNullOrEmpty(OwnerPlayerUid))
             {
                 // fix tobias tl at cave location
-                sapi.ModLoader.GetModSystem<GenStoryStructures>().storyStructureInstances.TryGetValue("tobiascave", out var location);
+                var location = sapi.ModLoader.GetModSystem<GenStoryStructures>().Structures.Get("tobiascave");
                 if (location != null && Pos.DistanceTo(location.CenterPos) < 20)
                 {
                     IsAtTobiasCave = true;

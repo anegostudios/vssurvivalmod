@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -116,7 +116,6 @@ namespace Vintagestory.GameContent
                     double dx = byPlayer.Entity.Pos.X - (targetPos.X + blockSel.HitPosition.X);
                     double dz = (float)byPlayer.Entity.Pos.Z - (targetPos.Z + blockSel.HitPosition.Z);
                     float angleHor = (float)Math.Atan2(dx, dz);
-
                     float deg22dot5rad = GameMath.PIHALF / 4;
                     float roundRad = ((int)Math.Round(angleHor / deg22dot5rad)) * deg22dot5rad;
                     bect.MeshAngle = roundRad;

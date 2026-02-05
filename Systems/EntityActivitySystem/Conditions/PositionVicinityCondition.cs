@@ -47,9 +47,9 @@ namespace Vintagestory.GameContent
             tmpPos.Set(Target).Add(vas.ActivityOffset);
             if (yrange>=0)
             {
-                return e.ServerPos.HorDistanceTo(tmpPos) < range && Math.Abs(e.ServerPos.Y - tmpPos.Y) < yrange;
+                return e.Pos.HorDistanceTo(tmpPos) < range && Math.Abs(e.Pos.Y - tmpPos.Y) < yrange;
             }
-            return e.ServerPos.DistanceTo(tmpPos) < range;
+            return e.Pos.DistanceTo(tmpPos) < range;
         }
 
         public void LoadState(ITreeAttribute tree) { }

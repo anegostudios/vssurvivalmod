@@ -60,7 +60,7 @@ namespace Vintagestory.GameContent
                 Passenger.AnimManager?.StopAnimation(animations["backwards"]);
                 Passenger.AnimManager?.StopAnimation(animations["idle"]);
                 Passenger.AnimManager?.StopAnimation(config.Animation);
-                Passenger.SidedPos.Roll = 0;
+                Passenger.Pos.Roll = 0;
             }
 
             base.DidUnmount(entityAgent);
@@ -75,8 +75,8 @@ namespace Vintagestory.GameContent
             Vec3d shortestTargetPos = null;
 
             // var entityBoat = this.Entity;
-            /*var ebox = entityBoat.CollisionBox.ToDouble().Translate(entityBoat.ServerPos.XYZ);
-            var passengerBox = Passenger.CollisionBox.ToDouble().Translate(Passenger.ServerPos.XYZ);*/
+            /*var ebox = entityBoat.CollisionBox.ToDouble().Translate(entityBoat.Pos.XYZ);
+            var passengerBox = Passenger.CollisionBox.ToDouble().Translate(Passenger.Pos.XYZ);*/
              //&& !ebox.Intersects(passengerBox)
 
             for (int dx = -4; dx <= 4; dx++)
@@ -85,12 +85,12 @@ namespace Vintagestory.GameContent
                 {
                     for (int dz = -4; dz <= 4; dz++)
                     {
-                        var targetPos = Passenger.ServerPos.XYZ.AsBlockPos.ToVec3d().Add(dx + 0.5, dy + 0.1, dz + 0.5);
+                        var targetPos = Passenger.Pos.XYZ.AsBlockPos.ToVec3d().Add(dx + 0.5, dy + 0.1, dz + 0.5);
                         var block = ba.GetBlockRaw((int)targetPos.X, (int)(targetPos.Y - 0.15), (int)targetPos.Z, BlockLayersAccess.MostSolid);
                         var upfblock = ba.GetBlockRaw((int)targetPos.X, (int)(targetPos.Y), (int)targetPos.Z, BlockLayersAccess.Fluid);
                         if (upfblock.Id == 0 && block.SideSolid[BlockFacing.UP.Index] && !world.CollisionTester.IsColliding(ba, Passenger.CollisionBox, targetPos, false))
                         {
-                            var dist = targetPos.DistanceTo(Passenger.ServerPos.XYZ);
+                            var dist = targetPos.DistanceTo(Passenger.Pos.XYZ);
                             if (dist < shortestDistance)
                             {
                                 shortestDistance = dist;
@@ -112,7 +112,7 @@ namespace Vintagestory.GameContent
             {
                 for (int dz = -1; !found && dz <= 1; dz++)
                 {
-                    var targetPos = Passenger.ServerPos.XYZ.AsBlockPos.ToVec3d().Add(dx + 0.5, 1.1, dz + 0.5);
+                    var targetPos = Passenger.Pos.XYZ.AsBlockPos.ToVec3d().Add(dx + 0.5, 1.1, dz + 0.5);
                     if (!world.CollisionTester.IsColliding(ba, Passenger.CollisionBox, targetPos, false))
                     {
                         this.Passenger.TeleportTo(targetPos);

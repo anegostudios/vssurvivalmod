@@ -31,7 +31,7 @@ namespace Vintagestory.GameContent
 
 
         public override void StartExecute()
-        {   
+        {
             lastExecutedMs = entity.World.ElapsedMilliseconds;
 
             var tree = entity.WatchedAttributes.GetTreeAttribute("ownedby");
@@ -44,7 +44,7 @@ namespace Vintagestory.GameContent
             if (targetEntity != null)
             {
                 float size = targetEntity.SelectionBox.XSize;
-                pathTraverser.NavigateTo_Async(targetEntity.ServerPos.XYZ, moveSpeed, size + 0.2f, OnGoalReached, OnStuck, null, 1000, 1);
+                pathTraverser.NavigateTo_Async(targetEntity.Pos.XYZ, moveSpeed, size + 0.2f, OnGoalReached, OnStuck, null, 1000, 1);
                 targetOffset.Set(entity.World.Rand.NextDouble() * 2 - 1, 0, entity.World.Rand.NextDouble() * 2 - 1);
                 stuck = false;
             }

@@ -43,30 +43,32 @@ namespace Vintagestory.GameContent
         [DocumentAsJson("Optional", "north")]
         string dropBlockFace = "north";
 
-        string ownFirstCodePart;
-
         /// <summary>
         /// Can the base of this ladder be collected with a right click? Flexible ladders also cannot be built upwards.
         /// </summary>
         [DocumentAsJson("Optional", "False")]
         public bool isFlexible;
 
+        /// <summary>
+        /// Crude ladders cannot stand on the floor or ceiling without some attachment to a wall behind some part of the ladder.
+        /// </summary>
+        [DocumentAsJson("Optional", "False")]
+        public bool isCrude;
+
         public string LadderType => block.Variant["material"];
 
         public BlockBehaviorLadder(Block block) : base(block)
         {
-            ownFirstCodePart = block.FirstCodePart();
+
         }
 
         public override void Initialize(JsonObject properties)
         {
             base.Initialize(properties);
-            if (properties["dropBlockFace"].Exists)
-            {
-                dropBlockFace = properties["dropBlockFace"].AsString();
-            }
 
+            dropBlockFace = properties["dropBlockFace"].AsString("north");
             isFlexible = properties["isFlexible"].AsBool(false);
+            isCrude = properties["isCrude"].AsBool(false);
         }
 
 
@@ -100,57 +102,30 @@ namespace Vintagestory.GameContent
 
             BlockPos pos = blockSel.Position;
             BlockPos aimedAtPos = blockSel.DidOffset ? pos.AddCopy(blockSel.Face.Opposite) : blockSel.Position;
-            
-            
-                
-            // Has ladder above at aimed position?
-            Block aboveBlock = world.BlockAccessor.GetBlock(pos.UpCopy());
-            string aboveLadderType = aboveBlock.GetBehavior<BlockBehaviorLadder>()?.LadderType;
+            bool placed = false;
 
-            if (!isFlexible && aboveLadderType == LadderType && HasSupport(aboveBlock, world.BlockAccessor, pos) && aboveBlock.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
-            {
-                aboveBlock.DoPlaceBlock(world, byPlayer, blockSel, itemstack);
-                return true;
-            }
-
-            // Has ladder below at aimed position?
-            Block belowBlock = world.BlockAccessor.GetBlock(pos.DownCopy());
-            string belowLadderType = belowBlock.GetBehavior<BlockBehaviorLadder>()?.LadderType;
-
-            if (belowLadderType == LadderType && HasSupport(belowBlock, world.BlockAccessor, pos) && belowBlock.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
-            {
-                belowBlock.DoPlaceBlock(world, byPlayer, blockSel, itemstack);
-                return true;
-            }
-
-
-            // Can I put ladder below aimed position?
+            // Am I aiming at the bottom half of the block?
             if (blockSel.HitPosition.Y < 0.5)
             {
-                if (TryStackDown(byPlayer, world, aimedAtPos, blockSel.Face, itemstack)) return true;
+                placed = TryStackDown(byPlayer, world, aimedAtPos, blockSel.Face, itemstack);
             }
 
+            // Can I put ladder above block position?
+            placed = placed || TryStackUp(byPlayer, world, aimedAtPos, blockSel.Face, itemstack);
 
-            // Can I put ladder above aimed position?
-            if (TryStackUp(byPlayer, world, aimedAtPos, blockSel.Face, itemstack)) return true;
+            // Can I put ladder below block position?
+            placed = placed || TryStackDown(byPlayer, world, aimedAtPos, blockSel.Face, itemstack);
 
-            // Can I put ladder below aimed position?
-            if (TryStackDown(byPlayer, world, aimedAtPos, blockSel.Face, itemstack)) return true;
-
+            if (placed) return true;
 
             AssetLocation blockCode;
-
-            if (isFlexible && blockSel.Face.IsVertical)
-            {
-                failureCode = "cantattachladder";
-                return false;
-            }
 
             if (blockSel.Face.IsVertical)
             {
                 BlockFacing[] faces = Block.SuggestedHVOrientation(byPlayer, blockSel);
                 blockCode = block.CodeWithParts(faces[0].Code);
-            } else
+            }
+            else
             {
                 blockCode = block.CodeWithParts(blockSel.Face.Opposite.Code);
             }
@@ -158,15 +133,6 @@ namespace Vintagestory.GameContent
             Block orientedBlock = world.BlockAccessor.GetBlock(blockCode);
             // Otherwise place if we have support for it
             if (HasSupport(orientedBlock, world.BlockAccessor, pos) && orientedBlock.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
-            {
-                orientedBlock.DoPlaceBlock(world, byPlayer, blockSel, itemstack);
-                return true;
-            }
-
-            // Otherwise maybe on the other side?
-            blockCode = block.CodeWithParts(blockSel.Face.Opposite.Code);
-            orientedBlock = world.BlockAccessor.GetBlock(blockCode);
-            if (orientedBlock != null && HasSupport(orientedBlock, world.BlockAccessor, pos) && orientedBlock.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
             {
                 orientedBlock.DoPlaceBlock(world, byPlayer, blockSel, itemstack);
                 return true;
@@ -184,6 +150,7 @@ namespace Vintagestory.GameContent
 
             Block ladderBlock = world.BlockAccessor.GetBlock(pos);
             string ladderType = ladderBlock.GetBehavior<BlockBehaviorLadder>()?.LadderType;
+            ladderBlock = world.BlockAccessor.GetBlock(itemstack.Block?.CodeWithVariant("side", ladderBlock.Variant["side"]) ?? "") ?? ladderBlock;
             if (ladderType != LadderType) return false;
 
             BlockPos abovePos = pos.UpCopy();
@@ -192,14 +159,14 @@ namespace Vintagestory.GameContent
             while (abovePos.Y < world.BlockAccessor.MapSizeY)
             {
                 aboveBlock = world.BlockAccessor.GetBlock(abovePos);
-                if (aboveBlock.FirstCodePart() != ownFirstCodePart) break;
+                if (aboveBlock.GetBehavior<BlockBehaviorLadder>()?.LadderType != LadderType) break;
                 
                 abovePos.Up();
             }
 
             string useless="";
 
-            if (aboveBlock == null || aboveBlock.FirstCodePart() == ownFirstCodePart) return false;
+            if (aboveBlock == null) return false;
             if (!ladderBlock.CanPlaceBlock(world, byPlayer, new BlockSelection() { Position = abovePos, Face = face }, ref useless)) return false;
 
             ladderBlock.DoPlaceBlock(world, byPlayer, new BlockSelection() { Position = abovePos, Face = face }, itemstack);
@@ -218,6 +185,7 @@ namespace Vintagestory.GameContent
         {
             Block ladderBlock = world.BlockAccessor.GetBlock(pos);
             string ladderType = ladderBlock.GetBehavior<BlockBehaviorLadder>()?.LadderType;
+            ladderBlock = world.BlockAccessor.GetBlock(itemstack.Block?.CodeWithVariant("side", ladderBlock.Variant["side"]) ?? "") ?? ladderBlock;
             if (ladderType != LadderType) return false;
 
             BlockPos belowPos = pos.DownCopy();
@@ -226,14 +194,14 @@ namespace Vintagestory.GameContent
             while (belowPos.Y > 0)
             {
                 belowBlock = world.BlockAccessor.GetBlock(belowPos);
-                if (belowBlock.FirstCodePart() != ownFirstCodePart) break;
-                
+                if (belowBlock.GetBehavior<BlockBehaviorLadder>()?.LadderType != LadderType) break;
+
                 belowPos.Down();
             }
 
             string useless = "";
 
-            if (belowBlock == null || belowBlock.FirstCodePart() == ownFirstCodePart) return false;
+            if (belowBlock == null) return false;
             if (!belowBlock.IsReplacableBy(block)) return false;
             if (!ladderBlock.CanPlaceBlock(world, byPlayer, new BlockSelection() { Position = belowPos, Face = face }, ref useless)) return false;
 
@@ -251,16 +219,13 @@ namespace Vintagestory.GameContent
         
         protected bool TryCollectLowest(IPlayer byPlayer, IWorldAccessor world, BlockPos pos)
         {
-            Block ladderBlock = world.BlockAccessor.GetBlock(pos);
-            if (ladderBlock.FirstCodePart() != ownFirstCodePart) return false;
-
             BlockPos belowPos = pos.DownCopy();
             Block belowBlock;
 
             while (belowPos.Y > 0)
             {
                 belowBlock = world.BlockAccessor.GetBlock(belowPos);
-                if (belowBlock.FirstCodePart() != ownFirstCodePart) break;
+                if (belowBlock.GetBehavior<BlockBehaviorLadder>()?.LadderType != LadderType) break;
 
                 belowPos.Down();
             }
@@ -315,11 +280,13 @@ namespace Vintagestory.GameContent
             BlockFacing ownFacing = BlockFacing.FromCode(forBlock.LastCodePart());
 
             BlockPos upPos = pos.UpCopy();
+            Block upBlock = pos.Y < blockAccess.MapSizeY - 1 ? blockAccess.GetBlock(upPos) : null;
+            string upLadderType = upBlock?.GetBehavior<BlockBehaviorLadder>()?.LadderType;
 
             return
                 SideSolid(blockAccess, pos, ownFacing)
-                || SideSolid(blockAccess, pos, BlockFacing.UP)
-                || (pos.Y < blockAccess.MapSizeY - 1 && blockAccess.GetBlock(upPos) == forBlock && HasSupportUp(forBlock, blockAccess, upPos))
+                || (!isCrude && SideSolid(blockAccess, pos, BlockFacing.UP))
+                || (upLadderType != null && upLadderType == forBlock.GetBehavior<BlockBehaviorLadder>()?.LadderType && HasSupportUp(upBlock, blockAccess, upPos))
             ;
         }
 
@@ -329,29 +296,42 @@ namespace Vintagestory.GameContent
             BlockFacing ownFacing = BlockFacing.FromCode(forBlock.LastCodePart());
 
             BlockPos downPos = pos.DownCopy();
+            Block downBlock = pos.Y > 0 ? blockAccess.GetBlock(downPos) : null;
+            string downLadderType = downBlock?.GetBehavior<BlockBehaviorLadder>()?.LadderType;
 
             return
                 SideSolid(blockAccess, pos, ownFacing)
-                || SideSolid(blockAccess, pos, BlockFacing.DOWN)
-                || (pos.Y > 0 && blockAccess.GetBlock(downPos) == forBlock && HasSupportDown(forBlock, blockAccess, downPos))
+                || (!isCrude && SideSolid(blockAccess, pos, BlockFacing.DOWN))
+                || (downLadderType != null && downLadderType == forBlock.GetBehavior<BlockBehaviorLadder>()?.LadderType && HasSupportDown(downBlock, blockAccess, downPos))
             ;
         }
 
         public bool HasSupport(Block forBlock, IBlockAccessor blockAccess, BlockPos pos)
         {
             BlockFacing ownFacing = BlockFacing.FromCode(forBlock.LastCodePart());
+            string ladderType = forBlock.GetBehavior<BlockBehaviorLadder>()?.LadderType;
 
             BlockPos downPos = pos.DownCopy();
+            Block downBlock = pos.Y > 0 ? blockAccess.GetBlock(downPos) : null;
+            string downLadderType = downBlock?.GetBehavior<BlockBehaviorLadder>()?.LadderType;
+
             BlockPos upPos = pos.UpCopy();
+            Block upBlock = pos.Y < blockAccess.MapSizeY - 1 ? blockAccess.GetBlock(upPos) : null;
+            string upLadderType = upBlock?.GetBehavior<BlockBehaviorLadder>()?.LadderType;
 
             return
                 SideSolid(blockAccess, pos, ownFacing)
-                || (!isFlexible && SideSolid(blockAccess, pos, BlockFacing.DOWN))
-                || SideSolid(blockAccess, pos, BlockFacing.UP)
-                || (pos.Y < blockAccess.MapSizeY - 1 && blockAccess.GetBlock(upPos) == forBlock && HasSupportUp(forBlock, blockAccess, upPos))
-                || (!isFlexible && pos.Y > 0 && blockAccess.GetBlock(downPos) == forBlock && HasSupportDown(forBlock, blockAccess, downPos))
+                || (!isFlexible && !isCrude && SideSolid(blockAccess, pos, BlockFacing.DOWN))
+                || (!isCrude && SideSolid(blockAccess, pos, BlockFacing.UP))
+                || (upLadderType != null && upLadderType == ladderType && HasSupportUp(forBlock, blockAccess, upPos))
+                || (!isFlexible && downLadderType != null && downLadderType == ladderType && HasSupportDown(downBlock, blockAccess, downPos))
             ;
         }
+
+
+        // Calculate the top and bottom halves of blocks in voxels only once to reuse
+        static readonly Cuboidi[] upHalf = [new(0, 0, 0, 14, 7, 1), new(13, 0, 0, 15, 7, 15), new(0, 0, 13, 15, 7, 15), new(0, 0, 0, 1, 7, 15)];
+        static readonly Cuboidi[] downHalf = [new(0, 8, 0, 14, 15, 1), new(13, 8, 0, 15, 15, 15), new(0, 8, 13, 15, 15, 15), new(0, 8, 0, 1, 15, 15)];
 
         public bool SideSolid(IBlockAccessor blockAccess, BlockPos pos, BlockFacing facing)
         {
@@ -359,12 +339,16 @@ namespace Vintagestory.GameContent
             Block neibBlock = blockAccess.GetBlock(neibPos);
             if (neibBlock.Id == 0) return false;
 
-            // radfast note 27.11.24: this is very costly for a SideSolid check...
-            Cuboidi upHalf = new Cuboidi(14, 0, 0, 15, 7, 15).RotatedCopy(0, 90 * facing.HorizontalAngleIndex, 0, new Vec3d(7.5, 0, 7.5));
-            if (neibBlock.CanAttachBlockAt(blockAccess, neibBlock, neibPos, facing.Opposite, upHalf)) return true;
-
-            Cuboidi downHalf = new Cuboidi(14, 8, 0, 15, 15, 15).RotatedCopy(0, 90 * facing.HorizontalAngleIndex, 0, new Vec3d(7.5, 0, 7.5));
-            if (neibBlock.CanAttachBlockAt(blockAccess, neibBlock, neibPos, facing.Opposite, downHalf)) return true;
+            // If it is a vertical face we were always checking the full block anyway,
+            if (facing.IsVertical)
+            {
+                if (neibBlock.CanAttachBlockAt(blockAccess, neibBlock, neibPos, facing.Opposite)) return true;
+            }
+            else
+            {
+                if (neibBlock.CanAttachBlockAt(blockAccess, neibBlock, neibPos, facing.Opposite, upHalf[facing.Index])) return true;
+                if (neibBlock.CanAttachBlockAt(blockAccess, neibBlock, neibPos, facing.Opposite, downHalf[facing.Index])) return true;
+            }
 
             return false;
         }

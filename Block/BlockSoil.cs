@@ -23,7 +23,7 @@ namespace Vintagestory.GameContent
     /// It only grows on soil that has a sun light level of 7 or higher when there is an adjacent grass block near it. The
     /// adjacent grass block can be at a y level between 1 below it to 1 above it. 
     /// </summary>
-    public class BlockSoil : BlockWithGrassOverlay
+    public class BlockSoil : BlockWithGrassOverlay, IBlockSoil
     {
         protected List<AssetLocation> tallGrassCodes = new List<AssetLocation>();
         protected string[] growthStages = new string[] { "none", "verysparse", "sparse", "normal" };

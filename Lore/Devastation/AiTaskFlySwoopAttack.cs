@@ -1,3 +1,4 @@
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
@@ -8,32 +9,49 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent;
 
-#nullable disable
 public class AiTaskFlySwoopAttack : AiTaskBaseTargetable
 {
+    [JsonProperty]
     protected EnumDamageType damageType = EnumDamageType.BluntAttack;
+    [JsonProperty]
     protected int damageTier = 0;
+    [JsonProperty]
     protected float damage = 2f;
     protected float knockbackStrength = 1f;
+    [JsonProperty]
     protected float seekingRangeVer = 25f;
+    [JsonProperty]
     protected float seekingRangeHor = 25f;
-    protected float damageRange = 5f;
+    [JsonProperty]
+    protected float damageRange = 2f;
+    [JsonProperty]
     protected float moveSpeed = 0.04f;
     protected TimeSpan attemptToExecuteCooldownMs = TimeSpan.FromMilliseconds(1500);
     protected TimeSpan targetRetentionTime = TimeSpan.FromSeconds(30);
+    [JsonProperty]
     protected float firstTimeSwitchDistance = 0.90f;
+    [JsonProperty]
     protected float secondTimeSwitchDistance = 0.25f;
+    [JsonProperty]
     protected float secondTimeSwitchMinimumDistance = 0.10f;
+    [JsonProperty]
     protected float timeSwitchHealthThreshold = 0.75f;
+    [JsonProperty]
     protected float minVerticalDistance = 9;
+    [JsonProperty]
     protected float minHorizontalDistance = 25;
     protected const float sensePlayerRange = 15;
     protected const float pathRefreshCooldown = 1;
     protected const float pathStopRefreshThreshold = 5;
+    [JsonProperty]
     protected bool timeSwitchAtTheStart = false;
-    protected int pathLength = 25;
+    [JsonProperty]
+    protected int pathLength = 35;
+    [JsonProperty]
     protected float speedThresholdForDamage = 0.3f;
+    [JsonProperty]
     protected float timeSwitchProbability = 0.5f;
+    [JsonProperty]
     protected long globalAttackCooldownMs = 3000;
 
     protected long lastCheckOrAttackMs;
@@ -46,7 +64,7 @@ public class AiTaskFlySwoopAttack : AiTaskBaseTargetable
     protected float damageAccum = 0f;
     protected double initialDistanceToTarget = 0;
     protected int intendedDimension = 0;
-    protected NatFloat timeSwitchRandom = null;
+    protected NatFloat timeSwitchRandom = null!;
     protected bool shouldUseTimeSwitchThisTime;
 
     protected int CurrentDimension => entity.Pos.Dimension;
@@ -58,27 +76,9 @@ public class AiTaskFlySwoopAttack : AiTaskBaseTargetable
 
         timeSwitchRandom = new NatFloat(0.5f, 0.5f, EnumDistribution.UNIFORM);
 
-        moveSpeed = taskConfig["moveSpeed"].AsFloat(0.04f);
-        damage = taskConfig["damage"].AsFloat(2);
         knockbackStrength = taskConfig["knockbackStrength"].AsFloat(GameMath.Sqrt(damage / 2f));
-        seekingRangeHor = taskConfig["seekingRangeHor"].AsFloat(25);
-        seekingRangeVer = taskConfig["seekingRangeVer"].AsFloat(25);
-        damageRange = taskConfig["damageRange"].AsFloat(2);
-        damageType = Enum.Parse<EnumDamageType>(taskConfig["damageType"].AsString("BluntAttack"));
-        damageTier = taskConfig["damageTier"].AsInt(0);
         attemptToExecuteCooldownMs = TimeSpan.FromMilliseconds(taskConfig["attemptToExecuteCooldownMs"].AsInt(1500));
         targetRetentionTime = TimeSpan.FromSeconds(taskConfig["targetRetentionTimeSec"].AsInt(30));
-        timeSwitchHealthThreshold = taskConfig["timeSwitchHealthThreshold"].AsFloat(0.75f);
-        firstTimeSwitchDistance = taskConfig["firstTimeSwitchDistance"].AsFloat(0.90f);
-        secondTimeSwitchDistance = taskConfig["secondTimeSwitchDistance"].AsFloat(0.25f);
-        secondTimeSwitchMinimumDistance = taskConfig["secondTimeSwitchMinimumDistance"].AsFloat(0.10f);
-        timeSwitchAtTheStart = taskConfig["timeSwitchAtTheStart"].AsBool(false);
-        pathLength = taskConfig["pathLength"].AsInt(35);
-        speedThresholdForDamage = taskConfig["speedThresholdForDamage"].AsFloat(0.3f);
-        timeSwitchProbability = taskConfig["timeSwitchProbability"].AsFloat(0.5f);
-        globalAttackCooldownMs = taskConfig["globalAttackCooldownMs"].AsInt(3000);
-        minVerticalDistance = taskConfig["minVerticalDistance"].AsFloat(9);
-        minHorizontalDistance = taskConfig["minHorizontalDistance"].AsFloat(25);
     }
 
     public override bool ShouldExecute()
@@ -91,20 +91,20 @@ public class AiTaskFlySwoopAttack : AiTaskBaseTargetable
 
         cooldownUntilMs = entity.World.ElapsedMilliseconds + (long)attemptToExecuteCooldownMs.TotalMilliseconds;
 
-        if (!PreconditionsSatisifed()) return false;
+        if (!PreconditionsSatisfied()) return false;
 
         if (!checkGlobalAttackCooldown())
         {
             return false;
         }
 
-        Vec3d pos = entity.ServerPos.XYZ.Add(0, entity.SelectionBox.Y2 / 2, 0).Ahead(entity.SelectionBox.XSize / 2, 0, entity.ServerPos.Yaw);
+        Vec3d pos = entity.Pos.XYZ.Add(0, entity.SelectionBox.Y2 / 2, 0).Ahead(entity.SelectionBox.XSize / 2, 0, entity.Pos.Yaw);
 
         if (entity.World.ElapsedMilliseconds - attackedByEntityMs > (long)targetRetentionTime.TotalMilliseconds)
         {
             attackedByEntity = null;
         }
-        if (retaliateAttacks && attackedByEntity != null && attackedByEntity.Alive && attackedByEntity.IsInteractable && IsTargetableEntity(attackedByEntity, sensePlayerRange, true))
+        if (ShouldRetaliateForRange(sensePlayerRange))
         {
             targetEntity = attackedByEntity;
         }
@@ -118,11 +118,11 @@ public class AiTaskFlySwoopAttack : AiTaskBaseTargetable
 
         lastCheckOrAttackMs = entity.World.ElapsedMilliseconds;
 
-        bool targetOk = targetEntity != null && entity.ServerPos.Y - targetEntity.ServerPos.Y > minVerticalDistance && entity.ServerPos.HorDistanceTo(targetEntity.ServerPos) > minHorizontalDistance;
+        bool targetOk = targetEntity != null && entity.Pos.Y - targetEntity.Pos.Y > minVerticalDistance && entity.Pos.HorDistanceTo(targetEntity.Pos) > minHorizontalDistance;
         if (!targetOk) return false;
 
-        beginAttackPos = entity.ServerPos.XYZ;
-        swoopPath = new List<Vec3d>(getSwoopPath(targetEntity as EntityAgent, pathLength, false));
+        beginAttackPos = entity.Pos.XYZ;
+        swoopPath = new List<Vec3d>(getSwoopPath(targetEntity!, pathLength, false));
         return pathClear(swoopPath);
     }
 
@@ -131,7 +131,7 @@ public class AiTaskFlySwoopAttack : AiTaskBaseTargetable
         didDamageEntity.Clear();
 
         swoopPath.Clear();
-        swoopPath.AddRange(getSwoopPath(targetEntity as EntityAgent, pathLength, true));
+        swoopPath.AddRange(getSwoopPath(targetEntity!, pathLength, true));
         pathTraverser.FollowRoute(swoopPath, moveSpeed, 8, null, null);
 
         pathStopRefreshAccum = 0;
@@ -157,7 +157,7 @@ public class AiTaskFlySwoopAttack : AiTaskBaseTargetable
 
         pathStopRefreshAccum += dt;
         pathRefreshAccum += dt;
-        if (pathRefreshAccum > pathRefreshCooldown && pathStopRefreshAccum < pathStopRefreshThreshold && (targetEntity.Pos.Dimension == entity.Pos.Dimension))
+        if (pathRefreshAccum > pathRefreshCooldown && pathStopRefreshAccum < pathStopRefreshThreshold && (targetEntity!.Pos.Dimension == entity.Pos.Dimension))
         {
             refreshPath();
             pathRefreshAccum = 0;
@@ -174,10 +174,10 @@ public class AiTaskFlySwoopAttack : AiTaskBaseTargetable
             attackEntities();
         }
 
-        double speed = entity.ServerPos.Motion.Length();
+        double speed = entity.Pos.Motion.Length();
         if (speed > 0.01)
         {
-            entity.ServerPos.Roll = (float)Math.Asin(GameMath.Clamp(-entity.ServerPos.Motion.Y / speed, -1, 1));
+            entity.Pos.Roll = (float)Math.Asin(GameMath.Clamp(-entity.Pos.Motion.Y / speed, -1, 1));
         }
 
         if (!pathTraverser.Active)
@@ -192,14 +192,18 @@ public class AiTaskFlySwoopAttack : AiTaskBaseTargetable
     {
         pathTraverser.Stop();
 
-        (entity as EntityErel).LastAttackTime = entity.World.ElapsedMilliseconds;
+        if (entity is EntityErel erel)
+        {
+            erel.LastAttackTime = entity.World.ElapsedMilliseconds;
+        }
 
         base.FinishExecute(cancelled);
     }
 
     protected bool checkGlobalAttackCooldown()
     {
-        long lastAttack = (entity as EntityErel).LastAttackTime;
+        EntityErel erel = (EntityErel)entity;
+        long lastAttack = erel.LastAttackTime;
         long currentTime = entity.World.ElapsedMilliseconds;
 
         return currentTime - lastAttack > globalAttackCooldownMs;
@@ -232,16 +236,16 @@ public class AiTaskFlySwoopAttack : AiTaskBaseTargetable
     protected virtual Vec3d[] getSwoopPath(Entity target, int its, bool simplifiedOut)
     {
         // Path traverser do not account for dimension in Y data and assumes it is local to dimension
-        EntityPos targetEntityPos = target.ServerPos.Copy();
+        EntityPos targetEntityPos = target.Pos.Copy();
         targetEntityPos.Dimension = Dimensions.NormalWorld;
 
-        EntityPos thisEntityPos = entity.ServerPos;
+        EntityPos thisEntityPos = entity.Pos;
         thisEntityPos.Dimension = Dimensions.NormalWorld;
 
         Vec3d targetPos = targetEntityPos.XYZ.AddCopy(target.LocalEyePos);
 
         // Swoop in
-        Vec3d start1 = entity.ServerPos.XYZ;
+        Vec3d start1 = entity.Pos.XYZ;
         Vec3d end1 = new(start1.X, targetPos.Y + 10, start1.Z);
 
         Vec3d start2 = end1;
@@ -287,11 +291,11 @@ public class AiTaskFlySwoopAttack : AiTaskBaseTargetable
         }
 
 #if DEBUG
-        Vec3f zero = Vec3f.Zero;
+        /*Vec3f zero = Vec3f.Zero;
         for (int i = 0; i < points.Length; i++)
         {
             entity.World.SpawnParticles(1, ColorUtil.WhiteArgb, points[i], points[i], zero, zero, 3, 0, 1);
-        }
+        }*/
 #endif
 
         return points;
@@ -300,7 +304,7 @@ public class AiTaskFlySwoopAttack : AiTaskBaseTargetable
     {
         List<Entity> attackableEntities = new();
         EntityPartitioning ep = entity.Api.ModLoader.GetModSystem<EntityPartitioning>();
-        ep.GetNearestEntity(entity.ServerPos.XYZ, damageRange + 1, (e) =>
+        ep.GetNearestEntity(entity.Pos.XYZ, damageRange + 1, (e) =>
         {
             if (IsTargetableEntity(e, damageRange) && hasDirectContact(e, damageRange, damageRange) && !didDamageEntity.Contains(entity.EntityId))
             {
@@ -336,9 +340,10 @@ public class AiTaskFlySwoopAttack : AiTaskBaseTargetable
 
     protected double distanceToTarget()
     {
-        double xDistance = entity.ServerPos.X - targetEntity.Pos.X;
-        double yDistance = entity.ServerPos.Y - targetEntity.Pos.Y;
-        double zDistance = entity.ServerPos.Z - targetEntity.Pos.Z;
+        ArgumentNullException.ThrowIfNull(targetEntity);
+        double xDistance = entity.Pos.X - targetEntity.Pos.X;
+        double yDistance = entity.Pos.Y - targetEntity.Pos.Y;
+        double zDistance = entity.Pos.Z - targetEntity.Pos.Z;
 
         return Math.Sqrt(xDistance * xDistance + yDistance * yDistance + zDistance * zDistance);
     }
@@ -354,7 +359,8 @@ public class AiTaskFlySwoopAttack : AiTaskBaseTargetable
 
     protected void refreshPath()
     {
-        Vec3d[] path = getSwoopPath(targetEntity as EntityAgent, pathLength, true);
+        ArgumentNullException.ThrowIfNull(targetEntity);
+        Vec3d[] path = getSwoopPath(targetEntity, pathLength, true);
         if (pathClear(new List<Vec3d>(path)))
         {
             swoopPath.Clear();

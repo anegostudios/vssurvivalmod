@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -278,7 +278,7 @@ namespace Vintagestory.GameContent
                         break;
                 }
 
-                mesher.AddMeshData(signMesh.Clone().Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, rotY * GameMath.DEG2RAD, 0));
+                mesher.AddMeshData(signMesh.Clone().Rotate(0, rotY * GameMath.DEG2RAD, 0));
             }
 
 

@@ -1,22 +1,29 @@
 ﻿using System.Collections.Generic;
+using Newtonsoft.Json;
 using Vintagestory.API.Server;
-
-#nullable disable
 
 namespace Vintagestory.ServerMods
 {
     public class TiledDungeonConfig
     {
-        public TiledDungeon[] Dungeons;
+        public int minDistance;
+        [JsonIgnore]
+        public int MinDistanceSq;
 
-        public Dictionary<string, TiledDungeon> DungeonsByCode;
+        public TiledDungeon[] Dungeons = null!;
+
+        public Dictionary<string, TiledDungeon> DungeonsByCode = new Dictionary<string, TiledDungeon>();
 
         public void Init(ICoreServerAPI api)
         {
-            DungeonsByCode = new Dictionary<string, TiledDungeon>();
-
+            MinDistanceSq = minDistance * minDistance;
             for (var i = 0; i < Dungeons.Length; i++)
             {
+                if(Dungeons[i].Code == null)
+                {
+                    api.Logger.Error("Dungeon code at index: " + i + " is not specified. Will skip initialization");
+                    continue;
+                }
                 Dungeons[i].Init(api);
                 DungeonsByCode[Dungeons[i].Code] = Dungeons[i];
             }

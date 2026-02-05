@@ -1,13 +1,15 @@
 using System.Collections.Generic;
 using ProtoBuf;
+using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.ServerMods;
 
 #nullable disable
 
 namespace Vintagestory.GameContent;
 
 [ProtoContract]
-public class StoryStructureLocation
+public class StoryStructureLocation : IStructureLocation, IWorldGenArea
 {
     [ProtoMember(1)]
     public string Code;
@@ -34,4 +36,37 @@ public class StoryStructureLocation
 
     [ProtoMember(12)]
     public Dictionary<string, int> SchematicsSpawned;
+
+    // IStructureLocation implementation
+    string IStructureLocation.Code => Code;
+    Cuboidi IStructureLocation.Location => Location;
+
+    // IWorldGenArea implementation
+    string IWorldGenArea.Code => Code;
+    Cuboidi IWorldGenArea.Location => Location;
+    BlockPos IWorldGenArea.CenterPos => CenterPos;
+    int IWorldGenArea.LandformRadius => LandformRadius;
+    int IWorldGenArea.GenerationRadius => GenerationRadius;
+    Dictionary<int, int> IWorldGenArea.SkipGenerationFlags => SkipGenerationFlags;
+    public int MaxSkipGenerationRadiusSq { get; set; }
+
+
+    public StoryStructureLocation Clone()
+    {
+        return new StoryStructureLocation()
+        {
+            Code = Code,
+            CenterPos = CenterPos,
+            DidGenerate = DidGenerate,
+            Location = Location,
+            LandformRadius = LandformRadius,
+            GenerationRadius = GenerationRadius,
+            DirX = DirX,
+            WorldgenHeight = WorldgenHeight,
+            RockBlockCode = RockBlockCode,
+            SkipGenerationFlags = SkipGenerationFlags,
+            DidGenerateAdditional = DidGenerateAdditional,
+            SchematicsSpawned = SchematicsSpawned
+        };
+    }
 }

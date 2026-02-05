@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
@@ -106,7 +106,8 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
-            if (blockSel != null && byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is IIgnitable ign)
+            var be = blockSel != null ? byEntity.World.BlockAccessor.GetBlock(blockSel.Position) : null;
+            if (be is IIgnitable ign)
             {
                 if (byEntity is EntityPlayer player && !byEntity.World.Claims.TryAccess(player.Player, blockSel.Position, EnumBlockAccessFlags.Use))
                 {
@@ -123,8 +124,15 @@ namespace Vintagestory.GameContent
                 }
                 else
                 {
-                    // prevent placing of torch while pointing at another torch (after igniting)
-                    handling = EnumHandHandling.Handled;
+                    var bes = GetBlockEntity<BlockEntityGroundStorage>(blockSel.Position);
+
+                    // If not ground storage of oil lamps
+                    // We must check the Layout, because this also might be a stack of ground store firewood
+                    if (bes == null || bes.StorageProps.Layout != EnumGroundStorageLayout.Quadrants) 
+                    {
+                        // Then prevent placing of torch while pointing at another torch (after igniting)
+                        handling = EnumHandHandling.Handled;                       
+                    }
                 }
                 return;
             }
@@ -151,11 +159,9 @@ namespace Vintagestory.GameContent
                             Vec3d pos = blockSel.Position.ToVec3d().Add(blockSel.HitPosition).Add(rand.NextDouble() * 0.25 - 0.125, rand.NextDouble() * 0.25 - 0.125, rand.NextDouble() * 0.25 - 0.125);
 
                             Block blockFire = byEntity.World.GetBlock(new AssetLocation("fire"));
-
                             AdvancedParticleProperties props = blockFire.ParticleProperties[blockFire.ParticleProperties.Length - 1].Clone();
                             props.basePos = pos;
                             props.Quantity.avg = 0.5f;
-
                             byEntity.World.SpawnParticles(props, null);
 
                             props.Quantity.avg = 0;

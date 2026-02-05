@@ -1,8 +1,6 @@
-using ProperVersion;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Numerics;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -125,7 +123,7 @@ namespace Vintagestory.GameContent
                         entity.GetName(),
                         quantity,
                         itemstack.Collectible.Code,
-                        entity.SidedPos.AsBlockPos
+                        entity.Pos.AsBlockPos
                     );
                 }
             }
@@ -168,7 +166,7 @@ namespace Vintagestory.GameContent
                             entity.GetName(),
                             jstack.Quantity,
                             jstack.Code,
-                            entity.SidedPos.AsBlockPos
+                            entity.Pos.AsBlockPos
                         );
                     }
                 }
@@ -185,7 +183,7 @@ namespace Vintagestory.GameContent
                         var d = slot.Itemstack.Collectible.GetRemainingDurability(slot.Itemstack);
                         var max = slot.Itemstack.Collectible.GetMaxDurability(slot.Itemstack);
 
-                        bool repairable = value == "repairheldtool" ? (slot.Itemstack.Collectible.Tool != null) : (slot.Itemstack.Collectible.FirstCodePart() == "armor");
+                        bool repairable = value == "repairheldtool" ? (slot.Itemstack.Collectible.GetTool(slot) != null) : (slot.Itemstack.Collectible.FirstCodePart() == "armor");
 
                         if (repairable && d < max) {
                             slot.Itemstack.Collectible.SetDurability(slot.Itemstack, Math.Min(max, d + rpcfg.Amount));
@@ -265,7 +263,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            var centerpos = entity.ServerPos;
+            var centerpos = entity.Pos;
             var minpos = centerpos.Copy().Add(-range, 0, -range).AsBlockPos;
             var maxpos = centerpos.Copy().Add(range, 0, range).AsBlockPos;
 
@@ -285,7 +283,7 @@ namespace Vintagestory.GameContent
             if (spawnpos != null)
             {
                 var spawnentity = entity.Api.ClassRegistry.CreateEntity(etype);
-                spawnentity.ServerPos.SetPos(spawnpos);
+                spawnentity.Pos.SetPos(spawnpos);
                 entity.World.SpawnEntity(spawnentity);
 
                 if (cfg.GiveStacks != null)
@@ -307,14 +305,14 @@ namespace Vintagestory.GameContent
         private Vec3d findSpawnPos(IPlayer forplayer, EntityProperties etype, BlockPos minpos, BlockPos maxpos, bool rainheightmap, int mindistance)
         {
             bool spawned = false;
-            BlockPos tmp = new BlockPos();
+            BlockPos tmp = new BlockPos(minpos.dimension);
             var ba = entity.World.BlockAccessor;
             const int chunksize = GlobalConstants.ChunkSize;
             var collisionTester = entity.World.CollisionTester;
             var sapi = entity.Api as ICoreServerAPI;
             Vec3d okspawnpos = null;
 
-            var epos = entity.ServerPos.XYZ;
+            var epos = entity.Pos.XYZ;
 
             ba.WalkBlocks(minpos, maxpos, (block, x, y, z) =>
             {
@@ -414,7 +412,10 @@ namespace Vintagestory.GameContent
             var bhtaskAi = entity.GetBehavior<EntityBehaviorTaskAI>();
             if (bhtaskAi != null)
             {
-                bhtaskAi.TaskManager.OnShouldExecuteTask += (task) => ControllerByPlayer.Count == 0 || task is AiTaskIdle || task is AiTaskSeekEntity || task is AiTaskGotoEntity;
+                bhtaskAi.TaskManager.OnShouldExecuteTask += (task) =>
+                {
+                    return ControllerByPlayer.Count == 0 || task is AiTaskIdle || task is AiTaskSeekEntity || task is AiTaskGotoEntity;
+                };
             }
 
             var bhActivityDriven = entity.GetBehavior<EntityBehaviorActivityDriven>();

@@ -1,17 +1,15 @@
-using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
-
-#nullable disable
 
 namespace Vintagestory.GameContent
 {
-    public class EntityArmorStand : EntityHumanoid
+    public class EntityArmorStand : EntityAgent
     {
-        EntityBehaviorArmorStandInventory invbh;
         float fireDamage;
-        public override bool IsCreature { get { return false; } }
+
+        public override bool IsCreature => false;
 
         int CurPose
         {
@@ -19,27 +17,62 @@ namespace Vintagestory.GameContent
             set { WatchedAttributes.SetInt("curPose", value); }
         }
 
+        string[] poses = new string[] { "idle", "lefthandup", "righthandup", "twohandscross" };
+
         public EntityArmorStand() { }
-
-        public override ItemSlot RightHandItemSlot => invbh?.Inventory[15];
-        public override ItemSlot LeftHandItemSlot => invbh?.Inventory[16];
-
 
         public override void Initialize(EntityProperties properties, ICoreAPI api, long InChunkIndex3d)
         {
+            TryEarlyUpdateOldArmorStandInventory(api.World);
             base.Initialize(properties, api, InChunkIndex3d);
 
-            invbh = GetBehavior<EntityBehaviorArmorStandInventory>();
+            AnimManager.StartAnimation(new AnimationMetaData() { Animation = poses[CurPose], Code = poses[CurPose] }.Init());
         }
 
-        string[] poses = new string[] { "idle", "lefthandup", "righthandup", "twohandscross" };
+        /// <summary>
+        /// update the old inventory to new wearablesinv
+        /// TryEarlyLoadCollectibleMappings will take care of properly updating the items to their new ID's if needed
+        /// </summary>
+        /// <param name="world"></param>
+        public void TryEarlyUpdateOldArmorStandInventory(IWorldAccessor world)
+        {
+            if (world.Api.Side == EnumAppSide.Server && WatchedAttributes.HasAttribute("inventory"))
+            {
+                var slots = WatchedAttributes.GetTreeAttribute("inventory").GetTreeAttribute("slots");
+                if (slots.Count > 0)
+                {
+                    var oldSlots = new string[] { "12", "13", "14", "15", "16"};
+                    var newInventory = new TreeAttribute();
+                    newInventory.SetInt("qslots", 5);
+                    var newSlots = new TreeAttribute();
+                    newInventory.SetAttribute("slots", newSlots);
+
+                    for (var index = 0; index < oldSlots.Length; index++)
+                    {
+                        var slotKey = oldSlots[index];
+                        if (!slots.HasAttribute(slotKey)) continue;
+
+                        var newStack = slots.GetItemstack(slotKey);
+                        newSlots.SetItemstack(index.ToString(), newStack);
+                    }
+                    WatchedAttributes.SetAttribute("wearablesInv", newInventory);
+                }
+
+                WatchedAttributes.RemoveAttribute("inventory");
+            }
+        }
 
         public override void OnInteract(EntityAgent byEntity, ItemSlot slot, Vec3d hitPosition, EnumInteractMode mode)
         {
-            IPlayer plr = (byEntity as EntityPlayer)?.Player;
-            if (plr != null && !byEntity.World.Claims.TryAccess(plr, Pos.AsBlockPos, EnumBlockAccessFlags.Use))
+            if (!Alive || World.Side == EnumAppSide.Client || mode == EnumInteractMode.Attack)
             {
-                plr.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                return;
+            }
+
+            var player = (byEntity as EntityPlayer)?.Player;
+            if (player != null && !byEntity.World.Claims.TryAccess(player, Pos.AsBlockPos, EnumBlockAccessFlags.Use))
+            {
+                player.InventoryManager.ActiveHotbarSlot.MarkDirty();
                 WatchedAttributes.MarkAllDirty();
                 return;
             }
@@ -52,114 +85,22 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            if (mode == EnumInteractMode.Interact && byEntity.RightHandItemSlot != null)
-            {
-                ItemSlot handslot = byEntity.RightHandItemSlot;
-                if (handslot.Empty)
-                {
-                    // Start from armor slot because it can't wear clothes atm
-                    for (int i = 0; i < invbh.Inventory.Count; i++)
-                    {
-                        ItemSlot gslot = invbh.Inventory[i];
-                        if (gslot.Empty) continue;
-                        if (gslot.Itemstack.Collectible?.Code == null) { gslot.Itemstack = null; continue; }
-
-                        if (gslot.TryPutInto(byEntity.World, handslot) > 0)
-                        {
-                            byEntity.World.Logger.Audit("{0} Took 1x{1} from Armor Stand at {2}.",
-                                byEntity.GetName(),
-                                handslot.Itemstack.Collectible.Code,
-                                 ServerPos.AsBlockPos
-                            );
-                            return;
-                        }
-                    }
-                } else
-                {
-                    if (slot.Itemstack.Collectible.Tool != null || slot.Itemstack.ItemAttributes?["toolrackTransform"].Exists == true)
-                    {
-                        var collectibleCode = handslot.Itemstack.Collectible.Code;
-                        if (handslot.TryPutInto(byEntity.World, RightHandItemSlot) == 0)
-                        {
-                            handslot.TryPutInto(byEntity.World, LeftHandItemSlot);
-                        }
-
-                        byEntity.World.Logger.Audit("{0} Put 1x{1} onto Armor Stand at {2}.",
-                            byEntity.GetName(),
-                            collectibleCode,
-                             ServerPos.AsBlockPos
-                        );
-
-                        return;
-                    }
-
-                    if (!ItemSlotCharacter.IsDressType(slot.Itemstack, EnumCharacterDressType.ArmorBody) && !ItemSlotCharacter.IsDressType(slot.Itemstack, EnumCharacterDressType.ArmorHead) && !ItemSlotCharacter.IsDressType(slot.Itemstack, EnumCharacterDressType.ArmorLegs)) {
-
-                        (byEntity.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "cantplace", "ingameerror-cannotplace-armorstand");
-
-                        return;
-                    }
-                }
-
-
-                WeightedSlot sinkslot = invbh.Inventory.GetBestSuitedSlot(handslot);
-                if (sinkslot.weight > 0 && sinkslot.slot != null)
-                {
-                    var collectibleCode = handslot.Itemstack.Collectible.Code;
-                    handslot.TryPutInto(byEntity.World, sinkslot.slot);
-
-                    byEntity.World.Logger.Audit("{0} Put 1x{1} onto Armor Stand at {2}.",
-                        byEntity.GetName(),
-                        collectibleCode,
-                         ServerPos.AsBlockPos
-                    );
-                    return;
-                }
-
-                bool empty = true;
-                for (int i = 0; i < invbh.Inventory.Count; i++)
-                {
-                    ItemSlot gslot = invbh.Inventory[i];
-                    empty &= gslot.Empty;
-                }
-
-                if (empty && byEntity.Controls.ShiftKey)
-                {
-                    ItemStack stack = new ItemStack(byEntity.World.GetItem(Code));
-                    if (!byEntity.TryGiveItemStack(stack))
-                    {
-                        byEntity.World.SpawnItemEntity(stack, ServerPos.XYZ);
-                    }
-                    byEntity.World.Logger.Audit("{0} Took 1x{1} from Armor Stand at {2}.",
-                        byEntity.GetName(),
-                        stack.Collectible.Code,
-                         ServerPos.AsBlockPos
-                    );
-                    Die();
-                    return;
-                }
-            }
-
-
-
-            if (!Alive || World.Side == EnumAppSide.Client || mode == 0)
-            {
-                return;
-            }
-
-
             base.OnInteract(byEntity, slot, hitPosition, mode);
         }
 
-
-
         public override bool ReceiveDamage(DamageSource damageSource, float damage)
         {
-            if (damageSource.Source == EnumDamageSource.Internal && damageSource.Type == EnumDamageType.Fire) fireDamage += damage;
-            if (fireDamage > 4) Die();
+            if (damageSource.Source == EnumDamageSource.Internal && damageSource.Type == EnumDamageType.Fire)
+            {
+                fireDamage += damage;
+            }
+
+            if (fireDamage > 4)
+            {
+                Die();
+            }
 
             return base.ReceiveDamage(damageSource, damage);
         }
-
     }
 }

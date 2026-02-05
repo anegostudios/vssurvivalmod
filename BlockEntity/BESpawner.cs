@@ -1,4 +1,4 @@
-﻿using ProtoBuf;
+using ProtoBuf;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -239,8 +239,8 @@ namespace Vintagestory.GameContent
             if (Data.SpawnRangeMode > 0)
             {
                 IPlayer player = Api.World.NearestPlayer(Pos.X, Pos.InternalY, Pos.Z);
-                if (player?.Entity?.ServerPos == null) return;
-                double distanceSq = player.Entity.ServerPos.SquareDistanceTo(Pos.ToVec3d());
+                if (player?.Entity?.Pos == null) return;
+                double distanceSq = player.Entity.Pos.SquareDistanceTo(Pos.ToVec3d());
 
                 if (Data.SpawnRangeMode == EnumSpawnRangeMode.WhenInRange && distanceSq > Data.MinPlayerRange * Data.MinPlayerRange) return;
                 if (Data.SpawnRangeMode == EnumSpawnRangeMode.WhenOutsideOfRange && distanceSq < Data.MaxPlayerRange * Data.MaxPlayerRange) return;
@@ -286,13 +286,13 @@ namespace Vintagestory.GameContent
             int q = Data.GroupSize;
             long herdId = 0;
             Vec3d spawnPos = new Vec3d();
-            BlockPos spawnBlockPos = new BlockPos();
+            BlockPos spawnBlockPos = new BlockPos(Pos.dimension);
 
             while (q-- > 0)
             {
                 for (int tries = 0; tries < 15; tries++)
                 {
-                    spawnPos.Set(Pos).Add(
+                    spawnPos.SetWithDimension(Pos).Add(
                         0.5 + Data.SpawnArea.MinX + Api.World.Rand.NextDouble() * Data.SpawnArea.SizeX,
                         Data.SpawnArea.MinY + Api.World.Rand.NextDouble() * Data.SpawnArea.SizeY,
                         0.5 + Data.SpawnArea.MinZ + Api.World.Rand.NextDouble() * Data.SpawnArea.SizeZ
@@ -431,9 +431,8 @@ namespace Vintagestory.GameContent
             EntityAgent agent = entity as EntityAgent;
             if (agent != null) agent.HerdId = herdid;
 
-            entity.ServerPos.SetPosWithDimension(spawnPosition);
-            entity.ServerPos.SetYaw((float)Api.World.Rand.NextDouble() * GameMath.TWOPI);
-            entity.Pos.SetFrom(entity.ServerPos);
+            entity.Pos.SetPosWithDimension(spawnPosition);
+            entity.Pos.SetYaw((float)Api.World.Rand.NextDouble() * GameMath.TWOPI);
             entity.Attributes.SetString("origin", "entityspawner");
             Api.World.SpawnEntity(entity);
 

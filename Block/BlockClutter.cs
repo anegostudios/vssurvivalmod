@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -36,6 +36,7 @@ namespace Vintagestory.GameContent
         public Dictionary<long, Cuboidf[]> SelBoxesByHashkey { get; set; } = null;
         public AssetLocation ShapePath { get; set; }
         public Shape ShapeResolved { get; set; }
+        public Shape ShapeLOD2Resolved { get; set; }
         public string HashKey => Code;
         public bool RandomizeYSize { get; set; } = true;
 

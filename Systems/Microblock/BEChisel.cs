@@ -42,7 +42,7 @@ namespace Vintagestory.GameContent
                 ItemSlot slot = player?.InventoryManager?.ActiveHotbarSlot;
                 ItemStack stack = slot?.Itemstack;
 
-                return Api.Side == EnumAppSide.Client && (stack?.Collectible?.Tool == EnumTool.Chisel || ForceDetailingMode); 
+                return Api.Side == EnumAppSide.Client && (stack?.Collectible?.GetTool(slot) == EnumTool.Chisel || ForceDetailingMode); 
             }
         }
 
@@ -107,7 +107,7 @@ namespace Vintagestory.GameContent
         }
         public bool Interact(IPlayer byPlayer, BlockSelection blockSel)
         {
-            if (byPlayer != null && byPlayer.InventoryManager.ActiveHotbarSlot?.Itemstack?.Collectible.Tool == EnumTool.Knife)
+            if (byPlayer != null && byPlayer.InventoryManager.ActiveTool == EnumTool.Knife)
             {
                 if (!Api.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
                 {
@@ -471,7 +471,7 @@ namespace Vintagestory.GameContent
             int index = BlockIds.IndexOf(block.Id);
             if (AvailMaterialQuantities != null && index >= 0)
             {   
-                AvailMaterialQuantities = AvailMaterialQuantities.RemoveEntry(index);
+                AvailMaterialQuantities = AvailMaterialQuantities.RemoveAt(index);
             }
 
             return base.RemoveMaterial(block);

@@ -52,7 +52,7 @@ public class AiTaskFireFeathersAttack : AiTaskFlyCircle
         foreach (ProjectileConfig projectileConfig in projectileConfigs)
         {
             projectileConfig.EntityType = entity.World.GetEntityType(projectileConfig.Code);
-            
+
             if (projectileConfig.EntityType == null)
             {
                 throw new Exception("No such projectile exists - " + projectileConfig.Code);
@@ -77,7 +77,7 @@ public class AiTaskFireFeathersAttack : AiTaskFlyCircle
         // Don't try too often
         cooldownUntilMs = entity.World.ElapsedMilliseconds + 1500;
 
-        if (!PreconditionsSatisifed()) return false;
+        if (!PreconditionsSatisfied()) return false;
 
         if (!checkGlobalAttackCooldown())
         {
@@ -88,7 +88,7 @@ public class AiTaskFireFeathersAttack : AiTaskFlyCircle
         {
             attackedByEntity = null;
         }
-        if (retaliateAttacks && attackedByEntity != null && attackedByEntity.Alive && attackedByEntity.IsInteractable && IsTargetableEntity(attackedByEntity, 15, true))
+        if (ShouldRetaliateForRange(15))
         {
             targetEntity = attackedByEntity;
         }
@@ -101,7 +101,7 @@ public class AiTaskFireFeathersAttack : AiTaskFlyCircle
         }
 
 
-        bool targetOk = targetEntity != null && entity.ServerPos.Y - targetEntity.ServerPos.Y > minVerticalDistance && entity.ServerPos.HorDistanceTo(targetEntity.ServerPos) > minHorizontalDistance;
+        bool targetOk = targetEntity != null && entity.Pos.Y - targetEntity.Pos.Y > minVerticalDistance && entity.Pos.HorDistanceTo(targetEntity.Pos) > minHorizontalDistance;
 
         return targetOk;
     }
@@ -148,9 +148,8 @@ public class AiTaskFireFeathersAttack : AiTaskFlyCircle
 
     protected void lookatTarget()
     {
-        Vec3d targetVector = targetEntity.Pos.XYZ - entity.ServerPos.XYZ;
-        Vec3d direction = targetVector.Normalize();
-        entity.ServerPos.Yaw = (float)Math.Atan2(targetVector.X, targetVector.Z);
+        Vec3d targetVector = targetEntity.Pos.XYZ - entity.Pos.XYZ;
+        entity.Pos.Yaw = (float)Math.Atan2(targetVector.X, targetVector.Z);
     }
 
     protected bool checkGlobalAttackCooldown()
@@ -179,11 +178,11 @@ public class AiTaskFireFeathersAttack : AiTaskFlyCircle
             entitypr.Damage = cfg.Damage;
             entitypr.DamageTier = cfg.DamageTier;
             entitypr.ProjectileStack = cfg.CollectibleStack?.ResolvedItemstack?.Clone() ?? new ItemStack(world.GetItem(new AssetLocation("stone-granite")));
-            entitypr.NonCollectible = cfg.CollectibleStack?.ResolvedItemstack == null;
+            entitypr.Collectible = cfg.CollectibleStack?.ResolvedItemstack != null;
             entitypr.World = world;
 
-            Vec3d spawnpos = entity.ServerPos.XYZ.Add(rnd.NextDouble() * 6 - 3, rnd.NextDouble() * 5, rnd.NextDouble() * 6 - 3);
-            Vec3d targetPos = targetEntity.ServerPos.XYZ.Add(0, targetEntity.LocalEyePos.Y, 0) + targetEntity.ServerPos.Motion * 8;
+            Vec3d spawnpos = entity.Pos.XYZ.Add(rnd.NextDouble() * 6 - 3, rnd.NextDouble() * 5, rnd.NextDouble() * 6 - 3);
+            Vec3d targetPos = targetEntity.Pos.XYZ.Add(0, targetEntity.LocalEyePos.Y, 0) + targetEntity.Pos.Motion * 8;
 
             double dist = spawnpos.DistanceTo(targetPos);
             double distf = Math.Pow(dist, 0.2);
@@ -194,11 +193,10 @@ public class AiTaskFireFeathersAttack : AiTaskFlyCircle
             velocity.Y *= 1 + (rnd.NextDouble() - 0.5) / 5f;
             velocity.Z *= 1 + (rnd.NextDouble() - 0.5) / 3f;
 
-            entitypr.ServerPos.SetPosWithDimension(spawnpos);
-            entitypr.Pos.SetFrom(spawnpos);
-            entitypr.ServerPos.Motion.Set(velocity);
-            entitypr.SetInitialRotation();
-            world.SpawnEntity(entitypr);
+                entitypr.Pos.SetPosWithDimension(spawnpos);
+                entitypr.Pos.Motion.Set(velocity);
+                entitypr.SetInitialRotation();
+                world.SpawnEntity(entitypr);
 
             break;
         }

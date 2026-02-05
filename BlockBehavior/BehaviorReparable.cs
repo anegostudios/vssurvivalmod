@@ -1,19 +1,10 @@
-using Newtonsoft.Json.Linq;
 using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using Vintagestory.API;
-using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
-using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
-using Vintagestory.API.Util;
-using Vintagestory.ServerMods;
 
 #nullable disable
 
@@ -30,7 +21,7 @@ namespace Vintagestory.GameContent
 
 
     /// <summary>
-    /// Blocks which can be repaired using glue. If not repaired, they will shatter (dropping nothing) when broken. 
+    /// Blocks which can be repaired using glue. If not repaired, they will shatter (dropping nothing) when broken.
     /// Requires use of the ShapeFromAttributes block entity behavior.
     /// Uses the code "Reparable".
     /// </summary>
@@ -90,7 +81,7 @@ namespace Vintagestory.GameContent
             BEBehaviorShapeFromAttributes bec = block.GetBEBehavior<BEBehaviorShapeFromAttributes>(pos);
             if (bec == null || bec.Collected) return base.GetPlacedBlockInfo(world, pos, forPlayer);
 
-            if (world.Claims.TestAccess(forPlayer, pos, EnumBlockAccessFlags.BuildOrBreak) != EnumWorldAccessResponse.Granted) return ""; 
+            if (world.Claims.TestAccess(forPlayer, pos, EnumBlockAccessFlags.BuildOrBreak) != EnumWorldAccessResponse.Granted) return "";
 
             EnumClutterDropRule rule = GetRule(world);
             if (rule == EnumClutterDropRule.Reparable)
@@ -260,7 +251,7 @@ namespace Vintagestory.GameContent
                 if (lStack != null && lStack.ItemAttributes?["repairGain"].Exists == true)
                 {
                     float standardAmount = lStack.ItemAttributes["repairGain"].AsFloat(0.2f);
-                    return standardAmount * Math.Min(1f, lStack.StackSize / cont.GetContentProps(stack).ItemsPerLitre);
+                    return standardAmount * Math.Min(1f, lStack.StackSize / cont.GetContentProps(stack)?.ItemsPerLitre ?? 1);
                 }
             }
 

@@ -1,5 +1,3 @@
-using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
@@ -44,7 +42,7 @@ namespace Vintagestory.GameContent
 
         public override ItemSlot RightHandItemSlot => ebhv?.Inventory[0];
         public override ItemSlot LeftHandItemSlot => ebhv?.Inventory[1];
-        public string OutfitConfigFileName => this.Properties.Attributes["outfitConfigFileName"].AsString("traderaccessories");
+        public AssetLocation OutfitConfigFileName => AssetLocation.Create(this.Properties.Attributes["outfitConfigFileName"].AsString("traderaccessories"), Code.Domain);
 
 
         public Dictionary<string, WeightedCode[]> partialRandomOutfitsOverride = null;
@@ -74,7 +72,7 @@ namespace Vintagestory.GameContent
                     for (int i = 0; i < value.Length; i++) if (value[i] == null) value[i] = ""; // Null not supported right now
                     WatchedAttributes["outfitcodes"] = new StringArrayAttribute(value);
                 }
-                
+
                 WatchedAttributes.MarkPathDirty("outfitcodes");
             }
         }
@@ -92,7 +90,7 @@ namespace Vintagestory.GameContent
             else
             {
                 if (partialRandomOutfitsOverride == null) partialRandomOutfitsOverride = Properties.Attributes["partialRandomOutfits"].AsObject<Dictionary<string, WeightedCode[]>>();
-                
+
                 var outfit = humanoidOutfits.GetRandomOutfit(OutfitConfigFileName, partialRandomOutfitsOverride);
                 OutfitSlots = outfit.Keys.ToArray();
                 OutfitCodes = outfit.Values.ToArray();
@@ -127,7 +125,7 @@ namespace Vintagestory.GameContent
         {
             var capi = Api as ICoreClientAPI;
 
-            // Reset textures to default    
+            // Reset textures to default
             var textDict = new FastSmallDictionary<string, CompositeTexture>(0);
             Properties.Client.Textures = textDict;
             foreach (var val in Api.World.GetEntityType(this.Code).Client.Textures)
@@ -215,7 +213,7 @@ namespace Vintagestory.GameContent
 
 
         /// <summary>
-        /// 
+        ///
         /// </summary>
         /// <param name="prefixcode">Any unique Identifier</param>
         /// <param name="cshape"></param>
@@ -244,9 +242,12 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            foreach (var val in gearshape.Textures)
+            if (gearshape.Textures != null)
             {
-                entityShape.TextureSizes[prefixcode + val.Key] = new int[] { gearshape.TextureWidth, gearshape.TextureHeight };
+                foreach (var val in gearshape.Textures)
+                {
+                    entityShape.TextureSizes[prefixcode + val.Key] = new int[] { gearshape.TextureWidth, gearshape.TextureHeight };
+                }
             }
 
             var capi = Api as ICoreClientAPI;

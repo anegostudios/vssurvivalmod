@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -74,10 +74,10 @@ namespace Vintagestory.GameContent
 
         private MeshData getMesh(ITesselatorAPI tesselator)
         {
-            Dictionary<string, MeshData> lanternMeshes = ObjectCacheUtil.GetOrCreate(Api, "blockLanternBlockMeshes", () => new Dictionary<string, MeshData>());
-
             BlockLantern block = Api.World.BlockAccessor.GetBlock(Pos) as BlockLantern;
             if (block == null) return null;
+
+            Dictionary<string, MeshData> lanternMeshes = ObjectCacheUtil.GetOrCreate(Api, block.baseCacheKey + "meshes", () => new Dictionary<string, MeshData>());
 
             string orient = block.LastCodePart();
 
@@ -109,7 +109,7 @@ namespace Vintagestory.GameContent
             string part = Block.LastCodePart();
             if (part == "up" || part == "down")
             {
-                mesh = mesh.Clone().Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, MeshAngle, 0);
+                mesh = mesh.Clone().Rotate(0, MeshAngle, 0);
             }
 
             mesher.AddMeshData(mesh);

@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
@@ -20,14 +21,40 @@ namespace Vintagestory.GameContent
 
     public class BlockGroundStorage : Block, ICombustible, IIgnitable
     {
-        ItemStack[] groundStorablesQuadrants;
-        ItemStack[] groundStorablesHalves;
+        protected ItemStack[] groundStorablesQuadrants;
+        protected ItemStack[] groundStorablesHalves;
+        public ModelTransform[] Messy12Transforms;
 
         public static bool IsUsingContainedBlock; // This value is only relevant (and correct) client side
 
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
+
+            PlacedPriorityInteract = true;
+
+            var positions = Attributes?["messy12Position"].AsObject<Vec3f[]>();
+
+            Messy12Transforms = new ModelTransform[12];
+            Random rnd = new Random(0);
+
+            for (int i = 0; i < 12; i++)
+            {
+                float rndx = positions != null ? positions[i].X - 0.5f : (float)rnd.NextDouble() * 0.9f - 0.45f;
+                float rndz = positions != null ? positions[i].Z - 0.5f : (float)rnd.NextDouble() * 0.9f - 0.45f;
+
+                float rot = (float)rnd.NextDouble();
+                float rndscale = 1 + ((float)rnd.NextDouble() * 0.02f - 0.01f);
+
+                Messy12Transforms[i] = new ModelTransform()
+                {
+                    Origin = new FastVec3f(0.5f, 0.0f, 0.5f),
+                    Rotation = new FastVec3f(0, rot, 0),
+                    Scale = rndscale,
+                    Translation = new FastVec3f(rndx, 0, rndz)
+                };
+            }
+
 
             ItemStack[][] stacks = ObjectCacheUtil.GetOrCreate(api, "groundStorablesQuadrands", () =>
             {
@@ -274,10 +301,10 @@ namespace Vintagestory.GameContent
                 GetCollisionBoxes(world.BlockAccessor, pos)[0],
                 pos.X, pos.Y, pos.Z,
                 player.Entity.SelectionBox,
-                player.Entity.SidedPos.XYZ
+                player.Entity.Pos.XYZ
             ))
             {
-                player.Entity.SidedPos.Y += GetCollisionBoxes(world.BlockAccessor, pos)[0].Y2;
+                player.Entity.Pos.Y += GetCollisionBoxes(world.BlockAccessor, pos)[0].Y2;
             }
 
             (player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
@@ -333,6 +360,20 @@ namespace Vintagestory.GameContent
             }
         }
 
+
+        public override byte[] GetLightHsv(IBlockAccessor blockAccessor, BlockPos pos, ItemStack stack = null)
+        {
+            if (pos != null)
+            {
+                BlockEntity be = blockAccessor.GetBlockEntity(pos);
+                if (be is BlockEntityGroundStorage beg)
+                {
+                    return beg.GetLightHsv();
+                }
+            }
+
+            return base.GetLightHsv(blockAccessor, pos, stack);
+        }
 
         public override int GetColorWithoutTint(ICoreClientAPI capi, BlockPos pos)
         {
@@ -399,8 +440,8 @@ namespace Vintagestory.GameContent
             var beg = world.BlockAccessor.GetBlockEntity(selection.Position) as BlockEntityGroundStorage;
             if (beg?.StorageProps != null)
             {
-                WorldInteraction[] liquidInteractions = (beg.Inventory.FirstOrDefault(slot => !slot.Empty && slot.Itemstack.Collectible is BlockLiquidContainerBase)?
-                                                                      .Itemstack.Collectible as BlockLiquidContainerBase)?.interactions ?? [];
+                var selSlot = beg.GetSlotAt(selection);
+                var containedInteractions = selSlot?.Itemstack?.Collectible.GetCollectibleInterface<IContainedInteractable>()?.GetContainedInteractionHelp(beg, selSlot, forPlayer, selection) ?? [];
 
                 int bulkquantity = beg.StorageProps.BulkTransferQuantity;
 
@@ -409,11 +450,11 @@ namespace Vintagestory.GameContent
                     var canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(api, true).ToArray();
 
                     var collObj = beg.Inventory[0].Itemstack?.Collectible;
-                    if (collObj == null) return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer).Append(liquidInteractions);
+                    if (collObj == null) return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer);
 
-                    return new WorldInteraction[]
-                    {
-                        new WorldInteraction()
+                    return
+                    [
+                        new()
                         {
                             ActionLangCode = "blockhelp-firepit-ignite",
                             MouseButton = EnumMouseButton.Right,
@@ -428,54 +469,56 @@ namespace Vintagestory.GameContent
                                 return null;
                             }
                         },
-                        new WorldInteraction()
+                        new()
                         {
                             ActionLangCode = "blockhelp-groundstorage-addone",
                             MouseButton = EnumMouseButton.Right,
                             HotKeyCode = "shift",
                             Itemstacks = [new (collObj, 1)]
                         },
-                        new WorldInteraction()
+                        new()
                         {
                             ActionLangCode = "blockhelp-groundstorage-removeone",
                             MouseButton = EnumMouseButton.Right,
                             HotKeyCode = null
                         },
 
-                        new WorldInteraction()
+                        new()
                         {
                             ActionLangCode = "blockhelp-groundstorage-addbulk",
                             MouseButton = EnumMouseButton.Right,
                             HotKeyCodes = ["ctrl", "shift"],
                             Itemstacks = [new (collObj, bulkquantity)]
                         },
-                        new WorldInteraction()
+                        new()
                         {
                             ActionLangCode = "blockhelp-groundstorage-removebulk",
                             HotKeyCode = "ctrl",
                             MouseButton = EnumMouseButton.Right
-                        }
-
-                    }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer)).Append(liquidInteractions);
+                        },
+                        ..containedInteractions,
+                        ..base.GetPlacedBlockInteractionHelp(world, selection, forPlayer)
+                    ];
                 }
 
                 if (beg.StorageProps.Layout == EnumGroundStorageLayout.SingleCenter)
                 {
-                    return new WorldInteraction[]
-                    {
+                    return
+                    [
                         new WorldInteraction()
                         {
                             ActionLangCode = "blockhelp-behavior-rightclickpickup",
                             MouseButton = EnumMouseButton.Right
                         },
-
-                    }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer)).Append(liquidInteractions);
+                        ..containedInteractions,
+                        ..base.GetPlacedBlockInteractionHelp(world, selection, forPlayer)
+                    ];
                 }
 
                 if (beg.StorageProps.Layout == EnumGroundStorageLayout.Halves || beg.StorageProps.Layout == EnumGroundStorageLayout.Quadrants)
                 {
-                    return new WorldInteraction[]
-                    {
+                    return
+                    [
                         new WorldInteraction()
                         {
                             ActionLangCode = "blockhelp-groundstorage-add",
@@ -488,10 +531,13 @@ namespace Vintagestory.GameContent
                             ActionLangCode = "blockhelp-groundstorage-remove",
                             MouseButton = EnumMouseButton.Right,
                             HotKeyCode = null
-                        }
-
-                    }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer)).Append(liquidInteractions);
+                        },
+                        ..containedInteractions,
+                        ..base.GetPlacedBlockInteractionHelp(world, selection, forPlayer)
+                    ];
                 }
+
+                return [.. containedInteractions, .. base.GetPlacedBlockInteractionHelp(world, selection, forPlayer)];
             }
 
             return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer);
@@ -503,9 +549,11 @@ namespace Vintagestory.GameContent
             if (beg != null)
             {
                 var stack = beg.Inventory.FirstNonEmptySlot?.Itemstack;
-                if (stack?.Collectible?.CombustibleProps == null) return 0;
+                var combustibleProps = stack?.Collectible?.GetCombustibleProperties(world, stack, null);
 
-                float dur = stack.Collectible.CombustibleProps.BurnDuration;
+                if (stack == null || combustibleProps == null) return 0;
+
+                float dur = combustibleProps.BurnDuration;
                 if (dur == 0) return 0;
 
                 return GameMath.Clamp(dur * (float)Math.Log(stack.StackSize), 1, 120);

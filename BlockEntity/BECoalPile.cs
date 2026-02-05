@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -15,8 +15,8 @@ namespace Vintagestory.GameContent
 {
     public class BlockEntityCoalPile : BlockEntityItemPile, ITexPositionSource, IHeatSource, IExternalTickable
     {
-        static SimpleParticleProperties smokeParticles;
-        static SimpleParticleProperties smallMetalSparks;
+        public static SimpleParticleProperties smokeParticles;
+        public static SimpleParticleProperties smallMetalSparks;
 
         static BlockEntityCoalPile()
         {
@@ -43,9 +43,9 @@ namespace Vintagestory.GameContent
                 0.2f, 1,
                 ColorUtil.ToRgba(255, 255, 150, 0),
                 new Vec3d(), new Vec3d(),
-                new Vec3f(-2f, 2f, -2f),
-                new Vec3f(2f, 5f, 2f),
-                0.04f,
+                new Vec3f(-3f, 0.5f, -3f),
+                new Vec3f(3f, 3f, 3f),
+                0.1f,
                 1f,
                 0.2f, 0.25f,
                 EnumParticleModel.Cube
@@ -87,7 +87,7 @@ namespace Vintagestory.GameContent
             get { return !burning; }
         }
 
-        public int BurnTemperature => inventory[0].Itemstack.Collectible.CombustibleProps.BurnTemperature;
+        public int BurnTemperature => inventory[0].Itemstack.Collectible.GetCombustibleProperties(Api.World, inventory[0].Itemstack, null).BurnTemperature;
 
         public bool IsExternallyTicked { get; set; }
 
@@ -168,6 +168,7 @@ namespace Vintagestory.GameContent
             smokeParticles.AddQuantity = 0;
             smokeParticles.MinPos.Set(pos.X, pos.Y - 0.1f, pos.Z);
             smokeParticles.AddPos.Set(addX, 0, addZ);
+
 
             smallMetalSparks.MinPos.Set(pos.X, pos.Y, pos.Z);
             smallMetalSparks.AddPos.Set(addX, 0.1f, addZ);
@@ -473,7 +474,7 @@ namespace Vintagestory.GameContent
                     entityblock.maxSpawnHeightForParticles = 0.3f;
                     entityblock.DoRemoveBlock = false; // We want to split the pile, not remove it
                     world.SpawnEntity(entityblock);
-                    entityblock.ServerPos.Y -= 0.25f;
+                    entityblock.Pos.Y -= 0.25f;
                     entityblock.Pos.Y -= 0.25f;
 
                     inventory[0].Itemstack = remainingStack;

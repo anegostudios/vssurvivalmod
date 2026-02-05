@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -83,9 +83,9 @@ namespace Vintagestory.GameContent
             ((EntityThrownBeenade)entity).FiredBy = byEntity;
             ((EntityThrownBeenade)entity).Damage = damage;
             ((EntityThrownBeenade)entity).ProjectileStack = stack;
-            
 
-            EntityProjectile.SpawnThrownEntity(entity, byEntity, 0.75, -0.2, 0, 0.5, 0.21, 0.25);
+
+            EntityProjectile.SpawnProjectile(entity, byEntity, 0.5, 0.75, 0.1, 0.4, -0.21, 20);
             byEntity.StartAnimation("throw");
 
             if (byEntity is EntityPlayer) RefillSlotIfEmpty(slot, byEntity, (itemstack) => itemstack.Collectible.Code == Code);

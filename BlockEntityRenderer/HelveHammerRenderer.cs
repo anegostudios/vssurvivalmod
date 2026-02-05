@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Client;
+using Vintagestory.API.Client;
 using Vintagestory.API.MathTools;
 using Vintagestory.GameContent.Mechanics;
 
@@ -84,7 +84,7 @@ namespace Vintagestory.GameContent
                 shadowMvpMat.Set(rapi.CurrentProjectionMatrix).Mul(rapi.CurrentModelviewMatrix).Mul(ModelMat.Values);
 
                 rapi.CurrentActiveShader.UniformMatrix("mvpMatrix", shadowMvpMat.Values);
-                rapi.CurrentActiveShader.Uniform("origin", new Vec3f());
+                rapi.CurrentActiveShader.Uniform("origin", 0f, 0f, 0f);
 
                 rpi.RenderMultiTextureMesh(meshref, "tex2d");
             }

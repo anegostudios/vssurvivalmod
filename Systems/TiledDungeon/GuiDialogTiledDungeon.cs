@@ -1,3 +1,4 @@
+using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Datastructures;
 
@@ -9,13 +10,11 @@ public class GuiDialogTiledDungeon : GuiDialogGeneric
 {
     private bool save;
 
-    public GuiDialogTiledDungeon(string dialogTitle, string constraint, ICoreClientAPI capi) : base(dialogTitle, capi)
+    public GuiDialogTiledDungeon(string dialogTitle, string name, string target, ICoreClientAPI capi) : base(dialogTitle, capi)
     {
         var pad = GuiElementItemSlotGrid.unscaledSlotPadding;
 
-        var slotBounds = ElementStdBounds.SlotGrid(EnumDialogArea.None, pad, 45 + pad, 10, 1).FixedGrow(2 * pad, 2 * pad);
-
-        var chanceInputBounds = ElementBounds.Fixed(3, 0, 48, 30).FixedUnder(slotBounds, -4);
+        var slotBounds = ElementBounds.Fixed(EnumDialogArea.None, 0, 30, 350, 30);
 
         var leftButton = ElementBounds.Fixed(EnumDialogArea.LeftFixed, 0, 0, 0, 0).WithFixedPadding(10, 1);
         var rightButton = ElementBounds.Fixed(EnumDialogArea.RightFixed, 0, 0, 0, 0).WithFixedPadding(10, 1);
@@ -23,27 +22,42 @@ public class GuiDialogTiledDungeon : GuiDialogGeneric
         var bgBounds = ElementBounds.Fill.WithFixedPadding(GuiStyle.ElementToDialogPadding);
         bgBounds.BothSizing = ElementSizing.FitToChildren;
 
-
         var dialogBounds = ElementStdBounds
             .AutosizedMainDialog.WithAlignment(EnumDialogArea.CenterMiddle)
             .WithFixedAlignmentOffset(GuiStyle.DialogToScreenPadding, 0);
 
 
+        var textInput = CairoFont.TextInput();
+        var text = CairoFont.WhiteSmallishText();
         SingleComposer = capi.Gui
-                .CreateCompo("tiledungeon", dialogBounds)
-                .AddShadedDialogBG(bgBounds, true)
-                .AddDialogTitleBar(dialogTitle, OnTitleBarClose)
-                .BeginChildElements(bgBounds)
-                .AddTextInput(slotBounds, OnTextChanged, CairoFont.TextInput(), "constraints")
-                .AddButton("Close", OnCloseClicked, leftButton.FixedUnder(chanceInputBounds, 25))
-                .AddButton("Save", OnSaveClicked, rightButton.FixedUnder(chanceInputBounds, 25))
-                .EndChildElements()
-                .Compose()
-            ;
+            .CreateCompo("tiledungeon", dialogBounds)
+            .AddShadedDialogBG(bgBounds, true)
+            .AddDialogTitleBar(dialogTitle, OnTitleBarClose)
+            .BeginChildElements(bgBounds)
 
-        var inp = SingleComposer.GetTextInput("constraints");
-        inp.SetValue(constraint);
+            .AddStaticText("Name", text, slotBounds = slotBounds.FlatCopy().WithFixedWidth(100))
+            .AddTextInput(slotBounds = slotBounds.RightCopy(5, -3).WithFixedWidth(350), null, textInput, "name")
+
+            .AddStaticText("Target", text, slotBounds = slotBounds.BelowCopy(0, 15).WithFixedX(0).WithFixedWidth(100))
+            .AddTextInput(slotBounds = slotBounds.RightCopy(5, -3).WithFixedWidth(350), null, textInput, "target")
+
+            .AddStaticText("Empty target means it only accepts connections but does not actively connect to anything. The opposite happens when name field is empty.", CairoFont.WhiteSmallText(), slotBounds = slotBounds.BelowCopy(0, 20).WithFixedX(0).WithFixedWidth(500))
+
+            .AddButton("Save", OnSaveClicked, rightButton.FixedUnder(slotBounds, 40))
+            .AddButton("Close", OnCloseClicked, leftButton.FixedUnder(slotBounds, 40))
+            .EndChildElements()
+            .Compose()
+        ;
+
+        var inp = SingleComposer.GetTextInput("target");
+        inp.Enabled = target != null;
+        inp.SetValue(target);
+
+        inp = SingleComposer.GetTextInput("name");
+        inp.Enabled = name != null;
+        inp.SetValue(name);
     }
+
 
     public override ITreeAttribute Attributes
     {
@@ -51,15 +65,10 @@ public class GuiDialogTiledDungeon : GuiDialogGeneric
         {
             TreeAttribute tree = new TreeAttribute();
             tree.SetInt("save", save ? 1 : 0);
-            var inp = SingleComposer.GetTextInput("constraints");
-            tree.SetString("constraints", inp.GetText());
-
+            tree.SetString("target", SingleComposer.GetTextInput("target").GetText());
+            tree.SetString("name", SingleComposer.GetTextInput("name").GetText());
             return tree;
         }
-    }
-
-    private void OnTextChanged(string obj)
-    {
     }
 
     private void OnTitleBarClose()

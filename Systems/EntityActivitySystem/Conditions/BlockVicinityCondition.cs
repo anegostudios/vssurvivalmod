@@ -51,8 +51,8 @@ namespace Vintagestory.GameContent
         {
             var range = GameMath.Clamp(searchRange, -10, 10);
             var api = vas.Entity.Api;
-            var minPos = vas.Entity.ServerPos.XYZ.Add(-range, -1, -range).AsBlockPos;
-            var maxPos = vas.Entity.ServerPos.XYZ.Add(range, 1, range).AsBlockPos;
+            var minPos = vas.Entity.Pos.XYZ.Add(-range, -1, -range).AsBlockPos;
+            var maxPos = vas.Entity.Pos.XYZ.Add(range, 1, range).AsBlockPos;
 
             BlockPos targetPos = null;
             api.World.BlockAccessor.WalkBlocks(minPos, maxPos, (block, x, y, z) =>

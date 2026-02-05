@@ -29,7 +29,7 @@ namespace Vintagestory.GameContent
 
             var clothids = entity.GetBehavior<EntityBehaviorRopeTieable>()?.ClothIds?.value;
 
-            if (clothids != null) 
+            if (clothids != null)
             {
                 for (int i = 0; i < clothids.Length; i++)
                 {
@@ -40,7 +40,7 @@ namespace Vintagestory.GameContent
                     if (point != null)
                     {
                         targetEntity = point.PinnedToEntity;
-                        if (targetEntity.ServerPos.DistanceTo(entity.ServerPos) < 2f) return false;
+                        if (targetEntity.Pos.DistanceTo(entity.Pos) < 2f) return false;
                         return true;
                     }
                 }
@@ -54,7 +54,7 @@ namespace Vintagestory.GameContent
         public override void StartExecute()
         {
             float size = targetEntity.SelectionBox.XSize;
-            pathTraverser.WalkTowards(targetEntity.ServerPos.XYZ, moveSpeed, size + 1f, OnGoalReached, OnStuck, EnumAICreatureType.Default);
+            pathTraverser.WalkTowards(targetEntity.Pos.XYZ, moveSpeed, size + 1f, OnGoalReached, OnStuck, EnumAICreatureType.Default);
             targetOffset.Set(0,0,0);
             stuck = false;
             base.StartExecute();
@@ -66,12 +66,12 @@ namespace Vintagestory.GameContent
             if (!IsInValidDayTimeHours(false)) return false;
 
             float size = targetEntity.SelectionBox.XSize;
-            var dist = targetEntity.ServerPos.DistanceTo(entity.ServerPos.XYZ);
+            var dist = targetEntity.Pos.DistanceTo(entity.Pos.XYZ);
             if (dist > 2)
             {
-                initialTargetPos = targetEntity.ServerPos.XYZ;
-                
-                pathTraverser.WalkTowards(targetEntity.ServerPos.XYZ, moveSpeed, size + 1f, OnGoalReached, OnStuck, EnumAICreatureType.Default);
+                initialTargetPos = targetEntity.Pos.XYZ;
+
+                pathTraverser.WalkTowards(targetEntity.Pos.XYZ, moveSpeed, size + 1f, OnGoalReached, OnStuck, EnumAICreatureType.Default);
             }
 
             if (dist < size + 1f) return false;

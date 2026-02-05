@@ -39,7 +39,7 @@ namespace Vintagestory.GameContent
             });
         }
 
-        public override bool DoParticalSelection(IWorldAccessor world, BlockPos pos)
+        public override bool DoPartialSelection(IWorldAccessor world, BlockPos pos)
         {
             return true;
         }

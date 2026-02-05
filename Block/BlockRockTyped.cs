@@ -128,6 +128,9 @@ namespace Vintagestory.GameContent
 
         string getRockType(string type)
         {
+            // Github report #7631 of type being null on a ?-textured block from a Better Ruins structure - possibly related to chiseling or remapping?
+            if (type == null) return "unknown";
+
             var parts = type.Split('-');
             if (parts.Length < 3) return "unknown";
             return parts[2];

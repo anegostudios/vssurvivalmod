@@ -1,11 +1,10 @@
 using CompactExifLib;
+using System;
 using System.IO;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
-
-#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -19,10 +18,12 @@ namespace Vintagestory.GameContent
 
         protected CollisionTester collTester = new CollisionTester();
 
-        public Entity FiredBy;
+        public Entity? FiredBy;
         public float Damage;
         public int DamageTier = 0;
-        public ItemStack ProjectileStack;
+        public ItemStack? ProjectileStack;
+        public EnumDamageType DamageType = EnumDamageType.BluntAttack;
+        public bool IgnoreInvFrames = true;
 
         public float collidedAccum;
 
@@ -38,6 +39,7 @@ namespace Vintagestory.GameContent
             set { Attributes.SetBool("nonCollectible", value); }
         }
 
+        public float ThrowYaw { get; set; }
         public override bool IsInteractable
         {
             get { return false; }
@@ -47,18 +49,25 @@ namespace Vintagestory.GameContent
         Entity? IProjectile.FiredBy { get => FiredBy; set => FiredBy = value; }
         float IProjectile.Damage { get => Damage; set => Damage = value; }
         int IProjectile.DamageTier { get => DamageTier; set => DamageTier = value; }
-        EnumDamageType IProjectile.DamageType { get; set; }
-        bool IProjectile.IgnoreInvFrames { get; set; }
+        EnumDamageType IProjectile.DamageType { get => DamageType; set => DamageType = value; }
+        bool IProjectile.IgnoreInvFrames { get => IgnoreInvFrames; set => IgnoreInvFrames = value; }
         ItemStack? IProjectile.ProjectileStack { get => ProjectileStack; set => ProjectileStack = value; }
         ItemStack? IProjectile.WeaponStack { get; set; }
         float IProjectile.DropOnImpactChance { get; set; }
         bool IProjectile.DamageStackOnImpact { get; set; }
-        bool IProjectile.NonCollectible { get => NonCollectible; set => NonCollectible = value; }
+        bool IProjectile.Collectible { get => NonCollectible; set => NonCollectible = value; }
         bool IProjectile.EntityHit { get; }
         float IProjectile.Weight { get => Properties.Weight; set => Properties.Weight = value; }
         bool IProjectile.Stuck { get => stuck; set => stuck = value; }
 
         void IProjectile.PreInitialize() { }
+
+        void IProjectile.SetFromConfig(IProjectileJsonConfig config)
+        {
+            Damage = config.Damage;
+            DamageTier = config.DamageTier;
+            NonCollectible = config.Collectible;
+        }
         #endregion
 
         public override void Initialize(EntityProperties properties, ICoreAPI api, long InChunkIndex3d)
@@ -83,7 +92,9 @@ namespace Vintagestory.GameContent
                 ProjectileStack.ResolveBlockOrItem(World);
             }
 
-            GetBehavior<EntityBehaviorPassivePhysics>().CollisionYExtra = 0f; // Slightly cheap hax so that stones/arrows don't collid with fences
+            var physics = GetBehavior<EntityBehaviorPassivePhysics>();
+            ArgumentNullException.ThrowIfNull(physics);
+            physics.CollisionYExtra = 0f; // Slightly cheap hax so that stones/arrows don't collid with fences
         }
 
         public override void OnGameTick(float dt)
@@ -91,18 +102,16 @@ namespace Vintagestory.GameContent
             base.OnGameTick(dt);
             if (ShouldDespawn) return;
 
-            EntityPos pos = SidedPos;
+            EntityPos pos = Pos;
 
             stuck = Collided;
             if (stuck)
             {
                 pos.Pitch = 0;
                 pos.Roll = 0;
-                pos.Yaw = GameMath.PIHALF;
 
                 collidedAccum += dt;
                 if (NonCollectible && collidedAccum > 1) Die();
-
             } else
             {
                 pos.Pitch = (World.ElapsedMilliseconds / 300f) % GameMath.TWOPI;
@@ -110,35 +119,41 @@ namespace Vintagestory.GameContent
                 pos.Yaw = (World.ElapsedMilliseconds / 400f) % GameMath.TWOPI;
             }
 
-
             if (World is IServerWorldAccessor)
             {
-                Entity entity = World.GetNearestEntity(ServerPos.XYZ, 5f, 5f, (e) => {
+                Entity entity = World.GetNearestEntity(Pos.XYZ, 5f, 5f, (e) => {
                     if (e.EntityId == this.EntityId || (FiredBy != null && e.EntityId == FiredBy.EntityId && World.ElapsedMilliseconds - msLaunch < 500) || !e.IsInteractable)
                     {
                         return false;
                     }
 
-                    double dist = e.SelectionBox.ToDouble().Translate(e.ServerPos.X, e.ServerPos.Y, e.ServerPos.Z).ShortestDistanceFrom(ServerPos.X, ServerPos.Y, ServerPos.Z);
+                    double dist = e.SelectionBox.ToDouble().Translate(e.Pos.X, e.Pos.Y, e.Pos.Z).ShortestDistanceFrom(Pos.X, Pos.Y, Pos.Z);
                     return dist < 0.5f;
                 });
 
                 if (entity != null)
                 {
-                    bool didDamage = entity.ReceiveDamage(new DamageSource() {
+                    var damageSource = new DamageSource() {
                         Source = FiredBy is EntityPlayer ? EnumDamageSource.Player : EnumDamageSource.Entity,
                         SourceEntity = this,
                         CauseEntity = FiredBy,
-                        Type = EnumDamageType.BluntAttack,
+                        Type = DamageType,
                         DamageTier = DamageTier,
-                        YDirKnockbackDiv = 3
-                    }, Damage);
+                        YDirKnockbackDiv = 3,
+                        IgnoreInvFrames = IgnoreInvFrames
+                    };
+                    bool didDamage = false;
+                    if (entity.ShouldReceiveDamage(damageSource, Damage))
+                    {
+                        didDamage= entity.ReceiveDamage(damageSource, Damage);
+                    }
+
                     World.PlaySoundAt(new AssetLocation("sounds/thud"), this, null, false, 32);
-                    World.SpawnCubeParticles(entity.SidedPos.XYZ.OffsetCopy(0, 0.2, 0), ProjectileStack, 0.2f, ImpactParticleCount, ImpactParticleSize);
+                    World.SpawnCubeParticles(entity.Pos.XYZ.OffsetCopy(0, 0.2, 0), ProjectileStack, 0.2f, ImpactParticleCount, ImpactParticleSize);
 
                     if (FiredBy is EntityPlayer && didDamage)
                     {
-                        World.PlaySoundFor(new AssetLocation("sounds/player/projectilehit"), (FiredBy as EntityPlayer).Player, false, 24);
+                        World.PlaySoundFor(new AssetLocation("sounds/player/projectilehit"), (FiredBy as EntityPlayer)?.Player, false, 24);
                     }
 
                     Die();
@@ -153,7 +168,7 @@ namespace Vintagestory.GameContent
 
         public override void OnCollided()
         {
-            EntityPos pos = SidedPos;
+            EntityPos pos = Pos;
 
             if (!beforeCollided && World is IServerWorldAccessor)
             {
@@ -169,7 +184,7 @@ namespace Vintagestory.GameContent
 
                     if (strength > 0.1f && World.Rand.NextDouble() > 1 - HorizontalImpactBreakChance)
                     {
-                        World.SpawnCubeParticles(SidedPos.XYZ.OffsetCopy(0, 0.2, 0), ProjectileStack, 0.5f, ImpactParticleCount, ImpactParticleSize, null, new Vec3f(xdir * (float)motionBeforeCollide.X * 8, 0, zdir * (float)motionBeforeCollide.Z * 8));
+                        World.SpawnCubeParticles(Pos.XYZ.OffsetCopy(0, 0.2, 0), ProjectileStack, 0.5f, ImpactParticleCount, ImpactParticleSize, null, new Vec3f(xdir * (float)motionBeforeCollide.X * 8, 0, zdir * (float)motionBeforeCollide.Z * 8));
                         Die();
                     }
                 }
@@ -180,7 +195,7 @@ namespace Vintagestory.GameContent
 
                     if (strength > 0.1f && World.Rand.NextDouble() > 1 - VerticalImpactBreakChance)
                     {
-                        World.SpawnCubeParticles(SidedPos.XYZ.OffsetCopy(0, 0.25, 0), ProjectileStack, 0.5f, ImpactParticleCount, ImpactParticleSize, null, new Vec3f((float)motionBeforeCollide.X * 8, (float)-motionBeforeCollide.Y * 6, (float)motionBeforeCollide.Z * 8));
+                        World.SpawnCubeParticles(Pos.XYZ.OffsetCopy(0, 0.25, 0), ProjectileStack, 0.5f, ImpactParticleCount, ImpactParticleSize, null, new Vec3f((float)motionBeforeCollide.X * 8, (float)-motionBeforeCollide.Y * 6, (float)motionBeforeCollide.Z * 8));
                         Die();
                     }
                 }
@@ -198,12 +213,12 @@ namespace Vintagestory.GameContent
 
         public override bool CanCollect(Entity byEntity)
         {
-            return !NonCollectible && Alive && World.ElapsedMilliseconds - msLaunch > 1000 && ServerPos.Motion.Length() < 0.01;
+            return !NonCollectible && Alive && World.ElapsedMilliseconds - msLaunch > 1000 && Pos.Motion.Length() < 0.01;
         }
 
-        public override ItemStack OnCollected(Entity byEntity)
+        public override ItemStack? OnCollected(Entity byEntity)
         {
-            ProjectileStack.ResolveBlockOrItem(World);
+            ProjectileStack?.ResolveBlockOrItem(World);
             return ProjectileStack;
         }
 
@@ -212,7 +227,7 @@ namespace Vintagestory.GameContent
         {
             if (motionBeforeCollide.Y <= 0)
             {
-                SidedPos.Motion.Y = GameMath.Clamp(motionBeforeCollide.Y * -0.5f, -0.1f, 0.1f);
+                Pos.Motion.Y = GameMath.Clamp(motionBeforeCollide.Y * -0.5f, -0.1f, 0.1f);
                 PositionBeforeFalling.Y = Pos.Y + 1;
             }
 
@@ -223,7 +238,7 @@ namespace Vintagestory.GameContent
         {
             base.ToBytes(writer, forClient);
             writer.Write(beforeCollided);
-            ProjectileStack.ToBytes(writer);
+            ProjectileStack?.ToBytes(writer);
         }
 
         public override void FromBytes(BinaryReader reader, bool fromServer)

@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -198,10 +199,11 @@ namespace Vintagestory.GameContent
             return null;
         }
 
-        public override MeshData GetOrCreateMesh(IShapeTypeProps cprops, ITexPositionSource overrideTexturesource = null, string overrideTextureCode = null)
+        public override MeshData GetOrCreateMesh(IShapeTypeProps cprops, ITexPositionSource overrideTexturesource = null, string overrideTextureCode = null, bool forLOD2 = false)
         {
-            var cMeshes = meshDictionary;
+            var cMeshes = forLOD2 ? meshDictionaryLOD2 : meshDictionary;
             ICoreClientAPI capi = api as ICoreClientAPI;
+            if (cprops.ShapeLOD2Resolved == null) forLOD2 = false;
 
             var bprops = cprops as BookShelfTypeProps;
 
@@ -211,25 +213,53 @@ namespace Vintagestory.GameContent
             }
 
             mesh = new MeshData(4, 3);
-            var shape = cprops.ShapeResolved;
+            Shape shape = forLOD2 ? cprops.ShapeLOD2Resolved?.Clone() : cprops.ShapeResolved;
             if (shape == null) return mesh;
 
             var texSource = overrideTexturesource;
             ShapeTextureSource stexSource=null;
-            if (texSource == null)
+            if (forLOD2 || texSource == null)
             {
                 // Prio 0: Shape textures
-                stexSource = new ShapeTextureSource(capi, shape, cprops.ShapePath.ToString());
+                string shapePath = cprops.ShapePath.ToString();
+                stexSource = new ShapeTextureSource(capi, shape, forLOD2 ? Lod2Shape.Base.Path : shapePath);
                 texSource = stexSource;
 
                 // Prio 1: Block wide custom textures
-                if (blockTextures != null)
+                if (blockTextures != null && !forLOD2)
                 {
                     foreach (var val in blockTextures)
                     {
                         if (val.Value.Baked == null) val.Value.Bake(capi.Assets);
                         stexSource.textures[val.Key] = val.Value;
                     }
+                }
+
+                // Prio 2: LOD2
+                if (forLOD2)
+                {
+                    AssetLocation sideTex = null;
+                    SetLOD2Texture(capi, stexSource, shape, "front", new AssetLocation("game", "block/lod2/clutter/" + cprops.Code), null);
+
+                    ShapeElementFace face = FindElement(cprops.ShapeResolved.Elements, "e")?.FacesResolved?[1];
+                    string inshapeTextureName = face?.Texture;
+                    if (inshapeTextureName == null || !cprops.ShapeResolved.Textures.TryGetValue(inshapeTextureName, out sideTex))
+                    {
+                        // In various bookshelf models these are the texture names for the case sides, not sure why it's called "bookshelf"/"shelf" etc
+                        if (cprops.ShapeResolved.Textures.TryGetValue("shelf-ruined", out sideTex) || cprops.ShapeResolved.Textures.TryGetValue("bookshelf", out sideTex))
+                        { /* intentionally blank*/ }
+                    }
+                    SetLOD2Texture(capi, stexSource, shape, "bookshelf", sideTex, face);
+
+                    face = FindElement(cprops.ShapeResolved.Elements, "n")?.FacesResolved?[0];
+                    inshapeTextureName = face?.Texture;
+                    if (inshapeTextureName == null || !cprops.ShapeResolved.Textures.TryGetValue(inshapeTextureName, out sideTex))
+                    {
+                        // In various bookshelf models these are the texture names for the case back, not sure why it's called "sides" etc
+                        if (cprops.ShapeResolved.Textures.TryGetValue("sides-ruined", out sideTex) || cprops.ShapeResolved.Textures.TryGetValue("sides", out sideTex))
+                        { /* intentionally blank*/ }
+                    }
+                    SetLOD2Texture(capi, stexSource, shape, "back", sideTex, face);
                 }
             }
 
@@ -253,7 +283,7 @@ namespace Vintagestory.GameContent
 
                 capi.Tesselator.TesselateShape(blockForLogging, shape, out var mesh2, texSource);
 
-                mesh2.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, GameMath.PI, 0).Translate(0, 0, -0.5f);
+                mesh2.Rotate(0, GameMath.PI, 0).Translate(0, 0, -0.5f);
                 mesh.AddMeshData(mesh2);
             }
 
@@ -270,6 +300,51 @@ namespace Vintagestory.GameContent
             }
 
             return mesh;
+        }
+
+        private void SetLOD2Texture(ICoreClientAPI capi, ShapeTextureSource stexSource, Shape shape, string texName, AssetLocation sideTex, ShapeElementFace face)
+        {
+            if (sideTex != null)
+            {
+                // In our models these are the texture names for the case sides, not sure why it's called "bookshelf"
+                var texture = new CompositeTexture(sideTex);
+                texture.Bake(capi.Assets);
+                stexSource.textures[texName] = texture;
+
+                if (face != null && shape != null)
+                {
+                    var faces = FindElement(shape.Elements, "bottom")?.FacesResolved;
+                    if (faces != null)
+                    {
+                        foreach (var targetFace in faces)
+                        {
+                            if (targetFace.Texture == texName)
+                            {
+                                targetFace.Uv = face.Uv;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        private ShapeElement FindElement(ShapeElement[] baseElements, string name)
+        {
+            if (baseElements == null || baseElements.Length == 0) return null;
+            ShapeElement baseElement = baseElements[0];
+            if (baseElement.Name == name) return baseElement;
+            if (baseElement.Children == null) return null;
+            foreach (var childElement in baseElement.Children)
+            {
+                if (childElement == null) continue;
+                if (childElement.Name == name) return childElement;
+                if (childElement.Children == null) continue;
+                foreach (var grandchild in childElement.Children)
+                {
+                    if (grandchild.Name == name) return grandchild;
+                }
+            }
+            return null;
         }
 
         public string RandomType(string variant)

@@ -22,7 +22,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        
+
         public EntityBehaviorRopeTieable(Entity entity) : base(entity)
         {
 
@@ -91,7 +91,7 @@ namespace Vintagestory.GameContent
                 if (ropeInhandsSlot == null)
                 {
                     Vec3d lpos = new Vec3d(0, byEntity.LocalEyePos.Y - 0.25f, 0);
-                    Vec3d aheadPos = lpos.AheadCopy(0.25f, byEntity.SidedPos.Pitch, byEntity.SidedPos.Yaw);
+                    Vec3d aheadPos = lpos.AheadCopy(0.25f, byEntity.Pos.Pitch, byEntity.Pos.Yaw);
                     (ends[0].Pinned ? ends[1] : ends[0]).PinTo(byEntity, aheadPos.ToVec3f());
 
                     if ((ends[0].PinnedToEntity as EntityItem)?.Itemstack?.Collectible is ItemRope || (ends[1].PinnedToEntity as EntityItem)?.Itemstack?.Collectible is ItemRope)

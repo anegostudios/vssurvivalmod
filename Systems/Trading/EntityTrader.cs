@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -30,7 +30,6 @@ namespace Vintagestory.GameContent
         };
 
         public EntityTalkUtil talkUtil;
-        EntityBehaviorConversable ConversableBh => GetBehavior<EntityBehaviorConversable>();
 
 
         public string Personality
@@ -98,9 +97,23 @@ namespace Vintagestory.GameContent
             base.OnGameTick(dt);
 
 
-            if (Alive && AnimManager.ActiveAnimationsByAnimCode.Count == 0)
+            if (Alive)
             {
-                AnimManager.StartAnimation(new AnimationMetaData() { Code = "idle", Animation = "idle", EaseOutSpeed = 10000, EaseInSpeed = 10000 });
+                bool almostDone = true;
+                if (AnimManager.Animator != null)
+                {
+                    foreach (var anim in AnimManager.Animator.Animations)
+                    {
+                        if (anim.Active) almostDone &= anim.AnimProgress >= 0.95f;
+                    }
+                }
+
+                if (almostDone)
+                {
+                    AnimManager.StartAnimation(new AnimationMetaData() { Code = "idle", Animation = "idle", EaseOutSpeed = 10, EaseInSpeed = 10 });
+                }
+
+
             }
 
             if (World.Side == EnumAppSide.Client) {
@@ -122,13 +135,13 @@ namespace Vintagestory.GameContent
 
             if (Attributes.HasAttribute("spawnX"))
             {
-                ServerPos.X = Attributes.GetDouble("spawnX");
-                ServerPos.Y = Attributes.GetDouble("spawnY");
-                ServerPos.Z = Attributes.GetDouble("spawnZ");
+                Pos.X = Attributes.GetDouble("spawnX");
+                Pos.Y = Attributes.GetDouble("spawnY");
+                Pos.Z = Attributes.GetDouble("spawnZ");
             }
         }
 
-        public override void PlayEntitySound(string type, IPlayer dualCallByPlayer = null, bool randomizePitch = true, float range = 24)
+        public override void PlayEntitySound(string type, IPlayer dualCallByPlayer = null)
         {
             if (type == "hurt" && World.Side == EnumAppSide.Server)
             {
@@ -141,7 +154,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            base.PlayEntitySound(type, dualCallByPlayer, randomizePitch, range);
+            base.PlayEntitySound(type, dualCallByPlayer);
         }
     }
 }

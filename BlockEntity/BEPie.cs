@@ -1,4 +1,6 @@
-﻿using System.Linq;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -19,6 +21,8 @@ namespace Vintagestory.GameContent
         public bool AllowMixing = true;
         public EnumPiePartType PartType;
         public required AssetLocation Texture;
+        public EnumFoodCategory? FoodCategory;
+        public string[] MixingCodes = [];
     }
 
     // Idea:
@@ -108,7 +112,7 @@ namespace Vintagestory.GameContent
 
         public ItemStack? TakeSlice()
         {
-            if (inv[0].Itemstack?.Clone() is not ItemStack stack) return null;
+            if (inv[0].Itemstack?.Clone() is not { } stack) return null;
 
             int size = SlicesLeft;
             float servings = inv[0].Itemstack?.Attributes.GetFloat("quantityServings") ?? 0;
@@ -166,12 +170,12 @@ namespace Vintagestory.GameContent
 
             ItemSlot? hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
-            EnumTool? tool = hotbarSlot?.Itemstack?.Collectible.Tool;
-            if (tool == EnumTool.Knife || tool == EnumTool.Sword)
+            EnumTool? tool = hotbarSlot?.Itemstack?.Collectible.GetTool(hotbarSlot);
+            if (tool is EnumTool.Knife or EnumTool.Sword)
             {
                 if (pieBlock.State != "raw")
                 {
-                    if (Api.Side == EnumAppSide.Server && TakeSlice() is ItemStack slicestack)
+                    if (Api.Side == EnumAppSide.Server && TakeSlice() is { } slicestack)
                     {
                         if (!byPlayer.InventoryManager.TryGiveItemstack(slicestack))
                         {
@@ -187,13 +191,11 @@ namespace Vintagestory.GameContent
                 } else
                 {
                     // Cycle top crust type
-                    ItemStack[] cStacks = pieBlock.GetContents(Api.World, inv[0].Itemstack);
-                    if (HasAnyFilling && cStacks[5] != null)
-                    {
-                        ItemStack? stack = inv[0].Itemstack;
-                        stack = BlockPie.CycleTopCrustType(stack);
-                        MarkDirty(true);
-                    }
+                    ItemStack?[] cStacks = pieBlock.GetContents(Api.World, inv[0].Itemstack);
+                    if (!HasAnyFilling || cStacks[5] == null) return true;
+
+                    inv[0].Itemstack = BlockPie.CycleTopCrustType(inv[0].Itemstack);
+                    MarkDirty(true);
                 }
 
                 return true;
@@ -219,30 +221,29 @@ namespace Vintagestory.GameContent
                 inv[0].Itemstack?.Attributes.SetBool("bakeable", HasAllFilling);
 
                 return added;
-            } else
-            {
-                if (SlicesLeft == 1 && inv[0].Itemstack?.Attributes.HasAttribute("quantityServings") != true)
-                {
-                    inv[0].Itemstack?.Attributes.SetBool("bakeable", false);
-                    inv[0].Itemstack?.Attributes.SetFloat("quantityServings", 0.25f);
-                }
-
-                if (Api.Side == EnumAppSide.Server)
-                {
-                    if (!byPlayer.InventoryManager.TryGiveItemstack(inv[0].Itemstack))
-                    {
-                        Api.World.SpawnItemEntity(inv[0].Itemstack, Pos.ToVec3d().Add(0.5, 0.25, 0.5));
-                    }
-                    Api.World.Logger.Audit("{0} Took 1x{1} at {2}.",
-                        byPlayer.PlayerName,
-                        inv[0].Itemstack?.Collectible.Code,
-                        Pos
-                    );
-                    inv[0].Itemstack = null;
-                }
-
-                Api.World.BlockAccessor.SetBlock(0, Pos);
             }
+
+            if (SlicesLeft == 1 && inv[0].Itemstack?.Attributes.HasAttribute("quantityServings") != true)
+            {
+                inv[0].Itemstack?.Attributes.SetBool("bakeable", false);
+                inv[0].Itemstack?.Attributes.SetFloat("quantityServings", 0.25f);
+            }
+
+            if (Api.Side == EnumAppSide.Server)
+            {
+                if (!byPlayer.InventoryManager.TryGiveItemstack(inv[0].Itemstack))
+                {
+                    Api.World.SpawnItemEntity(inv[0].Itemstack, Pos.ToVec3d().Add(0.5, 0.25, 0.5));
+                }
+                Api.World.Logger.Audit("{0} Took 1x{1} at {2}.",
+                    byPlayer.PlayerName,
+                    inv[0].Itemstack?.Collectible.Code,
+                    Pos
+                );
+                inv[0].Itemstack = null;
+            }
+
+            Api.World.BlockAccessor.SetBlock(0, Pos);
 
             return true;
         }
@@ -278,11 +279,9 @@ namespace Vintagestory.GameContent
                     {
                         cStacks[5] = slot.TakeOut(2);
                         pieBlock.SetContents(inv[0].Itemstack, cStacks);
-                    } else
-                    {
-                        ItemStack? stack = inv[0].Itemstack;
-                        stack = BlockPie.CycleTopCrustType(stack);
-                    }
+                        // crust attribute must exist to stack together
+                        inv[0].Itemstack.Attributes.SetString("topCrustType", "full");
+                    } else inv[0].Itemstack = BlockPie.CycleTopCrustType(inv[0].Itemstack);
                     return true;
                 }
                 if (byPlayer != null && capi != null) capi.TriggerIngameError(this, "piefullfilling", Lang.Get("Can't add more filling - already completely filled pie"));
@@ -307,17 +306,21 @@ namespace Vintagestory.GameContent
             var stackprops = cStacks.Select(stack => stack?.ItemAttributes?["inPieProperties"]?.AsObject<InPieProperties?>(null, stack.Collectible.Code.Domain)).ToArray();
 
             ItemStack? cstack = slot.Itemstack;
-            EnumFoodCategory foodCat = BlockPie.FillingFoodCategory(slot.Itemstack);
+            EnumFoodCategory foodCat = BlockPie.FillingFoodCategory(cstack);
 
             bool equal = true;
             bool foodCatEquals = true;
+            bool allowMixing = true;
+            IEnumerable<string> mixCodes = pieProps.MixingCodes;
 
-            for (int i = 1; equal && i < cStacks.Length - 1; i++)
+            for (int i = 1; (equal || foodCatEquals || mixCodes.Any()) && i < cStacks.Length - 1; i++)
             {
                 if (cstack == null) continue;
 
                 equal &= cStacks[i] == null || cstack.Equals(Api.World, cStacks[i], GlobalConstants.IgnoredStackAttributes);
                 foodCatEquals &= cStacks[i] == null || foodCats[i] == foodCat;
+                allowMixing &= stackprops[i]?.AllowMixing != false;
+                mixCodes = stackprops[i]?.MixingCodes.Intersect(mixCodes) ?? mixCodes;
 
                 cstack = cStacks[i];
                 foodCat = foodCats[i];
@@ -332,15 +335,15 @@ namespace Vintagestory.GameContent
                 return true;
             }
 
-            if (!foodCatEquals)
+            if (!foodCatEquals && !mixCodes.Any())
             {
-                if (byPlayer != null && capi != null) capi.TriggerIngameError(this, "piefullfilling", Lang.Get("Can't mix fillings from different food categories"));
+                if (byPlayer != null && capi != null) capi.TriggerIngameError(this, "piefullfilling", Lang.Get("piemaking-unabletomixingredient"));
                 return false;
             } else
             {
-                if (stackprops[1]?.AllowMixing == false)
+                if (!allowMixing)
                 {
-                    if (byPlayer != null && capi != null) capi.TriggerIngameError(this, "piefullfilling", Lang.Get("You really want to mix these to ingredients?! That would taste horrible!"));
+                    if (byPlayer != null && capi != null) capi.TriggerIngameError(this, "piefullfilling", Lang.Get("piemaking-mixingnotallowed"));
                     return false;
                 }
 

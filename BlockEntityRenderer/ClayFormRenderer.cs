@@ -1,7 +1,8 @@
-﻿using System;
+using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -99,7 +100,10 @@ namespace Vintagestory.GameContent
 
             if (linewidth != 1.6f) rpi.LineWidth = 1.6f;
 
-            rpi.GLDepthMask(false);   // Helps prevent HUD failing to draw at the start of the next frame, on macOS.  This may be the last GL settings call before the frame is finalised.  The block outline renderer sets this to false prior to rendering its mesh.
+            if (RuntimeEnv.OS != OS.Mac) return;
+            // Only on Mac we have to reverse some things to make things render properly
+            rpi.GLDisableDepthTest();
+            rpi.GlToggleBlend(false);
         }
 
 
@@ -118,7 +122,7 @@ namespace Vintagestory.GameContent
 
             this.workItem = workitem;
             MeshData workItemMesh = new MeshData(24, 36, false);
-            
+
             float subPixelPaddingx = api.BlockTextureAtlas.SubPixelPaddingX;
             float subPixelPaddingy = api.BlockTextureAtlas.SubPixelPaddingY;
 
@@ -137,7 +141,7 @@ namespace Vintagestory.GameContent
                 } else
                 {
                     singleVoxelMesh.Uv[i] = tpos.x1 + singleVoxelMesh.Uv[i] * 2f / api.BlockTextureAtlas.Size.Width - subPixelPaddingx;
-                }   
+                }
             }
 
             singleVoxelMesh.XyzFaces = (byte[])CubeMeshUtil.CubeFaceIndices.Clone();

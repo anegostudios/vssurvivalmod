@@ -1,17 +1,31 @@
 using System.IO;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 using Vintagestory.ServerMods;
-
-#nullable disable
 
 namespace Vintagestory.GameContent;
 
 public class BETileConnector : BlockEntity
 {
-    public string Constraints = "*";
-    private ICoreClientAPI capi;
+    public string Name = "";
+    public string Target = "";
+    public BlockFacing Direction = BlockFacing.NORTH;
+
+    public static float[][] tfMatrix;
+
+    static BETileConnector() {
+        tfMatrix = new float[6][];
+        for (int i = 0; i < 4; i++)
+        {
+            tfMatrix[i] = new Matrixf().Translate(0.5f, 0f, 0.5f).RotateYDeg(-i * 90f).Translate(-0.5f, 0f, -0.5f).Values;
+        }
+
+        tfMatrix[4] = new Matrixf().Translate(0.5f, 0.5f, 0.5f).RotateXDeg(90).Translate(-0.5f, -0.5f, -0.5f).Values;
+        tfMatrix[5] = new Matrixf().Translate(0.5f, 0.5f, 0.5f).RotateXDeg(-90).Translate(-0.5f, -0.5f, -0.5f).Values;
+    }
 
     public void OnInteract(IPlayer byPlayer)
     {
@@ -19,25 +33,22 @@ public class BETileConnector : BlockEntity
 
         if (Api is ICoreClientAPI api)
         {
-            capi = api;
-            var dlg = new GuiDialogTiledDungeon("Dungeon Tile Constraint", Constraints, capi);
+            var dlg = new GuiDialogTiledDungeon("Dungeon Tile Constraint", Name, Target, api);
             dlg.TryOpen();
-            dlg.OnClosed += () => DidCloseDialog(dlg);
+            dlg.OnClosed += () => DidCloseDialog(dlg, api);
         }
     }
 
-    private void DidCloseDialog(GuiDialogTiledDungeon dialog)
+    private void DidCloseDialog(GuiDialogTiledDungeon dialog, ICoreClientAPI capi)
     {
         var attr = dialog.Attributes;
         if (attr.GetInt("save") == 0) return;
 
-        using (MemoryStream ms = new MemoryStream())
-        {
-            BinaryWriter writer = new BinaryWriter(ms);
-            attr.ToBytes(writer);
+        using var ms = new MemoryStream();
+        var writer = new BinaryWriter(ms);
+        attr.ToBytes(writer);
 
-            capi.Network.SendBlockEntityPacket(Pos, 0, ms.ToArray());
-        }
+        capi.Network.SendBlockEntityPacket(Pos, 0, ms.ToArray());
     }
 
     public override void OnReceivedClientPacket(IPlayer fromPlayer, int packetid, byte[] data)
@@ -46,7 +57,8 @@ public class BETileConnector : BlockEntity
 
         var tree = new TreeAttribute();
         tree.FromBytes(data);
-        Constraints = (tree["constraints"] as StringAttribute).value;
+        Target = tree.GetString("target","");
+        Name = tree.GetString("name", "");
 
         MarkDirty();
     }
@@ -54,12 +66,30 @@ public class BETileConnector : BlockEntity
     public override void ToTreeAttributes(ITreeAttribute tree)
     {
         base.ToTreeAttributes(tree);
-        tree["constraints"] = new StringAttribute(Constraints);
+        tree.SetString("name", Name);
+        tree.SetString("target", Target);
+        tree.SetInt("direction", Direction.Index);
     }
 
     public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
     {
         base.FromTreeAttributes(tree, worldAccessForResolve);
-        Constraints = (tree["constraints"] as StringAttribute).value;
+        Name = tree.GetString("name", "");
+        Target = tree.GetString("target", "");
+        Direction = BlockFacing.ALLFACES[tree.GetInt("direction")];
+    }
+
+    public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
+    {
+        var mesh = (Api as ICoreClientAPI)!.TesselatorManager.GetDefaultBlockMesh(Block);
+        mesher.AddMeshData(mesh, tfMatrix[Direction.Index]);
+        return true;
+    }
+
+    public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
+    {
+        dsc.AppendLine("Name:" + Name);
+        dsc.AppendLine("Schematics connect " + Direction.ToString() + " of this block");
+        base.GetBlockInfo(forPlayer, dsc);
     }
 }

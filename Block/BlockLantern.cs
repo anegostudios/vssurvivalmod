@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.ServiceModel.Channels;
@@ -14,9 +14,9 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockLantern : Block, ITexPositionSource, IAttachableToEntity
+    public class BlockLantern : Block, ITexPositionSource, IAttachableToEntity, IContainedMeshSource
     {
-        IAttachableToEntity attrAtta;
+        protected IAttachableToEntity attrAtta;
         #region IAttachableToEntity
         public int RequiresBehindSlots { get; set; } = 0;
         string IAttachableToEntity.GetCategoryCode(ItemStack stack) => attrAtta?.GetCategoryCode(stack);
@@ -37,15 +37,42 @@ namespace Vintagestory.GameContent
             intoShape.Textures["material"] = this.Textures[material].Base;
             intoShape.Textures["lining"] = this.Textures[(lining == null || lining == "plain") ? material : lining].Base;
             intoShape.Textures["material-deco"] = this.Textures["deco-" + material].Base;
+            intoShape.Textures["material-grid"] = this.Textures["grid-" + material].Base;
         }
+
+
+
+        public MeshData GenMesh(ItemSlot slot, ITextureAtlasAPI targetAtlas, BlockPos atBlockPos)
+        {
+            string material = slot.Itemstack.Attributes.GetString("material");
+            string lining = slot.Itemstack.Attributes.GetString("lining");
+            string glass = slot.Itemstack.Attributes.GetString("glass", "quartz");
+
+            string key = material + "-" + lining + "-" + glass;
+            AssetLocation shapeloc = Shape.Base.CopyWithPathPrefixAndAppendixOnce("shapes/", ".json");
+            Shape shape = API.Common.Shape.TryGet(api, shapeloc);
+
+            return GenMesh(api as ICoreClientAPI, material, lining, glass, shape);            
+        }
+
+        public string GetMeshCacheKey(ItemSlot slot)
+        {
+            string material = slot.Itemstack.Attributes.GetString("material");
+            string lining = slot.Itemstack.Attributes.GetString("lining");
+            string glass = slot.Itemstack.Attributes.GetString("glass", "quartz");
+            return Code + "-" + material + "-" + lining + "-" + glass;
+        }
+
+
+
 
         public bool IsAttachable(Entity toEntity, ItemStack itemStack) => true;
         #endregion
 
         public Size2i AtlasSize { get; set; }
-        string curMat, curLining;
-        ITexPositionSource glassTextureSource;
-        ITexPositionSource tmpTextureSource;
+        protected string curMat, curLining;
+        protected ITexPositionSource glassTextureSource;
+        protected ITexPositionSource tmpTextureSource;
 
         public TextureAtlasPosition this[string textureCode]
         {
@@ -53,6 +80,7 @@ namespace Vintagestory.GameContent
             {
                 if (textureCode == "material") return tmpTextureSource[curMat];
                 if (textureCode == "material-deco") return tmpTextureSource["deco-" + curMat];
+                if (textureCode == "material-grid") return tmpTextureSource["grid-" + curMat];
                 if (textureCode == "lining") return tmpTextureSource[curLining == "plain" ? curMat : curLining];
                 if (textureCode == "glass") return glassTextureSource["material"];
                 return tmpTextureSource[textureCode];
@@ -119,9 +147,11 @@ namespace Vintagestory.GameContent
             return base.GetLightHsv(blockAccessor, pos, stack);
         }
 
+        public virtual string baseCacheKey => "blockLantern" + Variant["size"];
+
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
-            Dictionary<string, MultiTextureMeshRef> meshrefs = ObjectCacheUtil.GetOrCreate(capi, "blockLanternGuiMeshRefs", () =>
+            Dictionary<string, MultiTextureMeshRef> meshrefs = ObjectCacheUtil.GetOrCreate(capi, baseCacheKey + "GuiMeshRefs", () =>
             {
                 return new Dictionary<string, MultiTextureMeshRef>();
             });
@@ -251,7 +281,7 @@ namespace Vintagestory.GameContent
             {
                 EnumHandling handled = EnumHandling.PassThrough;
 
-                behavior.OnBlockBroken(world, pos, byPlayer, ref handled);
+                behavior.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier, ref handled);
                 if (handled == EnumHandling.PreventDefault) preventDefault = true;
                 if (handled == EnumHandling.PreventSubsequent) return;
             }

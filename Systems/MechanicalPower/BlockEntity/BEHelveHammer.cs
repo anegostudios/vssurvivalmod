@@ -64,16 +64,16 @@ namespace Vintagestory.GameContent.Mechanics
                 switch (facing.Index)
                 {
                     case 3:
-                        adjust = mptoggle.isRotationReversed() ? 1.9 : 0.6;
+                        adjust = mptoggle.IsRotationReversed() ? 1.9 : 0.6;
                         break;
                     case 1:
-                        adjust = mptoggle.isRotationReversed() ? -0.65 : -1.55;
+                        adjust = mptoggle.IsRotationReversed() ? -0.65 : -1.55;
                         break;
                     case 0:
-                        adjust = mptoggle.isRotationReversed() ? -0.4 : 1.2;
+                        adjust = mptoggle.IsRotationReversed() ? -0.4 : 1.2;
                         break;
                     default:
-                        adjust = mptoggle.isRotationReversed() ? 1.8 : 1.2;
+                        adjust = mptoggle.IsRotationReversed() ? 1.8 : 1.2;
                         break;
                 }
                 double x = GameMath.Mod(mptoggle.AngleRad * 2.0 + adjust - rnd, Math.PI * 20);

@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -107,14 +107,15 @@ namespace Vintagestory.GameContent
             }
 
             const int chunksize = GlobalConstants.ChunkSize;
+            BlockPos tmpPos = Pos.Copy();
             foreach (BlockFacing facing in BlockFacing.HORIZONTALS)
             {
                 Vec3i dir = facing.Normali;
-                int x = Pos.X + dir.X * chunksize;
-                int z = Pos.Z + dir.Z * chunksize;
+                tmpPos.X = Pos.X + dir.X * chunksize;
+                tmpPos.Z = Pos.Z + dir.Z * chunksize;
 
                 // Not at world edge and chunk is not loaded? We must be at the edge of loaded chunks. Wait until more chunks are generated
-                if (Api.World.BlockAccessor.IsValidPos(x, Pos.InternalY, z) && Api.World.BlockAccessor.GetChunkAtBlockPos(x, Pos.InternalY, z) == null) return;
+                if (Api.World.BlockAccessor.IsValidPos(tmpPos) && Api.World.BlockAccessor.GetChunkAtBlockPos(tmpPos) == null) return;
             }
 
             Block block = Api.World.BlockAccessor.GetBlock(Pos);

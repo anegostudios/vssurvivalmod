@@ -1,11 +1,10 @@
-﻿using System.Collections.Generic;
+using System;
+using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
-using static OpenTK.Graphics.OpenGL.GL;
-using Vintagestory.ServerMods;
 
 #nullable disable
 
@@ -13,6 +12,7 @@ namespace Vintagestory.GameContent
 {
     public interface IContainedInteractable
     {
+        WorldInteraction[] GetContainedInteractionHelp(BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel);
         bool OnContainedInteractStart(BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel);
         bool OnContainedInteractStep(float secondsUsed, BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel);
         void OnContainedInteractStop(float secondsUsed, BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel);
@@ -34,14 +34,14 @@ namespace Vintagestory.GameContent
 
     public interface IContainedMeshSource
     {
-        MeshData GenMesh(ItemStack itemstack, ITextureAtlasAPI targetAtlas, BlockPos atBlockPos);
+        MeshData GenMesh(ItemSlot slot, ITextureAtlasAPI targetAtlas, BlockPos atBlockPos);
 
         /// <summary>
         /// Needs to return a unique identifier for this itemstack
         /// </summary>
         /// <param name="itemstack"></param>
         /// <returns></returns>
-        string GetMeshCacheKey(ItemStack itemstack);
+        string GetMeshCacheKey(ItemSlot slot);
     }
 
     public abstract class BlockEntityDisplay : BlockEntityContainer, ITexPositionSource
@@ -96,6 +96,10 @@ namespace Vintagestory.GameContent
             }
         }
 
+        /// <summary>
+        /// Slot type for contained item meshing
+        /// </summary>
+        protected virtual string slotType => "default";
 
         protected TextureAtlasPosition getOrCreateTexPos(AssetLocation texturePath)
         {
@@ -124,7 +128,7 @@ namespace Vintagestory.GameContent
             capi = api as ICoreClientAPI;
             if (capi != null)
             {
-                updateMeshes();
+                MarkMeshesDirty();
                 api.Event.RegisterEventBusListener(OnEventBusEvent);
             }
         }
@@ -145,19 +149,14 @@ namespace Vintagestory.GameContent
             {
                 ItemStack stack = Inventory[i].Itemstack;
                 if (stack == null) continue;
-                var key = getMeshCacheKey(stack);
+                var key = getMeshCacheKey(Inventory[i]);
                 MeshCache.Remove(key);
             }
 
-            updateMeshes();
-            MarkDirty(true);
+            MarkMeshesDirty();
+            Api.World.BlockAccessor.MarkBlockDirty(Pos);   // always redraw on client after updating meshes
         }
 
-
-        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
-        {
-            base.FromTreeAttributes(tree, worldForResolving);
-        }
 
         /// <summary>
         /// Methods implementing this class need to call this at the conclusion of their FromTreeAttributes implementation.  See BEGroundStorage for an example!
@@ -166,9 +165,18 @@ namespace Vintagestory.GameContent
         {
             if (worldForResolving.Side == EnumAppSide.Client && Api != null)
             {
-                updateMeshes();
-                MarkDirty(true);  // always redraw on client after updating meshes
+                MarkMeshesDirty();
+                Api.World.BlockAccessor.MarkBlockDirty(Pos);   // always redraw on client after updating meshes
             }
+        }
+
+        /// <summary>
+        /// Low cost call; will update the meshes client-side on next tesselation of this chunk.  Pair with a MarkDirty() or MarkBlockDirty() to ensure the chunk does get retesselated
+        /// <br/>No effect server-side
+        /// </summary>
+        public virtual void MarkMeshesDirty()
+        {
+            tfMatrices = null;
         }
 
         public virtual void updateMeshes()
@@ -194,35 +202,36 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            getOrCreateMesh(stack, index);
+            getOrCreateMesh(Inventory[index], index);
         }
 
 
-        protected virtual string getMeshCacheKey(ItemStack stack)
+        protected virtual string getMeshCacheKey(ItemSlot slot)
         {
-            IContainedMeshSource meshSource = stack.Collectible?.GetCollectibleInterface<IContainedMeshSource>();
+            IContainedMeshSource meshSource = slot.Itemstack.Collectible?.GetCollectibleInterface<IContainedMeshSource>();
             if (meshSource != null)
             {
-                return meshSource.GetMeshCacheKey(stack);
+                return meshSource.GetMeshCacheKey(slot);
             }
 
-            return stack.Collectible.Code.ToString();
+            return slot.Itemstack.Collectible.Code.ToString();
         }
 
         protected Dictionary<string, MeshData> MeshCache => ObjectCacheUtil.GetOrCreate(Api, "meshesDisplay-" + ClassCode, () => new Dictionary<string, MeshData>());
 
-        protected MeshData getMesh(ItemStack stack)
+        protected MeshData getMesh(ItemSlot slot)
         {
-            string key = getMeshCacheKey(stack);
+            string key = getMeshCacheKey(slot);
             MeshCache.TryGetValue(key, out var meshdata);
             return meshdata;
         }
 
-        protected virtual MeshData getOrCreateMesh(ItemStack stack, int index)
+        protected virtual MeshData getOrCreateMesh(ItemSlot slot, int index)
         {
-            MeshData mesh = getMesh(stack);
+            MeshData mesh = getMesh(slot);
             if (mesh != null) return mesh;
 
+            var stack = slot.Itemstack;
             CompositeShape customShape = stack.Collectible.Attributes?["displayedShape"].AsObject<CompositeShape>(null, stack.Collectible.Code.Domain);
             if (customShape != null)
             {
@@ -241,7 +250,7 @@ namespace Vintagestory.GameContent
 
                 if (meshSource != null)
                 {
-                    mesh = meshSource.GenMesh(stack, capi.BlockTextureAtlas, Pos);
+                    mesh = meshSource.GenMesh(slot, capi.BlockTextureAtlas, Pos);
                 }
             }
 
@@ -252,7 +261,7 @@ namespace Vintagestory.GameContent
 
             applyDefaultTranforms(stack, mesh);
 
-            string key = getMeshCacheKey(stack);
+            string key = getMeshCacheKey(slot);
             MeshCache[key] = mesh;
 
             return mesh;
@@ -274,8 +283,8 @@ namespace Vintagestory.GameContent
 
             if (stack.Class == EnumItemClass.Item && (stack.Item.Shape == null || stack.Item.Shape.VoxelizeTexture))
             {
-                mesh.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), GameMath.PIHALF, 0, 0);
-                mesh.Scale(new Vec3f(0.5f, 0.5f, 0.5f), 0.33f, 0.33f, 0.33f);
+                mesh.Rotate(GameMath.PIHALF, 0, 0);
+                mesh.Scale(0.33f, 0.33f, 0.33f);
                 mesh.Translate(0, -7.5f / 16f, 0f);
             }
         }
@@ -310,6 +319,11 @@ namespace Vintagestory.GameContent
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
         {
+            if (tfMatrices == null)
+            {
+                updateMeshes();
+            }
+
             for (int index = 0; index < DisplayedItems; index++)
             {
                 ItemSlot slot = Inventory[index];
@@ -317,7 +331,7 @@ namespace Vintagestory.GameContent
                 {
                     continue;
                 }
-                mesher.AddMeshData(getMesh(slot.Itemstack), tfMatrices[index]);
+                mesher.AddMeshData(getMesh(slot), tfMatrices[index]);
             }
 
             return base.OnTesselation(mesher, tessThreadTesselator);

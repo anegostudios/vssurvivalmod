@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
@@ -48,7 +48,7 @@ namespace Vintagestory.GameContent.Mechanics
             return dirs[1] == facing.Code[0];  //angled gears - secondary direction
         }
 
-        public override bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face)
+        public override bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face, BlockMPBase forBlock)
         {
             if (IsDeadEnd())
             {
@@ -64,7 +64,7 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {
-            return new ItemStack(world.GetBlock(new AssetLocation("angledgears-s")));
+            return new ItemStack(world.GetBlock(CodeWithVariant("orientation", "s")));
         }
 
 
@@ -135,7 +135,7 @@ namespace Vintagestory.GameContent.Mechanics
                 if (validLargeGear && (face == BlockFacing.UP || face == BlockFacing.DOWN)) continue;
                 BlockPos pos = blockSel.Position.AddCopy(face);
                 IMechanicalPowerBlock block = world.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
-                if (block != null && block.HasMechPowerConnectorAt(world, pos, face.Opposite))
+                if (block != null && block.HasMechPowerConnectorAt(world, pos, face.Opposite, this))
                 {
                     if (firstFace == null)
                     {
@@ -216,7 +216,7 @@ namespace Vintagestory.GameContent.Mechanics
                 BlockPos npos = pos.AddCopy(facing);
                 IMechanicalPowerBlock nblock = world.BlockAccessor.GetBlock(npos) as IMechanicalPowerBlock;
 
-                if (nblock == null || !nblock.HasMechPowerConnectorAt(world, npos, facing.Opposite) || world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPBase>()?.disconnected == true)
+                if (nblock == null || !nblock.HasMechPowerConnectorAt(world, npos, facing.Opposite, this) || world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPBase>()?.disconnected == true)
                 {
                     lostFacings.Add(facing);
                 }

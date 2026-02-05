@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Common;
+using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using System;
 using System.Text;
@@ -37,7 +37,7 @@ namespace Vintagestory.GameContent
                 {
                     dict[this.Code] = renderinfo.ModelRef = CreateOverlaidMeshRef(capi, Shape, stepParentShapes);
                 }
-                
+
             }
 
             base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
@@ -154,14 +154,13 @@ namespace Vintagestory.GameContent
 
             if (entity != null)
             {
-                entity.ServerPos.X = blockSel.Position.X + (blockSel.DidOffset ? 0 : blockSel.Face.Normali.X) + 0.5f;
-                entity.ServerPos.Y = blockSel.Position.Y + (blockSel.DidOffset ? 0 : blockSel.Face.Normali.Y);
-                entity.ServerPos.Z = blockSel.Position.Z + (blockSel.DidOffset ? 0 : blockSel.Face.Normali.Z) + 0.5f;
-                entity.ServerPos.Yaw = byEntity.Pos.Yaw + GameMath.PI;
-                entity.ServerPos.Dimension = blockSel.Position.dimension;
+                entity.Pos.X = blockSel.Position.X + (blockSel.DidOffset ? 0 : blockSel.Face.Normali.X) + 0.5f;
+                entity.Pos.Y = blockSel.Position.Y + (blockSel.DidOffset ? 0 : blockSel.Face.Normali.Y);
+                entity.Pos.Z = blockSel.Position.Z + (blockSel.DidOffset ? 0 : blockSel.Face.Normali.Z) + 0.5f;
+                entity.Pos.Yaw = byEntity.Pos.Yaw + GameMath.PI;
+                entity.Pos.Dimension = blockSel.Position.dimension;
 
-                entity.Pos.SetFrom(entity.ServerPos);
-                entity.PositionBeforeFalling.Set(entity.ServerPos.X, entity.ServerPos.Y, entity.ServerPos.Z);
+                entity.PositionBeforeFalling.Set(entity.Pos.X, entity.Pos.Y, entity.Pos.Z);
 
                 entity.Attributes.SetString("origin", "playerplaced");
 
@@ -174,23 +173,13 @@ namespace Vintagestory.GameContent
                     }
                 }
 
+                entity.WatchedAttributes.SetBool("noSpawnAnim", true);
                 byEntity.World.SpawnEntity(entity);
+
                 handHandling = EnumHandHandling.PreventDefaultAction;
             }
         }
-
-        public override string GetHeldTpIdleAnimation(ItemSlot activeHotbarSlot, Entity byEntity, EnumHand hand)
-        {
-            EntityProperties type = byEntity.World.GetEntityType(new AssetLocation(Code.Domain, CodeEndWithoutParts(1)));
-            if (type == null) return base.GetHeldTpIdleAnimation(activeHotbarSlot, byEntity, hand);
-
-            float size = Math.Max(type.CollisionBoxSize.X, type.CollisionBoxSize.Y);
-
-            if (size > 1) return "holdunderarm";
-            return "holdbothhands";
-        }
-
-        public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot)
+         public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot)
         {
             return new WorldInteraction[] {
                 new WorldInteraction()

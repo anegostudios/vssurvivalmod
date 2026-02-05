@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -68,6 +68,7 @@ namespace Vintagestory.GameContent
         }
         public Shape ShapeResolved { get; set; }
         public Shape ShapeResolved2 { get; set; }
+        public Shape ShapeLOD2Resolved { get; set; }
 
         public string HashKey => Code + "-" + Type1 + "-" + Type2 + "-" + Variant;
 

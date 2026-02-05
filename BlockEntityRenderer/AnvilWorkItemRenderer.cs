@@ -1,7 +1,8 @@
-﻿using System;
+using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -14,11 +15,10 @@ namespace Vintagestory.GameContent
         private ICoreClientAPI api;
         private BlockPos pos;
 
-        MeshRef workItemMeshRef;
+        MultiTextureMeshRef workItemMeshRef;
         MeshRef recipeOutlineMeshRef;
 
         ItemStack ingot;
-        int texId;
 
         Vec4f outLineColorMul = new Vec4f(1, 1, 1, 1);
         protected Matrixf ModelMat = new Matrixf();
@@ -75,11 +75,9 @@ namespace Vintagestory.GameContent
 
             rpi.GlDisableCullFace();
 
-            IShaderProgram prog = coreMod.anvilShaderProg;
+            IShaderProgram prog = coreMod.smithingWorkItemShader;
             prog.Use();
-            rpi.BindTexture2d(texId);
             prog.Uniform("rgbaAmbientIn", rpi.AmbientColor);
-
             prog.Uniform("rgbaFogIn", rpi.FogColor);
             prog.Uniform("fogMinIn", rpi.FogMin);
             prog.Uniform("dontWarpVertices", (int)0);
@@ -89,7 +87,8 @@ namespace Vintagestory.GameContent
             prog.Uniform("rgbaLightIn", lightrgbs);
             prog.Uniform("rgbaGlowIn", glowRgb);
             prog.Uniform("extraGlow", extraGlow);
-            
+            prog.Uniform("tempGlowMode", 0);
+
             prog.UniformMatrix("modelMatrix", ModelMat
                 .Identity()
                 .Translate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z)
@@ -99,7 +98,7 @@ namespace Vintagestory.GameContent
             prog.UniformMatrix("projectionMatrix", rpi.CurrentProjectionMatrix);
 
 
-            rpi.RenderMesh(workItemMeshRef);
+            rpi.RenderMultiTextureMesh(workItemMeshRef, "tex");
 
             prog.UniformMatrix("modelMatrix", rpi.CurrentModelviewMatrix);
             prog.Stop();
@@ -133,7 +132,10 @@ namespace Vintagestory.GameContent
 
             if (linewidth != 1.6f) rpi.LineWidth = 1.6f;
 
-            rpi.GLDepthMask(false);   // Helps prevent HUD failing to draw at the start of the next frame, on macOS.  This may be the last GL settings call before the frame is finalised.  The block outline renderer sets this to false prior to rendering its mesh.
+            if (RuntimeEnv.OS != OS.Mac) return;
+            // Only on Mac we have to reverse some things to make things render properly
+            rpi.GLDisableDepthTest();
+            rpi.GlToggleBlend(false);
         }
 
 
@@ -154,9 +156,9 @@ namespace Vintagestory.GameContent
                 RegenOutlineMesh(recipeToOutlineVoxels, voxels);
             }
 
-            MeshData workItemMesh = ItemWorkItem.GenMesh(api, workitemStack, voxels, out texId);
+            MeshData workItemMesh = ItemWorkItem.GenMesh(api, workitemStack, voxels);
 
-            workItemMeshRef = api.Render.UploadMesh(workItemMesh);
+            workItemMeshRef = api.Render.UploadMultiTextureMesh(workItemMesh);
         }
 
 

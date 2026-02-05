@@ -153,23 +153,23 @@ public class EntityElevator : Entity, ISeatInstSupplier, IMountableListener, ICu
 
         var elevatorStopHeight = ElevatorSys.ControlPositions[CurrentStopIndex];
 
-        var diff = Math.Abs(ServerPos.Y - elevatorStopHeight);
+        var diff = Math.Abs(Pos.Y - elevatorStopHeight);
         if (diff >= 0.02f)
         {
             if (!IsMoving)
             {
-                UnSetGround(ServerPos.AsBlockPos, ElevatorSys.ControlPositions[lastStopIndex]);
+                UnSetGround(Pos.AsBlockPos, ElevatorSys.ControlPositions[lastStopIndex]);
             }
 
             var mul = Math.Max(0.5f, Math.Clamp(diff, 0, 1));
-            if (ServerPos.Y < elevatorStopHeight)
+            if (Pos.Y < elevatorStopHeight)
             {
-                ServerPos.Y += dt * SpeedMultiplier * mul;
+                Pos.Y += dt * SpeedMultiplier * mul;
                 isMovingUp = true;
             }
             else
             {
-                ServerPos.Y -= dt * SpeedMultiplier * mul;
+                Pos.Y -= dt * SpeedMultiplier * mul;
                 isMovingDown = true;
             }
 
@@ -179,7 +179,7 @@ public class EntityElevator : Entity, ISeatInstSupplier, IMountableListener, ICu
             if (IsMoving)
             {
                 lastStopIndex = CurrentStopIndex;
-                SetGround(ServerPos.AsBlockPos, elevatorStopHeight);
+                SetGround(Pos.AsBlockPos, elevatorStopHeight);
             }
 
             isMovingUp = isMovingDown = false;
@@ -273,7 +273,7 @@ public class EntityElevator : Entity, ISeatInstSupplier, IMountableListener, ICu
                 travelSound.FadeTo(0.15f, 0.5f, null);
             }
 
-            travelSound.SetPosition((float)SidedPos.X, (float)SidedPos.InternalY, (float)SidedPos.Z);
+            travelSound.SetPosition((float)Pos.X, (float)Pos.InternalY, (float)Pos.Z);
         }
         else
         {
@@ -319,7 +319,7 @@ public class EntityElevator : Entity, ISeatInstSupplier, IMountableListener, ICu
                 else
                 {
                     StartAnimation("leverUP");
-                    latchSound.SetPosition((float)SidedPos.X, (float)SidedPos.InternalY, (float)SidedPos.Z);
+                    latchSound.SetPosition((float)Pos.X, (float)Pos.InternalY, (float)Pos.Z);
                     latchSound.Start();
                 }
             }
@@ -335,7 +335,7 @@ public class EntityElevator : Entity, ISeatInstSupplier, IMountableListener, ICu
                 else
                 {
                     StartAnimation("leverDOWN");
-                    latchSound.SetPosition((float)SidedPos.X, (float)SidedPos.InternalY, (float)SidedPos.Z);
+                    latchSound.SetPosition((float)Pos.X, (float)Pos.InternalY, (float)Pos.Z);
                     latchSound.Start();
                 }
             }

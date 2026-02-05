@@ -221,7 +221,7 @@ namespace Vintagestory.ServerMods
 
             if (!workspace.MayPlace(ba.GetBlock(blockId), brushPositions.Length)) return;
 
-            BlockPos tmpPos = new BlockPos();
+            BlockPos tmpPos = new BlockPos(targetPos.dimension);
             Vec3i dvoxelpos = new Vec3i();
 
             blocksInEdit.Clear();

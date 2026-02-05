@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
@@ -69,6 +69,7 @@ namespace Vintagestory.GameContent
         public string Type;
         public BlockShapeFromAttributes clutterBlock;
         protected MeshData mesh;
+        protected MeshData lod2mesh;
         public float rotateX;
         public float rotateY { get; internal set; }
         public float rotateZ;
@@ -146,22 +147,32 @@ namespace Vintagestory.GameContent
 
             if (cprops != null)
             {
-                bool noOffset = offsetX == 0 && offsetY == 0 && offsetZ == 0;
-                float angleY = rotateY + cprops.Rotation.Y * GameMath.DEG2RAD;
-
-                MeshData baseMesh = clutterBlock.GetOrCreateMesh(cprops, null, overrideTextureCode);
-                if (cprops.RandomizeYSize && clutterBlock?.AllowRandomizeDims != false)
-                {
-                    mesh = baseMesh.Clone().Rotate(Origin, rotateX, angleY, rotateZ).Scale(Vec3f.Zero, 1, 0.98f + GameMath.MurmurHash3Mod(Pos.X, Pos.Y, Pos.Z, 1000) / 1000f * 0.04f, 1);
-                } else
-                {
-
-                    if (rotateX == 0 && angleY == 0 && rotateZ == 0 && noOffset) mesh = baseMesh;
-                    else mesh = baseMesh.Clone().Rotate(Origin, rotateX, angleY, rotateZ);
-                }
-
-                if (!noOffset) mesh.Translate(offsetX, offsetY, offsetZ);
+                mesh = createMesh(cprops, false);
+                if (clutterBlock.Lod2Shape != null) lod2mesh = createMesh(cprops, true);
             }
+        }
+
+        public virtual MeshData createMesh(IShapeTypeProps cprops, bool forLOD2 = false)
+        {
+            bool noOffset = offsetX == 0 && offsetY == 0 && offsetZ == 0;
+            float angleY = rotateY + cprops.Rotation.Y * GameMath.DEG2RAD;
+
+            MeshData mesh;
+            MeshData baseMesh = clutterBlock.GetOrCreateMesh(cprops, null, overrideTextureCode, forLOD2);
+            if (cprops.RandomizeYSize && clutterBlock?.AllowRandomizeDims != false)
+            {
+                mesh = baseMesh.Clone().Rotate(Origin, rotateX, angleY, rotateZ).Scale(Vec3f.Zero, 1, 0.98f + GameMath.MurmurHash3Mod(Pos.X, Pos.Y, Pos.Z, 1000) / 1000f * 0.04f, 1);
+            }
+            else
+            {
+
+                if (rotateX == 0 && angleY == 0 && rotateZ == 0 && noOffset) mesh = baseMesh;
+                else mesh = baseMesh.Clone().Rotate(Origin, rotateX, angleY, rotateZ);
+            }
+
+            if (!noOffset) mesh.Translate(offsetX, offsetY, offsetZ);
+
+            return mesh;
         }
 
         public override void OnBlockPlaced(ItemStack byItemStack = null)
@@ -263,7 +274,15 @@ namespace Vintagestory.GameContent
         {
             MaybeInitialiseMesh_OffThread();
 
-            mesher.AddMeshData(mesh);
+            if (lod2mesh == null)
+            {
+                mesher.AddMeshData(mesh, EnumLodPool.Everywhere);
+            }
+            else
+            {
+                mesher.AddMeshData(mesh, EnumLodPool.EverywhereExceptFar);
+                mesher.AddMeshData(lod2mesh, EnumLodPool.FarDistanceOnly);
+            }
             return true;
         }
 
@@ -315,13 +334,14 @@ namespace Vintagestory.GameContent
             var cprops = clutterBlock?.GetTypeProps(Type, null, this);
             if (cprops != null) thetaY += cprops.Rotation.Y * GameMath.DEG2RAD;
 
-            float[] m = Mat4f.Create();
-            Mat4f.RotateY(m, m, -degreeRotation * GameMath.DEG2RAD);   // apply the new rotation
-            Mat4f.RotateX(m, m, thetaX);
-            Mat4f.RotateY(m, m, thetaY);
-            Mat4f.RotateZ(m, m, thetaZ);
-
+            Span<float> m = stackalloc float [12];    // We don't need the full 16 length matrix, as none of these three methods uses m[12]-m[15]
+            m[0] = 1;
+            m[5] = 1;
+            m[10] = 1;
+            Mat4f.RotateY(m, -degreeRotation * GameMath.DEG2RAD);   // apply the new rotation
+            Mat4f.RotateByXYZ(m, thetaX, thetaY, thetaZ);
             Mat4f.ExtractEulerAngles(m, ref thetaX, ref thetaY, ref thetaZ);  // extract the new angles
+
             if (cprops != null) thetaY -= cprops.Rotation.Y * GameMath.DEG2RAD;
             tree.SetFloat("rotateX", thetaX);
             tree.SetFloat("meshAngle", thetaY);

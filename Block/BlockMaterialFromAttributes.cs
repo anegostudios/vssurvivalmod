@@ -26,7 +26,9 @@ public class BlockMaterialFromAttributes : Block
     public virtual void LoadTypes()
     {
         var grp = Attributes["materials"].AsObject<RegistryObjectVariantGroup>();
-        TexturesBMFA = Attributes["textures"].AsObject<Dictionary<string, CompositeTexture>>();
+        ArgumentNullException.ThrowIfNull(grp);
+        TexturesBMFA = Attributes["textures"].AsObject<Dictionary<string, CompositeTexture>>()!;
+        ArgumentNullException.ThrowIfNull(TexturesBMFA);
         var materials = grp.States;
         if (grp.LoadFromProperties != null)
         {

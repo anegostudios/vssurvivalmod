@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
@@ -83,7 +83,7 @@ namespace Vintagestory.GameContent
             if (pos.X != posx || pos.Y != posy || pos.Z != posz || counter % 30 == 0)
             {
                 FindTree(player.Entity.World, pos, out int baseResistance, out int woodTier);
-                if (ToolTier < woodTier - 3) return remainingResistance;   // stone axe cannot cut tropical woods except Kapok (which is soft); copper/scrap axe cannot cut ebony
+                if (itemslot.Itemstack.Collectible.GetToolTier(itemslot) < woodTier - 3) return remainingResistance;   // stone axe cannot cut tropical woods except Kapok (which is soft); copper/scrap axe cannot cut ebony
                 treeResistance = (float)Math.Max(1, Math.Sqrt(baseResistance / 1.45));
 
                 tempAttr.SetFloat("treeResistance", treeResistance);
@@ -103,16 +103,17 @@ namespace Vintagestory.GameContent
             IPlayer byPlayer = null;
             if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
 
-            double windspeed = api.ModLoader.GetModSystem<WeatherSystemBase>()?.WeatherDataSlowAccess.GetWindSpeed(byEntity.SidedPos.XYZ) ?? 0;            
+            double windspeed = api.ModLoader.GetModSystem<WeatherSystemBase>()?.WeatherDataSlowAccess.GetWindSpeed(byEntity.Pos.XYZ) ?? 0;
 
             Stack<BlockPos> foundPositions = FindTree(world, blockSel.Position, out int _, out int woodTier);
-            
+
             if (foundPositions.Count == 0)
             {
                 return base.OnBlockBrokenWith(world, byEntity, itemslot, blockSel, dropQuantityMultiplier);
             }
 
-            bool damageable = DamagedBy != null && DamagedBy.Contains(EnumItemDamageSource.BlockBreaking);
+            EnumItemDamageSource[] damagedBy = GetDamagedBy(itemslot);
+            bool damageable = damagedBy != null && damagedBy.Contains(EnumItemDamageSource.BlockBreaking);
 
             float leavesMul = 1;
             float leavesBranchyMul = 0.8f;
@@ -153,7 +154,7 @@ namespace Vintagestory.GameContent
                         dustParticles.MinVelocity.Set(-0.4f + (float)windspeed, -0.4f, -0.4f);
                         dustParticles.AddVelocity.Set(0.8f + (float)windspeed, 1.2f, 0.8f);
                     }
-                    
+
 
                     world.SpawnParticles(dustParticles);
                 }
@@ -173,7 +174,7 @@ namespace Vintagestory.GameContent
             {
                 api.World.PlaySoundAt(new AssetLocation("sounds/effect/treefell"), blockSel.Position, -0.25, byPlayer, false, 32, GameMath.Clamp(blocksbroken / 100f, 0.25f, 1));
             }
-            
+
             return true;
         }
 
@@ -195,7 +196,7 @@ namespace Vintagestory.GameContent
             Stack<BlockPos> foundPositions = new Stack<BlockPos>();
             resistance = 0;
             woodTier = 0;
-            
+
             Block block = world.BlockAccessor.GetBlock(startPos);
             if (block.Code == null) return foundPositions;
 

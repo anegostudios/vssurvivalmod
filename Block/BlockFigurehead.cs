@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
@@ -28,7 +29,7 @@ public class BlockFigurehead : BlockMaterialFromAttributes, IAttachableToEntity,
         }
     }
 
-    public string GetCategoryCode(ItemStack stack) => Attributes["attachableToEntity"]["categoryCode"].AsString();
+    public string GetCategoryCode(ItemStack stack) => Attributes["attachableToEntity"]["categoryCode"].AsString() ?? throw new ArgumentNullException("categoryCode is null");
     public CompositeShape GetAttachedShape(ItemStack stack, string slotCode) => Shape;
     public string[] GetDisableElements(ItemStack stack) => [];
     public string[] GetKeepElements(ItemStack stack) => [];

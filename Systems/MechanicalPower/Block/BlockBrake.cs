@@ -1,4 +1,4 @@
-﻿using System.Linq;
+using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
@@ -14,7 +14,7 @@ namespace Vintagestory.GameContent.Mechanics
         }
 
 
-        public override bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face)
+        public override bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face, BlockMPBase forBlock)
         {
             BlockFacing ownFacing = BlockFacing.FromCode(Variant["side"]);
             BlockFacing leftFacing = BlockFacing.HORIZONTALS_ANGLEORDER[GameMath.Mod(ownFacing.HorizontalAngleIndex - 1, 4)];

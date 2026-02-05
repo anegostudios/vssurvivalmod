@@ -1,3 +1,4 @@
+using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -8,7 +9,7 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityBarrel : BlockEntityLiquidContainer
+    public class BlockEntityBarrel : BlockEntityLiquidContainer, ICoolingMedium
     {
         public int CapacityLitres { get; set; } = 50;
 
@@ -27,6 +28,10 @@ namespace Vintagestory.GameContent
         public BarrelRecipe CurrentRecipe;
         public int CurrentOutSize;
 
+        protected static SoundAttributes barrelOpen = new(AssetLocation.Create("sounds/block/barrelopen"), true);
+        protected static SoundAttributes barrelClose = new(AssetLocation.Create("sounds/block/barrelclose"), true);
+
+        [Obsolete("Use player aware 'GetCanSeal' instead")]
         public bool CanSeal
         {
             get
@@ -35,6 +40,13 @@ namespace Vintagestory.GameContent
                 if (CurrentRecipe != null && CurrentRecipe.SealHours > 0) return true;
                 return false;
             }
+        }
+
+        public bool GetCanSeal(IPlayer byPlayer)
+        {
+            FindMatchingRecipe(byPlayer);
+            if (CurrentRecipe != null && CurrentRecipe.SealHours > 0) return true;
+            return false;
         }
 
         public BlockEntityBarrel()
@@ -52,13 +64,13 @@ namespace Vintagestory.GameContent
             inventory.OnAcquireTransitionSpeed += Inventory_OnAcquireTransitionSpeed1;
         }
 
-        private float Inventory_OnAcquireTransitionSpeed1(EnumTransitionType transType, ItemStack stack, float mul)
+        protected float Inventory_OnAcquireTransitionSpeed1(EnumTransitionType transType, ItemStack stack, float mul)
         {
             // Don't spoil while sealed, otherwise no multiplication either way
             return Sealed && CurrentRecipe?.SealHours > 0 ? 0 : 1;
         }
 
-        private float GetSuitability(ItemSlot sourceSlot, ItemSlot targetSlot, bool isMerge)
+        protected float GetSuitability(ItemSlot sourceSlot, ItemSlot targetSlot, bool isMerge)
         {
             // prevent for example rot overflowing into the liquid slot, on a shift-click, when slot[0] is already full of 64 x rot.   Rot can be accepted in the liquidOnly slot because it has containableProps (perhaps it shouldn't?)
             if (targetSlot == inventory[1])
@@ -95,11 +107,6 @@ namespace Vintagestory.GameContent
                 (inventory[1] as ItemSlotLiquidOnly).CapacityLitres = CapacityLitres;
             }
 
-            if (api.Side == EnumAppSide.Client && currentMesh == null)
-            {
-                currentMesh = GenMesh();
-                MarkDirty(true);
-            }
             if (api.Side == EnumAppSide.Server)
             {
                 RegisterGameTickListener(OnEvery3Second, 3000);
@@ -110,7 +117,7 @@ namespace Vintagestory.GameContent
 
         bool ignoreChange = false;
 
-        private void Inventory_SlotModified(int slotId)
+        protected void Inventory_SlotModified(int slotId)
         {
             if (ignoreChange) return;
 
@@ -119,25 +126,40 @@ namespace Vintagestory.GameContent
                 invDialog?.UpdateContents();
                 if (Api?.Side == EnumAppSide.Client)
                 {
-                    currentMesh = GenMesh();
+                    currentMesh = null;   // Trigger a re-tesselation
                 }
 
                 MarkDirty(true);
                 FindMatchingRecipe();
             }
+        }
 
+        protected void FindMatchingRecipe()
+        {
+            FindMatchingRecipe(null);
         }
 
 
-        private void FindMatchingRecipe()
+        protected void FindMatchingRecipe(IPlayer byPlayer)
         {
-            ItemSlot[] inputSlots = new ItemSlot[] { inventory[0], inventory[1] };
+            ItemSlot[] inputSlots = [inventory[0], inventory[1]];
             CurrentRecipe = null;
 
-            var barrelRecipes = Api.GetBarrelRecipes();
-            foreach (var recipe in barrelRecipes)
+            System.Collections.Generic.List<BarrelRecipe> barrelRecipes = Api.GetBarrelRecipes();
+            foreach (BarrelRecipe recipe in barrelRecipes)
             {
-                if (recipe.Matches(inputSlots, out int outsize))
+                bool matches;
+                int outsize;
+                if (byPlayer != null)
+                {
+                    matches = recipe.Matches(byPlayer, inputSlots, out outsize);
+                }
+                else
+                {
+                    matches = recipe.Matches(inputSlots, out outsize);
+                }
+
+                if (matches)
                 {
                     ignoreChange = true;
 
@@ -161,7 +183,7 @@ namespace Vintagestory.GameContent
                     invDialog?.UpdateContents();
                     if (Api?.Side == EnumAppSide.Client)
                     {
-                        currentMesh = GenMesh();
+                        currentMesh = null;   // Trigger a re-tesselation
                         MarkDirty(true);
                     }
 
@@ -172,7 +194,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        private void OnEvery3Second(float dt)
+        protected void OnEvery3Second(float dt)
         {
             if (!inventory[0].Empty && CurrentRecipe == null)
             {
@@ -188,7 +210,8 @@ namespace Vintagestory.GameContent
                     Sealed = false;
                 }
 
-            } else
+            }
+            else
             {
                 if (Sealed)
                 {
@@ -207,7 +230,7 @@ namespace Vintagestory.GameContent
             ItemSlot liquidSlot = Inventory[1];
             if (!inputSlot.Empty && liquidSlot.Empty)
             {
-                var liqProps = BlockLiquidContainerBase.GetContainableProps(inputSlot.Itemstack);
+                WaterTightContainableProps liqProps = BlockLiquidContainerBase.GetContainableProps(inputSlot.Itemstack);
                 if (liqProps != null)
                 {
                     Inventory.TryFlipItems(1, inputSlot);
@@ -243,7 +266,7 @@ namespace Vintagestory.GameContent
         {
             if (Sealed) return;
 
-            FindMatchingRecipe();
+            FindMatchingRecipe(byPlayer);
 
             if (Api.Side == EnumAppSide.Client)
             {
@@ -264,8 +287,8 @@ namespace Vintagestory.GameContent
                     capi.Network.SendBlockEntityPacket(Pos, (int)EnumBlockEntityPacketId.Close, null);
                     capi.Network.SendPacketClient(Inventory.Close(byPlayer));
                 };
-                invDialog.OpenSound = AssetLocation.Create(Block.Attributes?["openSound"].AsString() ?? "sounds/block/barrelopen", Block.Code.Domain);
-                invDialog.CloseSound = AssetLocation.Create(Block.Attributes?["closeSound"].AsString() ?? "sounds/block/barrelclose", Block.Code.Domain);
+                invDialog.OpenSound = Block.Attributes?["openSound"]?.AsObject<SoundAttributes?>(null, Block.Code.Domain, true) ?? barrelOpen;
+                invDialog.CloseSound = Block.Attributes?["closeSound"]?.AsObject<SoundAttributes?>(null, Block.Code.Domain, true) ?? barrelClose;
 
                 invDialog.TryOpen();
                 capi.Network.SendPacketClient(Inventory.Open(byPlayer));
@@ -329,7 +352,7 @@ namespace Vintagestory.GameContent
             Sealed = tree.GetBool("sealed");      // Update Sealed status before we generate the new mesh!
             if (Api?.Side == EnumAppSide.Client)
             {
-                currentMesh = GenMesh();
+                currentMesh = null;   // Trigger a re-tesselation
                 MarkDirty(true);
                 invDialog?.UpdateContents();
             }
@@ -352,7 +375,7 @@ namespace Vintagestory.GameContent
 
 
 
-        internal MeshData GenMesh()
+        public MeshData GenMesh()
         {
             if (ownBlock == null) return null;
 
@@ -384,8 +407,29 @@ namespace Vintagestory.GameContent
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
+            if (currentMesh == null)
+            {
+                currentMesh = GenMesh();
+            }
+
             mesher.AddMeshData(currentMesh);
             return true;
+        }
+
+        public void CoolNow(ItemSlot slot, Vec3d pos, float dt, bool playSizzle = true)
+        {
+            ItemSlot liquidSlot = Inventory[1];
+            if (liquidSlot.Empty) return;
+            ICoolingMedium icm = liquidSlot.Itemstack.Collectible.GetCollectibleInterface<ICoolingMedium>();
+            icm?.CoolNow(slot, pos, dt, playSizzle);
+        }
+
+        public bool CanCool(ItemSlot slot, Vec3d pos)
+        {
+            ItemSlot liquidSlot = Inventory[1];
+            if (liquidSlot.Empty) return false;
+            ICoolingMedium icm = liquidSlot.Itemstack.Collectible.GetCollectibleInterface<ICoolingMedium>();
+            return icm?.CanCool(slot, pos) ?? false;
         }
     }
 }

@@ -1,3 +1,5 @@
+using Newtonsoft.Json;
+using System;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
@@ -26,10 +28,12 @@ namespace Vintagestory.GameContent
         float moveSpeed = 0.03f;
         float targetDistance = 0.07f;
 
-        double searchFrequency = 0.05f;
+        [JsonProperty, Obsolete("Use ExecutionChance instead")]
+        double searchFrequency { set => ExecutionChance = value; }
+
         double restUntilTotalHours;
 
-        BlockPos tmpPos = new BlockPos();
+        BlockPos tmpPos = new BlockPos(API.Config.Dimensions.WillSetLater);
         EnumRestReason reason;
         WeatherSystemServer wsys;
 
@@ -44,9 +48,13 @@ namespace Vintagestory.GameContent
 
             moveSpeed = taskConfig["movespeed"].AsFloat(0.03f);
 
-            searchFrequency = taskConfig["searchFrequency"].AsFloat(0.07f);
+            ResetCooldown();
+        }
 
-            cooldownUntilTotalHours = entity.World.Calendar.TotalHours + mincooldownHours + entity.World.Rand.NextDouble() * (maxcooldownHours - mincooldownHours);
+        protected override void SetDefaultValues()
+        {
+            base.SetDefaultValues();
+            ExecutionChance = 0.07;
         }
 
         public override void OnEntityDespawn(EntityDespawnData reason)
@@ -64,20 +72,20 @@ namespace Vintagestory.GameContent
 
         public override bool ShouldExecute()
         {
-            if (rand.NextDouble() > searchFrequency) return false;
+            if (rand.NextDouble() > ExecutionChance) return false;
 
             reason = EnumRestReason.NoReason;
 
-            if (cooldownUntilTotalHours < entity.World.Calendar.TotalHours)
+            if (IsOnCooldown())
             {
                 reason = EnumRestReason.TakingABreak;
             }
             else if (entity.World.Calendar.GetDayLightStrength(entity.Pos.X, entity.Pos.Z) < 0.6)
             {
-                // Hardcoded: Rest at night 
+                // Hardcoded: Rest at night
                 reason = EnumRestReason.Night;
             }
-            else if (wsys?.WeatherDataSlowAccess.GetWindSpeed(entity.ServerPos.XYZ) > 0.75 || wsys?.GetPrecipitation(entity.ServerPos.XYZ) > 0.1)
+            else if (wsys?.WeatherDataSlowAccess.GetWindSpeed(entity.Pos.XYZ) > 0.75 || wsys?.GetPrecipitation(entity.Pos.XYZ) > 0.1)
             {
                 // Hardcoded: Rest during heavy winds or during rain
                 reason = EnumRestReason.Wind;
@@ -88,13 +96,14 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            
+
+            tmpPos.SetDimension(entity.Pos.Dimension);
             double dx = rand.NextDouble() * 4 - 2;
             double dz = rand.NextDouble() * 4 - 2;
 
             for (int i = 1; i >= 0; i--)
             {
-                tmpPos.Set((int)(entity.ServerPos.X + dx), 0, (int)(entity.ServerPos.Z + dz));
+                tmpPos.Set((int)(entity.Pos.X + dx), 0, (int)(entity.Pos.Z + dz));
                 tmpPos.Y = entity.World.BlockAccessor.GetTerrainMapheightAt(tmpPos) + i;
 
                 Block liquidBlock = entity.World.BlockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid);
@@ -125,7 +134,7 @@ namespace Vintagestory.GameContent
                     }
                 }
             }
-            
+
             return false;
         }
 
@@ -138,7 +147,7 @@ namespace Vintagestory.GameContent
             pathTraverser.WalkTowards(MainTarget, moveSpeed, targetDistance, OnGoalReached, OnStuck);
         }
 
-        public override bool 
+        public override bool
             ContinueExecute(float dt)
         {
             //Check if time is still valid for task.
@@ -146,7 +155,7 @@ namespace Vintagestory.GameContent
 
             if (taskState==1)
             {
-                entity.ServerPos.Motion.Set(0, 0, 0);
+                entity.Pos.Motion.Set(0, 0, 0);
                 entity.AnimManager.StartAnimation("rest");
                 taskState = 2;
                 double restHours = 0.5 + entity.World.Rand.NextDouble() * 3;
@@ -170,7 +179,7 @@ namespace Vintagestory.GameContent
                 case EnumRestReason.TakingABreak:
                     return taskState == 0 || entity.World.Calendar.TotalHours < restUntilTotalHours;
                 case EnumRestReason.Wind:
-                    return wsys?.WeatherDataSlowAccess.GetWindSpeed(entity.ServerPos.XYZ) > 0.2 || wsys?.GetPrecipitation(entity.ServerPos.XYZ) > 0.05;
+                    return wsys?.WeatherDataSlowAccess.GetWindSpeed(entity.Pos.XYZ) > 0.2 || wsys?.GetPrecipitation(entity.Pos.XYZ) > 0.05;
                 default:
                     return false;
             }

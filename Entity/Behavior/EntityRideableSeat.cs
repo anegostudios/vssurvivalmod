@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -6,18 +7,13 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
-#nullable disable
-
 namespace Vintagestory.GameContent
 {
 
     public class EntityRideableSeat : EntitySeat
     {
         public override EnumMountAngleMode AngleMode => EnumMountAngleMode.FixateYaw;
-        public override AnimationMetaData SuggestedAnimation =>
-            CanControl ?
-            (mountedEntity as EntityBehaviorRideable).curAnim :
-            (mountedEntity as EntityBehaviorRideable).curAnimPassanger;
+        public override AnimationMetaData SuggestedAnimation => (mountedEntity as EntityBehaviorRideable)?.CurrentControlMeta?.GetSeatAnimation(this);
 
         protected EntityPos seatPos = new EntityPos();
         protected Matrixf modelmat = new Matrixf();
@@ -28,7 +24,7 @@ namespace Vintagestory.GameContent
             get
             {
                 modelmat.Identity();
-                AttachmentPointAndPose apap = Entity.AnimManager?.Animator?.GetAttachmentPointPose(config.APName);
+                AttachmentPointAndPose? apap = Entity.AnimManager?.Animator?.GetAttachmentPointPose(config.APName);
                 if (apap != null)
                 {
                     modelmat.RotateY(GameMath.PIHALF + Entity.Pos.Yaw);
@@ -78,7 +74,7 @@ namespace Vintagestory.GameContent
         private void loadAttachPointTransform()
         {
             modelmat.Identity();
-            AttachmentPointAndPose apap = Entity.AnimManager?.Animator?.GetAttachmentPointPose(config.APName);
+            AttachmentPointAndPose? apap = Entity.AnimManager?.Animator?.GetAttachmentPointPose(config.APName);
             if (apap != null)
             {
                 var esr = Entity.Properties.Client.Renderer as EntityShapeRenderer;
@@ -119,7 +115,7 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public static IMountableSeat GetMountable(IWorldAccessor world, TreeAttribute tree)
+        public static IMountableSeat? GetMountable(IWorldAccessor world, TreeAttribute tree)
         {
             Entity entityAnimal = world.GetEntityById(tree.GetLong("entityIdMount"));
             var bh = entityAnimal?.GetBehavior<EntityBehaviorSeatable>();
@@ -155,6 +151,7 @@ namespace Vintagestory.GameContent
             ebh = Entity as IMountableListener;
             ebh?.DidMount(entityAgent);
 
+            ArgumentNullException.ThrowIfNull(Entity);
             Entity.Api.Event.TriggerEntityMounted(entityAgent, this);
         }
 
@@ -199,14 +196,14 @@ namespace Vintagestory.GameContent
                 rightPos = tmp;
             }
 
-            var block = ba.GetMostSolidBlock((int)rightPos.X, (int)(rightPos.Y - 0.1), (int)rightPos.Z);
+            var block = ba.GetBlockRaw((int)rightPos.X, (int)(rightPos.Y - 0.1), (int)rightPos.Z, BlockLayersAccess.MostSolid);
             if (block.SideSolid[BlockFacing.UP.Index] && !world.CollisionTester.IsColliding(ba, Passenger.CollisionBox, rightPos, false))
             {
                 Passenger.TeleportTo(rightPos);
                 return;
             }
 
-            block = ba.GetMostSolidBlock((int)leftPos.X, (int)(leftPos.Y - 0.1), (int)leftPos.Z);
+            block = ba.GetBlockRaw((int)leftPos.X, (int)(leftPos.Y - 0.1), (int)leftPos.Z, BlockLayersAccess.MostSolid);
             if (block.SideSolid[BlockFacing.UP.Index] && !world.CollisionTester.IsColliding(ba, Passenger.CollisionBox, leftPos, false))
             {
                 Passenger.TeleportTo(leftPos);

@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -8,7 +7,6 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
-using Vintagestory.ServerMods;
 
 namespace Vintagestory.GameContent
 {
@@ -375,7 +373,7 @@ namespace Vintagestory.GameContent
                                     var stack = quantitiesByStack.GetKeyAtIndex(i);
                                     if (!ingred.Matches(quantitiesByStack.GetKeyAtIndex(i))) continue;
                                     if (requiredStacks.Contains(stack)) continue;
-                                        
+
                                     requiredStacks[i] = stack;
                                     requiredCount++;
                                 }
@@ -581,7 +579,7 @@ namespace Vintagestory.GameContent
     /// Defines a recipe to be made using a cooking pot.
     /// Creating a new recipe for a cooking pot will automatically register the new meal item, unless using <see cref="CooksInto"/>.
     /// </summary>
-    /// <example> 
+    /// <example>
     /// <code langauge="json">
     ///{
     ///	"code": "jam",
@@ -633,46 +631,46 @@ namespace Vintagestory.GameContent
     public class CookingRecipe : IByteSerializable
     {
         /// <summary>
-        /// <!--<jsonoptional>Required</jsonoptional>-->
         /// A unique code for the recipe and meal created.
         /// </summary>
-        [DocumentAsJson] public string? Code;
+        [DocumentAsJson("Required")]
+        public string? Code;
 
         /// <summary>
-        /// <!--<jsonoptional>Required</jsonoptional>-->
         /// A list of ingredients for the recipe. Although cooking pots have a maximum of 4 unique entries, there is no limit on the number of potential ingredients.
         /// </summary>
-        [DocumentAsJson] public CookingRecipeIngredient[]? Ingredients;
+        [DocumentAsJson("Required")]
+        public CookingRecipeIngredient[]? Ingredients;
 
         /// <summary>
-        /// <!--<jsonoptional>Optional</jsonoptional><jsondefault>True</jsondefault>-->
         /// Should this recipe be loaded by the game?
         /// </summary>
-        [DocumentAsJson] public bool Enabled = true;
+        [DocumentAsJson("Optional", "True")]
+        public bool Enabled = true;
 
         /// <summary>
-        /// <!--<jsonoptional>Required</jsonoptional>-->
         /// A path to the shape file for this meal when inside a cooking pot. Specific ingredient-based elements can be enabled using the <see cref="CookingRecipeStack.ShapeElement"/> in the ingredient stacks.
         /// </summary>
-        [DocumentAsJson] public CompositeShape? Shape;
+        [DocumentAsJson("Required")]
+        public CompositeShape? Shape;
 
         /// <summary>
-        /// <!--<jsonoptional>Required</jsonoptional>-->
         /// The transitionable properties for the meal item. Usually controls meal expiry.
         /// </summary>
-        [DocumentAsJson] public TransitionableProperties? PerishableProps;
+        [DocumentAsJson("Required")]
+        public TransitionableProperties? PerishableProps;
 
         /// <summary>
-        /// <!--<jsonoptional>Optional</jsonoptional><jsondefault>None</jsondefault>-->
         /// If set, will treat the recipe not as a meal with its ingredients retained but convert the ingredients into supplied itemstack.
         /// </summary>
-        [DocumentAsJson] public JsonItemStack? CooksInto = null;
+        [DocumentAsJson("Optional", "None")]
+        public JsonItemStack? CooksInto = null;
 
         /// <summary>
-        /// <!--<jsonoptional>Optional</jsonoptional><jsondefault>False</jsondefault>-->
         /// If this is true and CooksInto is set the recipe will not dirty the pot.
         /// </summary>
-        [DocumentAsJson] public bool IsFood = false;
+        [DocumentAsJson("Optional", "False")]
+        public bool IsFood = false;
 
         public static Dictionary<string, ICookingRecipeNamingHelper> NamingRegistry = new Dictionary<string, ICookingRecipeNamingHelper>();
 
@@ -718,7 +716,7 @@ namespace Vintagestory.GameContent
         {
             if (Ingredients == null) return false;
 
-            List<ItemStack> inputStacksList = [.. inputStacks];
+            List<ItemStack?> inputStacksList = new(inputStacks);
             List<CookingRecipeIngredient> ingredientList = [.. Ingredients];
 
             int totalOutputQuantity = 99999;
@@ -728,7 +726,7 @@ namespace Vintagestory.GameContent
 
             while (inputStacksList.Count > 0)
             {
-                ItemStack inputStack = inputStacksList[0];
+                var inputStack = inputStacksList[0];
                 inputStacksList.RemoveAt(0);
                 if (inputStack == null) continue;
 
@@ -736,7 +734,7 @@ namespace Vintagestory.GameContent
                 for (int i = 0; i < ingredientList.Count; i++)
                 {
                     CookingRecipeIngredient ingred = ingredientList[i];
-                    
+
                     if (ingred.GetMatchingStack(inputStack) is CookingRecipeStack jstack)
                     {
                         if (curQuantities[i] >= ingred.MaxQuantity) continue;
@@ -784,7 +782,7 @@ namespace Vintagestory.GameContent
 
             return true;
         }
-       
+
 
         public CookingRecipeIngredient? GetIngrendientFor(ItemStack? stack, params CookingRecipeIngredient[] ingredsToskip)
         {
@@ -815,16 +813,15 @@ namespace Vintagestory.GameContent
         {
             if (Ingredients == null) return new ItemStack?[slots];
 
-            Dictionary<CookingRecipeIngredient, HashSet<ItemStack?>>? validStacksByIngredient = cachedValidStacksByIngredient;
+            var validStacksByIngredient = cachedValidStacksByIngredient;
 
-            if (cachedValidStacksByIngredient == null)
+            if (validStacksByIngredient == null)
             {
-                validStacksByIngredient = new();
+                validStacksByIngredient = [];
 
                 foreach (var ingredient in Ingredients)
                 {
                     HashSet<ItemStack?> ingredientStacks = [];
-                    List<AssetLocation> ingredientCodes = [];
 
                     ingredient.Resolve(api.World, "handbook meal recipes");
                     foreach (var astack in allstacks)
@@ -1018,5 +1015,5 @@ namespace Vintagestory.GameContent
         }
 
     }
-    
+
 }

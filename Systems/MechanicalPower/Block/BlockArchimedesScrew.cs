@@ -1,4 +1,4 @@
-﻿using System.Linq;
+using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
@@ -26,7 +26,7 @@ namespace Vintagestory.GameContent.Mechanics
         }
 
 
-        public override bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face)
+        public override bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face, BlockMPBase forBlock)
         {
             return IsOrientedTo(face);
         }
@@ -52,7 +52,7 @@ namespace Vintagestory.GameContent.Mechanics
                 BlockPos pos = blockSel.Position.AddCopy(face);
 
                 IMechanicalPowerBlock block = world.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
-                if (block != null && block.HasMechPowerConnectorAt(world, pos, face.Opposite))
+                if (block != null && block.HasMechPowerConnectorAt(world, pos, face.Opposite, this))
                 {
                     if (blockToPlace.DoPlaceBlock(world, byPlayer, blockSel, itemstack))
                     {

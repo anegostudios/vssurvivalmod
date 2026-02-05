@@ -1,4 +1,4 @@
-﻿using Vintagestory.API;
+using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -29,7 +29,7 @@ namespace Vintagestory.GameContent
 	///]
     ///</code></example>
     [DocumentAsJson]
-    public class BlockBehaviorHorizontalOrientable : BlockBehavior
+    public class BlockBehaviorHorizontalOrientable : BlockBehavior, ILookAwarePlacement
     {
         /// <summary>
         /// The face variant of this block to drop when mined, if <see cref="drop"/> is not set.
@@ -79,14 +79,8 @@ namespace Vintagestory.GameContent
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handling, ref string failureCode)
         {
             handling = EnumHandling.PreventDefault;
-            BlockFacing[] horVer = Block.SuggestedHVOrientation(byPlayer, blockSel);
-            AssetLocation blockCode = block.CodeWithVariant(variantCode, horVer[0].Code);
-            Block orientedBlock = world.BlockAccessor.GetBlock(blockCode);
+            Block orientedBlock = GetLookAwareBlockVariant(byPlayer, itemstack, blockSel);
 
-            if (orientedBlock == null)
-            {
-                throw new System.NullReferenceException("Unable to to find a rotated block with code " + blockCode + ", you're maybe missing the side variant group of have a dash in your block code");
-            }
 
             if (orientedBlock.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
             {
@@ -96,6 +90,18 @@ namespace Vintagestory.GameContent
             return false;
         }
 
+        public Block GetLookAwareBlockVariant(IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel)
+        {
+            BlockFacing[] horVer = Block.SuggestedHVOrientation(byPlayer, blockSel);
+            AssetLocation blockCode = block.CodeWithVariant(variantCode, horVer[0].Code);
+            var orientedBlock = byPlayer.Entity.World.BlockAccessor.GetBlock(blockCode);
+
+            if (orientedBlock == null)
+            {
+                throw new System.NullReferenceException("Unable to to find a rotated block with code " + blockCode + ", you're maybe missing the side variant group of have a dash in your block code");
+            }
+            return orientedBlock;
+        }
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, ref float dropQuantityMultiplier, ref EnumHandling handled)
         {

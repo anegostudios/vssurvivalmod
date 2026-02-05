@@ -55,7 +55,7 @@ public class EntityBehaviorPassivePhysicsMultiBox : EntityBehaviorPassivePhysics
     public override void AfterInitialized(bool onFirstSpawn)
     {
         base.AfterInitialized(onFirstSpawn);
-        AdjustCollisionBoxesToYaw(1, false, entity.SidedPos.Yaw);
+        AdjustCollisionBoxesToYaw(1, false, entity.Pos.Yaw);
     }
 
     public override void OnEntityDespawn(EntityDespawnData despawn)
@@ -72,7 +72,7 @@ public class EntityBehaviorPassivePhysicsMultiBox : EntityBehaviorPassivePhysics
             // so we need to run AdjustCollisionBoxesToYaw if not mounted
             if (capi.World.Player.Entity.MountedOn != entity)
             {
-                AdjustCollisionBoxesToYaw(deltaTime * 60, false, entity.SidedPos.Yaw);
+                AdjustCollisionBoxesToYaw(deltaTime * 60, false, entity.Pos.Yaw);
             }
 
             foreach (var collbox in CollisionBoxes)
@@ -100,7 +100,7 @@ public class EntityBehaviorPassivePhysicsMultiBox : EntityBehaviorPassivePhysics
 
     protected override void applyCollision(EntityPos pos, float dtFactor)
     {
-        AdjustCollisionBoxesToYaw(dtFactor, true, entity.SidedPos.Yaw);
+        AdjustCollisionBoxesToYaw(dtFactor, true, entity.Pos.Yaw);
 
         mcollisionTester.ApplyTerrainCollision(CollisionBoxes, CollisionBoxes.Length, entity, pos, dtFactor, ref newPos, 0, CollisionYExtra);
     }
@@ -115,7 +115,7 @@ public class EntityBehaviorPassivePhysicsMultiBox : EntityBehaviorPassivePhysics
 
         if (push)
         {
-            tmpPos.Set(entity.SidedPos.X, entity.SidedPos.Y, entity.SidedPos.Z);
+            tmpPos.Set(entity.Pos.X, entity.Pos.Y, entity.Pos.Z);
             Cuboidd ccollbox = mcollisionTester.GetCollidingCollisionBox(entity.World.BlockAccessor, CollisionBoxes, CollisionBoxes.Length, tmpPos, false);
             if (ccollbox != null)
             {
@@ -161,9 +161,9 @@ public class EntityBehaviorPassivePhysicsMultiBox : EntityBehaviorPassivePhysics
 
     private bool PushoutOfCollisionbox(float dt, Cuboidd collBox)
     {
-        double posX = entity.SidedPos.X;
-        double posY = entity.SidedPos.Y;
-        double posZ = entity.SidedPos.Z;
+        double posX = entity.Pos.X;
+        double posY = entity.Pos.Y;
+        double posZ = entity.Pos.Z;
 
         var ba = entity.World.BlockAccessor;
 
@@ -186,7 +186,7 @@ public class EntityBehaviorPassivePhysicsMultiBox : EntityBehaviorPassivePhysics
                     if (r < shortestDist)
                     {
                         // Make going diagonal a bit more costly
-                        shortestDist = r + (cardinal.IsDiagnoal ? 0.1f : 0);
+                        shortestDist = r + (cardinal.IsDiagonal ? 0.1f : 0);
                         pushDir = cardinal.Normali;
                         break;
                     }
@@ -205,11 +205,11 @@ public class EntityBehaviorPassivePhysicsMultiBox : EntityBehaviorPassivePhysics
         float rndx = ((float)entity.World.Rand.NextDouble() - 0.5f) / 600f;
         float rndz = ((float)entity.World.Rand.NextDouble() - 0.5f) / 600f;
 
-        entity.SidedPos.X += pushDir.X * dt * 1.5f;
-        entity.SidedPos.Z += pushDir.Z * dt * 1.5f;
+        entity.Pos.X += pushDir.X * dt * 1.5f;
+        entity.Pos.Z += pushDir.Z * dt * 1.5f;
 
-        entity.SidedPos.Motion.X = pushVelocityMul * pushDir.X * dt + rndx;
-        entity.SidedPos.Motion.Z = pushVelocityMul * pushDir.Z * dt + rndz;
+        entity.Pos.Motion.X = pushVelocityMul * pushDir.X * dt + rndx;
+        entity.Pos.Motion.Z = pushVelocityMul * pushDir.Z * dt + rndz;
 
         return true;
     }

@@ -40,6 +40,12 @@ namespace Vintagestory.GameContent
         {
             this.capi = capi;
 
+            if (!capi.Assets.Exists("shapes/block/machine/machinegear2.json"))
+            {
+                capi.Logger.Warning("shapes/block/machine/machinegear2.json file missing. GearRenderer will be disabled.");
+                return;
+            }
+
             capi.Event.RegisterRenderer(this, EnumRenderStage.Opaque, "machinegearrenderer");
             
             matrixf = new Matrixf();
@@ -52,7 +58,7 @@ namespace Vintagestory.GameContent
         {
             var shape = Shape.TryGet(capi, "shapes/block/machine/machinegear2.json");
             var block = capi.World.GetBlock(new AssetLocation("platepile"));
-            if (block == null) return;
+            if (block == null || shape == null) return;
 
             capi.Tesselator.TesselateShape(block, shape, out var mesh);
             gearMeshref = capi.Render.UploadMesh(mesh);

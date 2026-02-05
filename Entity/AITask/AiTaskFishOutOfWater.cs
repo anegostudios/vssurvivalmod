@@ -75,9 +75,9 @@ namespace Vintagestory.GameContent
                 dy = wanderRangeVertical.nextFloat() * (rand.Next(2) * 2 - 1) * wRangeMul;
                 dz = wanderRangeHorizontal.nextFloat() * (rand.Next(2) * 2 - 1) * wRangeMul;
 
-                curTarget.X = entity.ServerPos.X + dx;
-                curTarget.Y = entity.ServerPos.InternalY + dy;
-                curTarget.Z = entity.ServerPos.Z + dz;
+                curTarget.X = entity.Pos.X + dx;
+                curTarget.Y = entity.Pos.InternalY + dy;
+                curTarget.Z = entity.Pos.Z + dz;
                 curTarget.W = 1;
 
                 Block block;
@@ -120,14 +120,14 @@ namespace Vintagestory.GameContent
 
         private void OnStuck()
         {
-            
+
         }
 
         private void OnGoalReached()
         {
         }
 
-        public override bool 
+        public override bool
             ContinueExecute(float dt)
         {
             //Check if time is still valid for task.

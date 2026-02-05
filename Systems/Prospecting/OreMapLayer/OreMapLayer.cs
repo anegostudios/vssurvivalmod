@@ -30,7 +30,7 @@ namespace Vintagestory.GameContent
         ICoreClientAPI capi;
 
         /// <summary>
-        /// List 
+        /// List
         /// </summary>
         CreateIconTextureDelegate oremapIconDele;
         public LoadedTexture oremapTexture;
@@ -97,7 +97,7 @@ namespace Vintagestory.GameContent
             ElementBounds bgBounds = ElementBounds.Fill.WithFixedPadding(GuiStyle.ElementToDialogPadding);
             bgBounds.BothSizing = ElementSizing.FitToChildren;
 
-            guiDialogWorldMap.Composers[key] = 
+            guiDialogWorldMap.Composers[key] =
                 capi.Gui
                     .CreateCompo(key, dlgBounds)
                     .AddShadedDialogBG(bgBounds, false)
@@ -138,7 +138,7 @@ namespace Vintagestory.GameContent
             byte[] data = sapi.WorldManager.SaveGame.GetData("oreMapMarkers-" + player.PlayerUID);
             if (data != null)
             {
-                return PropickReadingsByPlayer[player.PlayerUID] = SerializerUtil.Deserialize<List<PropickReading>>(data);                
+                return PropickReadingsByPlayer[player.PlayerUID] = SerializerUtil.Deserialize<List<PropickReading>>(data);
             }
 
             return PropickReadingsByPlayer[player.PlayerUID] = new List<PropickReading>();
@@ -176,9 +176,11 @@ namespace Vintagestory.GameContent
 
         public override void OnViewChangedServer(IServerPlayer fromPlayer, int x1, int z1, int x2, int z2)
         {
+#pragma warning disable CS0618 // Type or member is obsolete - intentionally called here for mod backwards compatibility if a mod extended this class
             OnViewChangedServer(fromPlayer, null, null);
+#pragma warning restore CS0618
         }
-        
+
         public override void OnMapOpenedClient()
         {
             ensureIconTexturesLoaded();

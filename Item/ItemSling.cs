@@ -188,7 +188,8 @@ namespace Vintagestory.GameContent
             projectile.ProjectileStack = stack;
             projectile.WeaponStack = slot.Itemstack;
 
-            EntityProjectile.SpawnThrownEntity(entity, byEntity, 0.75, 0, 0, byEntity.Stats.GetBlended("bowDrawingStrength") * 0.8f);
+            double speed = 0.8 * byEntity.Stats.GetBlended("bowDrawingStrength");
+            EntityProjectile.SpawnProjectile(entity, byEntity, speed, 0.75, -0.2, 0.1, 0.4, 20);
 
             slot.Itemstack.Collectible.DamageItem(byEntity.World, byEntity, slot);
 

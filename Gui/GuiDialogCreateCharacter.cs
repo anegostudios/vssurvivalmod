@@ -106,19 +106,22 @@ namespace Vintagestory.GameContent
                     .FixedUnder(insetSlotBounds, 4).WithAlignment(EnumDialogArea.LeftFixed).WithFixedPadding(12, 6)
                 ;
 
-                ElementBounds bounds=null;
+                ElementBounds bounds = null;
                 ElementBounds prevbounds = null;
 
                 double leftX = 0;
 
+                var appliedSkinParts = skinMod.AppliedSkinParts;
                 foreach (var skinpart in skinMod.AvailableSkinParts)
                 {
+                    if (skinpart.Hidden) continue; // allow for hidden skin part/options
+
                     bounds = ElementBounds.Fixed(leftX, (prevbounds == null || prevbounds.fixedY == 0) ? -10 : prevbounds.fixedY + 8, colorIconSize, colorIconSize);
                     if (!AllowedSkinPartSelection(skinpart.Code)) continue;
 
                     string code = skinpart.Code;
 
-                    AppliedSkinnablePartVariant appliedVar = skinMod.AppliedSkinParts.FirstOrDefault(sp => sp.PartCode == code);
+                    AppliedSkinnablePartVariant appliedVar = appliedSkinParts.FirstOrDefault(sp => sp.PartCode == code);
 
                     var variants = skinpart.Variants.Where(p => variantCategories.Contains(p.Category) || (AllowKeepCurrent && p.Code == appliedVar.Code)).ToArray();
 
@@ -127,7 +130,7 @@ namespace Vintagestory.GameContent
                         var colors = variants.Select(p => p.Color).ToArray();
                         int selectedIndex = 0;
 
-                        createCharacterComposer.AddRichtext(Lang.Get("skinpart-"+code), CairoFont.WhiteSmallText(), bounds = bounds.BelowCopy(0, 10).WithFixedSize(210, 22));
+                        createCharacterComposer.AddRichtext(Lang.Get("skinpart-" + code), CairoFont.WhiteSmallText(), bounds = bounds.BelowCopy(0, 10).WithFixedSize(210, 22));
                         createCharacterComposer.AddColorListPicker(colors, (index) => onToggleSkinPart(code, index), bounds = bounds.BelowCopy(0, 0).WithFixedSize(colorIconSize, colorIconSize), 180, "picker-" + code);
 
                         for (int i = 0; i < variants.Length; i++)
@@ -267,11 +270,11 @@ namespace Vintagestory.GameContent
 
                 if (skinPart.Type == EnumSkinnableType.Texture && !skinPart.UseDropDown)
                 {
-                    Composers["createcharacter"].ColorListPickerSetValue("picker-" + partcode, index);
+                    Composers["createcharacter"]?.ColorListPickerSetValue("picker-" + partcode, index);
                 }
                 else
                 {
-                    Composers["createcharacter"].GetDropDown("dropdown-" + partcode).SetSelectedIndex(index);
+                    Composers["createcharacter"]?.GetDropDown("dropdown-" + partcode)?.SetSelectedIndex(index);
                 }
             }
 
@@ -539,7 +542,7 @@ namespace Vintagestory.GameContent
             Vec4f lightRot = mat.TransformVector(lighPos);
             double pad = GuiElement.scaled(GuiElementItemSlotGridBase.unscaledSlotPadding);
 
-            capi.Render.CurrentActiveShader.Uniform("lightPosition", new Vec3f(lightRot.X, lightRot.Y, lightRot.Z));
+            capi.Render.CurrentActiveShader.Uniform("lightPosition", lightRot.X, lightRot.Y, lightRot.Z);
             capi.Render.PushScissor(insetSlotBounds);
 
             double posX = insetSlotBounds.renderX + pad - GuiElement.scaled(195) * charZoom + GuiElement.scaled(115 * (1 - charZoom));
@@ -556,7 +559,7 @@ namespace Vintagestory.GameContent
 
             capi.Render.RenderEntityToGui(deltaTime, capi.World.Player.Entity, posX, posY, posZ, yaw, size, ColorUtil.WhiteArgb);
             capi.Render.PopScissor();
-            capi.Render.CurrentActiveShader.Uniform("lightPosition", new Vec3f(1, -1, 0).Normalize());
+            capi.Render.CurrentActiveShader.Uniform("lightPosition", GameMath.ONEOVERROOT2, -GameMath.ONEOVERROOT2, 0f);
             capi.Render.GlPopMatrix();
         }
         #endregion

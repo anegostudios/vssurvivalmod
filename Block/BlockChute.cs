@@ -1,4 +1,4 @@
-﻿using System.Linq;
+using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
@@ -206,7 +206,7 @@ namespace Vintagestory.GameContent
 
         bool CanStay(IWorldAccessor world, BlockPos pos)
         {
-            BlockPos npos = new BlockPos();
+            BlockPos npos = new BlockPos(pos.dimension);
             var ba = world.BlockAccessor;
 
             if (PullFaces != null)

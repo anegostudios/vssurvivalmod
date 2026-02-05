@@ -1,4 +1,4 @@
-﻿using Vintagestory.API;
+using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
@@ -30,7 +30,7 @@ namespace Vintagestory.GameContent
         public override bool ShouldReceiveClientParticleTicks(IWorldAccessor world, IPlayer byPlayer, BlockPos pos, ref EnumHandling handling)
         {
             handling = EnumHandling.PreventDefault;
-            BlockPos tmpPos = new BlockPos();
+            BlockPos tmpPos = new BlockPos(pos.dimension);
             for (int i = 1; i <= 8; i++)
             {
                 tmpPos.Set(pos.X, pos.Y - i, pos.Z);

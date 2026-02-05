@@ -11,41 +11,99 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityForge : BlockEntity, IHeatSource, ITemperatureSensitive
+
+    public class BlockEntityForge : BlockEntityContainer, IHeatSource, ITemperatureSensitive
     {
-        ForgeContentsRenderer renderer;
-        ItemStack contents;
-        float fuelLevel;
-        bool burning;
+        protected static SimpleParticleProperties smallMetalSparks;
+        protected static SimpleParticleProperties smokeQuads;
 
-        double lastTickTotalHours;
-        ILoadedSound ambientSound;
+        protected InventoryGeneric inv;
+        protected ForgeContentsRenderer renderer;
+        protected float partialFuelConsumed;
+        protected bool burning;
+        protected double lastTickTotalHours;
+        protected ILoadedSound ambientSound;
+        protected Vec3f blockRotRad = new Vec3f();
+        protected bool clientSidePrevBurning;
+        public ItemSlot FuelSlot => inv[1];
+        public ItemSlot WorkItemSlot => inv[0];
+        public ItemStack WorkItemStack => inv[0].Itemstack;
+        public float FuelLevel => FuelSlot.StackSize - partialFuelConsumed;
+        public bool IsBurning => burning;
+        public bool CanIgnite => !burning && FuelLevel > 0;
+        public bool IsHot => (inv[1].Itemstack?.Collectible.GetTemperature(Api.World, inv[1].Itemstack) ?? 0) > 20;
+
+        // burnate 1 = means a1 coal per ingame hour
+        public virtual float BurnRate
+        {
+            get
+            {
+                return 0.5f * 1/(FuelSlot.Itemstack?.ItemAttributes?["inForge"]["durationMul"].AsFloat() ?? 1f);
+            }
+        }
 
 
-        public bool Lit => burning;
-        public ItemStack Contents => contents;
-        public float FuelLevel => fuelLevel;
+        public int MaxTemperature
+        {
+            get
+            {
+                return 700 + (FuelSlot.Itemstack?.ItemAttributes?["inForge"]["tempGainDeg"].AsInt() ?? 1);
+            }
+        }
+        public float MaxExtraHeatRate = 1150 / 700f - 1;
+        public float extraOxygenRate;
+        public float extraOxygenRateRender;
+        public float extraOxygenRateParticles;
+        public BlockFacing blowDirection = BlockFacing.NORTH;
 
-        public bool IsHot => (contents?.Collectible.GetTemperature(Api.World, contents) ?? 0) > 20;
+        public virtual float MeshAngleRad
+        {
+            get { return blockRotRad.Y; }
+            set { blockRotRad.Y = value; }
+        }
 
+
+        public BlockEntityForge()
+        {
+            inv = new InventoryGeneric(2, null, null);
+        }
+
+        public override InventoryBase Inventory => inv;
+        public override string InventoryClassName => "forge";
 
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
-            if (contents != null) contents.ResolveBlockOrItem(api.World);
 
+            inv.LateInitialize("forge-" + Pos, api);
+            
             if (api is ICoreClientAPI)
             {
                 ICoreClientAPI capi = (ICoreClientAPI)api;
-                capi.Event.RegisterRenderer(renderer = new ForgeContentsRenderer(Pos, capi), EnumRenderStage.Opaque, "forge");
-                renderer.SetContents(contents, fuelLevel, burning, true);
+                capi.Event.RegisterRenderer(renderer = new ForgeContentsRenderer(Block, Pos, capi, blockRotRad), EnumRenderStage.Opaque, "forge");
+
+                renderer.SetContents(WorkItemStack, FuelLevel, burning, true, extraOxygenRateRender);
                 RegisterGameTickListener(OnClientTick, 50);
 
                 // Regen mesh on transform change
-                api.Event.RegisterEventBusListener((string _, ref EnumHandling _, IAttribute _) => renderer.RegenMesh(), filterByEventName: "genjsontransform");
+                api.Event.RegisterEventBusListener(onEventBusEvent, filterByEventName: "genjsontransform");
             }
 
-            RegisterGameTickListener(OnCommonTick, 200);
+            RegisterGameTickListener(OnCommonTick200ms, 200);
+
+
+            if (smallMetalSparks == null)
+            {
+                smallMetalSparks = BlockEntityCoalPile.smallMetalSparks.Clone(api.World);
+                smokeQuads = BlockEntityCoalPile.smokeParticles.Clone(api.World);
+                smokeQuads.LifeLength = 0.5f;
+                smokeQuads.OpacityEvolve = EvolvingNatFloat.create(EnumTransformFunction.QUADRATIC, -16f);
+            }
+        }
+
+        private void onEventBusEvent(string eventName, ref EnumHandling handling, IAttribute data)
+        {
+            renderer.RegenMesh();
         }
 
         public void ToggleAmbientSounds(bool on)
@@ -74,13 +132,52 @@ namespace Vintagestory.GameContent
                 ambientSound.Dispose();
                 ambientSound = null;
             }
-
         }
 
 
-        bool clientSidePrevBurning;
-        private void OnClientTick(float dt)
+        
+        public void BlowAirInto(float amount, BlockFacing direction)
         {
+            if (!burning) return;
+
+            extraOxygenRate = Math.Min(MaxExtraHeatRate, extraOxygenRate + amount);
+            extraOxygenRateRender = Math.Min(1, extraOxygenRateRender + amount);
+            extraOxygenRateParticles = Math.Max(extraOxygenRateParticles, amount);
+
+            blowDirection = direction;
+        }
+
+
+        protected void OnClientTick(float dt)
+        {
+            extraOxygenRateParticles = Math.Max(0, extraOxygenRateParticles - dt * 0.5f);
+            if (extraOxygenRateParticles > 0)
+            {
+                var dir = blowDirection.Normalf;
+
+                smallMetalSparks.MinPos.Set(Pos.X + 4/16f, Pos.Y + 14/16f, Pos.Z + 4/16f);
+                smallMetalSparks.AddPos.Set(8/16f, 0.1f, 8/16f);
+                smallMetalSparks.MinVelocity.Set(dir.X * 0.5f, 1f, dir.Z * 0.5f);
+                smallMetalSparks.AddVelocity.Set(dir.X * 0.5f, 3f, dir.Z * 0.5f);
+
+                smokeQuads.MinPos.Set(Pos.X + 4 / 16f, Pos.Y + 14 / 16f, Pos.Z + 4 / 16f);
+                smokeQuads.AddPos.Set(8 / 16f, 0.1f, 8 / 16f);
+                smokeQuads.MinVelocity.Set(-0.125f, 0.5f, -0.125f);
+                smokeQuads.AddVelocity.Set(0.25f, 1.0f, 0.25f);
+
+                float cnt = 0;
+                while (cnt < extraOxygenRateParticles)
+                {
+                    Api.World.SpawnParticles(smallMetalSparks);
+                    cnt += dt / 2;
+
+                    if (Api.World.Rand.NextDouble() < 0.6) {
+                        Api.World.SpawnParticles(smokeQuads);
+                    }
+                }
+            }
+
+
             if (Api?.Side == EnumAppSide.Client && clientSidePrevBurning != burning)
             {
                 ToggleAmbientSounds(IsBurning);
@@ -92,85 +189,95 @@ namespace Vintagestory.GameContent
                 BlockEntityCoalPile.SpawnBurningCoalParticles(Api, Pos.ToVec3d().Add(4 / 16f, 14 / 16f, 4 / 16f), 8/16f, 8/16f);
             }
 
-            if (renderer != null)
-            {
-                renderer.SetContents(contents, fuelLevel, burning, false);
-            }
+            renderer?.SetContents(WorkItemSlot.Itemstack, FuelLevel, burning, false, extraOxygenRateRender);
+            extraOxygenRateRender *= 0.98f;
         }
 
 
-        private void OnCommonTick(float dt)
+        protected void OnCommonTick200ms(float dt)
         {
             if (burning)
             {
                 double hoursPassed = Api.World.Calendar.TotalHours - lastTickTotalHours;
+                var oxygenBurnMul = 1 + extraOxygenRate;
 
-                if (fuelLevel > 0) fuelLevel = Math.Max(0, fuelLevel - (float)(2.5 / 24 * hoursPassed));
+                partialFuelConsumed += (float)(BurnRate * hoursPassed * oxygenBurnMul);
+                updateFuelLevel();
 
-                if (fuelLevel <= 0)
+                if (FuelLevel <= 0)
                 {
                     burning = false;
+                    partialFuelConsumed = 0;
                 }
 
-                if (contents != null)
+                if (WorkItemStack != null)
                 {
-                    float temp = contents.Collectible.GetTemperature(Api.World, contents);
-                    if (temp < 1100)
-                    {
-                        float tempGain = (float)(hoursPassed * 1500);
+                    float temp = WorkItemStack.Collectible.GetTemperature(Api.World, WorkItemStack);
 
-                        contents.Collectible.SetTemperature(Api.World, contents, Math.Min(1100, temp + tempGain));
+                    if (temp < MaxTemperature * oxygenBurnMul)
+                    {
+                        float tempGain = (float)(hoursPassed * 1500 * oxygenBurnMul);
+                        WorkItemStack.Collectible.SetTemperature(Api.World, WorkItemStack, Math.Min(MaxTemperature * oxygenBurnMul, temp + tempGain));
                     }
                 }
+
+                // after 0.1h all extra oxygen is gone
+                extraOxygenRate *= Math.Max(0, 1 - ((float)hoursPassed * 30));
             }
+            else
+            {
+                partialFuelConsumed = 0;
+
+                if (Api.Side == EnumAppSide.Server && Api.World.Rand.NextDouble() < 0.05 && WorkItemStack != null)
+                {
+                    float temp = WorkItemStack.Collectible.GetTemperature(Api.World, WorkItemStack);
+                    if (temp > 900) TryIgnite();
+                }
+
+                extraOxygenRate = 0;
+            }
+
 
             lastTickTotalHours = Api.World.Calendar.TotalHours;
         }
 
-        public bool IsBurning
-        {
-            get { return burning; }
-        }
-
-        public bool CanIgnite
-        {
-            get { return !burning && fuelLevel > 0; }
-        }
-
-        internal void TryIgnite()
+        public void TryIgnite()
         {
             if (burning) return;
-
             burning = true;
-            renderer?.SetContents(contents, fuelLevel, burning, false);
+            renderer?.SetContents(WorkItemStack, FuelLevel, burning, false, extraOxygenRate);
             lastTickTotalHours = Api.World.Calendar.TotalHours;
             MarkDirty();
         }
 
-        internal bool OnPlayerInteract(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
+        public bool OnPlayerInteract(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
             ItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
             if (!byPlayer.Entity.Controls.ShiftKey)
             {
-                if (contents == null) return false;
-                ItemStack split = contents.Clone();
-                split.StackSize = 1;
-                contents.StackSize--;
+                if (WorkItemStack == null) return false;
+                ItemStack splitStack = WorkItemStack.Clone();
+                splitStack.StackSize = 1;
+                WorkItemStack.StackSize--;
 
-                if (contents.StackSize == 0) contents = null;
+                if (WorkItemStack.StackSize == 0) WorkItemSlot.Itemstack = null;
 
-                if (!byPlayer.InventoryManager.TryGiveItemstack(split))
+                if (byPlayer.InventoryManager.TryGiveItemstack(splitStack))
                 {
-                    world.SpawnItemEntity(split, Pos);
+                    Api.ModLoader.GetModSystem<ModSystemSubTongsDurability>()?.OnItemPickedUp(byPlayer.Entity, splitStack);                    
+                } else
+                {
+                    world.SpawnItemEntity(splitStack, Pos);
                 }
+
                 Api.World.Logger.Audit("{0} Took 1x{1} from Forge at {2}.",
                     byPlayer.PlayerName,
-                    split.Collectible.Code,
+                    splitStack.Collectible.Code,
                     blockSel.Position
                 );
 
-                renderer?.SetContents(contents, fuelLevel, burning, true);
+                renderer?.SetContents(WorkItemStack, FuelLevel, burning, true, extraOxygenRate);
                 MarkDirty();
                 Api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), Pos, 0.4375, byPlayer, false);
 
@@ -181,11 +288,11 @@ namespace Vintagestory.GameContent
                 if (slot.Itemstack == null) return false;
 
                 // Add fuel
-                CombustibleProperties combprops = slot.Itemstack.Collectible.CombustibleProps;
+                CombustibleProperties combprops = slot.Itemstack.Collectible.GetCombustibleProperties(world, slot.Itemstack, null);
                 if (combprops != null && combprops.BurnTemperature > 1000)
                 {
-                    if (fuelLevel >= 5 / 16f) return false;
-                    fuelLevel += 1 / 16f;
+                    if (FuelLevel > 4.5f) return false;
+                    if (slot.TryPutInto(Api.World, FuelSlot, 1) == 0) return false;
 
                     if (slot.Itemstack.Collectible is ItemCoal || slot.Itemstack.Collectible is ItemOre)
                     {
@@ -193,7 +300,7 @@ namespace Vintagestory.GameContent
                     }
                     (Api as ICoreClientAPI)?.World.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
 
-                    renderer?.SetContents(contents, fuelLevel, burning, false);
+                    renderer?.SetContents(WorkItemStack, FuelLevel, burning, false, extraOxygenRate);
                     MarkDirty();
 
                     if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
@@ -201,7 +308,6 @@ namespace Vintagestory.GameContent
                         slot.TakeOut(1);
                         slot.MarkDirty();
                     }
-
 
                     return true;
                 }
@@ -211,20 +317,18 @@ namespace Vintagestory.GameContent
                 bool forgableGeneric = slot.Itemstack.Collectible.Attributes?.IsTrue("forgable") == true;
 
                 // Add heatable item
-                if (contents == null && (firstCodePart == "ingot" || firstCodePart == "metalplate" || firstCodePart == "workitem" || forgableGeneric))
+                if (WorkItemStack == null && (firstCodePart == "ingot" || firstCodePart == "metalplate" || firstCodePart == "workitem" || forgableGeneric))
                 {
-                    contents = slot.Itemstack.Clone();
-                    contents.StackSize = 1;
+                    WorkItemSlot.Itemstack = slot.TakeOut(1);
 
-                    slot.TakeOut(1);
                     slot.MarkDirty();
                     Api.World.Logger.Audit("{0} Put 1x{1} into Forge at {2}.",
                         byPlayer.PlayerName,
-                        contents.Collectible.Code,
+                        WorkItemStack.Collectible.Code,
                         blockSel.Position
                     );
 
-                    renderer?.SetContents(contents, fuelLevel, burning, true);
+                    renderer?.SetContents(WorkItemStack, FuelLevel, burning, true, extraOxygenRate);
                     MarkDirty();
                     Api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), Pos, 0.4375, byPlayer, false);
 
@@ -232,23 +336,23 @@ namespace Vintagestory.GameContent
                 }
 
                 // Merge heatable item
-                if (!forgableGeneric && contents != null && contents.Equals(Api.World, slot.Itemstack, GlobalConstants.IgnoredStackAttributes) && contents.StackSize < 4 && contents.StackSize < contents.Collectible.MaxStackSize)
+                if (!forgableGeneric && WorkItemStack != null && WorkItemStack.Equals(Api.World, slot.Itemstack, GlobalConstants.IgnoredStackAttributes) && WorkItemStack.StackSize < 4 && WorkItemStack.StackSize < WorkItemStack.Collectible.MaxStackSize)
                 {
-                    float myTemp = contents.Collectible.GetTemperature(Api.World, contents);
+                    float myTemp = WorkItemStack.Collectible.GetTemperature(Api.World, WorkItemStack);
                     float histemp = slot.Itemstack.Collectible.GetTemperature(Api.World, slot.Itemstack);
 
-                    contents.Collectible.SetTemperature(world, contents, (myTemp * contents.StackSize + histemp * 1) / (contents.StackSize + 1));
-                    contents.StackSize++;
+                    WorkItemStack.Collectible.SetTemperature(world, WorkItemStack, (myTemp * WorkItemStack.StackSize + histemp * 1) / (WorkItemStack.StackSize + 1));
+                    WorkItemStack.StackSize++;
 
                     slot.TakeOut(1);
                     slot.MarkDirty();
                     Api.World.Logger.Audit("{0} Put 1x{1} into Forge at {2}.",
                         byPlayer.PlayerName,
-                        contents.Collectible.Code,
+                        WorkItemStack.Collectible.Code,
                         blockSel.Position
                     );
 
-                    renderer?.SetContents(contents, fuelLevel, burning, true);
+                    renderer?.SetContents(WorkItemStack, FuelLevel, burning, true, extraOxygenRate);
                     Api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), Pos, 0.4375, byPlayer, false);
 
                     MarkDirty();
@@ -263,23 +367,32 @@ namespace Vintagestory.GameContent
         public override void OnBlockRemoved()
         {
             base.OnBlockRemoved();
-            if (renderer != null)
-            {
-                renderer.Dispose();
-                renderer = null;
-            }
-
+            renderer?.Dispose();
+            renderer = null;
             ambientSound?.Dispose();
+            (Api as ICoreClientAPI)?.Event.UnregisterEventBusListener(onEventBusEvent);
+        }
+        public override void OnBlockUnloaded()
+        {
+            base.OnBlockUnloaded();
+            renderer?.Dispose();
+            (Api as ICoreClientAPI)?.Event.UnregisterEventBusListener(onEventBusEvent);
         }
 
         public override void OnBlockBroken(IPlayer byPlayer = null)
         {
-            base.OnBlockBroken(byPlayer);
-
-            if (contents != null)
+            if (!burning && !FuelSlot.Empty)
             {
-                Api.World.SpawnItemEntity(contents, Pos);
+                Api.World.SpawnItemEntity(FuelSlot.Itemstack, Pos);
             }
+
+            if (WorkItemStack != null)
+            {
+                Api.World.SpawnItemEntity(WorkItemStack, Pos);
+            }
+
+            Inventory.Clear();
+            base.OnBlockBroken(byPlayer);
 
             ambientSound?.Dispose();
         }
@@ -288,80 +401,61 @@ namespace Vintagestory.GameContent
         {
             base.FromTreeAttributes(tree, worldForResolving);
 
-            contents = tree.GetItemstack("contents");
-            fuelLevel = tree.GetFloat("fuelLevel");
+            var contents = tree.GetItemstack("contents");
+            // Pre 1.22 forges
+            if (contents != null && WorkItemStack == null)
+            {
+                WorkItemSlot.Itemstack = contents;
+                if (Api != null)
+                {
+                    contents?.ResolveBlockOrItem(Api.World);
+                }
+            }
+
+            partialFuelConsumed = tree.GetFloat("partialFuelConsumed");
             burning = tree.GetInt("burning") > 0;
             lastTickTotalHours = tree.GetDouble("lastTickTotalHours");
+            MeshAngleRad = tree.GetFloat("meshAngle", MeshAngleRad);
 
-            if (Api != null)
-            {
-                contents?.ResolveBlockOrItem(Api.World);
-            }
-            if (renderer != null)
-            {
-                renderer.SetContents(contents, fuelLevel, burning, true);
-            }
+
+            renderer?.SetContents(WorkItemStack, FuelLevel, burning, true, extraOxygenRate);
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
         {
             base.ToTreeAttributes(tree);
 
-            tree.SetItemstack("contents", contents);
-            tree.SetFloat("fuelLevel", fuelLevel);
+            tree.SetItemstack("contents", WorkItemStack);
+            tree.SetFloat("partialFuelConsumed", partialFuelConsumed);
             tree.SetInt("burning", burning ? 1 : 0);
             tree.SetDouble("lastTickTotalHours", lastTickTotalHours);
+            tree.SetFloat("meshAngle", MeshAngleRad);
         }
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
-            if (contents != null)
+            if (!WorkItemSlot.Empty)
             {
-                int temp = (int)contents.Collectible.GetTemperature(Api.World, contents);
+                int temp = (int)WorkItemStack.Collectible.GetTemperature(Api.World, WorkItemStack);
                 if (temp <= 25)
                 {
-                    dsc.AppendLine(Lang.Get("forge-contentsandtemp-cold", contents.StackSize, contents.GetName()));
+                    dsc.AppendLine(Lang.Get("forge-contentsandtemp-cold", WorkItemStack.StackSize, WorkItemStack.GetName()));
                 } else
                 {
-                    dsc.AppendLine(Lang.Get("forge-contentsandtemp", contents.StackSize, contents.GetName(), temp));
+                    dsc.AppendLine(Lang.Get("forge-contentsandtemp", WorkItemStack.StackSize, WorkItemStack.GetName(), temp));
                 }
-
             }
-        }
 
-
-        public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed, bool resolveImports)
-        {
-            if (contents?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForResolve) == false)
+            if (!FuelSlot.Empty)
             {
-                contents = null;
-            }
-            contents?.Collectible.OnLoadCollectibleMappings(worldForResolve, new DummySlot(contents), oldBlockIdMapping, oldItemIdMapping, resolveImports);
-        }
-
-        public override void OnStoreCollectibleMappings(Dictionary<int, AssetLocation> blockIdMapping, Dictionary<int, AssetLocation> itemIdMapping)
-        {
-            if (contents != null)
-            {
-                if (contents.Class == EnumItemClass.Item)
-                {
-                    blockIdMapping[contents.Id] = contents.Item.Code;
-                }
-                else
-                {
-                    itemIdMapping[contents.Id] = contents.Block.Code;
-                }
-                contents.Collectible.OnStoreCollectibleMappings(Api.World, new DummySlot(contents), blockIdMapping, itemIdMapping);
+                var oxygenBurnMul = 1 + extraOxygenRate;
+                dsc.AppendLine(Lang.Get("Fuel for {0:0.##} hours", FuelLevel / oxygenBurnMul / BurnRate));
             }
         }
 
-        public override void OnBlockUnloaded()
-        {
-            base.OnBlockUnloaded();
 
-            renderer?.Dispose();
-        }
 
+        // radiant heat for warming players
         public float GetHeatStrength(IWorldAccessor world, BlockPos heatSourcePos, BlockPos heatReceiverPos)
         {
             return IsBurning ? 7 : 0;
@@ -373,19 +467,20 @@ namespace Vintagestory.GameContent
             if (burning)
             {
                 playsound = true;
-                fuelLevel -= (float)amountRel / 250f;
-                if (Api.World.Rand.NextDouble() < amountRel / 30f || fuelLevel <= 0)
+                partialFuelConsumed += (float)amountRel / 250f;
+                updateFuelLevel();
+                if (Api.World.Rand.NextDouble() < amountRel / 30f || FuelLevel <= 0)
                 {
                     burning = false;
                 }
                 MarkDirty(true);
             }
 
-            float temp = contents == null ? 0 : contents.Collectible.GetTemperature(Api.World, contents);
+            float temp = WorkItemStack == null ? 0 : WorkItemStack.Collectible.GetTemperature(Api.World, WorkItemStack);
             if (temp > 20)
             {
                 playsound = temp > 100;
-                contents.Collectible.SetTemperature(Api.World, contents, Math.Min(1100, temp - amountRel * 20), false);
+                WorkItemStack.Collectible.SetTemperature(Api.World, WorkItemStack, Math.Min(1100, temp - amountRel * 20), false);
                 MarkDirty(true);
             }
 
@@ -394,5 +489,25 @@ namespace Vintagestory.GameContent
                 Api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), Pos, 0.25, null, false, 16);
             }
         }
+
+        private void updateFuelLevel()
+        {
+            if (partialFuelConsumed > 1)
+            {
+                FuelSlot.Itemstack.StackSize = Math.Max(0, FuelSlot.StackSize - (int)partialFuelConsumed);
+                partialFuelConsumed %= 1;
+                if (FuelSlot.Itemstack.StackSize <= 0) FuelSlot.Itemstack = null;
+            }
+        }
+
+        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
+        {
+            var mesh = (Api as ICoreClientAPI).TesselatorManager.GetDefaultBlockMesh(Block);
+            float[] rotMatrix = new Matrixf().Translate(0.5f, 0, 0.5f).RotateY(MeshAngleRad).Translate(-0.5f, 0f, -0.5f).Values;
+            mesher.AddMeshData(mesh, rotMatrix);
+            return true;
+        }
+
+        
     }
 }

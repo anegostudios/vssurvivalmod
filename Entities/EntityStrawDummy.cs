@@ -25,12 +25,12 @@ namespace Vintagestory.GameContent
                 ItemStack stack = new ItemStack(byEntity.World.GetItem(new AssetLocation("strawdummy")));
                 if (!byEntity.TryGiveItemStack(stack))
                 {
-                    byEntity.World.SpawnItemEntity(stack, ServerPos.XYZ);
+                    byEntity.World.SpawnItemEntity(stack, Pos.XYZ);
                 }
                 byEntity.World.Logger.Audit("{0} Took 1x{1} at {2}.",
                     byEntity.GetName(),
                     stack.Collectible.Code,
-                    ServerPos.AsBlockPos
+                    Pos.AsBlockPos
                 );
                 Die();
                 return;

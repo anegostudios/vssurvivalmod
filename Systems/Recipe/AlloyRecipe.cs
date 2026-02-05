@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using Vintagestory.API;
@@ -46,23 +46,23 @@ namespace Vintagestory.GameContent
     public class AlloyRecipe : IByteSerializable
     {
         /// <summary>
-        /// <!--<jsonoptional>Required</jsonoptional>-->
         /// The ingredients for this alloy, defined as an item stack with a minimum and maximum range.
         /// </summary>
-        [DocumentAsJson] public MetalAlloyIngredient[] Ingredients;
+        [DocumentAsJson("Required")]
+        public MetalAlloyIngredient[] Ingredients;
 
         /// <summary>
-        /// <!--<jsonoptional>Required</jsonoptional>-->
         /// The output for the alloy.
         /// </summary>
-        [DocumentAsJson] public JsonItemStack Output;
+        [DocumentAsJson("Required")]
+        public JsonItemStack Output;
 
 
         ///<summary>
-        /// <!--<jsonoptional>Optional</jsonoptional><jsondefault>true</jsondefault>-->
         /// Should this recipe be loaded in the game?
         ///</summary>
-        [DocumentAsJson] public bool Enabled = true;
+        [DocumentAsJson("Optional", "True")]
+        public bool Enabled = true;
 
         /// <summary>
         /// Makes a check to see if the input for the recipe is valid.
@@ -145,10 +145,11 @@ namespace Vintagestory.GameContent
                 ItemStack stack = inputStacks[i];
                 float stackSize = stack.StackSize;
 
-                if (useSmeltedWhereApplicable && stack.Collectible.CombustibleProps?.SmeltedStack != null) 
+                CombustibleProperties combustibleProps = stack.Collectible.GetCombustibleProperties(null, stack, null);
+                if (useSmeltedWhereApplicable && combustibleProps?.SmeltedStack != null) 
                 {
-                    stackSize /= stack.Collectible.CombustibleProps.SmeltedRatio;
-                    stack = stack.Collectible.CombustibleProps.SmeltedStack.ResolvedItemstack;
+                    stackSize /= combustibleProps.SmeltedRatio;
+                    stack = combustibleProps.SmeltedStack.ResolvedItemstack;
                 }
 
                 bool exists = false;

@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Client;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
@@ -92,8 +92,7 @@ namespace Vintagestory.GameContent.Mechanics
             if (rotY != 0f) Quaterniond.RotateY(quat, quat, rotY);
             if (rotZ != 0f) Quaterniond.RotateZ(quat, quat, rotZ);
 
-            for (int i = 0; i < quat.Length; i++) qf[i] = (float)quat[i];
-            Mat4f.Mul(tmpMat, tmpMat, Mat4f.FromQuat(rotMat, qf));
+            Mat4f.MulQuat(tmpMat, quat);
 
             Mat4f.Translate(tmpMat, tmpMat, -axis.X, -axis.Y, -axis.Z);
             //if (xtraTransform != null) Mat4f.Mul(tmpMat, tmpMat, xtraTransform);

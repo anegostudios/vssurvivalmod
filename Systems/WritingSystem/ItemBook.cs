@@ -26,7 +26,7 @@ namespace Vintagestory.GameContent
             rolledShape = Attributes["rolledShape"].AsString();
         }
 
-        public MeshData GenMesh(ItemStack itemstack, ITextureAtlasAPI targetAtlas, BlockPos atBlockPos)
+        public MeshData GenMesh(ItemSlot slot, ITextureAtlasAPI targetAtlas, BlockPos atBlockPos = null)
         {
             if (Attributes.KeyExists("rolledShape") != true) return null;
 
@@ -42,9 +42,9 @@ namespace Vintagestory.GameContent
 
 
 
-        public string GetMeshCacheKey(ItemStack itemstack)
+        public string GetMeshCacheKey(ItemSlot slot)
         {
-            return itemstack.Collectible.Code + "-" + rolledShape;
+            return slot.Itemstack.Collectible.Code + "-" + rolledShape;
         }
     }
 

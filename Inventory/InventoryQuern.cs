@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -67,7 +67,9 @@ namespace Vintagestory.GameContent
 
         public override float GetSuitability(ItemSlot sourceSlot, ItemSlot targetSlot, bool isMerge)
         {
-            if (targetSlot == slots[0] && sourceSlot.Itemstack.Collectible.GrindingProps != null) return 4f;
+            GrindingProperties grindingProps = sourceSlot.Itemstack.Collectible.GetGrindingProperties(Api.World, sourceSlot.Itemstack);
+
+            if (targetSlot == slots[0] && grindingProps != null) return 4f;
 
             return base.GetSuitability(sourceSlot, targetSlot, isMerge);
         }

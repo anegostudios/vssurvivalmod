@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
@@ -26,7 +26,6 @@ namespace Vintagestory.GameContent
         Cuboidf[] ColSelBoxes { get; set; }
         Cuboidf[] SelBoxes { get; set; }
         ModelTransform GuiTransform { get; set; }
-        ModelTransform FpTtransform { get; set; }
         ModelTransform TpTransform { get; set; }
         ModelTransform GroundTransform { get; set; }
         string RotInterval { get; }
@@ -36,6 +35,7 @@ namespace Vintagestory.GameContent
         Dictionary<long, Cuboidf[]> SelBoxesByHashkey { get; set; }
         AssetLocation ShapePath { get; }
         Shape ShapeResolved { get; set; }
+        Shape ShapeLOD2Resolved { get; set; }
 
         BlockDropItemStack[] Drops {get;set;}
         string HeldIdleAnim { get; set; }
@@ -48,7 +48,80 @@ namespace Vintagestory.GameContent
         bool CanAttachBlockAt(Vec3f blockRot, BlockFacing blockFace, Cuboidi attachmentArea = null);
     }
 
-    public abstract class BlockShapeFromAttributes : Block, IWrenchOrientable, ITextureFlippable
+
+    public class ModSystemShapeFromAttributesTransform : ModSystem
+    {
+        public override bool ShouldLoad(EnumAppSide forSide) => forSide == EnumAppSide.Client;
+
+        ICoreClientAPI capi;
+        public override void StartClientSide(ICoreClientAPI api)
+        {
+            capi = api;
+            api.Event.RegisterEventBusListener(OnEventBusEvent);
+        }
+
+        private void OnEventBusEvent(string eventName, ref EnumHandling handling, IAttribute data)
+        {
+            var tree = data as TreeAttribute;
+
+            IShapeTypeProps cprops;
+
+            if (eventName != "ongettransform" && eventName != "onsettransform") return;
+
+            ItemSlot slot = capi.World.Player.InventoryManager.ActiveHotbarSlot;
+            if (slot.Empty) return;
+
+            string type = slot.Itemstack.Attributes.GetString("type");
+            var block = slot.Itemstack.Block as BlockShapeFromAttributes;
+            if (block == null) return;
+
+            cprops = block.GetTypeProps(type, slot.Itemstack, null);
+            if (cprops == null) return;
+
+
+            bool isSet = eventName == "onsettransform";
+
+            switch (tree.GetString("target"))
+            {
+                case "Gui":
+                    tree.SetBool("preventDefault", true);
+                    if (isSet)
+                    {
+                        cprops.GuiTransform = ModelTransform.CreateFromTreeAttribute(tree);
+                    }
+                    else
+                    {
+                        (cprops.GuiTransform ?? ModelTransform.BlockDefaultGui()).ToTreeAttribute(tree);
+                    }
+                    break;
+                case "HandTp":
+                    tree.SetBool("preventDefault", true);
+                    if (isSet)
+                    {
+                        cprops.TpTransform = ModelTransform.CreateFromTreeAttribute(tree);
+                    }
+                    else
+                    {
+                        (cprops.TpTransform ?? ModelTransform.BlockDefaultTp()).ToTreeAttribute(tree);
+                    }
+                    break;
+                case "Ground":
+                    tree.SetBool("preventDefault", true);
+                    if (isSet)
+                    {
+                        cprops.GroundTransform = ModelTransform.CreateFromTreeAttribute(tree);
+                    }
+                    else
+                    {
+                        (cprops.GroundTransform?? ModelTransform.BlockDefaultGround()).ToTreeAttribute(tree);
+                    }
+                    break;
+            }
+        }
+    }
+
+
+    public abstract class BlockShapeFromAttributes : Block, IWrenchOrientable, ITextureFlippable, IContainedMeshSource
     {
         protected bool colSelBoxEditMode;
         protected bool transformEditMode;
@@ -60,6 +133,7 @@ namespace Vintagestory.GameContent
         public abstract IShapeTypeProps GetTypeProps(string code, ItemStack stack, BEBehaviorShapeFromAttributes be);
         public Dictionary<string, API.Datastructures.OrderedDictionary<string, CompositeTexture>> OverrideTextureGroups;
         protected Dictionary<string, MeshData> meshDictionary;
+        protected Dictionary<string, MeshData> meshDictionaryLOD2;
         protected string inventoryMeshDictionary;
         protected string blockForLogging;
 
@@ -85,9 +159,10 @@ namespace Vintagestory.GameContent
                 extraWrenchModes[2].WithIcon(capi, capi.Gui.LoadSvgWithPadding(new AssetLocation("textures/icons/moveud.svg"), 48, 48, 5, ColorUtil.WhiteArgb));
 
                 meshDictionary = ObjectCacheUtil.GetOrCreate(api, ClassType + "Meshes", () => new Dictionary<string, MeshData>());  // Best to access ObjectCacheUtil on the main thread; it's fine to hold a reference to this for the whole game, it won't change, it's only this Block who accesses it
+                meshDictionaryLOD2 = ObjectCacheUtil.GetOrCreate(api, ClassType + "MeshesLOD2", () => new Dictionary<string, MeshData>());
                 inventoryMeshDictionary = ClassType + "MeshesInventory";
                 blockForLogging = ClassType + "block";
-                
+
                 capi.Event.RegisterEventBusListener(OnEventBusEvent);
                 foreach (var type in AllTypes)
                 {
@@ -117,13 +192,28 @@ namespace Vintagestory.GameContent
                 extraWrenchModes[2].Dispose();
             }
 
-            if (api is ICoreClientAPI capi && inventoryMeshDictionary != null)
+            if (api is ICoreClientAPI capi)
             {
-                Dictionary<string, MultiTextureMeshRef> clutterMeshRefs = ObjectCacheUtil.TryGet<Dictionary<string, MultiTextureMeshRef>>(capi, inventoryMeshDictionary);
-                if (clutterMeshRefs != null)
+                if (meshDictionary != null)
                 {
-                    foreach (MultiTextureMeshRef mesh in clutterMeshRefs.Values) mesh.Dispose();
-                    ObjectCacheUtil.Delete(capi, inventoryMeshDictionary);
+                    foreach (MeshData mesh in meshDictionary.Values) mesh.Dispose();
+                    ObjectCacheUtil.Delete(capi, ClassType + "Meshes");
+                    meshDictionary = null;
+                }
+                if (meshDictionaryLOD2 != null)
+                {
+                    foreach (MeshData mesh in meshDictionaryLOD2.Values) mesh.Dispose();
+                    ObjectCacheUtil.Delete(capi, ClassType + "MeshesLOD2");
+                    meshDictionaryLOD2 = null;
+                }
+                if (inventoryMeshDictionary != null)
+                {
+                    Dictionary<string, MultiTextureMeshRef> clutterMeshRefs = ObjectCacheUtil.TryGet<Dictionary<string, MultiTextureMeshRef>>(capi, inventoryMeshDictionary);
+                    if (clutterMeshRefs != null)
+                    {
+                        foreach (MultiTextureMeshRef mesh in clutterMeshRefs.Values) mesh.Dispose();
+                        ObjectCacheUtil.Delete(capi, inventoryMeshDictionary);
+                    }
                 }
             }
         }
@@ -141,6 +231,13 @@ namespace Vintagestory.GameContent
                 {
                     api.Logger.Error("Block {0}: Could not find {1}, type {2} shape '{3}'.", this.Code, ClassType, cprops.Code, cprops.ShapePath);
                     continue;
+                }
+                if (Lod2Shape != null && api is ICoreClientAPI capi)
+                {
+                    var resolvedShape = capi.TesselatorManager.GetCachedShape(Lod2Shape.Base);
+                    resolvedShape.KeepLoaded();
+                    cprops.ShapeLOD2Resolved = resolvedShape;
+                    textureDict.AddTextureLocation(new AssetLocationAndSource("game", "block/lod2/clutter/" + cprops.Code, "Clutter LOD2:", "game", cprops.Code));
                 }
                 var textures = new FastSmallDictionary<string, CompositeTexture>(1);
                 textureDict.CollectAndBakeTexturesFromShape(cprops.ShapeResolved, textures, cprops.ShapePath);
@@ -225,66 +322,9 @@ namespace Vintagestory.GameContent
             {
                 onSelBoxEditorEvent(eventName, data);
             }
-
-            if (eventName == "oncloseedittransforms" || eventName == "onedittransforms" || eventName == "onapplytransforms" || eventName == "genjsontransform")
-            {
-                onTfEditorEvent(eventName, data);
-            }
         }
 
-        private void onTfEditorEvent(string eventName, IAttribute data)
-        {
-            var capi = api as ICoreClientAPI;
-            ItemSlot slot = capi.World.Player.InventoryManager.ActiveHotbarSlot;
-            if (slot.Empty) return;
 
-            string type = slot.Itemstack.Attributes.GetString("type");
-            var cprops = GetTypeProps(type, slot.Itemstack, null);
-            if (cprops == null) return;
-
-            // User changed tabs
-            if (transformEditMode && eventName == "onedittransforms") return;
-
-            if (eventName == "genjsontransform")
-            {
-                return;
-
-            }
-
-            transformEditMode = eventName == "onedittransforms";
-
-            if (transformEditMode)
-            {
-                if (cprops.GuiTransform == null) cprops.GuiTransform = ModelTransform.BlockDefaultGui();
-                GuiTransform = cprops.GuiTransform;
-
-                if (cprops.FpTtransform == null) cprops.FpTtransform = ModelTransform.BlockDefaultFp();
-                FpHandTransform = cprops.FpTtransform;
-
-                if (cprops.TpTransform == null) cprops.TpTransform = ModelTransform.BlockDefaultTp();
-                TpHandTransform = cprops.TpTransform;
-
-                if (cprops.GroundTransform == null) cprops.GroundTransform = ModelTransform.BlockDefaultGround();
-                GroundTransform = cprops.GroundTransform;
-            }
-
-            if (eventName == "onapplytransforms")
-            {
-                cprops.GuiTransform = GuiTransform;
-                cprops.FpTtransform = FpHandTransform;
-                cprops.TpTransform = TpHandTransform;
-                cprops.GroundTransform = GroundTransform;
-            }
-
-            if (eventName == "oncloseedittransforms")
-            {
-                GuiTransform = ModelTransform.BlockDefaultGui();
-                FpHandTransform = ModelTransform.BlockDefaultFp();
-                TpHandTransform = ModelTransform.BlockDefaultTp();
-                GroundTransform = ModelTransform.BlockDefaultGround();
-            }
-
-        }
 
 
         private void onSelBoxEditorEvent(string eventName, IAttribute data)
@@ -434,13 +474,13 @@ namespace Vintagestory.GameContent
             if (!clutterMeshRefs.TryGetValue(hashkey, out MultiTextureMeshRef meshref))
             {
                 MeshData mesh = GetOrCreateMesh(cprops, null, otcode);
-                mesh = mesh.Clone().Rotate(new Vec3f(0.5f, 0.5f, 0.5f), rotX, rotY, rotZ);
+                mesh = mesh.Clone().Rotate(rotX, rotY, rotZ);
                 meshref = capi.Render.UploadMultiTextureMesh(mesh);
                 clutterMeshRefs[hashkey] = meshref;
             }
 
             renderinfo.ModelRef = meshref;
-            
+
             if (!transformEditMode)
             {
                 switch (target)
@@ -517,15 +557,16 @@ namespace Vintagestory.GameContent
                     return;
                 }
 
-                blockModelData = GetOrCreateMesh(cprops, null, bes.overrideTextureCode).Clone().Rotate(new Vec3f(0.5f, 0.5f, 0.5f), bes.rotateX, bes.rotateY + cprops.Rotation.Y * GameMath.DEG2RAD, bes.rotateZ);
-                decalModelData = GetOrCreateMesh(cprops, decalTexSource, bes.overrideTextureCode).Clone().Rotate(new Vec3f(0.5f, 0.5f, 0.5f), bes.rotateX, bes.rotateY + cprops.Rotation.Y * GameMath.DEG2RAD, bes.rotateZ);
+                blockModelData = GetOrCreateMesh(cprops, null, bes.overrideTextureCode).Clone().Rotate(bes.rotateX, bes.rotateY + cprops.Rotation.Y * GameMath.DEG2RAD, bes.rotateZ);
+                decalModelData = GetOrCreateMesh(cprops, decalTexSource, bes.overrideTextureCode).Clone().Rotate(bes.rotateX, bes.rotateY + cprops.Rotation.Y * GameMath.DEG2RAD, bes.rotateZ);
                 return;
             }
 
             base.GetDecal(world, pos, decalTexSource, ref decalModelData, ref blockModelData);
         }
 
-        public virtual MeshData GetOrCreateMesh(IShapeTypeProps cprops, ITexPositionSource overrideTexturesource = null, string overrideTextureCode = null) {
+        public virtual MeshData GetOrCreateMesh(IShapeTypeProps cprops, ITexPositionSource overrideTexturesource = null, string overrideTextureCode = null, bool forLOD2 = false)
+        {
             var cMeshes = meshDictionary;
             ICoreClientAPI capi = api as ICoreClientAPI;
 
@@ -574,7 +615,7 @@ namespace Vintagestory.GameContent
                 }
 
                 if (shape == null) return mesh;
-                
+
 
                 capi.Tesselator.TesselateShape(blockForLogging, shape, out mesh, texSource);
                 if (cprops.TexPos == null)
@@ -594,7 +635,7 @@ namespace Vintagestory.GameContent
         }
 
         byte[] noLight = new byte[3];
-        
+
 
         public override byte[] GetLightHsv(IBlockAccessor blockAccessor, BlockPos pos, ItemStack stack = null)
         {
@@ -711,6 +752,19 @@ namespace Vintagestory.GameContent
         public virtual string BaseCodeForName()
         {
             return Code.Domain + ":" + ClassType + "-";
+        }
+
+        public virtual MeshData GenMesh(ItemSlot slot, ITextureAtlasAPI targetAtlas, BlockPos atBlockPos)
+        {
+            string type = slot.Itemstack.Attributes.GetString("type", "");
+            return GetOrCreateMesh(GetTypeProps(type, slot.Itemstack, null));
+        }
+
+        public virtual string GetMeshCacheKey(ItemSlot slot)
+        {
+            string type = slot.Itemstack.Attributes.GetString("type", "");
+            IShapeTypeProps props = GetTypeProps(type, slot.Itemstack, null);
+            return slot.Itemstack.Collectible + "-" + props.Code;
         }
     }
 }

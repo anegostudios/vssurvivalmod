@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -52,6 +52,7 @@ namespace Vintagestory.GameContent
                 Block = block
             });
             collBoxes = null;
+            selBoxes = null;
 
             sbp.OnBeamAdded(start.ToVec3d().Add(Pos), end.ToVec3d().Add(Pos));
         }
@@ -139,6 +140,7 @@ namespace Vintagestory.GameContent
                 }
 
                 collBoxes = null;
+                selBoxes = null;
             }
         }
 
@@ -312,6 +314,8 @@ namespace Vintagestory.GameContent
             sbp.OnBeamRemoved(beam.Start.ToVec3d().Add(Pos), beam.End.ToVec3d().Add(Pos));
             Beams = Beams.RemoveAt(beamIndex);
             Blockentity.MarkDirty(true);
+            collBoxes = null;
+            selBoxes = null;
         }
 
         public bool ExchangeWith(ItemSlot fromSlot, ItemSlot toSlot)

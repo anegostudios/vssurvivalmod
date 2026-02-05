@@ -249,7 +249,7 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            var props = slot.Itemstack.Collectible.CombustibleProps;
+            var props = slot.Itemstack.Collectible.GetCombustibleProperties(Api.World, slot.Itemstack, null);
             if (props == null || props.BurnTemperature < 1300)
             {
                 capi?.TriggerIngameError(this, "wrongfuel", Lang.Get("Needs a layer of high-quality carbon-bearing material (coke or charcoal)"));
@@ -635,11 +635,11 @@ namespace Vintagestory.GameContent
             tessThreadTesselator.TesselateShape(Block, shape, out MeshData meshdataSecondary, null, null, selectiveElementsSecondary);
             if (blockScs.Orientation == BlockFacing.EAST)
             {
-                meshdataMain.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, -GameMath.PIHALF, 0);
-                meshdataSecondary.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, -GameMath.PIHALF, 0);
+                meshdataMain.Rotate(0, -GameMath.PIHALF, 0);
+                meshdataSecondary.Rotate(0, -GameMath.PIHALF, 0);
             }
 
-            meshdataSecondary.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, GameMath.PI, 0);
+            meshdataSecondary.Rotate(0, GameMath.PI, 0);
             meshdataSecondary.Translate(blockScs.Orientation.Opposite.Normalf);
 
             mesher.AddMeshData(meshdataMain);

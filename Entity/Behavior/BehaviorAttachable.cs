@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
@@ -89,11 +89,12 @@ namespace Vintagestory.GameContent
 
     public class EntityBehaviorAttachable : EntityBehaviorContainer, ICustomInteractionHelpPositioning
     {
-        protected WearableSlotConfig[] wearableSlots;
+        internal WearableSlotConfig[] wearableSlots;
         public override InventoryBase Inventory => inv;
         protected InventoryGeneric inv;
 
         public override string InventoryClassName => "wearablesInv";
+        public bool UseShiftAttach;
 
         public EntityBehaviorAttachable(Entity entity) : base(entity) { }
 
@@ -118,6 +119,7 @@ namespace Vintagestory.GameContent
             loadInv();
 
             entity.WatchedAttributes.RegisterModifiedListener("wearablesInv", wearablesModified);
+            UseShiftAttach = attributes["useShiftAttach"].AsBool();
 
             base.Initialize(properties, attributes);
         }
@@ -211,6 +213,7 @@ namespace Vintagestory.GameContent
             handled = EnumHandling.PreventSubsequent;
 
             var controls = byEntity.MountedOn?.Controls ?? byEntity.Controls;
+            var attachKey = UseShiftAttach ? controls.ShiftKey : controls.CtrlKey;
 
             if (mode == EnumInteractMode.Interact && !controls.CtrlKey)
             {
@@ -240,7 +243,7 @@ namespace Vintagestory.GameContent
             }
 
 
-            if (mode != EnumInteractMode.Interact || !controls.CtrlKey)
+            if (mode != EnumInteractMode.Interact || !attachKey)
             {
                 handled = EnumHandling.PassThrough; // Can't attack an elk with a falx otherwise
                 return;
@@ -267,11 +270,11 @@ namespace Vintagestory.GameContent
 
         private void onAttachmentToggled(EntityAgent byEntity, ItemSlot itemslot)
         {
-            var sound = itemslot.Itemstack?.Block?.Sounds.Place ?? new AssetLocation("sounds/player/build");
-            Api.World.PlaySoundAt(sound, entity, (byEntity as EntityPlayer).Player, true, 16);
+            var sound = itemslot.Itemstack?.Block?.Sounds.Place ?? GlobalConstants.DefaultBuildSound;
+            Api.World.PlaySoundAt(sound, entity, (byEntity as EntityPlayer).Player);
             entity.MarkShapeModified();
             // Tell server to save this chunk to disk again
-            entity.World.BlockAccessor.GetChunkAtBlockPos(entity.ServerPos.AsBlockPos).MarkModified();
+            entity.World.BlockAccessor.GetChunkAtBlockPos(entity.Pos.AsBlockPos).MarkModified();
         }
 
         private bool TryRemoveAttachment(EntityAgent byEntity, int selectionBoxIndex)
@@ -318,7 +321,7 @@ namespace Vintagestory.GameContent
                 if (Api.Side == EnumAppSide.Server && !wasEmptyAlready)
                 {
                     slot.Itemstack.StackSize = 1;
-                    Api.World.Logger.Audit("{0} removed from a {1} at {2}, slot {4}: {3}", byEntity?.GetName(), entity.Code.ToShortString(), entity.ServerPos.AsBlockPos, slot.Itemstack?.ToString(), slotIndex);
+                    Api.World.Logger.Audit("{0} removed from a {1} at {2}, slot {4}: {3}", byEntity?.GetName(), entity.Code.ToShortString(), entity.Pos.AsBlockPos, slot.Itemstack?.ToString(), slotIndex);
                 }
 
                 slot.Itemstack = null;
@@ -410,7 +413,7 @@ namespace Vintagestory.GameContent
 
             if (entity.World.Side == EnumAppSide.Server)
             {
-                string auditLog = String.Format("{0} attached to a {1} at {2}, slot {4}: {3}", byEntity?.GetName(), entity.Code.ToShortString(), entity.ServerPos.AsBlockPos, itemslot.Itemstack.ToString(), slotIndex);
+                string auditLog = String.Format("{0} attached to a {1} at {2}, slot {4}: {3}", byEntity?.GetName(), entity.Code.ToShortString(), entity.Pos.AsBlockPos, itemslot.Itemstack.ToString(), slotIndex);
                 var moved = itemslot.TryPutInto(entity.World, targetSlot) > 0;
                 if (moved)
                 {
@@ -600,7 +603,7 @@ namespace Vintagestory.GameContent
                     ActionLangCode = slot.Empty ? "attachableentity-attach" : "attachableentity-detach",
                     Itemstacks = slot.Empty ? stacks.ToArray() : null,
                     MouseButton = EnumMouseButton.Right,
-                    HotKeyCode = "ctrl"
+                    HotKeyCode = eba.UseShiftAttach ? "shift" : "ctrl"
                 }
             };
         }

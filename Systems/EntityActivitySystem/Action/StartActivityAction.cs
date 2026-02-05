@@ -55,7 +55,7 @@ namespace Vintagestory.GameContent
                 EntitiesArgParser parser = new EntitiesArgParser("target", vas.Entity.Api, true);
                 TextCommandCallingArgs args = new TextCommandCallingArgs()
                 {
-                    Caller = new Caller() { Entity = vas.Entity, Pos = vas.Entity.ServerPos.XYZ, Type = EnumCallerType.Entity },
+                    Caller = new Caller() { Entity = vas.Entity, Pos = vas.Entity.Pos.XYZ, Type = EnumCallerType.Entity },
                     RawArgs = new CmdArgs(entitySelector)
                 };
                 var result = parser.TryProcess(args);

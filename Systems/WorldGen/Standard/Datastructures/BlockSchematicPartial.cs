@@ -13,6 +13,15 @@ using Vintagestory.API.Server;
 
 namespace Vintagestory.ServerMods
 {
+    public enum EnumStructurePlacement
+    {
+        SurfaceRuin,
+        Surface,
+        Underwater,
+        Underground,
+        Shallowwater
+    }
+
     public class BlockSchematicPartial : BlockSchematicStructure
     {
         public List<Entity> EntitiesDecoded;
@@ -31,7 +40,7 @@ namespace Vintagestory.ServerMods
             if (!rect.IntersectsOrTouches(startPos.X, startPos.Z, startPos.X + SizeX, startPos.Z + SizeZ)) return 0;
             var placed = 0;
 
-            var curPos = new BlockPos();
+            var curPos = new BlockPos(startPos.dimension);
 
             int climateUpLeft = 0, climateUpRight = 0, climateBotLeft = 0, climateBotRight = 0;
             if(replaceWithBlockLayersBlockids != null)
@@ -190,7 +199,9 @@ namespace Vintagestory.ServerMods
                 }
             }
 
-            if (EntitiesDecoded == null) DecodeEntities(worldForResolve, startPos, worldForResolve as IServerWorldAccessor);
+            // We need to decode entity each time since IWorldGenBlockAccessor does AddEntity and would add the same entity again. So the positon would be wrong for those "new" ones
+            // if (EntitiesDecoded == null)
+            DecodeEntities(worldForResolve, startPos, worldForResolve as IServerWorldAccessor);
 
             foreach (Entity entity in EntitiesDecoded)
             {

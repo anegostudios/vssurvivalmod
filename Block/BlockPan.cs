@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
@@ -190,7 +190,7 @@ namespace Vintagestory.GameContent
 
             renderinfo.ModelRef = ObjectCacheUtil.GetOrCreate(capi, key, () =>
             {
-                MeshData mesh = GenMesh(itemstack, capi.BlockTextureAtlas, null);
+                MeshData mesh = GenMesh(new DummySlot(itemstack), capi.BlockTextureAtlas, null);
                 return capi.Render.UploadMultiTextureMesh(mesh);
             });
         }
@@ -402,7 +402,7 @@ namespace Vintagestory.GameContent
                     stack = stack.Clone();
                     if (player == null || !player.InventoryManager.TryGiveItemstack(stack, true))
                     {
-                        api.World.SpawnItemEntity(stack, byEntity.ServerPos.XYZ);
+                        api.World.SpawnItemEntity(stack, byEntity.Pos.XYZ);
                     }
                     break;
                 }
@@ -486,14 +486,14 @@ namespace Vintagestory.GameContent
             return interactions.Append(base.GetHeldInteractionHelp(inSlot));
         }
 
-        public MeshData GenMesh(ItemStack itemstack, ITextureAtlasAPI targetAtlas, BlockPos atBlockPos)
+        public MeshData GenMesh(ItemSlot slot, ITextureAtlasAPI targetAtlas, BlockPos atBlockPos)
         {
-            string blockMaterialCode = GetBlockMaterialCode(itemstack);
+            string blockMaterialCode = GetBlockMaterialCode(slot.Itemstack);
 
             ICoreClientAPI capi = api as ICoreClientAPI;
             AssetLocation shapeloc = blockMaterialCode != null? shapeFull : shapeEmpty;
 
-            Shape shape = Vintagestory.API.Common.Shape.TryGet(capi, shapeloc);
+            Shape shape = API.Common.Shape.TryGet(capi, shapeloc);
 
             Block blockMat = null;
             if (blockMaterialCode != null)
@@ -517,8 +517,9 @@ namespace Vintagestory.GameContent
             return meshdata;
         }
 
-        public string GetMeshCacheKey(ItemStack itemstack)
+        public string GetMeshCacheKey(ItemSlot slot)
         {
+            var itemstack = slot.Itemstack;
             string blockMaterialCode = GetBlockMaterialCode(itemstack);
 
             if (blockMaterialCode == null)

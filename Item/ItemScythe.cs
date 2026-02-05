@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -98,35 +98,6 @@ namespace Vintagestory.GameContent
 
         public override bool OnHeldAttackStep(float secondsPassed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel)
         {
-            if (byEntity.World.Side == EnumAppSide.Client)
-            {
-                ModelTransform tf = new ModelTransform();
-                tf.EnsureDefaultValues();
-
-                float t = secondsPassed / 1.35f;
-
-                float f = (float)Easings.EaseOutBack(Math.Min(t * 2f, 1));
-                float f2 = (float)Math.Sin(GameMath.Clamp(Math.PI * 1.4f * (t - 0.5f), 0, 3));
-
-                tf.Translation.X += Math.Min(0.2f, t * 3);
-                tf.Translation.Y -= Math.Min(0.75f, t * 3);
-                tf.Translation.Z -= Math.Min(1, t * 3);
-                tf.ScaleXYZ += Math.Min(1, t * 3);
-                tf.Origin.X -= Math.Min(0.75f, t * 3);
-                tf.Rotation.X = -Math.Min(30, t * 30) + f * 30 + (float)f2 * 120f;
-                tf.Rotation.Z = -f * 110;
-
-                if (secondsPassed > 1.75f)
-                {
-                    float b = 2 * (secondsPassed - 1.75f);
-                    tf.Rotation.Z += b * 140;
-                    tf.Rotation.X /= (1 + b * 10);
-                    tf.Translation.X -= b * 0.4f;
-                    tf.Translation.Y += b * 2 / 0.75f;
-                    tf.Translation.Z += b * 2;
-                }
-            }
-
             performActions(secondsPassed, byEntity, slot, blockSelection);
 
             // Crappy fix to make harvesting not buggy T_T

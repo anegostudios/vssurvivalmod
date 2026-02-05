@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Text;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -18,12 +18,7 @@ namespace Vintagestory.GameContent
             if (oreSlot != null)
             {
                 int units = oreSlot.Itemstack.ItemAttributes["metalUnits"].AsInt(5);
-                string type = oreSlot.Itemstack.Collectible.Variant["ore"].Replace("quartz_", "").Replace("galena_", "");
-
-                Item item = api.World.GetItem(new AssetLocation("nugget-" + type));
-                ItemStack outStack = new ItemStack(item);
-                outStack.StackSize = Math.Max(1, units / 5);
-                outputSlot.Itemstack = outStack;
+                outputSlot.Itemstack.StackSize = Math.Max(1, units / 5);
             }
 
             base.OnCreatedByCrafting(allInputslots, outputSlot, byRecipe);
@@ -31,25 +26,24 @@ namespace Vintagestory.GameContent
 
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
-            
-            if (CombustibleProps?.SmeltedStack == null)
+            CombustibleProperties combustibleProps = GetCombustibleProperties(world, inSlot.Itemstack, null);
+
+            if (combustibleProps?.SmeltedStack == null)
             {
                 base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
                 return;
             }
 
-            CombustibleProperties props = CombustibleProps;
-
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
 
-            string smelttype = CombustibleProps.SmeltingType.ToString().ToLowerInvariant();
-            int instacksize = CombustibleProps.SmeltedRatio;
-            int outstacksize = CombustibleProps.SmeltedStack.ResolvedItemstack.StackSize;
+            string smelttype = combustibleProps.SmeltingType.ToString().ToLowerInvariant();
+            int instacksize = combustibleProps.SmeltedRatio;
+            int outstacksize = combustibleProps.SmeltedStack.ResolvedItemstack.StackSize;
             float units = outstacksize * 100f / instacksize;
 
-            string metal = CombustibleProps.SmeltedStack.ResolvedItemstack.Collectible?.Variant?["metal"];
+            string metal = combustibleProps.SmeltedStack.ResolvedItemstack.Collectible?.Variant?["metal"];
             string metalname = Lang.Get("material-" + metal);
-            if (metal == null) metalname = CombustibleProps.SmeltedStack.ResolvedItemstack.GetName();
+            if (metal == null) metalname = combustibleProps.SmeltedStack.ResolvedItemstack.GetName();
 
             string str = Lang.Get("game:smeltdesc-" + smelttype + "ore-plural", units.ToString("0.#"), metalname);
             dsc.AppendLine(str);

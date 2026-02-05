@@ -771,6 +771,12 @@ namespace Vintagestory.GameContent
 
         GuiDialog dlg;
 
+        bool CanDoRecipe(IClientWorldAccessor world, IRecipeBase recipe, ItemStack ingredient)
+        {
+            DummySlot slot = new(ingredient);
+            return world.Api.Event.TriggerMatchesRecipe(world.Player, recipe, [slot]);
+        }
+
         public void OpenDialog(IClientWorldAccessor world, BlockPos pos, ItemStack ingredient)
         {
             if (dlg != null && dlg.IsOpened()) return;
@@ -782,6 +788,7 @@ namespace Vintagestory.GameContent
 
             List<ClayFormingRecipe> recipes = Api.GetClayformingRecipes()
                 .Where(r => r.Ingredient.SatisfiesAsIngredient(ingredient))
+                .Where(r => CanDoRecipe(world, r, ingredient))
                 .OrderBy(r => r.Output.ResolvedItemstack.Collectible.Code) // Cannot sort by name, thats language dependent!
                 .ToList();
             ;

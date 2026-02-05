@@ -68,6 +68,6 @@ public class EntityElevatorSeat : EntityRideableSeat
 
     protected override void tryTeleportToFreeLocation()
     {
-        Passenger?.TeleportTo(Passenger.ServerPos.Add(0, 0.2, 0));
+        Passenger?.TeleportTo(Passenger.Pos.Add(0, 0.2, 0));
     }
 }

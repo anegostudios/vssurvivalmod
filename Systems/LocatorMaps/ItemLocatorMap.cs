@@ -38,7 +38,7 @@ namespace Vintagestory.GameContent
 
         public bool OnDidTrade(EntityTradingHumanoid trader, ItemStack stack, EnumTradeDirection tradeDir)
         {
-            var loc = strucLocSys.FindFreshStructureLocation(props.SchematicCode, trader.SidedPos.AsBlockPos, 350);
+            var loc = strucLocSys.FindFreshStructureLocation(props.SchematicCode, trader.Pos.AsBlockPos, 350);
             stack.Attributes.SetVec3i("position", loc.Position);
             stack.Attributes.SetInt("regionX", loc.RegionX);
             stack.Attributes.SetInt("regionZ", loc.RegionZ);
@@ -52,7 +52,7 @@ namespace Vintagestory.GameContent
         {
             if (tradeSlot is ItemSlotTrade slottrade)
             {
-                if (strucLocSys.FindFreshStructureLocation(props.SchematicCode, eTrader.SidedPos.AsBlockPos, 350) == null)
+                if (strucLocSys.FindFreshStructureLocation(props.SchematicCode, eTrader.Pos.AsBlockPos, 350) == null)
                 {
                     slottrade.TradeItem.Stock = 0;
                     return EnumTransactionResult.TraderNotEnoughSupplyOrDemand;
@@ -64,7 +64,7 @@ namespace Vintagestory.GameContent
 
         public bool ShouldTrade(EntityTradingHumanoid trader, TradeItem tradeIdem, EnumTradeDirection tradeDir)
         {
-            return strucLocSys.FindFreshStructureLocation(props.SchematicCode, trader.SidedPos.AsBlockPos, 350) != null;
+            return strucLocSys.FindFreshStructureLocation(props.SchematicCode, trader.Pos.AsBlockPos, 350) != null;
         }
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
@@ -75,7 +75,7 @@ namespace Vintagestory.GameContent
             handling = EnumHandHandling.Handled;
             var player = (byEntity as EntityPlayer).Player as IServerPlayer;
             if (player == null)
-            {   
+            {
                 return;
             }
             var wml = api.ModLoader.GetModSystem<WorldMapManager>().MapLayers.FirstOrDefault(ml => ml is WaypointMapLayer) as WaypointMapLayer;
@@ -90,12 +90,10 @@ namespace Vintagestory.GameContent
 
             if (pos == null)
             {
-                foreach (var val in storyStructures.storyStructureInstances)
+                var val = storyStructures.Structures.Get(props.SchematicCode);
+                if (val != null)
                 {
-                    if (val.Key != props.SchematicCode) continue;
-
-                    pos = val.Value.CenterPos.ToVec3d().Add(0.5, 0.5, 0.5);
-                    break;
+                    pos = val.CenterPos.ToVec3d().Add(0.5, 0.5, 0.5);
                 }
             }
 

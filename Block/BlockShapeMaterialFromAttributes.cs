@@ -13,7 +13,7 @@ using Vintagestory.ServerMods;
 
 namespace Vintagestory.GameContent;
 
-public class BlockShapeMaterialFromAttributes : Block
+public class BlockShapeMaterialFromAttributes : Block, IHandbookGrouping
 {
     private string[] types = null!;
     private string[] materials = null!;
@@ -58,10 +58,14 @@ public class BlockShapeMaterialFromAttributes : Block
 
     public virtual void LoadTypes()
     {
-        types = Attributes["types"].AsArray<string>();
-        Cshape = Attributes["shape"].AsObject<CompositeShape>();
-        TexturesBSMFA = Attributes["textures"].AsObject<Dictionary<string, CompositeTexture>>();
+        types = Attributes["types"].AsArray<string>()!;
+        ArgumentNullException.ThrowIfNull(types);
+        Cshape = Attributes["shape"].AsObject<CompositeShape>()!;
+        ArgumentNullException.ThrowIfNull(Cshape);
+        TexturesBSMFA = Attributes["textures"].AsObject<Dictionary<string, CompositeTexture>>()!;
+        ArgumentNullException.ThrowIfNull(TexturesBSMFA);
         var grp = Attributes["materials"].AsObject<RegistryObjectVariantGroup>();
+        ArgumentNullException.ThrowIfNull(grp);
 
         materials = grp.States;
         if (grp.LoadFromProperties != null)
@@ -95,7 +99,7 @@ public class BlockShapeMaterialFromAttributes : Block
         ];
     }
 
-    public virtual MeshData GetOrCreateMesh(string type, string material, string? cachekeyextra = null, ITexPositionSource? overrideTexturesource = null)
+    public virtual MeshData GetOrCreateMesh(string? type, string? material, string? cachekeyextra = null, ITexPositionSource? overrideTexturesource = null)
     {
         var cMeshes = ObjectCacheUtil.GetOrCreate(api, MeshKey, () => new Dictionary<string, MeshData>());
         ICoreClientAPI capi = (ICoreClientAPI)api;
@@ -141,7 +145,7 @@ public class BlockShapeMaterialFromAttributes : Block
 
         renderinfo.ModelRef = meshref;
     }
-    
+
     public override bool DoPlaceBlock(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ItemStack byItemStack)
     {
         bool val = base.DoPlaceBlock(world, byPlayer, blockSel, byItemStack);
@@ -183,7 +187,8 @@ public class BlockShapeMaterialFromAttributes : Block
     {
         var drops = base.GetDropsForHandbook(handbookStack, forPlayer);
         drops[0] = drops[0].Clone();
-        drops[0].ResolvedItemstack.SetFrom(handbookStack);
+        ArgumentNullException.ThrowIfNull(drops[0].ResolvedItemstack);
+        drops[0].ResolvedItemstack!.SetFrom(handbookStack);
 
         return drops;
     }
@@ -205,5 +210,15 @@ public class BlockShapeMaterialFromAttributes : Block
     {
         var bect = GetBlockEntity<BlockEntityGeneric>(blockSel.Position)?.GetBehavior<BEBehaviorShapeMaterialFromAttributes>();
         bect?.Rotate(byEntity, blockSel, dir);
+    }
+
+    public AssetLocation GetCodeForHandbookGrouping(ItemStack stack)
+    {
+        return AssetLocation.Create(Code.Path + "-" + stack.Attributes.GetAsString("type") + "-" + stack.Attributes.GetAsString("material"), Code.Domain);
+    }
+
+    public string GetWildcardForHandbookGrouping(string wildcard, ItemStack stack)
+    {
+        return wildcard.Replace("{type}", stack.Attributes.GetAsString("type")).Replace("{material}", stack.Attributes.GetAsString("material"));
     }
 }

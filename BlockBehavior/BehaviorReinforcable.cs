@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -26,7 +26,7 @@ namespace Vintagestory.GameContent
         {
         }
 
-        public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, ref EnumHandling handling)
+        public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier, ref EnumHandling handling)
         {
             if (byPlayer == null) return;  // Fast return path for no player (although normally OnBlockBroken will specify a player)
 

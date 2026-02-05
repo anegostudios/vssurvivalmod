@@ -52,7 +52,7 @@ namespace Vintagestory.GameContent
 
                 particlesHeld.MinQuantity = 1;
 
-                Vec3d pos = entityItem.SidedPos.XYZ;
+                Vec3d pos = entityItem.Pos.XYZ;
 
                 SpawnParticles(entityItem.World, pos, false);
             }
@@ -172,11 +172,11 @@ namespace Vintagestory.GameContent
 
                 int uses = api.World.Config.GetString("temporalGearRespawnUses", "-1").ToInt();
                 plr.SetSpawnPosition(new PlayerSpawnPos() {
-                    x = byEntity.ServerPos.XYZInt.X, 
-                    y = byEntity.ServerPos.XYZInt.Y, 
-                    z = byEntity.ServerPos.XYZInt.Z,
-                    yaw = byEntity.ServerPos.Yaw, 
-                    pitch = byEntity.ServerPos.Pitch,
+                    x = byEntity.Pos.XYZInt.X,
+                    y = byEntity.Pos.XYZInt.Y,
+                    z = byEntity.Pos.XYZInt.Z,
+                    yaw = byEntity.Pos.Yaw,
+                    pitch = byEntity.Pos.Pitch,
                     RemainingUses = uses
                 });
             }

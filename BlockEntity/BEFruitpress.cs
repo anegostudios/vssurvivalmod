@@ -897,11 +897,10 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            var stack = BucketSlot.Itemstack;
-            IContainedMeshSource meshSource = stack.Collectible?.GetCollectibleInterface<IContainedMeshSource>();
+            IContainedMeshSource meshSource = BucketSlot.Itemstack.Collectible?.GetCollectibleInterface<IContainedMeshSource>();
             if (meshSource != null)
             {
-                bucketMeshTmp = meshSource.GenMesh(stack, capi.BlockTextureAtlas, Pos);
+                bucketMeshTmp = meshSource.GenMesh(BucketSlot, capi.BlockTextureAtlas, Pos);
                 // Liquid mesh part
                 bucketMeshTmp.CustomInts = new CustomMeshDataPartInt(bucketMeshTmp.FlagsCount);
                 bucketMeshTmp.CustomInts.Count = bucketMeshTmp.FlagsCount;

@@ -100,7 +100,7 @@ namespace Vintagestory.GameContent
 
             if (secondsUsed > 0.35f && secondsUsed < 0.87f)
             {
-                Vec3d dir = new Vec3d().AheadCopy(1, 0, byEntity.SidedPos.Yaw - GameMath.PI);
+                Vec3d dir = new Vec3d().AheadCopy(1, 0, byEntity.Pos.Yaw - GameMath.PI);
                 Vec3d pos = blockSel.Position.ToVec3d().Add(0.5 + dir.X, 1.03, 0.5 + dir.Z);
 
                 pos.X -= dir.X * secondsUsed * 1 / 0.75f * 1.2f;
@@ -134,7 +134,7 @@ namespace Vintagestory.GameContent
 
 
             string fertility = block.LastCodePart(1);
-            Block farmland = byEntity.World.GetBlock(new AssetLocation("farmland-dry-" + fertility));
+            Block? farmland = byEntity.World.GetBlock(new AssetLocation("farmland-dry-" + fertility));
 
             IPlayer? byPlayer = (byEntity as EntityPlayer)?.Player;
             if (farmland == null || byPlayer == null) return;

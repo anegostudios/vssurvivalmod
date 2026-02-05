@@ -101,6 +101,7 @@ namespace Vintagestory.GameContent
             ;
 
             api.Event.MatchesGridRecipe += Event_MatchesGridRecipe;
+            api.Event.MatchesRecipe += Event_MatchesRecipe;
         }
 
 
@@ -230,6 +231,8 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public bool PrintLoadWarnings = true;
+
         private void LoadTraits()
         {
             traits = [];
@@ -248,7 +251,7 @@ namespace Vintagestory.GameContent
                     Trait trait = fileToken.ToObject<Trait>(path.Domain);
                     if (traits.Find(element => element.Code == trait.Code) != null)
                     {
-                        api.World.Logger.Warning($"Trying to add character trait from domain '{path.Domain}', but character trait with code '{trait.Code}' already exists. Will add it anyway, but it can cause undefined behavior.");
+                        if (PrintLoadWarnings) api.World.Logger.Warning($"Trying to add character trait from domain '{path.Domain}', but character trait with code '{trait.Code}' already exists. Will add it anyway, but it can cause undefined behavior.");
                     }
                     traits.Add(trait);
                     traitQuantity++;
@@ -261,18 +264,18 @@ namespace Vintagestory.GameContent
                         Trait trait = traitToken.ToObject<Trait>(path.Domain);
                         if (traits.Find(element => element.Code == trait.Code) != null)
                         {
-                            api.World.Logger.Warning($"Trying to add character trait from domain '{path.Domain}', but character trait with code '{trait.Code}' already exists. Will add it anyway, but it can cause undefined behavior.");
+                            if (PrintLoadWarnings) api.World.Logger.Warning($"Trying to add character trait from domain '{path.Domain}', but character trait with code '{trait.Code}' already exists. Will add it anyway, but it can cause undefined behavior.");
                         }
                         if (path.Domain == "game")
                         {
                             vanillaTraits.Remove(trait.Code);
                             if (!vanillaTraitsInOrder.Contains(trait.Code))
                             {
-                                api.World.Logger.Warning($"Instead of json patching in new traits into vanilla asset, add 'traits.json' into 'config' folder in your mod domain with new traits.");
+                                if (PrintLoadWarnings) api.World.Logger.Warning($"Instead of json patching in new traits into vanilla asset, add 'traits.json' into 'config' folder in your mod domain with new traits.");
                             }
                             else if (vanillaTraitsInOrder.IndexOf(trait.Code) != traitIndex)
                             {
-                                api.World.Logger.Warning($"Order of vanilla character traits has changed. Dont remove vanilla character traits or add new traits between or before vanilla traits. That will cause incompatibility with other mods that change traits, that can result in crashes.");
+                                if (PrintLoadWarnings) api.World.Logger.Warning($"Order of vanilla character traits has changed. Dont remove vanilla character traits or add new traits between or before vanilla traits. That will cause incompatibility with other mods that change traits, that can result in crashes.");
                             }
                         }
                         traits.Add(trait);
@@ -282,7 +285,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (vanillaTraits.Count > 0)
+            if (vanillaTraits.Count > 0 && PrintLoadWarnings)
             {
                 api.World.Logger.Warning($"Failed to find vanilla traits: {vanillaTraits.Aggregate((a, b) => $"{a}, {b}")}, dont remove vanilla traits, it will cause incompatibility with other mods that change traits or classes, that can result in crashes.");
             }
@@ -307,7 +310,7 @@ namespace Vintagestory.GameContent
                     if (!characterClass.Enabled) continue;
                     if (characterClasses.Find(element => element.Code == characterClass.Code) != null)
                     {
-                        api.World.Logger.Warning($"Trying to add character class from domain '{path.Domain}', but character class with code '{characterClass.Code}' already exists. Will add it anyway, but it can cause undefined behavior.");
+                        if (PrintLoadWarnings) api.World.Logger.Warning($"Trying to add character class from domain '{path.Domain}', but character class with code '{characterClass.Code}' already exists. Will add it anyway, but it can cause undefined behavior.");
                     }
                     characterClasses.Add(characterClass);
                     classQuantity++;
@@ -321,18 +324,18 @@ namespace Vintagestory.GameContent
                         if (!characterClass.Enabled) continue;
                         if (characterClasses.Find(element => element.Code == characterClass.Code) != null)
                         {
-                            api.World.Logger.Warning($"Trying to add character class from domain '{path.Domain}', but character class with code '{characterClass.Code}' already exists. Will add it anyway, but it can cause undefined behavior.");
+                            if (PrintLoadWarnings) api.World.Logger.Warning($"Trying to add character class from domain '{path.Domain}', but character class with code '{characterClass.Code}' already exists. Will add it anyway, but it can cause undefined behavior.");
                         }
                         if (path.Domain == "game")
                         {
                             vanillaClasses.Remove(characterClass.Code);
                             if (!vanillaClassesInOrder.Contains(characterClass.Code))
                             {
-                                api.World.Logger.Warning($"Instead of json patching in new classes into vanilla asset, add 'characterclasses.json' into 'config' folder in your mod domain with new classes.");
+                                if (PrintLoadWarnings) api.World.Logger.Warning($"Instead of json patching in new classes into vanilla asset, add 'characterclasses.json' into 'config' folder in your mod domain with new classes.");
                             }
                             else if (vanillaClassesInOrder.IndexOf(characterClass.Code) != classIndex)
                             {
-                                api.World.Logger.Warning($"Order of vanilla character classes has changed. Dont remove vanilla character classes (set 'enabled' attribute to 'false' instead) or add new classes between or before vanilla classes. That will cause incompatibility with other mods that change classes, that can result in crashes.");
+                                if (PrintLoadWarnings) api.World.Logger.Warning($"Order of vanilla character classes has changed. Dont remove vanilla character classes (set 'enabled' attribute to 'false' instead) or add new classes between or before vanilla classes. That will cause incompatibility with other mods that change classes, that can result in crashes.");
                             }
                         }
                         characterClasses.Add(characterClass);
@@ -342,7 +345,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (vanillaClasses.Count > 0)
+            if (vanillaClasses.Count > 0 && PrintLoadWarnings)
             {
                 api.World.Logger.Warning($"Failed to find vanilla classes: {vanillaClasses.Aggregate((a, b) => $"{a}, {b}")}, dont remove vanilla classes (set 'enabled' attribute to 'false' instead), it will cause incompatibility with other mods that change classes, that can result in crashes.");
             }
@@ -391,16 +394,25 @@ namespace Vintagestory.GameContent
                         ItemStack stack = jstack.ResolvedItemstack?.Clone();
                         if (stack == null) continue;
 
-                        string strdress = stack.ItemAttributes["clothescategory"].AsString();
-                        if (!Enum.TryParse(strdress, true, out EnumCharacterDressType dresstype))
+                        EnumCharacterDressType dressType = EnumCharacterDressType.Unknown;
+                        if (stack.Collectible.GetCollectibleInterface<IWearableStatsSupplier>() is IWearableStatsSupplier wearableStats)
                         {
-                            eplayer.TryGiveItemStack(stack);
+                            dressType = wearableStats.GetDressType(new DummySlot(stack));
                         }
                         else
                         {
-                            inv[(int)dresstype].Itemstack = stack;
-                            inv[(int)dresstype].MarkDirty();
+                            string strdress = stack.ItemAttributes["clothescategory"].AsString();
+                            Enum.TryParse(strdress, true, out dressType);
                         }
+
+                        if (dressType == EnumCharacterDressType.Unknown)
+                        {
+                            eplayer.TryGiveItemStack(stack);
+                            continue;
+                        }
+
+                        inv[(int)dressType].Itemstack = stack;
+                        inv[(int)dressType].MarkDirty();
                     }
 
                     if (essr != null)
@@ -449,6 +461,12 @@ namespace Vintagestory.GameContent
                         double attrvalue = val.Value;
 
                         eplr.Stats.Set(attrcode, "trait", (float)attrvalue, true);
+
+                        //Set blend type if attribute blend types exists.
+                        if ((trait.AttributeBlendTypes != null) && trait.AttributeBlendTypes.TryGetValue(attrcode, out var blend))
+                        {
+                            eplr.Stats[attrcode].BlendType = blend;
+                        }
                     }
                 }
             }
@@ -509,6 +527,24 @@ namespace Vintagestory.GameContent
         }
 
         private bool Event_MatchesGridRecipe(IPlayer player, GridRecipe recipe, ItemSlot[] ingredients, int gridWidth)
+        {
+            if (recipe.RequiresTrait == null) return true;
+
+            string classcode = player.Entity.WatchedAttributes.GetString("characterClass");
+            if (classcode == null) return true;
+
+            if (characterClassesByCode.TryGetValue(classcode, out CharacterClass charclass))
+            {
+                if (charclass.Traits.Contains(recipe.RequiresTrait)) return true;
+
+                string[] extraTraits = player.Entity.WatchedAttributes.GetStringArray("extraTraits");
+                if (extraTraits != null && extraTraits.Contains(recipe.RequiresTrait)) return true;
+            }
+
+            return false;
+        }
+
+        private bool Event_MatchesRecipe(IPlayer player, IRecipeBase recipe, ItemSlot[] ingredients)
         {
             if (recipe.RequiresTrait == null) return true;
 

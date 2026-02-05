@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Client;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 
 #nullable disable
@@ -49,11 +49,11 @@ namespace Vintagestory.GameContent
                 TutorialStepBase.Collect(capi, "getknappablestones", "tutorial-firststeps-4", (stack) => stack.ItemAttributes?.IsTrue("knappable") == true, 3),
                 TutorialStepBase.Collect(capi, "getsticks", "tutorial-firststeps-5", (stack) => stack.Collectible.Code.Path == "stick", 5),
                 TutorialStepBase.Knap(capi, "knapknife", "tutorial-firststeps-6", (stack) => stack.Collectible.Code.Path.Contains("knifeblade"), 1),
-                TutorialStepBase.Craft(capi, "craftknife", "tutorial-firststeps-7", (stack) => stack.Collectible.Tool == EnumTool.Knife, 1),
+                TutorialStepBase.Craft(capi, "craftknife", "tutorial-firststeps-7", (stack) => stack.Collectible.GetTool(new DummySlot(stack)) == EnumTool.Knife, 1),
                 TutorialStepBase.Collect(capi, "getcattails", "tutorial-firststeps-8", (stack) => stack.Collectible.Code.Path == "papyrustops" || stack.Collectible.Code.Path == "cattailtops", 10),
                 TutorialStepBase.Craft(capi, "craftbasket", "tutorial-firststeps-9", (stack) => stack.Collectible.GetCollectibleInterface<IHeldBag>() != null, 1),
-                TutorialStepBase.Collect(capi, "getfood", "tutorial-firststeps-10", (stack) => stack.Collectible.NutritionProps != null, 10),
-                TutorialStepBase.Craft(capi, "knapaxe", "tutorial-firststeps-11", (stack) => stack.Collectible.Tool == EnumTool.Axe, 1),
+                TutorialStepBase.Collect(capi, "getfood", "tutorial-firststeps-10", (stack) => stack.Collectible.GetNutritionProperties(capi.World, stack, null) != null, 10),
+                TutorialStepBase.Craft(capi, "knapaxe", "tutorial-firststeps-11", (stack) => stack.Collectible.GetTool(new DummySlot(stack)) == EnumTool.Axe, 1),
                 TutorialStepBase.Collect(capi, "getlogs", "tutorial-firststeps-12", (stack) => stack.Collectible is BlockLog, 4),
                 TutorialStepBase.Craft(capi, "craftfirewood", "tutorial-firststeps-13", (stack) => stack.Collectible is ItemFirewood, 4),
                 TutorialStepBase.Collect(capi, "getdrygrass", "tutorial-firststeps-14", (stack) => stack.Collectible.Code.Path == "drygrass", 3),

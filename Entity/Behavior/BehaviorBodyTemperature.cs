@@ -26,8 +26,8 @@ namespace Vintagestory.GameContent
         float accum;
         float slowaccum;
         float veryslowaccum;
-        BlockPos plrpos = new BlockPos();
-        BlockPos tmpPos = new BlockPos();
+        BlockPos plrpos = new BlockPos(Dimensions.WillSetLater);
+        BlockPos tmpPos = new BlockPos(Dimensions.WillSetLater);
 
         bool inEnclosedRoom;
         
@@ -54,7 +54,7 @@ namespace Vintagestory.GameContent
         protected float nearHeatSourceStrength
         {
             get { return tempTree.GetFloat("nearHeatSourceStrength"); }
-            set { tempTree.SetFloat("nearHeatSourceStrength", value); }
+            set { tempTree.SetFloat("nearHeatSourceStrength", value); entity.WatchedAttributes.MarkPathDirty("bodyTemp"); }
         }
 
         public float Wetness
@@ -137,7 +137,6 @@ namespace Vintagestory.GameContent
                 }
             }
             firstTick = true;
-            if (blockAccess == null) return;    // Entity has been disposed (or perhaps not yet Initialized?)
 
             updateFreezingAnimState();
 
@@ -146,6 +145,7 @@ namespace Vintagestory.GameContent
             veryslowaccum += deltaTime;
 
             plrpos.Set((int)entity.Pos.X, (int)entity.Pos.Y, (int)entity.Pos.Z);
+            plrpos.SetDimension(entity.Pos.Dimension);
 
             if (veryslowaccum > 10 && damagingFreezeHours > 3)
             {
@@ -173,7 +173,7 @@ namespace Vintagestory.GameContent
                     Room room = api.ModLoader.GetModSystem<RoomRegistry>().GetRoomForPosition(plrpos);
                     // Check whether it is a proper room, or something like a room i.e. with a roof, for exaample a natural cave
                     inEnclosedRoom = room.ExitCount == 0 || room.SkylightCount < room.NonSkylightCount;
-                    nearHeatSourceStrength = 0;
+                    float nearHeatSourceStrength = 0;
 
                     double px = entity.Pos.X;
                     double py = entity.Pos.Y + 0.9;
@@ -202,6 +202,7 @@ namespace Vintagestory.GameContent
                         max = plrpos.AddCopy(3, 3, 3);
                     }
 
+                    tmpPos.SetDimension(plrpos.dimension);
                     blockAccess.Begin();
                     blockAccess.WalkBlocks(min, max, (block, x, y, z) =>
                     {
@@ -212,6 +213,8 @@ namespace Vintagestory.GameContent
                             nearHeatSourceStrength += src.GetHeatStrength(api.World, tmpPos, plrpos) * factor;
                         }
                     });
+
+                    this.nearHeatSourceStrength = nearHeatSourceStrength;
                 }
 
                 updateWearableConditions();
@@ -398,13 +401,16 @@ namespace Vintagestory.GameContent
             {
                 foreach (var slot in bh.Inventory)
                 {
-                    ItemWearable wearableItem = slot.Itemstack?.Collectible as ItemWearable;
+                    if (slot.Empty) continue;
 
-                    if (wearableItem == null || wearableItem.IsArmor) continue;
+                    IWearable wearable = slot.Itemstack.Collectible.GetCollectibleInterface<IWearable>();
+                    IWearableStatsSupplier wearableStats = slot.Itemstack.Collectible.GetCollectibleInterface<IWearableStatsSupplier>();
 
-                    clothingBonus += wearableItem.GetWarmth(slot);
+                    if (wearable == null || wearableStats == null || wearableStats.IsArmorType(slot)) continue;
 
-                    wearableItem.ChangeCondition(slot, conditionloss);
+                    clothingBonus += wearable.GetWarmth(slot);
+
+                    wearable.ChangeCondition(slot, conditionloss);
                 }
             }
 

@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -179,12 +180,14 @@ namespace Vintagestory.GameContent
             else
             {
                 CollectibleObject colObj = slot.Itemstack.Collectible;
+                CombustibleProperties combustibleProperties = colObj.GetCombustibleProperties(Api.World, slot.Itemstack, null);
+
                 if (colObj.Attributes?.IsTrue("isClayOvenFuel") == true)
                 {
                     if (TryAddFuel(slot))
                     {
-                        AssetLocation sound = slot.Itemstack?.Block?.Sounds?.Place;
-                        Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
+                        SoundAttributes? sound = slot.Itemstack?.Block?.Sounds?.Place;
+                        Api.World.PlaySoundAt(sound ?? GlobalConstants.DefaultBuildSound, byPlayer.Entity, byPlayer);
                         byPlayer.InventoryManager.BroadcastHotbarSlot();
                         (byPlayer as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
                         return true;
@@ -193,7 +196,7 @@ namespace Vintagestory.GameContent
                     return false;
 
                 }
-                else if (colObj.Attributes?["bakingProperties"] != null || colObj.CombustibleProps?.SmeltingType == EnumSmeltType.Bake && colObj.CombustibleProps.MeltingPoint < maxBakingTemperatureAccepted)  //Can't meaningfully bake anything requiring heat over 260 in the basic clay oven
+                else if (colObj.Attributes?["bakingProperties"] != null || combustibleProperties?.SmeltingType == EnumSmeltType.Bake && combustibleProperties.MeltingPoint < maxBakingTemperatureAccepted)  //Can't meaningfully bake anything requiring heat over 260 in the basic clay oven
                 {
                     if (slot.Itemstack.Equals(Api.World, lastRemoved, GlobalConstants.IgnoredStackAttributes) && !ovenInv[0].Empty)
                     {
@@ -208,8 +211,8 @@ namespace Vintagestory.GameContent
                         var stackName = slot.Itemstack?.Collectible.Code;
                         if (TryPut(slot))
                         {
-                            AssetLocation sound = slot.Itemstack?.Block?.Sounds?.Place;
-                            Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/buildhigh"), byPlayer.Entity, byPlayer, true, 16);
+                            SoundAttributes? sound = slot.Itemstack?.Block?.Sounds?.Place;
+                            Api.World.PlaySoundAt(sound ?? new SoundAttributes(new AssetLocation("sounds/player/buildhigh"), true) { Range = 16 }, byPlayer.Entity, byPlayer);
                             byPlayer.InventoryManager.BroadcastHotbarSlot();
                             Api.World.Logger.Audit("{0} Put 1x{1} into Clay oven at {2}.",
                                 byPlayer.PlayerName,
@@ -222,9 +225,11 @@ namespace Vintagestory.GameContent
                         {
                             if (slot.Itemstack.Block?.GetBehavior<BlockBehaviorCanIgnite>() == null)
                             {
-                                ICoreClientAPI capi = Api as ICoreClientAPI;
-                                if (capi != null && (slot.Empty || slot.Itemstack.Attributes.GetBool("bakeable", true) == false)) capi.TriggerIngameError(this, "notbakeable", Lang.Get("This item is not bakeable."));
-                                else if (capi != null && !slot.Empty) capi.TriggerIngameError(this, "notbakeable", burning ? Lang.Get("Wait until the fire is out") : Lang.Get("Oven is full"));
+                                if (Api is not ICoreClientAPI capi) return true;
+
+                                bool bakeable = BakingProperties.ReadFrom(slot.Itemstack) != null && slot.Itemstack.Attributes.GetBool("bakeable", true);
+                                if (slot.Empty || !bakeable) capi.TriggerIngameError(this, "notbakeable", Lang.Get("This item is not bakeable."));
+                                else if (!slot.Empty) capi.TriggerIngameError(this, "notbakeable", Lang.Get(burning ? "Wait until the fire is out" : "Oven is full"));
 
                                 return true;
                             }
@@ -319,8 +324,8 @@ namespace Vintagestory.GameContent
                     lastRemoved = stack == null ? null : stack.Clone();
                     if (byPlayer.InventoryManager.TryGiveItemstack(stack))
                     {
-                        AssetLocation sound = stack.Block?.Sounds?.Place;
-                        Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/throw"), byPlayer.Entity, byPlayer, true, 16);
+                        SoundAttributes? sound = stack.Block?.Sounds?.Place;
+                        Api.World.PlaySoundAt(sound ?? new SoundAttributes(new AssetLocation("sounds/player/throw"), true) { Range = 16 }, byPlayer.Entity, byPlayer);
                     }
 
                     if (stack.StackSize > 0)
@@ -378,7 +383,7 @@ namespace Vintagestory.GameContent
 
         public bool CanIgnite()
         {
-            return !FuelSlot.Empty && !burning;
+            return HasFuel && !burning;
         }
 
         #endregion
@@ -410,7 +415,7 @@ namespace Vintagestory.GameContent
                 {
                     fuelBurnTime = 0;
                     burning = false;
-                    CombustibleProperties props = FuelSlot.Itemstack?.Collectible.CombustibleProps;
+                    CombustibleProperties props = FuelSlot.Itemstack?.Collectible.GetCombustibleProperties(Api.World, FuelSlot.Itemstack, null);
                     if (props?.SmeltedStack == null)
                     {
                         FuelSlot.Itemstack = null;
@@ -477,7 +482,8 @@ namespace Vintagestory.GameContent
             {
                 float f = (1 + GameMath.Clamp((ovenTemperature - oldTemp) / 28, 0, 1.6f)) * dt;
                 nowTemp = ChangeTemperature(oldTemp, ovenTemperature, f);
-                int maxTemp = Math.Max(stack.Collectible.CombustibleProps?.MaxTemperature ?? 0, stack.ItemAttributes?["maxTemperature"].AsInt(0) ?? 0);
+                CombustibleProperties combustibleProps = stack.Collectible.GetCombustibleProperties(Api.World, stack, null);
+                int maxTemp = Math.Max(combustibleProps?.MaxTemperature ?? 0, stack.ItemAttributes?["maxTemperature"].AsInt(0) ?? 0);
                 if (maxTemp > 0)
                 {
                     nowTemp = Math.Min(maxTemp, nowTemp);
@@ -554,9 +560,17 @@ namespace Vintagestory.GameContent
                         if (item != null) resultStack = new ItemStack(item);
                     }
 
-
                     if (resultStack != null)
                     {
+                        TransitionableProperties[] tprops = resultStack.Collectible.GetTransitionableProperties(Api.World, slot.Itemstack, null);
+                        TransitionableProperties perishProps = tprops?.FirstOrDefault(p => p.Type == EnumTransitionType.Perish);
+
+                        // Carry over freshness
+                        if (perishProps != null)
+                        {
+                            CollectibleObject.CarryOverFreshness(Api, slot, resultStack, perishProps);
+                        }
+
                         ovenInv[slotIndex].Itemstack.Collectible.GetCollectibleInterface<IBakeableCallback>()?.OnBaked(ovenInv[slotIndex].Itemstack, resultStack);
 
                         ovenInv[slotIndex].Itemstack = resultStack;
@@ -639,12 +653,16 @@ namespace Vintagestory.GameContent
 
             if (Api?.Side == EnumAppSide.Client)
             {
-                updateMeshes();
+                MarkMeshesDirty();
                 if (clientSidePrevBurning != IsBurning)
                 {
                     ToggleAmbientSounds(IsBurning);
                     clientSidePrevBurning = IsBurning;
                     MarkDirty(true);
+                }
+                else
+                {
+                    Api.World.BlockAccessor.MarkBlockDirty(Pos);   // always redraw on client after updating meshes
                 }
             }
         }
@@ -799,19 +817,19 @@ namespace Vintagestory.GameContent
             return tfMatrices;
         }
 
-        protected override string getMeshCacheKey(ItemStack stack)
+        protected override string getMeshCacheKey(ItemSlot slot)
         {
             string scaleY = "";
             for (int i = 0; i < bakingData.Length; i++)
             {
-                if (Inventory[i].Itemstack == stack)
+                if (Inventory[i].Itemstack == slot.Itemstack)
                 {
                     scaleY = "-" + bakingData[i].CurHeightMul;
                     break;
                 }
             }
 
-            return (OvenContentMode == EnumOvenContentMode.Firewood ? stack.StackSize + "x" : "") + base.getMeshCacheKey(stack) + scaleY;
+            return (OvenContentMode == EnumOvenContentMode.Firewood ? slot.StackSize + "x" : "") + base.getMeshCacheKey(slot) + scaleY;
         }
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
@@ -821,13 +839,14 @@ namespace Vintagestory.GameContent
             return base.OnTesselation(mesher, tessThreadTesselator);
         }
 
-        protected override MeshData getOrCreateMesh(ItemStack stack, int index)
+        protected override MeshData getOrCreateMesh(ItemSlot slot, int index)
         {
             if (OvenContentMode == EnumOvenContentMode.Firewood)
             {
-                MeshData mesh = getMesh(stack);
+                MeshData mesh = getMesh(slot);
                 if (mesh != null) return mesh;
 
+                var stack = slot.Itemstack;
                 string shapeLoc = FuelSlot?.Itemstack?.Collectible?.Attributes?["ovenFuelShape"].AsString() ?? Block.Attributes["ovenFuelShape"].AsString();
 
                 var loc = AssetLocation.Create(shapeLoc, Block.Code.Domain).WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
@@ -842,13 +861,13 @@ namespace Vintagestory.GameContent
 
                 capi.Tesselator.TesselateShape("ovenFuelShape", nowTesselatingShape, out mesh, this, null, 0, 0, 0, stack.StackSize);
 
-                string key = getMeshCacheKey(stack);
+                string key = getMeshCacheKey(slot);
                 MeshCache[key] = mesh;
 
                 return mesh;
             }
 
-            return base.getOrCreateMesh(stack, index);
+            return base.getOrCreateMesh(slot, index);
         }
 
 

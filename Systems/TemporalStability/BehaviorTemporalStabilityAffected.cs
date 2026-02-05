@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -232,6 +232,7 @@ namespace Vintagestory.GameContent
         {
             if (isSelf && (fogEffectStrength > 0.05 || glitchEffectStrength > 0.05))
             {
+                tmpPos.SetDimension(entity.Pos.Dimension);
                 tmpPos.Set((int)entity.Pos.X, (int)entity.Pos.Y, (int)entity.Pos.Z);
                 float sunb = capi.World.BlockAccessor.GetLightLevel(tmpPos, EnumLightLevelType.OnlySunLight) / 22f;
 
@@ -257,7 +258,7 @@ namespace Vintagestory.GameContent
                 rustParticles.MaxSize = 0.25f;
                 rustParticles.RandomVelocityChange = false;
 
-                
+
 
                 rustParticles.MinVelocity.Set(0, 1, 0);
                 rustParticles.AddVelocity.Set(0, 5, 0);
@@ -298,7 +299,7 @@ namespace Vintagestory.GameContent
             return "temporalstabilityaffected";
         }
 
-        BlockPos tmpPos = new BlockPos();
+        BlockPos tmpPos = new BlockPos(API.Config.Dimensions.WillSetLater);
         public double stabilityOffset;
 
         float jitterOffset;
@@ -319,7 +320,7 @@ namespace Vintagestory.GameContent
                 if (!(entity.World.Api as ICoreClientAPI).PlayerReadyFired) return;
             } else
             {
-                
+
                 IServerPlayer player = entity.World.PlayerByUid(((EntityPlayer)entity).PlayerUID) as IServerPlayer;
                 if (player != null && player.ConnectionState != EnumClientState.Playing) return;
             }
@@ -329,14 +330,14 @@ namespace Vintagestory.GameContent
 
             float changeSpeed = deltaTime / 3;
 
-            double hereStability = stabilityOffset + tempStabilitySystem.GetTemporalStability(entity.SidedPos.X, entity.SidedPos.Y, entity.SidedPos.Z);
+            double hereStability = stabilityOffset + tempStabilitySystem.GetTemporalStability(entity.Pos.X, entity.Pos.Y, entity.Pos.Z);
 
             entity.Attributes.SetDouble("tempStabChangeVelocity", TempStabChangeVelocity);
 
             double gain = TempStabChangeVelocity > 0 ? (TempStabChangeVelocity / 200.0) : (TempStabChangeVelocity / 800.0);
 
-            OwnStability = GameMath.Clamp(OwnStability + gain, 0f, 1);
-            double ownStability = OwnStability;
+            double ownStability = GameMath.Clamp(OwnStability + gain, 0f, 1);
+            OwnStability = ownStability;
 
             TempStabChangeVelocity = (hereTempStabChangeVelocity - TempStabChangeVelocity) * deltaTime;
 
@@ -440,7 +441,7 @@ namespace Vintagestory.GameContent
         {
             if (!isSelf || tempStabSoundDrain == null) return;
 
-            // Effects            
+            // Effects
 
             float fadeSpeed = 3f;
 

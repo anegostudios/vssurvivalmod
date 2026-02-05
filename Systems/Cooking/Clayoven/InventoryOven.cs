@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -64,7 +64,7 @@ namespace Vintagestory.GameContent
 
         public override float GetSuitability(ItemSlot sourceSlot, ItemSlot targetSlot, bool isMerge)
         {
-            CombustibleProperties props = sourceSlot.Itemstack.Collectible.CombustibleProps;
+            CombustibleProperties props = sourceSlot.Itemstack.Collectible.GetCombustibleProperties(Api.World, sourceSlot.Itemstack, null);
             if (targetSlot == slots[cookingSize] && (props == null || props.BurnTemperature <= 0)) return 0;
 
             return base.GetSuitability(sourceSlot, targetSlot, isMerge);

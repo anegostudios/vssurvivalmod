@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -14,9 +14,9 @@ namespace Vintagestory.GameContent
     public class ItemKnife : Item
     {
         public static SimpleParticleProperties particlesStab;
-                
+
         // Knife harvesting speed is equivalent to 50% of the plant breaking speed bonus
-        public float KnifeHarvestingSpeed => 1f / ((MiningSpeed[EnumBlockMaterial.Plant] - 1) * 0.5f + 1);
+        public virtual float GetKnifeHarvestingSpeed(ItemSlot slot) => 1f / ((GetMiningSpeeds(slot)[EnumBlockMaterial.Plant] - 1) * 0.5f + 1);
 
 
         public string knifeHitBlockAnimation;
@@ -25,7 +25,11 @@ namespace Vintagestory.GameContent
         public override string GetHeldTpHitAnimation(ItemSlot slot, Entity byEntity)
         {
             if ((byEntity as EntityPlayer)?.EntitySelection != null) return knifeHitEntityAnimation;
-            if ((byEntity as EntityPlayer)?.BlockSelection != null) return knifeHitBlockAnimation;
+            if ((byEntity as EntityPlayer)?.BlockSelection != null)
+            {
+                if (byEntity.AnimManager.IsAnimationActive("knifestab")) return "idle";
+                return knifeHitBlockAnimation;
+            }
             return base.GetHeldTpHitAnimation(slot, byEntity);
         }
 
@@ -134,7 +138,7 @@ namespace Vintagestory.GameContent
                     if (secondsUsed >= 1.95f && !byEntity.Attributes.GetBool("stabPlayed", false))
                     {
                         byEntity.GetBehavior<EntityBehaviorTemporalStabilityAffected>().AddStability(0.30);
-                        
+
                         byEntity.LeftHandItemSlot.TakeOut(1);
                         byEntity.LeftHandItemSlot.MarkDirty();
 
@@ -142,7 +146,7 @@ namespace Vintagestory.GameContent
 
                         int h = 110 + api.World.Rand.Next(15);
                         int v = 100 + api.World.Rand.Next(50);
-                        particlesStab.MinPos = byEntity.SidedPos.XYZ.Add(byEntity.SelectionBox.X1, 0, byEntity.SelectionBox.Z1);
+                        particlesStab.MinPos = byEntity.Pos.XYZ.Add(byEntity.SelectionBox.X1, 0, byEntity.SelectionBox.Z1);
                         particlesStab.AddPos = new Vec3d(byEntity.SelectionBox.XSize, byEntity.SelectionBox.Y2, byEntity.SelectionBox.ZSize);
                         particlesStab.Color = ColorUtil.ReverseColorBytes(ColorUtil.HsvToRgba(h, 180, v, 150));
                         api.World.SpawnParticles(particlesStab);
@@ -167,14 +171,14 @@ namespace Vintagestory.GameContent
                 {
                     byEntity.StartAnimation("knifecut");
                 }
-                 
-                return secondsUsed < KnifeHarvestingSpeed * bh.GetHarvestDuration(byEntity) + 0.15f;
+
+                return secondsUsed < GetKnifeHarvestingSpeed(slot) * bh.GetHarvestDuration(byEntity) + 0.15f;
             }
 
             return false;
         }
 
-        
+
 
         public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
@@ -192,7 +196,7 @@ namespace Vintagestory.GameContent
             EntityBehaviorHarvestable bh = entitySel.Entity.GetBehavior<EntityBehaviorHarvestable>();
             //byEntity.World.Logger.Debug("{0} knife interact stop, seconds used {1} / {2}, entity: {3}", byEntity.World.Side, secondsUsed, bh?.HarvestDuration, entitySel.Entity);
 
-            if (bh != null && bh.Harvestable && secondsUsed >= KnifeHarvestingSpeed * bh.GetHarvestDuration(byEntity) - 0.1f)
+            if (bh != null && bh.Harvestable && secondsUsed >= GetKnifeHarvestingSpeed(slot) * bh.GetHarvestDuration(byEntity) - 0.1f)
             {
                 bh.SetHarvested((byEntity as EntityPlayer)?.Player);
                 slot?.Itemstack?.Collectible.DamageItem(byEntity.World, byEntity, slot, 3);

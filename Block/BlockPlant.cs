@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Client;
+using Vintagestory.API.Client;
 using Vintagestory.API.Client.Tesselation;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -30,20 +30,6 @@ namespace Vintagestory.GameContent
             {
                 sourcemeshFlags[i] = (sourcemeshFlags[i] & VertexFlags.ClearNormalBitMask) | vertical;
             }
-        }
-    }
-
-    public class BlockTallGrass : BlockPlant
-    {
-        public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
-        {
-            base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier);
-
-            if (byPlayer?.InventoryManager.ActiveTool == EnumTool.Knife && Variant["tallgrass"] != null && Variant["tallgrass"] != "eaten")
-            {
-                world.BlockAccessor.SetBlock(world.GetBlock(CodeWithVariant("tallgrass", "eaten")).Id, pos);
-            }
-
         }
     }
 

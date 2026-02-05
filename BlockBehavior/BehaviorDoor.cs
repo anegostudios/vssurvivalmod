@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using System.Linq;
 using System.Text;
 using Vintagestory.API;
 using Vintagestory.API.Client;
@@ -75,6 +76,12 @@ namespace Vintagestory.GameContent
         [DocumentAsJson("Optional", "True", true)]
         public bool airtight;
 
+        /// <summary>
+        /// LiquidBarrierHeight for each block of the door, as a jagged array the height and width of the door
+        /// </summary>
+        [DocumentAsJson("Optional", "1.0 for each block", true)]
+        public float[][] liquidBarrierHeight;
+
         ICoreAPI api;
         public MeshData animatableOrigMesh;
         public Shape animatableShape;
@@ -86,6 +93,8 @@ namespace Vintagestory.GameContent
             width = block.Attributes["width"].AsInt(1);
             height = block.Attributes["height"].AsInt(1);
             handopenable = block.Attributes["handopenable"].AsBool(true);
+
+            liquidBarrierHeight = block.Attributes["liquidBarrierHeight"].AsObject<float[][]>(null);
         }
 
         public override void OnLoaded(ICoreAPI api)
@@ -128,7 +137,7 @@ namespace Vintagestory.GameContent
             var beh = world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorDoor>();
             if (beh != null)
             {
-                decalMesh.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, beh.RotateYRad, 0);
+                decalMesh.Rotate(0, beh.RotateYRad, 0);
             }
         }
 
@@ -309,7 +318,7 @@ namespace Vintagestory.GameContent
 
         public bool placeDoor(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, BlockPos pos, IBlockAccessor ba)
         {
-            ba.SetBlock(block.BlockId, pos);
+            ba.SetBlock(block.BlockId, pos, itemstack);
             var bh = ba.GetBlockEntity(pos)?.GetBehavior<BEBehaviorDoor>();
             bh.OnBlockPlaced(itemstack, byPlayer, blockSel);
 
@@ -455,8 +464,8 @@ namespace Vintagestory.GameContent
             if (beh.Opened)
             {
                 float rot = beh.InvertHandles ? 90 : -90;
-                decalModelData = decalModelData.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, rot * GameMath.DEG2RAD, 0);
-                if (!beh.InvertHandles) decalModelData = decalModelData.Scale(new Vec3f(0.5f, 0.5f, 0.5f), 1, 1f, -1);
+                decalModelData = decalModelData.Rotate(0, rot * GameMath.DEG2RAD, 0);
+                if (!beh.InvertHandles) decalModelData = decalModelData.Scale(1, 1f, -1);
             }
             base.GetDecal(world, pos, decalTexSource, ref decalModelData, ref blockModelData, ref handled);
         }
@@ -489,7 +498,7 @@ namespace Vintagestory.GameContent
 
             if (!beh.IsSideSolid(face)) return 0f;
 
-            if (block.Variant["style"] == "sleek-windowed") return 1.0f;
+            if (liquidBarrierHeight != null) return liquidBarrierHeight[height - 1][0];
 
             if (!airtight) return 0f;
 
@@ -498,11 +507,17 @@ namespace Vintagestory.GameContent
 
         public float MBGetLiquidBarrierHeightOnSide(BlockFacing face, BlockPos pos, Vec3i offset)
         {
+            if (offset.X != 0 && offset.Z != 0) return 0f;
             var beh = block.GetBEBehavior<BEBehaviorDoor>(pos.AddCopy(offset.X, offset.Y, offset.Z));
             if (beh == null) return 0f;
-            if (!beh.IsSideSolid(face)) return 0f;
+            EnumAxis axis = (beh.Opened ? beh.facingWhenOpened : beh.facingWhenClosed).Axis;
+            if (!beh.IsSideSolid(face) || axis is EnumAxis.X && offset.X != 0 || axis is EnumAxis.Z && offset.Z != 0) return 0f;
 
-            if (block.Variant["style"] == "sleek-windowed") return offset.Y == -1 ? 0.0f : 1.0f;
+            if (liquidBarrierHeight != null)
+            {
+                int sideOffset = axis == EnumAxis.X ? Math.Abs(offset.Z) : Math.Abs(offset.X);
+                return liquidBarrierHeight[height + offset.Y - 1][sideOffset];
+            }
 
             if (!airtight) return 0f;
 
@@ -525,13 +540,25 @@ namespace Vintagestory.GameContent
 
         public int MBGetRetention(BlockPos pos, BlockFacing facing, EnumRetentionType type, Vec3i offset)
         {
-            var beh = block.GetBEBehavior< BEBehaviorDoor>(pos.AddCopy(offset.X, offset.Y, offset.Z));
+            var offsetPos = pos.AddCopy(offset.X, offset.Y, offset.Z);
+            var beh = block.GetBEBehavior< BEBehaviorDoor>(offsetPos);
             if (beh == null) return 0;
-            if (type == EnumRetentionType.Sound) return beh.IsSideSolid(facing) ? 3 : 0;
+
+            if (type == EnumRetentionType.Sound)
+            {
+                EnumAxis axis = (beh.Opened ? beh.facingWhenOpened : beh.facingWhenClosed).Axis;
+                if (axis is EnumAxis.X && offset.X != 0 || axis is EnumAxis.Z && offset.Z != 0) return 0;
+                return beh.IsSideSolid(facing) ? 3 : 0;
+            }
 
             if (!airtight) return 0;
-            if (api.World.Config.GetBool("openDoorsNotSolid", false)) return beh.IsSideSolid(facing) ? getInsulation(pos) : 0;
-            return (beh.IsSideSolid(facing) || beh.IsSideSolid(facing.Opposite)) ? getInsulation(pos) : 3; // Also check opposite so the door can be facing inwards or outwards.
+            if (api.World.Config.GetBool("openDoorsNotSolid", false))
+            {
+                EnumAxis axis = (beh.Opened ? beh.facingWhenOpened : beh.facingWhenClosed).Axis;
+                if (axis is EnumAxis.X && offset.X != 0 || axis is EnumAxis.Z && offset.Z != 0) return 0;
+                return beh.IsSideSolid(facing) ? getInsulation(offsetPos) : 0;
+            }
+            return (beh.IsSideSolid(facing) || beh.IsSideSolid(facing.Opposite)) ? getInsulation(offsetPos) : 3; // Also check opposite so the door can be facing inwards or outwards.
         }
 
         private int getInsulation(BlockPos pos)

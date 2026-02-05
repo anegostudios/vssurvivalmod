@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
@@ -97,7 +97,8 @@ namespace Vintagestory.GameContent
 			}
 
 
-			if (DamagedBy != null && DamagedBy.Contains(EnumItemDamageSource.BlockBreaking))
+            EnumItemDamageSource[] damagedBy = GetDamagedBy(itemslot);
+            if (damagedBy != null && damagedBy.Contains(EnumItemDamageSource.BlockBreaking))
 			{
 				DamageItem(world, byEntity, itemslot, damage);
 			}

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
@@ -47,7 +47,7 @@ namespace Vintagestory.GameContent.Mechanics
             return resistance;
         }
 
-        protected override MechPowerPath[] GetMechPowerExits(MechPowerPath fromExitTurnDir)
+        public override MechPowerPath[] GetMechPowerExits(MechPowerPath fromExitTurnDir)
         {
             // This but' a dead end, baby!
             return Array.Empty<MechPowerPath>();

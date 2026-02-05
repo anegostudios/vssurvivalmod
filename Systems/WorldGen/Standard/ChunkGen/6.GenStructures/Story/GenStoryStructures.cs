@@ -1,6 +1,8 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
 using ProtoBuf;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -9,6 +11,7 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 using Vintagestory.ServerMods;
+using Vintagestory.ServerMods.NoObf;
 
 #nullable disable
 
@@ -21,31 +24,123 @@ namespace Vintagestory.GameContent
         public List<string> MissingStructures;
     }
 
-    public class GenStoryStructures : ModStdWorldGen
+    public class StoryStructures : IStructureProvider, IEnumerable<KeyValuePair<string, StoryStructureLocation>>
     {
-        internal WorldGenStoryStructuresConfig scfg;
-        private LCGRandom strucRand; // Deterministic random
-        private LCGRandom grassRand; // Deterministic random
+        public API.Datastructures.OrderedDictionary<string, StoryStructureLocation> values = new();
+        // Initialize to empty array to prevent NullReferenceException if accessed before GenCache() is called
+        StoryStructureLocation[] allStructures = Array.Empty<StoryStructureLocation>();
 
-        public API.Datastructures.OrderedDictionary<string, StoryStructureLocation> storyStructureInstances = new ();
-        public bool StoryStructureInstancesDirty = false;
+        public StoryStructureLocation Get(string code)
+        {
+            values.TryGetValue(code, out var location);
+            return location;
+        }
 
-        private IWorldGenBlockAccessor worldgenBlockAccessor;
+        // Caching the structures into a flat array saves us from iterating over dictionaries, plus we don't need to duplicate
+        // code for category < 0 and category >= 0
+        protected void GenCache()
+        {
+            allStructures = values.Values.ToArray();
+            foreach (var structure in allStructures)
+            {
+                var max = structure.SkipGenerationFlags.Max(flag => flag.Value);
+                structure.MaxSkipGenerationRadiusSq = max * max;
+            }
+        }
 
-        private ICoreServerAPI api;
+        public static IStructureLocation GetBlockingStructureAt(int x, int z, int category, IEnumerable<StoryStructureLocation> locations)
+        {
+            foreach (var loc in locations)
+            {
+                if (loc.Location.Contains(x, z)) return loc;
+                var distSq = loc.CenterPos.HorDistanceSqTo(x, z);
 
-        private bool genStoryStructures;
+                int checkRadius = loc.LandformRadius;
+                if (category >= 0) {
+                    loc.SkipGenerationFlags.TryGetValue(category, out checkRadius);
+                }
+
+                if (checkRadius > 0 && distSq < checkRadius * checkRadius)
+                {
+                    return loc;
+                }
+            }
+
+            return null;
+        }
+
+        public IStructureLocation GetBlockingStructureAt(int x, int z, int category)
+        {
+            return GetBlockingStructureAt(x, z, category, allStructures);
+        }
+
+
+        public List<string> GetMissingStructures(List<string> attemptedToGen)
+        {
+            var missingStructures = new List<string>();
+            if (attemptedToGen != null)
+            {
+                foreach (var storyCode in attemptedToGen)
+                {
+                    if (!values.ContainsKey(storyCode))
+                    {
+                        missingStructures.Add(storyCode);
+                    }
+                }
+            }
+
+            return missingStructures;
+        }
+
+        public void Set(string code, StoryStructureLocation strucloc)
+        {
+            values[code] = strucloc;
+            GenCache();
+        }
+
+        public IEnumerator<KeyValuePair<string, StoryStructureLocation>> GetEnumerator()
+        {
+            return values.GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return values.GetEnumerator();
+        }
+
+        public void Load(API.Datastructures.OrderedDictionary<string, StoryStructureLocation> strucs)
+        {
+            this.values = strucs;
+            GenCache();
+        }
+
+        public byte[] ToBytes()
+        {
+            return SerializerUtil.Serialize(values);
+        }
+    }
+
+    public class GenStoryStructures : ModStdWorldGen, IBlockPatchModifier
+    {
+        public WorldGenStoryStructuresConfig scfg;
+        protected LCGRandom strucRand; // Deterministic random
+        protected LCGRandom grassRand; // Deterministic random
+        protected bool FailedToGenerateLocation;
+        protected IServerNetworkChannel serverChannel;
+        protected IWorldGenBlockAccessor worldgenBlockAccessor;
+        protected ICoreServerAPI api;
+        protected bool genStoryStructures;
+        protected Cuboidi tmpCuboid = new Cuboidi();
+        protected int mapheight;
+        protected ClampedSimplexNoise grassDensity;
+        protected ClampedSimplexNoise grassHeight;
+
         public BlockLayerConfig blockLayerConfig;
-        private Cuboidi tmpCuboid = new Cuboidi();
-
-        private int mapheight;
-        private ClampedSimplexNoise grassDensity;
-        private ClampedSimplexNoise grassHeight;
-
         public SimplexNoise distort2dx;
         public SimplexNoise distort2dz;
-        private bool FailedToGenerateLocation;
-        private IServerNetworkChannel serverChannel;
+
+        public StoryStructures Structures;
+        public bool StoryStructureInstancesDirty = false;
 
         public override double ExecuteOrder() { return 0.2; }
 
@@ -58,6 +153,10 @@ namespace Vintagestory.GameContent
             api.Event.GameWorldSave += Event_GameWorldSave;
             api.Event.PlayerJoin += OnPlayerJoined;
 
+            Structures = new StoryStructures();
+
+            api.ModLoader.GetModSystem<ModSystemWorldGenStructures>().RegisterProvider(Structures);
+
             if (TerraGenConfig.DoDecorationPass)
             {
                 api.Event.InitWorldGenerator(InitWorldGen, "standard");
@@ -65,6 +164,7 @@ namespace Vintagestory.GameContent
                 api.Event.GetWorldgenBlockAccessor(OnWorldGenBlockAccessor);
 
                 api.Event.WorldgenHook(GenerateHookStructure, "standard", "genHookStructure");
+                api.ModLoader.GetModSystem<GenVegetationAndPatches>().RegisterPatchModifier(this);
             }
 
             api.Event.ServerRunPhase(EnumServerRunPhase.RunGame,() =>
@@ -97,7 +197,7 @@ namespace Vintagestory.GameContent
                         .WithDescription("Remove the story structures schematic count, which allows on regen to spawn them again")
                         .RequiresPrivilege(Privilege.controlserver)
                         .WithArgs(api.ChatCommands.Parsers.Word("code"))
-                        .HandleWith(OnRemoveStorySchematics)
+                        .HandleWith(OnSetStructureNotSpawned)
                     .EndSubCommand()
                     .BeginSubCommand("listmissing")
                         .WithDescription("List story locations that failed to generate.")
@@ -129,23 +229,7 @@ namespace Vintagestory.GameContent
             return TextCommandResult.Success("No story locations are missing.");
         }
 
-        private List<string> GetMissingStructures()
-        {
-            var attemptedToGen = api.WorldManager.SaveGame.GetData<List<string>>("attemptedToGenerateStoryLocation");
-            var missingStructures = new List<string>();
-            if (attemptedToGen != null)
-            {
-                foreach (var storyCode in attemptedToGen)
-                {
-                    if (!storyStructureInstances.ContainsKey(storyCode))
-                    {
-                        missingStructures.Add(storyCode);
-                    }
-                }
-            }
 
-            return missingStructures;
-        }
 
         private void OnPlayerJoined(IServerPlayer byplayer)
         {
@@ -159,14 +243,21 @@ namespace Vintagestory.GameContent
             }
         }
 
-        private TextCommandResult OnRemoveStorySchematics(TextCommandCallingArgs args)
+        public List<string> GetMissingStructures()
+        {
+            var attemptedToGen = api.WorldManager.SaveGame.GetData<List<string>>("attemptedToGenerateStoryLocation");
+            return Structures.GetMissingStructures(attemptedToGen);
+        }
+
+        private TextCommandResult OnSetStructureNotSpawned(TextCommandCallingArgs args)
         {
             var code = (string)args[0];
-            if (storyStructureInstances.TryGetValue(code, out var storyStructureLocation))
+            var structure = Structures.Get(code);
+            if (structure != null)
             {
-                storyStructureLocation.SchematicsSpawned = null;
+                structure.SchematicsSpawned = null;
                 StoryStructureInstancesDirty = true;
-                return TextCommandResult.Success($"Ok, removed the story structure locations {code} schematics counter.");
+                return TextCommandResult.Success($"Ok, story structure locations {code} set as not spawned.");
             }
 
             return TextCommandResult.Error("No such story structure exist in assets");
@@ -195,7 +286,7 @@ namespace Vintagestory.GameContent
             int minX = pos.X - schem.SizeX / 2;
             int minZ = pos.Z - schem.SizeZ / 2;
             var cub = new Cuboidi(minX, pos.Y, minZ, minX + schem.SizeX - 1, pos.Y + schem.SizeY - 1, minZ + schem.SizeZ - 1);
-            storyStructureInstances[storyStruc.Code] = new StoryStructureLocation()
+            var strucloc = new StoryStructureLocation()
             {
                 Code = storyStruc.Code,
                 CenterPos = pos,
@@ -204,6 +295,9 @@ namespace Vintagestory.GameContent
                 GenerationRadius = storyStruc.GenerationRadius,
                 SkipGenerationFlags = storyStruc.SkipGenerationFlags
             };
+
+            Structures.Set(storyStruc.Code, strucloc);
+
 
             if (storyStruc.RequireLandform != null)
             {
@@ -219,8 +313,8 @@ namespace Vintagestory.GameContent
             {
                 genmaps.ForceClimateAt(new ForceClimate
                 {
-                    Radius = storyStructureInstances[storyStruc.Code].LandformRadius,
-                    CenterPos = storyStructureInstances[storyStruc.Code].CenterPos,
+                    Radius = strucloc.LandformRadius,
+                    CenterPos = strucloc.CenterPos,
                     Climate = (Climate.DescaleTemperature(storyStruc.ForceTemperature ?? 0f) << 16) + ((storyStruc.ForceRain ?? 0) << 8)
                 });
             }
@@ -298,111 +392,53 @@ namespace Vintagestory.GameContent
         private TextCommandResult OnTpStoryLoc(TextCommandCallingArgs args)
         {
             if (args[0] is not string code) return TextCommandResult.Success();
+            var storyloc = Structures.Get(code);
 
-            if (storyStructureInstances.TryGetValue(code, out var storystruc))
+            if (storyloc != null)
             {
-                var pos = storystruc.CenterPos.Copy();
-                pos.Y = (storystruc.Location.Y1 + storystruc.Location.Y2) / 2;
+                var pos = storyloc.CenterPos.Copy();
+                pos.Y = (storyloc.Location.Y1 + storyloc.Location.Y2) / 2;
                 args.Caller.Entity.TeleportTo(pos);
                 return TextCommandResult.Success("Teleporting to " + code);
             }
 
             return TextCommandResult.Success("No such story structure, " + code);
-
         }
 
-        public string GetStoryStructureCodeAt(int x, int z, int category)
-        {
-            if (storyStructureInstances == null)
-            {
-                return null;
-            }
 
-            foreach (var (_, loc) in storyStructureInstances)
-            {
-                var hasCategory = loc.SkipGenerationFlags.TryGetValue(category, out var checkRadius);
-                if (loc.Location.Contains(x, z) && hasCategory)
-                {
-                    return loc.Code;
-                }
-                if (checkRadius > 0)
-                {
-                    if (loc.CenterPos.HorDistanceSqTo(x, z) < checkRadius * checkRadius)
-                    {
-                        return loc.Code;
-                    }
-                }
-            }
 
-            return null;
-        }
-
-        public StoryStructureLocation GetStoryStructureAt(int x, int z)
-        {
-            if (storyStructureInstances == null)
-            {
-                return null;
-            }
-
-            foreach (var (_, loc) in storyStructureInstances)
-            {
-                if (loc.Location.Contains(x, z))
-                {
-                    return loc;
-                }
-                var checkRadius = loc.LandformRadius;
-                if (checkRadius > 0)
-                {
-                    if (loc.CenterPos.HorDistanceSqTo(x, z) < checkRadius * checkRadius)
-                    {
-                        return loc;
-                    }
-                }
-            }
-
-            return null;
-        }
-
-        public string GetStoryStructureCodeAt(Vec3d position, int skipCategory)
-        {
-            return GetStoryStructureCodeAt((int)position.X, (int)position.Z, skipCategory);
-        }
-
-        public string GetStoryStructureCodeAt(BlockPos position, int skipCategory)
-        {
-            return GetStoryStructureCodeAt(position.X, position.Z, skipCategory);
-        }
 
         protected void DetermineStoryStructures()
         {
             var data = api.WorldManager.SaveGame.GetData<List<string>>("attemptedToGenerateStoryLocation");
             data ??= new List<string>();
             var i = 0;
-            foreach (var storyStructure in scfg.Structures)
+            foreach (var wgenStoryStructure in scfg.Structures)
             {
+                var strucloc = Structures.Get(wgenStoryStructure.Code);
                 // check if it already exists
-                if (storyStructureInstances.TryGetValue(storyStructure.Code, out var storyStruc))
+                if (strucloc != null)
                 {
                     // update settings in case those where changed in an update or for testing
-                    storyStruc.LandformRadius = storyStructure.LandformRadius;
-                    storyStruc.GenerationRadius = storyStructure.GenerationRadius;
-                    storyStruc.SkipGenerationFlags = storyStructure.SkipGenerationFlags;
+                    strucloc.LandformRadius = wgenStoryStructure.LandformRadius;
+                    strucloc.GenerationRadius = wgenStoryStructure.GenerationRadius;
+                    strucloc.SkipGenerationFlags = wgenStoryStructure.SkipGenerationFlags;
 
-                    var schem = storyStructure.schematicData;
-                    var minX = storyStruc.CenterPos.X - schem.SizeX / 2;
-                    var minZ = storyStruc.CenterPos.Z - schem.SizeZ / 2;
-                    var cuboidi = new Cuboidi(minX, storyStruc.CenterPos.Y, minZ, minX + schem.SizeX, storyStruc.CenterPos.Y + schem.SizeY, minZ + schem.SizeZ);
-                    storyStruc.Location = cuboidi;
+                    var schem = wgenStoryStructure.schematicData;
+                    var minX = strucloc.CenterPos.X - schem.SizeX / 2;
+                    var minZ = strucloc.CenterPos.Z - schem.SizeZ / 2;
+                    var cuboidi = new Cuboidi(minX, strucloc.CenterPos.Y, minZ, minX + schem.SizeX, strucloc.CenterPos.Y + schem.SizeY, minZ + schem.SizeZ);
+                    strucloc.Location = cuboidi;
                 }
                 else
                 {
                     // only attempt to generate a story structure ones
                     // this also makes sure this wont get called on /wgen regen again which would throw because the test methods can only be called pre RunGame
-                    if (!data.Contains(storyStructure.Code))
+                    if (!data.Contains(wgenStoryStructure.Code))
                     {
                         strucRand.SetWorldSeed(api.WorldManager.Seed + 1095 + i);
-                        TryAddStoryLocation(storyStructure);
-                        data.Add(storyStructure.Code);
+                        TryAddStoryLocation(wgenStoryStructure);
+                        data.Add(wgenStoryStructure.Code);
                     }
                 }
 
@@ -430,7 +466,8 @@ namespace Vintagestory.GameContent
                 }
                 else
                 {
-                    if (storyStructureInstances.TryGetValue(storyStructure.DependsOnStructure, out dependentLocation))
+                    dependentLocation = Structures.Get(storyStructure.DependsOnStructure);
+                    if (dependentLocation != null)
                     {
                         basePos = dependentLocation.CenterPos.Copy();
                     }
@@ -549,7 +586,8 @@ namespace Vintagestory.GameContent
             int minX = pos.X - schem.SizeX / 2;
             int minZ = pos.Z - schem.SizeZ / 2;
             var cuboidi = new Cuboidi(minX, pos.Y, minZ, minX + schem.SizeX, pos.Y + schem.SizeY, minZ + schem.SizeZ);
-            storyStructureInstances[storyStructure.Code] = new StoryStructureLocation()
+
+            Structures.Set(storyStructure.Code, new StoryStructureLocation()
             {
                 Code = storyStructure.Code,
                 CenterPos = pos,
@@ -558,14 +596,14 @@ namespace Vintagestory.GameContent
                 GenerationRadius = storyStructure.GenerationRadius,
                 DirX = dirX,
                 SkipGenerationFlags = storyStructure.SkipGenerationFlags
-            };
+            });
         }
 
         private void SetupForceLandform()
         {
             var genmaps = api.ModLoader.GetModSystem<GenMaps>();
 
-            foreach (var (code, location) in storyStructureInstances)
+            foreach (var (code, location) in Structures)
             {
                 var structureConfig = scfg.Structures.FirstOrDefault(s => s.Code == code);
                 if(structureConfig == null)
@@ -598,7 +636,7 @@ namespace Vintagestory.GameContent
         {
             if (StoryStructureInstancesDirty)
             {
-                api.WorldManager.SaveGame.StoreData("storystructurelocations", SerializerUtil.Serialize(storyStructureInstances));
+                api.WorldManager.SaveGame.StoreData("storystructurelocations", Structures.ToBytes());
                 StoryStructureInstancesDirty = false;
             }
         }
@@ -608,7 +646,7 @@ namespace Vintagestory.GameContent
             var strucs = api.WorldManager.SaveGame.GetData<API.Datastructures.OrderedDictionary<string, StoryStructureLocation>>("storystructurelocations");
             if (strucs != null)
             {
-                storyStructureInstances = strucs;
+                Structures.Load(strucs);
             }
 
             if (GameVersion.IsLowerVersionThan(api.WorldManager.SaveGame.CreatedGameVersion, "1.21.0-pre.3"))
@@ -645,7 +683,6 @@ namespace Vintagestory.GameContent
         private void OnChunkColumnGen(IChunkColumnGenerateRequest request)
         {
             if (!genStoryStructures) return;
-            if (storyStructureInstances == null) return;
 
             var chunks = request.Chunks;
             int chunkX = request.ChunkX;
@@ -653,7 +690,7 @@ namespace Vintagestory.GameContent
             tmpCuboid.Set(chunkX * chunksize, 0, chunkZ * chunksize, chunkX * chunksize + chunksize, chunks.Length * chunksize, chunkZ * chunksize + chunksize);
             worldgenBlockAccessor.BeginColumn();
 
-            foreach (var (strucCode, strucInst) in storyStructureInstances)
+            foreach (var (strucCode, strucInst) in Structures)
             {
                 var strucloc = strucInst.Location;
                 if (!strucloc.Intersects(tmpCuboid)) continue;
@@ -764,7 +801,13 @@ namespace Vintagestory.GameContent
                     }
 
                 }
-                int blocksPlaced = structure.schematicData.PlacePartial(chunks, worldgenBlockAccessor, api.World, chunkX, chunkZ, startPos, EnumReplaceMode.ReplaceAll, structure.Placement, GenStructures.ReplaceMetaBlocks, GenStructures.ReplaceMetaBlocks,structure.resolvedRockTypeRemaps, structure.replacewithblocklayersBlockids, rockBlock, structure.DisableSurfaceTerrainBlending);
+                int blocksPlaced = structure.schematicData.PlacePartial(
+                    chunks, worldgenBlockAccessor, api.World,
+                    chunkX, chunkZ, startPos, EnumReplaceMode.ReplaceAll, structure.Placement,
+                    GlobalConfig.ReplaceMetaBlocks, GlobalConfig.ReplaceMetaBlocks, structure.resolvedRockTypeRemaps,
+                    structure.replacewithblocklayersBlockids, rockBlock, structure.DisableSurfaceTerrainBlending
+                );
+
                 if (blocksPlaced > 0)
                 {
                     if (structure.Placement is EnumStructurePlacement.Surface or EnumStructurePlacement.SurfaceRuin)
@@ -931,7 +974,7 @@ namespace Vintagestory.GameContent
             int forestBotLeft = forestMap.GetUnpaddedInt((int)(rdx * forestStep), (int)(rdz * forestStep + forestStep));
             int forestBotRight = forestMap.GetUnpaddedInt((int)(rdx * forestStep + forestStep), (int)(rdz * forestStep + forestStep));
 
-            var herePos = new BlockPos();
+            var herePos = new BlockPos(Dimensions.NormalWorld);
 
 
             for (int x = 0; x < chunksize; x++)
@@ -1169,7 +1212,7 @@ namespace Vintagestory.GameContent
                     var struc = structures[ix];
                     var offset = offsets[ix];
                     BlockPos posPlace = pos.AddCopy(offset.X, offset.Y, offset.Z);
-                    struc.PlaceRespectingBlockLayers(blockAccessor, api.World, posPlace, 0, 0, 0, 0, null, Array.Empty<int>(), GenStructures.ReplaceMetaBlocks, true, false, true);
+                    struc.PlaceRespectingBlockLayers(blockAccessor, api.World, posPlace, 0, 0, 0, 0, null, Array.Empty<int>(), GlobalConfig.ReplaceMetaBlocks, true, false, true);
                     pos.Y += struc.SizeY;
 
                     entranceMinX = Math.Min(entranceMinX, posPlace.X);
@@ -1268,7 +1311,7 @@ namespace Vintagestory.GameContent
             structTop.Init(blockAccessor);
 
             pos.Add(endElement.dx, endElement.dy, endElement.dz);
-            structTop.PlaceRespectingBlockLayers(blockAccessor, api.World, pos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, null, replaceblockids, GenStructures.ReplaceMetaBlocks, true, true);
+            structTop.PlaceRespectingBlockLayers(blockAccessor, api.World, pos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, null, replaceblockids, GlobalConfig.ReplaceMetaBlocks, true, true);
 
             var locationEnd = new Cuboidi(pos.X, pos.Y, pos.Z, pos.X + structTop.SizeX, pos.Y + structTop.SizeY, pos.Z + structTop.SizeZ);
             region.AddGeneratedStructure(new GeneratedStructure()
@@ -1286,6 +1329,96 @@ namespace Vintagestory.GameContent
             // because the normal condition for it to be generated (i.e. generate a DevastationLayer chunk column after all the columns in the dim2 land area around the tower are already generated) may not be met
 
             api.ModLoader.GetModSystem<Timeswitch>().AttemptGeneration(worldgenBlockAccessor);
+        }
+
+
+
+
+
+        List<StoryStructureLocation> nearStructures = new();
+        Dictionary<string, BlockPatchConfig> storyStructurePatches = null;
+        int storyPatchhashcode = BitConverter.ToInt32(SHA256.HashData("storyPatches"u8.ToArray()));
+
+        public bool PreventPlacementAt(int x, int z, int category)
+        {
+            if (category == storyPatchhashcode) return false;
+
+            var struc = StoryStructures.GetBlockingStructureAt(x, z, category, nearStructures);
+            return struc != null;
+        }
+
+        public bool PreventPlacementBroadlyAt(int chunkX, int chunkZ)
+        {
+            if (!genStoryStructures) return false;
+
+            // 3 by 3 square of chunks
+            var rect = new HorRectanglei((chunkX-1) * chunksize, (chunkZ-1) * chunksize, (chunkX+2) * chunksize, (chunkZ+2) * chunksize);
+            nearStructures.Clear();
+
+            foreach (var val in Structures)
+            {
+                var loc = val.Value.Location;
+                if (loc.Intersects(rect))
+                {
+                    nearStructures.Add(val.Value);
+                    continue;
+                }
+
+                if (loc.FastCenter.DistanceSq(chunkX * chunksize, 0, chunkZ * chunksize) < val.Value.MaxSkipGenerationRadiusSq)
+                {
+                    nearStructures.Add(val.Value);
+                }
+            }
+
+            if (nearStructures.Count > 0)
+            {
+                var genStorySys = api.ModLoader.GetModSystem<GenStoryStructures>();
+                var stcfg = genStorySys.scfg;
+
+                if (storyStructurePatches == null)
+                {
+                    storyStructurePatches = new Dictionary<string, BlockPatchConfig>();
+                    foreach (var storyStructure in stcfg.Structures)
+                    {
+                        var path = "worldgen/story/" + storyStructure.Code + "/blockpatches/";
+
+                        var storyBlockPatches = api.Assets.GetMany<BlockPatch[]>(api.World.Logger, path).OrderBy(b => b.Key.ToString()).ToList();
+
+                        if (storyBlockPatches?.Count > 0)
+                        {
+                            var allLocationPatches = new List<BlockPatch>();
+                            foreach (var val in storyBlockPatches)
+                            {
+                                foreach (var patch in val.Value) patch.CategoryHashCode = storyPatchhashcode;
+                                allLocationPatches.AddRange(val.Value);
+                            }
+                            storyStructurePatches[storyStructure.Code] = new BlockPatchConfig()
+                            {
+                                Patches = allLocationPatches.ToArray()
+                            };
+                            storyStructurePatches[storyStructure.Code].ResolveBlockIds(api, blockLayerConfig.RockStrata, grassRand);
+                        }
+                    }
+                }
+            }
+
+            return nearStructures.Count > 0;
+        }
+
+        public BlockPatchConfig GetPatchProviderAt(int chunkX, int chunkZ, ref EnumHandling handling)
+        {
+            if (!genStoryStructures) return null;
+
+            int dx = grassRand.NextInt(chunksize);
+            int dz = grassRand.NextInt(chunksize);
+
+            var structure = GetIntersectingStructure(chunkX * chunksize + dx, chunkZ * chunksize + dz);
+            if (structure != null && storyStructurePatches != null && storyStructurePatches.TryGetValue(structure.Code, out var blockPatchConfig))
+            {
+                return blockPatchConfig;
+            }
+
+            return null;
         }
     }
 }

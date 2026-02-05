@@ -230,12 +230,12 @@ namespace Vintagestory.GameContent
             currentParticles.Color = (r << 16) | (g << 8) | (b << 0) | (50 << 24);
             
             currentParticles.AddPos.Set(0, 0, 0);
-            currentParticles.BlueEvolve = null;
-            currentParticles.RedEvolve = null;
-            currentParticles.GreenEvolve = null;
+            currentParticles.BlueEvolve = EvolvingNatFloat.NoValueSet;
+            currentParticles.RedEvolve = EvolvingNatFloat.NoValueSet;
+            currentParticles.GreenEvolve = EvolvingNatFloat.NoValueSet;
             currentParticles.MinSize = 0.1f;
             currentParticles.MaxSize = 0.2f;
-            currentParticles.SizeEvolve = null;
+            currentParticles.SizeEvolve = EvolvingNatFloat.NoValueSet;
             currentParticles.OpacityEvolve = EvolvingNatFloat.create(EnumTransformFunction.LINEAR, 100f);
 
 
@@ -305,12 +305,14 @@ namespace Vintagestory.GameContent
 
                 int chunkX = (Pos.X + dx) / GlobalConstants.ChunkSize;
                 int chunkZ = (Pos.Z + dz) / GlobalConstants.ChunkSize;
-                
+
+#pragma warning disable CS0618 // Type or member is obsolete - it's OK here as we are checking the whole chunk column by testing at y == 1
                 if (!sapi.World.BlockAccessor.IsValidPos(Pos.X + dx, 1, Pos.Z + dz))
                 {
                     findNextChunk = true;
                     return;
                 }
+#pragma warning restore CS0618
 
                 ChunkPeekOptions opts = new ChunkPeekOptions()
                 {
@@ -535,12 +537,12 @@ namespace Vintagestory.GameContent
             int b = 172;
             ownBlock.teleportParticles.Color = (r << 16) | (g << 8) | (b << 0) | (100 << 24);
 
-            ownBlock.teleportParticles.BlueEvolve = null;
-            ownBlock.teleportParticles.RedEvolve = null;
-            ownBlock.teleportParticles.GreenEvolve = null;
+            ownBlock.teleportParticles.BlueEvolve = EvolvingNatFloat.NoValueSet;
+            ownBlock.teleportParticles.RedEvolve = EvolvingNatFloat.NoValueSet;
+            ownBlock.teleportParticles.GreenEvolve = EvolvingNatFloat.NoValueSet;
             ownBlock.teleportParticles.MinSize = 0.1f;
             ownBlock.teleportParticles.MaxSize = 0.2f;
-            ownBlock.teleportParticles.SizeEvolve = null;
+            ownBlock.teleportParticles.SizeEvolve = EvolvingNatFloat.NoValueSet;
             ownBlock.teleportParticles.OpacityEvolve = EvolvingNatFloat.create(EnumTransformFunction.QUADRATIC, -10f);
 
             Api.World.SpawnParticles(ownBlock.teleportParticles);

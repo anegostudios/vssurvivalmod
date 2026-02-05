@@ -302,7 +302,7 @@ namespace Vintagestory.GameContent
                 {
                     if (Attributes["eatenBlock"].Exists)
                     {
-                        Block block = byEntity.World.GetBlock(new AssetLocation(Attributes["eatenBlock"].AsString()));
+                        Block? block = byEntity.World.GetBlock(new AssetLocation(Attributes["eatenBlock"].AsString()));
 
                         if (slot.Empty || slot.StackSize == 1)
                         {
@@ -312,7 +312,7 @@ namespace Vintagestory.GameContent
                         {
                             if (!player.InventoryManager.TryGiveItemstack(new ItemStack(block), true))
                             {
-                                byEntity.World.SpawnItemEntity(new ItemStack(block), byEntity.SidedPos.XYZ);
+                                byEntity.World.SpawnItemEntity(new ItemStack(block), byEntity.Pos.XYZ);
                             }
                         }
                     }
@@ -340,7 +340,7 @@ namespace Vintagestory.GameContent
 
                     if (!player.InventoryManager.TryGiveItemstack(originalStack, true))
                     {
-                        byEntity.World.SpawnItemEntity(originalStack, byEntity.SidedPos.XYZ);
+                        byEntity.World.SpawnItemEntity(originalStack, byEntity.Pos.XYZ);
                     }
                 }
             }
@@ -434,7 +434,8 @@ namespace Vintagestory.GameContent
 
                     if (bemeal.QuantityServings <= 0)
                     {
-                        Block block = world.GetBlock(new AssetLocation(Attributes["eatenBlock"].AsString()));
+                        Block? block = world.GetBlock(new AssetLocation(Attributes["eatenBlock"].AsString()));
+                        ArgumentNullException.ThrowIfNull(block);
                         world.BlockAccessor.SetBlock(block.BlockId, blockSel.Position);
                     }
                     else
@@ -465,6 +466,8 @@ namespace Vintagestory.GameContent
             if (multiProps == null) return remainingServings;
 
             float totalHealth = 0;
+            float totalIntox = 0;
+            float totalPsyche = 0;
             EntityBehaviorHunger? ebh = eatingPlayer.Entity.GetBehavior<EntityBehaviorHunger>();
             if (ebh == null) throw new Exception(eatingPlayer.Entity.Code.ToString() + "does not have EntityBehaviorHunger defined properly");
             float satiablePoints = ebh.MaxSaturation - ebh.Saturation;
@@ -507,13 +510,21 @@ namespace Vintagestory.GameContent
                 {
                     if (!eatingPlayer.InventoryManager.TryGiveItemstack(nutriProps.EatenStack.ResolvedItemstack.Clone(), true))
                     {
-                        world.SpawnItemEntity(nutriProps.EatenStack.ResolvedItemstack.Clone(), eatingPlayer.Entity.SidedPos.XYZ);
+                        world.SpawnItemEntity(nutriProps.EatenStack.ResolvedItemstack.Clone(), eatingPlayer.Entity.Pos.XYZ);
                     }
                 }
 
                 totalHealth += mul * nutriProps.Health;
+                totalIntox += mul * nutriProps.Intoxication;
+                totalPsyche += mul * nutriProps.Psychedelic;
             }
 
+
+            float intox = eatingPlayer.Entity.WatchedAttributes.GetFloat("intoxication");
+            eatingPlayer.Entity.WatchedAttributes.SetFloat("intoxication", Math.Min(1.1f, intox + totalIntox));
+
+            float psyche = eatingPlayer.Entity.WatchedAttributes.GetFloat("psychedelic");
+            eatingPlayer.Entity.WatchedAttributes.SetFloat("psychedelic", Math.Min(2.0f, psyche + totalPsyche));
 
             if (totalHealth != 0)
             {
@@ -563,6 +574,8 @@ namespace Vintagestory.GameContent
                 float healthLoss = GlobalConstants.FoodSpoilageHealthLossMul(spoilState, mealStack, forEntity);
                 props.Satiety *= satLossMul * nutritionMul * mul;
                 props.Health *= healthLoss * healthMul * mul;
+                props.Intoxication *= mul;
+                props.Psychedelic *= mul;
 
                 foodProps.Add(props);
             }
@@ -575,16 +588,18 @@ namespace Vintagestory.GameContent
             if (stack == null) return null;
 
             CollectibleObject obj = stack.Collectible;
-            ItemStack? cookedstack = obj.CombustibleProps?.SmeltedStack?.ResolvedItemstack;
+            CombustibleProperties combustibleProps = obj.GetCombustibleProperties(world, stack, null);
+            ItemStack? cookedstack = combustibleProps?.SmeltedStack?.ResolvedItemstack;
             WaterTightContainableProps? liquidProps = BlockLiquidContainerBase.GetContainableProps(stack);
 
-            FoodNutritionProperties? nutriProps = liquidProps?.NutritionPropsPerLitreWhenInMeal;
+            FoodNutritionProperties? nutriProps = liquidProps?.NutritionPropsPerLitreWhenInMeal?.Clone();
             if (liquidProps != null && nutriProps != null)
             {
-                nutriProps = nutriProps.Clone();
                 float litre = stack.StackSize / liquidProps.ItemsPerLitre;
                 nutriProps.Health *= litre;
                 nutriProps.Satiety *= litre;
+                nutriProps.Intoxication *= litre;
+                nutriProps.Psychedelic *= litre;
             }
 
             nutriProps ??= obj.Attributes?["nutritionPropsWhenInMeal"]?.AsObject<FoodNutritionProperties>();
@@ -597,17 +612,25 @@ namespace Vintagestory.GameContent
 
             if (liquidProps != null && nutriProps == null)
             {
-                nutriProps = liquidProps.NutritionPropsPerLitre;
+                nutriProps = liquidProps.NutritionPropsPerLitre?.Clone();
                 if (nutriProps != null)
                 {
-                    nutriProps = nutriProps.Clone();
+                    nutriProps.Satiety *= 1.3f;
                     float litre = stack.StackSize / liquidProps.ItemsPerLitre;
                     nutriProps.Health *= litre;
                     nutriProps.Satiety *= litre;
+                    nutriProps.Intoxication *= litre;
+                    nutriProps.Psychedelic *= litre;
                 }
             }
 
-            return nutriProps ?? obj.GetNutritionProperties(world, stack, forEntity);
+            if (nutriProps == null)
+            {
+                nutriProps = obj.GetNutritionProperties(world, stack, forEntity)?.Clone();
+                if (nutriProps != null) nutriProps.Satiety *= 1.3f;
+            }
+
+            return nutriProps;
         }
 
         public FoodNutritionProperties[]? GetContentNutritionProperties(IWorldAccessor world, ItemSlot inSlot, EntityAgent forEntity)
@@ -715,15 +738,15 @@ namespace Vintagestory.GameContent
             if (meshref != null) renderinfo.ModelRef = meshref;
         }
 
-        public virtual MeshData? GenMesh(ItemStack itemstack, ITextureAtlasAPI targetAtlas, BlockPos? forBlockPos = null)
+        public virtual MeshData? GenMesh(ItemSlot slot, ITextureAtlasAPI targetAtlas, BlockPos? forBlockPos)
         {
             if (api is not ICoreClientAPI capi) return null;
-            return meshCache!.GenMealInContainerMesh(this, GetCookingRecipe(capi.World, itemstack), GetNonEmptyContents(capi.World, itemstack));
+            return meshCache!.GenMealInContainerMesh(this, GetCookingRecipe(capi.World, slot.Itemstack), GetNonEmptyContents(capi.World, slot.Itemstack));
         }
 
-        public virtual string GetMeshCacheKey(ItemStack itemstack)
+        public virtual string GetMeshCacheKey(ItemSlot slot)
         {
-            return meshCache!.GetMealHashCode(itemstack).ToString();
+            return meshCache!.GetMealHashCode(slot.Itemstack).ToString();
         }
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
@@ -776,10 +799,15 @@ namespace Vintagestory.GameContent
             dummyInv.OnAcquireTransitionSpeed += (transType, stack, mul) =>
             {
                 float invMul = inSlot.Inventory?.GetTransitionSpeedMul(transType, mealStack) ?? 1;
+                if (transType != EnumTransitionType.Perish) mul = 0;
                 return invMul * GetContainingTransitionModifierContained(world, inSlot, transType);
             };
 
-            slot.Itemstack?.Collectible.AppendPerishableInfoText(slot, dsc, world);
+            var perishState = slot.Itemstack?.Collectible.UpdateAndGetTransitionStates(api.World, inSlot)?.FirstOrDefault(state => state.Props.Type is EnumTransitionType.Perish);
+            if (perishState != null)
+            {
+                slot.Itemstack?.Collectible.AppendPerishableInfoText(slot, dsc, world, perishState, false);
+            }
 
             float servings = GetQuantityServings(world, mealStack);
 
@@ -811,7 +839,10 @@ namespace Vintagestory.GameContent
 
             if (!MealMeshCache.ContentsRotten(stacks))
             {
-                string facts = GetContentNutritionFacts(world, inSlot, null, recipe == null);
+                // We'll calculate for the serving size if it's less than 1.
+                servings = Math.Min(1, servings);
+                float[] nmul = GetNutritionHealthMul(null, inSlot, null);
+                string facts = GetContentNutritionFacts(world, inSlot, stacks, null, recipe == null, servings * nmul[0], servings * nmul[1]);
 
                 if (facts != null)
                 {
@@ -870,13 +901,13 @@ namespace Vintagestory.GameContent
                     {
                         if (stacks[i] != null && stacks[i].StackSize > 0 && stacks[i].Collectible.Code.Path == "rot")
                         {
-                            world.SpawnItemEntity(stacks[i], entityItem.ServerPos.XYZ);
+                            world.SpawnItemEntity(stacks[i], entityItem.Pos.XYZ);
                         }
                     }
                 } else
                 {
                     ItemStack rndStack = stacks[world.Rand.Next(stacks.Length)];
-                    world.SpawnCubeParticles(entityItem.ServerPos.XYZ, rndStack, 0.3f, 25, 1, null);
+                    world.SpawnCubeParticles(entityItem.Pos.XYZ, rndStack, 0.3f, 25, 1, null);
                 }
 
                 entityItem.Itemstack = new ItemStack(eatenBlock);
@@ -954,6 +985,22 @@ namespace Vintagestory.GameContent
             return states;
         }
 
+        protected override ItemSlot GetContentInDummySlot(ItemSlot inslot, ItemStack itemstack)
+        {
+            DummyInventory dummyInv = new DummyInventory(api);
+            ItemSlot dummySlot = new DummySlot(itemstack, dummyInv);
+            dummySlot.MarkedDirty += () => { inslot.Inventory?.DidModifyItemSlot(inslot); return true; };
+
+            dummyInv.OnAcquireTransitionSpeed += (transType, stack, mulByConfig) =>
+            {
+                float mul = inslot.Inventory?.InvokeTransitionSpeedDelegates(transType, stack, mulByConfig) ?? 1;
+                if (transType != EnumTransitionType.Perish) mul = 0;
+                return mul * GetContainingTransitionModifierContained(api.World, inslot, transType);
+            };
+
+            return dummySlot;
+        }
+
 
         public override string GetHeldItemName(ItemStack? itemStack)
         {
@@ -986,20 +1033,34 @@ namespace Vintagestory.GameContent
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
         {
-            return new WorldInteraction[]
-            {
-                new WorldInteraction()
+            return
+            [
+                new()
                 {
                     ActionLangCode = "blockhelp-meal-pickup",
                     MouseButton = EnumMouseButton.Right,
                 },
-                new WorldInteraction()
+                new()
+                {
+                    ActionLangCode = "blockhelp-meal-eat",
+                    MouseButton = EnumMouseButton.Right,
+                    HotKeyCode = "shift"
+                },
+            ..base.GetPlacedBlockInteractionHelp(world, selection, forPlayer)
+            ];
+        }
+
+        public WorldInteraction[] GetContainedInteractionHelp(BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        {
+            return
+            [
+                new()
                 {
                     ActionLangCode = "blockhelp-meal-eat",
                     MouseButton = EnumMouseButton.Right,
                     HotKeyCode = "shift"
                 }
-            }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
+            ];
         }
 
         public virtual bool ShouldSpawnGSParticles(IWorldAccessor world, ItemStack stack) => world.Rand.NextDouble() < (GetTemperature(world, stack) - 50) / 320 / 8;

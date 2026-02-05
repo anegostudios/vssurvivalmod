@@ -32,7 +32,7 @@ namespace Vintagestory.GameContent
             // Don't try more than once a second
             cooldownUntilMs = entity.World.ElapsedMilliseconds + 1000;
 
-            if (!PreconditionsSatisifed()) return false;
+            if (!PreconditionsSatisfied()) return false;
             targetEntity = getEntity();
 
             return targetEntity != null && base.ShouldExecute();
@@ -45,7 +45,7 @@ namespace Vintagestory.GameContent
 
         private bool isNear()
         {
-            return targetEntity.ServerPos.SquareHorDistanceTo(CenterPos) <= seekingRangeHor * seekingRangeHor && targetEntity.ServerPos.Dimension == entity.ServerPos.Dimension;
+            return targetEntity.Pos.SquareHorDistanceTo(CenterPos) <= seekingRangeHor * seekingRangeHor && targetEntity.Pos.Dimension == entity.Pos.Dimension;
         }
 
         public Entity getEntity()

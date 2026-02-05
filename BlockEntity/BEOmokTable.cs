@@ -1,7 +1,8 @@
-﻿using System;
+using System;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 
 #nullable disable
@@ -13,7 +14,7 @@ namespace Vintagestory.GameContent
     {
         public override InventoryBase Inventory => inv;
         public override string InventoryClassName => "omoktable";
-        public override string AttributeTransformCode => "onshelfTransform";
+        public override string AttributeTransformCode => "onOmokTransform";
 
         public float MeshAngleRad { get; set; }
 
@@ -49,10 +50,10 @@ namespace Vintagestory.GameContent
             {
                 if (placeable)
                 {
-                    AssetLocation sound = slot.Itemstack?.Block?.Sounds?.Place;
+                    SoundAttributes sound = slot.Itemstack?.Block?.Sounds?.Place ?? GlobalConstants.DefaultBuildSound;
                     if (TryPut(slot, blockSel))
                     {
-                        Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
+                        Api.World.PlaySoundAt(sound, byPlayer.Entity, byPlayer);
                         return true;
                     }
 
@@ -90,8 +91,8 @@ namespace Vintagestory.GameContent
                 ItemStack stack = inv[index].TakeOut(1);
                 if (byPlayer.InventoryManager.TryGiveItemstack(stack))
                 {
-                    AssetLocation sound = stack.Block?.Sounds?.Place;
-                    Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
+                    SoundAttributes sound = stack.Block?.Sounds?.Place ?? GlobalConstants.DefaultBuildSound;
+                    Api.World.PlaySoundAt(sound, byPlayer.Entity, byPlayer);
                 }
 
                 if (stack.StackSize > 0)
@@ -136,13 +137,13 @@ namespace Vintagestory.GameContent
                 int dx = i % size;
                 int dz = i / size;
                 mat.Translate((0.6f + dx) / 16f, 0, (0.6f + dz) / 16f);
-                mesher.AddMeshData(getMesh(slot.Itemstack), mat.Values);
+                mesher.AddMeshData(getMesh(slot), mat.Values);
             }
 
             return false;
         }
 
-        public override void updateMeshes()
+        public override void MarkMeshesDirty()
         {
             for (int i = 0; i < DisplayedItems; i++)
             {

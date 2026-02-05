@@ -1,8 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
@@ -58,9 +59,9 @@ namespace Vintagestory.GameContent
                         GetMatchingStacks = (wi, bs, es) =>
                         {
                             BlockEntityForge bef = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityForge;
-                            if (bef!= null && bef.Contents != null)
+                            if (bef!= null && bef.WorkItemStack != null)
                             {
-                                return wi.Itemstacks.Where(stack => stack.Equals(api.World, bef.Contents, GlobalConstants.IgnoredStackAttributes)).ToArray();
+                                return wi.Itemstacks.Where(stack => stack.Equals(api.World, bef.WorkItemStack, GlobalConstants.IgnoredStackAttributes)).ToArray();
                             }
                             return wi.Itemstacks;
                         }
@@ -74,9 +75,9 @@ namespace Vintagestory.GameContent
                         GetMatchingStacks = (wi, bs, es) =>
                         {
                             BlockEntityForge bef = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityForge;
-                            if (bef!= null && bef.Contents != null)
+                            if (bef!= null && bef.WorkItemStack != null)
                             {
-                                return new ItemStack[] { bef.Contents };
+                                return new ItemStack[] { bef.WorkItemStack };
                             }
                             return null;
                         }
@@ -90,7 +91,7 @@ namespace Vintagestory.GameContent
                         GetMatchingStacks = (wi, bs, es) =>
                         {
                             BlockEntityForge bef = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityForge;
-                            if (bef!= null && bef.FuelLevel < 10/16f)
+                            if (bef!= null && bef.FuelLevel < 5/16f)
                             {
                                 return wi.Itemstacks;
                             }
@@ -116,10 +117,39 @@ namespace Vintagestory.GameContent
             });
         }
 
+
+        public override void OnEntityCollide(IWorldAccessor world, Entity entity, BlockPos pos, BlockFacing facing, Vec3d collideSpeed, bool isImpact)
+        {
+            if (world.Rand.NextDouble() < 0.05 && GetBlockEntity<BlockEntityForge>(pos)?.IsBurning == true)
+            {
+                entity.ReceiveDamage(new DamageSource() { Source = EnumDamageSource.Block, SourceBlock = this, Type = EnumDamageType.Fire, SourcePos = pos.ToVec3d() }, 0.5f);
+            }
+
+            base.OnEntityCollide(world, entity, pos, facing, collideSpeed, isImpact);
+        }
+
+        public override bool DoPlaceBlock(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ItemStack byItemStack)
+        {
+            if (!base.DoPlaceBlock(world, byPlayer, blockSel, byItemStack)) return false;
+
+            var beforge = GetBlockEntity<BlockEntityForge>(blockSel.Position);
+            if (beforge == null) return true;
+            
+            BlockPos targetPos = blockSel.DidOffset ? blockSel.Position.AddCopy(blockSel.Face.Opposite) : blockSel.Position;
+            double dx = byPlayer.Entity.Pos.X - (targetPos.X + blockSel.HitPosition.X);
+            double dz = (float)byPlayer.Entity.Pos.Z - (targetPos.Z + blockSel.HitPosition.Z);
+            float angleHor = (float)Math.Atan2(dx, dz);
+
+            float deg90 = GameMath.PIHALF;
+            beforge.MeshAngleRad = ((int)Math.Round(angleHor / deg90)) * deg90;
+
+            return true;
+        }
+
         EnumIgniteState IIgnitable.OnTryIgniteStack(EntityAgent byEntity, BlockPos pos, ItemSlot slot, float secondsIgniting)
         {
             BlockEntityForge bea = byEntity.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityForge;
-            if (bea.Lit) return secondsIgniting > 2 ? EnumIgniteState.IgniteNow : EnumIgniteState.Ignitable;
+            if (bea.IsBurning) return secondsIgniting > 2 ? EnumIgniteState.IgniteNow : EnumIgniteState.Ignitable;
             return EnumIgniteState.NotIgnitable;
         }
 

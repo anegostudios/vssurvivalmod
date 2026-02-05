@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Vintagestory.API.Common;
@@ -154,7 +154,7 @@ namespace Vintagestory.GameContent
             {
                 EnumHandling handled = EnumHandling.PassThrough;
 
-                behavior.OnBlockBroken(world, pos, byPlayer, ref handled);
+                behavior.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier, ref handled);
                 if (handled == EnumHandling.PreventDefault) preventDefault = true;
                 if (handled == EnumHandling.PreventSubsequent) return;
             }

@@ -1,4 +1,4 @@
-﻿using ProtoBuf;
+using ProtoBuf;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
@@ -19,6 +19,10 @@ namespace Vintagestory.GameContent
         public int FacingIndex;
 
         private Block block;
+
+        public float RemainingResistance;
+        public long LastModifiedMilliseconds = -999999;
+
         public Block Block
         {
             get { return block; }

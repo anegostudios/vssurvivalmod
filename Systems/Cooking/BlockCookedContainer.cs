@@ -133,15 +133,15 @@ namespace Vintagestory.GameContent
         }
 
 
-        public virtual string GetMeshCacheKey(ItemStack itemstack)
+        public virtual string GetMeshCacheKey(ItemSlot slot)
         {
-            return meshCache!.GetMealHashCode(itemstack).ToString();
+            return meshCache!.GetMealHashCode(slot.Itemstack).ToString();
         }
 
 
-        public MeshData GenMesh(ItemStack itemstack, ITextureAtlasAPI targetAtlas, BlockPos? forBlockPos = null)
+        public MeshData GenMesh(ItemSlot slot, ITextureAtlasAPI targetAtlas, BlockPos? forBlockPos)
         {
-            return meshCache!.GenMealInContainerMesh(this, GetCookingRecipe(api.World, itemstack), GetNonEmptyContents(api.World, itemstack), new Vec3f(0, yoff / 16f, 0));
+            return meshCache!.GenMealInContainerMesh(this, GetCookingRecipe(api.World, slot.Itemstack), GetNonEmptyContents(api.World, slot.Itemstack), new Vec3f(0, yoff / 16f, 0));
         }
 
         public override TransitionState[]? UpdateAndGetTransitionStates(IWorldAccessor world, ItemSlot inslot)
@@ -256,16 +256,16 @@ namespace Vintagestory.GameContent
                     {
                         if (stacks[i] != null && stacks[i].StackSize > 0 && stacks[i].Collectible.Code.Path == "rot")
                         {
-                            world.SpawnItemEntity(stacks[i], entityItem.ServerPos.XYZ);
+                            world.SpawnItemEntity(stacks[i], entityItem.Pos.XYZ);
                         }
                     }
                 } else
                 {
                     ItemStack rndStack = stacks[world.Rand.Next(stacks.Length)];
-                    world.SpawnCubeParticles(entityItem.ServerPos.XYZ, rndStack, 0.3f, 25, 1, null);
+                    world.SpawnCubeParticles(entityItem.Pos.XYZ, rndStack, 0.3f, 25, 1, null);
                 }
 
-                Block emptyPotBlock = world.GetBlock(new AssetLocation(Attributes["emptiedBlockCode"].AsString()));
+                Block? emptyPotBlock = world.GetBlock(new AssetLocation(Attributes["emptiedBlockCode"].AsString()));
                 entityItem.Itemstack = new ItemStack(emptyPotBlock);
                 entityItem.WatchedAttributes.MarkPathDirty("itemstack");
             }
@@ -359,9 +359,12 @@ namespace Vintagestory.GameContent
             dummyInv.OnAcquireTransitionSpeed += (transType, stack, mul) =>
             {
                 float invMul = inSlot.Inventory?.GetTransitionSpeedMul(transType, cookedContStack) ?? 1;
+                if (transType != EnumTransitionType.Perish) invMul = 0;
                 return invMul * GetContainingTransitionModifierContained(world, inSlot, transType);
             };
-            slot.Itemstack?.Collectible.AppendPerishableInfoText(slot, dsc, world);
+            var perishState = slot.Itemstack?.Collectible.UpdateAndGetTransitionStates(api.World, inSlot)?.FirstOrDefault(state => state.Props.Type is EnumTransitionType.Perish);
+            if (perishState == null) return;
+            slot.Itemstack?.Collectible.AppendPerishableInfoText(slot, dsc, world, perishState, false);
         }
 
 
@@ -432,7 +435,7 @@ namespace Vintagestory.GameContent
                         {
                             ServeIntoStack(gsslot, slot, byEntity.World);
                             gsslot.MarkDirty();
-                            begs.updateMeshes();
+                            begs.MarkMeshesDirty();
                             begs.MarkDirty(true);
                         }
 

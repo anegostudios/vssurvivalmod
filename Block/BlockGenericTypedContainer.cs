@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
@@ -360,7 +360,7 @@ namespace Vintagestory.GameContent
                 capi.Tesselator.TesselateShape("typedcontainer-decal", shape, out MeshData md, texSource);
                 decalModelData = md;
 
-                decalModelData.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, be.MeshAngle, 0);
+                decalModelData.Rotate(0, be.MeshAngle, 0);
 
                 return;
             }
@@ -393,7 +393,7 @@ namespace Vintagestory.GameContent
             {
                 EnumHandling handled = EnumHandling.PassThrough;
 
-                behavior.OnBlockBroken(world, pos, byPlayer, ref handled);
+                behavior.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier, ref handled);
                 if (handled == EnumHandling.PreventDefault) preventDefault = true;
                 if (handled == EnumHandling.PreventSubsequent) return;
             }

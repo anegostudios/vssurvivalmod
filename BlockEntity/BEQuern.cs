@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
@@ -6,13 +6,13 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 using Vintagestory.GameContent.Mechanics;
 
 #nullable disable
 
 namespace Vintagestory.GameContent
 {
-
     public class BlockEntityQuern : BlockEntityOpenableContainer
     {
         static SimpleParticleProperties FlourParticles;
@@ -47,28 +47,22 @@ namespace Vintagestory.GameContent
         }
 
 
-        ILoadedSound ambientSound;
-
-        internal InventoryQuern inventory;
-        
+        protected ILoadedSound ambientSound;
+        protected InventoryQuern inventory;
         // For how long the current ore has been grinding
         public float inputGrindTime;
         public float prevInputGrindTime;
-
-
-        GuiDialogBlockEntityQuern clientDialog;
-        QuernTopRenderer renderer;
-        bool automated;
-        BEBehaviorMPConsumer mpc;
-        private float prevSpeed = float.NaN;
-
-
+        protected int nowOutputFace;
+        protected GuiDialogBlockEntityQuern clientDialog;
+        protected QuernTopRenderer renderer;
+        protected bool automated;
+        protected BEBehaviorMPConsumer mpc;
+        protected float prevSpeed = float.NaN;
         // Server side only
-        Dictionary<string, long> playersGrinding = new Dictionary<string, long>();
+        protected Dictionary<string, long> playersGrinding = new Dictionary<string, long>();
         // Client and serverside
-        int quantityPlayersGrinding;
+        protected int quantityPlayersGrinding;
 
-        int nowOutputFace;
 
         #region Getters
 
@@ -89,7 +83,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        MeshData quernBaseMesh
+        protected MeshData quernBaseMesh
         {
             get
             {
@@ -99,7 +93,7 @@ namespace Vintagestory.GameContent
             set { Api.ObjectCache["quernbasemesh-" + Material] = value; }
         }
 
-        MeshData quernTopMesh
+        protected MeshData quernTopMesh
         {
             get
             {
@@ -140,10 +134,8 @@ namespace Vintagestory.GameContent
         public BlockEntityQuern()
         {
             inventory = new InventoryQuern(null, null);
-            inventory.SlotModified += OnSlotModifid;
+            inventory.SlotModified += OnSlotModified;
         }
-
-
 
         public override void Initialize(ICoreAPI api)
         {
@@ -247,7 +239,7 @@ namespace Vintagestory.GameContent
             SetPlayerGrinding(byPlayer, true);
         }
 
-        private void Every100ms(float dt)
+        protected void Every100ms(float dt)
         {
             float grindSpeed = GrindSpeed;
 
@@ -293,18 +285,18 @@ namespace Vintagestory.GameContent
             if (CanGrind() && grindSpeed > 0)
             {
                 inputGrindTime += dt * grindSpeed;
-                
+
                 if (inputGrindTime >= maxGrindingTime())
                 {
                     grindInput();
-                    inputGrindTime = 0;                    
+                    inputGrindTime = 0;
                 }
 
                 MarkDirty();
             }
         }
 
-        private void grindInput()
+        protected void grindInput()
         {
             ItemStack grindedStack = InputGrindProps.GroundStack.ResolvedItemstack.Clone();
 
@@ -323,10 +315,10 @@ namespace Vintagestory.GameContent
                 {
                     BlockFacing face = BlockFacing.HORIZONTALS[nowOutputFace];
                     nowOutputFace = (nowOutputFace+1) % 4;
-
-                    Block block = Api.World.BlockAccessor.GetBlock(this.Pos.AddCopy(face));
+                    Block block = Api.World.BlockAccessor.GetBlock(Pos.AddCopy(face));
                     if (block.Replaceable < 6000) return;
-                    Api.World.SpawnItemEntity(grindedStack, this.Pos.ToVec3d().Add(0.5 + face.Normalf.X * 0.7, 0.75, 0.5 + face.Normalf.Z * 0.7), new Vec3d(face.Normalf.X * 0.02f, 0, face.Normalf.Z * 0.02f));
+                    var position = Pos.ToVec3d().Add(0.5 + face.Normalf.X * 0.7, 0.75, 0.5 + face.Normalf.Z * 0.7);
+                    Api.World.SpawnItemEntity(grindedStack, position, new Vec3d(face.Normalf.X * 0.02f, 0, face.Normalf.Z * 0.02f));
                 }
             }
 
@@ -337,16 +329,16 @@ namespace Vintagestory.GameContent
 
 
         // Sync to client every 500ms
-        private void Every500ms(float dt)
+        protected void Every500ms(float dt)
         {
-            if (Api.Side == EnumAppSide.Server && (GrindSpeed > 0  || prevInputGrindTime != inputGrindTime) && inventory[0].Itemstack?.Collectible.GrindingProps != null)  //don't spam update packets when empty, as inputGrindTime is irrelevant when empty
+            if (Api.Side == EnumAppSide.Server && (GrindSpeed > 0  || prevInputGrindTime != inputGrindTime) && inventory[0].Itemstack?.Collectible.GetGrindingProperties(Api.World, inventory[0].Itemstack) != null)  //don't spam update packets when empty, as inputGrindTime is irrelevant when empty
             {
                 MarkDirty();
             }
 
             prevInputGrindTime = inputGrindTime;
 
-            
+
             foreach (var val in playersGrinding)
             {
                 long ellapsedMs = Api.World.ElapsedMilliseconds;
@@ -411,7 +403,7 @@ namespace Vintagestory.GameContent
 
 
 
-        private void OnSlotModifid(int slotid)
+        protected void OnSlotModified(int slotid)
         {
             if (Api is ICoreClientAPI)
             {
@@ -434,7 +426,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        private void OnRetesselated()
+        protected void OnRetesselated()
         {
             if (renderer == null) return; // Maybe already disposed
 
@@ -444,7 +436,7 @@ namespace Vintagestory.GameContent
 
 
 
-        internal MeshData GenMesh(string type = "base")
+        protected MeshData GenMesh(string type = "base")
         {
             Block block = Api.World.BlockAccessor.GetBlock(Pos);
             if (block.BlockId == 0) return null;
@@ -465,8 +457,8 @@ namespace Vintagestory.GameContent
             if (grindProps == null) return false;
             return true;
         }
-        
-        
+
+
 
 
         #region Events
@@ -527,7 +519,7 @@ namespace Vintagestory.GameContent
                 List<int> clientIds = new List<int>((tree["clientIdsGrinding"] as IntArrayAttribute).value);
 
                 quantityPlayersGrinding = clientIds.Count;
-                
+
                 string[] playeruids = playersGrinding.Keys.ToArray();
 
                 foreach (var uid in playeruids)
@@ -542,13 +534,13 @@ namespace Vintagestory.GameContent
                         clientIds.Remove(plr.ClientId);
                     }
                 }
-                
+
                 for (int i = 0; i < clientIds.Count; i++)
                 {
                     IPlayer plr = worldForResolving.AllPlayers.FirstOrDefault(p => p.ClientId == clientIds[i]);
                     if (plr != null) playersGrinding.Add(plr.PlayerUID, worldForResolving.ElapsedMilliseconds);
                 }
-                
+
                 updateGrindingState();
             }
 
@@ -640,10 +632,10 @@ namespace Vintagestory.GameContent
             get {
                 ItemSlot slot = inventory[0];
                 if (slot.Itemstack == null) return null;
-                return slot.Itemstack.Collectible.GrindingProps;
+                return slot.Itemstack.Collectible.GetGrindingProperties(Api.World, slot.Itemstack);
             }
         }
-        
+
         #endregion
 
 
@@ -683,17 +675,17 @@ namespace Vintagestory.GameContent
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
             if (Block == null) return false;
-            
+
             mesher.AddMeshData(this.quernBaseMesh);
             if (quantityPlayersGrinding == 0 && !automated)
             {
                 mesher.AddMeshData(
                     this.quernTopMesh.Clone()
-                    .Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, renderer.AngleRad, 0)
+                    .Rotate(0, renderer.AngleRad, 0)
                     .Translate(0 / 16f, 11 / 16f, 0 / 16f)
                 );
             }
-            
+
 
             return true;
         }

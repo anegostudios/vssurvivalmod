@@ -479,7 +479,7 @@ namespace Vintagestory.GameContent
             ForwardSpeed += (motion.X * SpeedMultiplier - ForwardSpeed) * dt;
             AngularVelocity += (motion.Y * SpeedMultiplier - AngularVelocity) * dt;
 
-            var pos = SidedPos;
+            var pos = Pos;
 
             if (ForwardSpeed != 0.0)
             {
@@ -495,23 +495,23 @@ namespace Vintagestory.GameContent
             {
                 float yawDelta = (float)AngularVelocity * dt * 30f;
 
-                if (bh.AdjustCollisionBoxesToYaw(dt, true, SidedPos.Yaw + yawDelta))
+                if (bh.AdjustCollisionBoxesToYaw(dt, true, Pos.Yaw + yawDelta))
                 {
                     pos.Yaw += yawDelta;
                 }
                 else canTurn = false;
             } else
             {
-                canTurn = bh.AdjustCollisionBoxesToYaw(dt, true, SidedPos.Yaw);
+                canTurn = bh.AdjustCollisionBoxesToYaw(dt, true, Pos.Yaw);
             }
 
             if (!canTurn)
             {
-                if (bh.AdjustCollisionBoxesToYaw(dt, true, SidedPos.Yaw - 0.1f))
+                if (bh.AdjustCollisionBoxesToYaw(dt, true, Pos.Yaw - 0.1f))
                 {
                     pos.Yaw -= 0.0002f;
                 }
-                else if (bh.AdjustCollisionBoxesToYaw(dt, true, SidedPos.Yaw + 0.1f))
+                else if (bh.AdjustCollisionBoxesToYaw(dt, true, Pos.Yaw + 0.1f))
                 {
                     pos.Yaw += 0.0002f;
                 }
@@ -548,7 +548,7 @@ namespace Vintagestory.GameContent
 
                 if (!(seat.Passenger is EntityPlayer))
                 {
-                    seat.Passenger.SidedPos.Yaw = SidedPos.Yaw;
+                    seat.Passenger.Pos.Yaw = Pos.Yaw;
                 }
                 if (seat.Config.BodyYawLimit != null && seat.Passenger is EntityPlayer eplr)
                 {
@@ -640,7 +640,7 @@ namespace Vintagestory.GameContent
                 {
                     float dir = controls.Forward ? 1 : -1;
 
-                    var yawdist = Math.Abs(GameMath.AngleRadDistance(SidedPos.Yaw, seat.Passenger.SidedPos.Yaw));
+                    var yawdist = Math.Abs(GameMath.AngleRadDistance(Pos.Yaw, seat.Passenger.Pos.Yaw));
                     bool isLookingBackwards = yawdist > GameMath.PIHALF;
                     if (isLookingBackwards && requiresPaddlingTool) dir *= -1;
 
@@ -696,7 +696,7 @@ namespace Vintagestory.GameContent
                 ItemStack stack = new ItemStack(World.GetItem(Code));
                 if (!byEntity.TryGiveItemStack(stack))
                 {
-                    World.SpawnItemEntity(stack, ServerPos.XYZ);
+                    World.SpawnItemEntity(stack, Pos.XYZ);
                 }
 
                 Api.World.Logger.Audit("{0} Picked up 1x{1} at {2}.",
@@ -788,7 +788,7 @@ namespace Vintagestory.GameContent
         // We add to the horizontal range, because boats are so large it is easy for players to be interacting with them out of normal range from the boat's center position
         public override bool InRangeOf(Vec3d position, float horRangeSq, float vertRange)
         {
-            return SidedPos.InRangeOf(position, horRangeSq + 64, vertRange);
+            return Pos.InRangeOf(position, horRangeSq + 64, vertRange);
         }
 
 

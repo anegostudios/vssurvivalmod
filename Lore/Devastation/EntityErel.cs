@@ -18,7 +18,7 @@ public class ErelAnimManager : AnimationManager
     {
         base.Init(api, entity);
 
-        entityErel = entity as EntityErel; 
+        entityErel = entity as EntityErel;
     }
 
     public override bool StartAnimation(AnimationMetaData animdata)
@@ -115,9 +115,9 @@ public sealed class EntityErel : EntityAgent
 
             if (Annoyed) taskManager.GetTask<AiTaskFlyLeave>().AllowExecute = true;
 
-            attackCooldowns["swoop"] = [taskManager.GetTask<AiTaskFlySwoopAttack>().Mincooldown, taskManager.GetTask<AiTaskFlySwoopAttack>().Maxcooldown];
-            attackCooldowns["dive"] = [taskManager.GetTask<AiTaskFlyDiveAttack>().Mincooldown, taskManager.GetTask<AiTaskFlyDiveAttack>().Maxcooldown];
-            attackCooldowns["feathers"] = [taskManager.GetTask<AiTaskFireFeathersAttack>().Mincooldown, taskManager.GetTask<AiTaskFireFeathersAttack>().Maxcooldown];
+            attackCooldowns["swoop"] = [taskManager.GetTask<AiTaskFlySwoopAttack>().MinCooldownMs, taskManager.GetTask<AiTaskFlySwoopAttack>().MaxCooldownMs];
+            attackCooldowns["dive"] = [taskManager.GetTask<AiTaskFlyDiveAttack>().MinCooldownMs, taskManager.GetTask<AiTaskFlyDiveAttack>().MaxCooldownMs];
+            attackCooldowns["feathers"] = [taskManager.GetTask<AiTaskFireFeathersAttack>().MinCooldownMs, taskManager.GetTask<AiTaskFireFeathersAttack>().MaxCooldownMs];
         }
 
         updateAnnoyedState();
@@ -166,7 +166,7 @@ public sealed class EntityErel : EntityAgent
         }
 
         if (AnimManager.IsAnimationActive("dive", "slam")) return;
-        double speed = ServerPos.Motion.Length();
+        double speed = Pos.Motion.Length();
         if (speed > 0.01)
         {
             //ServerPos.Roll = (float)Math.Asin(GameMath.Clamp(-ServerPos.Motion.Y / speed, -1, 1));
@@ -201,13 +201,12 @@ public sealed class EntityErel : EntityAgent
 
     public void ChangeDimension(int dim)
     {
-        if (ServerPos.Dimension != dim)
+        if (Pos.Dimension != dim)
         {
             spawnTeleportParticles(Pos);
         }
 
         Pos.Dimension = dim;
-        ServerPos.Dimension = dim;
 
         long newchunkindex3d = Api.World.ChunkProvider.ChunkIndex3D(Pos);
         Api.World.UpdateEntityChunk(this, newchunkindex3d);
@@ -215,7 +214,7 @@ public sealed class EntityErel : EntityAgent
     public void ChangeDimensionNoParticles(int dim)
     {
         Pos.Dimension = dim;
-        ServerPos.Dimension = dim;
+        Pos.Dimension = dim;
 
         long newchunkindex3d = Api.World.ChunkProvider.ChunkIndex3D(Pos);
         Api.World.UpdateEntityChunk(this, newchunkindex3d);
@@ -296,12 +295,12 @@ public sealed class EntityErel : EntityAgent
     private void toggleBossFightModeNearTower()
     {
         ModSystemDevastationEffects msdevaeff = Api.ModLoader.GetModSystem<ModSystemDevastationEffects>();
-        Vec3d loc = ServerPos.Dimension == 0 ? msdevaeff.DevaLocationPresent : msdevaeff.DevaLocationPast;
-        WatchedAttributes.SetBool("showHealthbar", ServerPos.InternalY > loc.Y + 70);
+        Vec3d loc = Pos.Dimension == 0 ? msdevaeff.DevaLocationPresent : msdevaeff.DevaLocationPast;
+        WatchedAttributes.SetBool("showHealthbar", Pos.InternalY > loc.Y + 70);
 
         AiTaskFlyCircleIfEntity ctask = taskManager.GetTask<AiTaskFlyCircleIfEntity>();
         Entity nearTownerEntity = ctask.getEntity();
-        bool atBossFightArea = nearTownerEntity != null && ServerPos.XYZ.HorizontalSquareDistanceTo(ctask.CenterPos) < 70 * 70;
+        bool atBossFightArea = nearTownerEntity != null && Pos.XYZ.HorizontalSquareDistanceTo(ctask.CenterPos) < 70 * 70;
 
         AiTaskFlySwoopAttack swoopAtta = taskManager.GetTask<AiTaskFlySwoopAttack>();
         AiTaskFlyDiveAttack diveAtta = taskManager.GetTask<AiTaskFlyDiveAttack>();
@@ -312,21 +311,21 @@ public sealed class EntityErel : EntityAgent
 
         if (wasAtBossFightArea && !atBossFightArea)
         {
-            swoopAtta.Mincooldown = attackCooldowns["swoop"][0];
-            swoopAtta.Maxcooldown = attackCooldowns["swoop"][1];
-            diveAtta.Mincooldown = attackCooldowns["dive"][0];
-            diveAtta.Maxcooldown = attackCooldowns["dive"][1];
-            feathersAtta.Mincooldown = attackCooldowns["feathers"][0];
-            feathersAtta.Maxcooldown = attackCooldowns["feathers"][1];
+            swoopAtta.MinCooldownMs = attackCooldowns["swoop"][0];
+            swoopAtta.MaxCooldownMs = attackCooldowns["swoop"][1];
+            diveAtta.MinCooldownMs = attackCooldowns["dive"][0];
+            diveAtta.MaxCooldownMs = attackCooldowns["dive"][1];
+            feathersAtta.MinCooldownMs = attackCooldowns["feathers"][0];
+            feathersAtta.MaxCooldownMs = attackCooldowns["feathers"][1];
         }
         if (!wasAtBossFightArea && atBossFightArea)
         {
-            swoopAtta.Mincooldown = attackCooldowns["swoop"][0] / 2;
-            swoopAtta.Maxcooldown = attackCooldowns["swoop"][1] / 2;
-            diveAtta.Mincooldown = attackCooldowns["dive"][0] / 2;
-            diveAtta.Maxcooldown = attackCooldowns["dive"][1] / 2;
-            feathersAtta.Mincooldown = attackCooldowns["feathers"][0] / 2;
-            feathersAtta.Maxcooldown = attackCooldowns["feathers"][1] / 2;
+            swoopAtta.MinCooldownMs = attackCooldowns["swoop"][0] / 2;
+            swoopAtta.MaxCooldownMs = attackCooldowns["swoop"][1] / 2;
+            diveAtta.MinCooldownMs = attackCooldowns["dive"][0] / 2;
+            diveAtta.MaxCooldownMs = attackCooldowns["dive"][1] / 2;
+            feathersAtta.MinCooldownMs = attackCooldowns["feathers"][0] / 2;
+            feathersAtta.MaxCooldownMs = attackCooldowns["feathers"][1] / 2;
         }
 
         wasAtBossFightArea = atBossFightArea;
@@ -361,12 +360,12 @@ public sealed class EntityErel : EntityAgent
     }
     private void doOccasionalFlapping(float dt)
     {
-        float turnSpeed = Math.Abs(GameMath.AngleRadDistance(prevYaw, ServerPos.Yaw));
-        double flyspeed = ServerPos.Motion.Length();
+        float turnSpeed = Math.Abs(GameMath.AngleRadDistance(prevYaw, Pos.Yaw));
+        double flyspeed = Pos.Motion.Length();
 
         if (AnimManager.IsAnimationActive("dive", "slam")) return;
 
-        if ((ServerPos.Motion.Y >= 0.03 || turnSpeed > 0.05 || flyspeed < 0.15) && (AnimManager.IsAnimationActive("fly-idle", "fly-flapcruise") || AnimManager.ActiveAnimationsByAnimCode.Count == 0))
+        if ((Pos.Motion.Y >= 0.03 || turnSpeed > 0.05 || flyspeed < 0.15) && (AnimManager.IsAnimationActive("fly-idle", "fly-flapcruise") || AnimManager.ActiveAnimationsByAnimCode.Count == 0))
         {
             AnimManager.StopAnimation("fly-flapcruise");
             AnimManager.StopAnimation("fly-idle");
@@ -374,14 +373,14 @@ public sealed class EntityErel : EntityAgent
             return;
         }
 
-        if (ServerPos.Motion.Y <= 0.01 && turnSpeed < 0.03 && flyspeed >= 0.35 && AnimManager.IsAnimationActive("fly-flapactive", "fly-flapactive-fast"))
+        if (Pos.Motion.Y <= 0.01 && turnSpeed < 0.03 && flyspeed >= 0.35 && AnimManager.IsAnimationActive("fly-flapactive", "fly-flapactive-fast"))
         {
             AnimManager.StopAnimation("fly-flapactive");
             AnimManager.StopAnimation("fly-flapactive-fast");
             AnimManager.StartAnimation("fly-idle");
         }
 
-        prevYaw = ServerPos.Yaw;
+        prevYaw = Pos.Yaw;
 
         if (nextFlyIdleSec > 0)
         {
@@ -432,8 +431,8 @@ public sealed class EntityErel : EntityAgent
     private double distanceToTower()
     {
         ModSystemDevastationEffects msdevaeff = Api.ModLoader.GetModSystem<ModSystemDevastationEffects>();
-        Vec3d loc = ServerPos.Dimension == 0 ? msdevaeff.DevaLocationPresent : msdevaeff.DevaLocationPast;
-        return ServerPos.DistanceTo(loc);
+        Vec3d loc = Pos.Dimension == 0 ? msdevaeff.DevaLocationPresent : msdevaeff.DevaLocationPast;
+        return Pos.DistanceTo(loc);
     }
     private void setCurrentShape(int dimension)
     {

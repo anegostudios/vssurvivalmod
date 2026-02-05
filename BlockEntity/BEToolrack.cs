@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
@@ -24,6 +24,8 @@ namespace Vintagestory.GameContent
         }
 
         CollectibleObject tmpItem;
+        bool meshesDirty = true;
+
         public TextureAtlasPosition this[string textureCode]
         {
             get {
@@ -58,7 +60,7 @@ namespace Vintagestory.GameContent
 
             if (api is ICoreClientAPI)
             {
-                loadToolMeshes();
+                meshesDirty = true;
                 api.Event.RegisterEventBusListener(OnEventBusEvent);
             }
         }
@@ -68,16 +70,15 @@ namespace Vintagestory.GameContent
             if (eventname != "genjsontransform" && eventname != "oncloseedittransforms" &&
                 eventname != "onapplytransforms") return;
 
-            loadToolMeshes();
+                meshesDirty = true;
             MarkDirty(true);
         }
 
         void loadToolMeshes()
         {
+            meshesDirty = false;
             BlockFacing facing = getFacing().GetCCW();
             if (facing == null) return;
-
-            Vec3f origin = new Vec3f(0.5f, 0.5f, 0.5f);
 
             ICoreClientAPI capi = (ICoreClientAPI)Api;
 
@@ -92,7 +93,7 @@ namespace Vintagestory.GameContent
                 IContainedMeshSource meshSource = stack.Collectible?.GetCollectibleInterface<IContainedMeshSource>();
                 if (meshSource != null)
                 {
-                    toolMeshes[i] = meshSource.GenMesh(stack, capi.BlockTextureAtlas, Pos);
+                    toolMeshes[i] = meshSource.GenMesh(inventory[i], capi.BlockTextureAtlas, Pos);
                 }
                 else
                 {
@@ -117,25 +118,25 @@ namespace Vintagestory.GameContent
 
                 if (stack.Class == EnumItemClass.Item && stack.Item.Shape?.VoxelizeTexture == true)
                 {
-                    toolMeshes[i].Scale(origin, 0.33f, 0.33f, 0.33f);
+                    toolMeshes[i].Scale(0.33f, 0.33f, 0.33f);
                     toolMeshes[i].Translate(
                         (((i % 2) == 0) ? 0.23f : -0.3f),
                         ((i > 1) ? 0.2f : -0.3f) + yOff,
                         0.433f * ((facing.Axis == EnumAxis.X) ? -1 : 1)
                     );
-                    toolMeshes[i].Rotate(origin, 0, facing.HorizontalAngleIndex * 90 * GameMath.DEG2RAD, 0);
-                    toolMeshes[i].Rotate(origin, 180 * GameMath.DEG2RAD, 0, 0);
+                    toolMeshes[i].Rotate(0, facing.HorizontalAngleIndex * 90 * GameMath.DEG2RAD, 0);
+                    toolMeshes[i].Rotate(180 * GameMath.DEG2RAD, 0, 0);
                 }
                 else
                 {
 
-                    toolMeshes[i].Scale(origin, 0.6f, 0.6f, 0.6f);
+                    toolMeshes[i].Scale(0.6f, 0.6f, 0.6f);
                     float x = ((i > 1) ? -0.2f : 0.3f);
                     float z = ((i % 2 == 0) ? 0.23f : -0.2f) * (facing.Axis == EnumAxis.X ? 1f : -1f);
 
                     toolMeshes[i].Translate(x, 0.433f + yOff, z);
-                    toolMeshes[i].Rotate(origin, 0, facing.HorizontalAngleIndex * 90 * GameMath.DEG2RAD, GameMath.PIHALF);
-                    toolMeshes[i].Rotate(origin, 0, GameMath.PIHALF, 0);
+                    toolMeshes[i].Rotate(0, facing.HorizontalAngleIndex * 90 * GameMath.DEG2RAD, GameMath.PIHALF);
+                    toolMeshes[i].Rotate(0, GameMath.PIHALF, 0);
                 }
 
 
@@ -167,7 +168,7 @@ namespace Vintagestory.GameContent
         bool PutInSlot(IPlayer player, int slot)
         {
             IItemStack stack = player.InventoryManager.ActiveHotbarSlot.Itemstack;
-            if (stack == null || (stack.Collectible.Tool == null && stack.Collectible.Attributes?["rackable"].AsBool() != true)) return false;
+            if (stack == null || (stack.Collectible.GetTool(player.InventoryManager.ActiveHotbarSlot) == null && stack.Collectible.Attributes?["rackable"].AsBool() != true)) return false;
 
             var stackName = player.InventoryManager.ActiveHotbarSlot.Itemstack?.Collectible.Code;
             player.InventoryManager.ActiveHotbarSlot.TryPutInto(Api.World, inventory[slot]);
@@ -202,7 +203,7 @@ namespace Vintagestory.GameContent
         void didInteract(IPlayer player)
         {
             Api.World.PlaySoundAt(new AssetLocation("sounds/player/buildhigh"), Pos, 0, player, false);
-            if (Api is ICoreClientAPI) loadToolMeshes();
+            if (Api is ICoreClientAPI) meshesDirty = true;
             MarkDirty(true);
         }
 
@@ -237,6 +238,7 @@ namespace Vintagestory.GameContent
 
             mesher.AddMeshData(mesh);
 
+            if (meshesDirty) loadToolMeshes();
             for (int i = 0; i < 4; i++)
             {
                 if (toolMeshes[i] == null) continue;
@@ -259,7 +261,7 @@ namespace Vintagestory.GameContent
 
             if (Api is ICoreClientAPI)
             {
-                loadToolMeshes();
+                meshesDirty = true;
                 Api.World.BlockAccessor.MarkBlockDirty(Pos);
             }
         }

@@ -292,15 +292,17 @@ namespace Vintagestory.GameContent
 
 
             // 2. Take care of the money first
-            if (!HandleMoneyTransaction(buyingPlayer)) return EnumTransactionResult.Failure;
+            if (!HandleMoneyTransaction(buyingPlayer, out var deduct)) return EnumTransactionResult.Failure;
 
+            var sell = new List<string>();
+            var buy = new List<string>();
 
             // 3. Now hand over buying cart contents
             for (int i = 0; i < 4; i++)
             {
                 ItemSlotTrade slot = GetBuyingCartSlot(i);
                 if (slot.Itemstack == null) continue;
-
+                buy.Add($"{slot.Itemstack.StackSize}x{slot.Itemstack.Collectible.Code}");
                 GiveOrDrop(buyingPlayer.Entity, slot.Itemstack);
 
                 slot.TradeItem.Stock -= slot.Itemstack.StackSize / slot.TradeItem.Stack.StackSize;
@@ -318,6 +320,7 @@ namespace Vintagestory.GameContent
                 if (tradeItem == null) continue;
 
                 int q = slot.Itemstack.StackSize / tradeItem.Stack.StackSize;
+                sell.Add($"{q}x{slot.Itemstack.Collectible.Code}");
 
                 tradeItem.Stock -= q;
                 var stack = slot.TakeOut(q * tradeItem.Stack.StackSize);
@@ -326,6 +329,12 @@ namespace Vintagestory.GameContent
 
                 slot.MarkDirty();
             }
+
+            var sold = sell.Count > 0 ? "sold " + string.Join(",", sell) : string.Empty;
+            var bought = buy.Count > 0 ? "bought " + string.Join(",", buy) : string.Empty;
+            var filler = sell.Count > 0 && buy.Count > 0 ? " and ": string.Empty;
+            var rg = deduct > 0 ? $"payed {deduct}" : $"received {-deduct}" ;
+            Api.Logger.Audit($"{buyingPlayer.PlayerName} {sold}{filler}{bought} at trader {traderEntity.Pos.AsBlockPos} and {rg} RG");
 
             return EnumTransactionResult.Success;
         }
@@ -444,21 +453,20 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        bool HandleMoneyTransaction(IPlayer buyingPlayer)
+        bool HandleMoneyTransaction(IPlayer buyingPlayer, out int deduct)
         {
+            deduct = 0;
             int playerAssets = GetPlayerAssets(buyingPlayer.Entity);
             int traderAssets = GetTraderAssets();
             int totalCost = GetTotalCost();
             int totalGain = GetTotalGain();
-
             // Player does not have enough money
             if (playerAssets - totalCost + totalGain < 0) return false;
 
             // Trader does not have enough money
             if (traderAssets + totalCost - totalGain < 0) return false;
 
-
-            int deduct = totalCost - totalGain;
+            deduct = totalCost - totalGain;
 
             if (deduct > 0)
             {
@@ -762,7 +770,7 @@ namespace Vintagestory.GameContent
                 slots[i + 16].Itemstack = null;
 
                 // Drop selling cart contents
-                Api.World.SpawnItemEntity(slots[i + 36].Itemstack, traderEntity.ServerPos.XYZ);
+                Api.World.SpawnItemEntity(slots[i + 36].Itemstack, traderEntity.Pos.XYZ);
                 slots[i + 36].Itemstack = null;
             }
 

@@ -6,7 +6,6 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
-using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
@@ -369,26 +368,48 @@ namespace Vintagestory.GameContent
                         break;
                     }
                 case EnumAuctionAction.RetrieveAuction:
+                {
+                    auctions.TryGetValue(pkt.AuctionId, out var auction);
+                    var state = auction?.State;
+                    ItemStack stack = RetrieveAuction(pkt.AuctionId, pkt.AtAuctioneerEntityId, fromPlayer.Entity, out string failureCode);
+                    if (stack != null)
                     {
-                        ItemStack stack = RetrieveAuction(pkt.AuctionId, pkt.AtAuctioneerEntityId, fromPlayer.Entity, out string failureCode);
-                        if (stack != null)
+                        var amount = stack.StackSize;
+                        if (!fromPlayer.InventoryManager.TryGiveItemstack(stack, true))
                         {
-                            if (!fromPlayer.InventoryManager.TryGiveItemstack(stack, true))
-                            {
-                                sapi.World.SpawnItemEntity(stack, fromPlayer.Entity.Pos.XYZ);
-                            }
-
-                            sapi.World.Logger.Audit("{0} Got 1x{1} from Auction at {2}.",
-                                fromPlayer.PlayerName,
-                                stack.Collectible.Code,
-                                fromPlayer.Entity.Pos
-                            );
+                            sapi.World.SpawnItemEntity(stack, fromPlayer.Entity.Pos.XYZ);
                         }
-                        serverCh.SendPacket(new AuctionActionResponsePacket() { Action = pkt.Action, AuctionId = pkt.AuctionId, ErrorCode = failureCode, MoneyReceived = stack?.Collectible.Attributes?["currency"].Exists == true }, fromPlayer);
 
-
-
-                        break;
+                        string action;
+                        bool sold = state is EnumAuctionState.Sold or EnumAuctionState.SoldRetrieved;
+                        if (state == EnumAuctionState.Expired)
+                        {
+                            action = "Reclaimed selling Goods";
+                        }
+                        else if (sold && auction.SellerUid == fromPlayer.PlayerUID)
+                        {
+                            action = "Collected funds";
+                        }
+                        else if (sold && auction.SellerUid != fromPlayer.PlayerUID)
+                        {
+                            action = "Retrieved";
+                        }
+                        else
+                        {
+                            action = "Got";
+                        }
+                        sapi.World.Logger.Audit("{0} {1} {2}x{3} from {4} Auction at {5} Id: {6}.",
+                            fromPlayer.PlayerName,
+                            action,
+                            amount,
+                            stack.Collectible.Code,
+                            state,
+                            fromPlayer.Entity.Pos.AsBlockPos,
+                            pkt.AuctionId
+                        );
+                    }
+                    serverCh.SendPacket(new AuctionActionResponsePacket() { Action = pkt.Action, AuctionId = pkt.AuctionId, ErrorCode = failureCode, MoneyReceived = stack?.Collectible.Attributes?["currency"].Exists == true }, fromPlayer);
+                    break;
                     }
                 case EnumAuctionAction.PlaceAuction:
 
@@ -504,14 +525,15 @@ namespace Vintagestory.GameContent
 
 
             failureCode = null;
-            InventoryTrader.DeductFromEntity(sapi, sellerEntity, depositCost);
-            (auctioneerEntity as EntityTradingHumanoid).Inventory?.GiveToTrader(depositCost);
-
-            long id = ++auctionsData.nextAuctionId;
 
             string sellerName = sellerEntity.GetBehavior<EntityBehaviorNameTag>()?.DisplayName;
             if (sellerName == null) sellerName = sellerEntity.Properties.Code.ToShortString();
+            long id = ++auctionsData.nextAuctionId;
 
+            sapi.Logger.Audit($"{sellerName} placed an auction of {quantity}x{slot.Itemstack.Collectible.Code} for {price} RG, deposit {depositCost} RG lasting {durationHours}h Id: {id}");
+
+            InventoryTrader.DeductFromEntity(sapi, sellerEntity, depositCost);
+            (auctioneerEntity as EntityTradingHumanoid).Inventory?.GiveToTrader(depositCost);
 
             string uid = (sellerEntity as EntityPlayer)?.PlayerUID ?? "";
             auctionsData.DebtToTraderByPlayer.TryGetValue(uid, out float debt);
@@ -570,11 +592,13 @@ namespace Vintagestory.GameContent
                     return;
                 }
 
-                InventoryTrader.DeductFromEntity(sapi, buyerEntity, totalcost);
-                (auctioneerEntity as EntityTradingHumanoid).Inventory?.GiveToTrader((int)(auction.Price * SalesCutRate + deliveryCosts));
-
                 string buyerName = buyerEntity.GetBehavior<EntityBehaviorNameTag>()?.DisplayName;
                 if (buyerName == null) buyerName = buyerEntity.Properties.Code.ToShortString();
+
+                sapi.Logger.Audit($"{buyerName} bought an auction of {auction.ItemStack.StackSize}x{auction.ItemStack.Collectible.Code} for {totalcost} RG from {auction.SellerName} Id: {auction.AuctionId}");
+
+                InventoryTrader.DeductFromEntity(sapi, buyerEntity, totalcost);
+                (auctioneerEntity as EntityTradingHumanoid).Inventory?.GiveToTrader((int)(auction.Price * SalesCutRate + deliveryCosts));
 
                 auction.BuyerName = buyerName;
                 auction.WithDelivery = withDelivery;

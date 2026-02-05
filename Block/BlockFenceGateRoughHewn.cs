@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Client;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -12,13 +12,6 @@ namespace Vintagestory.GameContent
         public override string GetKnobOrientation()
         {
             return "left";
-        }
-
-        public override void OnLoaded(ICoreAPI api)
-        {
-            base.OnLoaded(api);
-
-            CanStep = false;
         }
 
         public override BlockFacing GetDirection()

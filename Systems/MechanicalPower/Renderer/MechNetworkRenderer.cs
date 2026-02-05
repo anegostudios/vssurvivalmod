@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 
@@ -57,12 +57,12 @@ namespace Vintagestory.GameContent.Mechanics
                 rendererCode = device.Block.Attributes?["mechanicalPower"]?["renderer"].AsString("generic");
             }
 
-            int hashCode = device.Shape.GetHashCode() + rendererCode.GetHashCode();
+            int hashCode = device.Shape.GetHashCode() + device.Block.Textures.Values.GetHashCode() + rendererCode.GetHashCode();
 
             if (!MechBlockRendererByShape.TryGetValue(hashCode, out index))
             {
                 object obj = Activator.CreateInstance(RendererByCode[rendererCode], capi, mechanicalPowerMod, device.Block, device.Shape);
-                MechBlockRenderer.Add((MechBlockRenderer)obj);                
+                MechBlockRenderer.Add((MechBlockRenderer)obj);
                 MechBlockRendererByShape[hashCode] = index = MechBlockRenderer.Count - 1;
             }
 

@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.MathTools;
+using Vintagestory.API.MathTools;
 
 #nullable disable
 
@@ -21,5 +21,6 @@ namespace Vintagestory.GameContent.Mechanics
         void LeaveNetwork();
         BlockPos GetPosition();
         float GearedRatio { get; set; }
+        float OverheatValue { get; set; }
     }
 }

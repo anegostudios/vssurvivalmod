@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -90,7 +90,7 @@ namespace Vintagestory.GameContent
 
     }
 
-    public class ItemNightvisiondevice : ItemWearable
+    public class ItemNightvisiondevice : Item
     {
         protected float fuelHoursCapacity = 24;
 

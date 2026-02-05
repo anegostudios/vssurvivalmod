@@ -34,15 +34,15 @@ namespace Vintagestory.GameContent
         int checkRateMs;
         float itemFlowAccum;
 
-        private static AssetLocation hopperOpen = new AssetLocation("sounds/block/hopperopen");
-        private static AssetLocation hopperTumble = new AssetLocation("sounds/block/hoppertumble");
+        public SoundAttributes TumbleSound;
 
         public virtual float ItemFlowRate => itemFlowRate;
 
         public BlockEntityItemFlow() : base()
         {
-            OpenSound = hopperOpen;
-            CloseSound = null;
+            OpenSound = new SoundAttributes(AssetLocation.Create("sounds/block/hopperopen"), true);
+            CloseSound.Location = null;
+            TumbleSound = new SoundAttributes(AssetLocation.Create("sounds/block/hoppertumble"), true) { Range = 8, Volume = new NatFloat(0.5f, 0, EnumDistribution.UNIFORM) };
         }
 
         public override InventoryBase Inventory
@@ -60,7 +60,7 @@ namespace Vintagestory.GameContent
 
                 inventory.OnInventoryClosed += OnInvClosed;
                 inventory.OnInventoryOpened += OnInvOpened;
-                inventory.SlotModified += OnSlotModifid;
+                inventory.SlotModified += OnSlotModified;
 
                 inventory.OnGetAutoPushIntoSlot = GetAutoPushIntoSlot;
                 inventory.OnGetAutoPullFromSlot = GetAutoPullFromSlot;
@@ -138,7 +138,7 @@ namespace Vintagestory.GameContent
             get { return inventoryClassName; }
         }
 
-        private void OnSlotModifid(int slot)
+        private void OnSlotModified(int slot)
         {
             Api.World.BlockAccessor.GetChunkAtBlockPos(Pos)?.MarkModified();
         }
@@ -165,6 +165,8 @@ namespace Vintagestory.GameContent
                 // Randomize movement a bit
                 RegisterDelayedCallback((dt) => RegisterGameTickListener(MoveItem, checkRateMs), 10 + api.World.Rand.Next(200));
             }
+
+            TumbleSound = Block.Attributes?["tumbleSound"]?.AsObject<SoundAttributes?>(null, Block.Code.Domain, true) ?? TumbleSound;
         }
 
 
@@ -304,7 +306,7 @@ namespace Vintagestory.GameContent
 
                         if (qmoved > 0 && Api.World.Rand.NextDouble() < 0.2)
                         {
-                            Api.World.PlaySoundAt(hopperTumble, Pos, 0, null, true, 8, 0.5f);
+                            Api.World.PlaySoundAt(TumbleSound, Pos, 0, null);
 
                             itemFlowAccum -= qmoved;
                         }
@@ -353,7 +355,7 @@ namespace Vintagestory.GameContent
                     {
                         if (Api.World.Rand.NextDouble() < 0.2)
                         {
-                            Api.World.PlaySoundAt(hopperTumble, Pos, 0, null, true, 8, 0.5f);
+                            Api.World.PlaySoundAt(TumbleSound, Pos, 0, null);
                         }
 
                         if (beFlow != null)

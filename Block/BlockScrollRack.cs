@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -25,9 +26,12 @@ namespace Vintagestory.GameContent
         public override void LoadTypes()
         {
             base.LoadTypes();
-            slotsHitBoxes = Attributes["slotsHitBoxes"].AsObject<Cuboidf[]>();
-            slotSide = Attributes["slotSide"].AsObject<string[]>();
-            oppositeSlotIndex = Attributes["oppositeSlotIndex"].AsObject<int[]>();
+            slotsHitBoxes = Attributes["slotsHitBoxes"].AsObject<Cuboidf[]>()!;
+            ArgumentNullException.ThrowIfNull(slotsHitBoxes);
+            slotSide = Attributes["slotSide"].AsObject<string[]>()!;
+            ArgumentNullException.ThrowIfNull(slotSide);
+            oppositeSlotIndex = Attributes["oppositeSlotIndex"].AsObject<int[]>()!;
+            ArgumentNullException.ThrowIfNull(oppositeSlotIndex);
 
             for (int i = 0; i < slotSide.Length; i++)
             {
@@ -74,7 +78,7 @@ namespace Vintagestory.GameContent
             base.OnNeighbourBlockChange(world, pos, neibpos);
         }
 
-        public override bool DoParticalSelection(IWorldAccessor world, BlockPos pos)
+        public override bool DoPartialSelection(IWorldAccessor world, BlockPos pos)
         {
             return true;
         }

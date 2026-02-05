@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
@@ -54,37 +52,20 @@ namespace Vintagestory.GameContent
             var wis = base.GetInteractionHelp(world, es, player, ref handled);
             if (!entity.Alive && entityPlayer.RevivableIngameHoursLeft() > 0)
             {
-                if (wis == null) wis = Array.Empty<WorldInteraction>();
-                wis = wis.Append(GetReviveInteractionHelp(world.Api));
+                wis ??= [];
+                wis = wis.Append(
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "reviveplayer",
+                        MouseButton = EnumMouseButton.Right,
+                        HotKeyCode = "ctrl",
+                        Itemstacks = EntityBehaviorHealth.GetAllHealingItems(world.Api),
+                        RequireFreeHand = true
+                    }
+                );
             }
 
             return wis;
-        }
-
-        public static WorldInteraction GetReviveInteractionHelp(ICoreAPI api)
-        {
-            var pstacks = ObjectCacheUtil.GetOrCreate<ItemStack[]>(api, "poulticeStacks", () =>
-            {
-                var poulticeStacks = new List<ItemStack>();
-                foreach (Item item in api.World.Items)
-                {
-                    if (item.HasBehavior<BehaviorHealingItem>() || item is ItemPoultice)
-                    {
-                        poulticeStacks.Add(new ItemStack(item));
-                    }
-                }
-
-                return poulticeStacks.ToArray();
-            });
-
-            return new WorldInteraction()
-            {
-                ActionLangCode = "reviveplayer",
-                MouseButton = EnumMouseButton.Right,
-                HotKeyCode = "ctrl",
-                Itemstacks = pstacks,
-                RequireFreeHand = true
-            };
         }
 
         public override string PropertyName()

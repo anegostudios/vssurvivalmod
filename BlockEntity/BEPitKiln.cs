@@ -90,7 +90,8 @@ namespace Vintagestory.GameContent
                 Block block = Api.World.BlockAccessor.GetBlock(pos);
                 Block upblock = Api.World.BlockAccessor.GetBlock(Pos.UpCopy());
 
-                return block?.CombustibleProps != null && block.CombustibleProps.BurnDuration > 0 && (!IsAreaLoaded() || upblock.Replaceable >= 6000);
+                CombustibleProperties combustibleProps = block.GetCombustibleProperties(Api.World, null, pos);
+                return combustibleProps != null && combustibleProps.BurnDuration > 0 && (!IsAreaLoaded() || upblock.Replaceable >= 6000);
             };
 
             DetermineBuildStages();
@@ -220,7 +221,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        protected override void FixBrokenStorageLayout()
+        protected override void UpdateLegacyStorageLayouts()
         {
             // Skip this since we haven't changed any storage layouts for clay items in vanilla and the
             // fuel will physically hide most items in the kiln anyway even if there were a display issue
@@ -242,12 +243,13 @@ namespace Vintagestory.GameContent
                     ItemSlot slot = inventory[i];
                     if (slot.Empty) continue;
                     ItemStack rawStack = slot.Itemstack;
-                    ItemStack firedStack = rawStack.Collectible.CombustibleProps?.SmeltedStack?.ResolvedItemstack;
+                    CombustibleProperties combustibleProps = rawStack.Collectible.GetCombustibleProperties(Api.World, rawStack, null);
+                    ItemStack firedStack = combustibleProps?.SmeltedStack?.ResolvedItemstack;
 
                     if (firedStack != null)
                     {
                         slot.Itemstack = firedStack.Clone();
-                        slot.Itemstack.StackSize = rawStack.StackSize / rawStack.Collectible.CombustibleProps.SmeltedRatio;
+                        slot.Itemstack.StackSize = rawStack.StackSize / combustibleProps.SmeltedRatio;
                     }
                 }
 
@@ -276,7 +278,8 @@ namespace Vintagestory.GameContent
                 {
                     return false;
                 }
-                if (block.CombustibleProps != null)
+                var combustibleProps = block.GetCombustibleProperties(world, null, npos);
+                if (combustibleProps != null)
                 {
                     return false;
                 }
@@ -472,7 +475,7 @@ namespace Vintagestory.GameContent
                 blockTexPos = tesselator.GetTextureSource(Block);
                 tesselator.TesselateShape("pitkiln", shape, out mesh, this, null, 0, 0, 0, null, selectiveElements);
                 nowTesselatingKiln = false;
-                mesh.Scale(new Vec3f(0.5f, 0.5f, 0.5f), 1.005f, 1.005f, 1.005f);
+                mesh.Scale(1.005f, 1.005f, 1.005f);
                 mesh.Translate(0, GameMath.MurmurHash3Mod(Pos.X, Pos.Y, Pos.Z, 10)/500f, 0);
             }
 

@@ -17,7 +17,7 @@ namespace Vintagestory.GameContent
         {
             return block.BlockMaterial == EnumBlockMaterial.Leaves;
         }
-        
+
 
         public override float OnBlockBreaking(IPlayer player, BlockSelection blockSel, ItemSlot itemslot, float remainingResistance, float dt, int counter)
         {
@@ -43,16 +43,16 @@ namespace Vintagestory.GameContent
             foreach (var pos in orderedPositions)
             {
                 if (q == 0) break;
-                BlockFacing facing = BlockFacing.FromNormal(player.Entity.ServerPos.GetViewVector()).Opposite;
+                BlockFacing facing = BlockFacing.FromNormal(player.Entity.Pos.GetViewVector()).Opposite;
 
                 if (!player.Entity.World.Claims.TryAccess(player, pos, EnumBlockAccessFlags.BuildOrBreak)) continue;
-                
+
                 player.Entity.World.BlockAccessor.DamageBlock(pos, facing, damage);
                 q--;
             }
         }
 
-        
+
 
 
 
@@ -75,7 +75,7 @@ namespace Vintagestory.GameContent
             int leftDurability = itemslot.Itemstack.Collectible.GetRemainingDurability(itemslot.Itemstack);
             int q = 0;
 
-            
+
             foreach (var val in orderedPositions)
             {
                 if (!plr.Entity.World.Claims.TryAccess(plr, val.Key, EnumBlockAccessFlags.BuildOrBreak)) continue;
@@ -83,7 +83,7 @@ namespace Vintagestory.GameContent
                 breakMultiBlock(val.Key, plr);
 
                 DamageItem(world, byEntity, itemslot);
-                
+
                 q++;
                 if (q >= MultiBreakQuantity || itemslot.Itemstack == null) break;
             }
@@ -101,7 +101,7 @@ namespace Vintagestory.GameContent
         OrderedDictionary<BlockPos, float> GetNearblyMultibreakables(IWorldAccessor world, BlockPos pos, Vec3d hitPos)
         {
             OrderedDictionary<BlockPos, float> positions = new OrderedDictionary<BlockPos, float>();
-            
+
             for (int dx = -1; dx <= 1; dx++)
             {
                 for (int dy = -1; dy <= 1; dy++)

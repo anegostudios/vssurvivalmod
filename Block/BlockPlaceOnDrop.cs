@@ -55,14 +55,14 @@ namespace Vintagestory.GameContent
                     entityItem.Die(EnumDespawnReason.Removed, null);
                     return;
                 }
-            }   
+            }
         }
 
 
         bool TryPlace(EntityItem entityItem, int offX, int offY, int offZ)
         {
             IWorldAccessor world = entityItem.World;
-            EntityPos pos = entityItem.ServerPos;
+            EntityPos pos = entityItem.Pos;
             BlockPos bpos = pos.AsBlockPos.Add(offX, offY - 1, offZ);
             if (!world.BlockAccessor.GetMostSolidBlock(bpos).CanAttachBlockAt(world.BlockAccessor, this, bpos, BlockFacing.UP)) return false;
 
@@ -75,8 +75,9 @@ namespace Vintagestory.GameContent
                 HitPosition = new Vec3d(0.5, 1, 0.5)
             }, ref useless);
 
-            if (ok) entityItem.World.PlaySoundAt(entityItem.Itemstack.Block.Sounds?.Place, bpos, -0.5, null);
-            
+            BlockSounds sounds = entityItem.Itemstack.Block.Sounds;
+            if (ok && sounds != null) entityItem.World.PlaySoundAt(sounds.Place, bpos, -0.5, null);
+
             return ok;
         }
     }

@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -27,7 +27,7 @@ namespace Vintagestory.GameContent.Mechanics
             }
         }
 
-        public override bool isInvertedNetworkFor(BlockPos pos)
+        public override bool IsInvertedNetworkFor(BlockPos pos)
         {
             return propagationDir == BlockFacing.DOWN;
         }
@@ -82,7 +82,7 @@ namespace Vintagestory.GameContent.Mechanics
         }
 
 
-        protected override MechPowerPath[] GetMechPowerExits(MechPowerPath pathDir)
+        public override MechPowerPath[] GetMechPowerExits(MechPowerPath pathDir)
         {
             BlockFacing face = pathDir.OutFacing;
             BELargeGear3m beg = Blockentity as BELargeGear3m;

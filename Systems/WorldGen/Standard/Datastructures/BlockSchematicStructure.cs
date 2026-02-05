@@ -6,6 +6,7 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+using Vintagestory.ServerMods.NoObf;
 
 #nullable disable
 
@@ -168,7 +169,7 @@ namespace Vintagestory.ServerMods
 
                         if (replaceMetaBlocks && (block.Id == UndergroundBlockId || block.Id == AbovegroundBlockId)) continue;
 
-                        if (block.Replaceable < 1000 && depth >= 0)
+                        if (block.Replaceable < 1000 && (depth >= 0 || underWaterDepth >= 0))
                         {
                             if (replaceWithBlockLayersBlockids.Contains(block.BlockId) || block.CustomBlockLayerHandler)
                             {
@@ -206,7 +207,14 @@ namespace Vintagestory.ServerMods
 
                                 if (block.CustomBlockLayerHandler && layerBlock != block)
                                 {
-                                    layerBlockForBlockEntities[curPos.Copy()] = layerBlock;
+                                    if (depth < 0 && underWaterDepth >= 0)
+                                    {
+                                        // Gets watterlogged in this case
+                                    }
+                                    else
+                                    {
+                                        layerBlockForBlockEntities[curPos.Copy()] = layerBlock;
+                                    }
                                 }
                                 else
                                 {
@@ -420,7 +428,7 @@ namespace Vintagestory.ServerMods
             if (!(blockAccessor is IBlockAccessorRevertable))
             {
                 PlaceDecors(blockAccessor, startPos);
-                PlaceEntitiesAndBlockEntities(blockAccessor, worldForCollectibleResolve, startPos, BlockCodesTmpForRemap, ItemCodes, false, null, centerrockblockid, null, GenStructures.ReplaceMetaBlocks);
+                PlaceEntitiesAndBlockEntities(blockAccessor, worldForCollectibleResolve, startPos, BlockCodesTmpForRemap, ItemCodes, false, null, centerrockblockid, null, GlobalConfig.ReplaceMetaBlocks);
             }
 
             return placed;
@@ -465,7 +473,7 @@ namespace Vintagestory.ServerMods
                     if (j >= blockLayerConfig.LakeBedLayer.BlockCodeByMin.Length) continue;
                     LakeBedBlockCodeByMin lbbc = blockLayerConfig.LakeBedLayer.BlockCodeByMin[j];
                     if (!lbbc.Suitable(temperature, rainRel, (float)posY / mapheight, (float)posRand)) continue;
-                    if (underWaterDepth-- > 0) continue;
+                    // if (underWaterDepth-- > 0) continue; - wtf is this for? - this causes the generator to use only second layer lake bed blocks
 
                     return blocks[lbbc.GetBlockForMotherRock(rockBlockId)];
                 }
@@ -524,7 +532,7 @@ namespace Vintagestory.ServerMods
         {
             if (orientation > 0 && blocksByPos == null)
             {
-                TransformWhilePacked(api.World, EnumOrigin.BottomCenter, orientation * 90, null, PathwayBlocksUnpacked != null);
+                TransformWhilePacked(api.World, EnumOrigin.BottomCenter, orientation * 90, null);
             }
             Unpack(api);
         }

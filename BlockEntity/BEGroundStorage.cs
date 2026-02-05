@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Xml.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -49,7 +50,12 @@ namespace Vintagestory.GameContent
         protected EnumGroundStorageLayout? overrideLayout;
 
         public int TransferQuantity => StorageProps?.TransferQuantity ?? 1;
-        public int BulkTransferQuantity => StorageProps?.Layout == EnumGroundStorageLayout.Stacking ? StorageProps.BulkTransferQuantity : 1;
+        public int BulkTransferQuantity => StorageProps?.Layout switch
+        {
+            EnumGroundStorageLayout.Stacking => StorageProps.BulkTransferQuantity,
+            EnumGroundStorageLayout.Messy12 => Math.Min(StorageProps.BulkTransferQuantity, 12),
+            _ => 1
+        };
 
         protected virtual int invSlotCount => 4;
         protected Cuboidf[] colBoxes;
@@ -88,7 +94,10 @@ namespace Vintagestory.GameContent
         private long listenerId;
         private float burnHoursPerItem;
         private BlockFacing[] facings = (BlockFacing[])BlockFacing.ALLFACES.Clone();
-        public virtual bool CanIgnite => burnHoursPerItem > 0 && inventory[0].Itemstack?.Collectible.CombustibleProps?.BurnTemperature > 200;
+        public virtual bool CanIgnite => burnHoursPerItem > 0 && inventory[0].Itemstack?.Collectible.GetCombustibleProperties(Api.World, inventory[0].Itemstack, null)?.BurnTemperature > 200;
+
+        public int ItemModelCount => StorageProps == null ? 1 : (int)Math.Ceiling(inventory[0].StackSize / (float)StorageProps.ItemsPerModel);
+        [Obsolete("Use ItemModelCount * CuboidsPerModel instead, for correct rounding")]
         public int Layers => inventory[0].StackSize == 1 || StorageProps == null ? 1 : (int)(inventory[0].StackSize * StorageProps.ModelItemsToStackSizeRatio);
         public bool IsBurning => burning;
 
@@ -234,17 +243,30 @@ namespace Vintagestory.GameContent
                 float temp = 0;
                 if (!Inventory.Empty)
                 {
+                    int index = 0;
                     foreach (var slot in Inventory)
                     {
-                        temp = Math.Max(temp, slot.Itemstack?.Collectible.GetTemperature(capi.World, slot.Itemstack) ?? 0);
+                        ItemStack stack = slot.Itemstack;
+                        if (stack != null)
+                        {
+                            temp = Math.Max(temp, stack.Collectible.GetTemperature(capi.World, slot.Itemstack));
+
+                            if (stack.Class == EnumItemClass.Block && stack.Block is IBlockMealContainer be)
+                            {
+                                GetOrCreateMealMesh(be, stack, index);   // pre-generate any meal meshes during initialization, as these might have to be uploaded to the GPU
+                            }
+                        }
+
+                        index++;
+                    }
+
+                    if (temp >= 450)
+                    {
+                        renderer = new GroundStorageRenderer(capi, this);
                     }
                 }
 
-                if (temp >= 450)
-                {
-                    renderer = new GroundStorageRenderer(capi, this);
-                }
-                updateMeshes();
+                MarkMeshesDirty();
                 //initMealRandomizer();
             }
 
@@ -347,224 +369,60 @@ namespace Vintagestory.GameContent
         {
             RegisterGameTickListener(Every50ms, 150);
 
-            IWorldAccessor w = Api.World;
-            rndMeals = new RndMeal[]
+            recipes = [.. Api.GetCookingRecipes().Where(recipe => recipe.CooksInto == null)];
+            var possibleStacks = Api.World.Collectibles.Select(obj => new ItemStack(obj));
+
+            foreach (var recipe in recipes)
             {
-                    new RndMeal()
-                    {
-                        recipeCode = "jam",
-                        stacks = new ItemStack[][] {
-                            gs("honeyportion"),
-                            gs("honeyportion"),
-                            anyFruit(),
-                            anyFruitOrNothing(),
-                        }
-                    },
-                    new RndMeal()
-                    {
-                        recipeCode = "porridge",
-                        stacks = new ItemStack[][] {
-                            gs("grain-spelt"),
-                            gs("grain-spelt"),
-                            anyFruitOrNothing(),
-                            anyFruitOrNothing(),
-                            anyVegetableOrNothing(),
-                            anyVegetableOrNothing(),
-                            honeyOrNothing()
-                        }
-                    },
-                    new RndMeal()
-                    {
-                        recipeCode = "porridge",
-                        stacks = new ItemStack[][] {
-                            gs("grain-flax"),
-                            gs("grain-flax"),
-                            anyFruitOrNothing(),
-                            anyFruitOrNothing(),
-                            anyVegetableOrNothing(),
-                            anyVegetableOrNothing(),
-                            honeyOrNothing()
-                        }
-                    },
-                    new RndMeal()
-                    {
-                        recipeCode = "porridge",
-                        stacks = new ItemStack[][] {
-                            gs("grain-rice"),
-                            gs("grain-rice"),
-                            anyFruitOrNothing(),
-                            anyFruitOrNothing(),
-                            anyVegetableOrNothing(),
-                            anyVegetableOrNothing(),
-                            honeyOrNothing()
-                        }
-                    },
-                    new RndMeal()
-                    {
-                        recipeCode = "porridge",
-                        stacks = new ItemStack[][] {
-                            gs("grain-sunflower"),
-                            gs("grain-sunflower"),
-                            anyFruitOrNothing(),
-                            anyFruitOrNothing(),
-                            anyVegetableOrNothing(),
-                            anyVegetableOrNothing(),
-                            honeyOrNothing()
-                        }
-                    },
-                    new RndMeal()
-                    {
-                        recipeCode = "soup",
-                        stacks = new ItemStack[][]
-                        {
-                            gs("waterportion"),
-                            anyVegetable(),
-                            anyVegetableOrNothing(),
-                            anyVegetableOrNothing(),
-                            anyMeatOrEggOrNothing()
-                        }
-                    },
-                    new RndMeal()
-                    {
-                        recipeCode = "vegetablestew",
-                        stacks = new ItemStack[][]
-                        {
-                            anyVegetable(),
-                            anyVegetable(),
-                            anyVegetableOrNothing(),
-                            anyVegetableOrNothing(),
-                            anyMeatOrEggOrNothing()
-                        }
-                    },
-                    new RndMeal()
-                    {
-                        recipeCode = "meatystew",
-                        stacks = new ItemStack[][]
-                        {
-                            gs("redmeat-raw"),
-                            gs("redmeat-raw"),
-                            eggOrNothing(),
-                            anyMeatOrEggOrNothing(),
-                            anyVegetableOrNothing(),
-                            anyVegetableOrNothing(),
-                            anyFruitOrNothing(),
-                            honeyOrNothing()
-                        }
-                    },
-                    new RndMeal()
-                    {
-                        recipeCode = "meatystew",
-                        stacks = new ItemStack[][]
-                        {
-                            gs("poultry-raw"),
-                            gs("poultry-raw"),
-                            eggOrNothing(),
-                            anyMeatOrEggOrNothing(),
-                            anyVegetableOrNothing(),
-                            anyVegetableOrNothing(),
-                            anyFruitOrNothing(),
-                            honeyOrNothing()
-                        }
-                    },
-                    new RndMeal()
-                    {
-                        recipeCode = "scrambledeggs",
-                        stacks = new ItemStack[][]
-                        {
-                            gs("egg-chicken-raw"),
-                            gs("egg-chicken-raw"),
-                            anyCheeserNothing(),
-                            anyCheeserNothing(),
-                            anyVegetableOrNothing(),
-                            anyVegetableOrNothing(),
-                        }
-                    },
-            };
-        }
-
-
-
-        ItemStack[] anyFruitOrNothing()
-        {
-            return gs(null, "fruit-blueberry", "fruit-cranberry", "fruit-redcurrant", "fruit-whitecurrant", "fruit-blackcurrant", "fruit-saguaro", "fruit-pomegrante", "fruit-lychee", "fruit-breadfuit", "fruit-redapple", "fruit-pinkapple", "fruit-yellowapple", "fruit-cherry", "fruit-olive", "fruit-peach", "fruit-pear", "fruit-orange", "fruit-mango");
-        }
-
-        ItemStack[] anyCheeserNothing()
-        {
-            return gs(null, "cheese-cheddar-1slice", "cheese-blue-1slice");
-        }
-
-
-        ItemStack[] anyFruit()
-        {
-            return gs("fruit-blueberry", "fruit-cranberry", "fruit-redcurrant", "fruit-whitecurrant", "fruit-blackcurrant", "fruit-saguaro", "fruit-pomegrante", "fruit-lychee", "fruit-breadfuit", "fruit-redapple", "fruit-pinkapple", "fruit-yellowapple", "fruit-cherry", "fruit-olive", "fruit-peach", "fruit-pear", "fruit-orange", "fruit-mango");
-        }
-
-        ItemStack[] anyVegetableOrNothing()
-        {
-            return gs(null, "vegetable-carrot", "vegetable-cabbage", "vegetable-onion", "vegetable-turnip", "vegetable-parsnip", "vegetable-pumpkin", "mushroom-kingbolete-normal", "mushroom-fieldmushroom-normal");
-        }
-
-        ItemStack[] anyVegetable()
-        {
-            return gs("vegetable-carrot", "vegetable-cabbage", "vegetable-onion", "vegetable-turnip", "vegetable-parsnip", "vegetable-pumpkin", "mushroom-kingbolete-normal", "mushroom-fieldmushroom-normal");
-        }
-
-        ItemStack[] anyMeatOrEggOrNothing()
-        {
-            return gs(null, "redmeat-raw", "poultry-raw", "egg-chicken-raw");
-        }
-
-        ItemStack[] eggOrNothing()
-        {
-            return gs(null, "egg-chicken-raw");
-        }
-
-
-        ItemStack[] honeyOrNothing()
-        {
-            return gs(null, "honeyportion");
-        }
-
-        ItemStack[] gs(params string[] codes)
-        {
-            int index = 0;
-            ItemStack[] stacks = new ItemStack[codes.Length];
-            for (int i = 0; i < stacks.Length; i++)
-            {
-                if (codes[i] == null)
+                ObjectCacheUtil.GetOrCreate(Api, "trailermaking-cachedvalidstacks-" + recipe.Code, () =>
                 {
-                    continue;
-                }
+                    Dictionary<CookingRecipeIngredient, HashSet<ItemStack>> valStacksByIng = [];
 
-                Item item = Api.World.GetItem(new AssetLocation(codes[i]));
-                if (item == null)
-                {
-                    Block block = Api.World.GetBlock(new AssetLocation(codes[i]));
-                    if (block == null)
+                    foreach (var ingredient in recipe.Ingredients)
                     {
-                        continue;
+                        HashSet<ItemStack> ingredientStacks = [];
+
+                        ingredient.Resolve(Api.World, "trailer making recipe randomizer");
+                        foreach (var astack in possibleStacks)
+                        {
+                            if (ingredient.GetMatchingStack(astack) is not CookingRecipeStack vstack) continue;
+
+                            ItemStack stack = astack.Clone();
+                            stack.StackSize = vstack.StackSize;
+
+                            if (BlockLiquidContainerBase.GetContainableProps(stack) is WaterTightContainableProps props)
+                            {
+                                stack.StackSize *= (int)(props.ItemsPerLitre * ingredient.PortionSizeLitres);
+                            }
+
+                            ingredientStacks.Add(stack);
+                        }
+
+                        var validStacks = ingredient.ValidStacks.Select(vStack => vStack.ResolvedItemstack).Where(stack => stack != null);
+
+                        foreach (var vstack in validStacks)
+                        {
+                            ItemStack stack = vstack.Clone();
+
+                            if (BlockLiquidContainerBase.GetContainableProps(stack) is WaterTightContainableProps props)
+                            {
+                                stack.StackSize *= (int)(props.ItemsPerLitre * ingredient.PortionSizeLitres);
+                            }
+
+                            ingredientStacks.Add(stack);
+                        }
+
+                        if (ingredient.MinQuantity <= 0) ingredientStacks.Add(null);
+
+                        valStacksByIng.Add(ingredient.Clone(), ingredientStacks);
                     }
 
-                    stacks[index++] = new ItemStack(block);
-                }
-                else
-                {
-                    stacks[index++] = new ItemStack(item);
-                }
+                    return valStacksByIng;
+                });
             }
-
-            return stacks;
         }
 
-        class RndMeal
-        {
-            public string recipeCode;
-            public ItemStack[][] stacks;
-        }
-
-        RndMeal[] rndMeals;
-
+        CookingRecipe[] recipes;
         private void Every50ms(float t1)
         {
             foreach (var slot in inventory)
@@ -572,23 +430,9 @@ namespace Vintagestory.GameContent
                 IBlockMealContainer blockMeal = slot.Itemstack?.Collectible as IBlockMealContainer;
                 if (blockMeal == null) continue;
 
-                RndMeal rndMeal = rndMeals[Api.World.Rand.Next(rndMeals.Length)];
-
-                var istacks = new ItemStack[rndMeal.stacks.Length];
-
-                int index = 0;
-                for (int i = 0; i < rndMeal.stacks.Length; i++)
-                {
-                    ItemStack[] stacks = rndMeal.stacks[i];
-                    ItemStack stack = stacks[Api.World.Rand.Next(stacks.Length)];
-
-                    if (stack == null) continue;
-                    istacks[index++] = stack;
-
-                    if (index == 4) break;
-                }
-
-                blockMeal.SetContents(rndMeal.recipeCode, slot.Itemstack, istacks, 1);
+                var recipe = recipes[Api.World.Rand.Next(recipes.Length)];
+                var cachedValidStacks = ObjectCacheUtil.TryGet<Dictionary<CookingRecipeIngredient, HashSet<ItemStack>>>(Api, "trailermaking-cachedvalidstacks-" + recipe.Code);
+                blockMeal.SetContents(recipe.Code, slot.Itemstack, recipe.GenerateRandomMeal(Api, ref cachedValidStacks, null), 1);
             }
 
             updateMeshes();
@@ -605,8 +449,22 @@ namespace Vintagestory.GameContent
             return colBoxes;
         }
 
+        byte[] lastLightHsv;
+
         public virtual bool OnPlayerInteractStart(IPlayer player, BlockSelection bs)
         {
+            isUsingSlot = null;
+            if (GetSlotAt(bs) is ItemSlot ourSlot && !ourSlot.Empty)
+            {
+                var collIci = ourSlot.Itemstack.Collectible.GetCollectibleInterface<IContainedInteractable>();
+                if (collIci?.OnContainedInteractStart(this, ourSlot, player, bs) == true)
+                {
+                    BlockGroundStorage.IsUsingContainedBlock = true;
+                    isUsingSlot = ourSlot;
+                    return true;
+                }
+            }
+
             ItemSlot hotbarSlot = player.InventoryManager.ActiveHotbarSlot;
 
             if (!hotbarSlot.Empty && !hotbarSlot.Itemstack.Collectible.HasBehavior<CollectibleBehaviorGroundStorable>()) return false;
@@ -684,6 +542,17 @@ namespace Vintagestory.GameContent
             {
                 Api.World.BlockAccessor.SetBlock(0, Pos);
                 Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
+                if (lastLightHsv != null && lastLightHsv[2] > 0)
+                {
+                    Api.World.BlockAccessor.RemoveBlockLight((byte[])lastLightHsv.Clone(), Pos);
+                }
+            } else
+            {
+                var lshv = GetLightHsv();
+                if ((lastLightHsv != null && lastLightHsv[2] > 0) && (lshv == null || lshv[2] == 0))
+                {
+                    Api.World.BlockAccessor.RemoveBlockLight((byte[])lastLightHsv.Clone(), Pos);
+                }
             }
 
             return ok;
@@ -691,7 +560,8 @@ namespace Vintagestory.GameContent
 
         public bool OnPlayerInteractStep(float secondsUsed, IPlayer byPlayer, BlockSelection blockSel)
         {
-            if (isUsingSlot?.Itemstack?.Collectible is IContainedInteractable collIci)
+            var collIci = isUsingSlot?.Itemstack?.Collectible.GetCollectibleInterface<IContainedInteractable>();
+            if (collIci != null)
             {
                 return collIci.OnContainedInteractStep(secondsUsed, this, isUsingSlot, byPlayer, blockSel);
             }
@@ -702,7 +572,8 @@ namespace Vintagestory.GameContent
 
         public void OnPlayerInteractStop(float secondsUsed, IPlayer byPlayer, BlockSelection blockSel)
         {
-            if (isUsingSlot?.Itemstack.Collectible is IContainedInteractable collIci)
+            var collIci = isUsingSlot?.Itemstack?.Collectible.GetCollectibleInterface<IContainedInteractable>();
+            if (collIci != null)
             {
                 collIci.OnContainedInteractStop(secondsUsed, this, isUsingSlot, byPlayer, blockSel);
             }
@@ -753,7 +624,8 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            if (stack.Collectible.CombustibleProps == null || stack.Collectible.CombustibleProps.SmeltingType != EnumSmeltType.Fire)
+            CombustibleProperties combustibleProps = stack.Collectible.GetCombustibleProperties(Api.World, stack, null);
+            if (combustibleProps == null || combustibleProps.SmeltingType != EnumSmeltType.Fire)
             {
                 capi?.TriggerIngameError(this, "notfireable", Lang.Get("This is not a fireable block or item", StorageProps.MaxFireable));
                 return false;
@@ -780,31 +652,35 @@ namespace Vintagestory.GameContent
 
             if (StorageProps == null) return;  // Seems necessary to avoid crash with certain items placed in game version 1.15-pre.1?
 
+            Cuboidf colBox, selBox;
             if (StorageProps.CollisionBox != null)
             {
-                colBoxes[0] = selBoxes[0] = StorageProps.CollisionBox.Clone();
+                colBox = selBox = StorageProps.CollisionBox.Clone();
             } else
             {
                 if (sourceStack?.Block != null)
                 {
-                    colBoxes[0] = selBoxes[0] = sourceStack.Block.CollisionBoxes[0].Clone();
+                    colBox = selBox = sourceStack.Block.CollisionBoxes[0].Clone();
                 }
+                else colBox = selBox = null;
             }
 
             if (StorageProps.SelectionBox != null)
             {
-                selBoxes[0] = StorageProps.SelectionBox.Clone();
+                selBox = StorageProps.SelectionBox.Clone();
             }
 
             if (StorageProps.CbScaleYByLayer != 0)
             {
-                colBoxes[0] = colBoxes[0].Clone();
-                colBoxes[0].Y2 *= ((int)Math.Ceiling(StorageProps.CbScaleYByLayer * inventory[0].StackSize) * 8) / 8;
+                colBox = colBox.Clone();
+                colBox.Y2 *= ((int)Math.Ceiling(StorageProps.CbScaleYByLayer * inventory[0].StackSize) * 8) / 8;
 
-                selBoxes[0] = colBoxes[0];
+                selBox = colBox;
             }
 
-            FixBrokenStorageLayout();
+            colBoxes[0] = colBox;
+            selBoxes[0] = selBox;
+            UpdateLegacyStorageLayouts();
 
             if (overrideLayout != null)
             {
@@ -813,7 +689,10 @@ namespace Vintagestory.GameContent
             }
         }
 
-        protected virtual void FixBrokenStorageLayout()
+        /// <summary>
+        /// In 1.21, ground storage created in game version 1.20 or earlier could be laid out in an unintended way after updating the game
+        /// </summary>
+        protected virtual void UpdateLegacyStorageLayouts()
         {
             if (StorageProps == null) return;
 
@@ -987,6 +866,7 @@ namespace Vintagestory.GameContent
                 if (hotbarSlot.TryPutInto(Api.World, invSlot, putBulk ? BulkTransferQuantity : TransferQuantity) > 0)
                 {
                     Api.World.PlaySoundAt(StorageProps.PlaceRemoveSound.WithPathPrefixOnce("sounds/"), Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, null, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
+                    lightUpdate(invSlot.Itemstack);
                 }
 
                 Api.World.Logger.Audit("{0} Put {1}x{2} into new Ground storage at {3}.",
@@ -1022,6 +902,7 @@ namespace Vintagestory.GameContent
                     hotbarSlot.OnItemSlotModified(null);
                 }
 
+                lightUpdate(invSlot.Itemstack);
                 Api.World.PlaySoundAt(StorageProps.PlaceRemoveSound.WithPathPrefixOnce("sounds/"), Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, null, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
 
                 Api.World.Logger.Audit("{0} Put {1}x{2} into Ground storage at {3}.",
@@ -1036,9 +917,9 @@ namespace Vintagestory.GameContent
                 MarkDirty();
 
                 Cuboidf[] collBoxes = Api.World.BlockAccessor.GetBlock(Pos).GetCollisionBoxes(Api.World.BlockAccessor, Pos);
-                if (collBoxes != null && collBoxes.Length > 0 && CollisionTester.AabbIntersect(collBoxes[0], Pos.X, Pos.Y, Pos.Z, player.Entity.SelectionBox, player.Entity.SidedPos.XYZ))
+                if (collBoxes != null && collBoxes.Length > 0 && CollisionTester.AabbIntersect(collBoxes[0], Pos.X, Pos.Y, Pos.Z, player.Entity.SelectionBox, player.Entity.Pos.XYZ))
                 {
-                    player.Entity.SidedPos.Y += collBoxes[0].Y2 - (player.Entity.SidedPos.Y - (int)player.Entity.SidedPos.Y);
+                    player.Entity.Pos.Y += collBoxes[0].Y2 - (player.Entity.Pos.Y - (int)player.Entity.Pos.Y);
                 }
 
                 return true;
@@ -1047,14 +928,21 @@ namespace Vintagestory.GameContent
             return false;
         }
 
+        private void lightUpdate(ItemStack itemstack)
+        {
+            lastLightHsv = itemstack.Collectible.GetLightHsv(Api.World.BlockAccessor, null, itemstack);
+            if (lastLightHsv != null && lastLightHsv[2] > 0) Api.World.BlockAccessor.ExchangeBlock(Block.Id, Pos); // Forces a lighting update
+        }
+
         public bool TryTakeItem(IPlayer player)
         {
             bool takeBulk = player.Entity.Controls.CtrlKey;
             int q = GameMath.Min(takeBulk ? BulkTransferQuantity : TransferQuantity, TotalStackSize);
 
+            ItemStack stack = null;
             if (inventory[0]?.Itemstack != null)
             {
-                ItemStack stack = inventory[0].TakeOut(q);
+                stack = inventory[0].TakeOut(q);
                 player.InventoryManager.TryGiveItemstack(stack);
 
                 if (stack.StackSize > 0)
@@ -1068,17 +956,21 @@ namespace Vintagestory.GameContent
                     stack.Collectible.Code,
                     Pos
                 );
+
+                lightUpdate(stack);
             }
 
             if (TotalStackSize == 0)
             {
                 Api.World.BlockAccessor.SetBlock(0, Pos);
+                if (stack != null) Api.World.BlockAccessor.RemoveBlockLight(stack.Collectible.GetLightHsv(Api.World.BlockAccessor, null, stack), Pos);
             }
             else Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
 
             Api.World.PlaySoundAt(StorageProps.PlaceRemoveSound, Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, null, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
 
             MarkDirty();
+
 
             (player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
 
@@ -1087,72 +979,7 @@ namespace Vintagestory.GameContent
 
         public bool putOrGetItemSingle(ItemSlot ourSlot, IPlayer player, BlockSelection bs)
         {
-            isUsingSlot = null;
-            if (!ourSlot.Empty && ourSlot.Itemstack.Collectible is IContainedInteractable collIci)
-            {
-                if (collIci.OnContainedInteractStart(this, ourSlot, player, bs))
-                {
-                    BlockGroundStorage.IsUsingContainedBlock = true;
-                    isUsingSlot = ourSlot;
-                    return true;
-                }
-            }
-
             ItemSlot hotbarSlot = player.InventoryManager.ActiveHotbarSlot;
-
-            if (ourSlot?.Itemstack?.Collectible is ILiquidInterface liquidCnt1 && hotbarSlot?.Itemstack?.Collectible is ILiquidInterface liquidCnt2)
-            {
-                BlockLiquidContainerBase heldLiquidContainer = hotbarSlot.Itemstack.Collectible as BlockLiquidContainerBase;
-
-                CollectibleObject obj = hotbarSlot.Itemstack.Collectible;
-                bool singleTake = player.WorldData.EntityControls.ShiftKey;
-                bool singlePut = player.WorldData.EntityControls.CtrlKey;
-
-
-                if (obj is ILiquidSource liquidSource && liquidSource.AllowHeldLiquidTransfer && !singleTake)
-                {
-                    ItemStack contentStackToMove = liquidSource.GetContent(hotbarSlot.Itemstack);
-
-                    int moved = heldLiquidContainer.TryPutLiquid(
-                        containerStack: ourSlot.Itemstack,
-                        liquidStack: contentStackToMove,
-                        desiredLitres: singlePut ? liquidSource.TransferSizeLitres : liquidSource.CapacityLitres);
-
-                    if (moved > 0)
-                    {
-                        heldLiquidContainer.SplitStackAndPerformAction(player.Entity, hotbarSlot, delegate (ItemStack stack)
-                        {
-                            liquidSource.TryTakeContent(stack, moved);
-                            return moved;
-                        });
-                        heldLiquidContainer.DoLiquidMovedEffects(player, contentStackToMove, moved, BlockLiquidContainerBase.EnumLiquidDirection.Pour);
-
-                        BlockGroundStorage.IsUsingContainedBlock = true;
-                        isUsingSlot = ourSlot;
-                        return true;
-                    }
-                }
-
-                if (obj is ILiquidSink liquidSink && liquidSink.AllowHeldLiquidTransfer && !singlePut)
-                {
-                    ItemStack owncontentStack = heldLiquidContainer.GetContent(ourSlot.Itemstack);
-                    if (owncontentStack != null)
-                    {
-                        ItemStack liquidStackForParticles = owncontentStack.Clone();
-                        float litres = (singleTake ? liquidSink.TransferSizeLitres : liquidSink.CapacityLitres);
-                        int moved = heldLiquidContainer.SplitStackAndPerformAction(player.Entity, hotbarSlot, (ItemStack stack) => liquidSink.TryPutLiquid(stack, owncontentStack, litres));
-                        if (moved > 0)
-                        {
-                            heldLiquidContainer.TryTakeContent(ourSlot.Itemstack, moved);
-                            heldLiquidContainer.DoLiquidMovedEffects(player, liquidStackForParticles, moved, BlockLiquidContainerBase.EnumLiquidDirection.Fill);
-
-                            BlockGroundStorage.IsUsingContainedBlock = true;
-                            isUsingSlot = ourSlot;
-                            return true;
-                        }
-                    }
-                }
-            }
 
             if (!hotbarSlot.Empty && !inventory.Empty)
             {
@@ -1172,7 +999,7 @@ namespace Vintagestory.GameContent
             {
                 if (ourSlot.Empty)
                 {
-                    if (hotbarSlot.Empty) return false;
+                    if (hotbarSlot.Empty || !player.Entity.Controls.ShiftKey) return false;
 
                     if (player.WorldData.CurrentGameMode == EnumGameMode.Creative)
                     {
@@ -1185,6 +1012,7 @@ namespace Vintagestory.GameContent
                                 ourSlot.Itemstack.Collectible.Code,
                                 Pos
                             );
+                            lightUpdate(stack);
                         }
                     } else {
                         if (hotbarSlot.TryPutInto(Api.World, ourSlot, TransferQuantity) > 0)
@@ -1195,6 +1023,7 @@ namespace Vintagestory.GameContent
                                 ourSlot.Itemstack.Collectible.Code,
                                 Pos
                             );
+                            lightUpdate(ourSlot.Itemstack);
                         }
                     }
                 }
@@ -1204,6 +1033,8 @@ namespace Vintagestory.GameContent
                     {
                         Api.World.SpawnItemEntity(ourSlot.Itemstack, Pos);
                     }
+
+                    lightUpdate(ourSlot.Itemstack);
 
                     Api.World.PlaySoundAt(StorageProps.PlaceRemoveSound, Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, player, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
 
@@ -1292,6 +1123,8 @@ namespace Vintagestory.GameContent
             {
                 inventory.DropAll(Pos.ToVec3d().Add(0.5, 0.5, 0.5), 4);
             }*/
+
+            Api.World.BlockAccessor.RemoveBlockLight(GetLightHsv(), Pos);
         }
 
         public virtual string GetBlockName()
@@ -1352,7 +1185,7 @@ namespace Vintagestory.GameContent
 
         public virtual string[] getContentSummary()
         {
-            OrderedDictionary<string, int> dict = new ();
+            API.Datastructures.OrderedDictionary<string, int> dict = new ();
 
             foreach (var slot in inventory)
             {
@@ -1416,7 +1249,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        Vec3f rotatedOffset(Vec3f offset, float radY)
+        protected Vec3f rotatedOffset(Vec3f offset, float radY)
         {
             Matrixf mat = new Matrixf();
             mat.Translate(0.5f, 0.5f, 0.5f).RotateY(radY).Translate(-0.5f, -0.5f, -0.5f);
@@ -1483,35 +1316,19 @@ namespace Vintagestory.GameContent
             }
         }
 
-        protected override string getMeshCacheKey(ItemStack stack)
+        protected override string getMeshCacheKey(ItemSlot slot)
         {
-            return (StorageProps?.Layout == EnumGroundStorageLayout.Messy12 ? "messy12-" : "") + (StorageProps?.ModelItemsToStackSizeRatio > 0 ? stack.StackSize : 1) + "x" + base.getMeshCacheKey(stack);
+            return (StorageProps?.Layout == EnumGroundStorageLayout.Messy12 ? "messy12-" : "") + ItemModelCount + "x" + base.getMeshCacheKey(slot);
         }
 
-        protected override MeshData getOrCreateMesh(ItemStack stack, int index)
+        protected override MeshData getOrCreateMesh(ItemSlot slot, int index)
         {
-            if(stack.Class == EnumItemClass.Block)
+            var stack = slot.Itemstack;
+            if (stack.Class == EnumItemClass.Block)
             {
                 if (stack.Block is IBlockMealContainer be)
                 {
-                    var mealMeshCache = capi.ModLoader.GetModSystem<MealMeshCache>();
-                    var key = mealMeshCache.GetMealHashCode(stack);
-                    Dictionary<int, MultiTextureMeshRef> meshrefs;
-                    if (capi!.ObjectCache.TryGetValue("cookedMeshRefs", out var obj))
-                    {
-                        meshrefs = obj as Dictionary<int, MultiTextureMeshRef> ?? [];
-                        if(!meshrefs.TryGetValue(key, out MeshRefs[index]))
-                        {
-                            if (be is BlockCookedContainer bc)
-                            {
-                                MeshRefs[index] = mealMeshCache!.GetOrCreateMealInContainerMeshRef(stack.Block, be.GetCookingRecipe(capi.World, stack), be.GetNonEmptyContents(capi.World, stack), new Vec3f(0, bc.yoff/16f, 0));
-                            }
-                            else
-                            {
-                                MeshRefs[index] = mealMeshCache!.GetOrCreateMealInContainerMeshRef(stack.Block, be.GetCookingRecipe(capi.World, stack), be.GetNonEmptyContents(capi.World, stack));
-                            }
-                        }
-                    }
+                    GetOrCreateMealMesh(be, stack, index);
                 }
                 else
                 {
@@ -1519,15 +1336,15 @@ namespace Vintagestory.GameContent
                 }
             }
             // shingle/bricks are items but uses Stacking layout to get the mesh, so this should be not needed atm
-            else if(stack.Class == EnumItemClass.Item && StorageProps != null && StorageProps.Layout != EnumGroundStorageLayout.Stacking)
+            else if (stack.Class == EnumItemClass.Item && StorageProps != null && StorageProps.Layout != EnumGroundStorageLayout.Stacking)
             {
                 MeshRefs[index] = capi.TesselatorManager.GetDefaultItemMeshRef(stack.Item);
             }
 
             if (StorageProps?.Layout == EnumGroundStorageLayout.Messy12)
             {
-                string key = getMeshCacheKey(stack);
-                var mesh = getMesh(stack);
+                string key = getMeshCacheKey(slot);
+                var mesh = getMesh(slot);
                 if (mesh != null)
                 {
                     return mesh;
@@ -1536,17 +1353,18 @@ namespace Vintagestory.GameContent
                 var meshDataOne = getDefaultMesh(stack);
                 applyDefaultTranforms(stack, meshDataOne);
 
-                var rnd = new Random(0);
-
                 var meshData12 = meshDataOne.Clone().Clear();
+                var bgs = Block as BlockGroundStorage;
+
                 for (int i = 0; i < stack.StackSize; i++)
                 {
-                    float rndx = (float)rnd.NextDouble() * 0.9f - 0.45f;
-                    float rndz = (float)rnd.NextDouble() * 0.9f - 0.45f;
-                    meshDataOne.Rotate(new Vec3f(0.5f, 0, 0.5f), 0, GameMath.TWOPI * (float)rnd.NextDouble(), 0);
-                    float rndscale = 1 + ((float)rnd.NextDouble() * 0.02f - 0.01f);
-                    meshDataOne.Scale(new Vec3f(0.5f, 0, 0.5f), 1 * rndscale, 1 * rndscale, 1 * rndscale);
-                    meshData12.AddMeshData(meshDataOne, rndx, 0, rndz);
+                    var tf = bgs.Messy12Transforms[i];
+
+                    // Yes, we apply scaling and rotation multiple times to the same mesh here
+                    // But its okay, as long as we don't apply translation multiple times, which we dont
+                    meshDataOne.Rotate(0, GameMath.TWOPI * tf.Rotation.Y, 0);
+                    meshDataOne.Scale(tf.Origin.ToVec3f(), tf.ScaleXYZ.X, tf.ScaleXYZ.Y, tf.ScaleXYZ.Z);
+                    meshData12.AddMeshData(meshDataOne, tf.Translation.X, tf.Translation.Y, tf.Translation.Z);
                 }
 
                 MeshCache[key] = meshData12;
@@ -1556,8 +1374,8 @@ namespace Vintagestory.GameContent
 
             if (StorageProps?.Layout == EnumGroundStorageLayout.Stacking)
             {
-                var key = getMeshCacheKey(stack);
-                var mesh = getMesh(stack);
+                var key = getMeshCacheKey(slot);
+                var mesh = getMesh(slot);
 
                 if (mesh != null)
                 {
@@ -1580,19 +1398,32 @@ namespace Vintagestory.GameContent
                         return null;
                     }
 
-                    capi.Tesselator.TesselateShape("storagePile", nowTesselatingShape, out mesh, this, null, 0, 0, 0, (int)Math.Ceiling(StorageProps.ModelItemsToStackSizeRatio * stack.StackSize));
+                    capi.Tesselator.TesselateShape("storagePile", nowTesselatingShape, out mesh, this, null, 0, 0, 0, StorageProps.CuboidsPerModel * ItemModelCount);
                 }
 
                 MeshCache[key] = mesh;
 
                 if (UploadedMeshCache.TryGetValue(key, out var mr)) mr.Dispose();
+                if (Environment.CurrentManagedThreadId != RuntimeEnv.MainThreadId)
+                {
+                    Api.Event.EnqueueMainThreadTask(() =>
+                    {
+                        var newMeshRef = capi.Render.UploadMultiTextureMesh(mesh);
+                        UploadedMeshCache[key] = newMeshRef;
+                        MeshRefs[index] = newMeshRef;
+                        Api.World.BlockAccessor.MarkBlockDirty(Pos);
+                    }, "groundstoragemeshupload");
+
+                    return null;
+                }
+
                 var newMeshRef = capi.Render.UploadMultiTextureMesh(mesh);
                 UploadedMeshCache[key] = newMeshRef;
                 MeshRefs[index] = newMeshRef; ;
                 return mesh;
             }
 
-            var meshData = base.getOrCreateMesh(stack, index);
+            var meshData = base.getOrCreateMesh(slot, index);
             if (stack.Collectible.Attributes?[AttributeTransformCode].Exists == true)
             {
                 var transform = stack.Collectible.Attributes?[AttributeTransformCode].AsObject<ModelTransform>();
@@ -1605,6 +1436,15 @@ namespace Vintagestory.GameContent
 
             return meshData;
         }
+
+#nullable enable
+        public virtual void GetOrCreateMealMesh(IBlockMealContainer be, ItemStack stack, int index)
+        {
+            var mealMeshCache = capi.ModLoader.GetModSystem<MealMeshCache>();
+            Vec3f? vec = be is BlockCookedContainer bc ? new Vec3f(0, bc.yoff / 16f, 0) : null;
+            MeshRefs[index] = mealMeshCache.GetOrCreateMealInContainerMeshRef(be, stack, vec);
+        }
+#nullable disable
 
         public void TryIgnite()
         {
@@ -1694,7 +1534,7 @@ namespace Vintagestory.GameContent
         {
             if (burning && Api.World.Rand.NextDouble() < 0.93 && StorageProps != null)
             {
-                var yOffset = Layers / (StorageProps.StackingCapacity * StorageProps.ModelItemsToStackSizeRatio);
+                var yOffset = ItemModelCount * StorageProps.ItemsPerModel / StorageProps.StackingCapacity;
                 var pos = Pos.ToVec3d().Add(0, yOffset, 0);
                 var rnd = Api.World.Rand;
                 for (int i = 0; i < Entity.FireParticleProps.Length; i++)
@@ -1768,6 +1608,22 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public byte[] GetLightHsv()
+        {
+            byte[] lighthsv = null;
+
+            foreach (var slot in inventory)
+            {
+                if (slot.Empty) continue;
+
+                var stacklighthsv = slot.Itemstack.Collectible.GetLightHsv(Api.World.BlockAccessor, null, slot.Itemstack);
+                if (lighthsv == null) lighthsv = (byte[])stacklighthsv.Clone();
+                else lighthsv = ColorUtil.MergeLightHSV(lighthsv, stacklighthsv);
+            }
+
+            return lighthsv ?? new byte[3];
+        }
+
         public void OnTransformed(IWorldAccessor worldAccessor, ITreeAttribute tree, int degreeRotation, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, EnumAxis? flipAxis)
         {
             MeshAngle = tree.GetFloat("meshAngle");
@@ -1791,15 +1647,16 @@ namespace Vintagestory.GameContent
             Dispose();
         }
 
-        protected virtual void Dispose()
+        protected override void Dispose()
         {
+            base.Dispose();
             renderer?.Dispose();
             ambientSound?.Stop();
         }
 
-        public static void OnGameDispose(ICoreClientAPI capi)
+        public static void OnGameDisposed(ICoreClientAPI capi)
         {
-            if (capi == null) return; // Server side
+            if (capi == null) return; // we're server side then
 
             Dictionary<string, MultiTextureMeshRef> UploadedMeshCache = ObjectCacheUtil.TryGet<Dictionary<string, MultiTextureMeshRef>>(capi, "groundStorageUMC");
             if (UploadedMeshCache != null)
@@ -1815,5 +1672,7 @@ namespace Vintagestory.GameContent
         {
             return IsBurning ? 10 : 0;
         }
+
+
     }
 }

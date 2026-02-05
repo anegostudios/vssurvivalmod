@@ -198,7 +198,7 @@ namespace Vintagestory.GameContent
                 StringBuilder sb = new StringBuilder();
                 foreach (var val in ActiveActivitiesBySlot)
                 {
-                    sb.Append(val.Key + ": " + val.Value.Name + "/" + val.Value.CurrentAction?.Type);
+                    sb.Append(val.Key + ": " + val.Value.Name + "/" + (val.Value as EntityActivity)?.currentActionIndex + ". " + val.Value.CurrentAction?.Type + " / ");
                 }
                 Entity.DebugAttributes.SetString("activities", sb.ToString());
             }

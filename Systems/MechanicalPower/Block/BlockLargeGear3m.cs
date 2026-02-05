@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
@@ -18,7 +18,7 @@ namespace Vintagestory.GameContent.Mechanics
             //TODO - change model, start with half axle but extend axle upwards to full block height if connection above
         }
 
-        public override bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face)
+        public override bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face, BlockMPBase forBlock)
         {
             if (face == BlockFacing.UP || face == BlockFacing.DOWN) return true;
             return (world.BlockAccessor.GetBlockEntity(pos) is BELargeGear3m beg) && beg.HasGearAt(world.Api, pos.AddCopy(face));
@@ -60,7 +60,7 @@ namespace Vintagestory.GameContent.Mechanics
 
                 BEBehaviorMPBase beMechBase = beOwn?.GetBehavior<BEBehaviorMPBase>();
                 BlockPos pos = blockSel.Position.DownCopy();
-                if (world.BlockAccessor.GetBlock(pos) is IMechanicalPowerBlock block && block.HasMechPowerConnectorAt(world, pos, BlockFacing.UP))
+                if (world.BlockAccessor.GetBlock(pos) is IMechanicalPowerBlock block && block.HasMechPowerConnectorAt(world, pos, BlockFacing.UP, this))
                 {
                     block.DidConnectAt(world, pos, BlockFacing.UP);
                     connections.Add(BlockFacing.DOWN);
@@ -69,7 +69,7 @@ namespace Vintagestory.GameContent.Mechanics
                 {
                     pos = blockSel.Position.UpCopy();
                     block = world.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
-                    if (block != null && block.HasMechPowerConnectorAt(world, pos, BlockFacing.DOWN))
+                    if (block != null && block.HasMechPowerConnectorAt(world, pos, BlockFacing.DOWN, this))
                     {
                         block.DidConnectAt(world, pos, BlockFacing.DOWN);
                         connections.Add(BlockFacing.UP);
@@ -87,7 +87,7 @@ namespace Vintagestory.GameContent.Mechanics
         private void PlaceFakeBlocks(IWorldAccessor world, BlockPos pos, List<BlockPos> skips)
         {
             Block toPlaceBlock = world.GetBlock(new AssetLocation("mpmultiblockwood"));
-            BlockPos tmpPos = new BlockPos();
+            BlockPos tmpPos = new BlockPos(pos.dimension);
 
             for (int dx = -1; dx <= 1; dx++)
             {
@@ -117,7 +117,7 @@ namespace Vintagestory.GameContent.Mechanics
             if (!base.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode)) return false;
             BlockPos pos = blockSel.Position;
 
-            BlockPos tmpPos = new BlockPos();
+            BlockPos tmpPos = new BlockPos(blockSel.Position.dimension);
             BlockSelection bs = blockSel.Clone();
 
             for (int dx = -1; dx <= 1; dx++)
@@ -156,7 +156,7 @@ namespace Vintagestory.GameContent.Mechanics
         public override void OnBlockRemoved(IWorldAccessor world, BlockPos pos)
         {
             base.OnBlockRemoved(world, pos);
-            BlockPos tmpPos = new BlockPos();
+            BlockPos tmpPos = new BlockPos(pos.dimension);
 
             for (int dx = -1; dx <= 1; dx++)
             {

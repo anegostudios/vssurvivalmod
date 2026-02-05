@@ -6,6 +6,7 @@
     <OutputPath>..\bin\$(Configuration)</OutputPath>
     <Configurations>Debug;Release;PerfTest</Configurations>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -17,7 +18,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="protobuf-net" Version="2.4.9" />
     <PackageReference Include="OpenTK.Windowing.GraphicsLibraryFramework" Version="4.9.4" />
   </ItemGroup>

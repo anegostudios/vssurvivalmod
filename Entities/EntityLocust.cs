@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Common;
+using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
@@ -22,7 +22,7 @@ namespace Vintagestory.GameContent
         public override byte[] LightHsv
         {
             get {
-                return lightEmitting ? base.LightHsv : null; 
+                return lightEmitting ? base.LightHsv : null;
             }
         }
 
@@ -55,7 +55,7 @@ namespace Vintagestory.GameContent
             if (cnt++ > 2)
             {
                 cnt = 0;
-                var pos = SidedPos;
+                var pos = Pos;
                 Block belowBlock = World.BlockAccessor.GetBlockRaw((int)pos.X, (int)(pos.InternalY - 0.05f), (int)pos.Z);
                 Block insideblock = World.BlockAccessor.GetBlockRaw((int)pos.X, (int)(pos.InternalY + 0.01f), (int)pos.Z);
 

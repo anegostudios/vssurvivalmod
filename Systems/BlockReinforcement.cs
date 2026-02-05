@@ -520,7 +520,7 @@ namespace Vintagestory.GameContent
         protected bool IsReinforcable(Block block)
         {
             if (reasonableReinforcements && (block.BlockMaterial == EnumBlockMaterial.Plant ||
-                    block.BlockMaterial == EnumBlockMaterial.Liquid ||
+                    block.BlockMaterial == EnumBlockMaterial.Water ||
                     block.BlockMaterial == EnumBlockMaterial.Snow ||
                     block.BlockMaterial == EnumBlockMaterial.Leaves ||
                     block.BlockMaterial == EnumBlockMaterial.Lava ||

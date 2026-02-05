@@ -14,12 +14,13 @@ namespace Vintagestory.GameContent
         public string Flow { get; set; }
         public Vec3i FlowNormali { get; set; }
         public bool IsLava => false;
+        public virtual bool HasNormalWaves => true;
         public int Height { get; set; }
 
-        bool freezable;
-        Block iceBlock;
-        float freezingPoint = -4;
-        bool isBoiling;
+        protected bool freezable;
+        protected Block iceBlock;
+        protected float freezingPoint = -4;
+        protected bool isBoiling;
 
         public override void OnLoaded(ICoreAPI api)
         {
@@ -27,6 +28,12 @@ namespace Vintagestory.GameContent
             Flow = Variant["flow"] is string f ? string.Intern(f) : null;
             FlowNormali = Flow != null ? Cardinal.FromInitial(Flow)?.Normali : null;
             Height = Variant["height"] is string h ? h.ToInt() : 7;
+            int fspeed = Attributes["flowSpeed"].AsInt(1);
+            if (fspeed > 1)
+            {
+                FlowNormali = FlowNormali?.Clone().Mul(fspeed);
+            }
+
 
             freezable = Flow == "still" && Height == 7;
             if (Attributes != null)
@@ -48,7 +55,7 @@ namespace Vintagestory.GameContent
         public override float GetAmbientSoundStrength(IWorldAccessor world, BlockPos pos)
         {
             // Play water wave sound when above is air and below is a solid block
-            return (world.BlockAccessor.GetBlockId(pos.X, pos.Y + 1, pos.Z) == 0 && world.BlockAccessor.IsSideSolid(pos.X, pos.Y - 1, pos.Z, BlockFacing.UP)) ? 1 : 0;
+            return (world.BlockAccessor.GetBlockAbove(pos, 1).Id == 0 && world.BlockAccessor.IsSideSolid(pos.X, pos.Y - 1, pos.Z, BlockFacing.UP)) ? 1 : 0;
         }
 
         public override void OnAsyncClientParticleTick(IAsyncParticleManager manager, BlockPos pos, float windAffectednessAtPos, float secondsTicking)
@@ -100,7 +107,7 @@ namespace Vintagestory.GameContent
 
             if (entityItem.World.Side == EnumAppSide.Server)
             {
-                Vec3d pos = entityItem.ServerPos.XYZ;
+                Vec3d pos = entityItem.Pos.XYZ;
 
                 WaterTightContainableProps props = BlockLiquidContainerBase.GetContainableProps(entityItem.Itemstack);
                 float litres = (float)entityItem.Itemstack.StackSize / (props?.ItemsPerLitre ?? 1f);
@@ -116,7 +123,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            
+
 
             base.OnGroundIdle(entityItem);
         }
@@ -176,5 +183,6 @@ namespace Vintagestory.GameContent
         {
             TopMiddlePos.Y = (Height + 1) / 8f;
         }
+
     }
 }

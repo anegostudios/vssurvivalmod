@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -47,10 +47,12 @@ namespace Vintagestory.GameContent
         public bool RandomizeCenterRotation;
         public AssetLocation StackingModel;
 
-        [Obsolete("Use ModelItemsToStackSizeRatio instead, which is now a float instead of int?")]
-        public int? TessQuantityElements { set { ModelItemsToStackSizeRatio = value ?? 0; } get { return (int)ModelItemsToStackSizeRatio; } }
+        public int CuboidsPerModel = 1;
+        public int ItemsPerModel = 1;
 
+        [Obsolete("Use CuboidsPerModel and ItemsPerModel instead")]
         public float ModelItemsToStackSizeRatio = 1;
+
         public Dictionary<string, AssetLocation> StackingTextures;
         public int MaxStackingHeight = -1;
         public int StackingCapacity = 1;
@@ -76,8 +78,10 @@ namespace Vintagestory.GameContent
                 PlaceRemoveSound = PlaceRemoveSound,
                 RandomizeSoundPitch = RandomizeSoundPitch,
                 RandomizeCenterRotation = RandomizeCenterRotation,
-                StackingCapacity = StackingCapacity,
                 StackingModel = StackingModel,
+                CuboidsPerModel = CuboidsPerModel,
+                ItemsPerModel = ItemsPerModel,
+                StackingCapacity = StackingCapacity,
                 StackingTextures = StackingTextures,
                 MaxStackingHeight = MaxStackingHeight,
                 TransferQuantity = TransferQuantity,
@@ -109,7 +113,15 @@ namespace Vintagestory.GameContent
             base.Initialize(properties);
 
             StorageProps = properties.AsObject<GroundStorageProperties>(null, collObj.Code.Domain);
+            if (!properties["itemsPerModel"].Exists)
+            {
+                StorageProps.ItemsPerModel = StorageProps.TransferQuantity;
+            }
+            if (!properties["cuboidsPerModel"].Exists)
+            {
 #pragma warning disable CS0618 // Type or member is obsolete
+                StorageProps.CuboidsPerModel = (int)Math.Round(StorageProps.ItemsPerModel * StorageProps.ModelItemsToStackSizeRatio);
+            }
             if (StorageProps.SprintKey) StorageProps.CtrlKey = true;
 #pragma warning restore CS0618 // Type or member is obsolete
         }

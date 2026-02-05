@@ -51,7 +51,7 @@ namespace Vintagestory.GameContent
 
         protected Vec3d lastGoalReachedPos;
         protected Dictionary<long, int> futilityCounters;
-        float executionChance;
+
 
         public AiTaskStayInRange(EntityAgent entity, JsonObject taskConfig, JsonObject aiConfig) : base(entity, taskConfig, aiConfig)
         {
@@ -59,30 +59,37 @@ namespace Vintagestory.GameContent
             searchRange = taskConfig["searchRange"].AsFloat(25);
             targetRange = taskConfig["targetRange"].AsFloat(15);
             rangeTolerance = taskConfig["targetRangeTolerance"].AsFloat(2);
-            retaliateAttacks = taskConfig["retaliateAttacks"].AsBool(true);
-            executionChance = taskConfig["executionChance"].AsFloat(0.1f);
             searchWaitMs = taskConfig["searchWaitMs"].AsInt(4000);
+        }
+
+        protected override void SetDefaultValues()
+        {
+            base.SetDefaultValues();
+            ExecutionChance = 0.1;
         }
 
 
         public override bool ShouldExecute()
         {
             if (noEntityCodes && (attackedByEntity == null || !retaliateAttacks)) return false;
-            if (!PreconditionsSatisifed()) return false;
+            if (!PreconditionsSatisfied()) return false;
 
             if (targetEntity != null)
             {
-                var sqdist = entity.ServerPos.SquareDistanceTo(targetEntity.ServerPos);
+                var sqdist = entity.Pos.SquareDistanceTo(targetEntity.Pos);
                 bool toofar = sqdist > (targetRange + rangeTolerance) * (targetRange + rangeTolerance);
                 bool toonear = sqdist < (targetRange - rangeTolerance) * (targetRange - rangeTolerance);
+
+                if (toonear && AiTaskTurretMode.RequireShortRangeAttacks(entity, targetEntity)) return false; // Can't flee means we also cannot stay in range
+
                 if (toofar || toonear) return true;
             }
 
-            if (WhenInEmotionState == null && rand.NextDouble() > 0.5f) return false;
+            if (WhenInEmotionStates == null && rand.NextDouble() > 0.5f) return false;
             if (lastSearchTotalMs + searchWaitMs > entity.World.ElapsedMilliseconds) return false;
             if (cooldownUntilMs > entity.World.ElapsedMilliseconds && !RecentlyAttacked) return false;
             // React immediately on hurt, otherwise only 1/10 chance of execution
-            if (rand.NextDouble() > executionChance && (WhenInEmotionState == null || IsInEmotionState(WhenInEmotionState) != true) && !RecentlyAttacked) return false;
+            if (rand.NextDouble() > ExecutionChance && (WhenInEmotionStates == null || IsInEmotionState(WhenInEmotionStates) != true) && !RecentlyAttacked) return false;
 
             lastSearchTotalMs = entity.World.ElapsedMilliseconds;
             if (!RecentlyAttacked)
@@ -90,22 +97,22 @@ namespace Vintagestory.GameContent
                 attackedByEntity = null;
             }
 
-            if (retaliateAttacks && attackedByEntity != null && attackedByEntity.Alive && attackedByEntity.IsInteractable && IsTargetableEntity(attackedByEntity, searchRange, true) && !entity.ToleratesDamageFrom(attackedByEntity))
+            if (ShouldRetaliateForRange(searchRange))
             {
                 targetEntity = attackedByEntity;
-                targetPos = targetEntity.ServerPos.XYZ;
+                targetPos = targetEntity.Pos.XYZ;
                 return true;
             }
             else
             {
-                ownPos.SetWithDimension(entity.ServerPos);
+                ownPos.SetWithDimension(entity.Pos);
                 targetEntity = partitionUtil.GetNearestEntity(ownPos, searchRange, (e) => IsTargetableEntity(e, searchRange), EnumEntitySearchType.Creatures);
 
                 if (targetEntity != null)
                 {
-                    targetPos = targetEntity.ServerPos.XYZ;
+                    targetPos = targetEntity.Pos.XYZ;
 
-                    var sqdist = entity.ServerPos.SquareDistanceTo(targetPos);
+                    var sqdist = entity.Pos.SquareDistanceTo(targetPos);
                     bool toofar = sqdist > (targetRange + rangeTolerance) * (targetRange + rangeTolerance);
                     bool toonear = sqdist < (targetRange - rangeTolerance) * (targetRange - rangeTolerance);
 
@@ -130,15 +137,14 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public override bool 
-            ContinueExecute(float dt)
+        public override bool ContinueExecute(float dt)
         {
             //Check if time is still valid for task.
             if (!IsInValidDayTimeHours(false)) return false;
 
             if (pathTraverser.Active) return true;
 
-            var sqdist = entity.ServerPos.SquareDistanceTo(targetEntity.ServerPos);
+            var sqdist = entity.Pos.SquareDistanceTo(targetEntity.Pos);
             bool toofar = sqdist > (targetRange + rangeTolerance) * (targetRange + rangeTolerance);
             bool toonear = sqdist < (targetRange - rangeTolerance) * (targetRange - rangeTolerance);
 
@@ -157,9 +163,8 @@ namespace Vintagestory.GameContent
 
         private bool WalkTowards(int sign)
         {
-            var ba = entity.World.BlockAccessor;
-            var selfpos = entity.ServerPos.XYZ;
-            var dir = selfpos.SubCopy(targetEntity.ServerPos.X, selfpos.Y, targetEntity.ServerPos.Z).Normalize();
+            var selfpos = entity.Pos.XYZ;
+            var dir = selfpos.SubCopy(targetEntity.Pos.X, selfpos.Y, targetEntity.Pos.Z).Normalize();
             var nextPos = selfpos + sign*dir;
             // Lets use only block center for testing
             var testPos = new Vec3d((int)nextPos.X + 0.5, (int)nextPos.Y, (int)nextPos.Z + 0.5);
@@ -177,7 +182,7 @@ namespace Vintagestory.GameContent
             // Left
             var ldir = dir.RotatedCopy(rnds * GameMath.PIHALF);
             nextPos = selfpos + ldir;
-            testPos = new Vec3d((int)nextPos.X + 0.5, (int)nextPos.Y, (int)nextPos.Z + 0.5);
+            testPos.Set((int)nextPos.X + 0.5, (int)nextPos.Y, (int)nextPos.Z + 0.5);
             if (canStepTowards(testPos))
             {
                 pathTraverser.WalkTowards(nextPos, moveSpeed, 0.3f, OnGoalReached, OnStuck);
@@ -186,7 +191,7 @@ namespace Vintagestory.GameContent
             // Right
             var rdir = dir.RotatedCopy(-rnds * GameMath.PIHALF);
             nextPos = selfpos + rdir;
-            testPos = new Vec3d((int)nextPos.X + 0.5, (int)nextPos.Y, (int)nextPos.Z + 0.5);
+            testPos.Set((int)nextPos.X + 0.5, (int)nextPos.Y, (int)nextPos.Z + 0.5);
             if (canStepTowards(testPos))
             {
                 pathTraverser.WalkTowards(nextPos, moveSpeed, 0.3f, OnGoalReached, OnStuck);
@@ -223,7 +228,7 @@ namespace Vintagestory.GameContent
 
             // Ok to step down 2 or 3 blocks if we are 1-2 block above the player
             bool below2Collide = world.CollisionTester.IsColliding(world.BlockAccessor, entity.SelectionBox, collTmpVec.Set(nextPos).Add(0, -2.1, 0), false);
-            if (!belowCollide && below2Collide && entity.ServerPos.Y - TargetEntity.ServerPos.Y >= 1)
+            if (!belowCollide && below2Collide && entity.Pos.Y - TargetEntity.Pos.Y >= 1)
             {
                 nextPos.Y-=2;
                 return true;
@@ -232,7 +237,7 @@ namespace Vintagestory.GameContent
             if (isLiquidAt(collTmpVec)) return false;
 
             bool below3Collide = world.CollisionTester.IsColliding(world.BlockAccessor, entity.SelectionBox, collTmpVec.Set(nextPos).Add(0, -3.1, 0), false);
-            if (!belowCollide && !below2Collide && below3Collide && entity.ServerPos.Y - TargetEntity.ServerPos.Y >= 2)
+            if (!belowCollide && !below2Collide && below3Collide && entity.Pos.Y - TargetEntity.Pos.Y >= 2)
             {
                 nextPos.Y-=3;
                 return true;
@@ -243,24 +248,18 @@ namespace Vintagestory.GameContent
 
         protected bool isLiquidAt(Vec3d pos)
         {
-            return entity.World.BlockAccessor.GetBlock((int)pos.X, (int)pos.Y, (int)pos.Z).IsLiquid();
+            return entity.World.BlockAccessor.GetBlockRaw((int)pos.X, (int)pos.Y, (int)pos.Z, BlockLayersAccess.Fluid).IsLiquid();
         }
 
-        private void WalkTowards()
-        {
-            var selfpos = entity.ServerPos.XYZ;
-            var dir = selfpos.Sub(targetEntity.ServerPos.XYZ).Normalize();
-            pathTraverser.WalkTowards(selfpos + dir, moveSpeed, 0.25f, OnGoalReached, OnStuck);            
-        }
 
         private void OnStuck()
         {
-            
+
         }
 
         private void OnGoalReached()
         {
-            
+
         }
 
         public override void FinishExecute(bool cancelled)
@@ -271,7 +270,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        
+
         public override void OnEntityHurt(DamageSource source, float damage)
         {
             base.OnEntityHurt(source, damage);
@@ -279,7 +278,7 @@ namespace Vintagestory.GameContent
             if (targetEntity == source.GetCauseEntity() || !active)
             {
                 lastHurtByTargetTotalMs = entity.World.ElapsedMilliseconds;
-                float dist = targetEntity == null ? 0 : (float)targetEntity.ServerPos.DistanceTo(entity.ServerPos);
+                float dist = targetEntity == null ? 0 : (float)targetEntity.Pos.DistanceTo(entity.Pos);
             }
         }
 

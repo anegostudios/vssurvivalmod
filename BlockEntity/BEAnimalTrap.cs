@@ -127,7 +127,9 @@ namespace Vintagestory.GameContent
 
             if (inv[0].Empty)
             {
-                var stack = new ItemStack(Block);
+                var jstack = Block.Attributes["creatureContainer"].AsObject<JsonItemStack>();
+                jstack?.Resolve(Api.World, "creature container of " + Block.Code);
+                var stack = jstack?.ResolvedItemstack ?? new ItemStack(Block);
 
                 if (TrapState == EnumTrapState.Empty) tryReadyTrap(player);
                 else

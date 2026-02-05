@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -55,6 +55,7 @@ namespace Vintagestory.GameContent
         public ItemStack TakeSlice()
         {
             if (inv[0].Empty) return null;
+            var attr = inv[0].Itemstack.Attributes;
             ItemCheese cheese = inv[0].Itemstack.Collectible as ItemCheese;
             MarkDirty(true);
 
@@ -62,28 +63,25 @@ namespace Vintagestory.GameContent
             {
                 case "1slice":
                     {
-                        ItemStack stack = inv[0].Itemstack.Clone();
+                        ItemStack stack = inv[0].Itemstack;
                         inv[0].Itemstack = null;
-                        Api.World.BlockAccessor.SetBlock(0, Pos);            
+                        Api.World.BlockAccessor.SetBlock(0, Pos);
                         return stack;
                     }
                 case "2slice":
                     {
-                        ItemStack stack = new ItemStack(Api.World.GetItem(cheese.CodeWithVariant("part", "1slice")));
-                        inv[0].Itemstack = stack;
-                        return stack.Clone();
+                        inv[0].Itemstack = new(Api.World.GetItem(cheese.CodeWithVariant("part", "1slice"))) { Attributes = attr };
+                        return inv[0].Itemstack.Clone();
                     }
                 case "3slice":
                     {
-                        ItemStack stack = new ItemStack(Api.World.GetItem(cheese.CodeWithVariant("part", "1slice")));
-                        inv[0].Itemstack = new ItemStack(Api.World.GetItem(cheese.CodeWithVariant("part", "2slice")));
-                        return stack.Clone();
+                        inv[0].Itemstack = new(Api.World.GetItem(cheese.CodeWithVariant("part", "2slice"))) { Attributes = attr };
+                        return new(Api.World.GetItem(cheese.CodeWithVariant("part", "1slice"))) { Attributes = attr };
                     }
                 case "4slice":
                     {
-                        ItemStack stack = new ItemStack(Api.World.GetItem(cheese.CodeWithVariant("part", "1slice")));
-                        inv[0].Itemstack = new ItemStack(Api.World.GetItem(cheese.CodeWithVariant("part", "3slice"))); ;
-                        return stack.Clone();
+                        inv[0].Itemstack = new(Api.World.GetItem(cheese.CodeWithVariant("part", "3slice"))) { Attributes = attr };
+                        return new(Api.World.GetItem(cheese.CodeWithVariant("part", "1slice"))) { Attributes = attr };
                     }
             }
 
@@ -96,7 +94,6 @@ namespace Vintagestory.GameContent
             if (inv[0].Empty) return true;
 
             tessThreadTesselator.TesselateShape(Block, (Api as ICoreClientAPI).TesselatorManager.GetCachedShape(inv[0].Itemstack.Item.Shape.Base), out MeshData modeldata);
-            modeldata.Scale(new Vec3f(0.5f, 0, 0.5f), 1f, 1f, 1f);
             mesher.AddMeshData(modeldata);
             return true;
         }

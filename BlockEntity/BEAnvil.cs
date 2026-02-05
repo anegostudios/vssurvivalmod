@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -103,7 +103,7 @@ namespace Vintagestory.GameContent
         // Temporary data
         float voxYOff = 10 / 16f;
         Cuboidf[] selectionBoxes = new Cuboidf[1];
-        public int OwnMetalTier;
+        public int OwnMetalTier => (Block as BlockAnvil)?.MetalTier ?? 0;
         AnvilWorkItemRenderer workitemRenderer;
         public int rotation = 0;
         public float MeshAngle;
@@ -179,12 +179,6 @@ namespace Vintagestory.GameContent
                 capi.Tesselator.TesselateBlock(Block, out currentMesh);
                 capi.Event.ColorsPresetChanged += RegenMeshAndSelectionBoxes;
             }
-
-            string metalType = Block.Variant["metal"];
-            if (api.ModLoader.GetModSystem<SurvivalCoreSystem>().metalsByCode.TryGetValue(metalType, out MetalPropertyVariant var))
-            {
-                OwnMetalTier = var.Tier;
-            }
         }
 
 
@@ -195,7 +189,7 @@ namespace Vintagestory.GameContent
 
         internal bool OnPlayerInteract(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
-            if (byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack?.Collectible.Tool == EnumTool.Hammer)
+            if (byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack?.Collectible.GetTool(byPlayer.InventoryManager.ActiveHotbarSlot) == EnumTool.Hammer)
             {
                 return RotateWorkItem(byPlayer.Entity.Controls.ShiftKey);
             }
@@ -595,10 +589,12 @@ namespace Vintagestory.GameContent
                 if (byPlayer?.InventoryManager.TryGiveItemstack(outstack) == true)
                 {
                     Api.World.PlaySoundFor(new AssetLocation("sounds/player/collect"), byPlayer, false, 24);
+                    Api.ModLoader.GetModSystem<ModSystemSubTongsDurability>().OnItemPickedUp(byPlayer.Entity, outstack);
                 }
                 else
                 {
                     Api.World.SpawnItemEntity(outstack, Pos.ToVec3d().Add(0.5, 0.626, 0.5));
+
                 }
                 Api.World.Logger.Audit("{0} Took 1x{1} from Anvil at {2}.",
                     byPlayer?.PlayerName,
@@ -1158,20 +1154,24 @@ namespace Vintagestory.GameContent
             }
         }
 
-
+        bool CanDoRecipe(IClientWorldAccessor world, IRecipeBase recipe, ItemStack ingredient)
+        {
+            DummySlot slot = new(ingredient);
+            return world.Api.Event.TriggerMatchesRecipe(world.Player, recipe, [slot]);
+        }
 
         internal void OpenDialog(ItemStack ingredient)
         {
+            IClientWorldAccessor clientWorld = (IClientWorldAccessor)Api.World;
+            ICoreClientAPI capi = Api as ICoreClientAPI;
+
             IAnvilWorkable workableobj = ingredient.Collectible.GetCollectibleInterface<IAnvilWorkable>();
-            List<SmithingRecipe> recipes = workableobj.GetMatchingRecipes(ingredient);
+            List<SmithingRecipe> recipes = workableobj.GetMatchingRecipes(ingredient).Where(r => CanDoRecipe(clientWorld, r, ingredient)).ToList();
 
             List<ItemStack> stacks = recipes
                 .Select(r => r.Output.ResolvedItemstack)
                 .ToList()
             ;
-
-            IClientWorldAccessor clientWorld = (IClientWorldAccessor)Api.World;
-            ICoreClientAPI capi = Api as ICoreClientAPI;
 
             dlg?.Dispose();
             dlg = new GuiDialogBlockEntityRecipeSelector(
@@ -1265,7 +1265,7 @@ namespace Vintagestory.GameContent
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
-            mesher.AddMeshData(currentMesh.Clone().Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, MeshAngle, 0));
+            mesher.AddMeshData(currentMesh.Clone().Rotate(0, MeshAngle, 0));
             return true;
         }
 

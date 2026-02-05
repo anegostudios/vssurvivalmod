@@ -1,11 +1,10 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
-using Vintagestory.API.Util;
+using Vintagestory.ServerMods.NoObf;
 
 #nullable disable
 
@@ -262,7 +261,7 @@ namespace Vintagestory.ServerMods
             {
                 foreach (var val in generatables)
                 {
-                    val.Structure.PlaceRespectingBlockLayers(blockAccessor, worldForCollectibleResolve, val.StartPos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, resolvedRockTypeRemaps, replaceblockids, GenStructures.ReplaceMetaBlocks);
+                    val.Structure.PlaceRespectingBlockLayers(blockAccessor, worldForCollectibleResolve, val.StartPos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, resolvedRockTypeRemaps, replaceblockids, GlobalConfig.ReplaceMetaBlocks);
                     didGenerateStructure(val.Location, val.Structure);
                 }
 
@@ -287,7 +286,7 @@ namespace Vintagestory.ServerMods
         protected bool CanGenerateStructureAt(BlockSchematicStructure schematic, IBlockAccessor ba, Cuboidi location)
         {
             BlockPos centerPos = new BlockPos(location.CenterX, location.Y1 + schematic.OffsetY, location.CenterZ);
-            BlockPos tmpPos = new BlockPos();
+            BlockPos tmpPos = new BlockPos(API.Config.Dimensions.NormalWorld);
 
             // 1. Make sure the terrain doesn't slope too much
             int topLeftY = ba.GetTerrainMapheightAt(tmpPos.Set(location.X1, 0, location.Z1));

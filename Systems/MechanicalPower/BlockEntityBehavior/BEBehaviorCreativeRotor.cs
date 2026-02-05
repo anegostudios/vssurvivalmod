@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -12,17 +12,19 @@ namespace Vintagestory.GameContent.Mechanics
     public class BEBehaviorMPCreativeRotor : BEBehaviorMPRotor
     {
         private int powerSetting;
+        private int speedSetting;
 
         protected override AssetLocation Sound => null;
 
         protected override float Resistance => 0.3f;
         protected override double AccelerationFactor => 1d;
-        protected override float TargetSpeed => 0.1f * powerSetting;
-        protected override float TorqueFactor => 0.07f * powerSetting;
+        protected override float TargetSpeed => 0.1f * speedSetting;
+        protected override float TorqueFactor => 0.5f * powerSetting;
 
         public BEBehaviorMPCreativeRotor(BlockEntity blockentity) : base(blockentity)
         {
             this.powerSetting = 3;
+            this.speedSetting = 3;
         }
 
         public override void Initialize(ICoreAPI api, JsonObject properties)
@@ -39,7 +41,15 @@ namespace Vintagestory.GameContent.Mechanics
 
         internal bool OnInteract(IPlayer byPlayer)
         {
-            if (++this.powerSetting > 10) this.powerSetting = 1;
+            int dir = byPlayer.Entity.Controls.CtrlKey ? -1 : 1;
+
+            if (byPlayer.Entity.Controls.ShiftKey) {
+                speedSetting = GameMath.Mod(speedSetting + dir, 11);
+            }
+            else {
+                powerSetting = GameMath.Mod(powerSetting + dir, 10);
+            }            
+
             Blockentity.MarkDirty(true);
 
             Api.World.PlaySoundAt(new AssetLocation("sounds/toggleswitch"), Blockentity.Pos, -0.2, byPlayer, false, 16);
@@ -79,6 +89,7 @@ namespace Vintagestory.GameContent.Mechanics
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor world)
         {
             powerSetting = tree.GetInt("p");
+            speedSetting = tree.GetInt("s");
             if (powerSetting > 10 || powerSetting < 1) powerSetting = 3;
             base.FromTreeAttributes(tree, world);
         }
@@ -86,13 +97,15 @@ namespace Vintagestory.GameContent.Mechanics
         public override void ToTreeAttributes(ITreeAttribute tree)
         {
             tree.SetInt("p", powerSetting);
+            tree.SetInt("s", speedSetting);
             base.ToTreeAttributes(tree);
         }
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
         {
             base.GetBlockInfo(forPlayer, sb);
-            sb.AppendLine(string.Format(Lang.Get("Power: {0}%", (int)(10 * powerSetting))));
+            sb.AppendLine(string.Format(Lang.Get("Torque: {0} kN", (int)(TorqueFactor * 100))));
+            sb.AppendLine(string.Format(Lang.Get("Speed: {0} rps", System.Math.Round(speedSetting * 0.1f,2))));
         }
 
     }

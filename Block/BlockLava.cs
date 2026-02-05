@@ -18,6 +18,7 @@ namespace Vintagestory.GameContent
         public string Flow { get; set; }
         public Vec3i FlowNormali { get; set; }
         public bool IsLava => true;
+        public virtual bool HasNormalWaves => false;
         public int Height { get; set; }
 
         /// <summary>
@@ -140,7 +141,8 @@ namespace Vintagestory.GameContent
                 BlockPos npos = airBlockPos.AddCopy(facing);
                 Block block = world.BlockAccessor.GetBlock(npos);
 
-                if (block.CombustibleProps != null && block.CombustibleProps.BurnTemperature <= GetTemperatureAtLocation(lavaPos, airBlockPos))
+                CombustibleProperties combustibleProps = block.GetCombustibleProperties(world, null, npos);
+                if (combustibleProps != null && combustibleProps.BurnTemperature <= GetTemperatureAtLocation(lavaPos, airBlockPos))
                 {
                     return facing;
                 }
@@ -156,7 +158,7 @@ namespace Vintagestory.GameContent
         /// <returns></returns>
         private int GetTemperatureAtLocation(BlockPos lavaPos, BlockPos airBlockPos)
         {
-            int distance = lavaPos.ManhattenDistance(airBlockPos);
+            int distance = lavaPos.ManhattanDistance(airBlockPos);
             return temperature - (distance * tempLossPerMeter);
         }
 

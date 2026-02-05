@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
@@ -89,7 +89,7 @@ namespace Vintagestory.GameContent
 
         public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, IRandom worldGenRand, BlockPatchAttributes attributes = null)
         {
-            if (blockAccessor.GetBlockId(pos.X, pos.Y, pos.Z) != 0) return false;
+            if (blockAccessor.GetBlockId(pos) != 0) return false;
 
             int surfaceY = blockAccessor.GetTerrainMapheightAt(pos);
             if (surfaceY - pos.Y < 30 || pos.Y < 25) return false;
@@ -109,7 +109,7 @@ namespace Vintagestory.GameContent
                 blockAccessor.SpawnBlockEntity(EntityClass, cavepos.AddCopy(0, dy, 0));
             }
 
-            BlockPos tmppos = new BlockPos();
+            BlockPos tmppos = new BlockPos(pos.dimension);
             int tries = 55 + worldGenRand.NextInt(55);
             while (tries-- > 0)
             {
@@ -138,7 +138,8 @@ namespace Vintagestory.GameContent
                     if (block.SideSolid[i])
                     {
                         var face = BlockFacing.ALLFACES[i];
-                        var nblock = blockAccessor.GetBlock(x + face.Normali.X, y + face.Normali.Y, z + face.Normali.Z);
+                        tmppos.Set(x + face.Normali.X, y + face.Normali.Y, z + face.Normali.Z);
+                        var nblock = blockAccessor.GetBlock(tmppos);
                         if (nblock.Id == 0)
                         {
                             blockAccessor.SetDecor(DecorBlocksWall[0], tmppos.Set(x,y,z), face);
@@ -202,40 +203,54 @@ namespace Vintagestory.GameContent
             int minZ = pos.Z;
             int maxZ = pos.Z;
 
-            while (pos.Y - minY < 12 && blockAccessor.GetBlockId(pos.X, minY - 1, pos.Z) == 0)
+            outpos.Y = minY - 1;
+            while (pos.Y - minY < 12 && blockAccessor.GetBlockId(outpos) == 0)
             {
                 minY--;
+                outpos.Y--;
             }
-            while (maxY - pos.Y < 12 && blockAccessor.GetBlockId(pos.X, maxY + 1, pos.Z) == 0)
+            outpos.Y = maxY + 1;
+            while (maxY - pos.Y < 12 && blockAccessor.GetBlockId(outpos) == 0)
             {
                 maxY++;
+                outpos.Y++;
             }
 
-            outpos.Y = (maxY + minY) / 2;
             if (maxY - minY < 4 || maxY - minY >= 10) return null;
 
-            while (pos.X - minX < 12 && blockAccessor.GetBlockId(minX - 1, pos.Y, pos.Z) == 0)
+            outpos.Y = pos.Y;
+            outpos.X = minX - 1;
+            while (pos.X - minX < 12 && blockAccessor.GetBlockId(outpos) == 0)
             {
                 minX--;
+                outpos.X--;
             }
-            while (maxX - pos.X < 12 && blockAccessor.GetBlockId(maxX + 1, pos.Y, pos.Z) == 0)
+            outpos.X = maxX + 1;
+            while (maxX - pos.X < 12 && blockAccessor.GetBlockId(outpos) == 0)
             {
                 maxX++;
+                outpos.X++;
             }
 
             if (maxX - minX < 3) return null;
-            outpos.X = (maxX + minX) / 2;
 
-            while (pos.Z - minZ < 12 && blockAccessor.GetBlockId(pos.X, pos.Y, minZ - 1) == 0)
+            outpos.X = pos.X;
+            outpos.Z = minZ - 1;
+            while (pos.Z - minZ < 12 && blockAccessor.GetBlockId(outpos) == 0)
             {
                 minZ--;
+                outpos.Z--;
             }
-            while (maxZ - pos.Z < 12 && blockAccessor.GetBlockId(pos.X, pos.Y, maxZ + 1) == 0)
+            outpos.Z = maxZ + 1;
+            while (maxZ - pos.Z < 12 && blockAccessor.GetBlockId(outpos) == 0)
             {
                 maxZ++;
+                outpos.Z++;
             }
 
             if (maxZ - minZ < 3) return null;
+            outpos.X = (maxX + minX) / 2;
+            outpos.Y = (maxY + minY) / 2;
             outpos.Z = (maxZ + minZ) / 2;
 
             return outpos;

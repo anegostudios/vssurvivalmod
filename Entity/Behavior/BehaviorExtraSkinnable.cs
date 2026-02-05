@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using SkiaSharp;
+using System.Text.RegularExpressions;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -21,25 +22,23 @@ namespace Vintagestory.GameContent
 
     public class SkinnablePart
     {
+        public bool Hidden;
         public bool Colbreak;
         public bool UseDropDown;
         public string Code;
         public EnumSkinnableType Type;
         public string[] DisableElements;
         public CompositeShape ShapeTemplate;
-
         public SkinnablePartVariant[] Variants;
         public Vec2i TextureRenderTo = null;
         public string TextureTarget;
         public AssetLocation TextureTemplate;
-
         public Dictionary<string, SkinnablePartVariant> VariantsByCode;
     }
 
     public class SkinnablePartVariant
     {
         public string Category = "standard";
-
         public string Code;
         public CompositeShape Shape;
         public AssetLocation Texture;
@@ -137,39 +136,54 @@ namespace Vintagestory.GameContent
                         if (part.TextureTemplate != null)
                         {
                             textureLoc = part.TextureTemplate.Clone();
-                            textureLoc.Path = textureLoc.Path.Replace("{code}", variant.Code);
+                            string resolvedPath = resolveTemplate(textureLoc.Path, variant?.Code, true);
+
+                            if (variant.Color != 0)
+                            {
+                                part.VariantsByCode[variant.Code] = variant;
+                            }
+
+                            textureLoc.Path = resolvedPath;
                         }
                         else
                         {
                             textureLoc = variant.Texture;
                         }
 
-                        IAsset asset = capi.Assets.TryGet(textureLoc.Clone().WithPathAppendixOnce(".png").WithPathPrefixOnce("textures/"), true);
-
-                        int r = 0, g = 0, b = 0;
-                        float c = 0;
-
-                        BitmapRef bmp = asset.ToBitmap(capi);
-                        for (int i = 0; i < 8; i++)
+                        AssetLocation assetLoc = textureLoc.Clone().WithPathAppendixOnce(".png").WithPathPrefixOnce("textures/");
+                        IAsset asset = capi.Assets.TryGet(assetLoc, true);
+                        if (asset != null && variant.Color == 0)
                         {
-                            Vec2d vec = GameMath.R2Sequence2D(i);
-                            SKColor col2 = bmp.GetPixelRel((float)vec.X, (float)vec.Y);
-                            if (col2.Alpha > 0.5)
+                            int r = 0, g = 0, b = 0;
+                            float c = 0;
+
+                            BitmapRef bmp = asset.ToBitmap(capi);
+                            for (int i = 0; i < 8; i++)
                             {
-                                r += col2.Red;
-                                g += col2.Green;
-                                b += col2.Blue;
-                                c++;
+                                Vec2d vec = GameMath.R2Sequence2D(i);
+                                SKColor col2 = bmp.GetPixelRel((float)vec.X, (float)vec.Y);
+                                if (col2.Alpha > 0.5)
+                                {
+                                    r += col2.Red;
+                                    g += col2.Green;
+                                    b += col2.Blue;
+                                    c++;
+                                }
                             }
+
+                            bmp.Dispose();
+
+                            c = Math.Max(1, c);
+                            variant.Color = ColorUtil.ColorFromRgba((int)(b / c), (int)(g / c), (int)(r / c), 255);
+                            part.VariantsByCode[variant.Code] = variant;
                         }
-
-                        bmp.Dispose();
-
-                        c = Math.Max(1, c);
-                        variant.Color = ColorUtil.ColorFromRgba((int)(b/c), (int)(g/c), (int)(r/c), 255);
-                        part.VariantsByCode[variant.Code] = variant;
+                        else
+                        {
+                            part.VariantsByCode[variant.Code] = variant;
+                        }
                     }
-                } else
+                }
+                else
                 {
                     foreach (var variant in part.Variants)
                     {
@@ -184,6 +198,7 @@ namespace Vintagestory.GameContent
             }
 
             onVoiceConfigChanged();
+            entity.MarkShapeModified();
         }
 
         private void onSkinConfigChanged()
@@ -245,6 +260,55 @@ namespace Vintagestory.GameContent
             }
         }
 
+        /// <summary>
+        /// Resolves a template path by substituting placeholders.
+        /// {code} is replaced by the current variant's code.
+        /// {partCode} is replaced by the currently selected variant code for that part.
+        /// If a placeholder is not set, automatically substitutes the first variant's code for that part.
+        /// </summary>
+        private string resolveTemplate(string template, string code, bool forPreload)
+        {
+            if (template == null) return null;
+
+            string resolvedPath = template;
+
+            // Always replace {code} with the current variant's code first.
+            if (code != null)
+            {
+                resolvedPath = resolvedPath.Replace("{code}", code);
+            }
+
+            // At runtime (not pre-load), resolve cross-dependencies from other applied skin parts.
+            if (!forPreload)
+            {
+                ITreeAttribute appliedTree = skintree.GetTreeAttribute("appliedParts");
+                if (appliedTree != null)
+                {
+                    foreach (var part in AvailableSkinParts)
+                    {
+                        string placeholder = "{" + part.Code + "}";
+                        if (resolvedPath.Contains(placeholder))
+                        {
+                            string variantCode = appliedTree.GetString(part.Code);
+
+                            // If no variant is set, automatically use the first variant for this part
+                            if (variantCode == null && part.Variants != null && part.Variants.Length > 0)
+                            {
+                                variantCode = part.Variants[0].Code;
+                            }
+
+                            if (variantCode != null)
+                            {
+                                resolvedPath = resolvedPath.Replace(placeholder, variantCode);
+                            }
+                        }
+                    }
+                }
+            }
+
+            return resolvedPath;
+        }      
+
 
         public override void OnTesselation(ref Shape entityShape, string shapePathForLogging, ref bool shapeIsCloned, ref string[] willDeleteElements)
         {
@@ -256,31 +320,28 @@ namespace Vintagestory.GameContent
                 shapeIsCloned = true;
             }
 
-            foreach (var skinpart in AppliedSkinParts)
+            string[] disabledElements = [];
+            var appliedSkinParts = AppliedSkinParts;
+            foreach (var skinpart in appliedSkinParts)
             {
                 AvailableSkinPartsByCode.TryGetValue(skinpart.PartCode, out SkinnablePart part);
+                if (part == null) continue;
 
-                if (part?.Type == EnumSkinnableType.Shape)
+                if (part.Type == EnumSkinnableType.Shape)
                 {
                     entityShape = addSkinPart(skinpart, entityShape, part.DisableElements, shapePathForLogging);
                 }
-            }
-
-            foreach (var val in AppliedSkinParts)
-            {
-                AvailableSkinPartsByCode.TryGetValue(val.PartCode, out SkinnablePart part);
-
-                if (part != null && part.Type == EnumSkinnableType.Texture && part.TextureTarget != null && part.TextureTarget != mainTextureCode)
+                else if (part.Type == EnumSkinnableType.Texture && part.TextureTarget != null && part.TextureTarget != mainTextureCode)
                 {
                     AssetLocation textureLoc;
                     if (part.TextureTemplate != null)
                     {
                         textureLoc = part.TextureTemplate.Clone();
-                        textureLoc.Path = textureLoc.Path.Replace("{code}", val.Code);
+                        textureLoc.Path = resolveTemplate(textureLoc.Path, skinpart?.Code, false);
                     }
                     else
                     {
-                        textureLoc = val.Texture;
+                        textureLoc = skinpart.Texture;
                     }
 
                     string code = "skinpart-" + part.TextureTarget;
@@ -291,9 +352,23 @@ namespace Vintagestory.GameContent
                     }
                     else
                     {
-                        entity.Api.Logger.Error("Skinpart has no textureSize: " + code + " in: " + shapePathForLogging);
+                        entity.Api.Logger.Error(
+                            "Skinpart '{0}' (targeting texture code '{1}') failed. The main entity shape file '{2}' is missing a required texture dimension definition. " +
+                            "Please add '\"{1}\": [width, height]' to the 'textureSizes' section inside that file. Replace 'width' and 'height' with the actual dimensions of your texture.",
+                            part.Code, code, shapePathForLogging
+                        );
                     }
                 }
+
+                if (part.DisableElements != null)
+                {
+                    disabledElements = disabledElements.Append(part.DisableElements);
+                }
+            }
+
+            if (disabledElements.Length > 0)
+            {
+                entityShape.RemoveElements(disabledElements);
             }
 
             var ebhtc = entity.GetBehavior<EntityBehaviorTexturedClothing>();
@@ -357,8 +432,9 @@ namespace Vintagestory.GameContent
 
             var textures = entity.Properties.Client.Textures;
 
-            textures[mainTextureCode].Baked.TextureSubId = textureSubId;
-            textures["skinpart-" + mainTextureCode] = textures[mainTextureCode];
+            var bct = textures[mainTextureCode];
+            bct.Baked.TextureSubId = textureSubId;
+            textures["skinpart-" + mainTextureCode] = bct;
         }
 
 
@@ -453,7 +529,7 @@ namespace Vintagestory.GameContent
             if (part.Shape == null && tmpl != null)
             {
                 shapePath = tmpl.Base.CopyWithPathPrefixAndAppendixOnce("shapes/", ".json");
-                shapePath.Path = shapePath.Path.Replace("{code}", part.Code);
+                shapePath.Path = resolveTemplate(shapePath.Path, part?.Code, false);
             }
             else
             {
@@ -474,15 +550,37 @@ namespace Vintagestory.GameContent
             entityShape.StepParentShape(partShape, shapePath.ToShortString(), shapePathForLogging, api.Logger, (texcode, loc) =>
             {
                 if (capi == null) return;
-                if (!textures.ContainsKey("skinpart-" + texcode) && skinpart.TextureRenderTo == null)
+                
+                string textureKey = "skinpart-" + texcode;
+                bool isDynamic = skinpart.TextureTemplate != null;
+
+                // If the texture isn't dynamic (no template) and it's already cached, we can skip it.
+                // But if it IS dynamic, we must ALWAYS proceed, ignoring the cache to catch dependency changes.
+                if (!isDynamic && textures.ContainsKey(textureKey)) return;
+
+
+                AssetLocation textureLoc;
+                if (isDynamic)
                 {
-                    var cmpt = textures[prefixcode + "-" + texcode] = new CompositeTexture(loc);
-                    cmpt.Bake(api.Assets);
-                    capi.EntityTextureAtlas.GetOrInsertTexture(cmpt.Baked.TextureFilenames[0], out int textureSubid, out _);
+                    textureLoc = skinpart.TextureTemplate.Clone();
+                    textureLoc.Path = resolveTemplate(textureLoc.Path, part?.Code, false);
+                }
+                else
+                {
+                    textureLoc = loc;
+                }
+
+                var cmpt = textures[textureKey] = new CompositeTexture(textureLoc);
+                cmpt.Bake(api.Assets);
+                if (capi.EntityTextureAtlas.GetOrInsertTexture(cmpt.Baked.TextureFilenames[0], out int textureSubid, out _))
+                {
                     cmpt.Baked.TextureSubId = textureSubid;
                 }
+                else
+                {
+                    api.Logger.Warning("Could not find texture '{0}' for skin part '{1}'.", textureLoc, part.PartCode);
+                }
             });
-
 
             return entityShape;
         }

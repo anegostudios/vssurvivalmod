@@ -11,7 +11,7 @@ namespace Vintagestory.GameContent
 {
     public class BlockEntityScrollRack : BlockEntityDisplay
     {
-        public override InventoryBase Inventory => inv!;
+        public override InventoryBase Inventory => inv;
         public override string InventoryClassName => "scrollrack";
         public override string AttributeTransformCode => "onscrollrackTransform";
 
@@ -21,13 +21,13 @@ namespace Vintagestory.GameContent
             set => bh!.MeshAngleY = value;
         }
 
-        InventoryGeneric? inv;
+        InventoryGeneric inv = null!;
 
         public string? Type => bh?.Type;
         public string? Material => bh?.Material;
 
         int[]? UsableSlots;
-        Cuboidf[] UsableSelectionBoxes;
+        Cuboidf[] UsableSelectionBoxes = null!;
         private BEBehaviorShapeMaterialFromAttributes? bh;
 
         public BlockEntityScrollRack()
@@ -131,12 +131,12 @@ namespace Vintagestory.GameContent
 
             if (shelvable)
             {
-                AssetLocation? sound = slot.Itemstack?.Block?.Sounds?.Place;
+                SoundAttributes? sound = slot.Itemstack?.Block?.Sounds?.Place;
 
                 var stackName = slot.Itemstack?.Collectible.Code;
                 if (TryPut(slot, blockSel))
                 {
-                    Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
+                    Api.World.PlaySoundAt(sound ?? GlobalConstants.DefaultBuildSound, byPlayer.Entity, byPlayer);
                     Api.World.Logger.Audit("{0} Put 1x{1} into Scroll rack at {2}.",
                         byPlayer.PlayerName,
                         stackName,
@@ -179,8 +179,8 @@ namespace Vintagestory.GameContent
                 ItemStack stack = Inventory[invIndex].TakeOut(1);
                 if (byPlayer.InventoryManager.TryGiveItemstack(stack))
                 {
-                    AssetLocation? sound = stack.Block?.Sounds?.Place;
-                    Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
+                    SoundAttributes? sound = stack.Block?.Sounds?.Place;
+                    Api.World.PlaySoundAt(sound ?? GlobalConstants.DefaultBuildSound, byPlayer.Entity, byPlayer);
                 }
 
                 if (stack.StackSize > 0)

@@ -1,6 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -85,7 +86,7 @@ namespace Vintagestory.GameContent
             this.categoryCodes = codes.ToList();
 
             loadingPagesAsync = true;
-            TyronThreadPool.QueueTask(LoadPages_Async);
+            TyronThreadPool.QueueTask(LoadPages_Async,"Handbook.LoadPages_Async");
 
             initOverviewGui();
             capi.Logger.VerboseDebug("Done creating handbook index GUI");
@@ -242,7 +243,6 @@ namespace Vintagestory.GameContent
             ElementBounds tabBounds = ElementBounds.Fixed(-200, 35, 200, 545);
 
             BrowseHistoryElement curPage = browseHistory.Peek();
-            float posY = curPage.PosY;
 
             detailViewGui?.Dispose();
             detailViewGui = capi.Gui
@@ -272,6 +272,16 @@ namespace Vintagestory.GameContent
                 .Compose()
             ;
 
+            float posY = curPage.PosY;
+            if (posY == 0)
+            {
+                float fullHeight = (float)lastAddedElement.Bounds.fixedHeight;
+                if (fullHeight > (float)listHeight)
+                {
+                    float searchRel = curPage.Page.GetSearchTextPosRel(currentSearchText);
+                    posY = Math.Max(0, (searchRel * 0.98f) * fullHeight);
+                }
+            }
             detailViewGui.GetScrollbar("scrollbar").SetHeights(
                 (float)listHeight, (float)lastAddedElement.Bounds.fixedHeight
             );
@@ -450,87 +460,51 @@ namespace Vintagestory.GameContent
             FilterItems();
         }
 
-
+        private int CountMatches(string text, Regex regex)
+        {
+            return regex.Matches(text).Count;
+        }
 
         public void FilterItems()
         {
-            string text = currentSearchText?.ToLowerInvariant();
-            string[] texts;
-            bool logicalAnd = false;   // true if "and" is present; false if "or" or no logical operator is present
-            if (text == null)
-            {
-                texts = Array.Empty<string>();
-            }
-            else
-            {
-                if (text.Contains(" or ", StringComparison.Ordinal))
-                {
-                    texts = text.Split(new string[] { " or " }, StringSplitOptions.RemoveEmptyEntries).OrderBy(str => str.Length).ToArray();
-                }
-                else if (text.Contains(" and ", StringComparison.Ordinal))
-                {
-                    texts = text.Split(new string[] { " and " }, StringSplitOptions.RemoveEmptyEntries).OrderBy(str => str.Length).ToArray();
-                    logicalAnd = texts.Length > 1;
-                }
-                else
-                {
-                    texts = new string[] { text };
-                }
-                int countEmpty = 0;
-                for (int i = 0; i < texts.Length; i++)
-                {
-                    texts[i] = texts[i].ToSearchFriendly().Trim();      // Only remove diacritical marks etc after splitting on " or ", helps with languages such as Icelandic where "ör" is a word (a type of bow)
-                    if (texts[i].Length == 0) countEmpty++;
-                }
-                if (countEmpty > 0)
-                {
-                    string[] newTexts = new string[texts.Length - countEmpty];
-                    int j = 0;
-                    for (int i = 0; i < texts.Length; i++)
-                    {
-                        if (texts[i].Length == 0) continue;
-                        newTexts[j++] = texts[i];
-                    }
-                    texts = newTexts;
-                    logicalAnd = logicalAnd && texts.Length > 1;
-                }
-            }
-
-            List<WeightedHandbookPage> foundPages = new List<WeightedHandbookPage>();
             shownHandbookPages.Clear();
 
             if (!loadingPagesAsync)
             {
-                for (int i = 0; i < allHandbookPages.Count; i++)
+                string searchText = currentSearchText ?? "";
+                var regex = RegexFromSearchText(searchText);
+
+                var weightedPages = new List<WeightedHandbookPage>();
+                allHandbookPages.ForEach(page =>
                 {
-                    GuiHandbookPage page = allHandbookPages[i];
-                    if (currentCatgoryCode != null && page.CategoryCode != currentCatgoryCode) continue;
-                    if (page.IsDuplicate) continue;
+                    if (currentCatgoryCode != null && page.CategoryCode != currentCatgoryCode || page.IsDuplicate) return;
 
-                    float weight = 1;
-                    bool matched = logicalAnd;    // Normally (for no logical operator or logical operator OR) no match unless any found; if it's logical AND then we have no match if any in texts are not found (and texts length cannot be 0)
-
-                    for (int j = 0; j < texts.Length; j++)
+                    var pageText = page.GetPageText();
+                    var titleMatches = CountMatches(pageText.Title ?? "", regex);
+                    var textMatches = CountMatches(pageText.Text ?? "", regex);
+                    if (titleMatches > 0 || textMatches > 0)
+                        weightedPages.Add(new WeightedHandbookPage
+                        {
+                            Page = page,
+                            TitleMatches = titleMatches,
+                            TitleLength = pageText.Title?.Length ?? 0,
+                            TextMatches = textMatches,
+                        });
+                });
+                if (searchText.Length > 0)
+                {
+                    weightedPages.Sort((a, b) =>
                     {
-                        weight = page.GetTextMatchWeight(texts[j]);
-                        if (weight > 0)
-                        {
-                            if (!logicalAnd) { matched = true; break; }
-                        }
-                        else
-                        {
-                            if (logicalAnd) { matched = false; break; };
-                        }
-                    }
-                    if (!matched && texts.Length > 0) continue;
-
-                    foundPages.Add(new WeightedHandbookPage() { Page = page, Weight = weight });
+                        var titleSort = b.TitleMatches - a.TitleMatches;
+                        if (titleSort != 0) return titleSort;
+                        var textSort = b.TextMatches - a.TextMatches;
+                        if (textSort != 0) return textSort;
+                        // Prefer shorter matches, efffectively prioritizing more "exact" matches
+                        // e. g. "Iron Plate" over "Plate Armor (Iron)" when searching "Iron Plate"
+                        return a.TitleLength - b.TitleLength;
+                    });
                 }
-
-                foreach (var val in foundPages.OrderByDescending(wpage => wpage.Weight))
-                {
-                    shownHandbookPages.Add(val.Page);
-                }
+                weightedPages.ForEach(page => shownHandbookPages.Add(page.Page));
             }
 
             GuiElementFlatList stacklist = overviewGui.GetFlatList("stacklist");
@@ -538,6 +512,13 @@ namespace Vintagestory.GameContent
             overviewGui.GetScrollbar("scrollbar").SetHeights(
                 (float)listHeight, (float)stacklist.insideBounds.fixedHeight
             );
+        }
+
+        public static Regex RegexFromSearchText(string searchText)
+        {
+            string[] searchWords = Regex.Split(searchText, "\\s+", RegexOptions.Multiline);
+            var pattern = $"({String.Join("|", searchWords.Where(w => w != "").Select(w => $"{Regex.Escape(w.ToSearchFriendly().Trim())}"))})";
+            return new Regex(pattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled | RegexOptions.Multiline);
         }
 
         public override void OnRenderGUI(float deltaTime)

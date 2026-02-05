@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Client;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
@@ -216,20 +216,20 @@ namespace Vintagestory.GameContent
 
                 if (!byEntity.TryGiveItemStack(split))
                 {
-                    api.World.SpawnItemEntity(split, byEntity.ServerPos.XYZ);
+                    api.World.SpawnItemEntity(split, byEntity.Pos.XYZ);
                 }
             }
         }
 
         private ClothSystem createRope(ItemSlot slot, EntityAgent byEntity, Vec3d targetPos)
         {
-            ClothSystem sys;
-
-            sys = ClothSystem.CreateRope(api, cm, byEntity.Pos.XYZ, targetPos, null);
+            ClothSystem sys = ClothSystem.CreateRope(api, cm, byEntity.Pos.XYZ, targetPos, null);
 
             Vec3d lpos = new Vec3d(0, byEntity.LocalEyePos.Y - 0.3f, 0);
-            Vec3d aheadPos = lpos.AheadCopy(0.1f, byEntity.SidedPos.Pitch, byEntity.SidedPos.Yaw).AheadCopy(0.4f, byEntity.SidedPos.Pitch, byEntity.SidedPos.Yaw - GameMath.PIHALF);
-            EntityPos pos = byEntity.SidedPos;
+            Vec3d aheadPos = lpos
+                .AheadCopy(0.1f, byEntity.Pos.Pitch, byEntity.Pos.Yaw)
+                .AheadCopy(0.4f, byEntity.Pos.Pitch, byEntity.Pos.Yaw - GameMath.PIHALF)
+            ;
 
             sys.FirstPoint.PinTo(byEntity, aheadPos.ToVec3f());
             cm.RegisterCloth(sys);
@@ -311,7 +311,7 @@ namespace Vintagestory.GameContent
 
             if (sys == null)
             {
-                sys = createRope(slot, byEntity, toEntity.SidedPos.XYZ);
+                sys = createRope(slot, byEntity, toEntity.Pos.XYZ);
                 bh.Attach(sys, sys.LastPoint);
             }
             else
@@ -441,7 +441,7 @@ namespace Vintagestory.GameContent
                     if (p != null)
                     {
                         Vec3d lpos = new Vec3d(0, entity.LocalEyePos.Y - 0.3f, 0);
-                        Vec3d aheadPos = lpos.AheadCopy(0.1f, entity.SidedPos.Pitch, entity.SidedPos.Yaw).AheadCopy(0.4f, entity.SidedPos.Pitch, entity.SidedPos.Yaw - GameMath.PIHALF);
+                        Vec3d aheadPos = lpos.AheadCopy(0.1f, entity.Pos.Pitch, entity.Pos.Yaw).AheadCopy(0.4f, entity.Pos.Pitch, entity.Pos.Yaw - GameMath.PIHALF);
 
                         p.PinTo(entity, aheadPos.ToVec3f());
 

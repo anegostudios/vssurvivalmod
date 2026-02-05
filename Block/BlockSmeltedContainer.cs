@@ -123,7 +123,7 @@ namespace Vintagestory.GameContent
                     handHandling = EnumHandHandling.PreventDefault;
                     return;
                 }
-                
+
 
                 if (HasSolidifed(slot.Itemstack, contents.Key, byEntity.World))
                 {
@@ -160,7 +160,7 @@ namespace Vintagestory.GameContent
         {
             if (blockSel == null) return false;
 
-            ILiquidMetalSink be = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position) as ILiquidMetalSink; 
+            ILiquidMetalSink be = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position) as ILiquidMetalSink;
             if (be == null) return false;
 
             if (!be.CanReceiveAny) return false;
@@ -183,7 +183,7 @@ namespace Vintagestory.GameContent
 
                 if ((int)(30 * secondsUsed) % 3 == 1)
                 {
-                    Vec3d pos = 
+                    Vec3d pos =
                         byEntity.Pos.XYZ
                         .Ahead(0.1f, byEntity.Pos.Pitch, byEntity.Pos.Yaw)
                         .Ahead(1.0f, byEntity.Pos.Pitch, byEntity.Pos.Yaw - GameMath.PIHALF)
@@ -232,12 +232,12 @@ namespace Vintagestory.GameContent
 
                 int transferedAmount = Math.Min(2, contents.Value);
 
-                
+
                 be.ReceiveLiquidMetal(contents.Key, ref transferedAmount, temp);
 
                 int newAmount = Math.Max(0, contents.Value - (2 - transferedAmount));
                 slot.Itemstack.Attributes.SetInt("units", newAmount);
-                
+
 
                 if (newAmount <= 0 && byEntity.World is IServerWorldAccessor)
                 {
@@ -251,7 +251,7 @@ namespace Vintagestory.GameContent
 
                 return true;
             }
-            
+
             return true;
         }
 
@@ -295,7 +295,7 @@ namespace Vintagestory.GameContent
                 float ry = bodyYaw + (90 + rotY) * GameMath.DEG2RAD;
 
                 var mat = new Matrixf()
-                    .RotateX(eplr.SidedPos.Roll + rotX * GameMath.DEG2RAD)
+                    .RotateX(eplr.Pos.Roll + rotX * GameMath.DEG2RAD)
                     .RotateY(ry)
                     .RotateZ(bodyPitch + rotZ * GameMath.DEG2RAD)
                     .Scale(eplr.Properties.Client.Size, eplr.Properties.Client.Size, eplr.Properties.Client.Size)
@@ -348,7 +348,7 @@ namespace Vintagestory.GameContent
             slot.MarkDirty();
 
             if (blockSel == null) return;
-                 
+
             ILiquidMetalSink be = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position) as ILiquidMetalSink;
             be?.OnPourOver();
         }
@@ -365,7 +365,7 @@ namespace Vintagestory.GameContent
             return GetDrops(world, pos, null)[0];
         }
 
-        
+
         public override BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)
         {
             return GetHandbookDropsFromBreakDrops(handbookStack, forPlayer);
@@ -436,7 +436,7 @@ namespace Vintagestory.GameContent
                     dsc.Append(Lang.Get("metalwork-toocold"));
                 }
             }
-            
+
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
         }
 

@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -211,7 +211,8 @@ namespace Vintagestory.GameContent
                         ok = false;
                         break;
                     }
-                    if (block.CombustibleProps != null)
+                    var combustibleProps = block.GetCombustibleProperties(world, null, npos);
+                    if (combustibleProps != null)
                     {
                         capi?.TriggerIngameError(this, "notsolid", Lang.Get("Pit kilns need to be surrounded by solid, non-flammable blocks"));
                         ok = false;
@@ -261,7 +262,7 @@ namespace Vintagestory.GameContent
                 }
                 begs.MeshAngle = beg.MeshAngle;
                 begs.OnCreated(byPlayer);
-                begs.updateMeshes();
+                begs.MarkMeshesDirty();
                 begs.MarkDirty(true);
 
 

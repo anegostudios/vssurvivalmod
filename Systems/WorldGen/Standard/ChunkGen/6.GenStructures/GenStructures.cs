@@ -1,12 +1,14 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 using Vintagestory.GameContent;
+using Vintagestory.ServerMods.NoObf;
 
 #nullable disable
 
@@ -29,9 +31,8 @@ namespace Vintagestory.ServerMods
 
     public delegate bool PeventSchematicAtDelegate(IBlockAccessor blockAccessor, BlockPos pos, Cuboidi schematicLocation, string locationCode);
 
-    public class GenStructures : ModStdWorldGen
+    public class GenStructures : ModStdWorldGen, IBlockPatchModifier
     {
-        public static bool ReplaceMetaBlocks = true;
         ICoreServerAPI api;
 
         int worldheight;
@@ -42,6 +43,11 @@ namespace Vintagestory.ServerMods
         int climateUpRight;
         int climateBotLeft;
         int climateBotRight;
+
+        int forestUpLeft;
+        int forestUpRight;
+        int forestBotLeft;
+        int forestBotRight;
 
         public event PeventSchematicAtDelegate OnPreventSchematicPlaceAt;
 
@@ -67,10 +73,12 @@ namespace Vintagestory.ServerMods
             if (TerraGenConfig.DoDecorationPass)
             {
                 api.Event.InitWorldGenerator(initWorldGen, "standard");
+                api.Event.InitWorldGenerator(InitSpecialBlocks, "superflat");
                 api.Event.ChunkColumnGeneration(OnChunkColumnGen, EnumWorldGenPass.TerrainFeatures, "standard");
                 api.Event.GetWorldgenBlockAccessor(OnWorldGenBlockAccessor);
 
                 api.ModLoader.GetModSystem<GenStructuresPosPass>().handler = OnChunkColumnGenPostPass;
+                api.ModLoader.GetModSystem<GenVegetationAndPatches>().RegisterPatchModifier(this);
             }
         }
 
@@ -100,17 +108,11 @@ namespace Vintagestory.ServerMods
         {
             LoadGlobalConfig(api);
 
-            var fillerBlock = api.World.BlockAccessor.GetBlock(new AssetLocation("meta-filler"));
-            var pathwayBlock = api.World.BlockAccessor.GetBlock(new AssetLocation("meta-pathway"));
-            var undergroundBlock = api.World.BlockAccessor.GetBlock(new AssetLocation("meta-underground"));
-            var abovegroundBlock = api.World.BlockAccessor.GetBlock(new AssetLocation("meta-aboveground"));
-            BlockSchematic.FillerBlockId = fillerBlock.Id;
-            BlockSchematic.PathwayBlockId = pathwayBlock.Id;
-            BlockSchematic.UndergroundBlockId = undergroundBlock.Id;
-            BlockSchematic.AbovegroundBlockId = abovegroundBlock.Id;
+            InitSpecialBlocks();
 
             worldheight = api.WorldManager.MapSizeY;
             regionChunkSize = api.WorldManager.RegionSize / chunksize;
+            chunkMapSizeY = api.WorldManager.MapSizeY / chunksize;
 
             strucRand = new LCGRandom(api.WorldManager.Seed + 1090);
 
@@ -152,12 +154,27 @@ namespace Vintagestory.ServerMods
             }
         }
 
+        private void InitSpecialBlocks()
+        {
+            var fillerBlock = api.World.BlockAccessor.GetBlock(new AssetLocation("meta-filler"));
+            var pathwayBlock = api.World.BlockAccessor.GetBlock(new AssetLocation("meta-pathway"));
+            var undergroundBlock = api.World.BlockAccessor.GetBlock(new AssetLocation("meta-underground"));
+            var abovegroundBlock = api.World.BlockAccessor.GetBlock(new AssetLocation("meta-aboveground"));
+            var connectorBlock = api.World.BlockAccessor.GetBlock(new AssetLocation("meta-connector"));
+
+            BlockSchematic.ConnectorBlockId = connectorBlock.Id;
+            BlockSchematic.FillerBlockId = fillerBlock.Id;
+            BlockSchematic.PathwayBlockId = pathwayBlock.Id;
+            BlockSchematic.UndergroundBlockId = undergroundBlock.Id;
+            BlockSchematic.AbovegroundBlockId = abovegroundBlock.Id;
+        }
+
         private void LoadStructures()
         {
             var assets = api.Assets.GetMany<WorldGenStructuresConfig>(api.Logger, "worldgen/structures.json");
 
             scfg = new WorldGenStructuresConfig();
-            scfg.ChanceMultiplier = assets.First(v => v.Key.Domain == "game").Value.ChanceMultiplier;
+            scfg.ChanceMultiplier = assets.First(v => v.Key.Domain == GlobalConstants.DefaultDomain).Value.ChanceMultiplier;
             scfg.SchematicYOffsets = new Dictionary<string, int>();
             scfg.RocktypeRemapGroups = new Dictionary<string, Dictionary<AssetLocation, AssetLocation>>();
             var structures = new List<WorldGenStructure>();
@@ -197,7 +214,7 @@ namespace Vintagestory.ServerMods
             var assets = api.Assets.GetMany<WorldGenVillageConfig>(api.Logger, "worldgen/villages.json");
 
             vcfg = new WorldGenVillageConfig();
-            vcfg.ChanceMultiplier = assets.First(v => v.Key.Domain == "game").Value.ChanceMultiplier;
+            vcfg.ChanceMultiplier = assets.First(v => v.Key.Domain == GlobalConstants.DefaultDomain).Value.ChanceMultiplier;
             var villages = new List<WorldGenVillage>();
 
             foreach (var (_, conf) in assets)
@@ -214,7 +231,7 @@ namespace Vintagestory.ServerMods
         {
             if (!TerraGenConfig.GenerateStructures) return;
 
-            var locationCode = GetIntersectingStructure(request.ChunkX * chunksize + chunksize / 2, request.ChunkZ * chunksize + chunksize / 2, SkipStructuresgHashCode);
+            var structure = GetIntersectingStructure(request.ChunkX * chunksize + chunksize / 2, request.ChunkZ * chunksize + chunksize / 2, StructuresHashCode);
 
             var chunks = request.Chunks;
             int chunkX = request.ChunkX;
@@ -224,7 +241,7 @@ namespace Vintagestory.ServerMods
 
             IMapRegion region = chunks[0].MapChunk.MapRegion;
 
-            DoGenStructures(region, chunkX, chunkZ, true, locationCode, request.ChunkGenParams);
+            DoGenStructures(region, chunkX, chunkZ, true, structure?.Code, request.ChunkGenParams);
             TryGenVillages(region, chunkX, chunkZ, true, request.ChunkGenParams);
         }
 
@@ -232,7 +249,7 @@ namespace Vintagestory.ServerMods
         {
             if (!TerraGenConfig.GenerateStructures) return;
 
-            var locationCode = GetIntersectingStructure(request.ChunkX * chunksize + chunksize / 2, request.ChunkZ * chunksize + chunksize / 2, SkipStructuresgHashCode);
+            var structure = GetIntersectingStructure(request.ChunkX * chunksize + chunksize / 2, request.ChunkZ * chunksize + chunksize / 2, StructuresHashCode);
 
             var chunks = request.Chunks;
             int chunkX = request.ChunkX;
@@ -241,6 +258,7 @@ namespace Vintagestory.ServerMods
 
             IMapRegion region = chunks[0].MapChunk.MapRegion;
             IntDataMap2D climateMap = region.ClimateMap;
+            IntDataMap2D forestMap = region.ForestMap;
             int rlX = chunkX % regionChunkSize;
             int rlZ = chunkZ % regionChunkSize;
 
@@ -257,17 +275,24 @@ namespace Vintagestory.ServerMods
             climateBotLeft = climateMap.GetUnpaddedInt((int)(rlX * facC), (int)(rlZ * facC + facC));
             climateBotRight = climateMap.GetUnpaddedInt((int)(rlX * facC + facC), (int)(rlZ * facC + facC));
 
+
+            float facf = (float)forestMap.InnerSize / regionChunkSize;
+            forestUpLeft = forestMap.GetUnpaddedInt((int)(rlX * facC), (int)(rlZ * facC));
+            forestUpRight = forestMap.GetUnpaddedInt((int)(rlX * facC + facC), (int)(rlZ * facC));
+            forestBotLeft = forestMap.GetUnpaddedInt((int)(rlX * facC), (int)(rlZ * facC + facC));
+            forestBotRight = forestMap.GetUnpaddedInt((int)(rlX * facC + facC), (int)(rlZ * facC + facC));
+
+
             heightmap = chunks[0].MapChunk.WorldGenTerrainHeightMap;
 
-            DoGenStructures(region, chunkX, chunkZ, false, locationCode, request.ChunkGenParams);
-            if (locationCode == null)
+            DoGenStructures(region, chunkX, chunkZ, false, structure?.Code, request.ChunkGenParams);
+            if (structure == null)
             {
                 TryGenVillages(region, chunkX, chunkZ, false, request.ChunkGenParams);
             }
         }
 
-        private void DoGenStructures(IMapRegion region, int chunkX, int chunkZ, bool postPass,
-            string locationCode, ITreeAttribute chunkGenParams = null)
+        private void DoGenStructures(IMapRegion region, int chunkX, int chunkZ, bool postPass, string locationCode, ITreeAttribute chunkGenParams = null)
         {
             // We need to make a copy each time to preserve determinism
             // which is crucial for the translocator to find an exit point
@@ -288,7 +313,7 @@ namespace Vintagestory.ServerMods
                 shuffledStructures = new WorldGenStructure[scfg.Structures.Length];
                 for (int i = 0; i < shuffledStructures.Length; i++) shuffledStructures[i] = scfg.Structures[i];
             }
-            BlockPos startPos = new BlockPos();
+            BlockPos startPos = new BlockPos(Dimensions.NormalWorld);
 
             ITreeAttribute chanceModTree = null;
             ITreeAttribute maxQuantityModTree = null;
@@ -358,7 +383,8 @@ namespace Vintagestory.ServerMods
                     // check if in storylocation and if we can still generate this structure
                     if (locationCode != null)
                     {
-                        location = GetIntersectingStructure(chunkX * chunksize + chunksize / 2, chunkZ * chunksize + chunksize / 2);
+                        location = GetIntersectingStructure(chunkX * chunksize + chunksize / 2, chunkZ * chunksize + chunksize / 2) as StoryStructureLocation;
+
                         if (location.SchematicsSpawned?.TryGetValue(struc.Group, out var spawnedSchematics) == true && spawnedSchematics >= struc.StoryLocationMaxAmount)
                         {
                             continue;
@@ -370,7 +396,8 @@ namespace Vintagestory.ServerMods
                         }
                     }
 
-                    if (struc.TryGenerate(worldgenBlockAccessor, api.World, startPos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, locationCode))
+                    int forest = GameMath.BiLerpRgbColor((float)(startPos.X % chunksize) / chunksize, (float)(startPos.Z % chunksize) / chunksize, forestUpLeft, forestUpRight, forestBotLeft, forestBotRight);
+                    if (struc.TryGenerate(worldgenBlockAccessor, api.World, startPos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, forest, locationCode))
                     {
                         if(locationCode != null && location != null)
                         {
@@ -388,7 +415,13 @@ namespace Vintagestory.ServerMods
 
                         string code = (struc.LastPlacedSchematic == null ? "" : struc.LastPlacedSchematic.FromFileName) + "/" + struc.Code;
 
-                        region.AddGeneratedStructure(new GeneratedStructure() { Code = code, Group = struc.Group, Location = loc.Clone(), SuppressTreesAndShrubs = struc.SuppressTrees, SuppressRivulets = struc.SuppressWaterfalls });
+                        region.AddGeneratedStructure(new GeneratedStructure() {
+                            Code = code,
+                            Group = struc.Group,
+                            Location = loc.Clone(),
+                            SuppressTreesAndShrubs = struc.SuppressTrees,
+                            SuppressRivulets = struc.SuppressWaterfalls
+                        });
 
                         if (struc.BuildProtected)
                         {
@@ -414,8 +447,7 @@ namespace Vintagestory.ServerMods
 
 
 
-        public void TryGenVillages(IMapRegion region, int chunkX, int chunkZ, bool postPass,
-             ITreeAttribute chunkGenParams = null)
+        public void TryGenVillages(IMapRegion region, int chunkX, int chunkZ, bool postPass, ITreeAttribute chunkGenParams = null)
         {
             strucRand.InitPositionSeed(chunkX, chunkZ);
 
@@ -433,7 +465,7 @@ namespace Vintagestory.ServerMods
 
         public bool GenVillage(IBlockAccessor blockAccessor, IMapRegion region, WorldGenVillage struc, int chunkX, int chunkZ)
         {
-            BlockPos pos = new BlockPos();
+            BlockPos pos = new BlockPos(Dimensions.NormalWorld);
 
             int dx = chunksize / 2;
             int dz = chunksize / 2;
@@ -461,6 +493,46 @@ namespace Vintagestory.ServerMods
                     });
                 }
             }, spawnPos);
+        }
+
+
+        List<Cuboidi> treeAndShrubSupressingStructures = new List<Cuboidi>();
+        int chunkMapSizeY;
+
+        public bool PreventPlacementAt(int x, int z, int category)
+        {
+            if (category != ShrubsHashCode && category != TreesHashCode) return false;
+
+            for (int i = 0; i < treeAndShrubSupressingStructures.Count; i++)
+            {
+                if (treeAndShrubSupressingStructures[i].Contains(x, z)) return true;
+            }
+
+            return false;
+        }
+
+        public bool PreventPlacementBroadlyAt(int chunkX, int chunkZ)
+        {
+            BlockPos chunkStart = new BlockPos(Dimensions.NormalWorld);
+            BlockPos chunkEnd = new BlockPos(Dimensions.NormalWorld);
+
+            treeAndShrubSupressingStructures.Clear();
+            api.World.BlockAccessor.WalkStructures(
+                chunkStart.Set(chunkX * chunksize, 0, chunkZ * chunksize),
+                chunkEnd.Set(chunkX * chunksize + chunksize, chunkMapSizeY * chunksize, chunkZ * chunksize + chunksize), (struc) =>
+            {
+                if (struc.SuppressTreesAndShrubs)
+                {
+                    treeAndShrubSupressingStructures.Add(struc.Location.Clone().GrowBy(1, 1, 1));
+                }
+            });
+
+            return false;
+        }
+
+        public BlockPatchConfig GetPatchProviderAt(int chunkX, int chunkZ, ref EnumHandling handling)
+        {
+            return null;
         }
     }
 }

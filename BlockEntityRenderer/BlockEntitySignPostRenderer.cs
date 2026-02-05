@@ -1,4 +1,4 @@
-﻿using Cairo;
+using Cairo;
 using Vintagestory.API.Client;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
@@ -102,8 +102,6 @@ namespace Vintagestory.GameContent
                 modeldata.Rgba.Fill((byte)255);
                 //modeldata.Rgba2 = null;
 
-                Vec3f orig = new Vec3f(0.5f, 0.5f, 0.5f);
-
                 switch (dir.Index)
                 {
                     case 0: // N
@@ -136,8 +134,8 @@ namespace Vintagestory.GameContent
 
                 MeshData front = modeldata.Clone();
 
-                front.Scale(orig, 0.5f * QuadWidth, 0.4f * QuadHeight, 0.5f * QuadWidth);
-                front.Rotate(orig, 0, rotY * GameMath.DEG2RAD, 0);
+                front.Scale(0.5f * QuadWidth, 0.4f * QuadHeight, 0.5f * QuadWidth);
+                front.Rotate(0, rotY * GameMath.DEG2RAD, 0);
                 front.Translate(0, 1.39f, 0);
                 allMeshes.AddMeshData(front);
 
@@ -152,8 +150,8 @@ namespace Vintagestory.GameContent
                     0, vStart
                 };
                 back.Translate(0, 0, 0.26f);
-                back.Scale(orig, 0.5f * QuadWidth, 0.4f * QuadHeight, 0.5f * QuadWidth);
-                back.Rotate(orig, 0, rotY * GameMath.DEG2RAD, 0);
+                back.Scale(0.5f * QuadWidth, 0.4f * QuadHeight, 0.5f * QuadWidth);
+                back.Rotate(0, rotY * GameMath.DEG2RAD, 0);
                 back.Translate(0, 1.39f, 0);
                 allMeshes.AddMeshData(back);
             }

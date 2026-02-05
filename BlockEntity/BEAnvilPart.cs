@@ -1,4 +1,5 @@
-﻿using System.Text;
+using System;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -19,6 +20,9 @@ namespace Vintagestory.GameContent
         public int hammerHits;
         AnvilPartRenderer? renderer;
 
+        private TagSet fluxTag = TagSet.Empty;
+        private const string fluxTagName = "flux";
+
         public override InventoryBase Inventory => inv;
 
         public override string InventoryClassName => "anvilpart";
@@ -31,6 +35,8 @@ namespace Vintagestory.GameContent
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
+
+            fluxTag = api.TagsManager.GetGeneralTagSet(fluxTagName);
 
             if (api is ICoreClientAPI capi)
             {
@@ -75,7 +81,7 @@ namespace Vintagestory.GameContent
             hammerHits++;
 
             ItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
-            slot.Itemstack?.Collectible.DamageItem(Api.World, byPlayer.Entity, slot);
+            slot.Itemstack?.Collectible.DamageItem(Api.World, byPlayer.Entity, slot, 1, true);
 
             float temp = inv[2].Itemstack.Collectible.GetTemperature(Api.World, inv[2].Itemstack);
             if (temp > 800)
@@ -91,7 +97,9 @@ namespace Vintagestory.GameContent
 
             if (hammerHits > 11 && Api.Side == EnumAppSide.Server)
             {
-                Api.World.BlockAccessor.SetBlock(Api.World.GetBlock(new AssetLocation("anvil-" + Block.Variant["metal"])).Id, Pos);
+                Block? block = Api.World.GetBlock(new AssetLocation("anvil-" + Block.Variant["metal"]));
+                ArgumentNullException.ThrowIfNull(block);
+                Api.World.BlockAccessor.SetBlock(block.Id, Pos);
             }
         }
 
@@ -151,7 +159,7 @@ namespace Vintagestory.GameContent
 
             if (inv[1].Empty)
             {
-                if (hotbarslot.Itemstack?.Collectible?.Attributes?.IsTrue("isFlux") == true)
+                if (hotbarslot.Itemstack?.Collectible?.Attributes?.IsTrue("isFlux") == true || hotbarslot.Itemstack?.Collectible?.GetTags(hotbarslot.Itemstack).IsSupersetOf(fluxTag) == true)
                 {
                     inv[1].Itemstack = hotbarslot.TakeOut(1);
                     updateMeshRefs();

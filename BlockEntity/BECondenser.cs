@@ -94,8 +94,8 @@ namespace Vintagestory.GameContent
             {
                 if (handslot.Empty && !inventory[1].Empty)
                 {
-                    AssetLocation sound = inventory[1].Itemstack?.Block?.Sounds?.Place;
-                    Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
+                    SoundAttributes? sound = inventory[1].Itemstack?.Block?.Sounds?.Place;
+                    Api.World.PlaySoundAt(sound ?? GlobalConstants.DefaultBuildSound, byPlayer.Entity, byPlayer);
 
                     if (!byPlayer.InventoryManager.TryGiveItemstack(inventory[1].Itemstack, true))
                     {
@@ -118,8 +118,8 @@ namespace Vintagestory.GameContent
                     bool moved = handslot.TryPutInto(Api.World, inventory[1], 1) > 0;
                     if (moved)
                     {
-                        AssetLocation sound = inventory[1].Itemstack?.Block?.Sounds?.Place;
-                        Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
+                        SoundAttributes? sound = inventory[1].Itemstack?.Block?.Sounds?.Place;
+                        Api.World.PlaySoundAt(sound ?? GlobalConstants.DefaultBuildSound, byPlayer.Entity, byPlayer);
                         handslot.MarkDirty();
                         MarkDirty(true);
                         genBucketMesh();
@@ -142,7 +142,7 @@ namespace Vintagestory.GameContent
             IContainedMeshSource meshSource = stack.Collectible?.GetCollectibleInterface<IContainedMeshSource>();
             if (meshSource != null)
             {
-                bucketMeshTmp = meshSource.GenMesh(stack, (Api as ICoreClientAPI).BlockTextureAtlas, Pos);
+                bucketMeshTmp = meshSource.GenMesh(inventory[1], (Api as ICoreClientAPI).BlockTextureAtlas, Pos);
                 // Liquid mesh part
                 bucketMeshTmp.CustomInts = new CustomMeshDataPartInt(bucketMeshTmp.FlagsCount);
                 bucketMeshTmp.CustomInts.Count = bucketMeshTmp.FlagsCount;
@@ -154,7 +154,7 @@ namespace Vintagestory.GameContent
                 bucketMesh = bucketMeshTmp
                     .Clone()
                     .Translate(0, 0, 6 / 16f)
-                    .Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, GameMath.PIHALF + Block.Shape.rotateY * GameMath.DEG2RAD, 0)
+                    .Rotate(0, GameMath.PIHALF + Block.Shape.rotateY * GameMath.DEG2RAD, 0)
                 ;
             }
         }

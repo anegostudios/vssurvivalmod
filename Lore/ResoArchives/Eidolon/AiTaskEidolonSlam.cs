@@ -40,7 +40,7 @@ namespace Vintagestory.GameContent
             {
                 if (plr.ConnectionState != EnumClientState.Playing) continue;
 
-                float dist = (float)plr.Entity.ServerPos.DistanceTo(pos);
+                float dist = (float)plr.Entity.Pos.DistanceTo(pos);
 
                 // https://pfortuny.net/fooplot.com/#W3sidHlwZSI6MCwiZXEiOiJtaW4oMSwoMjAteCkveCkiLCJjb2xvciI6IiMwMDAwMDAifSx7InR5cGUiOjEwMDAsIndpbmRvdyI6WyIwIiwiMjAiLCIwIiwiMSJdLCJzaXplIjpbNjQ4LDM5OF19XQ--
                 float str = Math.Min(1, (range - dist)/dist) * strength;
@@ -48,7 +48,7 @@ namespace Vintagestory.GameContent
                 {
                     sapi.Network.GetChannel("screenshake").SendPacket(new ScreenshakePacket() { Strength = str }, plr);
                 }
-                
+
             }
         }
 
@@ -64,7 +64,7 @@ namespace Vintagestory.GameContent
         }
     }
 
-    
+
 
     public class AiTaskEidolonSlam : AiTaskBaseTargetable
     {
@@ -115,22 +115,22 @@ namespace Vintagestory.GameContent
         public override bool ShouldExecute()
         {
             // React immediately on hurt, otherwise only 1/10 chance of execution
-            if (rand.NextDouble() > 0.1f && (WhenInEmotionState == null || IsInEmotionState(WhenInEmotionState) != true)) return false;
+            if (rand.NextDouble() > 0.1f && (WhenInEmotionStates == null || IsInEmotionState(WhenInEmotionStates) != true)) return false;
 
-            if (!PreconditionsSatisifed()) return false;
+            if (!PreconditionsSatisfied()) return false;
             if (lastSearchTotalMs + searchWaitMs > entity.World.ElapsedMilliseconds) return false;
-            if (WhenInEmotionState == null && rand.NextDouble() > 0.5f) return false;
+            if (WhenInEmotionStates == null && rand.NextDouble() > 0.5f) return false;
             if (cooldownUntilMs > entity.World.ElapsedMilliseconds) return false;
 
             float range = maxDist;
             lastSearchTotalMs = entity.World.ElapsedMilliseconds;
 
-            targetEntity = partitionUtil.GetNearestEntity(entity.ServerPos.XYZ, range, (e) => IsTargetableEntity(e, range), EnumEntitySearchType.Creatures);
+            targetEntity = partitionUtil.GetNearestEntity(entity.Pos.XYZ, range, (e) => IsTargetableEntity(e, range), EnumEntitySearchType.Creatures);
 
             return targetEntity != null;
         }
 
-        
+
 
         public override void StartExecute()
         {
@@ -145,7 +145,7 @@ namespace Vintagestory.GameContent
         {
 
             base.ContinueExecute(dt);
-            
+
             //Check if time is still valid for task.
             if (!IsInValidDayTimeHours(false)) return false;
 
@@ -204,7 +204,7 @@ namespace Vintagestory.GameContent
 
                     float kbStrength = GameMath.Clamp(10f - (float)dist, 0, 5);
                     // Opposite dir to pull you *towards* the eidolon >:D
-                    Vec3d dir = (entity.ServerPos.XYZ - e.ServerPos.XYZ).Normalize();
+                    Vec3d dir = (entity.Pos.XYZ - e.Pos.XYZ).Normalize();
                     dir.Y = 0.7f;
                     float factor = kbStrength * GameMath.Clamp((1 - e.Properties.KnockbackResistance) / 10f, 0, 1);
 
@@ -272,8 +272,7 @@ namespace Vintagestory.GameContent
             entitypr.ImpactParticleSize = 1.5f;
             entitypr.ImpactParticleCount = 30;
 
-            entitypr.ServerPos.SetPosWithDimension(entity.ServerPos.XYZ.Add(dx, dy, dz));
-            entitypr.Pos.SetFrom(entitypr.ServerPos);
+            entitypr.Pos.SetPosWithDimension(entity.Pos.XYZ.Add(dx, dy, dz));
             entitypr.World = entity.World;
             entity.World.SpawnEntity(entitypr);
         }
@@ -282,8 +281,7 @@ namespace Vintagestory.GameContent
         {
             EntityProperties type = entity.World.GetEntityType(creatureCode);
             Entity entitypr = entity.World.ClassRegistry.CreateEntity(type);
-            entitypr.ServerPos.SetPosWithDimension(entity.ServerPos.XYZ.Add(dx, dy, dz));
-            entitypr.Pos.SetFrom(entitypr.ServerPos);
+            entitypr.Pos.SetPosWithDimension(entity.Pos.XYZ.Add(dx, dy, dz));
             entitypr.World = entity.World;
             entity.World.SpawnEntity(entitypr);
             creaturesLeftToSpawn--;

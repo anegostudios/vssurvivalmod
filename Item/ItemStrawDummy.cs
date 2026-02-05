@@ -37,16 +37,14 @@ namespace Vintagestory.GameContent
 
             if (entity != null)
             {
-                entity.ServerPos.X = x;
-                entity.ServerPos.Y = y;
-                entity.ServerPos.Z = z;
-                entity.ServerPos.Yaw = byEntity.SidedPos.Yaw + GameMath.PIHALF;
+                entity.Pos.X = x;
+                entity.Pos.Y = y;
+                entity.Pos.Z = z;
+                entity.Pos.Yaw = byEntity.Pos.Yaw + GameMath.PIHALF;
                 if (player?.PlayerUID != null)
                 {
                     entity.WatchedAttributes.SetString("ownerUid", player.PlayerUID);
                 }
-
-                entity.Pos.SetFrom(entity.ServerPos);
 
                 byEntity.World.PlaySoundAt(new AssetLocation("sounds/block/torch"), entity, player);
 

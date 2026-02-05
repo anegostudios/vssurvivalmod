@@ -22,7 +22,7 @@ namespace Vintagestory.GameContent
     }
 
     public class BlockEntityBeehive : BlockEntity, IAnimalFoodSource
-    {        
+    {
         // Stored values
         int scanIteration;
         int quantityNearbyFlowers;
@@ -67,7 +67,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        
+
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
@@ -94,10 +94,11 @@ namespace Vintagestory.GameContent
             {
                 ICoreClientAPI capi = api as ICoreClientAPI;
                 Block fullSkep = api.World.GetBlock(Block.CodeWithVariant("type", "populated"));
+                AssetLocation shapeLoc = AssetLocation.Create(fullSkep.Attributes?["harvestableShape"].AsString() ?? "game:shapes/block/beehive/skep-harvestable.json", Block.Code.Domain);
 
                 capi.Tesselator.TesselateShape(
                     fullSkep,
-                    API.Common.Shape.TryGet(api, "shapes/block/beehive/skep-harvestable.json"),
+                    API.Common.Shape.TryGet(api, shapeLoc.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json")),
                     out MeshData mesh,
                     new Vec3f(0, BlockFacing.FromCode(orientation).HorizontalAngleIndex * 90 - 90, 0)
                 );
@@ -108,7 +109,7 @@ namespace Vintagestory.GameContent
             {
                 api.ModLoader.GetModSystem<POIRegistry>().AddPOI(this);
             }
-            
+
         }
 
         Vec3d startPos = new Vec3d();
@@ -126,7 +127,7 @@ namespace Vintagestory.GameContent
 
             // Leave hive
             if (Api.World.Rand.NextDouble() > 0.5)
-            {    
+            {
                 startPos.Set(Pos.X + 0.5f, Pos.Y + 0.5f, Pos.Z + 0.5f);
                 minVelo.Set((float)rand.NextDouble() * 3 - 1.5f, (float)rand.NextDouble() * 1 - 0.5f, (float)rand.NextDouble() * 3 - 1.5f);
 
@@ -245,7 +246,7 @@ namespace Vintagestory.GameContent
                 // Then we do costly Attributes check for plant containers only if they are not empty
                 if ((block as BlockPlantContainer)?.GetContents(Api.World, new(x, y, z))?.Collectible is CollectibleObject plant)
                 {
-                    if (plant.Attributes?.IsTrue("beeFeed") == true) scanQuantityNearbyFlowers++; 
+                    if (plant.Attributes?.IsTrue("beeFeed") == true) scanQuantityNearbyFlowers++;
                     return;
                 }
 
@@ -256,7 +257,7 @@ namespace Vintagestory.GameContent
             });
 
             scanIteration++;
-            
+
             if (scanIteration == 4)
             {
                 scanIteration = 0;
@@ -331,7 +332,7 @@ namespace Vintagestory.GameContent
                 beginPopStartTotalHours = Api.World.Calendar.TotalHours;
 
                 float mindistance = 999;
-                BlockPos closestPos = new BlockPos();
+                BlockPos closestPos = null;
                 foreach (BlockPos pos in emptySkeps)
                 {
                     float dist = pos.DistanceTo(this.Pos);
@@ -351,7 +352,7 @@ namespace Vintagestory.GameContent
         {
             if (Api.World.BlockAccessor.GetBlock(skepToPop) is not BlockSkep skepToPopBlock)
             {
-                // Skep must have changed since last time we checked, so lets restart 
+                // Skep must have changed since last time we checked, so lets restart
                 this.skepToPop = null;
                 return;
             }
@@ -373,7 +374,7 @@ namespace Vintagestory.GameContent
         {
             base.ToTreeAttributes(tree);
 
-            
+
             tree.SetInt("scanIteration", scanIteration);
 
             tree.SetInt("quantityNearbyFlowers", quantityNearbyFlowers);
@@ -493,7 +494,7 @@ namespace Vintagestory.GameContent
             string popSizeLocalized = Lang.Get("population-" + hivePopSize.ToString());
             if (Api.World.EntityDebugMode && forPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative)
             {
-                dsc.AppendLine( 
+                dsc.AppendLine(
                     Lang.Get("Nearby flowers: {0}, Nearby Hives: {1}, Empty Hives: {2}, Pop after hours: {3}. harvest in {4}, repop cooldown: {5}", quantityNearbyFlowers, quantityNearbyHives, emptySkeps.Count, (beginPopStartTotalHours + popHiveAfterHours - Api.World.Calendar.TotalHours).ToString("#.##"), (harvestableAtTotalHours - Api.World.Calendar.TotalHours).ToString("#.##"), (cooldownUntilTotalHours - Api.World.Calendar.TotalHours).ToString("#.##"))
                     + "\n" + Lang.Get("Population Size:") + popSizeLocalized);
             }
@@ -534,7 +535,9 @@ namespace Vintagestory.GameContent
         {
             if (isWildHive || !Harvestable) return false;
 
-            return diet?.WeightedFoodTags?.Contains(wf => wf.Code == "lootableSweet") == true;
+            string[] foodTags = Block.Attributes?["harvestableFoodTags"].AsArray<string>() ?? ["lootableSweet"];
+
+            return foodTags.Length != 0 && diet.Matches(EnumFoodCategory.NoNutrition, foodTags);
         }
 
         public float ConsumeOnePortion(Entity entity)

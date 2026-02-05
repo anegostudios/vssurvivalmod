@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -96,7 +96,7 @@ namespace Vintagestory.GameContent
             ((EntityThrownSnowball)entity).Damage = damage;
             ((EntityThrownSnowball)entity).ProjectileStack = stack;
 
-            EntityProjectile.SpawnThrownEntity(entity, byEntity, 0.75, 0.1, 0.2);
+            EntityProjectile.SpawnProjectile(entity, byEntity, 0.5, 0.75, 0.1, 0.4, -0.21, 20);
             byEntity.StartAnimation("throw");
 
             if (byEntity is EntityPlayer) RefillSlotIfEmpty(slot, byEntity, (itemstack) => itemstack.Collectible is ItemSnowball );

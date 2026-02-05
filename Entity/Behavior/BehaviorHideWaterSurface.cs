@@ -80,13 +80,18 @@ namespace Vintagestory.GameContent
             meshref?.Dispose();
         }
 
-        protected float[] tmpMvMat = Mat4f.Create();
+        public static readonly float[] tmpMvMat = Mat4f.Create();
 
         public void OnRenderFrame(float deltaTime, EnumRenderStage stage)
         {
             if (meshref == null) return;
             var esr = entity.Properties.Client.Renderer as EntityShapeRenderer;
             if (esr == null) return;
+
+            // Slightly fugly hack, needs clean up
+            // This clears the drawbuffers set up by RenderOITLayers and then restores them after the render
+            // Otherwise we render a big black surface inside the boat
+            OpenTK.Graphics.OpenGL.GL.DrawBuffers(0, new OpenTK.Graphics.OpenGL.DrawBuffersEnum[0]);
 
             capi.Render.GLDepthMask(true);
 
@@ -102,14 +107,25 @@ namespace Vintagestory.GameContent
             Mat4f.Mul(tmpMvMat, tmpMvMat, modelMat);
             prog.BindTexture2D("tex2d", 0, 0);
             prog.UniformMatrix("mvpMatrix", tmpMvMat);
-            prog.Uniform("origin", new Vec3f(0,0,0));
+            prog.Uniform("origin", 0f, 0f, 0f);
             
             capi.Render.RenderMultiTextureMesh(meshref, "tex2d");
 
             prog.Stop();
 
-            capi.Render.GLDepthMask(false);
+            capi.Render.GLDepthMask(false); // OIT pass has no depth testing, so we reset to false
             capi.Render.GLEnableDepthTest();
+
+            OpenTK.Graphics.OpenGL.DrawBuffersEnum[] buffers = {
+                    OpenTK.Graphics.OpenGL.DrawBuffersEnum.ColorAttachment0, // OITreveal -- per bin reveal (float rgb8)
+                    OpenTK.Graphics.OpenGL.DrawBuffersEnum.ColorAttachment1, // outReveal -- net reveal (GL_RED)
+                    OpenTK.Graphics.OpenGL.DrawBuffersEnum.ColorAttachment2, // outGlow
+                    OpenTK.Graphics.OpenGL.DrawBuffersEnum.ColorAttachment3, // accumulation bin 1 (rgba16)
+                    OpenTK.Graphics.OpenGL.DrawBuffersEnum.ColorAttachment4, // accumulation bin 2 (rgba16)
+                    OpenTK.Graphics.OpenGL.DrawBuffersEnum.ColorAttachment5  // accumulation bin 3 (rgba16)
+                };
+
+            OpenTK.Graphics.OpenGL.GL.DrawBuffers(buffers.Length, buffers);
         }
 
         public override string PropertyName() => "hidewatersurface";

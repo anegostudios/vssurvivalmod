@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
@@ -30,6 +30,7 @@ namespace Vintagestory.GameContent
         public BEBehaviorJonasGasifier(BlockEntity blockentity) : base(blockentity)
         {
             inventory = new InventoryGeneric(1, null, null);
+            inventory[0].MaxSlotStackSize = 4;
         }
 
 
@@ -54,6 +55,7 @@ namespace Vintagestory.GameContent
                 double hoursPassed = Math.Min(2400, Api.World.Calendar.TotalHours - burnStartTotalHours);
                 while (hoursPassed > 8)
                 {
+                    hoursPassed -= 8;
                     burnStartTotalHours += 8;
                     inventory[0].TakeOut(1);
                     if (inventory.Empty)
@@ -95,7 +97,8 @@ namespace Vintagestory.GameContent
             var slot = byPlayer.InventoryManager.ActiveHotbarSlot;
             if (slot.Empty) return;
 
-            if (slot.Itemstack.Collectible.CombustibleProps != null && slot.Itemstack.Collectible.CombustibleProps.BurnTemperature >= 1100)
+            CombustibleProperties combustibleProps = slot.Itemstack.Collectible.GetCombustibleProperties(Api.World, slot.Itemstack, null);
+            if (combustibleProps != null && combustibleProps.BurnTemperature >= 1100)
             {
                 int moved = slot.TryPutInto(Api.World, inventory[0]);
                 if (moved > 0)

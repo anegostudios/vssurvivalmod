@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using Vintagestory.API.Common;
@@ -29,10 +29,12 @@ namespace Vintagestory.GameContent
             this.api = api;
         }
 
-        public HumanoidWearableProperties loadProps(string configFilename)
+        public HumanoidWearableProperties loadProps(AssetLocation configFilename)
         {
-            var props = api.Assets.TryGet(new AssetLocation("config/"+ configFilename + ".json"))?.ToObject<HumanoidWearableProperties>();
-            if (props == null) throw new FileNotFoundException("config/"+ configFilename + ".json is missing.");
+            var path = configFilename.Clone().WithPathPrefixOnce("config/").WithPathAppendixOnce(".json");
+
+            var props = api.Assets.TryGet(path)?.ToObject<HumanoidWearableProperties>();
+            if (props == null) throw new FileNotFoundException(path + " is missing.");
 
             for (int i = 0; i < props.BySlot.Length; i++)
             {
@@ -42,7 +44,7 @@ namespace Vintagestory.GameContent
                 {
                     if (!props.Variants.TryGetValue(shapecodes[j], out TexturedWeightedCompositeShape wcshape))
                     {
-                        api.World.Logger.Error("Typo in " + configFilename + ".json Shape reference {0} defined for slot {1}, but not in list of shapes. Will remove.", shapecodes[j], props.BySlot[i].Code);
+                        api.World.Logger.Error("Typo in " + path + " Shape reference {0} defined for slot {1}, but not in list of shapes. Will remove.", shapecodes[j], props.BySlot[i].Code);
                         shapecodes = shapecodes.Remove(shapecodes[j]);
                         j--;
                         continue;
@@ -56,7 +58,7 @@ namespace Vintagestory.GameContent
         }
 
         
-        public Dictionary<string, string> GetRandomOutfit(string configFilename, Dictionary<string, WeightedCode[]> partialRandomOutfits = null)
+        public Dictionary<string, string> GetRandomOutfit(AssetLocation configFilename, Dictionary<string, WeightedCode[]> partialRandomOutfits = null)
         {
             if (!propsByConfigFilename.TryGetValue(configFilename, out var props))
             {
@@ -116,7 +118,7 @@ namespace Vintagestory.GameContent
             return props;
         }
 
-        public TexturedWeightedCompositeShape[] Outfit2Shapes(string configFilename, string[] outfit)
+        public TexturedWeightedCompositeShape[] Outfit2Shapes(AssetLocation configFilename, string[] outfit)
         {
             if (!propsByConfigFilename.TryGetValue(configFilename, out var props))
             {

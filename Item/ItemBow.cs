@@ -83,8 +83,8 @@ namespace Vintagestory.GameContent
             if (handling == EnumHandHandling.PreventDefault) return;
 
             var controls = byEntity.MountedOn?.Controls ?? byEntity.Controls;
-            if (controls.CtrlKey 
-                && (entitySel?.SelectionBoxIndex ?? -1) >= 0 
+            if (controls.CtrlKey
+                && (entitySel?.SelectionBoxIndex ?? -1) >= 0
                 && entitySel.Entity?.GetBehavior<EntityBehaviorAttachable>() != null)
             {
                 return;
@@ -124,7 +124,7 @@ namespace Vintagestory.GameContent
             {
                 (byEntity as EntityPlayer)?.Player?.InventoryManager.BroadcastHotbarSlot();
             }
-            
+
             return true;
         }
 
@@ -208,15 +208,14 @@ namespace Vintagestory.GameContent
             float acc = Math.Max(0.001f, 1 - byEntity.Attributes.GetFloat("aimingAccuracy", 0));
             double rndpitch = byEntity.WatchedAttributes.GetDouble("aimingRandPitch", 1) * acc * 0.75f;
             double rndyaw = byEntity.WatchedAttributes.GetDouble("aimingRandYaw", 1) * acc * 0.75f;
-            
-            Vec3d pos = byEntity.ServerPos.XYZ.Add(0, byEntity.LocalEyePos.Y, 0);
-            Vec3d aheadPos = pos.AheadCopy(1, byEntity.SidedPos.Pitch + rndpitch, byEntity.SidedPos.Yaw + rndyaw);
+
+            Vec3d pos = byEntity.Pos.XYZ.Add(0, byEntity.LocalEyePos.Y, 0);
+            Vec3d aheadPos = pos.AheadCopy(1, byEntity.Pos.Pitch + rndpitch, byEntity.Pos.Yaw + rndyaw);
             Vec3d velocity = (aheadPos - pos) * byEntity.Stats.GetBlended("bowDrawingStrength");
 
 
-            entityToSpawn.ServerPos.SetPosWithDimension(byEntity.SidedPos.BehindCopy(0.21).XYZ.Add(0, byEntity.LocalEyePos.Y, 0));
-            entityToSpawn.ServerPos.Motion.Set(velocity);
-            entityToSpawn.Pos.SetFrom(entityToSpawn.ServerPos);
+            entityToSpawn.Pos.SetPosWithDimension(byEntity.Pos.BehindCopy(0.21).XYZ.Add(0, byEntity.LocalEyePos.Y, 0));
+            entityToSpawn.Pos.Motion.Set(velocity);
             entityToSpawn.World = byEntity.World;
             entityarrow.PreInitialize();
 

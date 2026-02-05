@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
@@ -50,6 +51,7 @@ namespace Vintagestory.GameContent
         public string pageCode;
         public string Title;
         readonly string titleCached;
+        readonly string textCached;
         protected float secondsVisible = 0;
 
         protected const int TinyPadding = 2;   // Used to add tiny amounts of vertical padding after headings, so that things look less cramped
@@ -65,23 +67,20 @@ namespace Vintagestory.GameContent
         public DummySlot dummySlot;
         HandbookMealNutritionFacts? cachedNutritionFacts;
         Dictionary<string, List<ItemStack>> cachedIngredientStacks;
-        Dictionary<CookingRecipeIngredient, HashSet<ItemStack?>>? cachedValidStacks;
         bool isPie;
         int slots;
-        ItemStack[] allStacks;
 
         ElementBounds? scissorBounds;
 
         public override string CategoryCode => "stack";
         public override bool IsDuplicate => false;
 
-        public GuiHandbookMealRecipePage(ICoreClientAPI capi, CookingRecipe recipe, ItemStack[] allstacks, int slots = 4, bool isPie = false)
+        public GuiHandbookMealRecipePage(ICoreClientAPI capi, CookingRecipe recipe, int slots = 4, bool isPie = false)
         {
             this.Recipe = recipe;
             this.pageCode = "handbook-mealrecipe-" + recipe.Code + (isPie ? "-pie" : "");
             this.isPie = isPie;
             this.slots = slots;
-            this.allStacks = allstacks;
 
             unspoilableInventory = new CreativeInventoryTab(1, "not-used", null);
             if (isPie)
@@ -98,9 +97,28 @@ namespace Vintagestory.GameContent
 
             Title = Lang.Get(isPie ? ("pie-" + recipe.Code + "-perfect") : ("mealrecipe-name-" + recipe.Code));
 
-            titleCached = Lang.Get(Title).ToSearchFriendly();
+            titleCached = (Title + " " + Lang.Get("handbook-mealrecipe-" + (isPie ? "pie" : "meal") + "searchkeywords")).ToSearchFriendly();
+
+            string directionsText = Lang.GetMatchingIfExists("handbook-mealrecipe-directionstext-" + Recipe.Code);
+
+            if (isPie)
+            {
+                directionsText ??= Lang.GetMatchingIfExists("handbook-mealrecipe-directionstext-" + Recipe.Code + "-pie");
+                directionsText ??= Lang.GetMatchingIfExists("handbook-mealrecipe-directionstext-pie");
+            }
+
+            directionsText ??= Lang.Get("handbook-mealrecipe-directionstext");
+
+            string notesText = Lang.GetMatchingIfExists("handbook-mealrecipe-notestext-" + Recipe.Code);
+            if (isPie)
+            {
+                notesText ??= Lang.GetMatchingIfExists("handbook-mealrecipe-notestext-" + Recipe.Code + "-pie");
+                notesText ??= Lang.GetMatchingIfExists("handbook-mealrecipe-notestext-pie");
+            }
+
+            textCached = (directionsText + "\n" + (notesText == null ? "" : notesText)).ToSearchFriendly();
+
             cachedIngredientStacks = new Dictionary<string, List<ItemStack>>();
-            cachedValidStacks = null;
         }
 
         [MemberNotNull(nameof(Texture), nameof(scissorBounds))]
@@ -124,8 +142,9 @@ namespace Vintagestory.GameContent
             {
                 secondsVisible = 1;
                 if (isPie) dummySlot.Itemstack?.Attributes.SetString("topCrustType", BlockPie.TopCrustTypes[capi.World.Rand.Next(BlockPie.TopCrustTypes.Length)].Code);
-                else dummySlot.Itemstack = new (BlockMeal.RandomMealBowl(capi));
-                mealBlock?.SetContents(Recipe.Code!, dummySlot.Itemstack!, isPie ? BlockPie.GenerateRandomPie(capi, ref cachedValidStacks, Recipe) : Recipe.GenerateRandomMeal(capi, ref cachedValidStacks, allStacks, slots), 1);
+                else dummySlot.Itemstack = new(BlockMeal.RandomMealBowl(capi));
+                var cachedValidStacks = ObjectCacheUtil.TryGet<Dictionary<CookingRecipeIngredient, HashSet<ItemStack?>>?>(capi, "valstacksbying-" + Recipe.Code);
+                mealBlock?.SetContents(Recipe.Code, dummySlot.Itemstack!, isPie ? BlockPie.GenerateRandomPie(capi, ref cachedValidStacks, Recipe) : Recipe.GenerateRandomMeal(capi, ref cachedValidStacks, ObjectCacheUtil.TryGet<ItemStack[]>(capi, "handbookallstacks"), slots), 1);
             }
 
             if (Texture == null || scissorBounds == null)
@@ -181,7 +200,7 @@ namespace Vintagestory.GameContent
         {
             ItemStack mealBlock = dummySlot.Itemstack!.Clone();
 
-            components.Add(new MealstackTextComponent(capi, ref cachedValidStacks, mealBlock, Recipe, 100, EnumFloat.Left, allStacks, null, slots, isPie) { PaddingRight = GuiElement.scaled(10), offX = -8});
+            components.Add(new MealstackTextComponent(capi, mealBlock, Recipe, 100, EnumFloat.Left, null, slots, isPie) { PaddingRight = GuiElement.scaled(10), offX = -8 });
             components.AddRange(VtmlUtil.Richtextify(capi, Title + "\n", CairoFont.WhiteSmallishText()));
             if (capi.Settings.Bool["extendedDebugInfo"] == true)
             {
@@ -263,7 +282,12 @@ namespace Vintagestory.GameContent
                 ingredientStacks.RemoveAt(0);
                 if (istack == null) continue;
 
-                SlideshowItemstackTextComponent comp = new SlideshowItemstackTextComponent(capi, istack, ingredientStacks, 30, EnumFloat.Inline, (cs) => openDetailPageFor(GuiHandbookItemStackPage.PageCodeForStack(cs)));
+                SlideshowItemstackTextComponent comp = new SlideshowItemstackTextComponent(capi, istack, ingredientStacks, 30, EnumFloat.Inline, "mealRecipeGroupBy", (cs) =>
+                {
+                    string pageCode = cs.Collectible.GetCollectibleInterface<IHandBookPageCodeProvider>()?.HandbookPageCodeForStack(capi.World, cs)
+                                   ?? GuiHandbookItemStackPage.PageCodeForStack(cs);
+                    openDetailPageFor(pageCode);
+                });
                 comp.PaddingLeft = firstPadding;
                 comp.ShowStackSize = true;
                 firstPadding = 0;
@@ -502,7 +526,7 @@ namespace Vintagestory.GameContent
                         bool matches = true;
                         if (valCodes.Count != combinedCodes.Count) matches = false;
 
-                        for (int i = 0;  i < combinedCodes.Count; i++)
+                        for (int i = 0; i < combinedCodes.Count; i++)
                         {
                             if (i < valCodes.Count && valCodes[i] != combinedCodes[i]) matches = false;
                         }
@@ -524,15 +548,13 @@ namespace Vintagestory.GameContent
             return combinedIngredients;
         }
 
-        public override float GetTextMatchWeight(string searchText)
+        public override PageText GetPageText()
         {
-            string specialKeywords = Lang.Get("handbook-mealrecipe-" + (isPie ? "pie" : "meal") + "searchkeywords");
-            if (titleCached.Equals(searchText, StringComparison.InvariantCultureIgnoreCase)) return 4;
-            if (titleCached.StartsWith(searchText + " ", StringComparison.InvariantCultureIgnoreCase)) return 3.5f;
-            if (titleCached.StartsWith(searchText, StringComparison.InvariantCultureIgnoreCase)) return 3f;
-            if (titleCached.CaseInsensitiveContains(searchText)) return 2.75f;
-            if (specialKeywords.CaseInsensitiveContains(searchText)) return 2.5f;
-            return 0;
+            return new PageText
+            {
+                Title = titleCached,
+                Text = textCached
+            };
         }
     }
 }

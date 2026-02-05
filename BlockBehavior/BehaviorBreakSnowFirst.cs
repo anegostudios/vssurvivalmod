@@ -1,4 +1,4 @@
-﻿using Vintagestory.API;
+using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
@@ -22,7 +22,7 @@ namespace Vintagestory.GameContent
         {
         }
 
-        public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, ref EnumHandling handled)
+        public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier, ref EnumHandling handled)
         {
             // Simply clear the snow if breaking a snowy block
             if (block.snowLevel > 0 && block.notSnowCovered != null)

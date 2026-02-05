@@ -14,6 +14,8 @@ namespace Vintagestory.GameContent
 {
     public class BlockEntityCrate : BlockEntityContainer, IRotatable
     {
+        public static SoundAttributes ChalkDraw = new SoundAttributes(AssetLocation.Create("sounds/player/chalkdraw"), true) { Range = 8 };
+
         InventoryGeneric inventory;
         BlockCrate ownBlock;
 
@@ -79,7 +81,7 @@ namespace Vintagestory.GameContent
 
         public override void Initialize(ICoreAPI api)
         {
-            ownBlock = (BlockCrate)Block;
+            ownBlock = Block as BlockCrate;
 
             bool isNewlyplaced = inventory == null;
             if (isNewlyplaced)
@@ -187,7 +189,7 @@ namespace Vintagestory.GameContent
                         // so would cause crates to lose their label later by failing the equality check
                         labelMesh = null;
 
-                        byPlayer.Entity.World.PlaySoundAt(new AssetLocation("sounds/player/chalkdraw"), blockSel.Position.X + blockSel.HitPosition.X, blockSel.Position.InternalY + blockSel.HitPosition.Y, blockSel.Position.Z + blockSel.HitPosition.Z, byPlayer, true, 8);
+                        byPlayer.Entity.World.PlaySoundAt(ChalkDraw, blockSel.Position.X + blockSel.HitPosition.X, blockSel.Position.InternalY + blockSel.HitPosition.Y, blockSel.Position.Z + blockSel.HitPosition.Z, blockSel.Position.dimension, byPlayer);
 
                         MarkDirty(true);
                         return true;
@@ -316,8 +318,8 @@ namespace Vintagestory.GameContent
             }
 
             (Api as ICoreClientAPI)?.World.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
-            AssetLocation sound = stack?.Block?.Sounds?.Place;
-            Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
+            SoundAttributes? sound = stack?.Block?.Sounds?.Place;
+            Api.World.PlaySoundAt(sound ?? GlobalConstants.DefaultBuildSound, byPlayer.Entity, byPlayer);
         }
 
         protected virtual void InitInventory(Block block, ICoreAPI api)

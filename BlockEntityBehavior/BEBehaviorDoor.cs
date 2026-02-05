@@ -202,7 +202,6 @@ namespace Vintagestory.GameContent
                 if (doorBh.animatableOrigMesh != null)
                 {
                     animUtil.InitializeAnimator(doorBh.animatableDictKey, doorBh.animatableOrigMesh, doorBh.animatableShape, null);
-                    UpdateMeshAndAnimations();
                 }
             }
 
@@ -215,7 +214,7 @@ namespace Vintagestory.GameContent
             if (RotateYRad != 0)
             {
                 float rot = invertHandles ? -RotateYRad : RotateYRad;
-                mesh = mesh.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, rot, 0);
+                mesh = mesh.Rotate(0, rot, 0);
                 animUtil.renderer.rotationDeg.Y = rot * GameMath.RAD2DEG;
             }
 
@@ -362,6 +361,11 @@ namespace Vintagestory.GameContent
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
         {
+            if (mesh == null)
+            {
+                UpdateMeshAndAnimations();
+            }
+
             bool skipMesh = base.OnTesselation(mesher, tessThreadTesselator);
             if (!skipMesh)
             {

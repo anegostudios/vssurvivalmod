@@ -1,3 +1,4 @@
+using CompactExifLib;
 using System.IO;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -47,12 +48,19 @@ namespace Vintagestory.GameContent
         ItemStack IProjectile.WeaponStack { get; set; }
         float IProjectile.DropOnImpactChance { get; set; }
         bool IProjectile.DamageStackOnImpact { get; set; }
-        bool IProjectile.NonCollectible { get => NonCollectible; set => NonCollectible = value; }
+        bool IProjectile.Collectible { get => NonCollectible; set => NonCollectible = value; }
         bool IProjectile.EntityHit { get; }
         float IProjectile.Weight { get => Properties.Weight; set => Properties.Weight = value; }
         bool IProjectile.Stuck { get => stuck; set => stuck = value; }
 
         void IProjectile.PreInitialize() { }
+
+        void IProjectile.SetFromConfig(IProjectileJsonConfig config)
+        {
+            Damage = config.Damage;
+            DamageTier = config.DamageTier;
+            NonCollectible = config.Collectible;
+        }
         #endregion
 
         public override void Initialize(EntityProperties properties, ICoreAPI api, long InChunkIndex3d)
@@ -74,7 +82,7 @@ namespace Vintagestory.GameContent
             base.OnGameTick(dt);
             if (ShouldDespawn) return;
 
-            EntityPos pos = SidedPos;
+            EntityPos pos = Pos;
 
             stuck = Collided;
             if (stuck)
@@ -96,13 +104,13 @@ namespace Vintagestory.GameContent
 
             if (World is IServerWorldAccessor)
             {
-                Entity entity = World.GetNearestEntity(ServerPos.XYZ, 5f, 5f, (e) => {
+                Entity entity = World.GetNearestEntity(Pos.XYZ, 5f, 5f, (e) => {
                     if (e.EntityId == this.EntityId || (FiredBy != null && e.EntityId == FiredBy.EntityId && World.ElapsedMilliseconds - msLaunch < 500) || !e.IsInteractable)
                     {
                         return false;
                     }
 
-                    double dist = e.SelectionBox.ToDouble().Translate(e.ServerPos.X, e.ServerPos.Y, e.ServerPos.Z).ShortestDistanceFrom(ServerPos.X, ServerPos.Y, ServerPos.Z);
+                    double dist = e.SelectionBox.ToDouble().Translate(e.Pos.X, e.Pos.Y, e.Pos.Z).ShortestDistanceFrom(Pos.X, Pos.Y, Pos.Z);
                     return dist < 0.5f;
                 });
 
@@ -118,7 +126,7 @@ namespace Vintagestory.GameContent
                     }, Damage);
 
                     World.PlaySoundAt(new AssetLocation("sounds/block/snow"), this, null, false, 32);
-                    World.SpawnCubeParticles(SidedPos.XYZ.AddCopy(SidedPos.Motion.X, SidedPos.Motion.Y, SidedPos.Motion.Z), ProjectileStack, 0.2f, 12, 1.2f);
+                    World.SpawnCubeParticles(Pos.XYZ.AddCopy(Pos.Motion.X, Pos.Motion.Y, Pos.Motion.Z), ProjectileStack, 0.2f, 12, 1.2f);
 
                     Die();
                     return;
@@ -132,7 +140,7 @@ namespace Vintagestory.GameContent
 
         public override void OnCollided()
         {
-            EntityPos pos = SidedPos;
+            EntityPos pos = Pos;
 
             if (!beforeCollided && World is IServerWorldAccessor)
             {
@@ -148,7 +156,7 @@ namespace Vintagestory.GameContent
 
                     if (strength > 0.1f && World.Rand.NextDouble() > 1 - HorizontalImpactBreakChance)
                     {
-                        World.SpawnCubeParticles(SidedPos.XYZ.OffsetCopy(0, 0.2, 0), ProjectileStack, 0.5f, ImpactParticleCount, ImpactParticleSize, null, new Vec3f(xdir * (float)motionBeforeCollide.X * 8, 0, zdir * (float)motionBeforeCollide.Z * 8));
+                        World.SpawnCubeParticles(Pos.XYZ.OffsetCopy(0, 0.2, 0), ProjectileStack, 0.5f, ImpactParticleCount, ImpactParticleSize, null, new Vec3f(xdir * (float)motionBeforeCollide.X * 8, 0, zdir * (float)motionBeforeCollide.Z * 8));
                         Die();
                     }
                 }
@@ -159,13 +167,13 @@ namespace Vintagestory.GameContent
 
                     if (strength > 0.1f && World.Rand.NextDouble() > 1 - VerticalImpactBreakChance)
                     {
-                        World.SpawnCubeParticles(SidedPos.XYZ.OffsetCopy(0, 0.2, 0), ProjectileStack, 0.5f, ImpactParticleCount, ImpactParticleSize, null, new Vec3f((float)motionBeforeCollide.X * 8, (float)-motionBeforeCollide.Y * 6, (float)motionBeforeCollide.Z * 8));
+                        World.SpawnCubeParticles(Pos.XYZ.OffsetCopy(0, 0.2, 0), ProjectileStack, 0.5f, ImpactParticleCount, ImpactParticleSize, null, new Vec3f((float)motionBeforeCollide.X * 8, (float)-motionBeforeCollide.Y * 6, (float)motionBeforeCollide.Z * 8));
                         Die();
                     }
                 }
 
                 World.PlaySoundAt(new AssetLocation("sounds/block/snow"), this, null, false, 32, strength);
-                World.SpawnCubeParticles(SidedPos.XYZ.OffsetCopy(0, 0.25, 0), ProjectileStack, 0.5f, ImpactParticleCount, ImpactParticleSize, null, new Vec3f((float)motionBeforeCollide.X * 8, (float)-motionBeforeCollide.Y * 6, (float)motionBeforeCollide.Z * 8));
+                World.SpawnCubeParticles(Pos.XYZ.OffsetCopy(0, 0.25, 0), ProjectileStack, 0.5f, ImpactParticleCount, ImpactParticleSize, null, new Vec3f((float)motionBeforeCollide.X * 8, (float)-motionBeforeCollide.Y * 6, (float)motionBeforeCollide.Z * 8));
 
                 // Resend position to client
                 WatchedAttributes.MarkAllDirty();

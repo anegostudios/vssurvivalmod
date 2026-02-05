@@ -25,7 +25,7 @@ namespace Vintagestory.GameContent
                     {
                         ActionLangCode = "blockhelp-mushroom-harvest",
                         MouseButton = EnumMouseButton.Left,
-                        Itemstacks = BlockUtil.GetKnifeStacks(api)
+                        Itemstacks = ObjectCacheUtil.GetToolStacks(api, EnumTool.Knife)
                     }
                 };
             });

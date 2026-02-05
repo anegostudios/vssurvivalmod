@@ -1,51 +1,22 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
-using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
 #nullable disable
 
 namespace Vintagestory.GameContent
 {
-    public class ConstructionIgredient : CraftingRecipeIngredient
-    {
-        public string StoreWildCard;
-
-        public new ConstructionIgredient Clone()
-        {
-            var c = CloneTo<ConstructionIgredient>();
-            c.StoreWildCard = StoreWildCard;
-            return c;
-        }
-    }
-
-    public class ConstructionStage
-    {
-        public string[] AddElements;
-        public string[] RemoveElements;
-        public ConstructionIgredient[] RequireStacks;
-        public string ActionLangCode = "rollers-construct";
-    }
 
     public class EntityBoatConstruction : Entity
     {
         public override double FrustumSphereRadius => base.FrustumSphereRadius * 2;
-
-        ConstructionStage[] stages;
-        string material = "oak";
-
-        Vec3f launchStartPos = new Vec3f();
-        Dictionary<string, string> storedWildCards = new();
-
-        WorldInteraction[] nextConstructWis;
+        protected Vec3f launchStartPos = new Vec3f();
+        protected RightClickConstruction rcc;
 
         int CurrentStage
         {
@@ -57,54 +28,34 @@ namespace Vintagestory.GameContent
         {
             requirePosesOnServer = true;
             WatchedAttributes.RegisterModifiedListener("currentStage", stagedChanged);
-            WatchedAttributes.RegisterModifiedListener("wildcards", loadWildcards);
+            WatchedAttributes.RegisterModifiedListener("wildcards", ()=>rcc.FromTreeAttributes(WatchedAttributes));
             base.Initialize(properties, api, InChunkIndex3d);
-            stages = properties.Attributes["stages"].AsArray<ConstructionStage>();
 
-            genNextInteractionStage();
+            var stages = properties.Attributes["stages"].AsArray<ConstructionStage>();
+            rcc.LateInit(stages, Api, () => Pos.XYZ, "entity " + Code);
+            this.CurrentStage = rcc.CurrentCompletedStage;
         }
 
         private void stagedChanged()
         {
+            if (World.Side == EnumAppSide.Server) return;
+
+            rcc.CurrentCompletedStage = CurrentStage;
             MarkShapeModified();
-            genNextInteractionStage();
         }
 
         public override void OnTesselation(ref Shape entityShape, string shapePathForLogging)
         {
-            HashSet<string> addElements = new HashSet<string>();
-
-            int cstage = CurrentStage;
-            for (int i = 0; i <= cstage; i++)
-            {
-                var stage = stages[i];
-                if (stage.AddElements != null)
-                {
-                    foreach (var addele in stage.AddElements)
-                    {
-                        addElements.Add(addele + "/*");
-                    }
-                }
-
-                if (stage.RemoveElements != null)
-                {
-                    foreach (var remele in stage.RemoveElements)
-                    {
-                        addElements.Remove(remele + "/*");
-                    }
-                }
-            }
-
             var esr = Properties.Client.Renderer as EntityShapeRenderer;
             if (esr != null)
             {
-                esr.OverrideSelectiveElements = addElements.ToArray();
+                esr.OverrideSelectiveElements = rcc.getShapeElements();
             }
 
             ICoreClientAPI capi = Api as ICoreClientAPI;
             if (capi != null) {
-                setTexture("debarked", new AssetLocation(string.Format("block/wood/debarked/{0}", material)));
-                setTexture("planks", new AssetLocation(string.Format("block/wood/planks/{0}1", material)));
+                setTexture("debarked", new AssetLocation(string.Format("block/wood/debarked/{0}", rcc.StoredWildCards["wood"])));
+                setTexture("planks", new AssetLocation(string.Format("block/wood/planks/{0}1", rcc.StoredWildCards["wood"])));
             }
 
             base.OnTesselation(ref entityShape, shapePathForLogging);
@@ -119,12 +70,18 @@ namespace Vintagestory.GameContent
         }
 
         EntityAgent launchingEntity;
+
+        public EntityBoatConstruction()
+        {
+            rcc = new RightClickConstruction();
+        }
+
         public override void OnInteract(EntityAgent byEntity, ItemSlot handslot, Vec3d hitPosition, EnumInteractMode mode)
         {
             base.OnInteract(byEntity, handslot, hitPosition, mode);
 
-            if (Api.Side == EnumAppSide.Client) return;
-            if (CurrentStage >= stages.Length - 1) return;
+            if (this.CurrentStage != rcc.CurrentCompletedStage) this.CurrentStage = rcc.CurrentCompletedStage;
+            if (CurrentStage >= rcc.Stages.Length - 1) return;
 
             if (CurrentStage == 0 && handslot.Empty && byEntity.Controls.ShiftKey)
             {
@@ -133,22 +90,20 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            if (!tryConsumeIngredients(byEntity, handslot)) return;
-
-            if (CurrentStage < stages.Length - 1)
+            if (rcc.OnInteract(byEntity, handslot))
             {
-                CurrentStage++;
-                MarkShapeModified();
+                this.CurrentStage = rcc.CurrentCompletedStage;
+                rcc.ToTreeAttributes(WatchedAttributes);
+                WatchedAttributes.MarkPathDirty("wildcards");
+                WatchedAttributes.MarkPathDirty("currentStage");
             }
 
-            if (CurrentStage >= stages.Length - 2 && !AnimManager.IsAnimationActive("launch"))
+            if (CurrentStage >= rcc.Stages.Length - 2 && !AnimManager.IsAnimationActive("launch"))
             {
                 launchingEntity = byEntity;
                 launchStartPos = getCenterPos();
                 StartAnimation("launch");
             }
-
-            genNextInteractionStage();
         }
 
         private Vec3f getCenterPos()
@@ -157,7 +112,7 @@ namespace Vintagestory.GameContent
             if (apap != null)
             {
                 var mat = new Matrixf();
-                mat.RotateY(ServerPos.Yaw + GameMath.PIHALF);
+                mat.RotateY(Pos.Yaw + GameMath.PIHALF);
                 apap.Mul(mat);
                 return mat.TransformVector(new Vec4f(0, 0, 0, 1)).XYZ;
             }
@@ -165,193 +120,8 @@ namespace Vintagestory.GameContent
             return null;
         }
 
-        private void genNextInteractionStage()
-        {
-            if (CurrentStage + 1 >= stages.Length)
-            {
-                nextConstructWis = null;
-                return;
-            }
-
-            var stage = stages[CurrentStage+1];
-
-            if (stage.RequireStacks == null)
-            {
-                nextConstructWis = null;
-                return;
-            }
-
-            var wis = new List<WorldInteraction>();
-
-            int i = 0;
-            foreach (var ingred in stage.RequireStacks)
-            {
-                List<ItemStack> stacksl = new();
-
-                foreach (var val in storedWildCards)
-                {
-                    ingred.FillPlaceHolder(val.Key, val.Value);
-                }
-                if (!ingred.Resolve(Api.World, "Require stack for construction stage " + (CurrentStage + 1) + " on entity " + this.Code))
-                {
-                    return;
-                }
-                i++;
-                foreach (var obj in Api.World.Collectibles)
-                {
-                    var stack = new ItemStack(obj);
-                    if (ingred.SatisfiesAsIngredient(stack, false))
-                    {
-                        stack.StackSize = ingred.Quantity;
-                        stacksl.Add(stack);
-                    }
-                }
-
-                var stacks = stacksl.ToArray();
-
-                wis.Add(new WorldInteraction()
-                {
-                    ActionLangCode = stage.ActionLangCode,
-                    Itemstacks = stacks,
-                    GetMatchingStacks = (wi, bs, es) => stacks,
-                    MouseButton = EnumMouseButton.Right
-                });
-            }
-
-            if (stage.RequireStacks.Length == 0)
-            {
-                wis.Add(new WorldInteraction()
-                {
-                    ActionLangCode = stage.ActionLangCode,
-                    MouseButton = EnumMouseButton.Right
-                });
-            }
-
-            nextConstructWis = wis.ToArray();
-        }
-
-        private bool tryConsumeIngredients(EntityAgent byEntity, ItemSlot handslot)
-        {
-            var sapi = Api as ICoreServerAPI;
-            var plr = (byEntity as EntityPlayer).Player as IServerPlayer;
-
-            var stage = stages[CurrentStage+1];
-            var hotbarinv = plr.InventoryManager.GetHotbarInventory();
-
-            List<KeyValuePair<ItemSlot, int>> takeFrom = new List<KeyValuePair<ItemSlot, int>>();
-            List<ConstructionIgredient> requireIngreds = new List<ConstructionIgredient>();
-            if (stage.RequireStacks == null) return true;
-
-            for (int i = 0; i < stage.RequireStacks.Length; i++) requireIngreds.Add(stage.RequireStacks[i].Clone());
-
-            Dictionary<string, string> storeWildCard = new();
 
 
-            bool skipMatCost = plr?.WorldData.CurrentGameMode == EnumGameMode.Creative && byEntity.Controls.CtrlKey;
-
-
-            foreach (var slot in hotbarinv)
-            {
-                if (slot.Empty) continue;
-                if (requireIngreds.Count == 0) break;
-
-                for (int i = 0; i < requireIngreds.Count; i++)
-                {
-                    var ingred = requireIngreds[i];
-
-                    foreach (var val in storedWildCards) {
-                        ingred.FillPlaceHolder(val.Key, val.Value);
-                    }
-                    ingred.Resolve(Api.World, "Require stack for construction stage "+i+" on entity " + this.Code);
-
-                    if (!skipMatCost && ingred.SatisfiesAsIngredient(slot.Itemstack, false))
-                    {
-                        int amountToTake = Math.Min(ingred.Quantity, slot.Itemstack.StackSize);
-                        takeFrom.Add(new KeyValuePair<ItemSlot, int>(slot, amountToTake));
-
-                        ingred.Quantity -= amountToTake;
-                        if (ingred.Quantity <= 0)
-                        {
-                            requireIngreds.RemoveAt(i);
-                            i--;
-
-                            if (ingred.StoreWildCard != null)
-                            {
-                                storeWildCard[ingred.StoreWildCard] = slot.Itemstack.Collectible.Variant[ingred.StoreWildCard];
-                            }
-                        }
-                    } else if (skipMatCost)
-                    {
-                        if (ingred.StoreWildCard != null)
-                        {
-                            storeWildCard[ingred.StoreWildCard] = slot.Itemstack.Collectible.Variant[ingred.StoreWildCard];
-                        }
-                    }
-                }
-            }
-
-            if (!skipMatCost && requireIngreds.Count > 0)
-            {
-                var ingred = requireIngreds[0];
-                string langCode = plr.LanguageCode;
-                plr.SendIngameError("missingstack", null, ingred.Quantity, ingred.IsWildCard ? Lang.GetL(langCode, ingred.Name??"") : ingred.ResolvedItemstack.GetName());
-                return false;
-            }
-
-            foreach (var val in storeWildCard)
-            {
-                this.storedWildCards[val.Key] = val.Value;
-            }
-
-            if (!skipMatCost)
-            {
-                bool soundPlayed = false;
-                foreach (var kvp in takeFrom)
-                {
-                    if (!soundPlayed)
-                    {
-                        AssetLocation soundLoc = null;
-                        var stack = kvp.Key.Itemstack;
-                        if (stack.Block != null) soundLoc = stack.Block.Sounds?.Place;
-
-                        if (soundLoc == null)
-                        {
-                            soundLoc = stack.Collectible.GetBehavior<CollectibleBehaviorGroundStorable>()?.StorageProps?.PlaceRemoveSound;
-                        }
-
-                        if (soundLoc != null)
-                        {
-                            soundPlayed = true;
-                            Api.World.PlaySoundAt(soundLoc, this, null);
-                        }
-                    }
-
-                    kvp.Key.TakeOut(kvp.Value);
-                    kvp.Key.MarkDirty();
-                }
-            }
-
-            storeWildcards();
-            WatchedAttributes.MarkPathDirty("wildcards");
-
-            return true;
-        }
-
-        private ItemSlot tryTakeFrom(CraftingRecipeIngredient requireStack, List<ItemSlot> skipSlots, IReadOnlyCollection<ItemSlot> fromSlots)
-        {
-            foreach (var slot in fromSlots)
-            {
-                if (slot.Empty) continue;
-                if (skipSlots.Contains(slot)) continue;
-
-                if (requireStack.SatisfiesAsIngredient(slot.Itemstack, true))
-                {
-                    return slot;
-                }
-            }
-
-            return null;
-        }
 
         public override void OnGameTick(float dt)
         {
@@ -373,17 +143,17 @@ namespace Vintagestory.GameContent
             var nowOff = getCenterPos();
             Vec3f offset = nowOff == null ? new Vec3f() : nowOff - launchStartPos;
 
-            EntityProperties type = World.GetEntityType(new AssetLocation("boat-sailed-" + material));
+            EntityProperties type = World.GetEntityType(new AssetLocation("boat-sailed-" + rcc.StoredWildCards["wood"]));
             var entity = World.ClassRegistry.CreateEntity(type);
 
-            if ((int)Math.Abs(ServerPos.Yaw * GameMath.RAD2DEG) == 90 || (int)Math.Abs(ServerPos.Yaw * GameMath.RAD2DEG) == 270) {
+            if ((int)Math.Abs(Pos.Yaw * GameMath.RAD2DEG) == 90 || (int)Math.Abs(Pos.Yaw * GameMath.RAD2DEG) == 270) {
                 offset.X *= 1.1f;
             }
 
             offset.Y = 0.5f;
 
-            entity.ServerPos.SetFrom(ServerPos).Add(offset);
-            entity.ServerPos.Motion.Add(offset.X / 50.0, 0, offset.Z / 50.0);
+            entity.Pos.Add(offset);
+            entity.Pos.Motion.Add(offset.X / 50.0, 0, offset.Z / 50.0);
 
             var plr = (launchingEntity as EntityPlayer)?.Player;
             if (plr != null)
@@ -392,16 +162,16 @@ namespace Vintagestory.GameContent
                 entity.WatchedAttributes.SetString("createdByPlayerUID", plr.PlayerUID);
             }
 
-            entity.Pos.SetFrom(entity.ServerPos);
             World.SpawnEntity(entity);
         }
 
         public override WorldInteraction[] GetInteractionHelp(IClientWorldAccessor world, EntitySelection es, IClientPlayer player)
         {
             var wis = base.GetInteractionHelp(world, es, player);
-            if (nextConstructWis == null) return wis;
 
-            wis = wis.Append(nextConstructWis);
+            var ncwis = rcc.GetInteractionHelp(world, player);
+            if (ncwis == null) return wis;
+            wis = wis.Append(ncwis);
 
             if (CurrentStage == 0)
             {
@@ -419,45 +189,21 @@ namespace Vintagestory.GameContent
 
         public override void ToBytes(BinaryWriter writer, bool forClient)
         {
-            storeWildcards();
+            rcc.ToTreeAttributes(WatchedAttributes);
             base.ToBytes(writer, forClient);
         }
 
-        private void storeWildcards()
-        {
-            var tree = new TreeAttribute();
-            foreach (var val in storedWildCards) tree[val.Key] = new StringAttribute(val.Value);
-            WatchedAttributes["wildcards"] = tree;
-        }
 
         public override void FromBytes(BinaryReader reader, bool isSync)
         {
             base.FromBytes(reader, isSync);
-            loadWildcards();
+            rcc.FromTreeAttributes(WatchedAttributes);
         }
 
         public override string GetInfoText()
         {
-            return base.GetInfoText() + "\n" + Lang.Get("Material: {0}", Lang.Get("material-" + material));
+            return base.GetInfoText() + "\n" + Lang.Get("Material: {0}", Lang.Get("material-" + rcc.StoredWildCards["wood"]));
         }
 
-        private void loadWildcards()
-        {
-            storedWildCards.Clear();
-            var tree = WatchedAttributes["wildcards"] as TreeAttribute;
-            if (tree != null)
-            {
-                foreach (var val in tree)
-                {
-                    storedWildCards[val.Key] = (val.Value as StringAttribute).value;
-                }
-            }
-
-            if (storedWildCards.TryGetValue("wood", out var wood))
-            {
-                material = wood;
-                if (material == null || material.Length == 0) storedWildCards["wood"] = material = "oak";
-            }
-        }
     }
 }

@@ -32,19 +32,25 @@ namespace Vintagestory.GameContent
 
             fleeTime = (float)entity.World.Rand.NextDouble() * 7 + 6;
             fleeFromEntity = chaseTarget;
-            targetPos.Set(fleeFromEntity.ServerPos.X, fleeFromEntity.ServerPos.Y, fleeFromEntity.ServerPos.Z);
+            targetPos.Set(fleeFromEntity.Pos.X, fleeFromEntity.Pos.Y, fleeFromEntity.Pos.Z);
 
             this.taskConfig = JsonObject.FromJson("{}");
         }
 
+        protected override void SetDefaultValues()
+        {
+            base.SetDefaultValues();
+            ExecutionChance = 0.05;
+        }
+
         public override bool ShouldExecute()
         {
-            if (entity.World.Rand.NextDouble() > 0.05) return false;
+            if (entity.World.Rand.NextDouble() > ExecutionChance) return false;
             if (cooldownUntilMs > entity.World.ElapsedMilliseconds) return false;
             if (cooldownUntilTotalHours > entity.World.Calendar.TotalHours) return false;
-            if (!PreconditionsSatisifed()) return false;
+            if (!PreconditionsSatisfied()) return false;
 
-            fleeFromEntity = entity.World.GetNearestEntity(entity.ServerPos.XYZ, seekingRange, seekingRange, (e) => {
+            fleeFromEntity = entity.World.GetNearestEntity(entity.Pos.XYZ, seekingRange, seekingRange, (e) => {
                 if (!e.Alive || e.EntityId == this.entity.EntityId) return false;
 
                 if (e is EntityPlayer eplr && !eplr.ServerControls.Sneak && eplr.Player?.WorldData.CurrentGameMode != EnumGameMode.Creative && eplr.Player?.WorldData.CurrentGameMode != EnumGameMode.Spectator)
@@ -90,7 +96,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override bool 
+        public override bool
             ContinueExecute(float dt)
         {
             //Check if time is still valid for task.
@@ -105,7 +111,7 @@ namespace Vintagestory.GameContent
             }
 
 
-            if (entity.ServerPos.SquareDistanceTo(fleeFromEntity.ServerPos.XYZ) > 5*5) //fleeingDistance * fleeingDistance)
+            if (entity.Pos.SquareDistanceTo(fleeFromEntity.Pos.XYZ) > 5*5) //fleeingDistance * fleeingDistance)
             {
                 return false;
             }
@@ -117,52 +123,52 @@ namespace Vintagestory.GameContent
         Vec3d tmpVec = new Vec3d();
         private void updateTargetPos()
         {
-            float yaw = (float)Math.Atan2(fleeFromEntity.ServerPos.X - entity.ServerPos.X, fleeFromEntity.ServerPos.Z - entity.ServerPos.Z);
+            float yaw = (float)Math.Atan2(fleeFromEntity.Pos.X - entity.Pos.X, fleeFromEntity.Pos.Z - entity.Pos.Z);
 
 
 
             // Some simple steering behavior, works really suxy
-            tmpVec = tmpVec.Set(entity.ServerPos.X, entity.ServerPos.Y, entity.ServerPos.Z);
+            tmpVec = tmpVec.Set(entity.Pos.X, entity.Pos.Y, entity.Pos.Z);
             tmpVec.Ahead(0.9, 0, yaw + GameMath.PI / 2);
 
             // Running into wall?
             if (traversable(tmpVec))
             {
                 //yawOffset = 0;
-                targetPos.Set(entity.ServerPos.X, entity.ServerPos.Y, entity.ServerPos.Z).Ahead(10, 3, yaw + GameMath.PI / 2);
+                targetPos.Set(entity.Pos.X, entity.Pos.Y, entity.Pos.Z).Ahead(10, 3, yaw + GameMath.PI / 2);
                 return;
             }
 
             // Try 90 degrees left
-            tmpVec = tmpVec.Set(entity.ServerPos.X, entity.ServerPos.Y, entity.ServerPos.Z);
+            tmpVec = tmpVec.Set(entity.Pos.X, entity.Pos.Y, entity.Pos.Z);
             tmpVec.Ahead(0.9, 0, yaw + GameMath.PI);
             if (traversable(tmpVec))
             {
-                targetPos.Set(entity.ServerPos.X, entity.ServerPos.Y, entity.ServerPos.Z).Ahead(10, 3, yaw + GameMath.PI);
+                targetPos.Set(entity.Pos.X, entity.Pos.Y, entity.Pos.Z).Ahead(10, 3, yaw + GameMath.PI);
                 return;
             }
 
             // Try 90 degrees right
-            tmpVec = tmpVec.Set(entity.ServerPos.X, entity.ServerPos.Y, entity.ServerPos.Z);
+            tmpVec = tmpVec.Set(entity.Pos.X, entity.Pos.Y, entity.Pos.Z);
             tmpVec.Ahead(0.9, 0, yaw);
             if (traversable(tmpVec))
             {
-                targetPos.Set(entity.ServerPos.X, entity.ServerPos.Y, entity.ServerPos.Z).Ahead(10, 3, yaw);
+                targetPos.Set(entity.Pos.X, entity.Pos.Y, entity.Pos.Z).Ahead(10, 3, yaw);
                 return;
             }
 
             // Run towards target o.O
-            tmpVec = tmpVec.Set(entity.ServerPos.X, entity.ServerPos.Y, entity.ServerPos.Z);
+            tmpVec = tmpVec.Set(entity.Pos.X, entity.Pos.Y, entity.Pos.Z);
             tmpVec.Ahead(0.9, 0, -yaw);
             //if (traversable(tmpVec))
             {
-                targetPos.Set(entity.ServerPos.X, entity.ServerPos.Y, entity.ServerPos.Z).Ahead(10, 0, -yaw);
+                targetPos.Set(entity.Pos.X, entity.Pos.Y, entity.Pos.Z).Ahead(10, 0, -yaw);
                 return;
             }
         }
 
 
-        
+
         bool traversable(Vec3d pos)
         {
             return !world.CollisionTester.IsColliding(world.BlockAccessor, entity.SelectionBox, pos, false);

@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Client;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
@@ -79,7 +79,7 @@ namespace Vintagestory.GameContent
                 if (!didHavePos)
                 {
                     start = new Vec3d();
-                    blockstart = new BlockPos();
+                    blockstart = new BlockPos(capi.World.Player.Entity.Pos.Dimension);
                     requireRedraw |= true;
                 } else
                 {
@@ -192,11 +192,11 @@ namespace Vintagestory.GameContent
 
             var attr = slot.Itemstack.Attributes;
             attr.SetDouble("startX", blockSel.Position.X + blockSel.HitPosition.X);
-            attr.SetDouble("startY", blockSel.Position.Y + blockSel.HitPosition.Y);
+            attr.SetDouble("startY", blockSel.Position.InternalY + blockSel.HitPosition.Y);
             attr.SetDouble("startZ", blockSel.Position.Z + blockSel.HitPosition.Z);
 
             attr.SetInt("blockX", blockSel.Position.X);
-            attr.SetInt("blockY", blockSel.Position.Y);
+            attr.SetInt("blockY", blockSel.Position.InternalY);
             attr.SetInt("blockZ", blockSel.Position.Z);
 
             handling = EnumHandHandling.PreventDefault; 
