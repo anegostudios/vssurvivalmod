@@ -186,7 +186,7 @@ namespace Vintagestory.GameContent
 
             if (blockMaterialCode == null) return;
 
-            string key = "pan-filled-" + blockMaterialCode + target;
+            string key = GetMeshCacheKey(itemstack) + target;
 
             renderinfo.ModelRef = ObjectCacheUtil.GetOrCreate(capi, key, () =>
             {
