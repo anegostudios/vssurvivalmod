@@ -265,8 +265,9 @@ namespace Vintagestory.GameContent
 
                 if (byPlayer.InventoryManager.TryGiveItemstack(splitStack))
                 {
-                    Api.ModLoader.GetModSystem<ModSystemSubTongsDurability>()?.OnItemPickedUp(byPlayer.Entity, splitStack);                    
-                } else
+                    Api.ModLoader.GetModSystem<ModSystemSubTongsDurability>()?.OnItemPickedUp(byPlayer.Entity, splitStack);
+                }
+                else
                 {
                     world.SpawnItemEntity(splitStack, Pos);
                 }
@@ -283,84 +284,74 @@ namespace Vintagestory.GameContent
 
                 return true;
 
-            } else
-            {
-                if (slot.Itemstack == null) return false;
-
-                // Add fuel
-                CombustibleProperties combprops = slot.Itemstack.Collectible.GetCombustibleProperties(world, slot.Itemstack, null);
-                if (combprops != null && combprops.BurnTemperature > 1000)
-                {
-                    if (FuelLevel > 4.5f) return false;
-                    if (slot.TryPutInto(Api.World, FuelSlot, 1) == 0) return false;
-
-                    if (slot.Itemstack.Collectible is ItemCoal || slot.Itemstack.Collectible is ItemOre)
-                    {
-                        Api.World.PlaySoundAt(new AssetLocation("sounds/block/charcoal"), byPlayer, byPlayer, true, 16);
-                    }
-                    (Api as ICoreClientAPI)?.World.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
-
-                    renderer?.SetContents(WorkItemStack, FuelLevel, burning, false, extraOxygenRate);
-                    MarkDirty();
-
-                    if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
-                    {
-                        slot.TakeOut(1);
-                        slot.MarkDirty();
-                    }
-
-                    return true;
-                }
-
-
-                string firstCodePart = slot.Itemstack.Collectible.FirstCodePart();
-                bool forgableGeneric = slot.Itemstack.Collectible.Attributes?.IsTrue("forgable") == true;
-
-                // Add heatable item
-                if (WorkItemStack == null && (firstCodePart == "ingot" || firstCodePart == "metalplate" || firstCodePart == "workitem" || forgableGeneric))
-                {
-                    WorkItemSlot.Itemstack = slot.TakeOut(1);
-
-                    slot.MarkDirty();
-                    Api.World.Logger.Audit("{0} Put 1x{1} into Forge at {2}.",
-                        byPlayer.PlayerName,
-                        WorkItemStack.Collectible.Code,
-                        blockSel.Position
-                    );
-
-                    renderer?.SetContents(WorkItemStack, FuelLevel, burning, true, extraOxygenRate);
-                    MarkDirty();
-                    Api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), Pos, 0.4375, byPlayer, false);
-
-                    return true;
-                }
-
-                // Merge heatable item
-                if (!forgableGeneric && WorkItemStack != null && WorkItemStack.Equals(Api.World, slot.Itemstack, GlobalConstants.IgnoredStackAttributes) && WorkItemStack.StackSize < 4 && WorkItemStack.StackSize < WorkItemStack.Collectible.MaxStackSize)
-                {
-                    float myTemp = WorkItemStack.Collectible.GetTemperature(Api.World, WorkItemStack);
-                    float histemp = slot.Itemstack.Collectible.GetTemperature(Api.World, slot.Itemstack);
-
-                    WorkItemStack.Collectible.SetTemperature(world, WorkItemStack, (myTemp * WorkItemStack.StackSize + histemp * 1) / (WorkItemStack.StackSize + 1));
-                    WorkItemStack.StackSize++;
-
-                    slot.TakeOut(1);
-                    slot.MarkDirty();
-                    Api.World.Logger.Audit("{0} Put 1x{1} into Forge at {2}.",
-                        byPlayer.PlayerName,
-                        WorkItemStack.Collectible.Code,
-                        blockSel.Position
-                    );
-
-                    renderer?.SetContents(WorkItemStack, FuelLevel, burning, true, extraOxygenRate);
-                    Api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), Pos, 0.4375, byPlayer, false);
-
-                    MarkDirty();
-                    return true;
-                }
-
-                return false;
             }
+
+            if (slot.Itemstack == null) return false;
+
+            // Add fuel
+            if (slot.Itemstack.Collectible.GetCombustibleProperties(world, slot.Itemstack, null) is { BurnTemperature: > 1000 })
+            {
+                if (FuelLevel > 4.5f) return false;
+                bool isFuel = slot.Itemstack.Collectible is ItemCoal or ItemOre;
+                if (slot.TryPutInto(Api.World, FuelSlot) == 0) return false;
+
+                if (isFuel) Api.World.PlaySoundAt(new AssetLocation("sounds/block/charcoal"), byPlayer, byPlayer, true, 16);
+                (Api as ICoreClientAPI)?.World.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+
+                renderer?.SetContents(WorkItemStack, FuelLevel, burning, false, extraOxygenRate);
+                MarkDirty();
+
+                return true;
+            }
+
+
+            string firstCodePart = slot.Itemstack.Collectible.FirstCodePart();
+            bool forgableGeneric = slot.Itemstack.Collectible.Attributes?.IsTrue("forgable") == true;
+
+            // Add heatable item
+            if (WorkItemStack == null && (firstCodePart == "ingot" || firstCodePart == "metalplate" || firstCodePart == "workitem" || forgableGeneric))
+            {
+                WorkItemSlot.Itemstack = slot.TakeOut(1);
+
+                slot.MarkDirty();
+                Api.World.Logger.Audit("{0} Put 1x{1} into Forge at {2}.",
+                    byPlayer.PlayerName,
+                    WorkItemStack.Collectible.Code,
+                    blockSel.Position
+                );
+
+                renderer?.SetContents(WorkItemStack, FuelLevel, burning, true, extraOxygenRate);
+                MarkDirty();
+                Api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), Pos, 0.4375, byPlayer, false);
+
+                return true;
+            }
+
+            // Merge heatable item
+            if (!forgableGeneric && WorkItemStack != null && WorkItemStack.Equals(Api.World, slot.Itemstack, GlobalConstants.IgnoredStackAttributes) && WorkItemStack.StackSize < 4 && WorkItemStack.StackSize < WorkItemStack.Collectible.MaxStackSize)
+            {
+                float myTemp = WorkItemStack.Collectible.GetTemperature(Api.World, WorkItemStack);
+                float histemp = slot.Itemstack.Collectible.GetTemperature(Api.World, slot.Itemstack);
+
+                WorkItemStack.Collectible.SetTemperature(world, WorkItemStack, (myTemp * WorkItemStack.StackSize + histemp * 1) / (WorkItemStack.StackSize + 1));
+                WorkItemStack.StackSize++;
+
+                slot.TakeOut(1);
+                slot.MarkDirty();
+                Api.World.Logger.Audit("{0} Put 1x{1} into Forge at {2}.",
+                    byPlayer.PlayerName,
+                    WorkItemStack.Collectible.Code,
+                    blockSel.Position
+                );
+
+                renderer?.SetContents(WorkItemStack, FuelLevel, burning, true, extraOxygenRate);
+                Api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), Pos, 0.4375, byPlayer, false);
+
+                MarkDirty();
+                return true;
+            }
+
+            return false;
         }
 
 

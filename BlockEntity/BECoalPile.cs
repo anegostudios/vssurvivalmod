@@ -87,7 +87,7 @@ namespace Vintagestory.GameContent
             get { return !burning; }
         }
 
-        public int BurnTemperature => inventory[0].Itemstack.Collectible.GetCombustibleProperties(Api.World, inventory[0].Itemstack, null).BurnTemperature;
+        public int BurnTemperature => inventory[0].Itemstack.Collectible.GetCombustibleProperties(Api.World, inventory[0].Itemstack, null)?.BurnTemperature ?? 0;
 
         public bool IsExternallyTicked { get; set; }
 

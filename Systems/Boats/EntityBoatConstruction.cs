@@ -54,8 +54,11 @@ namespace Vintagestory.GameContent
 
             ICoreClientAPI capi = Api as ICoreClientAPI;
             if (capi != null) {
-                setTexture("debarked", new AssetLocation(string.Format("block/wood/debarked/{0}", rcc.StoredWildCards["wood"])));
-                setTexture("planks", new AssetLocation(string.Format("block/wood/planks/{0}1", rcc.StoredWildCards["wood"])));
+                if (rcc.StoredWildCards.TryGetValue("wood", out string wood))
+                {
+                    setTexture("debarked", new AssetLocation(string.Format("block/wood/debarked/{0}", wood)));
+                    setTexture("planks", new AssetLocation(string.Format("block/wood/planks/{0}1", wood)));
+                }
             }
 
             base.OnTesselation(ref entityShape, shapePathForLogging);
@@ -140,10 +143,12 @@ namespace Vintagestory.GameContent
 
         private void Spawn()
         {
+            if (!rcc.StoredWildCards.TryGetValue("wood", out string wood)) return;
+
             var nowOff = getCenterPos();
             Vec3f offset = nowOff == null ? new Vec3f() : nowOff - launchStartPos;
 
-            EntityProperties type = World.GetEntityType(new AssetLocation("boat-sailed-" + rcc.StoredWildCards["wood"]));
+            EntityProperties type = World.GetEntityType(new AssetLocation("boat-sailed-" + wood));
             var entity = World.ClassRegistry.CreateEntity(type);
 
             if ((int)Math.Abs(Pos.Yaw * GameMath.RAD2DEG) == 90 || (int)Math.Abs(Pos.Yaw * GameMath.RAD2DEG) == 270) {
@@ -202,7 +207,11 @@ namespace Vintagestory.GameContent
 
         public override string GetInfoText()
         {
-            return base.GetInfoText() + "\n" + Lang.Get("Material: {0}", Lang.Get("material-" + rcc.StoredWildCards["wood"]));
+            if (rcc.StoredWildCards.TryGetValue("wood", out string wood))
+            {
+                return base.GetInfoText() + "\n" + Lang.Get("Material: {0}", Lang.Get("material-" + wood));
+            }
+            return base.GetInfoText();
         }
 
     }

@@ -654,11 +654,14 @@ namespace Vintagestory.GameContent
         {
             MicroBlockModelCache cache = capi.ModLoader.GetModSystem<MicroBlockModelCache>();
 
-            uint[] voxelCuboids = (itemstack.Attributes["cuboids"] as IntArrayAttribute)?.AsUint;
-            if (voxelCuboids != null)
+            if (target is EnumItemRenderTarget.HandTp)
             {
-                Cuboidf dimensions = BlockEntityMicroBlock.GetEncompassingHitbox(voxelCuboids.ToList());
-                renderinfo.Transform.Translation = new FastVec3f(-2.1f + dimensions.MidX / 16f - 0.5f, -1.8f - dimensions.MidY/16f + 0.5f, -1.5f + dimensions.MidZ / 16f - 0.5f);
+                uint[] voxelCuboids = (itemstack.Attributes["cuboids"] as IntArrayAttribute)?.AsUint;
+                if (voxelCuboids != null)
+                {
+                    Cuboidf dimensions = BlockEntityMicroBlock.GetEncompassingHitbox(voxelCuboids.ToList());
+                    renderinfo.Transform.Translation = new FastVec3f(-2.1f + dimensions.MidX / 16f - 0.5f, -1.8f - dimensions.MidY/16f + 0.5f, -1.5f + dimensions.MidZ / 16f - 0.5f);
+                }
             }
 
             renderinfo.ModelRef = cache.GetOrCreateMeshRef(itemstack);

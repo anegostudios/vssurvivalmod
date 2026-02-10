@@ -131,10 +131,12 @@ namespace Vintagestory.GameContent
                     if (bes == null || bes.StorageProps.Layout != EnumGroundStorageLayout.Quadrants) 
                     {
                         // Then prevent placing of torch while pointing at another torch (after igniting)
-                        handling = EnumHandHandling.Handled;                       
+                        handling = EnumHandHandling.Handled;
+                        return;
                     }
                 }
-                return;
+
+                //return; - Tyron 2/7/2026 removed this otherwise players can't ignite pit kilns
             }
 
             base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);

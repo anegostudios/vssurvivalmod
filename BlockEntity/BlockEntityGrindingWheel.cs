@@ -105,7 +105,25 @@ namespace Vintagestory.GameContent
                 foreach (var uid in new List<string>(PlayersGrinding.Keys))
                 {
                     var plr = Api.World.PlayerByUid(uid);
+                    if (plr == null)
+                    {
+                        PlayersGrinding.Remove(uid);
+                        continue;
+                    }
+
+                    if (plr.CurrentBlockSelection == null || plr.CurrentBlockSelection.Position != Pos)
+                    {
+                        PlayersGrinding.Remove(uid);
+                        continue;
+                    }
+
                     var slot = plr.InventoryManager.ActiveHotbarSlot;
+                    if (slot.Empty)
+                    {
+                        PlayersGrinding.Remove(uid);
+                        continue;
+                    }
+
                     float maxdura = slot.Itemstack.Collectible.GetMaxDurability(slot.Itemstack);
                     if (slot != null && slot.Itemstack.Collectible.HasBehavior<CollectibleBehaviorSharpenable>())
                     {

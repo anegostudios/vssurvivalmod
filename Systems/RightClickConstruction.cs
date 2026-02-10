@@ -254,7 +254,10 @@ namespace Vintagestory.GameContent
                 {
                     ingred.FillPlaceHolder(val.Key, val.Value);
                 }
-                ingred.Resolve(api.World, "Require stack for construction stage " + i + " on " + codeForErrorLogging);
+                if (!ingred.Resolve(api.World, "Require stack for construction stage " + i + " on " + codeForErrorLogging))
+                {
+                    return false;
+                }
             }
 
 
@@ -306,8 +309,6 @@ namespace Vintagestory.GameContent
                         "missingstack",
                         Lang.Get("ingameerror-missingstack", ingred.Quantity, ingred.MatchingType != EnumRecipeMatchType.Exact ? Lang.Get(ingred.Name ?? "") : ingred.ResolvedItemStack.GetName())
                     );
-                    //string langCode = (plr as IServerPlayer)?.LanguageCode ?? Lang.CurrentLocale;
-                    //plr.SendIngameError("missingstack", null, ingred.Quantity, ingred.IsWildCard ? Lang.GetL(langCode, ingred.Name ?? "") : ingred.ResolvedItemstack.GetName());
                 }
 
                 return false;

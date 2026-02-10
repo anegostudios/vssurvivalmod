@@ -20,10 +20,10 @@ namespace Vintagestory.GameContent
         #region IAttachableToEntity
         public int RequiresBehindSlots { get; set; } = 0;
         string IAttachableToEntity.GetCategoryCode(ItemStack stack) => attrAtta?.GetCategoryCode(stack);
-        CompositeShape IAttachableToEntity.GetAttachedShape(ItemStack stack, string slotCode) => attrAtta.GetAttachedShape(stack, slotCode);
-        string[] IAttachableToEntity.GetDisableElements(ItemStack stack) => attrAtta.GetDisableElements(stack);
-        string[] IAttachableToEntity.GetKeepElements(ItemStack stack) => attrAtta.GetKeepElements(stack);
-        string IAttachableToEntity.GetTexturePrefixCode(ItemStack stack) => attrAtta.GetTexturePrefixCode(stack);
+        CompositeShape IAttachableToEntity.GetAttachedShape(ItemStack stack, string slotCode) => attrAtta?.GetAttachedShape(stack, slotCode);
+        string[] IAttachableToEntity.GetDisableElements(ItemStack stack) => attrAtta?.GetDisableElements(stack);
+        string[] IAttachableToEntity.GetKeepElements(ItemStack stack) => attrAtta?.GetKeepElements(stack);
+        string IAttachableToEntity.GetTexturePrefixCode(ItemStack stack) => attrAtta?.GetTexturePrefixCode(stack);
 
         void IAttachableToEntity.CollectTextures(ItemStack itemstack, Shape intoShape, string texturePrefixCode, Dictionary<string, CompositeTexture> intoDict)
         {

@@ -445,7 +445,7 @@ namespace Vintagestory.GameContent
         {
             if (ownStack?.Collectible == null || contentstack == null) return false;
 
-            return ownStack.Collectible.GetTemperature(world, ownStack) < 0.9 * contentstack.Collectible.GetMeltingPoint(world, null, null);
+            return ownStack.Collectible.GetTemperature(world, ownStack) < 0.9 * contentstack.Collectible.GetMeltingPoint(world, null, new DummySlot(contentstack));
         }
 
         public void SetContents(ItemStack stack, ItemStack output, int units)

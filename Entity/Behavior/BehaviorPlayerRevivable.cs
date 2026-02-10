@@ -42,6 +42,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
+            entityPlayer.Attributes.SetBool("noSatietyRestoreOnRevive", true);
             entityPlayer.Revive();
             entityPlayer.LastReviveTotalHours = entityPlayer.World.Calendar.TotalHours - 2; // No respawn glow
         }
