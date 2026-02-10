@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
@@ -521,6 +522,21 @@ namespace Vintagestory.GameContent
                 int placeableItems = (int)(maxItems - (float)stack.StackSize);
 
                 int moved = GameMath.Min(availItems, placeableItems, desiredItems);
+
+                // Average freshness before adding
+                if (stack.Collectible.GetTransitionableProperties(api.World, stack, null) is TransitionableProperties[] tprops)
+                {
+                    var perishProps = tprops.FirstOrDefault(p => p.Type == EnumTransitionType.Perish);
+                    if (perishProps != null)
+                    {
+                        float our_freshness = stack.Collectible.UpdateAndGetTransitionState(api.World, new DummySlot(stack), EnumTransitionType.Perish).TransitionedHours;
+                        float their_freshness = liquidStack.Collectible.UpdateAndGetTransitionState(api.World, new DummySlot(liquidStack), EnumTransitionType.Perish).TransitionedHours;
+                        float avg_freshness = ((our_freshness * stack.StackSize) + (their_freshness * moved)) / (stack.StackSize + moved);
+
+                        stack.Collectible.SetTransitionState(stack, EnumTransitionType.Perish, avg_freshness);
+                    }
+                }
+
                 stack.StackSize += moved;
                 return moved;
             }
@@ -564,6 +580,20 @@ namespace Vintagestory.GameContent
 
                 int placeableItems = (int)Math.Min(availItems, maxItems - (float)stack.StackSize);
                 int movedItems = Math.Min(placeableItems, desiredItems);
+
+                // Average freshness before adding
+                if (stack.Collectible.GetTransitionableProperties(api.World, stack, null) is TransitionableProperties[] tprops)
+                {
+                    var perishProps = tprops.FirstOrDefault(p => p.Type == EnumTransitionType.Perish);
+                    if (perishProps != null)
+                    {
+                        float our_freshness = stack.Collectible.UpdateAndGetTransitionState(api.World, new DummySlot(stack), EnumTransitionType.Perish).TransitionedHours;
+                        float their_freshness = liquidStack.Collectible.UpdateAndGetTransitionState(api.World, new DummySlot(liquidStack), EnumTransitionType.Perish).TransitionedHours;
+                        float avg_freshness = ((our_freshness * stack.StackSize) + (their_freshness * movedItems)) / (stack.StackSize + movedItems);
+
+                        stack.Collectible.SetTransitionState(stack, EnumTransitionType.Perish, avg_freshness);
+                    }
+                }
 
                 stack.StackSize += movedItems;
                 api.World.BlockAccessor.GetBlockEntity(pos).MarkDirty(true);
@@ -864,8 +894,7 @@ namespace Vintagestory.GameContent
 
             if (GetCurrentLitres(itemslot.Itemstack) >= CapacityLitres) return false;
 
-
-            var contentStack = props.WhenFilled.Stack.ResolvedItemstack;
+            ItemStack contentStack = props.WhenFilled.Stack.ResolvedItemstack;
             if (contentStack == null) return false;
             contentStack = contentStack.Clone();
             contentStack.StackSize = 999999;
