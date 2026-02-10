@@ -119,7 +119,8 @@ namespace Vintagestory.GameContent
             if (Attributes?["capacityLitres"].Exists == true)
             {
                 capacityLitresFromAttributes = Attributes["capacityLitres"].AsInt(10);
-            } else
+            }
+            else
             {
                 var props = Attributes?["liquidContainerProps"]?.AsObject<LiquidTopOpenContainerProps>(null, Code.Domain);
                 if (props != null)
@@ -131,7 +132,8 @@ namespace Vintagestory.GameContent
             if (Attributes?["drinkPortionSize"].Exists == true)
             {
                 drinkPortionSizeFromAttributes = Attributes["drinkPortionSize"].AsInt(1);
-            } else
+            }
+            else
             {
                 var props = Attributes?["liquidContainerProps"]?.AsObject<LiquidTopOpenContainerProps>(null, Code.Domain);
                 if (props != null)
@@ -156,7 +158,7 @@ namespace Vintagestory.GameContent
                 foreach (CollectibleObject obj in api.World.Collectibles)
                 {
                     if (obj is BlockLiquidContainerBase blc && blc.IsTopOpened && blc.AllowHeldLiquidTransfer)
-                    liquidContainerStacks.Add(new ItemStack(obj));
+                        liquidContainerStacks.Add(new ItemStack(obj));
                 }
 
                 var lcstacks = liquidContainerStacks.ToArray();
@@ -331,7 +333,7 @@ namespace Vintagestory.GameContent
             if (becontainer == null) return null;
 
             int slotid = GetContainerSlotId(pos);
-            if (slotid >=becontainer.Inventory.Count) return null;
+            if (slotid >= becontainer.Inventory.Count) return null;
 
             ItemStack? stack = becontainer.Inventory[slotid]?.Itemstack;
             if (stack == null) return null;
@@ -766,37 +768,36 @@ namespace Vintagestory.GameContent
             if (IsEmpty(slot.Itemstack)) base.tryEatStop(secondsUsed, slot, byEntity);
             FoodNutritionProperties nutriProps = GetNutritionPropertiesPerLitre(byEntity.World, slot.Itemstack, byEntity);
 
-            if (byEntity.World is IServerWorldAccessor && nutriProps != null && secondsUsed >= 0.95f)
+            if (nutriProps == null || secondsUsed < 0.95f)
             {
-                var containableProps = GetContentProps(slot.Itemstack);
+                return;
+            }
+
+            if (byEntity.World is IServerWorldAccessor &&
+                GetContentProps(slot.Itemstack) is WaterTightContainableProps containableProps)
+            {
                 float litresToDrink = Math.Max(1.0f / (containableProps?.ItemsPerLitre ?? 1), DrinkPortionSize);
 
-                var liquidStack = GetContent(slot.Itemstack);
-                var dummyslot = GetContentInDummySlot(slot, liquidStack);
-
-                TransitionState state = UpdateAndGetTransitionState(api.World, dummyslot, EnumTransitionType.Perish);
-                float spoilState = state?.TransitionLevel ?? 0;
-
-                float satLossMul = GlobalConstants.FoodSpoilageSatLossMul(spoilState, liquidStack, byEntity);
-                float healthLossMul = GlobalConstants.FoodSpoilageHealthLossMul(spoilState, liquidStack, byEntity);
-
                 int itemPortionsDrank = SplitStackAndPerformAction(byEntity, slot, (stack) => TryTakeLiquid(stack, litresToDrink)?.StackSize ?? 0);
-                if(itemPortionsDrank == 0) return;
-                float mul = itemPortionsDrank / containableProps.ItemsPerLitre;
+                if (itemPortionsDrank == 0) return;
+                float itemsPerLitreMul = itemPortionsDrank / containableProps.ItemsPerLitre;
 
-                byEntity.ReceiveSaturation(nutriProps.Satiety * satLossMul * mul, nutriProps.FoodCategory);
+                nutriProps.Satiety *= itemsPerLitreMul;
+                nutriProps.Health *= itemsPerLitreMul;
+                nutriProps.Intoxication *= itemsPerLitreMul;
+                nutriProps.Psychedelic *= itemsPerLitreMul;
 
-                float healthChange = nutriProps.Health * healthLossMul * mul;
+                byEntity.ReceiveSaturation(nutriProps.Satiety, nutriProps.FoodCategory);
 
                 float intox = byEntity.WatchedAttributes.GetFloat("intoxication");
-                byEntity.WatchedAttributes.SetFloat("intoxication", Math.Min(1.1f, intox + (nutriProps.Intoxication * mul)));
+                byEntity.WatchedAttributes.SetFloat("intoxication", Math.Min(1.1f, intox + nutriProps.Intoxication));
 
                 float psyche = byEntity.WatchedAttributes.GetFloat("psychedelic");
-                byEntity.WatchedAttributes.SetFloat("psychedelic", Math.Min(2.0f, psyche + (nutriProps.Psychedelic * mul)));
+                byEntity.WatchedAttributes.SetFloat("psychedelic", Math.Min(2.0f, psyche + nutriProps.Psychedelic));
 
-                if (healthChange != 0)
+                if (nutriProps.Health != 0)
                 {
-                    byEntity.ReceiveDamage(new DamageSource() { Source = EnumDamageSource.Internal, Type = healthChange > 0 ? EnumDamageType.Heal : EnumDamageType.Poison }, Math.Abs(healthChange));
+                    byEntity.ReceiveDamage(new DamageSource() { Source = EnumDamageSource.Internal, Type = nutriProps.Health > 0 ? EnumDamageType.Heal : EnumDamageType.Poison }, Math.Abs(nutriProps.Health));
                 }
 
                 slot.MarkDirty();
@@ -807,13 +808,17 @@ namespace Vintagestory.GameContent
 
         public override FoodNutritionProperties GetNutritionProperties(IWorldAccessor world, ItemStack itemstack, Entity forEntity)
         {
-            if (GetNutritionPropertiesPerLitre(world, itemstack, forEntity)?.Clone() is FoodNutritionProperties nutriProps)
+            if (GetNutritionPropertiesPerLitre(world, itemstack, forEntity)?.Clone() is FoodNutritionProperties nutriProps &&
+                GetContent(itemstack) is ItemStack contentStack &&
+                GetContainableProps(contentStack) is WaterTightContainableProps containableProps)
             {
                 float litres = GetCurrentLitres(itemstack);
-                nutriProps.Health *= litres;
+
                 nutriProps.Satiety *= litres;
+                nutriProps.Health *= litres;
                 nutriProps.Intoxication *= litres;
                 nutriProps.Psychedelic *= litres;
+
                 nutriProps.EatenStack = new JsonItemStack();
                 nutriProps.EatenStack.ResolvedItemstack = itemstack.Clone();
                 nutriProps.EatenStack.ResolvedItemstack.StackSize = 1;
@@ -828,21 +833,40 @@ namespace Vintagestory.GameContent
         public FoodNutritionProperties GetNutritionPropertiesPerLitre(IWorldAccessor world, ItemStack itemstack, Entity forEntity)
         {
             if (GetContent(itemstack) is ItemStack contentStack &&
-                GetContainableProps(contentStack) is WaterTightContainableProps props)
+                GetContainableProps(contentStack) is WaterTightContainableProps containerProps)
             {
-                if (props.NutritionPropsPerLitre is FoodNutritionProperties nutriPropsPerLitre) return nutriPropsPerLitre;
+                FoodNutritionProperties nutriProps = null;
 
-                if (contentStack.Collectible.GetNutritionProperties(world, contentStack, forEntity)?.Clone() is FoodNutritionProperties nutriProps)
+                if (containerProps.NutritionPropsPerLitre is FoodNutritionProperties nutriPropsPerLitre)
+                {
+                    nutriProps = nutriPropsPerLitre.Clone();
+                }
+
+                if (contentStack.Collectible.GetNutritionProperties(world, contentStack, forEntity) is FoodNutritionProperties nutriPropsPerItem)
                 {
                     // If we have no NutritionPropsPerLitre but we do have nutrition props we'll pretend they're per item and so adjust accordingly
-                    float itemsPerLitre = props.ItemsPerLitre;
-                    nutriProps.Health *= itemsPerLitre;
+                    nutriProps = nutriPropsPerItem.Clone();
+                    float itemsPerLitre = containerProps.ItemsPerLitre;
                     nutriProps.Satiety *= itemsPerLitre;
+                    nutriProps.Health *= itemsPerLitre;
                     nutriProps.Intoxication *= itemsPerLitre;
                     nutriProps.Psychedelic *= itemsPerLitre;
-
-                    return nutriProps;
                 }
+
+                if (nutriProps != null && forEntity is EntityPlayer player)
+                {
+                    ItemSlot dummySlot = new DummySlot(contentStack);
+                    TransitionState state = contentStack.Collectible.UpdateAndGetTransitionState(api.World, dummySlot, EnumTransitionType.Perish);
+                    float spoilState = state?.TransitionLevel ?? 0;
+
+                    float satLossMul = GlobalConstants.FoodSpoilageSatLossMul(spoilState, contentStack, player);
+                    float healthLossMul = GlobalConstants.FoodSpoilageHealthLossMul(spoilState, contentStack, player);
+
+                    nutriProps.Satiety *= satLossMul;
+                    nutriProps.Health *= healthLossMul;
+                }
+
+                return nutriProps;
             }
 
             return null;
@@ -978,7 +1002,7 @@ namespace Vintagestory.GameContent
             }
 
 
-            int moved = SplitStackAndPerformAction(byEntity, containerSlot, (stack) => { SetContent(stack, null); return contentStack.StackSize; } );
+            int moved = SplitStackAndPerformAction(byEntity, containerSlot, (stack) => { SetContent(stack, null); return contentStack.StackSize; });
 
             DoLiquidMovedEffects(byPlayer, contentStack, moved, EnumLiquidDirection.Pour);
             return true;
@@ -1127,8 +1151,10 @@ namespace Vintagestory.GameContent
             float litres = GetCurrentLitres(inSlot.Itemstack);
             ItemStack contentStack = GetContent(inSlot.Itemstack);
 
-            if (litres <= 0) dsc.AppendLine(Lang.Get("Empty"));
-
+            if (litres <= 0)
+            {
+                dsc.AppendLine(Lang.Get("Empty"));
+            }
             else
             {
                 string incontainerrname = Lang.Get(contentStack.Collectible.Code.Domain + ":incontainer-" + contentStack.Class.ToString().ToLowerInvariant() + "-" + contentStack.Collectible.Code.Path);
