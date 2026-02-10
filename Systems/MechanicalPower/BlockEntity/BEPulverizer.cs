@@ -177,7 +177,7 @@ namespace Vintagestory.GameContent.Mechanics
             ICoreClientAPI capi = Api as ICoreClientAPI;
 
 
-            MeshData meshTop = ObjectCacheUtil.GetOrCreate(capi, "pulverizertopmesh-"+rotateY, () =>
+            MeshData meshTop = ObjectCacheUtil.GetOrCreate(capi, "pulverizertopmesh-" + rotateY, () =>
             {
                 Shape shapeTop = API.Common.Shape.TryGet(capi, "shapes/block/wood/mechanics/pulverizer-top.json");
                 capi.Tesselator.TesselateShape(Block, shapeTop, out MeshData mesh, new Vec3f(0, rotateY, 0));
@@ -230,12 +230,13 @@ namespace Vintagestory.GameContent.Mechanics
             Vec4d vec = new Vec4d(blockSel.HitPosition.X, blockSel.HitPosition.Y, blockSel.HitPosition.Z, 1);
             Vec4d tvec = mat.TransformVector(vec);
             int a = Facing.Axis == EnumAxis.Z ? 1 : 0;
-            ItemSlot targetSlot = tvec.X < 0.5 ? inv[a] : inv[1-a];
+            ItemSlot targetSlot = tvec.X < 0.5 ? inv[a] : inv[1 - a];
 
             if (handslot.Empty)
             {
                 TryTake(targetSlot, byPlayer);
-            } else
+            }
+            else
             {
                 if (TryAddPart(handslot, byPlayer))
                 {
