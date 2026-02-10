@@ -686,15 +686,30 @@ namespace Vintagestory.GameContent
 
             if (blockSel == null || byEntity.Controls.ShiftKey)
             {
-                if (byEntity.Controls.ShiftKey) base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
+                // We need to make sure we aren't doing anything
+                // with liquid handling before calling up to
+                // the base method because it will call out to
+                // tryEatBegin and hijack our control flow.
+                bool lookingAtLiquidContainer = blockSel != null && api.World.BlockAccessor.GetBlock(blockSel.Position) is BlockLiquidContainerBase;
 
-                if (handHandling != EnumHandHandling.PreventDefaultAction && CanDrinkFrom && GetNutritionPropertiesPerLitre(byEntity.World, itemslot.Itemstack, byEntity) != null)
+                // Make sure we don't try to drink when taking out
+                // the portion or when we should ground store instead.
+                // Note: This can't work with buckets when there's
+                // room to ground store them between a barrel and
+                // the player because this entire method won't get
+                // called.
+                bool shouldDrink = (blockSel == null || !byEntity.Controls.ShiftKey) && CanDrinkFrom && GetNutritionProperties(byEntity.World, itemslot.Itemstack, byEntity) != null;
+
+                if (handHandling != EnumHandHandling.PreventDefaultAction && shouldDrink && GetNutritionPropertiesPerLitre(byEntity.World, itemslot.Itemstack, byEntity) != null)
                 {
                     tryEatBegin(itemslot, byEntity, ref handHandling, "drink", 4);
                     return;
                 }
 
-                if (!byEntity.Controls.ShiftKey) base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
+                if (!byEntity.Controls.ShiftKey || (byEntity.Controls.ShiftKey && !lookingAtLiquidContainer))
+                {
+                    base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
+                }
 
                 return;
             }
