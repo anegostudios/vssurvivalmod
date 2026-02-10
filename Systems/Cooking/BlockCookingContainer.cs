@@ -344,12 +344,12 @@ namespace Vintagestory.GameContent
             return stacks.ToArray();
         }
 
-        public IInFirepitRenderer GetRendererWhenInFirepit(ItemStack stack, BlockEntityFirepit firepit, bool forOutputSlot)
+        public IInFirepitRenderer GetRendererWhenInFirepit(ItemStack stack, BlockEntity firepit, bool forOutputSlot)
         {
             return new PotInFirepitRenderer(api as ICoreClientAPI, stack, firepit.Pos, forOutputSlot);
         }
 
-        public EnumFirepitModel GetDesiredFirepitModel(ItemStack stack, BlockEntityFirepit firepit, bool forOutputSlot)
+        public EnumFirepitModel GetDesiredFirepitModel(ItemStack stack, BlockEntity firepit, bool forOutputSlot)
         {
             return EnumFirepitModel.Wide;
         }
