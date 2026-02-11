@@ -475,7 +475,7 @@ namespace Vintagestory.GameContent
 
             DummyInventory dummyInv = new DummyInventory(api);
 
-            ItemSlot mealSlot = GetDummySlotForFirstPerishableStack(api.World, stacks, null, dummyInv);
+            ItemSlot dummySlot = GetDummySlotForFirstPerishableStack(api.World, stacks, null, dummyInv);
             dummyInv.OnAcquireTransitionSpeed += (transType, stack, mul) =>
             {
                 float invMul = inSlot.Inventory?.GetTransitionSpeedMul(transType, crockStack) ?? 1;
@@ -524,10 +524,10 @@ namespace Vintagestory.GameContent
                 dsc.AppendLine(Lang.Get("Contents: {0}", Lang.Get("meal-ingredientlist-" + stacks.Length, stacks.Select(stack => Lang.Get("{0}x {1}", stack.StackSize, stack.GetName())))));
             }
 
-            var perishState = mealSlot.Itemstack?.Collectible.UpdateAndGetTransitionStates(api.World, inSlot)?.FirstOrDefault(state => state.Props.Type is EnumTransitionType.Perish);
+            var perishState = dummySlot.Itemstack?.Collectible.UpdateAndGetTransitionStates(api.World, dummySlot)?.FirstOrDefault(state => state.Props.Type is EnumTransitionType.Perish);
             if (perishState != null)
             {
-                mealSlot.Itemstack?.Collectible.AppendPerishableInfoText(mealSlot, dsc, world, perishState, false);
+                dummySlot.Itemstack?.Collectible.AppendPerishableInfoText(dummySlot, dsc, world, perishState, false);
             }
 
             if (crockStack.Attributes.GetBool("sealed"))
