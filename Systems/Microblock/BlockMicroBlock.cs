@@ -318,7 +318,7 @@ namespace Vintagestory.GameContent
 
 
 
-        public override bool MatchesForCrafting(ItemStack inputStack, GridRecipe gridRecipe, CraftingRecipeIngredient ingredient)
+        public override bool MatchesForCrafting(ItemStack inputStack, IRecipeBase gridRecipe, IRecipeIngredient ingredient)
         {
             int len = (inputStack.Attributes["materials"] as StringArrayAttribute)?.value?.Length ?? 0;
 
@@ -327,7 +327,7 @@ namespace Vintagestory.GameContent
             return base.MatchesForCrafting(inputStack, gridRecipe, ingredient);
         }
 
-        public override void OnCreatedByCrafting(ItemSlot[] allInputslots, ItemSlot outputSlot, GridRecipe byRecipe)
+        public override void OnCreatedByCrafting(ItemSlot[] allInputslots, ItemSlot outputSlot, IRecipeBase byRecipe)
         {
             List<int> matids = new List<int>();
             List<int> matquantities = new List<int>();
@@ -381,7 +381,7 @@ namespace Vintagestory.GameContent
             base.OnCreatedByCrafting(allInputslots, outputSlot, byRecipe);
         }
 
-        public override bool ConsumeCraftingIngredients(ItemSlot[] slots, ItemSlot outputSlot, GridRecipe matchingRecipe)
+        public override bool ConsumeCraftingIngredients(ItemSlot[] slots, ItemSlot outputSlot, IRecipeBase matchingRecipe)
         {
             if (matchingRecipe.Name == "chiseledblockcombine")
             {
@@ -781,9 +781,9 @@ namespace Vintagestory.GameContent
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
             var tree = inSlot.Itemstack.Attributes;
-            string blockName = tree.GetString("blockName", null);
+            string blockName = tree.GetString("blockName");
 
-            int nind = blockName.IndexOf('\n');
+            int nind = blockName?.IndexOf('\n') ?? 0;
             if (nind > 0)
             {
                 dsc.AppendLine(blockName.Substring(nind + 1));

@@ -14,7 +14,7 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockLantern : Block, ITexPositionSource, IAttachableToEntity, IContainedMeshSource
+    public class BlockLantern : Block, ITexPositionSource, IAttachableToEntity, IContainedMeshSource, IContainedInteractable
     {
         protected IAttachableToEntity attrAtta;
         #region IAttachableToEntity
@@ -52,7 +52,7 @@ namespace Vintagestory.GameContent
             AssetLocation shapeloc = Shape.Base.CopyWithPathPrefixAndAppendixOnce("shapes/", ".json");
             Shape shape = API.Common.Shape.TryGet(api, shapeloc);
 
-            return GenMesh(api as ICoreClientAPI, material, lining, glass, shape);            
+            return GenMesh(api as ICoreClientAPI, material, lining, glass, shape);
         }
 
         public string GetMeshCacheKey(ItemSlot slot)
@@ -417,6 +417,73 @@ namespace Vintagestory.GameContent
             return stacks;
         }
 
-        
+
+        public WorldInteraction[] GetContainedInteractionHelp(BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        {
+            return [];
+        }
+
+        public bool OnContainedInteractStart(BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        {
+            string lining = slot.Itemstack.Attributes.GetString("lining");
+            string glass = slot.Itemstack.Attributes.GetString("glass");
+            ItemSlot handSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
+            if (handSlot.Empty) return false;
+
+            CollectibleObject obj = handSlot.Itemstack.Collectible;
+            if (obj.FirstCodePart() == "glass" && obj.Variant.ContainsKey("color"))
+            {
+                if (glass != "quartz" && byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
+                {
+                    ItemStack stack = new ItemStack(be.Api.World.GetBlock("glass-" + glass));
+                    if (!byPlayer.InventoryManager.TryGiveItemstack(stack, true))
+                    {
+                        be.Api.World.SpawnItemEntity(stack, be.Pos.ToVec3d().Add(0.5, 0, 0.5));
+                    }
+
+                    be.Api.World.Logger.Audit("{0} Replaced glass {1} with {2} for Lantern in Ground Storage at {3}.",
+                        byPlayer.PlayerName,
+                        stack.Collectible.Code,
+                        obj.Code,
+                        be.Pos
+                    );
+                }
+
+                slot.Itemstack.Attributes.SetString("glass", obj.Variant["color"]);
+                glass = obj.Variant["color"];
+                if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative && glass != "quartz") handSlot.TakeOut(1);
+
+                (byPlayer as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+                be.Api.World.PlaySoundAt(be.Api.World.GetBlock("glass-" + glass).Sounds.Place, be.Pos, -0.4, byPlayer);
+
+                (be as BlockEntityGroundStorage)?.LightUpdate(slot.Itemstack);
+
+                be.MarkDirty(true);
+                return true;
+            }
+
+            if (lining == null || lining == "plain" && obj is ItemMetalPlate && obj.Variant["metal"] is "gold" or "silver" or "electrum")
+            {
+                slot.Itemstack.Attributes.SetString("lining", obj.Variant["metal"]);
+                (byPlayer as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+                be.Api.World.PlaySoundAt(new AssetLocation("sounds/block/plate"), be.Pos, -0.4, byPlayer);
+
+                handSlot.TakeOut(1);
+                be.MarkDirty(true);
+                return true;
+            }
+
+            return false;
+        }
+
+        public bool OnContainedInteractStep(float secondsUsed, BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        {
+            return false;
+        }
+
+        public void OnContainedInteractStop(float secondsUsed, BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        {
+
+        }
     }
 }

@@ -13,7 +13,6 @@ namespace Vintagestory.GameContent;
 public class BEBehaviorMannequin : BEBehaviorRotatablePlaceable, IInteractable, ITexPositionSource, IRotatablePlaceable
 {
     public InventoryBase Inventory { get; set; }
-
     public Size2i AtlasSize => capi!.BlockTextureAtlas.Size;
 
 
@@ -99,6 +98,8 @@ public class BEBehaviorMannequin : BEBehaviorRotatablePlaceable, IInteractable, 
             TexSource = this,
             IgnoreElements = willDeleEles
         }, shape, out mesh);
+
+        for (int i = 0; i < mesh.RenderPassCount; i++) mesh.RenderPassesAndExtraBits[i] = (int)EnumChunkRenderPass.BlendNoCull;
 
         if (shapeOffset != null) mesh.Translate(shapeOffset);
     }
@@ -232,5 +233,4 @@ public class BEBehaviorMannequin : BEBehaviorRotatablePlaceable, IInteractable, 
 
         return true;
     }
-
 }

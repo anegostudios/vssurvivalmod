@@ -136,7 +136,7 @@ namespace Vintagestory.GameContent
                     }
 
                     resostages[i] = new BuildStage() { ElementName = stages[i], Materials = stacks, MinHitboxY2 = miny2, MatCode = matcodes[i] };
-                    
+
                 }
 
                 BuildStagesByBlock[val.Key] = resostages;
@@ -162,27 +162,14 @@ namespace Vintagestory.GameContent
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
-            BlockEntity be = world.BlockAccessor.GetBlockEntity(blockSel.Position);
-            if (be is BlockEntityGroundStorage beg) 
-            { 
-                beg.OnPlayerInteractStart(byPlayer, blockSel);
-                return true;
-            }
-
-            return true;
-        }
-
-
-        public override EnumBlockMaterial GetBlockMaterial(IBlockAccessor blockAccessor, BlockPos pos, ItemStack stack = null)
-        {
-            return base.GetBlockMaterial(blockAccessor, pos, stack);
+            return GetBlockEntity<BlockEntityGroundStorage>(blockSel.Position)?.OnPlayerInteractStart(byPlayer, blockSel) ?? false;
         }
 
         public bool TryCreateKiln(IWorldAccessor world, IPlayer byPlayer, BlockPos pos)
         {
             ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
             if (hotbarSlot.Empty) return false;
-            
+
             BlockEntity be = world.BlockAccessor.GetBlockEntity(pos);
             if (be is BlockEntityGroundStorage beg)
             {
@@ -295,7 +282,7 @@ namespace Vintagestory.GameContent
             if (beb.Lit) return secondsIgniting > 2 ? EnumIgniteState.IgniteNow : EnumIgniteState.Ignitable;
             return EnumIgniteState.NotIgnitable;
         }
-        
+
 
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)

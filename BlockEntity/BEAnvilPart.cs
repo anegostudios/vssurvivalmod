@@ -36,7 +36,7 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(api);
 
-            fluxTag = api.TagsManager.GetGeneralTagSet(fluxTagName);
+            api.CollectibleTagRegistry.TryCreateTagSetAndLogIssues(out fluxTag, "flux");
 
             if (api is ICoreClientAPI capi)
             {
@@ -159,7 +159,7 @@ namespace Vintagestory.GameContent
 
             if (inv[1].Empty)
             {
-                if (hotbarslot.Itemstack?.Collectible?.Attributes?.IsTrue("isFlux") == true || hotbarslot.Itemstack?.Collectible?.GetTags(hotbarslot.Itemstack).IsSupersetOf(fluxTag) == true)
+                if (hotbarslot.Itemstack?.Collectible?.Attributes?.IsTrue("isFlux") == true || hotbarslot.Itemstack?.Collectible?.GetTags(hotbarslot.Itemstack).Overlaps(fluxTag) == true)
                 {
                     inv[1].Itemstack = hotbarslot.TakeOut(1);
                     updateMeshRefs();

@@ -48,7 +48,9 @@ namespace Vintagestory.GameContent
 
         public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandling handling)
         {
+            if (blockSel == null) return false;
             var begw = api.World.BlockAccessor.GetBlockEntity<BlockEntityGrindingWheel>(blockSel.Position);
+
             if (begw == null) return false;
 
             if (begw.OnInteractStep(secondsUsed, (byEntity as EntityPlayer).Player, blockSel))
@@ -72,6 +74,7 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandling handling)
         {
+            if (blockSel == null) return;
             var begw = api.World.BlockAccessor.GetBlockEntity<BlockEntityGrindingWheel>(blockSel.Position);
             if (begw == null) return;
             begw.OnInteractStop(secondsUsed, (byEntity as EntityPlayer).Player, blockSel);

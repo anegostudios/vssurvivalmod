@@ -1,15 +1,13 @@
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 
-#nullable disable
-
 namespace Vintagestory.GameContent;
 
 public class EntityElevatorSeat : EntityRideableSeat
 {
     public override EnumMountAngleMode AngleMode => EnumMountAngleMode.Unaffected;
     Dictionary<string, string> animations => (Entity as EntityElevator).MountAnimations;
-    public string actionAnim;
+    public string? actionAnim;
 
     public override AnimationMetaData SuggestedAnimation
     {

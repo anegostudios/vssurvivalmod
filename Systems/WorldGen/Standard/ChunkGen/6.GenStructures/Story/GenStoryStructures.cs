@@ -120,9 +120,10 @@ namespace Vintagestory.GameContent
         }
     }
 
-    public class GenStoryStructures : ModStdWorldGen, IBlockPatchModifier
+    public class GenStoryStructures : ModStdWorldGen, IBlockPatchModifier, IStoryStructureSystem
     {
         public WorldGenStoryStructuresConfig scfg;
+        WorldGenStoryStructuresConfig IStoryStructureSystem.scfg => scfg;
         protected LCGRandom strucRand; // Deterministic random
         protected LCGRandom grassRand; // Deterministic random
         protected bool FailedToGenerateLocation;
@@ -429,6 +430,7 @@ namespace Vintagestory.GameContent
                     var minZ = strucloc.CenterPos.Z - schem.SizeZ / 2;
                     var cuboidi = new Cuboidi(minX, strucloc.CenterPos.Y, minZ, minX + schem.SizeX, strucloc.CenterPos.Y + schem.SizeY, minZ + schem.SizeZ);
                     strucloc.Location = cuboidi;
+                    strucloc.WorldgenHeight = -1;
                 }
                 else
                 {

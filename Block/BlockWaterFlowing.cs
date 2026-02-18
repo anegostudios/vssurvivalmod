@@ -26,6 +26,11 @@ namespace Vintagestory.GameContent
             base.OnLoaded(api);
             Flow = Variant["flow"] is string f ? string.Intern(f) : null;
             FlowNormali = Flow != null ? Cardinal.FromInitial(Flow)?.Normali : null;
+            int fspeed = Attributes["flowSpeed"].AsInt(1);
+            if (fspeed > 1)
+            {
+                FlowNormali = FlowNormali?.Clone().Mul(fspeed);
+            }
 
             if (api.Side == EnumAppSide.Client)
             {

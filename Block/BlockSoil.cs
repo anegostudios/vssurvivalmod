@@ -282,7 +282,7 @@ namespace Vintagestory.GameContent
 
                 if (trfDist + yDist <= posRand)
                 {
-                    int blockId = bl.GetBlockId(posRand, climate.Temperature, climate.WorldgenRainfall, climate.Fertility, topblockid, pos, mapheight);
+                    int blockId = bl.GetBlockId(posRand, climate.Temperature, climate.WorldgenRainfall, climate.Fertility, topblockid, pos, mapheight, climate.Biome);
 
                     Block block = world.Blocks[blockId];
                     if (block is BlockSoil blockSoil)

@@ -35,18 +35,26 @@ namespace Vintagestory.GameContent
         /// The face variant of this block to drop when mined, if <see cref="drop"/> is not set.
         /// </summary>
         [DocumentAsJson("Optional", "north")]
-        string dropBlockFace = "north";
-
-        /// <summary>
-        /// The variant code used to look for certain faces.
-        /// </summary>
-        string variantCode = "horizontalorientation";
+        protected string dropBlockFace = "north";
 
         /// <summary>
         /// A custom item stack which will be dropped when this block is mined. If not set, then <see cref="dropBlockFace"/> will be used.
         /// </summary>
         [DocumentAsJson("Optional", "None")]
-        JsonItemStack drop = null;
+        protected JsonItemStack drop = null;
+
+        /// <summary>
+        /// If true, handles drops (default: true)
+        /// </summary>
+        [DocumentAsJson("Optional", "true")]
+        protected bool handleDrop = true;
+
+        /// <summary>
+        /// The variant code used to look for certain faces.
+        /// </summary>
+        protected string variantCode = "horizontalorientation";
+
+        
 
         public BlockBehaviorHorizontalOrientable(Block block) : base(block)
         {
@@ -67,6 +75,8 @@ namespace Vintagestory.GameContent
             {
                 drop = properties["drop"].AsObject<JsonItemStack>(null, block.Code.Domain);
             }
+
+            handleDrop = properties["handleDrop"].AsBool(true);
         }
 
         public override void OnLoaded(ICoreAPI api)
@@ -105,12 +115,19 @@ namespace Vintagestory.GameContent
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, ref float dropQuantityMultiplier, ref EnumHandling handled)
         {
+            if (!handleDrop) return null;
+
             handled = EnumHandling.PreventDefault;
             if (drop?.ResolvedItemstack != null)
             {
-                return new ItemStack[] { drop?.ResolvedItemstack.Clone() };
+                return [drop?.ResolvedItemstack.Clone()];
             }
-            return new ItemStack[] { new ItemStack(world.BlockAccessor.GetBlock(block.CodeWithVariant(variantCode, dropBlockFace))) };
+
+            var stack = new ItemStack(world.BlockAccessor.GetBlock(block.CodeWithVariant(variantCode, dropBlockFace)));
+            stack.StackSize = GameMath.RoundRandom(world.Rand, stack.StackSize * dropQuantityMultiplier);
+            if (stack.StackSize <= 0) return System.Array.Empty<ItemStack>();
+
+            return [stack];
         }
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos, ref EnumHandling handled)

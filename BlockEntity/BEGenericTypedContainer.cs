@@ -296,7 +296,7 @@ namespace Vintagestory.GameContent
 
                 if (player.WorldData.CurrentGameMode == EnumGameMode.Survival && Inventory.Empty)
                 {
-                    Api.World.PlaySoundAt(new AssetLocation("sounds/effect/toolbreak"), Pos, 0.5, player);
+                    Api.World.PlaySoundAt(CloseSound, Pos, 0.5, player);
 
                     JsonItemStack jstack = Block.Attributes["changeIntoWhenEmpty"][type].AsObject<JsonItemStack>();
                     if (jstack != null)
@@ -387,7 +387,7 @@ namespace Vintagestory.GameContent
             }
 
             string meshKey = type + block.Subtype + "-" + rndTexNum;
-            if (meshes.TryGetValue(meshKey, out MeshData mesh))
+            if (meshes.TryGetValue(meshKey, out MeshData mesh) && mesh != null)
             {
                 if (animUtil != null && animUtil.renderer == null)
                 {

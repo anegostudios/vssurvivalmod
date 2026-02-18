@@ -795,7 +795,7 @@ namespace Vintagestory.GameContent
             ItemStack[] stacks = GetNonEmptyContents(world, mealStack);
             DummyInventory dummyInv = new DummyInventory(api);
 
-            ItemSlot slot = BlockCrock.GetDummySlotForFirstPerishableStack(api.World, stacks, null, dummyInv);
+            ItemSlot dummySlot = BlockCrock.GetDummySlotForFirstPerishableStack(api.World, stacks, null, dummyInv);
             dummyInv.OnAcquireTransitionSpeed += (transType, stack, mul) =>
             {
                 float invMul = inSlot.Inventory?.GetTransitionSpeedMul(transType, mealStack) ?? 1;
@@ -803,10 +803,10 @@ namespace Vintagestory.GameContent
                 return invMul * GetContainingTransitionModifierContained(world, inSlot, transType);
             };
 
-            var perishState = slot.Itemstack?.Collectible.UpdateAndGetTransitionStates(api.World, inSlot)?.FirstOrDefault(state => state.Props.Type is EnumTransitionType.Perish);
+            var perishState = dummySlot.Itemstack?.Collectible.UpdateAndGetTransitionStates(api.World, dummySlot)?.FirstOrDefault(state => state.Props.Type is EnumTransitionType.Perish);
             if (perishState != null)
             {
-                slot.Itemstack?.Collectible.AppendPerishableInfoText(slot, dsc, world, perishState, false);
+                dummySlot.Itemstack?.Collectible.AppendPerishableInfoText(dummySlot, dsc, world, perishState, false);
             }
 
             float servings = GetQuantityServings(world, mealStack);

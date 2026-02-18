@@ -292,6 +292,8 @@ namespace Vintagestory.GameContent
 
             var btn = detailViewGui.GetToggleButton("pausegame");
             if (btn != null) btn.SetValue(!capi.Settings.Bool["noHandbookPause"]);
+
+            capi.World.FrameProfiler.Mark("handbook-opendetailpage");
         }
 
         protected virtual void OnDetailViewTabClicked(int index, GuiTab tab)
@@ -321,6 +323,7 @@ namespace Vintagestory.GameContent
                     PosY = 0
                 });
                 initDetailGui();
+
                 return true;
             }
 

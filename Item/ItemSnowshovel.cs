@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
@@ -80,35 +79,43 @@ namespace Vintagestory.GameContent
                 var plr = sapi.World.PlayerByUid(uid);
                 if (plr.Entity.BlockSelection == null) continue;
 
-                var nowPos = plr.Entity.BlockSelection.FullPosition; // plr.Entity.Pos.XYZ;
+                var nowPos = plr.Entity.BlockSelection.FullPosition;
                 if (!plr.Entity.Controls.Forward) continue;
 
-                if (nowPos.DistanceTo(prevpos) > 0.1)
+                if (nowPos.DistanceTo(prevpos) > 0.01)
                 {
-                    var facing = BlockFacing.FromVector((nowPos - prevpos));
+                    var vw = plr.Entity.Pos.GetViewVector().ToVec3d();
+                    vw.Y = 0;
+                    var facing = BlockFacing.FromVector(vw);
                     var dir = facing.Normald;
-                    if (!facing.IsHorizontal) continue;
 
                     var fromPos = prevpos.AsBlockPos;
 
                     prevpos.Add((nowPos - prevpos).Normalize().Mul(0.4));
+                    prevpos.Y = nowPos.Y;
 
                     Block block = getSnowyBlock(fromPos);
                     if (block == null) continue;
 
-                    // 1. Try to just add snow in front
+                    // 1. Try to add snow left or right, if height is > 3
+                    // does not work well / is unsatisfying
+                    /*if (block.GetSnowLevel(fromPos) >= 3)
+                    {
+                        bool left = sapi.World.Rand.NextDouble() < 0;
+
+                        if (left && tryMoveSnowTo(fromPos, dir.RotatedCopy(GameMath.PIHALF))) continue;
+                        if (!left && tryMoveSnowTo(fromPos, dir.RotatedCopy(-GameMath.PIHALF))) continue;
+                        if (!left && tryMoveSnowTo(fromPos, dir.RotatedCopy(GameMath.PIHALF))) continue;
+                        if (left && tryMoveSnowTo(fromPos, dir.RotatedCopy(-GameMath.PIHALF))) continue;
+                    }*/
+
+                    // 2. Try to just add snow in front
                     if (tryMoveSnowTo(fromPos, dir)) continue;
 
-                    // 2. Try to add snow left or right, if height is > 3
-                    if (block.GetSnowLevel(fromPos) >= 3)
-                    {
-                        if (tryMoveSnowTo(fromPos, dir.RotatedCopy(GameMath.PIHALF))) continue;
-                        if (tryMoveSnowTo(fromPos, dir.RotatedCopy(-GameMath.PIHALF))) continue;
-                    }
 
                     // 3. Can't move snow, no effect
 
-                    
+
                 }
             }
         }
@@ -118,8 +125,9 @@ namespace Vintagestory.GameContent
             var block = sapi.World.BlockAccessor.GetBlock(fromPos);
             if (block.GetSnowLevel(fromPos) == 0)
             {
-                block = sapi.World.BlockAccessor.GetBlock(fromPos.UpCopy());
-                if (block.GetSnowLevel(fromPos) == 0) return null;
+                var abovePos = fromPos.UpCopy();
+                block = sapi.World.BlockAccessor.GetBlock(abovePos);
+                if (block.GetSnowLevel(abovePos) == 0) return null;
             }
 
             return block;
@@ -132,6 +140,10 @@ namespace Vintagestory.GameContent
             if (snowyBlock == null) return true;
 
             var ba = sapi.World.BlockAccessor;
+
+            toDir.X = Math.Round(toDir.X);
+            toDir.Y = Math.Round(toDir.Y);
+            toDir.Z = Math.Round(toDir.Z);
 
             var frontPos = fromPos + toDir.AsBlockPos;
             var frontUpPos = frontPos.UpCopy();
@@ -150,6 +162,7 @@ namespace Vintagestory.GameContent
 
                 if (frontBlock.Id == 0)
                 {
+                    
                     float frontBelowSnow = frontBelowBlock.GetSnowLevel(frontBelowPos);
                     if (frontBelowSnow > 0)
                     {

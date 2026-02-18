@@ -100,6 +100,11 @@ namespace Vintagestory.ServerMods
                 EndSchematics = ends.ToArray();
             }
 
+            if (RequiredLandform != null && RequiredLandform.Any( l => l.Code == null || l.Type == null))
+            {
+                api.Logger.Error($"Dungeon {Code} has RequiredLandform with missing Code or Type.");
+            }
+
             for (var i = 0; i < Tiles.Count; i++)
             {
                 var tile = Tiles[i];

@@ -75,11 +75,11 @@ namespace Vintagestory.ServerMods
             ShuffledIndices.Shuffle(lcgRnd);
         }
 
-        internal void PlaceConnectorsForDebug(IBlockAccessor ba, IServerWorldAccessor world, BlockPos pos, int tileIndex, int i)
+        internal void PlaceConnectorsForDebug(IBlockAccessor ba, BlockPos pos, int tileIndex, int i)
         {
             foreach (var conn in ResolvedSchematics[tileIndex][i].Connectors)
             {
-                var pathPosition = pos + conn.Position;
+                var pathPosition = pos.AddCopy(conn.Position);
                 ba.SetBlock(BlockSchematic.ConnectorBlockId, pathPosition);
                 var be = ba.GetBlockEntity<BETileConnector>(pathPosition);
                 be.Target = string.Join(",", conn.Targets);

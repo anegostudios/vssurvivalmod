@@ -14,32 +14,6 @@ namespace Vintagestory.GameContent
     public class ItemKnife : Item
     {
         public static SimpleParticleProperties particlesStab;
-
-        // Knife harvesting speed is equivalent to 50% of the plant breaking speed bonus
-        public virtual float GetKnifeHarvestingSpeed(ItemSlot slot) => 1f / ((GetMiningSpeeds(slot)[EnumBlockMaterial.Plant] - 1) * 0.5f + 1);
-
-
-        public string knifeHitBlockAnimation;
-        public string knifeHitEntityAnimation;
-
-        public override string GetHeldTpHitAnimation(ItemSlot slot, Entity byEntity)
-        {
-            if ((byEntity as EntityPlayer)?.EntitySelection != null) return knifeHitEntityAnimation;
-            if ((byEntity as EntityPlayer)?.BlockSelection != null)
-            {
-                if (byEntity.AnimManager.IsAnimationActive("knifestab")) return "idle";
-                return knifeHitBlockAnimation;
-            }
-            return base.GetHeldTpHitAnimation(slot, byEntity);
-        }
-
-        public override void OnLoaded(ICoreAPI api)
-        {
-            base.OnLoaded(api);
-            knifeHitBlockAnimation = Attributes["knifeHitBlockAnimation"].AsString(HeldTpHitAnimation);
-            knifeHitEntityAnimation = Attributes["knifeHitEntityAnimation"].AsString(HeldTpHitAnimation);
-        }
-
         static ItemKnife()
         {
             particlesStab = new SimpleParticleProperties(
@@ -67,6 +41,33 @@ namespace Vintagestory.GameContent
             particlesStab.OpacityEvolve = EvolvingNatFloat.create(EnumTransformFunction.LINEAR, -150);
         }
 
+
+        // Knife harvesting speed is equivalent to 50% of the plant breaking speed bonus
+        public virtual float GetKnifeHarvestingSpeed(ItemSlot slot) => 1f / ((GetMiningSpeeds(slot)[EnumBlockMaterial.Plant] - 1) * 0.5f + 1);
+        public string knifeHitBlockAnimation;
+        public string knifeHitEntityAnimation;
+
+
+        public override string GetHeldTpHitAnimation(ItemSlot slot, Entity byEntity)
+        {
+            if ((byEntity as EntityPlayer)?.EntitySelection != null) return knifeHitEntityAnimation;
+            if ((byEntity as EntityPlayer)?.BlockSelection != null)
+            {
+                if (byEntity.AnimManager.IsAnimationActive("knifestab")) return "idle";
+                return knifeHitBlockAnimation;
+            }
+            return base.GetHeldTpHitAnimation(slot, byEntity);
+        }
+
+        public override void OnLoaded(ICoreAPI api)
+        {
+            base.OnLoaded(api);
+            knifeHitBlockAnimation = Attributes["knifeHitBlockAnimation"].AsString(HeldTpHitAnimation);
+            knifeHitEntityAnimation = Attributes["knifeHitEntityAnimation"].AsString(HeldTpHitAnimation);
+        }
+
+
+
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
             base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
@@ -81,7 +82,7 @@ namespace Vintagestory.GameContent
                 byEntity.Attributes.SetBool("stabPlayed", false);
                 byEntity.Attributes.SetBool("didHurt", false);
 
-                var healthTree = byEntity.WatchedAttributes.GetTreeAttribute("health") as ITreeAttribute;
+                var healthTree = byEntity.WatchedAttributes.GetTreeAttribute("health");
                 if (healthTree != null && healthTree.GetFloat("currenthealth") <= 2)
                 {
                     if (api.Side == EnumAppSide.Client)
@@ -95,16 +96,21 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            EntityBehaviorHarvestable bh;
-            if (byEntity.Controls.ShiftKey && entitySel != null && (bh = entitySel.Entity.GetBehavior<EntityBehaviorHarvestable>()) != null && bh.Harvestable)
+            
+            if (byEntity.Controls.ShiftKey)
             {
-                byEntity.World.PlaySoundAt(new AssetLocation("sounds/player/scrape"), entitySel.Entity, (byEntity as EntityPlayer)?.Player, false, 12);
-                handling = EnumHandHandling.PreventDefault;
-                return;
+                var bh = getIHarvestable(byEntity, blockSel, entitySel, out var soundPos);
+                if (bh != null && bh.IsHarvestable(slot, byEntity))
+                {
+                    byEntity.World.PlaySoundAt(bh.HarvestableSound, soundPos.X, soundPos.Y, soundPos.Z, (byEntity as EntityPlayer)?.Player, false, 12);
+                    handling = EnumHandHandling.PreventDefault;
+                    return;
+                }
             }
 
             handling = EnumHandHandling.NotHandled;
         }
+
 
         public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
@@ -162,17 +168,16 @@ namespace Vintagestory.GameContent
             // Crappy fix to make animal harvesting not buggy T_T
             if (api.Side == EnumAppSide.Server) return true;
 
-
-
-            EntityBehaviorHarvestable bh;
-            if (entitySel != null && (bh = entitySel.Entity.GetBehavior<EntityBehaviorHarvestable>()) != null && bh.Harvestable)
+            var bh = getIHarvestable(byEntity, blockSel, entitySel, out _);
+            if (bh != null && bh.IsHarvestable(slot, byEntity))
             {
                 if (byEntity.World.Side == EnumAppSide.Client)
                 {
-                    byEntity.StartAnimation("knifecut");
+                    slot.Itemstack.TempAttributes.SetString("harvestanimation", bh.HarvestAnimation);
+                    byEntity.StartAnimation(bh.HarvestAnimation);
                 }
 
-                return secondsUsed < GetKnifeHarvestingSpeed(slot) * bh.GetHarvestDuration(byEntity) + 0.15f;
+                return secondsUsed < GetKnifeHarvestingSpeed(slot) * bh.GetHarvestDuration(slot,byEntity) + 0.15f;
             }
 
             return false;
@@ -183,20 +188,15 @@ namespace Vintagestory.GameContent
         public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             byEntity.StopAnimation("insertgear");
-            byEntity.StopAnimation("knifecut");
+            byEntity.StopAnimation(slot.Itemstack.TempAttributes.GetString("harvestanimation"));
 
             if (byEntity.LeftHandItemSlot?.Itemstack?.Collectible is ItemTemporalGear)
             {
                 return;
             }
 
-            if (entitySel == null) return;
-
-
-            EntityBehaviorHarvestable bh = entitySel.Entity.GetBehavior<EntityBehaviorHarvestable>();
-            //byEntity.World.Logger.Debug("{0} knife interact stop, seconds used {1} / {2}, entity: {3}", byEntity.World.Side, secondsUsed, bh?.HarvestDuration, entitySel.Entity);
-
-            if (bh != null && bh.Harvestable && secondsUsed >= GetKnifeHarvestingSpeed(slot) * bh.GetHarvestDuration(byEntity) - 0.1f)
+            IHarvestable bh = getIHarvestable(byEntity, blockSel, entitySel, out _);
+            if (bh != null && bh.IsHarvestable(slot, byEntity) && secondsUsed >= GetKnifeHarvestingSpeed(slot) * bh.GetHarvestDuration(slot, byEntity) - 0.1f)
             {
                 bh.SetHarvested((byEntity as EntityPlayer)?.Player);
                 slot?.Itemstack?.Collectible.DamageItem(byEntity.World, byEntity, slot, 3);
@@ -206,8 +206,7 @@ namespace Vintagestory.GameContent
 
         public override bool OnHeldInteractCancel(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
         {
-            //byEntity.World.Logger.Debug("{0} knife interact cancelled, seconds used {1}", byEntity.World.Side, secondsUsed);
-            byEntity.StopAnimation("knifecut");
+            byEntity.StopAnimation(slot.Itemstack.TempAttributes.GetString("harvestanimation"));
             byEntity.StopAnimation("insertgear");
             return base.OnHeldInteractCancel(secondsUsed, slot, byEntity, blockSel, entitySel, cancelReason);
         }
@@ -221,6 +220,27 @@ namespace Vintagestory.GameContent
                 handling = EnumHandHandling.PreventDefault;
             }
         }
+
+
+        protected static IHarvestable getIHarvestable(EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, out Vec3d pos)
+        {
+            IHarvestable bh = entitySel?.Entity.GetInterface<IHarvestable>();
+            if (bh != null)
+            {
+                pos = entitySel.Position;
+                return bh;
+            }
+
+            pos = null;
+            if (blockSel != null)
+            {
+                bh = byEntity.World.BlockAccessor.GetBlock(blockSel.Position)?.GetInterface<IHarvestable>(byEntity.World, blockSel.Position);
+                pos = blockSel.Position.ToVec3d().Add(0.5, 0, 0.5);
+            }
+            
+            return bh;
+        }
+
 
 
     }

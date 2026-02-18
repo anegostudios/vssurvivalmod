@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using Vintagestory.API.Common;
@@ -65,7 +65,7 @@ namespace Vintagestory.GameContent
             // 1. Global average temperature at this location
             double heretemp = climate.WorldGenTemperature;
 
-            // 2. season based temperature
+            // 2. Add season based temperature
             // - Near the equator the variation seems to be only 5-10 degrees
             // - In european cities the per month average temperature seem to vary by about 20 degrees (~ 0 - 20)
             // - Above the arctic circle it seems to vary by up to 60 degrees (~ -39 - 20)
@@ -100,7 +100,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            // 3. diurnal temperature variation:
+            // 3. Add diurnal temperature variation:
             // https://en.wikipedia.org/wiki/Diurnal_temperature_variation
 
             // Variation is higher in dry areas
@@ -111,10 +111,10 @@ namespace Vintagestory.GameContent
             double distanceTo6Am = GameMath.SmoothStep(Math.Abs(GameMath.CyclicValueDistance(4, hourOfDay, 24) / 12f));
             heretemp += (distanceTo6Am - 0.5) * diurnalVariationAmplitude;
 
-            // 4. Yearly random noise
+            // 4. Add yearly random noise
             heretemp += YearlyTemperatureNoise.Noise(totalDays, 0) * 3;
 
-            // 5. Daily random noise
+            // 5. Add daily random noise
             heretemp += DailyTemperatureNoise.Noise(totalDays, 0);
 
             climate.Temperature = (float)heretemp;

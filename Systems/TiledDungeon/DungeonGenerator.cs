@@ -33,7 +33,7 @@ namespace Vintagestory.ServerMods
             var newloc = new Cuboidi(startPos.X, startPos.Y, startPos.Z, startPos.X + schematic.SizeX, startPos.Y + schematic.SizeY, startPos.Z + schematic.SizeZ);
             var dgd = new DungeonGenWorkspace(dungeon, minTiles, maxTiles, openSet, placeTasks, existingStructures, gennedStructures,null);
 
-            addTile(dgd, new ConnectorMetaData(), dungeon.start, rot, schematic, startPos, newloc);
+            addTile(dgd, new ConnectorMetaData(), dungeon.start, rot, schematic, new FastVec3i(startPos), newloc);
 
             if (TryGenerateTiles(rnd, dgd))
             {
@@ -76,7 +76,13 @@ namespace Vintagestory.ServerMods
                 {
                     // 1. Pick a random tile
                     DungeonTile? tile = pickTile(dgd, tileIndices, lcgRnd, openSide);
-                    if (tile == null) break;
+                    if (tile == null)
+                    {
+                        // requeue the failed side, so if we finish the room it can also be removed properly from the open connectors
+                        // else we will leave behind sides that won't close
+                        dgd.OpenSet.Add(openSide);
+                        break;
+                    }
 
                     // 2. Is a sub gen? Call sub gen
                     if (tile.TileGenerator != null)
@@ -98,7 +104,7 @@ namespace Vintagestory.ServerMods
                     // 3. Otherwise, pick a random connectable schematic from this tile
                     BlockSchematicPartial? schematic = null;
                     int rot = 0;
-                    BlockPos? offsetPos = null;
+                    FastVec3i offsetPos = new FastVec3i();
 
                     tile.FreshShuffleIndices(lcgRnd);
                     int len = tile.ResolvedSchematics.Length;
@@ -139,6 +145,8 @@ namespace Vintagestory.ServerMods
                     if (startPos.X < 0 || startPos.Y < 0 || startPos.Z < 0) continue; // Beyond block bounds
                     if (startPos.X >= mapsize.X || startPos.Y >= mapsize.Y || startPos.Z >= mapsize.Z) continue; // Beyond block bounds
 
+                    if (CheckIfNewPathsAreBlocked(dgd, schematic, openSide, startPos)) continue;
+
                     addTile(dgd, openSide, tile.Code, rot, schematic, startPos, newloc);
                     dgd.PlacedTiles++;
                     break;
@@ -154,13 +162,39 @@ namespace Vintagestory.ServerMods
             return false;
         }
 
-        private void addTile(DungeonGenWorkspace dgd, ConnectorMetaData openSide, string tileCode, int rot, BlockSchematicPartial schematic, BlockPos startPos, Cuboidi newloc)
+        private static bool CheckIfNewPathsAreBlocked(DungeonGenWorkspace dgd, BlockSchematicPartial schematic, ConnectorMetaData openSide,
+            FastVec3i startPos)
+        {
+            // check when adding a new room/sub room piece if its connectors would lead directly into another room without any connection to it
+            // and potentially block any end cap generation
+            foreach (var con in schematic.Connectors)
+            {
+                // connection where the new rooms is attached
+                if (con.ConnectsTo(openSide, startPos)) continue;
+                // any other connections from the new room to any other room in the dungeon
+                if (dgd.OpenSet.Any(o => con.ConnectsTo(o, startPos))) continue;
+
+                var newpos = (con.Position).Add(startPos).Add(con.Facing.Normali * 2);
+                if (dgd.GeneratedStructures.Any(s => s.Location.Contains(newpos)))
+                {
+                    return true;
+                }
+                if (dgd.ExistingStructures.Any(s => s.Location.Contains(newpos)))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private void addTile(DungeonGenWorkspace dgd, ConnectorMetaData openSide, string tileCode, int rot, BlockSchematicPartial schematic, FastVec3i startPos, Cuboidi newloc)
         {
             dgd.PlaceTasks.Add(new TilePlaceTask()
             {
                 TileCode = tileCode,
                 Rotation = rot,
-                Pos = startPos.Copy(),
+                Pos = new BlockPos(startPos.X, startPos.Y, startPos.Z),
                 FileName = schematic.FromFileName,
                 SizeX = schematic.SizeX,
                 SizeY = schematic.SizeY,
@@ -174,7 +208,7 @@ namespace Vintagestory.ServerMods
                 SuppressRivulets = true
             });
 
-            FilterOpenSet(schematic, tileCode, rot, startPos, dgd, openSide);
+            FilterOpenSet(schematic, startPos, dgd, openSide);
 
             dgd.OnTileAdded(tileCode);
         }
@@ -202,7 +236,7 @@ namespace Vintagestory.ServerMods
                     }
 
                     int rot = 0;
-                    BlockPos? offsetPos = null;
+                    FastVec3i offsetPos = new FastVec3i();
                     BlockSchematicPartial? schematic = null;
                     for (var i = 0; i < 4; i++)
                     {
@@ -397,7 +431,7 @@ namespace Vintagestory.ServerMods
             return false;
         }
 
-        public void FilterOpenSet(BlockSchematicPartial schematic, string code, int rot, BlockPos startPos, DungeonGenWorkspace dgd, ConnectorMetaData attachingCon)
+        public void FilterOpenSet(BlockSchematicPartial schematic, FastVec3i startPos, DungeonGenWorkspace dgd, ConnectorMetaData attachingCon)
         {
             var newOpenSet = dgd.OpenSet.ToList();
             List<ConnectorMetaData> toAdd = new(); // Needs to be added after we looped over the OpenSet

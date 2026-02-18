@@ -41,7 +41,7 @@ namespace Vintagestory.GameContent
             if (!triesToMove && !eagent.Controls.IsFlying && !eagent.Controls.Gliding && eagent.RightHandItemSlot?.Empty == true && !eagent.Swimming && bhtiredness?.IsSleeping != true)
             {
                 secondsIdleAccum += dt;
-                if (secondsIdleAccum > 20 && eagent.World.Rand.NextDouble() < 0.004)
+                if (eagent.World.Rand.NextDouble() < 0.003)
                 {
                     eagent.StartAnimation(randomIdleAnimations[eagent.World.Rand.Next(randomIdleAnimations.Length)]);
                     secondsIdleAccum = 0;

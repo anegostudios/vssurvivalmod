@@ -78,9 +78,10 @@ namespace Vintagestory.GameContent
         /// If true, can spread in multiple directions at once. On by default
         /// </summary>
         [DocumentAsJson("Optional", "None")]
-        protected bool multiplySpread = true;
+        public bool multiplySpread = true;
 
         protected bool carver;
+        [ThreadStatic] protected static IBlockAccessor bulkBlockAccessorMinimal;    // Used by rivulets carver; ThreadStatic will automatically be disposed when the thread is disposed
 
         public BlockBehaviorFiniteSpreadingLiquid(Block block) : base(block)
         {
@@ -129,11 +130,16 @@ namespace Vintagestory.GameContent
         {
             if (carver)
             {
-                var waterblock = world.GetBlock(AssetLocation.Create(this.block.Variant["type"] + "-still-7", this.block.Code.Domain));
-                world.BlockAccessor.SetBlock(waterblock.Id, pos, BlockLayersAccess.Fluid); // Don't use BulkBlockAccessor here. Creates endless loops
+                if (world.Side is EnumAppSide.Server)
+                {
+                    bulkBlockAccessorMinimal ??= world.GetBlockAccessorBulkMinimalUpdate(true, false);
 
-                waterblock.GetBehavior<BlockBehaviorFiniteSpreadingLiquid>().carveRivulet(world, pos);
-                world.BulkBlockAccessor.Commit();
+                    var waterblock = world.GetBlock(AssetLocation.Create(this.block.Variant["type"] + "-still-7", this.block.Code.Domain));
+                    bulkBlockAccessorMinimal.SetBlock(waterblock.Id, pos, BlockLayersAccess.Fluid); // Don't use BulkBlockAccessor here. Creates endless loops
+
+                    waterblock.GetBehavior<BlockBehaviorFiniteSpreadingLiquid>().carveRivulet(world, bulkBlockAccessorMinimal, pos);
+                    bulkBlockAccessorMinimal.Commit();
+                }
                 return;
             }
 
@@ -212,7 +218,7 @@ namespace Vintagestory.GameContent
             return null;
         }
 
-        private void carveRivulet(IWorldAccessor world, BlockPos pos)
+        private void carveRivulet(IWorldAccessor world, IBlockAccessor blockAccessor, BlockPos pos)
         {
             var liquidLevel = block.LiquidLevel;
             if (liquidLevel == 0) return;
@@ -234,38 +240,38 @@ namespace Vintagestory.GameContent
                 pos = path[i];
                 if (i == 1)
                 {
-                    if (!placeRiver(world, pos, ref lblock)) return;
+                    if (!placeRiver(world, blockAccessor, pos, ref lblock)) return;
                 }
 
                 pos.Down();
                 var belowBlock = world.BlockAccessor.GetBlock(pos);
                 while (pos.Y > 0 && !belowBlock.SideSolid.Any)
                 {
-                    world.BulkBlockAccessor.SetBlock(0, pos);
-                    world.BulkBlockAccessor.SetBlock(world.GetBlock(block.CodeWithParts("d", "" + 6)).BlockId, pos, BlockLayersAccess.Fluid);
+                    blockAccessor.SetBlock(0, pos);
+                    blockAccessor.SetBlock(world.GetBlock(block.CodeWithParts("d", "" + 6)).BlockId, pos, BlockLayersAccess.Fluid);
                     belowBlock = world.BlockAccessor.GetBlock(pos.Down());
                 }
                 
                 lblock = world.Blocks[GetLiquidBlockId(world, pos, lblock, 6)];
-                if (!placeRiver(world, pos, ref lblock)) return;
+                if (!placeRiver(world, blockAccessor, pos, ref lblock)) return;
             }
 
-            lblock.GetBehavior<BlockBehaviorFiniteSpreadingLiquid>().carveRivulet(world, pos);
+            lblock.GetBehavior<BlockBehaviorFiniteSpreadingLiquid>().carveRivulet(world, blockAccessor, pos);
         }
 
-        private bool placeRiver(IWorldAccessor world, BlockPos pos, ref Block lblock)
+        private bool placeRiver(IWorldAccessor world, IBlockAccessor blockAccessor, BlockPos pos, ref Block lblock)
         {
-            world.BulkBlockAccessor.SetBlock(0, pos);
-            world.BulkBlockAccessor.SetBlock(0, pos.UpCopy());
+            blockAccessor.SetBlock(0, pos);
+            blockAccessor.SetBlock(0, pos.UpCopy());
 
             var belowPos = pos.DownCopy();
             var belowBlock = world.BlockAccessor.GetBlock(belowPos);
             while (belowPos.Y > 0 && !belowBlock.SideSolid.Any) belowBlock = world.BlockAccessor.GetBlock(belowPos.Down());
-            world.BulkBlockAccessor.SetBlock(world.GetBlock(new AssetLocation("muddygravel")).Id, belowPos);
+            blockAccessor.SetBlock(world.GetBlock(new AssetLocation("muddygravel")).Id, belowPos);
 
             lblock = world.Blocks[GetLessLiquidBlockId(world, pos, lblock)];
             if (lblock.Id == 0) return false;
-            world.BulkBlockAccessor.SetBlock(lblock.Id, pos, BlockLayersAccess.Fluid);
+            blockAccessor.SetBlock(lblock.Id, pos, BlockLayersAccess.Fluid);
             return true;
         }
 
@@ -360,7 +366,8 @@ namespace Vintagestory.GameContent
 
             foreach (PosAndDist pod in downwardPaths)
             {
-                if (CanSpreadIntoBlock(liquidBlock, solidBlock, pos, pod.pos, pod.pos.FacingFrom(pos), world))
+                BlockFacing pathFacing = pod.pos.FacingFrom(pos);
+                if (CanSpreadIntoBlock(liquidBlock, solidBlock, pos, pod.pos, pathFacing, world))
                 {
                     Block neighborLiquid = world.BlockAccessor.GetBlock(pod.pos, BlockLayersAccess.Fluid);
                     if (CollidesWith(liquidBlock, neighborLiquid))
@@ -372,9 +379,31 @@ namespace Vintagestory.GameContent
                         SpreadLiquid(GetLessLiquidBlockId(world, pod.pos, liquidBlock), pod.pos, world);
                     }
 
-                    if (!multiplySpread) return;
+                    if (!multiplySpread)
+                    {
+                        RemoveOtherLowerNeighbours(liquidBlock, pos, pathFacing, world);
+                        return;
+                    }
                 }
             }
+        }
+
+        private void RemoveOtherLowerNeighbours(Block liquidBlock, BlockPos pos, BlockFacing pathFacing, IWorldAccessor world)
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                pos.IterateHorizontalOffsets(i);
+                BlockFacing facing = BlockFacing.HORIZONTALS[i];
+                if (facing == pathFacing) continue;
+                Block neighborLiquid = world.BlockAccessor.GetBlock(pos, BlockLayersAccess.Fluid);
+                if (neighborLiquid.IsLiquid() && neighborLiquid.LiquidLevel < liquidBlock.LiquidLevel && IsSameLiquid(liquidBlock, neighborLiquid))
+                {
+                    // Remove previous path
+                    world.BulkBlockAccessor.SetBlock(0, pos, BlockLayersAccess.Fluid);
+                    UpdateNeighbouringLiquids(pos, world);
+                }
+            }
+            pos.East();  // Needed to finish the iteration and restore pos to initial value, as we end effectively with pos.West()
         }
 
         private bool TrySpreadDownwards(IWorldAccessor world, Block ourSolid, Block ourBlock, BlockPos pos)
@@ -412,6 +441,10 @@ namespace Vintagestory.GameContent
                         }
                     }
                     SpreadLiquid(fillWithSource ? ourBlock.BlockId : GetFallingLiquidBlockId(ourBlock, world), npos, world);
+                    if (!multiplySpread)
+                    {
+                        RemoveOtherLowerNeighbours(ourBlock, pos, BlockFacing.DOWN, world);
+                    }
                 }
 
                 return true;
@@ -467,6 +500,7 @@ namespace Vintagestory.GameContent
         private void SpreadLiquid(int blockId, BlockPos pos, IWorldAccessor world)
         {
             world.BulkBlockAccessor.SetBlock(blockId, pos, BlockLayersAccess.Fluid);
+            if (blockId == 0) return;
             world.RegisterCallbackUnique(OnDelayedWaterUpdateCheck, pos, spreadDelay);
 
             Block ourBlock = world.GetBlock(blockId);
@@ -803,7 +837,23 @@ namespace Vintagestory.GameContent
             Block neighborLiquid = world.BlockAccessor.GetBlock(npos, BlockLayersAccess.Fluid);
 
             // If the same liquids, we can replace if the neighbour liquid is at a lower level
-            if (IsSameLiquid(ourblock, neighborLiquid)) return neighborLiquid.LiquidLevel < ourblock.LiquidLevel;
+            if (IsSameLiquid(ourblock, neighborLiquid))
+            {
+                if (!IsLiquidSourceBlock(ourblock) && neighborLiquid is IBlockFlowing neighborFlowing && ourblock is IBlockFlowing ourFlowing)
+                {
+                    float neibFlow = neighborFlowing.FlowRate(npos);
+                    float ourFlow = ourFlowing.FlowRate(pos);
+                    if (neibFlow == ourFlow) return neighborLiquid.LiquidLevel < ourblock.LiquidLevel;
+                    if (ourFlow < neibFlow)
+                    {
+                        // Standard water displaces/destroys rapid flowing water; rapid flowing water can never replace standard water  (otherwise rapid flow can be made to survive waterwheel passage)
+                        if (neighborLiquid.LiquidLevel <= ourblock.LiquidLevel) return true;
+                        if (npos.Y < pos.Y) return true;
+                    }
+                    return false;
+                }
+                else return neighborLiquid.LiquidLevel < ourblock.LiquidLevel;
+            }
 
             // This is a special case intended for sea water / freshwater boundaries (until we have Brackish water blocks or another solution) - don't try to replace fresh water source blocks
             if (neighborLiquid.LiquidLevel == MAXLEVEL && !CollidesWith(ourblock, neighborLiquid)) return false;
@@ -831,12 +881,12 @@ namespace Vintagestory.GameContent
                 Vec2i offset = downPaths[i];
 
                 npos.Set(pos.X + offset.X, pos.Y - 1, pos.Z + offset.Y);
-                Block block = world.BlockAccessor.GetBlock(npos);
+                Block blockBelow = world.BlockAccessor.GetBlock(npos);
                 npos.Y++;
-                Block aboveliquid = world.BlockAccessor.GetBlock(npos, BlockLayersAccess.Fluid);
-                Block aboveblock = world.BlockAccessor.GetBlock(npos, BlockLayersAccess.SolidBlocks);
+                Block neibLiquid = world.BlockAccessor.GetBlock(npos, BlockLayersAccess.Fluid);
+                Block neibBlock = world.BlockAccessor.GetBlock(npos, BlockLayersAccess.SolidBlocks);
 
-                if (aboveliquid.LiquidLevel < ourBlock.LiquidLevel && block.Replaceable >= ReplacableThreshold && aboveblock.Replaceable >= ReplacableThreshold)
+                if (neibLiquid.LiquidLevel < ourBlock.LiquidLevel && blockBelow.Replaceable >= ReplacableThreshold && neibBlock.Replaceable >= ReplacableThreshold && (!ourBlock.Code.PathStartsWith("rapidwater-") || !neibLiquid.Code.PathStartsWith("water-")))   // Hard-coding crime to prevent rapidwater pathing through standard water; does nothing except for that specific combination of blocks
                 {
                     uncheckedPositions.Enqueue(new BlockPos(pos.X + offset.X, pos.Y, pos.Z + offset.Y, pos.dimension));
 

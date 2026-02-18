@@ -30,8 +30,14 @@ namespace Vintagestory.GameContent
 
         Dictionary<string, ItemStack[]> recipeLiquidContents = new Dictionary<string, ItemStack[]>();
 
-        public override void OnHandbookRecipeRender(ICoreClientAPI capi, GridRecipe gridRecipe, ItemSlot dummyslot, double x, double y, double z, double size)
+        public override void OnHandbookRecipeRender(ICoreClientAPI capi, IRecipeBase recipe, ItemSlot dummyslot, double x, double y, double z, double size)
         {
+            GridRecipe gridRecipe = recipe as GridRecipe;
+            if (gridRecipe == null)
+            {
+                return;
+            }
+
             // 1.16.0: Fugly (but backwards compatible) hack: We temporarily store the ingredient index in an unused field of ItemSlot so that OnHandbookRecipeRender() has access to that number. Proper solution would be to alter the method signature to pass on this value.
             int rindex = dummyslot.BackgroundIcon.ToInt();
             var ingredient = gridRecipe.ResolvedIngredients[rindex];
@@ -45,9 +51,9 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            string contentCode = rprops?["requiresContent"]?["code"]?.AsString() ?? gridRecipe.Attributes["liquidContainerProps"]["requiresContent"]["code"].AsString();
-            string contentType = rprops?["requiresContent"]?["type"]?.AsString() ?? gridRecipe.Attributes["liquidContainerProps"]["requiresContent"]["type"].AsString();
-            float litres = rprops?["requiresLitres"]?.AsFloat() ?? gridRecipe.Attributes["liquidContainerProps"]["requiresLitres"].AsFloat();
+            string contentCode = rprops?["requiresContent"]["code"].AsString();
+            string contentType = rprops?["requiresContent"]["type"].AsString();
+            float litres = rprops["requiresLitres"].AsFloat();
 
             string key = contentType + "-" + contentCode;
             if (!recipeLiquidContents.TryGetValue(key, out ItemStack[] stacks))
@@ -1209,18 +1215,21 @@ namespace Vintagestory.GameContent
             return;
         }
 
-        public override bool MatchesForCrafting(ItemStack inputStack, GridRecipe gridRecipe, CraftingRecipeIngredient ingredient)
+        public override bool MatchesForCrafting(ItemStack inputStack, IRecipeBase recipe, IRecipeIngredient ingredient)
         {
             JsonObject rprops = ingredient.RecipeAttributes;
-            if (rprops?.Exists != true || rprops?["requiresContent"].Exists != true) rprops = gridRecipe.Attributes?["liquidContainerProps"];
+            if (rprops?.Exists != true || rprops?["requiresContent"].Exists != true) rprops = (recipe as GridRecipe)?.Attributes?["liquidContainerProps"];
 
             if (rprops?.Exists != true)
             {
-                return base.MatchesForCrafting(inputStack, gridRecipe, ingredient);
+                return base.MatchesForCrafting(inputStack, recipe, ingredient);
             }
 
-            string contentCode = rprops["requiresContent"]["code"].AsString();
-            string contentType = rprops["requiresContent"]["type"].AsString();
+            JsonItemStack requiredContentjStack = rprops["requiresContent"].AsObject<JsonItemStack>();
+            if (requiredContentjStack == null || !requiredContentjStack.Resolve(api.World, string.Format("Liquid content for {0} ingredient", ingredient.Code)))
+            {
+                return base.MatchesForCrafting(inputStack, recipe, ingredient);
+            }
 
             ItemStack contentStack = GetContent(inputStack);
 
@@ -1230,21 +1239,19 @@ namespace Vintagestory.GameContent
             var props = GetContainableProps(contentStack);
             int q = (int)((props?.ItemsPerLitre ?? 1) * litres) / inputStack.StackSize;
 
-            bool a = contentStack.Class.ToString().ToLowerInvariant() == contentType.ToLowerInvariant();
-            bool b = WildcardUtil.Match(new AssetLocation(contentCode), contentStack.Collectible.Code);
-            bool c = contentStack.StackSize >= q;
-
-            return a && b && c;
+            bool a = requiredContentjStack.Matches(api.World, contentStack);
+            bool b = contentStack.StackSize >= q;
+            return a && b;
         }
 
-        public override void OnConsumedByCrafting(ItemSlot[] allInputSlots, ItemSlot stackInSlot, GridRecipe gridRecipe, CraftingRecipeIngredient fromIngredient, IPlayer byPlayer, int quantity)
+        public override void OnConsumedByCrafting(ItemSlot[] allInputSlots, ItemSlot stackInSlot, IRecipeBase recipe, IRecipeIngredient fromIngredient, IPlayer byPlayer, int quantity)
         {
             JsonObject rprops = fromIngredient.RecipeAttributes;
-            if (rprops?.Exists != true || rprops?["requiresContent"].Exists != true) rprops = gridRecipe.Attributes?["liquidContainerProps"];
+            if (rprops?.Exists != true || rprops?["requiresContent"].Exists != true) rprops = (recipe as GridRecipe)?.Attributes?["liquidContainerProps"];
 
             if (rprops?.Exists != true)
             {
-                base.OnConsumedByCrafting(allInputSlots, stackInSlot, gridRecipe, fromIngredient, byPlayer, quantity);
+                base.OnConsumedByCrafting(allInputSlots, stackInSlot, recipe, fromIngredient, byPlayer, quantity);
                 return;
             }
 
@@ -1255,18 +1262,12 @@ namespace Vintagestory.GameContent
 
             if (rprops.IsTrue("consumeContainer"))
             {
-                stackInSlot.Itemstack.StackSize -= quantity;
+                stackInSlot.TakeOut(quantity);
+                stackInSlot.MarkDirty();
+                return;
+            }
 
-                if (stackInSlot.Itemstack.StackSize <= 0)
-                {
-                    stackInSlot.Itemstack = null;
-                    stackInSlot.MarkDirty();
-                }
-            }
-            else
-            {
-                TryTakeContent(stackInSlot.Itemstack, q);
-            }
+            TryTakeContent(stackInSlot.Itemstack, q);
         }
 
         public static string PerishableInfoCompact(ICoreAPI Api, ItemSlot contentSlot, float ripenRate, bool withStackName = true)

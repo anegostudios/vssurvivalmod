@@ -15,7 +15,7 @@ namespace Vintagestory.ServerMods
         public TiledDungeonConfig Tcfg = null!;
 
         DungeonGenerator dungeonGen = null!;
-        TextCommandCallingArgs? dungeonGenRequest = null;
+        TextCommandCallingArgs? dungeonGenRequest;
 
         int debugStopStep = -1;
         private bool placeDebugConnectors;
@@ -49,7 +49,8 @@ namespace Vintagestory.ServerMods
                 .BeginSub("tdstep")
                     .WithDesc("Generate a dungeon at the callers position, stepped")
                     .RequiresPrivilege(Privilege.controlserver)
-                    .HandleWith((args) => {
+                    .HandleWith((_) => {
+                        if (placeTask == null || lastDungeon == null) return TextCommandResult.Error("No dungeon to step");
                         if (placeTask.TilePlaceTasks.Count > debugStopStep) debugStopStep++;
                         placeDungeon(sapi.World.BlockAccessor, lastDungeon, debugStopStep, placeTask);
                         return TextCommandResult.Success("Stepped to " + debugStopStep + " / " + placeTask.TilePlaceTasks.Count);
@@ -58,7 +59,7 @@ namespace Vintagestory.ServerMods
                 .BeginSub("tdstepreset")
                     .WithDesc("Generate a dungeon at the callers position, stepped")
                     .RequiresPrivilege(Privilege.controlserver)
-                    .HandleWith((args) => {
+                    .HandleWith((_) => {
                         debugStopStep = -1;
                         lastDungeon = null;
                         placeTask = null;
@@ -125,6 +126,7 @@ namespace Vintagestory.ServerMods
             var orignalX = pos.X;
 
             var signblock = sapi.World.GetBlock("sign-ground-north");
+            if(signblock == null) return TextCommandResult.Error("sign-ground-north block not found");
 
             foreach (var (tilecode,dungeonTile) in dungeon.TilesByCode)
             {
@@ -134,15 +136,15 @@ namespace Vintagestory.ServerMods
 
                     for (var i = 0; i < 4; i++)
                     {
-                        schematicByRot[i].Place(ba, sapi.World, pos, true);
-                        schematicByRot[i].PlaceEntitiesAndBlockEntities(ba, sapi.World, pos, new Dictionary<int, AssetLocation>(), new Dictionary<int, AssetLocation>());
+                        schematicByRot[i].Place(ba, sapi.World, pos);
+                        schematicByRot[i].PlaceEntitiesAndBlockEntities(ba, sapi.World, pos, schematicByRot[i].BlockCodes, schematicByRot[i].ItemCodes);
 
                         if (placeDebugConnectors)
                         {
                             var connectors = schematicByRot[i].Connectors;
                             foreach (var path in connectors)
                             {
-                                var pathPosition = (pos + path.Position).Add(path.Facing);
+                                var pathPosition = pos.AddCopy(path.Position).Add(path.Facing);
                                 ba.SetBlock(BlockSchematic.ConnectorBlockId, pathPosition);
                                 var be = ba.GetBlockEntity<BETileConnector>(pathPosition);
                                 if (be != null)
@@ -267,8 +269,8 @@ namespace Vintagestory.ServerMods
             return TextCommandResult.Success("Unable to generate dungeon of this size after 1 attempts");
         }
 
-        DungeonPlaceTask placeTask;
-        TiledDungeon lastDungeon;
+        DungeonPlaceTask? placeTask;
+        TiledDungeon? lastDungeon;
 
         public bool TryPlaceTiledDungeon(IBlockAccessor ba, LCGRandom rnd, TiledDungeon dungeon, BlockPos startPos, int minTiles, int maxTiles, int debugStop = -1)
         {
@@ -309,28 +311,32 @@ namespace Vintagestory.ServerMods
 
                     if (i == debugStop)
                     {
-                        ba.SetBlock(sapi.World.GetBlock("creativeblock-79").Id, placeTask.Pos.Copy().Add(0, 0, 0));
-                        ba.SetBlock(sapi.World.GetBlock("creativeblock-79").Id, placeTask.Pos.Copy().Add(schem.SizeX, 0, 0));
-                        ba.SetBlock(sapi.World.GetBlock("creativeblock-79").Id, placeTask.Pos.Copy().Add(schem.SizeX, 0, schem.SizeZ));
-                        ba.SetBlock(sapi.World.GetBlock("creativeblock-79").Id, placeTask.Pos.Copy().Add(0, 0, schem.SizeZ));
+                        var blockId = sapi.World.GetBlock("creativeblock-79")?.Id ?? 1;
+                        ba.SetBlock(blockId, placeTask.Pos.Copy().Add(0, 0, 0));
+                        ba.SetBlock(blockId, placeTask.Pos.Copy().Add(schem.SizeX, 0, 0));
+                        ba.SetBlock(blockId, placeTask.Pos.Copy().Add(schem.SizeX, 0, schem.SizeZ));
+                        ba.SetBlock(blockId, placeTask.Pos.Copy().Add(0, 0, schem.SizeZ));
 
-                        ba.SetBlock(sapi.World.GetBlock("creativeblock-79").Id, placeTask.Pos.Copy().Add(0, schem.SizeY, 0));
-                        ba.SetBlock(sapi.World.GetBlock("creativeblock-79").Id, placeTask.Pos.Copy().Add(schem.SizeX, schem.SizeY, 0));
-                        ba.SetBlock(sapi.World.GetBlock("creativeblock-79").Id, placeTask.Pos.Copy().Add(schem.SizeX, schem.SizeY, schem.SizeZ));
-                        ba.SetBlock(sapi.World.GetBlock("creativeblock-79").Id, placeTask.Pos.Copy().Add(0, schem.SizeY, schem.SizeZ));
-
+                        ba.SetBlock(blockId, placeTask.Pos.Copy().Add(0, schem.SizeY, 0));
+                        ba.SetBlock(blockId, placeTask.Pos.Copy().Add(schem.SizeX, schem.SizeY, 0));
+                        ba.SetBlock(blockId, placeTask.Pos.Copy().Add(schem.SizeX, schem.SizeY, schem.SizeZ));
+                        ba.SetBlock(blockId, placeTask.Pos.Copy().Add(0, schem.SizeY, schem.SizeZ));
 
                         return true;
                     }
 
-                    schem.Place(ba, sapi.World, placeTask.Pos, true);
-                    schem.PlaceEntitiesAndBlockEntities(ba, sapi.World, placeTask.Pos, new Dictionary<int, AssetLocation>(), new Dictionary<int, AssetLocation>());
+                    schem.Place(ba, sapi.World, placeTask.Pos);
+                    schem.PlaceEntitiesAndBlockEntities(ba, sapi.World, placeTask.Pos, schem.BlockCodes, schem.ItemCodes);
 
-                    if (i == 0) ba.SetBlock(sapi.World.GetBlock("creativeblock-79").Id, placeTask.Pos.Copy().Add(schem.SizeX / 2, schem.SizeY, schem.SizeZ / 2));
+                    if (i == 0)
+                    {
+                        var blockId = sapi.World.GetBlock("creativeblock-79")?.Id ?? 1;
+                        ba.SetBlock(blockId, placeTask.Pos.Copy().Add(schem.SizeX / 2, schem.SizeY, schem.SizeZ / 2));
+                    }
 
                     if (placeDebugConnectors)
                     {
-                        tile.PlaceConnectorsForDebug(ba, sapi.World, placeTask.Pos, roomIndex, placeTask.Rotation);
+                        //tile.PlaceConnectorsForDebug(ba, placeTask.Pos, roomIndex, placeTask.Rotation);
                     }
                 }
                 else
@@ -343,9 +349,10 @@ namespace Vintagestory.ServerMods
             {
                 foreach (var posFacing in dungeonPlaceTask.OpenSet)
                 {
-                    ba.SetBlock(BlockSchematic.ConnectorBlockId, posFacing.Position);
+                    var blockPos = new BlockPos(posFacing.Position.X, posFacing.Position.Y, posFacing.Position.Z);
+                    ba.SetBlock(BlockSchematic.ConnectorBlockId, blockPos);
                     // ba.SetBlock(BlockSchematic.ConnectorBlockId, posFacing.Position.AddCopy(0,1,0));
-                    var be = ba.GetBlockEntity<BETileConnector>(posFacing.Position);
+                    var be = ba.GetBlockEntity<BETileConnector>(blockPos);
                     be.Target = string.Join(",", posFacing.Targets);
                     be.Name = posFacing.Name;
                     be.Direction = posFacing.Facing;

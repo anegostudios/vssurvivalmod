@@ -246,12 +246,11 @@ namespace Vintagestory.GameContent
                     int index = 0;
                     foreach (var slot in Inventory)
                     {
-                        ItemStack stack = slot.Itemstack;
-                        if (stack != null)
+                        if (slot.Itemstack is { } stack)
                         {
-                            temp = Math.Max(temp, stack.Collectible.GetTemperature(capi.World, slot.Itemstack));
+                            temp = Math.Max(temp, stack.Collectible.GetTemperature(capi.World, stack));
 
-                            if (stack.Class == EnumItemClass.Block && stack.Block is IBlockMealContainer be)
+                            if (stack.Class == EnumItemClass.Block && stack.Block is IBlockMealContainer be and not BlockCrock) // Crocks don't render the actual meal mesh
                             {
                                 GetOrCreateMealMesh(be, stack, index);   // pre-generate any meal meshes during initialization, as these might have to be uploaded to the GPU
                             }
@@ -866,7 +865,7 @@ namespace Vintagestory.GameContent
                 if (hotbarSlot.TryPutInto(Api.World, invSlot, putBulk ? BulkTransferQuantity : TransferQuantity) > 0)
                 {
                     Api.World.PlaySoundAt(StorageProps.PlaceRemoveSound.WithPathPrefixOnce("sounds/"), Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, null, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
-                    lightUpdate(invSlot.Itemstack);
+                    LightUpdate(invSlot.Itemstack);
                 }
 
                 Api.World.Logger.Audit("{0} Put {1}x{2} into new Ground storage at {3}.",
@@ -902,7 +901,7 @@ namespace Vintagestory.GameContent
                     hotbarSlot.OnItemSlotModified(null);
                 }
 
-                lightUpdate(invSlot.Itemstack);
+                LightUpdate(invSlot.Itemstack);
                 Api.World.PlaySoundAt(StorageProps.PlaceRemoveSound.WithPathPrefixOnce("sounds/"), Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, null, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
 
                 Api.World.Logger.Audit("{0} Put {1}x{2} into Ground storage at {3}.",
@@ -928,7 +927,7 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-        private void lightUpdate(ItemStack itemstack)
+        public void LightUpdate(ItemStack itemstack)
         {
             lastLightHsv = itemstack.Collectible.GetLightHsv(Api.World.BlockAccessor, null, itemstack);
             if (lastLightHsv != null && lastLightHsv[2] > 0) Api.World.BlockAccessor.ExchangeBlock(Block.Id, Pos); // Forces a lighting update
@@ -957,7 +956,7 @@ namespace Vintagestory.GameContent
                     Pos
                 );
 
-                lightUpdate(stack);
+                LightUpdate(stack);
             }
 
             if (TotalStackSize == 0)
@@ -1012,7 +1011,7 @@ namespace Vintagestory.GameContent
                                 ourSlot.Itemstack.Collectible.Code,
                                 Pos
                             );
-                            lightUpdate(stack);
+                            LightUpdate(stack);
                         }
                     } else {
                         if (hotbarSlot.TryPutInto(Api.World, ourSlot, TransferQuantity) > 0)
@@ -1023,7 +1022,7 @@ namespace Vintagestory.GameContent
                                 ourSlot.Itemstack.Collectible.Code,
                                 Pos
                             );
-                            lightUpdate(ourSlot.Itemstack);
+                            LightUpdate(ourSlot.Itemstack);
                         }
                     }
                 }
@@ -1034,7 +1033,7 @@ namespace Vintagestory.GameContent
                         Api.World.SpawnItemEntity(ourSlot.Itemstack, Pos);
                     }
 
-                    lightUpdate(ourSlot.Itemstack);
+                    LightUpdate(ourSlot.Itemstack);
 
                     Api.World.PlaySoundAt(StorageProps.PlaceRemoveSound, Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, player, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
 
@@ -1228,6 +1227,7 @@ namespace Vintagestory.GameContent
             }
             if (UseRenderer)
             {
+                updateMeshes();
                 return true;
             }
             // once the items cools down again we can remove the renderer
@@ -1326,7 +1326,7 @@ namespace Vintagestory.GameContent
             var stack = slot.Itemstack;
             if (stack.Class == EnumItemClass.Block)
             {
-                if (stack.Block is IBlockMealContainer be)
+                if (stack.Block is IBlockMealContainer be and not BlockCrock) // Crocks don't render the actual meal mesh
                 {
                     GetOrCreateMealMesh(be, stack, index);
                 }

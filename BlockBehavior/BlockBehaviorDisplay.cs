@@ -6,6 +6,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
+using static System.Net.Mime.MediaTypeNames;
 
 #nullable disable
 
@@ -74,7 +75,7 @@ namespace Vintagestory.GameContent
         public string[] PileableSelectiveElements;
     }
 
-    public class BlockBehaviorDisplay : BlockBehavior, ICustomSelectionBoxRender
+    public class BlockBehaviorDisplay : StrongBlockBehavior, ICustomSelectionBoxRender
     {
         public PlacementSurface[] PlacementSurfaces;
         public CuboidfWithId[] SelectionBoxes;
@@ -164,6 +165,7 @@ namespace Vintagestory.GameContent
         private void OnGetTransform(string eventName, ref EnumHandling handling, IAttribute data)
         {
             var tree = data as TreeAttribute;
+            if (tree.GetString("target") != "shelf") return;
 
             ItemSlot slot = capi.World.Player.InventoryManager.ActiveHotbarSlot;
             var attr = GetDisplayableAttributes(slot, "shelf");
@@ -223,6 +225,11 @@ namespace Vintagestory.GameContent
                 var offset = getOffsetFromPreviewCuboid(size, be.MeshAngleRad);
 
                 if (slotLoc.X + offset.X < 0 || slotLoc.Z + offset.Z < 0 || slotLoc.X + offset.X > psurface.Size.Width - size.Width || slotLoc.Z + offset.Z > psurface.Size.Length - size.Length)
+                {
+                    placeable = false;
+                }
+
+                if (psurface.Size.Width < size.Width || psurface.Size.Height < size.Height || psurface.Size.Length < size.Length)
                 {
                     placeable = false;
                 }
@@ -331,6 +338,56 @@ namespace Vintagestory.GameContent
                 PlacementSurfaceIndex = parts[0].ToInt(),
                 IsPlacedItem = placedItem
             };
+        }
+
+
+
+        public override int GetColorWithoutTint(ICoreClientAPI capi, BlockPos pos, ref EnumHandling handled)
+        {
+            handled = EnumHandling.PreventDefault;
+            int texSubId = block.GetBEBehavior<BEBehaviorDisplay>(pos).GetParticleColorTextureSubId();
+            return capi.BlockTextureAtlas.GetAverageColor(texSubId) | 0xff << 24;
+        }
+
+        public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing, int rndIndex, ref EnumHandling handled)
+        {
+            handled = EnumHandling.PreventDefault;
+            int texSubId = block.GetBEBehavior<BEBehaviorDisplay>(pos).GetParticleColorTextureSubId();
+            return capi.BlockTextureAtlas.GetRandomColor(texSubId, rndIndex) | 0xff << 24;
+        }
+
+        public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos, ref EnumHandling handling)
+        {
+            if (block.GetBEBehavior<BEBehaviorDisplay>(pos)?.DisplayStack is { } displayStack)
+            {
+                handling = EnumHandling.PreventDefault;
+
+                return displayStack.Clone();
+            }
+
+            return base.OnPickBlock(world, pos, ref handling);
+        }
+
+        public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, ref float dropChanceMultiplier, ref EnumHandling handling)
+        {
+            if (block.GetBEBehavior<BEBehaviorDisplay>(pos)?.DisplayStack is { } displayStack)
+            {
+                handling = EnumHandling.PreventDefault;
+
+                return [displayStack];
+            }
+
+            return base.GetDrops(world, pos, byPlayer, ref dropChanceMultiplier, ref handling);
+        }
+
+        public override void OnDecalTesselation(IWorldAccessor world, MeshData decalMesh, BlockPos pos, ref EnumHandling handled)
+        {
+            handled = EnumHandling.PreventDefault;
+
+            if (block.GetBEBehavior<BEBehaviorDisplay>(pos)?.MeshAngleRad is { } meshAngleRad)
+            {
+                decalMesh.Rotate(0, meshAngleRad, 0);
+            }
         }
     }
 }

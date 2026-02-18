@@ -121,6 +121,12 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
+            if (byEntity.Controls.ShiftKey && byEntity.Controls.CtrlKey)
+            {
+                base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
+                return;
+            }
+
             handling = EnumHandHandling.PreventDefault;
 
             int clothId = slot.Itemstack.Attributes.GetInt("clothId");

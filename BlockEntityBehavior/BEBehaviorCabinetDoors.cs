@@ -4,7 +4,6 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent;
 
@@ -29,78 +28,31 @@ public class TypedTextureSource : ITexPositionSource
     {
         get
         {
-            var texturePath = textureMapping[textureCode];
-            foreach (var mat in materials)
-            {
-                texturePath = texturePath.Replace("{" + mat.Key + "}", mat.Value);
-            }
-            var loc = AssetLocation.Create(texturePath, domain);
+            var loc = getMappedTexture(textureCode, domain, materials, textureMapping);
             atlas.GetOrInsertTexture(loc, out _, out var texPos);
             return texPos;
         }
     }
 
+    public int GetTextureSubId(string textureCode)
+    {
+        AssetLocation loc = getMappedTexture(textureCode, domain, materials, textureMapping);
+        atlas.GetOrInsertTexture(loc, out int subid, out _);
+        return subid;
+    }
+
+    public static AssetLocation getMappedTexture(string textureCode, string domain, Dictionary<string, string> materials, Dictionary<string, string> textureMapping)
+    {
+        var texturePath = textureMapping[textureCode];
+        foreach (var mat in materials)
+        {
+            texturePath = texturePath.Replace("{" + mat.Key + "}", mat.Value);
+        }
+        var loc = AssetLocation.Create(texturePath, domain);
+        return loc;
+    }
 
     public Size2i AtlasSize => atlas.Size;
-}
-
-public class BlockBehaviorCabinetDoors : StrongBlockBehavior
-{
-    public Cuboidf[]? DoorSelectionBoxOpened;
-    public Cuboidf[]? DoorSelectionBoxClosed;
-    public string?[]? DoorElements;
-
-    public BlockBehaviorCabinetDoors(Block block) : base(block)
-    {
-    }
-
-    public override void Initialize(JsonObject properties)
-    {
-        base.Initialize(properties);
-        DoorSelectionBoxOpened = properties["selectionBoxesOpened"].AsObject<Cuboidf[]>();
-        DoorSelectionBoxClosed = properties["selectionBoxesClosed"].AsObject<Cuboidf[]>();
-
-
-        if (DoorSelectionBoxClosed == null) throw new NullReferenceException("selectionBoxesClosed cannot be null! Block code " + block.Code);
-    }
-
-    public override Cuboidf[] GetSelectionBoxes(IBlockAccessor blockAccessor, BlockPos pos, ref EnumHandling handled)
-    {
-        handled = EnumHandling.Handled;
-        var be = blockAccessor.GetBlockEntity(pos);
-        if (be == null) return base.GetSelectionBoxes(blockAccessor, pos, ref handled);
-
-        return be.GetBehavior<BEBehaviorCabinetDoors>().GetSelectionBoxes();
-    }
-
-    public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer, ref EnumHandling handling)
-    {
-        if (selection.SelectionBoxId == null)
-        {
-            var doorStacks = ObjectCacheUtil.GetOrCreate(world.Api, "cabinetDoors", () =>
-            {
-                List<ItemStack> stacks = new List<ItemStack>();
-                foreach (var collObj in world.Collectibles)
-                {
-                    if (collObj.Code.PathStartsWith("cabinetdoor"))
-                    {
-                        stacks.Add(new ItemStack(collObj));
-                    }
-                }
-                return stacks.ToArray();
-            });
-
-            return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer, ref handling).Append(new WorldInteraction()
-            {
-                ActionLangCode = "addcabinetdoors",
-                HotKeyCode = "sprint",
-                MouseButton = EnumMouseButton.Right,
-                Itemstacks = doorStacks
-            });
-        }
-
-        return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer, ref handling);
-    }
 }
 
 public class BEBehaviorCabinetDoors : BEBehaviorAnimatable, IInteractable
@@ -110,6 +62,7 @@ public class BEBehaviorCabinetDoors : BEBehaviorAnimatable, IInteractable
     protected Cuboidf[]? selectionBoxesClosed;
     protected ICoreClientAPI? capi;
     protected ItemStack? doorStack;
+    public ItemStack? DoorStack => doorStack;
     public BEBehaviorCabinetDoors(BlockEntity blockentity) : base(blockentity)
     {
     }
@@ -232,17 +185,6 @@ public class BEBehaviorCabinetDoors : BEBehaviorAnimatable, IInteractable
         return false;
     }
 
-
-    public override void OnBlockBroken(IPlayer? byPlayer = null)
-    {
-        if (doorStack != null)
-        {
-            Api.World.SpawnItemEntity(doorStack, Blockentity.Pos.ToVec3d().Add(0.5, 0.5, 0.5));
-            doorStack = null;
-            Blockentity.MarkDirty(true);
-        }
-    }
-
     private void ensureMeshExists(ITesselatorAPI tesselator)
     {
         var titem = doorStack?.Collectible.GetCollectibleBehavior<CollectibleBehaviorTypedTexture>(true);
@@ -257,7 +199,7 @@ public class BEBehaviorCabinetDoors : BEBehaviorAnimatable, IInteractable
 
         var dictKey = "cabinetdoors-" + Block.Code;
         var rot = new Vec3f(0, GameMath.RAD2DEG * Blockentity.GetBehavior<IRotatablePlaceable>()?.MeshAngleRad ?? 0, 0);
-        
+
         string animkey = Block.Shape.ToString();
 
         var materials = titem.GetMaterials(doorStack);

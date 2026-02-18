@@ -12,7 +12,7 @@ namespace Vintagestory.GameContent
     {
 
 
-        public override void OnCreatedByCrafting(ItemSlot[] allInputslots, ItemSlot outputSlot, GridRecipe byRecipe)
+        public override void OnCreatedByCrafting(ItemSlot[] allInputslots, ItemSlot outputSlot, IRecipeBase byRecipe)
         {
             ItemSlot oreSlot = allInputslots.FirstOrDefault(slot => slot.Itemstack?.Collectible is ItemOre);
             if (oreSlot != null)

@@ -66,6 +66,7 @@ namespace Vintagestory.GameContent.Mechanics
         }
 
 
+        // Checked both server side and client side: client side only to produce suitablePowerSourceBlockCount for the Block Info HUD
         protected void CheckWater(float dt)
         {
             if (!bebconstructable.IsComplete)
@@ -78,97 +79,143 @@ namespace Vintagestory.GameContent.Mechanics
 
             flowVec.Set(0, 0, 0);
             var fcw = facing.GetCW();
+            int wheelX = fcw.Normali.X;
+            int wheelZ = fcw.Normali.Z;
+            FastVec3f axialVec = new FastVec3f(facing.Normalf);
             blocked = false;
             int radius = diameter / 2;
-            Vec3f pushVector;
-            for (int a = -radius; a <= radius; a++)
-            {
-                int offset = radius;
-                var pos = new BlockPos(Pos.X + a * fcw.Normali.X, Pos.Y - offset, Pos.Z + a * fcw.Normali.Z);
+            if (radius < 1) return;
 
-                // Below
-                var block = Api.World.BlockAccessor.GetBlock(pos);
-                
-                if (blockedBy(block, pos, BlockFacing.UP)) return;
-                if (getFlowSpeed(block) > requiresMinFlowSpeed)
+            float moment = 0f;  // The moment is the total rotational force - which becomes torque - being applied to the wheel by any surrounding water
+            BlockPos pos = new BlockPos(Pos.dimension);
+            FastVec3i firstWaterPos = new FastVec3i(-1, -1, -1);
+            FastVec3i lastWaterPos = new FastVec3i(-1, -1, -1);
+            Block firstsWaterBlock = null;
+            Block lastWaterBlock = null;
+
+            int numberOfPoints = 4 + radius * 4; // 8 points for radius 1, 12 points for radius 2, 16 for radius 3, 20 for radius 4, 24 for radius 5 - these all work, up to radius 5, producing a nice circle/octagon of water check points symmetrical around the hub. Not investigated above radius 5 but it should in principle always be approximately correct
+            for (int i = 0; i < numberOfPoints; i++)
+            {
+                // Calculate dX, dY for a ring of points around the circumference of the wheel
+                int dX = (int)(GameMath.Sin(GameMath.TWOPI * i / numberOfPoints) * (radius + 0.5f));
+                int dY = (int)(GameMath.Cos(GameMath.TWOPI * i / numberOfPoints) * (radius + 0.5f));
+
+                // dX -> correct dX, dZ for wheel orientation
+                int dZ = dX * wheelZ;
+                dX *= wheelX;
+
+                pos.Set(Pos.X + dX, Pos.Y + dY, Pos.Z + dZ);
+                var block = Api.World.BlockAccessor.GetBlock(pos, BlockLayersAccess.MostSolid);
+                // Figure out which side of the water wheel we are approachin this block from - we will test whether it blocks only on the closest face to the wheel. Stretch goal: it could be the lateral faces as well, or test whether the block blocks waterflow?
+                BlockFacing blockSide = BlockFacing.UP;
+                if (Math.Abs(dY) >= Math.Abs(dX + dZ))
                 {
-                    pushVector = block.Attributes?["pushvector"].AsObject<Vec3f>(null);
-                    if (pushVector != null)
-                    {
-                        flowVec.Add(pushVector);
-                        suitablePowerSourceBlockCount++;
-                    }
+                    if (dY > 0) blockSide = BlockFacing.DOWN;
                 }
-                // Above
-                pos.Y = Pos.Y + offset;
-                block = Api.World.BlockAccessor.GetBlock(pos);
-                if (blockedBy(block, pos, BlockFacing.DOWN)) return;
-                if (getFlowSpeed(block) > requiresMinFlowSpeed)
+                else if (dX == 0)
                 {
-                    pushVector = block.Attributes?["pushvector"].AsObject<Vec3f>(null);
-                    if (pushVector != null)
-                    {
-                        flowVec.Add(pushVector.Mul(-1));
-                        suitablePowerSourceBlockCount++;
-                    }
+                    blockSide = (dZ > 0) ? BlockFacing.NORTH : BlockFacing.SOUTH;
                 }
-                // Left
-                pos.Set(Pos.X + fcw.Normali.X * offset, Pos.Y + a, Pos.Z + fcw.Normali.Z * offset);
-                block = Api.World.BlockAccessor.GetBlock(pos);
-                if (blockedBy(block, pos, facing)) return;
-                if (getFlowSpeed(block) > requiresMinFlowSpeed)
+                else
                 {
-                    pushVector = block.Attributes?["pushvector"].AsObject<Vec3f>(null);
-                    if (pushVector != null)
-                    {
-                        flowVec.Add(pushVector.Mul(-1));
-                        suitablePowerSourceBlockCount++;
-                    }
+                    blockSide = (dX > 0) ? BlockFacing.WEST : BlockFacing.EAST;
                 }
-                // Right
-                pos.Set(Pos.X - fcw.Normali.X * offset, Pos.Y + a, Pos.Z - fcw.Normali.Z * offset);
-                block = Api.World.BlockAccessor.GetBlock(pos);
-                if (blockedBy(block, pos, facing.Opposite)) return;
-                if (getFlowSpeed(block) > requiresMinFlowSpeed)
+                if (blockedBy(block, pos, blockSide)) return;    // NOTE: for waterwheels with radius larger than one, we are not checking whether any inner blocks block the rotation - that should probably be checked also
+                                                                // also seems better to check for any block with a collision box, e.g. axle is not solid on any side
+
+                // Apply rotational force
+                if (!block.ForFluidsLayer) block = Api.World.BlockAccessor.GetBlock(pos, BlockLayersAccess.Fluid);    // Need because if there are stones or plants or snowlayer at pos, this will miss the fluid block
+                if (block is IBlockFlowing waterBlock && !waterBlock.IsStill && getFlowSpeed(block) > requiresMinFlowSpeed)
                 {
-                    pushVector = block.Attributes?["pushvector"].AsObject<Vec3f>(null);
-                    if (pushVector != null)
+                    FastVec3f pushVector = waterBlock.GetPushVector(pos);
+                    moment += new FastVec3f(dX, dY, dZ).Normalize().Cross(axialVec).Dot(pushVector);    // Applies the push in the correct rotational sense for this position
+                    suitablePowerSourceBlockCount++;
+                    lastWaterPos.Set(pos);
+                    lastWaterBlock = block;
+                    if (firstsWaterBlock == null)
                     {
-                        flowVec.Add(pushVector);
-                        suitablePowerSourceBlockCount++;
+                        firstWaterPos.Set(pos);
+                        firstsWaterBlock = block;
                     }
                 }
             }
 
-            /// North: Negative Z
-            /// East: Positive X
-            /// South: Positive Z
-            /// West: Negative X
-            /// Up: Positive Y
-            /// Down: Negative Y
-            float f = 0;
-            if (fcw.Axis == EnumAxis.X)
+            moment *= radius;       // Optional but physically correct: the torque on larger radius wheels is higher, due to leverage.  Extension for modders: larger wheels should have slower rotational speed due to distance
+
+            if (moment > 0)    // In this case the first and last need to be reversed - without this check we don't know which way around the wheel our for (i = ...) loop above ran
             {
-                f = flowVec.X + flowVec.Y;
-                if (facing == BlockFacing.NORTH) f *= -1;
-            }
-            if (fcw.Axis == EnumAxis.Z)
-            {
-                f = flowVec.Z + flowVec.Y;
-                if (facing == BlockFacing.EAST) f *= -1;
+                lastWaterBlock = firstsWaterBlock;
+                lastWaterPos = firstWaterPos;
             }
 
-            flowRate = Math.Abs(f * 750);
+            if (lastWaterBlock != null)
+            {
+                // Figure out the *next* block in this rivulet's flow, and ensure it's set to a normal flowing water (not rapid), if not already
 
-            if (flowVec.Length() > 0)
+                pos.Set(lastWaterPos);
+                pos.Down();
+                if (!ReplaceRapidWater(pos) && lastWaterBlock.LiquidLevel > 1)    // If liquidLevel == 1, the only possible flow would be downwards
+                {
+                    pos.Up();
+                    // If we did not find water below, now look in the direction of flow of this block
+                    FastVec3f pushVector = (lastWaterBlock as IBlockFlowing).GetPushVector(pos).Normalize();
+                    pos.Add(pushVector.X * 1.5f, 0, pushVector.Z * 1.5f);
+                    if (!ReplaceRapidWater(pos) && Math.Abs(pushVector.X) + Math.Abs(pushVector.Z) > 1f)
+                    {
+                        // Now test the two straight positions if this is a diagonal flowing block
+                        // First straight position: Z move only
+                        pos.Add(pushVector.X * -1.5f, 0, 0);
+                        if (!ReplaceRapidWater(pos))
+                        {
+                            // Second straight position: X move only
+                            pos.Add(pushVector.X * 1.5f, 0, -pushVector.Z * 1.5f);
+                            if (!ReplaceRapidWater(pos))
+                            {
+                                // Found no water in any of the positions expected adjacent to the last water block
+#if DEBUG
+                                // Throw exception in debug build, so that coding team can hopefully spot this and fix. In release build do nothing (only possible consequence is that rapid water does not get destroyed by a waterwheel in a certain configuration)
+                                throw new Exception("Could not find water exit position from waterwheel at " + Pos);
+#endif
+                            }
+                        }
+                    }
+                }
+            }
+            flowRate = Math.Abs(moment * 750);
+            if (flowRate > 0)
             {
                 float prevDir = dir;
-                dir = Math.Sign(f);
+                dir = Math.Sign(moment) * -1;
                 if (dir != prevDir)
                 {
-                    this.SetPropagationDirection(new MechPowerPath(dir < 0 ? facing.Opposite : facing, 1, Pos, false));
+                    bool oppositeDir = (dir < 0);
+                    this.SetPropagationDirection(new MechPowerPath(oppositeDir ? facing.Opposite : facing, 1, Pos, false));
                 }
             }
+        }
+
+        // Returns true if any type of water found at this position (most commonly, will be where rapid-flowing water was already replaced), otherwise false
+        protected bool ReplaceRapidWater(BlockPos pos)
+        {
+            Block nextBlock = Api.World.BlockAccessor.GetBlock(pos, BlockLayersAccess.Fluid);
+            var bh = nextBlock.GetBehavior<BlockBehaviorFiniteSpreadingLiquid>();
+            if (bh != null && nextBlock.LiquidCode == "water")
+            {
+                if (!bh.multiplySpread)    // If the water here should not spread (e.g. vanilla rapid-flowing water) then replace it with standard water here
+                {
+                    string code = nextBlock.Code.FirstCodePart();
+                    code = "water" + nextBlock.Code.Path.Substring(code.Length);
+                    Block newBlock = Api.World.GetBlock(new AssetLocation(nextBlock.Code.Domain, code));
+                    int newBlockId = newBlock?.Id ?? 0;
+                    Api.World.BlockAccessor.SetBlock(newBlockId, pos, BlockLayersAccess.Fluid);
+                    newBlock.OnNeighbourBlockChange(Api.World, pos, pos);
+                    Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(pos);   // Needed because setting blocks to the fluids layer does not update neighbours, by default (as currently implemented in BlockAccessorRelaxed.SetFluidBlockInternal(), game version 1.22-pre.2)
+                }
+
+                return true;
+            }
+
+            return false;
         }
 
         private float getFlowSpeed(Block block)
@@ -192,15 +239,23 @@ namespace Vintagestory.GameContent.Mechanics
         {
             base.GetBlockInfo(forPlayer, sb);
 
-            if (blocked) sb.AppendLine(Lang.Get("Wheel is blocked, make sure no the entire wheel is free from solid blocks."));
-            else sb.AppendLine(Lang.Get("Suitable power source blocks nearby: {0}", suitablePowerSourceBlockCount));
-
-            if (Api.World.EntityDebugMode)
+            if (!bebconstructable.IsComplete)
             {
-                sb.AppendLine("<font color='#ccc'>flow vector= " + flowVec + "</font>");
-                sb.AppendLine("<font color='#ccc'>torque= " + TorqueFactor + "</font>");
-                sb.AppendLine("<font color='#ccc'>targetspeed= " + TargetSpeed + "</font>");
-                sb.AppendLine("<font color='#ccc'>flowrate = " + flowRate + "</font>");
+                sb.AppendLine(Lang.Get("Construction step: {0}/{1}", bebconstructable.CurrentCompletedStage, bebconstructable.Stages));
+            }
+            else
+            {
+
+                if (blocked) sb.AppendLine(Lang.Get("Wheel is blocked, make sure no the entire wheel is free from solid blocks."));
+                else sb.AppendLine(Lang.Get("Suitable power source blocks nearby: {0}", suitablePowerSourceBlockCount));
+
+                if (Api.World.EntityDebugMode)
+                {
+                    sb.AppendLine("<font color='#ccc'>flow vector= " + flowVec + "</font>");
+                    sb.AppendLine("<font color='#ccc'>torque= " + TorqueFactor + "</font>");
+                    sb.AppendLine("<font color='#ccc'>targetspeed= " + TargetSpeed + "</font>");
+                    sb.AppendLine("<font color='#ccc'>flowrate = " + flowRate + "</font>");
+                }
             }
         }
     }

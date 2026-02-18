@@ -27,7 +27,7 @@ public class BEBehaviorFruitingBushMesh : BlockEntityBehavior, ITexPositionSourc
         }
     }
 
-    public BerrybushState BState => Blockentity.GetBehavior<BEBehaviorFruitingBush>().BState;
+    public FruitingBushState BState => Blockentity.GetBehavior<BEBehaviorFruitingBush>().BState;
     protected string textureVariant;
     protected string berryStage;
     protected string healthState;
@@ -57,11 +57,14 @@ public class BEBehaviorFruitingBushMesh : BlockEntityBehavior, ITexPositionSourc
     {
         base.FromTreeAttributes(tree, worldAccessForResolve);
 
-        BState.Growthstate = (EnumBushGrowthState)(1 + GameMath.MurmurHash3Mod(Pos.X, Pos.Y+1, Pos.Z, 5));
-        BState.WildBushState = (EnumBushHealthState)(GameMath.MurmurHash3Mod(Pos.X, Pos.Y + 1, Pos.Z, 4));
+        
 
-        bushMesh = null;
-        Blockentity.MarkDirty(true);
+        if (BState.MeshDirty)
+        {
+            BState.MeshDirty = false;
+            bushMesh = null;
+            Blockentity.MarkDirty(true);
+        }
     }
 
     protected virtual string meshCacheKey => Block.Code + "-" + BState.Growthstate + "-" + textureVariant;
@@ -69,7 +72,8 @@ public class BEBehaviorFruitingBushMesh : BlockEntityBehavior, ITexPositionSourc
     {
         if (bushMesh != null) return;
         textureVariant = "" + (1+GameMath.MurmurHash3Mod(Pos.X, Pos.Y, Pos.Z, Block.Attributes["textureVariants"].AsInt()));
-        healthState = Blockentity.GetBehavior< BEBehaviorFruitingBush>().GetHealthState().ToString().ToLowerInvariant();
+        var healthState = Blockentity.GetBehavior<BEBehaviorFruitingBush>().GetHealthState();
+        this.healthState = healthState.ToString().ToLowerInvariant();
 
         bushMesh = ObjectCacheUtil.GetOrCreate(capi, meshCacheKey, () =>
         {
@@ -77,18 +81,21 @@ public class BEBehaviorFruitingBushMesh : BlockEntityBehavior, ITexPositionSourc
 
             switch (BState.Growthstate)
             {
-                case EnumBushGrowthState.Flowering: berryStage = "flowering"; break;
-                case EnumBushGrowthState.Ripening: berryStage = "unripe"; break;
-                case EnumBushGrowthState.Ripe: berryStage = "ripe"; break;
+                case EnumFruitingBushGrowthState.Flowering: berryStage = "flowering"; break;
+                case EnumFruitingBushGrowthState.Ripening: berryStage = "unripe"; break;
+                case EnumFruitingBushGrowthState.Ripe: berryStage = "ripe"; break;
                 default: ignoreElements = ["Berries/*"]; break;
             }
+
+            if (healthState == EnumFruitingBushHealthState.Barren) ignoreElements = ["Berries/*"];
+
             textureMapping = Block.Attributes["textureMapping"].AsObject<Dictionary<string, string>>();
 
             var loc = Block.Shape.Base;
             var shape = capi.Assets.Get<Shape>(loc.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json"));
 
             
-            if (BState.Growthstate == EnumBushGrowthState.Dormant) ignoreElements = ignoreElements.Append(["Leaves/*"]);
+            if (BState.Growthstate == EnumFruitingBushGrowthState.Dormant) ignoreElements = ignoreElements.Append(["Leaves/*"]);
 
             capi.Tesselator.TesselateShape(new TesselationMetaData()
             {

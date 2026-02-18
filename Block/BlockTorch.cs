@@ -106,29 +106,28 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
-            var be = blockSel != null ? byEntity.World.BlockAccessor.GetBlock(blockSel.Position) : null;
-            if (be is IIgnitable ign)
+            var world = byEntity.World;
+            if (blockSel?.Position is { } pos && world.BlockAccessor.GetBlock(pos).GetInterface<IIgnitable>(world, pos) is { } ign)
             {
-                if (byEntity is EntityPlayer player && !byEntity.World.Claims.TryAccess(player.Player, blockSel.Position, EnumBlockAccessFlags.Use))
+                if (byEntity is EntityPlayer player && !world.Claims.TryAccess(player.Player, pos, EnumBlockAccessFlags.Use))
                 {
                     return;
                 }
+
                 if (isExtinct)
                 {
-                    var state = ign.OnTryIgniteStack(byEntity, blockSel.Position, slot, 0);
-                    if (state == EnumIgniteState.Ignitable)
+                    if (ign.OnTryIgniteStack(byEntity, pos, slot, 0) == EnumIgniteState.Ignitable)
                     {
                         byEntity.World.PlaySoundAt(new AssetLocation("sounds/torch-ignite"), byEntity, (byEntity as EntityPlayer)?.Player, false, 16);
                         handling = EnumHandHandling.PreventDefault;
+                        return;
                     }
                 }
                 else
                 {
-                    var bes = GetBlockEntity<BlockEntityGroundStorage>(blockSel.Position);
-
                     // If not ground storage of oil lamps
                     // We must check the Layout, because this also might be a stack of ground store firewood
-                    if (bes == null || bes.StorageProps.Layout != EnumGroundStorageLayout.Quadrants) 
+                    if (GetBlockEntity<BlockEntityGroundStorage>(pos)?.StorageProps.Layout != EnumGroundStorageLayout.Quadrants)
                     {
                         // Then prevent placing of torch while pointing at another torch (after igniting)
                         handling = EnumHandHandling.Handled;
@@ -144,37 +143,42 @@ namespace Vintagestory.GameContent
 
         public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
-            if (isExtinct && blockSel != null && byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is IIgnitable ign)
+            if (!isExtinct) return base.OnHeldInteractStep(secondsUsed, slot, byEntity, blockSel, entitySel);
+
+            var world = byEntity.World;
+            if (blockSel?.Position is not { } pos || world.BlockAccessor.GetBlock(pos).GetInterface<IIgnitable>(world, pos) is not { } ign)
             {
-                if (byEntity is EntityPlayer player && !byEntity.World.Claims.TryAccess(player.Player, blockSel.Position, EnumBlockAccessFlags.Use))
-                {
-                    return false;
-                }
-                var state = ign.OnTryIgniteStack(byEntity, blockSel.Position, slot, secondsUsed);
-                if (state == EnumIgniteState.Ignitable)
-                {
-                    if (byEntity.World is IClientWorldAccessor)
-                    {
-                        if (secondsUsed > 0.25f && (int)(30 * secondsUsed) % 2 == 1)
-                        {
-                            Random rand = byEntity.World.Rand;
-                            Vec3d pos = blockSel.Position.ToVec3d().Add(blockSel.HitPosition).Add(rand.NextDouble() * 0.25 - 0.125, rand.NextDouble() * 0.25 - 0.125, rand.NextDouble() * 0.25 - 0.125);
+                return base.OnHeldInteractStep(secondsUsed, slot, byEntity, blockSel, entitySel);
+            }
 
-                            Block blockFire = byEntity.World.GetBlock(new AssetLocation("fire"));
-                            AdvancedParticleProperties props = blockFire.ParticleProperties[blockFire.ParticleProperties.Length - 1].Clone();
-                            props.basePos = pos;
-                            props.Quantity.avg = 0.5f;
-                            byEntity.World.SpawnParticles(props, null);
+            if (byEntity is EntityPlayer player && !world.Claims.TryAccess(player.Player, pos, EnumBlockAccessFlags.Use))
+            {
+                return false;
+            }
 
-                            props.Quantity.avg = 0;
-                        }
-                    }
+            switch (ign.OnTryIgniteStack(byEntity, pos, slot, secondsUsed))
+            {
+                case EnumIgniteState.Ignitable:
+                {
+                    if (world is not IClientWorldAccessor) return true;
+                    if (!(secondsUsed > 0.25f) || (int)(30 * secondsUsed) % 2 != 1) return true;
+
+                    Random rand = world.Rand;
+                    Vec3d offset = new(rand.NextDouble() * 0.25 - 0.125, rand.NextDouble() * 0.25 - 0.125, rand.NextDouble() * 0.25 - 0.125);
+
+                    Block blockFire = world.GetBlock(new AssetLocation("fire"));
+                    AdvancedParticleProperties props = blockFire.ParticleProperties[^1].Clone();
+                    props.basePos = pos.ToVec3d().Add(blockSel.HitPosition).Add(offset);
+                    props.Quantity.avg = 0.5f;
+                    world.SpawnParticles(props);
+
+                    props.Quantity.avg = 0;
 
                     return true;
                 }
-                if (state == EnumIgniteState.IgniteNow)
+                case EnumIgniteState.IgniteNow:
                 {
-                    if (byEntity.World.Side == EnumAppSide.Client) return false;
+                    if (world.Side == EnumAppSide.Client) return false;
 
                     var stack = new ItemStack(byEntity.World.GetBlock(CodeWithVariant("state", "lit")));
 
@@ -187,16 +191,16 @@ namespace Vintagestory.GameContent
                         slot.TakeOut(1);
                         if (!byEntity.TryGiveItemStack(stack))
                         {
-                            byEntity.World.SpawnItemEntity(stack, byEntity.Pos.XYZ);
+                            world.SpawnItemEntity(stack, byEntity.Pos.XYZ);
                         }
                     }
 
                     slot.MarkDirty();
                     return false;
                 }
+                default:
+                    return base.OnHeldInteractStep(secondsUsed, slot, byEntity, blockSel, entitySel);
             }
-
-            return base.OnHeldInteractStep(secondsUsed, slot, byEntity, blockSel, entitySel);
         }
 
 

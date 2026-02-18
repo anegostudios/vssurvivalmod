@@ -5,6 +5,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 
 #nullable disable
 
@@ -406,6 +407,19 @@ namespace Vintagestory.GameContent
 
             loadMesh();
             Blockentity.MarkDirty(true);
+        }
+
+        public override void OnPlacementBySchematic(ICoreServerAPI api, IBlockAccessor blockAccessor, BlockPos pos, Dictionary<int, Dictionary<int, int>> replaceBlocks,
+    int centerrockblockid, Block layerBlock, bool resolveImports)
+        {
+            var cprops = (Block as BlockShapeFromAttributes)?.GetTypeProps(Type, null, this);
+            if (cprops?.LightHsv?[2] > 0)
+            {
+                if (blockAccessor is IWorldGenBlockAccessor wgen)
+                {
+                    wgen.ScheduleBlockLightUpdate(pos, 0, Block.BlockId);
+                }
+            }
         }
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)

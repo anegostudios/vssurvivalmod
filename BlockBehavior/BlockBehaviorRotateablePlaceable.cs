@@ -18,8 +18,8 @@ namespace Vintagestory.GameContent
 
     public class BlockBehaviorRotateablePlaceable : StrongBlockBehavior
     {
-        ICoreAPI api;
-        float intervalRad;
+        protected ICoreAPI api;
+        protected float intervalRad;
         public float OffsetRad;
         
 
@@ -75,6 +75,16 @@ namespace Vintagestory.GameContent
             return null;
         }
 
+        public override Cuboidf[] GetParticleCollisionBoxes(IBlockAccessor blockAccessor, BlockPos pos, ref EnumHandling handled)
+        {
+            return GetCollisionBoxes(blockAccessor, pos, ref handled);
+        }
+
+        public override Cuboidf GetParticleBreakBox(IBlockAccessor blockAccess, BlockPos pos, BlockFacing facing, ref EnumHandling handled)
+        {
+            return GetCollisionBoxes(blockAccess, pos, ref handled)[0];
+        }
+
 
         // A not exactly pretty workaround
         Dictionary<BlockPos, float> recentPlacementRad = new Dictionary<BlockPos, float>();
@@ -99,6 +109,9 @@ namespace Vintagestory.GameContent
 
             return base.DoPlaceBlock(world, byPlayer, blockSel, byItemStack, ref handling);
         }
+
+
+
 
     }
 }

@@ -133,7 +133,7 @@ public class CollectibleBehaviorWearable : CollectibleBehaviorWearableAttachment
         api.ObjectCache.Remove("armorMeshRefs");
     }
 
-    public override void OnHandbookRecipeRender(ICoreClientAPI capi, GridRecipe recipe, ItemSlot dummyslot, double x, double y, double z, double size, ref EnumHandling handling)
+    public override void OnHandbookRecipeRender(ICoreClientAPI capi, IRecipeBase recipe, ItemSlot dummyslot, double x, double y, double z, double size, ref EnumHandling handling)
     {
         bool isRepairRecipe = recipe.Name.Path.Contains("repair");
 
@@ -394,7 +394,7 @@ public class CollectibleBehaviorWearable : CollectibleBehaviorWearableAttachment
         }
     }
 
-    public override void OnCreatedByCrafting(ItemSlot[] inSlots, ItemSlot outputSlot, GridRecipe byRecipe, ref EnumHandling bhHandling)
+    public override void OnCreatedByCrafting(ItemSlot[] inSlots, ItemSlot outputSlot, IRecipeBase byRecipe, ref EnumHandling bhHandling)
     {
         base.OnCreatedByCrafting(inSlots, outputSlot, byRecipe, ref bhHandling);
 
@@ -416,7 +416,7 @@ public class CollectibleBehaviorWearable : CollectibleBehaviorWearableAttachment
         }
     }
 
-    public override bool ConsumeCraftingIngredients(ItemSlot[] inSlots, ItemSlot outputSlot, GridRecipe recipe, ref EnumHandling bhHandling)
+    public override bool ConsumeCraftingIngredients(ItemSlot[] inSlots, ItemSlot outputSlot, IRecipeBase recipe, ref EnumHandling bhHandling)
     {
         // Consume as much materials in the input grid as needed
         if (recipe.Name.Path.Contains("repair"))

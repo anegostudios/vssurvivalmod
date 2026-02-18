@@ -106,6 +106,8 @@ namespace Vintagestory.GameContent
 
         public override int GetMergableQuantity(ItemStack sinkStack, ItemStack sourceStack, EnumMergePriority priority)
         {
+            if (sinkStack.Attributes.GetBool("fishing")) return 0;
+
             if (priority == EnumMergePriority.DirectMerge)
             {
                 if (sinkStack.Attributes.GetItemstack("fishingBait") == null)
@@ -119,6 +121,8 @@ namespace Vintagestory.GameContent
 
         public override void TryMergeStacks(ItemStackMergeOperation op)
         {
+            if (op.SinkSlot.Itemstack.Attributes.GetBool("fishing")) return;
+
             if (op.CurrentPriority == EnumMergePriority.DirectMerge)
             {
                 if (op.SinkSlot.Itemstack.Attributes.GetItemstack("fishingBait") == null)
@@ -256,6 +260,8 @@ namespace Vintagestory.GameContent
             byEntity.AnimManager.StopAnimation(aimAnimation);
             byEntity.AnimManager.StartAnimation("fishingpole-idle");
 
+            slot.Itemstack.Attributes.SetLong("fishingEntityId", byEntity.EntityId);
+
             if (byEntity.World.Side == EnumAppSide.Client)
             {
                 slot.Itemstack.Attributes.SetBool("fishing", true);
@@ -282,7 +288,7 @@ namespace Vintagestory.GameContent
             ebobber.AttachedToEntityId = byEntity.EntityId;
             ebobber.BaitStack = slot.Itemstack.Attributes.GetItemstack("fishingBait");
             ebobber.BaitStack?.ResolveBlockOrItem(byEntity.World);
-            slot.Itemstack.Attributes.SetItemstack("fishingBait", null);
+            slot.Itemstack.Attributes.RemoveAttribute("fishingBait");
 
 
             earrow.PreInitialize();
@@ -311,14 +317,21 @@ namespace Vintagestory.GameContent
                 cm.UnregisterCloth(itemstack.Attributes.GetInt("clothId", 0));
                 if (api.Side == EnumAppSide.Server)
                 {
-                    var be = api.World.GetEntityById(beid) as EntityBobber;
+                    EntityBobber be = api.World.GetEntityById(beid) as EntityBobber;
                     be?.TryCatchFish(byEntity);
                     be?.Die();
-                    itemstack.Attributes.SetItemstack("fishingBait", be.BaitStack);
+                    if (be?.BaitStack != null)
+                    {
+                        itemstack.Attributes.SetItemstack("fishingBait", be.BaitStack);
+                    }
+                    else
+                    {
+                        itemstack.Attributes.RemoveAttribute("fishingBait");
+                    }
                 }
 
-                itemstack.Attributes.SetLong("bobberEntityId", 0);
-                itemstack.Attributes.SetInt("clothId", 0);
+                itemstack.Attributes.RemoveAttribute("bobberEntityId");
+                itemstack.Attributes.RemoveAttribute("clothId");
 
                 return true;
             }
@@ -326,12 +339,9 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-
-        public override void OnCreatedByCrafting(ItemSlot[] allInputslots, ItemSlot outputSlot, GridRecipe byRecipe)
+        public override void OnCreatedByCrafting(ItemSlot[] allInputSlots, ItemSlot outputSlot, IRecipeBase byRecipe)
         {
-            base.OnCreatedByCrafting(allInputslots, outputSlot, byRecipe);
-
-            var baitStack = allInputslots.FirstOrDefault(slot => slot.Itemstack?.Collectible.Attributes?.IsTrue("isFishBait") == true)?.Itemstack;
+            var baitStack = allInputSlots.FirstOrDefault(slot => slot.Itemstack?.Collectible.Attributes?.IsTrue("isFishBait") == true)?.Itemstack;
             if (baitStack != null)
             {
                 outputSlot.Itemstack.Attributes.SetItemstack("fishingBait", baitStack);
@@ -377,6 +387,17 @@ namespace Vintagestory.GameContent
         public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
 
+        }
+
+        public override void OnModifiedInInventorySlot(IWorldAccessor world, ItemSlot slot, ItemStack extractedStack = null)
+        {
+            var eid = slot.Itemstack.Attributes.GetLong("fishingEntityId");
+            var eagent = world.GetEntityById(eid) as EntityAgent;
+
+            if (extractedStack != null && eagent != null && eagent.RightHandItemSlot.Empty)
+            {   
+                StopFishing(extractedStack, eagent);
+            }
         }
 
         private ClothSystem getRope(ItemSlot slot)

@@ -434,6 +434,7 @@ namespace Vintagestory.GameContent
         private void prepareNextStorm()
         {
             if (config == null) return;
+            if (mobConfig == null) return;
 
             double addStrength = Math.Min(config.StrengthIncreaseCap, config.StrengthIncrease * api.World.Calendar.TotalDays / config.Frequency.avg);
 

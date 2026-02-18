@@ -256,7 +256,7 @@ namespace Vintagestory.GameContent
                 }
                 if (!ingred.Resolve(api.World, "Require stack for construction stage " + i + " on " + codeForErrorLogging))
                 {
-                    return false;
+                    if (ingred.MatchingType == EnumRecipeMatchType.Exact) return false;
                 }
             }
 

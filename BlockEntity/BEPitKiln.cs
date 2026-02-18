@@ -150,40 +150,37 @@ namespace Vintagestory.GameContent
                 {
                     var stack = mats[i].ItemStack;
 
-                    if (stack.Equals(Api.World, hotbarSlot.Itemstack, GlobalConstants.IgnoredStackAttributes) && stack.StackSize <= hotbarSlot.StackSize)
+                    if (!stack.Equals(Api.World, hotbarSlot.Itemstack, GlobalConstants.IgnoredStackAttributes) || stack.StackSize > hotbarSlot.StackSize) continue;
+                    if (!isSameMatAsPreviouslyAdded(stack)) continue;
+
+                    int toMove = stack.StackSize;
+                    for (int j = 4; j < invSlotCount && toMove > 0; j++)
                     {
-                        if (!isSameMatAsPreviouslyAdded(stack)) continue;
-
-                        int toMove = stack.StackSize;
-                        for (int j = 4; j < invSlotCount && toMove > 0; j++)
-                        {
-                            toMove -= hotbarSlot.TryPutInto(Api.World, inventory[j], toMove);
-                        }
-
-                        hotbarSlot.MarkDirty();
-
-                        currentBuildStage++;
-                        mesh = null;
-                        MarkDirty(true);
-                        updateSelectiveElements();
-                        (player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
-
-                        if (stack.Collectible.Attributes?["placeSound"].Exists == true)
-                        {
-                            AssetLocation sound = AssetLocation.Create(stack.Collectible.Attributes["placeSound"].AsString(), stack.Collectible.Code.Domain);
-                            if (sound != null)
-                            {
-                                Api.World.PlaySoundAt(sound.WithPathPrefixOnce("sounds/"), Pos, -0.4, player, true, 12);
-                            }
-                        }
+                        toMove -= hotbarSlot.TryPutInto(Api.World, inventory[j], toMove);
                     }
+
+                    hotbarSlot.MarkDirty();
+
+                    currentBuildStage++;
+                    mesh = null;
+                    MarkDirty(true);
+                    updateSelectiveElements();
+                    (player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+
+                    if (stack.Collectible.Attributes?["placeSound"].Exists != true) continue;
+                    if (AssetLocation.Create(stack.Collectible.Attributes["placeSound"].AsString(), stack.Collectible.Code.Domain) is { } sound)
+                    {
+                        Api.World.PlaySoundAt(sound.WithPathPrefixOnce("sounds/"), Pos, -0.4, player, true, 12);
+                    }
+
+                    return true;
                 }
             }
 
 
             DetermineStorageProperties(null);
 
-            return true;
+            return false;
         }
 
 
@@ -290,7 +287,7 @@ namespace Vintagestory.GameContent
             {
                 return false;
             }
-            
+
 
             return true;
         }
@@ -390,7 +387,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            
+
 
             colBoxes[0].X1 = 0;
             colBoxes[0].X2 = 1;
@@ -464,7 +461,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        
+
 
         public override bool OnTesselation(ITerrainMeshPool meshdata, ITesselatorAPI tesselator)
         {
@@ -487,7 +484,7 @@ namespace Vintagestory.GameContent
         }
 
         public override bool CanIgnite => IsComplete && IsValidPitKiln() && !GetBehavior<BEBehaviorBurning>().IsBurning;
-        
+
 
         public void TryIgnite(IPlayer byPlayer)
         {

@@ -99,17 +99,4 @@ public class CollectibleBehaviorTypedTexture : CollectibleBehavior
     }
 
 
-    public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
-    {
-        if (inSlot.Itemstack == null) return;
-        for (int i = 0; i < materialTypes.Length; i++)
-        {
-            if (translationEntries[i] == null) continue;
-
-            string material = inSlot.Itemstack.Attributes.GetString(materialTypes[i], defaults[i]);
-
-            string materialLangEntry = translationEntries[i].Replace("{" + materialTypes[i] + "}", material);
-            dsc.AppendLine(Lang.Get("materialtype-" + materialTypes[i], Lang.Get(materialLangEntry)));
-        }
-    }
 }

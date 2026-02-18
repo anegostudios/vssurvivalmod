@@ -1,4 +1,5 @@
 using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
@@ -39,6 +40,7 @@ public class BEBehaviorDisplay : BEBehaviorContainer, IInteractable, IRotatableP
     protected InventoryInfinite inventory;
 
     protected ItemStack displayStack;
+    public ItemStack DisplayStack => displayStack;
 
     public InventoryInfinite InventoryInv => inventory;
 
@@ -519,8 +521,13 @@ public class BEBehaviorDisplay : BEBehaviorContainer, IInteractable, IRotatableP
         var psurfaces = Block.GetBehavior<BlockBehaviorDisplay>().PlacementSurfaces;
 
         var titem = displayStack?.Collectible.GetCollectibleBehavior<CollectibleBehaviorTypedTexture>(true);
-        if (titem == null) return;
-        texSource = new TypedTextureSource(capi, capi.BlockTextureAtlas, displayStack!.Collectible.Code.Domain, titem.TextureMapping, titem.GetMaterials(displayStack));
+        if (titem != null)
+        {
+            texSource = new TypedTextureSource(capi, capi.BlockTextureAtlas, displayStack!.Collectible.Code.Domain, titem.TextureMapping, titem.GetMaterials(displayStack));
+        } else
+        {
+            texSource = capi.Tesselator.GetTextureSource(Block);
+        }
 
         capi.Tesselator.TesselateShape(new TesselationMetaData()
         {
@@ -866,4 +873,18 @@ public class BEBehaviorDisplay : BEBehaviorContainer, IInteractable, IRotatableP
 
     public bool DoPartialSelection() => true;
 
+    public int GetParticleColorTextureSubId()
+    {
+        var titem = displayStack?.Collectible.GetCollectibleBehavior<CollectibleBehaviorTypedTexture>(true);
+        if (titem != null)
+        {
+            var loc = TypedTextureSource.getMappedTexture("wood-top", displayStack!.Collectible.Code.Domain, titem.GetMaterials(displayStack), titem.TextureMapping);
+            capi.BlockTextureAtlas.GetOrInsertTexture(loc, out int subid, out _);
+            return subid;
+        }
+        else
+        {
+            return Block.TextureSubIdForBlockColor;
+        }
+    }
 }

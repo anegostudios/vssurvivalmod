@@ -77,6 +77,22 @@ namespace Vintagestory.GameContent
                 return;
             }
 
+            if (mode == EnumInteractMode.Interact && byEntity.Controls.ShiftKey && byEntity.RightHandItemSlot.Empty && GetBehavior<EntityBehaviorAttachable>()?.Inventory.Empty == true)
+            {
+                ItemStack stack = new ItemStack(byEntity.World.GetItem(Code));
+                if (!byEntity.TryGiveItemStack(stack))
+                {
+                    byEntity.World.SpawnItemEntity(stack, Pos.XYZ);
+                }
+                byEntity.World.Logger.Audit("{0} Picked up 1x{1} at {2}.",
+                    byEntity.GetName(),
+                    stack.Collectible.Code,
+                     Pos
+                );
+                Die();
+                return;
+            }
+
             if (mode == EnumInteractMode.Interact && byEntity.RightHandItemSlot?.Itemstack?.Collectible is ItemWrench)
             {
                 AnimManager.StopAnimation(poses[CurPose]);

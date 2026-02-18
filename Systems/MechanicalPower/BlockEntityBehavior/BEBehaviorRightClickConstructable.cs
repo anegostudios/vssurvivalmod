@@ -25,6 +25,8 @@ namespace Vintagestory.GameContent
         }
 
         public bool IsComplete => rcc.CurrentCompletedStage == rcc.Stages.Length - 1;
+        public int CurrentCompletedStage => rcc.CurrentCompletedStage;
+        public int Stages => rcc.Stages.Length - 1;
 
         public override void Initialize(ICoreAPI api, JsonObject properties)
         {

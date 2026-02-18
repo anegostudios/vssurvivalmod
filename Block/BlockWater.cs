@@ -98,6 +98,7 @@ namespace Vintagestory.GameContent
 
         public override void OnServerGameTick(IWorldAccessor world, BlockPos pos, object extra = null)
         {
+            if (iceBlock == null) return;
             world.BlockAccessor.SetBlock(iceBlock.Id, pos, BlockLayersAccess.Fluid);
         }
 

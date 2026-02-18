@@ -108,7 +108,7 @@ public class CollectibleBehaviorWearableAttachment : CollectibleBehavior, IConta
         var slotType = (slot as ItemSlotDisplay)?.DisplayCategory ?? "default";
         var itemstack = slot.Itemstack;
 
-        if (slotType == "shelf")
+        if (slotType == "shelf" && IsFoldable(slot.Itemstack))
         {
             mesh = genFoldedMesh(itemstack, targetAtlas, forBlockPos);
         }
@@ -128,6 +128,11 @@ public class CollectibleBehaviorWearableAttachment : CollectibleBehavior, IConta
 
         mesh.RenderPassesAndExtraBits.Fill((short)EnumChunkRenderPass.OpaqueNoCull);
         return mesh;
+    }
+
+    public virtual bool IsFoldable(ItemStack itemstack)
+    {
+        return itemstack.ItemAttributes.IsTrue("isFoldable");
     }
 
     private MeshData genFoldedMesh(ItemStack itemstack, ITextureAtlasAPI targetAtlas, BlockPos forBlockPos)

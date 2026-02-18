@@ -1,17 +1,24 @@
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent;
 
-public class ItemEntityMoverTool : Item
+public class ItemEntityMoverTool : Item, IHeldItemOnMouseWheel
 {
     protected const string distanceAttribute = "distance";
     protected const string offsetAttribute = "offset";
     protected const string entityIdAttribute = "entity-id";
+    protected const double mouseWheelSensitivity = 1;
+    protected const double shiftMouseWheelSensitivity = 0.1;
     protected readonly Dictionary<long, long> affectedEntities = [];
-
+    protected WorldInteraction[]? interactionHelp;
 
 
     public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
@@ -47,6 +54,41 @@ public class ItemEntityMoverTool : Item
         {
             OnHeldInteractStopServer(secondsUsed, slot, byEntity, blockSel, entitySel);
         }
+    }
+
+    public void OnMouseWheel(EntityPlayer byPlayer, ItemSlot inSlot, MouseWheelEventArgs args)
+    {
+        if (byPlayer.Api is ICoreServerAPI serverApi)
+        {
+            OnMouseWheelServer(serverApi, byPlayer, inSlot, args);
+        }
+        else if(byPlayer.Api is ICoreClientAPI clientApi)
+        {
+            OnMouseWheelClient(clientApi, byPlayer, inSlot, args);
+        }
+    }
+
+    public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot)
+    {
+        if (interactionHelp != null)
+        {
+            return interactionHelp;
+        }
+
+        interactionHelp = [
+            new()
+            {
+                ActionLangCode = Lang.Get("Grab entity"),
+                MouseButton = EnumMouseButton.Right
+            },
+            new()
+            {
+                ActionLangCode = Lang.Get("Use mouse wheel to adjust entity distance (hold 'Shift' for more precise adjustments)"),
+                MouseButton = EnumMouseButton.Wheel
+            }
+        ];
+
+        return interactionHelp;
     }
 
 
@@ -167,5 +209,31 @@ public class ItemEntityMoverTool : Item
         Vec3d eyePos = byEntity.Pos.XYZ.Add(byEntity.LocalEyePos.ToVec3f());
 
         return eyePos + byEntity.Pos.GetViewVector().ToVec3d().Normalize() * distance;
+    }
+
+    protected virtual void OnMouseWheelServer(ICoreServerAPI api, EntityPlayer byPlayer, ItemSlot inSlot, MouseWheelEventArgs args)
+    {
+        if (inSlot.Itemstack?.Attributes == null)
+        {
+            return;
+        }
+
+        args.SetHandled(true);
+
+        double factor = byPlayer.Controls.ShiftKey ? shiftMouseWheelSensitivity : mouseWheelSensitivity;
+        double offset = args.deltaPrecise * factor;
+        double distance = inSlot.Itemstack.Attributes.GetDouble(distanceAttribute);
+        distance = Math.Max(distance + offset, 0);
+        inSlot.Itemstack.Attributes.SetDouble(distanceAttribute, distance);
+    }
+
+    protected virtual void OnMouseWheelClient(ICoreClientAPI api, EntityPlayer byPlayer, ItemSlot inSlot, MouseWheelEventArgs args)
+    {
+        if (!api.Input.MouseButton.Right)
+        {
+            return;
+        }
+
+        args.SetHandled(true);
     }
 }

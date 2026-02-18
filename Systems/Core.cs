@@ -693,6 +693,8 @@ namespace Vintagestory.GameContent
             api.RegisterBlockBehaviorClass("Coverable", typeof(BlockBehaviorCoverable));
             api.RegisterBlockBehaviorClass("Display", typeof(BlockBehaviorDisplay));
             api.RegisterBlockBehaviorClass("CabinetDoors", typeof(BlockBehaviorCabinetDoors));
+            api.RegisterBlockBehaviorClass("FruitingBush", typeof(BlockBehaviorFruitingBush));
+            api.RegisterBlockBehaviorClass("FruitingBushCutting", typeof(BlockBehaviorFruitingBushCutting));
         }
 
         private void RegisterDefaultBlockEntityBehaviors()
@@ -756,6 +758,8 @@ namespace Vintagestory.GameContent
 
             api.RegisterBlockEntityBehaviorClass("FruitingBush", typeof(BEBehaviorFruitingBush));
             api.RegisterBlockEntityBehaviorClass("FruitingBushMesh", typeof(BEBehaviorFruitingBushMesh));
+            api.RegisterBlockEntityBehaviorClass("FruitingBushCutting", typeof(BEBehaviorFruitingBushCutting));
+            api.RegisterBlockEntityBehaviorClass("Durability", typeof(BEBehaviorDurability));
         }
 
         private void RegisterDefaultCollectibleBehaviors()

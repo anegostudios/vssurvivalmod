@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using Vintagestory.API.Client;
@@ -8,7 +9,7 @@ using Vintagestory.ServerMods;
 
 namespace Vintagestory.GameContent;
 
-public class BETileConnector : BlockEntity
+public class BETileConnector : BlockEntity, IRotatable
 {
     public string Name = "";
     public string Target = "";
@@ -84,6 +85,15 @@ public class BETileConnector : BlockEntity
         var mesh = (Api as ICoreClientAPI)!.TesselatorManager.GetDefaultBlockMesh(Block);
         mesher.AddMeshData(mesh, tfMatrix[Direction.Index]);
         return true;
+    }
+
+    public void OnTransformed(IWorldAccessor worldAccessor, ITreeAttribute tree, int degreeRotation, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, EnumAxis? flipAxis)
+    {
+        var dirIndex = tree.GetAsInt("direction");
+
+        var face = BlockFacing.ALLFACES[dirIndex];
+        var rotated = face.GetHorizontalRotated(degreeRotation);
+        tree.SetInt("direction", rotated.Index);
     }
 
     public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)

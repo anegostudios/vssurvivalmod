@@ -5,13 +5,11 @@ using Vintagestory.API.Common.CommandAbbr;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
-#nullable disable
-
 namespace Vintagestory.GameContent;
 
 public class ModsystemElevator : ModSystem
 {
-    private ICoreServerAPI sapi;
+    private ICoreServerAPI sapi = null!;
 
     public Dictionary<string, ElevatorSystem> Networks = new Dictionary<string, ElevatorSystem>();
 
@@ -40,8 +38,8 @@ public class ModsystemElevator : ModSystem
 
     private TextCommandResult OnsetBlockNetwork(TextCommandCallingArgs args)
     {
-        var networkCode = args[0] as string;
-        var pos = args.Parsers[1].GetValue() as Vec3d;
+        var networkCode = (string)args[0];
+        var pos = (Vec3d)args.Parsers[1].GetValue();
         var offset = args.Parsers[2].IsMissing ? -1 : (int)args[2];
         var block = sapi.World.BlockAccessor.GetBlock(pos.AsBlockPos);
         var beBehavior = block.GetBEBehavior<BEBehaviorElevatorControl>(pos.AsBlockPos);
@@ -58,7 +56,7 @@ public class ModsystemElevator : ModSystem
     private TextCommandResult OnEntityNetworkSet(TextCommandCallingArgs args) =>
         CmdUtil.EntityEach(args, e =>
         {
-            var networkCode = args[1] as string;
+            var networkCode = (string)args[1];
 
             if (e is not EntityElevator elevator) return TextCommandResult.Success("Target was not a elevator");
 
@@ -82,7 +80,7 @@ public class ModsystemElevator : ModSystem
         }
     }
 
-    public ElevatorSystem GetElevator(string networkCode)
+    public ElevatorSystem? GetElevator(string networkCode)
     {
         EnsureNetworkExists(networkCode);
         return Networks.GetValueOrDefault(networkCode);
@@ -103,7 +101,7 @@ public class ModsystemElevator : ModSystem
     public void CallElevator(string networkCode, BlockPos position, int offset)
     {
         var entityElevator = GetElevator(networkCode);
-        entityElevator?.Entity.CallElevator(position, offset);
+        entityElevator?.Entity?.CallElevator(position, offset);
     }
 
     public void RegisterControl(string networkCode, BlockPos pos, int offset)
