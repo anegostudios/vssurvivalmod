@@ -138,30 +138,32 @@ namespace Vintagestory.GameContent.Mechanics
         private void Crush(int slot, int capTier, double xOffset)
         {
             ItemStack inputStack = inv[slot].TakeOut(1);
-            var props = inputStack.Collectible.GetCrushingProperties(Api.World, inputStack);
             ItemStack outputStack = null;
 
-            if (props != null) {
-                outputStack = props.CrushedStack?.ResolvedItemstack.Clone();
+            bool canCrush = false;
+
+            if (inputStack.Collectible.GetCrushingProperties(Api.World, inputStack) is CrushingProperties props)
+            {
+                canCrush = props.HardnessTier <= capTier;
+                outputStack = props.CrushedStack?.ResolvedItemstack?.Clone();
                 if (outputStack != null)
                 {
                     outputStack.StackSize = GameMath.RoundRandom(Api.World.Rand, props.Quantity.nextFloat(outputStack.StackSize, Api.World.Rand));
                 }
-
-                if (outputStack.StackSize <= 0)
-                {
-                    return;
-                }
             }
 
-            Vec3d position = mat.TransformVector(new Vec4d(xOffset * 0.999, 0.1, 0.8, 0)).XYZ.Add(Pos).Add(0.5, 0, 0.5);
-            double lengthways = Api.World.Rand.NextDouble() * 0.07 - 0.035;
-            double sideways = Api.World.Rand.NextDouble() * 0.03 - 0.005;
-            Vec3d velocity = new Vec3d(Facing.Axis == EnumAxis.Z ? sideways : lengthways, Api.World.Rand.NextDouble() * 0.02 - 0.01, Facing.Axis == EnumAxis.Z ? lengthways : sideways);
+            // Make sure to always return the input if crushing isn't possible
+            bool hasOutput = !canCrush || (canCrush && outputStack?.StackSize > 0);
+            if (hasOutput)
+            {
+                Vec3d position = mat.TransformVector(new Vec4d(xOffset * 0.999, 0.1, 0.8, 0)).XYZ.Add(Pos).Add(0.5, 0, 0.5);
+                double lengthways = Api.World.Rand.NextDouble() * 0.07 - 0.035;
+                double sideways = Api.World.Rand.NextDouble() * 0.03 - 0.005;
+                Vec3d velocity = new Vec3d(Facing.Axis == EnumAxis.Z ? sideways : lengthways, Api.World.Rand.NextDouble() * 0.02 - 0.01, Facing.Axis == EnumAxis.Z ? lengthways : sideways);
 
-            bool tierPassed = outputStack != null && props.HardnessTier <= capTier;
+                Api.World.SpawnItemEntity(canCrush ? outputStack : inputStack, position, velocity);
+            }
 
-            Api.World.SpawnItemEntity(tierPassed ? outputStack : inputStack, position, velocity);
 
             MarkDirty(true);
         }
@@ -175,7 +177,7 @@ namespace Vintagestory.GameContent.Mechanics
             ICoreClientAPI capi = Api as ICoreClientAPI;
 
 
-            MeshData meshTop = ObjectCacheUtil.GetOrCreate(capi, "pulverizertopmesh-"+rotateY, () =>
+            MeshData meshTop = ObjectCacheUtil.GetOrCreate(capi, "pulverizertopmesh-" + rotateY, () =>
             {
                 Shape shapeTop = API.Common.Shape.TryGet(capi, "shapes/block/wood/mechanics/pulverizer-top.json");
                 capi.Tesselator.TesselateShape(Block, shapeTop, out MeshData mesh, new Vec3f(0, rotateY, 0));
@@ -228,12 +230,13 @@ namespace Vintagestory.GameContent.Mechanics
             Vec4d vec = new Vec4d(blockSel.HitPosition.X, blockSel.HitPosition.Y, blockSel.HitPosition.Z, 1);
             Vec4d tvec = mat.TransformVector(vec);
             int a = Facing.Axis == EnumAxis.Z ? 1 : 0;
-            ItemSlot targetSlot = tvec.X < 0.5 ? inv[a] : inv[1-a];
+            ItemSlot targetSlot = tvec.X < 0.5 ? inv[a] : inv[1 - a];
 
             if (handslot.Empty)
             {
                 TryTake(targetSlot, byPlayer);
-            } else
+            }
+            else
             {
                 if (TryAddPart(handslot, byPlayer))
                 {
