@@ -93,7 +93,18 @@ namespace Vintagestory.GameContent
                 if (slot == null) return EnumOvenContentMode.Firewood;
 
                 BakingProperties bakingProps = BakingProperties.ReadFrom(slot.Itemstack);
-                if (bakingProps == null) return EnumOvenContentMode.Firewood;
+                if (bakingProps == null)
+                {
+                    if (slot.Itemstack.Class == EnumItemClass.Item)
+                    {
+                        if (slot.Itemstack.Item.Code.Path.Contains("firewood"))
+                            return EnumOvenContentMode.Firewood;
+                        else
+                            return EnumOvenContentMode.Quadrants;
+                    }
+
+                    return EnumOvenContentMode.Firewood;
+                }
 
                 return bakingProps.LargeItem ? EnumOvenContentMode.SingleCenter : EnumOvenContentMode.Quadrants;
             }
@@ -545,20 +556,15 @@ namespace Vintagestory.GameContent
 
                 if (resultCode != null)
                 {
-                    ItemStack resultStack = null;
-                    if (slot.Itemstack.Class == EnumItemClass.Block)
-                    {
-                        Block block = Api.World.GetBlock(new AssetLocation(resultCode));
-                        if (block != null)
-                        {
-                            resultStack = new ItemStack(block);
-                        }
-                    }
-                    else
-                    {
-                        Item item = Api.World.GetItem(new AssetLocation(resultCode));
-                        if (item != null) resultStack = new ItemStack(item);
-                    }
+                    ItemStack resultStack = (ItemStack)null;
+                    
+                    Block block = this.Api.World.GetBlock(new AssetLocation(resultCode));
+                    if (block != null)
+                        resultStack = new ItemStack(block);
+                    
+                    Item item = this.Api.World.GetItem(new AssetLocation(resultCode));
+                    if (item != null)
+                        resultStack = new ItemStack(item);
 
                     if (resultStack != null)
                     {
