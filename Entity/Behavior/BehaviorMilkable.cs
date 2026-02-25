@@ -13,8 +13,19 @@ namespace Vintagestory.GameContent
 {
     public class EntityBehaviorMilkable : EntityBehavior
     {
-        double lastMilkedTotalHours;
-        
+        // Not using WatchedAttribute causes #6703 because
+        // mouse buttons get "stuck" during server lag/pause.
+        // Then BehaviorMilkingContainer.OnHeldInteractStop will
+        // only be called on the client, which overwrites the
+        // value even though milking never actually succeeded,
+        // and it will never be synced to the server, forcing
+        // a restart/relog to pull from the server again.
+        double lastMilkedTotalHours
+        {
+            get { return entity.WatchedAttributes.GetFloat("lastMilkedTotalHours"); }
+            set { entity.WatchedAttributes.SetFloat("lastMilkedTotalHours", (float)value); }
+        }
+
         float aggroChance;
         bool aggroTested;
         bool clientCanContinueMilking;
@@ -67,7 +78,6 @@ namespace Vintagestory.GameContent
 
         void init()
         {
-            lastMilkedTotalHours = entity.WatchedAttributes.GetFloat("lastMilkedTotalHours");
             if (entity.World.Side == EnumAppSide.Client) return;
 
             EntityBehaviorTaskAI taskAi = entity.GetBehavior<EntityBehaviorTaskAI>();
@@ -191,16 +201,11 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            
-
             return true;
         }
 
         public void MilkingComplete(ItemSlot slot, EntityAgent byEntity)
         {
-            lastMilkedTotalHours = entity.World.Calendar.TotalHours;
-            entity.WatchedAttributes.SetFloat("lastMilkedTotalHours", (float)lastMilkedTotalHours);
-
             BlockLiquidContainerBase lcblock = slot.Itemstack.Collectible as BlockLiquidContainerBase;
             if (lcblock == null)
             {
@@ -209,6 +214,8 @@ namespace Vintagestory.GameContent
 
             if (entity.World.Side == EnumAppSide.Server)
             {
+                lastMilkedTotalHours = entity.World.Calendar.TotalHours;
+
                 ItemStack contentStack = liquidStack.Clone();
                 contentStack.StackSize = 999999;
 
