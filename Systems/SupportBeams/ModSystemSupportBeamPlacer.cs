@@ -17,7 +17,7 @@ namespace Vintagestory.GameContent
 
         protected Dictionary<string, MeshData[]> origBeamMeshes = new Dictionary<string, MeshData[]>();
         Dictionary<string, BeamPlacerWorkSpace> workspaceByPlayer = new Dictionary<string, BeamPlacerWorkSpace>();
-        
+
         ICoreAPI api;
         ICoreClientAPI capi;
         public Matrixf ModelMat = new Matrixf();
@@ -271,7 +271,7 @@ namespace Vintagestory.GameContent
         {
             Vec3f nowEndOffset;
             Vec3d vec;
-            
+
             if (player.CurrentBlockSelection != null)
             {
                 var blockSel = player.CurrentBlockSelection;
@@ -279,7 +279,7 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                vec = player.Entity.SidedPos.AheadCopy(2).XYZ.Add(player.Entity.LocalEyePos).Sub(ws.startPos);
+                vec = player.Entity.Pos.AheadCopy(2).XYZ.Add(player.Entity.LocalEyePos).Sub(ws.startPos);
             }
 
             nowEndOffset = snapToGrid(vec, ws.GridSize);
@@ -367,7 +367,7 @@ namespace Vintagestory.GameContent
                 if (origMeshes.Length > 1 && len < 18 / 16f) { sectionLen = len; r += 1; }
 
                 // 4 sections
-                // 4 voxels long: Choose for len until 6 voxels. 6/16 = 0.375   => all until 0.375*4 has to round to 0. Remove to voxels -> 0.375 becomes 0.25. 0.25*4 => 1. 
+                // 4 voxels long: Choose for len until 6 voxels. 6/16 = 0.375   => all until 0.375*4 has to round to 0. Remove to voxels -> 0.375 becomes 0.25. 0.25*4 => 1.
                 // 8 voxels long: Choose for len until 10 voxels
                 // 12 voxels long: Choose for len until 14 voxels
                 // 16 voxels long: above 14
@@ -383,7 +383,7 @@ namespace Vintagestory.GameContent
                 Mat4f.Scale(mat, mat, new float[] { xscale, 1, 1 });
                 Mat4f.Translate(mat, mat, -1f, -0.125f, -0.5f);
 
-                
+
                 var mesh = origMeshes[index].Clone();
                 mesh.MatrixTransform(mat);
 
@@ -497,7 +497,7 @@ namespace Vintagestory.GameContent
 
         private bool isBeamStableAt(Vec3d start)
         {
-            return 
+            return
                 BlockBehaviorUnstableRock.getVerticalSupportStrength(api.World, start.AsBlockPos) > 0 ||
                 BlockBehaviorUnstableRock.getVerticalSupportStrength(api.World, start.Add(-1/16.0, 0, -1 / 16.0).AsBlockPos) > 0 ||
                 BlockBehaviorUnstableRock.getVerticalSupportStrength(api.World, start.Add(1 / 16.0, 0, 1 / 16.0).AsBlockPos) > 0
@@ -566,4 +566,3 @@ namespace Vintagestory.GameContent
         }
     }
 }
- 

@@ -1,4 +1,4 @@
-﻿using System.Linq;
+using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -28,7 +28,7 @@ namespace Vintagestory.GameContent
                     {
                         ActionLangCode = "blockhelp-cheese-cut",
                         MouseButton = EnumMouseButton.Right,
-                        Itemstacks = BlockUtil.GetKnifeStacks(api),
+                        Itemstacks = ObjectCacheUtil.GetToolStacks(api, EnumTool.Knife),
                         GetMatchingStacks = (wi, bs, es) => {
                             BECheese bec = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BECheese;
                             if (bec != null && bec.SlicesLeft > 1)
@@ -51,18 +51,10 @@ namespace Vintagestory.GameContent
                 var shape = capi.TesselatorManager.GetCachedShape(bec.Inventory[0].Itemstack.Item.Shape.Base);
 
                 capi.Tesselator.TesselateShape(this, shape, out blockModelData);
-                blockModelData.Scale(new Vec3f(0.5f, 0, 0.5f), 0.75f, 0.75f, 0.75f);
-
                 capi.Tesselator.TesselateShape("cheese decal", shape, out decalModelData, decalTexSource);
-                decalModelData.Scale(new Vec3f(0.5f, 0, 0.5f), 0.75f, 0.75f, 0.75f);
             }
 
             base.GetDecal(world, pos, decalTexSource, ref decalModelData, ref blockModelData);
-        }
-
-        public override void OnDecalTesselation(IWorldAccessor world, MeshData decalMesh, BlockPos pos)
-        {
-            base.OnDecalTesselation(world, decalMesh, pos);
         }
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
@@ -75,7 +67,7 @@ namespace Vintagestory.GameContent
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
-            EnumTool? tool = byPlayer.InventoryManager.ActiveHotbarSlot?.Itemstack?.Collectible.Tool;
+            EnumTool? tool = byPlayer.InventoryManager.ActiveHotbarSlot?.Itemstack?.Collectible?.GetTool(byPlayer.InventoryManager.ActiveHotbarSlot);
             if (tool == EnumTool.Knife || tool == EnumTool.Sword)
             {
                 BECheese bec = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BECheese;

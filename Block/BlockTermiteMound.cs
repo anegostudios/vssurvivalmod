@@ -65,5 +65,37 @@ namespace Vintagestory.GameContent
             return true;
         }
 
+        public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
+        {
+            // if broken by a player, let the TransformBreak BH handle it
+            if (byPlayer != null)
+            {
+                base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier);
+            }
+            // if broken due to BreakIfFloating then do not spawn the mount itself, only the termites and delete the block
+            else if (Drops != null)
+            {
+                for (int i = 0; i < Drops.Length; i++)
+                {
+                    var drop = Drops[i].ToRandomItemstackForPlayer(null, world, dropQuantityMultiplier);
+                    if (drop == null) continue;
+                    if (SplitDropStacks)
+                    {
+                        for (int k = 0; k < drop.StackSize; k++)
+                        {
+                            ItemStack stack = drop.Clone();
+                            stack.StackSize = 1;
+                            world.SpawnItemEntity(stack, pos);
+                        }
+                    }
+                    else
+                    {
+                        world.SpawnItemEntity(drop.Clone(), pos);
+                    }
+                }
+
+                world.BlockAccessor.SetBlock(0, pos);
+            }
+        }
     }
 }

@@ -1,3 +1,4 @@
+using System;
 ﻿using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -50,12 +51,13 @@ namespace Vintagestory.GameContent
                     string itemcode = ForStack.Collectible.Code.Path;
                     JsonObject? mappingListCollection = textureSourceBlock.Attributes?["textureMapping"];
 
-                    string[]? mapping = mappingListCollection?[itemcode]?.AsArray<string>(null);
+                    string?[]? mapping = mappingListCollection?[itemcode]?.AsArray<string>(null);
                     if (customTextureMapping != null) mapping = customTextureMapping;
 
                     if (mapping != null && mapping[0] == textureCode)
                     {
-                        return blockTextureSource[mapping[1]];
+                        ArgumentNullException.ThrowIfNull(mapping[1]);
+                        return blockTextureSource[mapping[1]!];
                     }
                 }
 

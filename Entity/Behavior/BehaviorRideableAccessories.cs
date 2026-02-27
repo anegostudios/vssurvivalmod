@@ -1,15 +1,12 @@
-﻿using Vintagestory.API.Common;
+﻿using System.Collections.Generic;
+using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
-using Vintagestory.API.MathTools;
-
-#nullable disable
+using Vintagestory.API.Datastructures;
 
 namespace Vintagestory.GameContent
 {
     public class EntityBehaviorRideableAccessories : EntityBehaviorAttachable
     {
-        protected bool hasBridle;
-
         public EntityBehaviorRideableAccessories(Entity entity) : base(entity)
         {
         }
@@ -26,9 +23,9 @@ namespace Vintagestory.GameContent
             }
         }
 
-        private bool Bh_CanTurn(IMountableSeat seat, out string errorMessage)
+        protected virtual bool Bh_CanTurn(IMountableSeat seat, out string? errorMessage)
         {
-            hasBridle = false;
+            bool hasBridle = false;
             foreach (var slot in Inventory)
             {
                 if (slot.Empty || slot.Itemstack.Collectible.Attributes == null) continue;
@@ -45,31 +42,32 @@ namespace Vintagestory.GameContent
             return hasBridle;
         }
 
-        private bool EntityBehaviorDressable_CanRide(IMountableSeat seat, out string errorMessage)
+        protected virtual bool EntityBehaviorDressable_CanRide(IMountableSeat seat, out string? errorMessage)
         {
-            hasBridle = false;
+            bool hasSaddle = false;
             foreach (var slot in Inventory)
             {
                 if (slot.Empty || slot.Itemstack.Collectible.Attributes == null) continue;
-                
+
                 var attr = slot.Itemstack.Collectible.Attributes;
                 if (attr.IsTrue("isSaddle"))
                 {
-                    hasBridle = true;
+                    hasSaddle = true;
                     break;
                 }
             }
 
-            errorMessage = hasBridle ? null : "nosaddle";
-            return hasBridle;
+            errorMessage = hasSaddle ? null : "nosaddle";
+            return hasSaddle;
         }
 
-        public override void OnInteract(EntityAgent byEntity, ItemSlot itemslot, Vec3d hitPosition, EnumInteractMode mode, ref EnumHandling handled)
+        public override bool TryEarlyLoadCollectibleMappings(IWorldAccessor worldForCollectibleResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, bool resolveImports, EntityProperties entityProperties, JsonObject behaviorConfig)
         {
-            base.OnInteract(byEntity, itemslot, hitPosition, mode, ref handled);
-
-
+            if (entity is EntityArmorStand armorStand)
+            {
+                armorStand.TryEarlyUpdateOldArmorStandInventory(worldForCollectibleResolve);
+            }
+            return base.TryEarlyLoadCollectibleMappings(worldForCollectibleResolve, oldBlockIdMapping, oldItemIdMapping, resolveImports, entityProperties, behaviorConfig);
         }
-
     }
 }

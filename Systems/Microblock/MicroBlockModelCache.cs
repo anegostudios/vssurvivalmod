@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -78,6 +78,11 @@ namespace Vintagestory.GameContent
 
         private MultiTextureMeshRef CreateModel(ItemStack forStack)
         {
+            return capi.Render.UploadMultiTextureMesh(GenMesh(forStack));
+        }
+
+        public MeshData GenMesh(ItemStack forStack)
+        {
             ITreeAttribute tree = forStack.Attributes;
             if (tree == null) tree = new TreeAttribute();
             int[] materials = BlockEntityMicroBlock.MaterialIdsFromAttributes(tree, capi.World);
@@ -109,8 +114,7 @@ namespace Vintagestory.GameContent
 
             MeshData mesh = BlockEntityMicroBlock.CreateMesh(capi, voxelCuboids, materials, null, null, originalCuboids, 0);
             mesh.Rgba.Fill((byte)255);
-
-            return capi.Render.UploadMultiTextureMesh(mesh);
+            return mesh;
         }
 
 

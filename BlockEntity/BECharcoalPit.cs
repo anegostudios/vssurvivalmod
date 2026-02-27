@@ -49,10 +49,12 @@ namespace Vintagestory.GameContent
             MaxSize = Block.Attributes?["maxSize"].AsInt(11) ?? 11;
 
             charcoalPitId = Block.BlockId;
-            fireBlockId = Api.World.GetBlock(new AssetLocation("fire")).BlockId;
+            fireBlockId = Api.World.GetBlock(new AssetLocation("fire"))!.BlockId;
             for (int i = 0; i < 8; i++)
             {
-                charcoalPileId[i] = Api.World.GetBlock(new AssetLocation("charcoalpile-" + (i + 1).ToString())).BlockId;
+                Block? block = Api.World.GetBlock(new AssetLocation("charcoalpile-" + (i + 1).ToString()));
+                ArgumentNullException.ThrowIfNull(block);
+                charcoalPileId[i] = block.BlockId;
             }
 
             defaultCheckAction = (bpos, npos, facing, chunk) =>
@@ -78,7 +80,7 @@ namespace Vintagestory.GameContent
         {
             if (state != EnumCharcoalPitState.Sealed || (Block?.ParticleProperties is not AdvancedParticleProperties[] partProps)) return;
 
-            BlockPos pos = new BlockPos();
+            BlockPos pos = new BlockPos(Pos.dimension);
             foreach (var val in smokeLocations)
             {
                 if (Api.World.Rand.NextDouble() < 0.2f && partProps.Length > 0)
@@ -246,7 +248,7 @@ namespace Vintagestory.GameContent
                 curQuantityAndYMinMax.X += Math.Clamp(GameMath.RoundRandom(Api.World.Rand, firewoodQuantity / 4f * totalEfficiency), 0, 8);
             }, defaultCheckAction)) return;
 
-            BlockPos lpos = new BlockPos();
+            BlockPos lpos = new BlockPos(Pos.dimension);
             int charcoalQuantity = 0;
             int numPileBlocks = charcoalPileId.Length;
             foreach (var val in quantityPerColumn)
@@ -359,7 +361,9 @@ namespace Vintagestory.GameContent
         protected bool IsCombustible(BlockPos pos)
         {
             Block block = Api.World.BlockAccessor.GetBlock(pos);
-            if (block.CombustibleProps is CombustibleProperties combustProps) return combustProps.BurnDuration > 0;
+
+            var combustibleProps = block.GetCombustibleProperties(Api.World, null, pos);
+            if (combustibleProps != null) return combustibleProps.BurnDuration > 0;
 
             if (block.GetInterface<ICombustible>(Api.World, pos) is ICombustible bic) return bic.GetBurnDuration(Api.World, pos) > 0;
 

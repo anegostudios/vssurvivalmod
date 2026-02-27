@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Client;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -34,8 +34,9 @@ namespace Vintagestory.GameContent
 
         private void OnClientTick(float dt)
         {
-            if (contents?.Collectible?.CombustibleProps == null) return;
-            int meltingPoint = contents.Collectible.CombustibleProps.MeltingPoint;
+            var combustibleProps = contents?.Collectible?.GetCombustibleProperties(Api.World, contents, null);
+            if (combustibleProps == null) return;
+            int meltingPoint = combustibleProps.MeltingPoint;
             if (meltingPoint * 0.9 > Temperature) return;
 
             if (Api.World.Rand.NextDouble() > 0.5)

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -234,7 +234,7 @@ namespace Vintagestory.GameContent
             if (mushroomBlock == null) return;
 
             int cnt = 2 + rnd.NextInt(11);
-            BlockPos pos = new BlockPos();
+            BlockPos pos = new BlockPos(Pos.dimension);
             const int chunkSize = GlobalConstants.ChunkSize;
             List<Vec3i> offsets = new List<Vec3i>();
 
@@ -292,7 +292,7 @@ namespace Vintagestory.GameContent
         private void generateSideGrowingMushrooms(IBlockAccessor blockAccessor, IRandom rnd)
         {
             int cnt = 1 + rnd.NextInt(5);
-            BlockPos mpos = new BlockPos();
+            BlockPos mpos = new BlockPos(Pos.dimension);
             List<Vec3i> offsets = new List<Vec3i>();
 
             while (cnt-- > 0)

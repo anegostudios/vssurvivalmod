@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -16,6 +16,7 @@ namespace Vintagestory.GameContent.Mechanics
         public bool invert;
         public float gearingRatio;
         private readonly BlockPos fromPos;
+        public BlockFacing turnDir;
 
         public MechPowerPath()
         {
@@ -34,12 +35,20 @@ namespace Vintagestory.GameContent.Mechanics
 
         public BlockFacing NetworkDir()
         {
-            return this.invert ? OutFacing.Opposite : OutFacing;
+            return turnDir ?? (this.invert ? OutFacing.Opposite : OutFacing);
         }
 
         public bool IsInvertedTowards(BlockPos testPos)
         {
             return fromPos == null ? invert : fromPos.AddCopy(this.NetworkDir()) != testPos;
+        }
+
+        public MechPowerPath PropagatedClone(BlockFacing outfacing, bool inverted = false, BlockFacing turnDir = null, BlockPos fromPos = null)
+        {
+            return new MechPowerPath(outfacing, gearingRatio, fromPos, inverted)
+            {
+                turnDir = turnDir
+            };
         }
     }
 
@@ -49,9 +58,9 @@ namespace Vintagestory.GameContent.Mechanics
         /// <summary>
         /// Set to true to debug Mechanical Power network discovery etc..  The #if DEBUG is just in case: ensures this debugging log spam can never make it into a release build by accident.
         /// </summary>
-        private static readonly bool DEBUG = false;
+        protected static readonly bool DEBUG = false;
 #else
-        private static readonly bool DEBUG = false;
+        protected static readonly bool DEBUG = false;
 #endif
 
         protected MechanicalPowerMod manager;
@@ -64,7 +73,7 @@ namespace Vintagestory.GameContent.Mechanics
         public virtual Vec4f LightRgba { get { return lightRbs; } }
 
         /// <summary>
-        /// Return null to not a mechanical power instanced renderer for this block. When you change the shape, the renderer is also updated to reflect that change
+        /// Return null to not use a mechanical power instanced renderer for this block. When you change the shape, the renderer is also updated to reflect that change
         /// </summary>
         private CompositeShape shape = null;
         public virtual CompositeShape Shape
@@ -96,6 +105,7 @@ namespace Vintagestory.GameContent.Mechanics
         protected BlockFacing propagationDir = BlockFacing.NORTH;
         private float gearedRatio = 1.0f;
         public float GearedRatio { get { return gearedRatio; } set { gearedRatio = value;} }
+        public float OverheatValue { get; set; }
         public virtual float GetGearedRatio(BlockFacing face) { return gearedRatio; }
 
         protected float lastKnownAngleRad = 0;
@@ -107,7 +117,7 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 if (network == null) return lastKnownAngleRad;
 
-                if (isRotationReversed())
+                if (IsRotationReversed())
                 {
                     return (lastKnownAngleRad = GameMath.TWOPI - (network.AngleRad * this.gearedRatio) % GameMath.TWOPI);
                 }
@@ -116,14 +126,14 @@ namespace Vintagestory.GameContent.Mechanics
             }
         }
 
-        public virtual bool isRotationReversed()
+        public virtual bool IsRotationReversed()
         {
             if (propagationDir == null) return false;
 
             return propagationDir == BlockFacing.DOWN || propagationDir == BlockFacing.EAST || propagationDir == BlockFacing.SOUTH;
         }
 
-        public virtual bool isInvertedNetworkFor(BlockPos pos)
+        public virtual bool IsInvertedNetworkFor(BlockPos pos)
         {
             if (propagationDir == null || pos == null) return false;
             BlockPos testPos = this.Position.AddCopy(propagationDir);
@@ -176,7 +186,7 @@ namespace Vintagestory.GameContent.Mechanics
 
         public virtual void WasPlaced(BlockFacing connectedOnFacing)
         {
-            //Skip this if already called CreateJoinAndDiscoverNetwork in Initialize()
+            // Skip this if already called CreateJoinAndDiscoverNetwork in Initialize()
             if ((Api.Side == EnumAppSide.Client || OutFacingForNetworkDiscovery == null) && connectedOnFacing != null)
             {
                 if (!tryConnect(connectedOnFacing))
@@ -197,7 +207,7 @@ namespace Vintagestory.GameContent.Mechanics
             IMechanicalPowerBlock connectedToBlock = Api.World.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
             if (DEBUG) Api.Logger.Notification("tryConnect at " + this.Position + " towards " + toFacing + " " + pos);
 
-            if (connectedToBlock == null || !connectedToBlock.HasMechPowerConnectorAt(Api.World, pos, toFacing.Opposite)) return false;
+            if (connectedToBlock == null || !connectedToBlock.HasMechPowerConnectorAt(Api.World, pos, toFacing.Opposite, Block as BlockMPBase)) return false;
             newNetwork = connectedToBlock.GetNetwork(Api.World, pos);
             if (newNetwork != null)
             {
@@ -205,6 +215,8 @@ namespace Vintagestory.GameContent.Mechanics
 
                 connectedToBlock.DidConnectAt(Api.World, pos, toFacing.Opposite);  //do this first to set the new Angled Gear block correctly prior to getting propagation direction
                 MechPowerPath curPath = new MechPowerPath(toFacing, node.GetGearedRatio(toFacing), pos, !node.IsPropagationDirection(Position, toFacing));
+                curPath.turnDir = node.GetPropagatingTurnDir(toFacing.Opposite);
+
                 SetPropagationDirection(curPath);
                 MechPowerPath[] paths = GetMechPowerExits(curPath);
                 JoinNetwork(newNetwork);
@@ -333,7 +345,7 @@ namespace Vintagestory.GameContent.Mechanics
 
         protected virtual void updateShape(IWorldAccessor worldForResolve)
         {
-            Shape = Block?.Shape;
+            Shape = GetShape();
         }
 
 
@@ -348,10 +360,10 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
         {
-            if (DEBUG || Api.World.EntityDebugMode)
+            if (Api.World.EntityDebugMode)
             {
-                sb.AppendLine(string.Format("networkid: {0}  turnDir: {1}  {2}  {3:G3}", NetworkId, propagationDir, network?.TurnDir.ToString(), gearedRatio));
-                sb.AppendLine(string.Format("speed: {0:G4}  avail torque: {1:G4}  torque sum: {2:G4}  resist sum: {3:G4}", network?.Speed * this.GearedRatio, network?.TotalAvailableTorque / this.GearedRatio, network?.NetworkTorque / this.GearedRatio, network?.NetworkResistance / this.GearedRatio));
+                sb.AppendLine(string.Format("<font color='#ccc'>networkid: {0}  turnDir: {1}  {2}  {3:G3}</font>", NetworkId, propagationDir, network?.TurnDir.ToString(), gearedRatio));
+                sb.AppendLine(string.Format("<font color='#ccc'>speed: {0:G4}  avail torque: {1:G4}  torque sum: {2:G4}  resist sum: {3:G4}</font>", network?.Speed * this.GearedRatio, network?.TotalAvailableTorque / this.GearedRatio, network?.NetworkTorque / this.GearedRatio, network?.NetworkResistance / this.GearedRatio));
             }
         }
 
@@ -478,6 +490,7 @@ namespace Vintagestory.GameContent.Mechanics
             MechPowerPath[] paths = GetMechPowerExits(exitTurnDir);
             for (int i = 0; i < paths.Length; i++)
             {
+                paths = GetMechPowerExits(exitTurnDir);
                 //if (paths[i].OutFacing == exitTurnDir.OutFacing.GetOpposite()) continue;   //currently commented out to force testing of path in both directions, though usually (maybe always) the OutFacing.getOpposite() sense will return quickly - anyhow, it seems to work with this commented out
                 if (DEBUG) api.Logger.Notification("-- spreading path " + (paths[i].invert ? "-" : "") + paths[i].OutFacing + "  " + paths[i].gearingRatio);
                 BlockPos exitPos = Position.AddCopy(paths[i].OutFacing);
@@ -507,7 +520,7 @@ namespace Vintagestory.GameContent.Mechanics
                 return false;
             }
 
-            if (beMechBase != null && mechBlock.HasMechPowerConnectorAt(api.World, exitPos, propagatePath.OutFacing.Opposite))
+            if (beMechBase != null && mechBlock.HasMechPowerConnectorAt(api.World, exitPos, propagatePath.OutFacing.Opposite, Block as BlockMPBase))
             {
                 beMechBase.Api = api;
                 if (!beMechBase.JoinAndSpreadNetworkToNeighbours(api, network, propagatePath, out missingChunkPos))
@@ -533,7 +546,7 @@ namespace Vintagestory.GameContent.Mechanics
         /// </summary>
         /// <param name="entryDir"></param>
         /// <returns></returns>
-        protected virtual MechPowerPath[] GetMechPowerExits(MechPowerPath entryDir)
+        public virtual MechPowerPath[] GetMechPowerExits(MechPowerPath entryDir)
         {
             // Most blocks - like axles - have two power exits in opposite directions
             return new MechPowerPath[] { entryDir, new MechPowerPath(entryDir.OutFacing.Opposite, entryDir.gearingRatio, Position, !entryDir.invert) };
@@ -548,6 +561,11 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 tryConnect(blockFacing);
             }
+        }
+
+        public virtual BlockFacing GetPropagatingTurnDir(BlockFacing toFacing)
+        {
+            return null;
         }
     }
 

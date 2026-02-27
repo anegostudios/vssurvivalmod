@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 
@@ -8,7 +8,8 @@ namespace Vintagestory.GameContent
 {
     public class LiquidTopOpenContainerProps
     {
-        public float CapacityLitres = 10;
+        public float CapacityLitres = 10f;
+        public float DrinkPortionSize = 1f;
         public float TransferSizeLitres = 0.01f;
         public AssetLocation EmptyShapeLoc;
         public AssetLocation OpaqueContentShapeLoc;

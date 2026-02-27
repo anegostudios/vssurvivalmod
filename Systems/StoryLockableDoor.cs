@@ -49,7 +49,7 @@ public class StoryLockableDoor : ModSystem
                 .EndSubCommand()
             .EndSubCommand()
 
-            .BeginSubCommand("per-player-looable-reset")
+            .BeginSubCommand("per-player-lootable-reset")
             .WithAlias("pplr")
                 .RequiresPrivilege(Privilege.controlserver)
                 .WithDescription("Reset storage to be lootable again by everyone")

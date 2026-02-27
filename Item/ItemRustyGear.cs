@@ -56,7 +56,7 @@ namespace Vintagestory.GameContent
                 placePos.Y++;
                 byEntity.World.BlockAccessor.SetBlock(gearBlock.BlockId, placePos);
                 slot.TakeOut(1);
-                byEntity.World.PlaySoundAt(block.Sounds.Place, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z, byPlayer);
+                byEntity.World.PlaySoundAt(block.Sounds.Place, blockSel.Position, 0, byPlayer);
             }
 
             

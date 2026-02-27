@@ -15,7 +15,7 @@ namespace Vintagestory.GameContent
     public class LookatEntityAction : EntityActionBase
     {
         public override string Type => "lookatentity";
-     
+
         [JsonProperty]
         AssetLocation targetEntityCode;
         [JsonProperty]
@@ -32,7 +32,7 @@ namespace Vintagestory.GameContent
 
         public override void Start(EntityActivity act)
         {
-            Entity targetEntity = getTarget(vas.Entity.Api, vas.Entity.ServerPos.XYZ);
+            Entity targetEntity = getTarget(vas.Entity.Api, vas.Entity.Pos.XYZ);
 
             ExecutionHasFailed = targetEntity == null;
             if (targetEntity != null)
@@ -40,12 +40,12 @@ namespace Vintagestory.GameContent
                 Vec3f targetVec = new Vec3f();
 
                 targetVec.Set(
-                    (float)(targetEntity.ServerPos.X - vas.Entity.ServerPos.X),
-                    (float)(targetEntity.ServerPos.Y - vas.Entity.ServerPos.Y),
-                    (float)(targetEntity.ServerPos.Z - vas.Entity.ServerPos.Z)
+                    (float)(targetEntity.Pos.X - vas.Entity.Pos.X),
+                    (float)(targetEntity.Pos.Y - vas.Entity.Pos.Y),
+                    (float)(targetEntity.Pos.Z - vas.Entity.Pos.Z)
                 );
 
-                vas.Entity.ServerPos.Yaw = (float)Math.Atan2(targetVec.X, targetVec.Z);
+                vas.Entity.Pos.Yaw = (float)Math.Atan2(targetVec.X, targetVec.Z);
             }
         }
 

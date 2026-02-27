@@ -292,7 +292,7 @@ namespace Vintagestory.ServerMods
             return false;
         }
 
-        public override void OnCreatedByCrafting(ItemSlot[] allInputslots, ItemSlot outputSlot, GridRecipe byRecipe, ref EnumHandling handled)
+        public override void OnCreatedByCrafting(ItemSlot[] allInputslots, ItemSlot outputSlot, IRecipeBase byRecipe, ref EnumHandling handled)
         {
             ItemSlot inputSlot = allInputslots.FirstOrDefault(s => !s.Empty);
 
@@ -361,6 +361,7 @@ namespace Vintagestory.ServerMods
         public override AssetLocation GetRotatedBlockCode(int angle, ref EnumHandling handling)
         {
             BlockFacing curFacing = BlockFacing.FromCode(block.Variant["rot"]);
+            if (curFacing == null) return block.Code;
             if (curFacing.IsVertical) return block.Code;
 
             handling = EnumHandling.PreventDefault;

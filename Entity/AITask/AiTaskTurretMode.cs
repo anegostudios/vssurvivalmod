@@ -1,10 +1,10 @@
 using System;
-using System.Text;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 
 #nullable disable
 
@@ -60,6 +60,9 @@ namespace Vintagestory.GameContent
 
         EntityProjectile prevProjectile;
 
+
+#pragma warning disable CS0436 // EnumTurretState overwrites the same enum in VSEssentials\Entity\AI\Task\TasksRefactored\AiTaskTurretMode.cs - left one warning in for now
+
         public AiTaskTurretMode(EntityAgent entity, JsonObject taskConfig, JsonObject aiConfig) : base(entity, taskConfig, aiConfig)
         {
             this.projectileDamage = taskConfig["projectileDamage"].AsFloat(1f);
@@ -78,6 +81,12 @@ namespace Vintagestory.GameContent
             spawnAngleRad = entity.Attributes.GetFloat("spawnAngleRad");
         }
 
+        protected override void SetDefaultValues()
+        {
+            base.SetDefaultValues();
+            ExecutionChance = 0.1;
+        }
+
         public override void AfterInitialize()
         {
             base.AfterInitialize();
@@ -93,18 +102,18 @@ namespace Vintagestory.GameContent
 
         public override bool ShouldExecute()
         {
-            // React immediately on hurt, otherwise only 1/10 chance of execution
-            if (rand.NextDouble() > 0.1f && (WhenInEmotionState == null || IsInEmotionState(WhenInEmotionState) != true)) return false;
+            // React immediately on hurt, otherwise only a chance of execution
+            if (rand.NextDouble() > ExecutionChance && (WhenInEmotionStates == null || IsInEmotionState(WhenInEmotionStates) != true)) return false;
 
-            if (!PreconditionsSatisifed()) return false;
+            if (!PreconditionsSatisfied()) return false;
             if (lastSearchTotalMs + searchWaitMs > entity.World.ElapsedMilliseconds) return false;
-            if (WhenInEmotionState == null && rand.NextDouble() > 0.5f) return false;
+            if (WhenInEmotionStates == null && rand.NextDouble() > 0.5f) return false;
             if (cooldownUntilMs > entity.World.ElapsedMilliseconds) return false;
 
             lastSearchTotalMs = entity.World.ElapsedMilliseconds;
 
             float range = sensingRange;
-            targetEntity = partitionUtil.GetNearestEntity(entity.ServerPos.XYZ, range, (e) => IsTargetableEntity(e, range) && hasDirectContact(e, range, range/2f) && aimableDirection(e), EnumEntitySearchType.Creatures);
+            targetEntity = partitionUtil.GetNearestEntity(entity.Pos.XYZ, range, (e) => IsTargetableEntity(e, range) && hasDirectContact(e, range, range/2f) && aimableDirection(e), EnumEntitySearchType.Creatures);
 
             return targetEntity != null && !inAbortRange;
         }
@@ -142,16 +151,17 @@ namespace Vintagestory.GameContent
             executing = true;
         }
 
-        
+
         bool inFiringRange
         {
             get {
-                var range = targetEntity.ServerPos.DistanceTo(entity.ServerPos);
-                return range >= firingRangeMin && range <= firingRangeMax;
+                var range = targetEntity.Pos.DistanceTo(entity.Pos);
+                                // Can't flee means we need to shoot from short range
+                return range >= (RequireShortRangeAttacks(entity, targetEntity) ? 1.5f : firingRangeMin) && range <= firingRangeMax;
             }
         }
-        bool inSensingRange => targetEntity.ServerPos.DistanceTo(entity.ServerPos) <= sensingRange;
-        bool inAbortRange => targetEntity.ServerPos.DistanceTo(entity.ServerPos) <= abortRange;
+        bool inSensingRange => targetEntity.Pos.DistanceTo(entity.Pos) <= sensingRange;
+        bool inAbortRange => targetEntity.Pos.DistanceTo(entity.Pos) <= (RequireShortRangeAttacks(entity, targetEntity) ? 1.5f : abortRange); // Can't flee means we need to shoot from short range
 
         void updateState()
         {
@@ -220,7 +230,7 @@ namespace Vintagestory.GameContent
                             fireProjectile();
                             currentState = EnumTurretState.TurretModeFired;
                             //System.Diagnostics.Debug.WriteLine("enter turret fire mode");
-                            
+
                             entity.StopAnimation("hold");
                             entity.StartAnimation("fire");
                         }
@@ -231,7 +241,7 @@ namespace Vintagestory.GameContent
                     {
                         currentState = EnumTurretState.TurretModeUnload;
                         //System.Diagnostics.Debug.WriteLine("enter turret unload mode");
-                        
+
                         entity.StopAnimation("hold");
                         entity.StartAnimation("unload");
                     }
@@ -256,7 +266,7 @@ namespace Vintagestory.GameContent
                     if (inSensingRange)
                     {
                         //System.Diagnostics.Debug.WriteLine("enter turret reload mode");
-                        
+
                         currentState = EnumTurretState.TurretModeReload;
                         entity.StartAnimation("reload");
                         entity.World.PlaySoundAt("sounds/creature/bowtorn/reload", entity, null, false, 32);
@@ -331,17 +341,17 @@ namespace Vintagestory.GameContent
             entitypr.Damage = projectileDamage;
             entitypr.DamageTier = projectileDamageTier;
             entitypr.ProjectileStack = new ItemStack(entity.World.GetItem(new AssetLocation("stone-granite")));
-            entitypr.NonCollectible = true;
+            entitypr.Collectible = false;
 
-            Vec3d pos = entity.ServerPos.XYZ.Add(0, entity.LocalEyePos.Y, 0);
-            Vec3d targetPos = targetEntity.ServerPos.XYZ.Add(0, targetEntity.LocalEyePos.Y, 0) + targetEntity.ServerPos.Motion * 8;
+            Vec3d pos = entity.Pos.XYZ.Add(0, entity.LocalEyePos.Y, 0);
+            Vec3d targetPos = targetEntity.Pos.XYZ.Add(0, targetEntity.LocalEyePos.Y, 0) + targetEntity.Pos.Motion * 8;
 
             double dist = pos.DistanceTo(targetPos);
-            double prevVelo = prevProjectile?.ServerPos.Motion.Length() ?? 0;
+            double prevVelo = prevProjectile?.Pos.Motion.Length() ?? 0;
             if (prevProjectile != null && !prevProjectile.EntityHit && prevVelo < 0.01)
             {
-                var impactDistance = pos.DistanceTo(prevProjectile.ServerPos.XYZ);
-                
+                var impactDistance = pos.DistanceTo(prevProjectile.Pos.XYZ);
+
                 if (dist > impactDistance)
                 {
                     overshootAdjustment = -(impactDistance - dist) / 4.0;
@@ -357,14 +367,13 @@ namespace Vintagestory.GameContent
             Vec3d velocity = (targetPos - pos).Normalize() * GameMath.Clamp(distf - 1f, 0.1f, 1f);
             velocity.Y += (dist - 10) / 200.0;
 
-            
-            entitypr.ServerPos.SetPosWithDimension(
-                entity.ServerPos.XYZ.Add(0, entity.LocalEyePos.Y, 0)
+
+            entitypr.Pos.SetPosWithDimension(
+                entity.Pos.XYZ.Add(0, entity.LocalEyePos.Y, 0)
             );
 
-            entitypr.ServerPos.Motion.Set(velocity);
+            entitypr.Pos.Motion.Set(velocity);
             entitypr.SetInitialRotation();
-            entitypr.Pos.SetFrom(entitypr.ServerPos);
             entitypr.World = entity.World;
             entity.World.SpawnEntity(entitypr);
 
@@ -376,8 +385,7 @@ namespace Vintagestory.GameContent
             entity.World.PlaySoundAt("sounds/creature/bowtorn/release", entity, null, false, 32);
         }
 
-        public override bool 
-            ContinueExecute(float dt)
+        public override bool ContinueExecute(float dt)
         {
             //Check if time is still valid for task.
             if (!IsInValidDayTimeHours(false)) return false;
@@ -388,9 +396,9 @@ namespace Vintagestory.GameContent
             float desiredYaw = getAimYaw(targetEntity);
             desiredYaw = GameMath.Clamp(desiredYaw, spawnAngleRad - maxTurnAngleRad, spawnAngleRad + maxTurnAngleRad);
 
-            float yawDist = GameMath.AngleRadDistance(entity.ServerPos.Yaw, desiredYaw);
-            entity.ServerPos.Yaw += GameMath.Clamp(yawDist, -curTurnRadPerSec * dt, curTurnRadPerSec * dt);
-            entity.ServerPos.Yaw = entity.ServerPos.Yaw % GameMath.TWOPI;
+            float yawDist = GameMath.AngleRadDistance(entity.Pos.Yaw, desiredYaw);
+            entity.Pos.Yaw += GameMath.Clamp(yawDist, -curTurnRadPerSec * dt, curTurnRadPerSec * dt);
+            entity.Pos.Yaw = entity.Pos.Yaw % GameMath.TWOPI;
 
             return currentState != EnumTurretState.Stop;
         }
@@ -400,13 +408,13 @@ namespace Vintagestory.GameContent
             Vec3f targetVec = new Vec3f();
 
             targetVec.Set(
-                (float)(targetEntity.ServerPos.X - entity.ServerPos.X),
-                (float)(targetEntity.ServerPos.Y - entity.ServerPos.Y),
-                (float)(targetEntity.ServerPos.Z - entity.ServerPos.Z)
+                (float)(targetEntity.Pos.X - entity.Pos.X),
+                (float)(targetEntity.Pos.Y - entity.Pos.Y),
+                (float)(targetEntity.Pos.Z - entity.Pos.Z)
             );
 
             float desiredYaw = (float)Math.Atan2(targetVec.X, targetVec.Z);
-            
+
             return desiredYaw;
         }
 
@@ -420,5 +428,26 @@ namespace Vintagestory.GameContent
             prevProjectile = null;
 
         }
+
+
+        public static bool RequireShortRangeAttacks(Entity entityBowtorn, Entity targetEntity)
+        {
+            var api = entityBowtorn.World.Api;
+
+            // A recent search was good? => Long range attacks
+            var ms = entityBowtorn.Attributes.GetLong("lastGoodPathSearchTotalMs", -9999);
+            if (api.World.ElapsedMilliseconds - ms < 15000) return false;
+
+            // A recent search failed? => Short range attacks
+            ms = entityBowtorn.Attributes.GetLong("lastFailedPathSearchTotalMs", -99999);
+            if (api.World.ElapsedMilliseconds - ms < 15000) return true;
+
+            // Low stability? => short range attacks
+            if (targetEntity.WatchedAttributes.GetDouble("temporalStability", 1) < 0.25) return true;
+
+
+            return false;
+        }
     }
+#pragma warning restore CS0436
 }

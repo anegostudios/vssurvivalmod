@@ -30,7 +30,7 @@ namespace Vintagestory.GameContent
 
         MeshData potMesh;
         MeshData contentMesh;
-        RoomRegistry roomReg;
+        //RoomRegistry roomReg;
 
         bool hasSoil => !inv[0].Empty;
 
@@ -121,12 +121,10 @@ namespace Vintagestory.GameContent
 
             capi = api as ICoreClientAPI;
 
-            if (api.Side == EnumAppSide.Client && potMesh == null)
+            if (api.Side == EnumAppSide.Client && contentMesh == null)
             {
-                genMeshes();
-                MarkDirty(true);
-
-                roomReg = api.ModLoader.GetModSystem<RoomRegistry>();
+                contentMesh = GenContentMesh(capi.Tesselator);                  // 20.10.25: We initialize contentMesh on the main thread, as it may involve texture uploads during the plant tesselation; note that plant meshes should be cached in case of multiple copies
+                //roomReg = api.ModLoader.GetModSystem<RoomRegistry>();         // 20.10.25: roomReg is currently unused, so commented out for now
             }
         }
 
@@ -167,9 +165,10 @@ namespace Vintagestory.GameContent
             base.FromTreeAttributes(tree, worldForResolving);
             MeshAngle = tree.GetFloat("meshAngle", MeshAngle);
 
-            if (capi != null)
+            if (capi != null && (potMesh != null || contentMesh != null))     // If already initialised, reset things so that meshes will be regenerated (e.g. empty pot will have a non-null potMesh but a null contentMesh)
             {
-                genMeshes();
+                contentMesh = GenContentMesh(capi.Tesselator);
+                potMesh = null;
                 MarkDirty(true);
             }
         }
@@ -179,23 +178,21 @@ namespace Vintagestory.GameContent
             if (Block.Code == null) return;
 
             potMesh = GenPotMesh(capi.Tesselator);
-            if (potMesh != null)
+            if (potMesh != null && MeshAngle != 0)
             {
-                potMesh = potMesh.Clone().Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, MeshAngle, 0);
+                potMesh = potMesh.Clone().Rotate(0, MeshAngle, 0);
             }
 
-            MeshData[] meshes = GenContentMeshes(capi.Tesselator);
-            if (meshes != null && meshes.Length > 0)
+            if (contentMesh != null)
             {
-                contentMesh = meshes[GameMath.MurmurHash3Mod(Pos.X, Pos.Y, Pos.Z, meshes.Length)];
-
-                if (PlantContProps.RandomRotate)
+                if (curContProps.RandomRotate)
                 {
                     float radY = GameMath.MurmurHash3Mod(Pos.X, Pos.Y, Pos.Z, 16) * 22.5f * GameMath.DEG2RAD;
-                    contentMesh = contentMesh.Clone().Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, radY, 0);
-                } else
+                    contentMesh = contentMesh.Clone().Rotate(0, radY, 0);
+                }
+                else if (MeshAngle != 0)
                 {
-                    contentMesh = contentMesh.Clone().Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, MeshAngle, 0);
+                    contentMesh = contentMesh.Clone().Rotate(0, MeshAngle, 0);
                 }
             }
         }
@@ -246,10 +243,13 @@ namespace Vintagestory.GameContent
             return meshes[key] = mesh;
         }
 
-        private MeshData[] GenContentMeshes(ITesselatorAPI tesselator)
+        private MeshData GenContentMesh(ITesselatorAPI tesselator)
         {
             ItemStack content = GetContents();
             if (content == null) return null;
+
+            curContProps = PlantContProps;
+            if (curContProps == null) return null;
 
             Dictionary<string, MeshData[]> meshes = ObjectCacheUtil.GetOrCreate(Api, "plantContainerContentMeshes", () =>
             {
@@ -261,13 +261,13 @@ namespace Vintagestory.GameContent
             string containersize = this.ContainerSize;
             string key = content?.ToString() + "-" + containersize + "f" + fillHeight;
 
+            int rndIndex = -1;
             if (meshes.TryGetValue(key, out MeshData[] meshwithVariants))
             {
-                return meshwithVariants;
+                rndIndex = meshwithVariants.Length == 1 ? 0 : GameMath.MurmurHash3Mod(Pos.X, Pos.Y, Pos.Z, meshwithVariants.Length);
+                var mesh = meshwithVariants[rndIndex];
+                if (mesh != null) return mesh;
             }
-
-            curContProps = PlantContProps;
-            if (curContProps == null) return null;
 
             CompositeShape compoShape = curContProps.Shape;   // Here it doesn't matter not to .Clone() the shape, because the shape in the curContProps is not used for any other purpose
             if (compoShape == null)
@@ -296,46 +296,55 @@ namespace Vintagestory.GameContent
             if (assets != null && assets.Count > 0)
             {
                 ShapeElement.locationForLogging = compoShape.Base;
-                meshwithVariants = new MeshData[assets.Count];
 
-                for (int i = 0; i < assets.Count; i++)
+                if (meshwithVariants == null)
                 {
-                    IAsset asset = assets[i];
-                    Shape shape = asset.ToObject<Shape>();
-                    shapeTextures = shape.Textures;
-                    MeshData mesh;
-
-                    try
-                    {
-                        byte climateColorMapId = content.Block?.ClimateColorMapResolved == null ? (byte)0 : (byte)(content.Block.ClimateColorMapResolved.RectIndex + 1);
-                        byte seasonColorMapId = content.Block?.SeasonColorMapResolved == null ? (byte)0 : (byte)(content.Block.SeasonColorMapResolved.RectIndex + 1);
-
-                        tesselator.TesselateShape("plant container content shape", shape, out mesh, this, null, 0, climateColorMapId, seasonColorMapId);
-                    }
-                    catch (Exception e)
-                    {
-                        Api.Logger.Error(e.Message + " (when tesselating " + compoShape.Base.WithPathPrefixOnce("shapes/") + ")");
-                        Api.Logger.Error(e);
-                        meshwithVariants = null;
-                        break;
-                    }
-
-                    mesh.ModelTransform(transform);
-                    meshwithVariants[i] = mesh;
+                    meshes[key] = meshwithVariants = new MeshData[assets.Count];
+                    rndIndex = meshwithVariants.Length == 1 ? 0 : GameMath.MurmurHash3Mod(Pos.X, Pos.Y, Pos.Z, meshwithVariants.Length);
                 }
+
+                IAsset asset = assets[rndIndex];
+                Shape shape = asset.ToObject<Shape>();
+                shapeTextures = shape.Textures;
+                MeshData mesh;
+
+                try
+                {
+                    byte climateColorMapId = content.Block?.ClimateColorMapResolved == null ? (byte)0 : (byte)(content.Block.ClimateColorMapResolved.RectIndex + 1);
+                    byte seasonColorMapId = content.Block?.SeasonColorMapResolved == null ? (byte)0 : (byte)(content.Block.SeasonColorMapResolved.RectIndex + 1);
+
+                    tesselator.TesselateShape("plant container content shape", shape, out mesh, this, null, 0, climateColorMapId, seasonColorMapId);
+                }
+                catch (Exception e)
+                {
+                    Api.Logger.Error(e.Message + " (when tesselating " + compoShape.Base.WithPathPrefixOnce("shapes/") + ")");
+                    Api.Logger.Error(e);
+                    return null;
+                }
+
+                mesh.ModelTransform(transform);
+                meshwithVariants[rndIndex] = mesh;
             }
             else
             {
                 Api.World.Logger.Error("Plant container, content asset {0} not found,", compoShape.Base.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json"));
             }
 
-            return meshes[key] = meshwithVariants;
+            return meshwithVariants[rndIndex];
         }
 
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
         {
-            if (potMesh == null) return false;
+            if (potMesh == null)
+            {
+                genMeshes();
+                if (potMesh == null)
+                {
+                    Api.Logger.Warning("Failed to generate plant container mesh at " + Pos + ". Check \"filledShape\" attribute for block: " + Block.Code.ToShortString());
+                    return false;
+                }
+            }
 
             mesher.AddMeshData(potMesh);
 

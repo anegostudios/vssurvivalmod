@@ -159,7 +159,7 @@ namespace Vintagestory.GameContent
                 {
                     player.SendIngameError("cantremove", "Cannot remove reinforcement. It's not reinforced");
                 }
-                
+
                 return;
             } else
             {
@@ -168,7 +168,7 @@ namespace Vintagestory.GameContent
                     ItemStack stack = new ItemStack(byEntity.World.GetItem(new AssetLocation(bre.LockedByItemCode)));
                     if (!player.InventoryManager.TryGiveItemstack(stack, true))
                     {
-                        byEntity.World.SpawnItemEntity(stack, byEntity.ServerPos.XYZ);
+                        byEntity.World.SpawnItemEntity(stack, byEntity.Pos.XYZ);
                     }
                 }
             }

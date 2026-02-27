@@ -201,7 +201,6 @@ namespace Vintagestory.GameContent
                 string cancelStr = Lang.Get("Cancel Auction");
 
                 double placelen = CairoFont.ButtonText().GetTextExtents(placeStr).Width / RuntimeEnv.GUIScale;
-                double cancellen = CairoFont.ButtonText().GetTextExtents(cancelStr).Width / RuntimeEnv.GUIScale;
 
                 SingleComposer
                     .BeginClip(clipBounds)

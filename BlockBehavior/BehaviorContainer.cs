@@ -74,7 +74,7 @@ namespace Vintagestory.GameContent
                     (int)EnumBlockContainerPacketId.OpenLidOthers,
                     open
                 );
-                (world.Api as ICoreServerAPI).World.PlaySoundAt(container.OpenSound, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z);
+                (world.Api as ICoreServerAPI).World.PlaySoundAt(container.OpenSound, blockSel.Position, 0);
                 world.Api.Event.RegisterCallback((d) =>
                 {
                     var close = SerializerUtil.Serialize(new OpenContainerLidPacket(caller.Entity.EntityId, false));
@@ -83,7 +83,7 @@ namespace Vintagestory.GameContent
                         (int)EnumBlockContainerPacketId.OpenLidOthers,
                         close
                     );
-                    (world.Api as ICoreServerAPI).World.PlaySoundAt(container.CloseSound, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z);
+                    (world.Api as ICoreServerAPI).World.PlaySoundAt(container.CloseSound, blockSel.Position, 0);
                 }, timeOut);
             }
         }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Client.Tesselation;
 using Vintagestory.API.Common;
@@ -20,7 +20,7 @@ namespace Vintagestory.GameContent
         }
 
         int[] origWindMode;
-        BlockPos tmpPos = new BlockPos();
+        BlockPos tmpPos = new BlockPos(API.Config.Dimensions.WillSetLater);
 
         public override void OnDecalTesselation(IWorldAccessor world, MeshData decalMesh, BlockPos pos)
         {
@@ -29,7 +29,7 @@ namespace Vintagestory.GameContent
 
             // Are we fully attached? => No wave
             Block ablock = ba.GetBlockOnSide(pos, VineFacing.Opposite);
-            if (ablock.Id != 0 && ablock.CanAttachBlockAt(ba, this, tmpPos.Set(pos).Add(VineFacing.Opposite), VineFacing) && !(ablock is BlockLeaves))
+            if (ablock.Id != 0 && ablock.CanAttachBlockAt(ba, this, tmpPos.Set(pos, pos.dimension).Add(VineFacing.Opposite), VineFacing) && !(ablock is BlockLeaves))
             {
                 for (int i = 0; i < verticesCount; i++)
                 {

@@ -100,7 +100,7 @@ namespace Vintagestory.Client.NoObf
             foreach (var hudbar in trackedBosses)
             {
                 int previousDimension = hudbar.Dimension;
-                int currentDimesnsion = hudbar.TargetEntity.ServerPos.Dimension;
+                int currentDimesnsion = hudbar.TargetEntity.Pos.Dimension;
                 if (currentDimesnsion != previousDimension)
                 {
                     hudbar.ComposeGuis();
@@ -143,7 +143,7 @@ namespace Vintagestory.Client.NoObf
 
             ComposeGuis();
 
-            Dimension = bossEntity.ServerPos.Dimension;
+            Dimension = bossEntity.Pos.Dimension;
         }
         public override string ToggleKeyCombinationCode { get { return null; } }
 
@@ -151,7 +151,7 @@ namespace Vintagestory.Client.NoObf
         {
             UpdateHealth();
         }
-      
+
 
         void UpdateHealth()
         {
@@ -205,7 +205,7 @@ namespace Vintagestory.Client.NoObf
             healthbar = Composers["bosshealthbar"].GetStatbar("healthstatbar");
             TryOpen();
         }
-        
+
 
         // Can't be closed
         public override bool TryClose()
@@ -217,14 +217,14 @@ namespace Vintagestory.Client.NoObf
         {
             return false;
         }
-        
+
 
         public override void OnRenderGUI(float deltaTime)
-        {   
+        {
             base.OnRenderGUI(deltaTime);
         }
-        
-        
+
+
         // Can't be focused
         public override bool Focusable => false;
 

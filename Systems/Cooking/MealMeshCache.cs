@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -187,13 +188,22 @@ namespace Vintagestory.GameContent
 
 
             ItemStack cstack = contentStacks[1];
+            var foodCats = contentStacks.Select(BlockPie.FillingFoodCategory).ToArray();
+            EnumFoodCategory foodCat = foodCats[1];
+
             bool equal = true;
-            for (int i = 2; equal && i < contentStacks.Length - 1; i++)
+            bool foodCatEquals = true;
+            IEnumerable<string> mixCodes = stackprops[1]?.MixingCodes ?? [];
+            for (int i = 2; (equal || foodCatEquals || mixCodes.Any()) && i < contentStacks.Length - 1; i++)
             {
                 if (contentStacks[i] == null || cstack == null) continue;
 
                 equal &= cstack.Equals(capi.World, contentStacks[i], GlobalConstants.IgnoredStackAttributes);
+                foodCatEquals &= contentStacks[i] == null || foodCats[i] == foodCats[1];
+                mixCodes = stackprops[i]?.MixingCodes.Intersect(mixCodes) ?? [];
+
                 cstack = contentStacks[i];
+                foodCat = foodCats[i];
             }
 
 
@@ -221,9 +231,9 @@ namespace Vintagestory.GameContent
 
                 if (contentStacks[1] != null)
                 {
-                    var fillingCat = BlockPie.FillingFoodCategory(contentStacks[1]);
+                    var fillingCat = foodCats[1];
                     if (fillingCat == EnumFoodCategory.NoNutrition) fillingCat = EnumFoodCategory.Unknown;
-                    fillingTextureLoc = equal ? stackprops[1]?.Texture : pieMixedFillingTextures[(int)fillingCat];
+                    fillingTextureLoc = getPieFillingTexture(stackprops, mixCodes.ToArray(), equal, foodCatEquals, fillingCat);
                 }
             }
 
@@ -245,8 +255,25 @@ namespace Vintagestory.GameContent
             return mesh;
         }
 
+        public Dictionary<int, AssetLocation> pieMixingCodeFillingTextures = [];
+        private AssetLocation? getPieFillingTexture(InPieProperties?[] pieProps, string[] mixingCodes, bool singleFilling, bool singleFoodCat, EnumFoodCategory fillingCat)
+        {
+            if (singleFilling) return pieProps[1]?.Texture;
 
-        public AssetLocation[] pieMixedFillingTextures = [
+            if (!singleFoodCat && mixingCodes.Length > 0)
+            {
+                if (pieMixingCodeFillingTextures.TryGetValue(mixingCodes[0].GetHashCode(), out var loc))
+                {
+                    return loc;
+                }
+                else pieMixingCodeFillingTextures.Add(mixingCodes[0].GetHashCode(), new("block/food/pie/fill-mixed" + mixingCodes[0]));
+            }
+
+            return pieMixedCategoryFillingTextures[(int)fillingCat];
+        }
+
+
+        public AssetLocation[] pieMixedCategoryFillingTextures = [
             new ("block/food/pie/fill-mixedfruit"),
             new ("block/food/pie/fill-mixedvegetable"),
             new ("block/food/pie/fill-mixedmeat"),
@@ -255,7 +282,8 @@ namespace Vintagestory.GameContent
             new ("block/food/pie/fill-unknown")
         ];
 
-        public MultiTextureMeshRef? GetOrCreateMealInContainerMeshRef(Block containerBlock, CookingRecipe? forRecipe, ItemStack?[]? contentStacks, Vec3f? foodTranslate = null)
+
+        public Dictionary<int, MultiTextureMeshRef> GetCookedMeshRefs()
         {
             Dictionary<int, MultiTextureMeshRef> meshrefs;
 
@@ -268,20 +296,31 @@ namespace Vintagestory.GameContent
                 capi.ObjectCache["cookedMeshRefs"] = meshrefs = [];
             }
 
+            return meshrefs;
+        }
+
+        public MultiTextureMeshRef? GetOrCreateMealInContainerMeshRef(IBlockMealContainer be, ItemStack containerStack, Vec3f? foodTranslate)
+        {
+            return GetOrCreateMealInContainerMeshRef(containerStack.Block, be.GetCookingRecipe(capi!.World, containerStack), be.GetNonEmptyContents(capi.World, containerStack), foodTranslate);
+        }
+
+        public MultiTextureMeshRef? GetOrCreateMealInContainerMeshRef(Block containerBlock, CookingRecipe? forRecipe, ItemStack?[]? contentStacks, Vec3f? foodTranslate = null)
+        {
             if (contentStacks == null) return null;
 
             int mealhashcode = GetMealHashCode(containerBlock, contentStacks, foodTranslate);
-
+            Dictionary<int, MultiTextureMeshRef> meshrefs = GetCookedMeshRefs();
 
             if (!meshrefs.TryGetValue(mealhashcode, out MultiTextureMeshRef? mealMeshRef))
             {
                 MeshData mesh = GenMealInContainerMesh(containerBlock, forRecipe, contentStacks, foodTranslate);
 
-                meshrefs[mealhashcode] = mealMeshRef = capi.Render.UploadMultiTextureMesh(mesh);
+                meshrefs[mealhashcode] = mealMeshRef = capi!.Render.UploadMultiTextureMesh(mesh);
             }
 
             return mealMeshRef;
         }
+
 
         public MeshData GenMealInContainerMesh(Block containerBlock, CookingRecipe? forRecipe, ItemStack?[] contentStacks, Vec3f? foodTranslate = null)
         {

@@ -147,10 +147,16 @@ namespace Vintagestory.GameContent
         protected void setupTaskBlocker()
         {
             var taskAi = GetBehavior<EntityBehaviorTaskAI>();
-            if (taskAi != null) taskAi.TaskManager.OnShouldExecuteTask += (task) => interactingWithPlayer.Count == 0;
+            if (taskAi != null) taskAi.TaskManager.OnShouldExecuteTask += (task) =>
+            {
+                return interactingWithPlayer.Count == 0;
+            };
 
             var actAi = GetBehavior<EntityBehaviorActivityDriven>();
-            if (actAi != null) actAi.OnShouldRunActivitySystem += () => interactingWithPlayer.Count > 0 ? EnumInteruptionType.TradeRequested : EnumInteruptionType.None;
+            if (actAi != null) actAi.OnShouldRunActivitySystem += () =>
+            {
+                return interactingWithPlayer.Count > 0 ? EnumInteruptionType.TradeRequested : EnumInteruptionType.None;
+            };
         }
 
         protected void RefreshBuyingSellingInventory(float refreshChance = 1.1f)
@@ -362,7 +368,7 @@ namespace Vintagestory.GameContent
                 EnumTransactionResult result = Inventory.TryBuySell(player);
                 if (result == EnumTransactionResult.Success)
                 {
-                    (Api as ICoreServerAPI).WorldManager.GetChunk(ServerPos.AsBlockPos)?.MarkModified();
+                    (Api as ICoreServerAPI).WorldManager.GetChunk(Pos.AsBlockPos)?.MarkModified();
 
                     AnimManager.StopAnimation("idle");
                     AnimManager.StartAnimation(new AnimationMetaData() { Animation = "nod", Code = "nod", Weight = 10, EaseOutSpeed = 10000, EaseInSpeed = 10000 });

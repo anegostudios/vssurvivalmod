@@ -17,7 +17,9 @@ namespace Vintagestory.GameContent
     public abstract class BlockLiquidContainerBase : BlockContainer, ILiquidSource, ILiquidSink
     {
         protected float capacityLitresFromAttributes = 10;
+        protected float drinkPortionSizeFromAttributes = 1;
         public virtual float CapacityLitres => capacityLitresFromAttributes;
+        public virtual float DrinkPortionSize => drinkPortionSizeFromAttributes;
         public virtual int ContainerSlotId => 0;
 
         public virtual float TransferSizeLitres => 1;
@@ -25,14 +27,20 @@ namespace Vintagestory.GameContent
         public virtual bool CanDrinkFrom => Attributes["canDrinkFrom"].AsBool() == true;
         public virtual bool IsTopOpened => Attributes["isTopOpened"].AsBool() == true;
         public virtual bool AllowHeldLiquidTransfer => Attributes["allowHeldLiquidTransfer"].AsBool() == true;
-        
+
         Dictionary<string, ItemStack[]> recipeLiquidContents = new Dictionary<string, ItemStack[]>();
 
-        public override void OnHandbookRecipeRender(ICoreClientAPI capi, GridRecipe gridRecipe, ItemSlot dummyslot, double x, double y, double z, double size)
+        public override void OnHandbookRecipeRender(ICoreClientAPI capi, IRecipeBase recipe, ItemSlot dummyslot, double x, double y, double z, double size)
         {
+            GridRecipe gridRecipe = recipe as GridRecipe;
+            if (gridRecipe == null)
+            {
+                return;
+            }
+
             // 1.16.0: Fugly (but backwards compatible) hack: We temporarily store the ingredient index in an unused field of ItemSlot so that OnHandbookRecipeRender() has access to that number. Proper solution would be to alter the method signature to pass on this value.
             int rindex = dummyslot.BackgroundIcon.ToInt();
-            var ingredient = gridRecipe.resolvedIngredients[rindex];
+            var ingredient = gridRecipe.ResolvedIngredients[rindex];
 
             JsonObject rprops = ingredient.RecipeAttributes;
             if (rprops?.Exists != true || rprops?["requiresContent"].Exists != true) rprops = gridRecipe.Attributes?["liquidContainerProps"];
@@ -43,9 +51,9 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            string contentCode = rprops?["requiresContent"]?["code"]?.AsString() ?? gridRecipe.Attributes["liquidContainerProps"]["requiresContent"]["code"].AsString();
-            string contentType = rprops?["requiresContent"]?["type"]?.AsString() ?? gridRecipe.Attributes["liquidContainerProps"]["requiresContent"]["type"].AsString();
-            float litres = rprops?["requiresLitres"]?.AsFloat() ?? gridRecipe.Attributes["liquidContainerProps"]["requiresLitres"].AsFloat();
+            string contentCode = rprops?["requiresContent"]["code"].AsString();
+            string contentType = rprops?["requiresContent"]["type"].AsString();
+            float litres = rprops["requiresLitres"].AsFloat();
 
             string key = contentType + "-" + contentCode;
             if (!recipeLiquidContents.TryGetValue(key, out ItemStack[] stacks))
@@ -126,8 +134,23 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            
+            if (Attributes?["drinkPortionSize"].Exists == true)
+            {
+                drinkPortionSizeFromAttributes = Attributes["drinkPortionSize"].AsInt(1);
+            } else
+            {
+                var props = Attributes?["liquidContainerProps"]?.AsObject<LiquidTopOpenContainerProps>(null, Code.Domain);
+                if (props != null)
+                {
+                    drinkPortionSizeFromAttributes = props.DrinkPortionSize;
+                }
+            }
 
+            if (drinkPortionSizeFromAttributes > capacityLitresFromAttributes)
+            {
+                api.Logger.Warning($"Drink portion size {drinkPortionSizeFromAttributes} is greater than capacity {capacityLitresFromAttributes} for {Code}, setting drink portion size to capacity.");
+                drinkPortionSizeFromAttributes = capacityLitresFromAttributes;
+            }
 
             if (api.Side != EnumAppSide.Client) return;
             ICoreClientAPI capi = api as ICoreClientAPI;
@@ -143,7 +166,7 @@ namespace Vintagestory.GameContent
                 }
 
                 var lcstacks = liquidContainerStacks.ToArray();
-                
+
 
                 return new WorldInteraction[] {
                     new WorldInteraction()
@@ -255,7 +278,7 @@ namespace Vintagestory.GameContent
             return GetCurrentLitres(pos) >= CapacityLitres;
         }
 
-
+#nullable enable
         public WaterTightContainableProps? GetContentProps(ItemStack containerStack)
         {
             ItemStack? stack = GetContent(containerStack);
@@ -263,7 +286,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public static int GetTransferStackSize(ILiquidInterface containerBlock, ItemStack contentStack, IPlayer player = null)
+        public static int GetTransferStackSize(ILiquidInterface containerBlock, ItemStack contentStack, IPlayer? player = null)
         {
             return GetTransferStackSize(containerBlock, contentStack, player?.Entity?.Controls.ShiftKey == true);
         }
@@ -292,8 +315,8 @@ namespace Vintagestory.GameContent
         {
             try
             {
-                JsonObject obj = stack?.ItemAttributes?["waterTightContainerProps"];
-                if (obj != null && obj.Exists) return obj.AsObject<WaterTightContainableProps>(null, stack.Collectible.Code.Domain);
+                JsonObject? obj = stack?.ItemAttributes?["waterTightContainerProps"];
+                if (obj != null && obj.Exists) return obj.AsObject<WaterTightContainableProps>(null, stack!.Collectible.Code.Domain);
                 return null;
             }
             catch (Exception)
@@ -310,13 +333,13 @@ namespace Vintagestory.GameContent
         /// <returns></returns>
         public WaterTightContainableProps? GetContentProps(BlockPos pos)
         {
-            BlockEntityContainer becontainer = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityContainer;
+            BlockEntityContainer? becontainer = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityContainer;
             if (becontainer == null) return null;
 
             int slotid = GetContainerSlotId(pos);
             if (slotid >=becontainer.Inventory.Count) return null;
 
-            ItemStack stack = becontainer.Inventory[slotid]?.Itemstack;
+            ItemStack? stack = becontainer.Inventory[slotid]?.Itemstack;
             if (stack == null) return null;
 
             return GetContainableProps(stack);
@@ -346,11 +369,11 @@ namespace Vintagestory.GameContent
         /// <param name="content"></param>
         public void SetContent(BlockPos pos, ItemStack content)
         {
-            BlockEntityContainer beContainer = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityContainer;
+            BlockEntityContainer? beContainer = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityContainer;
             if (beContainer == null) return;
 
             new DummySlot(content).TryPutInto(api.World, beContainer.Inventory[GetContainerSlotId(pos)], content.StackSize);
-            
+
             beContainer.Inventory[GetContainerSlotId(pos)].MarkDirty();
             beContainer.MarkDirty(true);
         }
@@ -377,11 +400,11 @@ namespace Vintagestory.GameContent
         /// <returns></returns>
         public ItemStack? GetContent(BlockPos pos)
         {
-            BlockEntityContainer becontainer = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityContainer;
+            BlockEntityContainer? becontainer = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityContainer;
             if (becontainer == null) return null;
             return becontainer.Inventory[GetContainerSlotId(pos)].Itemstack;
         }
-
+#nullable disable
 
         public override ItemStack CreateItemStackFromJson(ITreeAttribute stackAttr, IWorldAccessor world, string domain)
         {
@@ -412,11 +435,13 @@ namespace Vintagestory.GameContent
             if (stack == null) return null;
 
             ItemStack takenStack = stack.Clone();
-            takenStack.StackSize = quantityItems;
-
             stack.StackSize -= quantityItems;
             if (stack.StackSize <= 0) SetContent(containerStack, null);
-            else SetContent(containerStack, stack);
+            else
+            {
+                SetContent(containerStack, stack);
+                takenStack.StackSize = quantityItems;
+            }
 
             return takenStack;
         }
@@ -433,17 +458,16 @@ namespace Vintagestory.GameContent
             BlockEntityContainer becontainer = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityContainer;
             if (becontainer == null) return null;
 
-            ItemStack stack = becontainer.Inventory[GetContainerSlotId(pos)].Itemstack;
+            var slot = becontainer.Inventory[GetContainerSlotId(pos)];
+            ItemStack stack = slot.Itemstack;
             if (stack == null) return null;
 
             ItemStack takenStack = stack.Clone();
-            takenStack.StackSize = quantityItem;
-
             stack.StackSize -= quantityItem;
-            if (stack.StackSize <= 0) becontainer.Inventory[GetContainerSlotId(pos)].Itemstack = null;
-            else becontainer.Inventory[GetContainerSlotId(pos)].Itemstack = stack;
+            if (stack.StackSize <= 0) slot.Itemstack = null;
+            else takenStack.StackSize = quantityItem;
 
-            becontainer.Inventory[GetContainerSlotId(pos)].MarkDirty();
+            slot.MarkDirty();
             becontainer.MarkDirty(true);
 
             return takenStack;
@@ -598,7 +622,7 @@ namespace Vintagestory.GameContent
 
                     return true;
                 }
-                
+
             }
 
 
@@ -647,6 +671,11 @@ namespace Vintagestory.GameContent
 
         protected override void tryEatBegin(ItemSlot slot, EntityAgent byEntity, ref EnumHandHandling handling, string eatSound = "eat", int eatSoundRepeats = 1)
         {
+            if (IsEmpty(slot.Itemstack))
+            {
+                base.tryEatBegin(slot, byEntity, ref handling);
+                return;
+            }
             base.tryEatBegin(slot, byEntity, ref handling, "drink", 4);
         }
 
@@ -665,7 +694,7 @@ namespace Vintagestory.GameContent
             {
                 if (byEntity.Controls.ShiftKey) base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
 
-                if (handHandling != EnumHandHandling.PreventDefaultAction && CanDrinkFrom && GetNutritionProperties(byEntity.World, itemslot.Itemstack, byEntity) != null)
+                if (handHandling != EnumHandHandling.PreventDefaultAction && CanDrinkFrom && GetNutritionPropertiesPerLitre(byEntity.World, itemslot.Itemstack, byEntity) != null)
                 {
                     tryEatBegin(itemslot, byEntity, ref handHandling, "drink", 4);
                     return;
@@ -714,9 +743,15 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (CanDrinkFrom && GetNutritionProperties(byEntity.World, itemslot.Itemstack, byEntity) != null)
+            if (CanDrinkFrom && GetNutritionPropertiesPerLitre(byEntity.World, itemslot.Itemstack, byEntity) != null)
             {
                 tryEatBegin(itemslot, byEntity, ref handHandling, "drink", 4);
+                return;
+            }
+
+            if (IsEmpty(itemslot.Itemstack) && GetNutritionProperties(byEntity.World, itemslot.Itemstack, byEntity) != null)
+            {
+                tryEatBegin(itemslot, byEntity, ref handHandling);
                 return;
             }
 
@@ -729,46 +764,41 @@ namespace Vintagestory.GameContent
 
         protected override bool tryEatStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, ItemStack spawnParticleStack = null)
         {
-            return base.tryEatStep(secondsUsed, slot, byEntity, GetContent(slot.Itemstack));
+            return base.tryEatStep(secondsUsed, slot, byEntity, IsEmpty(slot.Itemstack) ? slot.Itemstack : GetContent(slot.Itemstack));
         }
 
         protected override void tryEatStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity)
         {
-            FoodNutritionProperties nutriProps = GetNutritionProperties(byEntity.World, slot.Itemstack, byEntity);
+            if (IsEmpty(slot.Itemstack)) base.tryEatStop(secondsUsed, slot, byEntity);
+            FoodNutritionProperties nutriProps = GetNutritionPropertiesPerLitre(byEntity.World, slot.Itemstack, byEntity);
 
             if (byEntity.World is IServerWorldAccessor && nutriProps != null && secondsUsed >= 0.95f)
             {
-                float drinkCapLitres = 1f;
+                var containableProps = GetContentProps(slot.Itemstack);
+                float litresToDrink = Math.Max(1.0f / (containableProps?.ItemsPerLitre ?? 1), DrinkPortionSize);
 
-                float litresEach = GetCurrentLitres(slot.Itemstack);
-                float litresTotal = litresEach * slot.StackSize;
+                var liquidStack = GetContent(slot.Itemstack);
+                var dummyslot = GetContentInDummySlot(slot, liquidStack);
 
-                if (litresEach > drinkCapLitres)
-                {
-                    nutriProps.Satiety /= litresEach;
-                    nutriProps.Health /= litresEach;
-                }
+                TransitionState state = UpdateAndGetTransitionState(api.World, dummyslot, EnumTransitionType.Perish);
+                float spoilState = state?.TransitionLevel ?? 0;
 
-                TransitionState state = UpdateAndGetTransitionState(api.World, slot, EnumTransitionType.Perish);
-                float spoilState = state != null ? state.TransitionLevel : 0;
+                float satLossMul = GlobalConstants.FoodSpoilageSatLossMul(spoilState, liquidStack, byEntity);
+                float healthLossMul = GlobalConstants.FoodSpoilageHealthLossMul(spoilState, liquidStack, byEntity);
 
-                float satLossMul = GlobalConstants.FoodSpoilageSatLossMul(spoilState, slot.Itemstack, byEntity);
-                float healthLossMul = GlobalConstants.FoodSpoilageHealthLossMul(spoilState, slot.Itemstack, byEntity);
+                int itemPortionsDrank = SplitStackAndPerformAction(byEntity, slot, (stack) => TryTakeLiquid(stack, litresToDrink)?.StackSize ?? 0);
+                if(itemPortionsDrank == 0) return;
+                float mul = itemPortionsDrank / containableProps.ItemsPerLitre;
 
-                byEntity.ReceiveSaturation(nutriProps.Satiety * satLossMul, nutriProps.FoodCategory);
+                byEntity.ReceiveSaturation(nutriProps.Satiety * satLossMul * mul, nutriProps.FoodCategory);
 
-                IPlayer player = null;
-                if (byEntity is EntityPlayer) player = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
-
-                float litresToDrink = Math.Min(drinkCapLitres, litresTotal);
-                TryTakeLiquid(slot.Itemstack, litresToDrink / slot.Itemstack.StackSize);
-
-                //splitStackAndPerformAction(byEntity, slot, (stack) => TryTakeLiquid(stack, litresToDrink)?.StackSize ?? 0);
-
-                float healthChange = nutriProps.Health * healthLossMul;
+                float healthChange = nutriProps.Health * healthLossMul * mul;
 
                 float intox = byEntity.WatchedAttributes.GetFloat("intoxication");
-                byEntity.WatchedAttributes.SetFloat("intoxication", Math.Min(1.1f, intox + nutriProps.Intoxication));
+                byEntity.WatchedAttributes.SetFloat("intoxication", Math.Min(1.1f, intox + (nutriProps.Intoxication * mul)));
+
+                float psyche = byEntity.WatchedAttributes.GetFloat("psychedelic");
+                byEntity.WatchedAttributes.SetFloat("psychedelic", Math.Min(2.0f, psyche + (nutriProps.Psychedelic * mul)));
 
                 if (healthChange != 0)
                 {
@@ -776,22 +806,20 @@ namespace Vintagestory.GameContent
                 }
 
                 slot.MarkDirty();
-                player.InventoryManager.BroadcastHotbarSlot();
+                byEntity.World.PlayerByUid((byEntity as EntityPlayer)?.PlayerUID)?.InventoryManager.BroadcastHotbarSlot();
             }
         }
 
 
         public override FoodNutritionProperties GetNutritionProperties(IWorldAccessor world, ItemStack itemstack, Entity forEntity)
         {
-            ItemStack contentStack = GetContent(itemstack);
-            WaterTightContainableProps props = contentStack == null ? null : GetContainableProps(contentStack);
-
-            if (props?.NutritionPropsPerLitre != null)
+            if (GetNutritionPropertiesPerLitre(world, itemstack, forEntity)?.Clone() is FoodNutritionProperties nutriProps)
             {
-                var nutriProps = props.NutritionPropsPerLitre.Clone();
-                float litre = contentStack.StackSize / props.ItemsPerLitre;
-                nutriProps.Health *= litre;
-                nutriProps.Satiety *= litre;
+                float litres = GetCurrentLitres(itemstack);
+                nutriProps.Health *= litres;
+                nutriProps.Satiety *= litres;
+                nutriProps.Intoxication *= litres;
+                nutriProps.Psychedelic *= litres;
                 nutriProps.EatenStack = new JsonItemStack();
                 nutriProps.EatenStack.ResolvedItemstack = itemstack.Clone();
                 nutriProps.EatenStack.ResolvedItemstack.StackSize = 1;
@@ -800,7 +828,30 @@ namespace Vintagestory.GameContent
                 return nutriProps;
             }
 
-            return base.GetNutritionProperties(world, itemstack, forEntity);
+            return IsEmpty(itemstack) ? base.GetNutritionProperties(world, itemstack, forEntity) : null;
+        }
+
+        public FoodNutritionProperties GetNutritionPropertiesPerLitre(IWorldAccessor world, ItemStack itemstack, Entity forEntity)
+        {
+            if (GetContent(itemstack) is ItemStack contentStack &&
+                GetContainableProps(contentStack) is WaterTightContainableProps props)
+            {
+                if (props.NutritionPropsPerLitre is FoodNutritionProperties nutriPropsPerLitre) return nutriPropsPerLitre;
+
+                if (contentStack.Collectible.GetNutritionProperties(world, contentStack, forEntity)?.Clone() is FoodNutritionProperties nutriProps)
+                {
+                    // If we have no NutritionPropsPerLitre but we do have nutrition props we'll pretend they're per item and so adjust accordingly
+                    float itemsPerLitre = props.ItemsPerLitre;
+                    nutriProps.Health *= itemsPerLitre;
+                    nutriProps.Satiety *= itemsPerLitre;
+                    nutriProps.Intoxication *= itemsPerLitre;
+                    nutriProps.Psychedelic *= itemsPerLitre;
+
+                    return nutriProps;
+                }
+            }
+
+            return null;
         }
 
 
@@ -827,8 +878,8 @@ namespace Vintagestory.GameContent
 
             int moved = SplitStackAndPerformAction(byEntity, itemslot, (stack) => TryPutLiquid(stack, contentStack, CapacityLitres));
 
-            if (moved > 0) 
-            { 
+            if (moved > 0)
+            {
                 DoLiquidMovedEffects(byPlayer, contentStack, moved, EnumLiquidDirection.Fill);
             }
 
@@ -992,7 +1043,7 @@ namespace Vintagestory.GameContent
                     slot.TakeOut(1);
                     if ((byEntity as EntityPlayer)?.Player.InventoryManager.TryGiveItemstack(containerStack, true) != true)
                     {
-                        api.World.SpawnItemEntity(containerStack, byEntity.SidedPos.XYZ);
+                        api.World.SpawnItemEntity(containerStack, byEntity.Pos.XYZ);
                     }
 
                     slot.MarkDirty();
@@ -1011,7 +1062,7 @@ namespace Vintagestory.GameContent
 
             if (entityItem.Swimming && world.Rand.NextDouble() < 0.03)
             {
-                TryFillFromBlock(entityItem, entityItem.SidedPos.AsBlockPos);
+                TryFillFromBlock(entityItem, entityItem.Pos.AsBlockPos);
             }
 
             if (entityItem.Swimming && world.Rand.NextDouble() < 0.01)
@@ -1023,7 +1074,7 @@ namespace Vintagestory.GameContent
                     {
                         if (stacks[i] != null && stacks[i].StackSize > 0 && stacks[i].Collectible.Code.Path == "rot")
                         {
-                            world.SpawnItemEntity(stacks[i], entityItem.ServerPos.XYZ);
+                            world.SpawnItemEntity(stacks[i], entityItem.Pos.XYZ);
                         }
                     }
 
@@ -1143,7 +1194,7 @@ namespace Vintagestory.GameContent
                     base.TryMergeStacks(op);
                     return;
                 }
-                
+
                 op.MovedQuantity = 0;
                 return;
             }
@@ -1164,18 +1215,21 @@ namespace Vintagestory.GameContent
             return;
         }
 
-        public override bool MatchesForCrafting(ItemStack inputStack, GridRecipe gridRecipe, CraftingRecipeIngredient ingredient)
+        public override bool MatchesForCrafting(ItemStack inputStack, IRecipeBase recipe, IRecipeIngredient ingredient)
         {
             JsonObject rprops = ingredient.RecipeAttributes;
-            if (rprops?.Exists != true || rprops?["requiresContent"].Exists != true) rprops = gridRecipe.Attributes?["liquidContainerProps"];
+            if (rprops?.Exists != true || rprops?["requiresContent"].Exists != true) rprops = (recipe as GridRecipe)?.Attributes?["liquidContainerProps"];
 
             if (rprops?.Exists != true)
             {
-                return base.MatchesForCrafting(inputStack, gridRecipe, ingredient);
+                return base.MatchesForCrafting(inputStack, recipe, ingredient);
             }
 
-            string contentCode = rprops["requiresContent"]["code"].AsString();
-            string contentType = rprops["requiresContent"]["type"].AsString();
+            JsonItemStack requiredContentjStack = rprops["requiresContent"].AsObject<JsonItemStack>();
+            if (requiredContentjStack == null || !requiredContentjStack.Resolve(api.World, string.Format("Liquid content for {0} ingredient", ingredient.Code)))
+            {
+                return base.MatchesForCrafting(inputStack, recipe, ingredient);
+            }
 
             ItemStack contentStack = GetContent(inputStack);
 
@@ -1185,21 +1239,19 @@ namespace Vintagestory.GameContent
             var props = GetContainableProps(contentStack);
             int q = (int)((props?.ItemsPerLitre ?? 1) * litres) / inputStack.StackSize;
 
-            bool a = contentStack.Class.ToString().ToLowerInvariant() == contentType.ToLowerInvariant();
-            bool b = WildcardUtil.Match(new AssetLocation(contentCode), contentStack.Collectible.Code);
-            bool c = contentStack.StackSize >= q;
-
-            return a && b && c;
+            bool a = requiredContentjStack.Matches(api.World, contentStack);
+            bool b = contentStack.StackSize >= q;
+            return a && b;
         }
 
-        public override void OnConsumedByCrafting(ItemSlot[] allInputSlots, ItemSlot stackInSlot, GridRecipe gridRecipe, CraftingRecipeIngredient fromIngredient, IPlayer byPlayer, int quantity)
+        public override void OnConsumedByCrafting(ItemSlot[] allInputSlots, ItemSlot stackInSlot, IRecipeBase recipe, IRecipeIngredient fromIngredient, IPlayer byPlayer, int quantity)
         {
             JsonObject rprops = fromIngredient.RecipeAttributes;
-            if (rprops?.Exists != true || rprops?["requiresContent"].Exists != true) rprops = gridRecipe.Attributes?["liquidContainerProps"];
+            if (rprops?.Exists != true || rprops?["requiresContent"].Exists != true) rprops = (recipe as GridRecipe)?.Attributes?["liquidContainerProps"];
 
             if (rprops?.Exists != true)
             {
-                base.OnConsumedByCrafting(allInputSlots, stackInSlot, gridRecipe, fromIngredient, byPlayer, quantity);
+                base.OnConsumedByCrafting(allInputSlots, stackInSlot, recipe, fromIngredient, byPlayer, quantity);
                 return;
             }
 
@@ -1210,18 +1262,12 @@ namespace Vintagestory.GameContent
 
             if (rprops.IsTrue("consumeContainer"))
             {
-                stackInSlot.Itemstack.StackSize -= quantity;
+                stackInSlot.TakeOut(quantity);
+                stackInSlot.MarkDirty();
+                return;
+            }
 
-                if (stackInSlot.Itemstack.StackSize <= 0)
-                {
-                    stackInSlot.Itemstack = null;
-                    stackInSlot.MarkDirty();
-                }
-            }
-            else
-            {
-                TryTakeContent(stackInSlot.Itemstack, q);
-            }
+            TryTakeContent(stackInSlot.Itemstack, q);
         }
 
         public static string PerishableInfoCompact(ICoreAPI Api, ItemSlot contentSlot, float ripenRate, bool withStackName = true)

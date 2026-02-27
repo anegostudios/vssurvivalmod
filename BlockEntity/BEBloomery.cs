@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -184,21 +184,23 @@ namespace Vintagestory.GameContent
 
         private void DoSmelt()
         {
-            if (OreStack.Collectible.CombustibleProps is not CombustibleProperties combustProps) return;
+            CombustibleProperties combustibleProps = OreStack.Collectible.GetCombustibleProperties(Api.World, OreStack, null);
 
-            int q = OreStack.StackSize / combustProps.SmeltedRatio;
+            if (combustibleProps == null) return;
+
+            int q = OreStack.StackSize / combustibleProps.SmeltedRatio;
 
             if (OreStack.ItemAttributes?.IsTrue("mergeUnitsInBloomery") == true)
             {
-                OutSlot.Itemstack = combustProps.SmeltedStack.ResolvedItemstack.Clone();
+                OutSlot.Itemstack = combustibleProps.SmeltedStack.ResolvedItemstack.Clone();
                 OutStack.StackSize = 1;
 
-                float qf = (float)OreStack.StackSize / combustProps.SmeltedRatio;
+                float qf = (float)OreStack.StackSize / combustibleProps.SmeltedRatio;
                 OutStack.Attributes.SetFloat("units", qf*100);
 
             } else
             {
-                OutSlot.Itemstack = combustProps.SmeltedStack.ResolvedItemstack.Clone();
+                OutSlot.Itemstack = combustibleProps.SmeltedStack.ResolvedItemstack.Clone();
                 OutStack.StackSize *= q;
             }
 
@@ -206,7 +208,7 @@ namespace Vintagestory.GameContent
 
             FuelSlot.Itemstack = null;
             
-            OreStack.StackSize -= q * combustProps.SmeltedRatio;
+            OreStack.StackSize -= q * combustibleProps.SmeltedRatio;
             if (OreSlot.StackSize == 0) OreSlot.Itemstack = null;
 
             burning = false;
@@ -244,16 +246,17 @@ namespace Vintagestory.GameContent
         {
             if (IsBurning) return false;
             if (OutSlot.StackSize > 0) return false;
-            if (stack?.Collectible.CombustibleProps is not CombustibleProperties combustProps) return false;
+            CombustibleProperties combustibleProps = stack?.Collectible?.GetCombustibleProperties(Api.World, stack, null);
+            if (combustibleProps == null) return false;
 
-            if (combustProps.SmeltedStack != null && combustProps.MeltingPoint < MaxTemp && combustProps.MeltingPoint >= MinTemp)
+            if (combustibleProps.SmeltedStack != null && combustibleProps.MeltingPoint < MaxTemp && combustibleProps.MeltingPoint >= MinTemp)
             {
                 if (OreSlot.StackSize + quantity > OreCapacity) return false;
                 if (!OreSlot.Empty && !OreStack.Equals(Api.World, stack, GlobalConstants.IgnoredStackAttributes)) return false;
                 return true;
             }
 
-            if (combustProps.BurnTemperature >= 1200 && combustProps.BurnDuration > 30)
+            if (combustibleProps.BurnTemperature >= 1200 && combustibleProps.BurnDuration > 30)
             {
                 if (FuelSlot.StackSize + quantity > FuelCapacity) return false;
                 if (!FuelSlot.Empty && !FuelStack.Equals(Api.World, stack, GlobalConstants.IgnoredStackAttributes)) return false;
@@ -273,9 +276,10 @@ namespace Vintagestory.GameContent
             if (OutSlot.StackSize > 0) return false;
             if (sourceSlot.Itemstack == null) return false;
 
-            if (sourceSlot.Itemstack.Collectible.CombustibleProps is not CombustibleProperties combustProps) return true;
+            CombustibleProperties combustibleProps = sourceSlot.Itemstack.Collectible.GetCombustibleProperties(Api.World, sourceSlot.Itemstack, null);
+            if (combustibleProps == null) return true;
 
-            if (combustProps.SmeltedStack != null && combustProps.MeltingPoint < MaxTemp && combustProps.MeltingPoint >= MinTemp) 
+            if (combustibleProps.SmeltedStack != null && combustibleProps.MeltingPoint < MaxTemp && combustibleProps.MeltingPoint >= MinTemp) 
             {
                 if (sourceSlot.TryPutInto(Api.World, OreSlot, Math.Min(OreCapacity - OreSlot.StackSize, quantity)) > 0)
                 {
@@ -287,7 +291,7 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            if (combustProps.BurnTemperature >= 1200 && combustProps.BurnDuration > 30)
+            if (combustibleProps.BurnTemperature >= 1200 && combustibleProps.BurnDuration > 30)
             {
                 int maxRequired = (int)Math.Ceiling((float)OreSlot.StackSize / Ore2FuelRatio); 
 
@@ -417,7 +421,8 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                int ratio = OreStack?.Collectible.CombustibleProps?.SmeltedRatio ?? 1;
+                CombustibleProperties combustibleProps = OreStack?.Collectible?.GetCombustibleProperties(Api.World, OreStack, null);
+                int ratio = combustibleProps?.SmeltedRatio ?? 1;
                 return OreStack?.ItemAttributes?["bloomeryFuelRatio"].AsInt(ratio) ?? ratio;
             }
         }

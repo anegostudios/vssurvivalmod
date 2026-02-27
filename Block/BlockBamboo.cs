@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
@@ -86,10 +86,10 @@ namespace Vintagestory.GameContent
                 bool foundSuitableBlock = false;
                 for (int y = 2; y >= -2; y--)
                 {
-                    Block block = blockAccessor.GetBlock(npos.X, npos.Y + y, npos.Z);
+                    npos.Y = pos.Y + y;
+                    Block block = blockAccessor.GetBlock(npos);
                     if (block.Fertility > 0)
                     {
-                        npos.Y = npos.Y + y;
                         foundSuitableBlock = true;
                         break;
                     }
@@ -120,7 +120,7 @@ namespace Vintagestory.GameContent
 
                     var nblock = blockAccessor.GetBlock(bpos);
 
-                    if (nblock.Replaceable >= shootBlock.Replaceable && blockAccessor.GetBlock(bpos.X, bpos.Y - 1, bpos.Z).Fertility > 0)
+                    if (nblock.Replaceable >= shootBlock.Replaceable && blockAccessor.GetBlockBelow(bpos, 1, BlockLayersAccess.Solid).Fertility > 0)
                     {
                         var lblock = blockAccessor.GetBlock(bpos, BlockLayersAccess.Fluid);
                         if (lblock.BlockId == 0) blockAccessor.SetBlock(shootBlock.BlockId, bpos);
@@ -253,12 +253,12 @@ namespace Vintagestory.GameContent
             bool sideDisableWindWaveDown = false;
 
             // For bamboo poles, only check the block below - unlike leaves, these don't attach to solid blocks on all sides
-            Block nblock = lockFreeBa.GetBlock(pos.X, pos.Y - 1, pos.Z);
+            Block nblock = lockFreeBa.GetBlockBelow(pos, 1, BlockLayersAccess.Solid);
             if (nblock.VertexFlags.WindMode == EnumWindBitMode.NoWind && nblock.SideSolid[TileSideEnum.Up]) sideDisableWindWaveDown = true;
             else if (nblock is BlockBamboo)
             {
                 // Detect immobile bamboo below
-                nblock = lockFreeBa.GetBlock(pos.X + windDir.X, pos.Y - 1, pos.Z + windDir.Z);
+                nblock = lockFreeBa.GetBlockRaw(pos.X + windDir.X, pos.InternalY - 1, pos.Z + windDir.Z);
                 if (nblock.VertexFlags.WindMode == EnumWindBitMode.NoWind && nblock.SideSolid[TileSideEnum.West]) sideDisableWindWaveDown = true;
             }
 
@@ -266,7 +266,7 @@ namespace Vintagestory.GameContent
             int groundOffset = 1;
 
             // Disable swaying if would push into a block to the East
-            nblock = lockFreeBa.GetBlock(pos.X + windDir.X, pos.Y, pos.Z + windDir.Z);
+            nblock = lockFreeBa.GetBlockRaw(pos.X + windDir.X, pos.InternalY, pos.Z + windDir.Z);
             if (nblock.VertexFlags.WindMode == EnumWindBitMode.NoWind && nblock.SideSolid[TileSideEnum.West]) enableWind = false;
 
             if (enableWind)
@@ -278,7 +278,7 @@ namespace Vintagestory.GameContent
                 for (; groundOffset < 8; groundOffset++)
                 {
                     block = api.World.BlockAccessor.GetBlockBelow(pos, groundOffset);
-                    blockInWindDir = (block is BlockBamboo) ? api.World.BlockAccessor.GetBlock(pos.X + windDir.X, pos.Y - groundOffset, pos.Z + windDir.Z) : null;
+                    blockInWindDir = (block is BlockBamboo) ? api.World.BlockAccessor.GetBlockRaw(pos.X + windDir.X, pos.InternalY - groundOffset, pos.Z + windDir.Z) : null;
 
                     if (block.VertexFlags.WindMode == EnumWindBitMode.NoWind && block.SideSolid[TileSideEnum.Up]) break;
                     if (blockInWindDir != null && blockInWindDir.VertexFlags.WindMode == EnumWindBitMode.NoWind && blockInWindDir.SideSolid[TileSideEnum.West]) break;
@@ -294,10 +294,10 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-                int y = pos.Y;
-                while (!bambooLeavesFound && y - pos.Y < MaxPlantHeight)
+                int y = 0;
+                while (!bambooLeavesFound && ++y < MaxPlantHeight)
                 {
-                    block = api.World.BlockAccessor.GetBlock(pos.X, ++y, pos.Z);
+                    block = api.World.BlockAccessor.GetBlockAbove(pos, y, BlockLayersAccess.Solid);
                     if (block is BlockBamboo bam)
                     {
                         bambooLeavesFound = bam.isSegmentWithLeaves;

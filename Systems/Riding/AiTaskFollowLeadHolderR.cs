@@ -6,7 +6,7 @@ namespace Vintagestory.GameContent;
 
 // @TODO add description
 /// <summary>
-/// 
+///
 /// </summary>
 [JsonObject(MemberSerialization = MemberSerialization.OptIn)]
 public class AiTaskFollowLeadHolderConfig : AiTaskBaseTargetableConfig
@@ -88,7 +88,7 @@ public class AiTaskFollowLeadHolderR : AiTaskBaseTargetableR
             if (point != null)
             {
                 targetEntity = point.PinnedToEntity;
-                if (targetEntity.ServerPos.DistanceTo(entity.ServerPos) < Config.MaxDistanceToTarget) return false;
+                if (targetEntity.Pos.DistanceTo(entity.Pos) < Config.MaxDistanceToTarget) return false;
                 if (!IsTargetableEntity(targetEntity, Config.SeekingRange)) return false;
                 return true;
             }
@@ -101,7 +101,7 @@ public class AiTaskFollowLeadHolderR : AiTaskBaseTargetableR
     {
         if (targetEntity == null) return;
 
-        pathTraverser.WalkTowards(targetEntity.ServerPos.XYZ, Config.MoveSpeed, MinDistanceToTarget(Config.ExtraMinDistanceToTarget), OnGoalReached, OnStuck, Config.AiCreatureType);
+        pathTraverser.WalkTowards(targetEntity.Pos.XYZ, Config.MoveSpeed, MinDistanceToTarget(Config.ExtraMinDistanceToTarget), OnGoalReached, OnStuck, Config.AiCreatureType);
 
         base.StartExecute();
     }
@@ -112,11 +112,11 @@ public class AiTaskFollowLeadHolderR : AiTaskBaseTargetableR
         if (!ContinueExecute(dt)) return false;
 
         float minDistance = MinDistanceToTarget();
-        double distance = targetEntity.ServerPos.DistanceTo(entity.ServerPos.XYZ);
+        double distance = targetEntity.Pos.DistanceTo(entity.Pos.XYZ);
 
         if (distance > Config.MaxDistanceToTarget)
         {
-            pathTraverser.WalkTowards(targetEntity.ServerPos.XYZ, Config.MoveSpeed, minDistance, OnGoalReached, OnStuck, Config.AiCreatureType);
+            pathTraverser.WalkTowards(targetEntity.Pos.XYZ, Config.MoveSpeed, minDistance, OnGoalReached, OnStuck, Config.AiCreatureType);
         }
 
         if (distance < minDistance) return false;

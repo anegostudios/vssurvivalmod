@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -118,7 +118,7 @@ namespace Vintagestory.GameContent.Mechanics
             }
 
             //if ((dev.Block as BlockPulverizer).InvertPoundersOnRender) rot = -rot; - creates inverted animation. This should instead rather cause tons of resistance 
-            if (bhpu.isRotationReversed()) rot = -rot;
+            if (bhpu.IsRotationReversed()) rot = -rot;
 
             // Pounder-left
             int metalIndexLeft = bhpu.bepu.CapMetalIndexL;
@@ -201,8 +201,7 @@ namespace Vintagestory.GameContent.Mechanics
             if (rotX != 0f) Quaterniond.RotateX(quat, quat, rotX);
             if (rotZ != 0f) Quaterniond.RotateZ(quat, quat, rotZ);
 
-            for (int i = 0; i < quat.Length; i++) qf[i] = (float)quat[i];
-            Mat4f.Mul(tmpMat, tmpMat, Mat4f.FromQuat(rotMat, qf));
+            Mat4f.MulQuat(tmpMat, quat);
 
             Mat4f.Translate(tmpMat, tmpMat, -axis.X, -axis.Y, -axis.Z);
 

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Drawing;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
@@ -40,6 +39,7 @@ namespace Vintagestory.GameContent
 
         public EntityBehaviorAntlerGrowth(Entity entity) : base(entity)
         {
+            creatureInv = new InventoryGeneric(1, InventoryClassName + "-" + entity.EntityId, entity.Api, (id, inv) => new ItemSlot(inv));
         }
 
         public override void Initialize(EntityProperties properties, JsonObject attributes)
@@ -51,9 +51,11 @@ namespace Vintagestory.GameContent
             {
                 variants = new Item[variantnames.Length];
                 string entityType = attributes["overrideType"]?.ToString() ?? entity.Properties.Variant["type"];
+                string itemBaseName = attributes["itemBaseName"].AsString() ?? "antler-" + entityType;
+
                 for (int i = 0; i < variantnames.Length; i++)
                 {
-                    AssetLocation loc = new AssetLocation("antler-" + entityType + "-" + variantnames[i]);
+                    AssetLocation loc = new AssetLocation(itemBaseName + "-" + variantnames[i]);
                     if ((variants[i] = entity.Api.World.GetItem(loc)) == null)
                     {
                         entity.Api.Logger.Warning("Missing antler item of code " + loc.ToShortString() + " for creature " + entity.Code.ToShortString());
@@ -67,7 +69,6 @@ namespace Vintagestory.GameContent
             shedDurationMonths = attributes["shedDurationMonths"].AsFloat();
             noItemDrop = attributes["noItemDrop"].AsBool(false);
 
-            creatureInv = new InventoryGeneric(1, InventoryClassName + "-" + entity.EntityId, entity.Api, (id, inv) => new ItemSlot(inv));
             loadInv();
         }
 
@@ -212,7 +213,7 @@ namespace Vintagestory.GameContent
 
         public ItemStack[] GetHarvestableDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer)
         {
-            return new ItemStack[] { creatureInv[0].Itemstack };
+            return noItemDrop ? [] : [ creatureInv[0].Itemstack ];
         }
 
         public override bool TryGiveItemStack(ItemStack itemstack, ref EnumHandling handling)

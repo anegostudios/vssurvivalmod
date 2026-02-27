@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -54,11 +54,6 @@ namespace Vintagestory.GameContent.Mechanics
                     this.shape = value;
                 }
             }
-        }
-
-        BlockEntityAnimationUtil animUtil
-        {
-            get { return GetBehavior<BEBehaviorAnimatable>().animUtil; }
         }
 
         public override void Initialize(ICoreAPI api)
@@ -162,6 +157,7 @@ namespace Vintagestory.GameContent.Mechanics
 
         private void OnClientGameTick(float dt)
         {
+            dt *= 4;
             if (Engaged)
             {
                 if (armAngle < DEGREES30)

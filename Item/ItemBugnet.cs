@@ -72,7 +72,7 @@ namespace Vintagestory.GameContent
                 BlockFilter bfilter = (pos, block) => (block == null || block.RenderPass != EnumChunkRenderPass.Meta/* || ClientSettings.RenderMetaBlocks*/);
                 EntityFilter efilter = (e) => e.Alive && (e.IsInteractable || e.Properties.Attributes?["netCaughtItemCode"].Exists == true) && e.EntityId != byEntity.EntityId;
 
-                api.World.RayTraceForSelection(srcpos, byEntity.SidedPos.Pitch, byEntity.SidedPos.Yaw, range, ref bsel, ref esel, bfilter, efilter);
+                api.World.RayTraceForSelection(srcpos, byEntity.Pos.Pitch, byEntity.Pos.Yaw, range, ref bsel, ref esel, bfilter, efilter);
 
                 if (esel?.Entity?.Properties.Attributes?["netCaughtItemCode"].Exists == true)
                 {

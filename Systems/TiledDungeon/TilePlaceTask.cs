@@ -17,6 +17,9 @@ public class TilePlaceTask
     [ProtoMember(3)]
     public BlockPos Pos;
 
+    [ProtoMember(4)]
+    public string FileName;
+
     public int SizeX;
     public int SizeY;
     public int SizeZ;

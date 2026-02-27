@@ -1,4 +1,4 @@
-﻿using Vintagestory.API;
+using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -29,24 +29,32 @@ namespace Vintagestory.GameContent
 	///]
     ///</code></example>
     [DocumentAsJson]
-    public class BlockBehaviorHorizontalOrientable : BlockBehavior
+    public class BlockBehaviorHorizontalOrientable : BlockBehavior, ILookAwarePlacement
     {
         /// <summary>
         /// The face variant of this block to drop when mined, if <see cref="drop"/> is not set.
         /// </summary>
         [DocumentAsJson("Optional", "north")]
-        string dropBlockFace = "north";
-
-        /// <summary>
-        /// The variant code used to look for certain faces.
-        /// </summary>
-        string variantCode = "horizontalorientation";
+        protected string dropBlockFace = "north";
 
         /// <summary>
         /// A custom item stack which will be dropped when this block is mined. If not set, then <see cref="dropBlockFace"/> will be used.
         /// </summary>
         [DocumentAsJson("Optional", "None")]
-        JsonItemStack drop = null;
+        protected JsonItemStack drop = null;
+
+        /// <summary>
+        /// If true, handles drops (default: true)
+        /// </summary>
+        [DocumentAsJson("Optional", "true")]
+        protected bool handleDrop = true;
+
+        /// <summary>
+        /// The variant code used to look for certain faces.
+        /// </summary>
+        protected string variantCode = "horizontalorientation";
+
+        
 
         public BlockBehaviorHorizontalOrientable(Block block) : base(block)
         {
@@ -67,6 +75,8 @@ namespace Vintagestory.GameContent
             {
                 drop = properties["drop"].AsObject<JsonItemStack>(null, block.Code.Domain);
             }
+
+            handleDrop = properties["handleDrop"].AsBool(true);
         }
 
         public override void OnLoaded(ICoreAPI api)
@@ -79,14 +89,8 @@ namespace Vintagestory.GameContent
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handling, ref string failureCode)
         {
             handling = EnumHandling.PreventDefault;
-            BlockFacing[] horVer = Block.SuggestedHVOrientation(byPlayer, blockSel);
-            AssetLocation blockCode = block.CodeWithVariant(variantCode, horVer[0].Code);
-            Block orientedBlock = world.BlockAccessor.GetBlock(blockCode);
+            Block orientedBlock = GetLookAwareBlockVariant(byPlayer, itemstack, blockSel);
 
-            if (orientedBlock == null)
-            {
-                throw new System.NullReferenceException("Unable to to find a rotated block with code " + blockCode + ", you're maybe missing the side variant group of have a dash in your block code");
-            }
 
             if (orientedBlock.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
             {
@@ -96,15 +100,34 @@ namespace Vintagestory.GameContent
             return false;
         }
 
+        public Block GetLookAwareBlockVariant(IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel)
+        {
+            BlockFacing[] horVer = Block.SuggestedHVOrientation(byPlayer, blockSel);
+            AssetLocation blockCode = block.CodeWithVariant(variantCode, horVer[0].Code);
+            var orientedBlock = byPlayer.Entity.World.BlockAccessor.GetBlock(blockCode);
+
+            if (orientedBlock == null)
+            {
+                throw new System.NullReferenceException("Unable to to find a rotated block with code " + blockCode + ", you're maybe missing the side variant group of have a dash in your block code");
+            }
+            return orientedBlock;
+        }
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, ref float dropQuantityMultiplier, ref EnumHandling handled)
         {
+            if (!handleDrop) return null;
+
             handled = EnumHandling.PreventDefault;
             if (drop?.ResolvedItemstack != null)
             {
-                return new ItemStack[] { drop?.ResolvedItemstack.Clone() };
+                return [drop?.ResolvedItemstack.Clone()];
             }
-            return new ItemStack[] { new ItemStack(world.BlockAccessor.GetBlock(block.CodeWithVariant(variantCode, dropBlockFace))) };
+
+            var stack = new ItemStack(world.BlockAccessor.GetBlock(block.CodeWithVariant(variantCode, dropBlockFace)));
+            stack.StackSize = GameMath.RoundRandom(world.Rand, stack.StackSize * dropQuantityMultiplier);
+            if (stack.StackSize <= 0) return System.Array.Empty<ItemStack>();
+
+            return [stack];
         }
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos, ref EnumHandling handled)

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 using Vintagestory.GameContent;
 
 namespace Vintagestory.API.Client
@@ -39,10 +40,6 @@ namespace Vintagestory.API.Client
 
         ItemStack? ingredient;
 
-        ItemStack[] allstacks;
-
-        Dictionary<CookingRecipeIngredient, HashSet<ItemStack?>>? cachedValidStacks;
-
         int slots;
         bool isPie;
         public bool RandomBowlBlock { get; set; } = true;
@@ -55,19 +52,18 @@ namespace Vintagestory.API.Client
         /// <param name="unscaledSize"></param>
         /// <param name="floatType"></param>
         /// <param name="onMealClicked"></param>
-        public MealstackTextComponent(ICoreClientAPI capi, ref Dictionary<CookingRecipeIngredient, HashSet<ItemStack?>>? cachedValidStacks, ItemStack mealBlock, CookingRecipe recipe, double unscaledSize, EnumFloat floatType, ItemStack[] allstacks, Action<CookingRecipe>? onMealClicked = null, int slots = 4, bool isPie = false, ItemStack? ingredient = null) : base(capi)
+        public MealstackTextComponent(ICoreClientAPI capi, ItemStack mealBlock, CookingRecipe recipe, double unscaledSize, EnumFloat floatType, Action<CookingRecipe>? onMealClicked = null, int slots = 4, bool isPie = false, ItemStack? ingredient = null) : base(capi)
         {
             dummySlot = new DummySlot(mealBlock);
-            this.cachedValidStacks = cachedValidStacks;
 
             if (dummySlot.Itemstack?.Collectible is IBlockMealContainer meal)
             {
                 if (isPie) dummySlot.Itemstack.Attributes.SetString("topCrustType", BlockPie.TopCrustTypes[capi.World.Rand.Next(BlockPie.TopCrustTypes.Length)].Code);
-                meal.SetContents(recipe.Code!, dummySlot.Itemstack, isPie ? BlockPie.GenerateRandomPie(capi, ref cachedValidStacks, recipe, ingredient) : recipe.GenerateRandomMeal(capi, ref cachedValidStacks, allstacks, slots, ingredient), 1);
+                var cachedValidStacks = ObjectCacheUtil.TryGet<Dictionary<CookingRecipeIngredient, HashSet<ItemStack?>>?>(capi, "valstacksbying-" + recipe.Code);
+                meal.SetContents(recipe.Code!, dummySlot.Itemstack, isPie ? BlockPie.GenerateRandomPie(capi, ref cachedValidStacks, recipe, ingredient) : recipe.GenerateRandomMeal(capi, ref cachedValidStacks, ObjectCacheUtil.TryGet<ItemStack[]>(capi, "handbookallstacks"), slots, ingredient), 1);
             }
 
             this.ingredient = ingredient;
-            this.allstacks = allstacks;
             this.slots = slots;
             this.isPie = isPie;
             this.recipe = recipe;
@@ -127,7 +123,8 @@ namespace Vintagestory.API.Client
                     if (isPie) dummySlot.Itemstack?.Attributes.SetString("topCrustType", BlockPie.TopCrustTypes[capi.World.Rand.Next(BlockPie.TopCrustTypes.Length)].Code);
                     else dummySlot.Itemstack = new(BlockMeal.RandomMealBowl(capi));
                 }
-                mealBlock.SetContents(recipe.Code!, dummySlot.Itemstack!, isPie ? BlockPie.GenerateRandomPie(capi, ref cachedValidStacks, recipe, ingredient) : recipe.GenerateRandomMeal(capi, ref cachedValidStacks, allstacks, slots, ingredient), 1);
+                var cachedValidStacks = ObjectCacheUtil.TryGet<Dictionary<CookingRecipeIngredient, HashSet<ItemStack?>>?>(capi, "valstacksbying-" + recipe.Code);
+                mealBlock.SetContents(recipe.Code!, dummySlot.Itemstack!, isPie ? BlockPie.GenerateRandomPie(capi, ref cachedValidStacks, recipe, ingredient) : recipe.GenerateRandomMeal(capi, ref cachedValidStacks, ObjectCacheUtil.TryGet<ItemStack[]>(capi, "handbookallstacks"), slots, ingredient), 1);
             }
 
             ElementBounds scibounds = ElementBounds.FixedSize((int)(bounds.Width / RuntimeEnv.GUIScale), (int)(bounds.Height / RuntimeEnv.GUIScale));

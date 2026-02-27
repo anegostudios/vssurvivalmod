@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -8,14 +8,26 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockWaterfall : BlockForFluidsLayer
+    public class BlockWaterfall : BlockForFluidsLayer, IBlockFlowing
     {
+        public string Flow { get; set; }
+        public Vec3i FlowNormali { get; set; }
+        public bool IsLava => false;
+        public virtual bool HasNormalWaves => true;
+
         float particleQuantity = 0.2f;
         bool isBoiling;
 
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
+            Flow = Variant["flow"] is string f ? string.Intern(f) : null;
+            FlowNormali = Flow != null ? BlockFacing.DOWN.Normali : null;
+            int fspeed = Attributes["flowSpeed"].AsInt(1);
+            if (fspeed > 1)
+            {
+                FlowNormali = FlowNormali?.Clone().Mul(fspeed);
+            }
 
             if (api.Side == EnumAppSide.Client)
             {

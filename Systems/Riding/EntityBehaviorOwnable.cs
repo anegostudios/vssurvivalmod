@@ -43,7 +43,7 @@ namespace Vintagestory.GameContent
                         // this will keep the marker position updated server side when the savegame is saved
                         if (entity.World.Side == EnumAppSide.Server)
                         {
-                            ownership.Pos = entity.ServerPos;
+                            ownership.Pos = entity.Pos;
                         }
                         found = ownership.EntityId == entity.EntityId;
                     }

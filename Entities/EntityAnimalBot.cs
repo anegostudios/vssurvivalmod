@@ -55,7 +55,7 @@ namespace Vintagestory.GameContent
             {
                 entity.linepathTraverser.NavigateTo(Target, GotoSpeed, OnDone, OnDone);
             }
-            
+
 
             if (AnimSpeed != 0.02f)
             {
@@ -185,10 +185,10 @@ namespace Vintagestory.GameContent
         {
             if (AnimSpeed != 1 || !entity.AnimManager.StartAnimation(AnimCode))
             {
-                entity.AnimManager.StartAnimation(new AnimationMetaData() { 
-                    Animation = AnimCode, 
-                    Code = AnimCode, 
-                    AnimationSpeed = AnimSpeed 
+                entity.AnimManager.StartAnimation(new AnimationMetaData() {
+                    Animation = AnimCode,
+                    Code = AnimCode,
+                    AnimationSpeed = AnimSpeed
                 }.Init());
             }
         }
@@ -252,12 +252,12 @@ namespace Vintagestory.GameContent
 
         public void Start()
         {
-            entity.ServerPos.Yaw = yaw;
+            entity.Pos.Yaw = yaw;
         }
 
         public void Stop()
         {
-            
+
         }
 
         public void FromAttribute(ITreeAttribute tree)

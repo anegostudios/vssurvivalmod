@@ -1,14 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Linq;
-using Vintagestory.API.Common;
 using Vintagestory.API;
-
-#nullable disable
+using Vintagestory.API.Common;
 
 namespace Vintagestory.GameContent
 {
@@ -33,45 +25,33 @@ namespace Vintagestory.GameContent
     [DocumentAsJson]
     public class BarrelRecipeIngredient : CraftingRecipeIngredient
     {
+        #region From JSON
         /// <summary>
-        /// <!--<jsonoptional>Optional</jsonoptional><jsondefault>Consume All</jsondefault>-->
         /// How many of this itemstack should be consumed in the recipe? This should only be used for recipes with a liquid output.
         /// </summary>
-        [DocumentAsJson] public int? ConsumeQuantity = null;
+        [DocumentAsJson("Optional", "Consume All")]
+        public int? ConsumeQuantity = null;
 
         /// <summary>
-        /// <!--<jsonoptional>Optional</jsonoptional><jsondefault>None</jsondefault>-->
         /// If the ingredient is a liquid, will use this value instead of <see cref="CraftingRecipeIngredient.Quantity"/>.
         /// </summary>
-        [DocumentAsJson] public float Litres = -1;
+        [DocumentAsJson("Optional", "None")]
+        public float Litres = -1;
 
         /// <summary>
-        /// <!--<jsonoptional>Optional</jsonoptional><jsondefault>Consume All</jsondefault>-->
         /// How much of the liquid should be consumed in the recipe? This should only be used by recipes with a non-liquid output.
         /// </summary>
-        [DocumentAsJson] public float? ConsumeLitres;
+        [DocumentAsJson("Optional", "Consume All")]
+        public float? ConsumeLitres;
+        #endregion
 
-        public new BarrelRecipeIngredient Clone()
+        public override BarrelRecipeIngredient Clone()
         {
-            BarrelRecipeIngredient stack = new BarrelRecipeIngredient()
-            {
-                Code = Code.Clone(),
-                Type = Type,
-                Name = Name,
-                Quantity = Quantity,
-                ConsumeQuantity = ConsumeQuantity,
-                ConsumeLitres = ConsumeLitres,
-                IsWildCard = IsWildCard,
-                IsTool = IsTool,
-                Litres = Litres,
-                AllowedVariants = AllowedVariants == null ? null : (string[])AllowedVariants.Clone(),
-                ResolvedItemstack = ResolvedItemstack?.Clone(),
-                ReturnedStack = ReturnedStack?.Clone()
-            };
+            BarrelRecipeIngredient result = new();
 
-            if (Attributes != null) stack.Attributes = Attributes.Clone();
+            CloneTo(result);
 
-            return stack;
+            return result;
         }
 
         public override void FromBytes(BinaryReader reader, IWorldAccessor resolver)
@@ -127,6 +107,56 @@ namespace Vintagestory.GameContent
 
             writer.Write(Litres);
         }
-    }
 
+        public override bool Resolve(IWorldAccessor world, string sourceForErrorLogging)
+        {
+            if (!base.Resolve(world, sourceForErrorLogging))
+            {
+                return false;
+            }
+
+            ResolveLiquidProperties(world, sourceForErrorLogging);
+
+            return true;
+        }
+
+        protected virtual void ResolveLiquidProperties(IWorldAccessor world, string sourceForErrorLogging)
+        {
+            WaterTightContainableProps? liquidProperties = BlockLiquidContainerBase.GetContainableProps(ResolvedItemStack);
+
+            if (liquidProperties == null) return;
+
+            if (Litres < 0)
+            {
+                if (Quantity > 0)
+                {
+                    world.Logger.Warning($"({sourceForErrorLogging}) Barrel recipe ingredient '{Code}' does not define a litres attribute but a quantity, will assume quantity=litres for backwards compatibility.");
+                    Litres = Quantity;
+                    ConsumeLitres = ConsumeQuantity;
+                }
+                else
+                {
+                    Litres = 1;
+                }
+            }
+
+            Quantity = (int)(liquidProperties.ItemsPerLitre * Litres);
+            if (ConsumeLitres != null)
+            {
+                ConsumeQuantity = (int)(liquidProperties.ItemsPerLitre * ConsumeLitres);
+            }
+        }
+
+        protected override void CloneTo(object cloneTo)
+        {
+            base.CloneTo(cloneTo);
+
+            if (cloneTo is BarrelRecipeIngredient ingredient)
+            {
+                ingredient.ConsumeQuantity = ConsumeQuantity;
+                ingredient.Litres = Litres;
+                ingredient.ConsumeLitres = ConsumeLitres;
+            }
+        }
+    }
 }

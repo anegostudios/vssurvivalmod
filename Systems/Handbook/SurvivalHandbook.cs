@@ -71,8 +71,7 @@ namespace Vintagestory.GameContent
 
         private void Event_LevelFinalize()
         {
-            var allstacks = SetupBehaviorAndGetItemStacks();
-            this.allstacks = allstacks.ToArray();
+            ObjectCacheUtil.GetOrCreate(capi, "handbookallstacks", SetupBehaviorAndGetItemStacks().ToArray);
 
             dialog = new GuiDialogSurvivalHandbook(capi, onCreatePagesAsync, onComposePage);
             capi.Logger.VerboseDebug("Done initialising handbook");
@@ -87,28 +86,32 @@ namespace Vintagestory.GameContent
 
                 if (recipe.CooksInto == null)
                 {
-                    GuiHandbookMealRecipePage elem = new GuiHandbookMealRecipePage(capi, recipe, allstacks)
+                    GuiHandbookMealRecipePage elem = new GuiHandbookMealRecipePage(capi, recipe)
                     {
                         Visible = true
                     };
+
+                    CreateCachedMealRecipeStacks(recipe);
 
                     pages.Add(elem);
                 }
             }
 
-            foreach (var recipe in BlockPie.GetHandbookRecipes(capi, allstacks))
+            foreach (var recipe in BlockPie.GetHandbookRecipes(capi, ObjectCacheUtil.TryGet<ItemStack[]>(capi, "handbookallstacks")))
             {
                 if (capi.IsShuttingDown) break;
 
-                GuiHandbookMealRecipePage elem = new GuiHandbookMealRecipePage(capi, recipe, allstacks, 6, true)
+                GuiHandbookMealRecipePage elem = new GuiHandbookMealRecipePage(capi, recipe, 6, true)
                 {
                     Visible = true
                 };
 
+                CreateCachedMealRecipeStacks(recipe);
+
                 pages.Add(elem);
             }
 
-            foreach (ItemStack stack in allstacks)
+            foreach (ItemStack stack in ObjectCacheUtil.TryGet<ItemStack[]>(capi, "handbookallstacks"))
             {
                 if (capi.IsShuttingDown) break;
 
@@ -125,11 +128,9 @@ namespace Vintagestory.GameContent
 
         private void onComposePage(GuiHandbookPage page, GuiComposer detailViewGui, ElementBounds textBounds, ActionConsumable<string> openDetailPageFor)
         {
-            page.ComposePage(detailViewGui, textBounds, allstacks, openDetailPageFor);
+            page.ComposePage(detailViewGui, textBounds, ObjectCacheUtil.TryGet<ItemStack[]>(capi, "handbookallstacks"), openDetailPageFor);
         }
 
-
-        protected ItemStack[] allstacks;
         protected List<ItemStack> SetupBehaviorAndGetItemStacks()
         {
             List<ItemStack> allstacks = new List<ItemStack>();
@@ -155,6 +156,41 @@ namespace Vintagestory.GameContent
             return allstacks;
         }
 
+        protected void CreateCachedMealRecipeStacks(CookingRecipe recipe)
+        {
+            ObjectCacheUtil.GetOrCreate(capi, "valstacksbying-" + recipe.Code, () =>
+            {
+                Dictionary<CookingRecipeIngredient, HashSet<ItemStack>> valStacksByIng = [];
+
+                foreach (var ingredient in recipe.Ingredients)
+                {
+                    HashSet<ItemStack> ingredientStacks = [];
+
+                    ingredient.Resolve(capi.World, "handbook meal recipes");
+                    foreach (var astack in ObjectCacheUtil.TryGet<ItemStack[]>(capi, "handbookallstacks"))
+                    {
+                        if (ingredient.GetMatchingStack(astack) is not CookingRecipeStack vstack) continue;
+
+                        ItemStack stack = astack.Clone();
+                        stack.StackSize = vstack.StackSize;
+
+                        if (BlockLiquidContainerBase.GetContainableProps(stack) is WaterTightContainableProps props)
+                        {
+                            stack.StackSize *= (int)(props.ItemsPerLitre * ingredient.PortionSizeLitres);
+                        }
+
+                        ingredientStacks.Add(stack);
+                    }
+
+                    if (ingredient.MinQuantity <= 0) ingredientStacks.Add(null);
+
+                    valStacksByIng.Add(ingredient.Clone(), ingredientStacks);
+                }
+
+                return valStacksByIng;
+            });
+        }
+
 
         private bool OnSurvivalHandbookHotkey(KeyCombination key)
         {
@@ -178,7 +214,7 @@ namespace Vintagestory.GameContent
 
                 if (stack != null)
                 {
-                    string pageCode = stack.Collectible.GetCollectibleInterface<IHandBookPageCodeProvider>()?.HandbookPageCodeForStack(capi.World, stack) ?? 
+                    string pageCode = stack.Collectible.GetCollectibleInterface<IHandBookPageCodeProvider>()?.HandbookPageCodeForStack(capi.World, stack) ??
                                       GuiHandbookItemStackPage.PageCodeForStack(stack);
 
                     if (!dialog.OpenDetailPageFor(pageCode))

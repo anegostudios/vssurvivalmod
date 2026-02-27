@@ -1,8 +1,10 @@
-﻿using ProtoBuf;
+using ProtoBuf;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
@@ -58,6 +60,7 @@ namespace Vintagestory.GameContent.Mechanics
         public ICoreAPI Api;
 
         MechPowerData data = new MechPowerData();
+        SimpleParticleProperties smokeParticles;
 
         public override bool ShouldLoad(EnumAppSide side)
         {
@@ -120,9 +123,31 @@ namespace Vintagestory.GameContent.Mechanics
             base.StartServerSide(api);
 
             api.Event.SaveGameLoaded += Event_SaveGameLoaded;
-            api.Event.GameWorldSave += Event_GameWorldSave;
             api.Event.ChunkDirty += Event_ChunkDirty;
+
+            smokeParticles = new SimpleParticleProperties(
+                2, 2,
+                ColorUtil.ToRgba(150, 40, 40, 40),
+                new Vec3d(),
+                new Vec3d(1, 0, 1),
+                new Vec3f(-1 / 32f, 0.1f, -1 / 32f),
+                new Vec3f(1 / 32f, 0.1f, 1 / 32f),
+                2f,
+                -0.025f / 4,
+                0.2f,
+                1f,
+                EnumParticleModel.Quad
+            );
+
+            smokeParticles.SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.LINEAR, -0.25f);
+            smokeParticles.SelfPropelled = true;
+            smokeParticles.AddPos.Set(1, 0, 1);
+
+            smokeParticles.MinQuantity = 0.25f;
+            smokeParticles.OpacityEvolve = EvolvingNatFloat.create(EnumTransformFunction.QUADRATIC, -15);
+            smokeParticles.AddQuantity = 0;
         }
+
 
         protected void OnServerGameTick(float dt)
         {
@@ -134,10 +159,40 @@ namespace Vintagestory.GameContent.Mechanics
                 if (network.fullyLoaded && network.nodes.Count > 0)
                 {
                     network.ServerTick(dt, data.tickNumber);
+
+                    if ((data.tickNumber % 10) == 0)
+                    {
+                        var speed = network.Speed;
+                        foreach (IMechanicalPowerNode powerNode in network.nodes.Values)
+                        {
+                            var nodespeed = Math.Abs(powerNode.GearedRatio * speed);
+                            if (nodespeed > 4.5)
+                            {
+                                var pos = powerNode.GetPosition();
+                                smokeParticles.MinPos.Set(pos.X, pos.Y, pos.Z);
+                                smokeParticles.AddPos.Set(1, 1, 1);
+                                sapi.World.SpawnParticles(smokeParticles);
+                                if (nodespeed > 5.5)
+                                {
+                                    powerNode.OverheatValue = Math.Min(1.1f, powerNode.OverheatValue + (nodespeed - 2.5f) / 10f);
+                                }
+                            } else
+                            {
+                                powerNode.OverheatValue = Math.Max(0, powerNode.OverheatValue + (nodespeed - 2.5f) / 10f);
+                            }
+
+                            if (powerNode.OverheatValue > 1 && sapi.World.Rand.NextDouble() < 0.03)
+                            {
+                                var pos = powerNode.GetPosition();
+                                // Disabled until stable
+                                // sapi.World.BlockAccessor.GetBlock(pos).GetBEBehavior<BEBehaviorBurning>(pos)?.OnFirePlaced(pos, pos, null, false);
+                            }
+                        }
+                    }
+
                 }
             }   
         }
-
 
         protected void OnPacket(MechNetworkPacket networkMessage)
         {
@@ -165,27 +220,9 @@ namespace Vintagestory.GameContent.Mechanics
             serverNwChannel.BroadcastPacket(packet);
         }
 
-        private void Event_GameWorldSave()
-        {
-            //sapi.WorldManager.SaveGame.StoreData("mechPowerData", SerializerUtil.Serialize(data));
-        }
-
         private void Event_SaveGameLoaded()
         {
             this.data = new MechPowerData();
-
-            /*byte[] data = sapi.WorldManager.SaveGame.GetData("mechPowerData");
-            if (data != null)
-            {
-                this.data = SerializerUtil.Deserialize<MechPowerData>(data);
-            } else {
-                this.data = new MechPowerData();
-            }
-
-            foreach (var val in this.data.networksById)
-            {
-                val.Value.Init(this);
-            }*/
         }
 
         private void onLoaded()
@@ -224,7 +261,7 @@ namespace Vintagestory.GameContent.Mechanics
             foreach (var nnode in nnodes)
             {
                 if (!(nnode is IMechanicalPowerDevice)) continue;
-                IMechanicalPowerDevice newnode = Api.World.BlockAccessor.GetBlockEntity((nnode as IMechanicalPowerDevice).Position)?.GetBehavior<BEBehaviorMPBase>() as IMechanicalPowerDevice;
+                IMechanicalPowerDevice newnode = Api.World.BlockAccessor.GetBlockEntity((nnode as IMechanicalPowerDevice).Position)?.GetBehavior<BEBehaviorMPBase>();
                 if (newnode == null) continue;
                 BlockFacing oldTurnDir = newnode.GetPropagationDirection();
 
@@ -344,40 +381,6 @@ namespace Vintagestory.GameContent.Mechanics
                 network.ClientTick(deltaTime);
             }
         }
-
-
-
-
-        /* public void loadNetworks(ITreeAttribute networks)
-         {
-             data.networksById.Clear();
-
-             if (networks == null) return;
-
-             foreach (var val in networks)
-             {
-                 ITreeAttribute attr = (ITreeAttribute)val.Value;
-                 MechanicalNetwork network = new MechanicalNetwork(this, attr.GetInt("networkId"));
-
-                 data.networksById[network.networkId] = network;
-                 network.ReadFromTreeAttribute(attr);
-             }
-         }
-
-         public ITreeAttribute saveNetworks()
-         {
-             ITreeAttribute networks = new TreeAttribute();
-
-             foreach (var var in data.networksById)
-             {
-                 ITreeAttribute tree = new TreeAttribute();
-
-                 var.Value.WriteToTreeAttribute(tree);
-                 networks[var.Key + ""] = tree;
-             }
-
-             return networks;
-         }*/
 
 
     }

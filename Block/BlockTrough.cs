@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -25,8 +25,6 @@ namespace Vintagestory.GameContent
 
         public void init()
         {
-            CanStep = false; // Prevent creatures from walking on troughs
-
             contentConfigs = ObjectCacheUtil.GetOrCreate(api, "troughContentConfigs-" + Code, () =>
             {
                 var cfgs = Attributes?["contentConfig"]?.AsObject<ContentConfig[]>();

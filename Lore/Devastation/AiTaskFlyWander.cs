@@ -53,7 +53,7 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                SpawnPos = entity.ServerPos.XYZ;
+                SpawnPos = entity.Pos.XYZ;
                 entity.WatchedAttributes.SetDouble("spawnPosX", SpawnPos.X);
                 entity.WatchedAttributes.SetDouble("spawnPosY", SpawnPos.Y);
                 entity.WatchedAttributes.SetDouble("spawnPosZ", SpawnPos.Z);
@@ -70,7 +70,7 @@ namespace Vintagestory.GameContent
         {
             base.StartExecute();
 
-            var fromPos = stayNearSpawn ? SpawnPos : entity.ServerPos.XYZ;
+            var fromPos = stayNearSpawn ? SpawnPos : entity.Pos.XYZ;
 
             double rndx=0;
             double rndz=0;
@@ -80,13 +80,13 @@ namespace Vintagestory.GameContent
                 rndx = radius * Math.Sin(yaw);
                 rndz = radius * Math.Cos(yaw);
 
-                if (fromPos.AddCopy(rndx, 0, rndz).HorizontalSquareDistanceTo(entity.ServerPos.XYZ) > minDistance) break;
+                if (fromPos.AddCopy(rndx, 0, rndz).HorizontalSquareDistanceTo(entity.Pos.XYZ) > minDistance) break;
             }
 
             targetPos = fromPos.AddCopy(rndx, 0, rndz);
         }
 
-        public override bool 
+        public override bool
             ContinueExecute(float dt)
         {
             //Check if time is still valid for task.
@@ -97,18 +97,18 @@ namespace Vintagestory.GameContent
                 ReadjustFlyHeight();
             }
 
-            double dy = desiredYPos - entity.ServerPos.Y;
+            double dy = desiredYPos - entity.Pos.Y;
             double yMot = GameMath.Clamp(dy, -0.2, 0.2);
 
-            double dx = targetPos.X - entity.ServerPos.X;
-            double dz = targetPos.Z - entity.ServerPos.Z;
+            double dx = targetPos.X - entity.Pos.X;
+            double dz = targetPos.Z - entity.Pos.Z;
 
             float targetYaw = (float)Math.Atan2(dx, dz);
 
-            entity.ServerPos.Yaw += GameMath.AngleRadDistance(entity.ServerPos.Yaw, targetYaw) * dt;
+            entity.Pos.Yaw += GameMath.AngleRadDistance(entity.Pos.Yaw, targetYaw) * dt;
 
-            double cosYaw = Math.Cos(entity.ServerPos.Yaw);
-            double sinYaw = Math.Sin(entity.ServerPos.Yaw);
+            double cosYaw = Math.Cos(entity.Pos.Yaw);
+            double sinYaw = Math.Sin(entity.Pos.Yaw);
 
             entity.Controls.WalkVector.Set(sinYaw, yMot, cosYaw);
             entity.Controls.WalkVector.Mul(moveSpeed);
@@ -127,11 +127,11 @@ namespace Vintagestory.GameContent
 
         protected void ReadjustFlyHeight()
         {
-            int terrainYPos = entity.World.BlockAccessor.GetTerrainMapheightAt(entity.SidedPos.AsBlockPos);
+            int terrainYPos = entity.World.BlockAccessor.GetTerrainMapheightAt(entity.Pos.AsBlockPos);
             int tries = 10;
             while (tries-- > 0)
             {
-                Block block = entity.World.BlockAccessor.GetBlockRaw((int)entity.ServerPos.X, terrainYPos, (int)entity.ServerPos.Z, BlockLayersAccess.Fluid);
+                Block block = entity.World.BlockAccessor.GetBlockRaw((int)entity.Pos.X, terrainYPos, (int)entity.Pos.Z, BlockLayersAccess.Fluid);
                 if (block.IsLiquid())
                 {
                     terrainYPos++;

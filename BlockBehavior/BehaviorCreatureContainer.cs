@@ -53,7 +53,7 @@ namespace Vintagestory.GameContent
         }
 
         static Dictionary<string, MultiTextureMeshRef> containedMeshrefs = new Dictionary<string, MultiTextureMeshRef>();
-        
+
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
             if (HasAnimal(itemstack))
@@ -248,7 +248,7 @@ namespace Vintagestory.GameContent
                 if (slot.Empty) slot.Itemstack = leftOverBaskets;
                 else if (!byEntity.TryGiveItemStack(leftOverBaskets))
                 {
-                    byEntity.World.SpawnItemEntity(leftOverBaskets, byEntity.ServerPos.XYZ);
+                    byEntity.World.SpawnItemEntity(leftOverBaskets, byEntity.Pos.XYZ);
                 }
 
                 slot.MarkDirty();
@@ -288,13 +288,13 @@ namespace Vintagestory.GameContent
                 stack.Attributes.SetBytes("animalSerialized", ms.ToArray());
 
                 double totalDaysReleased = entity.Attributes.GetDouble("totalDaysReleased");
-                double catchedDays = totalDaysReleased - entity.Attributes.GetDouble("totalDaysCaught");
+                double caughtDays = totalDaysReleased - entity.Attributes.GetDouble("totalDaysCaught");
                 double releasedDays = entity.World.Calendar.TotalDays - totalDaysReleased;
 
                 // A released creature should recover from being in a basket, at twice the speed that it can survive in a basket
                 // If it can survive 1 day in a basket
                 // It should fully recover after 0.5 days
-                double unrecoveredDays = Math.Max(0, catchedDays - releasedDays * 2);
+                double unrecoveredDays = Math.Max(0, caughtDays - releasedDays * 2);
 
                 stack.Attributes.SetDouble("totalDaysCaught", entity.World.Calendar.TotalDays - unrecoveredDays);
             }
@@ -302,7 +302,7 @@ namespace Vintagestory.GameContent
             entity.Die(EnumDespawnReason.PickedUp);
         }
 
-        public static bool ReleaseCreature(ItemSlot slot, BlockSelection blockSel, Entity byEntity) 
+        public static bool ReleaseCreature(ItemSlot slot, BlockSelection blockSel, Entity byEntity)
         {
             IWorldAccessor world = byEntity.World;
 
@@ -329,13 +329,12 @@ namespace Vintagestory.GameContent
                 Cuboidf collisionBox = type.SpawnCollisionBox.OmniNotDownGrowBy(0.1f);
                 if (world.CollisionTester.IsColliding(world.BlockAccessor, collisionBox, spawnPos, false)) return false;
 
-                entity.ServerPos.X = blockSel.Position.X + (blockSel.DidOffset ? 0 : blockSel.Face.Normali.X) + 0.5f;
-                entity.ServerPos.Y = blockSel.Position.Y + (blockSel.DidOffset ? 0 : blockSel.Face.Normali.Y);
-                entity.ServerPos.Z = blockSel.Position.Z + (blockSel.DidOffset ? 0 : blockSel.Face.Normali.Z) + 0.5f;
-                entity.ServerPos.Yaw = (float)world.Rand.NextDouble() * 2 * GameMath.PI;
+                entity.Pos.X = blockSel.Position.X + (blockSel.DidOffset ? 0 : blockSel.Face.Normali.X) + 0.5f;
+                entity.Pos.Y = blockSel.Position.Y + (blockSel.DidOffset ? 0 : blockSel.Face.Normali.Y);
+                entity.Pos.Z = blockSel.Position.Z + (blockSel.DidOffset ? 0 : blockSel.Face.Normali.Z) + 0.5f;
+                entity.Pos.Yaw = (float)world.Rand.NextDouble() * 2 * GameMath.PI;
 
-                entity.Pos.SetFrom(entity.ServerPos);
-                entity.PositionBeforeFalling.Set(entity.ServerPos.X, entity.ServerPos.Y, entity.ServerPos.Z);
+                entity.PositionBeforeFalling.Set(entity.Pos.X, entity.Pos.Y, entity.Pos.Z);
                 entity.Attributes.SetString("origin", "playerplaced");
                 entity.Attributes.SetDouble("totalDaysCaught", stack.Attributes.GetDouble("totalDaysCaught"));
                 entity.Attributes.SetDouble("totalDaysReleased", world.Calendar.TotalDays);

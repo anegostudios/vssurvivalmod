@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -49,8 +49,11 @@ namespace Vintagestory.GameContent.Mechanics
 
             if (largeGear != null)
             {
-                if (largeGear.AngledGearNotAlreadyAdded(this.Position))  // during chunk loading it's random whether the angled gear or the large gear gets initialised first
+                if (largeGear.AngledGearNotAlreadyAdded(this.Position))
+                {
+                    // during chunk loading it's random whether the angled gear or the large gear gets initialised first
                     this.tryConnect(this.orientation.Opposite);
+                }
             }
         }
 
@@ -68,7 +71,7 @@ namespace Vintagestory.GameContent.Mechanics
         {
             string orientations = (Block as BlockAngledGears).Orientation;
 
-            //This applies only when the BE is being updated when the gear orientations change after a neighbour block breaks
+            // This applies only when the BE is being updated when the gear orientations change after a neighbour block breaks
             if (this.turnDir1 != null)
             {
                 if (propagationDir == turnDir1) propagationDir = turnDir2.Opposite;
@@ -248,7 +251,7 @@ namespace Vintagestory.GameContent.Mechanics
             this.SetPropagationDirection(new MechPowerPath(outFacing, largeGear.GearedRatio * largeGear.ratio, null, largeGear.GetPropagationDirection() == BlockFacing.DOWN));
         }
 
-        public override bool isInvertedNetworkFor(BlockPos pos)
+        public override bool IsInvertedNetworkFor(BlockPos pos)
         {
             return this.orientation != null && this.orientation != propagationDir;
         }
@@ -266,14 +269,6 @@ namespace Vintagestory.GameContent.Mechanics
             return dir * largeGear.GetSmallgearAngleRad() % GameMath.TWOPI;
         }
 
-        internal void CreateNetworkFromHere()
-        {
-            if (Api.Side == EnumAppSide.Server)
-            {
-                CreateJoinAndDiscoverNetwork(this.orientation);
-                CreateJoinAndDiscoverNetwork(this.orientation.Opposite);
-            }
-        }
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
@@ -361,7 +356,7 @@ namespace Vintagestory.GameContent.Mechanics
             return 0.0005f;
         }
 
-        protected override MechPowerPath[] GetMechPowerExits(MechPowerPath fromExitTurnDir)
+        public override MechPowerPath[] GetMechPowerExits(MechPowerPath fromExitTurnDir)
         {
             // This method could be called from another (earlier in the loading chunk) block's Initialise() method, i.e. before this itself is initialised.
             if (this.orientation == null) this.SetOrientations();  

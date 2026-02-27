@@ -1,4 +1,4 @@
-﻿using Vintagestory.API;
+using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
@@ -26,7 +26,7 @@ namespace Vintagestory.GameContent
 	///]
     /// </code></example>
     [DocumentAsJson]
-    public class BlockBehaviorNWOrientable : BlockBehavior
+    public class BlockBehaviorNWOrientable : BlockBehavior, ILookAwarePlacement
     {
         string variantCode = "orientation";
 
@@ -41,10 +41,7 @@ namespace Vintagestory.GameContent
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handling, ref string failureCode)
         {
             handling = EnumHandling.PreventDefault;
-            BlockFacing[] horVer = Block.SuggestedHVOrientation(byPlayer, blockSel);
-            string code = "ns";
-            if (horVer[0].Index == 1 || horVer[0].Index == 3) code = "we";
-            Block orientedBlock = world.BlockAccessor.GetBlock(block.CodeWithVariant(variantCode, code));
+            Block orientedBlock = GetLookAwareBlockVariant(byPlayer, itemstack, blockSel);
 
             if (orientedBlock.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
             {
@@ -53,6 +50,14 @@ namespace Vintagestory.GameContent
             }
 
             return false;
+        }
+
+        public Block GetLookAwareBlockVariant(IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel)
+        {
+            BlockFacing[] horVer = Block.SuggestedHVOrientation(byPlayer, blockSel);
+            string code = "ns";
+            if (horVer[0].Index == 1 || horVer[0].Index == 3) code = "we";
+            return byPlayer.Entity.World.BlockAccessor.GetBlock(block.CodeWithVariant(variantCode, code));
         }
 
 

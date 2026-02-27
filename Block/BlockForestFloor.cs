@@ -5,6 +5,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
+using Vintagestory.ServerMods;
 
 #nullable disable
 
@@ -14,26 +15,19 @@ namespace Vintagestory.GameContent
     /// <summary>
     /// Handles eventual long-term transition to standard soil via server ticks.
     /// </summary>
-    public class BlockForestFloor : Block   //WithGrassOverlay
+    public class BlockForestFloor : Block, IBlockForestFloor   //WithGrassOverlay
     {
         protected string[] growthStages = new string[] { "0", "1", "2", "3", "4", "5", "6", "7" };
-
         protected int growthLightLevel;
         protected const int chunksize = GlobalConstants.ChunkSize;
-
         protected float growthChanceOnTick = 0.16f;
-
-        static public int MaxStage { get; set; }
-
-        int mapColorTextureSubId;
-
-        
-        CompositeTexture grassTex;
+        protected int mapColorTextureSubId;
+        protected CompositeTexture grassTex;
 
 
         public int CurrentLevel()
         {
-            return MaxStage - (Code.Path[Code.Path.Length - 1] - '0');
+            return ForestFloorHelper.MaxStage - (Code.Path[Code.Path.Length - 1] - '0');
         }
 
 
@@ -51,25 +45,8 @@ namespace Vintagestory.GameContent
                 {
                     grassTex = soilBlock.Textures?.First().Value;
                 }
-
             }
-
-
         }
-
-        // A bit clunky / hard-coded still, find a better way to do this
-        internal static int[] InitialiseForestBlocks(IWorldAccessor world)
-        {
-            MaxStage = 8;
-            int[] result = new int[MaxStage];
-
-            for (int i = 0; i < MaxStage; i++)
-            {
-                result[i] = world.GetBlock(new AssetLocation("forestfloor-" + i)).Id;
-            }
-            return result;
-        }
-
 
         public override bool ShouldReceiveServerGameTicks(IWorldAccessor world, BlockPos pos, Random offThreadRandom, out object extra)
         {

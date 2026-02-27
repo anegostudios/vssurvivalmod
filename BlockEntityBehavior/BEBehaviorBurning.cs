@@ -4,7 +4,6 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Server;
 
 #nullable disable
 
@@ -27,7 +26,7 @@ namespace Vintagestory.GameContent
         ICoreClientAPI capi;
 
         public bool AllowFireSpread;
-        
+
         public float TimePassed
         {
             get { return startDuration - remainingBurnDuration; }
@@ -85,7 +84,9 @@ namespace Vintagestory.GameContent
         float getBurnDuration(BlockPos pos)
         {
             Block block = Api.World.BlockAccessor.GetBlock(pos);
-            if (block.CombustibleProps != null) return block.CombustibleProps.BurnDuration;
+
+            var combustibleProps = block.GetCombustibleProperties(Api.World, null, pos);
+            if (combustibleProps != null) return combustibleProps.BurnDuration;
 
             if (block.GetInterface<ICombustible>(Api.World, pos) is ICombustible bic)
             {
@@ -130,7 +131,7 @@ namespace Vintagestory.GameContent
                 {
                     if (didSpread)
                     {
-                        Api.Logger.Audit($"{playerByUid.PlayerName} started a fire that spread to {firePos}");   
+                        Api.Logger.Audit($"{playerByUid.PlayerName} started a fire that spread to {firePos}");
                     }
                     else
                     {
@@ -138,7 +139,7 @@ namespace Vintagestory.GameContent
                     }
                 }
             }
-            
+
 
             FirePos = firePos.Copy();
             FuelPos = fuelPos.Copy();
@@ -184,7 +185,7 @@ namespace Vintagestory.GameContent
         }
 
         BlockFacing particleFacing;
-         
+
         private void initSoundsAndTicking()
         {
             fuelBlock = Api.World.BlockAccessor.GetBlock(FuelPos);
@@ -236,7 +237,7 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < entities.Length; i++)
             {
                 Entity entity = entities[i];
-                if (!CollisionTester.AabbIntersect(entity.SelectionBox, entity.ServerPos.X, entity.ServerPos.Y, entity.ServerPos.Z, fireCuboid, ownPos)) continue;
+                if (!CollisionTester.AabbIntersect(entity.SelectionBox, entity.Pos.X, entity.Pos.Y, entity.Pos.Z, fireCuboid, ownPos)) continue;
 
                 if (entity.Alive)
                 {
@@ -410,7 +411,7 @@ namespace Vintagestory.GameContent
                 && Api.ModLoader.GetModSystem<ModSystemBlockReinforcement>()?.IsReinforced(pos) != true
             ;
         }
-        
+
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
         {
             base.FromTreeAttributes(tree, worldAccessForResolve);
@@ -453,8 +454,8 @@ namespace Vintagestory.GameContent
             tree.SetFloat("startDuration", startDuration);
             tree.SetBool("isBurning", IsBurning);
 
-            tree.SetInt("fireposX", FirePos.X); tree.SetInt("fireposY", FirePos.Y); tree.SetInt("fireposZ", FirePos.Z);
-            tree.SetInt("fuelposX", FuelPos.X); tree.SetInt("fuelposY", FuelPos.Y); tree.SetInt("fuelposZ", FuelPos.Z);
+            if (FirePos != null) { tree.SetInt("fireposX", FirePos.X); tree.SetInt("fireposY", FirePos.Y); tree.SetInt("fireposZ", FirePos.Z); }
+            if (FuelPos != null) { tree.SetInt("fuelposX", FuelPos.X); tree.SetInt("fuelposY", FuelPos.Y); tree.SetInt("fuelposZ", FuelPos.Z); }
 
             if (startedByPlayerUid != null)
             {

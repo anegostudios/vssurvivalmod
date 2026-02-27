@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -109,7 +109,7 @@ namespace Vintagestory.GameContent
             });
         }
 
-        public override bool DoParticalSelection(IWorldAccessor world, BlockPos pos)
+        public override bool DoPartialSelection(IWorldAccessor world, BlockPos pos)
         {
             return true;
         }
@@ -127,8 +127,7 @@ namespace Vintagestory.GameContent
             var worldInteractions = base.GetPlacedBlockInteractionHelp(world, selection, forPlayer);
             
             var resp = world.Claims.TestAccess(forPlayer, selection.Position, EnumBlockAccessFlags.Use);
-            if(resp == EnumWorldAccessResponse.Granted)
-                worldInteractions.Append(interactions);
+            if(resp == EnumWorldAccessResponse.Granted) return [.. worldInteractions, ..interactions!];
 
             return worldInteractions;
         }

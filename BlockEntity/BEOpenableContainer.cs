@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using ProtoBuf;
@@ -82,8 +82,8 @@ namespace Vintagestory.GameContent
     {
         protected GuiDialogBlockEntity invDialog;
 
-        public virtual AssetLocation OpenSound { get; set; } = new AssetLocation("sounds/block/chestopen");
-        public virtual AssetLocation CloseSound { get; set; } = new AssetLocation("sounds/block/chestclose");
+        public SoundAttributes OpenSound = new SoundAttributes(AssetLocation.Create("sounds/block/chestopen"), true);
+        public SoundAttributes CloseSound = new SoundAttributes(AssetLocation.Create("sounds/block/chestclose"), true);
 
         public abstract bool OnPlayerRightClick(IPlayer byPlayer, BlockSelection blockSel);
 
@@ -101,12 +101,8 @@ namespace Vintagestory.GameContent
             Inventory.OnInventoryOpened += OnInventoryOpened;
             Inventory.OnInventoryClosed += OnInventoryClosed;
 
-            var os = Block.Attributes?["openSound"]?.AsString();
-            var cs = Block.Attributes?["closeSound"]?.AsString();
-            var opensound = os == null ? null : AssetLocation.Create(os, Block.Code.Domain);
-            var closesound = cs == null ? null : AssetLocation.Create(cs, Block.Code.Domain);
-            OpenSound = opensound ?? OpenSound;
-            CloseSound = closesound ?? CloseSound;
+            OpenSound = Block.Attributes?["openSound"].AsObject<SoundAttributes?>(null, Block.Code.Domain, true) ?? OpenSound;
+            CloseSound = Block.Attributes?["closeSound"].AsObject<SoundAttributes?>(null, Block.Code.Domain, true) ?? CloseSound;
         }
 
         protected void OnInventoryOpened(IPlayer player)
@@ -207,13 +203,8 @@ namespace Vintagestory.GameContent
                 invDialog = new GuiDialogBlockEntityInventory(blockContainer.DialogTitle, Inventory, Pos, blockContainer.Columns, Api as ICoreClientAPI);
 
                 Block block = Api.World.BlockAccessor.GetBlock(Pos);
-                string os = block.Attributes?["openSound"]?.AsString();
-                string cs = block.Attributes?["closeSound"]?.AsString();
-                AssetLocation opensound = os == null ? null : AssetLocation.Create(os, block.Code.Domain);
-                AssetLocation closesound = cs == null ? null : AssetLocation.Create(cs, block.Code.Domain);
-
-                invDialog.OpenSound = opensound ?? this.OpenSound;
-                invDialog.CloseSound = closesound ?? this.CloseSound;
+                invDialog.OpenSound = block.Attributes?["openSound"]?.AsObject<SoundAttributes?>(null, Block.Code.Domain, true) ?? this.OpenSound;
+                invDialog.CloseSound = block.Attributes?["closeSound"]?.AsObject<SoundAttributes?>(null, Block.Code.Domain, true) ?? this.CloseSound;
 
                 invDialog.TryOpen();
             }
@@ -262,8 +253,9 @@ namespace Vintagestory.GameContent
             Dispose();
         }
 
-        public virtual void Dispose()
+        protected override void Dispose()
         {
+            base.Dispose();
             if (invDialog?.IsOpened() == true) invDialog?.TryClose();
             invDialog?.Dispose();
 

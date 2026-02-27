@@ -177,7 +177,7 @@ namespace Vintagestory.GameContent
 
                     if (entity.Properties.Sounds.ContainsKey("hurt"))
                     {
-                        entity.World.PlaySoundAt(entity.Properties.Sounds["hurt"].Clone().WithPathPrefixOnce("sounds/").WithPathAppendixOnce(".ogg"), entity);
+                        entity.World.PlaySoundAt(entity.Properties.Sounds["hurt"], entity);
                     }
 
                     (entity.Api as ICoreServerAPI).Network.SendEntityPacket(milkingPlayer as IServerPlayer, entity.EntityId, 1337);

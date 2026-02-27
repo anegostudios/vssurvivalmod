@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Cairo;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -100,7 +100,7 @@ namespace Vintagestory.GameContent
                 BlockEntityBarrel bebarrel = capi.World.BlockAccessor.GetBlockEntity(BlockEntityPosition) as BlockEntityBarrel;
                 if (bebarrel.CurrentRecipe != null)
                 {
-                    ItemStack outStack = bebarrel.CurrentRecipe.Output.ResolvedItemstack;
+                    ItemStack outStack = bebarrel.CurrentRecipe.RecipeOutput.ResolvedItemStack;
                     WaterTightContainableProps props = BlockLiquidContainerBase.GetContainableProps(outStack);
 
                     string timeText = bebarrel.CurrentRecipe.SealHours > 24 ? Lang.Get("{0} days", Math.Round(bebarrel.CurrentRecipe.SealHours / capi.World.Calendar.HoursPerDay, 1)) : Lang.Get("{0} hours", bebarrel.CurrentRecipe.SealHours);
@@ -173,7 +173,7 @@ namespace Vintagestory.GameContent
             BlockEntityBarrel bebarrel = capi.World.BlockAccessor.GetBlockEntity(BlockEntityPosition) as BlockEntityBarrel;
             if (bebarrel == null || bebarrel.Sealed) return true;
 
-            if (!bebarrel.CanSeal) return true;
+            if (!bebarrel.GetCanSeal(capi.World.Player)) return true;
 
             bebarrel.SealBarrel();
 

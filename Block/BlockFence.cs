@@ -14,12 +14,9 @@ namespace Vintagestory.GameContent
         {
             base.OnLoaded(api);
 
-            CanStep = false;
-
-            var attrParticleHeight = Attributes["particleCollBoxHeight"];
-            if (attrParticleHeight.Exists)
+            if (Attributes["particleCollBoxHeight"].Exists)
             {
-                float hgt = attrParticleHeight.AsFloat(1);
+                float hgt = Attributes["particleCollBoxHeight"].AsFloat(1);
                 ParticleCollisionBoxes = new Cuboidf[CollisionBoxes.Length];
                 for (int i = 0; i < ParticleCollisionBoxes.Length; i++)
                 {

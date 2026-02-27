@@ -219,8 +219,9 @@ namespace Vintagestory.GameContent
 
             if (targetSlot == slots[1] && (stack.Collectible is BlockSmeltingContainer || stack.Collectible is BlockCookingContainer)) return 2.2f;
 
-            if (targetSlot == slots[0] && (stack.Collectible.CombustibleProps == null || stack.Collectible.CombustibleProps.BurnTemperature <= 0)) return 0;
-            if (targetSlot == slots[1] && (stack.Collectible.CombustibleProps == null || stack.Collectible.CombustibleProps.SmeltedStack  == null)) return 0.5f;
+            CombustibleProperties combustibleProps = stack.Collectible.GetCombustibleProperties(Api.World, stack, null);
+            if (targetSlot == slots[0] && (combustibleProps == null || combustibleProps.BurnTemperature <= 0)) return 0;
+            if (targetSlot == slots[1] && (combustibleProps == null || combustibleProps.SmeltedStack  == null)) return 0.5f;
 
 
             return base.GetSuitability(sourceSlot, targetSlot, isMerge);
@@ -242,13 +243,14 @@ namespace Vintagestory.GameContent
                 return ((BlockCookingContainer)inputStack.Collectible).GetOutputText(Api.World, this, slots[1]);
             }
 
-            ItemStack smeltedStack = inputStack.Collectible.CombustibleProps?.SmeltedStack?.ResolvedItemstack;
+            CombustibleProperties combustibleProps = inputStack.Collectible.GetCombustibleProperties(Api.World, inputStack, null);
+            ItemStack smeltedStack = combustibleProps?.SmeltedStack?.ResolvedItemstack;
 
             if (smeltedStack == null) return null;
-            if (inputStack.Collectible.CombustibleProps.SmeltingType == EnumSmeltType.Fire) return Lang.Get("Can't smelt, requires a kiln");
-            if (inputStack.Collectible.CombustibleProps.RequiresContainer) return Lang.Get("Can't smelt, requires smelting container (i.e. Crucible)");
+            if (combustibleProps.SmeltingType == EnumSmeltType.Fire) return Lang.Get("Can't smelt, requires a kiln");
+            if (combustibleProps.RequiresContainer) return Lang.Get("Can't smelt, requires smelting container (i.e. Crucible)");
 
-            return Lang.Get("firepit-gui-willcreate", inputStack.StackSize / inputStack.Collectible.CombustibleProps.SmeltedRatio, smeltedStack.GetName());
+            return Lang.Get("firepit-gui-willcreate", inputStack.StackSize / combustibleProps.SmeltedRatio, smeltedStack.GetName());
         }
 
 

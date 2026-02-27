@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -223,7 +223,7 @@ namespace Vintagestory.GameContent
 
         public override float OnGettingBroken(IPlayer player, BlockSelection blockSel, ItemSlot itemslot, float remainingResistance, float dt, int counter)
         {
-            EnumTool? tool = itemslot.Itemstack?.Collectible?.Tool;
+            EnumTool? tool = itemslot.Itemstack?.Collectible?.GetTool(itemslot);
 
             if (tool == EnumTool.Hammer || tool == EnumTool.Pickaxe || tool == EnumTool.Shovel || tool == EnumTool.Sword || tool == EnumTool.Spear || tool == EnumTool.Axe || tool == EnumTool.Hoe)
             {
@@ -232,7 +232,8 @@ namespace Vintagestory.GameContent
                     double posx = blockSel.Position.X + blockSel.HitPosition.X;
                     double posy = blockSel.Position.InternalY + blockSel.HitPosition.Y;
                     double posz = blockSel.Position.Z + blockSel.HitPosition.Z;
-                    player.Entity.World.PlaySoundAt(remainingResistance > 0 ? Sounds.GetHitSound(player) : Sounds.GetBreakSound(player), posx, posy, posz, player, true, 16, 1);
+                    int dim = blockSel.Position.dimension;
+                    player.Entity.World.PlaySoundAt(remainingResistance > 0 ? Sounds.GetHitSound(player) : Sounds.GetBreakSound(player), posx, posy, posz, dim, player);
                 }
 
                 return remainingResistance - 0.05f;

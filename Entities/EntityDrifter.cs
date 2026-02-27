@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Common;
@@ -90,7 +91,8 @@ public class EntityDrifter : EntityHumanoid
 
         if (EntityId % oddsToAlter == 0)
         {
-            float[] collisionBox = properties.Attributes["alternativeCollisionBox"].AsArray([0.9f, 0.6f]);
+            float[]? collisionBox = properties.Attributes["alternativeCollisionBox"].AsArray([0.9f, 0.6f]);
+            ArgumentNullException.ThrowIfNull(collisionBox);
 
             Dictionary<string, string> animationsRemapping = new()
             {
@@ -107,7 +109,8 @@ public class EntityDrifter : EntityHumanoid
 
             if (properties.Attributes.KeyExists("animationsRemapping"))
             {
-                animationsRemapping = properties.Attributes["animationsRemapping"].AsObject<Dictionary<string, string>>();
+                animationsRemapping = properties.Attributes["animationsRemapping"].AsObject<Dictionary<string, string>>()!;
+                ArgumentNullException.ThrowIfNull(animationsRemapping);
             }
 
             AnimationMetaData? dieAnimationMetaData = properties.Client.Animations.FirstOrDefault(a => a.Code == dieAnimationCode);

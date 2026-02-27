@@ -60,7 +60,7 @@ namespace Vintagestory.GameContent
             AnimationCode = properties["AnimationCode"].AsString("squeezehoneycomb");
             ReturnStacks = properties["returnStacks"].AsObject<JsonItemStack[]?>(null);
 
-            string code = properties["squeezingSound"].AsString("game:sounds/player/squeezehoneycomb");
+            string? code = properties["squeezingSound"].AsString("game:sounds/player/squeezehoneycomb");
             if (code != null) {
                 SqueezingSound = AssetLocation.Create(code, collObj.Code.Domain);
             }
@@ -191,7 +191,7 @@ namespace Vintagestory.GameContent
                     slot.TakeOut(1);
                     slot.MarkDirty();
 
-                    IPlayer byPlayer = world.PlayerByUid((byEntity as EntityPlayer)?.PlayerUID);
+                    IPlayer? byPlayer = world.PlayerByUid((byEntity as EntityPlayer)?.PlayerUID);
 
                     ReturnStacks?.Foreach(returnStack =>
                     {
@@ -232,7 +232,7 @@ namespace Vintagestory.GameContent
                 if (collObj.Attributes == null) collObj.Attributes = new JsonObject(JToken.Parse("{ handbook: {} }"));
                 else
                 {
-                    token = collObj.Attributes.Token;
+                    token = collObj.Attributes.Token!;
                     token["handbook"] = JToken.Parse("{ }");
                 }
             }
@@ -241,7 +241,7 @@ namespace Vintagestory.GameContent
             if (extraHandbookSections != null) extraHandbookSections.Append(section);
             else extraHandbookSections = [section];
 
-            token = collObj.Attributes["handbook"].Token;
+            token = collObj.Attributes["handbook"].Token!;
             token["extraSections"] = JToken.FromObject(extraHandbookSections);
         }
     }

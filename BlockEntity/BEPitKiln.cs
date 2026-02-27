@@ -90,7 +90,8 @@ namespace Vintagestory.GameContent
                 Block block = Api.World.BlockAccessor.GetBlock(pos);
                 Block upblock = Api.World.BlockAccessor.GetBlock(Pos.UpCopy());
 
-                return block?.CombustibleProps != null && block.CombustibleProps.BurnDuration > 0 && (!IsAreaLoaded() || upblock.Replaceable >= 6000);
+                CombustibleProperties combustibleProps = block.GetCombustibleProperties(Api.World, null, pos);
+                return combustibleProps != null && combustibleProps.BurnDuration > 0 && (!IsAreaLoaded() || upblock.Replaceable >= 6000);
             };
 
             DetermineBuildStages();
@@ -149,40 +150,37 @@ namespace Vintagestory.GameContent
                 {
                     var stack = mats[i].ItemStack;
 
-                    if (stack.Equals(Api.World, hotbarSlot.Itemstack, GlobalConstants.IgnoredStackAttributes) && stack.StackSize <= hotbarSlot.StackSize)
+                    if (!stack.Equals(Api.World, hotbarSlot.Itemstack, GlobalConstants.IgnoredStackAttributes) || stack.StackSize > hotbarSlot.StackSize) continue;
+                    if (!isSameMatAsPreviouslyAdded(stack)) continue;
+
+                    int toMove = stack.StackSize;
+                    for (int j = 4; j < invSlotCount && toMove > 0; j++)
                     {
-                        if (!isSameMatAsPreviouslyAdded(stack)) continue;
-
-                        int toMove = stack.StackSize;
-                        for (int j = 4; j < invSlotCount && toMove > 0; j++)
-                        {
-                            toMove -= hotbarSlot.TryPutInto(Api.World, inventory[j], toMove);
-                        }
-
-                        hotbarSlot.MarkDirty();
-
-                        currentBuildStage++;
-                        mesh = null;
-                        MarkDirty(true);
-                        updateSelectiveElements();
-                        (player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
-
-                        if (stack.Collectible.Attributes?["placeSound"].Exists == true)
-                        {
-                            AssetLocation sound = AssetLocation.Create(stack.Collectible.Attributes["placeSound"].AsString(), stack.Collectible.Code.Domain);
-                            if (sound != null)
-                            {
-                                Api.World.PlaySoundAt(sound.WithPathPrefixOnce("sounds/"), Pos, -0.4, player, true, 12);
-                            }
-                        }
+                        toMove -= hotbarSlot.TryPutInto(Api.World, inventory[j], toMove);
                     }
+
+                    hotbarSlot.MarkDirty();
+
+                    currentBuildStage++;
+                    mesh = null;
+                    MarkDirty(true);
+                    updateSelectiveElements();
+                    (player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+
+                    if (stack.Collectible.Attributes?["placeSound"].Exists != true) continue;
+                    if (AssetLocation.Create(stack.Collectible.Attributes["placeSound"].AsString(), stack.Collectible.Code.Domain) is { } sound)
+                    {
+                        Api.World.PlaySoundAt(sound.WithPathPrefixOnce("sounds/"), Pos, -0.4, player, true, 12);
+                    }
+
+                    return true;
                 }
             }
 
 
             DetermineStorageProperties(null);
 
-            return true;
+            return false;
         }
 
 
@@ -220,7 +218,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        protected override void FixBrokenStorageLayout()
+        protected override void UpdateLegacyStorageLayouts()
         {
             // Skip this since we haven't changed any storage layouts for clay items in vanilla and the
             // fuel will physically hide most items in the kiln anyway even if there were a display issue
@@ -242,12 +240,13 @@ namespace Vintagestory.GameContent
                     ItemSlot slot = inventory[i];
                     if (slot.Empty) continue;
                     ItemStack rawStack = slot.Itemstack;
-                    ItemStack firedStack = rawStack.Collectible.CombustibleProps?.SmeltedStack?.ResolvedItemstack;
+                    CombustibleProperties combustibleProps = rawStack.Collectible.GetCombustibleProperties(Api.World, rawStack, null);
+                    ItemStack firedStack = combustibleProps?.SmeltedStack?.ResolvedItemstack;
 
                     if (firedStack != null)
                     {
                         slot.Itemstack = firedStack.Clone();
-                        slot.Itemstack.StackSize = rawStack.StackSize / rawStack.Collectible.CombustibleProps.SmeltedRatio;
+                        slot.Itemstack.StackSize = rawStack.StackSize / combustibleProps.SmeltedRatio;
                     }
                 }
 
@@ -276,7 +275,8 @@ namespace Vintagestory.GameContent
                 {
                     return false;
                 }
-                if (block.CombustibleProps != null)
+                var combustibleProps = block.GetCombustibleProperties(world, null, npos);
+                if (combustibleProps != null)
                 {
                     return false;
                 }
@@ -287,7 +287,7 @@ namespace Vintagestory.GameContent
             {
                 return false;
             }
-            
+
 
             return true;
         }
@@ -387,7 +387,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            
+
 
             colBoxes[0].X1 = 0;
             colBoxes[0].X2 = 1;
@@ -461,7 +461,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        
+
 
         public override bool OnTesselation(ITerrainMeshPool meshdata, ITesselatorAPI tesselator)
         {
@@ -472,7 +472,7 @@ namespace Vintagestory.GameContent
                 blockTexPos = tesselator.GetTextureSource(Block);
                 tesselator.TesselateShape("pitkiln", shape, out mesh, this, null, 0, 0, 0, null, selectiveElements);
                 nowTesselatingKiln = false;
-                mesh.Scale(new Vec3f(0.5f, 0.5f, 0.5f), 1.005f, 1.005f, 1.005f);
+                mesh.Scale(1.005f, 1.005f, 1.005f);
                 mesh.Translate(0, GameMath.MurmurHash3Mod(Pos.X, Pos.Y, Pos.Z, 10)/500f, 0);
             }
 
@@ -484,7 +484,7 @@ namespace Vintagestory.GameContent
         }
 
         public override bool CanIgnite => IsComplete && IsValidPitKiln() && !GetBehavior<BEBehaviorBurning>().IsBurning;
-        
+
 
         public void TryIgnite(IPlayer byPlayer)
         {

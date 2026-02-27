@@ -220,7 +220,7 @@ namespace Vintagestory.GameContent
                     for (int i = 0; i < shatteredDrops.Length; i++)
                     {
                         shatteredDrops[i].Resolve(Api.World, "shatteredDrops[" + i + "] for", mold.Block.Code);
-                        ItemStack stack = shatteredDrops[i].GetNextItemStack();
+                        ItemStack? stack = shatteredDrops[i].GetNextItemStack();
                         if (stack == null) continue;
 
                         molds.Add(stack);
@@ -405,7 +405,7 @@ namespace Vintagestory.GameContent
 
                 if (placeSound != null)
                 {
-                    Api.World.PlaySoundAt(placeSound, Pos, -0.5, byPlayer, false);
+                    Api.World.PlaySoundAt(placeSound ?? new SoundAttributes(), Pos, -0.5, byPlayer);
                 }
 
                 return true;
@@ -435,9 +435,9 @@ namespace Vintagestory.GameContent
                 byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
             }
 
-            if (MoldRight.Block.Sounds?.Place is AssetLocation assetLoc)
+            if (MoldRight.Block.Sounds?.Place != null)
             {
-                Api.World.PlaySoundAt(assetLoc, Pos, -0.5, byPlayer, false);
+                Api.World.PlaySoundAt(MoldRight.Block.Sounds.Place, Pos, -0.5, byPlayer);
             }
 
             if (Api.Side == EnumAppSide.Client) GenMeshes();
@@ -614,6 +614,7 @@ namespace Vintagestory.GameContent
         {
             tmpTextureSource = capi?.Tesselator.GetTextureSource(block);
             var cshape = block.Attributes["shatteredShape"].AsObject<CompositeShape>();
+            ArgumentNullException.ThrowIfNull(cshape);
             cshape.Base.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/");
             return Shape.TryGet(Api, cshape.Base);
         }
@@ -667,6 +668,7 @@ namespace Vintagestory.GameContent
                 modeldata.Rgba.Fill((byte)255);
                 modeldata.Flags = new int[4 * 4];
 
+                ArgumentNullException.ThrowIfNull(ingotRenderer);
                 var matrix = new Matrixf().Identity()
                                           .Translate(0.5f, 1 / 16f + (IsRightSideSelected ? ingotRenderer.LevelRight : ingotRenderer.LevelLeft) / 850f, 0.5f)
                                           .RotateX(90 * GameMath.DEG2RAD)
@@ -679,12 +681,14 @@ namespace Vintagestory.GameContent
             else if (SelectedShattered)
             {
                 var cshape = (SelectedMold?.Block ?? Block).Attributes["shatteredShape"].AsObject<CompositeShape>();
+                ArgumentNullException.ThrowIfNull(cshape);
+                ArgumentNullException.ThrowIfNull(capi);
                 cshape.Base.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/");
                 capi.Tesselator.TesselateShape("shatteredmold", Shape.TryGet(Api, cshape.Base), out mesh, texPositionSource);
             }
             else
             {
-
+                ArgumentNullException.ThrowIfNull(capi);
                 var shape = Shape.TryGet(Api, "shapes/block/clay/mold/ingot.json");
                 capi.Tesselator.TesselateShape((SelectedMold?.Block ?? Block).Code.ToString(), shape, out mesh, texPositionSource);
             }

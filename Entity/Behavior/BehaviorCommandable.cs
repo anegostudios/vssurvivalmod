@@ -1,4 +1,5 @@
-﻿using System.Text;
+using System.Text;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
@@ -23,7 +24,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public string GuardedName
+        public string GuardedNameClient
         {
             get
             {
@@ -40,29 +41,23 @@ namespace Vintagestory.GameContent
 
         }
 
-        public override void Initialize(EntityProperties properties, JsonObject attributes)
+        public override void AfterInitialized(bool onFirstSpawn)
         {
-            base.Initialize(properties, attributes);
-
-            try
+            if (entity.World.Side == EnumAppSide.Client)
             {
-                SetGuardedName(0);
-            }
-            catch
-            {
-                entity.Api.Event.RegisterCallback(SetGuardedName, 1500);    // Try a second time later, if there was an exception, can happen if the guarded entity was not yet fully initialised
+                SetGuardedName();
             }
         }
 
-        private void SetGuardedName(float dt)
+        private void SetGuardedName()
         {
             Entity guarded = GetGuardedEntity();
             if (guarded != null)
             {
                 string name = guarded.GetName();
-                GuardedName = name ?? "";
+                GuardedNameClient = name ?? "";
             }
-            else GuardedName = "";
+            else GuardedNameClient = "";
         }
 
         public override void OnEntitySpawn()
@@ -82,13 +77,16 @@ namespace Vintagestory.GameContent
             var bhtaskAi = entity.GetBehavior<EntityBehaviorTaskAI>();
             if (bhtaskAi != null)
             {
-                bhtaskAi.TaskManager.OnShouldExecuteTask += (task) => !Sit || task is AiTaskIdle || task is AiTaskLookAround;
+                bhtaskAi.TaskManager.OnShouldExecuteTask += (task) => !Sit || task is AiTaskIdle || task is AiTaskLookAround || task is AiTaskComeToOwner;
             }
         }
 
         public override void OnInteract(EntityAgent byEntity, ItemSlot itemslot, Vec3d hitPosition, EnumInteractMode mode, ref EnumHandling handled)
         {
-            Sit = !Sit;
+            if (entity.Alive && !byEntity.Controls.ShiftKey)
+            {
+                Sit = !Sit;
+            }
         }
 
         public override void GetInfoText(StringBuilder infotext)
@@ -96,7 +94,7 @@ namespace Vintagestory.GameContent
             base.GetInfoText(infotext);
 
             if (Sit) infotext.AppendLine(Lang.Get("Waits"));
-            else infotext.AppendLine(Lang.Get("Follows {0}", GuardedName));
+            else infotext.AppendLine(Lang.Get("Follows {0}", GuardedNameClient));
 
             var healthTree = entity.WatchedAttributes.GetTreeAttribute("health") as ITreeAttribute;
             if (healthTree != null) infotext.AppendLine(Lang.Get("commandable-entity-healthpoints", healthTree.GetFloat("currenthealth"), healthTree.GetFloat("maxhealth")));
@@ -120,6 +118,19 @@ namespace Vintagestory.GameContent
                 var id = entity.WatchedAttributes.GetLong("guardedEntityId");
                 return entity.World.GetEntityById(id);
             }
+        }
+
+        public override WorldInteraction[] GetInteractionHelp(IClientWorldAccessor world, EntitySelection es, IClientPlayer player, ref EnumHandling handled)
+        {
+            if (!entity.Alive) return null;
+
+            return [
+                new WorldInteraction() {
+                    ActionLangCode = "entityinteraction-command",
+                    HotKeyCode = null,
+                    MouseButton = EnumMouseButton.Right
+                }
+            ];
         }
 
     }

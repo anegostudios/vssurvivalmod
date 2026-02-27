@@ -1,4 +1,4 @@
-﻿using ProtoBuf;
+using ProtoBuf;
 using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
@@ -75,9 +75,7 @@ namespace Vintagestory.GameContent.Mechanics
             set { totalAvailableTorque = value; }
         }
 
-        public MechanicalNetwork()
-        {
-        }
+        public MechanicalNetwork() { }
 
         public MechanicalNetwork(MechanicalPowerMod mechanicalPowerMod, long networkId)
         {
@@ -139,8 +137,7 @@ namespace Vintagestory.GameContent.Mechanics
             if (speed < 0.001f) return;
 
             // 50fps is baseline speed for client and server (1000/50 = 20ms)
-            //float weirdOffset = 5f; // Server seems to complete a work item quicker than on the client, does it update the angle more quickly or something? o.O
-            float f = dt * (50f);// + weirdOffset);
+            float f = dt * 50f;
 
             clientSpeed += GameMath.Clamp(speed - clientSpeed, f * -0.01f, f * 0.01f);
 
@@ -149,7 +146,6 @@ namespace Vintagestory.GameContent.Mechanics
             // Since the server may be running at different tick speeds,
             // we slowly sync angle updates from server to reduce 
             // rotation jerkiness on the client
-
             // Each tick, add 5% of server<->client angle difference
 
             float diff = f * GameMath.AngleRadDistance(angle, serverSideAngle);
@@ -189,10 +185,7 @@ namespace Vintagestory.GameContent.Mechanics
         public void UpdateAngle(float speed)
         {
             angle += speed / 10f;
-            //angle = angle % GameMath.TWOPI;
-
             serverSideAngle += speed / 10f;
-            //serverSideAngle = serverSideAngle % GameMath.TWOPI;
         }
 
         public float NetworkTorque {
@@ -209,14 +202,15 @@ namespace Vintagestory.GameContent.Mechanics
         // Should run every 5 ticks or so
         public void updateNetwork(long tick)
         {
-            //ensure no speed discontinuities if whole network direction suddenly reverses (e.g. because a block was added or removed)
+            // Ensure no speed discontinuities if whole network direction suddenly reverses (e.g. because a block was added or removed)
             if (DirectionHasReversed)
             {
                 speed = -speed;
                 DirectionHasReversed = false;
-                //TurnDir = TurnDir == EnumRotDirection.Clockwise ? EnumRotDirection.Counterclockwise : EnumRotDirection.Clockwise;
             }
-            /* 2. Determine total available torque and total resistance of the network */
+
+
+            // Determine total available torque and total resistance of the network
 
             float totalTorque = 0f;
             float totalResistance = 0f;
@@ -225,16 +219,17 @@ namespace Vintagestory.GameContent.Mechanics
             foreach (IMechanicalPowerNode powerNode in nodes.Values)
             {
                 float r = powerNode.GearedRatio;
-                totalTorque += r * powerNode.GetTorque(tick, speedTmp * r, out float resistance);
-                totalResistance += r * resistance;
-                totalResistance += speed * speed * r * r / 1000f;  //this creates an air resistance effect - very fast turning networks will quickly slow if torque is removed
+                var t = powerNode.GetTorque(tick, speedTmp * r, out float resistance);
+                
+                totalTorque += r * t;
+                totalResistance += Math.Abs(r) * resistance;
+                totalResistance += speed * speed * r * r / 1000f;  // this creates an air resistance effect - very fast turning networks will quickly slow if torque is removed
             }
             networkTorque = totalTorque;
             networkResistance = totalResistance;
 
-            /* 3. Unconsumed torque changes the network speed */
+            // 3. Unconsumed torque changes the network speed
             // Definition: Negative speed (produced by negative torque) signifies anti-clockwise rotation.  There can be negative torque depending on all the torque providers on the network and their senses.
-
             // Positive free torque => increase speed until maxSpeed
             // Negative free torque => decrease speed until -maxSpeed
             // No free torque => lower speed until 0
@@ -254,13 +249,16 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 float change = unusedTorque;
                 if (wrongTurnSense) change = -networkResistance;
-                if (change < -Math.Abs(speed)) change = -Math.Abs(speed);  //this creates a momentum effect: the network will not stop suddenly, even if resistance suddenly goes sky high.  Momentum increases for more pieces in the network (1/drag).
-                if (change < -0.000001f || Math.Abs(speed) > 0.000001f)   //the change to this line in 1.14rc5 should stop the oscillations (speed crashes to zero)
+                if (change < -Math.Abs(speed)) change = -Math.Abs(speed);  // this creates a momentum effect: the network will not stop suddenly, even if resistance suddenly goes sky high.  Momentum increases for more pieces in the network (1/drag).
+                if (change < -0.000001f || Math.Abs(speed) > 0.000001f)   // the change to this line in 1.14rc5 should stop the oscillations (speed crashes to zero)
                 {
                     float speedSign = speed < 0f ? -1f : 1f;
-                    speed = Math.Max(0.000001f, Math.Abs(speed) + step * change) * speedSign;  //before 1.14rc5 the 4f * drag multiplier (which was supposed to slow a network down quickly when torque is removed) caused oscillations in larger networks - too much slow-down when only slightly over speed for the current torque
+                    speed = Math.Max(0.000001f, Math.Abs(speed) + step * change) * speedSign;  // before 1.14rc5 the 4f * drag multiplier (which was supposed to slow a network down quickly when torque is removed) caused oscillations in larger networks - too much slow-down when only slightly over speed for the current torque
                 }
-                else if (Math.Abs(unusedTorque) > 0f) speed = torqueSign / 1000000f;   //a small speed in the correct direction, to start things off
+                else if (Math.Abs(unusedTorque) > 0f)
+                {
+                    speed = torqueSign / 1000000f;   // a small speed in the correct direction, to start things off
+                }
             }
 
             if (unusedTorque > Math.Abs(totalAvailableTorque))
@@ -274,7 +272,7 @@ namespace Vintagestory.GameContent.Mechanics
                     totalAvailableTorque = Math.Max(Math.Min(totalTorque, -0.00000001f), totalAvailableTorque - step);
                 }
             }
-            else totalAvailableTorque *= 0.9f;  //allows for adjustments to happen if torque reduces or changes sign
+            else totalAvailableTorque *= 0.9f;  // allows for adjustments to happen if torque reduces or changes sign
 
             TurnDir = speed >= 0 ? EnumRotDirection.Clockwise : EnumRotDirection.Counterclockwise;
         }
@@ -285,7 +283,7 @@ namespace Vintagestory.GameContent.Mechanics
             networkResistance = packet.networkResistance;
             networkTorque = packet.networkTorque;
 
-            speed = Math.Abs(packet.speed);  //ClientTick() expects speed to be positive always
+            speed = Math.Abs(packet.speed); // ClientTick() expects speed to be positive always
             if (isNew)
             {
                 angle = packet.angle;

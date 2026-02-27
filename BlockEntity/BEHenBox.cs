@@ -13,7 +13,7 @@ using Vintagestory.API.MathTools;
 namespace Vintagestory.GameContent
 {
     /** Mechanics
-     * 
+     *
      * 1.  / Any well-fed hen - i.e. ready to lay - will activate task AITaskSeekBlockAndLay
      * 2.  / Once sitting on the henbox for 5 real seconds, the hen will first attempt to lay an egg in the henbox
      * 3.  / If the hen can lay an egg (fewer than 3 eggs currently) it does so; makes an egg laying sound and activates another AITask.  TODO: we could add a flapping animation
@@ -22,7 +22,7 @@ namespace Vintagestory.GameContent
      * 6.  / That broody hen or another broody hen will continue returning to the henbox and sitting on the eggs until they eventually hatch
      * 7.  / HenBox BlockEntity tracks how long a hen (any hen) has sat on the eggs warming them - as set in the chicken-hen JSON it needs 5 in-game days
      * 8.  / When the eggs have been warmed for long enough they hatch: chicks are spawned and the henbox reverts to empty
-     * 
+     *
      * HenBox tracks the parent entity and the generation of each egg separately => in future could have 1 duck egg in a henbox for example, so that 1 duckling hatches and 2 hen chicks
      */
 
@@ -140,11 +140,10 @@ namespace Vintagestory.GameContent
                     Entity childEntity = Api.World.ClassRegistry.CreateEntity(childType);
                     if (childEntity == null) continue;
 
-                    childEntity.ServerPos.SetFrom(new EntityPos(this.Position.X + (rand.NextDouble() - 0.5f) / 5f, this.Position.Y, this.Position.Z + (rand.NextDouble() - 0.5f) / 5f, (float) rand.NextDouble() * GameMath.TWOPI));
-                    childEntity.ServerPos.Motion.X += (rand.NextDouble() - 0.5f) / 200f;
-                    childEntity.ServerPos.Motion.Z += (rand.NextDouble() - 0.5f) / 200f;
+                    childEntity.Pos.SetFrom(new EntityPos(Position.X + (rand.NextDouble() - 0.5f) / 5f, Position.Y, Position.Z + (rand.NextDouble() - 0.5f) / 5f, (float) rand.NextDouble() * GameMath.TWOPI));
+                    childEntity.Pos.Motion.X += (rand.NextDouble() - 0.5f) / 200f;
+                    childEntity.Pos.Motion.Z += (rand.NextDouble() - 0.5f) / 200f;
 
-                    childEntity.Pos.SetFrom(childEntity.ServerPos);
                     childEntity.Attributes.SetString("origin", "reproduction");
                     childEntity.WatchedAttributes.SetInt("generation", chickData.GetInt("generation", 0));
                     EntityAgent eagent = childEntity as EntityAgent;
@@ -296,7 +295,7 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-        public bool OnInteract(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel) 
+        public bool OnInteract(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
             if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
             {
@@ -311,13 +310,13 @@ namespace Vintagestory.GameContent
                 {
                     if (inventory[i].Empty)
                     {
-                        AssetLocation sound = slot.Itemstack?.Block?.Sounds?.Place;
+                        SoundAttributes? sound = slot.Itemstack?.Block?.Sounds?.Place;
                         AssetLocation itemPlaced = slot.Itemstack?.Collectible?.Code;
                         ItemStackMoveOperation op = new ItemStackMoveOperation(Api.World, EnumMouseButton.Left, 0, EnumMergePriority.AutoMerge, 1);
                         if (slot.TryPutInto(inventory[i], ref op) > 0)
                         {
                             Api.Logger.Audit(byPlayer.PlayerName + " put 1x" + itemPlaced + " into " + Block.Code + " at " + Pos);
-                            Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
+                            Api.World.PlaySoundAt(sound ?? GlobalConstants.DefaultBuildSound, byPlayer.Entity, byPlayer);
                             return true;
                         }
                     }

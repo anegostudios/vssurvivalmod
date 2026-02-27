@@ -73,7 +73,7 @@ namespace Vintagestory.GameContent
             capi = api;
         }
 
-        protected ConcurrentDictionary<int, ItemStackRenderCacheItem> itemStackRenders = new ConcurrentDictionary<int, ItemStackRenderCacheItem>();
+        protected ConcurrentDictionary<int, ItemStackRenderCacheItem> itemStackRenders = new ConcurrentDictionary<int, ItemStackRenderCacheItem>(2, 16);
 
 
         public void RequestLabelTexture(int labelColor, BlockPos pos, ItemStack labelStack, Action<int> onLabelTextureReady)
@@ -120,7 +120,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        ConcurrentDictionary<int, bool> mipmapRegenQueued = new ConcurrentDictionary<int, bool>();
+        ConcurrentDictionary<int, bool> mipmapRegenQueued = new ConcurrentDictionary<int, bool>(2, 16);
 
         // Delay recreation of mipmaps by 2 frames so we don't spam mipmap regens when many crates get loaded at once
         private void regenMipMapsOnce(int atlasNumber)
@@ -290,8 +290,8 @@ namespace Vintagestory.GameContent
         protected void didMoveItems(ItemStack stack, IPlayer byPlayer)
         {
             (Api as ICoreClientAPI)?.World.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
-            AssetLocation sound = stack?.Block?.Sounds?.Place;
-            Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
+            SoundAttributes? sound = stack?.Block?.Sounds?.Place;
+            Api.World.PlaySoundAt(sound ?? GlobalConstants.DefaultBuildSound, byPlayer.Entity, byPlayer);
         }
     }
 
@@ -312,8 +312,6 @@ namespace Vintagestory.GameContent
         public string SubtypeInventory => Props?.VariantByGroupInventory == null ? "" : Variant[Props.VariantByGroupInventory];
 
         public int RequiresBehindSlots { get; set; } = 0;
-
-        private Vec3f origin = new Vec3f(0.5f, 0.5f, 0.5f);
 
         #region IAttachableToEntity
 
@@ -412,7 +410,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool DoParticalSelection(IWorldAccessor world, BlockPos pos)
+        public override bool DoPartialSelection(IWorldAccessor world, BlockPos pos)
         {
             return true;
         }
@@ -656,8 +654,8 @@ namespace Vintagestory.GameContent
             if (be != null)
             {
 
-                decalModelData.Rotate(origin, 0, be.MeshAngle, 0);
-                decalModelData.Scale(origin, 15f / 16, 1f, 15f / 16);
+                decalModelData.Rotate(0, be.MeshAngle, 0);
+                decalModelData.Scale(15f / 16, 1f, 15f / 16);
                 return;
             }
 

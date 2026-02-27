@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -56,7 +56,13 @@ namespace Vintagestory.GameContent.Mechanics
 
         private void Inv_SlotModified(int t1)
         {
-            updateMeshes();
+            UpdateCaps();   // called on both server-side and client-side
+
+            if (Api is ICoreClientAPI)
+            {
+                MarkMeshesDirty();
+                Api.World.BlockAccessor.MarkBlockDirty(Pos);   // always redraw on client after updating meshes
+            }
         }
 
 
@@ -132,7 +138,7 @@ namespace Vintagestory.GameContent.Mechanics
         private void Crush(int slot, int capTier, double xOffset)
         {
             ItemStack inputStack = inv[slot].TakeOut(1);
-            var props = inputStack.Collectible.CrushingProps;
+            var props = inputStack.Collectible.GetCrushingProperties(Api.World, inputStack);
             ItemStack outputStack = null;
 
             if (props != null) {
@@ -153,7 +159,7 @@ namespace Vintagestory.GameContent.Mechanics
             double sideways = Api.World.Rand.NextDouble() * 0.03 - 0.005;
             Vec3d velocity = new Vec3d(Facing.Axis == EnumAxis.Z ? sideways : lengthways, Api.World.Rand.NextDouble() * 0.02 - 0.01, Facing.Axis == EnumAxis.Z ? lengthways : sideways);
 
-            bool tierPassed = outputStack != null && inputStack.Collectible.CrushingProps.HardnessTier <= capTier;
+            bool tierPassed = outputStack != null && props.HardnessTier <= capTier;
 
             Api.World.SpawnItemEntity(tierPassed ? outputStack : inputStack, position, velocity);
 
@@ -168,7 +174,7 @@ namespace Vintagestory.GameContent.Mechanics
 
             ICoreClientAPI capi = Api as ICoreClientAPI;
 
-            
+
             MeshData meshTop = ObjectCacheUtil.GetOrCreate(capi, "pulverizertopmesh-"+rotateY, () =>
             {
                 Shape shapeTop = API.Common.Shape.TryGet(capi, "shapes/block/wood/mechanics/pulverizer-top.json");
@@ -236,7 +242,8 @@ namespace Vintagestory.GameContent.Mechanics
                     return true;
                 }
 
-                if (handslot.Itemstack.Collectible.CrushingProps != null)
+                var crushingProps = handslot.Itemstack.Collectible.GetCrushingProperties(Api.World, handslot.Itemstack);
+                if (crushingProps != null)
                 {
                     TryPut(handslot, targetSlot);
                 }
@@ -328,7 +335,7 @@ namespace Vintagestory.GameContent.Mechanics
         }
 
 
-        public override void updateMeshes()
+        public void UpdateCaps()
         {
             string metal = "nometal";
             if (!inv[2].Empty) metal = inv[2].Itemstack.Collectible.Variant["metal"];
@@ -338,8 +345,6 @@ namespace Vintagestory.GameContent.Mechanics
             CapMetalTierL = CapMetalTierR = Math.Max(metalvar?.Tier ?? 0, 0);
 
             CapMetalIndexL = CapMetalIndexR = Math.Max(0, PulverizerRenderer.metals.IndexOf(metal));
-
-            base.updateMeshes();
         }
 
 
@@ -361,7 +366,7 @@ namespace Vintagestory.GameContent.Mechanics
                 tfMatrices[index] = mat.Values;
             }
 
-            
+
 
             return tfMatrices;
         }

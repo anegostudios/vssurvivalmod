@@ -297,13 +297,14 @@ namespace Vintagestory.GameContent
         private TextCommandResult onCmd(TextCommandCallingArgs args)
         {
             var sb = new StringBuilder();
-
+            sb.AppendLine("<div style=\"position: relative;\"><div style=\"position: absolute;left: 30%;max-width: 40%;\">");
             foreach (var page in dialog.allHandbookPages)
             {
                 sb.Append($"<h3>{page.PageCode}</h3>");
                 sb.Append(((GuiHandbookCommandPage)page).TextCacheAll.Replace("\n","\n</br>").Replace("<strong>", "<b>").Replace("</strong>", "</b>"));
             }
-
+            sb.AppendLine("</div></div>");
+            GamePaths.EnsurePathExists(GamePaths.ModConfig);
             File.WriteAllText(Path.Combine(GamePaths.ModConfig,"cmds.html"),sb.ToString());
             return TextCommandResult.Success("exported all cmds");
         }

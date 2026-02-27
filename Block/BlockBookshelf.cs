@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -22,7 +23,8 @@ namespace Vintagestory.GameContent
         public override void LoadTypes()
         {
             base.LoadTypes();
-            UsableSlots = Attributes["usableSlots"].AsObject<Dictionary<string, int[]>>();
+            UsableSlots = Attributes["usableSlots"].AsObject<Dictionary<string, int[]>>()!;
+            ArgumentNullException.ThrowIfNull(UsableSlots);
         }
 
         public override Cuboidf[] GetSelectionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
@@ -86,7 +88,7 @@ namespace Vintagestory.GameContent
             base.GetDecal(world, pos, decalTexSource, ref decalModelData, ref blockModelData);
         }
 
-        public override bool DoParticalSelection(IWorldAccessor world, BlockPos pos)
+        public override bool DoPartialSelection(IWorldAccessor world, BlockPos pos)
         {
             return true;
         }

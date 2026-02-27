@@ -22,8 +22,8 @@ namespace Vintagestory.GameContent
 
         GuiDialogBlockEntityTextInput editDialog;
 
-        public override float MeshAngle { 
-            get => base.MeshAngle; 
+        public override float MeshAngle {
+            get => base.MeshAngle;
             set {
                 labelrenderer?.SetRotation(value);
                 base.MeshAngle = value;
@@ -104,7 +104,7 @@ namespace Vintagestory.GameContent
 
                 this.fontSize = packet.FontSize;
                 color = tempColor;
-                
+
                 MarkDirty(true);
 
                 // Tell server to save this chunk to disk again
@@ -176,7 +176,9 @@ namespace Vintagestory.GameContent
             text = tree.GetString("text");
             fontSize = tree.GetFloat("fontSize", 20);
 
-            labelrenderer?.SetNewText(text, color);
+            if (labelrenderer == null) return;
+            labelrenderer.fontSize = fontSize;
+            labelrenderer.SetNewText(text, color);
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)

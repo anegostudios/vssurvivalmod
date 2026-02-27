@@ -4,14 +4,12 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
-#nullable disable
-
 namespace Vintagestory.GameContent;
 
 public class BEBehaviorElevatorControl: BlockEntityBehavior
 {
-    private ModsystemElevator elevatorModSystem;
-    public string NetworkCode { get; set; }
+    private ModsystemElevator elevatorModSystem = null!;
+    public string? NetworkCode { get; set; }
 
     public int Offset { get; set; } = -1;
 
@@ -25,7 +23,7 @@ public class BEBehaviorElevatorControl: BlockEntityBehavior
         if (resetToHere)
         {
             var elevatorSystem = elevatorModSystem.GetElevator(NetworkCode);
-            elevatorSystem?.Entity.Attributes.SetInt("maxHeight", position.Y + Offset);
+            elevatorSystem?.Entity?.Attributes.SetInt("maxHeight", position.Y + Offset);
         }
         else
         {

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -11,6 +11,7 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent.Mechanics
 {
+
     public class BEBehaviorMPAxle : BEBehaviorMPBase
     {
         private Vec3f center = new Vec3f(0.5f, 0.5f, 0.5f);
@@ -19,6 +20,7 @@ namespace Vintagestory.GameContent.Mechanics
         string orientations;
 
         AssetLocation axleStandLocWest, axleStandLocEast;
+        CompositeShape axleshape = null;
 
         public BEBehaviorMPAxle(BlockEntity blockentity) : base(blockentity)
         {
@@ -26,21 +28,26 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override void Initialize(ICoreAPI api, JsonObject properties)
         {
+            axleshape = properties["shape"].AsObject<CompositeShape>();
+
             base.Initialize(api, properties);
 
-            axleStandLocWest = AssetLocation.Create("block/wood/mechanics/axle-stand-west", Block.Code?.Domain);
-            axleStandLocEast = AssetLocation.Create("block/wood/mechanics/axle-stand-east", Block.Code?.Domain);
+            if (properties["withStands"].AsBool(true))
+            {
+                axleStandLocWest = AssetLocation.Create("block/wood/mechanics/axle-stand-west", Block.Code?.Domain);
+                axleStandLocEast = AssetLocation.Create("block/wood/mechanics/axle-stand-east", Block.Code?.Domain);
 
-            if (Block.Attributes?["axleStandLocWest"].Exists == true)
-            {
-                axleStandLocWest = Block.Attributes["axleStandLocWest"].AsObject<AssetLocation>();
+                if (Block.Attributes?["axleStandLocWest"].Exists == true)
+                {
+                    axleStandLocWest = Block.Attributes["axleStandLocWest"].AsObject<AssetLocation>();
+                }
+                if (Block.Attributes?["axleStandLocEast"].Exists == true)
+                {
+                    axleStandLocEast = Block.Attributes["axleStandLocEast"].AsObject<AssetLocation>();
+                }
+                axleStandLocWest.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/");
+                axleStandLocEast.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/");
             }
-            if (Block.Attributes?["axleStandLocEast"].Exists == true)
-            {
-                axleStandLocEast = Block.Attributes["axleStandLocEast"].AsObject<AssetLocation>();
-            }
-            axleStandLocWest.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/");
-            axleStandLocEast.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/");
 
 
             if (api.Side == EnumAppSide.Client)
@@ -76,8 +83,16 @@ namespace Vintagestory.GameContent.Mechanics
             return 0.0005f;
         }
 
+        protected override CompositeShape GetShape()
+        {
+            return axleshape ?? base.GetShape();
+        }
+
+
         protected virtual MeshData getStandMesh(string orient)
         {
+            if (axleStandLocWest == null) return null;
+
             return ObjectCacheUtil.GetOrCreate(Api, Block.Code + "-" + orient + "-stand", () =>
             {
                 Shape shape = API.Common.Shape.TryGet(capi, orient == "west" ? axleStandLocWest : axleStandLocEast);
@@ -88,6 +103,8 @@ namespace Vintagestory.GameContent.Mechanics
 
         public static bool IsAttachedToBlock(IBlockAccessor blockaccessor, Block block, BlockPos Position)
         {
+            if (block.FirstCodePart() == "woodenaxlewall") return true;
+
             string orientations = block.Variant["rotation"];
             if (orientations == "ns" || orientations == "we")
             {
@@ -120,7 +137,7 @@ namespace Vintagestory.GameContent.Mechanics
             return false;
         }
 
-        protected virtual bool AddStands => true;
+        protected virtual bool AddStands => axleStandLocWest != null;
 
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
@@ -145,7 +162,8 @@ namespace Vintagestory.GameContent.Mechanics
                 }
             }
 
-            return base.OnTesselation(mesher, tesselator);
+            base.OnTesselation(mesher, tesselator);
+            return true;
         }
 
         private bool RequiresStand(IWorldAccessor world, BlockPos pos, Vec3i vector)
@@ -165,7 +183,7 @@ namespace Vintagestory.GameContent.Mechanics
                     if (bemp is BEBehaviorMPBrake || bemp is BEBehaviorMPCreativeRotor)
                     {
                         BlockFacing side = BlockFacing.FromNormal(vector);
-                        if (side != null && block.HasMechPowerConnectorAt(world, sidePos, side.Opposite)) return false;
+                        if (side != null && block.HasMechPowerConnectorAt(world, sidePos, side.Opposite, Block as BlockMPBase)) return false;
                     }
                     return true;
                 }
@@ -202,7 +220,7 @@ namespace Vintagestory.GameContent.Mechanics
                     if (Api.World.BlockAccessor.GetBlockAbove(Position, 1, BlockLayersAccess.Solid).SideSolid[BlockFacing.DOWN.Index])
                     {
                         mesh = mesh.Rotate(center, GameMath.PI, 0, 0);
-
+                        if (orientations == "ns") mesh = mesh.Rotate(center, 0, GameMath.PI, 0);
                     }
                     else if (orientations == "ns")
                     {

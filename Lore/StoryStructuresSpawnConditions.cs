@@ -105,9 +105,9 @@ namespace Vintagestory.GameContent
             var structureGen = sapi.ModLoader.GetModSystem<GenStoryStructures>();
             if (structureGen == null) return;
             List<Cuboidi> locations = new List<Cuboidi>();
-            foreach (var val in structureGen.storyStructureInstances.Values)
+            foreach (var val in structureGen.Structures)
             {
-                locations.Add(val.Location);
+                locations.Add(val.Value.Location);
             }
             this.structureLocations = locations.ToArray();
         }

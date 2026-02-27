@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -567,10 +567,18 @@ namespace Vintagestory.GameContent
         }
 
         GuiDialog dlg;
+
+        bool CanDoRecipe(IClientWorldAccessor world, IRecipeBase recipe, ItemStack ingredient)
+        {
+            DummySlot slot = new(ingredient);
+            return world.Api.Event.TriggerMatchesRecipe(world.Player, recipe, [slot]);
+        }
+
         public void OpenDialog(IClientWorldAccessor world, BlockPos pos, ItemStack baseMaterial)
         {
             List<KnappingRecipe> recipes = Api.GetKnappingRecipes()
                .Where(r => r.Ingredient.SatisfiesAsIngredient(baseMaterial))
+               .Where(r => CanDoRecipe(world, r, baseMaterial))
                .OrderBy(r => r.Output.ResolvedItemstack.Collectible.Code) // Cannot sort by name, thats language dependent!
                .ToList()
             ;

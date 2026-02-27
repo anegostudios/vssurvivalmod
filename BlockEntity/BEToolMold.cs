@@ -214,7 +214,7 @@ namespace Vintagestory.GameContent
 
                     if (Block.Sounds?.Place != null)
                     {
-                        Api.World.PlaySoundAt(Block.Sounds.Place, Pos, -0.5, byPlayer, false);
+                        Api.World.PlaySoundAt(Block.Sounds.Place, Pos, -0.5, byPlayer);
                     }
 
                     handled = true;

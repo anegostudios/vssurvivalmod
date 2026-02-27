@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -170,7 +170,7 @@ namespace Vintagestory.GameContent
         {
             if (oreSlot.Itemstack == null) return null;
 
-            CombustibleProperties compustibleOpts = oreSlot.Itemstack.Collectible.CombustibleProps;
+            CombustibleProperties compustibleOpts = oreSlot.Itemstack.Collectible.GetCombustibleProperties(Api.World, oreSlot.Itemstack, null);
 
             if (compustibleOpts == null) return null;
 
@@ -188,7 +188,7 @@ namespace Vintagestory.GameContent
         public int getSmeltedRatio(IItemStack oreStack)
         {
             if (oreStack == null) return 0;
-            CombustibleProperties compustibleOpts = oreStack.Collectible.CombustibleProps;
+            CombustibleProperties compustibleOpts = oreStack.Collectible.GetCombustibleProperties(Api.World, oreStack as ItemStack, null);
 
             return compustibleOpts.SmeltedStack.ResolvedItemstack.StackSize;
         }

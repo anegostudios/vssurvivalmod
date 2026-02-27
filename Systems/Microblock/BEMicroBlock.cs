@@ -141,6 +141,10 @@ namespace Vintagestory.GameContent
         public float VolumeRel => totalVoxels / (16f * 16f * 16f);
 
 
+        /// <summary>
+        /// Used only in the genShape command
+        /// </summary>
+        /// <returns></returns>
         public Shape GenShape()
         {
             Shape shape = new Shape();
@@ -161,6 +165,8 @@ namespace Vintagestory.GameContent
 
                 var block = Api.World.Blocks[BlockIds[cwm.Material]];
 
+#pragma warning disable CS0618 // Type or member is obsolete - elem.Faces, but that's OK here, we are setting faces in order to serialize the shape in genShape command
+
                 elem.Faces = new Dictionary<string, ShapeElementFace>();
                 foreach (var facing in BlockFacing.ALLFACES)
                 {
@@ -176,6 +182,8 @@ namespace Vintagestory.GameContent
 
                     elem.Faces[facing.Code] = new ShapeElementFace() { Texture = texCode, Uv = new float[4] { 0,0,16,16 } };
                 }
+
+#pragma warning restore CS0618
 
                 shape.Elements[i] = elem;
             }
@@ -1351,7 +1359,8 @@ namespace Vintagestory.GameContent
 
         public MeshData GenMesh()
         {
-            if (BlockIds == null) return null;
+            var blockIds = this.BlockIds;
+            if (blockIds == null) return null;
             GenRotatedMaterialIds();
 
             var mesh = CreateMesh(Api as ICoreClientAPI, VoxelCuboids, BlockIdsRotated, DecorIdsRotated, DecorRotations, OriginalVoxelCuboids, Pos);
@@ -1364,7 +1373,26 @@ namespace Vintagestory.GameContent
                 }
             }
             withColorMapData = false;
-            for (int i = 0; !withColorMapData && i < BlockIds.Length; i++) withColorMapData |= Api.World.Blocks[BlockIds[i]].ClimateColorMapResolved != null;
+            for (int i = 0; i < blockIds.Length; i++)
+            {
+                if (Api.World.Blocks[blockIds[i]].ClimateColorMapResolved != null)
+                {
+                    withColorMapData = true;
+                    break;
+                }
+            }
+            if (!withColorMapData && DecorIds != null)
+            {
+                var decorIds = this.DecorIds;
+                for (int i = 0; i < decorIds.Length; i++)
+                {
+                    if (Api.World.Blocks[decorIds[i]].ClimateColorMapResolved != null)
+                    {
+                        withColorMapData = true;
+                        break;
+                    }
+                }
+            }
 
             return mesh;
         }
@@ -2483,6 +2511,28 @@ namespace Vintagestory.GameContent
             MarkDirty(true, null);
 
             return exchanged;
+        }
+
+        public static Cuboidf GetEncompassingHitbox(List<uint> VoxelCuboids)
+        {
+            CuboidWithMaterial cwm = new CuboidWithMaterial();
+            Cuboidf box = new Cuboidf(16, 16, 16, 0, 0, 0);
+            for (int i = 0; i < VoxelCuboids.Count; i++)
+            {
+                FromUint(VoxelCuboids[i], cwm);
+                box.X1 = Math.Min(box.X1, cwm.X1);
+                box.Y1 = Math.Min(box.Y1, cwm.Y1);
+                box.Z1 = Math.Min(box.Z1, cwm.Z1);
+                box.X2 = Math.Max(box.X2, cwm.X2);
+                box.Y2 = Math.Max(box.Y2, cwm.Y2);
+                box.Z2 = Math.Max(box.Z2, cwm.Z2);
+            }
+            return box;
+        }
+
+        public Cuboidf GetEncompassingHitbox()
+        {
+            return GetEncompassingHitbox(VoxelCuboids);
         }
     }
 

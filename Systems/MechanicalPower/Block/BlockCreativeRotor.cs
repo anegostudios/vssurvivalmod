@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Client;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
@@ -22,7 +22,7 @@ namespace Vintagestory.GameContent.Mechanics
             
         }
 
-        public override bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face)
+        public override bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face, BlockMPBase forBlock)
         {
             return face == powerOutFacing;
         }
@@ -40,7 +40,7 @@ namespace Vintagestory.GameContent.Mechanics
                 IMechanicalPowerBlock block = world.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
                 if (block != null)
                 {
-                    if (block.HasMechPowerConnectorAt(world, pos, face.Opposite))
+                    if (block.HasMechPowerConnectorAt(world, pos, face.Opposite, this))
                     {
                         //Prevent rotor back-to-back placement
                         if (block is IMPPowered) return false;
@@ -78,8 +78,30 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 new WorldInteraction()
                 {
-                    ActionLangCode = "blockhelp-creativerotor-power",
+                    ActionLangCode = "blockhelp-creativerotor-torque-up",
                     MouseButton = EnumMouseButton.Right,
+                    Itemstacks = System.Array.Empty<ItemStack>()
+                },
+                new WorldInteraction()
+                {
+                    ActionLangCode = "blockhelp-creativerotor-torque-down",
+                    MouseButton = EnumMouseButton.Right,
+                    HotKeyCode = "ctrl",
+                    Itemstacks = System.Array.Empty<ItemStack>()
+                },
+
+                new WorldInteraction()
+                {
+                    ActionLangCode = "blockhelp-creativerotor-speed-up",
+                    MouseButton = EnumMouseButton.Right,
+                    HotKeyCode = "shift",
+                    Itemstacks = System.Array.Empty<ItemStack>()
+                },
+                new WorldInteraction()
+                {
+                    ActionLangCode = "blockhelp-creativerotor-speed-down",
+                    MouseButton = EnumMouseButton.Right,
+                    HotKeyCodes = ["ctrl", "shift"],
                     Itemstacks = System.Array.Empty<ItemStack>()
                 }
             };

@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -39,28 +39,28 @@ namespace Vintagestory.GameContent
             if (hab == "water") habitatBlockCode = "water-still-7";
             else if (hab == "ice") habitatBlockCode = "lakeice";
 
-            if (LastCodePart() == "harvested") return;
-
             interactions = ObjectCacheUtil.GetOrCreate(api, "reedsBlockInteractions", () =>
             {
-                List<ItemStack> knifeStacklist = new List<ItemStack>();
-
-                foreach (Item item in api.World.Items)
-                {
-                    if (item.Code == null) continue;
-
-                    if (item.Tool == EnumTool.Knife)
-                    {
-                        knifeStacklist.Add(new ItemStack(item));
-                    }
-                }
-
                 return new WorldInteraction[] {
-                    new WorldInteraction()
+                    new()
                     {
                         ActionLangCode = "blockhelp-reeds-harvest",
                         MouseButton = EnumMouseButton.Left,
-                        Itemstacks = knifeStacklist.ToArray()
+                        Itemstacks = ObjectCacheUtil.GetToolStacks(api, EnumTool.Knife),
+                        GetMatchingStacks = (wi, bs, es) => {
+                            if (api.World.BlockAccessor.GetBlock(bs.Position).Variant["state"] == "harvested") return null;
+                            return wi.Itemstacks;
+                        }
+                    },
+                    new()
+                    {
+                        ActionLangCode = "blockhelp-reeds-dig-roots",
+                        MouseButton = EnumMouseButton.Left,
+                        Itemstacks = ObjectCacheUtil.GetToolStacks(api, EnumTool.Shovel),
+                        GetMatchingStacks = (wi, bs, es) => {
+                            if (api.World.BlockAccessor.GetBlock(bs.Position).Variant["state"] != "harvested") return null;
+                            return wi.Itemstacks;
+                        }
                     }
                 };
             });
@@ -89,24 +89,34 @@ namespace Vintagestory.GameContent
 
         public override float OnGettingBroken(IPlayer player, BlockSelection blockSel, ItemSlot itemslot, float remainingResistance, float dt, int counter)
         {
-            if (Variant["state"] == "harvested") dt /= 2;
+            if (Variant["state"] == "harvested")
+            {
+                dt /= 2;
+                if (player.InventoryManager.ActiveTool == EnumTool.Shovel)
+                {
+                    var blockMaterial = player.Entity.World.BlockAccessor.GetBlockBelow(blockSel.Position).BlockMaterial;
+                    if (itemslot.Itemstack.Collectible.GetMiningSpeeds(itemslot).TryGetValue(blockMaterial, out float mul)) dt *= mul;
+                }
+            }
             else if (player.InventoryManager.ActiveTool != EnumTool.Knife)
             {
                 dt /= 3;
             }
             else
             {
-                if (itemslot.Itemstack.Collectible.MiningSpeed.TryGetValue(EnumBlockMaterial.Plant, out float mul)) dt *= mul;
+                if (itemslot.Itemstack.Collectible.GetMiningSpeeds(itemslot).TryGetValue(EnumBlockMaterial.Plant, out float mul)) dt *= mul;
             }
 
-            float resistance = RequiredMiningTier == 0 ? remainingResistance - dt : remainingResistance;
+            int requiredMiningTier = GetRequiredMiningTier(api.World, blockSel.Position);
+            float resistance = requiredMiningTier == 0 ? remainingResistance - dt : remainingResistance;
 
             if (counter % 5 == 0 || resistance <= 0)
             {
                 double posx = blockSel.Position.X + blockSel.HitPosition.X;
                 double posy = blockSel.Position.InternalY + blockSel.HitPosition.Y;
                 double posz = blockSel.Position.Z + blockSel.HitPosition.Z;
-                player.Entity.World.PlaySoundAt(resistance > 0 ? Sounds.GetHitSound(player) : Sounds.GetBreakSound(player), posx, posy, posz, player, true, 16, 1);
+                int dim = blockSel.Position.dimension;
+                player.Entity.World.PlaySoundAt(resistance > 0 ? Sounds.GetHitSound(player) : Sounds.GetBreakSound(player), posx, posy, posz, dim, player);
             }
 
             return resistance;
@@ -114,7 +124,7 @@ namespace Vintagestory.GameContent
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {
-            AssetLocation loc = CodeWithVariants(new string[] { "habitat", "cover" }, new string[] { "land", "free" });
+            AssetLocation loc = CodeWithVariants(["habitat", "cover"], ["land", "free"]);
             Block block = world.GetBlock(loc);
             return new ItemStack(block);
         }
@@ -146,7 +156,7 @@ namespace Vintagestory.GameContent
 
             if (byPlayer != null && Variant["state"] == "normal" && (byPlayer.InventoryManager.ActiveTool == EnumTool.Knife || byPlayer.InventoryManager.ActiveTool == EnumTool.Sickle || byPlayer.InventoryManager.ActiveTool == EnumTool.Scythe))
             {
-                world.BlockAccessor.SetBlock(world.GetBlock(CodeWithVariants(new string[] { "habitat", "state" }, new string[] { "land", "harvested" })).BlockId, pos);
+                world.BlockAccessor.SetBlock(world.GetBlock(CodeWithVariants(["habitat", "state"], ["land", "harvested"])).BlockId, pos);
                 return;
             }
 

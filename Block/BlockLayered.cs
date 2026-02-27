@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Common;
+using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
 #nullable disable
@@ -15,6 +15,17 @@ namespace Vintagestory.GameContent
 
             if (layer < 7) return world.BlockAccessor.GetBlock(CodeWithPath(basecode + "-" + (layer + 1)));
             return world.BlockAccessor.GetBlock(CodeWithPath(basecode.Replace("layer", "block")));
+        }
+
+        public Block GetPrevLayer(IWorldAccessor world)
+        {
+            int.TryParse(Code.Path.Split('-')[1], out int layer);
+
+            string basecode = CodeWithoutParts(1);
+
+            if (layer > 1) return world.BlockAccessor.GetBlock(CodeWithPath(basecode + "-" + (layer - 1)));
+
+            return world.Blocks[0];
         }
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)

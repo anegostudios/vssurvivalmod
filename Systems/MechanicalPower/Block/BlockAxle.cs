@@ -1,4 +1,4 @@
-﻿using System.Linq;
+using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
@@ -9,6 +9,19 @@ namespace Vintagestory.GameContent.Mechanics
 
     public class BlockAxle : BlockMPBase
     {
+        Cuboidf[] fullBox = [Cuboidf.Default()];
+        public override Cuboidf[] GetSelectionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
+        {
+            if (GetBEBehavior<BlockEntityBehaviorCoverable>(pos)?.WallStack != null) return fullBox;
+            return base.GetSelectionBoxes(blockAccessor, pos);
+        }
+
+        public override Cuboidf[] GetCollisionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
+        {
+            if (GetBEBehavior<BlockEntityBehaviorCoverable>(pos)?.WallStack != null) return fullBox;
+            return base.GetCollisionBoxes(blockAccessor, pos);
+        }
+
         public bool IsOrientedTo(BlockFacing facing)
         {
             string dirs = LastCodePart();
@@ -16,8 +29,7 @@ namespace Vintagestory.GameContent.Mechanics
             return dirs[0] == facing.Code[0] || (dirs.Length > 1 && dirs[1] == facing.Code[0]);
         }
 
-
-        public override bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face)
+        public override bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face, BlockMPBase forBlock)
         {
             return IsOrientedTo(face);
         }
@@ -37,13 +49,13 @@ namespace Vintagestory.GameContent.Mechanics
                 if (block != null)
                 {
                     BlockFacing faceOpposite = face.Opposite;
-                    if (block.HasMechPowerConnectorAt(world, pos, faceOpposite))
+                    if (block.HasMechPowerConnectorAt(world, pos, faceOpposite, this))
                     {
-                        AssetLocation loc = new AssetLocation(FirstCodePart() + "-" + faceOpposite.Code[0] + face.Code[0]);
+                        AssetLocation loc = CodeWithVariant("rotation", "" + faceOpposite.Code[0] + face.Code[0]);
                         Block toPlaceBlock = world.GetBlock(loc);
                         if (toPlaceBlock == null)
                         {
-                            loc = new AssetLocation(FirstCodePart() + "-" + face.Code[0] + faceOpposite.Code[0]);
+                            loc = CodeWithVariant("rotation", "" + face.Code[0] + faceOpposite.Code[0]);
                             toPlaceBlock = world.GetBlock(loc);
                         }
 
@@ -52,10 +64,10 @@ namespace Vintagestory.GameContent.Mechanics
                             block.DidConnectAt(world, pos, faceOpposite);
                             WasPlaced(world, blockSel.Position, face);
 
-                            //Test for connection on opposite side as well
+                            // Test for connection on opposite side as well
                             pos = blockSel.Position.AddCopy(faceOpposite);
                             block = world.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
-                            if (block != null && block.HasMechPowerConnectorAt(world, pos, face))
+                            if (block != null && block.HasMechPowerConnectorAt(world, pos, face, this))
                             {
                                 block.DidConnectAt(world, pos, face);
                                 WasPlaced(world, blockSel.Position, faceOpposite);
@@ -88,7 +100,7 @@ namespace Vintagestory.GameContent.Mechanics
                     BlockPos npos = pos.AddCopy(face);
                     IMechanicalPowerBlock block = world.BlockAccessor.GetBlock(npos) as IMechanicalPowerBlock;
                     bool prevConnected = connected;
-                    if (block != null && block.HasMechPowerConnectorAt(world, pos, face.Opposite) && world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPBase>()?.disconnected == false) connected = true;
+                    if (block != null && block.HasMechPowerConnectorAt(world, pos, face.Opposite, this) && world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPBase>()?.disconnected == false) connected = true;
                     BlockAngledGears blockagears = block as BlockAngledGears;
                     if (blockagears == null) continue;
                     if (blockagears.Facings.Contains(face.Opposite) && blockagears.Facings.Length == 1)

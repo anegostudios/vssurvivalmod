@@ -1,4 +1,4 @@
-﻿using ProtoBuf;
+using ProtoBuf;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -138,7 +138,7 @@ namespace Vintagestory.GameContent
 
             playerShipsByPlayerUid[group] = new EntityOwnership() {
                 EntityId = toEntity.EntityId,
-                Pos = toEntity.ServerPos,
+                Pos = toEntity.Pos,
                 Name = toEntity.GetName(),
                 Color = "#0e9d51"
             };
@@ -158,7 +158,10 @@ namespace Vintagestory.GameContent
             if (tree == null) return;
 
             string uid = tree.GetString("uid");
-            string groupecode = fromEntity.GetBehavior<EntityBehaviorOwnable>().Group;
+            var ebo = fromEntity.GetBehavior<EntityBehaviorOwnable>();
+            if (ebo == null) return;
+
+            string groupecode = ebo.Group;
             if (OwnerShipsByPlayerUid.TryGetValue(uid, out var ownerships))
             {
                 if (ownerships?.TryGetValue(groupecode, out var ownership) == true)

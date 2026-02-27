@@ -60,6 +60,12 @@ namespace Vintagestory.GameContent
         /// </summary>
         [DocumentAsJson("Optional", "1")]
         float impactDamageMul;
+		
+        /// <summary>
+        /// Specify a different block for the block to turn into when it falls and hits the ground
+        /// </summary>
+        [DocumentAsJson("Optional", "None")]
+        AssetLocation variantAfterFalling;
 
         /// <summary>
         /// A set of attachment areas for the unstable block. 
@@ -117,6 +123,11 @@ namespace Vintagestory.GameContent
             {
                 fallSound = AssetLocation.Create(sound, block.Code.Domain);
             }
+            string variant = properties["variantAfterFalling"].AsString(null);
+            if (variant != null)
+            {
+                variantAfterFalling = AssetLocation.Create(variant, block.Code.Domain);
+            }
 
             impactDamageMul = properties["impactDamageMul"].AsFloat(1f);
         }
@@ -170,22 +181,7 @@ namespace Vintagestory.GameContent
             {
                 BlockPos ourPos = pos.Copy();
                 // Must run a frame later. This method is called from OnBlockPlaced, but at this point - if this is a freshly settled falling block, then the BE does not have its full data yet (because EntityBlockFalling makes a SetBlock, then only calls FromTreeAttributes on the BE
-                sapi.Event.EnqueueMainThreadTask(()=>{
-                    var block = world.BlockAccessor.GetBlock(ourPos);
-                    if (this.block != block) return; // Block was already removed
-
-                    // Prevents duplication
-                    Entity entity = world.GetNearestEntity(ourPos.ToVec3d().Add(0.5, 0.5, 0.5), 1, 1.5f, (e) =>
-                    {
-                        return e is EntityBlockFalling ebf && ebf.initialPos.Equals(ourPos);
-                    });
-                    if (entity != null) return;
-
-                    var be = world.BlockAccessor.GetBlockEntity(ourPos);
-                    EntityBlockFalling entityBf = new EntityBlockFalling(block, be, ourPos, fallSound, impactDamageMul, true, dustIntensity);
-
-                    world.SpawnEntity(entityBf);
-                }, "falling");
+                sapi.Event.EnqueueMainThreadTask(()=> createFallingBlock(world, ourPos), "falling");
 
                 handling = EnumHandling.PreventSubsequent;
                 return true;
@@ -195,6 +191,26 @@ namespace Vintagestory.GameContent
             return false;
         }
 
+        public void createFallingBlock(IWorldAccessor world, BlockPos ourPos)
+        {
+            var block = world.BlockAccessor.GetBlock(ourPos);
+            if (this.block != block) return; // Block was already removed
+
+            // Prevents duplication
+            Entity entity = world.GetNearestEntity(ourPos.ToVec3d().Add(0.5, 0.5, 0.5), 1, 1.5f, (e) =>
+            {
+                return e is EntityBlockFalling ebf && ebf.initialPos.Equals(ourPos);
+            });
+            if (entity != null) return;
+
+            // Change after falling, like a broken variant or a "lower shape"
+            if (variantAfterFalling != null) block = world.BlockAccessor.GetBlock(variantAfterFalling);
+
+            var be = world.BlockAccessor.GetBlockEntity(ourPos);
+            EntityBlockFalling entityBf = new EntityBlockFalling(block, be, ourPos, fallSound, impactDamageMul, true, dustIntensity);
+
+            world.SpawnEntity(entityBf);
+        }
 
         public virtual bool IsAttached(IBlockAccessor blockAccessor, BlockPos pos)
         {
@@ -207,7 +223,7 @@ namespace Vintagestory.GameContent
                 return block.CanAttachBlockAt(blockAccessor, this.block, tmpPos, BlockFacing.UP, attachmentAreas[5]);
             }
 
-            tmpPos = new BlockPos();
+            tmpPos = new BlockPos(pos.dimension);
             for (int i = 0; i < attachableFaces.Length; i++)
             {
                 BlockFacing face = attachableFaces[i];
@@ -229,10 +245,10 @@ namespace Vintagestory.GameContent
             {
                 BlockFacing facing = BlockFacing.HORIZONTALS[i];
 
-                Block nBlock = world.BlockAccessor.GetBlockOrNull(pos.X + facing.Normali.X, pos.Y + facing.Normali.Y, pos.Z + facing.Normali.Z);
+                Block nBlock = world.BlockAccessor.GetBlockOrNull(pos.X + facing.Normali.X, pos.InternalY + facing.Normali.Y, pos.Z + facing.Normali.Z);
                 if (nBlock != null && nBlock.Replaceable >= 6000)
                 {
-                    nBlock = world.BlockAccessor.GetBlockOrNull(pos.X + facing.Normali.X, pos.Y + facing.Normali.Y - 1, pos.Z + facing.Normali.Z);
+                    nBlock = world.BlockAccessor.GetBlockOrNull(pos.X + facing.Normali.X, pos.InternalY + facing.Normali.Y - 1, pos.Z + facing.Normali.Z);
                     if (nBlock != null && nBlock.Replaceable >= 6000)
                     {
                         return true;

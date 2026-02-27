@@ -75,7 +75,8 @@ public class ModSystemDevastationEffects : ModSystem, IRenderer
 
     public override void Start(ICoreAPI api)
     {
-        base.Start(api);
+        var loreContent = api.World.Config.GetAsString("loreContent", "true").ToBool(true);
+        if (!loreContent) return;
 
         api.Event.OnGetWindSpeed += Event_OnGetWindSpeed;
         api.Event.OnGetClimate += Event_OnGetClimate;
@@ -110,6 +111,8 @@ public class ModSystemDevastationEffects : ModSystem, IRenderer
 
     public override void StartClientSide(ICoreClientAPI api)
     {
+        var loreContent = api.World.Config.GetAsString("loreContent", "true").ToBool(true);
+        if (!loreContent) return;
         capi = api;
         api.Event.PlayerDimensionChanged += Event_PlayerDimensionChanged;
 
@@ -161,7 +164,7 @@ public class ModSystemDevastationEffects : ModSystem, IRenderer
 
         api.ModLoader.GetModSystem<ModSystemAmbientParticles>().ShouldSpawnAmbientParticles += () => devaRangeness > 1;
         api.ModLoader.GetModSystem<WeatherSystemClient>().OnGetBlendedWeatherData += DevastationEffects_OnGetBlendedWeatherData;
-        api.Event.OnGetClimate += Event_OnGetClimate; 
+        api.Event.OnGetClimate += Event_OnGetClimate;
         api.Settings.Int.AddWatcher("musicLevel", (level) =>
         {
             baseTrack?.UpdateVolume();
@@ -288,7 +291,7 @@ public class ModSystemDevastationEffects : ModSystem, IRenderer
         rustTrack?.Sound?.FadeTo(0, 4, (s) => s.Stop());
         layer2Track?.Sound?.FadeTo(0, 4, (s) => s.Stop());
         bossFightTrack?.Sound?.FadeTo(0, 4, (s) => s.Stop());
-        
+
         wasStopped = true;
         wasStarted = false;
     }
@@ -325,7 +328,7 @@ public class ModSystemDevastationEffects : ModSystem, IRenderer
     {
         if (baseLayerLoaded && rustLayerLoaded && kayer2Loaded && erelFightLoaded && !wasStarted)
         {
-            capi.StartTrack(baseTrack, 99, EnumSoundType.MusicGlitchunaffected, false);
+            capi.StartTrack(baseTrack, EnumSoundType.MusicGlitchunaffected, null, false);
             baseTrack.Sound.SetVolume(0);
             rustTrack.Sound.SetVolume(0);
             layer2Track.Sound.SetVolume(0);
@@ -435,6 +438,8 @@ public class ModSystemDevastationEffects : ModSystem, IRenderer
 
     public override void StartServerSide(ICoreServerAPI api)
     {
+        var loreContent = api.World.Config.GetAsString("loreContent", "true").ToBool(true);
+        if (!loreContent) return;
         sapi = api;
         api.Event.SaveGameLoaded += Event_SaveGameLoaded;
         api.Event.GameWorldSave += Event_GameWorldSave;
@@ -470,7 +475,14 @@ public class ModSystemDevastationEffects : ModSystem, IRenderer
             }
         }
 
-        mobConfig = sapi.Assets.Get("config/mobextraspawns.json").ToObject<MobExtraSpawnsDeva>().devastationAreaSpawns;
+        var asset = sapi.Assets.TryGet("config/mobextraspawns.json");
+        if (asset == null)
+        {
+            sapi.Logger.Warning("config/mobextraspawns.json missing. Devastation area spawns will not work.");
+            return;
+        }
+
+        mobConfig = asset.ToObject<MobExtraSpawnsDeva>().devastationAreaSpawns;
         var rdi = mobConfig.ResolvedVariantGroups = new Dictionary<string, EntityProperties[]>();
 
         foreach (var val in mobConfig.VariantGroups)
@@ -492,9 +504,9 @@ public class ModSystemDevastationEffects : ModSystem, IRenderer
 
         foreach (var player in sapi.World.AllOnlinePlayers)
         {
-            double distance = player.Entity.ServerPos.DistanceTo(DevaLocationPresent);
+            double distance = player.Entity.Pos.DistanceTo(DevaLocationPresent);
 
-            towerMinDistanceXZ = Math.Min(towerMinDistanceXZ, player.Entity.ServerPos.HorDistanceTo(DevaLocationPresent));
+            towerMinDistanceXZ = Math.Min(towerMinDistanceXZ, player.Entity.Pos.HorDistanceTo(DevaLocationPresent));
 
             var hasEffect = player.Entity.Stats["gliderLiftMax"].ValuesByKey.TryGetValue("deva", out _);
             if (distance < EffectRadius)
@@ -593,7 +605,7 @@ public class ModSystemDevastationEffects : ModSystem, IRenderer
                     this.entityErel = (EntityErel)entity;
 
                     const int cs = GlobalConstants.ChunkSize;
-                    long chunkindex3d = sapi.WorldManager.ChunkIndex3D((int)entity.ServerPos.X / cs, (int)entity.ServerPos.Y / cs, (int)entity.ServerPos.Z / cs);
+                    long chunkindex3d = sapi.WorldManager.ChunkIndex3D((int)entity.Pos.X / cs, (int)entity.Pos.Y / cs, (int)entity.Pos.Z / cs);
                     sapi.World.LoadEntity(entityErel, chunkindex3d);
                 }
             }
@@ -610,9 +622,9 @@ public class ModSystemDevastationEffects : ModSystem, IRenderer
 
             EntityProperties type = sapi.World.GetEntityType(new AssetLocation("erel-corrupted"));
             var entity = sapi.World.ClassRegistry.CreateEntity(type);
-            entity.ServerPos.SetPos(DevaLocationPresent);
-            entity.ServerPos.Y = TerraGenConfig.seaLevel + 90;
-            entity.Pos.SetPos(entity.ServerPos);
+            entity.Pos.SetPos(DevaLocationPresent);
+            entity.Pos.Y = TerraGenConfig.seaLevel + 90;
+            entity.Pos.SetPos(entity.Pos);
             sapi.World.SpawnEntity(entity);
             this.entityErel = (EntityErel)entity;
         }
@@ -621,14 +633,16 @@ public class ModSystemDevastationEffects : ModSystem, IRenderer
 
     private void trySpawnMobsForPlayer(IPlayer player)
     {
+        if (mobConfig == null) return;
+
         var part = sapi.ModLoader.GetModSystem<EntityPartitioning>();
         Dictionary<string, int> spawnCountsByGroup = new Dictionary<string, int>();
         Vec3d spawnPos = new Vec3d();
-        BlockPos spawnPosi = new BlockPos();
+        BlockPos spawnPosi = new BlockPos(Dimensions.NormalWorld);
         int range = 30;
         var rnd = sapi.World.Rand;
 
-        var plrPos = player.Entity.ServerPos.XYZ;
+        var plrPos = player.Entity.Pos.XYZ;
         part.WalkEntities(plrPos, range + 15, (e) =>
         {
             foreach (var vg in mobConfig.VariantGroups)
@@ -661,8 +675,7 @@ public class ModSystemDevastationEffects : ModSystem, IRenderer
                     int index = GameMath.RoundRandom(sapi.World.Rand, (float)typernd);
                     var type = variantGroup[GameMath.Clamp(index, 0, variantGroup.Length - 1)];
 
-                    int mindist = 18;
-                    if (groupcode == "bowtorn") mindist = 32;
+                    int mindist = 10;
 
                     int rndx = (mindist + rnd.Next(range - 10)) * (1 - 2 * rnd.Next(2));
                     int rndy = (rnd.Next(range - 10)) * (1 - 2 * rnd.Next(2));
@@ -691,11 +704,10 @@ public class ModSystemDevastationEffects : ModSystem, IRenderer
     private void DoSpawn(EntityProperties entityType, Vec3d spawnPosition)
     {
         Entity entity = sapi.ClassRegistry.CreateEntity(entityType);
-        entity.ServerPos.SetPosWithDimension(spawnPosition);
-        entity.Pos.SetFrom(entity.ServerPos);
-        entity.PositionBeforeFalling.Set(entity.ServerPos.X, entity.ServerPos.Y, entity.ServerPos.Z);
+        entity.Pos.SetPosWithDimension(spawnPosition);
+        entity.PositionBeforeFalling.Set(entity.Pos.X, entity.Pos.Y, entity.Pos.Z);
 
-        entity.ServerPos.SetYaw((float)sapi.World.Rand.NextDouble() * GameMath.TWOPI);
+        entity.Pos.SetYaw((float)sapi.World.Rand.NextDouble() * GameMath.TWOPI);
         entity.Attributes.SetString("origin", "devastation");
         sapi.World.SpawnEntity(entity);
         entity.Attributes.SetBool("ignoreDaylightFlee", true);
@@ -723,7 +735,7 @@ public class ModSystemDevastationEffects : ModSystem, IRenderer
 
                 pos.Y = capi.World.BlockAccessor.GetRainMapHeightAt((int)pos.X, (int)pos.Z) - 8 + capi.World.Rand.NextDouble() * 25;
 
-                Block block = capi.World.BlockAccessor.GetBlock((int)pos.X, (int)pos.Y, (int)pos.Z);
+                Block block = capi.World.BlockAccessor.GetBlockRaw((int)pos.X, (int)pos.Y, (int)pos.Z);
                 if (block.FirstCodePart() != "devastatedsoil") continue;
 
                 Vec3f velocity = DevaLocationPresent.Clone().Sub(pos.X, pos.Y, pos.Z).Normalize().Mul(2f * capi.World.Rand.NextDouble()).ToVec3f() / 2f;

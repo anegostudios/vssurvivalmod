@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
@@ -9,7 +10,7 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockSkep : Block
+    public class BlockSkep : Block, ICreatureDietFoodTags
     {
         float beemobSpawnChance = 0.4f;
 
@@ -59,7 +60,7 @@ namespace Vintagestory.GameContent
             beemobSpawnChance = Attributes?["beemobSpawnChance"].AsFloat(0.4f) ?? 0.4f;
         }
 
-        
+
 
         public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
         {
@@ -69,11 +70,10 @@ namespace Vintagestory.GameContent
             {
                 if (world.ClassRegistry.CreateEntity(world.GetEntityType("beemob")) is Entity entity)
                 {
-                    entity.ServerPos.X = pos.X + 0.5f;
-                    entity.ServerPos.Y = pos.Y + 0.5f;
-                    entity.ServerPos.Z = pos.Z + 0.5f;
-                    entity.ServerPos.Yaw = (float)world.Rand.NextDouble() * 2 * GameMath.PI;
-                    entity.Pos.SetFrom(entity.ServerPos);
+                    entity.Pos.X = pos.X + 0.5f;
+                    entity.Pos.Y = pos.Y + 0.5f;
+                    entity.Pos.Z = pos.Z + 0.5f;
+                    entity.Pos.Yaw = (float)world.Rand.NextDouble() * 2 * GameMath.PI;
 
                     entity.Attributes.SetString("origin", "brokenbeehive");
                     world.SpawnEntity(entity);
@@ -110,7 +110,7 @@ namespace Vintagestory.GameContent
             {
                 if (Drops[i].Tool != null && (byPlayer == null || Drops[i].Tool != byPlayer.InventoryManager.ActiveTool)) continue;
 
-                ItemStack stack = Drops[i].GetNextItemStack(dropQuantityMultiplier);
+                ItemStack? stack = Drops[i].GetNextItemStack(dropQuantityMultiplier);
                 if (stack == null) continue;
 
                 todrop.Add(stack);
@@ -140,7 +140,7 @@ namespace Vintagestory.GameContent
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
         {
-            WorldInteraction[] wi = 
+            WorldInteraction[] wi =
             [
                 new() {
                     ActionLangCode = Variant["type"] == "populated" ? "blockhelp-skep-putinbagslot" : "blockhelp-skep-pickup",
@@ -165,27 +165,43 @@ namespace Vintagestory.GameContent
 
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
-            var orientation = Variant["side"];
-            var key = "beehive-" + Variant["material"] + "-harvestablemesh-" + orientation;
-
-            MeshData mesh;
-            if (!api.ObjectCache.ContainsKey(key))
+            if (itemstack.Attributes.GetBool("harvestable"))
             {
-                Block fullSkep = capi.World.GetBlock(CodeWithVariant("type", "populated"));
+                var orientation = Variant["side"];
+                var key = "beehive-" + Variant["material"] + "-harvestablemesh-" + orientation;
+                var meshrefs = ObjectCacheUtil.GetOrCreate(capi, "skepHarvestableMeshRefs", () => new Dictionary<string, MultiTextureMeshRef>());
 
-                capi.Tesselator.TesselateShape(
-                    fullSkep,
-                    API.Common.Shape.TryGet(api, "shapes/block/beehive/skep-harvestable.json"),
-                    out mesh,
-                    new Vec3f(0, BlockFacing.FromCode(orientation).HorizontalAngleIndex * 90 - 90, 0)
-                );
-                api.ObjectCache[key] = mesh;
+                if (!meshrefs.TryGetValue(key, out renderinfo.ModelRef))
+                {
+                    MeshData mesh = ObjectCacheUtil.GetOrCreate(capi, key, () =>
+                    {
+                        Block? fullSkep = capi.World.GetBlock(CodeWithVariant("type", "populated"));
+                        ArgumentNullException.ThrowIfNull(fullSkep);
+                        AssetLocation shapeLoc = AssetLocation.Create(fullSkep.Attributes?["harvestableShape"].AsString() ?? "game:shapes/block/beehive/skep-harvestable.json", Code.Domain);
+
+                        capi.Tesselator.TesselateShape(
+                            fullSkep,
+                            API.Common.Shape.TryGet(api, shapeLoc.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json")),
+                            out mesh,
+                            new Vec3f(0, BlockFacing.FromCode(orientation).HorizontalAngleIndex * 90 - 90, 0)
+                        );
+                        return mesh;
+                    });
+
+                    meshrefs[key] = renderinfo.ModelRef = capi.Render.UploadMultiTextureMesh(mesh);
+                }
             }
-            else mesh = (MeshData)api.ObjectCache[key];
-
-            if (itemstack.Attributes.GetBool("harvestable")) renderinfo.ModelRef = capi.Render.UploadMultiTextureMesh(mesh);
 
             base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
+        }
+
+        public string[] GetFoodTags(ItemStack itemstack)
+        {
+            if (itemstack.Attributes.GetBool("harvestable"))
+            {
+                return Attributes?["harvestableFoodTags"].AsArray<string>() ?? ["lootableSweet"];
+            }
+            return [];
         }
     }
 }

@@ -28,7 +28,7 @@ namespace Vintagestory.GameContent
 
         public override void Start(EntityActivity act)
         {
-            vas.Entity.ServerPos.Yaw = yaw * GameMath.DEG2RAD;
+            vas.Entity.Pos.Yaw = yaw * GameMath.DEG2RAD;
         }
 
 

@@ -353,8 +353,10 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
                     float itemHoursHeatReceived = 0;
                     var collectible = itemSlot.Itemstack.Collectible;
 
-                    if (collectible.CombustibleProps?.SmeltedStack?.ResolvedItemstack.Block?.BlockMaterial == EnumBlockMaterial.Ceramic
-                        ||  collectible.CombustibleProps?.SmeltingType == EnumSmeltType.Fire
+                    var combustibleProps = collectible.GetCombustibleProperties(Api.World, itemSlot.Itemstack, null);
+
+                    if (combustibleProps?.SmeltedStack?.ResolvedItemstack.Block?.BlockMaterial == EnumBlockMaterial.Ceramic
+                        || combustibleProps?.SmeltingType == EnumSmeltType.Fire
                         || collectible.Attributes?["beehivekiln"].Exists == true)
                     {
                         var temp = itemSlot.Itemstack.Collectible.GetTemperature(Api.World, itemSlot.Itemstack, hoursHeatReceived);
@@ -397,19 +399,20 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
         if (itemSlot != null && !itemSlot.Empty)
         {
             var rawStack = itemSlot.Itemstack;
-            var firedStack = rawStack.Collectible.CombustibleProps?.SmeltedStack?.ResolvedItemstack;
+            var rawCombustibleProps = rawStack.Collectible.GetCombustibleProperties(Api.World, rawStack, null);
+            var firedStack = rawCombustibleProps?.SmeltedStack?.ResolvedItemstack;
             var kiln = rawStack.Collectible.Attributes?["beehivekiln"];
             var stack = kiln?[doorOpen.ToString()]?.AsObject<JsonItemStack>();
             var temp = itemSlot.Itemstack.Collectible.GetTemperature(Api.World, itemSlot.Itemstack);
             if (kiln?.Exists == true && stack?.Resolve(Api.World, "beehivekiln-burn") == true)
             {
                 itemSlot.Itemstack = stack.ResolvedItemstack.Clone();
-                itemSlot.Itemstack.StackSize = rawStack.StackSize / rawStack.Collectible.CombustibleProps.SmeltedRatio;
+                itemSlot.Itemstack.StackSize = rawStack.StackSize / rawCombustibleProps.SmeltedRatio;
             }
             else if (firedStack != null)
             {
                 itemSlot.Itemstack = firedStack.Clone();
-                itemSlot.Itemstack.StackSize = rawStack.StackSize / rawStack.Collectible.CombustibleProps.SmeltedRatio;
+                itemSlot.Itemstack.StackSize = rawStack.StackSize / rawCombustibleProps.SmeltedRatio;
             }
             itemSlot.Itemstack.Collectible.SetTemperature(Api.World, itemSlot.Itemstack, temp);
             itemSlot.MarkDirty();

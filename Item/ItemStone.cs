@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -39,7 +39,7 @@ namespace Vintagestory.GameContent
         public override void OnHeldInteractStart(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
             var lookedAtBlock = blockSel == null ? null : byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
-            if (lookedAtBlock is BlockDisplayCase || lookedAtBlock is BlockSign)
+            if (lookedAtBlock is BlockDisplayCase || lookedAtBlock is BlockSign || lookedAtBlock is BlockBloomery)
             {
                 base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handling);
                 handling = EnumHandHandling.NotHandled;
@@ -124,7 +124,7 @@ namespace Vintagestory.GameContent
 
                 if (knappingBlock.Sounds != null)
                 {
-                    world.PlaySoundAt(knappingBlock.Sounds.Place, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z);
+                    world.PlaySoundAt(knappingBlock.Sounds.Place, blockSel.Position, -0.5);
                 }
 
                 BlockEntityKnappingSurface bec = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityKnappingSurface;
@@ -175,7 +175,7 @@ namespace Vintagestory.GameContent
 
                 world.BlockAccessor.TriggerNeighbourBlockUpdate(blockSel.Position);
 
-                if (block.Sounds != null) world.PlaySoundAt(block.Sounds.Place, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z);
+                if (block.Sounds != null) world.PlaySoundAt(block.Sounds.Place, blockSel.Position, -0.5);
                 (api as ICoreClientAPI)?.World.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
 
                 itemslot.Itemstack.StackSize--;
@@ -184,116 +184,6 @@ namespace Vintagestory.GameContent
                 byEntity.Attributes.SetInt("aimingCancel", 1);
                 return;
             }
-
-            if (byEntity.Controls.ShiftKey) return;
-
-        
-            // Not ideal to code the aiming controls this way. Needs an elegant solution - maybe an event bus?
-            byEntity.Attributes.SetInt("aiming", 1);
-            byEntity.Attributes.SetInt("aimingCancel", 0);
-            byEntity.StartAnimation("aim");
-
-            handling = EnumHandHandling.PreventDefault;
-        }
-
-        public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
-        {
-            bool result = true;
-            bool preventDefault = false;
-            foreach (CollectibleBehavior behavior in CollectibleBehaviors)
-            {
-                EnumHandling handled = EnumHandling.PassThrough;
-
-                bool behaviorResult = behavior.OnHeldInteractStep(secondsUsed, slot, byEntity, blockSel, entitySel, ref handled);
-                if (handled != EnumHandling.PassThrough)
-                {
-                    result &= behaviorResult;
-                    preventDefault = true;
-                }
-
-                if (handled == EnumHandling.PreventSubsequent) return result;
-            }
-            if (preventDefault) return result;
-
-            if (byEntity.Attributes.GetInt("aimingCancel") == 1) return false;
-
-            if (byEntity.World is IClientWorldAccessor)
-            {
-                ModelTransform tf = new ModelTransform();
-                tf.EnsureDefaultValues();
-
-                float offset = GameMath.Clamp(secondsUsed * 3, 0, 1.5f);
-
-                tf.Translation.Set(offset / 4f, offset / 2f, 0);
-                tf.Rotation.Set(0, 0, GameMath.Min(90, secondsUsed * 360/1.5f));
-            }
-
-
-            return true;
-        }
-
-        
-        public override bool OnHeldInteractCancel(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
-        {
-            byEntity.Attributes.SetInt("aiming", 0);
-            byEntity.StopAnimation("aim");
-
-            if (cancelReason != EnumItemUseCancelReason.ReleasedMouse)
-            {
-                byEntity.Attributes.SetInt("aimingCancel", 1);
-            }
-
-            return true;
-        }
-
-        public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
-        {
-            bool preventDefault = false;
-
-            foreach (CollectibleBehavior behavior in CollectibleBehaviors)
-            {
-                EnumHandling handled = EnumHandling.PassThrough;
-
-                behavior.OnHeldInteractStop(secondsUsed, slot, byEntity, blockSel, entitySel, ref handled);
-                if (handled != EnumHandling.PassThrough) preventDefault = true;
-
-                if (handled == EnumHandling.PreventSubsequent) return;
-            }
-
-            if (preventDefault) return;
-
-            if (byEntity.Attributes.GetInt("aimingCancel") == 1) return;
-
-            byEntity.Attributes.SetInt("aiming", 0);
-            byEntity.StopAnimation("aim");
-
-            if (secondsUsed < 0.35f) return;
-
-            ItemStack stack = slot.TakeOut(1);
-            slot.MarkDirty();
-
-            IPlayer byPlayer = null;
-            if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
-            byEntity.World.PlaySoundAt(new AssetLocation("sounds/player/throw"), byEntity, byPlayer, false, 8);
-
-            EntityProperties type = byEntity.World.GetEntityType(new AssetLocation("thrownstone-" + Variant["rock"]));
-            Entity entity = byEntity.World.ClassRegistry.CreateEntity(type);
-            ((EntityThrownStone)entity).FiredBy = byEntity;
-            ((EntityThrownStone)entity).Damage = damage;
-            ((EntityThrownStone)entity).ProjectileStack = stack;
-
-            EntityProjectile.SpawnThrownEntity(entity, byEntity, 0.75, 0.1, 0.2);
-            byEntity.StartAnimation("throw");
-
-            //byEntity.GetBehavior<EntityBehaviorHunger>()?.ConsumeSaturation(2f);
-        }
-
-
-        public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
-        {
-            base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
-
-            dsc.AppendLine(Lang.Get("{0} blunt damage when thrown", damage));
         }
 
 
@@ -350,11 +240,6 @@ namespace Vintagestory.GameContent
         public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot)
         {
             return new WorldInteraction[] {
-                new WorldInteraction()
-                {
-                    ActionLangCode = "heldhelp-throw",
-                    MouseButton = EnumMouseButton.Right,
-                },
                 new WorldInteraction()
                 {
                     ActionLangCode = "heldhelp-place",

@@ -12,7 +12,8 @@ namespace Vintagestory.GameContent
     {
         Quadrants,
         Halves,
-        SingleCenter
+        SingleCenter,
+        Stacking4
     }
 
     public interface IShelvable
@@ -21,20 +22,21 @@ namespace Vintagestory.GameContent
         public ModelTransform? GetOnShelfTransform(ItemStack stack) => null;
     }
 
+
+
     public class BlockEntityShelf : BlockEntityDisplay
     {
-        InventoryGeneric inv;
+        protected static int slotCount = 8;
+
+        protected InventoryGeneric inv;
         public override InventoryBase Inventory => inv;
-
         public override string InventoryClassName => "shelf";
-
         public override string AttributeTransformCode => "onshelfTransform";
-
-        static int slotCount = 8;
+        protected string GetSlotType(int slotid) => "shelf";
 
         public BlockEntityShelf()
         {
-            inv = new InventoryGeneric(slotCount, "shelf-0", null, null);
+            inv = new InventoryGeneric(slotCount, "shelf-0", null, (id, inv) => new ItemSlotDisplay(inv, GetSlotType(id)));
         }
 
         public override void Initialize(ICoreAPI api)
@@ -45,7 +47,7 @@ namespace Vintagestory.GameContent
             inv.OnAcquireTransitionSpeed += Inv_OnAcquireTransitionSpeed;
         }
 
-        private float Inv_OnAcquireTransitionSpeed(EnumTransitionType transType, ItemStack stack, float baseMul)
+        protected float Inv_OnAcquireTransitionSpeed(EnumTransitionType transType, ItemStack stack, float baseMul)
         {
             if (transType is EnumTransitionType.Dry or EnumTransitionType.Melt)
             {
@@ -59,12 +61,12 @@ namespace Vintagestory.GameContent
             return GameMath.Clamp((1 - container.GetPerishRate() - 0.5f) * 3, 0, 1);
         }
 
-        internal bool OnInteract(IPlayer byPlayer, BlockSelection blockSel)
+        public bool OnInteract(IPlayer byPlayer, BlockSelection blockSel)
         {
             ItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
-            if (slot.Empty) return TryTake(byPlayer, blockSel);
-            else if (TryUse(byPlayer, blockSel)) return true;
+            if (TryUse(byPlayer, blockSel)) return true;
+            else if (slot.Empty) return TryTake(byPlayer, blockSel);
             else if (GetShelvableLayout(slot.Itemstack) != null) return TryPut(byPlayer, blockSel);
 
             return false;
@@ -76,6 +78,7 @@ namespace Vintagestory.GameContent
 
             var attr = stack.Collectible?.Attributes;
             var layout = stack.Collectible?.GetCollectibleInterface<IShelvable>()?.GetShelvableType(stack);
+
             layout ??= attr?["shelvable"].AsString() switch
             {
                 "Quadrants" => EnumShelvableLayout.Quadrants,
@@ -83,6 +86,7 @@ namespace Vintagestory.GameContent
                 "SingleCenter" => EnumShelvableLayout.SingleCenter,
                 _ => null
             };
+
             layout ??= attr?["shelvable"].AsBool() == true ? EnumShelvableLayout.Quadrants : null;
 
             return layout;
@@ -107,19 +111,18 @@ namespace Vintagestory.GameContent
             CollectibleObject invColl;
             for (int i = end - 1; i >= start; i--)
             {
-                if (!inv[i].Empty)
+                if (inv[i].Empty) continue;
+
+                invColl = inv[i].Itemstack.Collectible;
+
+                if (obj?.Attributes?["mealContainer"]?.AsBool() == true || obj is IContainedInteractable or IBlockMealContainer)
                 {
-                    invColl = inv[i].Itemstack.Collectible;
+                    return invColl is BlockCookedContainerBase;
+                }
 
-                    if (obj?.Attributes?["mealContainer"]?.AsBool() == true || obj is IContainedInteractable or IBlockMealContainer)
-                    {
-                        return invColl is BlockCookedContainerBase;
-                    }
-
-                    if (obj?.Attributes?["canSealCrock"]?.AsBool() == true)
-                    {
-                        return invColl is BlockCrock;
-                    }
+                if (obj?.Attributes?["canSealCrock"]?.AsBool() == true)
+                {
+                    return invColl is BlockCrock;
                 }
             }
 
@@ -168,17 +171,17 @@ namespace Vintagestory.GameContent
             int start = (up ? 4 : 0) + (shelvableLayout is EnumShelvableLayout.SingleCenter ? 0 : (left ? 0 : 2));
             int end = start + (shelvableLayout is EnumShelvableLayout.Halves or EnumShelvableLayout.SingleCenter ? 1 : 2);
 
+            if (player.Entity.Controls.ShiftKey) return false;
+
             for (int i = end - 1; i >= start; i--)
             {
-                if (!player.Entity.Controls.ShiftKey)
+                var collIci = inv[i].Itemstack?.Collectible.GetCollectibleInterface<IContainedInteractable>();
+                if (collIci != null)
                 {
-                    if (inv[i]?.Itemstack?.Collectible is IContainedInteractable collIci)
+                    if (collIci.OnContainedInteractStart(this, inv[i], player, blockSel))
                     {
-                        if (collIci.OnContainedInteractStart(this, inv[i], player, blockSel))
-                        {
-                            MarkDirty();
-                            return true;
-                        }
+                        MarkDirty();
+                        return true;
                     }
                 }
             }
@@ -225,25 +228,24 @@ namespace Vintagestory.GameContent
 
             for (int i = start; i < end; i++)
             {
-                if (inv[i].Empty)
+                if (!inv[i].Empty) continue;
+
+                int moved = heldSlot.TryPutInto(Api.World, inv[i]);
+                MarkDirty();
+                (Api as ICoreClientAPI)?.World.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+
+                if (moved > 0)
                 {
-                    int moved = heldSlot.TryPutInto(Api.World, inv[i]);
-                    MarkDirty();
-                    (Api as ICoreClientAPI)?.World.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
-
-                    if (moved > 0)
-                    {
-                        Api.World.PlaySoundAt(inv[i].Itemstack?.Block?.Sounds?.Place ?? new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
-                        Api.World.Logger.Audit("{0} Put 1x{1} into Shelf at {2}.",
-                            byPlayer.PlayerName,
-                            inv[i].Itemstack?.Collectible.Code,
-                            Pos
-                        );
-                        return true;
-                    }
-
-                    return false;
+                    Api.World.PlaySoundAt(inv[i].Itemstack?.Block?.Sounds?.Place ?? GlobalConstants.DefaultBuildSound, byPlayer.Entity, byPlayer);
+                    Api.World.Logger.Audit("{0} Put 1x{1} into Shelf at {2}.",
+                        byPlayer.PlayerName,
+                        inv[i].Itemstack?.Collectible.Code,
+                        Pos
+                    );
+                    return true;
                 }
+
+                return false;
             }
 
             (Api as ICoreClientAPI)?.TriggerIngameError(this, "shelffull", Lang.Get("shelfhelp-shelffull-error"));
@@ -265,30 +267,29 @@ namespace Vintagestory.GameContent
 
             for (int i = end - 1; i >= start; i--)
             {
-                if (!inv[i].Empty)
+                if (inv[i].Empty) continue;
+
+                ItemStack? stack = inv[i].TakeOut(1);
+                if (byPlayer.InventoryManager.TryGiveItemstack(stack))
                 {
-                    ItemStack? stack = inv[i].TakeOut(1);
-                    if (byPlayer.InventoryManager.TryGiveItemstack(stack))
-                    {
-                        AssetLocation? sound = stack?.Block?.Sounds?.Place;
-                        Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
-                    }
-
-                    if (stack?.StackSize > 0)
-                    {
-                        Api.World.SpawnItemEntity(stack, Pos);
-                    }
-                    Api.World.Logger.Audit("{0} Took 1x{1} from Shelf at {2}.",
-                        byPlayer.PlayerName,
-                        stack?.Collectible.Code,
-                        Pos
-                    );
-
-                    (Api as ICoreClientAPI)?.World.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
-                    MarkDirty();
-
-                    return true;
+                    SoundAttributes? sound = stack?.Block?.Sounds?.Place;
+                    Api.World.PlaySoundAt(sound ?? GlobalConstants.DefaultBuildSound, byPlayer.Entity, byPlayer);
                 }
+
+                if (stack?.StackSize > 0)
+                {
+                    Api.World.SpawnItemEntity(stack, Pos);
+                }
+                Api.World.Logger.Audit("{0} Took 1x{1} from Shelf at {2}.",
+                    byPlayer.PlayerName,
+                    stack?.Collectible.Code,
+                    Pos
+                );
+
+                (Api as ICoreClientAPI)?.World.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+                MarkDirty();
+
+                return true;
             }
 
             return false;
@@ -357,7 +358,8 @@ namespace Vintagestory.GameContent
 
                 ItemStack? stack = inv[i].Itemstack;
 
-                if (stack?.Collectible.TransitionableProps != null && stack.Collectible.TransitionableProps.Length > 0)
+                var transitionableProps = stack?.Collectible?.GetTransitionableProperties(Api.World, stack, forPlayer.Entity);
+                if (transitionableProps != null && transitionableProps.Length > 0)
                 {
                     sb.Append(PerishableInfoCompact(Api, inv[i], ripenRate));
                 }
@@ -380,86 +382,83 @@ namespace Vintagestory.GameContent
             }
 
             TransitionState[]? transitionStates = contentSlot.Itemstack.Collectible.UpdateAndGetTransitionStates(Api.World, contentSlot);
+            if (transitionStates == null) return dsc.ToString();
 
             bool nowSpoiling = false;
-
-            if (transitionStates != null)
+            bool appendLine = false;
+            for (int i = 0; i < transitionStates.Length; i++)
             {
-                bool appendLine = false;
-                for (int i = 0; i < transitionStates.Length; i++)
+                TransitionState state = transitionStates[i];
+
+                TransitionableProperties prop = state.Props;
+                float perishRate = contentSlot.Itemstack.Collectible.GetTransitionRateMul(Api.World, contentSlot, prop.Type);
+
+                if (perishRate <= 0) continue;
+
+                float transitionLevel = state.TransitionLevel;
+                float freshHoursLeft = state.FreshHoursLeft / perishRate;
+
+                switch (prop.Type)
                 {
-                    TransitionState state = transitionStates[i];
+                    case EnumTransitionType.Perish:
 
-                    TransitionableProperties prop = state.Props;
-                    float perishRate = contentSlot.Itemstack.Collectible.GetTransitionRateMul(Api.World, contentSlot, prop.Type);
+                        appendLine = true;
 
-                    if (perishRate <= 0) continue;
+                        if (transitionLevel > 0)
+                        {
+                            nowSpoiling = true;
+                            dsc.Append(", " + Lang.Get("{0}% spoiled", (int)Math.Round(transitionLevel * 100)));
+                        }
+                        else
+                        {
+                            double hoursPerday = Api.World.Calendar.HoursPerDay;
 
-                    float transitionLevel = state.TransitionLevel;
-                    float freshHoursLeft = state.FreshHoursLeft / perishRate;
-
-                    switch (prop.Type)
-                    {
-                        case EnumTransitionType.Perish:
-
-                            appendLine = true;
-
-                            if (transitionLevel > 0)
+                            if (freshHoursLeft / hoursPerday >= Api.World.Calendar.DaysPerYear)
                             {
-                                nowSpoiling = true;
-                                dsc.Append(", " + Lang.Get("{0}% spoiled", (int)Math.Round(transitionLevel * 100)));
+                                dsc.Append(", " + Lang.Get("fresh for {0} years", Math.Round(freshHoursLeft / hoursPerday / Api.World.Calendar.DaysPerYear, 1)));
+                            }
+                            else if (freshHoursLeft > hoursPerday)
+                            {
+                                dsc.Append(", " + Lang.Get("fresh for {0} days", Math.Round(freshHoursLeft / hoursPerday, 1)));
                             }
                             else
                             {
-                                double hoursPerday = Api.World.Calendar.HoursPerDay;
-
-                                if (freshHoursLeft / hoursPerday >= Api.World.Calendar.DaysPerYear)
-                                {
-                                    dsc.Append(", " + Lang.Get("fresh for {0} years", Math.Round(freshHoursLeft / hoursPerday / Api.World.Calendar.DaysPerYear, 1)));
-                                }
-                                else if (freshHoursLeft > hoursPerday)
-                                {
-                                    dsc.Append(", " + Lang.Get("fresh for {0} days", Math.Round(freshHoursLeft / hoursPerday, 1)));
-                                }
-                                else
-                                {
-                                    dsc.Append(", " + Lang.Get("fresh for {0} hours", Math.Round(freshHoursLeft, 1)));
-                                }
+                                dsc.Append(", " + Lang.Get("fresh for {0} hours", Math.Round(freshHoursLeft, 1)));
                             }
-                            break;
+                        }
+                        break;
 
-                        case EnumTransitionType.Ripen:
-                            if (nowSpoiling) break;
+                    case EnumTransitionType.Ripen:
+                        if (nowSpoiling) break;
 
-                            appendLine = true;
+                        appendLine = true;
 
-                            if (transitionLevel > 0)
+                        if (transitionLevel > 0)
+                        {
+                            dsc.Append(", " + Lang.Get("{1:0.#} days left to ripen ({0}%)", (int)Math.Round(transitionLevel * 100), (state.TransitionHours - state.TransitionedHours) / Api.World.Calendar.HoursPerDay / ripenRate));
+                        }
+                        else
+                        {
+                            double hoursPerday = Api.World.Calendar.HoursPerDay;
+
+                            if (freshHoursLeft / hoursPerday >= Api.World.Calendar.DaysPerYear)
                             {
-                                dsc.Append(", " + Lang.Get("{1:0.#} days left to ripen ({0}%)", (int)Math.Round(transitionLevel * 100), (state.TransitionHours - state.TransitionedHours) / Api.World.Calendar.HoursPerDay / ripenRate));
+                                dsc.Append(", " + Lang.Get("will ripen in {0} years", Math.Round(freshHoursLeft / hoursPerday / Api.World.Calendar.DaysPerYear, 1)));
+                            }
+                            else if (freshHoursLeft > hoursPerday)
+                            {
+                                dsc.Append(", " + Lang.Get("will ripen in {0} days", Math.Round(freshHoursLeft / hoursPerday, 1)));
                             }
                             else
                             {
-                                double hoursPerday = Api.World.Calendar.HoursPerDay;
-
-                                if (freshHoursLeft / hoursPerday >= Api.World.Calendar.DaysPerYear)
-                                {
-                                    dsc.Append(", " + Lang.Get("will ripen in {0} years", Math.Round(freshHoursLeft / hoursPerday / Api.World.Calendar.DaysPerYear, 1)));
-                                }
-                                else if (freshHoursLeft > hoursPerday)
-                                {
-                                    dsc.Append(", " + Lang.Get("will ripen in {0} days", Math.Round(freshHoursLeft / hoursPerday, 1)));
-                                }
-                                else
-                                {
-                                    dsc.Append(", " + Lang.Get("will ripen in {0} hours", Math.Round(freshHoursLeft, 1)));
-                                }
+                                dsc.Append(", " + Lang.Get("will ripen in {0} hours", Math.Round(freshHoursLeft, 1)));
                             }
-                            break;
-                    }
+                        }
+                        break;
                 }
-
-                if (appendLine) dsc.AppendLine();
             }
+
+            if (appendLine) dsc.AppendLine();
 
             return dsc.ToString();
         }

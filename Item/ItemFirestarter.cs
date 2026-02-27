@@ -2,6 +2,7 @@
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
 #nullable disable
@@ -20,99 +21,90 @@ namespace Vintagestory.GameContent
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
             base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
-            
-            // Commented out cause GroundStorable behavior was preventing animations and sound when using on pitkiln
-            //if (handling == EnumHandHandling.PreventDefault) return;
 
-            if (blockSel == null) return;
-            Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
+            if (blockSel?.Position is not { } pos) return;
+            var world = byEntity.World;
 
-            IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
-            if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
+            var byPlayer = (byEntity as EntityPlayer)?.Player;
+            if (!world.Claims.TryAccess(byPlayer, pos, EnumBlockAccessFlags.Use))
             {
                 return;
             }
 
-            EnumIgniteState state = EnumIgniteState.NotIgnitable;
-            if (!(block is IIgnitable ign) || (state = ign.OnTryIgniteBlock(byEntity, blockSel.Position, 0)) != EnumIgniteState.Ignitable)
+            var ign = world.BlockAccessor.GetBlock(pos).GetInterface<IIgnitable>(world, pos);
+            EnumIgniteState state = ign?.OnTryIgniteBlock(byEntity, pos, 0) ?? EnumIgniteState.NotIgnitable;
+            if (state != EnumIgniteState.Ignitable)
             {
                 if (state == EnumIgniteState.NotIgnitablePreventDefault) handling = EnumHandHandling.PreventDefault;
                 return;
-            }                        
+            }
 
             handling = EnumHandHandling.PreventDefault;
 
             byEntity.AnimManager.StartAnimation(igniteAnimation);
 
-            if (api.Side == EnumAppSide.Client) {
-                api.Event.UnregisterCallback(ObjectCacheUtil.TryGet<long>(api, "firestartersound"));
-                api.ObjectCache["firestartersound"] = api.Event.RegisterCallback((dt) => byEntity.World.PlaySoundAt(new AssetLocation("sounds/player/handdrill"), byEntity, byPlayer, false, 16), 500);
-            }
+            if (api.Side != EnumAppSide.Client) return;
+
+            api.Event.UnregisterCallback(ObjectCacheUtil.TryGet<long>(api, "firestartersound"));
+            api.ObjectCache["firestartersound"] = api.Event.RegisterCallback(_ => byEntity.World.PlaySoundAt("sounds/player/handdrill", byEntity, byPlayer, false, 16), 500);
         }
 
 
         public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
-            if (blockSel == null)
+            if (blockSel?.Position is not { } pos)
             {
                 api.Event.UnregisterCallback(ObjectCacheUtil.TryGet<long>(api, "firestartersound"));
                 return false;
             }
+            var world = byEntity.World;
 
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
-            if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
+            if (!world.Claims.TryAccess(byPlayer, pos, EnumBlockAccessFlags.Use))
             {
                 api.Event.UnregisterCallback(ObjectCacheUtil.TryGet<long>(api, "firestartersound"));
                 return false;
             }
 
+            var ign = world.BlockAccessor.GetBlock(pos).GetInterface<IIgnitable>(world, pos);
+            EnumIgniteState igniteState = ign?.OnTryIgniteBlock(byEntity, pos, secondsUsed) ?? EnumIgniteState.NotIgnitable;
 
-            Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
-
-
-            EnumIgniteState igniteState = EnumIgniteState.NotIgnitable;
-            if (block is IIgnitable ign) igniteState = ign.OnTryIgniteBlock(byEntity, blockSel.Position, secondsUsed);
-
-            if (igniteState == EnumIgniteState.NotIgnitable || igniteState == EnumIgniteState.NotIgnitablePreventDefault)
+            if (igniteState is EnumIgniteState.NotIgnitable or EnumIgniteState.NotIgnitablePreventDefault)
             {
                 api.Event.UnregisterCallback(ObjectCacheUtil.TryGet<long>(api, "firestartersound"));
                 return false;
             }
 
-            if (byEntity.World is IClientWorldAccessor)
+            if (world is not IClientWorldAccessor cWorld) return igniteState is EnumIgniteState.Ignitable;
+
+            ModelTransform tf = new ModelTransform();
+            tf.EnsureDefaultValues();
+
+            float f = GameMath.Clamp(1 - 2 * secondsUsed, 0, 1);
+            Random rand = cWorld.Rand;
+            tf.Translation.Set(f * f * f * 1.6f - 1.6f, 0, 0);
+            tf.Rotation.Y = -Math.Min(secondsUsed * 120, 30);
+
+            if (secondsUsed > 0.5f)
             {
-                ModelTransform tf = new ModelTransform();
-                tf.EnsureDefaultValues();
+                tf.Translation.Add((float)rand.NextDouble() * 0.1f, (float)rand.NextDouble() * 0.1f, (float)rand.NextDouble() * 0.1f);
 
-                float f = GameMath.Clamp(1 - 2*secondsUsed, 0, 1);
-                Random rand = api.World.Rand;
-                tf.Translation.Set(f*f*f * 1.6f - 1.6f, 0, 0);
-                tf.Rotation.Y = -Math.Min(secondsUsed * 120, 30);
-
-                if (secondsUsed > 0.5f)
-                {
-                    tf.Translation.Add((float)rand.NextDouble() * 0.1f, (float)rand.NextDouble() * 0.1f, (float)rand.NextDouble() * 0.1f);
-
-                    (api as ICoreClientAPI).World.SetCameraShake(0.04f);
-                }
-
-
-                if (secondsUsed > 0.25f && (int)(30 * secondsUsed) % 2 == 1)
-                {
-                    Vec3d pos = blockSel.Position.ToVec3d().Add(blockSel.HitPosition);
-
-                    Block blockFire = byEntity.World.GetBlock(new AssetLocation("fire"));
-
-                    AdvancedParticleProperties props = blockFire.ParticleProperties[blockFire.ParticleProperties.Length - 1].Clone();
-                    props.basePos = pos;
-                    props.Quantity.avg = 0.3f;
-                    props.Size.avg = 0.03f;
-
-                    byEntity.World.SpawnParticles(props, byPlayer);
-
-                    props.Quantity.avg = 0;
-                }
+                cWorld.SetCameraShake(0.04f);
             }
+
+
+            if (!(secondsUsed > 0.25f) || (int)(30 * secondsUsed) % 2 != 1) return igniteState is EnumIgniteState.Ignitable;
+
+            Block blockFire = cWorld.GetBlock(new AssetLocation("fire"));
+
+            AdvancedParticleProperties props = blockFire.ParticleProperties[^1].Clone();
+            props.basePos = pos.ToVec3d().Add(blockSel.HitPosition);
+            props.Quantity.avg = 0.3f;
+            props.Size.avg = 0.03f;
+
+            cWorld.SpawnParticles(props, byPlayer);
+
+            props.Quantity.avg = 0;
 
             return igniteState == EnumIgniteState.Ignitable;
         }
@@ -122,15 +114,10 @@ namespace Vintagestory.GameContent
         {
             byEntity.AnimManager.StopAnimation(igniteAnimation);
 
-            if (blockSel == null) return;
-            if (api.World.Side == EnumAppSide.Client) return;
-            if (api.World.Rand.NextDouble() > 0.25) return;
+            if (blockSel?.Position is not { } pos || byEntity.World is not IServerWorldAccessor world || world.Rand.NextDouble() > 0.25) return;
 
-            Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
-            
-            EnumIgniteState igniteState = EnumIgniteState.NotIgnitable;
-            var ign = block as IIgnitable;
-            if (ign != null) igniteState = ign.OnTryIgniteBlock(byEntity, blockSel.Position, secondsUsed);
+            var ign = world.BlockAccessor.GetBlock(pos).GetInterface<IIgnitable>(world, pos);
+            EnumIgniteState igniteState = ign?.OnTryIgniteBlock(byEntity, pos, secondsUsed) ?? EnumIgniteState.NotIgnitable;
 
             if (igniteState != EnumIgniteState.IgniteNow)
             {
@@ -138,17 +125,15 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            DamageItem(api.World, byEntity, slot);
-
-            IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
-            if (!byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
+            if (!world.Claims.TryAccess((byEntity as EntityPlayer)?.Player, pos, EnumBlockAccessFlags.Use))
             {
                 return;
             }
 
+            DamageItem(world, byEntity, slot);
 
             EnumHandling handled = EnumHandling.PassThrough;
-            ign.OnTryIgniteBlockOver(byEntity, blockSel.Position, secondsUsed, ref handled);
+            ign?.OnTryIgniteBlockOver(byEntity, pos, secondsUsed, ref handled);
         }
 
 

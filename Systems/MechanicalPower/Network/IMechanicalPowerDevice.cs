@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Common;
+using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
 #nullable disable
@@ -27,6 +27,7 @@ namespace Vintagestory.GameContent.Mechanics
         /// The positive propagation direction - equivalent to former InTurnDir.Facing
         /// </summary>
         BlockFacing GetPropagationDirection();
+
         /// <summary>
         /// The propagation direction from the input side for making connections - normally the same as GetPropagationDirection() except for Angled Gears
         /// </summary>
@@ -41,11 +42,11 @@ namespace Vintagestory.GameContent.Mechanics
         /// <summary>
         /// True for reverse rotation for rendering purposes (depends on the inTurnDir facing for 2-way blocks such as axles)
         /// </summary>
-        bool isRotationReversed();
+        bool IsRotationReversed();
         /// <summary>
         /// True if the network inTurnDir is coming into this block instead of going out (may or may not be paired with counter-clockwise rotation)
         /// </summary>
-        bool isInvertedNetworkFor(BlockPos pos);
+        bool IsInvertedNetworkFor(BlockPos pos);
 
         /// <summary>
         /// Only implemented on blocks which can support JoinPoints, such as Large Gear and Angled Gear
@@ -56,5 +57,12 @@ namespace Vintagestory.GameContent.Mechanics
         /// A side-sensitive version of GearedRatio property
         /// </summary>
         float GetGearedRatio(BlockFacing toFacing);
+
+        /// <summary>
+        /// Return null if this device does not change the direction
+        /// </summary>
+        /// <param name="toFacing"></param>
+        /// <returns></returns>
+        BlockFacing GetPropagatingTurnDir(BlockFacing toFacing);
     }
 }

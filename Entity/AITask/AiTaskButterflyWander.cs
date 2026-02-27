@@ -58,7 +58,7 @@ namespace Vintagestory.GameContent
             base.StartExecute();
 
             wanderDuration = 0.5f + (float)entity.World.Rand.NextDouble() * (float)entity.World.Rand.NextDouble() * 1;
-            desiredYaw = (float)(entity.ServerPos.Yaw + 2 * GameMath.TWOPI * (entity.World.Rand.NextDouble() - 0.5));
+            desiredYaw = (float)(entity.Pos.Yaw + 2 * GameMath.TWOPI * (entity.World.Rand.NextDouble() - 0.5));
 
             desiredflyHeightAboveGround = 1 + 4 * (float)entity.World.Rand.NextDouble() + 4 * (float)(entity.World.Rand.NextDouble() * entity.World.Rand.NextDouble());
             ReadjustFlyHeight();
@@ -69,8 +69,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool 
-            ContinueExecute(float dt)
+        public override bool ContinueExecute(float dt)
         {
             //Check if time is still valid for task.
             if (!IsInValidDayTimeHours(false)) return false;
@@ -82,24 +81,24 @@ namespace Vintagestory.GameContent
 
             wanderDuration -= dt;
 
-            double dy = desiredYPos - entity.ServerPos.Y;
+            double dy = desiredYPos - entity.Pos.Y;
             double yMot = GameMath.Clamp(dy, -1, 1);
-            float yawDist = GameMath.AngleRadDistance(desiredYaw, entity.ServerPos.Yaw);
+            float yawDist = GameMath.AngleRadDistance(desiredYaw, entity.Pos.Yaw);
 
             if (!entity.FeetInLiquid)
             {
-                entity.ServerPos.Yaw += GameMath.Clamp(yawDist, -curTurnRadPerSec * dt * (yMot < 0 ? 0.25f : 1), curTurnRadPerSec * dt * (yMot < 0 ? 0.25f : 1));
-                entity.ServerPos.Yaw = entity.ServerPos.Yaw % GameMath.TWOPI;
+                entity.Pos.Yaw += GameMath.Clamp(yawDist, -curTurnRadPerSec * dt * (yMot < 0 ? 0.25f : 1), curTurnRadPerSec * dt * (yMot < 0 ? 0.25f : 1));
+                entity.Pos.Yaw = entity.Pos.Yaw % GameMath.TWOPI;
             } else
             {
                 if (entity.World.Rand.NextDouble() < 0.001)
                 {
-                    entity.ServerPos.Motion.Y = 0.02f;
+                    entity.Pos.Motion.Y = 0.02f;
                 }
             }
 
-            double cosYaw = Math.Cos(entity.ServerPos.Yaw);
-            double sinYaw = Math.Sin(entity.ServerPos.Yaw);
+            double cosYaw = Math.Cos(entity.Pos.Yaw);
+            double sinYaw = Math.Sin(entity.Pos.Yaw);
             entity.Controls.WalkVector.Set(sinYaw, yMot, cosYaw);
             entity.Controls.WalkVector.Mul(moveSpeed);
             if (yMot < 0) entity.Controls.WalkVector.Mul(0.75);
@@ -121,11 +120,11 @@ namespace Vintagestory.GameContent
 
         protected void ReadjustFlyHeight()
         {
-            int terrainYPos = entity.World.BlockAccessor.GetTerrainMapheightAt(entity.SidedPos.AsBlockPos);
+            int terrainYPos = entity.World.BlockAccessor.GetTerrainMapheightAt(entity.Pos.AsBlockPos);
             int tries = 10;
             while (tries-- > 0)
             {
-                Block block = entity.World.BlockAccessor.GetBlockRaw((int)entity.ServerPos.X, terrainYPos, (int)entity.ServerPos.Z, BlockLayersAccess.Fluid);
+                Block block = entity.World.BlockAccessor.GetBlockRaw((int)entity.Pos.X, terrainYPos, (int)entity.Pos.Z, BlockLayersAccess.Fluid);
                 if (block.IsLiquid())
                 {
                     terrainYPos++;
@@ -142,8 +141,8 @@ namespace Vintagestory.GameContent
         public override void FinishExecute(bool cancelled)
         {
             base.FinishExecute(cancelled);
-            
+
         }
-        
+
     }
 }

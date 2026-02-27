@@ -28,3 +28,6 @@ dotnet_naming_style.instance_field_style.capitalization = camel_case
 # S1104: Fields should not have public accessibility 
 dotnet_diagnostic.S1104.severity = none
 ###
+
+# CA2241: Provide correct arguments to formatting methods
+dotnet_diagnostic.CA2241.severity = error

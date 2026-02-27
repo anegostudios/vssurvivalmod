@@ -1,4 +1,4 @@
-﻿using ProtoBuf;
+using ProtoBuf;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,6 +18,12 @@ namespace Vintagestory.GameContent
     public class RiftList
     {
         public List<Rift> rifts = new List<Rift>();
+    }
+
+    [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
+    public class RiftsStatus
+    {
+        public bool Enabled;
     }
 
     public delegate void OnTrySpawnRiftDelegate(BlockPos pos, ref EnumHandling handling);
@@ -69,7 +75,10 @@ namespace Vintagestory.GameContent
             base.Start(api);
             this.api = api;
 
-            api.Network.RegisterChannel("rifts").RegisterMessageType<RiftList>();
+            api.Network.RegisterChannel("rifts")
+                .RegisterMessageType<RiftList>()
+                .RegisterMessageType<RiftsStatus>()
+            ;
 
             modRiftWeather = api.ModLoader.GetModSystem<ModSystemRiftWeather>();
         }
@@ -81,13 +90,22 @@ namespace Vintagestory.GameContent
 
             capi = api;
 
-            renderer = new RiftRenderer(api, riftsById);
+            api.Network.GetChannel("rifts")
+                .SetMessageHandler<RiftList>(onRifts)
+                .SetMessageHandler<RiftsStatus>(onRiftsStatus)
+            ;
+        }
 
-            api.Event.BlockTexturesLoaded += Event_BlockTexturesLoaded;
-            api.Event.LeaveWorld += Event_LeaveWorld;
-            api.Event.RegisterGameTickListener(onClientTick, 100);
-
-            api.Network.GetChannel("rifts").SetMessageHandler<RiftList>(onRifts);
+        private void onRiftsStatus(RiftsStatus status)
+        {
+            this.riftsEnabled = status.Enabled;
+            if (status.Enabled)
+            {
+                renderer = new RiftRenderer(capi, riftsById);
+                LoadSounds();
+                capi.Event.LeaveWorld += Event_LeaveWorld;
+                capi.Event.RegisterGameTickListener(onClientTick, 100);
+            }
         }
 
         private void onRifts(RiftList riftlist)
@@ -122,25 +140,32 @@ namespace Vintagestory.GameContent
 
             api.Event.SaveGameLoaded += Event_SaveGameLoaded;
             api.Event.GameWorldSave += Event_GameWorldSave;
-            api.Event.PlayerJoin += Event_PlayerJoin;
+            api.Event.PlayerNowPlaying += Event_PlayerNowPlaying;
             api.Event.RegisterGameTickListener(OnServerTick100ms, 101);
             api.Event.RegisterGameTickListener(OnServerTick3s, 2999);
+
 
             setupCommands();
 
             schannel = sapi.Network.GetChannel("rifts");
         }
 
-        private void Event_PlayerJoin(IServerPlayer byPlayer)
+        private void Event_PlayerNowPlaying(IServerPlayer byPlayer)
         {
-            if (!riftsEnabled) return;
+            if (!riftsEnabled)
+            {
+                schannel.SendPacket(new RiftsStatus() { Enabled = false }, byPlayer);
+                return;
+            }
 
             BroadCastRifts(byPlayer);
         }
 
+
         private void OnServerTick100ms(float dt)
         {
             if (riftMode != "visible") return;
+            if (!modRiftWeather.Enabled) return;
 
             foreach (IServerPlayer plr in sapi.World.AllOnlinePlayers)
             {
@@ -166,6 +191,7 @@ namespace Vintagestory.GameContent
         private void OnServerTick3s(float dt)
         {
             if (!riftsEnabled) return;
+            if (!modRiftWeather.Enabled) return;
 
             var players = sapi.World.AllOnlinePlayers;
             Dictionary<string, List<Rift>> nearbyRiftsByPlayerUid = new Dictionary<string, List<Rift>>();
@@ -475,7 +501,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        private void Event_BlockTexturesLoaded()
+        private void LoadSounds()
         {
             for (int i = 0; i < 4; i++)
             {

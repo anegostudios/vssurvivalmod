@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using ProtoBuf;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -138,15 +138,8 @@ namespace Vintagestory.GameContent
             if (packetid == (int)EnumSignPacketId.SaveText)
             {
                 var packet = SerializerUtil.Deserialize<EditSignPacket>(data);
-                this.text = packet.Text;
                 this.fontSize = packet.FontSize;
-
-                color = tempColor;
-
-                MarkDirty(true);
-
-                // Tell server to save this chunk to disk again
-                Api.World.BlockAccessor.GetChunkAtBlockPos(Pos).MarkModified();
+                SetText(packet.Text);
 
                 // 85% chance to get back the item
                 if (Api.World.Rand.NextDouble() < 0.85)
@@ -162,6 +155,14 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public void SetText(string text)
+        {
+            this.text = text;
+            color = tempColor;
+            MarkDirty(true);
+            // Tell server to save this chunk to disk again
+            Api.World.BlockAccessor.GetChunkAtBlockPos(Pos).MarkModified();
+        }
 
         GuiDialogBlockEntityTextInput editDialog;
         public override void OnReceivedServerPacket(int packetid, byte[] data)

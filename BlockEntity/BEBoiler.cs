@@ -158,10 +158,10 @@ namespace Vintagestory.GameContent
             ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
             bool addGrass = hotbarSlot.Itemstack?.Collectible is ItemDryGrass && firepitStage == 0;
-            bool addFireWood = hotbarSlot.Itemstack?.Collectible is ItemFirewood && firepitStage >= 1 && firepitStage <= 4;
+            bool addFirewood = hotbarSlot.Itemstack?.Collectible is ItemFirewood && firepitStage >= 1 && firepitStage <= 4;
             bool reignite = hotbarSlot.Itemstack?.Collectible is ItemFirewood && (firepitStage >= 5 && fuelHours <= 6f);
 
-            if (addGrass || addFireWood || reignite)
+            if (addGrass || addFirewood || reignite)
             {
                 if (!reignite) firepitStage++;
                 else if (firepitStage == 7) firepitStage = 5;
@@ -175,7 +175,7 @@ namespace Vintagestory.GameContent
 
 
             if (addGrass) return true;
-            if (addFireWood || reignite)
+            if (addFirewood || reignite)
             {
                 fuelHours = Math.Max(2, fuelHours + 2);
                 return true;

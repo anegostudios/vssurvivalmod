@@ -18,7 +18,7 @@ namespace Vintagestory.GameContent
 
         bool strokeActive;
 
-        
+
 
         public override void AfterInitialized(bool onFirstSpawn)
         {
@@ -82,7 +82,7 @@ namespace Vintagestory.GameContent
 
                     Api.Event.RegisterCallback((dt) =>
                     {
-                    
+
                     AnimManager.StopAnimation("stroke-idle");
                     AnimManager.StartAnimation("stroke-end");
                     Api.Event.RegisterCallback((dt) => strokeActive = false, (int)(36*1000/30f));
@@ -140,20 +140,20 @@ namespace Vintagestory.GameContent
             {
                 Api.Event.RegisterCallback((dt) =>
                 {
-                    var tmpPos = targetEntity.ServerPos.Copy();
+                    var tmpPos = targetEntity.Pos.Copy();
                     tmpPos.Yaw -= GameMath.PIHALF * (1 - 2 * Api.World.Rand.Next(2));
                     var targetPos = tmpPos.AheadCopy(4f).XYZ;
 
-                    double dx = (targetPos.X + targetEntity.ServerPos.Motion.X * 80 - ServerPos.X) / 30;
-                    double dz = (targetPos.Z + targetEntity.ServerPos.Motion.Z * 80 - ServerPos.Z) / 30;
-                    ServerPos.Motion.Add(
+                    double dx = (targetPos.X + targetEntity.Pos.Motion.X * 80 - Pos.X) / 30;
+                    double dz = (targetPos.Z + targetEntity.Pos.Motion.Z * 80 - Pos.Z) / 30;
+                    Pos.Motion.Add(
                         dx,
-                        GameMath.Max(0.13, (targetEntity.ServerPos.Y - ServerPos.Y) / 30),
+                        GameMath.Max(0.13, (targetEntity.Pos.Y - Pos.Y) / 30),
                         dz
                     );
 
                     float yaw = (float)Math.Atan2(dx, dz);
-                    ServerPos.Yaw = yaw;
+                    Pos.Yaw = yaw;
                 }, 500);
             }
         }

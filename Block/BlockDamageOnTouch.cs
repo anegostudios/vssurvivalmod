@@ -41,14 +41,14 @@ public class BlockDamageOnTouch : Block
 
     public override void OnEntityInside(IWorldAccessor world, Entity entity, BlockPos pos)
     {
-        if (world.Side == EnumAppSide.Server && entity is EntityAgent && (entity as EntityAgent).ServerControls.Sprint && entity.ServerPos.Motion.LengthSq() > 0.001)
+        if (world.Side == EnumAppSide.Server && entity is EntityAgent && (entity as EntityAgent).ServerControls.Sprint && entity.Pos.Motion.LengthSq() > 0.001)
         {
             if (immuneCreatures.Contains(entity.Code)) return;
 
             if (world.Rand.NextDouble() < onEntityInsideDamageProbability)
             {
                 entity.ReceiveDamage(new DamageSource() { Source = EnumDamageSource.Block, SourceBlock = this, Type = EnumDamageType.PiercingAttack, SourcePos = pos.ToVec3d() }, sprintIntoDamage);
-                entity.ServerPos.Motion.Set(0, 0, 0);
+                entity.Pos.Motion.Set(0, 0, 0);
             }
         }
         base.OnEntityInside(world, entity, pos);

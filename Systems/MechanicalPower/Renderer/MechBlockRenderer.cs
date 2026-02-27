@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.MathTools;
 
@@ -16,7 +16,6 @@ namespace Vintagestory.GameContent.Mechanics
 
         protected float[] tmpMat = Mat4f.Create();
         protected double[] quat = Quaterniond.Create();
-        protected float[] qf = new float[4];
         protected float[] rotMat = Mat4f.Create();
         protected MechanicalPowerMod mechanicalPowerMod;
 
@@ -52,7 +51,7 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 //double precision int-double subtraction is needed here (even though the desired result is a float).  
                 // It's needed to have enough significant figures in the result, as the integer size could be large e.g. 50000 but the difference should be small (can easily be less than 5)
-                tmp.Set((float)(dev.Position.X - pos.X), (float)(dev.Position.Y - pos.Y), (float)(dev.Position.Z - pos.Z));  
+                tmp.Set((float)(dev.Position.X - pos.X), (float)(dev.Position.InternalY - pos.Y), (float)(dev.Position.Z - pos.Z));  
 
                 UpdateLightAndTransformMatrix(i, tmp, dev.AngleRad % GameMath.TWOPI, dev);
                 i++;
@@ -75,8 +74,7 @@ namespace Vintagestory.GameContent.Mechanics
             if (rotY != 0f) Quaterniond.RotateY(quat, quat, rotY);
             if (rotZ != 0f) Quaterniond.RotateZ(quat, quat, rotZ);
 
-            for (int i = 0; i < quat.Length; i++) qf[i] = (float)quat[i];
-            Mat4f.Mul(tmpMat, tmpMat, Mat4f.FromQuat(rotMat, qf));
+            Mat4f.MulQuat(tmpMat, quat);
 
             Mat4f.Translate(tmpMat, tmpMat, -0.5f, -0.5f, -0.5f);
 

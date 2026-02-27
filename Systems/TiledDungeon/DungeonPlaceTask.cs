@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using ProtoBuf;
+using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
-
-#nullable disable
+using Vintagestory.Common.Collectible.Block;
 
 namespace Vintagestory.ServerMods;
 
@@ -18,6 +18,27 @@ public class DungeonPlaceTask
 
     [ProtoMember(3)]
     public Cuboidi DungeonBoundaries;
+
+    [ProtoMember(4)]
+    public int StairsIndex;
+
+    public List<GeneratedStructure> GeneratedStructures;
+
+    public List<ConnectorMetaData> OpenSet { get; set; }
+
+    public DungeonPlaceTask()
+    {
+    }
+
+    public DungeonPlaceTask(string code, List<TilePlaceTask> tilePlaceTasks, List<GeneratedStructure> generatedStructures, List<ConnectorMetaData> openSet, int stairsIndex)
+    {
+        Code = code;
+        TilePlaceTasks = tilePlaceTasks;
+        GeneratedStructures = generatedStructures;
+        OpenSet = openSet;
+        StairsIndex = stairsIndex;
+        GenBoundaries();
+    }
 
     public DungeonPlaceTask GenBoundaries()
     {

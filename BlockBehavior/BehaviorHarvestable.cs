@@ -5,8 +5,6 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
-#nullable disable
-
 namespace Vintagestory.GameContent
 {
     /// <summary>
@@ -56,33 +54,39 @@ namespace Vintagestory.GameContent
         /// An array of drops for when the block is harvested. If only using a single drop you can use <see cref="harvestedStack"/>, otherwise this property is required.
         /// </summary>
         [DocumentAsJson("Required")]
-        public BlockDropItemStack[] harvestedStacks;
+        public BlockDropItemStack[]? harvestedStacks;
 
         /// <summary>
         /// A drop for when the block is harvested. If using more than a single drop, use <see cref="harvestedStacks"/>, otherwise this property is required.
         /// </summary>
-        [DocumentAsJson("Required")]
-        public BlockDropItemStack harvestedStack { get { return harvestedStacks[0]; } set { harvestedStacks[0] = value; } }
+        [DocumentAsJson("Obsolete")]
+        public BlockDropItemStack? harvestedStack { get { return harvestedStacks?[0]; } set { if (harvestedStacks != null && value != null) harvestedStacks[0] = value; } }
 
         /// <summary>
         /// The sound to play whilst the object is being harvested.
         /// </summary>
         [DocumentAsJson("Optional", "sounds/block/leafy-picking")]
-        public AssetLocation harvestingSound;
+        public AssetLocation? harvestingSound;
 
         /// <summary>
         /// The block to replace this one after it is harvested.
         /// </summary>
         [DocumentAsJson("Optional", "None")]
-        AssetLocation harvestedBlockCode;
+        AssetLocation? harvestedBlockCode;
 
-        Block harvestedBlock;
+        /// <summary>
+        /// The block required to harvest the block.
+        /// </summary>
+        [DocumentAsJson("Optional", "None")]
+        public EnumTool? Tool;
+
+        Block? harvestedBlock;
 
         /// <summary>
         /// The code to use for the interaction help of this block.
         /// </summary>
         [DocumentAsJson("Optional", "blockhelp-harvetable-harvest")]
-        string interactionHelpCode;
+        string interactionHelpCode = "blockhelp-harvetable-harvest";
 
         public BlockBehaviorHarvestable(Block block) : base(block)
         {
@@ -94,16 +98,17 @@ namespace Vintagestory.GameContent
 
             interactionHelpCode = properties["interactionHelpCode"].AsString("blockhelp-harvetable-harvest");
             harvestTime = properties["harvestTime"].AsFloat(0);
+            Tool = properties["tool"].AsObject<EnumTool?>(null);
             harvestedStacks = properties["harvestedStacks"].AsObject<BlockDropItemStack[]>(null);
-            BlockDropItemStack tempStack = properties["harvestedStack"].AsObject<BlockDropItemStack>(null);
+            BlockDropItemStack? tempStack = properties["harvestedStack"].AsObject<BlockDropItemStack>(null);
             if (harvestedStacks == null && tempStack != null)
             {
                 harvestedStacks = new BlockDropItemStack[1];
                 harvestedStacks[0] = tempStack;
-            } 
+            }
             exchangeBlock = properties["exchangeBlock"].AsBool(false);
 
-            string code = properties["harvestingSound"].AsString("game:sounds/block/leafy-picking");
+            string? code = properties["harvestingSound"].AsString("game:sounds/block/leafy-picking");
             if (code != null) {
                 harvestingSound = AssetLocation.Create(code, block.Code.Domain);
             }
@@ -130,6 +135,8 @@ namespace Vintagestory.GameContent
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref EnumHandling handling)
         {
+            if (Tool != null && byPlayer.InventoryManager.ActiveTool != Tool) return false;
+
             if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
             {
                 return false;
@@ -148,6 +155,8 @@ namespace Vintagestory.GameContent
 
         public override bool OnBlockInteractStep(float secondsUsed, IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref EnumHandling handled)
         {
+            if (Tool != null && byPlayer.InventoryManager.ActiveTool != Tool) return false;
+
             if (blockSel == null) return false;
 
             handled = EnumHandling.PreventDefault;
@@ -159,7 +168,7 @@ namespace Vintagestory.GameContent
                 world.PlaySoundAt(harvestingSound, blockSel.Position, 0, byPlayer);
             }
 
-            if (world.Side == EnumAppSide.Client && world.Rand.NextDouble() < 0.25)
+            if (world.Side == EnumAppSide.Client && world.Rand.NextDouble() < 0.25 && harvestedStacks?[0]?.ResolvedItemstack != null)
             {
                 world.SpawnCubeParticles(blockSel.Position.ToVec3d().Add(blockSel.HitPosition), harvestedStacks[0].ResolvedItemstack, 0.25f, 1, 0.5f, byPlayer, new Vec3f(0, 1, 0));
             }
@@ -169,6 +178,8 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockInteractStop(float secondsUsed, IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref EnumHandling handled)
         {
+            if (Tool != null && byPlayer.InventoryManager.ActiveTool != Tool) return;
+
             handled = EnumHandling.PreventDefault;
 
 
@@ -180,10 +191,10 @@ namespace Vintagestory.GameContent
                 {
                     dropRate *= byPlayer.Entity.Stats.GetBlended("forageDropRate");
                 }
-                    
-                harvestedStacks.Foreach(harvestedStack => 
+
+                harvestedStacks.Foreach(harvestedStack =>
                 {
-                    ItemStack stack = harvestedStack.GetNextItemStack(dropRate);
+                    ItemStack? stack = harvestedStack.GetNextItemStack(dropRate);
                     if (stack == null) return;
                     var origStack = stack.Clone();
                     var quantity = stack.StackSize;
@@ -211,6 +222,12 @@ namespace Vintagestory.GameContent
                     else world.BlockAccessor.ExchangeBlock(harvestedBlock.BlockId, blockSel.Position);
                 }
 
+                if (Tool != null)
+                {
+                    var toolSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
+                    toolSlot.Itemstack?.Collectible.DamageItem(world, byPlayer.Entity, toolSlot);
+                }
+
                 world.PlaySoundAt(harvestingSound, blockSel.Position, 0, byPlayer);
             }
         }
@@ -233,7 +250,8 @@ namespace Vintagestory.GameContent
                     new WorldInteraction()
                     {
                         ActionLangCode = interactionHelpCode,
-                        MouseButton = EnumMouseButton.Right
+                        MouseButton = EnumMouseButton.Right,
+                        Itemstacks = Tool == null ? null : ObjectCacheUtil.GetToolStacks(world.Api, (EnumTool)Tool)
                     }
                 };
             }

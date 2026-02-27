@@ -64,6 +64,8 @@ namespace Vintagestory.GameContent
         public SpawnPattern CurrentPattern => patternsByCode[curPattern.Code];
         public double CurrentPatternUntilHours => curPattern.UntilTotalHours;
 
+        public bool Enabled = true;
+
         public override bool ShouldLoad(EnumAppSide forSide)
         {
             return true;
@@ -95,7 +97,14 @@ namespace Vintagestory.GameContent
 
         public override void StartServerSide(ICoreServerAPI api)
         {
-            config = api.Assets.Get("config/riftweather.json").ToObject<RiftWeatherConfig>();
+            var asset = api.Assets.TryGet("config/riftweather.json");
+            if (asset == null)
+            {
+                api.Logger.Warning("config/riftweather.json file missing. Riftweather will be disabled.");
+                Enabled = false;
+                return;
+            }
+            config = asset.ToObject<RiftWeatherConfig>();
 
             foreach (var p in config.Patterns)
             {

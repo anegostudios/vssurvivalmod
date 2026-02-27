@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -142,7 +142,7 @@ namespace Vintagestory.GameContent
         {
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
 
-            if (byEntity.LeftHandItemSlot?.Itemstack?.Collectible?.Tool != EnumTool.Hammer && byPlayer?.WorldData.CurrentGameMode != EnumGameMode.Creative)
+            if (byEntity?.LeftHandItemSlot?.Itemstack?.Collectible?.GetTool(byEntity.LeftHandItemSlot) != EnumTool.Hammer && byPlayer?.WorldData.CurrentGameMode != EnumGameMode.Creative)
             {
                 (api as ICoreClientAPI)?.TriggerIngameError(this, "nohammer", Lang.Get("Requires a hammer in the off hand"));
                 handling = EnumHandHandling.PreventDefaultAction;
@@ -198,7 +198,7 @@ namespace Vintagestory.GameContent
             var pos = blockSel.Position;
             Block block = byEntity.World.BlockAccessor.GetBlock(pos);
 
-            if (byEntity.LeftHandItemSlot?.Itemstack?.Collectible?.Tool != EnumTool.Hammer && byPlayer?.WorldData.CurrentGameMode != EnumGameMode.Creative)
+            if (byPlayer.InventoryManager.OffhandTool != EnumTool.Hammer && byPlayer?.WorldData.CurrentGameMode != EnumGameMode.Creative)
             {
                 (api as ICoreClientAPI)?.TriggerIngameError(this, "nohammer", Lang.Get("Requires a hammer in the off hand"));
                 handling = EnumHandHandling.PreventDefaultAction;
@@ -335,7 +335,8 @@ namespace Vintagestory.GameContent
             if (player?.WorldData.CurrentGameMode == EnumGameMode.Creative) return true;
 
             // allow liquid to be chisel able in creative but disallow otherwise
-            if (block.BlockMaterial == EnumBlockMaterial.Liquid) return false;
+            if (block.BlockMaterial == EnumBlockMaterial.Water) return false;
+			if (block.BlockMaterial == EnumBlockMaterial.Lava) return false;
 
             // Lastly go by the config value
             if (mode == "stonewood")

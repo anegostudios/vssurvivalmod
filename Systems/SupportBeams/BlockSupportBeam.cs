@@ -1,22 +1,54 @@
+using Cairo;
+using System;
+using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
+using static OpenTK.Graphics.OpenGL.GL;
 
 #nullable disable
 
 namespace Vintagestory.GameContent
 {
-    public class BlockSupportBeam : Block
+    public class ModSystemUnbreakSupportBeam : ModSystem
+    {
+        public override bool ShouldLoad(EnumAppSide forSide) => forSide == EnumAppSide.Client;
+
+        ICoreClientAPI capi;
+        public override void StartClientSide(ICoreClientAPI api)
+        {
+            capi = api;
+            api.Event.OnUnBreakingBlock += Event_OnUnBreakingBlock;
+        }
+
+        private void Event_OnUnBreakingBlock(BlockDamage bd)
+        {
+            var ba = capi.World.BlockAccessor;
+
+            var block = ba.GetBlock(bd.Position);
+            var be = ba.GetBlockEntity(bd.Position)?.GetBehavior<BEBehaviorSupportBeam>();
+            if (be?.Beams == null) return;
+
+            foreach (var beam in be.Beams)
+            {
+                beam.RemainingResistance = GameMath.Min(beam.RemainingResistance + 0.1f * block.Resistance, block.Resistance);
+            }
+        }
+    }
+
+    public class BlockSupportBeam : Block, IMultiStageDecals
     {
         ModSystemSupportBeamPlacer bp;
         public bool PartialEnds;
-
+        ICoreClientAPI capi;
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
             bp = api.ModLoader.GetModSystem<ModSystemSupportBeamPlacer>();
             PartialSelection = true;
+            capi = api as ICoreClientAPI;
 
             PartialEnds = Attributes?["partialEnds"].AsBool(false) ?? false;
         }
@@ -59,19 +91,70 @@ namespace Vintagestory.GameContent
         public override void GetDecal(IWorldAccessor world, BlockPos pos, ITexPositionSource decalTexSource, ref MeshData decalModelData, ref MeshData blockModelData)
         {
             var be = api.World.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorSupportBeam>();
+
+            int stages = 10;
+
             if (be != null)
             {
-                int beamIndex = (api as ICoreClientAPI)?.World.Player?.CurrentBlockSelection?.SelectionBoxIndex ?? 0;
-                if (beamIndex >= be.Beams.Length)
+                blockModelData = blockModelData.EmptyClone();
+                decalModelData = decalModelData.EmptyClone();
+                
+                List<int> textureIds = new List<int>();
+
+                for (int i = 0; i < be.Beams.Length; i++)
                 {
-                    return;
+                    var beam = be.Beams[i];
+
+                    blockModelData.AddMeshData(be.genMesh(i, null, null));
+                    var mesh = be.genMesh(i, decalTexSource, "decal");
+
+                    float resi = beam.Block.GetResistance(world.BlockAccessor, pos);
+                    int stage = Math.Min((int)(stages * (resi - beam.RemainingResistance) / resi), stages-1);
+
+                    for (int j = 0; j < mesh.VerticesCount / mesh.VerticesPerFace; j++) textureIds.Add(stage);
+                    decalModelData.AddMeshData(mesh);
                 }
-                blockModelData = be.genMesh(beamIndex, null, null);
-                decalModelData = be.genMesh(beamIndex, decalTexSource, "decal");
+
+                // Lets abuse this field to remember the breaking stage per beam
+                decalModelData.TextureIds = textureIds.ToArray(); 
+
                 return;
             }
 
             base.GetDecal(world, pos, decalTexSource, ref decalModelData, ref blockModelData);
+        }
+
+
+        public int StageForVertex(MeshData decalMesh, int vertexIndex)
+        {
+            return decalMesh.TextureIds[vertexIndex / 4];
+        }
+
+        public override float OnGettingBroken(IPlayer player, BlockSelection blockSel, ItemSlot itemslot, float remainingResistance, float dt, int counter)
+        {
+            var be = api.World.BlockAccessor.GetBlockEntity(blockSel.Position)?.GetBehavior<BEBehaviorSupportBeam>();
+            if (be != null)
+            {
+                int beamIndex = blockSel?.SelectionBoxIndex ?? 0;
+                if (beamIndex >= be.Beams.Length)
+                {
+                    return base.OnGettingBroken(player, blockSel, itemslot, remainingResistance, dt, counter);
+                }
+
+                foreach (var beam in be.Beams)
+                {
+                    if (api.World.ElapsedMilliseconds - beam.LastModifiedMilliseconds > beam.Block.Resistance * 1000)
+                    {
+                        beam.RemainingResistance = beam.Block.Resistance;
+                    }
+                }
+
+                var abeam = be.Beams[beamIndex];
+                abeam.LastModifiedMilliseconds = capi.World.ElapsedMilliseconds;
+                abeam.RemainingResistance = Math.Max(0, abeam.RemainingResistance - dt);
+            }
+                
+            return base.OnGettingBroken(player, blockSel, itemslot, remainingResistance, dt, counter);
         }
 
         public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
@@ -122,5 +205,6 @@ namespace Vintagestory.GameContent
         {
             return false;
         }
+
     }
 }

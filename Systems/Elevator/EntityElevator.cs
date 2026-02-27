@@ -8,13 +8,11 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
-#nullable disable
-
 namespace Vintagestory.GameContent;
 
 public class ElevatorSystem
 {
-    public EntityElevator Entity;
+    public EntityElevator? Entity;
     public List<int> ControlPositions = new();
     public bool ShouldUpdate = false;
 }
@@ -43,11 +41,11 @@ public class EntityElevator : Entity, ISeatInstSupplier, IMountableListener, ICu
 
     public Dictionary<string, string> MountAnimations = new Dictionary<string, string>();
 
-    ICoreClientAPI capi;
-    ICoreServerAPI sapi;
+    ICoreClientAPI capi = null!;
+    ICoreServerAPI sapi = null!;
 
-    public ILoadedSound travelSound;
-    public ILoadedSound latchSound;
+    public ILoadedSound travelSound = null!;
+    public ILoadedSound latchSound = null!;
 
     float accum;
 
@@ -55,12 +53,13 @@ public class EntityElevator : Entity, ISeatInstSupplier, IMountableListener, ICu
     private int colliderBlockId;
 
     private int lastStopIndex;
+    private int currentHeight =-1;
 
-    public ElevatorSystem ElevatorSys;
+    public ElevatorSystem? ElevatorSys;
 
     private int CurrentStopIndex;
 
-    public string NetworkCode
+    public string? NetworkCode
     {
         get => Attributes.GetString("networkCode");
         set => Attributes.SetString("networkCode", value);
@@ -74,7 +73,7 @@ public class EntityElevator : Entity, ISeatInstSupplier, IMountableListener, ICu
     public override void Initialize(EntityProperties properties, ICoreAPI api, long InChunkIndex3d)
     {
         swimmingOffsetY = properties.Attributes["swimmingOffsetY"].AsDouble();
-        MountAnimations = properties.Attributes["mountAnimations"].AsObject<Dictionary<string, string>>();
+        MountAnimations = properties.Attributes?["mountAnimations"].AsObject<Dictionary<string, string>>() ?? new Dictionary<string, string>();
 
         base.Initialize(properties, api, InChunkIndex3d);
 
@@ -110,13 +109,14 @@ public class EntityElevator : Entity, ISeatInstSupplier, IMountableListener, ICu
 
                 // enable max height on old elevators which where already activated
                 // if we do not have the control poaints yet, those will also try to update it
-                if (Attributes.GetBool("isActivated") && !Attributes.HasAttribute("maxHeight") && ElevatorSys.ControlPositions?.Count > 0)
+                if (Attributes.GetBool("isActivated") && !Attributes.HasAttribute("maxHeight") && ElevatorSys?.ControlPositions.Count > 0)
                 {
                     Attributes.SetInt("maxHeight", ElevatorSys.ControlPositions.Last());
                 }
             }
 
             colliderBlockId = sapi.World.BlockAccessor.GetBlock("meta-collider").Id;
+            currentHeight = (int)Pos.Y;
         }
     }
 
@@ -153,23 +153,29 @@ public class EntityElevator : Entity, ISeatInstSupplier, IMountableListener, ICu
 
         var elevatorStopHeight = ElevatorSys.ControlPositions[CurrentStopIndex];
 
-        var diff = Math.Abs(ServerPos.Y - elevatorStopHeight);
+        var diff = Math.Abs(Pos.Y - elevatorStopHeight);
         if (diff >= 0.02f)
         {
-            if (!IsMoving)
+
+            if (isMovingDown && currentHeight != (int)Pos.Y)
             {
-                UnSetGround(ServerPos.AsBlockPos, ElevatorSys.ControlPositions[lastStopIndex]);
+                SetGround(Pos.AsBlockPos, (int)Pos.Y);
+                UnSetGround(Pos.AsBlockPos, currentHeight);
+                currentHeight = (int)Pos.Y;
+            }else if (!IsMoving)
+            {
+                UnSetGround(Pos.AsBlockPos, ElevatorSys.ControlPositions[lastStopIndex]);
             }
 
             var mul = Math.Max(0.5f, Math.Clamp(diff, 0, 1));
-            if (ServerPos.Y < elevatorStopHeight)
+            if (Pos.Y < elevatorStopHeight)
             {
-                ServerPos.Y += dt * SpeedMultiplier * mul;
+                Pos.Y += dt * SpeedMultiplier * mul;
                 isMovingUp = true;
             }
             else
             {
-                ServerPos.Y -= dt * SpeedMultiplier * mul;
+                Pos.Y -= dt * SpeedMultiplier * mul;
                 isMovingDown = true;
             }
 
@@ -178,8 +184,9 @@ public class EntityElevator : Entity, ISeatInstSupplier, IMountableListener, ICu
         {
             if (IsMoving)
             {
-                lastStopIndex = CurrentStopIndex;
-                SetGround(ServerPos.AsBlockPos, elevatorStopHeight);
+                UnSetGround(Pos.AsBlockPos, currentHeight);
+                currentHeight = elevatorStopHeight;
+                SetGround(Pos.AsBlockPos, currentHeight);
             }
 
             isMovingUp = isMovingDown = false;
@@ -273,7 +280,7 @@ public class EntityElevator : Entity, ISeatInstSupplier, IMountableListener, ICu
                 travelSound.FadeTo(0.15f, 0.5f, null);
             }
 
-            travelSound.SetPosition((float)SidedPos.X, (float)SidedPos.InternalY, (float)SidedPos.Z);
+            travelSound.SetPosition((float)Pos.X, (float)Pos.InternalY, (float)Pos.Z);
         }
         else
         {
@@ -319,7 +326,7 @@ public class EntityElevator : Entity, ISeatInstSupplier, IMountableListener, ICu
                 else
                 {
                     StartAnimation("leverUP");
-                    latchSound.SetPosition((float)SidedPos.X, (float)SidedPos.InternalY, (float)SidedPos.Z);
+                    latchSound.SetPosition((float)Pos.X, (float)Pos.InternalY, (float)Pos.Z);
                     latchSound.Start();
                 }
             }
@@ -335,7 +342,7 @@ public class EntityElevator : Entity, ISeatInstSupplier, IMountableListener, ICu
                 else
                 {
                     StartAnimation("leverDOWN");
-                    latchSound.SetPosition((float)SidedPos.X, (float)SidedPos.InternalY, (float)SidedPos.Z);
+                    latchSound.SetPosition((float)Pos.X, (float)Pos.InternalY, (float)Pos.Z);
                     latchSound.Start();
                 }
             }
@@ -349,7 +356,7 @@ public class EntityElevator : Entity, ISeatInstSupplier, IMountableListener, ICu
         {
             Attributes.SetInt("maxHeight", height);
         }
-        var indexOf = ElevatorSys.ControlPositions.IndexOf(height);
+        var indexOf = ElevatorSys?.ControlPositions.IndexOf(height) ?? -1;
         if (indexOf != -1)
         {
             CurrentStopIndex = indexOf;
@@ -363,7 +370,8 @@ public class EntityElevator : Entity, ISeatInstSupplier, IMountableListener, ICu
 
     public override void OnEntityDespawn(EntityDespawnData despawn)
     {
-        travelSound?.Dispose();
+        travelSound?.Dispose(); // will be null on server
+        latchSound?.Dispose();
         base.OnEntityDespawn(despawn);
     }
 
@@ -430,21 +438,20 @@ public class EntityElevator : Entity, ISeatInstSupplier, IMountableListener, ICu
         return base.GetInteractionHelp(world, es, player);
     }
 
-    public Vec3d GetInteractionHelpPosition()
+    public Vec3d? GetInteractionHelpPosition()
     {
-        var capi = Api as ICoreClientAPI;
         var selection = capi.World.Player.CurrentEntitySelection;
         if (selection == null) return null;
 
         var selebox = selection.SelectionBoxIndex - 1;
         if (selebox < 0) return null;
 
-        var point = selection.Entity.GetBehavior<EntityBehaviorSelectionBoxes>().selectionBoxes[selebox].AttachPoint;
+        var point = selection.Entity.GetBehavior<EntityBehaviorSelectionBoxes>()?.selectionBoxes[selebox].AttachPoint;
         var offset = 0.5;
-        if (point.Code.Equals(UpAp) || point.Code.Equals(DownAp))
+        if (UpAp.Equals(point?.Code) || DownAp.Equals(point?.Code))
         {
             offset = 0.1;
         }
-        return selection.Entity.GetBehavior<EntityBehaviorSelectionBoxes>().GetCenterPosOfBox(selebox)?.Add(0, offset, 0);
+        return selection.Entity.GetBehavior<EntityBehaviorSelectionBoxes>()?.GetCenterPosOfBox(selebox)?.Add(0, offset, 0);
     }
 }

@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
@@ -46,7 +46,7 @@ namespace Vintagestory.GameContent
 
             foreach (BlockBehavior behavior in BlockBehaviors)
             {
-                behavior.OnBlockBroken(world, pos, byPlayer, ref handled);
+                behavior.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier, ref handled);
                 if (handled == EnumHandling.PreventSubsequent) return;
             }
 
@@ -74,7 +74,7 @@ namespace Vintagestory.GameContent
             if (byPlayer != null && byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
             {
                 CollectibleObject coll = byPlayer?.InventoryManager.ActiveHotbarSlot.Itemstack?.Collectible;
-                if (OreName == "flint" && (coll == null || coll.ToolTier == 0))
+                if (OreName == "flint" && (coll == null || coll.GetToolTier(byPlayer?.InventoryManager.ActiveHotbarSlot) == 0))
                 {
                     world.BlockAccessor.SetBlock(world.GetBlock(new AssetLocation("rock-" + MotherRock)).BlockId, pos);
                 }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -103,7 +103,7 @@ namespace Vintagestory.GameContent
         public BlockEntityFirepit()
         {
             inventory = new InventorySmelting(null, null);
-            inventory.SlotModified += OnSlotModifid;
+            inventory.SlotModified += OnSlotModified;
         }
 
 
@@ -129,7 +129,7 @@ namespace Vintagestory.GameContent
 
 
 
-        private void OnSlotModifid(int slotid)
+        private void OnSlotModified(int slotid)
         {
             Block = Api.World.BlockAccessor.GetBlock(Pos);
 
@@ -312,15 +312,19 @@ namespace Vintagestory.GameContent
             float oldTemp = InputStackTemp;
             float nowTemp = oldTemp;
             float meltingPoint = inputSlot.Itemstack.Collectible.GetMeltingPoint(Api.World, inventory, inputSlot);
+            float stackSize = inputSlot.Itemstack.StackSize;
 
             // Only Heat ore. Cooling happens already in the itemstack
             if (oldTemp < furnaceTemperature)
             {
                 float f = (1 + GameMath.Clamp((furnaceTemperature - oldTemp) / 30, 0, 1.6f)) * dt;
-                if (nowTemp >= meltingPoint) f /= 11;
+                if (nowTemp >= meltingPoint) f /= 11; // Technically inconsistent - slows down heating of all items when only one is being smelted. But the overall effect is good.
 
                 float newTemp = changeTemperature(oldTemp, furnaceTemperature, f);
-                int maxTemp = Math.Max(inputStack.Collectible.CombustibleProps == null ? 0 : inputStack.Collectible.CombustibleProps.MaxTemperature, inputStack.ItemAttributes?["maxTemperature"] == null ? 0 : inputStack.ItemAttributes["maxTemperature"].AsInt(0));
+                newTemp = (newTemp + (stackSize - 1) * oldTemp) / stackSize;
+
+                CombustibleProperties combustibleProps = inputStack.Collectible.GetCombustibleProperties(Api.World, inputStack, null);
+                int maxTemp = Math.Max(combustibleProps == null ? 0 : combustibleProps.MaxTemperature, inputStack.ItemAttributes?["maxTemperature"] == null ? 0 : inputStack.ItemAttributes["maxTemperature"].AsInt(0));
                 if (maxTemp > 0)
                 {
                     newTemp = Math.Min(maxTemp, newTemp);
@@ -355,7 +359,8 @@ namespace Vintagestory.GameContent
             if (oldTemp < furnaceTemperature)
             {
                 float newTemp = changeTemperature(oldTemp, furnaceTemperature, 2 * dt);
-                int maxTemp = Math.Max(outputStack.Collectible.CombustibleProps == null ? 0 : outputStack.Collectible.CombustibleProps.MaxTemperature, outputStack.ItemAttributes?["maxTemperature"] == null ? 0 : outputStack.ItemAttributes["maxTemperature"].AsInt(0));
+                CombustibleProperties combustibleProps = outputStack.Collectible.GetCombustibleProperties(Api.World, outputStack, null);
+                int maxTemp = Math.Max(combustibleProps == null ? 0 : combustibleProps.MaxTemperature, outputStack.ItemAttributes?["maxTemperature"] == null ? 0 : outputStack.ItemAttributes["maxTemperature"].AsInt(0));
                 if (maxTemp > 0)
                 {
                     newTemp = Math.Min(maxTemp, newTemp);
@@ -478,7 +483,7 @@ namespace Vintagestory.GameContent
 
         public void igniteWithFuel(IItemStack stack)
         {
-            CombustibleProperties fuelCopts = stack.Collectible.CombustibleProps;
+            CombustibleProperties fuelCopts = stack.Collectible.GetCombustibleProperties(Api.World, stack as ItemStack, null);
 
             maxFuelBurnTime = fuelBurnTime = fuelCopts.BurnDuration * BurnDurationModifier;
             maxTemperature = (int)(fuelCopts.BurnTemperature * HeatModifier);
@@ -522,9 +527,11 @@ namespace Vintagestory.GameContent
 
             if (inputStack.Collectible.OnSmeltAttempt(inventory)) MarkDirty(true);
 
+            CombustibleProperties combustibleProps = inputStack.Collectible.GetCombustibleProperties(Api.World, inputStack, null);
+
             return
                 inputStack.Collectible.CanSmelt(Api.World, inventory, inputSlot.Itemstack, outputSlot.Itemstack)
-                && (inputStack.Collectible.CombustibleProps == null || !inputStack.Collectible.CombustibleProps.RequiresContainer)
+                && (combustibleProps == null || !combustibleProps.RequiresContainer)
             ;
         }
 
@@ -532,7 +539,6 @@ namespace Vintagestory.GameContent
         public void smeltItems()
         {
             inputStack.Collectible.DoSmelt(Api.World, inventory, inputSlot, outputSlot);
-            InputStackTemp = enviromentTemperature();
             inputStackCookingTime = 0;
             MarkDirty(true);
             inputSlot.MarkDirty();
@@ -775,7 +781,8 @@ namespace Vintagestory.GameContent
         {
             ItemSlot slot = inventory[slotid];
             if (slot.Itemstack == null) return null;
-            return slot.Itemstack.Collectible.CombustibleProps;
+            CombustibleProperties combustibleProps = slot.Itemstack.Collectible.GetCombustibleProperties(Api.World, slot.Itemstack, null);
+            return combustibleProps;
         }
 
         #endregion

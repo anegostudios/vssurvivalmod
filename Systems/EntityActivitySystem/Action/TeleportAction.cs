@@ -43,7 +43,7 @@ namespace Vintagestory.GameContent
             vas.Entity.TeleportToDouble(TargetX + vas.ActivityOffset.X, TargetY + vas.ActivityOffset.Y, TargetZ + vas.ActivityOffset.Z);
             vas.Entity.Controls.StopAllMovement();
             vas.wppathTraverser.Stop();
-            vas.Entity.ServerPos.Yaw = (float)Yaw;
+            vas.Entity.Pos.Yaw = (float)Yaw;
             vas.Entity.Pos.Yaw = (float)Yaw;
             vas.Entity.BodyYaw = (float)Yaw;
             vas.Entity.BodyYawServer = (float)Yaw;
@@ -113,7 +113,7 @@ namespace Vintagestory.GameContent
             singleComposer.GetTextInput("y").SetValue("" + Math.Round(plrPos.Y, 1));
             singleComposer.GetTextInput("z").SetValue("" + Math.Round(plrPos.Z, 1));
 
-            singleComposer.GetTextInput("yaw").SetValue("" + Math.Round(capi.World.Player.Entity.ServerPos.Yaw - GameMath.PIHALF, 1));
+            singleComposer.GetTextInput("yaw").SetValue("" + Math.Round(capi.World.Player.Entity.Pos.Yaw - GameMath.PIHALF, 1));
             return true;
         }
 

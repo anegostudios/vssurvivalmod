@@ -1,3 +1,4 @@
+using Newtonsoft.Json;
 using System;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -10,7 +11,9 @@ namespace Vintagestory.GameContent;
 
 public class AiTaskFlyCircleTarget : AiTaskFlyCircle
 {
+    [JsonProperty]
     protected float seekingRangeVer = 25f;
+    [JsonProperty]
     protected float seekingRangeHor = 25f;
     protected TimeSpan cooldownTime = TimeSpan.FromMilliseconds(1000);
     protected TimeSpan targetRetentionTime = TimeSpan.FromSeconds(30);
@@ -21,8 +24,6 @@ public class AiTaskFlyCircleTarget : AiTaskFlyCircle
 
     public AiTaskFlyCircleTarget(EntityAgent entity, JsonObject taskConfig, JsonObject aiConfig) : base(entity, taskConfig, aiConfig)
     {
-        seekingRangeHor = taskConfig["seekingRangeHor"].AsFloat(25);
-        seekingRangeVer = taskConfig["seekingRangeVer"].AsFloat(25);
         cooldownTime = TimeSpan.FromMilliseconds(taskConfig["cooldownMs"].AsInt(1000));
         targetRetentionTime = TimeSpan.FromSeconds(taskConfig["targetRetentionTimeSec"].AsInt(30));
     }
@@ -38,15 +39,15 @@ public class AiTaskFlyCircleTarget : AiTaskFlyCircle
         // Don't try more than once a second
         cooldownUntilMs = entity.World.ElapsedMilliseconds + (long)cooldownTime.TotalMilliseconds;
 
-        if (!PreconditionsSatisifed()) return false;
+        if (!PreconditionsSatisfied()) return false;
 
-        Vec3d pos = entity.ServerPos.XYZ.Add(0, entity.SelectionBox.Y2 / 2, 0).Ahead(entity.SelectionBox.XSize / 2, 0, entity.ServerPos.Yaw);
+        Vec3d pos = entity.Pos.XYZ.Add(0, entity.SelectionBox.Y2 / 2, 0).Ahead(entity.SelectionBox.XSize / 2, 0, entity.Pos.Yaw);
 
         if (entity.World.ElapsedMilliseconds - attackedByEntityMs > (long)targetRetentionTime.TotalMilliseconds)
         {
             attackedByEntity = null;
         }
-        if (retaliateAttacks && attackedByEntity != null && attackedByEntity.Alive && attackedByEntity.IsInteractable && IsTargetableEntity(attackedByEntity, 15, true))
+        if (ShouldRetaliateForRange(15))
         {
             targetEntity = attackedByEntity;
         }
@@ -76,14 +77,14 @@ public class AiTaskFlyCircleTarget : AiTaskFlyCircle
         timeSwitchToNormalWorld();
 
         base.StartExecute();
-        CenterPos = targetEntity.ServerPos.XYZ;
+        CenterPos = targetEntity!.Pos.XYZ;
         CenterPos.Y += dimensionOffset(TargetDimension, CurrentDimension);
     }
 
-    public override bool 
+    public override bool
         ContinueExecute(float dt)
     {
-        CenterPos = targetEntity.ServerPos.XYZ;
+        CenterPos = targetEntity!.Pos.XYZ;
         CenterPos.Y += dimensionOffset(TargetDimension, CurrentDimension);
         return base.ContinueExecute(dt);
     }
@@ -108,7 +109,7 @@ public class AiTaskFlyCircleTarget : AiTaskFlyCircle
         EntityPos correctedToDimensionPos = eplr.Pos.Copy();
         correctedToDimensionPos.Dimension = CurrentDimension;
 
-        if ((rangeMul == 1 || entity.ServerPos.DistanceTo(correctedToDimensionPos) < range * rangeMul)
+        if ((rangeMul == 1 || entity.Pos.DistanceTo(correctedToDimensionPos) < range * rangeMul)
             && targetablePlayerMode(player)) return true;
 
         return false;
@@ -121,13 +122,13 @@ public class AiTaskFlyCircleTarget : AiTaskFlyCircle
         EntityPos correctedToDimensionPos = targetEntity.Pos.Copy();
         correctedToDimensionPos.Dimension = entity.Pos.Dimension;
 
-        Cuboidd targetBox = targetEntity.SelectionBox.ToDouble().Translate(targetEntity.ServerPos.X, targetEntity.ServerPos.Y, targetEntity.ServerPos.Z);
-        tmpPos.Set(entity.ServerPos).Add(0, entity.SelectionBox.Y2 / 2, 0).Ahead(entity.SelectionBox.XSize / 2, 0, entity.ServerPos.Yaw);
+        Cuboidd targetBox = targetEntity.SelectionBox.ToDouble().Translate(targetEntity.Pos.X, targetEntity.Pos.Y, targetEntity.Pos.Z);
+        tmpPos.Set(entity.Pos).Add(0, entity.SelectionBox.Y2 / 2, 0).Ahead(entity.SelectionBox.XSize / 2, 0, entity.Pos.Yaw);
         double dist = targetBox.ShortestDistanceFrom(tmpPos);
         double vertDist = Math.Abs(targetBox.ShortestVerticalDistanceFrom(tmpPos.Y));
         if (dist >= minDist || vertDist >= minVerDist) return false;
 
-        rayTraceFrom.Set(entity.ServerPos);
+        rayTraceFrom.Set(entity.Pos);
         rayTraceFrom.Y += 1 / 32f;
         rayTraceTo.Set(correctedToDimensionPos);
         rayTraceTo.Y += 1 / 32f;
@@ -161,7 +162,7 @@ public class AiTaskFlyCircleTarget : AiTaskFlyCircle
     {
         Timeswitch? system = entity.Api.ModLoader.GetModSystem<Timeswitch>();
 
-        if (entity.ServerPos.Dimension != Dimensions.NormalWorld)
+        if (entity.Pos.Dimension != Dimensions.NormalWorld)
         {
             (entity as EntityErel)?.ChangeDimension(Dimensions.NormalWorld);
             system?.ChangeEntityDimensionOnClient(entity, Dimensions.NormalWorld);

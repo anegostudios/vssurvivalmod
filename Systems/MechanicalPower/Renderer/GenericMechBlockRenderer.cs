@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Client;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
@@ -13,13 +13,12 @@ namespace Vintagestory.GameContent.Mechanics
 
         public GenericMechBlockRenderer(ICoreClientAPI capi, MechanicalPowerMod mechanicalPowerMod, Block textureSoureBlock, CompositeShape shapeLoc) : base(capi, mechanicalPowerMod)
         {
-
             AssetLocation loc = shapeLoc.Base.Clone().WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
 
             Shape shape = API.Common.Shape.TryGet(capi, loc);
             Vec3f rot = new Vec3f(shapeLoc.rotateX, shapeLoc.rotateY, shapeLoc.rotateZ);
 
-            capi.Tesselator.TesselateShape(textureSoureBlock, shape, out MeshData blockMesh, rot);
+            capi.Tesselator.TesselateShape(textureSoureBlock, shape, out MeshData blockMesh, rot, shapeLoc.QuantityElements, shapeLoc.SelectiveElements);
             
             if (shapeLoc.Overlays != null)
             {
@@ -54,7 +53,7 @@ namespace Vintagestory.GameContent.Mechanics
             float rotX = rotation * dev.AxisSign[0];
             float rotY = rotation * dev.AxisSign[1];
             float rotZ = rotation * dev.AxisSign[2];
-            if (dev is BEBehaviorMPToggle tog && (rotX == 0 ^ tog.isRotationReversed()))
+            if (dev is BEBehaviorMPToggle tog && (rotX == 0 ^ tog.IsRotationReversed()))
             {
                 rotY = GameMath.PI;
                 rotZ = -rotZ;

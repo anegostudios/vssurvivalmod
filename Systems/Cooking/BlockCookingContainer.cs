@@ -94,7 +94,8 @@ namespace Vintagestory.GameContent
                 var stack = stacks[i];
                 int portionSize = stack.StackSize;
 
-                if (stack.Collectible?.CombustibleProps == null)
+                var combustibleProps = stack.Collectible?.GetCombustibleProperties(world, stack, null);
+                if (combustibleProps == null)
                 {
                     if (stack.Collectible?.Attributes?["waterTightContainerProps"].Exists == true)
                     {
@@ -107,7 +108,7 @@ namespace Vintagestory.GameContent
                 }
 
                 float singleDuration = stack.Collectible.GetMeltingDuration(world, cookingSlotsProvider, inputSlot);
-                duration += singleDuration * portionSize / stack.Collectible.CombustibleProps.SmeltedRatio;
+                duration += singleDuration * portionSize / combustibleProps.SmeltedRatio;
             }
 
             duration = Math.Max(40, duration / 3);
@@ -143,7 +144,7 @@ namespace Vintagestory.GameContent
             ItemStack[] stacks = GetCookingStacks(cookingSlotsProvider);
             CookingRecipe? recipe = GetMatchingCookingRecipe(world, stacks, out int quantityServings);
 
-            Block block = world.GetBlock(CodeWithVariant("type", "cooked"));
+            Block? block = world.GetBlock(CodeWithVariant("type", "cooked"));
 
             if (recipe == null) return;
 
@@ -197,6 +198,7 @@ namespace Vintagestory.GameContent
                 {
                     cookingSlotsProvider.Slots[i].Itemstack = null;
                 }
+                ArgumentNullException.ThrowIfNull(block);
                 ((BlockCookedContainer)block).SetContents(recipe.Code, quantityServings, outputStack, stacks);
 
                 outputSlot.Itemstack = outputStack;
@@ -206,7 +208,8 @@ namespace Vintagestory.GameContent
 
         internal float PutMeal(BlockPos pos, ItemStack[] itemStack, string recipeCode, float quantityServings)
         {
-            Block block = api.World.GetBlock(CodeWithVariant("type", "cooked"));
+            Block? block = api.World.GetBlock(CodeWithVariant("type", "cooked"));
+            ArgumentNullException.ThrowIfNull(block);
             api.World.BlockAccessor.SetBlock(block.Id, pos);
 
             float servingsToTransfer = Math.Min(quantityServings, this.Attributes["servingCapacity"].AsInt(1));

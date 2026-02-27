@@ -100,7 +100,7 @@ namespace Vintagestory.GameContent
             {
                 vas.linepathTraverser.NavigateTo(hereTarget, WalkSpeed, OnDone, OnStuck, null, 0, ct);
                 setAnimation();
-            }            
+            }
         }
 
 
@@ -137,7 +137,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            var pos = vas.Entity.ServerPos;
+            var pos = vas.Entity.Pos;
             if (vas.Debug) vas.Entity.World.Logger.Debug("ActivitySystem entity {0} action goto from {1}/{2}/{3} to {4}/{5}/{6} failed, found no A* path to target.", vas.Entity.EntityId, pos.X, pos.Y, pos.Z, targetX, targetY, targetZ);
             ExecutionHasFailed = true;
             Finish();
