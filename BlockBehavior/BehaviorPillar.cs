@@ -1,5 +1,6 @@
 using Vintagestory.API;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
@@ -27,13 +28,16 @@ namespace Vintagestory.GameContent
 	///]
     /// </code></example>
     [DocumentAsJson]
-    public class BlockBehaviorPillar : BlockBehavior, ILookAwarePlacement
+    public class BlockBehaviorPillar : BlockBehavior, ILookAwarePlacement, ICustomChiselMaterialName
     {
         /// <summary>
         /// Swaps placement between horizontal and vertical.
         /// </summary>
         [DocumentAsJson("Optional", "False")]
-        bool invertedPlacement;
+        protected bool invertedPlacement;
+
+        [DocumentAsJson("Optional", "rotation")]
+        protected string rotationVariantCode = "rotation";
 
         public BlockBehaviorPillar(Block block) : base(block)
         {
@@ -44,6 +48,7 @@ namespace Vintagestory.GameContent
             base.Initialize(properties);
 
             invertedPlacement = properties["invertedPlacement"].AsBool(false);
+            rotationVariantCode = properties["rotationVariantCode"].AsString("rotation");
         }
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handling, ref string failureCode)
@@ -106,6 +111,11 @@ namespace Vintagestory.GameContent
             if (block.LastCodePart() == "we") index++;
 
             return block.CodeWithParts(angles[index % 2]);
+        }
+
+        string ICustomChiselMaterialName.GetName(ItemStack itemStack)
+        {
+            return Lang.Get("chiselmaterialnamewithorientation-" + block.Variant[rotationVariantCode], itemStack.GetName());
         }
     }
 }

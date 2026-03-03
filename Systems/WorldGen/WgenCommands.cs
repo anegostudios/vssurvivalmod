@@ -153,7 +153,7 @@ namespace Vintagestory.ServerMods
             {
                 var schematic = structures.schematicDatas[i];
 
-                sb.AppendLine($"{i}: File: {schematic[0].FromFileName}");
+                sb.AppendLine($"{i}: File: {schematic[0].FromFile}");
             }
 
             return TextCommandResult.Success(sb.ToString());
@@ -221,7 +221,7 @@ namespace Vintagestory.ServerMods
                     throw new ArgumentOutOfRangeException();
             }
 
-            return TextCommandResult.Success($"placing structure: {struc.Name} :: {schematic.FromFileName} placement: {struc.Placement}");
+            return TextCommandResult.Success($"placing structure: {struc.Name} :: {schematic.FromFile} placement: {struc.Placement}");
         }
     }
 

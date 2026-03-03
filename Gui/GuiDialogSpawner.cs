@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -145,8 +145,26 @@ namespace Vintagestory.GameContent
                 .AddNumberInput(tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, -10).WithFixedSize(75, 29), null, CairoFont.WhiteDetailText(), "chargeCapacity")
                 .AddNumberInput(tmpBoundsDim3.RightCopy(100, 0).WithFixedSize(75, 29), null, CairoFont.WhiteDetailText(), "rechargePerHour")
 
-                .AddSmallButton("Close", OnButtonClose, closeButtonBounds.FixedUnder(tmpBoundsDim3, 20))
-                .AddSmallButton("Save", OnButtonSave, saveButtonBounds.FixedUnder(tmpBoundsDim3, 20))
+
+                .AddStaticText("Climate conditions", CairoFont.WhiteDetailText(), tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, 10).WithFixedSize(200, 29))
+                .AddDropDown(
+                    new string[] { "0", "1", "2" },
+                    new string[] { "Ignore climate conditions", "Season affected climate conditions", "Worldgen climate values" },
+                    0, null, tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, -10).WithFixedSize(300, 29), CairoFont.WhiteDetailText(), "climateMode"
+                )
+
+                .AddStaticText("MinRain", CairoFont.WhiteDetailText(), tmpBoundsDim1 = tmpBoundsDim1.FlatCopy().WithFixedPosition(0, 0).FixedUnder(tmpBoundsDim3, 10).WithFixedSize(80, 29))
+                .AddNumberInput(tmpBoundsDim1 = tmpBoundsDim1.RightCopy(5, -7).WithFixedSize(60, 29), OnDimensionsChanged, CairoFont.WhiteDetailText(), "minRain")
+                .AddStaticText("MaxRain", CairoFont.WhiteDetailText(), tmpBoundsDim1 = tmpBoundsDim1.RightCopy(10, 7).WithFixedSize(80, 29))
+                .AddNumberInput(tmpBoundsDim1 = tmpBoundsDim1.RightCopy(5, -7).WithFixedSize(60, 29), OnDimensionsChanged, CairoFont.WhiteDetailText(), "maxRain")
+                .AddStaticText("MinTemp", CairoFont.WhiteDetailText(), tmpBoundsDim2 = dropDownBounds.FlatCopy().WithFixedSize(80, 29).FixedUnder(tmpBoundsDim1, -40))
+                .AddNumberInput(tmpBoundsDim2 = tmpBoundsDim2.RightCopy(5, -7).WithFixedSize(60, 29), OnDimensionsChanged, CairoFont.WhiteDetailText(), "minTemp")
+                .AddStaticText("MaxTemp", CairoFont.WhiteDetailText(), tmpBoundsDim2 = tmpBoundsDim2.RightCopy(10, 7).WithFixedSize(80, 29))
+                .AddNumberInput(tmpBoundsDim2 = tmpBoundsDim2.RightCopy(5, -7).WithFixedSize(60, 29), OnDimensionsChanged, CairoFont.WhiteDetailText(), "maxTemp")
+
+
+                .AddSmallButton("Close", OnButtonClose, closeButtonBounds.FixedUnder(tmpBoundsDim2, 20))
+                .AddSmallButton("Save", OnButtonSave, saveButtonBounds.FixedUnder(tmpBoundsDim2, 20))
                 .Compose()
             ;
 
@@ -207,6 +225,13 @@ namespace Vintagestory.GameContent
                 spawnerData.SpawnArea.Start.AsBlockPos.Add(blockEntityPos), spawnerData.SpawnArea.End.AsBlockPos.Add(blockEntityPos)
             }, EnumHighlightBlocksMode.Absolute, API.Common.EnumHighlightShape.Cube);
 
+            SingleComposer.GetDropDown("climateMode").SetSelectedIndex(data.ClimateMode);
+            SingleComposer.GetNumberInput("minRain").SetValue(data.MinRain);
+            SingleComposer.GetNumberInput("maxRain").SetValue(data.MaxRain);
+            SingleComposer.GetNumberInput("minTemp").SetValue(data.MinTemp);
+            SingleComposer.GetNumberInput("maxTemp").SetValue(data.MaxTemp);
+
+
             updating = false;
         }
 
@@ -242,6 +267,12 @@ namespace Vintagestory.GameContent
             spawnerData.RechargePerHour = SingleComposer.GetNumberInput("rechargePerHour").GetValue();
             spawnerData.SpawnRangeMode = (EnumSpawnRangeMode)SingleComposer.GetDropDown("playerRangeMode").SelectedValue.ToInt();
             spawnerData.EntityCodes = SingleComposer.GetDropDown("entityCode").SelectedValues;
+
+            spawnerData.MinRain = SingleComposer.GetNumberInput("minRain").GetValue();
+            spawnerData.MaxRain = SingleComposer.GetNumberInput("maxRain").GetValue();
+            spawnerData.MinTemp = SingleComposer.GetNumberInput("minTemp").GetValue();
+            spawnerData.MaxTemp = SingleComposer.GetNumberInput("maxTemp").GetValue();
+            spawnerData.ClimateMode = (int)SingleComposer.GetDropDown("climateMode").SelectedIndices[0];
 
             byte[] data = SerializerUtil.Serialize(spawnerData);
             capi.Network.SendBlockEntityPacket(blockEntityPos, 1001, data);

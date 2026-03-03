@@ -9,33 +9,31 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
-#nullable disable
-
 namespace Vintagestory.GameContent
 {
     public class FishingSupportModSystem : ModSystem
     {
         public override bool ShouldLoad(EnumAppSide forSide) => true;
-        ICoreClientAPI capi;
-        ICoreServerAPI sapi;
+        ICoreClientAPI capi = null!;
+        ICoreServerAPI sapi = null!;
 
-        public NormalizedSimplexNoise NoiseGen;
+        public NormalizedSimplexNoise NoiseGen = null!;
 
         public override void StartClientSide(ICoreClientAPI api)
         {
             api.Event.BeforeActiveSlotChanged += Event_BeforeActiveSlotChanged;
-            capi = api as ICoreClientAPI;
+            capi = api;
         }
 
         private EnumHandling Event_BeforeActiveSlotChanged(ActiveSlotChangeEventArgs args)
         {
-            return slotChange(capi.World.Player, args);
+            return beforeActiveSlotChanged(capi.World.Player, args);
         }
 
         public override void StartServerSide(ICoreServerAPI api)
         {
             sapi = api;
-            api.Event.BeforeActiveSlotChanged += slotChange;
+            api.Event.BeforeActiveSlotChanged += beforeActiveSlotChanged;
             api.Event.PlayerDisconnect += Event_PlayerDisconnect;
             api.Event.ServerRunPhase(EnumServerRunPhase.Shutdown, onShutdown);
 
@@ -47,7 +45,7 @@ namespace Vintagestory.GameContent
             foreach (var plr in sapi.World.AllOnlinePlayers)
             {
                 var slot = plr.InventoryManager.ActiveHotbarSlot;
-                (slot.Itemstack.Collectible as ItemFishingPole)?.StopFishing(slot.Itemstack, plr.Entity);
+                (slot.Itemstack?.Collectible as ItemFishingPole)?.StopFishing(slot.Itemstack, plr.Entity);
             }
         }
 
@@ -57,13 +55,13 @@ namespace Vintagestory.GameContent
             (slot.Itemstack?.Collectible as ItemFishingPole)?.StopFishing(slot.Itemstack, plr.Entity);
         }
 
-        private EnumHandling slotChange(IPlayer plr, ActiveSlotChangeEventArgs args)
+        private EnumHandling beforeActiveSlotChanged(IPlayer plr, ActiveSlotChangeEventArgs args)
         {
             var slot = plr.InventoryManager.ActiveHotbarSlot;
 
             if (slot.Itemstack?.Collectible is ItemFishingPole)
             {
-                var beid = slot.Itemstack.Attributes.GetLong("bobberEntityId", 0);
+                var beid = slot.Itemstack.Attributes.GetLong("fishingEntityId", 0);
                 if (beid != 0)
                 {
                     return EnumHandling.PreventSubsequent;
@@ -76,12 +74,12 @@ namespace Vintagestory.GameContent
 
     public class ItemFishingPole : Item, IContainedInteractable, IHandBookPageCodeProvider
     {
-        protected ClothManager cm;
-        protected string aimAnimation;
-        protected Vec3f offsetToPoleTipFp;
-        protected Vec3f offsetToPoleTipTp;
+        protected ClothManager cm = null!;
+        protected string aimAnimation = null!;
+        protected Vec3f offsetToPoleTipFp = null!;
+        protected Vec3f offsetToPoleTipTp = null!;
 
-        CompositeShape ropelessShapeLoc;
+        CompositeShape? ropelessShapeLoc;
 
 
         public override void OnLoaded(ICoreAPI api)
@@ -121,15 +119,15 @@ namespace Vintagestory.GameContent
 
         public override void TryMergeStacks(ItemStackMergeOperation op)
         {
-            if (op.SinkSlot.Itemstack.Attributes.GetBool("fishing")) return;
+            if (op.SinkSlot.Itemstack?.Attributes.GetBool("fishing") == true) return;
 
             if (op.CurrentPriority == EnumMergePriority.DirectMerge)
             {
-                if (op.SinkSlot.Itemstack.Attributes.GetItemstack("fishingBait") == null)
+                if (op.SinkSlot.Itemstack?.Attributes.GetItemstack("fishingBait") == null)
                 {
-                    if (op.SourceSlot.Itemstack.ItemAttributes?.IsTrue("isFishBait") == true)
+                    if (op.SourceSlot.Itemstack?.ItemAttributes?.IsTrue("isFishBait") == true)
                     {
-                        op.SinkSlot.Itemstack.Attributes.SetItemstack("fishingBait", op.SourceSlot.TakeOut(1));
+                        op.SinkSlot.Itemstack?.Attributes.SetItemstack("fishingBait", op.SourceSlot.TakeOut(1));
                         op.MovedQuantity = 1;
                         return;
                     }
@@ -159,14 +157,17 @@ namespace Vintagestory.GameContent
 
         public override void OnCollected(ItemStack stack, Entity entity)
         {
-            StopFishing(stack, entity as EntityAgent);
+            if (entity is EntityAgent agent)
+            {
+                StopFishing(stack, agent);
+            }
         }
         public override void OnHeldDropped(IWorldAccessor world, IPlayer byPlayer, ItemSlot slot, int quantity, ref EnumHandling handling)
         {
             StopFishing(slot.Itemstack, byPlayer.Entity);
         }
 
-        EnumCameraMode? previousCm = null;
+        EnumCameraMode? previousCm;
         public override void OnHeldIdle(ItemSlot slot, EntityAgent byEntity)
         {
             updatePinOffset(slot, byEntity);
@@ -178,8 +179,8 @@ namespace Vintagestory.GameContent
             if (capi == null) return;
 
 
-            var cm = capi.World.Player.CameraMode;
-            if (cm != previousCm && previousCm == EnumCameraMode.FirstPerson && cm != EnumCameraMode.FirstPerson)
+            var camMode = capi.World.Player.CameraMode;
+            if (camMode != previousCm && previousCm == EnumCameraMode.FirstPerson && camMode != EnumCameraMode.FirstPerson)
             {
                 var cs = getRope(slot);
                 if (cs != null)
@@ -189,7 +190,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (cm == EnumCameraMode.FirstPerson)
+            if (camMode == EnumCameraMode.FirstPerson)
             {
                 var cs = getRope(slot);
                 if (cs != null)
@@ -216,10 +217,10 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            previousCm = cm;
+            previousCm = camMode;
         }
 
-        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
+        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection? entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
             base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
             if (handling == EnumHandHandling.PreventDefault) return;
@@ -234,7 +235,7 @@ namespace Vintagestory.GameContent
             var controls = byEntity.MountedOn?.Controls ?? byEntity.Controls;
             if (controls.CtrlKey
                 && (entitySel?.SelectionBoxIndex ?? -1) >= 0
-                && entitySel.Entity?.GetBehavior<EntityBehaviorAttachable>() != null)
+                && entitySel?.Entity?.GetBehavior<EntityBehaviorAttachable>() != null)
             {
                 return;
             }
@@ -242,6 +243,7 @@ namespace Vintagestory.GameContent
             // Not ideal to code the aiming controls this way. Needs an elegant solution - maybe an event bus?
             byEntity.AnimManager.StartAnimation(aimAnimation);
 
+             slot.Itemstack?.Attributes.SetLong("fishingEntityId", byEntity.EntityId);
             byEntity.AnimManager.RegisterFrameCallback(new AnimFrameCallback()
             {
                 Animation = aimAnimation,
@@ -249,18 +251,18 @@ namespace Vintagestory.GameContent
                 Callback = () => throwBobber(slot, byEntity)
             });
 
-            IPlayer byPlayer = null;
-            if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
-
             handling = EnumHandHandling.PreventDefault;
         }
 
         private void throwBobber(ItemSlot slot, EntityAgent byEntity)
         {
             byEntity.AnimManager.StopAnimation(aimAnimation);
-            byEntity.AnimManager.StartAnimation("fishingpole-idle");
 
-            slot.Itemstack.Attributes.SetLong("fishingEntityId", byEntity.EntityId);
+            // prevent throwing the pole away or switching to a different slot
+            var isFishing = byEntity.ActiveHandItemSlot.Itemstack?.Attributes.GetLong("fishingEntityId") != 0;
+            if (slot.Empty || !isFishing) return;
+
+            byEntity.AnimManager.StartAnimation("fishingpole-idle");
 
             if (byEntity.World.Side == EnumAppSide.Client)
             {
@@ -271,7 +273,7 @@ namespace Vintagestory.GameContent
 
             byEntity.World.PlaySoundAt(new AssetLocation("sounds/effect/poleswing"), byEntity, null, false, 8);
 
-            EntityProperties type = byEntity.World.GetEntityType(new AssetLocation("bobber-normal"));
+            var type = byEntity.World.GetEntityType(new AssetLocation("bobber-normal"));
             EntityBobber ebobber = (EntityBobber)byEntity.World.ClassRegistry.CreateEntity(type);
             var earrow = ebobber as IProjectile;
             earrow.FiredBy = byEntity;
@@ -290,25 +292,25 @@ namespace Vintagestory.GameContent
             ebobber.BaitStack?.ResolveBlockOrItem(byEntity.World);
             slot.Itemstack.Attributes.RemoveAttribute("fishingBait");
 
-
             earrow.PreInitialize();
-
 
             byEntity.World.SpawnPriorityEntity(ebobber);
 
             var cs = getRope(slot);
             if (cs != null) cm.UnregisterCloth(cs.ClothId);
 
-            cs = createRope(slot, byEntity, ebobber, ebobber.Pos.XYZ);
+            createRope(slot, byEntity, ebobber, ebobber.Pos.XYZ);
 
             slot.Itemstack.Attributes.SetLong("bobberEntityId", ebobber.EntityId);
 
             slot.Itemstack.Attributes.SetBool("fishing", true);
         }
 
-        public bool StopFishing(ItemStack itemstack, EntityAgent byEntity)
+        public bool StopFishing(ItemStack? itemstack, EntityAgent byEntity)
         {
             byEntity.AnimManager.StopAnimation("fishingpole-idle");
+            if(itemstack == null) return false;
+
             itemstack.Attributes.SetBool("fishing", false);
 
             var beid = itemstack.Attributes.GetLong("bobberEntityId", 0);
@@ -317,7 +319,7 @@ namespace Vintagestory.GameContent
                 cm.UnregisterCloth(itemstack.Attributes.GetInt("clothId", 0));
                 if (api.Side == EnumAppSide.Server)
                 {
-                    EntityBobber be = api.World.GetEntityById(beid) as EntityBobber;
+                    var be = api.World.GetEntityById(beid) as EntityBobber;
                     be?.TryCatchFish(byEntity);
                     be?.Die();
                     if (be?.BaitStack != null)
@@ -332,6 +334,7 @@ namespace Vintagestory.GameContent
 
                 itemstack.Attributes.RemoveAttribute("bobberEntityId");
                 itemstack.Attributes.RemoveAttribute("clothId");
+                itemstack.Attributes.RemoveAttribute("fishingEntityId");
 
                 return true;
             }
@@ -344,7 +347,7 @@ namespace Vintagestory.GameContent
             var baitStack = allInputSlots.FirstOrDefault(slot => slot.Itemstack?.Collectible.Attributes?.IsTrue("isFishBait") == true)?.Itemstack;
             if (baitStack != null)
             {
-                outputSlot.Itemstack.Attributes.SetItemstack("fishingBait", baitStack);
+                outputSlot.Itemstack?.Attributes.SetItemstack("fishingBait", baitStack);
             }
         }
 
@@ -368,7 +371,7 @@ namespace Vintagestory.GameContent
         {
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
 
-            var baitStack = inSlot.Itemstack.Attributes.GetItemstack("fishingBait");
+            var baitStack = inSlot.Itemstack?.Attributes.GetItemstack("fishingBait");
             baitStack?.ResolveBlockOrItem(world);
             if (baitStack != null)
             {
@@ -389,20 +392,20 @@ namespace Vintagestory.GameContent
 
         }
 
-        public override void OnModifiedInInventorySlot(IWorldAccessor world, ItemSlot slot, ItemStack extractedStack = null)
+        public override void OnModifiedInInventorySlot(IWorldAccessor world, ItemSlot slot, ItemStack? extractedStack = null)
         {
-            var eid = slot.Itemstack.Attributes.GetLong("fishingEntityId");
+            var eid = slot.Itemstack?.Attributes.GetLong("fishingEntityId") ?? 0;
             var eagent = world.GetEntityById(eid) as EntityAgent;
 
             if (extractedStack != null && eagent != null && eagent.RightHandItemSlot.Empty)
-            {   
+            {
                 StopFishing(extractedStack, eagent);
             }
         }
 
-        private ClothSystem getRope(ItemSlot slot)
+        private ClothSystem? getRope(ItemSlot slot)
         {
-            int clothId = slot.Itemstack.Attributes.GetInt("clothId", 0);
+            int clothId = slot.Itemstack?.Attributes.GetInt("clothId", 0) ?? 0;
             return cm.GetClothSystem(clothId);
         }
 
@@ -420,8 +423,8 @@ namespace Vintagestory.GameContent
             sys.RopeRenderThickness = 0.35f;
             cm.RegisterCloth(sys);
 
-            slot.Itemstack.Attributes.SetLong("ropeHeldByEntityId", byEntity.EntityId);
-            slot.Itemstack.Attributes.SetInt("clothId", sys.ClothId);
+            slot.Itemstack?.Attributes.SetLong("ropeHeldByEntityId", byEntity.EntityId);
+            slot.Itemstack?.Attributes.SetInt("clothId", sys.ClothId);
             slot.MarkDirty();
             return sys;
         }
@@ -432,10 +435,10 @@ namespace Vintagestory.GameContent
         {
             if (entity.Properties.Client.Renderer is not EntityShapeRenderer entityShapeRenderer) return false;
 
-            ItemStack itemStack = itemSlot?.Itemstack;
+            var itemStack = itemSlot.Itemstack;
             if (itemStack == null) return false;
 
-            AttachmentPointAndPose attachmentPointAndPose = entity.AnimManager?.Animator?.GetAttachmentPointPose(right ? "RightHand" : "LeftHand");
+            AttachmentPointAndPose? attachmentPointAndPose = entity.AnimManager?.Animator?.GetAttachmentPointPose(right ? "RightHand" : "LeftHand");
             if (attachmentPointAndPose == null) return false;
 
             AttachmentPoint attachPoint = attachmentPointAndPose.AttachPoint;
@@ -460,16 +463,16 @@ namespace Vintagestory.GameContent
             var handSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
             if (handSlot.Itemstack?.Collectible.Attributes?["isFishBait"]?.AsBool() == true)
             {
-                if (slot.Itemstack.Attributes.GetItemstack("fishingBait") == null)
+                if (slot.Itemstack?.Attributes.GetItemstack("fishingBait") == null)
                 {
-                    slot.Itemstack.Attributes.SetItemstack("fishingBait", handSlot.Itemstack);
+                    slot.Itemstack?.Attributes.SetItemstack("fishingBait", handSlot.Itemstack);
                     handSlot.TakeOut(1);
                     handSlot.MarkDirty();
                 }
                 else (api as ICoreClientAPI)?.TriggerIngameError(this, "fishingpolealreadybaited", Lang.Get("ingameerror-fishingpole-alreadybaited"));
 
                 return true;
-             }
+            }
 
             return false;
         }
@@ -487,7 +490,7 @@ namespace Vintagestory.GameContent
 
         public WorldInteraction[] GetContainedInteractionHelp(BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
         {
-            if (slot.Itemstack.Attributes.GetItemstack("fishingBait") != null) return [];
+            if (slot.Itemstack?.Attributes.GetItemstack("fishingBait") != null) return [];
 
             return
             [
@@ -498,6 +501,5 @@ namespace Vintagestory.GameContent
                 }
             ];
         }
-
     }
 }

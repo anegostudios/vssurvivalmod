@@ -21,7 +21,6 @@ namespace Vintagestory.GameContent
         AnvilPartRenderer? renderer;
 
         private TagSet fluxTag = TagSet.Empty;
-        private const string fluxTagName = "flux";
 
         public override InventoryBase Inventory => inv;
 

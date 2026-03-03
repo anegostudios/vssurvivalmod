@@ -26,6 +26,7 @@ public class DungeonPlaceTask
 
     public List<ConnectorMetaData> OpenSet { get; set; }
 
+
     public DungeonPlaceTask()
     {
     }

@@ -21,7 +21,6 @@ public class DungeonGenWorkspace
     public List<TilePlaceTask> PlaceTasks;
     public List<GeneratedStructure> ExistingStructures;
     public List<GeneratedStructure> GeneratedStructures;
-    
     public Dictionary<string, int> TileQuantityByCode;
 
     public List<DungeonTile> CanGenerate { get; set; }
@@ -104,9 +103,12 @@ public class DungeonGenWorkspace
 
 
 
-    public void CommitToParent()
+    public void CommitToParent(bool debugLogging, List<string> debugLogs)
     {
+        if (debugLogging) debugLogs.Add("Leaving child dungeon");
+
         ParentWorkspace.PlaceTasks.AddRange(PlaceTasks);
+        string added = "";
 
         foreach (var val in OpenSet)
         {
@@ -114,12 +116,21 @@ public class DungeonGenWorkspace
             {
                 var conn = new ConnectorMetaData(val.Position, val.Facing, val.Rotation, val.Name, val.Targets.Concat(val.TargetsForParent).ToArray(), null);
                 ParentWorkspace.OpenSet.Add(conn);
+
+                if (debugLogging) added += conn.ToString();
             } else
             {
-                ParentWorkspace.OpenSet.Add(val);
+                // We'll ditch unclosed connectors unless they are required to be opened
+                if (DungeonGenerator.RequireOpened != null && DungeonGenerator.RequireOpened.Contains(val.Name))
+                {
+                    ParentWorkspace.OpenSet.Add(val);
+                    if (debugLogging) added += val.ToString();
+                }
             }
         }
-        
+
+        if (debugLogging && added.Length > 0) debugLogs.Add("Moving opened connectors to parent: " + added);
+
         ParentWorkspace.GeneratedStructures.Clear();
         ParentWorkspace.GeneratedStructures.AddRange(GeneratedStructures);
         foreach (var (code, quantity) in TileQuantityByCode)

@@ -15,14 +15,20 @@ namespace Vintagestory.ServerMods
         protected ILogger logger;
         protected Vec3i mapsize;
 
-        public DungeonGenerator(ILogger logger, Vec3i mapsize)
+        public bool DebugLogging;
+        public List<string> debugLogs;
+
+        public DungeonGenerator(ILogger logger, Vec3i mapsize, bool debugLogging = false)
         {
             this.logger = logger;
             this.mapsize = mapsize;
+            DebugLogging = debugLogging;
         }
 
         public DungeonPlaceTask? TryPregenerateTiledDungeon(LCGRandom rnd, TiledDungeon dungeon, List<GeneratedStructure> existingStructures, BlockPos startPos, int minTiles, int maxTiles)
         {
+            if (DebugLogging) debugLogs = new List<string>();
+
             var rot = rnd.NextInt(4);
             // It looks like this is supposed to be Stack<> but we need to iterate over the entire list and rebuild it often so a list is better
             var openSet = new List<ConnectorMetaData>();
@@ -38,7 +44,7 @@ namespace Vintagestory.ServerMods
             if (TryGenerateTiles(rnd, dgd))
             {
                 logger.Notification($"Dungeon with {placeTasks.Count} schematics generated");
-                if (dgd.OpenSet.Count > 0) logger.Notification("But {0} sides could not be closed", dgd.OpenSet.Count);
+                if (DebugLogging && dgd.OpenSet.Count > 0) debugLogs.Add(string.Format("But {0} sides could not be closed", dgd.OpenSet.Count));
                 var stairsIndex = -1;
                 if (dungeon.Stairs?.Length > 0) stairsIndex = rnd.NextInt(dungeon.Stairs.Length);
                 return new DungeonPlaceTask(dungeon.Code, placeTasks, gennedStructures, openSet, stairsIndex);
@@ -50,6 +56,12 @@ namespace Vintagestory.ServerMods
 
         private bool TryGenerateTiles(LCGRandom lcgRnd, DungeonGenWorkspace dgd)
         {
+            if (DebugLogging)
+            {
+                debugLogs.Add("==================");
+                debugLogs.Add("Attempting to generate tiles for dungeon gen " + dgd.DungeonGenerator.Code);
+            }
+
             var tries = dgd.MinTiles * 10;
 
             var tileIndices = new int[dgd.DungeonGenerator.Tiles.Count];
@@ -71,9 +83,13 @@ namespace Vintagestory.ServerMods
                     continue;
                 }
 
+                if (DebugLogging) debugLogs.Add(string.Format("Attempting to close connector {0}", openSide));
+
                 var pickTileTries = tileIndices.Length;
                 while (pickTileTries-- > 0)
                 {
+                    if (DebugLogging) debugLogs.Add("Attempting to pick next tile");
+
                     // 1. Pick a random tile
                     DungeonTile? tile = pickTile(dgd, tileIndices, lcgRnd, openSide);
                     if (tile == null)
@@ -145,7 +161,7 @@ namespace Vintagestory.ServerMods
                     if (startPos.X < 0 || startPos.Y < 0 || startPos.Z < 0) continue; // Beyond block bounds
                     if (startPos.X >= mapsize.X || startPos.Y >= mapsize.Y || startPos.Z >= mapsize.Z) continue; // Beyond block bounds
 
-                    if (CheckIfNewPathsAreBlocked(dgd, schematic, openSide, startPos)) continue;
+                    if (CheckIfNewPathsAreBlocked(tile, dgd, schematic, openSide, startPos)) continue;
 
                     addTile(dgd, openSide, tile.Code, rot, schematic, startPos, newloc);
                     dgd.PlacedTiles++;
@@ -159,24 +175,29 @@ namespace Vintagestory.ServerMods
                 return true;
             }
 
+            if (DebugLogging) debugLogs.Add(string.Format("Could not finish dungeon gen " + dgd.DungeonGenerator.Code + " only {0} of {1} placeable", dgd.PlacedTiles, dgd.MinTiles));
             return false;
         }
 
-        private static bool CheckIfNewPathsAreBlocked(DungeonGenWorkspace dgd, BlockSchematicPartial schematic, ConnectorMetaData openSide,
-            FastVec3i startPos)
+        private bool CheckIfNewPathsAreBlocked(DungeonTile tilefordebug, DungeonGenWorkspace dgd, BlockSchematicPartial schematic, ConnectorMetaData openSide, FastVec3i startPos)
         {
+            if (dgd.DungeonGenerator.RequireUnblocked == null) return false;
+
             // check when adding a new room/sub room piece if its connectors would lead directly into another room without any connection to it
             // and potentially block any end cap generation
             foreach (var con in schematic.Connectors)
             {
+                if (!dgd.DungeonGenerator.RequireUnblocked.Contains(con.Name)) continue;
+
                 // connection where the new rooms is attached
                 if (con.ConnectsTo(openSide, startPos)) continue;
                 // any other connections from the new room to any other room in the dungeon
                 if (dgd.OpenSet.Any(o => con.ConnectsTo(o, startPos))) continue;
 
-                var newpos = (con.Position).Add(startPos).Add(con.Facing.Normali * 2);
+                var newpos = con.Position.Add(startPos).Add(con.Facing.Normali * 2);
                 if (dgd.GeneratedStructures.Any(s => s.Location.Contains(newpos)))
                 {
+                    if (DebugLogging) logger.Notification(string.Format("Failed to place tile {0} at {1} because it would block potential connector {2} at {3}", tilefordebug.Code, startPos, con.ToString(), newpos));
                     return true;
                 }
                 if (dgd.ExistingStructures.Any(s => s.Location.Contains(newpos)))
@@ -190,16 +211,18 @@ namespace Vintagestory.ServerMods
 
         private void addTile(DungeonGenWorkspace dgd, ConnectorMetaData openSide, string tileCode, int rot, BlockSchematicPartial schematic, FastVec3i startPos, Cuboidi newloc)
         {
-            dgd.PlaceTasks.Add(new TilePlaceTask()
+            var placeTask = new TilePlaceTask()
             {
                 TileCode = tileCode,
                 Rotation = rot,
                 Pos = new BlockPos(startPos.X, startPos.Y, startPos.Z),
-                FileName = schematic.FromFileName,
+                FileName = schematic.FromFile,
                 SizeX = schematic.SizeX,
                 SizeY = schematic.SizeY,
                 SizeZ = schematic.SizeZ,
-            });
+            };
+
+            dgd.PlaceTasks.Add(placeTask);
 
             dgd.GeneratedStructures.Add(new GeneratedStructure()
             {
@@ -207,6 +230,12 @@ namespace Vintagestory.ServerMods
                 Location = newloc,
                 SuppressRivulets = true
             });
+
+
+            if (DebugLogging)
+            {
+                debugLogs.Add(string.Format("Added tile {0} (total place tasks={1})", tileCode, dgd.PlaceTasks.Count));
+            }
 
             FilterOpenSet(schematic, startPos, dgd, openSide);
 
@@ -309,11 +338,16 @@ namespace Vintagestory.ServerMods
             // }
 
 
-
             tileIndices.Shuffle(lcgrand);
             var rndval = (float)lcgrand.NextDouble() * dgd.DungeonGenerator.totalChance;
             var cnt = dgd.DungeonGenerator.Tiles.Count;
             DungeonTile? currentBestTile = null;
+
+            if (openSide.Targets.Length == 0)
+            {
+                if (DebugLogging) debugLogs.Add(string.Format("Connector {0} in the open set has no targets. Skipping.", openSide));
+                return null;
+            }
 
             for (var k = 0; k < cnt; k++)
             {
@@ -325,8 +359,9 @@ namespace Vintagestory.ServerMods
                     continue;
                 }
 
-                if (!tile.CachedNames.Any(n => openSide.Targets.Contains(n)))
+                if (!tile.CachedNames.Any(n => openSide.ConnectsTo(n)))
                 {
+                    if (DebugLogging) debugLogs.Add(string.Format("Attempt to connect {0}. Tile '{1}' unsuitable. It has no connector with such name", openSide, tile.Code));
                     continue;
                 }
 
@@ -345,8 +380,11 @@ namespace Vintagestory.ServerMods
                     continue;
                 }
 
+                if (DebugLogging && tile != null) debugLogs.Add(string.Format("For open connector '{0}' found suitable tile '{1}'", openSide, currentBestTile.Code));
                 return tile;
             }
+
+            if (DebugLogging && currentBestTile != null) debugLogs.Add(string.Format("For open connector '{0}' found suitable tile '{1}'", openSide, currentBestTile.Code));
 
             return currentBestTile;
         }
@@ -384,37 +422,47 @@ namespace Vintagestory.ServerMods
 
         private int TryGenSubGenerator(LCGRandom rnd, DungeonTile dungeonTile, ConnectorMetaData openside, DungeonGenWorkspace dgd)
         {
+            if (DebugLogging)
+            {
+                debugLogs.Add("=============================");
+                debugLogs.Add("Enter sub dungeon generator for tile '" + dungeonTile.Code + "'");
+            }
+
             if (dungeonTile.TileGenerator.MinTiles == 0)
             {
-                logger.Warning("Child generator {0} has mintiles set to 0, will not generate anything", dungeonTile.TileGenerator.Code);
+                logger.Warning("Child generator '{0}' has mintiles set to 0, will not generate anything", dungeonTile.TileGenerator.Code);
             }
 
             var childDgd = dgd.SpawnChild(dungeonTile);
 
             var tries = 20;
-            while (tries-- > 0  )
+            while (tries-- > 0)
             {
+                if (DebugLogging) debugLogs.Add("Sub dungeon generator for tile '" + dungeonTile.Code + "', attempt nr. " + tries + "/20");
+
                 childDgd.Reset(openside, dgd.GeneratedStructures);
 
                 if (TryGenerateTiles(rnd, childDgd))
                 {
-                    if (dungeonTile.TileGenerator.RequireClosed != null &&
-                        childDgd.OpenSet.Any(s =>
-                            dungeonTile.TileGenerator.RequireClosed.Any(n =>
-                                s.Name.Equals(n)
-                                || s.Targets.Contains(n))))
+                    if (dungeonTile.TileGenerator.RequireClosed != null && childDgd.OpenSet.Any(s => dungeonTile.TileGenerator.RequireClosed.Any(n => s.Name.Equals(n) || s.Targets.Contains(n))))
                     {
+                        if (DebugLogging)
+                        {
+                            var conn = childDgd.OpenSet.First(s => dungeonTile.TileGenerator.RequireClosed.Any(n => s.Name.Equals(n) || s.Targets.Contains(n)));
+                            debugLogs.Add(string.Format("Sub dungeon generator for tile " + dungeonTile.Code + ", cannot complete. 'RequireClosed' Connector {0} was not closable", conn));
+                        }
+
                         rnd.NextDouble();
                         continue;
                     }
 
-                    childDgd.CommitToParent();
+                    childDgd.CommitToParent(DebugLogging, debugLogs);
 
                     return childDgd.PlaceTasks.Count - 1;
                 }
             }
 
-
+            if (DebugLogging) debugLogs.Add("Unable to create sub dungeon. Giving up.");
             return 0;
         }
 
@@ -458,14 +506,20 @@ namespace Vintagestory.ServerMods
                 if (!found) {
                     var connector = selfCon.Clone().Offset(startPos);
                     connector = delegateRequireOpenedToParent(dgd.DungeonGenerator.RequireOpened, connector);
+                    if (DebugLogging) connector.FromSchematicForDebug = schematic.FromFile;
                     toAdd.Add(connector);
                 }
             }
 
-
             dgd.OpenSet.Clear();
             dgd.OpenSet.AddRange(newOpenSet);
             dgd.OpenSet.AddRange(toAdd);
+
+
+            if (DebugLogging && toAdd.Count > 0)
+            {
+                debugLogs.Add(string.Format("Added connectors {0} to open set", string.Join(",", toAdd.Select(conn => conn.ToString()))));
+            }
         }
     }
 }

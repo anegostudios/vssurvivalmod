@@ -13,8 +13,10 @@ namespace Vintagestory.GameContent
     public struct WeightedHandbookPage
     {
         public int TitleMatches;
+        public int StrictTitleMatches;
         public int TextMatches;
         public int TitleLength;
+        public float SearchWeight;
         public GuiHandbookPage Page;
     }
 
@@ -42,6 +44,7 @@ namespace Vintagestory.GameContent
         public bool Visible { get; set; } = true;
         public abstract PageText GetPageText();
         public abstract bool IsDuplicate { get; }
+        public abstract float SearchWeightOffset { get; }
 
         public abstract void ComposePage(GuiComposer detailViewGui, ElementBounds textBounds, ItemStack[] allstacks, ActionConsumable<string> openDetailPageFor);
 

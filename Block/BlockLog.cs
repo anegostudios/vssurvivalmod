@@ -9,10 +9,8 @@ using Vintagestory.ServerMods;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockLog : Block, IBlockLog
+    public class BlockLog : Block, IBlockLog, ICustomChiselMaterialName
     {
-
-
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {
             return Drops[0].ResolvedItemstack.Clone();
@@ -41,6 +39,11 @@ namespace Vintagestory.GameContent
             {
                 base.AddMiningTierInfo(sb, world, pos);
             }
+        }
+
+        string ICustomChiselMaterialName.GetName(ItemStack itemStack)
+        {
+            return Lang.Get("chiselmaterialnamewithorientation-"+ Variant["rotation"], itemStack.GetName());
         }
     }
 }

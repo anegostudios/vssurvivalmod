@@ -1,4 +1,5 @@
-﻿using Vintagestory.API.Client;
+using System.Linq;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
@@ -9,6 +10,8 @@ namespace Vintagestory.GameContent
 {
     public class BlockBunchOCandles : Block
     {
+        WorldInteraction[] interactions;
+
         internal int QuantityCandles;
 
         internal Vec3f[] candleWickPositions = {
@@ -50,6 +53,66 @@ namespace Vintagestory.GameContent
             base.OnLoaded(api);
             initRotations();
             QuantityCandles = Variant["quantity"].ToInt();
+
+            interactions = ObjectCacheUtil.GetOrCreate(api, "candleInteractions", () =>
+            {
+                Item candleItem = api.World.GetItem("candle");
+
+                if (candleItem == null) return [];
+
+                ItemStack[] candleStacks = [new ItemStack(candleItem)];
+
+                return new WorldInteraction[] {
+                      new WorldInteraction() {
+                          ActionLangCode = "blockhelp-groundstorage-addone",
+                          MouseButton = EnumMouseButton.Right,
+                          HotKeyCode = "shift",
+                          Itemstacks = candleStacks,
+                      },
+                      new WorldInteraction() {
+                          ActionLangCode = "blockhelp-groundstorage-removeone",
+                          MouseButton = EnumMouseButton.Right,
+                          RequireFreeHand = true
+                      }
+                  };
+            });
+        }
+
+        public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
+        {
+            if (!byPlayer.Entity.ActiveHandItemSlot.Empty && (byPlayer.Entity.ActiveHandItemSlot?.Itemstack?.Collectible is not ItemCandle))
+            {
+                return base.OnBlockInteractStart(world, byPlayer, blockSel);
+            }
+
+            string curQuantity = Variant["quantity"];
+            if (curQuantity == null)
+            {
+                return base.OnBlockInteractStart(world, byPlayer, blockSel);
+            }
+
+            int.TryParse(curQuantity, out int stage);
+            Block nextblock = world.GetBlock(CodeWithVariant("quantity", "" + (stage - 1)));
+
+            if (nextblock == null)
+            {
+                world.BlockAccessor.SetBlock(0, blockSel.Position);
+                world.BlockAccessor.TriggerNeighbourBlockUpdate(blockSel.Position);
+            }
+            else
+            {
+                world.BlockAccessor.SetBlock(nextblock.BlockId, blockSel.Position);
+            }
+
+            world.PlaySoundAt(Sounds.Place, blockSel.Position, -0.4, byPlayer);
+
+            ItemStack outstack = new ItemStack(world.GetItem("candle"));
+            if (outstack != null && !byPlayer.InventoryManager.TryGiveItemstack(outstack, slotNotifyEffect: true))
+            {
+                world.SpawnItemEntity(outstack, blockSel.Position);
+            }
+
+            return true;
         }
 
         public override void OnAsyncClientParticleTick(IAsyncParticleManager manager, BlockPos pos, float windAffectednessAtPos, float secondsTicking)
@@ -64,19 +127,22 @@ namespace Vintagestory.GameContent
                     AdvancedParticleProperties bps = ParticleProperties[i];
                     bps.WindAffectednesAtPos = windAffectednessAtPos;
 
-                    
-
                     for (int j = 0; j < QuantityCandles; j++)
                     {
                         Vec3f dp = poses[j];
 
-                        bps.basePos.X = pos.X + dp.X;
+                        bps.basePos.X = pos.X + dp.X - 1/64f;
                         bps.basePos.Y = pos.InternalY + dp.Y;
                         bps.basePos.Z = pos.Z + dp.Z;
                         manager.Spawn(bps);
                     }
                 }
             }
+        }
+
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
+        {
+            return interactions.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
         }
     }
 }

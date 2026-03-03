@@ -12,6 +12,7 @@ namespace Vintagestory.GameContent
         public string TextCacheTitle;
         public string TextCacheAll;
         public float searchWeightOffset;
+        public override float SearchWeightOffset => searchWeightOffset;
         public LoadedTexture Texture;
 
 
@@ -51,7 +52,7 @@ namespace Vintagestory.GameContent
 
             capi.Render.Render2DTexturePremultipliedAlpha(
                 Texture.TextureId,
-                x + size, 
+                x + size,
                 y + size - GuiElement.scaled(3),
                 Texture.Width,
                 Texture.Height,

@@ -19,6 +19,7 @@ namespace Vintagestory.GameContent
         public override string PageCode => pageCode;
 
         public override string CategoryCode => categoryCode;
+        public override float SearchWeightOffset => 1f;
 
         public override void Dispose() { Texture?.Dispose(); Texture = null; }
 
@@ -29,7 +30,7 @@ namespace Vintagestory.GameContent
 
         public GuiHandbookTextPage()
         {
-            
+
         }
 
         public void Init(ICoreClientAPI capi)
@@ -38,7 +39,7 @@ namespace Vintagestory.GameContent
             {
                 Text = Lang.Get(Text);
             }
-            
+
             comps = VtmlUtil.Richtextify(capi, Text, CairoFont.WhiteSmallText().WithLineHeightMultiplier(1.2));
 
             titleCached = Lang.Get(Title).ToSearchFriendly();

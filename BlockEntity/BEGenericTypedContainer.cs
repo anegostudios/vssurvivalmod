@@ -294,16 +294,13 @@ namespace Vintagestory.GameContent
             {
                 CloseLid();
 
-                if (player.WorldData.CurrentGameMode == EnumGameMode.Survival && Inventory.Empty)
+                if (Inventory.Empty && player.WorldData.CurrentGameMode == EnumGameMode.Survival &&
+                    Block.Attributes["changeIntoWhenEmpty"][type].AsObject<JsonItemStack>() is { } jstack)
                 {
-                    Api.World.PlaySoundAt(CloseSound, Pos, 0.5, player);
+                    Api.World.PlaySoundAt(new AssetLocation("sounds/effect/toolbreak"), Pos, 0.5, player);
 
-                    JsonItemStack jstack = Block.Attributes["changeIntoWhenEmpty"][type].AsObject<JsonItemStack>();
-                    if (jstack != null)
-                    {
-                        jstack.Resolve(Api.World, string.Format("Container {0} changeIntoWhenEmpty", Block.Code));
-                        Api.World.BlockAccessor.SetBlock(jstack.ResolvedItemstack.Block.Id, Pos, jstack.ResolvedItemstack);
-                    }
+                    jstack.Resolve(Api.World, $"Container {Block.Code} changeIntoWhenEmpty");
+                    Api.World.BlockAccessor.SetBlock(jstack.ResolvedItemstack.Block.Id, Pos, jstack.ResolvedItemstack);
                 }
             }
 

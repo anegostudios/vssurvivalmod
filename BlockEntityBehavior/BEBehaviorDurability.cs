@@ -23,7 +23,7 @@ namespace Vintagestory.GameContent
 
         public override void OnBlockPlaced(ItemStack byItemStack = null)
         {
-            RemainingDurability = byItemStack.Collectible.GetRemainingDurability(byItemStack);
+            RemainingDurability = byItemStack?.Collectible.GetRemainingDurability(byItemStack) ?? 0;
         }
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)

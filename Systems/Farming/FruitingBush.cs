@@ -29,6 +29,13 @@ public enum EnumFruitingBushGrowthState
 
 public class FruitingBushState
 {
+    public static string[][] AllTraits = new string[][] {
+        ["shybearer", "heavybearer"],
+        ["thinskinnedfruit", "thickskinnedfruit"],
+        ["weakrooted", "strongrooted"],
+        ["weakclusteredberries", "strongclusteredberries"]
+    };
+
     /// <summary>
     /// When the bush was planted
     /// </summary>
@@ -41,6 +48,12 @@ public class FruitingBushState
     /// What growth state the bush is in
     /// </summary>
     EnumFruitingBushGrowthState growthstate;
+        /// <summary>
+    /// What traits this bush has
+    /// </summary>
+    public string[]? Traits;
+
+
     public EnumFruitingBushGrowthState Growthstate
     {
         get { return growthstate; }
@@ -64,7 +77,6 @@ public class FruitingBushState
     }
 
     public bool MeshDirty = false;
-
     public double LastCuttingTakenTotalDays = -99999;
 
     public void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
@@ -73,7 +85,10 @@ public class FruitingBushState
         MatureTotalDays = tree.GetDouble("matureTotalDays");
         LastCuttingTakenTotalDays = tree.GetDouble("lastCuttingTakenTotalDays", -99999);
         Growthstate = (EnumFruitingBushGrowthState)tree.GetInt("growthState");
-
+        if (tree.HasAttribute("traits"))
+        {
+            Traits = tree.GetString("traits").Split(",");
+        }
 
         WildBushState = null;
         if (tree.HasAttribute("wildBushState")) WildBushState = (EnumFruitingBushHealthState)tree.GetInt("wildBushState");
@@ -85,6 +100,7 @@ public class FruitingBushState
         tree.SetDouble("matureTotalDays", MatureTotalDays);
         tree.SetDouble("lastCuttingTakenTotalDays", LastCuttingTakenTotalDays);
         tree.SetInt("growthState", (int)Growthstate);
+        if (Traits != null) tree.SetString("traits", string.Join(",", Traits));
         if (WildBushState != null) tree.SetInt("wildBushState", (int)WildBushState);
     }
 }

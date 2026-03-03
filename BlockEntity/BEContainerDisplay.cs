@@ -16,6 +16,10 @@ namespace Vintagestory.GameContent
         bool OnContainedInteractStart(BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel);
         bool OnContainedInteractStep(float secondsUsed, BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel);
         void OnContainedInteractStop(float secondsUsed, BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel);
+        bool OnContainedInteractCancel(float secondsUsed, BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel, EnumItemUseCancelReason cancelReason)
+        {
+            return true; // In order to avoid breaking mods we'll return true by default
+        }
     }
 
     public interface IContainedCustomName
@@ -49,7 +53,7 @@ namespace Vintagestory.GameContent
         protected CollectibleObject nowTesselatingObj;
         protected Shape nowTesselatingShape;
         protected ICoreClientAPI capi;
-        
+
         /// <summary>
         /// Return a unique code for this type of block. Used as part of the cache key. E.g. for the display case the class code is "displaycase", for the shelf its "openshelf"
         /// </summary>
@@ -124,7 +128,7 @@ namespace Vintagestory.GameContent
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
-            
+
             capi = api as ICoreClientAPI;
             if (capi != null)
             {
@@ -132,7 +136,7 @@ namespace Vintagestory.GameContent
                 api.Event.RegisterEventBusListener(OnEventBusEvent);
             }
         }
-        
+
 
         private void OnEventBusEvent(string eventname, ref EnumHandling handling, IAttribute data)
         {

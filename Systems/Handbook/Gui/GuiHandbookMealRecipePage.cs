@@ -54,6 +54,7 @@ namespace Vintagestory.GameContent
         readonly string textCached;
         protected float secondsVisible = 0;
 
+
         protected const int TinyPadding = 2;   // Used to add tiny amounts of vertical padding after headings, so that things look less cramped
         protected const int TinyIndent = 2;    // Used to indent the page contents following headings - this subtly helps headings to stand out more
         protected const int MarginBottom = 3;  // Used following some (but not all) itemstack graphics
@@ -62,6 +63,7 @@ namespace Vintagestory.GameContent
 
         public LoadedTexture? Texture;
         public override string PageCode => pageCode;
+        public override float SearchWeightOffset => 1f;
 
         public InventoryBase unspoilableInventory;
         public DummySlot dummySlot;
@@ -358,25 +360,26 @@ namespace Vintagestory.GameContent
 
                         if (istack == null) continue;
 
-                        float statModifier = istack.StackSize;
                         CookingRecipeIngredient? ingred = Recipe.GetIngrendientFor(istack, ingredientsToSkip.ToArray());
-                        istack = ingred?.GetMatchingStack(istack)?.CookedStack?.ResolvedItemstack.Clone() ?? istack;
-                        istack.StackSize = (int)statModifier;
-
-                        FoodNutritionProperties? stackProps = BlockMeal.GetIngredientStackNutritionProperties(capi.World, istack, capi.World.Player.Entity);
+                        CookingRecipeStack? cStack = ingred?.GetMatchingStack(istack);
+                        int statMultiplier = cStack?.StackSize ?? 1;
+                        istack = cStack?.CookedStack?.ResolvedItemstack?.Clone() ?? istack;
+                        istack.StackSize = 1;
 
                         if (BlockLiquidContainerBase.GetContainableProps(istack) is WaterTightContainableProps props)
                         {
-                            statModifier = statModifier / props.ItemsPerLitre / ingredient.PortionSizeLitres;
+                            istack.StackSize = (int)(props.ItemsPerLitre * ingredient.PortionSizeLitres);
                         }
+
+                        FoodNutritionProperties? stackProps = BlockMeal.GetIngredientStackNutritionProperties(capi.World, istack, capi.World.Player.Entity);
 
                         if (stackProps != null)
                         {
-                            ingredientMinSat = GameMath.Min(ingredientMinSat, stackProps.Satiety * statModifier);
-                            ingredientMaxSat = GameMath.Max(ingredientMaxSat, stackProps.Satiety * statModifier);
+                            ingredientMinSat = GameMath.Min(ingredientMinSat, stackProps.Satiety * statMultiplier);
+                            ingredientMaxSat = GameMath.Max(ingredientMaxSat, stackProps.Satiety * statMultiplier);
 
-                            ingredientMinHP = GameMath.Min(ingredientMinHP, stackProps.Health * statModifier);
-                            ingredientMaxHP = GameMath.Max(ingredientMaxHP, stackProps.Health * statModifier);
+                            ingredientMinHP = GameMath.Min(ingredientMinHP, stackProps.Health * statMultiplier);
+                            ingredientMaxHP = GameMath.Max(ingredientMaxHP, stackProps.Health * statMultiplier);
                         }
                         skip &= stackProps == null;
 

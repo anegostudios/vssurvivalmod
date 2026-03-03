@@ -552,13 +552,31 @@ namespace Vintagestory.GameContent
             if (contentStacks == null || inSlot.Itemstack is not ItemStack mealStack) return foodProps.ToArray();
 
             bool timeFrozen = mealStack.Attributes.GetBool("timeFrozen");
+            string? recipeCode = mealStack.Attributes.GetString("recipeCode");
+            var cookingIngreds = world.Api.GetCookingRecipe(recipeCode)?.Ingredients?.Select(ingred => ingred.Clone()).ToList();
 
             for (int i = 0; i < contentStacks.Length; i++)
             {
                 var contentStack = contentStacks[i];
-                if (contentStack == null || GetIngredientStackNutritionProperties(world, contentStack, forEntity) is not FoodNutritionProperties stackProps) continue;
+                if (contentStack == null) continue;
+                float mul = contentStack.StackSize;
+                // Create a stack that we can test for the proper amount of nutrition regardless of the actual stack size in the container
+                var nutriStack = contentStack.Clone();
+                nutriStack.StackSize = 1;
+                if (!mulWithStacksize)
+                {
+                    nutriStack.StackSize = (int)(BlockLiquidContainerBase.GetContainableProps(nutriStack)?.ItemsPerLitre ?? 1);
+                    if (cookingIngreds?.FirstOrDefault(ing => ing.Matches(nutriStack)) is CookingRecipeIngredient ingred)
+                    {
+                        mul = ingred.GetMatchingStack(nutriStack)?.StackSize ?? 1;
+                        nutriStack.StackSize = (int)(nutriStack.StackSize * ingred.PortionSizeLitres);
+                        ingred.MaxQuantity -= 1;
+                        if (ingred.MaxQuantity == 0) cookingIngreds.Remove(ingred);
+                    }
+                    else mul = 1;
+                }
 
-                float mul = mulWithStacksize ? contentStack.StackSize : 1;
+                if (GetIngredientStackNutritionProperties(world, nutriStack, forEntity) is not FoodNutritionProperties stackProps) continue;
 
                 FoodNutritionProperties props = stackProps.Clone();
 

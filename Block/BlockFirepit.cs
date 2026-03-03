@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -11,9 +12,11 @@ namespace Vintagestory.GameContent
 {
     public class BlockFirepit : Block, IIgnitable, ISmokeEmitter
     {
-
-        public int Stage { get {
-            switch (LastCodePart())
+        public int Stage
+        {
+            get
+            {
+                switch (LastCodePart())
                 {
                     case "construct1":
                         return 1;
@@ -25,7 +28,8 @@ namespace Vintagestory.GameContent
                         return 4;
                 }
                 return 5;
-        } }
+            }
+        }
 
         public string NextStageCodePart
         {
@@ -48,14 +52,17 @@ namespace Vintagestory.GameContent
 
 
         public bool IsExtinct;
-
-        AdvancedParticleProperties[] ringParticles;
-        Vec3f[] basePos;
-        WorldInteraction[] interactions;
+        protected AdvancedParticleProperties[] ringParticles;
+        protected Vec3f[] basePos;
+        protected WorldInteraction[] interactions;
+        ICoreClientAPI capi;
 
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
+
+            capi = api as ICoreClientAPI;
+            capi?.Event.RegisterEventBusListener(OnGetTransform, 0.5, "ongettransform");
 
             IsExtinct = LastCodePart() != "lit";
 
@@ -136,6 +143,21 @@ namespace Vintagestory.GameContent
                     }
                 };
             });
+        }
+
+        private void OnGetTransform(string eventName, ref EnumHandling handling, IAttribute data)
+        {
+            var tree = data as TreeAttribute;
+            if (tree.GetString("target") != "infirepitTransform") return;
+
+            ItemSlot slot = capi.World.Player.InventoryManager.ActiveHotbarSlot;
+
+            var props = BlockEntityFirepit.GetRenderProps(slot.Itemstack);
+            if (props?.Transform == null) return;
+
+            handling = EnumHandling.PreventDefault;
+            tree.SetBool("preventDefault", true);
+            props.Transform.ToTreeAttribute(tree);
         }
 
 

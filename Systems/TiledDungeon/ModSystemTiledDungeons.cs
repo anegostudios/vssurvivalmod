@@ -20,6 +20,8 @@ namespace Vintagestory.ServerMods
         int debugStopStep = -1;
         private bool placeDebugConnectors;
 
+        bool debugLogging=false;
+
         public override void StartServerSide(ICoreServerAPI api)
         {
             // Yellow = Tile boundaries, "Sort of"
@@ -34,6 +36,12 @@ namespace Vintagestory.ServerMods
             var parsers = api.ChatCommands.Parsers;
             api.ChatCommands
                 .GetOrCreate("debug")
+                .BeginSub("tddebug")
+                    .WithDesc("Toogle debug logging on/off for tiledd commands")
+                    .RequiresPrivilege(Privilege.controlserver)
+                    .WithArgs(parsers.OptionalBool("mode"))
+                    .HandleWith((args) => { debugLogging = (bool)args[0]; return TextCommandResult.Success("Debug logging now " + (debugLogging ? "on" : "off")); })
+                .EndSub()
                 .BeginSub("tiledd")
                     .WithDesc("Generate a dungeon at the callers position")
                     .RequiresPrivilege(Privilege.controlserver)
@@ -167,7 +175,7 @@ namespace Vintagestory.ServerMods
                     if (bes != null)
                     {
                         bes.MeshAngleRad = -GameMath.PIHALF;
-                        bes.SetText(tilecode + " / " + schematicByRot[0].FromFileName);
+                        bes.SetText(tilecode + " / " + schematicByRot[0].FromFile);
                     }
 
 
@@ -232,6 +240,7 @@ namespace Vintagestory.ServerMods
                 pos = ((Vec3d)args[2 + argOffset]).AsBlockPos;
             }
 
+
             long seed = sapi.WorldManager.Seed ^ 8991827198;
             if (!args.Parsers[3 + argOffset].IsMissing)
             {
@@ -256,17 +265,14 @@ namespace Vintagestory.ServerMods
 
 
             var ba = sapi.World.BlockAccessor;
-            for (var i = 0; i < 1; i++)
+            if (TryPlaceTiledDungeon(ba, rnd, dungeon, pos, tiles, tiles, debugStopStep))
             {
-                if (TryPlaceTiledDungeon(ba, rnd, dungeon, pos, tiles, tiles, debugStopStep))
-                {
-                    return TextCommandResult.Success("dungeon generated");
-                }
-
-                sapi.Logger.Notification($"Dungeon current seed: {rnd.currentSeed} , map: {rnd.mapGenSeed}");
+                return TextCommandResult.Success("dungeon generated");
             }
 
-            return TextCommandResult.Success("Unable to generate dungeon of this size after 1 attempts");
+            sapi.Logger.Notification($"Dungeon current seed: {rnd.currentSeed}, map: {rnd.mapGenSeed}");
+
+            return TextCommandResult.Success(string.Format("Unable to generate dungeon with mintiles={0}, maxtiles={1}, seed={2}", tiles, tiles, seed));
         }
 
         DungeonPlaceTask? placeTask;
@@ -275,12 +281,23 @@ namespace Vintagestory.ServerMods
         public bool TryPlaceTiledDungeon(IBlockAccessor ba, LCGRandom rnd, TiledDungeon dungeon, BlockPos startPos, int minTiles, int maxTiles, int debugStop = -1)
         {
             lastDungeon = dungeon;
+            dungeonGen.DebugLogging = debugLogging;
             placeTask = dungeonGen.TryPregenerateTiledDungeon(rnd, dungeon, new List<GeneratedStructure>(), startPos, minTiles, maxTiles);
+
+            if (debugLogging)
+            {
+                sapi.Logger.Notification(string.Join("\r\n", dungeonGen.debugLogs));
+                sapi.Logger.Notification("The tiles contain the following names:");
+                foreach (var val in dungeon.Tiles)
+                {
+                    sapi.Logger.Notification(val.Code + ": " + string.Join(", ", val.CachedNames));
+                }
+            }
+
             if (placeTask != null)
             {
                 return placeDungeon(ba, dungeon, debugStop, placeTask);
             }
-
             return false;
         }
 
@@ -295,7 +312,7 @@ namespace Vintagestory.ServerMods
                     for (var index = 0; index < tile.ResolvedSchematics.Length; index++)
                     {
                         var rooms = tile.ResolvedSchematics[index];
-                        if (rooms[0].FromFileName != placeTask.FileName) continue;
+                        if (rooms[0].FromFile != placeTask.FileName) continue;
 
                         roomIndex = index;
                         break;
@@ -358,6 +375,11 @@ namespace Vintagestory.ServerMods
                     be.Direction = posFacing.Facing;
                     be.MarkDirty();
                 }
+            }
+
+            if (debugLogging)
+            {
+                sapi.Logger.Notification("Open set:\r\n" + string.Join("\r\n", dungeonPlaceTask.OpenSet.Select(conn => conn.Name + ":" + string.Join(",", conn.Targets))));
             }
             return true;
         }

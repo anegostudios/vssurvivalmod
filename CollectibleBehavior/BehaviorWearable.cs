@@ -271,7 +271,7 @@ public class CollectibleBehaviorWearable : CollectibleBehaviorWearableAttachment
             dsc.AppendLine("<font color=\"#86aad0\">" + Lang.Get("High damage tier resistant") + "</font> " + Lang.Get("When damaged by a higher tier attack, the loss of protection is only half as much."));
         }
 
-        if (collObj.Variant["category"] == "head")
+        if (GetDressType(inSlot) == EnumCharacterDressType.Head)
         {
             var rainProt = collObj.Attributes["rainProtectionPerc"].AsFloat(0);
             if (rainProt > 0)
@@ -588,7 +588,7 @@ public class CollectibleBehaviorWearable : CollectibleBehaviorWearableAttachment
 
         itemslot.Itemstack.Collectible.SetDurability(itemslot.Itemstack, Math.Max(0, leftDurability - amount));
         itemslot.MarkDirty();
-        bhHandling = EnumHandling.Handled;
+        bhHandling = EnumHandling.PreventDefault;
     }
 
     public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot, ref EnumHandling handling)

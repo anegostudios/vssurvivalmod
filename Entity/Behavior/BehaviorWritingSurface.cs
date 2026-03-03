@@ -1,4 +1,5 @@
 using ProtoBuf;
+using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -36,6 +37,7 @@ namespace Vintagestory.GameContent
         protected ICoreClientAPI capi;
         protected LoadedTexture loadedTexture;
 
+        protected string[] writingSurfaces;
         protected TextAreaConfig signTextConfig;
         protected CairoFont font;
         
@@ -85,6 +87,8 @@ namespace Vintagestory.GameContent
                 TextHeight = signTextConfig.MaxHeight;
                 DefaultFontSize = signTextConfig.FontSize;
             }
+
+            writingSurfaces = attributes["writingSurfaces"].AsObject<string[]>();
         }
 
         private void Event_ReloadTextures()
@@ -97,7 +101,11 @@ namespace Vintagestory.GameContent
         public override void OnInteract(EntityAgent byEntity, ItemSlot itemslot, Vec3d hitPosition, EnumInteractMode mode, ref EnumHandling handled)
         {
             if (entity.World.Side == EnumAppSide.Server) return;
-            if (entity.GetBehavior<EntityBehaviorSelectionBoxes>()?.IsAPCode((byEntity as EntityPlayer).EntitySelection, "LPlaqueAP") != true) return;
+
+            if (writingSurfaces == null || entity.GetBehavior<EntityBehaviorSelectionBoxes>() is not EntityBehaviorSelectionBoxes selBoxes || !writingSurfaces.Any(apCode => selBoxes.IsAPCode((byEntity as EntityPlayer).EntitySelection, apCode)))
+            {
+                return;
+            }
 
             if (editDialog != null && editDialog.IsOpened()) return;
 
@@ -112,8 +120,8 @@ namespace Vintagestory.GameContent
                 Text = text;
 
                 capi.Network.SendEntityPacket(
-                    entity.EntityId, 
-                    (int)WritingSurfacePackets.Save, 
+                    entity.EntityId,
+                    (int)WritingSurfacePackets.Save,
                     SerializerUtil.Serialize(new TextDataPacket() { Text = text, FontSize = FontSize })
                 );
                 Color = tempColor;

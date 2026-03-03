@@ -8,6 +8,7 @@ namespace Vintagestory.GameContent;
 public class BEBehaviorFruitingBushCutting : BlockEntityBehavior
 {
     public double matureTotalDays;
+    protected string? traits;
 
     public BEBehaviorFruitingBushCutting(BlockEntity blockentity) : base(blockentity) { }
 
@@ -27,6 +28,8 @@ public class BEBehaviorFruitingBushCutting : BlockEntityBehavior
             if (block != null)
             {
                 Api.World.BlockAccessor.SetBlock(block.BlockId, Blockentity.Pos);
+                var behbb = Api.World.BlockAccessor.GetBlockEntity(Pos).GetBehavior<BEBehaviorFruitingBush>();
+                if (behbb != null) behbb.OnGrownFromCutting(traits);
 
                 StandardWorldProperty fertilities = Api.Assets.TryGet("worldproperties/abstract/fertility.json").ToObject<StandardWorldProperty>();
 
@@ -35,12 +38,14 @@ public class BEBehaviorFruitingBushCutting : BlockEntityBehavior
                 if (fi > 0)
                 {
                     var code = belowBlock.CodeWithVariant("fertility", fertilities.Variants[fi - 1].Code.Path);
-                    var lessfertileblock = Api.World.GetBlock(code);
+                    var lessfertileblock = belowBlock = Api.World.GetBlock(code);
                     if (lessfertileblock != null)
                     {
                         Api.World.BlockAccessor.SetBlock(lessfertileblock.Id, Pos.DownCopy());
                     }
                 }
+
+                
             }
         }
     }
@@ -49,7 +54,9 @@ public class BEBehaviorFruitingBushCutting : BlockEntityBehavior
     {
         var min = Block.Attributes["matureTotalMonthsMin"].AsDouble(6);
         var max = Block.Attributes["matureTotalMonthsMin"].AsDouble(12);
-        matureTotalDays = (min + Api.World.Rand.NextDouble() * (max - min)) * Api.World.Calendar.DaysPerMonth;
+        matureTotalDays = Api.World.Calendar.TotalDays + (min + Api.World.Rand.NextDouble() * (max - min)) * Api.World.Calendar.DaysPerMonth;
+
+        traits = byItemStack?.Attributes.GetString("traits");
 
         base.OnBlockPlaced(byItemStack);
     }
@@ -58,6 +65,7 @@ public class BEBehaviorFruitingBushCutting : BlockEntityBehavior
     {
         base.FromTreeAttributes(tree, worldAccessForResolve);
 
+        traits = tree.GetString("traits");
         matureTotalDays = tree.GetDouble("matureTotalDays");
     }
 
@@ -66,5 +74,6 @@ public class BEBehaviorFruitingBushCutting : BlockEntityBehavior
         base.ToTreeAttributes(tree);
 
         tree.SetDouble("matureTotalDays", matureTotalDays);
+        tree.SetString("traits", traits);
     }
 }

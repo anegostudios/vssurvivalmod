@@ -229,6 +229,7 @@ namespace Vintagestory.GameContent
             var newblock = api.World.GetBlock(newcode);
 
             api.World.BlockAccessor.ExchangeBlock(newblock.Id, blockSel.Position);
+            if (api.Side == EnumAppSide.Client) api.World.BlockAccessor.RedrawNeighbouringChunk(blockSel.Position);
 
             api.World.PlaySoundAt(newblock.Sounds.Place, blockSel.Position, 0, byPlayer);
             (api.World as IClientWorldAccessor)?.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
@@ -241,6 +242,7 @@ namespace Vintagestory.GameContent
             api.World.PlaySoundAt(block.Sounds.Place, blockSel.Position, 0, byPlayer);
             (api.World as IClientWorldAccessor)?.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
             iwre.Rotate(byPlayer.Entity, blockSel, dir);
+            (api.World as IClientWorldAccessor)?.BlockAccessor.RedrawNeighbouringChunk(blockSel.Position);
         }
     }
 }

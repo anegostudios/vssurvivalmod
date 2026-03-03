@@ -108,7 +108,7 @@ namespace Vintagestory.GameContent
             HandbookCreatedByTitle = properties["handbookCreatedByTitle"].AsString("handbook-createdby-groundstoredprocessing");
             ProcessTime = properties["processTime"].AsFloat();
             ProcessedStacks = properties["processedStacks"].AsObject<BlockDropItemStack[]?>();
-            ProcessingAnimationCode = properties["AnimationCode"].AsString();
+            ProcessingAnimationCode = properties["processingAnimationCode"].AsString();
             string? code = properties["processingSound"].AsString();
             if (code != null) {
                 ProcessingSound = AssetLocation.Create(code, collObj.Code.Domain);
@@ -174,12 +174,12 @@ namespace Vintagestory.GameContent
                 be.Api.World.SpawnCubeParticles(blockSel.Position.ToVec3d().Add(blockSel.HitPosition), ProcessedStacks?[0]?.ResolvedItemstack ?? RemainingItem!.ResolvedItemstack, 0.25f, 1, 0.5f, byPlayer, new Vec3f(0, 1, 0));
             }
 
-            return be.Api.World.Side == EnumAppSide.Client || secondsUsed < ProcessTime;
+            return secondsUsed < ProcessTime;
         }
 
         public void OnContainedInteractStop(float secondsUsed, BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
         {
-            if (ProcessingAnimationCode != null) byPlayer.Entity.StopAnimation(ProcessingAnimationCode);
+            byPlayer.Entity.StopAnimation(ProcessingAnimationCode);
             if (Tool != null && byPlayer.InventoryManager.ActiveTool != Tool) return;
 
             if (secondsUsed > ProcessTime - 0.05f && (ProcessedStacks != null || RemainingItem != null) && be.Api.World.Side == EnumAppSide.Server)
@@ -222,6 +222,12 @@ namespace Vintagestory.GameContent
 
                 be.Api.World.PlaySoundAt(ProcessingSound, blockSel.Position, 0, byPlayer);
             }
+        }
+
+        public bool OnContainedInteractCancel(float secondsUsed, BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel, EnumItemUseCancelReason cancelReason)
+        {
+            byPlayer.Entity.StopAnimation(ProcessingAnimationCode);
+            return true;
         }
 
 

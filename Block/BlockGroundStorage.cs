@@ -178,6 +178,17 @@ namespace Vintagestory.GameContent
             base.OnBlockInteractStop(secondsUsed, world, byPlayer, blockSel);
         }
 
+        public override bool OnBlockInteractCancel(float secondsUsed, IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, EnumItemUseCancelReason cancelReason)
+        {
+            BlockEntity be = world.BlockAccessor.GetBlockEntity(blockSel.Position);
+            if (be is BlockEntityGroundStorage beg)
+            {
+                return beg.OnPlayerInteractCancel(secondsUsed, byPlayer, blockSel, cancelReason);
+            }
+
+            return base.OnBlockInteractCancel(secondsUsed, world, byPlayer, blockSel, cancelReason);
+        }
+
         public override EnumBlockMaterial GetBlockMaterial(IBlockAccessor blockAccessor, BlockPos pos, ItemStack stack = null)
         {
             return base.GetBlockMaterial(blockAccessor, pos, stack);
@@ -657,7 +668,10 @@ namespace Vintagestory.GameContent
                         }
                         Vec3f offset = new Matrixf().RotateY(begs.MeshAngle).TransformVector(new Vec4f(offs[slotId].X, offs[slotId].Y, offs[slotId].Z, 1)).XYZ;
 
-                        if (gsParticleEmitter.ShouldSpawnGSParticles(begs.Api.World, slot.Itemstack)) gsParticleEmitter.DoSpawnGSParticles(manager, pos, offset);
+                        if (gsParticleEmitter.ShouldSpawnGSParticles(begs.Api.World, slot.Itemstack))
+                        {
+                            gsParticleEmitter.DoSpawnGSParticles(manager, pos, offset);
+                        }
                     }
                 }
             }

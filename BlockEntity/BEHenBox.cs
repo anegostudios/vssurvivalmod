@@ -56,7 +56,8 @@ namespace Vintagestory.GameContent
 
         public virtual bool IsSuitableFor(Entity entity, string[] nestTypes)
         {
-            return nestTypes?.Contains(((BlockHenbox)Block).NestType) == true;
+            string nestType = (Block as BlockHenbox)?.NestType;
+            return nestType != null && nestTypes?.Contains(nestType) == true;
         }
 
         public bool Occupied(Entity entity)
@@ -370,6 +371,11 @@ namespace Vintagestory.GameContent
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
+            if (Block is not BlockHenbox)
+            {
+                dsc.AppendLine("error-blockentity-wrongblockclass");
+            }
+
             int eggCount = 0;
             int fertileCount = 0;
             for (int i = 0; i < inventory.Count; ++i)

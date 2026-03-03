@@ -32,6 +32,10 @@ namespace Vintagestory.ServerMods
         [JsonIgnore]
         public BlockSchematicPartial[]? Start;
 
+        public string? surface;
+        [JsonIgnore]
+        public BlockSchematicPartial[]? Surface;
+
         public string[]? ends;
         [JsonIgnore]
         public BlockSchematicPartial[][]? EndSchematics;
@@ -50,6 +54,11 @@ namespace Vintagestory.ServerMods
         /// </summary>
         [JsonProperty]
         public string[]? RequireOpened;
+        /// <summary>
+        /// If defined these connectors must not get blocked by other tiles.
+        /// </summary>
+        [JsonProperty]
+        public HashSet<string>? RequireUnblocked;
 
         [JsonProperty]
         public bool BuildProtected;
@@ -74,6 +83,13 @@ namespace Vintagestory.ServerMods
                 var asset = api.Assets.Get("worldgen/dungeontiles/" + stairs + ".json");
                 Stairs = WorldGenStructureBase.LoadSchematic<BlockSchematicPartial>(api, asset, blockLayerConfig, null, null,0);
                 TilesByCode[stairs] = new DungeonTile() { ResolvedSchematics = new[] { Stairs }, Code = stairs };
+            }
+
+            if (surface != null)
+            {
+                var asset = api.Assets.Get("worldgen/dungeontiles/" + surface + ".json");
+                Surface = WorldGenStructureBase.LoadSchematic<BlockSchematicPartial>(api, asset, blockLayerConfig, null, null,0);
+                TilesByCode[surface] = new DungeonTile() { ResolvedSchematics = new[] { Surface }, Code = surface };
             }
 
             if (start != null)

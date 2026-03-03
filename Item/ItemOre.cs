@@ -147,7 +147,7 @@ namespace Vintagestory.GameContent
                 be.Api.World.SpawnCubeParticles(blockSel.Position.ToVec3d().Add(blockSel.HitPosition), slot.Itemstack, 0.25f, 1, 0.5f, byPlayer, new Vec3f(0, 1, 0));
             }
 
-            return be.Api.World.Side == EnumAppSide.Client || secondsUsed < 2f;
+            return secondsUsed < 2f;
         }
 
         public void OnContainedInteractStop(float secondsUsed, BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
@@ -189,6 +189,12 @@ namespace Vintagestory.GameContent
 
                 be.Api.World.PlaySoundAt("sounds/block/rock-break-pickaxe", blockSel.Position, 0);
             }
+        }
+
+        public bool OnContainedInteractCancel(float secondsUsed, BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel, EnumItemUseCancelReason cancelReason)
+        {
+            byPlayer.Entity.StopAnimation("hammerhit-fp");
+            return true;
         }
 
 

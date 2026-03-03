@@ -55,9 +55,7 @@ public class BEBehaviorFruitingBushMesh : BlockEntityBehavior, ITexPositionSourc
 
     public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
     {
-        base.FromTreeAttributes(tree, worldAccessForResolve);
-
-        
+        base.FromTreeAttributes(tree, worldAccessForResolve);     
 
         if (BState.MeshDirty)
         {
@@ -67,7 +65,7 @@ public class BEBehaviorFruitingBushMesh : BlockEntityBehavior, ITexPositionSourc
         }
     }
 
-    protected virtual string meshCacheKey => Block.Code + "-" + BState.Growthstate + "-" + textureVariant;
+    protected virtual string meshCacheKey => Block.Code + "-" + BState.Growthstate + "-" + healthState + "-" + textureVariant;
     protected void ensureMeshExists()
     {
         if (bushMesh != null) return;
@@ -94,7 +92,6 @@ public class BEBehaviorFruitingBushMesh : BlockEntityBehavior, ITexPositionSourc
             var loc = Block.Shape.Base;
             var shape = capi.Assets.Get<Shape>(loc.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json"));
 
-            
             if (BState.Growthstate == EnumFruitingBushGrowthState.Dormant) ignoreElements = ignoreElements.Append(["Leaves/*"]);
 
             capi.Tesselator.TesselateShape(new TesselationMetaData()

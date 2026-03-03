@@ -244,6 +244,7 @@ namespace Vintagestory.GameContent
 
             BrowseHistoryElement curPage = browseHistory.Peek();
 
+            capi.World.FrameProfiler.Mark("handbook-opendetailpage-1");
             detailViewGui?.Dispose();
             detailViewGui = capi.Gui
                 .CreateCompo("handbook-detail", dialogBounds)
@@ -254,9 +255,11 @@ namespace Vintagestory.GameContent
                     .BeginClip(clipBounds)
                         .AddInset(insetBounds, 3)
             ;
+            capi.World.FrameProfiler.Mark("handbook-opendetailpage-2");
 
             composePageHandler(curPage.Page, detailViewGui, textBounds, OpenDetailPageFor);
             var lastAddedElement = detailViewGui.LastAddedElement;
+            capi.World.FrameProfiler.Mark("handbook-opendetailpage-3");
 
             detailViewGui
                     .EndClip()
@@ -269,8 +272,9 @@ namespace Vintagestory.GameContent
                     .AddSmallButton(Lang.Get("handbook-overview"), OnButtonOverview, overviewButtonBounds)
                     .AddSmallButton(Lang.Get("general-close"), OnButtonClose, closeButtonBounds)
                 .EndChildElements()
-                .Compose()
             ;
+            detailViewGui.Compose();
+            capi.World.FrameProfiler.Mark("handbook-opendetailpage-compose");
 
             float posY = curPage.PosY;
             if (posY == 0)
@@ -293,7 +297,7 @@ namespace Vintagestory.GameContent
             var btn = detailViewGui.GetToggleButton("pausegame");
             if (btn != null) btn.SetValue(!capi.Settings.Bool["noHandbookPause"]);
 
-            capi.World.FrameProfiler.Mark("handbook-opendetailpage");
+            capi.World.FrameProfiler.Mark("handbook-opendetailpage-scrollbars");
         }
 
         protected virtual void OnDetailViewTabClicked(int index, GuiTab tab)
@@ -476,6 +480,7 @@ namespace Vintagestory.GameContent
             {
                 string searchText = currentSearchText ?? "";
                 var regex = RegexFromSearchText(searchText);
+                var strictRegex = RegexFromSearchText(searchText, true);
 
                 var weightedPages = new List<WeightedHandbookPage>();
                 allHandbookPages.ForEach(page =>
@@ -484,27 +489,38 @@ namespace Vintagestory.GameContent
 
                     var pageText = page.GetPageText();
                     var titleMatches = CountMatches(pageText.Title ?? "", regex);
+                    var strictTitleMatches = CountMatches(pageText.Title ?? "", strictRegex);
                     var textMatches = CountMatches(pageText.Text ?? "", regex);
                     if (titleMatches > 0 || textMatches > 0)
                         weightedPages.Add(new WeightedHandbookPage
                         {
                             Page = page,
                             TitleMatches = titleMatches,
+                            StrictTitleMatches = strictTitleMatches,
                             TitleLength = pageText.Title?.Length ?? 0,
                             TextMatches = textMatches,
+                            SearchWeight = 1 + page.SearchWeightOffset
                         });
                 });
                 if (searchText.Length > 0)
                 {
                     weightedPages.Sort((a, b) =>
                     {
+                        // Start by comparing strict word matches in the title
+                        var strictSort = b.StrictTitleMatches - a.StrictTitleMatches;
+                        if (strictSort != 0) return strictSort;
+                        // Then for fuzzier matches in the title
                         var titleSort = b.TitleMatches - a.TitleMatches;
                         if (titleSort != 0) return titleSort;
-                        var textSort = b.TextMatches - a.TextMatches;
-                        if (textSort != 0) return textSort;
-                        // Prefer shorter matches, efffectively prioritizing more "exact" matches
-                        // e. g. "Iron Plate" over "Plate Armor (Iron)" when searching "Iron Plate"
-                        return a.TitleLength - b.TitleLength;
+                        // Then we use the search weight to sort matches
+                        var weightSort = b.SearchWeight.CompareTo(a.SearchWeight);
+                        if (weightSort != 0) return weightSort;
+                        // Then for length of the title
+                        var lengthSort = a.TitleLength - b.TitleLength;
+                        if (lengthSort != 0) return lengthSort;
+
+                        // Then we will compare number of matches in the text and finally the search weight offset for just a bit extra
+                        return b.TextMatches - a.TextMatches;
                     });
                 }
                 weightedPages.ForEach(page => shownHandbookPages.Add(page.Page));
@@ -517,10 +533,13 @@ namespace Vintagestory.GameContent
             );
         }
 
-        public static Regex RegexFromSearchText(string searchText)
+        public static Regex RegexFromSearchText(string searchText, bool strict = false)
         {
             string[] searchWords = Regex.Split(searchText, "\\s+", RegexOptions.Multiline);
-            var pattern = $"({String.Join("|", searchWords.Where(w => w != "").Select(w => $"{Regex.Escape(w.ToSearchFriendly().Trim())}"))})";
+            var pattern = $"({string.Join("|", searchWords.Where(w => w != "").Select(w => {
+                w = Regex.Escape(w.ToSearchFriendly().Trim());
+                return strict ? @$"\b{w}\b" : w;
+            }))})";
             return new Regex(pattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled | RegexOptions.Multiline);
         }
 

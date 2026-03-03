@@ -1,5 +1,7 @@
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.Design.Serialization;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -107,7 +109,7 @@ namespace Vintagestory.GameContent
         }
 
 
-
+        ICoreClientAPI capi;
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
@@ -118,15 +120,36 @@ namespace Vintagestory.GameContent
             RegisterGameTickListener(OnBurnTick, 100);
             RegisterGameTickListener(On500msTick, 500);
 
-            if (api is ICoreClientAPI)
+            if (api is ICoreClientAPI capi)
             {
-                renderer = new FirepitContentsRenderer(api as ICoreClientAPI, Pos);
-                (api as ICoreClientAPI).Event.RegisterRenderer(renderer, EnumRenderStage.Opaque, "firepit");
-
+                this.capi = capi;
+                renderer = new FirepitContentsRenderer(capi, Pos);
+                capi.Event.RegisterRenderer(renderer, EnumRenderStage.Opaque, "firepit");
+                capi.Event.RegisterEventBusListener(OnSetTransform, 0.5, "onsettransform");
                 UpdateRenderer();
             }
         }
 
+        protected void OnSetTransform(string eventName, ref EnumHandling handling, IAttribute data)
+        {
+            var target = (data as TreeAttribute).GetString("target");
+
+            if (target != "infirepitTransform") return;
+
+            if (Pos.DistanceTo(capi.World.Player.Entity.Pos.XYZ) > 20) return; // Just for nearby shelves to reduce chunk redraws
+
+            var hslot = capi.World.Player.InventoryManager.ActiveHotbarSlot;
+            var collObj = hslot.Itemstack.Collectible;
+
+            var tf = ModelTransform.CreateFromTreeAttribute(data as TreeAttribute);
+            if (collObj?.Attributes?.KeyExists("inFirePitProps") != true)
+            {
+                if (collObj.Attributes == null) collObj.Attributes = new JsonObject(new JObject());
+                collObj.Attributes.Token["inFirePitProps"]["transform"] = JToken.FromObject(tf);
+            }
+
+            renderer.Transform = tf;
+        }
 
 
         private void OnSlotModified(int slotid)
@@ -930,7 +953,7 @@ namespace Vintagestory.GameContent
             renderer?.Dispose();
         }
 
-        InFirePitProps GetRenderProps(ItemStack contentStack)
+        public static InFirePitProps GetRenderProps(ItemStack contentStack)
         {
             if (contentStack?.ItemAttributes?.KeyExists("inFirePitProps") == true)
             {

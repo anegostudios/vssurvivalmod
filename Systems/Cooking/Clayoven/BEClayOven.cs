@@ -260,7 +260,7 @@ namespace Vintagestory.GameContent
                 if (moved > 0)
                 {
                     updateMesh(0);
-                    MarkDirty(true);
+                    MarkDirty();
                     lastRemoved = null;
                 }
 
@@ -296,7 +296,7 @@ namespace Vintagestory.GameContent
                         bakingData[index] = new OvenItemData(ovenInv[index].Itemstack);
                         updateMesh(index);
 
-                        MarkDirty(true);
+                        MarkDirty();
                         lastRemoved = null;
                     }
 
@@ -340,7 +340,7 @@ namespace Vintagestory.GameContent
 
                     bakingData[index].CurHeightMul = 1; // Reset risenLevel to avoid brief render of unwanted size on next item inserted, if server/client not perfectly in sync - note this only really works if the newly inserted item can be assumed to have risenLevel of 0 i.e. dough
                     updateMesh(index);
-                    MarkDirty(true);
+                    MarkDirty();
                     return true;
                 }
 
@@ -599,11 +599,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (reDraw)
-            {
-                updateMesh(slotIndex);
-                MarkDirty(true);
-            }
+            if (reDraw) MarkDirty();
         }
 
         /// <summary>
@@ -830,13 +826,6 @@ namespace Vintagestory.GameContent
             }
 
             return (OvenContentMode == EnumOvenContentMode.Firewood ? slot.StackSize + "x" : "") + base.getMeshCacheKey(slot) + scaleY;
-        }
-
-        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
-        {
-            tfMatrices = genTransformationMatrices();
-
-            return base.OnTesselation(mesher, tessThreadTesselator);
         }
 
         protected override MeshData getOrCreateMesh(ItemSlot slot, int index)

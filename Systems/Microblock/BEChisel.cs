@@ -419,7 +419,16 @@ namespace Vintagestory.GameContent
             selectionBoxesVoxels = boxes.ToArray();
         }
 
-
+        /// <summary>
+        /// Adds given block as a material with given voxel amount, returns the material index.
+        /// If compareToPickBlock is true, it will try to find a block in current materials that has the same .OnPickBlock() as the given block, and use that block as material instead
+        /// isFull will be set to true if the material quantity has reached 16*16*16 voxels, which is the maximum that can be stored in one material slot.
+        /// Adds the block with a voxel amount corresponding to its collision boxes.
+        /// </summary>
+        /// <param name="addblock"></param>
+        /// <param name="isFull"></param>
+        /// <param name="compareToPickBlock"></param>
+        /// <returns></returns>
         public int AddMaterial(Block addblock, out bool isFull, bool compareToPickBlock = true)
         {
             Cuboidf[] collboxes = addblock.GetCollisionBoxes(Api.World.BlockAccessor, Pos);
@@ -432,7 +441,23 @@ namespace Vintagestory.GameContent
                 sum += new Cuboidi((int)(16 * box.X1), (int)(16 * box.Y1), (int)(16 * box.Z1), (int)(16 * box.X2), (int)(16 * box.Y2), (int)(16 * box.Z2)).SizeXYZ;
             }
 
-            if (compareToPickBlock && !BlockIds.Contains(addblock.Id))
+            return AddMaterial(addblock, out isFull, compareToPickBlock, (ushort)sum);
+        }
+
+        /// <summary>
+        /// Adds given block as a material with given voxel amount, returns the material index.
+        /// If compareToPickBlock is true, it will try to find a block in current materials that has the same .OnPickBlock() as the given block, and use that block as material instead
+        /// isFull will be set to true if the material quantity has reached 16*16*16 voxels, which is the maximum that can be stored in one material slot.
+        /// </summary>
+        /// <param name="addblock"></param>
+        /// <param name="isFull"></param>
+        /// <param name="compareToPickBlock"></param>
+        /// <param name="voxelAmount"></param>
+        /// <returns></returns>
+        public int AddMaterial(Block addblock, out bool isFull, bool compareToPickBlock, ushort voxelAmount)
+        {
+            // I don't understand. What is the purpose of this?
+            /*if (compareToPickBlock && !BlockIds.Contains(addblock.Id))
             {
                 foreach (int blockid in BlockIds)
                 {
@@ -443,20 +468,20 @@ namespace Vintagestory.GameContent
                         addblock = matblock;
                     }
                 }
-            }
-
+            }*/
+            
             if (!BlockIds.Contains(addblock.Id))
             {
                 isFull = false;
                 BlockIds = BlockIds.Append(addblock.Id);
-                if (AvailMaterialQuantities != null) AvailMaterialQuantities = AvailMaterialQuantities.Append((ushort)sum);
+                if (AvailMaterialQuantities != null) AvailMaterialQuantities = AvailMaterialQuantities.Append(voxelAmount);
                 return BlockIds.Length - 1;
             }
             else
             {
                 int index = BlockIds.IndexOf(addblock.Id);
                 isFull = AvailMaterialQuantities[index] >= 16 * 16 * 16;
-                if (AvailMaterialQuantities != null) AvailMaterialQuantities[index] = (ushort)Math.Min(ushort.MaxValue, AvailMaterialQuantities[index] + sum);
+                if (AvailMaterialQuantities != null) AvailMaterialQuantities[index] = (ushort)Math.Min(ushort.MaxValue, AvailMaterialQuantities[index] + voxelAmount);
                 return index;
             }
         }

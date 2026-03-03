@@ -7,37 +7,6 @@ namespace Vintagestory.GameContent
 {
     public class BlockFarmland : Block
     {
-        public CodeAndChance[] WeedNames;
-        public int DelayGrowthBelowSunLight = 19;
-        public float LossPerLevel = 0.1f;
-        public float TotalWeedChance;
-
-        public WeatherSystemBase wsys;
-        public RoomRegistry roomreg;
-
-        public override void OnLoaded(ICoreAPI api)
-        {
-            base.OnLoaded(api);
-
-            if (Attributes != null)
-            {
-                DelayGrowthBelowSunLight = Attributes["delayGrowthBelowSunLight"].AsInt(19);
-                LossPerLevel = Attributes["lossPerLevel"].AsFloat(0.1f);
-
-                if (WeedNames == null)
-                {
-                    WeedNames = Attributes["weedBlockCodes"].AsObject<CodeAndChance[]>();
-                    for (int i = 0; WeedNames != null && i < WeedNames.Length; i++)
-                    {
-                        TotalWeedChance += WeedNames[i].Chance;
-                    }
-                }
-            }
-
-            wsys = api.ModLoader.GetModSystem<WeatherSystemBase>();
-            roomreg = api.ModLoader.GetModSystem<RoomRegistry>();
-        }
-
         public override void OnBlockPlaced(IWorldAccessor world, BlockPos blockPos, ItemStack byItemStack = null)
         {
             base.OnBlockPlaced(world, blockPos, byItemStack);
@@ -48,7 +17,6 @@ namespace Vintagestory.GameContent
                 befarmland?.OnCreatedFromSoil(byItemStack.Block);
             }
         }
-
 
         public override bool CanAttachBlockAt(IBlockAccessor world, Block block, BlockPos pos, BlockFacing blockFace, Cuboidi attachmentArea = null)
         {

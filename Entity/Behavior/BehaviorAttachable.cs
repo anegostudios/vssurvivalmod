@@ -167,7 +167,8 @@ namespace Vintagestory.GameContent
                 if (attrseatconfig != null)
                 {
                     attrseatconfig.SeatId = "attachableseat-" + i;
-                    attrseatconfig.APName = slotcfg.AttachmentPointCode;
+                    attrseatconfig.APName ??= slotcfg.AttachmentPointCode;
+                    attrseatconfig.SelectionBox ??= slotcfg.AttachmentPointCode;
 
                     slotcfg.SeatConfig = attrseatconfig;
 

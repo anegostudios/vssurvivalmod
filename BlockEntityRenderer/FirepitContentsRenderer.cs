@@ -1,4 +1,4 @@
-﻿using System.Linq;
+using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -16,7 +16,7 @@ namespace Vintagestory.GameContent
         int textureId;
         Matrixf ModelMat = new Matrixf();
 
-        ModelTransform transform;
+        public ModelTransform Transform;
         ModelTransform defaultTransform;
 
         public IInFirepitRenderer contentStackRenderer;
@@ -42,21 +42,21 @@ namespace Vintagestory.GameContent
         {
             this.api = api;
             this.pos = pos;
-            transform = new ModelTransform().EnsureDefaultValues();
-            transform.Origin.X = 8 / 16f;
-            transform.Origin.Y = 1 / 16f;
-            transform.Origin.Z = 8 / 16f;
-            transform.Rotation.X = 90;
-            transform.Rotation.Y = 90;
-            transform.Rotation.Z = 0;
-            transform.Translation.X = 0 / 32f;
-            transform.Translation.Y = 4f / 16f;
-            transform.Translation.Z = 0 / 32f;
-            transform.ScaleXYZ.X = 0.25f;
-            transform.ScaleXYZ.Y = 0.25f;
-            transform.ScaleXYZ.Z = 0.25f;
+            Transform = new ModelTransform().EnsureDefaultValues();
+            Transform.Origin.X = 8 / 16f;
+            Transform.Origin.Y = 1 / 16f;
+            Transform.Origin.Z = 8 / 16f;
+            Transform.Rotation.X = 90;
+            Transform.Rotation.Y = 90;
+            Transform.Rotation.Z = 0;
+            Transform.Translation.X = 0 / 32f;
+            Transform.Translation.Y = 4f / 16f;
+            Transform.Translation.Z = 0 / 32f;
+            Transform.ScaleXYZ.X = 0.25f;
+            Transform.ScaleXYZ.Y = 0.25f;
+            Transform.ScaleXYZ.Z = 0.25f;
 
-            defaultTransform = transform;
+            defaultTransform = Transform;
 
         }
 
@@ -75,9 +75,9 @@ namespace Vintagestory.GameContent
             contentStackRenderer?.Dispose();
             contentStackRenderer = null;
 
-            this.transform = transform;
-            if (transform == null) this.transform = defaultTransform;
-            this.transform.EnsureDefaultValues();
+            this.Transform = transform;
+            if (transform == null) this.Transform = defaultTransform;
+            this.Transform.EnsureDefaultValues();
 
             meshref?.Dispose();
             meshref = null;
@@ -148,13 +148,13 @@ namespace Vintagestory.GameContent
             
             prog.ModelMatrix = ModelMat
                 .Identity()
-                .Translate(pos.X - camPos.X + transform.Translation.X, pos.Y - camPos.Y + transform.Translation.Y, pos.Z - camPos.Z + transform.Translation.Z)
-                .Translate(transform.Origin.X, 0.6f + transform.Origin.Y, transform.Origin.Z)
-                .RotateX(transform.Rotation.X * GameMath.DEG2RAD)
-                .RotateY(transform.Rotation.Y * GameMath.DEG2RAD)
-                .RotateZ(transform.Rotation.Z * GameMath.DEG2RAD)
-                .Scale(transform.ScaleXYZ.X, transform.ScaleXYZ.Y, transform.ScaleXYZ.Z)
-                .Translate(-transform.Origin.X, -transform.Origin.Y, -transform.Origin.Z)
+                .Translate(pos.X - camPos.X + Transform.Translation.X, pos.Y - camPos.Y + Transform.Translation.Y, pos.Z - camPos.Z + Transform.Translation.Z)
+                .Translate(Transform.Origin.X, 0.6f + Transform.Origin.Y, Transform.Origin.Z)
+                .RotateX(Transform.Rotation.X * GameMath.DEG2RAD)
+                .RotateY(Transform.Rotation.Y * GameMath.DEG2RAD)
+                .RotateZ(Transform.Rotation.Z * GameMath.DEG2RAD)
+                .Scale(Transform.ScaleXYZ.X, Transform.ScaleXYZ.Y, Transform.ScaleXYZ.Z)
+                .Translate(-Transform.Origin.X, -Transform.Origin.Y, -Transform.Origin.Z)
                 .Values
             ;
 

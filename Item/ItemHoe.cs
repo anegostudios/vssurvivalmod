@@ -1,8 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -136,12 +137,20 @@ namespace Vintagestory.GameContent
             string fertility = block.LastCodePart(1);
             Block? farmland = byEntity.World.GetBlock(new AssetLocation("farmland-dry-" + fertility));
 
+            TreeAttribute? prevData = null;
+            var besn = byEntity.World.BlockAccessor.GetBlockEntity(pos) as BlockEntitySoilNutrition;
+            if (besn != null)
+            {
+                prevData = new TreeAttribute();
+                besn.ToTreeAttributes(prevData);
+            }
+
             IPlayer? byPlayer = (byEntity as EntityPlayer)?.Player;
             if (farmland == null || byPlayer == null) return;
             if (block.Sounds != null) byEntity.World.PlaySoundAt(block.Sounds.Place, pos, 0.4, null);
 
             byEntity.World.BlockAccessor.SetBlock(farmland.BlockId, pos);
-            slot.Itemstack.Collectible.DamageItem(byEntity.World, byEntity, byPlayer.InventoryManager.ActiveHotbarSlot);
+            slot.Itemstack?.Collectible.DamageItem(byEntity.World, byEntity, byPlayer.InventoryManager.ActiveHotbarSlot);
 
             if (slot.Empty)
             {
@@ -149,13 +158,12 @@ namespace Vintagestory.GameContent
             }
 
             BlockEntity be = byEntity.World.BlockAccessor.GetBlockEntity(pos);
-            if (be is BlockEntityFarmland)
+            if (be is BlockEntityFarmland bef)
             {
-                ((BlockEntityFarmland)be).OnCreatedFromSoil(block);
+                bef.OnCreatedFromSoil(block, prevData);
             }
 
             byEntity.World.BlockAccessor.MarkBlockDirty(pos);
-            //byEntity.GetBehavior<EntityBehaviorHunger>()?.ConsumeSaturation(5f);
         }
 
 

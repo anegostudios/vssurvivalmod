@@ -424,18 +424,17 @@ namespace Vintagestory.GameContent
         CookingRecipe[] recipes;
         private void Every50ms(float t1)
         {
-            foreach (var slot in inventory)
+            for (int i = 0; i < inventory.Count; i++)
             {
-                IBlockMealContainer blockMeal = slot.Itemstack?.Collectible as IBlockMealContainer;
-                if (blockMeal == null) continue;
+                if (inventory[i].Itemstack is not { Collectible: IBlockMealContainer blockMeal } stack) continue;
 
                 var recipe = recipes[Api.World.Rand.Next(recipes.Length)];
                 var cachedValidStacks = ObjectCacheUtil.TryGet<Dictionary<CookingRecipeIngredient, HashSet<ItemStack>>>(Api, "trailermaking-cachedvalidstacks-" + recipe.Code);
-                blockMeal.SetContents(recipe.Code, slot.Itemstack, recipe.GenerateRandomMeal(Api, ref cachedValidStacks, null), 1);
+                blockMeal.SetContents(recipe.Code, stack, recipe.GenerateRandomMeal(Api, ref cachedValidStacks, null));
+                updateMesh(i);
             }
 
-            updateMeshes();
-            MarkDirty(true);
+            MarkDirty();
         }*/
         #endregion
         public Cuboidf[] GetSelectionBoxes()
@@ -578,6 +577,18 @@ namespace Vintagestory.GameContent
             }
 
             isUsingSlot = null;
+        }
+
+        public bool OnPlayerInteractCancel(float secondsUsed, IPlayer byPlayer, BlockSelection blockSel, EnumItemUseCancelReason cancelReason)
+        {
+            var collIci = isUsingSlot?.Itemstack?.Collectible.GetCollectibleInterface<IContainedInteractable>();
+            if (collIci != null)
+            {
+                collIci.OnContainedInteractCancel(secondsUsed, this, isUsingSlot, byPlayer, blockSel, cancelReason);
+            }
+
+            isUsingSlot = null;
+            return true;
         }
 
         public ItemSlot GetSlotAt(BlockSelection bs)

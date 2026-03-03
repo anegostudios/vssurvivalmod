@@ -388,6 +388,8 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockFirepit", typeof(BlockFirepit));
             api.RegisterBlockClass("BlockCharcoalPit", typeof(BlockCharcoalPit));
             api.RegisterBlockClass("BlockTorch", typeof(BlockTorch));
+            api.RegisterBlockClass("BlockOilLamp", typeof(BlockOilLamp));
+            
             api.RegisterBlockClass("BlockStairs", typeof(BlockStairs));
             api.RegisterBlockClass("BlockFence", typeof(BlockFence));
             api.RegisterBlockClass("BlockWattleFence", typeof(BlockWattleFence));
@@ -752,7 +754,7 @@ namespace Vintagestory.GameContent
 
             api.RegisterBlockEntityBehaviorClass("ContainedBagInventory", typeof(BEBehaviorContainedBagInventory));
             api.RegisterBlockEntityBehaviorClass("FruitingBush", typeof(BEBehaviorFruitingBush));
-            api.RegisterBlockEntityBehaviorClass("SoilNutrition", typeof(BEBehaviorSoilNutrition));
+            
 
             api.RegisterBlockEntityBehaviorClass("CabinetDoors", typeof(BEBehaviorCabinetDoors));
 
@@ -800,6 +802,8 @@ namespace Vintagestory.GameContent
             api.RegisterBlockEntityClass("CoalPile", typeof(BlockEntityCoalPile));
 
             api.RegisterBlockEntityClass("Farmland", typeof(BlockEntityFarmland));
+            api.RegisterBlockEntityClass("SoilNutrition", typeof(BlockEntitySoilNutrition));
+            api.RegisterBlockEntityClass("BerryBushFarmland", typeof(BlockEntityBerryBushFarmland));
             api.RegisterBlockEntityClass("ToolRack", typeof(BlockEntityToolrack));
             api.RegisterBlockEntityClass("IngotMold", typeof(BlockEntityIngotMold));
 
@@ -967,7 +971,6 @@ namespace Vintagestory.GameContent
 
             api.RegisterItemClass("ItemKnife", typeof(ItemKnife));
             api.RegisterItemClass("ItemPoultice", typeof(ItemPoultice));
-            api.RegisterItemClass("ItemRustyGear", typeof(ItemRustyGear));
             api.RegisterItemClass("ItemJournalEntry", typeof(ItemJournalEntry));
             api.RegisterItemClass("ItemCleaver", typeof(ItemCleaver));
 

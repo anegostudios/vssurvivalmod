@@ -1,4 +1,4 @@
-﻿using ProtoBuf;
+using ProtoBuf;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -53,6 +53,11 @@ namespace Vintagestory.GameContent
                 if (!fromPlayer.Entity.TryGiveItemStack(stack))
                 {
                     sapi.World.SpawnItemEntity(stack, fromPlayer.Entity.Pos.XYZ);
+                }
+
+                if (fromPlayer.Entity.ActiveHandItemSlot?.Itemstack?.Collectible is ItemBugnet && fromPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
+                {
+                    fromPlayer.Entity.ActiveHandItemSlot.Itemstack.Collectible.DamageItem(sapi.World, fromPlayer.Entity, fromPlayer.Entity.ActiveHandItemSlot, 1);
                 }
             }
         }

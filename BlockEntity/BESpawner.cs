@@ -1,3 +1,4 @@
+using Newtonsoft.Json;
 using ProtoBuf;
 using System;
 using System.Collections.Generic;
@@ -56,13 +57,24 @@ namespace Vintagestory.GameContent
         [ProtoMember(8), DefaultValue(true)]
         public bool SpawnOnlyAfterImport = true;
 
+        [ProtoMember(20), DefaultValue(-30)]
+        public float MinTemp = -30;
+        [ProtoMember(21), DefaultValue(40)]
+        public float MaxTemp = 40;
+        [ProtoMember(22), DefaultValue(0)]
+        public float MinRain = 0;
+        [ProtoMember(23), DefaultValue(1)]
+        public float MaxRain = 1;
+        [ProtoMember(24), DefaultValue(0)]
+        public int ClimateMode = 0; // 0 = ignore climate conditions, 1 = runtime values, 2 = worldgen values
+
 
         // Runtime data
         [ProtoMember(9), DefaultValue(false)]
         public bool WasImported = false;
         [ProtoMember(10), DefaultValue(0)]
         public int InitialQuantitySpawned = 0;
-        [ProtoMember(11)]
+        [ProtoMember(11), DefaultValue(0)]
         public int MinPlayerRange = 0;
         [ProtoMember(13)]
         public int InternalCapacity;
@@ -76,7 +88,7 @@ namespace Vintagestory.GameContent
         public double LastSpawnTotalHours;
         [ProtoMember(18)]
         public EnumSpawnRangeMode SpawnRangeMode;
-        [ProtoMember(19)]
+        [ProtoMember(19), DefaultValue(-1)]
         public int MaxPlayerRange = -1;
 
         [ProtoAfterDeserialization]
@@ -122,6 +134,11 @@ namespace Vintagestory.GameContent
             tree.SetDouble("internalCharge", InternalCharge);
             tree.SetDouble("rechargePerHour", RechargePerHour);
             tree.SetDouble("lastChargeUpdateTotalHours", LastChargeUpdateTotalHours);
+
+            tree.SetFloat("minTemp", MinTemp);
+            tree.SetFloat("maxTemp", MaxTemp);
+            tree.SetFloat("minRain", MinRain);
+            tree.SetFloat("maxRain", MaxRain);
         }
 
         public void FromTreeAttributes(ITreeAttribute tree)
@@ -149,6 +166,11 @@ namespace Vintagestory.GameContent
             InternalCharge = tree.GetDouble("internalCharge");
             RechargePerHour = tree.GetDouble("rechargePerHour");
             LastChargeUpdateTotalHours = tree.GetDouble("lastChargeUpdateTotalHours");
+
+            MinTemp = tree.GetFloat("minTemp", -30);
+            MaxTemp = tree.GetFloat("maxTemp", 40);
+            MinRain = tree.GetFloat("minRain", 0);
+            MaxRain = tree.GetFloat("maxRain", 1);
         }
     }
 
@@ -245,6 +267,15 @@ namespace Vintagestory.GameContent
                 if (Data.SpawnRangeMode == EnumSpawnRangeMode.WhenInRange && distanceSq > Data.MinPlayerRange * Data.MinPlayerRange) return;
                 if (Data.SpawnRangeMode == EnumSpawnRangeMode.WhenOutsideOfRange && distanceSq < Data.MaxPlayerRange * Data.MaxPlayerRange) return;
                 if (Data.SpawnRangeMode == EnumSpawnRangeMode.WithinMinMaxRange && (distanceSq < Data.MinPlayerRange * Data.MinPlayerRange || distanceSq > Data.MaxPlayerRange * Data.MaxPlayerRange)) return;
+            }
+
+            if (Data.ClimateMode > 0)
+            {
+                var climate = Api.World.BlockAccessor.GetClimateAt(Pos, Data.ClimateMode == 1 ? EnumGetClimateMode.NowValues : EnumGetClimateMode.WorldGenValues);
+                if (climate == null) return;
+
+                if (climate.Temperature < Data.MinTemp || climate.Temperature > Data.MaxTemp) return;
+                if (climate.Rainfall < Data.MinRain || climate.Rainfall > Data.MaxRain) return;
             }
 
             if (type == null) return;

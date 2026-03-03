@@ -140,7 +140,6 @@ public class BEBehaviorDisplay : BEBehaviorContainer, IInteractable, IRotatableP
             collObj.Attributes.Token["displayable"]["shelf"]["transform"] = JToken.FromObject(ModelTransform.CreateFromTreeAttribute(data as TreeAttribute));
         }
 
-
         MeshCache.Clear();
         MarkMeshesDirty(Api.World);
         Api.World.BlockAccessor.MarkBlockDirty(Pos);   // always redraw on client after updating meshes

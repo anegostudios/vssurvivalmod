@@ -1,4 +1,3 @@
-using OpenTK.Graphics.ES11;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -27,8 +26,6 @@ namespace Vintagestory.GameContent
             interactStartTotalMs = Api.World.ElapsedMilliseconds;
             
             var facing = BlockFacing.FromCode(Block.Variant["side"]);
-
-            Api.World.PlaySoundAt(new AssetLocation("sounds/effect/bellows"), Pos, 0.5f, byPlayer, false, 8);
 
             RegisterDelayedCallback((dt) =>
             {

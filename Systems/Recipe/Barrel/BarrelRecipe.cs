@@ -179,13 +179,15 @@ public class BarrelRecipe : RecipeBase, IByteSerializable, IConcreteCloneable<Ba
         base.FromBytes(reader, resolver);
 
         Code = reader.ReadString();
-        Ingredients = new BarrelRecipeIngredient[reader.ReadInt32()];
+        BarrelRecipeIngredient[] Ingredients = new BarrelRecipeIngredient[reader.ReadInt32()];
+        this.Ingredients = Ingredients;
 
         for (int i = 0; i < Ingredients.Length; i++)
         {
-            Ingredients[i] = new BarrelRecipeIngredient();
-            Ingredients[i].FromBytes(reader, resolver);
-            Ingredients[i].Resolve(resolver, "Barrel Recipe (FromBytes)");
+            var ingredient = new BarrelRecipeIngredient();
+            ingredient.FromBytes(reader, resolver);
+            ingredient.Resolve(resolver, "Barrel Recipe (FromBytes)", this);
+            Ingredients[i] = ingredient;
         }
 
         Output = new BarrelOutputStack();
@@ -207,7 +209,7 @@ public class BarrelRecipe : RecipeBase, IByteSerializable, IConcreteCloneable<Ba
 
         foreach (BarrelRecipeIngredient ingredient in Ingredients)
         {
-            resolved &= ingredient.Resolve(world, sourceForErrorLogging);
+            resolved &= ingredient.Resolve(world, sourceForErrorLogging, this);
         }
 
         resolved &= Output.Resolve(world, sourceForErrorLogging);

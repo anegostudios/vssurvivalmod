@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks.Dataflow;
 using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -675,6 +676,20 @@ namespace Vintagestory.GameContent
                     LowerLiquidLevelAndNotifyNeighbors(ourBlock, pos, world);
                     return true;
                 }
+
+                if (!multiplySpread && ourBlock.Variant["flow"] != "d")     // Brute force fix non-removed flowing-5 next to d-6
+                {
+                    BlockPos npos = pos.Copy();
+                    for (int i = 0; i < BlockFacing.HORIZONTALS.Length; i++)
+                    {
+                        BlockFacing.HORIZONTALS[i].IterateThruFacingOffsets(npos);
+                        if (HasBetterFlowDirection(npos, pos, world, ourBlock))
+                        {
+                            LowerLiquidLevelAndNotifyNeighbors(ourBlock, pos, world);
+                            return true;
+                        }
+                    }
+                }
             }
             return false;
         }
@@ -690,6 +705,20 @@ namespace Vintagestory.GameContent
                 Block liquidBlock = world.BlockAccessor.GetBlock(npos, BlockLayersAccess.Fluid);
                 if (liquidBlock.BlockId != 0) liquidBlock.OnNeighbourBlockChange(world, npos, pos);
             }
+        }
+
+        private bool HasBetterFlowDirection(BlockPos ourpos, BlockPos npos, IWorldAccessor world, Block neibBlock)
+        {
+            Block ourLiquid = world.BlockAccessor.GetBlock(ourpos, BlockLayersAccess.Fluid);
+            if (!IsSameLiquid(neibBlock, ourLiquid)) return false;
+
+            Block neighborSolid = world.BlockAccessor.GetBlock(ourpos.Down(), BlockLayersAccess.Solid);
+            if (neighborSolid.GetLiquidBarrierHeightOnSide(BlockFacing.UP, ourpos) < ourLiquid.LiquidLevel / MAXLEVEL_float) return true;
+
+            Block ourSolid = world.BlockAccessor.GetBlock(ourpos.Up(), BlockLayersAccess.Solid);
+            if (CanSpreadIntoBlock(ourLiquid, ourSolid, ourpos, ourpos.DownCopy(), BlockFacing.DOWN, world)) return true;
+            // Can also test other neighbours if better than npos
+            return false;
         }
 
         private bool TrySpreadIntoBlock(Block ourblock, Block ourSolid, BlockPos pos, BlockPos npos, BlockFacing facing, IWorldAccessor world)

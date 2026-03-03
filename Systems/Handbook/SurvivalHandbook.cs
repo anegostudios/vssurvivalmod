@@ -97,7 +97,11 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            foreach (var recipe in BlockPie.GetHandbookRecipes(capi, ObjectCacheUtil.TryGet<ItemStack[]>(capi, "handbookallstacks")))
+            CookingRecipe[] pieRecipes = ObjectCacheUtil.GetOrCreate(capi, "handbookpierecipes", () =>
+            {
+                return BlockPie.GetHandbookRecipes(capi, ObjectCacheUtil.TryGet<ItemStack[]>(capi, "handbookallstacks")).ToArray();
+            });
+            foreach (var recipe in pieRecipes)
             {
                 if (capi.IsShuttingDown) break;
 

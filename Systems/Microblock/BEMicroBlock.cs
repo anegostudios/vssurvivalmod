@@ -748,7 +748,9 @@ namespace Vintagestory.GameContent
 
         public bool DoEmitSideAo(int facing)
         {
-            return (emitSideAo & (1 << facing)) != 0;
+            // Returns true if this side *or any of its neighbouring sides* emits AO, needed to give correct results in TCTCache AO calculation, not used anywhere else in vanilla
+            int opposite = API.Client.Tesselation.TileSideEnum.GetOpposite(facing);
+            return (emitSideAo & 0x3F - (1 << opposite)) != 0;
         }
 
         public bool DoEmitSideAoByFlag(int flag)
@@ -768,6 +770,7 @@ namespace Vintagestory.GameContent
         protected void RebuildCuboidList(BoolArray16x16x16 Voxels, byte[,,] VoxelMaterial)
         {
             BoolArray16x16x16 VoxelVisited = new BoolArray16x16x16();
+            int prevEmitSideAo = emitSideAo;
             emitSideAo = 0x3F;
             sidecenterSolid = new SmallBoolArray(SmallBoolArray.OnAllSides);
             float voxelCount = 0;
@@ -894,6 +897,8 @@ namespace Vintagestory.GameContent
                 emitSideAo = 0;
             }
 
+            if (Api.Side == EnumAppSide.Client) RedrawNeighbourChunkIfAoChanged(prevEmitSideAo);
+
             this.sizeRel = voxelCount / (16f * 16f * 16f);
 
             foreach (var val in Behaviors)
@@ -907,6 +912,18 @@ namespace Vintagestory.GameContent
             if (DisplacesLiquid())
             {
                 Api.World.BlockAccessor.SetBlock(0, Pos, BlockLayersAccess.Fluid);
+            }
+        }
+
+        private void RedrawNeighbourChunkIfAoChanged(int prevEmitSideAo)
+        {
+            prevEmitSideAo ^= emitSideAo;  // This is now the changed bits
+            if (prevEmitSideAo == 0) return;  // No change
+
+            for (int i = 0; i < BlockFacing.NumberOfFaces; i++)
+            {
+                if ((prevEmitSideAo & 1) != 0) Api.World.BlockAccessor.RedrawNeighbouringChunk(Pos, BlockFacing.ALLFACES[i]);
+                prevEmitSideAo >>= 1;
             }
         }
 
@@ -1058,6 +1075,7 @@ namespace Vintagestory.GameContent
 
             VoxelCuboids = new List<uint>(GetVoxelCuboids(tree));
 
+            int prevEmitSideAo = emitSideAo;
             byte[] sideAo = tree.GetBytes("emitSideAo", singleByte255);
             if (sideAo.Length > 0)
             {
@@ -1089,6 +1107,7 @@ namespace Vintagestory.GameContent
                 {
                     Mesh = GenMesh();
                     Api.World.BlockAccessor.MarkBlockModified(Pos); // not sure why this one is needed
+                    RedrawNeighbourChunkIfAoChanged(prevEmitSideAo);
                 }
 
                 const int chunksize = GlobalConstants.ChunkSize;

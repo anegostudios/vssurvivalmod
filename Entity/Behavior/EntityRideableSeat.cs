@@ -42,6 +42,88 @@ namespace Vintagestory.GameContent
         {
             get
             {
+                // Backwards compatibility
+                if (config.MountOffset != null) return oldSeatPosition;
+
+                modelmat.Identity();
+                float pitchApplied = 0.55f;
+                AttachmentPointAndPose? apap = Entity.AnimManager?.Animator?.GetAttachmentPointPose(config.APName);
+                if (apap != null)
+                {
+                    var esr = Entity.Properties.Client.Renderer as EntityShapeRenderer;
+
+                    // For whatever reason an entity will face south when Yaw=0, even though the shapes are modelled facing west
+                    // So we need to temporarily correct for that to make the offsets match what's shown in the model editor, not be rotated
+                    modelmat.RotateY(Entity.Pos.Yaw + GameMath.PIHALF);
+
+                    // Doing the offset now means the hitbox is offset to match, and that the rotation point is not offset.
+                    // This is deliberate because elk riders need their rotation origin to be well inside of the player hitbox
+                    if (config.RiderOffset != null) modelmat.Translate(config.RiderOffset);
+
+                    // Matches EntityShapeRenderer.loadModelMatrix(), which translates up to the entity's middle before applying step pitch
+                    modelmat.Translate(0, Entity.SelectionBox.Y2 / 2, 0);
+                    // The pitch returned in the entity position will also affect the translation, so we do it only partway here.
+                    // Note this is not mathematically correct - sin (x/2) + sin(x/2) != sin(x) - but works as a good enough approximation
+                    modelmat.RotateZ((float)mountedEntity.StepPitch * (1 - pitchApplied));
+
+                    if (esr != null)
+                    {
+                        modelmat.RotateX(esr.nowSwivelRad + esr.xangle);
+                        modelmat.RotateY(esr.yangle);
+                        modelmat.RotateZ(esr.zangle);
+                    }
+                    modelmat.Translate(0, -Entity.SelectionBox.Y2 / 2, 0);
+
+                    float scale = Entity.Properties.Client.Size;
+                    modelmat.Scale(scale, scale, scale);
+
+                    // Shapes are modelled with a center at 0.5, 0, 0.5, so move from that to the origin
+                    modelmat.Translate(-0.5f, 0, -0.5f);
+
+                    apap.MulUncentered(modelmat);
+
+                    // Rotate back to undo the correction
+                    modelmat.RotateY(-GameMath.PIHALF);
+                }
+
+                var translation = modelmat.TransformVector(new Vec4f(0, 0f, 0, 1));
+                seatPos.SetFrom(mountedEntity.Position).Add(translation.X, translation.Y, translation.Z);
+
+                seatPos.Roll = 0;
+                seatPos.Yaw = Entity.Pos.Yaw;
+                seatPos.Pitch = (float)mountedEntity.StepPitch * pitchApplied;
+                // Deliberately leaves out the rotation from animating the attachment point, because we don't actually want to exactly match the elk's motions
+                if (apap != null)
+                {
+                    seatPos.Roll += (float)apap.AttachPoint.RotationX;
+                    seatPos.Yaw += (float)apap.AttachPoint.RotationY;
+                    seatPos.Pitch += (float)apap.AttachPoint.RotationZ;
+                }
+
+                return seatPos;
+            }
+        }
+
+        public override Matrixf RenderTransform
+        {
+            get
+            {
+                // Backwards compatibility
+                if (config.MountOffset != null) return oldRenderTransform;
+
+                modelmat.Identity();
+                modelmat.RotateX(config.MountRotation.X * GameMath.DEG2RAD);
+                // MountRotation.Y is already accounted for as part of the rider's yaw, so skip that
+                modelmat.RotateZ(config.MountRotation.Z * GameMath.DEG2RAD);
+                return modelmat;
+            }
+        }
+
+        // Kept for backwards compatibility with Vintage Story 1.21 and 1.20
+        private EntityPos oldSeatPosition
+        {
+            get
+            {
                 loadAttachPointTransform();
                 var rotvec = modelmat.TransformVector(new Vec4f(0, 0f, 0, 1));
                 seatPos.SetFrom(mountedEntity.Position).Add(rotvec.X, rotvec.Y, rotvec.Z);
@@ -54,7 +136,8 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override Matrixf RenderTransform
+        // Kept for backwards compatibility with Vintage Story 1.21 and 1.20
+        private Matrixf oldRenderTransform
         {
             get
             {
@@ -69,8 +152,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override float FpHandPitchFollow => 0.2f;
-
+        // Kept for backwards compatibility with Vintage Story 1.21 and 1.20
         private void loadAttachPointTransform()
         {
             modelmat.Identity();
@@ -97,6 +179,11 @@ namespace Vintagestory.GameContent
                 modelmat.RotateY(GameMath.PIHALF - Entity.Pos.Yaw);
             }
         }
+
+
+
+
+        public override float FpHandPitchFollow => 0.2f;
 
         public EntityRideableSeat(IMountable mountablesupplier, string seatId, SeatConfig config) : base(mountablesupplier, seatId, config)
         {

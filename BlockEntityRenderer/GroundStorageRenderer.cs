@@ -1,5 +1,6 @@
 using System;
 using Vintagestory.API.Client;
+using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
 #nullable disable
@@ -83,13 +84,24 @@ public class GroundStorageRenderer : IRenderer
             var transform = groundStorage.ModelTransformsRenderer[index];
             if (transform != null)
             {
+                float dx = transform.Translation.X + transform.Origin.X;
+                float dy = transform.Translation.Y + transform.Origin.Y;
+                float dz = transform.Translation.Z + transform.Origin.Z;
+
                 ModelMat
-                    .Translate(0.5f, 0.5f, 0.5f)
-                    .RotateY(transform.Rotation.Y)
-                    .Translate(-0.5f, -0.5f, -0.5f)
-                    .Translate(0.5f, 0.0f, 0.5f)
+                    .Translate(dx, dy, dz)
+                    .RotateDeg(transform.Rotation.ToVec3f())
                     .Scale(transform.ScaleXYZ.X, transform.ScaleXYZ.Y, transform.ScaleXYZ.Z)
-                    .Translate(-0.5f, -0.0f, -0.5f)
+                    .Translate(-transform.Origin.X, -transform.Origin.Y, -transform.Origin.Z)
+                    ;
+            }
+
+            if (stack.Class == EnumItemClass.Item && (stack.Item.Shape == null || stack.Item.Shape.VoxelizeTexture))
+            {
+                ModelMat
+                    .RotateX(GameMath.PIHALF)
+                    .Scale(0.33f, 0.33f, 0.33f)
+                    .Translate(0, -7.5f / 16f, 0f)
                     ;
             }
 
@@ -126,7 +138,7 @@ public class GroundStorageRenderer : IRenderer
             {
                 check500 = true;
                 groundStorage.NeedsRetesselation = true;
-                groundStorage.MarkDirty(true);
+                groundStorage.MarkDirty(); // Allow the client to redraw itself automatically to avoid flicker
             }
             if (maxTemp < 450 && !check450)
             {

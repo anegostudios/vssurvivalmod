@@ -303,6 +303,7 @@ namespace Vintagestory.GameContent.Mechanics
 
                     slot.MarkDirty();
                     MarkDirty(true);
+                    UpdateCaps();
                 }
                 else
                 {
