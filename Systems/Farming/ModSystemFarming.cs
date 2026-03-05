@@ -4,6 +4,12 @@ using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent;
 
+public class CodeAndChance
+{
+    public AssetLocation Code;
+    public float Chance;
+}
+
 public class FarmingConfig
 {
     public CodeAndChance[]? WeedBlockCodes;

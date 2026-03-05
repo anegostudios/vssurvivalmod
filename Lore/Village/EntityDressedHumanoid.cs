@@ -81,6 +81,8 @@ namespace Vintagestory.GameContent
         {
             if (Api.Side != EnumAppSide.Server) return;
 
+            WatchedAttributes.SetInt("outfitversion", Properties.Attributes["outfitversion"].AsInt(0));
+
             var houtfit = Properties.Attributes["outfit"].AsObject<Dictionary<string, string>>();
             if (houtfit != null)
             {
@@ -104,7 +106,7 @@ namespace Vintagestory.GameContent
 
             if (api.Side == EnumAppSide.Server)
             {
-                if (OutfitCodes == null)
+                if (OutfitCodes == null || WatchedAttributes.GetInt("outfitversion") !=  Properties.Attributes["outfitversion"].AsInt(0))
                 {
                     LoadOutfitCodes();
                 }

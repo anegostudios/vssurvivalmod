@@ -50,7 +50,7 @@ namespace Vintagestory.GameContent
 
         public override Block GetSnowCoveredVariant(BlockPos pos, float snowLevel)
         {
-            if (snowLevel == 0) return api.World.Blocks[0];
+            if ((int)snowLevel <= 0) return api.World.Blocks[0];
             if ((int)snowLevel < 8)
             {
                 return api.World.GetBlock(CodeWithVariant("height", ""+(int)snowLevel));

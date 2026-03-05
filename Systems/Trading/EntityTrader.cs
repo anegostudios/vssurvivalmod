@@ -96,7 +96,6 @@ namespace Vintagestory.GameContent
         {
             base.OnGameTick(dt);
 
-
             if (Alive)
             {
                 bool almostDone = true;
@@ -112,8 +111,6 @@ namespace Vintagestory.GameContent
                 {
                     AnimManager.StartAnimation(new AnimationMetaData() { Code = "idle", Animation = "idle", EaseOutSpeed = 10, EaseInSpeed = 10 });
                 }
-
-
             }
 
             if (World.Side == EnumAppSide.Client) {

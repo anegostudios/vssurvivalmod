@@ -127,8 +127,7 @@ namespace Vintagestory.GameContent
         {
         }
 
-        public override bool
-            ContinueExecute(float dt)
+        public override bool ContinueExecute(float dt)
         {
             //Check if time is still valid for task.
             if (!IsInValidDayTimeHours(false)) return false;
@@ -156,7 +155,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (targetPos != null && world.Rand.NextDouble() < 0.2)
+            if (targetPos != null && world.Rand.NextDouble() < 0.2 && pathTraverser.CurrentTarget != null)
             {
                 pathTraverser.CurrentTarget.X = targetPos.X;
                 pathTraverser.CurrentTarget.Y = targetPos.Y;

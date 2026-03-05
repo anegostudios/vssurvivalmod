@@ -1,9 +1,10 @@
-﻿using Vintagestory.API.MathTools;
+using Vintagestory.API.MathTools;
 
 #nullable disable
 
 namespace Vintagestory.GameContent
 {
+
     public class RestockOpts
     {
         public float Quantity = 1;

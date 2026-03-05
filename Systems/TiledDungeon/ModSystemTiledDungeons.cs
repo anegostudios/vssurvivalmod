@@ -14,13 +14,13 @@ namespace Vintagestory.ServerMods
         protected ICoreServerAPI sapi = null!;
         public TiledDungeonConfig Tcfg = null!;
 
-        DungeonGenerator dungeonGen = null!;
+        internal DungeonGenerator dungeonGen = null!;
         TextCommandCallingArgs? dungeonGenRequest;
 
         int debugStopStep = -1;
         private bool placeDebugConnectors;
 
-        bool debugLogging=false;
+        bool debugLogging = false;
 
         public override void StartServerSide(ICoreServerAPI api)
         {

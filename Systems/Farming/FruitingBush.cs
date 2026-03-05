@@ -1,3 +1,4 @@
+using System;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
@@ -87,8 +88,10 @@ public class FruitingBushState
         Growthstate = (EnumFruitingBushGrowthState)tree.GetInt("growthState");
         if (tree.HasAttribute("traits"))
         {
+            if (tree.GetString("traits").Length == 0) Traits = [];
             Traits = tree.GetString("traits").Split(",");
         }
+        else Traits = [];
 
         WildBushState = null;
         if (tree.HasAttribute("wildBushState")) WildBushState = (EnumFruitingBushHealthState)tree.GetInt("wildBushState");
@@ -100,7 +103,7 @@ public class FruitingBushState
         tree.SetDouble("matureTotalDays", MatureTotalDays);
         tree.SetDouble("lastCuttingTakenTotalDays", LastCuttingTakenTotalDays);
         tree.SetInt("growthState", (int)Growthstate);
-        if (Traits != null) tree.SetString("traits", string.Join(",", Traits));
+        if (Traits != null && Traits.Length > 0) tree.SetString("traits", string.Join(",", Traits));
         if (WildBushState != null) tree.SetInt("wildBushState", (int)WildBushState);
     }
 }

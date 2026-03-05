@@ -4,29 +4,29 @@ using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
-#nullable disable
-
 namespace Vintagestory.GameContent
 {
-    public class ModSystemFishInstaFlee : ModSystem
+    public sealed class ModSystemFishInstaFlee : ModSystem
     {
-        public override bool ShouldLoad(EnumAppSide side) => side == EnumAppSide.Server;
+        public override bool ShouldLoad(EnumAppSide forSide) => forSide == EnumAppSide.Server;
 
         public override void StartServerSide(ICoreServerAPI api)
         {
-            api.Event.HandInteract += Event_HandInteract;
+            api.Event.HandInteract += event_HandInteract;
         }
 
-        private void Event_HandInteract(IServerPlayer player, EnumHandInteractNw enumHandInteract, float secondsPassed, ref EnumHandling handling)
+        private void event_HandInteract(IServerPlayer player, EnumHandInteractNw enumHandInteract, float secondsPassed, ref EnumHandling handling)
         {
-            if (player.CurrentEntitySelection?.Entity is EntityFish efish && (enumHandInteract == EnumHandInteractNw.StartHeldItemUse || enumHandInteract == EnumHandInteractNw.StepHeldItemUse))
+            if (
+                player.CurrentEntitySelection?.Entity is not EntityFish fishEntity ||
+                !(enumHandInteract == EnumHandInteractNw.StartHeldItemUse || enumHandInteract == EnumHandInteractNw.StepHeldItemUse) ||
+                !fishEntity.Swimming
+                )
             {
-                if (!efish.Swimming) return;
-
-                efish.GetBehavior<EntityBehaviorTaskAI>().TaskManager.ExecuteTask<AiTaskFleeEntity>();
-                efish.Pos.Motion.X = Math.Sin(efish.Pos.Yaw)/2;
-                efish.Pos.Motion.Z = Math.Cos(efish.Pos.Yaw)/2;
+                return;
             }
+
+            fishEntity.TryFleeAway();
         }
     }
 
@@ -38,9 +38,12 @@ namespace Vintagestory.GameContent
             AiTaskRegistry.Register<AiTaskFishOutOfWater>("fishoutofwater");
         }
 
-        public EntityFish() { }
+        protected AiTaskManager? taskManager;
 
-        AiTaskManager tm;
+        public double NoBaitBobberSeekChance { get; set; } = 0.02; // Very uninteresting without bait
+        public double BaitBobberSeekChance { get; set; } = 0.5;
+        public double FleeAwaySpeed { get; set; } = 0.5;
+
 
         public override void AfterInitialized(bool onFirstSpawn)
         {
@@ -48,39 +51,62 @@ namespace Vintagestory.GameContent
 
             if (Api.Side == EnumAppSide.Server)
             {
-                tm = GetBehavior<EntityBehaviorTaskAI>().TaskManager;
-                (tm.GetTask("seekbobber") as AiTaskSeekEntity).OnIsSuitableTarget = bobberBaitCheck;
+                taskManager = GetBehavior<EntityBehaviorTaskAI>()?.TaskManager;
+
+                if (taskManager?.GetTask("seekbobber") is AiTaskSeekEntity seekBobberTask)
+                {
+                    seekBobberTask.OnIsSuitableTarget = bobberBaitCheck;
+                }
             }
-        }
-
-
-        private bool bobberBaitCheck(Entity entity)
-        {
-            var ebobber = entity as EntityBobber;
-            if (ebobber.BaitStack == null) return World.Rand.NextDouble() < 0.02; // Very uninteresting without bait
-
-            return World.Rand.NextDouble() < 0.5;
-        }
-
-        public override void OnGameTick(float dt)
-        {
-            base.OnGameTick(dt);
         }
 
         public override void OnInteract(EntityAgent byEntity, ItemSlot slot, Vec3d hitPosition, EnumInteractMode mode)
         {
-            if (mode == EnumInteractMode.Attack && Swimming)
+            if (mode != EnumInteractMode.Attack || !Swimming)
             {
-                if (World.Side == EnumAppSide.Server)
-                {
-                    tm.ExecuteTask<AiTaskFleeEntity>();
-                }
-                Pos.Motion.X = Math.Sin(Pos.Yaw) / 2;
-                Pos.Motion.Z = Math.Cos(Pos.Yaw) / 2;
+                base.OnInteract(byEntity, slot, hitPosition, mode);
                 return;
             }
 
-            base.OnInteract(byEntity, slot, hitPosition, mode);
+            if (World.Side == EnumAppSide.Server)
+            {
+                TryFleeAway();
+            }
+        }
+
+        public virtual void BoltForward(double speed)
+        {
+            Pos.Motion.X = Math.Sin(Pos.Yaw) * speed;
+            Pos.Motion.Z = Math.Cos(Pos.Yaw) * speed;
+        }
+
+        public virtual bool TryFleeAway()
+        {
+            if (taskManager == null)
+            {
+                return false;
+            }
+
+            taskManager.ExecuteTask<AiTaskFleeEntity>();
+            if (taskManager.IsTaskActive<AiTaskFleeEntity>())
+            {
+                BoltForward(FleeAwaySpeed);
+                return true;
+            }
+
+            return false;
+        }
+
+
+        protected virtual bool bobberBaitCheck(Entity entity)
+        {
+            EntityBobber? bobberEntity = entity as EntityBobber;
+            if (bobberEntity?.BaitStack == null)
+            {
+                return World.Rand.NextDouble() < NoBaitBobberSeekChance;
+            }
+
+            return World.Rand.NextDouble() < BaitBobberSeekChance;
         }
     }
 }

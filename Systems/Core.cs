@@ -916,7 +916,7 @@ namespace Vintagestory.GameContent
 
             api.RegisterBlockEntityClass("Bellows", typeof(BlockEntityBellows));
             api.RegisterBlockEntityClass("GrindingWheel", typeof(BlockEntityGrindingWheel));
-
+            api.RegisterBlockEntityClass("WildFruitingBush", typeof(BlockEntityWildFruitingBush));
         }
 
 

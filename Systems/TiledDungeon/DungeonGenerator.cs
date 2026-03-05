@@ -45,14 +45,14 @@ namespace Vintagestory.ServerMods
             {
                 logger.Notification($"Dungeon with {placeTasks.Count} schematics generated");
                 if (DebugLogging && dgd.OpenSet.Count > 0) debugLogs.Add(string.Format("But {0} sides could not be closed", dgd.OpenSet.Count));
-                var stairsIndex = -1;
-                if (dungeon.Stairs?.Length > 0) stairsIndex = rnd.NextInt(dungeon.Stairs.Length);
-                return new DungeonPlaceTask(dungeon.Code, placeTasks, gennedStructures, openSet, stairsIndex);
+
+                var stairsCon = openSet.First(c => c.Name == dungeon.SurfaceConnectorName);
+                stairsCon.FacingInt = stairsCon.Facing.Index;
+                return new DungeonPlaceTask(dungeon.Code, placeTasks, gennedStructures, openSet, stairsCon);
             }
 
             return null;
         }
-
 
         private bool TryGenerateTiles(LCGRandom lcgRnd, DungeonGenWorkspace dgd)
         {
@@ -315,7 +315,7 @@ namespace Vintagestory.ServerMods
         /// <param name="lcgrand"></param>
         /// <param name="openSide"></param>
         /// <returns></returns>
-        protected DungeonTile? pickTile(DungeonGenWorkspace dgd, int[] tileIndices, LCGRandom lcgrand, ConnectorMetaData openSide)
+        public DungeonTile? pickTile(DungeonGenWorkspace dgd, int[] tileIndices, LCGRandom lcgrand, ConnectorMetaData openSide)
         {
             // TODO check if we have a tile that can even satisfy the current openside
             // var totalWeight = GetTotalWeight(dgd);

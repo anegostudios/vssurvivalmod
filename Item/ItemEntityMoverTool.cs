@@ -108,6 +108,8 @@ public class ItemEntityMoverTool : Item, IHeldItemOnMouseWheel
             return;
         }
 
+        StartDisableEntityMovement(entitySel.Entity);
+
         handling = EnumHandHandling.PreventDefaultAction;
 
         double distance = byEntity.Pos.Add(byEntity.LocalEyePos.ToVec3f()).DistanceTo(entitySel.Entity.Pos.XYZ);
@@ -130,7 +132,6 @@ public class ItemEntityMoverTool : Item, IHeldItemOnMouseWheel
             affectedEntities.Remove(byEntity.EntityId);
         }
 
-        StartDisableEntityMovement(entitySel.Entity);
         affectedEntities.Add(byEntity.EntityId, entitySel.Entity.EntityId);
     }
 
@@ -180,10 +181,13 @@ public class ItemEntityMoverTool : Item, IHeldItemOnMouseWheel
         if (target.GetBehavior<EntityBehaviorTaskAI>() is EntityBehaviorTaskAI aiTaskBehavior)
         {
             aiTaskBehavior.TaskManager.OnShouldExecuteTask += PreventAiTask;
+            aiTaskBehavior.TaskManager.OnExecuteTask += PreventAiTaskExecution;
+            aiTaskBehavior.TaskManager.StopTasks();
         }
         if (target.GetBehavior<EntityBehaviorControlledPhysics>() is EntityBehaviorControlledPhysics physicsBehavior)
         {
             physicsBehavior.EnableModulesApplication = false;
+            target.Pos.Motion.Set(0, 0, 0);
         }
     }
 
@@ -192,6 +196,7 @@ public class ItemEntityMoverTool : Item, IHeldItemOnMouseWheel
         if (target.GetBehavior<EntityBehaviorTaskAI>() is EntityBehaviorTaskAI aiTaskBehavior)
         {
             aiTaskBehavior.TaskManager.OnShouldExecuteTask -= PreventAiTask;
+            aiTaskBehavior.TaskManager.OnExecuteTask -= PreventAiTaskExecution;
         }
         if (target.GetBehavior<EntityBehaviorControlledPhysics>() is EntityBehaviorControlledPhysics physicsBehavior)
         {
@@ -200,6 +205,10 @@ public class ItemEntityMoverTool : Item, IHeldItemOnMouseWheel
     }
 
     protected virtual bool PreventAiTask(IAiTask task)
+    {
+        return false;
+    }
+    protected virtual bool PreventAiTaskExecution(IAiTask task, IAiTask? activeTask)
     {
         return false;
     }

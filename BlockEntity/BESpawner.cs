@@ -139,6 +139,7 @@ namespace Vintagestory.GameContent
             tree.SetFloat("maxTemp", MaxTemp);
             tree.SetFloat("minRain", MinRain);
             tree.SetFloat("maxRain", MaxRain);
+            tree.SetInt("climateMode", ClimateMode);
         }
 
         public void FromTreeAttributes(ITreeAttribute tree)
@@ -171,21 +172,18 @@ namespace Vintagestory.GameContent
             MaxTemp = tree.GetFloat("maxTemp", 40);
             MinRain = tree.GetFloat("minRain", 0);
             MaxRain = tree.GetFloat("maxRain", 1);
+            ClimateMode = tree.GetInt("climateMode", 0);
+
         }
     }
 
     public class BlockEntitySpawner : BlockEntity
     {
         public BESpawnerData Data = new BESpawnerData().initDefaults();
-
         protected HashSet<long> spawnedEntities = new HashSet<long>();
-
-
         protected GuiDialogSpawner dlg;
         protected CollisionTester collisionTester = new CollisionTester();
-
         protected bool requireSpawnOnWallSide;
-
 
         public BlockEntitySpawner()
         {
@@ -251,7 +249,13 @@ namespace Vintagestory.GameContent
             ICoreServerAPI sapi = Api as ICoreServerAPI;
 
             int rnd = sapi.World.Rand.Next(Data.EntityCodes.Length);
-            EntityProperties type = Api.World.GetEntityType(new AssetLocation(Data.EntityCodes[rnd]));
+
+            var tree = new TreeAttribute();
+            tree.SetString("type", new AssetLocation(Data.EntityCodes[rnd]));
+            tree.SetBlockPos("pos", Pos);
+            sapi.Event.PushEvent("onattemptspawnerspawn", tree);
+
+            EntityProperties type = Api.World.GetEntityType(tree.GetString("type"));
 
             if (Data.InternalCapacity > 0 && Data.InternalCharge < 1) return;
             if (Data.LastSpawnTotalHours + Data.InGameHourInterval > Api.World.Calendar.TotalHours && Data.InitialSpawnQuantity <= 0) return;
@@ -271,11 +275,20 @@ namespace Vintagestory.GameContent
 
             if (Data.ClimateMode > 0)
             {
-                var climate = Api.World.BlockAccessor.GetClimateAt(Pos, Data.ClimateMode == 1 ? EnumGetClimateMode.NowValues : EnumGetClimateMode.WorldGenValues);
+                var mode = Data.ClimateMode == 1 ? EnumGetClimateMode.NowValues : EnumGetClimateMode.WorldGenValues;
+                var climate = Api.World.BlockAccessor.GetClimateAt(Pos, mode);
                 if (climate == null) return;
 
-                if (climate.Temperature < Data.MinTemp || climate.Temperature > Data.MaxTemp) return;
-                if (climate.Rainfall < Data.MinRain || climate.Rainfall > Data.MaxRain) return;
+                if (climate.Temperature < Data.MinTemp || climate.Temperature > Data.MaxTemp)
+                {
+                    if (mode == EnumGetClimateMode.WorldGenValues) decrementSpawnCount(); // self destruct if stuff can never spawn here
+                    return;
+                }
+                if (climate.Rainfall < Data.MinRain || climate.Rainfall > Data.MaxRain)
+                {
+                    if (mode == EnumGetClimateMode.WorldGenValues) decrementSpawnCount(); // self destruct if stuff can never spawn here
+                    return;
+                }
             }
 
             if (type == null) return;
@@ -387,17 +400,21 @@ namespace Vintagestory.GameContent
                             Data.InitialQuantitySpawned--;
                         }
 
-                        // Self destruct, if configured so
-                        if (Data.RemoveAfterSpawnCount > 0)
-                        {
-                            Data.RemoveAfterSpawnCount--;
-                            if (Data.RemoveAfterSpawnCount == 0)
-                            {
-                                Api.World.BlockAccessor.SetBlock(0, Pos);
-                            }
-                        }
-
+                        decrementSpawnCount();
                         return;
+                    }
+                }
+            }
+
+            void decrementSpawnCount()
+            {
+                // Self destruct, if configured so
+                if (Data.RemoveAfterSpawnCount > 0)
+                {
+                    Data.RemoveAfterSpawnCount--;
+                    if (Data.RemoveAfterSpawnCount == 0)
+                    {
+                        Api.World.BlockAccessor.SetBlock(0, Pos);
                     }
                 }
             }

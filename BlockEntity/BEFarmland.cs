@@ -14,20 +14,8 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class CodeAndChance
-    {
-        public AssetLocation Code;
-        public float Chance;
-    }
-
-    // Definitions:
-    // Farmland has 3 nutrient levels N, P and K
-    // - Each nutrient level has a range of 0-100
-    // - Every crop always only consumes one nutrient level (for now)
-    // - Some crops require more nutrient than others
-    // - Each crop has different total growth speed
-    // - Each crop can have any amounts of growth stages
-    // - Some crops can be harvested with right click, without destroying the crop
+    // Hoed soil for simple crop block that do not track their own state
+    // Tracks crop growth, damage from enviromental factors, its drops and animal POI handling.
     public class BlockEntityFarmland : BlockEntitySoilNutrition, IFarmlandBlockEntity, IAnimalFoodSource
     {
         protected bool unripeCropColdDamaged;
@@ -62,18 +50,24 @@ namespace Vintagestory.GameContent
             base.OnCropBlockBroken();
         }
 
-        protected override FarmlandFastForwardUpdate onUpdate()
+        protected override void beginIntervalledUpdate(out FarmlandFastForwardUpdate onInterval, out FarmlandUpdateEnd onEnd)
         {
             Block cropBlock = GetCrop();
             bool hasCrop = cropBlock != null;
             bool hasRipeCrop = HasRipeCrop();
             double hoursNextStage = GetHoursForNextStage();
-            
-            return (hourIntervall, conds, lightGrowthSpeedFactor, growthPaused) =>
+
+            base.beginIntervalledUpdate(out onInterval, out onEnd);
+
+            var prevOnInterval = onInterval;
+
+            onInterval = (hourIntervall, conds, lightGrowthSpeedFactor, growthPaused) =>
             {
+                prevOnInterval.Invoke(hourIntervall, conds, lightGrowthSpeedFactor, growthPaused);
+
                 // Adjust for light level, ie 10% growth speed needs 90% of hourIntervall added back on to total growth time
                 totalHoursForNextStage += hourIntervall * (1 - lightGrowthSpeedFactor);
-                
+
                 hasCrop = updateCropDamage(hourIntervall, cropBlock, hasCrop, hasRipeCrop, conds);
 
                 if (growthPaused)
@@ -100,8 +94,10 @@ namespace Vintagestory.GameContent
         }
 
 
+
         protected override void onRollback(double hoursrolledback)
         {
+            base.onRollback(hoursrolledback);
             totalHoursForNextStage -= hoursrolledback;
         }
 
@@ -384,7 +380,6 @@ namespace Vintagestory.GameContent
                 dsc.AppendLine();
             }
 
-
             if (cropProps == null)
             {
                 float speedn = (float)Math.Round(100 * GetGrowthRate(EnumSoilNutrient.N), 0);
@@ -461,6 +456,7 @@ namespace Vintagestory.GameContent
 
         BlockPos IFarmlandBlockEntity.Pos => this.Pos;
 
+        public double TotalHoursFertilityCheck => throw new NotImplementedException();
 
         public override void OnBlockRemoved()
         {

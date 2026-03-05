@@ -7,16 +7,14 @@ namespace Vintagestory.ServerMods
 {
     public class LandformConstraint
     {
-        [JsonProperty]
-        public string Code;
-        [JsonProperty]
-        public float Value;
-        [JsonProperty]
-        public string Type;
+        [JsonProperty] public string Code;
+        [JsonProperty] public float Value;
+        [JsonProperty] public string Type;
     }
 
     public class TiledDungeon
     {
+        public bool Worldgen;
         public string Code = null!;
         public List<DungeonTile> Tiles = new List<DungeonTile>();
 
@@ -24,53 +22,51 @@ namespace Vintagestory.ServerMods
 
         public float totalChance;
 
-        public string? stairs;
-        [JsonIgnore]
-        public BlockSchematicPartial[]? Stairs;
-
         public string? start;
-        [JsonIgnore]
-        public BlockSchematicPartial[]? Start;
+        [JsonIgnore] public BlockSchematicPartial[]? Start;
 
         public string? surface;
-        [JsonIgnore]
-        public BlockSchematicPartial[]? Surface;
+        [JsonIgnore] public BlockSchematicPartial[]? Surface;
+
+        public string? SurfaceConnectorName;
+
+        public TiledDungeon? StairCase;
 
         public string[]? ends;
-        [JsonIgnore]
-        public BlockSchematicPartial[][]? EndSchematics;
+        [JsonIgnore] public BlockSchematicPartial[][]? EndSchematics;
 
         [JsonProperty]
         public int MaxTiles;
+
         [JsonProperty]
         public int MinTiles;
+
         /// <summary>
         /// If defined these connects must be closed or the tile will fail to generate
         /// </summary>
-        [JsonProperty]
-        public string[]? RequireClosed;
+        [JsonProperty] public string[]? RequireClosed;
+
         /// <summary>
         /// If defined these connectors will remain opened for the current generator. This is relevant for subdungeons.
         /// </summary>
-        [JsonProperty]
-        public string[]? RequireOpened;
+        [JsonProperty] public string[]? RequireOpened;
+
         /// <summary>
         /// If defined these connectors must not get blocked by other tiles.
         /// </summary>
-        [JsonProperty]
-        public HashSet<string>? RequireUnblocked;
+        [JsonProperty] public HashSet<string>? RequireUnblocked;
 
-        [JsonProperty]
-        public bool BuildProtected;
+        [JsonProperty] public bool BuildProtected;
 
-        [JsonProperty]
-        public string? BuildProtectionName;
+        [JsonProperty] public string? BuildProtectionName;
 
-        [JsonProperty]
-        public string? BuildProtectionDesc;
+        [JsonProperty] public string? BuildProtectionDesc;
 
-        [JsonProperty]
-        public LandformConstraint[]? RequiredLandform;
+        [JsonProperty] public LandformConstraint[]? RequiredLandform;
+
+        // For rocktyped ruins
+        internal Dictionary<int, Dictionary<int, int>>? resolvedRockTypeRemaps = null;
+        public string? RockTypeRemapGroup = null;
 
         public void Init(ICoreServerAPI api)
         {
@@ -78,24 +74,18 @@ namespace Vintagestory.ServerMods
 
             var blockLayerConfig = BlockLayerConfig.GetInstance(api);
             blockLayerConfig.ResolveBlockIds(api);
-            if (stairs != null)
-            {
-                var asset = api.Assets.Get("worldgen/dungeontiles/" + stairs + ".json");
-                Stairs = WorldGenStructureBase.LoadSchematic<BlockSchematicPartial>(api, asset, blockLayerConfig, null, null,0);
-                TilesByCode[stairs] = new DungeonTile() { ResolvedSchematics = new[] { Stairs }, Code = stairs };
-            }
 
             if (surface != null)
             {
                 var asset = api.Assets.Get("worldgen/dungeontiles/" + surface + ".json");
-                Surface = WorldGenStructureBase.LoadSchematic<BlockSchematicPartial>(api, asset, blockLayerConfig, null, null,0);
+                Surface = WorldGenStructureBase.LoadSchematic<BlockSchematicPartial>(api, asset, blockLayerConfig, null, null, 0, true);
                 TilesByCode[surface] = new DungeonTile() { ResolvedSchematics = new[] { Surface }, Code = surface };
             }
 
             if (start != null)
             {
                 var assetStart = api.Assets.Get("worldgen/dungeontiles/" + start + ".json");
-                Start = WorldGenStructureBase.LoadSchematic<BlockSchematicPartial>(api, assetStart, blockLayerConfig, null, null, 0,true);
+                Start = WorldGenStructureBase.LoadSchematic<BlockSchematicPartial>(api, assetStart, blockLayerConfig, null, null, 0, true);
                 TilesByCode[start] = new DungeonTile() { ResolvedSchematics = new[] { Start }, Code = start };
             }
 
@@ -113,10 +103,13 @@ namespace Vintagestory.ServerMods
                         api.Logger.Error($"Dungeon {Code} has a end with duplicate tile code: {e}. Tile will be skipped.");
                     }
                 }
+
                 EndSchematics = ends.ToArray();
             }
 
-            if (RequiredLandform != null && RequiredLandform.Any( l => l.Code == null || l.Type == null))
+            StairCase?.Init(api);
+
+            if (RequiredLandform != null && RequiredLandform.Any(l => l.Code == null || l.Type == null))
             {
                 api.Logger.Error($"Dungeon {Code} has RequiredLandform with missing Code or Type.");
             }
@@ -124,13 +117,15 @@ namespace Vintagestory.ServerMods
             for (var i = 0; i < Tiles.Count; i++)
             {
                 var tile = Tiles[i];
-                if(Tiles[i].Code == null)
+                if (Tiles[i].Code == null)
                 {
                     api.Logger.Error($"Dungeon {Code} has a Tile at index: {i} without a code specified. Will skip initialization");
                     continue;
                 }
 
                 tile.Init(api, blockLayerConfig);
+
+
 
                 if (tile.TileGenerator != null)
                 {
@@ -166,6 +161,7 @@ namespace Vintagestory.ServerMods
                         }
                     }
                 }
+
                 RequireClosed = toBeClosed.ToArray();
                 api.Logger.Debug($"Dungeon {Code} Setting RequireClosed to {string.Join(",", RequireClosed)}");
             }
@@ -175,17 +171,28 @@ namespace Vintagestory.ServerMods
         {
             var dungeon = new TiledDungeon()
             {
-                totalChance = totalChance,
-                Tiles = new List<DungeonTile>(Tiles),
+                BuildProtected = BuildProtected,
+                BuildProtectionDesc = BuildProtectionDesc,
+                BuildProtectionName = BuildProtectionName,
                 Code = Code,
-                TilesByCode = new Dictionary<string, DungeonTile>(TilesByCode),
-                Stairs = Stairs,
-                stairs = stairs,
-                Start = Start,
-                start = start,
                 EndSchematics = EndSchematics,
+                MaxTiles = MaxTiles,
+                MinTiles = MinTiles,
+                RequireClosed = RequireClosed,
+                RequireOpened = RequireOpened,
+                RequireUnblocked = RequireUnblocked,
+                RequiredLandform = RequiredLandform,
+                StairCase = StairCase,
+                Start = Start,
+                Surface = Surface,
+                SurfaceConnectorName = SurfaceConnectorName,
+                Tiles = new List<DungeonTile>(Tiles),
+                TilesByCode = new Dictionary<string, DungeonTile>(TilesByCode),
+                Worldgen = Worldgen,
                 ends = ends,
-                RequiredLandform = RequiredLandform
+                start = start,
+                surface = surface,
+                totalChance = totalChance
             };
             return dungeon;
         }

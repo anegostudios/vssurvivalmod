@@ -165,7 +165,7 @@ namespace Vintagestory.GameContent
         private void OnGetTransform(string eventName, ref EnumHandling handling, IAttribute data)
         {
             var tree = data as TreeAttribute;
-            if (tree.GetString("target") != "shelf") return;
+            if (tree.GetString("target") != "onshelfTransform") return;
 
             ItemSlot slot = capi.World.Player.InventoryManager.ActiveHotbarSlot;
             var attr = GetDisplayableAttributes(slot, "shelf");

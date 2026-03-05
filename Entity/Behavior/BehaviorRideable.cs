@@ -49,7 +49,7 @@ namespace Vintagestory.GameContent
         protected FastSmallDictionary<EnumHabitat, string?[]>? GaitOrderCodes;
         protected ICoreClientAPI? capi;
         protected EntityBehaviorGait ebg = null!;
-        protected int minGeneration = 0; // Minimum generation for the animal to be rideable
+        public int MinGeneration = 0; // Minimum generation for the animal to be rideable
         protected GaitMeta? saddleBreakGait;
         protected string? saddleBreakGaitCode;
 
@@ -131,7 +131,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            minGeneration = attributes["minGeneration"].AsInt(0);
+            MinGeneration = attributes["minGeneration"].AsInt(0);
             GaitOrderCodes = attributes["rideableGaitOrder"].AsObject<FastSmallDictionary<EnumHabitat, string?[]>>();
             string?[]? oldFormatLandGaits = attributes["rideableGaitOrder"].AsArray<string>();
             if (GaitOrderCodes == null && oldFormatLandGaits != null)

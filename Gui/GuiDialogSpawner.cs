@@ -130,8 +130,8 @@ namespace Vintagestory.GameContent
                 .AddStaticText("Max concurrent entities to spawn", CairoFont.WhiteDetailText(), tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, 10).WithFixedSize(400, 30))
                 .AddNumberInput(tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, -10).WithFixedSize(100, 29), null, CairoFont.WhiteDetailText(), "maxentities")
 
-                .AddStaticText("Spawn 'x' entities, then remove block (0 for infinite)", CairoFont.WhiteDetailText(), tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, 10).WithFixedSize(400, 30))
-                .AddNumberInput(tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, -10).WithFixedSize(100, 29), null, CairoFont.WhiteDetailText(), "spawncount")
+                .AddStaticText("Spawn 'x' entities, then remove block. Also used when worldgen climate is not suitable. Put 0 for infinite", CairoFont.WhiteDetailText(), tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, 10).WithFixedSize(400, 30))
+                .AddNumberInput(tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, 10).WithFixedSize(100, 29), null, CairoFont.WhiteDetailText(), "spawncount")
 
                 .AddSwitch(null, tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, 10), "primerSwitch", 20)
                 .AddStaticText("Begin spawning only after being imported", CairoFont.WhiteDetailText(), tmpBoundsDim3.RightCopy(10, 0).WithFixedSize(400, 30))
