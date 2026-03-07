@@ -18,16 +18,15 @@ namespace Vintagestory.GameContent
         public int GrowTries;
         public double lastGrowthAttemptTotalDays;
 
-        MeshData branchMesh;
-        Cuboidf[] colSelBoxes;
+        protected MeshData branchMesh;
+        protected Cuboidf[] colSelBoxes;
 
         /// <summary>
         /// A value of 0..1. Zero being just a single leaves block, 1 being fully grown tree
         /// </summary>
         public float? FastForwardGrowth;
 
-
-        bool initialized;
+        protected bool initialized;
 
         public override void Initialize(ICoreAPI api)
         {
@@ -45,6 +44,7 @@ namespace Vintagestory.GameContent
             {
                 lastGrowthAttemptTotalDays = Api.World.Calendar.TotalDays - 20 - ((float)FastForwardGrowth * 600);
                 InitTreeRoot(TreeType, true);
+                GetBehavior<FruitTreeRootBH>()?.GenRandomVernalizedHours();
                 FastForwardGrowth = null;
             }
 

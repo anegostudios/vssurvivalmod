@@ -1,8 +1,18 @@
+using System.Collections.Generic;
 using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent;
+
+public class NpkNutrients {
+    public float N; public float P; public float K;
+    public NpkNutrients(float n, float p, float k) { N = n; P = p; K = k; }
+    public NpkNutrients() { }
+    public NpkNutrients Clone() => new NpkNutrients(N,P,K);
+    public static NpkNutrients operator *(NpkNutrients left, float right) => new NpkNutrients(left.N * right, left.P * right, left.K * right);
+}
 
 public class BlockBehaviorFruitingBush : BlockBehavior
 {
@@ -42,6 +52,13 @@ public class BlockBehaviorFruitingBush : BlockBehavior
     public JsonObject? GrowthProperties;
     public float GrowthRateMul = 1f;
     public AssetLocation? HarvestingSound;
+    public Dictionary<string, NpkNutrients> nutrientUseByHealthState;
+
+    /// <summary>
+    /// Sorted by growthstage index
+    /// Young = 0, Mature = 1, Flowering = 2, Ripening = 3, Ripe = 4, Dormant = 5
+    /// </summary>
+    public NatFloat[] growthStageMonths;
 
     public BlockBehaviorFruitingBush(Block block) : base(block) { }
 
@@ -70,6 +87,18 @@ public class BlockBehaviorFruitingBush : BlockBehavior
         harvestedStacks = block.Attributes["harvestedStacks"].AsObject<BlockDropItemStack[]>(null);
         foreach (var hstack in harvestedStacks) hstack.Resolve(api.World, "harvested stack of fruiting bush", code);
         Tool = block.Attributes["harvestTool"].AsObject<EnumTool?>(null);
+
+        growthStageMonths = new NatFloat[]
+        {
+            GrowthProperties["youngStageMonths"].AsObject<NatFloat>(),
+            GrowthProperties["emptyStageMonths"].AsObject<NatFloat>(),
+            GrowthProperties["floweringStageMonths"].AsObject<NatFloat>(),
+            GrowthProperties["ripeningStageMonths"].AsObject<NatFloat>(),
+            GrowthProperties["ripeStageMonths"].AsObject<NatFloat>(),
+            null
+        };
+
+        nutrientUseByHealthState = GrowthProperties["nutrientUseByHealthState"].AsObject<Dictionary<string, NpkNutrients>>();
     }
 
 

@@ -399,6 +399,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockFenceGateRoughHewn", typeof(BlockFenceGateRoughHewn));
             api.RegisterBlockClass("BlockLayered", typeof(BlockLayered));
             api.RegisterBlockClass("BlockVines", typeof(BlockVines));
+            api.RegisterBlockClass("BlockRequireFertileGround", typeof(BlockRequireFertileGround));
             api.RegisterBlockClass("BlockPlant", typeof(BlockPlant));
 
             api.RegisterBlockClass("BlockRails", typeof(BlockRails));

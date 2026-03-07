@@ -33,6 +33,8 @@ namespace Vintagestory.GameContent
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
+
+            isWaterPlant = true;
             maxWaterDepth = Attributes["maxWaterDepth"].AsInt(1);
 
             string hab = Variant["habitat"];

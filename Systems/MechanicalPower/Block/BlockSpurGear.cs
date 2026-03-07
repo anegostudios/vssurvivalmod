@@ -19,13 +19,7 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face, BlockMPBase forBlock)
         {
-            if (Orientation.IsHorizontal)
-            {
-                return face == Orientation || (forBlock == this && (face == Orientation.GetCCW() || face == Orientation.GetCW() || face == BlockFacing.UP || face == BlockFacing.DOWN));
-            } else
-            {
-                return face == Orientation || (forBlock == this && face.IsHorizontal);
-            }
+            return face == Orientation || (forBlock == this && face != Orientation.Opposite);    // Side by side: powers any matching spur gear adjacent
         }
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
@@ -57,8 +51,6 @@ namespace Vintagestory.GameContent.Mechanics
                 failureCode = "axlemusthavesupport";
                 return false;
             }
-
-            if (blockSel.Face.IsVertical) return false; // Don't allow this for now
 
             BlockSpurGear toPlaceBlock = world.GetBlock(CodeWithVariant("orientation", targetFace.Code[0] + "")) as BlockSpurGear;
             world.BlockAccessor.SetBlock(toPlaceBlock.BlockId, blockSel.Position);

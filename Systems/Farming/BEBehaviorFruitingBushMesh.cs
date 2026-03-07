@@ -93,7 +93,7 @@ public class BEBehaviorFruitingBushMesh : BlockEntityBehavior, ITexPositionSourc
             var loc = Block.Shape.Base;
             var shape = capi.Assets.Get<Shape>(loc.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json"));
 
-            if (BState.Growthstate == EnumFruitingBushGrowthState.Dormant) ignoreElements = ignoreElements.Append(["Leaves/*"]);
+            if (BState.Growthstate == EnumFruitingBushGrowthState.Dormant && Block.Variant["type"] != "strawberry") ignoreElements = ignoreElements.Append(["Leaves/*"]);
 
             capi.Tesselator.TesselateShape(new TesselationMetaData()
             {
@@ -101,6 +101,12 @@ public class BEBehaviorFruitingBushMesh : BlockEntityBehavior, ITexPositionSourc
                 UsesColorMap = true,
                 IgnoreElements = ignoreElements
             }, shape, out var bushMesh);
+
+            for (int i = 0; i < bushMesh.ColorMapIdsCount; i++)
+            {
+                if (bushMesh.ClimateColorMapIds[i] > 0) bushMesh.ClimateColorMapIds[i] = (byte)(Block.ClimateColorMapResolved.RectIndex + 1);
+                if (bushMesh.SeasonColorMapIds[i] > 0) bushMesh.SeasonColorMapIds[i] = (byte)(Block.SeasonColorMapResolved.RectIndex + 1);
+            }
 
             return bushMesh;
         });

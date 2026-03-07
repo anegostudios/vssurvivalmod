@@ -91,7 +91,7 @@ namespace Vintagestory.GameContent
 
 
             string traderName = owningEntity.GetBehavior<EntityBehaviorNameTag>().DisplayName;
-            string dlgTitle = Lang.Get("tradingwindow-" + owningEntity.Code.Path, traderName);
+            string dlgTitle = Lang.GetMatching("tradingwindow-" + owningEntity.Code.Path, traderName);
             if (curTab > 0) dlgTitle = Lang.Get("tradertabtitle-" + curTab);
 
             SingleComposer =

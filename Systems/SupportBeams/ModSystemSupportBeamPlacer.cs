@@ -1,16 +1,31 @@
-﻿using ProtoBuf;
+using ProtoBuf;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 
 #nullable disable
 
 namespace Vintagestory.GameContent
 {
+    [ProtoContract]
+    public class BeamPlacePackage
+    {
+        [ProtoMember(1)]
+        public bool begin; // true for begin, false for end
+        [ProtoMember(2)]
+        public BlockSelection Blocksel;
+        [ProtoMember(3)]
+        public bool PartialEnds;
+        [ProtoMember(4)]
+        public int BlockId;
+    }
+
     public class ModSystemSupportBeamPlacer : ModSystem, IRenderer
     {
         public override bool ShouldLoad(EnumAppSide forSide) => true;
@@ -28,6 +43,7 @@ namespace Vintagestory.GameContent
         public override void Start(ICoreAPI api)
         {
             this.api = api;
+            api.Network.RegisterChannel("beamplacer").RegisterMessageType<BeamPlacePackage>();
         }
 
         public override void StartClientSide(ICoreClientAPI api)
@@ -36,6 +52,24 @@ namespace Vintagestory.GameContent
             api.Event.RegisterRenderer(this, EnumRenderStage.Opaque, "beamplacer");
         }
 
+        public override void StartServerSide(ICoreServerAPI api)
+        {
+            api.Network.GetChannel("beamplacer").SetMessageHandler<BeamPlacePackage>(OnCompletePlaceClient);
+            base.StartServerSide(api);
+        }
+
+        private void OnCompletePlaceClient(IServerPlayer fromPlayer, BeamPlacePackage packet)
+        {
+            var ws = getWorkSpace(fromPlayer.Entity);
+            fromPlayer.Entity.BlockSelection = packet.Blocksel;
+            if (ws.nowBuilding)
+            {
+                completePlace(ws, fromPlayer.Entity, fromPlayer.InventoryManager.ActiveHotbarSlot); 
+            } else
+            {
+                beginPlace(ws, api.World.Blocks[packet.BlockId], fromPlayer.Entity, packet.Blocksel, packet.PartialEnds);
+            }
+        }
 
         public bool CancelPlace(BlockSupportBeam blockSupportBeam, EntityAgent byEntity)
         {
@@ -63,13 +97,10 @@ namespace Vintagestory.GameContent
 
         public void OnInteract(Block block, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, bool partialEnds)
         {
-            if (blockSel == null)
-            {
-                return;
-            }
+            if (blockSel == null) return;
+            if (api.Side == EnumAppSide.Server) return; // Server is handled by custom packet
 
             var ws = getWorkSpace(byEntity);
-
             if (!ws.nowBuilding)
             {
                 beginPlace(ws, block, byEntity, blockSel, partialEnds);
@@ -82,6 +113,7 @@ namespace Vintagestory.GameContent
 
         private void beginPlace(BeamPlacerWorkSpace ws, Block block, EntityAgent byEntity, BlockSelection blockSel, bool partialEnds)
         {
+            //System.Diagnostics.Debug.WriteLine(api.Side + " begin place " + blockSel.FullPosition);
             ws.GridSize = byEntity.Controls.CtrlKey ? 16 : 4;
 
             ws.currentMeshes = getOrCreateBeamMeshes(block, (block as BlockSupportBeam)?.PartialEnds ?? false);
@@ -123,6 +155,13 @@ namespace Vintagestory.GameContent
             ws.nowBuilding = true;
             ws.block = block;
             ws.onFacing = blockSel.Face;
+
+            capi?.Network.GetChannel("beamplacer").SendPacket(new BeamPlacePackage() { 
+                Blocksel = blockSel, 
+                begin = true,
+                BlockId = block.Id,
+                PartialEnds = partialEnds
+            });
         }
 
 
@@ -133,12 +172,12 @@ namespace Vintagestory.GameContent
             var beh = be?.GetBehavior<BEBehaviorSupportBeam>();
 
             var eplr = (byEntity as EntityPlayer);
+            //System.Diagnostics.Debug.WriteLine(api.Side + " complete place " + eplr.BlockSelection.FullPosition);
 
             Vec3f nowEndOffset = getEndOffset(eplr.Player, ws);
 
             if (nowEndOffset.DistanceTo(ws.startOffset) < 0.01f)
             {
-
                 return;
             }
 
@@ -187,6 +226,9 @@ namespace Vintagestory.GameContent
             }
 
             beh.AddBeam(ws.startOffset, nowEndOffset, ws.onFacing, ws.block);
+
+            capi?.Network.GetChannel("beamplacer").SendPacket(new BeamPlacePackage() { Blocksel = eplr.BlockSelection, begin = false });
+
             be.MarkDirty(true);
         }
 

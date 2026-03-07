@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -47,7 +47,7 @@ namespace Vintagestory.GameContent
         public StructureLocation FindFreshStructureLocation(string code, BlockPos nearPos, int searchRange)
         {
             return FindStructureLocation((struc, index, region) => {
-                if (struc.Code.Split('/')[0] == code)
+                if (struc.Code.Split('/')[1] == code)
                 {
                     var locs = region.GetModdata<int[]>("consumedStructureLocations");
                     var locPos = region.GetModdata<List<Vec3i>>("consumedStrucLocPos");

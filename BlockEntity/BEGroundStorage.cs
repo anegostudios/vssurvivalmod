@@ -1369,7 +1369,7 @@ namespace Vintagestory.GameContent
 
                 for (int i = 0; i < stack.StackSize; i++)
                 {
-                    var tf = bgs.Messy12Transforms[i];
+                    var tf = bgs.Messy12Transforms[Math.Min(11, i)];
 
                     // Yes, we apply scaling and rotation multiple times to the same mesh here
                     // But its okay, as long as we don't apply translation multiple times, which we dont

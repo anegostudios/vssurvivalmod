@@ -54,6 +54,7 @@ public class FruitingBushState
     /// </summary>
     public string[]? Traits;
 
+    public EnumFruitingBushHealthState PrevHealthState;
 
     public EnumFruitingBushGrowthState Growthstate
     {

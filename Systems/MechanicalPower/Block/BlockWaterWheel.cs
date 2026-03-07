@@ -9,6 +9,10 @@ namespace Vintagestory.GameContent.Mechanics
 {
     public class BlockWaterWheel : BlockWindmillRotor
     {
+        public override bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face, BlockMPBase forBlock)
+        {
+            return face == powerOutFacing || face == powerOutFacing.Opposite;
+        }
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
         {

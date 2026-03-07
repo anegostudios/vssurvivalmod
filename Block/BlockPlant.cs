@@ -3,37 +3,12 @@ using Vintagestory.API.Client.Tesselation;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Util;
 
 #nullable disable
 
 namespace Vintagestory.GameContent
 {
-    public class BlockFern : BlockPlant, ICustomTreeFellingBehavior
-    {
-        public override void OnLoaded(ICoreAPI api)
-        {
-            base.OnLoaded(api);
-
-            waveFlagMinY = 0.25f;
-            tallGrassColorMapping = true;
-        }
-
-        public override void OnJsonTesselation(ref MeshData sourceMesh, ref int[] lightRgbsByCorner, BlockPos pos, Block[] chunkExtBlocks, int extIndex3d)
-        {
-            base.OnJsonTesselation(ref sourceMesh, ref lightRgbsByCorner, pos, chunkExtBlocks, extIndex3d);
-
-            var sourcemeshFlags = sourceMesh.Flags;
-            int flagsCount = sourceMesh.FlagsCount;
-            int vertical = VertexFlags.PackNormal(0, 1, 0);
-            for (int i = 0; i < flagsCount; i++)
-            {
-                sourcemeshFlags[i] = (sourcemeshFlags[i] & VertexFlags.ClearNormalBitMask) | vertical;
-            }
-        }
-    }
-
-    public class BlockPlant : Block, IDrawYAdjustable, IWithDrawnHeight
+    public class BlockPlant : BlockRequireFertileGround, IDrawYAdjustable, IWithDrawnHeight
     {
         Block snowLayerBlock;
         Block tallGrassBlock;
@@ -44,9 +19,6 @@ namespace Vintagestory.GameContent
         int ExtraBend = 0;
         public int drawnHeight { get; set; }
 
-        protected bool disappearOnSoilRemoved = false;
-
-        public virtual bool skipPlantCheck { get; set; } = false;
 
         public override void OnLoaded(ICoreAPI api)
         {
@@ -61,9 +33,7 @@ namespace Vintagestory.GameContent
                     JsonObject overrider = Attributes?["overrideRandomDrawOffset"];
                     if (overrider?.Exists == true) this.RandomDrawOffset = overrider.AsInt(1);
                 }
-            }
-
-            disappearOnSoilRemoved = Attributes?["disappearOnSoilRemoved"].AsBool(false) ?? false;
+            }           
 
             climateColorMapping = EntityClass == "Sapling";
             tallGrassColorMapping = Code.Path == "flower-lilyofthevalley-free";
@@ -110,78 +80,6 @@ namespace Vintagestory.GameContent
                 }
                 sourceMeshFlags[vertexNum] = flag;
             }
-        }
-
-
-        public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
-        {
-            if(skipPlantCheck)
-                return base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref failureCode);
-
-            if (Variant.ContainsKey("side"))
-            {
-                return base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref failureCode);
-            }
-
-            if (CanPlantStay(world.BlockAccessor, blockSel.Position))
-            {
-                return base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref failureCode);
-            }
-
-            failureCode = "requirefertileground";
-
-            return false;
-        }
-
-
-        public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
-        {
-            if (!skipPlantCheck && !CanPlantStay(world.BlockAccessor, pos))
-            {
-                if (world.BlockAccessor.GetBlock(pos.DownCopy()).Id == 0 && disappearOnSoilRemoved) world.BlockAccessor.SetBlock(0, pos);
-                else world.BlockAccessor.BreakBlock(pos, null);
-            }
-            base.OnNeighbourBlockChange(world, pos, neibpos);
-        }
-
-        public virtual bool CanPlantStay(IBlockAccessor blockAccessor, BlockPos pos)
-        {
-            if (Variant.ContainsKey("side"))
-            {
-                var facing = BlockFacing.FromCode(Variant["side"]);
-
-                var npos = pos.AddCopy(facing);
-                var block = blockAccessor.GetBlock(npos);
-                return block.CanAttachBlockAt(blockAccessor, this, npos, facing.Opposite);
-            }
-            else
-            {
-                Block blockBelow = blockAccessor.GetBlockBelow(pos);
-                if (blockBelow.Fertility <= 0) return false;
-                return true;
-            }
-        }
-
-
-        public override bool TryPlaceBlockForWorldGen(IBlockAccessor blockAccessor, BlockPos pos, BlockFacing onBlockFace, IRandom worldGenRand, BlockPatchAttributes attributes = null)
-        {
-            if (!CanPlantStay(blockAccessor, pos)) return false;
-            var canPlace = true;
-            var tmpPos = pos.Copy();
-            for (int x = -1; x < 2; x++)
-            {
-                for (int z = -1; z < 2; z++)
-                {
-                    tmpPos.Set(pos.X + x, pos.Y, pos.Z + z);
-                    var block = blockAccessor.GetBlock(tmpPos, BlockLayersAccess.Solid);
-                    if (block is BlockWaterLilyGiant)
-                    {
-                        canPlace = false;
-                    }
-                }
-            }
-            if (!canPlace) return false;
-            return base.TryPlaceBlockForWorldGen(blockAccessor, pos, onBlockFace, worldGenRand, attributes);
         }
 
 

@@ -84,7 +84,7 @@ namespace Vintagestory.ServerMods
                 .BeginSub("tileddl")
                     .WithDesc("Lineup of all variations of tiles with all orientations side by side for debugging")
                     .RequiresPrivilege(Privilege.controlserver)
-                    .WithArgs(parsers.Word("tiled dungeon code"))
+                    .WithArgs(parsers.Word("tiled dungeon code"), parsers.OptionalBool("with rotation"))
                     .HandleWith(OnCmdTiledDungeonTest)
                 .EndSub()
                 .BeginSub("tileddd")
@@ -127,11 +127,14 @@ namespace Vintagestory.ServerMods
             var dungeon = Tcfg.Dungeons.FirstOrDefault(td => td.Code == code)?.Copy();
 
             if (dungeon == null) return TextCommandResult.Error("No such dungeon defined");
+            var rot = (bool)args[1] ? 4 : 1;
 
             var pos = args.Caller.Pos.AsBlockPos;
-            pos.Y = sapi.World.BlockAccessor.GetTerrainMapheightAt(pos) +  5;
+            pos.Y = sapi.World.BlockAccessor.GetRainMapHeightAt(pos) +  5;
             var ba = sapi.World.BlockAccessor;
             var orignalX = pos.X;
+            var orignalZ = pos.Z;
+            var offX = 0;
 
             var signblock = sapi.World.GetBlock("sign-ground-north");
             if(signblock == null) return TextCommandResult.Error("sign-ground-north block not found");
@@ -142,7 +145,7 @@ namespace Vintagestory.ServerMods
                 {
                     var schematicByRot = dungeonTile.ResolvedSchematics[tileIndex];
 
-                    for (var i = 0; i < 4; i++)
+                    for (var i = 0; i < rot; i++)
                     {
                         schematicByRot[i].Place(ba, sapi.World, pos);
                         schematicByRot[i].PlaceEntitiesAndBlockEntities(ba, sapi.World, pos, schematicByRot[i].BlockCodes, schematicByRot[i].ItemCodes);
@@ -180,6 +183,13 @@ namespace Vintagestory.ServerMods
 
 
                     pos.Z += schematicByRot[0].SizeZ + 3;
+                    if (pos.Z - orignalZ > 450)
+                    {
+                        pos.Z = orignalZ;
+                        offX = schematicByRot[0].SizeX*4+3;
+                        orignalX += offX;
+                        pos.X = orignalX;
+                    }
                 }
 
                 pos.Z += 3;

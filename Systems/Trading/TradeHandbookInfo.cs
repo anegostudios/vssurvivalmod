@@ -66,7 +66,7 @@ namespace Vintagestory.GameContent
                 }
                 if (tradeProps == null) continue;
 
-                string traderName = Lang.Get(entitytype.Code.Domain + ":item-creature-" + entitytype.Code.Path);
+                string traderName = Lang.GetMatching(entitytype.Code.Domain + ":item-creature-" + entitytype.Code.Path);
                 string handbookTitle = Lang.Get("Sold by");
                 foreach (var val in tradeProps.Selling.List)
                 {

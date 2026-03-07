@@ -7,8 +7,11 @@ namespace Vintagestory.ServerMods
     public class TiledDungeonConfig : WorldGenStructuresConfigBase
     {
         public int minDistance;
+        public int storyStructMinDistance;
         [JsonIgnore]
         public int MinDistanceSq;
+        [JsonIgnore]
+        public int StoryStructMinDistanceSq;
 
         public TiledDungeon[] Dungeons = null!;
 
@@ -18,29 +21,31 @@ namespace Vintagestory.ServerMods
         public void Init(ICoreServerAPI api)
         {
             MinDistanceSq = minDistance * minDistance;
+            StoryStructMinDistanceSq= storyStructMinDistance * storyStructMinDistance;
 
             var blockLayerConfig = BlockLayerConfig.GetInstance(api);
             ResolveRemaps(api, blockLayerConfig.RockStrata);
             for (var i = 0; i < Dungeons.Length; i++)
             {
-                if(Dungeons[i].Code == null)
+                var tiledDungeon = Dungeons[i];
+                if(tiledDungeon.Code == null)
                 {
                     api.Logger.Error("Dungeon code at index: " + i + " is not specified. Will skip initialization");
                     continue;
                 }
-                Dungeons[i].Init(api);
-                DungeonsByCode[Dungeons[i].Code] = Dungeons[i];
+                tiledDungeon.Init(api);
+                DungeonsByCode[tiledDungeon.Code] = tiledDungeon;
 
                 // For rocktyped dungeons
-                foreach (var tile in Dungeons[i].Tiles)
+                foreach (var tile in tiledDungeon.Tiles)
                 {
                     if (tile.RockTypeRemapGroup != null)
                     {
                         resolvedRockTypeRemaps = resolvedRocktypeRemapGroups[tile.RockTypeRemapGroup];
                     }
-                    else if(Dungeons[i].RockTypeRemapGroup != null)
+                    else if(tiledDungeon.RockTypeRemapGroup != null)
                     {
-                        resolvedRockTypeRemaps =  resolvedRocktypeRemapGroups[Dungeons[i].RockTypeRemapGroup!];
+                        resolvedRockTypeRemaps =  resolvedRocktypeRemapGroups[tiledDungeon.RockTypeRemapGroup!];
                     }
                     if (tile.RockTypeRemaps != null)
                     {

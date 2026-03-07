@@ -8,7 +8,7 @@ namespace Vintagestory.GameContent.Mechanics
 {
     public class BlockWindmillRotor : BlockMPBase, IMPPowered
     {
-        BlockFacing powerOutFacing;
+        protected BlockFacing powerOutFacing;
 
         public override void OnLoaded(ICoreAPI api)
         {

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Diagnostics;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -50,39 +51,64 @@ namespace Vintagestory.GameContent.Mechanics
         }
 
         public override MechPowerPath[] GetMechPowerExits(MechPowerPath entryDir)
-        {            
+        {
+            BlockFacing left, right, above, below;
+
+            // Get the directions of potential neighbour connectable spur gears from this block's Facing
             if (Facing.IsHorizontal)
             {
-                if (entryDir.OutFacing.Opposite == Facing)
-                {
-                    return [
-                        entryDir,
-                        entryDir.PropagatedClone(entryDir.OutFacing.GetCW(), !entryDir.invert, propagationDir.Opposite),
-                        entryDir.PropagatedClone(entryDir.OutFacing.GetCCW(), !entryDir.invert, propagationDir.Opposite),
-                        entryDir.PropagatedClone(BlockFacing.UP, !entryDir.invert, propagationDir.Opposite),
-                        entryDir.PropagatedClone(BlockFacing.DOWN, !entryDir.invert, propagationDir.Opposite)
-                    ];
-                }
-                else
-                {
-                    return [
-                        entryDir.PropagatedClone(Facing, entryDir.invert, propagationDir),
-                        entryDir.PropagatedClone(Facing.GetCW(), !entryDir.invert, propagationDir.Opposite),
-                        entryDir.PropagatedClone(Facing.GetCCW(), !entryDir.invert, propagationDir.Opposite),
-                        entryDir.PropagatedClone(BlockFacing.UP, !entryDir.invert, propagationDir.Opposite),
-                        entryDir.PropagatedClone(BlockFacing.DOWN, !entryDir.invert, propagationDir.Opposite)
-                    ];
-                }
-            } else
+                left = entryDir.OutFacing.Opposite == Facing ? entryDir.OutFacing.GetCW() : Facing.GetCW();
+                right = entryDir.OutFacing.Opposite == Facing ? entryDir.OutFacing.GetCCW() : Facing.GetCCW();
+                above = BlockFacing.UP;
+                below = BlockFacing.DOWN;
+            }
+            else
             {
-                return [
-                    entryDir,
-                    /*new MechPowerPath(BlockFacing.NORTH, entryDir.gearingRatio, null, !entryDir.invert),
-                    new MechPowerPath(BlockFacing.EAST, entryDir.gearingRatio, null, !entryDir.invert),
-                    new MechPowerPath(BlockFacing.SOUTH, entryDir.gearingRatio, null, !entryDir.invert),
-                    new MechPowerPath(BlockFacing.WEST, entryDir.gearingRatio, null, !entryDir.invert)*/
-                ];
-            }            
+                left = BlockFacing.WEST;
+                right = BlockFacing.EAST;
+                above = BlockFacing.NORTH;
+                below = BlockFacing.SOUTH;
+            }
+
+            // Test whether we have any valid connectable spur gear neighbours (must be same orientation as this one, to connect) - if so, these are potential output paths
+            BlockPos tmpPos = Pos.Copy();
+            bool doLeft = Api.World.BlockAccessor.GetBlock(tmpPos.Add(left)) == Block;
+            bool doRight = Api.World.BlockAccessor.GetBlock(tmpPos.Set(Pos).Add(right)) == Block;
+            bool doAbove = Api.World.BlockAccessor.GetBlock(tmpPos.Set(Pos).Add(above)) == Block;
+            bool doBelow = Api.World.BlockAccessor.GetBlock(tmpPos.Set(Pos).Add(below)) == Block;
+
+            // Convenient way to quickly test all 4 conditions in a single == test below
+            SmallBoolArray bools = new SmallBoolArray();
+            bools[0] = doLeft;
+            bools[1] = doRight;
+            bools[2] = doAbove;
+            bools[3] = doBelow;
+
+            // The axial path - this is the axis of this spur gear
+            MechPowerPath axial = entryDir.OutFacing.Opposite == Facing ? entryDir : entryDir.PropagatedClone(Facing, entryDir.invert, propagationDir);
+
+            // Outputs for zero spur gear neighbours
+            if (bools == 0) return [axial];
+
+            // Outputs for exactly one spur gear neighbour
+            MechPowerPath side = null;
+            if (bools == 1) side = entryDir.PropagatedClone(left, !entryDir.invert, propagationDir.Opposite);
+            if (bools == 2) side = entryDir.PropagatedClone(right, !entryDir.invert, propagationDir.Opposite);
+            if (bools == 4) side = entryDir.PropagatedClone(above, !entryDir.invert, propagationDir.Opposite);
+            if (bools == 8) side = entryDir.PropagatedClone(below, !entryDir.invert, propagationDir.Opposite);
+            if (side != null)
+            {
+                return [axial, side];
+            }
+
+            // Outputs for more than one spur gear neighbour (uncommon, here we temporarily create a List<>)
+            List<MechPowerPath> paths = [axial];
+            if (doLeft) paths.Add(entryDir.PropagatedClone(left, !entryDir.invert, propagationDir.Opposite));
+            if (doRight) paths.Add(entryDir.PropagatedClone(right, !entryDir.invert, propagationDir.Opposite));
+            if (doAbove) paths.Add(entryDir.PropagatedClone(above, !entryDir.invert, propagationDir.Opposite));
+            if (doBelow) paths.Add(entryDir.PropagatedClone(below, !entryDir.invert, propagationDir.Opposite));
+
+            return paths.ToArray();
         }
 
 

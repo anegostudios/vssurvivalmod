@@ -149,6 +149,11 @@ public class BlockEntityFastForwardGrowth : BlockEntity
     }
 
 
+    public override void OnBlockPlaced(ItemStack byItemStack = null)
+    {
+        base.OnBlockPlaced(byItemStack);
+        totalHoursLastUpdate = Api.World.Calendar.TotalHours;
+    }
 
 
     public virtual void OnCreatedFromSoil(Block block, TreeAttribute existingFertilityData = null)

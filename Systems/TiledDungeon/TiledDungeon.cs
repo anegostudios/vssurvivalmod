@@ -1,15 +1,20 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json;
+using Vintagestory.API.Common;
 using Vintagestory.API.Server;
 
 namespace Vintagestory.ServerMods
 {
     public class LandformConstraint
     {
-        [JsonProperty] public string Code;
-        [JsonProperty] public float Value;
-        [JsonProperty] public string Type;
+        [JsonProperty]
+        public string Code;
+        [JsonProperty]
+        public float Value;
+        [JsonProperty]
+        public string Type;
     }
 
     public class TiledDungeon
@@ -20,20 +25,27 @@ namespace Vintagestory.ServerMods
 
         public Dictionary<string, DungeonTile> TilesByCode = new Dictionary<string, DungeonTile>();
 
+        [JsonIgnore]
         public float totalChance;
+        public float chance;
+        public int MinSpawnDistance;
 
         public string? start;
-        [JsonIgnore] public BlockSchematicPartial[]? Start;
+        [JsonIgnore]
+        public BlockSchematicPartial[]? Start;
 
         public string? surface;
-        [JsonIgnore] public BlockSchematicPartial[]? Surface;
+        [JsonIgnore]
+        public BlockSchematicPartial[]? Surface;
 
         public string? SurfaceConnectorName;
+        public int surfaceYOffset;
 
         public TiledDungeon? StairCase;
 
         public string[]? ends;
-        [JsonIgnore] public BlockSchematicPartial[][]? EndSchematics;
+        [JsonIgnore]
+        public BlockSchematicPartial[][]? EndSchematics;
 
         [JsonProperty]
         public int MaxTiles;
@@ -44,29 +56,46 @@ namespace Vintagestory.ServerMods
         /// <summary>
         /// If defined these connects must be closed or the tile will fail to generate
         /// </summary>
-        [JsonProperty] public string[]? RequireClosed;
+        [JsonProperty]
+        public string[]? RequireClosed;
 
         /// <summary>
         /// If defined these connectors will remain opened for the current generator. This is relevant for subdungeons.
         /// </summary>
-        [JsonProperty] public string[]? RequireOpened;
+        [JsonProperty]
+        public string[]? RequireOpened;
 
         /// <summary>
         /// If defined these connectors must not get blocked by other tiles.
         /// </summary>
-        [JsonProperty] public HashSet<string>? RequireUnblocked;
+        [JsonProperty]
+        public HashSet<string>? RequireUnblocked;
 
-        [JsonProperty] public bool BuildProtected;
+        [JsonProperty]
+        public bool BuildProtected;
 
-        [JsonProperty] public string? BuildProtectionName;
+        [JsonProperty]
+        public string? BuildProtectionName;
 
-        [JsonProperty] public string? BuildProtectionDesc;
+        [JsonProperty]
+        public string? BuildProtectionDesc;
 
-        [JsonProperty] public LandformConstraint[]? RequiredLandform;
+        [JsonProperty]
+        public LandformConstraint[]? RequiredLandform;
 
         // For rocktyped ruins
         internal Dictionary<int, Dictionary<int, int>>? resolvedRockTypeRemaps = null;
         public string? RockTypeRemapGroup = null;
+
+        [JsonProperty]
+        public AssetLocation[]? ReplaceWithBlocklayers;
+        internal int[] replacewithblocklayersBlockids = Array.Empty<int>();
+
+        [JsonProperty]
+        public int MaxDepth { get; set; }
+
+        [JsonProperty]
+        public int MinDepth { get; set; }
 
         public void Init(ICoreServerAPI api)
         {
@@ -125,8 +154,6 @@ namespace Vintagestory.ServerMods
 
                 tile.Init(api, blockLayerConfig);
 
-
-
                 if (tile.TileGenerator != null)
                 {
                     foreach (var (code, subtile) in tile.TileGenerator.TilesByCode)
@@ -164,6 +191,22 @@ namespace Vintagestory.ServerMods
 
                 RequireClosed = toBeClosed.ToArray();
                 api.Logger.Debug($"Dungeon {Code} Setting RequireClosed to {string.Join(",", RequireClosed)}");
+            }
+
+            if (ReplaceWithBlocklayers != null)
+            {
+                replacewithblocklayersBlockids = new int[ReplaceWithBlocklayers.Length];
+                for (var j = 0; j < replacewithblocklayersBlockids.Length; j++)
+                {
+                    var block = api.World.GetBlock(ReplaceWithBlocklayers[j]);
+                    if (block == null)
+                    {
+                        throw new Exception(string.Format("Dungeon with code {0} has replace block layer {1} defined, but no such block found!",
+                            Code, ReplaceWithBlocklayers[j]));
+                    }
+
+                    replacewithblocklayersBlockids[j] = block.Id;
+                }
             }
         }
 

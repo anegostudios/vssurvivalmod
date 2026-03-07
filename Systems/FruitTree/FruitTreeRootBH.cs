@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -322,6 +322,14 @@ namespace Vintagestory.GameContent
             if (temp <= props.VernalizationTemp)
             {
                 props.vernalizedHours += stateUpdateIntervalDays * Api.World.Calendar.HoursPerDay;
+            }
+        }
+
+        public void GenRandomVernalizedHours()
+        {
+            foreach (var val in propsByType)
+            {
+                val.Value.vernalizedHours += (float)Api.World.Rand.NextDouble() * val.Value.VernalizationHours * 2;
             }
         }
 

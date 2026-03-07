@@ -1,4 +1,4 @@
-﻿using Cairo;
+using Cairo;
 using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
@@ -303,7 +303,7 @@ namespace Vintagestory.GameContent
                     var be = blockAccessor.GetBlockEntity(pos) as BlockEntityFruitTreeBranch;
 
                     be.TreeType = conds.Type;
-                    be.FastForwardGrowth = worldgenRandom.NextFloat();
+                    be.FastForwardGrowth = 0.2f + 0.8f*worldgenRandom.NextFloat();
 
                     return true;
                 }

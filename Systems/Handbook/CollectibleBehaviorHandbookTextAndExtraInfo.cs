@@ -2211,7 +2211,7 @@ namespace Vintagestory.GameContent
 
                             var ingred = rec.Ingredients[recipe.CopyAttributesFrom];
                             var cattr = stack.Attributes.Clone();
-                            cattr.MergeTree(ingred.ResolvedItemStack.Attributes);
+                            cattr.MergeTree(ingred.ResolvedAttributes);
                             ingred.Attributes = new JsonObject(JToken.Parse(cattr.ToJsonToken()));
                             rec.Resolve(capi.World, "");
 
@@ -2233,7 +2233,7 @@ namespace Vintagestory.GameContent
 
                                 var ingred = rec.Ingredients[ingredientName];
 
-                                cattr.MergeTree(ingred.ResolvedItemStack.Attributes);
+                                cattr.MergeTree(ingred.ResolvedAttributes);
                             }
 
                             foreach (var ingredientName in recipe.MergeAttributesFrom)
@@ -2259,7 +2259,7 @@ namespace Vintagestory.GameContent
                             var cattr = stack.Attributes.Clone();
 
                             var ingred2 = rec.Ingredients[recipe.CopyAttributesFrom];
-                            cattr.MergeTree(ingred2.ResolvedItemStack.Attributes);
+                            cattr.MergeTree(ingred2.ResolvedAttributes);
 
                             foreach (var ingredientName in recipe.MergeAttributesFrom)
                             {
@@ -2267,7 +2267,7 @@ namespace Vintagestory.GameContent
 
                                 var ingred = rec.Ingredients[ingredientName];
 
-                                cattr.MergeTree(ingred.ResolvedItemStack.Attributes);
+                                cattr.MergeTree(ingred.ResolvedAttributes);
                             }
 
                             foreach (var ingredientName in recipe.MergeAttributesFrom)

@@ -153,9 +153,7 @@ public class ItemEntityMoverTool : Item, IHeldItemOnMouseWheel
         byEntity.Api.World.SpawnParticles(1, ColorUtil.WhiteArgb, targetPosition, targetPosition, new(), new(), 0.1f, 0, scale: 0.5f, model: EnumParticleModel.Cube);
 
         long entityId = slot.Itemstack.Attributes.GetLong(entityIdAttribute);
-
         Entity target = byEntity.Api.World.GetEntityById(entityId);
-
         target?.Pos.SetPos(targetPosition);
 
         target?.GetBehavior<EntityBehaviorControlledPhysics>()?.SetState(new(targetPosition.X, targetPosition.Y, targetPosition.Z), 0);
@@ -229,11 +227,20 @@ public class ItemEntityMoverTool : Item, IHeldItemOnMouseWheel
 
         args.SetHandled(true);
 
-        double factor = byPlayer.Controls.ShiftKey ? shiftMouseWheelSensitivity : mouseWheelSensitivity;
-        double offset = args.deltaPrecise * factor;
-        double distance = inSlot.Itemstack.Attributes.GetDouble(distanceAttribute);
-        distance = Math.Max(distance + offset, 0);
-        inSlot.Itemstack.Attributes.SetDouble(distanceAttribute, distance);
+        if (byPlayer.Controls.CtrlKey)
+        {
+            long entityId = inSlot.Itemstack.Attributes.GetLong(entityIdAttribute);
+            Entity target = api.World.GetEntityById(entityId);
+            target.Pos.Yaw += args.deltaPrecise / 3f;
+        }
+        else
+        {
+            double factor = byPlayer.Controls.ShiftKey ? shiftMouseWheelSensitivity : mouseWheelSensitivity;
+            double offset = args.deltaPrecise * factor;
+            double distance = inSlot.Itemstack.Attributes.GetDouble(distanceAttribute);
+            distance = Math.Max(distance + offset, 0);
+            inSlot.Itemstack.Attributes.SetDouble(distanceAttribute, distance);
+        }
     }
 
     protected virtual void OnMouseWheelClient(ICoreClientAPI api, EntityPlayer byPlayer, ItemSlot inSlot, MouseWheelEventArgs args)

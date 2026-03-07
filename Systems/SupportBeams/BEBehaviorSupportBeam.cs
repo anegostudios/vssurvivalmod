@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -309,7 +310,11 @@ namespace Vintagestory.GameContent
 
             if (drop && dropWhenBroken)
             {
-                Api.World.SpawnItemEntity(new ItemStack(beam.Block, (int)Math.Ceiling(beam.End.DistanceTo(beam.Start))), Pos);
+                var beb = beam.Block.BlockEntityBehaviors.FirstOrDefault(beb => beb.Name == "SupportBeam");
+                if (beb == null || beb.properties?["dropWhenBroken"]?.AsBool(true) != false)
+                {
+                    Api.World.SpawnItemEntity(new ItemStack(beam.Block, (int)Math.Ceiling(beam.End.DistanceTo(beam.Start))), Pos);
+                }
             }
             sbp.OnBeamRemoved(beam.Start.ToVec3d().Add(Pos), beam.End.ToVec3d().Add(Pos));
             Beams = Beams.RemoveAt(beamIndex);

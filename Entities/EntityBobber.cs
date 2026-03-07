@@ -385,10 +385,17 @@ namespace Vintagestory.GameContent
                 string mapcode = etype.Server.SpawnConditions?.Climate?.MapCode ?? etype.Server.SpawnConditions?.Runtime?.MapCode ?? etype.Server.SpawnConditions?.Worldgen?.MapCode;
                 if (mapcode != null)
                 {
-                    ClimateSpawnCondition spawnconds = etype.Server.SpawnConditions?.Climate ?? (ClimateSpawnCondition)etype.Server.SpawnConditions?.Runtime ?? (ClimateSpawnCondition)etype.Server.SpawnConditions?.Worldgen;
-                    if (spawnconds.MatchesClimate(climate))
+                    ClimateSpawnCondition climateSpawnConds = etype.Server.SpawnConditions?.Climate ?? (ClimateSpawnCondition)etype.Server.SpawnConditions?.Runtime ?? (ClimateSpawnCondition)etype.Server.SpawnConditions?.Worldgen;
+                    if (climateSpawnConds.MatchesClimate(climate))
                     {
-                        suitableFishPropsWithMapCode.Add(new KeyValuePair<string, EntityProperties>(mapcode, etype));
+                        // Also make sure that we're in the correct kind of water
+                        tmpPos.Set(pos.XInt, pos.YInt, pos.ZInt);
+                        BaseSpawnConditions baseSpawnConds = (BaseSpawnConditions)etype.Server.SpawnConditions?.Runtime ?? (BaseSpawnConditions)etype.Server.SpawnConditions?.Worldgen;
+                        var liquidBlock = World.BlockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid);
+                        if (baseSpawnConds.CanSpawnInside(liquidBlock))
+                        {
+                            suitableFishPropsWithMapCode.Add(new KeyValuePair<string, EntityProperties>(mapcode, etype));
+                        }
                     }
                 }
             }

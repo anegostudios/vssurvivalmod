@@ -1,11 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks.Dataflow;
 using Vintagestory.API;
 using Vintagestory.API.Common;
-using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -461,12 +458,20 @@ namespace Vintagestory.GameContent
             if (!multiplySpread)
             {
                 GameMath.Shuffle(world.Rand, tmpFacings);
+                BlockFacing foundPathFacing = null;
                 foreach (BlockFacing facing in BlockFacing.HORIZONTALS)
                 {
                     if (TrySpreadIntoBlock(ourblock, ourSolid, pos, pos.AddCopy(facing), facing, world))
                     {
-                        return;
+                        foundPathFacing = facing;
+                        break;
                     }
+                }
+
+                // Clear away all other paths - needed because the Shuffle above may have caused us to make a new path here, when there was already a functioning horizontal path in a different direction from this block
+                if (foundPathFacing != null)
+                {
+                    RemoveOtherLowerNeighbours(ourblock, pos, foundPathFacing, world);
                 }
 
                 return;
@@ -711,13 +716,16 @@ namespace Vintagestory.GameContent
         {
             Block ourLiquid = world.BlockAccessor.GetBlock(ourpos, BlockLayersAccess.Fluid);
             if (!IsSameLiquid(neibBlock, ourLiquid)) return false;
+            if (ourLiquid.Variant["flow"] != "d") return false;
 
             Block neighborSolid = world.BlockAccessor.GetBlock(ourpos.Down(), BlockLayersAccess.Solid);
-            if (neighborSolid.GetLiquidBarrierHeightOnSide(BlockFacing.UP, ourpos) < ourLiquid.LiquidLevel / MAXLEVEL_float) return true;
+            bool lowerBarrier = neighborSolid.GetLiquidBarrierHeightOnSide(BlockFacing.UP, ourpos) < ourLiquid.LiquidLevel / MAXLEVEL_float;
+            ourpos.Up();   // revert the ourpos.Down() two lines above
+            if (lowerBarrier) return true;
 
             Block ourSolid = world.BlockAccessor.GetBlock(ourpos.Up(), BlockLayersAccess.Solid);
             if (CanSpreadIntoBlock(ourLiquid, ourSolid, ourpos, ourpos.DownCopy(), BlockFacing.DOWN, world)) return true;
-            // Can also test other neighbours if better than npos
+            // For the future, can maybe also test other neighbours if better than npos
             return false;
         }
 
@@ -872,7 +880,7 @@ namespace Vintagestory.GameContent
                 {
                     float neibFlow = neighborFlowing.FlowRate(npos);
                     float ourFlow = ourFlowing.FlowRate(pos);
-                    if (neibFlow == ourFlow) return neighborLiquid.LiquidLevel < ourblock.LiquidLevel;
+                    if (neibFlow == ourFlow) return neighborLiquid.LiquidLevel < ourblock.LiquidLevel || (facing == BlockFacing.DOWN && neighborLiquid.Variant["flow"] != "d");   // If called from TrySpreadDownwards, we need to offer flow into this block from the block above, if this block's flow is not DOWN - this ensures correct onward propagation (maybe further down) of new downwards flow paths
                     if (ourFlow < neibFlow)
                     {
                         // Standard water displaces/destroys rapid flowing water; rapid flowing water can never replace standard water  (otherwise rapid flow can be made to survive waterwheel passage)

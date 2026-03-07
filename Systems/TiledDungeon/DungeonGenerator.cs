@@ -46,8 +46,8 @@ namespace Vintagestory.ServerMods
                 logger.Notification($"Dungeon with {placeTasks.Count} schematics generated");
                 if (DebugLogging && dgd.OpenSet.Count > 0) debugLogs.Add(string.Format("But {0} sides could not be closed", dgd.OpenSet.Count));
 
-                var stairsCon = openSet.First(c => c.Name == dungeon.SurfaceConnectorName);
-                stairsCon.FacingInt = stairsCon.Facing.Index;
+                var stairsCon = openSet.FirstOrDefault(c => c.Name == dungeon.SurfaceConnectorName);
+                if(stairsCon.Valid) stairsCon.FacingInt = stairsCon.Facing.Index;
                 return new DungeonPlaceTask(dungeon.Code, placeTasks, gennedStructures, openSet, stairsCon);
             }
 
@@ -197,7 +197,7 @@ namespace Vintagestory.ServerMods
                 var newpos = con.Position.Add(startPos).Add(con.Facing.Normali * 2);
                 if (dgd.GeneratedStructures.Any(s => s.Location.Contains(newpos)))
                 {
-                    if (DebugLogging) logger.Notification(string.Format("Failed to place tile {0} at {1} because it would block potential connector {2} at {3}", tilefordebug.Code, startPos, con.ToString(), newpos));
+                    if (DebugLogging) logger.Notification("Failed to place tile {0} at {1} because it would block potential connector {2} at {3}", tilefordebug.Code, startPos, con.ToString(), newpos);
                     return true;
                 }
                 if (dgd.ExistingStructures.Any(s => s.Location.Contains(newpos)))
@@ -317,11 +317,12 @@ namespace Vintagestory.ServerMods
         /// <returns></returns>
         public DungeonTile? pickTile(DungeonGenWorkspace dgd, int[] tileIndices, LCGRandom lcgrand, ConnectorMetaData openSide)
         {
+            DungeonTile? currentBestTile = null;
             // TODO check if we have a tile that can even satisfy the current openside
             // var totalWeight = GetTotalWeight(dgd);
             // if (dgd.MustGenerate.Count > 0)
             // {
-            //     tile = dgd.MustGenerate[dgd.MustGenerate.Count - 1];
+            //     currentBestTile = dgd.MustGenerate[dgd.MustGenerate.Count - 1];
             // }
             // else
             // {
@@ -329,10 +330,10 @@ namespace Vintagestory.ServerMods
             //     int i = 0;
             //     while (rndVal > 0)
             //     {
-            //         tile = dgd.CanGenerate[i++];
-            //         if (dgd.TilesQuantity[tile.Code] < tile.Max)
+            //         currentBestTile = dgd.CanGenerate[i++];
+            //         if (dgd.TileQuantityByCode[currentBestTile.Code] < currentBestTile.Max)
             //         {
-            //             rndVal -= tile.Chance;
+            //             rndVal -= currentBestTile.Chance;
             //         }
             //     }
             // }
@@ -341,7 +342,6 @@ namespace Vintagestory.ServerMods
             tileIndices.Shuffle(lcgrand);
             var rndval = (float)lcgrand.NextDouble() * dgd.DungeonGenerator.totalChance;
             var cnt = dgd.DungeonGenerator.Tiles.Count;
-            DungeonTile? currentBestTile = null;
 
             if (openSide.Targets.Length == 0)
             {
