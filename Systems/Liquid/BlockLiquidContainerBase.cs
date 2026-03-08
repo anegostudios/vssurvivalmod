@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
@@ -506,10 +507,41 @@ namespace Vintagestory.GameContent
             int desiredItems = (int)(props.ItemsPerLitre * desiredLitres + epsilon);
             int availItems = liquidStack.StackSize;
 
-            ItemStack stack = GetContent(containerStack);
             ILiquidSink sink = containerStack.Collectible as ILiquidSink;
 
-            if (stack == null)
+            if (GetContent(containerStack) is ItemStack stack)
+            {
+                if (!stack.Equals(api.World, liquidStack, GlobalConstants.IgnoredStackAttributes)) return 0;
+
+                float maxItems = sink.CapacityLitres * props.ItemsPerLitre;
+                int placeableItems = (int)(maxItems - (float)stack.StackSize);
+
+                int moved = GameMath.Min(availItems, placeableItems, desiredItems);
+
+                // Prevent potential divide by zero
+                if (stack.StackSize + moved == 0)
+                {
+                    return 0;
+                }
+
+                // Average transition states before adding
+                if (stack.Collectible.UpdateAndGetTransitionStates(api.World, new DummySlot(stack)) is TransitionState[] our_tstates
+                    && liquidStack.Collectible.UpdateAndGetTransitionStates(api.World, new DummySlot(liquidStack)) is TransitionState[] their_tstates)
+                {
+                    for (int i = 0; i < our_tstates.Length; i++)
+                    {
+                        float our_tstate = our_tstates[i].TransitionedHours;
+                        float their_tstate = their_tstates[i].TransitionedHours;
+                        float avg_tstate = ((our_tstate * stack.StackSize) + (their_tstate * moved)) / (stack.StackSize + moved);
+
+                        stack.Collectible.SetTransitionState(stack, our_tstates[i].Props.Type, avg_tstate);
+                    }
+                }
+
+                stack.StackSize += moved;
+                return moved;
+            }
+            else
             {
                 if (!props.Containable) return 0;
 
@@ -520,17 +552,6 @@ namespace Vintagestory.GameContent
                 SetContent(containerStack, placedstack);
 
                 return Math.Min(desiredItems, placeableItems);
-            }
-            else
-            {
-                if (!stack.Equals(api.World, liquidStack, GlobalConstants.IgnoredStackAttributes)) return 0;
-
-                float maxItems = sink.CapacityLitres * props.ItemsPerLitre;
-                int placeableItems = (int)(maxItems - (float)stack.StackSize);
-
-                int moved = GameMath.Min(availItems, placeableItems, desiredItems);
-                stack.StackSize += moved;
-                return moved;
             }
         }
 
@@ -552,9 +573,42 @@ namespace Vintagestory.GameContent
             float availItems = liquidStack.StackSize;
             float maxItems = CapacityLitres * itemsPerLitre;
 
-            ItemStack stack = GetContent(pos);
-            if (stack == null)
+            if (GetContent(pos) is ItemStack stack)
             {
+                if (!stack.Equals(api.World, liquidStack, GlobalConstants.IgnoredStackAttributes)) return 0;
+
+                int placeableItems = (int)Math.Min(availItems, maxItems - (float)stack.StackSize);
+                int movedItems = Math.Min(placeableItems, desiredItems);
+
+                // Prevent potential divide by zero
+                if (stack.StackSize + movedItems == 0)
+                {
+                    return 0;
+                }
+
+                // Average transition states before adding
+                if (stack.Collectible.UpdateAndGetTransitionStates(api.World, new DummySlot(stack)) is TransitionState[] our_tstates
+                    && liquidStack.Collectible.UpdateAndGetTransitionStates(api.World, new DummySlot(liquidStack)) is TransitionState[] their_tstates)
+                {
+                    for (int i = 0; i < our_tstates.Length; i++)
+                    {
+                        float our_tstate = our_tstates[i].TransitionedHours;
+                        float their_tstate = their_tstates[i].TransitionedHours;
+                        float avg_tstate = ((our_tstate * stack.StackSize) + (their_tstate * movedItems)) / (stack.StackSize + movedItems);
+
+                        stack.Collectible.SetTransitionState(stack, our_tstates[i].Props.Type, avg_tstate);
+                    }
+                }
+
+                stack.StackSize += movedItems;
+                api.World.BlockAccessor.GetBlockEntity(pos).MarkDirty(true);
+                (api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityContainer).Inventory[GetContainerSlotId(pos)].MarkDirty();
+
+                return movedItems;
+            }
+            else
+            {
+
                 if (props == null || !props.Containable) return 0;
 
                 int placeableItems = (int)GameMath.Min(desiredItems, maxItems, availItems);
@@ -563,19 +617,6 @@ namespace Vintagestory.GameContent
                 ItemStack placedstack = liquidStack.Clone();
                 placedstack.StackSize = movedItems;
                 SetContent(pos, placedstack);
-
-                return movedItems;
-            }
-            else
-            {
-                if (!stack.Equals(api.World, liquidStack, GlobalConstants.IgnoredStackAttributes)) return 0;
-
-                int placeableItems = (int)Math.Min(availItems, maxItems - (float)stack.StackSize);
-                int movedItems = Math.Min(placeableItems, desiredItems);
-
-                stack.StackSize += movedItems;
-                api.World.BlockAccessor.GetBlockEntity(pos).MarkDirty(true);
-                (api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityContainer).Inventory[GetContainerSlotId(pos)].MarkDirty();
 
                 return movedItems;
             }
@@ -1196,22 +1237,36 @@ namespace Vintagestory.GameContent
 
             float sourceLitres = GetCurrentLitres(op.SourceSlot.Itemstack) * op.SourceSlot.StackSize;
             float sinkLitres = GetCurrentLitres(op.SinkSlot.Itemstack) * op.SinkSlot.StackSize;
-
-            float sourceCapLitres = op.SourceSlot.StackSize * (op.SourceSlot.Itemstack.Collectible as BlockLiquidContainerBase)?.CapacityLitres ?? 0;
             float sinkCapLitres = op.SinkSlot.StackSize * (op.SinkSlot.Itemstack.Collectible as BlockLiquidContainerBase)?.CapacityLitres ?? 0;
-
-            // Containers are empty, can do a classic merge
-            if (sourceCapLitres == 0 || sinkCapLitres == 0)
-            {
-                base.TryMergeStacks(op);
-                return;
-            }
 
             // Containers are equally full, can do a classic merge
             if (GetCurrentLitres(op.SourceSlot.Itemstack) == GetCurrentLitres(op.SinkSlot.Itemstack))
             {
                 if (op.MovableQuantity > 0)
                 {
+                    // Clone transition states here because we need values from before the merge
+                    if (sinkContent.Collectible.UpdateAndGetTransitionStates(api.World, op.SinkSlot)?.Clone() is TransitionState[] sink_states
+                        && sourceContent.Collectible.UpdateAndGetTransitionStates(api.World, op.SourceSlot)?.Clone() is TransitionState[] source_tstates)
+                    {
+                        int sinkStackSize = op.SinkSlot.StackSize;
+
+                        base.TryMergeStacks(op);
+
+                        if (op.MovedQuantity > 0)
+                        {
+                            // Average transition states after merge
+                            // (using container item counts)
+                            for (int i = 0; i < sink_states.Length; i++)
+                            {
+                                float sink_tstate = sink_states[i].TransitionedHours;
+                                float source_tstate = source_tstates[i].TransitionedHours;
+                                float avg_tstate = ((sink_tstate * sinkStackSize) + (source_tstate * op.MovedQuantity)) / (sinkStackSize + op.MovedQuantity);
+                                sinkContent.Collectible.SetTransitionState(sinkContent, sink_states[i].Props.Type, avg_tstate);
+                            }
+                        }
+                        return;
+                    }
+
                     base.TryMergeStacks(op);
                     return;
                 }
