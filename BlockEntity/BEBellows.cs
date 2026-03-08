@@ -29,10 +29,10 @@ namespace Vintagestory.GameContent
 
             RegisterDelayedCallback((dt) =>
             {
-                var beforge = Block.GetBlockEntity<BlockEntityForge>(Pos.AddCopy(facing));
-                if (beforge != null)
+                var airReceiver = Block.GetBlockEntity<BlockEntity>(Pos.AddCopy(facing)) as IBellowsAirReceiver;
+                if (airReceiver != null)
                 {
-                    beforge.BlowAirInto(0.2f, facing);
+                    airReceiver.BlowAirInto(0.2f, facing);
                 }
                 GetBehavior<BEBehaviorDurability>()?.DamageBlock(1);
 

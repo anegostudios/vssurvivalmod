@@ -12,7 +12,7 @@ using Vintagestory.API.MathTools;
 namespace Vintagestory.GameContent
 {
 
-    public class BlockEntityForge : BlockEntityContainer, IHeatSource, ITemperatureSensitive
+    public class BlockEntityForge : BlockEntityContainer, IHeatSource, ITemperatureSensitive, IBellowsAirReceiver
     {
         protected static SimpleParticleProperties smallMetalSparks;
         protected static SimpleParticleProperties smokeQuads;
