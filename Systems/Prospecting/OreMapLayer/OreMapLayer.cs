@@ -35,7 +35,7 @@ namespace Vintagestory.GameContent
         CreateIconTextureDelegate oremapIconDele;
         public LoadedTexture oremapTexture;
 
-        string filterByOreCode;
+        public string filterByOreCode;
 
         public OreMapLayer(ICoreAPI api, IWorldMapManager mapSink) : base(api, mapSink)
         {
@@ -73,17 +73,7 @@ namespace Vintagestory.GameContent
         {
             string key = "worldmap-layer-" + LayerGroupCode;
 
-            HashSet<string> orecodes = new HashSet<string>();
-            foreach (var val in ownPropickReadings)
-            {
-                foreach (var reading in val.OreReadings)
-                {
-                    orecodes.Add(reading.Key);
-                }
-            }
-
-            string[] values = new string[] { null }.Append(orecodes.ToArray());
-            string[] names = new string[] { Lang.Get("worldmap-ores-everything") }.Append(orecodes.Select(code => Lang.Get("ore-"+code)).ToArray());
+            GetOreFilterDropdownData(out string[] values, out string[] names);
 
             ElementBounds dlgBounds =
                 ElementStdBounds.AutosizedMainDialog
@@ -111,6 +101,25 @@ namespace Vintagestory.GameContent
             guiDialogWorldMap.Composers[key].Enabled = false;
         }
 
+        private void GetOreFilterDropdownData(out string[] values, out string[] names)
+        {
+            HashSet<string> readingCodes = [];
+            foreach (var reading in ownPropickReadings.SelectMany(val => val.OreReadings)) {
+                readingCodes.Add(reading.Key);
+            }
+
+            // The set in vanilla inherently expects only stripped ore-* values, which would make any nonstandard values annoying to handle
+            // Leaving it as is, but perhaps better to move towards storing the full ore-* code as the key/deposit code value,
+            // reducing the need to append the ore- here and in other such places
+            var sorted = readingCodes
+                .Select(code => (value: code, name: Lang.Get("ore-" + code)))
+                .OrderBy(p => p.name, StringComparer.CurrentCulture)
+                .ToArray();
+
+            // Perhaps instead we could zip these into list of pairs and deconstruct at the caller ? Easier sorting but more cpu processing
+            values = new string[] { null }.Concat(sorted.Select(p => p.value)).ToArray();
+            names = new string[] { Lang.Get("worldmap-ores-everything") }.Concat(sorted.Select(p => p.name)).ToArray();
+        }
 
         private void onSelectionChanged(string code, bool selected)
         {
@@ -244,14 +253,17 @@ namespace Vintagestory.GameContent
             {
                 var reading = ownPropickReadings[i];
 
-                if (filterByOreCode == null || (reading.GetTotalFactor(filterByOreCode) > PropickReading.MentionThreshold))
-                {
-                    OreMapComponent comp = new OreMapComponent(i, reading, this, api as ICoreClientAPI, filterByOreCode);
-                    wayPointComponents.Add(comp);
-                }
+                if (!ShouldDisplayReading(reading)) continue;
+                OreMapComponent comp = new OreMapComponent(i, reading, this, api as ICoreClientAPI, filterByOreCode);
+                wayPointComponents.Add(comp);
             }
 
             wayPointComponents.AddRange(tmpWayPointComponents);
+        }
+
+        private bool ShouldDisplayReading(PropickReading reading) {
+            if(filterByOreCode == null) return true;
+            return reading.GetTotalFactor(filterByOreCode) > PropickReading.MentionThreshold;
         }
 
 

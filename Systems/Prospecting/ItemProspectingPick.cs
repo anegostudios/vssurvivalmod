@@ -335,9 +335,11 @@ namespace Vintagestory.GameContent
 
                 if (totalFactor > 0)
                 {
-                    var reading = new OreReading();
-                    reading.TotalFactor = totalFactor;
-                    reading.PartsPerThousand = ppt;
+                    var reading = new OreReading {
+                        DepositCode = val.Key,
+                        TotalFactor = totalFactor,
+                        PartsPerThousand = ppt
+                    };
                     readings.OreReadings[val.Key] = reading;
                 }
             }

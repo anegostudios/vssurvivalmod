@@ -13,7 +13,6 @@ namespace Vintagestory.GameContent
     {
         Vec2f viewPos = new Vec2f();
         Vec4f color = new Vec4f();
-        PropickReading reading;
         int waypointIndex;
         Matrixf mvMat = new Matrixf();
         OreMapLayer oreLayer;
@@ -21,17 +20,30 @@ namespace Vintagestory.GameContent
 
         public static float IconScale = 0.85f;
         public string filterByOreCode;
+        public PropickReading reading;
 
         public OreMapComponent(int waypointIndex, PropickReading reading, OreMapLayer wpLayer, ICoreClientAPI capi, string filterByOreCode) : base(capi)
         {
             this.waypointIndex = waypointIndex;
             this.reading = reading;
             this.oreLayer = wpLayer;
+            this.filterByOreCode =  filterByOreCode;
 
+            GetComponentColor();
+        }
+
+        private void GetComponentColor() {
             int col = GuiStyle.DamageColorGradient[(int)Math.Min(99, reading.HighestReading * 150)];
-            if (filterByOreCode != null) col = GuiStyle.DamageColorGradient[(int)Math.Min(99, reading.OreReadings[filterByOreCode].TotalFactor * 150)];
 
-            this.color = new Vec4f();
+            if (filterByOreCode != null) {
+                if (reading.OreReadings.TryGetValue(filterByOreCode, out var oreReading)) {
+                    col = GuiStyle.DamageColorGradient[(int)Math.Min(99, oreReading.TotalFactor * 150)];
+                } else {
+                    // Or throw ?
+                    capi.Logger.Warning("Unhandled oremap filter code: {0}", filterByOreCode);
+                }
+            }
+
             ColorUtil.ToRGBAVec4f(col, ref color);
             color.W = 1;
         }
