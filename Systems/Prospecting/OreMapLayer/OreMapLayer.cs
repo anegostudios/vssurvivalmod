@@ -35,7 +35,8 @@ namespace Vintagestory.GameContent
         CreateIconTextureDelegate oremapIconDele;
         public LoadedTexture oremapTexture;
 
-        public string filterByOreCode;
+        string filterByOreCode;
+        public string FilterByOreCode => filterByOreCode;
 
         public OreMapLayer(ICoreAPI api, IWorldMapManager mapSink) : base(api, mapSink)
         {
@@ -103,22 +104,14 @@ namespace Vintagestory.GameContent
 
         private void GetOreFilterDropdownData(out string[] values, out string[] names)
         {
-            HashSet<string> readingCodes = [];
-            foreach (var reading in ownPropickReadings.SelectMany(val => val.OreReadings)) {
-                readingCodes.Add(reading.Key);
-            }
-
-            // The set in vanilla inherently expects only stripped ore-* values, which would make any nonstandard values annoying to handle
-            // Leaving it as is, but perhaps better to move towards storing the full ore-* code as the key/deposit code value,
-            // reducing the need to append the ore- here and in other such places
-            var sorted = readingCodes
-                .Select(code => (value: code, name: Lang.Get("ore-" + code)))
-                .OrderBy(p => p.name, StringComparer.CurrentCulture)
+            var readings = ownPropickReadings.SelectMany(val => val.OreReadings)
+                .Select(reading => reading.Key)
+                .Select(code => (Code: code, Name: Lang.Get("ore-" + code)))
+                .OrderBy(reading => reading.Name, StringComparer.CurrentCulture)
                 .ToArray();
 
-            // Perhaps instead we could zip these into list of pairs and deconstruct at the caller ? Easier sorting but more cpu processing
-            values = new string[] { null }.Concat(sorted.Select(p => p.value)).ToArray();
-            names = new string[] { Lang.Get("worldmap-ores-everything") }.Concat(sorted.Select(p => p.name)).ToArray();
+            values = [null, ..readings.Select(reading => reading.Code)];
+            names = [Lang.Get("worldmap-ores-everything"), ..readings.Select(reading => reading.Name)];
         }
 
         private void onSelectionChanged(string code, bool selected)

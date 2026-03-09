@@ -13,6 +13,7 @@ namespace Vintagestory.GameContent
     {
         Vec2f viewPos = new Vec2f();
         Vec4f color = new Vec4f();
+        PropickReading reading;
         int waypointIndex;
         Matrixf mvMat = new Matrixf();
         OreMapLayer oreLayer;
@@ -20,7 +21,7 @@ namespace Vintagestory.GameContent
 
         public static float IconScale = 0.85f;
         public string filterByOreCode;
-        public PropickReading reading;
+        public PropickReading Reading => reading;
 
         public OreMapComponent(int waypointIndex, PropickReading reading, OreMapLayer wpLayer, ICoreClientAPI capi, string filterByOreCode) : base(capi)
         {
@@ -40,7 +41,7 @@ namespace Vintagestory.GameContent
                     col = GuiStyle.DamageColorGradient[(int)Math.Min(99, oreReading.TotalFactor * 150)];
                 } else {
                     // Or throw ?
-                    capi.Logger.Warning("Unhandled oremap filter code: {0}", filterByOreCode);
+                    capi.Logger.Warning("Ore Map filter element has unhandled non-dictionary value: {0}", filterByOreCode);
                 }
             }
 
