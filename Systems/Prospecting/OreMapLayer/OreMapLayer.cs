@@ -74,7 +74,9 @@ namespace Vintagestory.GameContent
         {
             string key = "worldmap-layer-" + LayerGroupCode;
 
-            GetOreFilterDropdownData(out string[] values, out string[] names);
+            var dropdownData = GetOreFilterDropdownData();
+            var values = dropdownData.Select(e => e.Value).ToArray();
+            var names = dropdownData.Select(e => e.Name).ToArray();
 
             ElementBounds dlgBounds =
                 ElementStdBounds.AutosizedMainDialog
@@ -102,16 +104,15 @@ namespace Vintagestory.GameContent
             guiDialogWorldMap.Composers[key].Enabled = false;
         }
 
-        private void GetOreFilterDropdownData(out string[] values, out string[] names)
+        private (string Value, string Name)[] GetOreFilterDropdownData()
         {
             var readings = ownPropickReadings.SelectMany(val => val.OreReadings)
                 .Select(reading => reading.Key)
+                .Distinct()
                 .Select(code => (Code: code, Name: Lang.Get("ore-" + code)))
-                .OrderBy(reading => reading.Name, StringComparer.CurrentCulture)
-                .ToArray();
+                .OrderBy(reading => reading.Name, StringComparer.CurrentCulture);
 
-            values = [null, ..readings.Select(reading => reading.Code)];
-            names = [Lang.Get("worldmap-ores-everything"), ..readings.Select(reading => reading.Name)];
+            return [(null, Lang.Get("worldmap-ores-everything")), ..readings];
         }
 
         private void onSelectionChanged(string code, bool selected)
