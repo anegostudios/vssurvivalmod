@@ -69,13 +69,13 @@ namespace Vintagestory.GameContent
 
         public void Compose()
         {
-            var tabs = new GuiTab[] { new GuiTab() { Name = Lang.Get("Local goods"), DataInt=0 }, new GuiTab() { Name = Lang.Get("Auction house"),DataInt=1 }, new GuiTab() { Name = Lang.Get("Your Auctions"),DataInt=2 } };
-            var tabBounds = ElementBounds.Fixed(0, -24, 500, 25);
+            var tabs = new GuiTab[] { new() { Name = Lang.Get("Local goods"), DataInt=0 }, new() { Name = Lang.Get("Auction house"),DataInt=1 }, new() { Name = Lang.Get("Your Auctions"),DataInt=2 } };
+            var tabBounds = ElementBounds.Fixed(0, -24, 400, 25);
             var tabFont = CairoFont.WhiteDetailText();
 
             if (!auctionHouseEnabled)
             {
-                tabs = new GuiTab[] { new GuiTab() { Name = Lang.Get("Local goods"), DataInt = 0 } };
+                tabs = [new GuiTab { Name = Lang.Get("Local goods"), DataInt = 0 }];
             }
 
 

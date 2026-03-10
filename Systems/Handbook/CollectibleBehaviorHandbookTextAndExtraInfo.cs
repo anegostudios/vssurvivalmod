@@ -1,6 +1,5 @@
 using Cairo;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -2205,87 +2204,70 @@ namespace Vintagestory.GameContent
                             }
                         }
 
-                        if (recipe.CopyAttributesFrom != null && recipe.Ingredients.ContainsKey(recipe.CopyAttributesFrom))
+                        // Check the compound case first: in vanilla in 1.22, no recipe has MergeAttributesFrom set
+                        if (recipe.CopyAttributesFrom != null && recipe.MergeAttributesFrom.Length > 0)
+                        {
+                            var rec = (GridRecipe)recipe.Clone();
+                            var outputStack = rec.Output.ResolvedItemStack;
+                            var cattr = stack.Attributes.Clone();
+
+                            if (rec.GetIngredientById(recipe.CopyAttributesFrom) is CraftingRecipeIngredient ingred2)
+                            {
+                                outputStack.Attributes = cattr.Clone();
+
+                                foreach (var ingredientName in recipe.MergeAttributesFrom)
+                                {
+                                    if (rec.GetIngredientById(ingredientName) is not CraftingRecipeIngredient ingred) continue;
+                                    if (ingred.ResolvedAttributes != null) cattr.MergeTree(ingred.ResolvedAttributes);    // radfast 08.03.26: I doubt that this will work to place the MergeAttributesFrom attributes in reverse, we have not tested this in vanilla
+                                    ingred.ResolvedItemStack.Attributes = cattr;
+                                }
+
+                                if (ingred2.ResolvedAttributes != null) cattr.MergeTree(ingred2.ResolvedAttributes);
+                                ingred2.ResolvedItemStack.Attributes = cattr;
+
+                                outputStacks[i++] = outputStack;
+                                list.Add(rec);
+                                continue;
+                            }
+                        }
+
+                        if (recipe.CopyAttributesFrom != null)
                         {
                             var rec = recipe.Clone();
+                            var outputStack = rec.Output.ResolvedItemStack;
+                            ITreeAttribute cattr = stack.Attributes.Clone();    // We are going to give the output stack, the attributes of our desired target
+                            if (rec.GetIngredientById(recipe.CopyAttributesFrom) is CraftingRecipeIngredient ingred)
+                            {
+                                outputStack.Attributes = cattr.Clone();             // We clone the attributes here, because we are going to change them
 
-                            var ingred = rec.Ingredients[recipe.CopyAttributesFrom];
-                            var cattr = stack.Attributes.Clone();
-                            cattr.MergeTree(ingred.ResolvedAttributes);
-                            ingred.Attributes = new JsonObject(JToken.Parse(cattr.ToJsonToken()));
-                            rec.Resolve(capi.World, "");
-
-                            rec.Output.ResolvedItemStack.Attributes.MergeTree(stack.Attributes);
-
-                            list.Add(rec);
-                            outputStacks[i++] = rec.Output.ResolvedItemStack;
-                            continue;
+                                var ingredStack = ingred.ResolvedItemStack;         // And we are going to backwards copy the desired attributes to the "CopyAttributesFrom" ingredient stack, but overwriting with any of them with the ingredient stack's own attributes (if present)
+                                if (ingred.ResolvedAttributes != null)              // For example, in opened-crate recipe, the output stack is a crate with attributes 'closed' and 'wood-pine'. The ingredient stack is a crate with attributes 'opened'. We take the output attributes, 'closed' and 'wood-pine', and overwrite 'closed' with 'opened' to get an appopriate ingredient which will yield this output
+                                {                                                   // i.e. we are emulating the crafting process in reverse (roughly speaking)
+                                    cattr.MergeTree(ingred.ResolvedAttributes);
+                                }
+                                ingred.ResolvedItemStack.Attributes = cattr;
+                                outputStacks[i++] = outputStack;
+                                list.Add(rec);
+                                continue;
+                            }
                         }
 
                         if (recipe.MergeAttributesFrom.Length > 0)
                         {
                             var rec = recipe.Clone();
+                            var outputStack = rec.Output.ResolvedItemStack;
                             var cattr = stack.Attributes.Clone();
+                            outputStack.Attributes = cattr.Clone();
 
                             foreach (var ingredientName in recipe.MergeAttributesFrom)
                             {
-                                if (!rec.Ingredients.ContainsKey(ingredientName)) continue;
-
-                                var ingred = rec.Ingredients[ingredientName];
-
-                                cattr.MergeTree(ingred.ResolvedAttributes);
+                                if (rec.GetIngredientById(ingredientName) is not CraftingRecipeIngredient ingred) continue;
+                                if (ingred.ResolvedAttributes != null) cattr.MergeTree(ingred.ResolvedAttributes);
+                                ingred.ResolvedItemStack.Attributes = cattr;
                             }
 
-                            foreach (var ingredientName in recipe.MergeAttributesFrom)
-                            {
-                                if (!rec.Ingredients.ContainsKey(ingredientName)) continue;
-
-                                var ingred = rec.Ingredients[ingredientName];
-
-                                ingred.Attributes = new JsonObject(JToken.Parse(cattr.ToJsonToken()));
-                            }
-
-                            rec.Resolve(capi.World, "");
-                            rec.Output.ResolvedItemStack.Attributes.MergeTree(stack.Attributes);
-
+                            outputStacks[i++] = outputStack;
                             list.Add(rec);
-                            outputStacks[i++] = rec.Output.ResolvedItemStack;
-                            continue;
-                        }
-
-                        if (recipe.CopyAttributesFrom != null && recipe.Ingredients.ContainsKey(recipe.CopyAttributesFrom) && recipe.MergeAttributesFrom.Length > 0)
-                        {
-                            var rec = (GridRecipe)recipe.Clone();
-                            var cattr = stack.Attributes.Clone();
-
-                            var ingred2 = rec.Ingredients[recipe.CopyAttributesFrom];
-                            cattr.MergeTree(ingred2.ResolvedAttributes);
-
-                            foreach (var ingredientName in recipe.MergeAttributesFrom)
-                            {
-                                if (!rec.Ingredients.ContainsKey(ingredientName)) continue;
-
-                                var ingred = rec.Ingredients[ingredientName];
-
-                                cattr.MergeTree(ingred.ResolvedAttributes);
-                            }
-
-                            foreach (var ingredientName in recipe.MergeAttributesFrom)
-                            {
-                                if (!rec.Ingredients.ContainsKey(ingredientName)) continue;
-
-                                var ingred = rec.Ingredients[ingredientName];
-
-                                ingred.Attributes = new JsonObject(JToken.Parse(cattr.ToJsonToken()));
-                            }
-
-                            ingred2.Attributes = new JsonObject(JToken.Parse(cattr.ToJsonToken()));
-
-                            rec.Resolve(capi.World, "");
-                            rec.Output.ResolvedItemStack.Attributes.MergeTree(stack.Attributes);
-
-                            list.Add(rec);
-                            outputStacks[i++] = rec.Output.ResolvedItemStack;
                             continue;
                         }
 

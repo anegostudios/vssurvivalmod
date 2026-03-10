@@ -221,5 +221,25 @@ namespace Vintagestory.GameContent
             }
             return 1;
         }
+
+        public override bool SideIsSolid(BlockPos pos, int faceIndex, ref EnumHandling handled)
+        {
+            handled = EnumHandling.PreventSubsequent;
+
+            var beh = block.GetBEBehavior<BEBehaviorTrapDoor>(pos);
+            if (beh == null) return false;
+
+            return beh.IsSideSolid(BlockFacing.ALLFACES[faceIndex]);
+        }
+
+        public override bool SideIsSolid(IBlockAccessor blockAccess, BlockPos pos, int faceIndex, ref EnumHandling handled)
+        {
+            handled = EnumHandling.PreventSubsequent;
+
+            var beh = block.GetBEBehavior<BEBehaviorTrapDoor>(pos);
+            if (beh == null) return false;
+
+            return beh.IsSideSolid(BlockFacing.ALLFACES[faceIndex]);
+        }
     }
 }

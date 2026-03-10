@@ -55,7 +55,6 @@ namespace Vintagestory.ServerMods
         private Dictionary<long, List<DungeonPlaceTask>> dungeonPlaceTasksByRegion = new Dictionary<long, List<DungeonPlaceTask>>();
 
         private int regionSize;
-        private bool genDungeons;
         private BlockPos spawnPos = null!;
         private GenStoryStructures storyStructSys = null!;
         private GenBlockLayers genBlockLayers = null!;
@@ -67,6 +66,9 @@ namespace Vintagestory.ServerMods
 
         public override void StartServerSide(ICoreServerAPI api)
         {
+            var genDungeons = api.World.Config.GetAsString("loreContent", "true").ToBool(true);
+            if (!genDungeons) return;
+
             sapi = api;
             base.StartServerSide(api);
 
@@ -106,9 +108,6 @@ namespace Vintagestory.ServerMods
 
         private void OnWorldGenBlockAccessor(IChunkProviderThread chunkProvider)
         {
-            genDungeons = sapi.World.Config.GetAsString("loreContent", "true").ToBool(true);
-            if (!genDungeons) return;
-
             worldgenBlockAccessor = chunkProvider.GetBlockAccessor(false);
             rand = new LCGRandom(sapi.WorldManager.Seed ^ 8991827198);
             regionSize = sapi.World.BlockAccessor.RegionSize;

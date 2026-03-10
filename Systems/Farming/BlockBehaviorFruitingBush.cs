@@ -52,7 +52,13 @@ public class BlockBehaviorFruitingBush : BlockBehavior
     public JsonObject? GrowthProperties;
     public float GrowthRateMul = 1f;
     public AssetLocation? HarvestingSound;
-    public Dictionary<string, NpkNutrients> nutrientUseByHealthState;
+    public Dictionary<string, NpkNutrients> nutrientUseByHealthState = new()
+    {
+        ["bountiful"] = new NpkNutrients(10, 10, 10),
+        ["healthy"] = new NpkNutrients(7, 7, 7),
+        ["struggling"] = new NpkNutrients(4, 4, 4),
+        ["barren"] = new NpkNutrients(1, 1, 1),
+    };
 
     /// <summary>
     /// Sorted by growthstage index
@@ -65,40 +71,36 @@ public class BlockBehaviorFruitingBush : BlockBehavior
     public override void OnLoaded(ICoreAPI api)
     {
         base.OnLoaded(api);
-
         GrowthRateMul = (float)api.World.Config.GetDecimal("cropGrowthRateMul", GrowthRateMul);
-        var attr = block.Attributes["growthProperties"][block.Variant["type"]];
-        GrowthProperties = attr.Exists ? attr : block.Attributes["growthProperties"]["*"];
+        GrowthProperties = block.Attributes["growthProperties"];
         PauseGrowthBelowTemperature = GrowthProperties["pauseGrowthBelowTemperature"].AsFloat(-999);
         PauseGrowthAboveTemperature = GrowthProperties["pauseGrowthAboveTemperature"].AsFloat(999);
         ResetGrowthBelowTemperature = GrowthProperties["resetGrowthBelowTemperature"].AsFloat(-999);
         ResetGrowthAboveTemperature = GrowthProperties["resetGrowthAboveTemperature"].AsFloat(999);
         GoDormantBelowTemperature = GrowthProperties["goDormantBelowTemperature"].AsFloat(-999);
         LeaveDormantAboveTemperature = GrowthProperties["leaveDormantAboveTemperature"].AsFloat(999);
-        CreatureDietFoodTags = GrowthProperties["foodTags"].AsArray<string>();
-        string? code = GrowthProperties["harvestingSound"].AsString("game:sounds/block/leafy-picking");
+        nutrientUseByHealthState = GrowthProperties["nutrientUseByHealthState"].AsObject(nutrientUseByHealthState);
+        growthStageMonths =
+        [
+            GrowthProperties["youngStageMonths"].AsObject<NatFloat>(new(3, 1, EnumDistribution.UNIFORM)),
+            GrowthProperties["emptyStageMonths"].AsObject<NatFloat>(new(0.85f, 0.1f, EnumDistribution.UNIFORM)),
+            GrowthProperties["floweringStageMonths"].AsObject<NatFloat>(new(0.35f, 0.1f, EnumDistribution.UNIFORM)),
+            GrowthProperties["ripeningStageMonths"].AsObject<NatFloat>(new(0.85f, 0.1f, EnumDistribution.UNIFORM)),
+            GrowthProperties["ripeStageMonths"].AsObject<NatFloat>(new(1, 0.1f, EnumDistribution.UNIFORM)),
+            null
+        ];
+
+        CreatureDietFoodTags = block.Attributes["foodTags"].AsArray<string>()!;
+        string? code = block.Attributes["harvestingSound"].AsString("game:sounds/block/leafy-picking");
         if (code != null)
         {
             HarvestingSound = AssetLocation.Create(code, block.Code.Domain);
         }
-
         harvestTime = block.Attributes["harvestTime"].AsFloat(0.5f);
         cuttingTime = block.Attributes["cuttingTime"].AsFloat(2f);
         harvestedStacks = block.Attributes["harvestedStacks"].AsObject<BlockDropItemStack[]>(null);
         foreach (var hstack in harvestedStacks) hstack.Resolve(api.World, "harvested stack of fruiting bush", code);
         Tool = block.Attributes["harvestTool"].AsObject<EnumTool?>(null);
-
-        growthStageMonths = new NatFloat[]
-        {
-            GrowthProperties["youngStageMonths"].AsObject<NatFloat>(),
-            GrowthProperties["emptyStageMonths"].AsObject<NatFloat>(),
-            GrowthProperties["floweringStageMonths"].AsObject<NatFloat>(),
-            GrowthProperties["ripeningStageMonths"].AsObject<NatFloat>(),
-            GrowthProperties["ripeStageMonths"].AsObject<NatFloat>(),
-            null
-        };
-
-        nutrientUseByHealthState = GrowthProperties["nutrientUseByHealthState"].AsObject<Dictionary<string, NpkNutrients>>();
     }
 
 

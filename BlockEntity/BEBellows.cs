@@ -4,6 +4,11 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
+    public interface IBellowsAirReceiver
+    {
+        void BlowAirInto(IWorldAccessor world, BlockPos pos, float amount, BlockFacing direction);
+    }
+
     public class BlockEntityBellows : BlockEntity
     {
         public float PumpingSpeed = 1;
@@ -22,18 +27,17 @@ namespace Vintagestory.GameContent
 
         public bool Interact(IPlayer byPlayer)
         {
-            if ((Api.World.ElapsedMilliseconds - interactStartTotalMs) / 1000f < animationDuration / PumpingSpeed) return false;
-            interactStartTotalMs = Api.World.ElapsedMilliseconds;
-            
+            var world = Api.World;
+            if ((world.ElapsedMilliseconds - interactStartTotalMs) / 1000f < animationDuration / PumpingSpeed) return false;
+            interactStartTotalMs = world.ElapsedMilliseconds;
+
             var facing = BlockFacing.FromCode(Block.Variant["side"]);
 
-            RegisterDelayedCallback((dt) =>
+            RegisterDelayedCallback(_ =>
             {
-                var beforge = Block.GetBlockEntity<BlockEntityForge>(Pos.AddCopy(facing));
-                if (beforge != null)
-                {
-                    beforge.BlowAirInto(0.2f, facing);
-                }
+                var facingPos = Pos.AddCopy(facing);
+                var block = world.BlockAccessor.GetBlock(facingPos);
+                block.GetInterface<IBellowsAirReceiver>(world, facingPos)?.BlowAirInto(world, facingPos, 0.2f, facing);
                 GetBehavior<BEBehaviorDurability>()?.DamageBlock(1);
 
             }, (int)(733 / PumpingSpeed));
@@ -51,7 +55,7 @@ namespace Vintagestory.GameContent
                 ranim.Iterations = 0;
             }
 
-            
+
 
             return true;
         }

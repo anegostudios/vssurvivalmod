@@ -95,7 +95,7 @@ namespace Vintagestory.GameContent
             ElementBounds leftButton = ElementBounds.Fixed(EnumDialogArea.LeftFixed, 0, 0, 0, 0).WithFixedPadding(8, 5);
 
             string traderName = npcEntity.GetBehavior<EntityBehaviorNameTag>()?.DisplayName;
-            string dlgTitle = Lang.Get("tradingwindow-" + npcEntity.Code.Path, traderName);
+            string dlgTitle = Lang.GetMatching("tradingwindow-" + npcEntity.Code.Path, traderName);
 
             SingleComposer =
                 capi.Gui
@@ -151,7 +151,7 @@ namespace Vintagestory.GameContent
             textElem.Bounds.fixedY = 0 - value;
             textElem.Bounds.CalcWorldBounds();
         }
-        
+
         public override void OnFinalizeFrame(float dt)
         {
             base.OnFinalizeFrame(dt);

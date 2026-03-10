@@ -12,7 +12,7 @@ using Vintagestory.API.MathTools;
 namespace Vintagestory.GameContent
 {
 
-    public class BlockEntityForge : BlockEntityContainer, IHeatSource, ITemperatureSensitive
+    public class BlockEntityForge : BlockEntityContainer, IHeatSource, ITemperatureSensitive, IBellowsAirReceiver
     {
         protected static SimpleParticleProperties smallMetalSparks;
         protected static SimpleParticleProperties smokeQuads;
@@ -76,7 +76,7 @@ namespace Vintagestory.GameContent
             base.Initialize(api);
 
             inv.LateInitialize("forge-" + Pos, api);
-            
+
             if (api is ICoreClientAPI)
             {
                 ICoreClientAPI capi = (ICoreClientAPI)api;
@@ -135,7 +135,11 @@ namespace Vintagestory.GameContent
         }
 
 
-        
+        public void BlowAirInto(IWorldAccessor world, BlockPos pos, float amount, BlockFacing direction)
+        {
+            BlowAirInto(amount, direction);
+        }
+
         public void BlowAirInto(float amount, BlockFacing direction)
         {
             if (!burning) return;
@@ -499,6 +503,6 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        
+
     }
 }

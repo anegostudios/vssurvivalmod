@@ -194,7 +194,7 @@ namespace Vintagestory.GameContent
             if (entityAgent is not EntityPlayer player) return false;
 
             var rideable = Entity.GetBehavior<EntityBehaviorRideable>();
-            if (Entity.WatchedAttributes.GetInt("generation") < rideable.MinGeneration)
+            if (rideable != null && Entity.WatchedAttributes.GetInt("generation") < rideable.MinGeneration)
             {
                 (player.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "toowildtoride", Lang.Get("mount-interact-toowildtoride"));
                 return false;

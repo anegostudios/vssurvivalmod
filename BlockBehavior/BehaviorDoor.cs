@@ -541,7 +541,7 @@ namespace Vintagestory.GameContent
         public int MBGetRetention(BlockPos pos, BlockFacing facing, EnumRetentionType type, Vec3i offset)
         {
             var offsetPos = pos.AddCopy(offset.X, offset.Y, offset.Z);
-            var beh = block.GetBEBehavior< BEBehaviorDoor>(offsetPos);
+            var beh = block.GetBEBehavior<BEBehaviorDoor>(offsetPos);
             if (beh == null) return 0;
 
             if (type == EnumRetentionType.Sound)
@@ -579,6 +579,44 @@ namespace Vintagestory.GameContent
         public JsonObject MBGetAttributes(IBlockAccessor blockAccessor, BlockPos pos)
         {
             return null;
+        }
+
+        public override bool SideIsSolid(BlockPos pos, int faceIndex, ref EnumHandling handled)
+        {
+            handled = EnumHandling.PreventSubsequent;
+
+            var beh = block.GetBEBehavior<BEBehaviorDoor>(pos);
+            if (beh == null) return false;
+
+            return beh.IsSideSolid(BlockFacing.ALLFACES[faceIndex]);
+        }
+
+        public bool MBSideIsSolid(BlockPos pos, int faceIndex, Vec3i offset)
+        {
+            var offsetPos = pos.AddCopy(offset.X, offset.Y, offset.Z);
+            var beh = block.GetBEBehavior<BEBehaviorDoor>(offsetPos);
+            if (beh == null) return false;
+
+            return beh.IsSideSolid(BlockFacing.ALLFACES[faceIndex]);
+        }
+
+        public override bool SideIsSolid(IBlockAccessor blockAccess, BlockPos pos, int faceIndex, ref EnumHandling handled)
+        {
+            handled = EnumHandling.PreventSubsequent;
+
+            var beh = block.GetBEBehavior<BEBehaviorDoor>(pos);
+            if (beh == null) return false;
+
+            return beh.IsSideSolid(BlockFacing.ALLFACES[faceIndex]);
+        }
+
+        public bool MBSideIsSolid(IBlockAccessor blockAccess, BlockPos pos, int faceIndex, Vec3i offset)
+        {
+            var offsetPos = pos.AddCopy(offset.X, offset.Y, offset.Z);
+            var beh = block.GetBEBehavior<BEBehaviorDoor>(offsetPos);
+            if (beh == null) return false;
+
+            return beh.IsSideSolid(BlockFacing.ALLFACES[faceIndex]);
         }
     }
 }
