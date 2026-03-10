@@ -75,8 +75,6 @@ namespace Vintagestory.GameContent
             string key = "worldmap-layer-" + LayerGroupCode;
 
             var dropdownData = GetOreFilterDropdownData();
-            var values = dropdownData.Select(e => e.Value).ToArray();
-            var names = dropdownData.Select(e => e.Name).ToArray();
 
             ElementBounds dlgBounds =
                 ElementStdBounds.AutosizedMainDialog
@@ -96,7 +94,7 @@ namespace Vintagestory.GameContent
                     .AddShadedDialogBG(bgBounds, false)
                     .AddDialogTitleBar(Lang.Get("maplayer-prospecting"), () => { guiDialogWorldMap.Composers[key].Enabled = false; })
                     .BeginChildElements(bgBounds)
-                        .AddDropDown(values, names, Math.Max(0, values.IndexOf(filterByOreCode)), onSelectionChanged, ElementBounds.Fixed(0, 30, 160, 35))
+                        .AddDropDown(dropdownData, Math.Max(0, dropdownData.IndexOf(e => e.Value == filterByOreCode)), onSelectionChanged, ElementBounds.Fixed(0, 30, 160, 35))
                     .EndChildElements()
                     .Compose()
             ;
@@ -104,15 +102,15 @@ namespace Vintagestory.GameContent
             guiDialogWorldMap.Composers[key].Enabled = false;
         }
 
-        private (string Value, string Name)[] GetOreFilterDropdownData()
+        private DropDownEntry[] GetOreFilterDropdownData()
         {
             var readings = ownPropickReadings.SelectMany(val => val.OreReadings)
                 .Select(reading => reading.Key)
                 .Distinct()
-                .Select(code => (Code: code, Name: Lang.Get("ore-" + code)))
-                .OrderBy(reading => reading.Name, StringComparer.CurrentCulture);
+                .Select(code => new DropDownEntry(code, Lang.Get("ore-" + code)))
+                .OrderBy(e => e.Name, StringComparer.CurrentCulture);
 
-            return [(null, Lang.Get("worldmap-ores-everything")), ..readings];
+            return [new DropDownEntry(null, Lang.Get("worldmap-ores-everything")), ..readings];
         }
 
         private void onSelectionChanged(string code, bool selected)
