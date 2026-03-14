@@ -188,7 +188,8 @@ namespace Vintagestory.GameContent
                         );
                     }
 
-                } else
+                }
+                else
                 {
                     // Cycle top crust type
                     ItemStack?[] cStacks = pieBlock.GetContents(Api.World, inv[0].Itemstack);
@@ -250,17 +251,17 @@ namespace Vintagestory.GameContent
 
         private bool TryAddIngredientFrom(ItemSlot slot, IPlayer? byPlayer = null)
         {
-            var capi = Api as ICoreClientAPI;
+            ICoreClientAPI? capi = byPlayer != null ? Api as ICoreClientAPI : null;
             var pieProps = slot.Itemstack?.ItemAttributes?["inPieProperties"]?.AsObject<InPieProperties?>(null, slot.Itemstack.Collectible.Code.Domain);
             if (pieProps == null)
             {
-                if (byPlayer != null && capi != null) capi.TriggerIngameError(this, "notpieable", Lang.Get("This item can not be added to pies"));
+                capi?.TriggerIngameError(this, "notpieable", Lang.Get("This item can not be added to pies"));
                 return false;
             }
 
             if (slot.StackSize < 2)
             {
-                if (byPlayer != null && capi != null) capi.TriggerIngameError(this, "notpieable", Lang.Get("Need at least 2 items each"));
+                capi?.TriggerIngameError(this, "notpieable", Lang.Get("Need at least 2 items each"));
                 return false;
             }
 
@@ -281,16 +282,20 @@ namespace Vintagestory.GameContent
                         pieBlock.SetContents(inv[0].Itemstack, cStacks);
                         // crust attribute must exist to stack together
                         inv[0].Itemstack.Attributes.SetString("topCrustType", "full");
-                    } else inv[0].Itemstack = BlockPie.CycleTopCrustType(inv[0].Itemstack);
+                    }
+                    else
+                    {
+                        inv[0].Itemstack = BlockPie.CycleTopCrustType(inv[0].Itemstack);
+                    }
                     return true;
                 }
-                if (byPlayer != null && capi != null) capi.TriggerIngameError(this, "piefullfilling", Lang.Get("Can't add more filling - already completely filled pie"));
+                capi?.TriggerIngameError(this, "piefullfilling", Lang.Get("Can't add more filling - already completely filled pie"));
                 return false;
             }
 
             if (pieProps.PartType != EnumPiePartType.Filling)
             {
-                if (byPlayer != null && capi != null) capi.TriggerIngameError(this, "pieneedsfilling", Lang.Get("Need to add a filling next"));
+                capi?.TriggerIngameError(this, "pieneedsfilling", Lang.Get("Need to add a filling next"));
                 return false;
             }
 
@@ -337,13 +342,14 @@ namespace Vintagestory.GameContent
 
             if (!foodCatEquals && !mixCodes.Any())
             {
-                if (byPlayer != null && capi != null) capi.TriggerIngameError(this, "piefullfilling", Lang.Get("piemaking-unabletomixingredient"));
+                capi?.TriggerIngameError(this, "piefullfilling", Lang.Get("piemaking-unabletomixingredient"));
                 return false;
-            } else
+            }
+            else
             {
                 if (!allowMixing)
                 {
-                    if (byPlayer != null && capi != null) capi.TriggerIngameError(this, "piefullfilling", Lang.Get("piemaking-mixingnotallowed"));
+                    capi?.TriggerIngameError(this, "piefullfilling", Lang.Get("piemaking-mixingnotallowed"));
                     return false;
                 }
 
