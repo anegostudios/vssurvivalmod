@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -35,7 +34,7 @@ public class BEBehaviorFruitingBushMesh : BlockEntityBehavior, ITexPositionSourc
 
     public BEBehaviorFruitingBushMesh(BlockEntity blockentity) : base(blockentity)
     {
-        
+
     }
 
     public override void Initialize(ICoreAPI api, JsonObject properties)
@@ -56,7 +55,7 @@ public class BEBehaviorFruitingBushMesh : BlockEntityBehavior, ITexPositionSourc
 
     public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
     {
-        base.FromTreeAttributes(tree, worldAccessForResolve);     
+        base.FromTreeAttributes(tree, worldAccessForResolve);
 
         if (BState.MeshDirty)
         {
@@ -90,7 +89,7 @@ public class BEBehaviorFruitingBushMesh : BlockEntityBehavior, ITexPositionSourc
 
             textureMapping = Block.Attributes["textureMapping"].AsObject<Dictionary<string, string>>();
 
-            var loc = Block.Shape.Base;
+            var loc = Block.Shape.Base.Clone();
             var shape = capi.Assets.Get<Shape>(loc.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json"));
 
             if (BState.Growthstate == EnumFruitingBushGrowthState.Dormant && Block.Variant["type"] != "strawberry") ignoreElements = ignoreElements.Append(["Leaves/*"]);
@@ -111,8 +110,4 @@ public class BEBehaviorFruitingBushMesh : BlockEntityBehavior, ITexPositionSourc
             return bushMesh;
         });
     }
-
-
-
-
 }

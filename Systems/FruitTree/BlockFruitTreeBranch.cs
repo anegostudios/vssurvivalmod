@@ -364,16 +364,6 @@ namespace Vintagestory.GameContent
                 components.Add(new ClearFloatTextComponent(capi, marginTop));
                 components.Add(new RichTextComponent(capi, Lang.Get("Growing properties") + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
                 components.Add(new RichTextComponent(capi, sb.ToString(), CairoFont.WhiteSmallText()));
-
-                components.Add(new ClearFloatTextComponent(capi, marginTop));
-                components.Add(new RichTextComponent(capi, Lang.Get("fruittree-produces") + "\n", CairoFont.WhiteSmallText().WithWeight(FontWeight.Bold)));
-
-                foreach (var stack in props.FruitStacks)
-                {
-                    components.Add(new ItemstackTextComponent(capi, stack.ResolvedItemstack, 40, 0, EnumFloat.Inline));
-                }
-
-
             }
         }
     }

@@ -688,8 +688,15 @@ namespace Vintagestory.GameContent
                 selBox = colBox;
             }
 
-            colBoxes[0] = colBox;
-            selBoxes[0] = selBox;
+            if (colBox != null)
+            {
+                colBoxes[0] = colBox;
+            }
+            if (selBox != null)
+            {
+                selBoxes[0] = selBox;
+            }
+
             UpdateLegacyStorageLayouts();
 
             if (overrideLayout != null)

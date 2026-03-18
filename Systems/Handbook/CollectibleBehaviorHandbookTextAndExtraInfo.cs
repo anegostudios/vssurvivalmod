@@ -223,14 +223,23 @@ namespace Vintagestory.GameContent
                     components.Add(new ClearFloatTextComponent(capi, TinyPadding));
                 }
 
-                List<ItemStack> harvestedStacks = [];
+                var harvestDropStacks = stack.Block.GetBehavior<BlockBehaviorFruitingBush>()?.harvestedStacks;
+
                 EnumTool? harvestTool = null;
-                if (stack.Block.GetBehavior<BlockBehaviorHarvestable>() is { harvestedStacks: { } harvestDropStacks } bhh)
+                if (harvestDropStacks == null && stack.Block.GetBehavior<BlockBehaviorHarvestable>() is { } bhh)
                 {
                     harvestTool = bhh.Tool;
-                    harvestedStacks = [.. harvestDropStacks.Select(val => val.ResolvedItemstack).Where(hstack => hstack != null)];
+                    harvestDropStacks = bhh.harvestedStacks;
                 }
 
+                if (harvestDropStacks == null && stack.Block is BlockFruitTreeBranch branch &&
+                    branch.TypeProps.TryGetValue(stack.Attributes.GetString("type", "unknown"), out var props))
+                {
+                    harvestDropStacks = props.FruitStacks;
+                }
+
+                List<ItemStack> harvestedStacks = [];
+                if (harvestDropStacks != null) harvestedStacks = [.. harvestDropStacks.Select(val => val.ResolvedItemstack).Where(hstack => hstack != null)];
                 if (harvestedStacks.Count > 0)
                 {
                     bool haveText = components.Count > 0;
@@ -314,7 +323,20 @@ namespace Vintagestory.GameContent
 
             foreach (var aStack in allStacks)
             {
-                if (aStack.Block?.GetBehavior<BlockBehaviorHarvestable>()?.harvestedStacks is not BlockDropItemStack[] harvestedStacks) continue;
+                if (aStack.Block is not { } block) continue;
+
+                var harvestedStacks = block.GetBehavior<BlockBehaviorHarvestable>()?.harvestedStacks ??
+                                      block.GetBehavior<BlockBehaviorFruitingBush>()?.harvestedStacks;
+
+                if (harvestedStacks == null)
+                {
+                    if (block is BlockFruitTreeBranch branch && branch.TypeProps.TryGetValue(aStack.Attributes.GetString("type", "unknown"), out var props))
+                    {
+                        harvestedStacks = props.FruitStacks;
+                    }
+
+                    if (harvestedStacks == null) continue;
+                }
 
                 if (harvestedStacks.Any(hStack => hStack?.ResolvedItemstack?.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes) == true))
                 {

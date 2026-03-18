@@ -108,10 +108,7 @@ namespace Vintagestory.GameContent
 
             if (priority == EnumMergePriority.DirectMerge)
             {
-                if (sinkStack.Attributes.GetItemstack("fishingBait") == null)
-                {
-                    if (sourceStack.ItemAttributes?.IsTrue("isFishBait") == true) return 1;
-                }
+                if (sourceStack.ItemAttributes?.IsTrue("isFishBait") == true) return 1;
             }
 
             return base.GetMergableQuantity(sinkStack, sourceStack, priority);
@@ -123,14 +120,18 @@ namespace Vintagestory.GameContent
 
             if (op.CurrentPriority == EnumMergePriority.DirectMerge)
             {
-                if (op.SinkSlot.Itemstack?.Attributes.GetItemstack("fishingBait") == null)
+                if (op.SourceSlot.Itemstack?.ItemAttributes?.IsTrue("isFishBait") == true)
                 {
-                    if (op.SourceSlot.Itemstack?.ItemAttributes?.IsTrue("isFishBait") == true)
+                    var oldBaitStack = op.SinkSlot.Itemstack?.Attributes.GetItemstack("fishingBait");
+                    op.SinkSlot.Itemstack?.Attributes.SetItemstack("fishingBait", op.SourceSlot.TakeOut(1));
+                    op.MovedQuantity = 1;
+
+                    if (oldBaitStack != null)
                     {
-                        op.SinkSlot.Itemstack?.Attributes.SetItemstack("fishingBait", op.SourceSlot.TakeOut(1));
-                        op.MovedQuantity = 1;
-                        return;
+                        op.SourceSlot.Itemstack = oldBaitStack;
+                        op.SourceSlot.MarkDirty();
                     }
+                    return;
                 }
             }
 
@@ -376,6 +377,14 @@ namespace Vintagestory.GameContent
             if (baitStack != null)
             {
                 dsc.AppendLine(Lang.Get("item-fishingpole-bait", baitStack.GetName()));
+            }
+            else if (inSlot.Itemstack.Attributes.GetBool("fishing"))
+            {
+                var ebobber = api.World.GetEntityById(inSlot.Itemstack.Attributes.GetLong("bobberEntityId")) as EntityBobber;
+                if (ebobber?.BaitStack != null)
+                {
+                    dsc.AppendLine(Lang.Get("item-fishingpole-bait", ebobber.BaitStack.GetName()));
+                }
             }
         }
 

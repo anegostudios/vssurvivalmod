@@ -162,7 +162,11 @@ namespace Vintagestory.ServerMods
             mapRand.InitPositionSeed(regionX * size, regionZ * size);
 
             long mapRegionIndex = MapRegionIndex2D(regionX, regionZ);
-            dungeonPlaceTasksByRegion[mapRegionIndex] = new List<DungeonPlaceTask>();
+
+            if (!dungeonPlaceTasksByRegion.TryGetValue(mapRegionIndex, out var dungeonPlaceTasks))
+            {
+                dungeonPlaceTasks = dungeonPlaceTasksByRegion[mapRegionIndex] = new List<DungeonPlaceTask>();
+            }
 
             var dungeons = tiledDungeonsSys.Tcfg.Dungeons.Where(d => d.Worldgen).ToList();
 
@@ -200,7 +204,7 @@ namespace Vintagestory.ServerMods
                     {
                         sapi.Logger.Debug($"Dungeon {dungeon.Code} @: /tp ={posx} {posy} ={posz}");
                         placeTask.IsDirty = true;
-                        dungeonPlaceTasksByRegion[mapRegionIndex].Add(placeTask);
+                        dungeonPlaceTasks.Add(placeTask);
                         Dungeons.Add(new DungeonLocation(dungeonStartPos, placeTask.Code, placeTask.DungeonBoundaries));
                         DungeonsDirty = true;
                         mapRegion.AddGeneratedStructures(placeTask.GeneratedStructures);
@@ -253,15 +257,14 @@ namespace Vintagestory.ServerMods
             if (mapRegion.OceanMap != null && mapRegion.OceanMap.Data.Length > 0)
             {
                 var regionChunkSize = regionSize / chunksize;
-                var chunkSize = sapi.WorldManager.ChunkSize;
-                var rlX = (posx / chunkSize) % regionChunkSize;
-                var rlZ = (posz / chunkSize) % regionChunkSize;
+                var rlX = (posx / chunksize) % regionChunkSize;
+                var rlZ = (posz / chunksize) % regionChunkSize;
                 var oFac = (float)mapRegion.OceanMap.InnerSize / regionChunkSize;
                 var oceanUpLeft = mapRegion.OceanMap.GetUnpaddedInt((int)(rlX * oFac), (int)(rlZ * oFac));
                 var oceanUpRight = mapRegion.OceanMap.GetUnpaddedInt((int)(rlX * oFac + oFac), (int)(rlZ * oFac));
                 var oceanBotLeft = mapRegion.OceanMap.GetUnpaddedInt((int)(rlX * oFac), (int)(rlZ * oFac + oFac));
                 var oceanBotRight = mapRegion.OceanMap.GetUnpaddedInt((int)(rlX * oFac + oFac), (int)(rlZ * oFac + oFac));
-                float oceanicity = GameMath.BiLerp(oceanUpLeft, oceanUpRight, oceanBotLeft, oceanBotRight, (float)(posx % chunkSize) / chunkSize, (float)(posz % chunkSize) / chunkSize);
+                float oceanicity = GameMath.BiLerp(oceanUpLeft, oceanUpRight, oceanBotLeft, oceanBotRight, (float)(posx % chunksize) / chunksize, (float)(posz % chunksize) / chunksize);
                 if (oceanicity > 0)
                 {
                     // skip ocean chunks/regions

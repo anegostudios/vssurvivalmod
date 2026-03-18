@@ -99,6 +99,7 @@ public class BEBehaviorCabinetDoors : BEBehaviorAnimatable, IInteractable
                         doorStack = slot.TakeOut(1);
                     }
 
+                    playDoorPlaceRemoveSound(doorStack, byPlayer);
                     slot.MarkDirty();
                     updateAnimationState();
                     handling = EnumHandling.PreventSubsequent;
@@ -110,6 +111,26 @@ public class BEBehaviorCabinetDoors : BEBehaviorAnimatable, IInteractable
             return false;
         }
 
+        if (byPlayer.Entity.Controls.CtrlKey && byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack?.Collectible.Tool == EnumTool.Wrench)
+        {
+            if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative && !byPlayer.InventoryManager.TryGiveItemstack(doorStack))
+            {
+                world.SpawnItemEntity(doorStack, blockSel.Position);
+            }
+
+            playDoorPlaceRemoveSound(DoorStack, byPlayer);
+
+            doorStack = null;
+            doorMesh = null;
+            opened = false;
+            animUtil.animator = null;
+            animUtil.renderer?.Dispose();
+            animUtil.renderer = null;
+            handling = EnumHandling.PreventSubsequent;
+            Blockentity.MarkDirty(true);
+            return true;
+        }
+
         if (blockSel.SelectionBoxId == "door")
         {
             opened = !opened;
@@ -119,6 +140,17 @@ public class BEBehaviorCabinetDoors : BEBehaviorAnimatable, IInteractable
         }
 
         return false;
+    }
+
+    protected void playDoorPlaceRemoveSound(ItemStack doorStack, IPlayer byPlayer)
+    {
+        var soundAttr = new SoundAttributes()
+        {
+            Location = AssetLocation.Create(doorStack.Collectible.Attributes["placeRemoveSound"].AsString("block/planks"), doorStack.Collectible.Code.Domain).WithPathPrefixOnce("sounds/"),
+            Range = 8,
+            Type = EnumSoundType.Sound
+        };
+        Api.World.PlaySoundAt(soundAttr, Pos, 0.5f, byPlayer);
     }
 
     public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
@@ -161,7 +193,7 @@ public class BEBehaviorCabinetDoors : BEBehaviorAnimatable, IInteractable
         doorStack?.Collectible.OnStoreCollectibleMappings(Api.World, new DummySlot(doorStack), blockIdMapping, itemIdMapping);
     }
 
-    MeshData doorMesh;
+    MeshData? doorMesh;
 
     public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
     {

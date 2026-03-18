@@ -3,6 +3,7 @@ using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent;
 
@@ -33,12 +34,6 @@ public class BlockBehaviorFruitingBush : BlockBehavior
     /// </summary>
     [DocumentAsJson("Required")]
     public BlockDropItemStack[]? harvestedStacks;
-
-    /// <summary>
-    /// The block required to harvest the block.
-    /// </summary>
-    [DocumentAsJson("Optional", "None")]
-    public EnumTool? Tool;
 
 
     public float PauseGrowthBelowTemperature;
@@ -100,9 +95,16 @@ public class BlockBehaviorFruitingBush : BlockBehavior
         cuttingTime = block.Attributes["cuttingTime"].AsFloat(2f);
         harvestedStacks = block.Attributes["harvestedStacks"].AsObject<BlockDropItemStack[]>(null);
         foreach (var hstack in harvestedStacks) hstack.Resolve(api.World, "harvested stack of fruiting bush", code);
-        Tool = block.Attributes["harvestTool"].AsObject<EnumTool?>(null);
     }
 
-
-
+    public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, ref float dropChanceMultiplier, ref EnumHandling handling)
+    {
+        if (block.GetBEBehavior<BEBehaviorFruitingBush>(pos) is not { } beh ||
+            beh.BState.Growthstate is not EnumFruitingBushGrowthState.Ripe)
+        {
+            return base.GetDrops(world, pos, byPlayer, ref dropChanceMultiplier, ref handling);
+        }
+        handling = EnumHandling.PassThrough;
+        return beh.GetRipeDrops(byPlayer);
+    }
 }

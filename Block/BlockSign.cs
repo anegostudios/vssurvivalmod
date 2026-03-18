@@ -114,6 +114,8 @@ namespace Vintagestory.GameContent
             BlockPos supportingPos = bs.Position.AddCopy(bs.Face.Opposite);
             Block supportingBlock = world.BlockAccessor.GetBlock(supportingPos);
 
+            //if (supportingBlock.HasBehavior<BlockBehaviorCabinetDoors>()) { failureCode = "__ignore__"; return false; }
+
             if (bs.Face.IsHorizontal && (supportingBlock.CanAttachBlockAt(world.BlockAccessor, this, supportingPos, bs.Face) || supportingBlock.GetAttributes(world.BlockAccessor, supportingPos)?.IsTrue("partialAttachable") == true))
             {
                 Block wallblock = world.BlockAccessor.GetBlock(CodeWithParts("wall", bs.Face.Opposite.Code));

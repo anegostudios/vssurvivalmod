@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -25,7 +26,7 @@ public class BEBehaviorFruitingBush : BlockEntityBehavior, IAnimalFoodSource, IL
     protected BlockBehaviorFruitingBush bhBush;
     protected double transitionHoursLeft = -1;
     public FruitingBushState BState;
-
+    protected double cuttingsPerYear = 1;
 
     public BEBehaviorFruitingBush(BlockEntity blockentity) : base(blockentity)
     {
@@ -72,12 +73,13 @@ public class BEBehaviorFruitingBush : BlockEntityBehavior, IAnimalFoodSource, IL
 
     private void spawnBe(float dt)
     {
-        var belowBlock = Api.World.BlockAccessor.GetBlock(Pos.DownCopy());
-        var be = Api.World.BlockAccessor.GetBlockEntity(Pos.DownCopy());
+        var below = Pos.DownCopy();
+        var belowBlock = Api.World.BlockAccessor.GetBlock(below);
+        var be = Api.World.BlockAccessor.GetBlockEntity(below);
         if (be == null && belowBlock.Fertility > 0)
         {
-            Api.World.BlockAccessor.SpawnBlockEntity("BerryBushFarmland", Pos.DownCopy());
-            be = Api.World.BlockAccessor.GetBlockEntity(Pos.DownCopy());
+            Api.World.BlockAccessor.SpawnBlockEntity("BerryBushFarmland", below);
+            be = Api.World.BlockAccessor.GetBlockEntity(below);
             if (be is BlockEntitySoilNutrition besn)
             {
                 besn.OnCreatedFromSoil(belowBlock);
@@ -105,16 +107,25 @@ public class BEBehaviorFruitingBush : BlockEntityBehavior, IAnimalFoodSource, IL
             Blockentity.MarkDirty(true);
         }
 
+        if (BState.Growthstate == EnumFruitingBushGrowthState.Young && BESoil == null)
+        {
+            BState.Growthstate = EnumFruitingBushGrowthState.Mature;
+            Blockentity.MarkDirty(true);
+        }
+
         BState.PrevHealthState = GetHealthState();
 
         return (hourIntervall, conds, _, _) =>
         {
             transitionHoursLeft -= hourIntervall;
 
-            if (BState.Growthstate == EnumFruitingBushGrowthState.Young && BESoil.TotalHoursLastUpdate >= BState.MatureTotalDays)
+            if (BState.Growthstate == EnumFruitingBushGrowthState.Young && BESoil != null)
             {
-                setGrowthState(EnumFruitingBushGrowthState.Mature);
-                return;
+                if (BESoil.TotalHoursLastUpdate >= BState.MatureTotalDays * Api.World.Calendar.HoursPerDay)
+                {
+                    setGrowthState(EnumFruitingBushGrowthState.Mature);
+                    return;
+                }
             }
 
             if (BState.Growthstate == EnumFruitingBushGrowthState.Dormant)
@@ -250,6 +261,12 @@ public class BEBehaviorFruitingBush : BlockEntityBehavior, IAnimalFoodSource, IL
         if (BState.Traits.Length > 0)
         {
             dsc.AppendLine();
+        }
+
+        var yearsPassed = (Api.World.Calendar.TotalDays - BState.LastCuttingTakenTotalDays) / Api.World.Calendar.DaysPerYear;
+        if (yearsPassed < cuttingsPerYear)
+        {
+            dsc.AppendLine(Lang.Get("A cutting can be taken in {0} months", Math.Ceiling((cuttingsPerYear - yearsPassed) * 12)));
         }
     }
 
@@ -426,16 +443,33 @@ public class BEBehaviorFruitingBush : BlockEntityBehavior, IAnimalFoodSource, IL
                 world.Api.Event.PushEvent("onitemcollected", tree);
             });
 
-            if (bhBush.Tool != null)
-            {
-                var toolSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
-                toolSlot.Itemstack?.Collectible.DamageItem(world, byPlayer.Entity, toolSlot);
-            }
-
             world.PlaySoundAt(bhBush.HarvestingSound, blockSel.Position, 0, byPlayer);
 
             setGrowthState(EnumFruitingBushGrowthState.Mature);
         }
+    }
+
+    public ItemStack[] GetRipeDrops(IPlayer byPlayer)
+    {
+        if (bhBush.harvestedStacks == null) return null;
+        List<ItemStack> todrop = [];
+
+        float dropQuantityMultiplier = getYieldMul();
+
+        if (Block.Attributes?.IsTrue("forageStatAffected") == true)
+        {
+            dropQuantityMultiplier *= byPlayer.Entity.Stats.GetBlended("forageDropRate");
+        }
+
+        foreach (var harvestedStack in bhBush.harvestedStacks)
+        {
+            ItemStack stack = harvestedStack.GetNextItemStack(dropQuantityMultiplier);
+            if (stack == null) continue;
+            stack.StackSize = GameMath.RoundRandom(Api.World.Rand, stack.StackSize * dropRates[(int)GetHealthState()]);
+            todrop.Add(stack);
+        }
+
+        return todrop.ToArray();
     }
 
 
@@ -520,7 +554,7 @@ public class BEBehaviorFruitingBush : BlockEntityBehavior, IAnimalFoodSource, IL
     #region Knife cutting
     public bool IsHarvestable(ItemSlot slot, Entity forEntity)
     {
-        return slot.Itemstack?.Collectible.GetTool(slot) == EnumTool.Knife && (Api.World.Calendar.TotalDays - BState.LastCuttingTakenTotalDays) / Api.World.Calendar.DaysPerYear >= 1;
+        return slot.Itemstack?.Collectible.GetTool(slot) == EnumTool.Knife && (Api.World.Calendar.TotalDays - BState.LastCuttingTakenTotalDays) / Api.World.Calendar.DaysPerYear >= cuttingsPerYear;
     }
 
     public AssetLocation HarvestableSound => bhBush.HarvestingSound;

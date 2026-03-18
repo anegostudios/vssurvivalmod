@@ -74,8 +74,8 @@ namespace Vintagestory.GameContent
                     }
                     modelmat.Translate(0, -Entity.SelectionBox.Y2 / 2, 0);
 
-                    float scale = Entity.Properties.Client.Size;
-                    modelmat.Scale(scale, scale, scale);
+                    float mountScale = Entity.Properties.Client.Size;
+                    modelmat.Scale(mountScale, mountScale, mountScale);
 
                     // Shapes are modelled with a center at 0.5, 0, 0.5, so move from that to the origin
                     modelmat.Translate(-0.5f, 0, -0.5f);
@@ -112,9 +112,18 @@ namespace Vintagestory.GameContent
                 if (config.MountOffset != null) return oldRenderTransform;
 
                 modelmat.Identity();
+
+                float riderScale = Passenger.Properties.Client.Size;
+                if (config.RiderOffset != null && riderScale != 1)
+                {
+                    // Already applied 1x the offset when calculating SeatPos, now apply any extra needed based on the player's render scale
+                    modelmat.Translate(config.RiderOffset.Clone().Mul(riderScale - 1));
+                }
+
                 modelmat.RotateX(config.MountRotation.X * GameMath.DEG2RAD);
                 // MountRotation.Y is already accounted for as part of the rider's yaw, so skip that
                 modelmat.RotateZ(config.MountRotation.Z * GameMath.DEG2RAD);
+
                 return modelmat;
             }
         }

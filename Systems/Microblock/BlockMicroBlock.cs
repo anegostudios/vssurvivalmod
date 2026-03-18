@@ -14,7 +14,6 @@ namespace Vintagestory.GameContent
 {
     public class MicroBlockSounds : BlockSounds
     {
-        //public override AssetLocation Ambient { get => base.Ambient; set => base.Ambient = value; }
         public override SoundAttributes Break { get => block.Sounds.Break; set { } }
         public override SoundAttributes Hit { get => block.Sounds.Hit; set { } }
         public override SoundAttributes Inside { get => block.Sounds.Inside; set { } }
@@ -25,6 +24,7 @@ namespace Vintagestory.GameContent
 
         public BlockEntityMicroBlock be = null!;
         public Block defaultBlock = null!;
+        
 
         public MicroBlockSounds() { }
 
@@ -32,14 +32,15 @@ namespace Vintagestory.GameContent
         {
             this.be = be;
             this.defaultBlock = defaultBlock;
-            Ambient = defaultBlock.Sounds.Ambient;
+            this.Ambient = block.Sounds.Ambient;
         }
 
         Block block
         {
             get
             {
-                var blocks = be.Api.World.Blocks;
+                var blocks = be.Api?.World.Blocks;
+                if (blocks == null) return defaultBlock;
 
                 if (!(defaultBlock is BlockChisel) && ((BlockMicroBlock)defaultBlock).IsSoilNonSoilMix(be))
                 {
@@ -62,12 +63,11 @@ namespace Vintagestory.GameContent
 
     public class BlockMicroBlock : Block, IContainedMeshSource, IDisplayableProps
     {
+        protected bool IsSnowCovered;
+        protected ICoreClientAPI capi;
+
         public int snowLayerBlockId;
-
-        bool IsSnowCovered;
-
         public ThreadLocal<MicroBlockSounds> MBSounds = new ThreadLocal<MicroBlockSounds>(() => new MicroBlockSounds());
-
         public static int BlockLayerMetaBlockId;
 
         public override void OnLoaded(ICoreAPI api)
@@ -88,6 +88,8 @@ namespace Vintagestory.GameContent
             snowLayerBlockId = api.World.GetBlock(new AssetLocation("snowlayer-1")).Id;
 
             IsSnowCovered = this.Id != notSnowCovered.Id;
+
+            capi = api as ICoreClientAPI;
         }
 
         public override void OnUnloaded(ICoreAPI api)
@@ -863,6 +865,22 @@ namespace Vintagestory.GameContent
                 Size = new Size3f(dimensions.XSize, dimensions.YSize, dimensions.ZSize),
                 Transform = transform
             };
+        }
+
+
+        public override float GetAmbientSoundStrength(IWorldAccessor world, BlockPos pos)
+        {
+            var be = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
+            if (world.Blocks[be.GetMajorityMaterialId()].BlockMaterial == EnumBlockMaterial.Glass)
+            {
+                var conds = capi.World.Player.Entity.selfClimateCond;
+                if (conds != null && conds.Rainfall > 0.1f && conds.Temperature > 3f && (world.BlockAccessor.GetRainMapHeightAt(pos) <= pos.Y || world.BlockAccessor.GetDistanceToRainFall(pos, 3, 1) <= 2))
+                {
+                    return conds.Rainfall;
+                }
+            }
+
+            return 0;
         }
     }
 }

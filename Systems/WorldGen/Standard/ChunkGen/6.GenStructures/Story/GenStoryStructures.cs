@@ -43,8 +43,11 @@ namespace Vintagestory.GameContent
             allStructures = values.Values.ToArray();
             foreach (var structure in allStructures)
             {
-                var max = structure.SkipGenerationFlags.Max(flag => flag.Value);
-                structure.MaxSkipGenerationRadiusSq = max * max;
+                if (structure.SkipGenerationFlags != null)
+                {
+                    var max = structure.SkipGenerationFlags.Max(flag => flag.Value);
+                    structure.MaxSkipGenerationRadiusSq = max * max;
+                }
             }
         }
 
@@ -416,6 +419,8 @@ namespace Vintagestory.GameContent
                     strucloc.LandformRadius = wgenStoryStructure.LandformRadius;
                     strucloc.GenerationRadius = wgenStoryStructure.GenerationRadius;
                     strucloc.SkipGenerationFlags = wgenStoryStructure.SkipGenerationFlags;
+                    var max = strucloc.SkipGenerationFlags.Max(flag => flag.Value);
+                    strucloc.MaxSkipGenerationRadiusSq = max * max;
 
                     var schem = wgenStoryStructure.schematicData;
                     var minX = strucloc.CenterPos.X - schem.SizeX / 2;

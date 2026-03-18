@@ -389,7 +389,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockCharcoalPit", typeof(BlockCharcoalPit));
             api.RegisterBlockClass("BlockTorch", typeof(BlockTorch));
             api.RegisterBlockClass("BlockOilLamp", typeof(BlockOilLamp));
-            
+
             api.RegisterBlockClass("BlockStairs", typeof(BlockStairs));
             api.RegisterBlockClass("BlockFence", typeof(BlockFence));
             api.RegisterBlockClass("BlockWattleFence", typeof(BlockWattleFence));
@@ -422,7 +422,7 @@ namespace Vintagestory.GameContent
 
             api.RegisterBlockClass("BlockBucket", typeof(BlockBucket));
             api.RegisterBlockClass("BlockCrop", typeof(BlockCrop));
-            
+
             api.RegisterBlockClass("BlockWaterPlant", typeof(BlockWaterPlant));
             api.RegisterBlockClass("BlockSeaweed", typeof(BlockSeaweed));
             api.RegisterBlockClass("BlockCrowfoot", typeof(BlockCrowfoot));
@@ -754,8 +754,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockEntityBehaviorClass("RotatablePlaceable", typeof(BEBehaviorRotatablePlaceable));
 
             api.RegisterBlockEntityBehaviorClass("ContainedBagInventory", typeof(BEBehaviorContainedBagInventory));
-            api.RegisterBlockEntityBehaviorClass("FruitingBush", typeof(BEBehaviorFruitingBush));
-            
+
 
             api.RegisterBlockEntityBehaviorClass("CabinetDoors", typeof(BEBehaviorCabinetDoors));
 

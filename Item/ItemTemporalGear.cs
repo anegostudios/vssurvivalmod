@@ -1,5 +1,6 @@
 ﻿using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
@@ -70,6 +71,11 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
         {
+            if (api.World.Config.GetAsInt("temporalGearRespawnUses", -1) == 0)
+            {
+                (api as ICoreClientAPI)?.TriggerIngameError(this, "zerogearrespawns", Lang.Get("temporalgear-cannotsetrespawn"));
+                return;
+            }
             if (blockSel == null) return;
 
             Block block = api.World.BlockAccessor.GetBlock(blockSel.Position);
@@ -119,19 +125,19 @@ namespace Vintagestory.GameContent
 
         public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
-            if (blockSel == null || !(byEntity is EntityPlayer)) return false;
+            if (blockSel == null || byEntity is not EntityPlayer) return false;
 
-            if (byEntity.World is IClientWorldAccessor)
+            if (byEntity.World is IClientWorldAccessor world)
             {
-                FpHandTransform.Rotation.Y = GameMath.Mod(byEntity.World.ElapsedMilliseconds / (50f - secondsUsed * 20), 360);
-                TpHandTransform.Rotation.Y = GameMath.Mod(byEntity.World.ElapsedMilliseconds / (50f - secondsUsed * 20), 360);
+                FpHandTransform.Rotation.Y = GameMath.Mod(world.ElapsedMilliseconds / (50f - secondsUsed * 20), 360);
+                TpHandTransform.Rotation.Y = GameMath.Mod(world.ElapsedMilliseconds / (50f - secondsUsed * 20), 360);
 
                 particlesHeld.MinQuantity = 1;
 
                 Vec3d pos = blockSel.Position.ToVec3d().Add(blockSel.HitPosition);
-                SpawnParticles(byEntity.World, pos, false);
+                SpawnParticles(world, pos, false);
 
-                (byEntity.World as IClientWorldAccessor).AddCameraShake(0.035f);
+                world.AddCameraShake(0.035f);
 
 
                 ILoadedSound sound = ObjectCacheUtil.TryGet<ILoadedSound>(api, "temporalGearSound");
@@ -166,20 +172,18 @@ namespace Vintagestory.GameContent
                 SpawnParticles(byEntity.World, pos, true);
             }
 
-            if (byEntity.World.Side == EnumAppSide.Server && byEntity is EntityPlayer)
-            {
-                IServerPlayer plr = byEntity.World.PlayerByUid((byEntity as EntityPlayer).PlayerUID) as IServerPlayer;
+            if (byEntity.World.Side != EnumAppSide.Server || byEntity is not EntityPlayer playerEntity) return;
+            if (playerEntity.World.PlayerByUid(playerEntity.PlayerUID) is not IServerPlayer player) return;
 
-                int uses = api.World.Config.GetString("temporalGearRespawnUses", "-1").ToInt();
-                plr.SetSpawnPosition(new PlayerSpawnPos() {
-                    x = byEntity.Pos.XYZInt.X,
-                    y = byEntity.Pos.XYZInt.Y,
-                    z = byEntity.Pos.XYZInt.Z,
-                    yaw = byEntity.Pos.Yaw,
-                    pitch = byEntity.Pos.Pitch,
-                    RemainingUses = uses
-                });
-            }
+            int uses = api.World.Config.GetAsInt("temporalGearRespawnUses", -1);
+            player.SetSpawnPosition(new() {
+                x = playerEntity.Pos.XYZInt.X,
+                y = playerEntity.Pos.XYZInt.Y,
+                z = playerEntity.Pos.XYZInt.Z,
+                yaw = playerEntity.Pos.Yaw,
+                pitch = playerEntity.Pos.Pitch,
+                RemainingUses = uses
+            });
 
         }
 

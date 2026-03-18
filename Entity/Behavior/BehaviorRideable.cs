@@ -555,10 +555,18 @@ namespace Vintagestory.GameContent
                         }
                         if ((!controls.Forward && !controls.Backward && !ebg.IsIdle)
                             || (!controls.Forward && ebg.CurrentGait.HasForwardMotion)
-                            || (!controls.Backward && ebg.CurrentGait.HasBackwardMotion)
-                            || (controls.Forward && controls.Backward))
+                            || (!controls.Backward && ebg.CurrentGait.HasBackwardMotion))
                         {
                             ebg.SetIdle();
+                        }
+                        // Held W, pressed S to stop, then let go of S while stil holding W -> start going farwards again
+                        if (controls.Forward && !controls.Backward && !ebg.CurrentGait.HasForwardMotion)
+                        {
+                            SpeedUp(false);
+                        }
+                        if (controls.Backward && !controls.Forward && !ebg.CurrentGait.HasBackwardMotion)
+                        {
+                            SlowDown();
                         }
                     }
 

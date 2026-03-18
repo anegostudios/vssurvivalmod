@@ -955,14 +955,12 @@ namespace Vintagestory.GameContent
 
         public static InFirePitProps GetRenderProps(ItemStack contentStack)
         {
-            if (contentStack?.ItemAttributes?.KeyExists("inFirePitProps") == true)
+            InFirePitProps props = contentStack?.ItemAttributes?["inFirePitProps"].AsObject<InFirePitProps>();
+            if (props != null)
             {
-                InFirePitProps props = contentStack.ItemAttributes["inFirePitProps"].AsObject<InFirePitProps>();
                 props.Transform.EnsureDefaultValues();
-
-                return props;
             }
-            return null;
+            return props;
         }
 
 

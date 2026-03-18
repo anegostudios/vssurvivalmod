@@ -25,28 +25,11 @@ public class BEBehaviorFruitingBushCutting : BlockEntityBehavior
     {
         if (Api.World.Calendar.TotalDays >= matureTotalDays)
         {
-            var blockcode = AssetLocation.Create(Block.Attributes["maturedBlockCode"].AsString(), Block.Code.Domain);
-            var block = Api.World.GetBlock(blockcode);
-            if (block != null)
-            {
-                Api.World.BlockAccessor.SetBlock(block.BlockId, Blockentity.Pos);
-                var behbb = Api.World.BlockAccessor.GetBlockEntity(Pos).GetBehavior<BEBehaviorFruitingBush>();
-                if (behbb != null) behbb.OnGrownFromCutting(traits);
+            var block = Api.World.GetBlock(AssetLocation.Create(Block.Attributes["maturedBlockCode"].AsString(), Block.Code.Domain));
+            if (block == null) return;
 
-                StandardWorldProperty fertilities = Api.Assets.TryGet("worldproperties/abstract/fertility.json").ToObject<StandardWorldProperty>();
-
-                var belowBlock = Api.World.BlockAccessor.GetBlock(Pos.DownCopy());
-                int fi = fertilities.Variants.IndexOf(elem => elem.Code.Path == belowBlock.Variant["fertility"]);
-                if (fi > 0)
-                {
-                    var code = belowBlock.CodeWithVariant("fertility", fertilities.Variants[fi - 1].Code.Path);
-                    var lessfertileblock = belowBlock = Api.World.GetBlock(code);
-                    if (lessfertileblock != null)
-                    {
-                        Api.World.BlockAccessor.SetBlock(lessfertileblock.Id, Pos.DownCopy());
-                    }
-                }
-            }
+            Api.World.BlockAccessor.SetBlock(block.BlockId, Pos);
+            Api.World.BlockAccessor.GetBlockEntity(Pos).GetBehavior<BEBehaviorFruitingBush>()?.OnGrownFromCutting(traits);
         }
     }
 

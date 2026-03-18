@@ -31,9 +31,9 @@ namespace Vintagestory.GameContent
             GeneratedStructure structure = null;
             if (loc.Position != null)
             {
-                structure = reg?.GeneratedStructures.Find(s => 
-                    s.Location.X1 == loc.Position.X && 
-                    s.Location.Y1 == loc.Position.Y && 
+                structure = reg?.GeneratedStructures.Find(s =>
+                    s.Location.X1 == loc.Position.X &&
+                    s.Location.Y1 == loc.Position.Y &&
                     s.Location.Z1 == loc.Position.Z);
             }
             else if (loc.StructureIndex >= 0 && loc.StructureIndex < reg?.GeneratedStructures.Count)
@@ -46,8 +46,12 @@ namespace Vintagestory.GameContent
 
         public StructureLocation FindFreshStructureLocation(string code, BlockPos nearPos, int searchRange)
         {
-            return FindStructureLocation((struc, index, region) => {
-                if (struc.Code.Split('/')[1] == code)
+            return FindStructureLocation((struc, index, region) =>
+            {
+                var parts = struc.Code.Split('/');
+                // parts[0] are for before 1.21.0
+                // parts[1] are for 1.21.0 and later
+                if ((parts.Length > 1 && parts[1] == code) || (parts.Length > 0 && parts[0] == code))
                 {
                     var locs = region.GetModdata<int[]>("consumedStructureLocations");
                     var locPos = region.GetModdata<List<Vec3i>>("consumedStrucLocPos");

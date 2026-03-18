@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
@@ -54,14 +55,29 @@ public class BlockBehaviorCabinetDoors : StrongBlockBehavior
                 return stacks.ToArray();
             });
 
-            return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer, ref handling).Append(new WorldInteraction()
+            if (block.GetBEBehavior<BEBehaviorCabinetDoors>(selection.Position)?.DoorStack == null)
             {
-                ActionLangCode = "addcabinetdoors",
-                HotKeyCode = "sprint",
-                MouseButton = EnumMouseButton.Right,
-                Itemstacks = doorStacks
-            });
+                return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer, ref handling).Append(new WorldInteraction()
+                {
+                    ActionLangCode = "addcabinetdoors",
+                    HotKeyCode = "sprint",
+                    MouseButton = EnumMouseButton.Right,
+                    Itemstacks = doorStacks
+                });
+            } else
+            {
+                if (BlockBehaviorWrenchOrientable.wrenchItems == null) BlockBehaviorWrenchOrientable.loadWrenchItems(world);
+
+                return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer, ref handling).Append(new WorldInteraction()
+                {
+                    ActionLangCode = "removecabinetdoors",
+                    HotKeyCode = "sprint",
+                    MouseButton = EnumMouseButton.Right,
+                    Itemstacks = BlockBehaviorWrenchOrientable.wrenchItems
+                });
+            }
         }
+
 
         return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer, ref handling);
     }
@@ -71,7 +87,6 @@ public class BlockBehaviorCabinetDoors : StrongBlockBehavior
         if (block.GetBEBehavior<BEBehaviorCabinetDoors>(pos)?.DoorStack is { } doorStack)
         {
             handling = EnumHandling.PreventDefault;
-
             return [doorStack];
         }
 
