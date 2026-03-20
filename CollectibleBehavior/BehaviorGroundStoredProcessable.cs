@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using Vintagestory.API;
 using Vintagestory.API.Client;
@@ -187,6 +188,20 @@ namespace Vintagestory.GameContent
             RemainingItem?.Resolve(api.World, "remainingItem of item ", collObj.Code);
         }
 
+        /// <summary>
+        /// For ItemOre, computes the output quantity per input item based on metalUnits.
+        /// Returns 0 if not applicable (caller should use the default quantity).
+        /// </summary>
+        int GetOreOutputQuantity(ItemSlot slot)
+        {
+            if (slot.Itemstack?.Collectible is ItemOre && slot.Itemstack.ItemAttributes?["metalUnits"].Exists == true)
+            {
+                int metalUnits = slot.Itemstack.ItemAttributes["metalUnits"].AsInt(5);
+                return Math.Max(1, metalUnits / 5);
+            }
+            return 0;
+        }
+
         bool CheckSurfaceMaterial(BlockEntityContainer be, IPlayer byPlayer)
         {
             if (RequiredSurfaceMaterials == null) return true;
@@ -272,6 +287,7 @@ namespace Vintagestory.GameContent
 
                 if (ToolDamagePerItem && toolSlot != null && MaxProcessedAtOnce > 0)
                 {
+                    int oreOutputQty = GetOreOutputQuantity(slot);
                     int processed = 0;
                     for (int i = 0; i < itemsToProcess; i++)
                     {
@@ -281,6 +297,7 @@ namespace Vintagestory.GameContent
                         {
                             ItemStack? stack = processedStack.GetNextItemStack(1);
                             if (stack == null) return;
+                            if (oreOutputQty > 0) stack.StackSize = oreOutputQty;
                             var origStack = stack.Clone();
                             var quantity = stack.StackSize;
                             if (!byPlayer.InventoryManager.TryGiveItemstack(stack))
@@ -310,10 +327,12 @@ namespace Vintagestory.GameContent
                 }
                 else
                 {
+                    int oreOutputQty = GetOreOutputQuantity(slot);
                     ProcessedStacks?.Foreach(processedStack =>
                     {
                         ItemStack? stack = processedStack.GetNextItemStack(itemsToProcess);
                         if (stack == null) return;
+                        if (oreOutputQty > 0) stack.StackSize = oreOutputQty * itemsToProcess;
                         var origStack = stack.Clone();
                         var quantity = stack.StackSize;
                         if (!byPlayer.InventoryManager.TryGiveItemstack(stack))
