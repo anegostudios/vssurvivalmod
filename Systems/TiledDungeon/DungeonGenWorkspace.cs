@@ -27,6 +27,8 @@ public class DungeonGenWorkspace
 
     public List<DungeonTile> MustGenerate { get; set; }
 
+    public Dictionary<string, int> GroupMaxCount = new Dictionary<string, int>();
+
 
     public List<ConnectorMetaData>? ParentOpenSet;
 
@@ -57,6 +59,14 @@ public class DungeonGenWorkspace
             }
 
             if (tile.Max > tile.Min) CanGenerate.Add(tile);
+        }
+
+        if (dungeon.GroupMax != null)
+        {
+            foreach (var (code,_) in dungeon.GroupMax)
+            {
+                GroupMaxCount[code] = 0;
+            }
         }
     }
 

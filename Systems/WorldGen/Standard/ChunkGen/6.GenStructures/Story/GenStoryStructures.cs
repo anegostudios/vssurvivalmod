@@ -55,14 +55,12 @@ namespace Vintagestory.GameContent
         {
             foreach (var loc in locations)
             {
-                if (loc.Location.Contains(x, z)) return loc;
-                var distSq = loc.CenterPos.HorDistanceSqTo(x, z);
-
                 int checkRadius = loc.LandformRadius;
-                if (category >= 0) {
-                    loc.SkipGenerationFlags.TryGetValue(category, out checkRadius);
-                }
+                if (category != -1 && !loc.SkipGenerationFlags.TryGetValue(category, out checkRadius)) continue;
 
+                if (checkRadius == 0 && loc.Location.Contains(x, z)) return loc;
+
+                var distSq = loc.CenterPos.HorDistanceSqTo(x, z);
                 if (checkRadius > 0 && distSq < checkRadius * checkRadius)
                 {
                     return loc;

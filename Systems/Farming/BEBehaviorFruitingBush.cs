@@ -360,6 +360,7 @@ public class BEBehaviorFruitingBush : BlockEntityBehavior, IAnimalFoodSource, IL
         if (BState.Growthstate == EnumFruitingBushGrowthState.Ripe)
         {
             handling = EnumHandling.PreventDefault;
+            world.PlaySoundAt(bhBush.HarvestingSound, blockSel.Position, 0, byPlayer);
             return true;
         }
 
@@ -456,7 +457,7 @@ public class BEBehaviorFruitingBush : BlockEntityBehavior, IAnimalFoodSource, IL
 
         float dropQuantityMultiplier = getYieldMul();
 
-        if (Block.Attributes?.IsTrue("forageStatAffected") == true)
+        if (byPlayer != null && Block.Attributes?.IsTrue("forageStatAffected") == true)
         {
             dropQuantityMultiplier *= byPlayer.Entity.Stats.GetBlended("forageDropRate");
         }

@@ -135,6 +135,7 @@ namespace Vintagestory.GameContent
             {
                 AnimManager.StopAnimation("launch");
                 CurrentStage = 0;
+                rcc.CurrentCompletedStage = 0;
                 MarkShapeModified();
                 if (World.Side == EnumAppSide.Server) Spawn();
             }
@@ -156,8 +157,7 @@ namespace Vintagestory.GameContent
             }
 
             offset.Y = 0.5f;
-
-            entity.Pos.Add(offset);
+            entity.Pos.SetFrom(Pos).Add(offset);
             entity.Pos.Motion.Add(offset.X / 50.0, 0, offset.Z / 50.0);
 
             var plr = (launchingEntity as EntityPlayer)?.Player;
@@ -207,11 +207,14 @@ namespace Vintagestory.GameContent
 
         public override string GetInfoText()
         {
+            string info = base.GetInfoText() + "\r\n";
+
             if (rcc.StoredWildCards.TryGetValue("wood", out string wood))
             {
-                return base.GetInfoText() + "\n" + Lang.Get("Material: {0}", Lang.Get("material-" + wood));
+                info += Lang.Get("Material: {0}", Lang.Get("material-" + wood)) + "\r\n";
             }
-            return base.GetInfoText();
+
+            return info + Lang.Get("Build stage: {0}/{1}", CurrentStage+1, rcc.Stages.Length-1);
         }
 
     }

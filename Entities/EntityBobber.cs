@@ -429,8 +429,6 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            //foreach (var val in suitableFishPropsWithMapCode) suitableFishProps.Add(val.Value);
-
             if (printDebug)
             {
                 System.Diagnostics.Debug.WriteLine("2. After fish type map filter: " + string.Join(", ", suitableFishProps.Select(props => props.Code)));

@@ -412,7 +412,6 @@ public class BlockEntitySoilNutrition : BlockEntityFastForwardGrowth, ITexPositi
     {
         // (x/70 - 0.143)^0.35
         // http://fooplot.com/#W3sidHlwZSI6MCwiZXEiOiIoeC83MC0wLjE0MyleMC4zNSIsImNvbG9yIjoiIzAwMDAwMCJ9LHsidHlwZSI6MTAwMCwid2luZG93IjpbIjAiLCIxMDAiLCIwIiwiMS4yNSJdfV0-
-
         float moistFactor = (float)Math.Pow(Math.Max(0.01, moistureLevel * 100 / 70 - 0.143), 0.35);
 
         return nutrients[(int)nutrient] switch

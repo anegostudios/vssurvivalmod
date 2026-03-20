@@ -152,13 +152,8 @@ namespace Vintagestory.GameContent
 
         private void Event_PlayerNowPlaying(IServerPlayer byPlayer)
         {
-            if (!riftsEnabled)
-            {
-                schannel.SendPacket(new RiftsStatus() { Enabled = false }, byPlayer);
-                return;
-            }
-
-            BroadCastRifts(byPlayer);
+            schannel.SendPacket(new RiftsStatus() { Enabled = riftsEnabled }, byPlayer);
+            if (riftsEnabled) BroadCastRifts(byPlayer);
         }
 
 

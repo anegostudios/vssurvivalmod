@@ -97,6 +97,9 @@ namespace Vintagestory.ServerMods
         [JsonProperty]
         public int MinDepth { get; set; }
 
+        [JsonProperty]
+        public Dictionary<string, int>? GroupMax = new Dictionary<string, int>();
+
         public void Init(ICoreServerAPI api)
         {
             totalChance = 0;

@@ -344,8 +344,8 @@ namespace Vintagestory.GameContent
                 {
                     (world.Api as ICoreServerAPI).Event.EnqueueMainThreadTask(() =>
                     {
-                        entity.Properties.ResolvedSounds = null;
                         entity.Die(EnumDespawnReason.Death, new DamageSource() { CauseEntity = byEntity, Type = EnumDamageType.Hunger });
+                        entity.Properties.ResolvedSounds = null;
                     }, "die");
                 }
 

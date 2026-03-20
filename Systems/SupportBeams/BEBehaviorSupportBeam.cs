@@ -318,6 +318,13 @@ namespace Vintagestory.GameContent
             }
             sbp.OnBeamRemoved(beam.Start.ToVec3d().Add(Pos), beam.End.ToVec3d().Add(Pos));
             Beams = Beams.RemoveAt(beamIndex);
+
+            if (Beams.Length == 0 && Block is BlockSupportBeam)
+            {
+                Api.World.BlockAccessor.SetBlock(0, Pos);
+                return;
+            }
+
             Blockentity.MarkDirty(true);
             collBoxes = null;
             selBoxes = null;

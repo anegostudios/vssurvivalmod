@@ -35,7 +35,7 @@ public class BlockEntityFastForwardGrowth : BlockEntity
     protected virtual void registerTickListener(ICoreAPI api)
     {
         if (api.Side != EnumAppSide.Server) return;
-        
+
         if (Api.World.Config.GetBool("processCrops", true))
         {
             RegisterGameTickListener((dt) =>
@@ -63,7 +63,7 @@ public class BlockEntityFastForwardGrowth : BlockEntity
             }
             else
             {
-                
+
                 return;
             }
         }
@@ -77,7 +77,7 @@ public class BlockEntityFastForwardGrowth : BlockEntity
 
         int sunlight = Api.World.BlockAccessor.GetLightLevel(upPos, allowundergroundfarming ? EnumLightLevelType.MaxLight : EnumLightLevelType.OnlySunLight);
         double lightGrowthSpeedFactor = GameMath.Clamp(1 - (msFarming.Config.DelayGrowthBelowSunLight - (sunlight - lightpenalty)) * msFarming.Config.LossPerLevel, 0, 1);
-        
+
 
 
         // Don't update more than a year
@@ -92,7 +92,7 @@ public class BlockEntityFastForwardGrowth : BlockEntity
         {
             roomness = 0;
         }
-        
+
         ClimateCondition conds = null;
 
         beginIntervalledUpdate(out var intervalCallback, out var endCallback);
@@ -124,7 +124,7 @@ public class BlockEntityFastForwardGrowth : BlockEntity
             // Stop fertility recovery below zero degrees
             // 10% recovery speed at 1°C
             // 20% recovery speed at 2°C and so on
-            double growthChance = GameMath.Clamp((conds.Temperature / 10f) * lightGrowthSpeedFactor, 0, 10);
+            double growthChance = GameMath.Clamp(1 - (msFarming.Config.DelayGrowthBelowTemperature - conds.Temperature) * msFarming.Config.LossPerDegree, 0, 1);
             bool growthPaused = rand.NextDouble() > growthChance;
 
             intervalCallback?.Invoke(hourIntervall, conds, lightGrowthSpeedFactor, growthPaused);

@@ -214,6 +214,7 @@ namespace Vintagestory.GameContent
             AiTaskRegistry.Register<AiTaskTurretMode>("turretmode");
             AiTaskRegistry.Register<AiTaskFollowLeadHolder>("followleadholder");
             AiTaskRegistry.Register<AiTaskFollowLeadHolderR>("followleadholder-r");
+            AiTaskRegistry.Register<AiTaskSeekBobber>("seekbobber");            
 
             EntityBehaviorPassivePhysicsMultiBox.InitServer(api);   // Needed to guarantee registration to the OnPhysicsThreadStart event before that event is fired, even if no entities with this behavior (i.e. boats) are yet loaded in the early game - it might be hours before we see one of these entities
         }

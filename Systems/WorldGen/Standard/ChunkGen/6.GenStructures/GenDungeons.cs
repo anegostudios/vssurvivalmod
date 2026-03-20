@@ -163,10 +163,12 @@ namespace Vintagestory.ServerMods
 
             long mapRegionIndex = MapRegionIndex2D(regionX, regionZ);
 
-            if (!dungeonPlaceTasksByRegion.TryGetValue(mapRegionIndex, out var dungeonPlaceTasks))
+            if (dungeonPlaceTasksByRegion.ContainsKey(mapRegionIndex))
             {
-                dungeonPlaceTasks = dungeonPlaceTasksByRegion[mapRegionIndex] = new List<DungeonPlaceTask>();
+                Dungeons.RemoveAll(d => d.Position.X / regionSize == regionX && d.Position.Z / regionSize == regionZ);
             }
+
+            dungeonPlaceTasksByRegion[mapRegionIndex] = new List<DungeonPlaceTask>();
 
             var dungeons = tiledDungeonsSys.Tcfg.Dungeons.Where(d => d.Worldgen).ToList();
 
@@ -204,7 +206,7 @@ namespace Vintagestory.ServerMods
                     {
                         sapi.Logger.Debug($"Dungeon {dungeon.Code} @: /tp ={posx} {posy} ={posz}");
                         placeTask.IsDirty = true;
-                        dungeonPlaceTasks.Add(placeTask);
+                        dungeonPlaceTasksByRegion[mapRegionIndex].Add(placeTask);
                         Dungeons.Add(new DungeonLocation(dungeonStartPos, placeTask.Code, placeTask.DungeonBoundaries));
                         DungeonsDirty = true;
                         mapRegion.AddGeneratedStructures(placeTask.GeneratedStructures);

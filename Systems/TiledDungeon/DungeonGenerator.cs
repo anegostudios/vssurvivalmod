@@ -112,6 +112,10 @@ namespace Vintagestory.ServerMods
                         else
                         {
                             dgd.PlacedTiles++;
+                            if(tile.GroupMaxName != null && dgd.GroupMaxCount.TryGetValue(tile.GroupMaxName, out var cur))
+                            {
+                                dgd.GroupMaxCount[tile.GroupMaxName]=cur+1;
+                            }
                         }
 
                         break;
@@ -163,6 +167,10 @@ namespace Vintagestory.ServerMods
 
                     if (CheckIfNewPathsAreBlocked(tile, dgd, schematic, openSide, startPos)) continue;
 
+                    if(tile.GroupMaxName != null && dgd.GroupMaxCount.TryGetValue(tile.GroupMaxName, out var curr))
+                    {
+                        dgd.GroupMaxCount[tile.GroupMaxName]=curr+1;
+                    }
                     addTile(dgd, openSide, tile.Code, rot, schematic, startPos, newloc);
                     dgd.PlacedTiles++;
                     break;
@@ -357,6 +365,16 @@ namespace Vintagestory.ServerMods
                 if (quantity >= tile.Max)
                 {
                     continue;
+                }
+
+                if (tile.GroupMaxName != null && dgd.DungeonGenerator.GroupMax != null &&
+                    dgd.DungeonGenerator.GroupMax.TryGetValue(tile.GroupMaxName, out var max)
+                    && dgd.GroupMaxCount.TryGetValue(tile.GroupMaxName, out var cur))
+                {
+                    if (cur+1 > max)
+                    {
+                        continue;
+                    }
                 }
 
                 if (!tile.CachedNames.Any(n => openSide.ConnectsTo(n)))

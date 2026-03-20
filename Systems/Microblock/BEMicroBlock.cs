@@ -650,9 +650,12 @@ namespace Vintagestory.GameContent
             {
                 if (val is IRotatable bhrot)
                 {
-                    bhrot.OnTransformed(worldAccessor ,tree, byDegrees, oldBlockIdMapping, oldItemIdMapping, flipAroundAxis);
+                    bhrot.OnTransformed(worldAccessor, tree, byDegrees, oldBlockIdMapping, oldItemIdMapping, flipAroundAxis);
                 }
             }
+
+            // Causes sideAlmostSolid to get rebuilt when the schematic is placed
+            tree.RemoveAttribute("sideAlmostSolid");
         }
 
 
@@ -1132,6 +1135,7 @@ namespace Vintagestory.GameContent
             else
             {
                 // From 1.15.0 until 1.15.5 we forgot to store sideAlmostSolid
+                // This is now also used to rebuild the side solid after transforming a packed schematic
                 if (!tree.HasAttribute("sideAlmostSolid"))
                 {
                     if (Api == null) this.Api = worldAccessForResolve.Api; // Needed for LightHsv property, I hope this does not break things >.>

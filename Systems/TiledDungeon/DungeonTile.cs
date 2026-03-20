@@ -35,6 +35,9 @@ namespace Vintagestory.ServerMods
         [JsonIgnore]
         public string[] CachedNames;
 
+        [JsonProperty]
+        public string GroupMaxName;
+
         public void Init(ICoreServerAPI api, BlockLayerConfig blockLayerConfig)
         {
             if (TileGenerator != null)

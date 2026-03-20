@@ -190,8 +190,7 @@ namespace Vintagestory.GameContent.Mechanics
                     Api.World.PlaySoundAt(new AssetLocation("sounds/effect/toolbreak"), Position, 0, null, false, 20, 1f);
                     while (sailLength-- > 0)
                     {
-                        ItemStack stacks = new ItemStack(Api.World.GetItem(new AssetLocation("sail")), 4);
-                        Api.World.SpawnItemEntity(stacks, Blockentity.Pos);
+                        Api.World.SpawnItemEntity(SailStack, Blockentity.Pos);
                     }
                     sailLength = 0;
                     Blockentity.MarkDirty(true);
