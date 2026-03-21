@@ -26,7 +26,7 @@ namespace Vintagestory.GameContent
             if (api.World.Config.GetBool("lightningFires", false))
             {
                 var rnd = api.World.Rand;
-                var npos = impactPos.AsBlockPos.Add(rnd.Next(2) - 1, rnd.Next(2) - 1, rnd.Next(2) - 1);
+                var npos = impactPos.AsBlockPos.Add(rnd.Next(3) - 1, rnd.Next(3) - 1, rnd.Next(3) - 1);
                 var block = api.World.BlockAccessor.GetBlock(npos);
                 var combustibleProps = block.GetCombustibleProperties(api.World, null, npos);
                 if (combustibleProps != null)
