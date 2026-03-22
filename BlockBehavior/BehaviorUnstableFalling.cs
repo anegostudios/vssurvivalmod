@@ -190,28 +190,36 @@ namespace Vintagestory.GameContent
             handling = EnumHandling.PassThrough;
             return false;
         }
-
+        
         public void createFallingBlock(IWorldAccessor world, BlockPos ourPos)
         {
             var block = world.BlockAccessor.GetBlock(ourPos);
             if (this.block != block) return; // Block was already removed
 
-            // Prevents duplication
-            Entity entity = world.GetNearestEntity(ourPos.ToVec3d().Add(0.5, 0.5, 0.5), 1, 1.5f, (e) =>
-            {
-                return e is EntityBlockFalling ebf && ebf.initialPos.Equals(ourPos);
-            });
-            if (entity != null) return;
-
             // Change after falling, like a broken variant or a "lower shape"
-            if (variantAfterFalling != null) block = world.BlockAccessor.GetBlock(variantAfterFalling);
+            if (variantAfterFalling != null)
+                block = world.BlockAccessor.GetBlock(variantAfterFalling);
 
             var be = world.BlockAccessor.GetBlockEntity(ourPos);
-            EntityBlockFalling entityBf = new EntityBlockFalling(block, be, ourPos, fallSound, impactDamageMul, true, dustIntensity);
 
-            world.SpawnEntity(entityBf);
+            var fsm = world.Api.ModLoader.GetModSystem<FallingSpawnManager>();
+
+            if (fsm==null)
+                return;
+
+            // we use a system to limit the number of falling blocks
+            fsm.RequestSpawn(
+                block,
+                be,
+                ourPos,
+                fallSound,
+                impactDamageMul,
+                true,        
+                dustIntensity
+            );
         }
 
+        
         public virtual bool IsAttached(IBlockAccessor blockAccessor, BlockPos pos)
         {
             BlockPos tmpPos;
