@@ -253,36 +253,55 @@ namespace Vintagestory.GameContent
 
         private void collapseLayer(IWorldAccessor world, IOrderedEnumerable<BlockPos> yorderedPositions, int y)
         {
+            var fsm = world.Api.ModLoader.GetModSystem<FallingSpawnManager>();
+
+            BlockBehaviorUnstableRock bh;
+            Block block;
+            Entity entity;
+
+            // Collapse all blocks in this layer, and register a callback for the next layer
             foreach (var pos in yorderedPositions)
             {
-                if (pos.Y < y) continue;
+                if (pos.Y < y)
+                    continue;
+
                 if (pos.Y > y)
                 {
                     world.Api.Event.RegisterCallback((dt) => collapseLayer(world, yorderedPositions, pos.Y), 200);
                     return;
                 }
 
-                // Prevents duplication
-                Entity entity = world.GetNearestEntity(pos.ToVec3d().Add(0.5, 0.5, 0.5), 1, 1.5f, (e) =>
-                {
-                    return e is EntityBlockFalling ebf && ebf.initialPos.Equals(pos);
-                });
 
-                if (entity == null)
-                {
-                    var block = world.BlockAccessor.GetBlock(pos, BlockLayersAccess.Solid);
-                    var bh = block.GetBehavior<BlockBehaviorUnstableRock>();
-                    if (bh == null) continue;
+                block = world.BlockAccessor.GetBlock(pos, BlockLayersAccess.Solid);
+                bh = block.GetBehavior<BlockBehaviorUnstableRock>();
 
-                    EntityBlockFalling entityblock = new EntityBlockFalling(bh.collapsedBlock, world.BlockAccessor.GetBlockEntity(pos), pos, fallSound, impactDamageMul, true, dustIntensity);
-                    world.SpawnEntity(entityblock);
-                }
+                if (bh == null || fsm == null)
+                    continue;
+
+                // we use a system to limit the number of falling blocks
+                fsm.RequestSpawn(
+                        bh.collapsedBlock,
+                        world.BlockAccessor.GetBlockEntity(pos),
+                        pos,
+                        fallSound,
+                        impactDamageMul,
+                        true, 
+                        dustIntensity
+                );
+
             }
 
             var firstpos = yorderedPositions.First();
             for (int i = 0; i < 3; i++)
             {
-                checkCollapsibleNeighbours(world, firstpos.AddCopy(world.Rand.Next(17) - 8, 0, world.Rand.Next(17) - 8));
+                // Capture the position before registering the callback
+                var npos = firstpos.AddCopy(
+                    world.Rand.Next(17) - 8, 0, world.Rand.Next(17) - 8);
+
+                world.Api.Event.RegisterCallback(
+                    (dt) => checkCollapsibleNeighbours(world, npos),
+                    300 + i * 100  // a small spread so as not to trigger everything at once, otherwise there may be an error with an overflow of the callback stack
+                );
             }
         }
 
