@@ -66,7 +66,7 @@ namespace Vintagestory.GameContent
             var world = Blockentity.Api.World;
             var ourPos = Blockentity.Pos;
             
-            var ourRainHeight = world.BlockAccessor.GetRainMapHeightAt(ourPos.X, ourPos.Z);
+           var ourRainHeight = world.BlockAccessor.GetRainMapHeightAt(ourPos);
 
             // Something may be above us blocking line of sight to the sky
             if (ourRainHeight != ourPos.Y) return;
@@ -81,7 +81,8 @@ namespace Vintagestory.GameContent
 
             yDiff = GameMath.Min(40, yDiff);
 
-            var posA = new Vec2d(Blockentity.Pos.X, Blockentity.Pos.Z);
+            //Centers the protective area on the lightning rod
+            var posA = new Vec2d(ourPos.X + 0.5, OurPos.Z + 0.5);
             if (posA.DistanceTo(impactPos.X, impactPos.Z) > yDiff) return;
 
             impactPos = Blockentity.Pos.ToVec3d();
