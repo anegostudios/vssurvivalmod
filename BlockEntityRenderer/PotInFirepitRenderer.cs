@@ -32,7 +32,7 @@ namespace Vintagestory.GameContent
             this.pos = pos;
             this.isInOutputSlot = isInOutputSlot;
 
-            potPos = new Vec3d(pos.X + 0.5d, pos.Y + 0.5d, pos.Z + 0.5d);  // Центр костра
+            potPos = new Vec3d(pos.X + 0.5d, pos.Y + 0.5d, pos.Z + 0.5d);  // Firepit center
             aabb = new Cuboidd(pos.X, pos.Y, pos.Z, pos.X + 1, pos.Y + 1, pos.Z + 1);
 
             BlockCookedContainer potBlock = capi.World.GetBlock(stack.Collectible.CodeWithVariant("type", "cooked")) as BlockCookedContainer;
