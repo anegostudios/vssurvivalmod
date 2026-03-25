@@ -517,7 +517,6 @@ namespace Vintagestory.GameContent
         public void GetDecalMesh(ITexPositionSource decalTexSource, out MeshData meshdata)
         {
             int size = Layers * 2;
-
             Shape shape = capi.TesselatorManager.GetCachedShape(new AssetLocation("block/basic/layers/" + GameMath.Clamp(size, 2, 16) + "voxel"));
             capi.Tesselator.TesselateShape("coalpile", shape, out meshdata, decalTexSource);
         }
@@ -530,7 +529,7 @@ namespace Vintagestory.GameContent
                 if (!inventory[0].Empty)
                 {
                     int size = Layers * 2;
-                    if (mesher is EntityBlockFallingRenderer) size = 2; // Haxy solution >.>
+                    if (mesher is ModSystemRenderFallingBlocksFast) size = 2; // Haxy solution >.>
 
                     Shape shape = capi.TesselatorManager.GetCachedShape(new AssetLocation("block/basic/layers/" + GameMath.Clamp(size, 2, 16) + "voxel"));
                     capi.Tesselator.TesselateShape("coalpile", shape, out MeshData meshdata, this);

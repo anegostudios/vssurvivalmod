@@ -15,22 +15,15 @@ public class BEBehaviorFruitingBushMesh : BlockEntityBehavior, ITexPositionSourc
     {
         get
         {
-            var texturePath = textureMapping[textureCode]
-                .Replace("{type}", Block.Variant["type"])
-                .Replace("{variant}", textureVariant)
-                .Replace("{berrystage}", berryStage)
-                .Replace("{healthstate}", healthState)
-            ;
-            var loc = AssetLocation.Create(texturePath, Block.Code.Domain);
-            capi.BlockTextureAtlas.GetOrInsertTexture(loc, out _, out var texPos);
+            textureMapping.TryGetValue(textureCode, out var compositeTexture);
+            capi.BlockTextureAtlas.GetOrInsertTexture(compositeTexture.Base, out _, out var texPos);
             return texPos;
         }
     }
 
     public FruitingBushState BState => Blockentity.GetBehavior<BEBehaviorFruitingBush>().BState;
-    protected string textureVariant;
-    protected string berryStage;
-    protected string healthState;
+    protected string randomVariant;
+    protected string healthAndBerryState;
 
     public BEBehaviorFruitingBushMesh(BlockEntity blockentity) : base(blockentity)
     {
@@ -44,7 +37,7 @@ public class BEBehaviorFruitingBushMesh : BlockEntityBehavior, ITexPositionSourc
     }
 
     MeshData? bushMesh;
-    Dictionary<string, string>? textureMapping;
+    Dictionary<string, CompositeTexture>? textureMapping;
 
     public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
     {
@@ -65,31 +58,106 @@ public class BEBehaviorFruitingBushMesh : BlockEntityBehavior, ITexPositionSourc
         }
     }
 
-    protected virtual string meshCacheKey => Block.Code + "-" + BState.Growthstate + "-" + healthState + "-" + textureVariant;
+    protected virtual string meshCacheKey => Block.Code + "-" + healthAndBerryState + "-" + randomVariant;
     protected void ensureMeshExists()
     {
-        if (bushMesh != null) return;
-        textureVariant = "" + (1+GameMath.MurmurHash3Mod(Pos.X, Pos.Y, Pos.Z, Block.Attributes["textureVariants"].AsInt()));
-        var healthState = Blockentity.GetBehavior<BEBehaviorFruitingBush>().GetHealthState();
-        this.healthState = healthState.ToString().ToLowerInvariant();
+        if (this.bushMesh != null) return;
+
+        bool hideBerries = false;
+        bool isYoung = false;
+        string berryStage = "";
+        string healthState = healthAndBerryState = Blockentity.GetBehavior<BEBehaviorFruitingBush>().GetHealthState().ToString().ToLowerInvariant();
+        if (healthState == "barren")
+        {
+            hideBerries = true;
+            healthAndBerryState = "empty";
+        }
+
+        switch (BState.Growthstate)
+        {
+            case EnumFruitingBushGrowthState.Flowering:
+                berryStage = "flowering";
+                if (healthAndBerryState != "empty") healthAndBerryState += "-" + berryStage;
+                break;
+            case EnumFruitingBushGrowthState.Ripening:
+                berryStage = "unripe";
+                if (healthAndBerryState != "empty") healthAndBerryState += "-" + berryStage;
+                break;
+            case EnumFruitingBushGrowthState.Ripe:
+                berryStage = "ripe";
+                if (healthAndBerryState != "empty") healthAndBerryState += "-" + berryStage;
+                break;
+            case EnumFruitingBushGrowthState.Mature:
+                hideBerries = true;
+                healthAndBerryState = "empty";
+                break;
+            case EnumFruitingBushGrowthState.Dormant:
+                hideBerries = true;
+                healthAndBerryState = "dormant";
+                break;
+            case EnumFruitingBushGrowthState.Young:
+                hideBerries = true;
+                isYoung = true;
+                healthAndBerryState = "young"; break;
+        }
+
+        int posHash = GameMath.MurmurHash3(Pos.X, Pos.Y, Pos.Z);
+        int textureVariant = GameMath.Mod(posHash, Block.Attributes[isYoung ? "youngTextureVariants" : "textureVariants"].AsInt(1));
+        randomVariant = "" + textureVariant;
+
+        var cshape = Block.Shape;
+        if (isYoung)
+        {
+            cshape = Block.Attributes["youngShape"].AsObject<CompositeShape>();
+            cshape.LoadAlternates(capi.Assets, capi.Logger);
+        }
+
+        if (cshape.BakedAlternates != null)
+        {
+            int variant = GameMath.Mod(posHash, cshape.BakedAlternates.Length);
+            randomVariant += "-" + variant;
+            cshape = cshape.BakedAlternates[variant];
+        }
 
         bushMesh = ObjectCacheUtil.GetOrCreate(capi, meshCacheKey, () =>
         {
             string[]? ignoreElements = null;
 
-            switch (BState.Growthstate)
+            if (hideBerries) ignoreElements = ["Berries/*"];
+
+            textureMapping = Block.Attributes[isYoung ? "youngTextureMapping" : "textureMapping"].AsObject<Dictionary<string, CompositeTexture>>();
+
+            foreach ((string key, var compositeTexture) in textureMapping)
             {
-                case EnumFruitingBushGrowthState.Flowering: berryStage = "flowering"; break;
-                case EnumFruitingBushGrowthState.Ripening: berryStage = "unripe"; break;
-                case EnumFruitingBushGrowthState.Ripe: berryStage = "ripe"; break;
-                default: ignoreElements = ["Berries/*"]; break;
+                compositeTexture.Base.Path = compositeTexture.Base.Path
+                        .Replace("{berrystage}", berryStage)
+                        .Replace("{healthstate}", healthState)
+                    ;
+
+                if (compositeTexture.Alternates != null)
+                {
+                    foreach (CompositeTexture alternate in compositeTexture.Alternates)
+                    {
+                        alternate.Base.Path = alternate.Base.Path
+                                .Replace("{berrystage}", berryStage)
+                                .Replace("{healthstate}", healthState)
+                            ;
+                    }
+                }
+
+                CompositeTexture.Bake(capi.Assets, compositeTexture);
+                int alternatesLength = compositeTexture.Alternates?.Length ?? 0;
+                if (alternatesLength > 0)
+                {
+                    int id = GameMath.Mod(textureVariant, alternatesLength + 1);
+                    if (id > 0)
+                    {
+                        textureMapping[key] = compositeTexture.Alternates[id - 1];
+                    }
+                }
             }
 
-            if (healthState == EnumFruitingBushHealthState.Barren) ignoreElements = ["Berries/*"];
-
-            textureMapping = Block.Attributes["textureMapping"].AsObject<Dictionary<string, string>>();
-
-            var loc = Block.Shape.Base.Clone();
+            var loc = cshape.Base.Clone();
             var shape = capi.Assets.Get<Shape>(loc.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json"));
 
             if (BState.Growthstate == EnumFruitingBushGrowthState.Dormant && Block.Variant["type"] != "strawberry") ignoreElements = ignoreElements.Append(["Leaves/*"]);
@@ -98,7 +166,8 @@ public class BEBehaviorFruitingBushMesh : BlockEntityBehavior, ITexPositionSourc
             {
                 TexSource = this,
                 UsesColorMap = true,
-                IgnoreElements = ignoreElements
+                IgnoreElements = ignoreElements,
+                Rotation = cshape.RotateXYZCopy
             }, shape, out var bushMesh);
 
             for (int i = 0; i < bushMesh.ColorMapIdsCount; i++)

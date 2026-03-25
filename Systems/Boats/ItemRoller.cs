@@ -98,8 +98,18 @@ namespace Vintagestory.GameContent
         {
             Matrixf matrixf = new Matrixf();
             matrixf.RotateY(i * GameMath.PIHALF);
-            if (i == 2) matrixf.Translate(0, 0, -1);
-            if (i == 3) matrixf.Translate(1, 0, -1);
+            switch (i)
+            {
+                case 1:
+                    matrixf.Translate(-1f, 0f, 0f);
+                    break;
+                case 2:
+                    matrixf.Translate(-1f, 0f, -1f);
+                    break;
+                case 3:
+                    matrixf.Translate(0f, 0f, -1f);
+                    break;
+            }
 
             List<BlockPos> list = new List<BlockPos>();
             var vec1 = matrixf.TransformVector(new Vec4f(startlist[0].X, startlist[0].Y, startlist[0].Z, 1));
@@ -172,10 +182,6 @@ namespace Vintagestory.GameContent
             var entity = byEntity.World.ClassRegistry.CreateEntity(type);
             entity.Pos.SetPos(blockSel.Position.ToVec3d().AddCopy(0.5, 1, 0.5));
             entity.Pos.Yaw = -GameMath.PIHALF + orient * GameMath.PIHALF;
-
-            if (orient == 1) entity.Pos.Z -= 1;
-            if (orient == 2) entity.Pos.X -= 1;
-            if (orient == 3) entity.Pos.Z += 1;
 
             byEntity.World.SpawnEntity(entity);
 

@@ -32,34 +32,51 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 return false;
             }
+
+            BlockFacing face = GetFacingForPlacement(world, blockSel.Position, true, out bool invalid);
+            if (invalid) return false;
+
+            bool ok = face != null;
+            if (!ok) ok = base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref failureCode);
+
+            if (ok)
+            {
+                WasPlaced(world, blockSel.Position, face);      // face may be null here if we called the base method
+            }
+            return ok;
+        }
+
+        protected virtual BlockFacing GetFacingForPlacement(IWorldAccessor world, BlockPos position, bool doPlace, out bool invalid)
+        {
+            invalid = false;
             foreach (BlockFacing face in BlockFacing.HORIZONTALS)
             {
-                BlockPos pos = blockSel.Position.AddCopy(face);
+                BlockPos pos = position.AddCopy(face);
                 IMechanicalPowerBlock block = world.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
                 if (block != null)
                 {
                     if (block.HasMechPowerConnectorAt(world, pos, face.Opposite, this))
                     {
                         //Prevent rotor back-to-back placement
-                        if (block is IMPPowered) return false;
+                        if (block is IMPPowered)
+                        {
+                            invalid = true;
+                            return null;
+                        }
 
-                        Block toPlaceBlock = world.GetBlock(CodeWithVariant("side", face.Opposite.Code));
-                        world.BlockAccessor.SetBlock(toPlaceBlock.BlockId, blockSel.Position);
+                        if (doPlace)
+                        {
+                            Block toPlaceBlock = world.GetBlock(CodeWithVariant("side", face.Opposite.Code));
+                            world.BlockAccessor.SetBlock(toPlaceBlock.BlockId, position);
+                            block.DidConnectAt(world, pos, face.Opposite);
+                        }
 
-                        block.DidConnectAt(world, pos, face.Opposite);
-                        WasPlaced(world, blockSel.Position, face);
-
-                        return true;
+                        return face;
                     }
                 }
             }
 
-            bool ok = base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref failureCode);
-            if (ok)
-            {
-                WasPlaced(world, blockSel.Position, null);
-            }
-            return ok;
+            return null;
         }
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
@@ -88,5 +105,10 @@ namespace Vintagestory.GameContent.Mechanics
             ];
         }
 
+
+        public BlockFacing GetFacing()
+        {
+            return BlockFacing.FromCode(Variant["side"]);
+        }
     }
 }

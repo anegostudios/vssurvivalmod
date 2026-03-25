@@ -273,7 +273,8 @@ namespace Vintagestory.GameContent
                 if (Data.SpawnRangeMode == EnumSpawnRangeMode.WithinMinMaxRange && (distanceSq < Data.MinPlayerRange * Data.MinPlayerRange || distanceSq > Data.MaxPlayerRange * Data.MaxPlayerRange)) return;
             }
 
-            if (Data.ClimateMode > 0)
+            // Disabled until rc.6
+            /*if (Data.ClimateMode > 0)
             {
                 var mode = Data.ClimateMode == 1 ? EnumGetClimateMode.NowValues : EnumGetClimateMode.WorldGenValues;
                 var climate = Api.World.BlockAccessor.GetClimateAt(Pos, mode);
@@ -289,7 +290,7 @@ namespace Vintagestory.GameContent
                     if (mode == EnumGetClimateMode.WorldGenValues) decrementSpawnCount(); // self destruct if stuff can never spawn here
                     return;
                 }
-            }
+            }*/
 
             if (type == null) return;
 

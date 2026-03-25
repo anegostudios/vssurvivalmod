@@ -1633,9 +1633,8 @@ namespace Vintagestory.GameContent
             foreach (var slot in inventory)
             {
                 if (slot.Empty) continue;
-
-                var stacklighthsv = slot.Itemstack.Collectible.GetLightHsv(Api.World.BlockAccessor, null, slot.Itemstack);
-                if (lighthsv == null) lighthsv = (byte[])stacklighthsv.Clone();
+                var stacklighthsv = slot.Itemstack?.Collectible?.GetLightHsv(Api.World.BlockAccessor, null, slot.Itemstack);
+                if (lighthsv == null) lighthsv = (byte[])stacklighthsv?.Clone();
                 else lighthsv = ColorUtil.MergeLightHSV(lighthsv, stacklighthsv);
             }
 

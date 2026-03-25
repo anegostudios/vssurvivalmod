@@ -472,7 +472,7 @@ namespace Vintagestory.GameContent
             {
                 DeductFromEntity(Api, buyingPlayer.Entity, deduct);
                 GiveToTrader(deduct);
-            } else
+            } else if(deduct < 0)
             {
                 GiveOrDrop(buyingPlayer.Entity, new ItemStack(Api.World.GetItem(new AssetLocation("gear-rusty"))), -deduct, null);
                 DeductFromTrader(-deduct);
@@ -496,7 +496,7 @@ namespace Vintagestory.GameContent
 
         public void DeductFromTrader(int units)
         {
-            MoneySlot.Itemstack.StackSize -= units;
+            MoneySlot.Itemstack?.StackSize -= units;
             if (MoneySlot.StackSize <= 0) MoneySlot.Itemstack = null;
             MoneySlot.MarkDirty();
         }

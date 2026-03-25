@@ -1,6 +1,7 @@
 using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
@@ -108,27 +109,47 @@ namespace Vintagestory.GameContent
 
             if (entityItem.World.Side == EnumAppSide.Server)
             {
-                Vec3d pos = entityItem.Pos.XYZ;
-
-                WaterTightContainableProps props = BlockLiquidContainerBase.GetContainableProps(entityItem.Itemstack);
-                float litres = (float)entityItem.Itemstack.StackSize / (props?.ItemsPerLitre ?? 1f);
-
-                entityItem.World.SpawnCubeParticles(pos, entityItem.Itemstack, 0.75f, Math.Min(100, (int)(2 * litres)), 0.45f);
-                entityItem.World.PlaySoundAt(new AssetLocation("sounds/environment/smallsplash"), (float)pos.X, (float)pos.Y, (float)pos.Z, null);
-
-                BlockEntityFarmland bef = api.World.BlockAccessor.GetBlockEntity(pos.AsBlockPos) as BlockEntityFarmland;
-                if (bef != null)
-                {
-                    bef.WaterFarmland(Height / 6f, false);
-                    bef.MarkDirty(true);
-                }
+                splashLiquid(entityItem.Itemstack, entityItem.Pos.XYZ);
             }
-
-
 
             base.OnGroundIdle(entityItem);
         }
 
+        private void splashLiquid(ItemStack stack, Vec3d pos)
+        {
+            WaterTightContainableProps props = BlockLiquidContainerBase.GetContainableProps(stack);
+            float litres = (float)stack.StackSize / (props?.ItemsPerLitre ?? 1f);
+
+            api.World.SpawnCubeParticles(pos, stack, 0.75f, Math.Min(100, (int)(2 * litres)), 0.45f);
+            api.World.PlaySoundAt(new AssetLocation("sounds/environment/smallsplash"), (float)pos.X, (float)pos.Y, (float)pos.Z, null);
+
+            BlockEntityFarmland bef = api.World.BlockAccessor.GetBlockEntity(pos.AsBlockPos) as BlockEntityFarmland;
+            if (bef != null)
+            {
+                bef.WaterFarmland(Height / 6f, false);
+                bef.MarkDirty(true);
+            }
+        }
+
+        public override void OnCollected(ItemStack stack, Entity entity)
+        {
+            base.OnCollected(stack, entity);
+        }
+
+        public override int GetRandomColor(ICoreClientAPI capi, ItemStack stack)
+        {
+            var props = BlockLiquidContainerBase.GetContainableProps(stack);
+            if (props != null)
+            {
+                props.WhenFilled?.Stack?.Resolve(api.World, "get random color resolve");
+                if (props.WhenFilled.Stack.ResolvedItemStack != null)
+                {
+                    return props.WhenFilled.Stack.ResolvedItemStack.Collectible.GetRandomColor(capi, props.WhenFilled.Stack.ResolvedItemStack);
+                }
+            }
+            var pos = capi.World.Player.Entity.Pos;
+            return capi.World.ApplyColorMapOnRgba(ClimateColorMap, SeasonColorMap, base.GetRandomColor(capi, stack), (int)pos.X, (int)pos.Y, (int)pos.Z);
+        }
 
 
         public override bool CanPlaceBlock(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref string failureCode)

@@ -230,12 +230,6 @@ namespace Vintagestory.GameContent
         {
             stopSound();
 
-            if ((byEntity as EntityPlayer).Player.WorldData.CurrentGameMode != EnumGameMode.Creative)
-            {
-                slot.Itemstack.Collectible.DamageItem(byEntity.World, byEntity, slot);
-                slot.MarkDirty();
-            }
-
             if (blockSel == null || blockSel.Face != BlockFacing.UP) return;
 
             var block = api.World.BlockAccessor.GetBlock(blockSel.Position);
@@ -246,6 +240,13 @@ namespace Vintagestory.GameContent
                 {
                     spawnWorm(slot, byEntity, blockSel, cnt);
                 }
+            }
+
+            // Potentially destroy this item on 0 durability remaining, only *after* getting its attributes and spawning the worms
+            if ((byEntity as EntityPlayer).Player.WorldData.CurrentGameMode != EnumGameMode.Creative)
+            {
+                slot.Itemstack.Collectible.DamageItem(byEntity.World, byEntity, slot);
+                slot.MarkDirty();
             }
 
             base.OnHeldInteractStop(secondsUsed, slot, byEntity, blockSel, entitySel);

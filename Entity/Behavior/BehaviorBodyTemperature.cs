@@ -30,7 +30,7 @@ namespace Vintagestory.GameContent
         BlockPos tmpPos = new BlockPos(Dimensions.WillSetLater);
 
         bool inEnclosedRoom;
-        
+
         float tempChange;
         float clothingBonus;
 
@@ -170,51 +170,15 @@ namespace Vintagestory.GameContent
                 // No need to call this on the client, because we sync nearHeatSourceStrength
                 if (api.Side == EnumAppSide.Server)
                 {
-                    Room room = api.ModLoader.GetModSystem<RoomRegistry>().GetRoomForPosition(plrpos);
-                    // Check whether it is a proper room, or something like a room i.e. with a roof, for exaample a natural cave
-                    inEnclosedRoom = room.ExitCount == 0 || room.SkylightCount < room.NonSkylightCount;
-                    float nearHeatSourceStrength = 0;
-
-                    double px = entity.Pos.X;
-                    double py = entity.Pos.Y + 0.9;
-                    double pz = entity.Pos.Z;
-
-                    // Fire heat proximity effect (measured by straight-line shortest distance to fire, i.e. what the player sees visually)
-                    // within 1 block from the edge of the fire block: full heat
-                    // within 2 blocks from the edge of the fire block: ~66% heat
-                    // within 3 blocks from the edge of the fire block: ~33% heat
-                    // max range (3 blocks diagonally in both X and Z directions): ~12% heat
-
-                    // similar consequences in a room, but slower falloff, still 33% heat at 6 blocks range
-
-                    // http://fooplot.com/#W3sidHlwZSI6MCwiZXEiOiJtaW4oMSw5Lyg4K3heMi41KSkiLCJjb2xvciI6IiMwMDAwMDAifSx7InR5cGUiOjAsImVxIjoibWluKDEsOS8oOCt4XjEuNzUpKSIsImNvbG9yIjoiIzAwMDAwMCJ9LHsidHlwZSI6MTAwMCwid2luZG93IjpbIjAiLCI5IiwiMCIsIjEuMiJdfV0-
-
-                    double proximityPower = inEnclosedRoom ? 0.875 : 1.25;
-                    BlockPos min, max;
-                    if (inEnclosedRoom && room.Location.SizeX >= 1 && room.Location.SizeY >= 1 && room.Location.SizeZ >= 1)
+                    try
                     {
-                        min = new BlockPos(room.Location.MinX, room.Location.MinY, room.Location.MinZ);
-                        max = new BlockPos(room.Location.MaxX, room.Location.MaxY, room.Location.MaxZ);
+                        nearHeatSourceStrength = getNearHeatSourceStrength();
+                    } catch (Exception e)
+                    {
+                        api.Logger.Warning("Exception thrown while calculating near heat source strength for {0} at {1}:", entity.GetName(), entity.Pos?.XYZ);
+                        api.Logger.Error(e);
+                        return;
                     }
-                    else
-                    {
-                        min = plrpos.AddCopy(-3, -3, -3);
-                        max = plrpos.AddCopy(3, 3, 3);
-                    }
-
-                    tmpPos.SetDimension(plrpos.dimension);
-                    blockAccess.Begin();
-                    blockAccess.WalkBlocks(min, max, (block, x, y, z) =>
-                    {
-                        var src = block.GetInterface<IHeatSource>(api.World, tmpPos.Set(x,y,z));
-                        if (src != null)
-                        {
-                            float factor = Math.Min(1f, 9 / (8 + (float)Math.Pow(tmpPos.DistanceSqToNearerEdge(px, py, pz), proximityPower)));
-                            nearHeatSourceStrength += src.GetHeatStrength(api.World, tmpPos, plrpos) * factor;
-                        }
-                    });
-
-                    this.nearHeatSourceStrength = nearHeatSourceStrength;
                 }
 
                 updateWearableConditions();
@@ -224,105 +188,159 @@ namespace Vintagestory.GameContent
 
             if (accum > 1 && api.Side == EnumAppSide.Server) // Don't run on the client, it messes with freezingEffectStrength
             {
-                var eplr = entity as EntityPlayer;
-                IPlayer plr = eplr?.Player;
-                
-                if (api.Side == EnumAppSide.Server && (plr as IServerPlayer)?.ConnectionState != EnumClientState.Playing) return;
+                updateBodyTemperature();
+            }
+        }
 
-                if (plr?.WorldData.CurrentGameMode == EnumGameMode.Creative || plr?.WorldData.CurrentGameMode == EnumGameMode.Spectator)
+        protected void updateBodyTemperature()
+        {
+            var eplr = entity as EntityPlayer;
+            IPlayer plr = eplr?.Player;
+
+            if (api.Side == EnumAppSide.Server && (plr as IServerPlayer)?.ConnectionState != EnumClientState.Playing) return;
+
+            if (plr?.WorldData.CurrentGameMode == EnumGameMode.Creative || plr?.WorldData.CurrentGameMode == EnumGameMode.Spectator)
+            {
+                CurBodyTemperature = NormalBodyTemperature;
+                entity.WatchedAttributes.SetFloat("freezingEffectStrength", 0);
+                return;
+            }
+
+            if (plr != null && (eplr.Controls.TriesToMove || eplr.Controls.Jump || eplr.Controls.LeftMouseDown || eplr.Controls.RightMouseDown))
+            {
+                lastMoveMs = entity.World.ElapsedMilliseconds;
+            }
+
+            ClimateCondition conds = api.World.BlockAccessor.GetClimateAt(plrpos, EnumGetClimateMode.NowValues);
+            if (conds == null) return;
+            Vec3d windspeed = api.World.BlockAccessor.GetWindSpeedAt(plrpos);
+
+            bool rainExposed = api.World.BlockAccessor.GetRainMapHeightAt(plrpos) <= plrpos.Y;
+
+            float wetnessFromRain = conds.Rainfall * (rainExposed ? 0.06f : 0) * (conds.Temperature < -1 ? 0.05f : 1); /* Get wet 20 times slower with snow */
+            if (wetnessFromRain > 0 && eplr != null)
+            {
+                var charInv = eplr.Player.InventoryManager.GetOwnInventory(GlobalConstants.characterInvClassName);
+                var headSlot = charInv?.FirstOrDefault(slot => (slot as ItemSlotCharacter).Type == EnumCharacterDressType.Head);
+
+                if (headSlot != null && !headSlot.Empty)
                 {
-                    CurBodyTemperature = NormalBodyTemperature;
-                    entity.WatchedAttributes.SetFloat("freezingEffectStrength", 0);
-                    return;
-                }
-
-                if (plr != null && (eplr.Controls.TriesToMove || eplr.Controls.Jump || eplr.Controls.LeftMouseDown || eplr.Controls.RightMouseDown))
-                {
-                    lastMoveMs = entity.World.ElapsedMilliseconds;
-                }
-
-                ClimateCondition conds = api.World.BlockAccessor.GetClimateAt(plrpos, EnumGetClimateMode.NowValues);
-                if (conds == null) return;
-                Vec3d windspeed = api.World.BlockAccessor.GetWindSpeedAt(plrpos);
-
-                bool rainExposed = api.World.BlockAccessor.GetRainMapHeightAt(plrpos) <= plrpos.Y;
-
-                float wetnessFromRain = conds.Rainfall * (rainExposed ? 0.06f : 0) * (conds.Temperature < -1 ? 0.05f : 1); /* Get wet 20 times slower with snow */
-                if (wetnessFromRain > 0 && eplr != null)
-                {
-                    var charInv = eplr.Player.InventoryManager.GetOwnInventory(GlobalConstants.characterInvClassName);
-                    var headSlot = charInv?.FirstOrDefault(slot => (slot as ItemSlotCharacter).Type == EnumCharacterDressType.Head);
-
-                    if (headSlot != null && !headSlot.Empty)
-                    {
-                        wetnessFromRain *= GameMath.Clamp(1 - headSlot.Itemstack.ItemAttributes["rainProtectionPerc"].AsFloat(0), 0, 1);
-                    }
-                }
-
-                Wetness = GameMath.Clamp(
-                    Wetness
-                    + wetnessFromRain
-                    + (entity.Swimming ? 1 : 0)
-                    - (float)Math.Max(0, (api.World.Calendar.TotalHours - LastWetnessUpdateTotalHours) * GameMath.Clamp(nearHeatSourceStrength, 1, 2))
-                , 0, 1);
-
-                LastWetnessUpdateTotalHours = api.World.Calendar.TotalHours;
-                accum = 0;
-
-                float sprintBonus = sprinterCounter / 2f;
-                float wetnessDebuff = (float)Math.Max(0, Wetness - 0.1) * 15f;
-
-                // Can bear anything above 10 degrees without clothing, while standing still
-                float hereTemperature = conds.Temperature + clothingBonus + sprintBonus - wetnessDebuff;
-
-                float tempDiff = hereTemperature - GameMath.Clamp(hereTemperature, bodyTemperatureResistance, 50);
-                // Above 10 degrees, slowly warms up
-                if (tempDiff == 0) tempDiff = Math.Max((hereTemperature - bodyTemperatureResistance), 0);
-
-                float ambientTempChange = GameMath.Clamp(tempDiff / 6f, -6, 6);
-
-                tempChange = nearHeatSourceStrength + (inEnclosedRoom ? 1 : -(float)Math.Max((windspeed.Length() - 0.15) * 2, 0) + ambientTempChange);
-
-                bool sleeping = entity.GetBehavior<EntityBehaviorTiredness>()?.IsSleeping == true;
-                if (sleeping)
-                {
-                    if (inEnclosedRoom)
-                    {
-                        tempChange = GameMath.Clamp(NormalBodyTemperature - CurBodyTemperature, -0.15f, 0.15f);
-                    } else if (!rainExposed)
-                    {
-                        tempChange += GameMath.Clamp(NormalBodyTemperature - CurBodyTemperature, 1f, 1f);
-                    }
-                }
-
-                if (entity.IsOnFire) tempChange = Math.Max(25, tempChange);
- 
-
-                float tempUpdateHoursPassed = (float)(api.World.Calendar.TotalHours - BodyTempUpdateTotalHours);
-                if (tempUpdateHoursPassed > 0.01)
-                {
-                    if (tempChange < -0.5 || tempChange > 0)
-                    {
-                        if (tempChange > 0.5) tempChange *= 2; // Warming up with a firepit is twice as fast, because nobody wants to wait forever
-                        CurBodyTemperature = GameMath.Clamp(CurBodyTemperature + tempChange * tempUpdateHoursPassed, 31, 45);
-                    }
-
-                    BodyTempUpdateTotalHours = api.World.Calendar.TotalHours;
-
-                    float str = GameMath.Clamp((NormalBodyTemperature - CurBodyTemperature) / 4f - 0.5f, 0, 1);
-
-                    entity.WatchedAttributes.SetFloat("freezingEffectStrength", str);
-
-                    if (NormalBodyTemperature - CurBodyTemperature > 4)
-                    {
-                        damagingFreezeHours += tempUpdateHoursPassed;
-                    } else
-                    {
-                        damagingFreezeHours = 0;
-                    }
-                    
+                    wetnessFromRain *= GameMath.Clamp(1 - headSlot.Itemstack.ItemAttributes["rainProtectionPerc"].AsFloat(0), 0, 1);
                 }
             }
+
+            Wetness = GameMath.Clamp(
+                Wetness
+                + wetnessFromRain
+                + (entity.Swimming ? 1 : 0)
+                - (float)Math.Max(0, (api.World.Calendar.TotalHours - LastWetnessUpdateTotalHours) * GameMath.Clamp(nearHeatSourceStrength, 1, 2))
+            , 0, 1);
+
+            LastWetnessUpdateTotalHours = api.World.Calendar.TotalHours;
+            accum = 0;
+
+            float sprintBonus = sprinterCounter / 2f;
+            float wetnessDebuff = (float)Math.Max(0, Wetness - 0.1) * 15f;
+
+            // Can bear anything above 10 degrees without clothing, while standing still
+            float hereTemperature = conds.Temperature + clothingBonus + sprintBonus - wetnessDebuff;
+
+            float tempDiff = hereTemperature - GameMath.Clamp(hereTemperature, bodyTemperatureResistance, 50);
+            // Above 10 degrees, slowly warms up
+            if (tempDiff == 0) tempDiff = Math.Max((hereTemperature - bodyTemperatureResistance), 0);
+
+            float ambientTempChange = GameMath.Clamp(tempDiff / 6f, -6, 6);
+
+            tempChange = nearHeatSourceStrength + (inEnclosedRoom ? 1 : -(float)Math.Max((windspeed.Length() - 0.15) * 2, 0) + ambientTempChange);
+
+            bool sleeping = entity.GetBehavior<EntityBehaviorTiredness>()?.IsSleeping == true;
+            if (sleeping)
+            {
+                if (inEnclosedRoom)
+                {
+                    tempChange = GameMath.Clamp(NormalBodyTemperature - CurBodyTemperature, -0.15f, 0.15f);
+                }
+                else if (!rainExposed)
+                {
+                    tempChange += GameMath.Clamp(NormalBodyTemperature - CurBodyTemperature, 1f, 1f);
+                }
+            }
+
+            if (entity.IsOnFire) tempChange = Math.Max(25, tempChange);
+
+
+            float tempUpdateHoursPassed = (float)(api.World.Calendar.TotalHours - BodyTempUpdateTotalHours);
+            if (tempUpdateHoursPassed > 0.01)
+            {
+                if (tempChange < -0.5 || tempChange > 0)
+                {
+                    if (tempChange > 0.5) tempChange *= 2; // Warming up with a firepit is twice as fast, because nobody wants to wait forever
+                    CurBodyTemperature = GameMath.Clamp(CurBodyTemperature + tempChange * tempUpdateHoursPassed, 31, 45);
+                }
+
+                BodyTempUpdateTotalHours = api.World.Calendar.TotalHours;
+
+                float str = GameMath.Clamp((NormalBodyTemperature - CurBodyTemperature) / 4f - 0.5f, 0, 1);
+
+                entity.WatchedAttributes.SetFloat("freezingEffectStrength", str);
+
+                if (NormalBodyTemperature - CurBodyTemperature > 4)
+                {
+                    damagingFreezeHours += tempUpdateHoursPassed;
+                }
+                else
+                {
+                    damagingFreezeHours = 0;
+                }
+            }
+        }
+
+        private float getNearHeatSourceStrength()
+        {
+            Room room = api.ModLoader.GetModSystem<RoomRegistry>().GetRoomForPosition(plrpos);
+            // Check whether it is a proper room, or something like a room i.e. with a roof, for exaample a natural cave
+            inEnclosedRoom = room.ExitCount == 0 || room.SkylightCount < room.NonSkylightCount;
+            float nearHeatSourceStrength = 0;
+
+            double px = entity.Pos.X;
+            double py = entity.Pos.Y + 0.9;
+            double pz = entity.Pos.Z;
+
+            // Fire heat proximity effect (measured by straight-line shortest distance to fire, i.e. what the player sees visually)
+            // within 1 block from the edge of the fire block: full heat
+            // within 2 blocks from the edge of the fire block: ~66% heat
+            // within 3 blocks from the edge of the fire block: ~33% heat
+            // max range (3 blocks diagonally in both X and Z directions): ~12% heat
+
+            // similar consequences in a room, but slower falloff, still 33% heat at 6 blocks range
+
+            // http://fooplot.com/#W3sidHlwZSI6MCwiZXEiOiJtaW4oMSw5Lyg4K3heMi41KSkiLCJjb2xvciI6IiMwMDAwMDAifSx7InR5cGUiOjAsImVxIjoibWluKDEsOS8oOCt4XjEuNzUpKSIsImNvbG9yIjoiIzAwMDAwMCJ9LHsidHlwZSI6MTAwMCwid2luZG93IjpbIjAiLCI5IiwiMCIsIjEuMiJdfV0-
+
+            double proximityPower = inEnclosedRoom ? 0.875 : 1.25;
+            BlockPos min, max;
+            if (inEnclosedRoom && room.Location.SizeX >= 1 && room.Location.SizeY >= 1 && room.Location.SizeZ >= 1)
+            {
+                min = new BlockPos(room.Location.MinX, room.Location.MinY, room.Location.MinZ);
+                max = new BlockPos(room.Location.MaxX, room.Location.MaxY, room.Location.MaxZ);
+            }
+            else
+            {
+                min = plrpos.AddCopy(-3, -3, -3);
+                max = plrpos.AddCopy(3, 3, 3);
+            }
+
+            tmpPos.SetDimension(plrpos.dimension);
+            blockAccess.Begin();
+            blockAccess.WalkBlocks(min, max, (block, x, y, z) =>
+            {
+                var src = block.GetInterface<IHeatSource>(api.World, tmpPos.Set(x, y, z));
+                if (src != null)
+                {
+                    float factor = Math.Min(1f, 9 / (8 + (float)Math.Pow(tmpPos.DistanceSqToNearerEdge(px, py, pz), proximityPower)));
+                    nearHeatSourceStrength += src.GetHeatStrength(api.World, tmpPos, plrpos) * factor;
+                }
+            });
+            return nearHeatSourceStrength;
         }
 
         private void updateFreezingAnimState()
@@ -433,5 +451,5 @@ namespace Vintagestory.GameContent
         }
 
     }
- 
+
 }

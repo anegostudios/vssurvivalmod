@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Common;
+using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 
@@ -79,22 +79,37 @@ namespace Vintagestory.GameContent
             EnumHandInteract interact = servercontrols.HandUse;
 
             bool nowUseStack = (interact == EnumHandInteract.BlockInteract || interact == EnumHandInteract.HeldItemInteract) || (servercontrols.RightMouseDown && !servercontrols.LeftMouseDown);
-            bool wasUseStack = lastRunningHeldUseAnimation != null && AnimManager.ActiveAnimationsByAnimCode.ContainsKey(lastRunningHeldUseAnimation);
+            bool wasUseStack = lastRunningHeldUseAnimation != null;
+            if (wasUseStack) wasUseStack &= AnimManager.ActiveAnimationsByAnimCode.ContainsKey(lastRunningHeldUseAnimation);
 
             bool nowHitStack = interact == EnumHandInteract.HeldItemAttack || (servercontrols.LeftMouseDown);
-            bool wasHitStack = lastRunningHeldHitAnimation != null && AnimManager.ActiveAnimationsByAnimCode.ContainsKey(lastRunningHeldHitAnimation);
+            bool wasHitStack = lastRunningHeldHitAnimation != null;
+            if (wasHitStack) wasHitStack &= AnimManager.ActiveAnimationsByAnimCode.ContainsKey(lastRunningHeldHitAnimation);
 
+            CollectibleObject? rightHandHeld = rightstack?.Collectible;
+            string nowHeldRightUseAnim, nowHeldRightHitAnim, nowHeldRightIdleAnim;
+            if (rightHandHeld != null)
+            {
+                nowHeldRightUseAnim = rightHandHeld.GetHeldTpUseAnimation(RightHandItemSlot, this);
+                nowHeldRightHitAnim = rightHandHeld.GetHeldTpHitAnimation(RightHandItemSlot, this);
+                nowHeldRightIdleAnim = rightHandHeld.GetHeldTpIdleAnimation(RightHandItemSlot, this, EnumHand.Right);
+            }
+            else
+            {
+                nowHeldRightUseAnim = null;
+                nowHeldRightHitAnim = null;
+                nowHeldRightIdleAnim = null;
+            }
 
-            string nowHeldRightUseAnim = rightstack?.Collectible.GetHeldTpUseAnimation(RightHandItemSlot, this);
-            string nowHeldRightHitAnim = rightstack?.Collectible.GetHeldTpHitAnimation(RightHandItemSlot, this);
-            string nowHeldRightIdleAnim = rightstack?.Collectible.GetHeldTpIdleAnimation(RightHandItemSlot, this, EnumHand.Right);
             string nowHeldLeftIdleAnim = LeftHandItemSlot?.Itemstack?.Collectible.GetHeldTpIdleAnimation(LeftHandItemSlot, this, EnumHand.Left);
 
             bool nowRightIdleStack = nowHeldRightIdleAnim != null && !nowUseStack && !nowHitStack;
-            bool wasRightIdleStack = lastRunningRightHeldIdleAnimation != null && AnimManager.ActiveAnimationsByAnimCode.ContainsKey(lastRunningRightHeldIdleAnimation);
+            bool wasRightIdleStack = lastRunningRightHeldIdleAnimation != null;
+            if (wasRightIdleStack) wasRightIdleStack &= AnimManager.ActiveAnimationsByAnimCode.ContainsKey(lastRunningRightHeldIdleAnimation);
 
             bool nowLeftIdleStack = nowHeldLeftIdleAnim != null;
-            bool wasLeftIdleStack = lastRunningLeftHeldIdleAnimation != null && AnimManager.ActiveAnimationsByAnimCode.ContainsKey(lastRunningLeftHeldIdleAnimation);
+            bool wasLeftIdleStack = lastRunningLeftHeldIdleAnimation != null;
+            if (wasLeftIdleStack) wasLeftIdleStack &= AnimManager.ActiveAnimationsByAnimCode.ContainsKey(lastRunningLeftHeldIdleAnimation);
 
             if (rightstack == null)
             {

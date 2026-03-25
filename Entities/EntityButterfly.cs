@@ -81,7 +81,7 @@ namespace Vintagestory.GameContent
 
         public override void OnGameTick(float dt)
         {
-            if (World.Side == EnumAppSide.Server)
+            if (Api is ICoreServerAPI)
             {
                 base.OnGameTick(dt);
                 return;

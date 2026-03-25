@@ -223,7 +223,7 @@ public sealed class EntityErel : EntityAgent
     {
         base.OnTesselation(ref  entityShape, shapePathForLogging, ref shapeIsCloned);
 
-        AnimManager.LoadAnimator(World.Api, this, entityShape, AnimManager.Animator?.Animations, requirePosesOnServer, "head");
+        AnimManager.LoadAnimator(World.Api, this, entityShape, AnimManager.Animator?.Animations, requirePosesOnServer, null, "head");
     }
 
 

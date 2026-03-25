@@ -45,21 +45,21 @@ namespace Vintagestory.GameContent
             foreach (var plr in sapi.World.AllOnlinePlayers)
             {
                 var slot = plr.InventoryManager.ActiveHotbarSlot;
-                (slot.Itemstack?.Collectible as ItemFishingPole)?.StopFishing(slot.Itemstack, plr.Entity);
+                (slot?.Itemstack?.Collectible as ItemFishingPole)?.StopFishing(slot!.Itemstack, plr.Entity);
             }
         }
 
         private void Event_PlayerDisconnect(IServerPlayer plr)
         {
             var slot = plr.InventoryManager.ActiveHotbarSlot;
-            (slot.Itemstack?.Collectible as ItemFishingPole)?.StopFishing(slot.Itemstack, plr.Entity);
+            (slot?.Itemstack?.Collectible as ItemFishingPole)?.StopFishing(slot!.Itemstack, plr.Entity);
         }
 
         private EnumHandling beforeActiveSlotChanged(IPlayer plr, ActiveSlotChangeEventArgs args)
         {
             var slot = plr.InventoryManager.ActiveHotbarSlot;
 
-            if (slot.Itemstack?.Collectible is ItemFishingPole)
+            if (slot?.Itemstack?.Collectible is ItemFishingPole)
             {
                 var beid = slot.Itemstack.Attributes.GetLong("fishingEntityId", 0);
                 if (beid != 0)

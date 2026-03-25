@@ -14,7 +14,7 @@ using Vintagestory.API.Server;
 namespace Vintagestory.GameContent
 {
     [ProtoContract]
-    public class BeamPlacePackage
+    public class BeamPlacePacket
     {
         [ProtoMember(1)]
         public bool begin; // true for begin, false for end
@@ -43,7 +43,7 @@ namespace Vintagestory.GameContent
         public override void Start(ICoreAPI api)
         {
             this.api = api;
-            api.Network.RegisterChannel("beamplacer").RegisterMessageType<BeamPlacePackage>();
+            api.Network.RegisterChannel("beamplacer").RegisterMessageType<BeamPlacePacket>();
         }
 
         public override void StartClientSide(ICoreClientAPI api)
@@ -54,20 +54,21 @@ namespace Vintagestory.GameContent
 
         public override void StartServerSide(ICoreServerAPI api)
         {
-            api.Network.GetChannel("beamplacer").SetMessageHandler<BeamPlacePackage>(OnCompletePlaceClient);
+            api.Network.GetChannel("beamplacer").SetMessageHandler<BeamPlacePacket>(OnCompletePlaceClient);
             base.StartServerSide(api);
         }
 
-        private void OnCompletePlaceClient(IServerPlayer fromPlayer, BeamPlacePackage packet)
+        private void OnCompletePlaceClient(IServerPlayer fromPlayer, BeamPlacePacket packet)
         {
             var ws = getWorkSpace(fromPlayer.Entity);
             fromPlayer.Entity.BlockSelection = packet.Blocksel;
-            if (ws.nowBuilding)
-            {
-                completePlace(ws, fromPlayer.Entity, fromPlayer.InventoryManager.ActiveHotbarSlot); 
-            } else
+            if (packet.begin)
             {
                 beginPlace(ws, api.World.Blocks[packet.BlockId], fromPlayer.Entity, packet.Blocksel, packet.PartialEnds);
+            }
+            else
+            {
+                completePlace(ws, fromPlayer.Entity, fromPlayer.InventoryManager.ActiveHotbarSlot);
             }
         }
 
@@ -156,7 +157,7 @@ namespace Vintagestory.GameContent
             ws.block = block;
             ws.onFacing = blockSel.Face;
 
-            capi?.Network.GetChannel("beamplacer").SendPacket(new BeamPlacePackage() { 
+            capi?.Network.GetChannel("beamplacer").SendPacket(new BeamPlacePacket() { 
                 Blocksel = blockSel, 
                 begin = true,
                 BlockId = block.Id,
@@ -225,9 +226,11 @@ namespace Vintagestory.GameContent
                 slot.MarkDirty();
             }
 
+            if (beh == null) return;    // If we did not find the be or behavior, we cannot add the beam, so don't send a client packet to the server nor markDirty
+
             beh.AddBeam(ws.startOffset, nowEndOffset, ws.onFacing, ws.block);
 
-            capi?.Network.GetChannel("beamplacer").SendPacket(new BeamPlacePackage() { Blocksel = eplr.BlockSelection, begin = false });
+            capi?.Network.GetChannel("beamplacer").SendPacket(new BeamPlacePacket() { Blocksel = eplr.BlockSelection, begin = false });
 
             be.MarkDirty(true);
         }

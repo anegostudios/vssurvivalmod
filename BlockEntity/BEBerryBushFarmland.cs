@@ -12,7 +12,6 @@ namespace Vintagestory.GameContent
             base.beginIntervalledUpdate(out onInterval, out onEnd);
 
             var baseOnInterval = onInterval;
-            var baseOnEnd = onEnd;
 
             var bhfb = GetBehavior<BEBehaviorFruitingBush>();
             if (bhfb == null) return;
@@ -39,7 +38,6 @@ namespace Vintagestory.GameContent
             base.beginIntervalledUpdate(out onInterval, out onEnd);
 
             var baseOnInterval = onInterval;
-            var baseOnEnd = onEnd;
 
             var bhfb = Api.World.BlockAccessor.GetBlockEntity(upPos)?.GetBehavior<BEBehaviorFruitingBush>();
             if (bhfb == null)

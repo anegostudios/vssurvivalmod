@@ -46,6 +46,10 @@ public class FruitingBushState
     /// </summary>
     public double MatureTotalDays;
     /// <summary>
+    /// How many hours are left before the bush transitions to the next stage
+    /// </summary>
+    public double TransitionHoursLeft;
+    /// <summary>
     /// What growth state the bush is in
     /// </summary>
     EnumFruitingBushGrowthState growthstate;
@@ -86,6 +90,7 @@ public class FruitingBushState
         PlantedTotalDays = tree.GetDouble("plantedTotalDays");
         MatureTotalDays = tree.GetDouble("matureTotalDays");
         LastCuttingTakenTotalDays = tree.GetDouble("lastCuttingTakenTotalDays", -99999);
+        TransitionHoursLeft = tree.GetDouble("transitionHoursLeft");
         Growthstate = (EnumFruitingBushGrowthState)tree.GetInt("growthState");
         if (tree.HasAttribute("traits"))
         {
@@ -103,6 +108,7 @@ public class FruitingBushState
         tree.SetDouble("plantedTotalDays", PlantedTotalDays);
         tree.SetDouble("matureTotalDays", MatureTotalDays);
         tree.SetDouble("lastCuttingTakenTotalDays", LastCuttingTakenTotalDays);
+        tree.SetDouble("transitionHoursLeft", TransitionHoursLeft);
         tree.SetInt("growthState", (int)Growthstate);
         if (Traits != null && Traits.Length > 0) tree.SetString("traits", string.Join(",", Traits));
         if (WildBushState != null) tree.SetInt("wildBushState", (int)WildBushState);

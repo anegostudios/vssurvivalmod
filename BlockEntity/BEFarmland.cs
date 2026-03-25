@@ -102,7 +102,7 @@ namespace Vintagestory.GameContent
         }
 
         protected override int RainHeightOffset => GetCrop() == null ? 0 : 1;
-        protected override bool RecoverFertility => GetCrop() == null || HasRipeCrop();
+        protected override bool RecoverFertility => GetCrop() == null || !HasRipeCrop();
 
 
         private bool updateCropDamage(double hourIntervall, Block cropBlock, bool hasCrop, bool hasRipeCrop, ClimateCondition conds)

@@ -116,16 +116,22 @@ namespace Vintagestory.GameContent
 
             Random rand = api.World.Rand;
 
-            for (int dx = -1; dx < 8; dx++)
-            {
-                for (int y = 0; y < 5; y++)
-                {
-                    for (int dz = -1; dz < 5; dz++)
-                    {
-                        int x = 4 + dx;
-                        int z = 6 + dz;
+            int length = 9;
+            int height = 5;
+            int width = 6;
 
-                        if (y == 0 && voxels[x, y, z] == (byte)EnumVoxelMaterial.Metal) continue;
+            int metalVoxels = 0;
+            for (int x = 3; x < 12; x++)
+            {
+                for (int y = 0; y < height; y++)
+                {
+                    for (int z = 5; z < 11; z++)
+                    {
+                        if (y == 0 && voxels[x, y, z] == (byte)EnumVoxelMaterial.Metal)
+                        {
+                            metalVoxels += 1;
+                            continue;
+                        }
 
                         float dist = Math.Max(0, Math.Abs(x - 7) - 1) + Math.Max(0, Math.Abs(z - 8) - 1) + Math.Max(0, y - 1f);
 
@@ -142,8 +148,34 @@ namespace Vintagestory.GameContent
                         {
                             voxels[x, y, z] = (byte)EnumVoxelMaterial.Slag;
                         }
+
+                        if (voxels[x, y, z] == (byte)EnumVoxelMaterial.Metal)
+                        {
+                            metalVoxels += 1;
+                        }
                     }
                 }
+            }
+
+            // Add metal voxels until there are definitely enough to make an ingot, by shifting up from the bottom
+            for (int tries = 0; metalVoxels < ItemIngot.VoxelCount && tries < 1000; ++tries)
+            {
+                int n = rand.Next(length * width);
+                int x = n / width;
+                int z = n % width;
+                x += 3;
+                z += 5;
+
+                if (voxels[x, height, z] == (byte)EnumVoxelMaterial.Metal)
+                {
+                    continue;
+                }
+                for (int y = height; y > 0; --y)
+                {
+                    voxels[x, y, z] = voxels[x, y-1, z];
+                }
+                voxels[x, 0, z] = (byte)EnumVoxelMaterial.Metal;
+                metalVoxels += 1;
             }
         }
 

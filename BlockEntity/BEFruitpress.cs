@@ -178,7 +178,7 @@ namespace Vintagestory.GameContent
                     animUtil.InitializeAnimator("fruitpress", shape, null, new Vec3f(0, ownBlock.Shape.rotateY, 0));
                 } else
                 {
-                    shape.InitForAnimations(api.Logger, "shapes/block/wood/fruitpress/part-movable.json", Array.Empty<string>());
+                    shape.InitForAnimations(api.Logger, "shapes/block/wood/fruitpress/part-movable.json", null, Array.Empty<string>());
                     animUtil.InitializeAnimatorServer("fruitpress", shape);
                 }
 
