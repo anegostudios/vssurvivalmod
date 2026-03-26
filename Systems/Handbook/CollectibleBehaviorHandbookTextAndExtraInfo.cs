@@ -817,25 +817,6 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            // Ore smashes into
-            if (stack.Collectible is ItemOre)
-            {
-                int units = stack.ItemAttributes["metalUnits"].AsInt(5);
-                string type = stack.Collectible.Variant["ore"].Replace("quartz_", "").Replace("galena_", "");
-
-                if (capi.World.GetItem(new AssetLocation("nugget-" + type)) is { } item)
-                {
-                    AddHeading(components, capi, "oresmasheddesc-title", ref haveText);
-
-                    components.Add(new ItemstackTextComponent(capi, new(item, Math.Max(1, units / 5)), 40, 10, EnumFloat.Inline, (cs) => openDetailPageFor(getPageCodeForStack(capi, cs)))
-                    {
-                        ShowStacksize = true,
-                        PaddingLeft = TinyIndent
-                    });
-                    components.Add(new ClearFloatTextComponent(capi, marginBottom));  //nice margin below the item graphic
-                }
-            }
-
             // Distills into
             DistillationProps dprops = getDistillationProps(stack);
             if (dprops != null)
@@ -1474,7 +1455,6 @@ namespace Vintagestory.GameContent
             List<ItemStack> squeezables = [];
             Dictionary<string, List<ItemStack>> groundstoredprocessables = [];
             List<ItemStack> distillables = [];
-            List<ItemStack> smashables = [];
             List<ItemStack> fluxes = [];
             Dictionary<EnumTransitionType, List<ItemStack>> transitionables = [];
             List<ItemStack> validanvils = anvils;
@@ -1578,20 +1558,6 @@ namespace Vintagestory.GameContent
                 if (crushedStack != null && crushedStack.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes))
                 {
                     addToListUniquely(capi, crushables, val);
-                }
-
-                if (val.Collectible is ItemOre)
-                {
-                    string type = val.Collectible.Variant["ore"].Replace("quartz_", "").Replace("galena_", "");
-
-                    if (capi.World.GetItem(new AssetLocation("nugget-" + type)) is { } item)
-                    {
-                        ItemStack outStack = new(item);
-                        if (outStack.Equals(capi.World, stack, GlobalConstants.IgnoredStackAttributes))
-                        {
-                            addToListUniquely(capi, smashables, val);
-                        }
-                    }
                 }
 
                 if (val.ItemAttributes?["juiceableProperties"].Exists == true && getjuiceableProps(val) is JuiceableProperties fjprops)
@@ -1721,7 +1687,7 @@ namespace Vintagestory.GameContent
             string customCreatedBy = stack.Collectible.Attributes?["handbook"]?["createdBy"]?.AsString(null);
             string bakingInitialIngredient = collObj.Attributes?["bakingProperties"]?.AsObject<BakingProperties>()?.InitialCode;
 
-            if (grecipes.Count > 0 || cookrecipes.Count > 0 || (metalmoldables.Count > 0 && moldStacks.Count > 0) || (metalworkables.Count > 0 && validanvils.Count > 0) || knappables.Count > 0 || clayformables.Count > 0 || anvilweldable || customCreatedBy != null || bakables.Count > 0 || bloomeryables.Count > 0 || kilnables.Count > 0 || carburizables.Count > 0 || (allQuerns.Count > 0 && grindables.Count > 0) || transitionables.Count > 0 || crushables.Count > 0 || barrelRecipestext.Count > 0 || bakingInitialIngredient != null || (juiceables.Count > 0 && allFruitpresses.Count > 0) || squeezables.Count > 0 || groundstoredprocessables.Count > 0 || distillables.Count > 0 || smashables.Count > 0)
+            if (grecipes.Count > 0 || cookrecipes.Count > 0 || (metalmoldables.Count > 0 && moldStacks.Count > 0) || (metalworkables.Count > 0 && validanvils.Count > 0) || knappables.Count > 0 || clayformables.Count > 0 || anvilweldable || customCreatedBy != null || bakables.Count > 0 || bloomeryables.Count > 0 || kilnables.Count > 0 || carburizables.Count > 0 || (allQuerns.Count > 0 && grindables.Count > 0) || transitionables.Count > 0 || crushables.Count > 0 || barrelRecipestext.Count > 0 || bakingInitialIngredient != null || (juiceables.Count > 0 && allFruitpresses.Count > 0) || squeezables.Count > 0 || groundstoredprocessables.Count > 0 || distillables.Count > 0)
             {
                 AddHeading(components, capi, "Created by", ref haveText);
 
@@ -1960,17 +1926,6 @@ namespace Vintagestory.GameContent
                     verticalSpace = verticalSpaceSmall;
                     AddSubHeading(components, capi, openDetailPageFor, "Crushing", null);
                     AddSlideShowComponent(components, capi, crushables, openDetailPageFor, true);
-
-                    components.Add(new RichTextComponent(capi, "\n", CairoFont.WhiteSmallText()));
-                }
-
-
-                if (smashables.Count > 0)
-                {
-                    components.Add(verticalSpace);
-                    verticalSpace = verticalSpaceSmall;
-                    AddSubHeading(components, capi, openDetailPageFor, "handbook-createdby-smashing", null);
-                    AddSlideShowComponent(components, capi, smashables, openDetailPageFor, true);
 
                     components.Add(new RichTextComponent(capi, "\n", CairoFont.WhiteSmallText()));
                 }
