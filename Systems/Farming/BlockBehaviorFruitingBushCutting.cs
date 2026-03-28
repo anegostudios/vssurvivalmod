@@ -15,13 +15,6 @@ public class BlockBehaviorFruitingBushCutting : BlockBehavior
             failureCode = "unsuitablesoil";
             return false;
         }
-        var fertility = block.Fertility;
-        if (fertility < 200)
-        {
-            handling = EnumHandling.PreventDefault;
-            failureCode = "tooinfertile";
-            return false;
-        }
 
         return base.CanPlaceBlock(world, byPlayer, blockSel, ref handling, ref failureCode);
     }

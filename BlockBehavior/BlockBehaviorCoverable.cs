@@ -53,5 +53,10 @@ namespace Vintagestory.GameContent.Mechanics
                 }
             ];
         }
+
+        public override int GetPlacedBlockInteractionHelpCount(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer, ref EnumHandling handling)
+        {
+            return 1;
+        }
     }
 }

@@ -22,12 +22,18 @@ namespace Vintagestory.GameContent
         {
             sapi = api;
             api.Event.RegisterGameTickListener(snowShovelTickServer, 75);
+            sapi.Event.PlayerDisconnect += OnPlayerPlayerDisconnect;
         }
 
         public override void StartClientSide(ICoreClientAPI api)
         {
             capi = api;
             api.Event.RegisterGameTickListener(snowShovelTickClient, 75);
+        }
+
+        private void OnPlayerPlayerDisconnect(IServerPlayer byPlayer)
+        {
+            StopSnowShoveling(byPlayer.PlayerUID);
         }
 
         float lookingAtSnowAccum = 0f;
@@ -162,7 +168,7 @@ namespace Vintagestory.GameContent
 
                 if (frontBlock.Id == 0)
                 {
-                    
+
                     float frontBelowSnow = frontBelowBlock.GetSnowLevel(frontBelowPos);
                     if (frontBelowSnow > 0)
                     {
@@ -181,7 +187,7 @@ namespace Vintagestory.GameContent
                     spawnSnowParticles(fromPos, toDir);
                     return true;
                 }
-                
+
             }
 
             // Not if there is already a snow block above
@@ -277,7 +283,10 @@ namespace Vintagestory.GameContent
 
         public void BeginSnowShoveling(string uid, Vec3d aimPos)
         {
-            snowshovelingplayers.Add(uid, aimPos);
+            if (!snowshovelingplayers.TryAdd(uid, aimPos))
+            {
+                snowshovelingplayers[uid] = aimPos;
+            }
         }
 
         public void StopSnowShoveling(string uid)

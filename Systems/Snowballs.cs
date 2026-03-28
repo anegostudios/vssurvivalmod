@@ -1,4 +1,4 @@
-﻿using Vintagestory.API;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -124,6 +124,12 @@ namespace Vintagestory.GameContent
                     ShouldApply = (wi, bs, es) => (block.snowLevel != 0 || world.BlockAccessor.GetBlock(bs.Position.UpCopy()).BlockMaterial != EnumBlockMaterial.Snow) // Disallow when these are stacked snow blocks
                 }
             };
+        }
+
+        public override int GetPlacedBlockInteractionHelpCount(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer, ref EnumHandling handling)
+        {
+            handling = EnumHandling.Handled;
+            return 1;
         }
     }
 

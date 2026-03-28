@@ -64,7 +64,7 @@ namespace Vintagestory.GameContent
             {
                 if (byPlayer is IServerPlayer splr)
                 {
-                    splr.SendLocalisedMessage(GlobalConstants.GeneralChatGroup, "clutter-didshatter", Lang.GetMatchingL(splr.LanguageCode, bec.GetFullCode()));
+                    splr.SendLocalisedMessage(GlobalConstants.GeneralChatGroup, "clutter-didshatter", Lang.GetMatchingL(splr.LanguageCode, bec?.GetFullCode() ?? block.Code));
                 }
                 world.PlaySoundAt(new AssetLocation("sounds/effect/toolbreak"), pos, 0, null, false, 12);
                 return Array.Empty<ItemStack>();

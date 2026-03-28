@@ -56,11 +56,10 @@ namespace Vintagestory.GameContent
         {
         }
 
-        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer, ref EnumHandling handling)
+        public virtual bool ShowWrenchRotateHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
         {
-            if (hideInteractionHelpInSurvival && forPlayer?.WorldData.CurrentGameMode == EnumGameMode.Survival) return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer, ref handling);
+            if (hideInteractionHelpInSurvival && forPlayer?.WorldData.CurrentGameMode == EnumGameMode.Survival) return false;
 
-            handling = EnumHandling.PassThrough;
             if (wrenchItems == null) loadWrenchItems(world);
 
             bool notProtected = true;
@@ -73,14 +72,32 @@ namespace Vintagestory.GameContent
 
             if (wrenchItems.Length > 0 && notProtected)
             {
-                return new WorldInteraction[] { new WorldInteraction()
+                return true;
+            }
+
+            return false;
+        }
+
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer, ref EnumHandling handling)
+        {
+            bool showHelp = ShowWrenchRotateHelp(world, selection, forPlayer);
+
+            if (!showHelp) return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer, ref handling);
+
+            handling = EnumHandling.PassThrough;
+            return new WorldInteraction[] {
+                new WorldInteraction()
                 {
                     ActionLangCode = "Rotate",
                     Itemstacks = wrenchItems,
                     MouseButton = EnumMouseButton.Right
-                } };
-            }
-            else return System.Array.Empty<WorldInteraction>();
+                }
+            };
+        }
+
+        public override int GetPlacedBlockInteractionHelpCount(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer, ref EnumHandling handled)
+        {
+            return ShowWrenchRotateHelp(world, selection, forPlayer) ? 1 : 0;
         }
 
         public override void Initialize(JsonObject properties)

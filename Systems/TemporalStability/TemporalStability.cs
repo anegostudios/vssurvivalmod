@@ -597,6 +597,7 @@ namespace Vintagestory.GameContent
                         {
                             spawnPosi.Y--;
                             spawnPos.Y--;
+                            if (spawnPos.Y <= 0) break;
                         }
 
                         if (spawnPos.Y <= 0 || !api.World.BlockAccessor.IsValidPos(spawnPosi)) continue;

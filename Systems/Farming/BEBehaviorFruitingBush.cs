@@ -86,7 +86,7 @@ public class BEBehaviorFruitingBush : BlockEntityBehavior, IAnimalFoodSource, IL
         BState.WildBushState = null;
         if (traits != null)
         {
-            BState.Traits = traits.Split(",");
+            BState.Traits = traits.Split(",", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         }
 
         BState.MatureTotalDays = BState.PlantedTotalDays + bhBush.growthStageMonths[0].nextFloat() * Api.World.Calendar.DaysPerMonth;
@@ -95,35 +95,25 @@ public class BEBehaviorFruitingBush : BlockEntityBehavior, IAnimalFoodSource, IL
 
     public FarmlandFastForwardUpdate onUpdate()
     {
-        double totalDays = Api.World.Calendar.TotalDays;
-        if (totalDays < BState.MatureTotalDays) return null;
-
         if (GetHealthState() != BState.PrevHealthState)
         {
             BState.MeshDirty = true;
             Blockentity.MarkDirty(true);
         }
 
-        if (BState.Growthstate == EnumFruitingBushGrowthState.Young && BESoil == null)
+        bool isYoung = BState.Growthstate == EnumFruitingBushGrowthState.Young;
+        if (BESoil == null && Api.World.Calendar.TotalDays >= BState.MatureTotalDays && isYoung)
         {
+            isYoung = false;
             BState.Growthstate = EnumFruitingBushGrowthState.Mature;
             Blockentity.MarkDirty(true);
         }
 
         BState.PrevHealthState = GetHealthState();
 
-        return (hourIntervall, conds, _, _) =>
+        return (hourIntervall, conds, lightGrowthSpeedFactor, _) =>
         {
-            BState.TransitionHoursLeft -= hourIntervall;
-
-            if (BState.Growthstate == EnumFruitingBushGrowthState.Young && BESoil != null)
-            {
-                if (BESoil.TotalHoursLastUpdate >= BState.MatureTotalDays * Api.World.Calendar.HoursPerDay)
-                {
-                    setGrowthState(EnumFruitingBushGrowthState.Mature);
-                    return;
-                }
-            }
+            BState.TransitionHoursLeft -= hourIntervall * lightGrowthSpeedFactor;
 
             if (BState.Growthstate == EnumFruitingBushGrowthState.Dormant)
             {
@@ -134,16 +124,15 @@ public class BEBehaviorFruitingBush : BlockEntityBehavior, IAnimalFoodSource, IL
                 return;
             }
 
-
             bool goDormant = conds.Temperature < bhBush.GoDormantBelowTemperature;
-            if (goDormant)
+            if (goDormant && !isYoung)
             {
                 setGrowthState(EnumFruitingBushGrowthState.Dormant);
                 return;
             }
 
             bool reset = conds.Temperature < bhBush.ResetGrowthBelowTemperature || conds.Temperature > bhBush.ResetGrowthAboveTemperature;
-            if (reset)
+            if (reset && !isYoung)
             {
                 if (BState.Growthstate is EnumFruitingBushGrowthState.Flowering or EnumFruitingBushGrowthState.Ripening or EnumFruitingBushGrowthState.Ripe)
                 {
@@ -156,8 +145,23 @@ public class BEBehaviorFruitingBush : BlockEntityBehavior, IAnimalFoodSource, IL
             if (pause)
             {
                 // If we're not in the ripe stage we have to reverse the previous time removed from the timer
-                if (BState.Growthstate != EnumFruitingBushGrowthState.Ripe) BState.TransitionHoursLeft += hourIntervall;
+                if (BState.Growthstate != EnumFruitingBushGrowthState.Ripe) BState.TransitionHoursLeft += hourIntervall * lightGrowthSpeedFactor;
+                if (isYoung) BState.MatureTotalDays += hourIntervall * lightGrowthSpeedFactor / Api.World.Calendar.HoursPerDay;
                 Blockentity.MarkDirty(true);
+                return;
+            }
+
+            if (isYoung && BESoil != null)
+            {
+                if (BESoil.TotalHoursLastUpdate >= BState.MatureTotalDays * Api.World.Calendar.HoursPerDay)
+                {
+                    isYoung = false;
+                    setGrowthState(EnumFruitingBushGrowthState.Mature);
+                    return;
+                }
+
+                // Adjust for light level, ie 10% growth speed needs 90% of hourIntervall added back on to total growth time
+                BState.MatureTotalDays += hourIntervall * (1 - lightGrowthSpeedFactor) / Api.World.Calendar.HoursPerDay;
                 return;
             }
 
@@ -238,6 +242,27 @@ public class BEBehaviorFruitingBush : BlockEntityBehavior, IAnimalFoodSource, IL
     public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
     {
         var healthState = GetHealthState();
+
+        var days = BState.TransitionHoursLeft / Api.World.Calendar.HoursPerDay;
+        switch (BState.Growthstate)
+        {
+            case EnumFruitingBushGrowthState.Ripe:
+                dsc.AppendLine(Lang.Get("Fresh fruit for about {0:0.#} days.", days));
+                break;
+            case EnumFruitingBushGrowthState.Ripening:
+            {
+                dsc.AppendLine(Lang.Get("Ripe in about {0:0.#} days, weather permitting.", days));
+                break;
+            }
+            case EnumFruitingBushGrowthState.Flowering:
+            {
+                dsc.AppendLine(Lang.Get("Flowering for about {0:0.#} days, weather permitting.", days));
+                break;
+            }
+            case EnumFruitingBushGrowthState.Young:
+                dsc.AppendLine(Lang.Get("fruitingplant-maturesindays", (int)Math.Ceiling(BState.MatureTotalDays - Api.World.Calendar.TotalDays)));
+                break;
+        }
 
         dsc.AppendLine(Lang.Get("healthstate-label", Lang.Get("healthstate-" + healthState.ToString().ToLowerInvariant())));
         dsc.AppendLine(Lang.Get("growthstate-label", Lang.Get("growthstate-" + BState.Growthstate.ToString().ToLowerInvariant())));

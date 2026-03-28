@@ -95,7 +95,7 @@ public class FruitingBushState
         if (tree.HasAttribute("traits"))
         {
             if (tree.GetString("traits").Length == 0) Traits = [];
-            Traits = tree.GetString("traits").Split(",");
+            Traits = tree.GetString("traits").Split(",", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         }
         else Traits = [];
 
@@ -110,7 +110,7 @@ public class FruitingBushState
         tree.SetDouble("lastCuttingTakenTotalDays", LastCuttingTakenTotalDays);
         tree.SetDouble("transitionHoursLeft", TransitionHoursLeft);
         tree.SetInt("growthState", (int)Growthstate);
-        if (Traits != null && Traits.Length > 0) tree.SetString("traits", string.Join(",", Traits));
+        if (Traits?.Length > 0) tree.SetString("traits", string.Join(",", Traits));
         if (WildBushState != null) tree.SetInt("wildBushState", (int)WildBushState);
     }
 }

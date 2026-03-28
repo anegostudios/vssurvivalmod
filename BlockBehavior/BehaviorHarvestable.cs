@@ -1,9 +1,11 @@
+using System;
 using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
+using static System.Collections.Specialized.BitVector32;
 
 namespace Vintagestory.GameContent
 {
@@ -235,28 +237,40 @@ namespace Vintagestory.GameContent
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer, ref EnumHandling handled)
         {
-            if (harvestedStacks != null)
+            bool notProtected = GetNotProtected(world, selection);
+
+            if (notProtected) return new WorldInteraction[]
             {
-                bool notProtected = true;
-
-                if (world.Claims != null && world is IClientWorldAccessor clientWorld && clientWorld.Player?.WorldData.CurrentGameMode == EnumGameMode.Survival)
-                {
-                    EnumWorldAccessResponse resp = world.Claims.TestAccess(clientWorld.Player, selection.Position, EnumBlockAccessFlags.Use);
-                    if (resp != EnumWorldAccessResponse.Granted) notProtected = false;
-                }
-
-                if (notProtected) return new WorldInteraction[]
-                {
                     new WorldInteraction()
                     {
                         ActionLangCode = interactionHelpCode,
                         MouseButton = EnumMouseButton.Right,
                         Itemstacks = Tool == null ? null : ObjectCacheUtil.GetToolStacks(world.Api, (EnumTool)Tool)
                     }
-                };
+            };
+            return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer, ref handled);
+        }
+
+        public override int GetPlacedBlockInteractionHelpCount(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer, ref EnumHandling handled)
+        {
+            bool notProtected = GetNotProtected(world, selection);
+
+            return notProtected ? 1 : 0;
+        }
+
+        private bool GetNotProtected(IWorldAccessor world, BlockSelection selection)
+        {
+            if (harvestedStacks == null) return false;
+
+            bool notProtected = true;
+
+            if (world.Claims != null && world is IClientWorldAccessor clientWorld && clientWorld.Player?.WorldData.CurrentGameMode == EnumGameMode.Survival)
+            {
+                EnumWorldAccessResponse resp = world.Claims.TestAccess(clientWorld.Player, selection.Position, EnumBlockAccessFlags.Use);
+                if (resp != EnumWorldAccessResponse.Granted) notProtected = false;
             }
 
-            return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer, ref handled);
+            return notProtected;
         }
     }
 }

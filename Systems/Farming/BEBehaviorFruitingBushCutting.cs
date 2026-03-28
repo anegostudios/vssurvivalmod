@@ -1,10 +1,8 @@
 using System;
 using System.Text;
-using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
-using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent;
 
@@ -36,14 +34,14 @@ public class BEBehaviorFruitingBushCutting : BlockEntityBehavior
 
     public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
     {
-        dsc.AppendLine(Lang.Get("Matures within {0} months", (int)Math.Ceiling(matureTotalDays - Api.World.Calendar.TotalDays) / Api.World.Calendar.DaysPerMonth));
+        dsc.AppendLine(Lang.Get("fruitingplant-cutting-growsindays", (int)Math.Ceiling(matureTotalDays - Api.World.Calendar.TotalDays)));
         base.GetBlockInfo(forPlayer, dsc);
     }
 
     public override void OnBlockPlaced(ItemStack? byItemStack = null)
     {
         var min = Block.Attributes["matureTotalMonthsMin"].AsDouble(2);
-        var max = Block.Attributes["matureTotalMonthsMin"].AsDouble(4);
+        var max = Block.Attributes["matureTotalMonthsMax"].AsDouble(4);
         matureTotalDays = Api.World.Calendar.TotalDays + (min + Api.World.Rand.NextDouble() * (max - min)) * Api.World.Calendar.DaysPerMonth;
         traits = byItemStack?.Attributes.GetString("traits");
         base.OnBlockPlaced(byItemStack);
