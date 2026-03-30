@@ -156,8 +156,10 @@ namespace Vintagestory.GameContent
                 var stack = eplr.RightHandItemSlot.Itemstack;
                 if (stack.Collectible.GetTemperature(forEntity.World, stack) > GlobalConstants.TooHotToTouchTemperature)
                 {
-                    var opening = stack.Collectible.Attributes["tongOpening"].AsString("1");
-                    tpIdleAnim = "holdbothhands-tongs" + opening;
+                    var opening = stack.Collectible.Attributes?["tongOpening"]?.AsString("1");
+                    if (!string.IsNullOrEmpty(opening)) {
+                        tpIdleAnim = "holdbothhands-tongs" + opening;
+                    }
                     return true;
                 }
             }
