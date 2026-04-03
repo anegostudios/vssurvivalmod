@@ -333,15 +333,19 @@ namespace Vintagestory.GameContent
                 }
                 else
                 {
-                    ItemStack? splitStack = slot.TakeOut(1);
-                    (foodSourceStack.Collectible as BlockMeal)?.SetQuantityServings(byEntity.World, splitStack, servingsLeft);
+                    ItemStack? partiallyEatenStack = slot.TakeOut(1);
+                    (foodSourceStack.Collectible as BlockMeal)?.SetQuantityServings(byEntity.World, partiallyEatenStack, servingsLeft);
 
-                    ItemStack originalStack = slot.Itemstack;
-                    slot.Itemstack = splitStack;
+                    ItemStack fullMealsStack = slot.TakeOutWhole();
+                    slot.Itemstack = partiallyEatenStack;
 
-                    if (!player.InventoryManager.TryGiveItemstack(originalStack, true))
+                    if (!player.InventoryManager.TryGiveItemstack(fullMealsStack, true))
                     {
-                        byEntity.World.SpawnItemEntity(originalStack, byEntity.Pos.XYZ);
+                        // If the player doesn't have an empty slot, make sure we give them
+                        // the stack of full meals instead of dropping everything except
+                        // the partially eaten one.
+                        slot.Itemstack = fullMealsStack;
+                        byEntity.World.SpawnItemEntity(partiallyEatenStack, byEntity.Pos.XYZ);
                     }
                 }
             }
