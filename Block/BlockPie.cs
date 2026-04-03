@@ -554,8 +554,8 @@ namespace Vintagestory.GameContent
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
         {
-            var baseinteractions = base.GetPlacedBlockInteractionHelp(world, selection, forPlayer);
-            baseinteractions = baseinteractions.RemoveAt(1);
+            WorldInteraction[] baseinteractions = [ .. base.GetPlacedBlockInteractionHelp(world, selection, forPlayer)
+                .Where(bi => bi.ActionLangCode != "blockhelp-meal-eat" && bi.ActionLangCode != "blockhelp-behavior-rightclickpickup")];
 
             var allinteractions = interactions.Append(baseinteractions);
             return allinteractions;
