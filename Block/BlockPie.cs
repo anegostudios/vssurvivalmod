@@ -296,7 +296,7 @@ namespace Vintagestory.GameContent
 
             if (!foodCatEquals && mixCodes.Any())
             {
-                return Lang.Get("pie-mixed-" + mixCodes.First() + "-" +state);
+                return Lang.Get("pie-mixed-" + mixCodes.First() + "-" + state);
             }
 
             return Lang.Get("pie-mixed-" + FillingFoodCategory(cStacks[1]).ToString().ToLowerInvariant() + "-" + state);
