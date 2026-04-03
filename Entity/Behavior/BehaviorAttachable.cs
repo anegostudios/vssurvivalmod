@@ -1,6 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -57,19 +58,96 @@ namespace Vintagestory.GameContent
         }
     }
 
-    // An entity can provide seats and slots
-    // A slot however if filled with a chair can also provide a seat
-    // Or a slot can also be configured to be usable as a seat if empty
+    /// <summary>
+    /// An entity can provide seats and slots
+    /// <br/>A slot however if filled with a chair can also provide a seat
+    /// <br/>Or a slot can also be configured to be usable as a seat if empty
+    /// </summary>
+    /// <example><code lang="json">
+    ///"wearableSlots": [
+    ///    {
+    ///        "code": "head",
+    ///        "forCategoryCodes": [ "bridle" ],
+    ///        "attachmentPointCode": "HeadAP"
+    ///    },
+    ///    {
+    ///        "code": "face",
+    ///        "forCategoryCodes": [ "face" ],
+    ///        "attachmentPointCode": "FaceAP"
+    ///    },
+    ///    {
+    ///        "code": "neck",
+    ///        "forCategoryCodes": [ "lantern" ],
+    ///        "attachmentPointCode": "NeckAP"
+    ///    },
+    /// ...
+    /// ]
+    /// </code></example>
+    /// <example>
+    /// Inside a collectible to be worn...
+    /// <code lang="json">
+    ///"attributes": {
+    ///    "attachableToEntity": {
+    ///        "categoryCode": "pillion",
+    ///        "attachedShape": { "base": "item/wearable/hooved/pillion1" },
+    ///        "seatConfig": {
+    ///            "bodyYawLimit": 0,
+    ///            "controllable": false,
+    ///            "mountOffset": {
+    ///                "x": -0.25,
+    ///                "y": -0.45,
+    ///                "z": -0.25
+    ///            },
+    ///            "MountRotation": { "y": 0.0 },
+    ///            "eyeOffsetX": 0.2
+    ///        }
+    ///    },
+    ///    ...
+    ///},
+    /// </code></example>
+    [DocumentAsJson]
     public class WearableSlotConfig
     {
+        /// <summary>
+        /// The config for the seat, stored in the attached collectible's JSON.
+        /// <br/>Requires a specific setup, see the example.
+        /// </summary>
+        [DocumentAsJson("Required", "", true)]
         public SeatConfig SeatConfig;
+
+        /// <summary>
+        /// Unique identifier for this slot
+        /// </summary>
+        [DocumentAsJson("Required")]
         public string Code;
+
+        /// <summary>
+        /// Allows items with specified category codes to be placed in this slot
+        /// </summary>
+        [DocumentAsJson("Recommended")]
         public string[] ForCategoryCodes;
+
+        /// <summary>
+        /// Allows to combine multiple slots into one bigger slot
+        /// </summary>
+        [DocumentAsJson("Optional", "None")]
         public string[] BehindSlots; // Needed so that the Elk can occupy 2 spaces
 
+        /// <summary>
+        /// Attachment point code of the shape element to attach to
+        /// </summary>
+        [DocumentAsJson("Required")]
         public string AttachmentPointCode;
+
+        [DocumentAsJson("Optional", "None")]
         public Dictionary<string, StepParentElementTo> StepParentTo;
+
         public string ProvidesSeatId = null;
+
+        /// <summary>
+        /// Skips the attach interaction if set to True and the slot is empty when the attach key is not pressed, allowing mount and other interactions to trigger instead
+        /// </summary>
+        [DocumentAsJson("Optional", "False")]
         public bool EmptyInteractPassThrough { get; set; }
 
         public bool CanHold(string code)
@@ -86,14 +164,31 @@ namespace Vintagestory.GameContent
 
 
 
-
+    /// <summary>
+    /// Allows to attach specific items to entity.
+    /// <br/>Requires <see cref="EntityBehaviorSelectionBoxes"/>
+    /// <br/>Uses the "attachable" code
+    /// </summary>
+    [DocumentAsJson]
+    [AddDocumentationProperty("interactPassthrough",
+    "Use this on a collectible type. If True, skips the attach interaction for this item when it is attached and the attach key is not pressed, allowing the interaction to pass through to mount or other entity interactions",
+    "System.Boolean", "Optional", "False", true)]
     public class EntityBehaviorAttachable : EntityBehaviorContainer, ICustomInteractionHelpPositioning
     {
+        /// <summary>
+        /// Attachable slots. Should be in the same order as selectionBoxes of <see cref="EntityBehaviorSelectionBoxes"/>
+        /// </summary>
+        [DocumentAsJson("Required")]
         internal WearableSlotConfig[] wearableSlots;
         public override InventoryBase Inventory => inv;
         protected InventoryGeneric inv;
 
         public override string InventoryClassName => "wearablesInv";
+
+        /// <summary>
+        /// Whether to use shift instead of ctrl key to attach/detach items
+        /// </summary>
+        [DocumentAsJson("Optional", "false")]
         public bool UseShiftAttach;
 
         public EntityBehaviorAttachable(Entity entity) : base(entity) { }

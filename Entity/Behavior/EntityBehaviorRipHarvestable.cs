@@ -1,10 +1,17 @@
-﻿using Vintagestory.API.Common;
+using Vintagestory.API;
+using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 
 #nullable disable
 
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Allows an entity to be harvested by attacking it with weapon that has "ripHarvest" attribute. Requires <see cref="EntityBehaviorHarvestable"/>. This class has no further properties.
+    /// <br/>Uses the "ripharvestable" code
+    /// </summary>
+    [DocumentAsJson]
+    [AddDocumentationProperty("RipHarvest", "Use on a collectible type. If true and the collectible is used to attack a dead entity with this behavior, the entity will be harvested.", "System.Boolean", "Optional", "False", true)]
     public class EntityBehaviorRipHarvestable : EntityBehavior
     {
         protected float ripHarvestChance = 0.25f;

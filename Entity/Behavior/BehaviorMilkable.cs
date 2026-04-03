@@ -1,5 +1,6 @@
-﻿using System;
+using System;
 using System.Text;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -11,6 +12,21 @@ using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Makes entity produce milk and so that it can be milked with liquid container. Requires the use of the <see cref="EntityBehaviorMultiply"/>, <see cref="EntityBehaviorEmotionStates"/> and <see cref="EntityBehaviorTaskAI"/> entity behaviors.
+    /// <br/>Uses the "milkable" code
+    /// </summary>
+    /// <example><code lang="json">
+    ///"behaviors": [
+    /// {
+    ///     "code": "milkable",
+    ///     "liquidStack": { "type": "item", "code": "milkportion" },
+    ///     "lactatingDaysAfterBirth": 21,
+    ///     "yieldLitres": 10
+    /// },
+    ///],
+    /// </code></example>
+    [DocumentAsJson]
     public class EntityBehaviorMilkable : EntityBehavior
     {
         double lastMilkedTotalHours
@@ -25,7 +41,23 @@ namespace Vintagestory.GameContent
 
         EntityBehaviorMultiply bhmul;
 
+        /// <summary>
+        /// <!--<jsonalias>liquidStack</jsonalias>-->
+        /// The liquid itemstack to produce when this entity is milked
+        /// </summary>
+        [DocumentAsJson("Optional", "milkportion")]
+        JsonItemStack liquidJsonStack;
+
+        /// <summary>
+        /// How many in-game days since birth of a child type should pass to start lactation
+        /// </summary>
+        [DocumentAsJson("Optional", "21")]
         float lactatingDaysAfterBirth = 21;
+
+        /// <summary>
+        /// Determines how many liters of milk are harvested per milking the creature
+        /// </summary>
+        [DocumentAsJson("Optional", "10")]
         float yieldLitres = 10f;
 
         long lastIsMilkingStateTotalMs;
@@ -42,6 +74,12 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(properties, attributes);
 
+            liquidJsonStack = attributes["liquidStack"].AsObject(new JsonItemStack
+            {
+                Type = EnumItemClass.Item,
+                Code = "milkportion"
+            });
+            liquidJsonStack.StackSize = 999999;
             lactatingDaysAfterBirth = attributes["lactatingDaysAfterBirth"].AsFloat(21);
             yieldLitres = attributes["yieldLitres"].AsFloat(10);
         }
@@ -224,13 +262,7 @@ namespace Vintagestory.GameContent
 
         public ItemStack GetMilkStack(IWorldAccessor world)
         {
-            JsonItemStack liquidJsonStack = entity.Properties.Attributes["liquidStack"].AsObject(new JsonItemStack
-            {
-                Type = EnumItemClass.Item,
-                Code = "milkportion"
-            });
-
-            liquidJsonStack.StackSize = 999999;
+            liquidJsonStack.ResolvedItemstack = null;
             liquidJsonStack.Resolve(world, "milking liquid stack");
 
             return liquidJsonStack.ResolvedItemStack;

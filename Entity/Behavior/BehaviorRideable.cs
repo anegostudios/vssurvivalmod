@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -20,6 +21,70 @@ namespace Vintagestory.GameContent
         Press
     }
 
+    /// <summary>
+    /// Allows to ride an entity.
+    /// <br/>Requires <see cref="EntityBehaviorSelectionBoxes"/>, <see cref="EntityBehaviorGait"/>, <see cref="EntityBehaviorTaskAI"/> and optionally <see cref="EntityBehaviorAttachable"/>.
+    /// <br/>Uses the "rideable" code
+    /// </summary>
+    /// <example><code lang="json">
+    ///"behaviors": [
+    /// {
+    ///  "code": "rideable",
+    ///  "saddleBreakGait": "sprint",
+    ///  "saddleBreaksRequired": { "avg": 20, "var": 5 },
+    ///  "saddleBreakDayInterval": 1,
+    ///  "tamedEntityCode": "tameddeer-{type}-{gender}-{age}"
+    /// }
+    ///]
+    /// </code></example>
+    /// <example><code lang="json">
+    ///"behaviors": [
+    /// {
+    ///  "code": "rideable",
+    ///  "interactMountAnySeat": true,
+    ///  "seats": [{ "apName": "Rider", "selectionBox": "MidAP", "bodyYawLimit": 1.83, "controllable": true, "mountOffset": { "x": -0.05, "y": -0.69, "z": 0 }, "eyeOffsetX": -0.37 }],
+    ///  "rideableGaitOrder": ["walkback", "idle", "walk", "sprint"],
+    ///  "controls": {
+    ///      "walkback": {
+    ///          "moveSpeedMultiplier": 1,
+    ///          "animation": "walkback",
+    ///          "animationSpeed": 2.7,
+    ///          "weight": 10,
+    ///          "easeInSpeed": 1,
+    ///          "easeOutSpeed": 3,
+    ///          "blendMode": "Average",
+    ///          "riderAnim": {
+    ///              "animation": "rideelk-walk",
+    ///              "animationSpeed": 1,
+    ///              "weight": 1,
+    ///              "withFpVariant": true,
+    ///              "blendMode": "Average",
+    ///              "elementWeight": {
+    ///                  "LowerTorso": 80,
+    ///                  "UpperTorso": 80,
+    ///                  "UpperFootR": 80,
+    ///                  "UpperFootL": 80,
+    ///                  "LowerFootR": 80,
+    ///                  "LowerFootL": 80
+    ///              },
+    ///              "elementBlendMode": {
+    ///                  "LowerTorso": "Average",
+    ///                  "UpperTorso": "Average",
+    ///                  "UpperFootR": "Average",
+    ///                  "UpperFootL": "Average",
+    ///                  "LowerFootR": "Average",
+    ///                  "LowerFootL": "Average"
+    ///              }
+    ///          }
+    ///      },
+    ///    ...
+    ///  }
+    /// }
+    ///]
+    /// </code></example>
+    [DocumentAsJson]
+    [AddDocumentationProperty("saddleBreaksRequired", "How many saddle breaks are required before entity can be ridden", "Vintagestory.API.MathTools.NatFloat", "Optional", "None", true)]
+    [AddDocumentationProperty("controlScheme", "Use this on a collectible type. Overrides control scheme for when entity is ridden", "System.String", "Recommended", "None", true)]
     public class EntityBehaviorRideable(Entity entity) : EntityBehaviorSeatable(entity), IMountable, IRenderer, IMountableListener
     {
         // List of gaits in order of keypress controls for the rideable entity. In practice, this is usually the same as ordering by increasing speed, but doesn't have to be.
@@ -60,7 +125,15 @@ namespace Vintagestory.GameContent
 
         #region Semitamed animals
 
+        /// <summary>
+        /// How many in-game days must pass between saddle break attempts
+        /// </summary>
+        [DocumentAsJson("Optional", "0")]
         protected float saddleBreakDayInterval;
+        /// <summary>
+        /// The entity code of the tamed version of this entity
+        /// </summary>
+        [DocumentAsJson("Optional", "None")]
         protected string? tamedEntityCode;
 
         public int RemainingSaddleBreaks
@@ -794,14 +867,12 @@ namespace Vintagestory.GameContent
         }
     }
 
-    public class ControlMeta
+    public class ControlMeta : AnimationMetaData
     {
-        [Obsolete("Does nothing. Use the gait's movement speed instead.")]
-        public float MoveSpeedMultiplier;
-        [Obsolete("Does nothing. Use the gait's movement speed instead.")]
-        public float MoveSpeed;
-        public AnimationMetaData? RiderAnim;
-        public AnimationMetaData? PassengerAnim;
+        public float MoveSpeedMultiplier; // Multiplied by GaitMeta MoveSpeed to get rideable speed
+        public float MoveSpeed; // Overrides GaitMeta MoveSpeed
+        public AnimationMetaData RiderAnim;
+        public AnimationMetaData PassengerAnim;
 
 
         /// <summary>

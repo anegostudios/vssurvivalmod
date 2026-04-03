@@ -250,15 +250,15 @@ public class BEBehaviorFruitingBush : BlockEntityBehavior, IAnimalFoodSource, IL
                 dsc.AppendLine(Lang.Get("Fresh fruit for about {0:0.#} days.", days));
                 break;
             case EnumFruitingBushGrowthState.Ripening:
-            {
-                dsc.AppendLine(Lang.Get("Ripe in about {0:0.#} days, weather permitting.", days));
-                break;
-            }
+                {
+                    dsc.AppendLine(Lang.Get("Ripe in about {0:0.#} days, weather permitting.", days));
+                    break;
+                }
             case EnumFruitingBushGrowthState.Flowering:
-            {
-                dsc.AppendLine(Lang.Get("Flowering for about {0:0.#} days, weather permitting.", days));
-                break;
-            }
+                {
+                    dsc.AppendLine(Lang.Get("Flowering for about {0:0.#} days, weather permitting.", days));
+                    break;
+                }
             case EnumFruitingBushGrowthState.Young:
                 dsc.AppendLine(Lang.Get("fruitingplant-maturesindays", (int)Math.Ceiling(BState.MatureTotalDays - Api.World.Calendar.TotalDays)));
                 break;
@@ -273,20 +273,7 @@ public class BEBehaviorFruitingBush : BlockEntityBehavior, IAnimalFoodSource, IL
             bens.GetBlockInfo(forPlayer, dsc);
         }
 
-        if (BState.Traits.Length > 0)
-        {
-            dsc.AppendLine();
-        }
-        int i = 0;
-        foreach (var val in BState.Traits)
-        {
-            if (i++ > 0) dsc.Append(", ");
-            dsc.Append(Lang.Get("{0}", Lang.Get("trait-" + val.ToLowerInvariant())));
-        }
-        if (BState.Traits.Length > 0)
-        {
-            dsc.AppendLine();
-        }
+        addTraits(dsc, BState.Traits);
 
         var yearsPassed = (Api.World.Calendar.TotalDays - BState.LastCuttingTakenTotalDays) / Api.World.Calendar.DaysPerYear;
         if (yearsPassed < yearsBetweenCuttings)
@@ -295,6 +282,23 @@ public class BEBehaviorFruitingBush : BlockEntityBehavior, IAnimalFoodSource, IL
         }
     }
 
+    public static void addTraits(StringBuilder dsc, string[] traits)
+    {
+        if (traits.Length > 0)
+        {
+            dsc.AppendLine();
+        }
+        int i = 0;
+        foreach (var val in traits)
+        {
+            if (i++ > 0) dsc.Append(", ");
+            dsc.Append(Lang.Get("{0}", Lang.Get("trait-" + val.ToLowerInvariant())));
+        }
+        if (traits.Length > 0)
+        {
+            dsc.AppendLine();
+        }
+    }
 
     public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
     {

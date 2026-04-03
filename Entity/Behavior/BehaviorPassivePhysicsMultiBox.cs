@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
@@ -10,9 +10,35 @@ using Vintagestory.Client.NoObf;
 
 namespace Vintagestory.API.Common;
 
+/// <summary>
+/// Passive physics system for entities with support for multiple collision boxes.
+/// <br/>Uses the "passivephysicsmultibox" code
+/// </summary>
+/// <example><code lang="json">
+/// "behaviors": [
+///  {
+///     "code": "passivephysicsmultibox"
+/// 	"collisionBoxes": [
+/// 		{ "x1": -1.4, "y1": 0, "z1": 0.1, "x2": 1.4, "y2": 1.2, "z2": 2.9 },
+/// 		{ "x1": -1.4, "y1": 0, "z1": -2.9, "x2": 1.4, "y2": 1.2, "z2": -0.1 },
+/// 		{ "x1": -1.4, "y1": 0, "z1": -5.9, "x2": 1.4, "y2": 1.2, "z2": -2.9 }
+/// 	],
+/// 	"groundDragFactor": 1,
+/// 	"airDragFallingFactor": 0.5,
+/// 	"gravityFactor": 1.0
+///  }
+/// ]
+/// </code></example>
+[DocumentAsJson]
 public class EntityBehaviorPassivePhysicsMultiBox : EntityBehaviorPassivePhysics, IRenderer
 {
+    /// <summary>
+    /// <!--<jsonalias>CollisionBoxes</jsonalias>-->
+    /// Collision boxes for this entity
+    /// </summary>
+    [DocumentAsJson]
     protected Cuboidf[] OrigCollisionBoxes;
+
     protected Cuboidf[] CollisionBoxes;
     WireframeCube entityWf;
 

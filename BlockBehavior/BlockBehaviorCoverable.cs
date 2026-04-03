@@ -1,3 +1,4 @@
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -6,6 +7,17 @@ using Vintagestory.API.Config;
 
 namespace Vintagestory.GameContent.Mechanics
 {
+    /// <summary>
+    /// Allows this block to be covered by cubic blocks or blocks with specific attributes. This behavior has no properties.
+    /// Requires <see cref="BlockEntityBehaviorCoverable"/>.
+    /// Defined with the "Coverable" code.
+    /// </summary>
+    /// <example><code lang="json">
+    ///"behaviors": [
+    /// { "name": "Coverable" }
+    ///],
+    /// </code></example>
+    [DocumentAsJson]
     public class BlockBehaviorCoverable : BlockBehavior
     {
         public BlockBehaviorCoverable(Block block) : base(block)

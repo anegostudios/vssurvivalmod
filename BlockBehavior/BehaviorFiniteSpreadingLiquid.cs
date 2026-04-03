@@ -81,11 +81,43 @@ namespace Vintagestory.GameContent
         protected bool carver;
         [ThreadStatic] protected static IBlockAccessor bulkBlockAccessorMinimal;    // Used by rivulets carver; ThreadStatic will automatically be disposed when the thread is disposed
 
+        /// <summary>
+        /// The 24 possible random shuffles of BlockFacing.HORIZONTALS
+        /// </summary>
+        protected static readonly byte[] ShuffleTable = {
+                0b_11_10_01_00, // 0,1,2,3
+                0b_10_11_01_00, // 0,1,3,2
+                0b_11_01_10_00, // 0,2,1,3
+                0b_01_11_10_00, // 0,2,3,1
+                0b_10_01_11_00, // 0,3,1,2
+                0b_01_10_11_00, // 0,3,2,1
+
+                0b_11_10_00_01, // 1,0,2,3
+                0b_10_11_00_01, // 1,0,3,2
+                0b_11_00_10_01, // 1,2,0,3
+                0b_00_11_10_01, // 1,2,3,0
+                0b_10_00_11_01, // 1,3,0,2
+                0b_00_10_11_01, // 1,3,2,0
+
+                0b_11_01_00_10, // 2,0,1,3
+                0b_01_11_00_10, // 2,0,3,1
+                0b_11_00_01_10, // 2,1,0,3
+                0b_00_11_01_10, // 2,1,3,0
+                0b_01_00_11_10, // 2,3,0,1
+                0b_00_01_11_10, // 2,3,1,0
+
+                0b_10_01_00_11, // 3,0,1,2
+                0b_01_10_00_11, // 3,0,2,1
+                0b_10_00_01_11, // 3,1,0,2
+                0b_00_10_01_11, // 3,1,2,0
+                0b_01_00_10_11, // 3,2,0,1
+                0b_00_01_10_11  // 3,2,1,0
+            };
+
         public BlockBehaviorFiniteSpreadingLiquid(Block block) : base(block)
         {
         }
 
-        BlockFacing[] tmpFacings = null;
         public override void Initialize(JsonObject properties)
         {
             base.Initialize(properties);
@@ -96,10 +128,6 @@ namespace Vintagestory.GameContent
             liquidFlowingCollisionReplacement = CreateAssetLocation(properties, "flowingReplacementCode");
             collidesWith = properties["collidesWith"]?.AsString();
             multiplySpread = properties["multiplySpread"].AsBool(true);
-            if (!multiplySpread)
-            {
-                tmpFacings = (BlockFacing[])BlockFacing.HORIZONTALS.Clone();
-            }
 
             carver = properties["carver"].AsBool(false);
         }
@@ -279,7 +307,6 @@ namespace Vintagestory.GameContent
             // 1. We call this method also for other blocks, so can't rely on this.block
             // 2. our own liquid level might have changed from other nearby liquid sources
             Block ourBlock = world.BlockAccessor.GetBlock(pos, BlockLayersAccess.Fluid);
-
             int liquidLevel = ourBlock.LiquidLevel;
             if (liquidLevel > 0)
             {
@@ -287,10 +314,11 @@ namespace Vintagestory.GameContent
                 if (!TryLoweringLiquidLevel(ourBlock, world, pos)) 
                 {
                     // nasty slow check, but supports chiselled blocks for good physics
-                    var dSolid = world.BlockAccessor.GetMostSolidBlock(pos.DownCopy());
+                    BlockPos downPos = pos.DownCopy();
+                    var dSolid = world.BlockAccessor.GetMostSolidBlock(downPos);
                     Block ourSolid = world.BlockAccessor.GetBlock(pos, BlockLayersAccess.SolidBlocks);
                     
-                    bool onSolidGround = dSolid.GetLiquidBarrierHeightOnSide(BlockFacing.UP, pos.DownCopy()) == 1.0 ||
+                    bool onSolidGround = dSolid.GetLiquidBarrierHeightOnSide(BlockFacing.UP, downPos) == 1.0 ||
                                          ourSolid.GetLiquidBarrierHeightOnSide(BlockFacing.DOWN, pos) == 1.0;
 
                     // First try spreading downwards, if not on solid ground
@@ -388,6 +416,7 @@ namespace Vintagestory.GameContent
 
         private void RemoveOtherLowerNeighbours(Block liquidBlock, BlockPos pos, BlockFacing pathFacing, IWorldAccessor world)
         {
+            BlockPos origPos = pos.Copy();
             for (int i = 0; i < 4; i++)
             {
                 pos.IterateHorizontalOffsets(i);
@@ -398,7 +427,7 @@ namespace Vintagestory.GameContent
                 {
                     // Remove previous path
                     world.BulkBlockAccessor.SetBlock(0, pos, BlockLayersAccess.Fluid);
-                    UpdateNeighbouringLiquids(pos, world);
+                    UpdateNeighbouringLiquids(pos, world, origPos, liquidBlock);
                 }
             }
             pos.East();  // Needed to finish the iteration and restore pos to initial value, as we end effectively with pos.West()
@@ -457,10 +486,11 @@ namespace Vintagestory.GameContent
         {
             if (!multiplySpread)
             {
-                GameMath.Shuffle(world.Rand, tmpFacings);
                 BlockFacing foundPathFacing = null;
-                foreach (BlockFacing facing in BlockFacing.HORIZONTALS)
+                byte shuffledIndices = ShuffleTable[GameMath.MurmurHash3Mod(pos.X, pos.Y, pos.Z, ShuffleTable.Length)];
+                for(int i = 0; i < 4; i++)
                 {
+                    BlockFacing facing = BlockFacing.HORIZONTALS[(shuffledIndices >> (i * 2)) & 0b11];
                     if (TrySpreadIntoBlock(ourblock, ourSolid, pos, pos.AddCopy(facing), facing, world))
                     {
                         foundPathFacing = facing;
@@ -497,7 +527,7 @@ namespace Vintagestory.GameContent
                     world.BulkBlockAccessor.SetBlock(replacementBlock.BlockId, pos.DownCopy());
                 }
 
-                UpdateNeighbouringLiquids(pos, world);
+                UpdateNeighbouringLiquids(pos, world, null, null);
                 GenerateSteamParticles(pos, world);
                 world.PlaySoundAt(collisionReplaceSound, pos, 0, null, true, 16);
             }
@@ -601,7 +631,7 @@ namespace Vintagestory.GameContent
         /// <summary>
         /// If any neighbours (up, down, and all horizontal neighbours including diagonals) are liquids, register a callback to update them, similar to triggering OnNeighbourBlockChange()
         /// </summary>
-        private void UpdateNeighbouringLiquids(BlockPos pos, IWorldAccessor world)
+        private void UpdateNeighbouringLiquids(BlockPos pos, IWorldAccessor world, BlockPos skip, Block potentiallyHigher)
         {
             world.BulkBlockAccessor.ReadFromStagedByDefault = true;
             // First do down and up, as they are not included in Cardinals
@@ -622,8 +652,9 @@ namespace Vintagestory.GameContent
             foreach (var val in Cardinal.ALL)
             {
                 npos.Set(pos.X + val.Normali.X, pos.Y, pos.Z + val.Normali.Z);
+                if (npos.Equals(skip)) continue;     // Do not update the block we came from
                 neib = world.BulkBlockAccessor.GetBlock(npos, BlockLayersAccess.Fluid);
-
+                if (potentiallyHigher != null && neib.LiquidLevel >= potentiallyHigher.LiquidLevel) continue;
                 bbfsl = neib.GetBehavior<BlockBehaviorFiniteSpreadingLiquid>();
                 if (bbfsl != null) world.RegisterCallbackUnique(bbfsl.OnDelayedWaterUpdateCheck, npos.Copy(), spreadDelay);
             }
@@ -675,8 +706,8 @@ namespace Vintagestory.GameContent
         {
             if (IsLiquidSourceBlock(ourBlock) == false)
             {
-                int nlevel = GetMaxNeighbourLiquidLevel(ourBlock, world, pos);
-                if (nlevel <= ourBlock.LiquidLevel)
+                int nlevel = GetMaxNeighbourLiquidLevel(ourBlock, world, pos, out bool fedByOneNeighbour);
+                if (nlevel <= ourBlock.LiquidLevel || !fedByOneNeighbour)     // If not fedByOneNeighbour then not directly connected, so our block is "wrong" (e.g. rapid flowing water stream looping back on itself)
                 {
                     LowerLiquidLevelAndNotifyNeighbors(ourBlock, pos, world);
                     return true;
@@ -822,7 +853,7 @@ namespace Vintagestory.GameContent
             return world.GetBlock(ourBlock.CodeWithParts("d", "6")).BlockId;
         }
 
-        public int GetMaxNeighbourLiquidLevel(Block ourblock, IWorldAccessor world, BlockPos pos)
+        public int GetMaxNeighbourLiquidLevel(Block ourblock, IWorldAccessor world, BlockPos pos, out bool oneNeighbourFeedsThis)
         {
             Block ourSolid = world.BlockAccessor.GetBlock(pos, BlockLayersAccess.SolidBlocks);
 
@@ -831,11 +862,14 @@ namespace Vintagestory.GameContent
             Block uSolid = world.BlockAccessor.GetBlock(npos, BlockLayersAccess.SolidBlocks);
             if (IsSameLiquid(ourblock, ublock) && ourSolid.GetLiquidBarrierHeightOnSide(BlockFacing.UP, pos) == 0.0 && uSolid.GetLiquidBarrierHeightOnSide(BlockFacing.DOWN, npos) == 0.0)
             {
+                oneNeighbourFeedsThis = true;
                 return MAXLEVEL;
             }
             else
             {
                 int level = 0;
+                int ourlevel = ourblock.LiquidLevel;
+                oneNeighbourFeedsThis = false;
                 npos.Down();
                 for (int i = 0; i < BlockFacing.HORIZONTALS.Length; i++)
                 {
@@ -844,6 +878,7 @@ namespace Vintagestory.GameContent
                     if (IsSameLiquid(ourblock, nblock))
                     {
                         int nLevel = nblock.LiquidLevel;
+                        if (nLevel == ourlevel + 1) oneNeighbourFeedsThis = true;
                         if (ourSolid.GetLiquidBarrierHeightOnSide(BlockFacing.HORIZONTALS[i], pos) >= nLevel / MAXLEVEL_float) continue;
                         Block neibSolid = world.BlockAccessor.GetBlock(npos, BlockLayersAccess.SolidBlocks);
                         if (neibSolid.GetLiquidBarrierHeightOnSide(BlockFacing.HORIZONTALS[i].Opposite, npos) >= nLevel / MAXLEVEL_float) continue;
@@ -959,28 +994,33 @@ namespace Vintagestory.GameContent
         }
 
 
-        private BlockPos BfsSearchPath(IWorldAccessor world, Queue<BlockPos> uncheckedPositions, BlockPos target, Block ourBlock)
+        private BlockPos BfsSearchPath(IWorldAccessor world, Queue<BlockPos> uncheckedPositions, BlockPos origin, Block ourBlock)
         {
-            BlockPos npos = new BlockPos(target.dimension);
+            BlockPos npos = new BlockPos(origin.dimension);
             BlockPos pos;
-            BlockPos origin = null;
             while (uncheckedPositions.Count > 0)
             {
-                pos = uncheckedPositions.Dequeue();
-                if (origin == null) origin = pos;
-                int curDist = pos.ManhattanDistance(target);
+                pos = uncheckedPositions.Dequeue();                     // starts at target position, e.g. 2 blocks away horizontally
+                int curDist = pos.ManhattanDistance(origin);
 
+                Block curBlock = world.BlockAccessor.GetMostSolidBlock(pos);
                 npos.Set(pos);
                 for (int i = 0; i < BlockFacing.HORIZONTALS.Length; i++)
                 {
-                    BlockFacing.HORIZONTALS[i].IterateThruFacingOffsets(npos);
-                    if (npos.ManhattanDistance(target) > curDist) continue;
+                    BlockFacing facing = BlockFacing.HORIZONTALS[i];
+                    facing.IterateThruFacingOffsets(npos);                  // Attempts to path one step closer towards origin
+                    int distFromOrigin = npos.ManhattanDistance(origin);
+                    if (distFromOrigin > curDist) continue;
 
-                    if (npos.Equals(target)) return pos;
+                    // Is there a barrier at pos preventing inflow to pos from npos?
+                    if (curBlock.GetLiquidBarrierHeightOnSide(facing, pos) >= (ourBlock.LiquidLevel - curDist) / MAXLEVEL_float) continue;
 
+                    // Is there a barrier at npos preventing outflow from npos towards pos
                     Block b = world.BlockAccessor.GetMostSolidBlock(npos);
-                    if (b.GetLiquidBarrierHeightOnSide(BlockFacing.HORIZONTALS[i].Opposite, npos) >= (ourBlock.LiquidLevel - pos.ManhattanDistance(origin)) / MAXLEVEL_float) continue;
-                    
+                    if (b.GetLiquidBarrierHeightOnSide(facing.Opposite, npos) >= (ourBlock.LiquidLevel - curDist) / MAXLEVEL_float) continue;
+
+                    if (distFromOrigin == 0) return pos;                    // If distance is zero we must now be at the origin
+
                     uncheckedPositions.Enqueue(npos.Copy());
                 }
             }

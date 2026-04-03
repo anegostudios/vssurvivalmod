@@ -214,7 +214,7 @@ namespace Vintagestory.GameContent
                     partialFuelConsumed = 0;
                 }
 
-                if (WorkItemStack != null)
+                if (WorkItemStack != null && Api.Side == EnumAppSide.Server)
                 {
                     float temp = WorkItemStack.Collectible.GetTemperature(Api.World, WorkItemStack);
 
@@ -222,6 +222,7 @@ namespace Vintagestory.GameContent
                     {
                         float tempGain = (float)(hoursPassed * 1500 * oxygenBurnMul);
                         WorkItemStack.Collectible.SetTemperature(Api.World, WorkItemStack, Math.Min(MaxTemperature * oxygenBurnMul, temp + tempGain));
+                        MarkDirty(false);
                     }
                 }
 
@@ -240,7 +241,6 @@ namespace Vintagestory.GameContent
 
                 extraOxygenRate = 0;
             }
-
 
             lastTickTotalHours = Api.World.Calendar.TotalHours;
         }
@@ -282,7 +282,7 @@ namespace Vintagestory.GameContent
                     blockSel.Position
                 );
 
-                renderer?.SetContents(WorkItemStack, FuelLevel, burning, true, extraOxygenRate);
+                renderer?.SetContents(WorkItemStack, FuelLevel, burning, true, extraOxygenRateRender);
                 MarkDirty();
                 Api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), Pos, 0.4375, byPlayer, false);
 
@@ -302,7 +302,7 @@ namespace Vintagestory.GameContent
                 if (isFuel) Api.World.PlaySoundAt(new AssetLocation("sounds/block/charcoal"), byPlayer, byPlayer, true, 16);
                 (Api as ICoreClientAPI)?.World.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
 
-                renderer?.SetContents(WorkItemStack, FuelLevel, burning, false, extraOxygenRate);
+                renderer?.SetContents(WorkItemStack, FuelLevel, burning, false, extraOxygenRateRender);
                 MarkDirty();
 
                 return true;
@@ -324,7 +324,7 @@ namespace Vintagestory.GameContent
                     blockSel.Position
                 );
 
-                renderer?.SetContents(WorkItemStack, FuelLevel, burning, true, extraOxygenRate);
+                renderer?.SetContents(WorkItemStack, FuelLevel, burning, true, extraOxygenRateRender);
                 MarkDirty();
                 Api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), Pos, 0.4375, byPlayer, false);
 
@@ -348,7 +348,7 @@ namespace Vintagestory.GameContent
                     blockSel.Position
                 );
 
-                renderer?.SetContents(WorkItemStack, FuelLevel, burning, true, extraOxygenRate);
+                renderer?.SetContents(WorkItemStack, FuelLevel, burning, true, extraOxygenRateRender);
                 Api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), Pos, 0.4375, byPlayer, false);
 
                 MarkDirty();
@@ -394,6 +394,8 @@ namespace Vintagestory.GameContent
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
+            var prevStack = WorkItemStack?.Clone();
+
             base.FromTreeAttributes(tree, worldForResolving);
 
             var contents = tree.GetItemstack("contents");
@@ -412,15 +414,15 @@ namespace Vintagestory.GameContent
             lastTickTotalHours = tree.GetDouble("lastTickTotalHours");
             MeshAngleRad = tree.GetFloat("meshAngle", MeshAngleRad);
 
-
-            renderer?.SetContents(WorkItemStack, FuelLevel, burning, true, extraOxygenRate);
+            bool remesh = ((prevStack == null) ^ (WorkItemStack == null)) || (prevStack != null && WorkItemStack != null && (prevStack.StackSize != WorkItemStack.StackSize || !prevStack.Equals(Api.World, WorkItemStack, GlobalConstants.IgnoredStackAttributes)));            
+            renderer?.SetContents(WorkItemStack, FuelLevel, burning, remesh, extraOxygenRateRender);
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
         {
             base.ToTreeAttributes(tree);
 
-            tree.SetItemstack("contents", WorkItemStack);
+            //tree.SetItemstack("contents", WorkItemStack); - why was this still enabled in 1.22?
             tree.SetFloat("partialFuelConsumed", partialFuelConsumed);
             tree.SetInt("burning", burning ? 1 : 0);
             tree.SetDouble("lastTickTotalHours", lastTickTotalHours);

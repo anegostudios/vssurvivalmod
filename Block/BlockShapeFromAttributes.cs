@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -36,7 +37,7 @@ namespace Vintagestory.GameContent
         AssetLocation ShapePath { get; }
         Shape ShapeResolved { get; set; }
         Shape ShapeLOD2Resolved { get; set; }
-
+        EnumBlockMaterial Material { get; set; }
         BlockDropItemStack[] Drops {get;set;}
         string HeldIdleAnim { get; set; }
         string HeldReadyAnim { get; set; }
@@ -634,8 +635,26 @@ namespace Vintagestory.GameContent
             return mesh;
         }
 
-        byte[] noLight = new byte[3];
 
+
+        public override EnumBlockMaterial GetBlockMaterial(IBlockAccessor blockAccessor, BlockPos pos, ItemStack stack = null)
+        {
+            if (pos == null)
+            {
+                string type = stack.Attributes.GetString("type", "");
+                var cprops = GetTypeProps(type, stack, null);
+                return cprops?.Material ?? EnumBlockMaterial.Stone;
+            }
+            else
+            {
+                var bect = blockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorShapeFromAttributes>();
+                var cprops = GetTypeProps(bect?.Type, null, bect);
+                return cprops?.Material ?? EnumBlockMaterial.Stone;
+            }
+        }
+
+
+        byte[] noLight = new byte[3];
 
         public override byte[] GetLightHsv(IBlockAccessor blockAccessor, BlockPos pos, ItemStack stack = null)
         {
@@ -766,5 +785,8 @@ namespace Vintagestory.GameContent
             IShapeTypeProps props = GetTypeProps(type, slot.Itemstack, null);
             return slot.Itemstack.Collectible + "-" + props.Code;
         }
+
+
+
     }
 }

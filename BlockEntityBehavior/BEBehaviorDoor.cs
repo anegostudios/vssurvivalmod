@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -11,7 +12,22 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-
+    /// <summary>
+    /// A block entity behavior for a door. Requires <see cref="BlockBehaviorDoor"/> on a block to work.
+    /// Defined with the "Door" code.
+    /// </summary>
+    /// <example><code lang="json">
+    ///"entityBehaviors": [
+    /// { "name": "Door" }
+    ///],
+    ///...
+    ///"behaviors": [
+    /// { "name": "Door" }
+    ///],
+    /// </code></example>
+    [DocumentAsJson]
+    [AddDocumentationProperty("breakOnTriggerChance", "Affects the chance of door breaking and dropping itself upon using it", "System.Single", "Optional", "0", true)]
+    [AddDocumentationProperty("easingSpeed", "Affects animation speed of door opening or closing", "System.Single", "Optional", "10", true)]
     public class BEBehaviorDoor : BEBehaviorAnimatable, IInteractable, IRotatable
     {
         public float RotateYRad;

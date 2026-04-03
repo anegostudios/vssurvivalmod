@@ -96,9 +96,6 @@ namespace Vintagestory.GameContent
     /// Makes a block potentially unstable, but can be held up using support beams. This behavior will only function if the "caveIns" world config is set to true.
     /// Uses the code "UnstableRock".
     /// </summary>
-    /// <example><code lang="json">
-    /// 
-    /// </code></example>
     [DocumentAsJson]
     [AddDocumentationProperty("UnstableRockStabilization", "The vertical stabilization that this block gives to nearby unstable rock blocks.", "System.Int32", "Optional", "0", true)]
     [AddDocumentationProperty("MaxCollapseDistance", "Obsolete. No longer used.", "System.Single", "Obsolete", "1", false)]

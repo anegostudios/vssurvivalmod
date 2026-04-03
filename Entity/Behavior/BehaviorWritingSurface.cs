@@ -1,4 +1,5 @@
 using ProtoBuf;
+using Vintagestory.API;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -30,15 +31,60 @@ namespace Vintagestory.GameContent
         Cancel = 12313
     }
 
-
+    /// <summary>
+    /// Adds writeable surface to entity.
+    /// <br/>Uses the "writingsurface" code
+    /// </summary>
+    /// <example><code lang="json">
+    ///"behaviors": [
+    /// "writingsurface": {
+    ///    "fontConfig": {
+    ///        "maxWidth": 208,
+    ///        "maxHeight": 96,
+    ///        "fontSize": 20,
+    ///        "textVoxelOffsetY": -1,
+    ///        "textVoxelOffsetZ": 0.25,
+    ///        "textVoxelHeight": 6,
+    ///        "fontName": "Almendra",
+    ///        "verticalAlign": "Middle",
+    ///        "boldFont": true
+    ///    },
+    ///    "writingSurfaces": [ "LPlaqueAP", "RPlaqueAP" ]
+    /// },
+    ///],
+    /// </code></example>
+    /// <example>
+    /// Inside a collectible used as a pigment...
+    /// <code lang="json">
+    ///"attributes": {
+    ///    "pigment": {
+    ///        "name": "Carbon black",
+    ///        "color": { "red": 25, "green": 24, "blue": 22 }
+    ///    }
+    ///    ...
+    ///},
+    /// </code></example>
+    [DocumentAsJson]
+    [AddDocumentationProperty("pigment", "Use on a collectible type. If set and the collectible is used to write on a writing surface with this behavior, its pigment color will be used for text color.", "Vintagestory.API.Datastructures.JsonObject", "Optional", "None", true)]
     public class EntityBehaviorWritingSurface : EntityBehavior, ITexPositionSource
     {
         protected MultiTextureMeshRef meshref;
         protected ICoreClientAPI capi;
         protected LoadedTexture loadedTexture;
 
+        /// <summary>
+        /// A list of shape element codes that can be written on.
+        /// </summary>
+        [DocumentAsJson("Required")]
         protected string[] writingSurfaces;
+
+        /// <summary>
+        /// <!--<jsonalias>FontConfig</jsonalias>-->
+        /// Font settings of writeable surface, such as text position, font type and others
+        /// </summary>
+        [DocumentAsJson("Required")]
         protected TextAreaConfig signTextConfig;
+
         protected CairoFont font;
         
         protected EnumVerticalAlign verticalAlign;

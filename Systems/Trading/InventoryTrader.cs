@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Common;
@@ -347,17 +347,19 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < 4; i++)
             {
                 ItemSlotTrade slot = GetBuyingCartSlot(i);
-                if (slot.Itemstack == null) continue;
+                var slotStack = slot.Itemstack;
+                var slotTradeItem = slot.TradeItem;
+                if (slotStack == null || slotTradeItem?.Stack == null) continue;
 
-                ItemSlotTrade tradeSlot = GetSellingConditionsSlot(slot.Itemstack);
+                ItemSlotTrade tradeSlot = GetSellingConditionsSlot(slotStack);
 
                 int tradeslotid = GetSlotId(tradeSlot);
                 if (!Stocks.TryGetValue(tradeslotid, out int stock))
                 {
-                    stock = slot.TradeItem.Stock;
+                    stock = slotTradeItem.Stock;
                 }
 
-                Stocks[tradeslotid] = stock - slot.Itemstack.StackSize / slot.TradeItem.Stack.StackSize;
+                Stocks[tradeslotid] = stock - slotStack.StackSize / slotTradeItem.Stack.StackSize;
 
                 if (Stocks[tradeslotid] < 0)
                 {

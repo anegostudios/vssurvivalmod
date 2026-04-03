@@ -113,7 +113,7 @@ namespace Vintagestory.GameContent
 
                 modelmat.Identity();
 
-                float riderScale = Passenger.Properties.Client.Size;
+                float riderScale = Passenger?.Properties?.Client?.Size ?? 1;
                 if (config.RiderOffset != null && riderScale != 1)
                 {
                     // Already applied 1x the offset when calculating SeatPos, now apply any extra needed based on the player's render scale

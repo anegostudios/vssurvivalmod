@@ -17,7 +17,7 @@ namespace Vintagestory.GameContent
         public Dictionary<string, ClutterTypeProps> clutterByCode = new Dictionary<string, ClutterTypeProps>();
         public override IEnumerable<IShapeTypeProps> AllTypes => clutterByCode.Values;
 
-        
+
 
         public override IShapeTypeProps GetTypeProps(string code, ItemStack stack, BEBehaviorShapeFromAttributes be)
         {
@@ -45,7 +45,7 @@ namespace Vintagestory.GameContent
                 if (ct.FpTf != null) ct.FpTtransform = new ModelTransform(ct.FpTf, defaultFp);
                 if (ct.TpTf != null) ct.TpTransform = new ModelTransform(ct.TpTf, defaultTp);
                 if (ct.GroundTf != null) ct.GroundTransform = new ModelTransform(ct.GroundTf, defaultGround);
-                
+
                 ct.ShapePath.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
 
                 foreach (var rocktype in rocktypes.Variants)
@@ -95,7 +95,7 @@ namespace Vintagestory.GameContent
             var bect = GetBEBehavior<BEBehaviorShapeFromAttributes>(pos);
             var cprops = GetTypeProps(bect?.Type, null, bect);
 
-            return cprops?.Drops?.Select(drop => drop.GetNextItemStack(dropQuantityMultiplier)).ToArray() ?? System.Array.Empty<ItemStack>();
+            return cprops?.Drops?.Select(drop => drop.GetNextItemStack(dropQuantityMultiplier)).Where(s => s != null).ToArray() ?? System.Array.Empty<ItemStack>();
         }
 
         public override BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)
@@ -106,7 +106,7 @@ namespace Vintagestory.GameContent
 
             return drops;
         }
-        
+
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);

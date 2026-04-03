@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
@@ -17,6 +18,20 @@ namespace Vintagestory.GameContent
         float GetHeatStrength(IWorldAccessor world, BlockPos heatSourcePos, BlockPos heatReceiverPos);
     }
 
+    /// <summary>
+    /// Makes entity gradually receive frost damage when outside temperature is below its body temperature.
+    /// <br/>Uses the "bodytemperature" code
+    /// </summary>
+    /// <example><code lang="json">
+    /// "behaviors": [
+    ///   {
+    ///     "code": "bodytemperature",
+    ///     "defaultBodyTemperature": 37
+    ///   }
+    /// ]
+    /// </code></example>
+    [DocumentAsJson]
+    [AddDocumentationProperty("rainProtectionPerc", "Use this on a collectible type. Between 0 and 1, how much should the item protect from the rain if it is worn on the head slot?", "System.Single", "Optional", "0", true)]
     public class EntityBehaviorBodyTemperature : EntityBehavior
     {
         ITreeAttribute tempTree;
@@ -75,8 +90,13 @@ namespace Vintagestory.GameContent
             set { tempTree.SetDouble("bodyTempUpdateTotalHours", value); entity.WatchedAttributes.MarkPathDirty("bodyTemp"); }
         }
 
-
+        /// <summary>
+        /// <!--<jsonalias>DefaultBodyTemperature</jsonalias>-->
+        /// The normal body temperature of the entity, in degrees Celsius
+        /// </summary>
+        [DocumentAsJson("Optional", "37")]
         public float NormalBodyTemperature;
+
         bool firstTick;
 
         public EntityBehaviorBodyTemperature(Entity entity) : base(entity)

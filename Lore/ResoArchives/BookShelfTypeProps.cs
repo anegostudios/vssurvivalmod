@@ -28,6 +28,8 @@ namespace Vintagestory.GameContent
         public ModelTransform GroundTransform { get { return group.GroundTf; } set { group.GroundTf = value; } }
         public string RotInterval { get { return group.RotInterval; } set { group.RotInterval = value; } }
 
+        public EnumBlockMaterial Material { get; set; } = EnumBlockMaterial.Wood;
+
         public string FirstTexture { get; set; }
         public TextureAtlasPosition TexPos { get; set; }
         public Dictionary<long, Cuboidf[]> ColSelBoxesByHashkey { get { return group.ColSelBoxesByHashkey; } set { group.ColSelBoxesByHashkey = value; } }

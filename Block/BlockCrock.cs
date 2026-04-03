@@ -789,8 +789,11 @@ namespace Vintagestory.GameContent
                 if (IsFullAndUnsealed(slot.Itemstack))
                 {
                     slot.Itemstack.Attributes.SetBool("sealed", true);
+                    (be as BlockEntityDisplay)?.MarkMeshesDirty();
+                    slot.MarkDirty();
                     handSlot.TakeOut(1);
                     handSlot.MarkDirty();
+                    be.MarkDirty();
                 }
                 else (api as ICoreClientAPI)?.TriggerIngameError(this, "crockemptyorsealed", Lang.Get("ingameerror-crock-empty-or-sealed"));
 

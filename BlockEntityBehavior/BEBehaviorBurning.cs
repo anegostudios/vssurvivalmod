@@ -1,4 +1,5 @@
 using System;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -9,7 +10,17 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-
+    /// <summary>
+    /// Makes this block a source of fire that can ignite nearby blocks and entities. This behavior has no properties.
+    /// Defined with the "Burning" code.
+    /// </summary>
+    /// <example><code lang="json">
+    ///"entityBehaviors": [
+    /// { "name": "Burning" }
+    ///],
+    /// </code></example>
+    [DocumentAsJson]
+    [AddDocumentationProperty("smothersFire", "Used on a block. If set to true, extinguishes fire when this block or fluid occupies the same position.", "System.Boolean", "Optional", "false", true)]
     public class BEBehaviorBurning : BlockEntityBehavior
     {
         public float startDuration;

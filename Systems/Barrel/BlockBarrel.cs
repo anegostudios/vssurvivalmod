@@ -228,10 +228,10 @@ namespace Vintagestory.GameContent
 
         private MeshData getContentMeshFromAttributes(ItemStack contentStack, ItemStack liquidContentStack, BlockPos forBlockPos)
         {
-            JsonObject inBarrelShapeAttr = liquidContentStack?.ItemAttributes?["inBarrelShape"];
+            JsonObject inBarrelShapeAttr = contentStack?.ItemAttributes?["inBarrelShape"];
             if (inBarrelShapeAttr != null && inBarrelShapeAttr.Exists)
             {
-                var loc = AssetLocation.Create(inBarrelShapeAttr.AsString(), contentStack.Collectible.Code.Domain).WithPathPrefixOnce("shapes").WithPathAppendixOnce(".json");
+                var loc = AssetLocation.Create(inBarrelShapeAttr.AsString(), contentStack.Collectible.Code.Domain).WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
                 return getContentMesh(contentStack, forBlockPos, loc);
             }
 

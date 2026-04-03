@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Xml.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -662,11 +661,27 @@ namespace Vintagestory.GameContent
 
             if (StorageProps == null) return;  // Seems necessary to avoid crash with certain items placed in game version 1.15-pre.1?
 
+            regenCollisionSelectionBox();
+
+            UpdateLegacyStorageLayouts();
+
+            if (overrideLayout != null)
+            {
+                this.StorageProps = StorageProps.Clone();
+                this.StorageProps.Layout = (EnumGroundStorageLayout)overrideLayout;
+            }
+        }
+
+        private void regenCollisionSelectionBox()
+        {
+            ItemStack sourceStack = inventory.FirstNonEmptySlot?.Itemstack;
+
             Cuboidf colBox, selBox;
             if (StorageProps.CollisionBox != null)
             {
                 colBox = selBox = StorageProps.CollisionBox.Clone();
-            } else
+            }
+            else
             {
                 if (sourceStack?.Block != null)
                 {
@@ -695,14 +710,6 @@ namespace Vintagestory.GameContent
             if (selBox != null)
             {
                 selBoxes[0] = selBox;
-            }
-
-            UpdateLegacyStorageLayouts();
-
-            if (overrideLayout != null)
-            {
-                this.StorageProps = StorageProps.Clone();
-                this.StorageProps.Layout = (EnumGroundStorageLayout)overrideLayout;
             }
         }
 
@@ -805,7 +812,7 @@ namespace Vintagestory.GameContent
 
             BlockPos abovePos = Pos.UpCopy();
             var beg = Block.GetBlockEntity<BlockEntityGroundStorage>(abovePos);
-            if (TotalStackSize >= Capacity && ((beg != null && equalStack) ||
+            if (TotalStackSize >= Capacity && ((beg != null && equalStack && beg.StorageProps.Layout == EnumGroundStorageLayout.Stacking) ||
                 (hotbarSlot.Empty && beg?.inventory[0].Itemstack?.Equals(Api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes) == true)))
             {
                 return beg.OnPlayerInteractStart(byPlayer, bs);
@@ -894,6 +901,7 @@ namespace Vintagestory.GameContent
                 );
 
                 Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
+                regenCollisionSelectionBox();
                 return true;
             }
 
@@ -930,6 +938,7 @@ namespace Vintagestory.GameContent
                 );
 
                 Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
+                regenCollisionSelectionBox();
 
                 MarkDirty();
 
@@ -987,8 +996,7 @@ namespace Vintagestory.GameContent
             Api.World.PlaySoundAt(StorageProps.PlaceRemoveSound, Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, null, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
 
             MarkDirty();
-
-
+            regenCollisionSelectionBox();
             (player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
 
             return true;

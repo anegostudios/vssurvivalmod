@@ -281,7 +281,7 @@ namespace Vintagestory.GameContent
             EntityPlayer eplr = byEntity as EntityPlayer;
             var player = eplr.Player;
 
-            AttachmentPointAndPose apap = byEntity.AnimManager.Animator.GetAttachmentPointPose("RightHand");
+            AttachmentPointAndPose apap = byEntity.AnimManager?.Animator?.GetAttachmentPointPose("RightHand");
             if (apap != null && api.World.Rand.NextDouble() < 0.25)
             {
                 AttachmentPoint ap = apap.AttachPoint;

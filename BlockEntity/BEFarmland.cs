@@ -458,6 +458,23 @@ namespace Vintagestory.GameContent
 
         public double TotalHoursFertilityCheck => throw new NotImplementedException();
 
+
+        protected override void UpdateFarmlandBlock()
+        {
+            int nowLevel = GetFertilityLevel((originalFertility[0] + originalFertility[1] + originalFertility[2]) / 3);
+            Block hereblock = Api.World.BlockAccessor.GetBlock(Pos);
+
+            var newCode = hereblock?.CodeWithVariants(["state", "fertility"], [IsVisiblyMoist ? "moist" : "dry", Fertilities.GetKeyAtIndex(nowLevel)]);
+            Block nextBlock = Api.World.GetBlock(newCode);
+
+            if (nextBlock != null && hereblock != null && hereblock.BlockId != nextBlock.BlockId)
+            {
+                Api.World.BlockAccessor.ExchangeBlock(nextBlock.BlockId, Pos);
+                Api.World.BlockAccessor.MarkBlockEntityDirty(Pos);
+                Api.World.BlockAccessor.MarkBlockDirty(Pos);
+            }
+        }
+
         public override void OnBlockRemoved()
         {
             base.OnBlockRemoved();

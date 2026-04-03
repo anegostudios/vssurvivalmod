@@ -1,5 +1,6 @@
 using System.Linq;
 using System.Text;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -10,6 +11,19 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Allows a player to be revived for a short period (30 in-game minutes by default) after their health is fully depleted,
+    /// when another player interacts with them using a collectible that has the <see cref="BehaviorHealingItem"/> behavior. 
+    /// <br/>Uses the "playerrevivable" code
+    /// </summary>
+    /// <example><code lang="json">
+    /// "behaviors": [
+    ///   {
+    ///     "code": "playerrevivable"
+    ///   }
+    /// ]
+    /// </code></example>
+    [DocumentAsJson]
     public class EntityBehaviorPlayerRevivable : EntityBehavior
     {
         EntityPlayer entityPlayer;

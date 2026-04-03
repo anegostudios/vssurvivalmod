@@ -1,4 +1,5 @@
-﻿using Vintagestory.API.Client;
+using Vintagestory.API;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
@@ -10,8 +11,25 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Allows entity to be tied with a rope.
+    /// <br/>Uses the "ropetieable" code
+    /// </summary>
+    /// <example><code lang="json">
+    ///"behaviors": [
+    /// {
+    ///     "code": "ropetieable",
+    ///     "minGeneration": 2
+    /// },
+    ///],
+    /// </code></example>
+    [DocumentAsJson]
     public class EntityBehaviorRopeTieable : EntityBehavior
     {
+        /// <summary>
+        /// Specifies the minimum generation required for the entity to be tied with a rope
+        /// </summary>
+        [DocumentAsJson("Optional", "0")]
         int minGeneration = 0;
 
         public IntArrayAttribute ClothIds

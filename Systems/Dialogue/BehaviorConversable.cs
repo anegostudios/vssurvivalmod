@@ -141,7 +141,7 @@ namespace Vintagestory.GameContent
                     for (int i = 0; i < cfg.Codes.Length; i++) {
                         if ((rnd -= cfg.Codes[i].Weight) <= 0)
                         {
-                            TrySpawnEntity((triggeringEntity as EntityPlayer)?.Player, cfg.Codes[i].Code, cfg.Range, cfg);
+                            TrySpawnEntity((triggeringEntity as EntityPlayer)?.Player, cfg.Codes[i].Code, cfg);
                             break;
                         }
                     }
@@ -254,7 +254,7 @@ namespace Vintagestory.GameContent
             return -1;
         }
 
-        private void TrySpawnEntity(IPlayer forplayer, string entityCode, float range, DlgSpawnEntityConfig cfg)
+        private void TrySpawnEntity(IPlayer forplayer, string entityCode, DlgSpawnEntityConfig cfg)
         {
             var etype = entity.World.GetEntityType(AssetLocation.Create(entityCode, entity.Code.Domain));
             if (etype == null)
@@ -264,15 +264,16 @@ namespace Vintagestory.GameContent
             }
 
             var centerpos = entity.Pos;
+            var range = cfg.Range;
             var minpos = centerpos.Copy().Add(-range, 0, -range).AsBlockPos;
             var maxpos = centerpos.Copy().Add(range, 0, range).AsBlockPos;
 
 
-            var spawnpos = findSpawnPos(forplayer, etype, minpos, maxpos, false, 4);
+            var spawnpos = findSpawnPos(forplayer, etype, minpos, maxpos, false, cfg.MinDistance);
 
             if (spawnpos == null)
             {
-                spawnpos = findSpawnPos(forplayer, etype, minpos, maxpos, true, 1);
+                spawnpos = findSpawnPos(forplayer, etype, minpos, maxpos, true, cfg.MinDistance);
             }
 
             if (spawnpos == null)
@@ -285,6 +286,7 @@ namespace Vintagestory.GameContent
                 var spawnentity = entity.Api.ClassRegistry.CreateEntity(etype);
                 spawnentity.Pos.SetPos(spawnpos);
                 entity.World.SpawnEntity(spawnentity);
+                entity.World.Logger.Audit($"Spawned {entityCode} at {spawnpos} ({range}/{cfg.MinDistance}) by {entity.Code} for {forplayer.PlayerName}");
 
                 if (cfg.GiveStacks != null)
                 {
@@ -299,7 +301,11 @@ namespace Vintagestory.GameContent
                         }
                     }
                 }
+
+                return;
             }
+
+            entity.World.Logger.Audit($"Failed to spawn {entityCode} at {centerpos.X}, {centerpos.Y}, {centerpos.Z} ({range}/{cfg.MinDistance}) by {entity.Code} for {forplayer.PlayerName}");
         }
 
         private Vec3d findSpawnPos(IPlayer forplayer, EntityProperties etype, BlockPos minpos, BlockPos maxpos, bool rainheightmap, int mindistance)
@@ -326,10 +332,16 @@ namespace Vintagestory.GameContent
 
                 Vec3d spawnpos = new Vec3d(x + 0.5, ty + 0.1, z + 0.5);
                 Cuboidf collisionBox = etype.SpawnCollisionBox.OmniNotDownGrowBy(0.1f);
-                if (!collisionTester.IsColliding(ba, collisionBox, spawnpos, false))
+                var colBlock = collisionTester.GetCollidingBlock(ba, collisionBox, spawnpos, false);
+
+                // allow entities like elks to spawn in winter on snow or grass with snow (since those have a collision box)
+                if (colBlock == null|| colBlock is BlockSnowLayer ||
+                    (colBlock is BlockPlant &&
+                     colBlock.BlockMaterial == EnumBlockMaterial.Snow))
                 {
-                    var resp = sapi.World.Claims.TestAccess(forplayer, spawnpos.AsBlockPos, EnumBlockAccessFlags.BuildOrBreak);
-                    if (resp == EnumWorldAccessResponse.Granted)
+                    var claim = sapi.World.Claims.Get(spawnpos.AsBlockPos);
+                    // allow an entity to spawn inside the trader claim if it satisfies the min distance
+                    if (claim == null || claim.Any(c => c.AllowTraverseEveryone))
                     {
                         spawned = true;
                         okspawnpos = spawnpos;
@@ -717,5 +729,6 @@ namespace Vintagestory.GameContent
         public WeightedCode[] Codes;
         public float Range;
         public JsonItemStack[] GiveStacks;
+        public int MinDistance;
     }
 }

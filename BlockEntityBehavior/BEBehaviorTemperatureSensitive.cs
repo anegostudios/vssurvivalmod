@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -15,8 +16,15 @@ namespace Vintagestory.GameContent
     }
 
     /// <summary>
-    /// For block entities that need to react to external influences that affect temperature or burn characteristics
+    /// For block entities that need to react to external influences that affect temperature or burn characteristics/
+    /// Defined with the "TemperatureSensitive" code, and has no properties.
     /// </summary>
+    /// <example><code lang="json">
+    ///"entityBehaviors": [
+    ///	{ "name": "TemperatureSensitive" }
+    ///],
+    /// </code></example>
+    [DocumentAsJson]
     public class BEBehaviorTemperatureSensitive : BlockEntityBehavior
     {
         ITemperatureSensitive its;

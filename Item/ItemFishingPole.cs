@@ -128,8 +128,17 @@ namespace Vintagestory.GameContent
 
                     if (oldBaitStack != null)
                     {
-                        op.SourceSlot.Itemstack = oldBaitStack;
-                        op.SourceSlot.MarkDirty();
+                        if (op.SourceSlot.StackSize <= 1)
+                        {
+                            op.SourceSlot.Itemstack = oldBaitStack;
+                            op.SourceSlot.MarkDirty();
+                        } else
+                        {
+                            if (!op.ActingPlayer.InventoryManager.TryGiveItemstack(oldBaitStack, false))
+                            {
+                                op.ActingPlayer.Entity.World.SpawnItemEntity(oldBaitStack, op.ActingPlayer.Entity.Pos.XYZ);
+                            }
+                        }
                     }
                     return;
                 }

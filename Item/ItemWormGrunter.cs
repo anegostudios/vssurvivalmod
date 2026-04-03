@@ -114,7 +114,11 @@ namespace Vintagestory.GameContent
 
         public float GetEarthWormAmount(BlockPos pos)
         {
-            var availableWorms = GetInitialDensity(pos) * 20;
+            var availableWorms = GetInitialDensity(pos) * 10;
+
+            var temp = sapi.World.BlockAccessor.GetClimateAt(pos, EnumGetClimateMode.NowValues).Temperature;
+            // Linearly drop from one to zero from 10C to 0C
+            availableWorms *= GameMath.Clamp(temp / 10f, 0, 1);
 
             if (harvestedLocations.TryGetValue(pos / 3, out var harvest)) // Super simple "area" check by dividing the position by 3
             {
@@ -170,14 +174,24 @@ namespace Vintagestory.GameContent
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
             if (blockSel == null || blockSel.Face != BlockFacing.UP || !byEntity.Controls.ShiftKey) return;
-            if (byEntity.Controls.CtrlKey) return;
+            if (byEntity.Controls.CtrlKey)
+            {
+                base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
+                return;
+            }
 
             var block = api.World.BlockAccessor.GetBlock(blockSel.Position);
-            if (block.Fertility <= 0) return;
+            if (block.Fertility <= 100) return;
 
             if (byEntity.LeftHandItemSlot.Empty || byEntity.LeftHandItemSlot.Itemstack.Collectible.Code.Path != "stick")
             {
                 (api as ICoreClientAPI)?.TriggerIngameError(this, "missingstick", Lang.Get("Requires a stick in offhand"));
+                return;
+            }
+
+            if (byEntity.World.BlockAccessor.GetClimateAt(blockSel.Position, EnumGetClimateMode.NowValues).Temperature <= 0)
+            {
+                (api as ICoreClientAPI)?.TriggerIngameError(this, "toocold", Lang.Get("The ground is frozen, worms won't come out"));
                 return;
             }
 
@@ -189,7 +203,7 @@ namespace Vintagestory.GameContent
                 var mswg = api.ModLoader.GetModSystem<ModSystemWormGrunting>();
                 float maxQuantity = mswg.GetEarthWormAmount(blockSel.Position);
 
-                int cnt = GameMath.RoundRandom(api.World.Rand, (float)api.World.Rand.NextDouble() * maxQuantity);
+                int cnt = GameMath.RoundRandom(api.World.Rand, (float)Math.Min(0.5, api.World.Rand.NextDouble()) * maxQuantity);
 
                 slot.Itemstack.TempAttributes.SetInt("spawnAmount", cnt);
             }
@@ -233,7 +247,7 @@ namespace Vintagestory.GameContent
             if (blockSel == null || blockSel.Face != BlockFacing.UP) return;
 
             var block = api.World.BlockAccessor.GetBlock(blockSel.Position);
-            if (block.Fertility > 0 && secondsUsed > 4f && api.Side == EnumAppSide.Server)
+            if (block.Fertility > 100 /* At least low fertility soil */ && secondsUsed > 4f && api.Side == EnumAppSide.Server)
             {
                 int cnt = slot.Itemstack.TempAttributes.GetInt("spawnAmount");
                 if (cnt > 0)

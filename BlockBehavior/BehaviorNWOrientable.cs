@@ -16,9 +16,9 @@ namespace Vintagestory.GameContent
 	///		"name": "NWOrientable"
 	///	}
 	///]
-    /// </code>
-    /// <code lang="json">
-    ///"variantgroups": [
+    /// </code></example>
+    /// <example><code lang="json">
+    /// "variantgroups": [
 	///	{
 	///		"code": "orientation",
 	///		"states": [ "ns", "we" ]

@@ -1,4 +1,5 @@
-﻿using Vintagestory.API.Common;
+using Vintagestory.API;
+using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
@@ -6,22 +7,49 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Redirects nearby lightning strikes to this block if it is exposed to the sky and is higher than nearby blocks.
+    /// Defined with the "AttractsLightning" code.
+    /// </summary>
+    /// <example><code lang="json">
+    /// "entityBehaviors": [
+    ///     {
+    ///         "name": "AttractsLightning",
+    ///         "properties": {
+    ///             "artificialElevation": 5,
+    ///             "elevationAttractivenessMultiplier": 2
+    ///         }
+    ///     }
+    /// ],
+    /// </code></example>
+    [DocumentAsJson]
     public class BEBehaviorAttractsLightning : BlockEntityBehavior
     {
+        /// <summary>
+        /// Properties of block that redirects lightning strikes. Used by <see cref="BEBehaviorAttractsLightning"/>.
+        /// </summary>
+        [DocumentAsJson]
         private class ConfigurationProperties
         {
             /// <summary>
             /// Modifies the elevation level used when calculating if a lightning strike should be redirected.
             /// </summary>
+            [DocumentAsJson("Optional", "1")]
             public float ArtificialElevation { get; set; } = 1;
 
             /// <summary>
             /// A multiplier calculated elevation difference.
             /// Will help overcome differences if lower elevation and further increase range if higher elevation.
             /// </summary>
+            [DocumentAsJson("Optional", "1")]
             public float ElevationAttractivenessMultiplier { get; set; } = 1;
         }
 
+        /// <summary>
+        /// <!--<jsonalias>Properties</jsonalias>-->
+        /// The properties for this behavior.
+        /// </summary>
+        [DocumentAsJson("Required")]
         private ConfigurationProperties configProps;
 
         private WeatherSystemServer weatherSystem => Api.ModLoader.GetModSystem<WeatherSystemServer>();

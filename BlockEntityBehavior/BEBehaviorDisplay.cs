@@ -120,7 +120,7 @@ public class BEBehaviorDisplay : BEBehaviorContainer, IInteractable, IRotatableP
     public override void OnBlockPlaced(ItemStack byItemStack = null)
     {
         displayStack = byItemStack?.Clone();
-        displayStack.StackSize = 1;
+        displayStack?.StackSize = 1;
     }
 
 

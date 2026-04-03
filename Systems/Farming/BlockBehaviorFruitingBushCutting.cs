@@ -1,3 +1,5 @@
+using System;
+using System.Text;
 using Vintagestory.API.Common;
 
 namespace Vintagestory.GameContent;
@@ -17,5 +19,13 @@ public class BlockBehaviorFruitingBushCutting : BlockBehavior
         }
 
         return base.CanPlaceBlock(world, byPlayer, blockSel, ref handling, ref failureCode);
+    }
+
+    public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
+    {
+        var traits = inSlot.Itemstack?.Attributes.GetString("traits")?.Split(',') ?? Array.Empty<string>();
+        if (traits != null) BEBehaviorFruitingBush.addTraits(dsc, traits);
+
+        base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
     }
 }

@@ -43,7 +43,7 @@ public sealed class RecipeLoader : ModSystem
 
 
 
-    private static void LoadAlloyRecipes(ICoreServerAPI api)
+    public static void LoadAlloyRecipes(ICoreServerAPI api)
     {
         Dictionary<AssetLocation, AlloyRecipe> alloys = api.Assets.GetMany<AlloyRecipe>(api.Server.Logger, "recipes/alloy");
 
@@ -59,7 +59,7 @@ public sealed class RecipeLoader : ModSystem
         api.World.Logger.StoryEvent(Lang.Get("Glimmers in the soil..."));
     }
 
-    private static void LoadRecipes<TRecipe>(ICoreServerAPI api, string name, string path, bool classExclusiveRecipes, Action<IRecipeBase> registerDelegate) where TRecipe : IRecipeBase
+    public static void LoadRecipes<TRecipe>(ICoreServerAPI api, string name, string path, bool classExclusiveRecipes, Action<IRecipeBase> registerDelegate) where TRecipe : IRecipeBase
     {
         Dictionary<AssetLocation, JToken> files = api.Assets.GetMany<JToken>(api.Logger, path);
         int recipeQuantity = 0;
@@ -110,7 +110,7 @@ public sealed class RecipeLoader : ModSystem
         RecipeBase.CollectiblePreSearchResultsCache.Clear();
     }
 
-    private static void LoadRecipe(ICoreServerAPI api, AssetLocation assetLocation, IRecipeBase recipe, bool classExclusiveRecipes, Action<IRecipeBase> registerDelegate, ref int loaded, ref int failedResolveCount)
+    public static void LoadRecipe(ICoreServerAPI api, AssetLocation assetLocation, IRecipeBase recipe, bool classExclusiveRecipes, Action<IRecipeBase> registerDelegate, ref int loaded, ref int failedResolveCount)
     {
         if (!recipe.Enabled) return;
 

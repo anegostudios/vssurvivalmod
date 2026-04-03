@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using SkiaSharp;
 using System.Text.RegularExpressions;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -13,36 +14,135 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// A type of player skin part
+    /// </summary>
+    [DocumentAsJson]
     public enum EnumSkinnableType
     {
-        Shape, 
-        Texture, 
+        /// <summary>
+        /// Applies a shape change to the player
+        /// </summary>
+        Shape,
+
+        /// <summary>
+        /// Applies a texture change to the player
+        /// </summary>
+        Texture,
+
+        /// <summary>
+        /// Applies a voice change to the player
+        /// </summary>
         Voice
     }
 
+    /// <summary>
+    /// A part that is applied to player's shape, voice or textures during customization
+    /// </summary>
+    [DocumentAsJson]
     public class SkinnablePart
     {
+        /// <summary>
+        /// Hides the skin part option in the customization UI
+        /// </summary>
+        [DocumentAsJson("Optional", "False")]
         public bool Hidden;
+
+        /// <summary>
+        /// Moves the next skin part after this one to the right side of the customization UI
+        /// </summary>
+        [DocumentAsJson("Optional", "False")]
         public bool Colbreak;
+
+        /// <summary>
+        /// Uses dropdown instead of icon grid for choosing this skin part in customization UI. Only works with <see cref="SkinnablePart.Type"/> set to <see cref="EnumSkinnableType.Texture"/>
+        /// </summary>
+        [DocumentAsJson("Optional", "False")]
         public bool UseDropDown;
+
+        /// <summary>
+        /// Unique code of the skin part. Used in translation together with `skinpart-` as prefix, e.g. `skinpart-baseskin`
+        /// </summary>
+        [DocumentAsJson("Required")]
         public string Code;
+
+        /// <summary>
+        /// A type of the skin part
+        /// </summary>
+        [DocumentAsJson("Optional", "EnumSkinnableType.Shape")]
         public EnumSkinnableType Type;
+
+        /// <summary>
+        /// Disables listed shape elements in entity shape when this skin part is applied
+        /// </summary>
+        [DocumentAsJson("Optional", "None")]
         public string[] DisableElements;
+
+        /// <summary>
+        /// The part shape that is applied to entity shape. Only works with <see cref="SkinnablePart.Type"/> set to <see cref="EnumSkinnableType.Shape"/>
+        /// </summary>
+        [DocumentAsJson("Optional", "None")]
         public CompositeShape ShapeTemplate;
+
         public SkinnablePartVariant[] Variants;
+
+        /// <summary>
+        /// The offset of texture from <see cref="SkinnablePart.TextureTarget"/>. Only works with <see cref="SkinnablePart.Type"/> set to <see cref="EnumSkinnableType.Texture"/>
+        /// </summary>
+        [DocumentAsJson("Optional", "None")]
         public Vec2i TextureRenderTo = null;
+
+        /// <summary>
+        /// The main texture code to which the texture defined in <see cref="SkinnablePart.TextureTemplate"/> will be applied to. Only works with <see cref="SkinnablePart.Type"/> set to <see cref="EnumSkinnableType.Texture"/>
+        /// </summary>
+        [DocumentAsJson("Optional", "None")]
         public string TextureTarget;
+
+        /// <summary>
+        /// The texture path applied to the main texture. Only works with <see cref="SkinnablePart.Type"/> set to <see cref="EnumSkinnableType.Texture"/>
+        /// </summary>
+        [DocumentAsJson("Optional", "None")]
         public AssetLocation TextureTemplate;
+
         public Dictionary<string, SkinnablePartVariant> VariantsByCode;
     }
 
+    /// <summary>
+    /// A variant of skin part
+    /// </summary>
+    [DocumentAsJson]
     public class SkinnablePartVariant
     {
+        /// <summary>
+        /// Currently unused
+        /// </summary>
+        [DocumentAsJson("Optional", "standard")]
         public string Category = "standard";
+
+        /// <summary>
+        /// Unique code of the skin part. Used in translation together with `color-` prefix for <see cref="EnumSkinnableType.Texture"/> and `skinpart-` for <see cref="EnumSkinnableType.Shape"/> skin part types respectively, e.g. `color-skin1`
+        /// </summary>
+        [DocumentAsJson("Required")]
         public string Code;
+
+        /// <summary>
+        /// The part shape applied to entity shape. When not set, <see cref="SkinnablePart.ShapeTemplate"/> is used instead. Only works with <see cref="SkinnablePart.Type"/> set to <see cref="EnumSkinnableType.Shape"/>
+        /// </summary>
+        [DocumentAsJson("Optional", "None")]
         public CompositeShape Shape;
+
+        /// <summary>
+        /// The part texture applied to the main texture. Only works with <see cref="SkinnablePart.Type"/> set to <see cref="EnumSkinnableType.Texture"/>
+        /// </summary>
+        [DocumentAsJson("Optional", "None")]
         public AssetLocation Texture;
+
+        /// <summary>
+        /// The sound used for player's voice. Only works with <see cref="SkinnablePart.Type"/> set to <see cref="EnumSkinnableType.Voice"/>
+        /// </summary>
+        [DocumentAsJson("Optional", "None")]
         public AssetLocation Sound;
+
         public int Color;
 
         public AppliedSkinnablePartVariant AppliedCopy(string partCode)
@@ -63,13 +163,69 @@ namespace Vintagestory.GameContent
         public string PartCode;
     }
 
+    /// <summary>
+    /// Used by the player entity to determine its customization options.
+    /// <br/>Requires <see cref="EntityBehaviorTexturedClothing"/>.
+    /// <br/>Uses the "extraskinnable" code
+    /// </summary>
+    /// <example><code lang="json">
+    /// "behaviors": [
+    ///  { "code": "extraskinnable" }
+    /// ]
+    /// ...
+    /// "attributes": {
+    ///   "disableElements": ["hair-covered", "showshoeR", "showshoeL", "hoodtight"],
+    ///   "skinnableParts": [
+    ///     {
+    ///      "code": "baseskin",
+    ///      "type": "texture",
+    ///      "variants": [
+    ///          { "code": "skin1", "texture": "entity/humanoid/seraphskinparts/body/skin1" },
+    ///          { "code": "skin2", "texture": "entity/humanoid/seraphskinparts/body/skin2" },
+    ///          { "code": "skin3", "texture": "entity/humanoid/seraphskinparts/body/skin3" },
+    ///          { "code": "skin4", "texture": "entity/humanoid/seraphskinparts/body/skin4" },
+    ///          { "code": "skin5", "texture": "entity/humanoid/seraphskinparts/body/skin5" },
+    ///          { "code": "skin6", "texture": "entity/humanoid/seraphskinparts/body/skin6" },
+    ///          { "code": "skin7", "texture": "entity/humanoid/seraphskinparts/body/skin7" },
+    ///          { "code": "skin8", "texture": "entity/humanoid/seraphskinparts/body/skin8" },
+    ///          { "code": "skin9", "texture": "entity/humanoid/seraphskinparts/body/skin9" },
+    ///          { "code": "skin10", "texture": "entity/humanoid/seraphskinparts/body/skin10" },
+    ///          { "code": "skin11", "texture": "entity/humanoid/seraphskinparts/body/skin11" },
+    ///          { "code": "skin12", "texture": "entity/humanoid/seraphskinparts/body/skin12" },
+    ///          { "code": "skin13", "texture": "entity/humanoid/seraphskinparts/body/skin13" },
+    ///          { "code": "skin14", "texture": "entity/humanoid/seraphskinparts/body/skin14" },
+    ///          { "code": "skin15", "texture": "entity/humanoid/seraphskinparts/body/skin15" },
+    ///          { "code": "skin16", "texture": "entity/humanoid/seraphskinparts/body/skin16" },
+    ///          { "code": "skin17", "texture": "entity/humanoid/seraphskinparts/body/skin17" },
+    ///          { "code": "skin18", "texture": "entity/humanoid/seraphskinparts/body/skin18" },
+    ///          { "code": "skin19", "texture": "entity/humanoid/seraphskinparts/body/skin19" },
+    ///          { "code": "skin20", "texture": "entity/humanoid/seraphskinparts/body/skin20" }
+    ///      ]
+    ///     },
+    ///   ]
+    /// }
+    /// </code></example>
+    [DocumentAsJson]
     public class EntityBehaviorExtraSkinnable : EntityBehavior
     {
         public Dictionary<string, SkinnablePart> AvailableSkinPartsByCode = new Dictionary<string, SkinnablePart>();
+
+        /// <summary>
+        /// <!--<jsonalias>skinnableParts</jsonalias>-->
+        /// A list of skin parts to choose from during customization
+        /// </summary>
+        [DocumentAsJson("Required", "", true)]
         public SkinnablePart[] AvailableSkinParts;
+
         public string VoiceType = "altoflute";
         public string VoicePitch = "medium";
+
+        /// <summary>
+        /// The main texture code on which skin parts with <see cref="SkinnablePart.Type"/> set to <see cref="EnumSkinnableType.Texture"/> will be overlayed
+        /// </summary>
+        [DocumentAsJson("Required", "seraph", true)]
         public string mainTextureCode;
+
         public List<AppliedSkinnablePartVariant> appliedTemp = new List<AppliedSkinnablePartVariant>();
         protected ITreeAttribute skintree;
 

@@ -1,14 +1,28 @@
 using System.Collections.Generic;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
+using Vintagestory.GameContent.Mechanics;
 using Vintagestory.API.Util;
 
 #nullable disable
 
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Allows this block to be covered by cubic blocks or blocks with specific attributes. This behavior has no properties.
+    /// Requires <see cref="BlockBehaviorCoverable"/>.
+    /// Defined with the "Coverable" code.
+    /// </summary>
+    /// <example><code lang="json">
+    ///"entityBehaviors": [
+    /// { "name": "Coverable" }
+    ///],
+    /// </code></example>
+    [DocumentAsJson]
+    [AddDocumentationProperty("wallAxelable", "Used on a block. If set to true, this block can be attached as a cover and get drawn at the same position.", "System.Boolean", "Optional", "false", true)]
     public class BlockEntityBehaviorCoverable : BlockEntityBehavior
     {
         public ItemStack WallStack;

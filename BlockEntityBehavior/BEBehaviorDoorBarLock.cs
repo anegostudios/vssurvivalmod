@@ -1,4 +1,5 @@
 using System;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -8,6 +9,22 @@ using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent;
 
+/// <summary>
+/// A block entity behavior for a locked door. Requires <see cref="BlockBehaviorDoor"/> on a block to work.
+/// Defined with the "DoorBarLock" code.
+/// </summary>
+/// <example><code lang="json">
+///"entityBehaviors": [
+/// { "name": "Door" },
+/// { "name": "DoorBarLock" }
+///],
+///...
+///"behaviors": [
+/// { "name": "Door" }
+///],
+/// </code></example>
+[DocumentAsJson]
+[AddDocumentationProperty("easingSpeed", "Affects animation speed of door unlocking", "System.Single", "Optional", "10", true)]
 public class BEBehaviorDoorBarLock : BlockEntityBehavior
 {
     public bool IsLocked { get; set; } = true;

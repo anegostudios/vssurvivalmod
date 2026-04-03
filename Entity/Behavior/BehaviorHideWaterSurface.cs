@@ -1,4 +1,5 @@
 using System;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -9,10 +10,29 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Hides water surface within shape. Useful for boats.
+    /// <br/>Uses the "hidewatersurface" code
+    /// </summary>
+    /// <example><code lang="json">
+    ///"behaviors": [
+    /// {
+    ///     "code": "hidewatersurface",
+    ///     "hideWaterElement": "ORIGIN/hideWater/*"
+    /// },
+    ///],
+    /// </code></example>
+    [DocumentAsJson]
     public class EntityBehaviorHideWaterSurface : EntityBehavior, IRenderer, ITexPositionSource
     {
         MultiTextureMeshRef meshref;
         ICoreClientAPI capi;
+
+        /// <summary>
+        /// Specifies which shape element(s) to use for hiding water surface.
+        /// <br/>Can be a single element name or wildcard path (e.g. "ORIGIN/hideWater/*")
+        /// </summary>
+        [DocumentAsJson("Required")]
         string hideWaterElement;
 
         public EntityBehaviorHideWaterSurface(Entity entity) : base(entity) { }

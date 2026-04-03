@@ -6,6 +6,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -639,7 +640,15 @@ namespace Vintagestory.GameContent
 
             if (contentSource != null)
             {
-                Shape shape = API.Common.Shape.TryGet(api, "shapes/block/wood/crate/contents.json");
+                JsonObject inCrateShapeAttr = contentStack?.ItemAttributes?["inCrateShape"];
+
+                var loc = AssetLocation.Create("shapes/block/wood/crate/contents.json", Code.Domain);
+                if (inCrateShapeAttr != null && inCrateShapeAttr.Exists)
+                {
+                    loc = AssetLocation.Create(inCrateShapeAttr.AsString(), contentStack.Collectible.Code.Domain).WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
+                }
+
+                Shape shape = API.Common.Shape.TryGet(api, loc);
                 capi.Tesselator.TesselateShape("cratecontents", shape, out MeshData contentMesh, contentSource, rotation);
                 contentMesh.Translate(0, fillHeight * 1.1f, 0);
                 return contentMesh;

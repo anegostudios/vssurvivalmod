@@ -151,8 +151,17 @@ namespace Vintagestory.GameContent
             toDir.Y = Math.Round(toDir.Y);
             toDir.Z = Math.Round(toDir.Z);
 
+            bool isAboveGroundSnowLayer = snowyBlock is BlockSnow || snowyBlock is BlockSnowLayer;
+
             var frontPos = fromPos + toDir.AsBlockPos;
             var frontUpPos = frontPos.UpCopy();
+
+            if (isAboveGroundSnowLayer)
+            {
+                frontPos.Down();
+                frontUpPos.Down();
+            }
+
             var frontBlock = ba.GetBlock(frontPos);
             var frontUpBlock = ba.GetBlock(frontUpPos);
 
@@ -161,14 +170,13 @@ namespace Vintagestory.GameContent
             var frontUpSnowLevel = frontUpBlock.GetSnowLevel(frontUpPos);
 
             // We might be aiming at a snowblock above ground directly
-            if (snowyBlock is BlockSnow || snowyBlock is BlockSnowLayer)
+            if (isAboveGroundSnowLayer)
             {
                 var frontBelowPos = frontPos.DownCopy();
                 var frontBelowBlock = ba.GetBlock(frontBelowPos);
 
                 if (frontBlock.Id == 0)
                 {
-
                     float frontBelowSnow = frontBelowBlock.GetSnowLevel(frontBelowPos);
                     if (frontBelowSnow > 0)
                     {
@@ -283,10 +291,7 @@ namespace Vintagestory.GameContent
 
         public void BeginSnowShoveling(string uid, Vec3d aimPos)
         {
-            if (!snowshovelingplayers.TryAdd(uid, aimPos))
-            {
-                snowshovelingplayers[uid] = aimPos;
-            }
+            snowshovelingplayers[uid] = aimPos;
         }
 
         public void StopSnowShoveling(string uid)

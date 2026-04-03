@@ -35,6 +35,12 @@ public class BEBehaviorFruitingBushCutting : BlockEntityBehavior
     public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
     {
         dsc.AppendLine(Lang.Get("fruitingplant-cutting-growsindays", (int)Math.Ceiling(matureTotalDays - Api.World.Calendar.TotalDays)));
+
+        if (traits != null)
+        {
+            BEBehaviorFruitingBush.addTraits(dsc, traits.Split(','));
+        }
+
         base.GetBlockInfo(forPlayer, dsc);
     }
 

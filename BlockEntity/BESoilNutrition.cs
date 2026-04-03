@@ -434,20 +434,9 @@ public class BlockEntitySoilNutrition : BlockEntityFastForwardGrowth, ITexPositi
     }
 
 
-    protected void UpdateFarmlandBlock()
+    protected virtual void UpdateFarmlandBlock()
     {
-        int nowLevel = GetFertilityLevel((originalFertility[0] + originalFertility[1] + originalFertility[2]) / 3);
-        Block hereblock = Api.World.BlockAccessor.GetBlock(Pos);
-
-        var newCode = hereblock.CodeWithVariants(["state", "fertility"], [IsVisiblyMoist ? "moist" : "dry", Fertilities.GetKeyAtIndex(nowLevel)]);
-        Block nextBlock = Api.World.GetBlock(newCode);
-
-        if (hereblock.BlockId != nextBlock.BlockId)
-        {
-            Api.World.BlockAccessor.ExchangeBlock(nextBlock.BlockId, Pos);
-            Api.World.BlockAccessor.MarkBlockEntityDirty(Pos);
-            Api.World.BlockAccessor.MarkBlockDirty(Pos);
-        }
+        
     }
 
 
