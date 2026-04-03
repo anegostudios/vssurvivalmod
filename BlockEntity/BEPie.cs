@@ -235,6 +235,11 @@ namespace Vintagestory.GameContent
                 inv[0].Itemstack?.Attributes.SetFloat("quantityServings", 0.25f);
             }
 
+            if (byPlayer.Entity.Controls.ShiftKey)
+            {
+                return false;
+            }
+
             if (Api.Side == EnumAppSide.Server)
             {
                 if (!byPlayer.InventoryManager.TryGiveItemstack(inv[0].Itemstack))
