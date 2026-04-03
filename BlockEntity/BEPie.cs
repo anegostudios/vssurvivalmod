@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -210,7 +210,12 @@ namespace Vintagestory.GameContent
             //    a.) be of same foodcat
             //    b.) have props.AllowMixing set to true
 
-            if (hotbarSlot?.Empty == false && pieBlock.State == "raw")
+            // If the pie can be picked up into the current hotbar slot,
+            // skip trying to add the held stack as filling. Prevents
+            // the cannot be added to pies" error message.
+            bool canPickUpIntoHand = hotbarSlot?.Empty == false && inv[0].Itemstack.Collectible.GetMergableQuantity(hotbarSlot.Itemstack, inv[0].Itemstack, EnumMergePriority.DirectMerge) > 0;
+
+            if (hotbarSlot?.Empty == false && !canPickUpIntoHand && pieBlock.State == "raw")
             {
                 bool added = TryAddIngredientFrom(hotbarSlot, byPlayer);
                 if (added)
