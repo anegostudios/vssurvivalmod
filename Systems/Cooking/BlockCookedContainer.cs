@@ -128,7 +128,7 @@ namespace Vintagestory.GameContent
             CookingRecipe? recipe = GetCookingRecipe(capi.World, itemstack);
             ItemStack[] contents = GetNonEmptyContents(capi.World, itemstack);
 
-            MultiTextureMeshRef? meshref = meshCache.GetOrCreateMealInContainerMeshRef(this, recipe, contents, new Vec3f(0, yoff/16f, 0));
+            MultiTextureMeshRef? meshref = meshCache.GetOrCreateMealInContainerMeshRef(this, recipe, contents, new Vec3f(0, yoff / 16f, 0));
             if (meshref != null) renderinfo.ModelRef = meshref;
         }
 
@@ -259,7 +259,8 @@ namespace Vintagestory.GameContent
                             world.SpawnItemEntity(stacks[i], entityItem.Pos.XYZ);
                         }
                     }
-                } else
+                }
+                else
                 {
                     ItemStack rndStack = stacks[world.Rand.Next(stacks.Length)];
                     world.SpawnCubeParticles(entityItem.Pos.XYZ, rndStack, 0.3f, 25, 1, null);
@@ -322,10 +323,6 @@ namespace Vintagestory.GameContent
             if (inSlot.Itemstack is not ItemStack cookedContStack) return;
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
             float temp = GetTemperature(world, cookedContStack);
-            if (temp > 20)
-            {
-                dsc.AppendLine(Lang.Get("Temperature: {0}°C", (int)temp));
-            }
 
             CookingRecipe? recipe = GetMealRecipe(world, cookedContStack);
             float servings = cookedContStack.Attributes.GetFloat("quantityServings");
@@ -333,7 +330,8 @@ namespace Vintagestory.GameContent
             ItemStack[] stacks = GetNonEmptyContents(world, cookedContStack);
 
 
-            if (recipe != null) {
+            if (recipe != null)
+            {
                 string message;
                 string outputName = recipe.GetOutputName(world, stacks);
                 if (recipe.CooksInto != null)

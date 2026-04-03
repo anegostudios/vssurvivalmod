@@ -1,5 +1,6 @@
 using Cairo;
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -60,7 +61,20 @@ namespace Vintagestory.API.Client
             {
                 if (isPie) dummySlot.Itemstack.Attributes.SetString("topCrustType", BlockPie.TopCrustTypes[capi.World.Rand.Next(BlockPie.TopCrustTypes.Length)].Code);
                 var cachedValidStacks = ObjectCacheUtil.TryGet<Dictionary<CookingRecipeIngredient, HashSet<ItemStack?>>?>(capi, "valstacksbying-" + recipe.Code);
-                meal.SetContents(recipe.Code!, dummySlot.Itemstack, isPie ? BlockPie.GenerateRandomPie(capi, ref cachedValidStacks, recipe, ingredient) : recipe.GenerateRandomMeal(capi, ref cachedValidStacks, ObjectCacheUtil.TryGet<ItemStack[]>(capi, "handbookallstacks"), slots, ingredient), 1);
+                meal.SetContents(recipe.Code!, dummySlot.Itemstack, isPie ? BlockPie.GenerateRandomPie(capi, ref cachedValidStacks, recipe, ingredient) : recipe.GenerateRandomMeal(capi, ref cachedValidStacks, ObjectCacheUtil.TryGet<ItemStack[]>(capi, "handbookallstacks") ?? [], slots, ingredient));
+
+                if (dummySlot.Itemstack.Collectible is BlockPie)
+                {
+                    dummySlot.Itemstack.Attributes.SetInt("pieSize", 4);
+                    dummySlot.Itemstack.Attributes.SetInt("bakeLevel", 2);
+
+                    ItemStack?[] cStacks = meal.GetContents(capi.World, dummySlot.Itemstack);
+                    if (InPieProperties.ReadFrom(cStacks.ElementAtOrDefault(5)) is InPieProperties toppingProps
+                        && toppingProps.PartType == EnumPiePartType.Crust)
+                    {
+                        dummySlot.Itemstack.Attributes.SetString("topCrustType", BlockPie.TopCrustTypes[capi.World.Rand.Next(BlockPie.TopCrustTypes.Length)].Code);
+                    }
+                }
             }
 
             this.ingredient = ingredient;
@@ -96,9 +110,9 @@ namespace Vintagestory.API.Client
             {
                 ctx.SetSourceRGBA(1, 1, 1, 0.2);
                 ctx.Rectangle(
-                    BoundsPerLine[0].X, 
+                    BoundsPerLine[0].X,
                     BoundsPerLine[0].Y,  /* - BoundsPerLine[0].Ascent / 2 */ /* why /2??? */ /* why this ascent at all???? wtf? */
-                    BoundsPerLine[0].Width, 
+                    BoundsPerLine[0].Width,
                     BoundsPerLine[0].Height
                 );
                 ctx.Fill();
@@ -112,24 +126,30 @@ namespace Vintagestory.API.Client
             LineRectangled bounds = BoundsPerLine[0];
             bool mouseover = bounds.PointInside(relx, rely);
 
-            IBlockMealContainer? mealBlock = dummySlot.Itemstack?.Collectible as IBlockMealContainer;
-            if (mealBlock == null) return;
+            if (dummySlot.Itemstack?.Collectible is not IBlockMealContainer mealBlock) return;
 
             if (!mouseover && (secondsVisible -= deltaTime) <= 0)
             {
                 secondsVisible = 1;
-                if (RandomBowlBlock)
+                if (RandomBowlBlock && !isPie)
                 {
-                    if (isPie) dummySlot.Itemstack?.Attributes.SetString("topCrustType", BlockPie.TopCrustTypes[capi.World.Rand.Next(BlockPie.TopCrustTypes.Length)].Code);
-                    else dummySlot.Itemstack = new(BlockMeal.RandomMealBowl(capi));
+                    dummySlot.Itemstack = new(BlockMeal.RandomMealBowl(capi));
                 }
+
                 var cachedValidStacks = ObjectCacheUtil.TryGet<Dictionary<CookingRecipeIngredient, HashSet<ItemStack?>>?>(capi, "valstacksbying-" + recipe.Code);
-                mealBlock.SetContents(recipe.Code!, dummySlot.Itemstack!, isPie ? BlockPie.GenerateRandomPie(capi, ref cachedValidStacks, recipe, ingredient) : recipe.GenerateRandomMeal(capi, ref cachedValidStacks, ObjectCacheUtil.TryGet<ItemStack[]>(capi, "handbookallstacks"), slots, ingredient), 1);
+                mealBlock.SetContents(recipe.Code!, dummySlot.Itemstack!, isPie ? BlockPie.GenerateRandomPie(capi, ref cachedValidStacks, recipe, ingredient) : recipe.GenerateRandomMeal(capi, ref cachedValidStacks, ObjectCacheUtil.TryGet<ItemStack[]>(capi, "handbookallstacks") ?? [], slots, ingredient));
+                if (isPie
+                    && mealBlock.GetContents(capi.World, dummySlot.Itemstack!) is ItemStack?[] cStacks
+                    && InPieProperties.ReadFrom(cStacks.ElementAtOrDefault(5)) is InPieProperties toppingProps
+                    && toppingProps.PartType == EnumPiePartType.Crust)
+                {
+                    dummySlot.Itemstack!.Attributes.SetString("topCrustType", BlockPie.TopCrustTypes[capi.World.Rand.Next(BlockPie.TopCrustTypes.Length)].Code);
+                }
             }
 
             ElementBounds scibounds = ElementBounds.FixedSize((int)(bounds.Width / RuntimeEnv.GUIScale), (int)(bounds.Height / RuntimeEnv.GUIScale));
             scibounds.ParentBounds = capi.Gui.WindowBounds;
-            
+
             scibounds.CalcWorldBounds();
             scibounds.absFixedX = renderX + bounds.X + renderOffset.X;
             scibounds.absFixedY = renderY + bounds.Y + renderOffset.Y /*- BoundsPerLine[0].Ascent / 2 - why???? */;
@@ -138,10 +158,10 @@ namespace Vintagestory.API.Client
 
             api.Render.PushScissor(scibounds, true);
 
-            api.Render.RenderItemstackToGui(dummySlot, 
-                renderX + bounds.X + bounds.Width * 0.5f + renderOffset.X + offX, 
-                renderY + bounds.Y + bounds.Height * 0.5f + renderOffset.Y + offY /*- BoundsPerLine[0].Ascent / 2 - why?????*/, 
-                100 + renderOffset.Z, (float)GuiElement.scaled(unscaledSize) * renderSize, 
+            api.Render.RenderItemstackToGui(dummySlot,
+                renderX + bounds.X + bounds.Width * 0.5f + renderOffset.X + offX,
+                renderY + bounds.Y + bounds.Height * 0.5f + renderOffset.Y + offY /*- BoundsPerLine[0].Ascent / 2 - why?????*/,
+                100 + renderOffset.Z, (float)GuiElement.scaled(unscaledSize) * renderSize,
                 ColorUtil.WhiteArgb, true, false, ShowStackSize
             );
 

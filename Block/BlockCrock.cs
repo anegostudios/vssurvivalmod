@@ -33,7 +33,7 @@ namespace Vintagestory.GameContent
             {
                 shapeLocation = Shape.Base!.Clone().WithFilename("").WithPathPrefixOnce("shapes/").ToString();
             }
-            else if(API.Common.Shape.TryGet(api, AssetLocation.Create("shapes/block/clay/crock/base.json", Code.Domain)) != null)
+            else if (API.Common.Shape.TryGet(api, AssetLocation.Create("shapes/block/clay/crock/base.json", Code.Domain)) != null)
             {
                 shapeLocation = Code.Domain + ":shapes/block/clay/crock/";
             }
@@ -305,6 +305,7 @@ namespace Vintagestory.GameContent
             if (block?.Attributes?.IsTrue("mealContainer") == true)
             {
                 if (!byEntity.Controls.ShiftKey) return;
+
                 if (quantityServings > 0)
                 {
                     ServeIntoBowl(block, blockSel.Position, slot, byEntity.World);
@@ -349,10 +350,12 @@ namespace Vintagestory.GameContent
 
                 quantityServings -= movedServings;
 
-                if (quantityServings > 0) {
+                if (quantityServings > 0)
+                {
                     crockStack.Attributes.SetFloat("quantityServings", quantityServings);
-                } else {
-
+                }
+                else
+                {
                     crockStack.Attributes.RemoveAttribute("recipeCode");
                     crockStack.Attributes.RemoveAttribute("quantityServings");
                     crockStack.Attributes.RemoveAttribute("contents");
@@ -426,7 +429,7 @@ namespace Vintagestory.GameContent
         {
             ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
-            if (!hotbarSlot.Empty && hotbarSlot.Itemstack.Collectible.Attributes?.IsTrue("mealContainer") == true && (!(hotbarSlot.Itemstack.Collectible is BlockCrock) || hotbarSlot.StackSize == 1))
+            if (!hotbarSlot.Empty && hotbarSlot.Itemstack.Collectible.Attributes?.IsTrue("mealContainer") == true && (hotbarSlot.Itemstack.Collectible is not BlockCrock || hotbarSlot.StackSize == 1))
             {
                 if (world.BlockAccessor.GetBlockEntity(blockSel.Position) is not BlockEntityCrock bec) return false;
 

@@ -28,7 +28,7 @@ namespace Vintagestory.GameContent
         /// <returns>The name of the food type.</returns>
         public string GetNameForIngredients(IWorldAccessor worldForResolve, string recipeCode, ItemStack[] stacks)
         {
-            API.Datastructures.OrderedDictionary<ItemStack, int> quantitiesByStack = new ();
+            API.Datastructures.OrderedDictionary<ItemStack, int> quantitiesByStack = new();
             quantitiesByStack = mergeStacks(worldForResolve, stacks);
 
             CookingRecipe recipe = worldForResolve.Api.GetCookingRecipe(recipeCode);
@@ -529,7 +529,7 @@ namespace Vintagestory.GameContent
 
         protected static API.Datastructures.OrderedDictionary<ItemStack, int> mergeStacks(IWorldAccessor worldForResolve, ItemStack[] stacks)
         {
-            API.Datastructures.OrderedDictionary<ItemStack, int> dict = new ();
+            API.Datastructures.OrderedDictionary<ItemStack, int> dict = new();
 
             List<ItemStack> stackslist = [.. stacks];
             while (stackslist.Count > 0)
@@ -742,7 +742,8 @@ namespace Vintagestory.GameContent
 
                         if (BlockLiquidContainerBase.GetContainableProps(inputStack) is WaterTightContainableProps props)
                         {
-                            stackPortion = (int)(inputStack.StackSize / jstack.StackSize / props.ItemsPerLitre / ingred.PortionSizeLitres);
+                            // Casting to float is necessary if the stack size ratio is not a whole number
+                            stackPortion = (int)((float)inputStack.StackSize / jstack.StackSize / props.ItemsPerLitre / ingred.PortionSizeLitres);
                         }
 
                         totalOutputQuantity = Math.Min(totalOutputQuantity, stackPortion);
@@ -773,7 +774,10 @@ namespace Vintagestory.GameContent
                 int jStackSize = GetIngrendientFor(stack)?.GetMatchingStack(stack)?.StackSize ?? 1;
                 if (BlockLiquidContainerBase.GetContainableProps(stack) is WaterTightContainableProps props)
                 {
-                    if (stack.StackSize / jStackSize != (int)(quantityServings * props.ItemsPerLitre * (GetIngrendientFor(stack)?.PortionSizeLitres ?? 100))) quantityServings = -1;
+                    // See SurvivalHandbook.CreateCachedMealRecipeStacks
+                    int wantItems = stack.StackSize / jStackSize;
+                    int haveItems = (int)Math.Ceiling(quantityServings * props.ItemsPerLitre * (GetIngrendientFor(stack)?.PortionSizeLitres ?? 100));
+                    if (wantItems != haveItems) quantityServings = -1;
                 }
                 else if (stack.StackSize / jStackSize != quantityServings) quantityServings = -1;
 
@@ -851,8 +855,10 @@ namespace Vintagestory.GameContent
 
             List<ItemStack?> randomMeal = new();
 
-            while (!Matches(randomMeal.ToArray()))
+            int limit = 0;
+            while (!Matches(randomMeal.ToArray()) && limit < 10)
             {
+                limit++;
                 var valIngStacks = new Dictionary<CookingRecipeIngredient, List<ItemStack?>>();
                 foreach (var entry in validStacksByIngredient) valIngStacks.Add(entry.Key.Clone(), entry.Value.ToList());
                 valIngStacks = valIngStacks.OrderBy(x => api.World.Rand.Next()).ToDictionary(item => item.Key, item => item.Value);

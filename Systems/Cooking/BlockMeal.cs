@@ -62,7 +62,8 @@ namespace Vintagestory.GameContent
 
             if (CollisionBoxes[0] != null) gsSmokePos.Y = CollisionBoxes[0].MaxY;
 
-            BlockMeal[] mealBowls = ObjectCacheUtil.GetOrCreate(api, "allMealBowls", () => {
+            BlockMeal[] mealBowls = ObjectCacheUtil.GetOrCreate(api, "allMealBowls", () =>
+            {
                 List<BlockMeal> mealList = new();
                 foreach (var b in api.World.Blocks)
                 {
@@ -582,10 +583,10 @@ namespace Vintagestory.GameContent
 
                 float spoilState = 0;
                 DummySlot slot = new DummySlot(contentStack, inSlot.Inventory);
-                if (!timeFrozen)
+                // Pie contents do not transition
+                if (!timeFrozen && inSlot.Itemstack.Block is not BlockPie)
                 {
-                    TransitionState? state = contentStack.Collectible.UpdateAndGetTransitionState(world, slot, EnumTransitionType.Perish);
-                    spoilState = state != null ? state.TransitionLevel : 0;
+                    spoilState = contentStack.Collectible.UpdateAndGetTransitionState(world, slot, EnumTransitionType.Perish)?.TransitionLevel ?? 0;
                 }
 
                 float satLossMul = GlobalConstants.FoodSpoilageSatLossMul(spoilState, mealStack, forEntity);
@@ -922,7 +923,8 @@ namespace Vintagestory.GameContent
                             world.SpawnItemEntity(stacks[i], entityItem.Pos.XYZ);
                         }
                     }
-                } else
+                }
+                else
                 {
                     ItemStack rndStack = stacks[world.Rand.Next(stacks.Length)];
                     world.SpawnCubeParticles(entityItem.Pos.XYZ, rndStack, 0.3f, 25, 1, null);
