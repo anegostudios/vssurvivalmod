@@ -13,12 +13,12 @@ namespace Vintagestory.GameContent.Mechanics
     /// </summary>
     public class MechNetworkRenderer : IRenderer
     {
-        MechanicalPowerMod mechanicalPowerMod;
-        ICoreClientAPI capi;
-        IShaderProgram prog;
+        private readonly MechanicalPowerMod mechanicalPowerMod;
+        private readonly ICoreClientAPI capi;
+        private IShaderProgram prog;
 
-        List<MechBlockRenderer> MechBlockRenderer = new List<MechBlockRenderer>();
-        Dictionary<int, int> MechBlockRendererByShape = new Dictionary<int, int>();
+        private readonly List<MechBlockRenderer> mechBlockRenderers = new List<MechBlockRenderer>();
+        private readonly Dictionary<int, int> mechBlockRendererByShape = new Dictionary<int, int>();
 
         public static Dictionary<string, Type> RendererByCode = new Dictionary<string, Type>()
         {
@@ -30,7 +30,7 @@ namespace Vintagestory.GameContent.Mechanics
             { "pulverizer", typeof(PulverizerRenderer) },
             { "autorotor", typeof(CreativeRotorRenderer) }
         };
-        
+
         public MechNetworkRenderer(ICoreClientAPI capi, MechanicalPowerMod mechanicalPowerMod)
         {
             this.mechanicalPowerMod = mechanicalPowerMod;
@@ -43,8 +43,6 @@ namespace Vintagestory.GameContent.Mechanics
             // This shader is created by the essentials mod in Core.cs
             prog = capi.Shader.GetProgramByName("instanced");
         }
-
-
 
         public void AddDevice(IMechanicalPowerRenderable device)
         {
@@ -59,29 +57,26 @@ namespace Vintagestory.GameContent.Mechanics
 
             int hashCode = device.Shape.GetHashCode() + device.Block.Textures.Values.GetHashCode() + rendererCode.GetHashCode();
 
-            if (!MechBlockRendererByShape.TryGetValue(hashCode, out index))
+            if (!mechBlockRendererByShape.TryGetValue(hashCode, out index))
             {
                 object obj = Activator.CreateInstance(RendererByCode[rendererCode], capi, mechanicalPowerMod, device.Block, device.Shape);
-                MechBlockRenderer.Add((MechBlockRenderer)obj);
-                MechBlockRendererByShape[hashCode] = index = MechBlockRenderer.Count - 1;
+                mechBlockRenderers.Add((MechBlockRenderer)obj);
+                mechBlockRendererByShape[hashCode] = index = mechBlockRenderers.Count - 1;
             }
 
-            MechBlockRenderer[index].AddDevice(device);
+            mechBlockRenderers[index].AddDevice(device);
         }
-
-        
 
         public void RemoveDevice(IMechanicalPowerRenderable device)
         {
             if (device.Shape == null) return;
 
-            foreach (var val in MechBlockRenderer)
+            foreach (var val in mechBlockRenderers)
             {
                 if (val.RemoveDevice(device)) return;
             }
         }
 
-        
         public void OnRenderFrame(float deltaTime, EnumRenderStage stage)
         {
             if (prog.Disposed) prog = capi.Shader.GetProgramByName("instanced");
@@ -90,9 +85,9 @@ namespace Vintagestory.GameContent.Mechanics
 
             if (stage == EnumRenderStage.Opaque)
             {
-                capi.Render.GlToggleBlend(false); // Seems to break SSAO without
+                capi.Render.GlToggleBlend(false);
                 prog.Use();
-                prog.BindTexture2D("tex", capi.BlockTextureAtlas.Positions[0].atlasTextureId, 0);
+
                 prog.Uniform("rgbaFogIn", capi.Render.FogColor);
                 prog.Uniform("rgbaAmbientIn", capi.Render.AmbientColor);
                 prog.Uniform("fogMinIn", capi.Render.FogMin);
@@ -100,9 +95,9 @@ namespace Vintagestory.GameContent.Mechanics
                 prog.UniformMatrix("projectionMatrix", capi.Render.CurrentProjectionMatrix);
                 prog.UniformMatrix("modelViewMatrix", capi.Render.CameraMatrixOriginf);
 
-                for (int i = 0; i < MechBlockRenderer.Count; i++)
+                for (int i = 0; i < mechBlockRenderers.Count; i++)
                 {
-                    MechBlockRenderer[i].OnRenderFrame(deltaTime, prog);
+                    mechBlockRenderers[i].OnRenderFrame(deltaTime, prog);
                 }
 
                 prog.Stop();
@@ -114,7 +109,7 @@ namespace Vintagestory.GameContent.Mechanics
                 rapi.CurrentActiveShader.BindTexture2D("tex2d", capi.BlockTextureAtlas.Positions[0].atlasTextureId, 0);
 
                 float[] mvpMat = Mat4f.Mul(Mat4f.Create(), capi.Render.CurrentProjectionMatrix, capi.Render.CurrentModelviewMatrix);
-                
+
                 capi.Render.CurrentActiveShader.UniformMatrix("mvpMatrix", mvpMat);
                 //capi.Render.CurrentActiveShader.Uniform("origin", new Vec3f());
 
@@ -124,32 +119,19 @@ namespace Vintagestory.GameContent.Mechanics
                 }*/
             }
 
-
             capi.Render.GlEnableCullFace();
         }
 
+        public double RenderOrder => 0.5;
 
-        public double RenderOrder
-        {
-            get
-            {
-                return 0.5;
-            }
-        }
-
-        public int RenderRange
-        {
-            get { return 100; }
-        }
+        public int RenderRange => 100;
 
         public void Dispose()
         {
-            for (int i = 0; i < MechBlockRenderer.Count; i++)
+            for (int i = 0; i < mechBlockRenderers.Count; i++)
             {
-                MechBlockRenderer[i].Dispose();
+                mechBlockRenderers[i].Dispose();
             }
         }
-
     }
 }
-
