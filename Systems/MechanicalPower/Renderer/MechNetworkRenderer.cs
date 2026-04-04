@@ -85,7 +85,7 @@ namespace Vintagestory.GameContent.Mechanics
 
             if (stage == EnumRenderStage.Opaque)
             {
-                capi.Render.GlToggleBlend(false);
+                capi.Render.GlToggleBlend(false); // Seems to break SSAO without
                 prog.Use();
 
                 prog.Uniform("rgbaFogIn", capi.Render.FogColor);
