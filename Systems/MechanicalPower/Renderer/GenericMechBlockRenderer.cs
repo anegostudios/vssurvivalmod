@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -11,8 +10,7 @@ namespace Vintagestory.GameContent.Mechanics
     public class GenericMechBlockRenderer : MechBlockRenderer
     {
         private CustomMeshDataPartFloat matrixAndLightFloats;
-        private readonly List<MeshRef> blockMeshRefs = new List<MeshRef>();
-        private readonly List<int> blockMeshTextureIds = new List<int>();
+        private List<MeshGroup> meshGroups;
 
         public GenericMechBlockRenderer(ICoreClientAPI capi, MechanicalPowerMod mechanicalPowerMod, Block textureSoureBlock, CompositeShape shapeLoc)
             : base(capi, mechanicalPowerMod)
@@ -37,7 +35,7 @@ namespace Vintagestory.GameContent.Mechanics
                 }
             }
 
-            // 16 floats matrix, 4 floats light rgbs
+            // 16 floats matrix, 4 floats light rgba
             blockMesh.CustomFloats = matrixAndLightFloats = new CustomMeshDataPartFloat((16 + 4) * 10100)
             {
                 Instanced = true,
@@ -48,30 +46,9 @@ namespace Vintagestory.GameContent.Mechanics
             };
             blockMesh.CustomFloats.SetAllocationSize((16 + 4) * 10100);
 
-            MeshData[] splitMeshes = blockMesh.SplitByTextureId();
-
-            for (int i = 0; i < splitMeshes.Length; i++)
-            {
-                MeshData mesh = splitMeshes[i];
-                if (mesh == null || mesh.VerticesCount == 0) continue;
-
-                if (mesh.CustomFloats == null)
-                {
-                    mesh.CustomFloats = matrixAndLightFloats;
-                }
-                else
-                {
-                    // keep the same instanced float layout for every split mesh
-                    mesh.CustomFloats = matrixAndLightFloats;
-                }
-
-                int atlasTextureId = (mesh.TextureIds != null && mesh.TextureIds.Length > 0)
-                    ? mesh.TextureIds[0]
-                    : capi.BlockTextureAtlas.Positions[0].atlasTextureId;
-
-                blockMeshTextureIds.Add(atlasTextureId);
-                blockMeshRefs.Add(capi.Render.UploadMesh(mesh));
-            }
+            // UploadMeshGrouped splits by atlas and uploads each part,
+            // all parts sharing matrixAndLightFloats as their instanced buffer.
+            meshGroups = UploadMeshGrouped(blockMesh, matrixAndLightFloats);
         }
 
         protected override void UpdateLightAndTransformMatrix(int index, Vec3f distToCamera, float rotation, IMechanicalPowerRenderable dev)
@@ -93,30 +70,16 @@ namespace Vintagestory.GameContent.Mechanics
         {
             UpdateCustomFloatBuffer();
 
-            if (quantityBlocks <= 0 || blockMeshRefs.Count == 0) return;
-
-            matrixAndLightFloats.Count = quantityBlocks * 20;
-            updateMesh.CustomFloats = matrixAndLightFloats;
-
-            for (int i = 0; i < blockMeshRefs.Count; i++)
+            if (quantityBlocks > 0)
             {
-                prog.BindTexture2D("tex", blockMeshTextureIds[i], 0);
-                capi.Render.UpdateMesh(blockMeshRefs[i], updateMesh);
-                capi.Render.RenderMeshInstanced(blockMeshRefs[i], quantityBlocks);
+                RenderGroups(prog, meshGroups, matrixAndLightFloats, quantityBlocks);
             }
         }
 
         public override void Dispose()
         {
             base.Dispose();
-
-            for (int i = 0; i < blockMeshRefs.Count; i++)
-            {
-                blockMeshRefs[i]?.Dispose();
-            }
-
-            blockMeshRefs.Clear();
-            blockMeshTextureIds.Clear();
+            DisposeGroups(meshGroups);
         }
     }
 }
