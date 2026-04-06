@@ -22,13 +22,13 @@ namespace Vintagestory.GameContent.Mechanics
 
         public static Dictionary<string, Type> RendererByCode = new Dictionary<string, Type>()
         {
-            { "generic", typeof(GenericMechBlockRenderer) },
-            { "angledgears", typeof(AngledGearsBlockRenderer) },
-            { "angledgearcage", typeof(AngledCageGearRenderer) },
-            { "transmission", typeof(TransmissionBlockRenderer) },
-            { "clutch", typeof(ClutchBlockRenderer) },
-            { "pulverizer", typeof(PulverizerRenderer) },
-            { "autorotor", typeof(CreativeRotorRenderer) }
+            { "generic",       typeof(GenericMechBlockRenderer) },
+            { "angledgears",   typeof(AngledGearsBlockRenderer) },
+            { "angledgearcage",typeof(AngledCageGearRenderer) },
+            { "transmission",  typeof(TransmissionBlockRenderer) },
+            { "clutch",        typeof(ClutchBlockRenderer) },
+            { "pulverizer",    typeof(PulverizerRenderer) },
+            { "autorotor",     typeof(CreativeRotorRenderer) }
         };
 
         public MechNetworkRenderer(ICoreClientAPI capi, MechanicalPowerMod mechanicalPowerMod)
@@ -40,7 +40,6 @@ namespace Vintagestory.GameContent.Mechanics
             capi.Event.RegisterRenderer(this, EnumRenderStage.ShadowFar, "mechnetwork");
             capi.Event.RegisterRenderer(this, EnumRenderStage.ShadowNear, "mechnetwork");
 
-            // This shader is created by the essentials mod in Core.cs
             prog = capi.Shader.GetProgramByName("instanced");
         }
 
@@ -85,7 +84,7 @@ namespace Vintagestory.GameContent.Mechanics
 
             if (stage == EnumRenderStage.Opaque)
             {
-                capi.Render.GlToggleBlend(false); // Seems to break SSAO without
+                capi.Render.GlToggleBlend(false);
                 prog.Use();
 
                 prog.Uniform("rgbaFogIn", capi.Render.FogColor);
@@ -95,6 +94,10 @@ namespace Vintagestory.GameContent.Mechanics
                 prog.UniformMatrix("projectionMatrix", capi.Render.CurrentProjectionMatrix);
                 prog.UniformMatrix("modelViewMatrix", capi.Render.CameraMatrixOriginf);
 
+                // NOTE: BindTexture2D is intentionally NOT called here.
+                // Each MechBlockRenderer is responsible for binding the correct atlas
+                // per mesh group via RenderGroups(), which correctly handles meshes
+                // whose faces span multiple texture atlases.
                 for (int i = 0; i < mechBlockRenderers.Count; i++)
                 {
                     mechBlockRenderers[i].OnRenderFrame(deltaTime, prog);
@@ -105,18 +108,6 @@ namespace Vintagestory.GameContent.Mechanics
             else
             {
                 // TODO: Needs a custom shadow map shader
-                /*IRenderAPI rapi = capi.Render;
-                rapi.CurrentActiveShader.BindTexture2D("tex2d", capi.BlockTextureAtlas.Positions[0].atlasTextureId, 0);
-
-                float[] mvpMat = Mat4f.Mul(Mat4f.Create(), capi.Render.CurrentProjectionMatrix, capi.Render.CurrentModelviewMatrix);
-
-                capi.Render.CurrentActiveShader.UniformMatrix("mvpMatrix", mvpMat);
-                //capi.Render.CurrentActiveShader.Uniform("origin", new Vec3f());
-
-                for (int i = 0; i < MechBlockRenderer.Count; i++)
-                {
-                    MechBlockRenderer[i].OnRenderFrame(deltaTime, prog);
-                }*/
             }
 
             capi.Render.GlEnableCullFace();
