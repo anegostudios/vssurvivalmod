@@ -1,4 +1,5 @@
-﻿using Vintagestory.API.Client;
+using System.Collections.Generic;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
@@ -9,11 +10,10 @@ namespace Vintagestory.GameContent.Mechanics
     public class AngledCageGearRenderer : MechBlockRenderer
     {
         CustomMeshDataPartFloat matrixAndLightFloats;
-        MeshRef blockMeshRef;
+        List<MeshGroup> meshGroups;
 
         public AngledCageGearRenderer(ICoreClientAPI capi, MechanicalPowerMod mechanicalPowerMod, Block textureSoureBlock, CompositeShape shapeLoc) : base(capi, mechanicalPowerMod)
         {
-
             AssetLocation loc = shapeLoc.Base.Clone().WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
 
             Shape shape = API.Common.Shape.TryGet(capi, loc);
@@ -27,16 +27,14 @@ namespace Vintagestory.GameContent.Mechanics
                 {
                     CompositeShape ovShapeCmp = shapeLoc.Overlays[i];
                     rot = new Vec3f(ovShapeCmp.rotateX, ovShapeCmp.rotateY, ovShapeCmp.rotateZ);
-                    
+
                     Shape ovshape = API.Common.Shape.TryGet(capi, ovShapeCmp.Base.Clone().WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json"));
                     capi.Tesselator.TesselateShape(textureSoureBlock, ovshape, out MeshData overlayMesh, rot);
                     blockMesh.AddMeshData(overlayMesh);
                 }
             }
 
-            //blockMesh.Rgba2 = null;
-
-            // 16 floats matrix, 4 floats light rgbs
+            // 16 floats matrix, 4 floats light rgba
             blockMesh.CustomFloats = matrixAndLightFloats = new CustomMeshDataPartFloat((16 + 4) * 10100)
             {
                 Instanced = true,
@@ -47,10 +45,9 @@ namespace Vintagestory.GameContent.Mechanics
             };
             blockMesh.CustomFloats.SetAllocationSize((16 + 4) * 10100);
 
-            this.blockMeshRef = capi.Render.UploadMesh(blockMesh);
+            meshGroups = UploadMeshGrouped(blockMesh, matrixAndLightFloats);
         }
 
-        
         protected override void UpdateLightAndTransformMatrix(int index, Vec3f distToCamera, float rotation, IMechanicalPowerRenderable dev)
         {
             BEBehaviorMPAngledGears gear = dev as BEBehaviorMPAngledGears;
@@ -69,18 +66,14 @@ namespace Vintagestory.GameContent.Mechanics
 
             if (quantityBlocks > 0)
             {
-                matrixAndLightFloats.Count = quantityBlocks * 20;
-                updateMesh.CustomFloats = matrixAndLightFloats;
-                capi.Render.UpdateMesh(blockMeshRef, updateMesh);
-                capi.Render.RenderMeshInstanced(blockMeshRef, quantityBlocks);
+                RenderGroups(prog, meshGroups, matrixAndLightFloats, quantityBlocks);
             }
         }
 
         public override void Dispose()
         {
             base.Dispose();
-
-            blockMeshRef?.Dispose();
+            DisposeGroups(meshGroups);
         }
     }
 }
