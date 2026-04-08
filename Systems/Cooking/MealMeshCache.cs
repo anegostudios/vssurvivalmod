@@ -163,6 +163,7 @@ namespace Vintagestory.GameContent
             contentStacks = nowTesselatingBlock.GetContents(capi!.World, pieStack);
 
             int pieSize = pieStack?.Attributes.GetAsInt("pieSize") ?? 0;
+            if (pieSize <= 0 || pieSize > 4) return null; // Prevent bad array access crash for pies with incorrect sizes
 
 
             // At this spot we have to determine the textures for "dough" and "filling"
