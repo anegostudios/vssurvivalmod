@@ -331,7 +331,7 @@ namespace Vintagestory.GameContent
 
             int pieSize = pieStack.Attributes.GetAsInt("pieSize");
             float servingsLeft = GetQuantityServings(world, pieStack);
-            if (!pieStack.Attributes.HasAttribute("quantityServings")) servingsLeft = 1;
+            if (pieStack.Attributes?.HasAttribute("quantityServings") == false) servingsLeft = pieStack.Attributes.GetAsInt("pieSize") / 4f;
 
             if (pieSize == 1)
             {
