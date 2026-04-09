@@ -177,6 +177,7 @@ namespace Vintagestory.GameContent
                 {
                     if (Api.Side == EnumAppSide.Server && TakeSlice() is { } slicestack)
                     {
+                        hotbarSlot.Itemstack.Collectible.DamageItem(byPlayer.Entity.World, byPlayer.Entity, hotbarSlot);
                         if (!byPlayer.InventoryManager.TryGiveItemstack(slicestack))
                         {
                             Api.World.SpawnItemEntity(slicestack, Pos);
