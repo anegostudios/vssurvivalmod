@@ -276,7 +276,7 @@ public class CollectibleBehaviorWearable : CollectibleBehaviorWearableAttachment
             var rainProt = collObj.Attributes["rainProtectionPerc"].AsFloat(0);
             if (rainProt > 0)
             {
-                dsc.AppendLine(Lang.Get("Protection from rain: {0}%", (int)(rainProt * 100)));
+                dsc.AppendLine(Lang.Get("wearable-protection-from-rain", (int)(rainProt * 100)));
             }
         }
 

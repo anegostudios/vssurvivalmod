@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -162,14 +162,14 @@ namespace Vintagestory.GameContent
             { 
                 if (stack.Quantity.var == 0)
                 {
-                    dsc.AppendLine(Lang.Get("{0}%\t {1}x {2}",
+                    dsc.AppendLine(Lang.Get("stackrandomizer-description-chance-and-quantity-and-name",
                         (stack.Chance * 100).ToString("0.#"),
                         stack.Quantity.avg,
                         stack.ResolvedStack.GetName())
                     );
                 } else
                 {
-                    dsc.AppendLine(Lang.Get("{0}%\t {1}-{2}x {3}",
+                    dsc.AppendLine(Lang.Get("stackrandomizer-description-chance-and-minquantity-to-maxquantity-and-name",
                         (stack.Chance * 100).ToString("0.#"),
                         stack.Quantity.avg - stack.Quantity.var,
                         stack.Quantity.avg + stack.Quantity.var,
@@ -179,7 +179,7 @@ namespace Vintagestory.GameContent
 
                 if (i++ > 50)
                 {
-                    dsc.AppendLine(Lang.Get("{0} more items. Check itemtype json file for full list.", sortedStacks.ToList().Count - i));
+                    dsc.AppendLine(Lang.Get("stackrandomizer-description-itemamount-more-items-and-check-itemtype", sortedStacks.ToList().Count - i));
                     break;
                 }
 

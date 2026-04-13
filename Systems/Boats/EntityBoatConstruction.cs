@@ -214,7 +214,7 @@ namespace Vintagestory.GameContent
                 info += Lang.Get("Material: {0}", Lang.Get("material-" + wood)) + "\r\n";
             }
 
-            return info + Lang.Get("Build stage: {0}/{1}", CurrentStage+1, rcc.Stages.Length-1);
+            return info + Lang.Get("build-stage-current-and-total", CurrentStage+1, rcc.Stages.Length-1);
         }
 
     }

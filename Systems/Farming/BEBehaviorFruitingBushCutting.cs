@@ -38,7 +38,7 @@ public class BEBehaviorFruitingBushCutting : BlockEntityBehavior
 
         if (traits != null)
         {
-            BEBehaviorFruitingBush.addTraits(dsc, traits.Split(','));
+            BEBehaviorFruitingBush.addTraits(dsc, traits.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
         }
 
         base.GetBlockInfo(forPlayer, dsc);

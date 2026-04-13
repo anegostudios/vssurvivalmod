@@ -79,7 +79,7 @@ namespace Vintagestory.GameContent
         protected Vec3f offsetToPoleTipFp = null!;
         protected Vec3f offsetToPoleTipTp = null!;
 
-        CompositeShape? ropelessShapeLoc;
+        protected CompositeShape? ropelessShapeLoc;
 
 
         public override void OnLoaded(ICoreAPI api)
@@ -192,16 +192,16 @@ namespace Vintagestory.GameContent
             var camMode = capi.World.Player.CameraMode;
             if (camMode != previousCm && previousCm == EnumCameraMode.FirstPerson && camMode != EnumCameraMode.FirstPerson)
             {
-                var cs = getRope(slot);
-                if (cs != null)
-                {
+            var cs = getRope(slot);
+            if (cs != null)
+            {
                     cs.FirstPoint.pinnedToOffset = offsetToPoleTipTp.Clone();
                     cs.FirstPoint.NoAttachTransform = false;
                 }
             }
 
-            if (camMode == EnumCameraMode.FirstPerson)
-            {
+                if (camMode == EnumCameraMode.FirstPerson)
+                {
                 var cs = getRope(slot);
                 if (cs != null)
                 {
@@ -253,7 +253,7 @@ namespace Vintagestory.GameContent
             // Not ideal to code the aiming controls this way. Needs an elegant solution - maybe an event bus?
             byEntity.AnimManager.StartAnimation(aimAnimation);
 
-             slot.Itemstack?.Attributes.SetLong("fishingEntityId", byEntity.EntityId);
+            slot.Itemstack?.Attributes.SetLong("fishingEntityId", byEntity.EntityId);
             byEntity.AnimManager.RegisterFrameCallback(new AnimFrameCallback()
             {
                 Animation = aimAnimation,
@@ -281,13 +281,21 @@ namespace Vintagestory.GameContent
                 return;
             }
 
+            var prevEntityId = slot.Itemstack.Attributes.GetLong("bobberEntityId");
+            if (prevEntityId != 0 && api.World.GetEntityById(prevEntityId) is EntityBobber prevBobber)
+            {
+                slot.Itemstack.Attributes.SetBool("fishing", true);
+                slot.MarkDirty();
+                return;
+            }
+
+
             byEntity.World.PlaySoundAt(new AssetLocation("sounds/effect/poleswing"), byEntity, null, false, 8);
 
             var type = byEntity.World.GetEntityType(new AssetLocation("bobber-normal"));
             EntityBobber ebobber = (EntityBobber)byEntity.World.ClassRegistry.CreateEntity(type);
-            var earrow = ebobber as IProjectile;
-            earrow.FiredBy = byEntity;
-            earrow.DropOnImpactChance = 0;
+            ebobber.FiredBy = byEntity;
+            ebobber.DropOnImpactChance = 0;
 
             Vec3d pos = byEntity.Pos.XYZ.Add(0, byEntity.LocalEyePos.Y, 0);
             Vec3d aheadPos = pos.AheadCopy(1, byEntity.Pos.Pitch, byEntity.Pos.Yaw);
@@ -302,7 +310,7 @@ namespace Vintagestory.GameContent
             ebobber.BaitStack?.ResolveBlockOrItem(byEntity.World);
             slot.Itemstack.Attributes.RemoveAttribute("fishingBait");
 
-            earrow.PreInitialize();
+            ebobber.PreInitialize();
 
             byEntity.World.SpawnPriorityEntity(ebobber);
 
@@ -312,14 +320,13 @@ namespace Vintagestory.GameContent
             createRope(slot, byEntity, ebobber, ebobber.Pos.XYZ);
 
             slot.Itemstack.Attributes.SetLong("bobberEntityId", ebobber.EntityId);
-
             slot.Itemstack.Attributes.SetBool("fishing", true);
         }
 
         public bool StopFishing(ItemStack? itemstack, EntityAgent byEntity)
         {
             byEntity.AnimManager.StopAnimation("fishingpole-idle");
-            if(itemstack == null) return false;
+            if (itemstack == null) return false;
 
             itemstack.Attributes.SetBool("fishing", false);
 
@@ -435,11 +442,16 @@ namespace Vintagestory.GameContent
             sys.ChangeRopeLength(0.5);
             sys.CanPull = false;
             sys.CanRip = false;
+            sys.StretchWarn = 1.5f;
+            sys.StretchRip = 2;
             sys.FirstPoint.PinTo(byEntity, offsetToPoleTipTp);
             sys.LastPoint.PinTo(ebobber, new Vec3f());
             sys.LastPoint.NoAttachTransform = true;
             sys.RopeRenderThickness = 0.35f;
             cm.RegisterCloth(sys);
+
+            // A lot of stretch force applies on the initial throw. Haxy fix: Don't let it rip for the first 2 seconds
+            api.World.RegisterCallback((dt) => sys.CanRip = true, 2000);
 
             slot.Itemstack?.Attributes.SetLong("ropeHeldByEntityId", byEntity.EntityId);
             slot.Itemstack?.Attributes.SetInt("clothId", sys.ClothId);

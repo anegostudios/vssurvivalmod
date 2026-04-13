@@ -23,7 +23,7 @@ public class BlockBehaviorFruitingBushCutting : BlockBehavior
 
     public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
     {
-        var traits = inSlot.Itemstack?.Attributes.GetString("traits")?.Split(',') ?? Array.Empty<string>();
+        var traits = inSlot.Itemstack?.Attributes.GetString("traits")?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         if (traits != null) BEBehaviorFruitingBush.addTraits(dsc, traits);
 
         base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);

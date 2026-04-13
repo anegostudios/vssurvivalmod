@@ -288,7 +288,7 @@ namespace Vintagestory.GameContent
                         totaldmgabsorb += flatdmgabsorb;
                     }
 
-                    (player as IServerPlayer)?.SendMessage(GlobalConstants.DamageLogChatGroup, Lang.Get("{0:0.#} of {1:0.#} damage blocked by shield ({2} use)", Math.Min(totaldmgabsorb, damage), damage, usetype), EnumChatType.Notification);
+                    (player as IServerPlayer)?.SendMessage(GlobalConstants.DamageLogChatGroup, Lang.Get("absorbed-damageamount-of-total-damageamount-blocked-by-shield-in-mode", Math.Min(totaldmgabsorb, damage), damage, usetype), EnumChatType.Notification);
                     damage = Math.Max(0, damage - totaldmgabsorb);
 
                     string key = "blockSound" + ((unabsorbedDamage > 6) ? "Heavy" : "Light");

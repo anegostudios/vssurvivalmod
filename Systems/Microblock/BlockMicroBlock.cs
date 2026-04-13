@@ -397,15 +397,17 @@ namespace Vintagestory.GameContent
                     {
                         if (providedMaterials.Contains(blockId))
                         {
-                            providedMaterials = providedMaterials.Remove(blockId);
-                            consumedMaterials = consumedMaterials.Remove(blockId);
+                            //providedMaterials = providedMaterials.Remove(blockId); - i don't remember why i did it this way :|
+                            //consumedMaterials = consumedMaterials.Remove(blockId);
+                            slot.TakeOut(1);
+                            break;
                         }
                     }
 
-                    if (providedMaterials.Length == 0)
+                    /*if (providedMaterials.Length == 0)
                     {
-                        slot.Itemstack = null;
-                    }
+                        slot.ItemStack = null;
+                    }*/
                 }
 
                 return true;

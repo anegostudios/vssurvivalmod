@@ -99,13 +99,13 @@ namespace Vintagestory.GameContent
         protected override void onToggleSkinPart(string partCode, string variantCode)
         {
             base.onToggleSkinPart(partCode, variantCode);
-            chcomposer.GetRichtext("costline").SetNewText(Lang.Get("Cost: {0} gears", getCost()), CairoFont.WhiteSmallText());
+            chcomposer.GetRichtext("costline").SetNewText(Lang.Get("cost-gear-amount", getCost()), CairoFont.WhiteSmallText());
         }
 
         protected override void onToggleSkinPart(string partCode, int index)
         {
             base.onToggleSkinPart(partCode, index);
-            chcomposer.GetRichtext("costline").SetNewText(Lang.Get("Cost: {0} gears", getCost()), CairoFont.WhiteSmallText());
+            chcomposer.GetRichtext("costline").SetNewText(Lang.Get("cost-gear-amount", getCost()), CairoFont.WhiteSmallText());
         }
 
         public int getCost()

@@ -80,7 +80,7 @@ namespace Vintagestory.ServerMods
                 .BeginSubCommand("structures")
                     .BeginSubCommand("spawn")
                         .RequiresPlayer()
-                        .WithDescription("Spawn a structure from structure.json like during worldgen. Target position will be the selected block or your position. See /dev list <num> command to get the correct index.")
+                        .WithDescription("Spawn a structure from structure.json like during worldgen. Target position will be the selected block or your position. See /dev list [num] command to get the correct index.")
                         .WithArgs(parsers.Int("structure_index"), parsers.OptionalInt("schematic_index"), parsers.OptionalIntRange("rotation_index", 0, 3))
                         .HandleWith(OnStructuresSpawn)
                     .EndSubCommand()

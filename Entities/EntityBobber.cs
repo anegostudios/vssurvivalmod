@@ -1,12 +1,9 @@
-using ProperVersion;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.CommandAbbr;
 using Vintagestory.API.Common.Entities;
-using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
@@ -108,8 +105,8 @@ namespace Vintagestory.GameContent
 
 
 
-    // Kurwa bobber
-    public class EntityBobber : EntityProjectile
+    // Ey, kurwa bober
+    public class EntityBobber : EntityProjectile, IRopeRippedListener
     {
         protected float swimmingAccum = 0f;
         protected float accum = 0f;
@@ -119,6 +116,7 @@ namespace Vintagestory.GameContent
         public EntityFish caughtFish;
         protected EntityPartitioning ep;
         protected bool wasSwimming;
+
 
         public override float MaterialDensity => 50;
         public override bool ApplyGravity => true;
@@ -136,6 +134,13 @@ namespace Vintagestory.GameContent
             set { WatchedAttributes.SetLong("attachedToEntityId", value); }
         }
 
+        // The time stamp in total hours when the bobber was cast. 
+        public double CastTotalHours
+        {
+            get { return WatchedAttributes.GetDouble("castTotalHours"); }
+            set { WatchedAttributes.SetDouble("castTotalHours", value); }
+        }
+
         public override void Initialize(EntityProperties properties, ICoreAPI api, long InChunkIndex3d)
         {
             base.Initialize(properties, api, InChunkIndex3d);
@@ -147,9 +152,18 @@ namespace Vintagestory.GameContent
             impactSound = null;
 
             BaitStack?.ResolveBlockOrItem(Api.World);
+
+            var cm = api.ModLoader.GetModSystem<ClothManager>();
+            var cs = cm.GetClothSystemAttachedToEntity(EntityId);
+
+            if (api.World.GetEntityById(AttachedToEntityId) == null)
+            {   
+                if (cs != null) cm.UnregisterCloth(cs.ClothId);
+                Die();
+            }
         }
 
-
+        bool ripSet;
 
         public override void OnGameTick(float dt)
         {
@@ -158,12 +172,31 @@ namespace Vintagestory.GameContent
                 onServertick(dt);
             }
 
+            // Since we don't set CanRip on spawn, this value is not synced after setting it
+            if (!ripSet && Api.Side == EnumAppSide.Client)
+            {
+                var cm = Api.ModLoader.GetModSystem<ClothManager>();
+                var cs = cm.GetClothSystemAttachedToEntity(EntityId);
+                if (cs != null) cs.CanRip = true;
+                ripSet = true;
+            }            
+            
+
             if (Swimming)
             {
                 Pos.Pitch *= 0.95f;
                 Pos.Roll *= 0.95f;
                 swimmingAccum += dt;
-                return;
+
+                // Copied from Entity.cs because we don't run the base method
+                if (World.EntityDebugMode)
+                {
+                    DebugAttributes.SetString("AttachedToEntityId", "" + AttachedToEntityId);
+                    UpdateDebugAttributes();
+                    DebugAttributes.MarkAllDirty();
+                }
+
+                return; // Skip base entity ticking
             }
 
             base.OnGameTick(dt);
@@ -590,6 +623,11 @@ namespace Vintagestory.GameContent
             WatchedAttributes.SetItemstack("baitStack", BaitStack);
 
             base.ToBytes(writer, forClient);
+        }
+
+        public void OnRopeRipped(ClothSystem cs)
+        {
+            Die();
         }
     }
 }

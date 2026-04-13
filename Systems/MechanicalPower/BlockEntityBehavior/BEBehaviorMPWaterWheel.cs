@@ -241,13 +241,13 @@ namespace Vintagestory.GameContent.Mechanics
 
             if (!bebconstructable.IsComplete)
             {
-                sb.AppendLine(Lang.Get("Construction step: {0}/{1}", bebconstructable.CurrentCompletedStage, bebconstructable.Stages));
+                sb.AppendLine(Lang.Get("waterwheel-construction-step-with-stage-current-and-total", bebconstructable.CurrentCompletedStage, bebconstructable.Stages));
             }
             else
             {
 
                 if (blocked) sb.AppendLine(Lang.Get("Wheel is blocked, make sure no the entire wheel is free from solid blocks."));
-                else sb.AppendLine(Lang.Get("Suitable power source blocks nearby: {0}", suitablePowerSourceBlockCount));
+                else sb.AppendLine(Lang.Get("waterwheel-suitable-power-source-blocks-nearby-blockamount", suitablePowerSourceBlockCount));
 
                 if (Api.World.EntityDebugMode)
                 {

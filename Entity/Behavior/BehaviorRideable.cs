@@ -841,7 +841,7 @@ namespace Vintagestory.GameContent
         {
             if (RemainingSaddleBreaks > 0)
             {
-                infotext.AppendLine(Lang.Get("{0} saddle breaks required every {1} days to fully tame.", RemainingSaddleBreaks, saddleBreakDayInterval));
+                infotext.AppendLine(Lang.Get("required-saddlebreak-amount-every-day-amount-to-fully-tame", RemainingSaddleBreaks, saddleBreakDayInterval));
             }
             base.GetInfoText(infotext);
         }

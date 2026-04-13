@@ -404,7 +404,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockPlant", typeof(BlockPlant));
 
             api.RegisterBlockClass("BlockRails", typeof(BlockRails));
-            api.RegisterBlockClass("BlockCactus", typeof(BlockBellows));
+            api.RegisterBlockClass("BlockCactus", typeof(BlockCactus));
             api.RegisterBlockClass("BlockSlab", typeof(BlockSlab));
             api.RegisterBlockClass("BlockPlantContainer", typeof(BlockPlantContainer));
             api.RegisterBlockClass("BlockSapling", typeof(BlockSapling));

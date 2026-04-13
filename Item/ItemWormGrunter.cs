@@ -140,6 +140,14 @@ namespace Vintagestory.GameContent
     {
         ILoadedSound gruntingSound;
 
+        public override string GetHeldTpUseAnimation(ItemSlot activeHotbarSlot, Entity forEntity)
+        {
+            return (forEntity as EntityPlayer).Controls.HandUse == EnumHandInteract.HeldItemInteract ?
+                base.GetHeldTpUseAnimation(activeHotbarSlot, forEntity) :
+                null
+            ;
+        }
+
         public override void OnUnloaded(ICoreAPI api)
         {
             base.OnUnloaded(api);
@@ -173,6 +181,7 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
+            if (!firstEvent) return;
             if (blockSel == null || blockSel.Face != BlockFacing.UP || !byEntity.Controls.ShiftKey) return;
             if (byEntity.Controls.CtrlKey)
             {
@@ -181,7 +190,7 @@ namespace Vintagestory.GameContent
             }
 
             var block = api.World.BlockAccessor.GetBlock(blockSel.Position);
-            if (block.Fertility <= 100) return;
+            if (block.Fertility <= 100 && !(block is BlockFarmland)) return;
 
             if (byEntity.LeftHandItemSlot.Empty || byEntity.LeftHandItemSlot.Itemstack.Collectible.Code.Path != "stick")
             {
@@ -237,17 +246,20 @@ namespace Vintagestory.GameContent
 
         public override bool OnHeldInteractCancel(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
         {
-            return false;
+            stopSound();
+            byEntity.AnimManager.StopAnimation("wormgrunting");
+            return true;
         }
 
         public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             stopSound();
+            byEntity.AnimManager.StopAnimation("wormgrunting");
 
             if (blockSel == null || blockSel.Face != BlockFacing.UP) return;
 
             var block = api.World.BlockAccessor.GetBlock(blockSel.Position);
-            if (block.Fertility > 100 /* At least low fertility soil */ && secondsUsed > 4f && api.Side == EnumAppSide.Server)
+            if ((block.Fertility > 100 || block is BlockFarmland) /* At least low fertility soil */ && secondsUsed > 4f && api.Side == EnumAppSide.Server)
             {
                 int cnt = slot.Itemstack.TempAttributes.GetInt("spawnAmount");
                 if (cnt > 0)
@@ -257,7 +269,7 @@ namespace Vintagestory.GameContent
             }
 
             // Potentially destroy this item on 0 durability remaining, only *after* getting its attributes and spawning the worms
-            if ((byEntity as EntityPlayer).Player.WorldData.CurrentGameMode != EnumGameMode.Creative)
+            if (secondsUsed >= 1 && (byEntity as EntityPlayer).Player.WorldData.CurrentGameMode != EnumGameMode.Creative && byEntity.World.Side == EnumAppSide.Server)
             {
                 slot.Itemstack.Collectible.DamageItem(byEntity.World, byEntity, slot);
                 slot.MarkDirty();

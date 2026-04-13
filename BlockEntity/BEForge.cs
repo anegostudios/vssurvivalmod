@@ -155,7 +155,7 @@ namespace Vintagestory.GameContent
         protected void OnClientTick(float dt)
         {
             extraOxygenRateParticles = Math.Max(0, extraOxygenRateParticles - dt * 0.5f);
-            if (extraOxygenRateParticles > 0)
+            if (extraOxygenRateRender > 0.15)
             {
                 var dir = blowDirection.Normalf;
 
@@ -169,16 +169,11 @@ namespace Vintagestory.GameContent
                 smokeQuads.MinVelocity.Set(-0.125f, 0.5f, -0.125f);
                 smokeQuads.AddVelocity.Set(0.25f, 1.0f, 0.25f);
 
-                float cnt = 0;
-                while (cnt < extraOxygenRateParticles)
-                {
-                    Api.World.SpawnParticles(smallMetalSparks);
-                    cnt += dt / 2;
-
-                    if (Api.World.Rand.NextDouble() < 0.6) {
-                        Api.World.SpawnParticles(smokeQuads);
-                    }
-                }
+                smallMetalSparks.MinQuantity = (float)Math.Pow(extraOxygenRateRender, 3) * 300;
+                smallMetalSparks.AddQuantity = 0;
+                Api.World.SpawnParticles(smallMetalSparks);
+                //smokeQuads.MinQuantity = extraOxygenRateRender * 2;
+                //Api.World.SpawnParticles(smokeQuads);
             }
 
 
@@ -194,7 +189,7 @@ namespace Vintagestory.GameContent
             }
 
             renderer?.SetContents(WorkItemSlot.Itemstack, FuelLevel, burning, false, extraOxygenRateRender);
-            extraOxygenRateRender *= 0.98f;
+            extraOxygenRateRender *= 0.97f;
         }
 
 
@@ -203,6 +198,12 @@ namespace Vintagestory.GameContent
             if (burning)
             {
                 double hoursPassed = Api.World.Calendar.TotalHours - lastTickTotalHours;
+                if (hoursPassed < 0)
+                {
+                    lastTickTotalHours = Api.World.Calendar.TotalHours;
+                    hoursPassed = 0;
+                }
+
                 var oxygenBurnMul = 1 + extraOxygenRate;
 
                 partialFuelConsumed += (float)(BurnRate * hoursPassed * oxygenBurnMul);
@@ -284,7 +285,7 @@ namespace Vintagestory.GameContent
 
                 renderer?.SetContents(WorkItemStack, FuelLevel, burning, true, extraOxygenRateRender);
                 MarkDirty();
-                Api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), Pos, 0.4375, byPlayer, false);
+                Api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), Pos, 0.4375, byPlayer, true);
 
                 return true;
 
@@ -326,7 +327,7 @@ namespace Vintagestory.GameContent
 
                 renderer?.SetContents(WorkItemStack, FuelLevel, burning, true, extraOxygenRateRender);
                 MarkDirty();
-                Api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), Pos, 0.4375, byPlayer, false);
+                Api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), Pos, 0.4375, byPlayer, true);
 
                 return true;
             }
@@ -349,7 +350,7 @@ namespace Vintagestory.GameContent
                 );
 
                 renderer?.SetContents(WorkItemStack, FuelLevel, burning, true, extraOxygenRateRender);
-                Api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), Pos, 0.4375, byPlayer, false);
+                Api.World.PlaySoundAt(new AssetLocation("sounds/block/ingot"), Pos, 0.4375, byPlayer, true);
 
                 MarkDirty();
                 return true;
@@ -446,7 +447,7 @@ namespace Vintagestory.GameContent
             if (!FuelSlot.Empty)
             {
                 var oxygenBurnMul = 1 + extraOxygenRate;
-                dsc.AppendLine(Lang.Get("Fuel for {0:0.##} hours", FuelLevel / oxygenBurnMul / BurnRate));
+                dsc.AppendLine(Lang.Get("forge-fuel-for-hour-amount", FuelLevel / oxygenBurnMul / BurnRate));
             }
         }
 

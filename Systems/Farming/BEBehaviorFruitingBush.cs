@@ -278,7 +278,7 @@ public class BEBehaviorFruitingBush : BlockEntityBehavior, IAnimalFoodSource, IL
         var yearsPassed = (Api.World.Calendar.TotalDays - BState.LastCuttingTakenTotalDays) / Api.World.Calendar.DaysPerYear;
         if (yearsPassed < yearsBetweenCuttings)
         {
-            dsc.AppendLine(Lang.Get("A cutting can be taken in {0} months", Math.Ceiling((yearsBetweenCuttings - yearsPassed) * 12)));
+            dsc.AppendLine(Lang.Get("cutting-canbetaken-in-months", Math.Ceiling((yearsBetweenCuttings - yearsPassed) * 12)));
         }
     }
 
@@ -409,7 +409,7 @@ public class BEBehaviorFruitingBush : BlockEntityBehavior, IAnimalFoodSource, IL
     protected void playHarvestEffects(IPlayer byPlayer, BlockSelection blockSel, ItemStack particlestack)
     {
         IWorldAccessor world = Api.World;
-        if (world.Rand.NextDouble() < 0.05)
+        if (bhBush != null && world.Rand.NextDouble() < 0.05)
         {
             world.PlaySoundAt(bhBush.HarvestingSound, blockSel.Position, 0, byPlayer);
         }

@@ -57,7 +57,7 @@ namespace Vintagestory.GameContent.Mechanics
                 rendererCode = device.Block.Attributes?["mechanicalPower"]?["renderer"].AsString("generic");
             }
 
-            int hashCode = device.Shape.GetHashCode() + device.Block.Textures.Values.GetHashCode() + rendererCode.GetHashCode();
+            int hashCode = device.Shape.GetHashCode() + rendererCode.GetHashCode();
 
             if (!MechBlockRendererByShape.TryGetValue(hashCode, out index))
             {

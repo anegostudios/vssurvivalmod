@@ -48,73 +48,76 @@ public class BlockEntityFastForwardGrowth : BlockEntity
 
     protected virtual void Update(float dt)
     {
-        double nowTotalHours = Api.World.Calendar.TotalHours;
+        double hoursSinceLastUpdate = Api.World.Calendar.TotalHours - totalHoursLastUpdate;
         double hourIntervall = 3 + rand.NextDouble();
-        bool skyExposed = Api.World.BlockAccessor.GetRainMapHeightAt(Pos.X, Pos.Z) <= Pos.Y + RainHeightOffset;
 
-        if ((nowTotalHours - totalHoursLastUpdate) < hourIntervall)
+        if (hoursSinceLastUpdate < hourIntervall)
         {
-            if (totalHoursLastUpdate > nowTotalHours)
+            if (hoursSinceLastUpdate < 0)
             {
                 // We need to rollback time when the blockEntity saved date is ahead of the calendar date: can happen if a schematic is imported
-                double rollback = totalHoursLastUpdate - nowTotalHours;
-                onRollback(rollback);
-                totalHoursLastUpdate = nowTotalHours;
+                onRollback(-hoursSinceLastUpdate);
+                totalHoursLastUpdate = Api.World.Calendar.TotalHours;
             }
-            else
-            {
 
-                return;
-            }
+            ShortUpdate(dt);
+            return;     // Early exit for performance
         }
+
+        IWorldAccessor world = Api.World;
+        IBlockAccessor blockAccessor = world.BlockAccessor;
+
+        // Don't fast-forward for more than the past year
+        float hoursPerDay = world.Calendar.HoursPerDay;
+        if (hoursSinceLastUpdate > world.Calendar.DaysPerYear * hoursPerDay)
+        {
+            float oneYear = world.Calendar.DaysPerYear * hoursPerDay;
+            totalHoursLastUpdate += hoursSinceLastUpdate - oneYear;    // Skip the excess time, doing nothing
+            hoursSinceLastUpdate = oneYear;
+        }
+
+        ClimateCondition conds = blockAccessor.GetClimateAt(Pos, EnumGetClimateMode.ForSuppliedDate_TemperatureRainfallOnly, totalHoursLastUpdate / hoursPerDay);
+        if (conds == null) return;
 
         // Slow down growth on bad light levels
         int lightpenalty = 0;
         if (!allowundergroundfarming)
         {
-            lightpenalty = Math.Max(0, Api.World.SeaLevel - Pos.Y);
+            lightpenalty = Math.Max(0, world.SeaLevel - Pos.Y);
         }
-
-        int sunlight = Api.World.BlockAccessor.GetLightLevel(upPos, allowundergroundfarming ? EnumLightLevelType.MaxLight : EnumLightLevelType.OnlySunLight);
+        int sunlight = blockAccessor.GetLightLevel(upPos, allowundergroundfarming ? EnumLightLevelType.MaxLight : EnumLightLevelType.OnlySunLight);
         double lightGrowthSpeedFactor = GameMath.Clamp(1 - (msFarming.Config.DelayGrowthBelowSunLight - (sunlight - lightpenalty)) * msFarming.Config.LossPerLevel, 0, 1);
 
-
-
-        // Don't update more than a year
-        totalHoursLastUpdate = Math.Max(totalHoursLastUpdate, nowTotalHours - Api.World.Calendar.DaysPerYear * Api.World.Calendar.HoursPerDay);
-
-        if (!skyExposed) // Fast pre-check
+        bool skyExposed = blockAccessor.GetRainMapHeightAt(Pos.X, Pos.Z) <= Pos.Y + RainHeightOffset;
+        if (!skyExposed) // Fast pre-check - if it is skyExposed (which is the normal case), then it cannot be in a room
         {
-            Room room = msFarming.Roomreg?.GetRoomForPosition(upPos);
-            roomness = (room != null && room.SkylightCount > room.NonSkylightCount && room.ExitCount == 0) ? 1 : 0;
+            // If we do have to check for a room, update roomness no more than twice per 24 hours
+            if (hoursSinceLastUpdate > 12 || (((int)(totalHoursLastUpdate + hoursSinceLastUpdate) / 12 ^ (int)totalHoursLastUpdate / 12) & 1) == 1)
+            {
+                Room room = msFarming.Roomreg?.GetRoomForPosition(upPos);
+                roomness = (room != null && room.SkylightCount > room.NonSkylightCount && room.ExitCount == 0) ? 1 : 0;
+            }
         }
         else
         {
             roomness = 0;
         }
 
-        ClimateCondition conds = null;
-
         beginIntervalledUpdate(out var intervalCallback, out var endCallback);
+        float delayGrowthBelowTemperature = msFarming.Config.DelayGrowthBelowTemperature;
+        float lossPerDegree = msFarming.Config.LossPerDegree;
 
         // Fast forward in 3-4 hour intervalls
-        while ((nowTotalHours - totalHoursLastUpdate) > hourIntervall)
+        while (hoursSinceLastUpdate > hourIntervall)
         {
+            hoursSinceLastUpdate -= hourIntervall;
             totalHoursLastUpdate += hourIntervall;
             previousHourInterval = hourIntervall;
 
             hourIntervall = 3 + rand.NextDouble();
 
-            if (conds == null)
-            {
-                conds = Api.World.BlockAccessor.GetClimateAt(Pos, EnumGetClimateMode.ForSuppliedDate_TemperatureRainfallOnly, totalHoursLastUpdate / Api.World.Calendar.HoursPerDay);
-                if (conds == null) break;
-            }
-            else
-            {
-                Api.World.BlockAccessor.GetClimateAt(Pos, conds, EnumGetClimateMode.ForSuppliedDate_TemperatureRainfallOnly, totalHoursLastUpdate / Api.World.Calendar.HoursPerDay);
-            }
-
+            /// This updates the temperature and rainfall in the conds supplied
+            blockAccessor.GetClimateAt(Pos, conds, EnumGetClimateMode.ForSuppliedDate_TemperatureRainfallOnly, totalHoursLastUpdate / hoursPerDay);
 
             if (roomness > 0)
             {
@@ -124,13 +127,18 @@ public class BlockEntityFastForwardGrowth : BlockEntity
             // Stop fertility recovery below zero degrees
             // 10% recovery speed at 1°C
             // 20% recovery speed at 2°C and so on
-            double growthChance = GameMath.Clamp(1 - (msFarming.Config.DelayGrowthBelowTemperature - conds.Temperature) * msFarming.Config.LossPerDegree, 0, 1);
+            double growthChance = 1 + (conds.Temperature - delayGrowthBelowTemperature) * lossPerDegree;    // Clamping this to 0,1 is not necessary, because rand.NextDouble() can only be between 0 and 1.  
             bool growthPaused = rand.NextDouble() > growthChance;
 
             intervalCallback?.Invoke(hourIntervall, conds, lightGrowthSpeedFactor, growthPaused);
         }
 
         endCallback?.Invoke();
+    }
+
+    // Called if there was no 3-4 hour interval yet, sub-classes may want to do something here e.g. BESoilNutrition still checks moisturelevel
+    protected virtual void ShortUpdate(float dt)
+    {
     }
 
     protected virtual void onRollback(double hoursrolledback)

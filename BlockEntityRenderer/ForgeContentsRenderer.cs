@@ -233,7 +233,7 @@ namespace Vintagestory.GameContent
                 prog.RgbaLightIn = new Vec4f(1, 1, 1, 1);
                 prog.TempGlowMode = 1;
 
-                int glow = (int)(255 * targetExtraOxygenRate);
+                int glow = (int)(255 * targetExtraOxygenRate * 2);
                 
                 prog.ExtraGlow = burning ? glow : 0;
                 prog.ModelMatrix = ModelMat.Identity().Translate(pos.X - camPos.X, pos.Y - camPos.Y + (fuelLevel - 1) / 16f / 4f, pos.Z - camPos.Z).Values;

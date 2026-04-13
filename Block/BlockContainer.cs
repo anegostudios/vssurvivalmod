@@ -20,7 +20,7 @@ namespace Vintagestory.GameContent
         {
             return 1;
         }
-        
+
 
         public virtual void SetContents(ItemStack containerStack, ItemStack[] stacks)
         {
@@ -62,7 +62,7 @@ namespace Vintagestory.GameContent
         public override bool Equals(ItemStack thisStack, ItemStack otherStack, params string[] ignoreAttributeSubTrees)
         {
             ResolveUcontents(api.World, thisStack);
-            if (otherStack.Collectible is BlockContainer) ResolveUcontents(api.World, otherStack);
+            if (otherStack?.Collectible is BlockContainer) ResolveUcontents(api.World, otherStack);
 
             return base.Equals(thisStack, otherStack, ignoreAttributeSubTrees);
         }
@@ -239,7 +239,7 @@ namespace Vintagestory.GameContent
                 return mul * GetContainingTransitionModifierContained(api.World, inslot, transType);
             };
 
-            
+
 
             return dummySlot;
         }

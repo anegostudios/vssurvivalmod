@@ -199,7 +199,13 @@ namespace Vintagestory.GameContent.Mechanics
 
         public bool tryConnect(BlockFacing toFacing)
         {
+            return tryConnect(toFacing, out _);
+        }
+
+        public bool tryConnect(BlockFacing toFacing, out Vec3i unloadedChunkPos)
+        {
             MechanicalNetwork newNetwork;
+            unloadedChunkPos = null;
 
             if (Api == null) return false;
 
@@ -226,11 +232,10 @@ namespace Vintagestory.GameContent.Mechanics
                     if (DEBUG) Api.Logger.Notification("== spreading path " + (paths[i].invert ? "-" : "") + paths[i].OutFacing + "  " + paths[i].gearingRatio);
                     BlockPos exitPos = Position.AddCopy(paths[i].OutFacing);
 
-                    bool chunkLoaded = spreadTo(Api, newNetwork, exitPos, paths[i], out _);
+                    bool chunkLoaded = spreadTo(Api, newNetwork, exitPos, paths[i], out unloadedChunkPos);
                     if (!chunkLoaded)
                     {
-                        LeaveNetwork();
-                        return true;
+                        return false;
                     }
                 }
 
@@ -239,7 +244,7 @@ namespace Vintagestory.GameContent.Mechanics
             else if (this.network != null)
             {
                 BEBehaviorMPBase node = Api.World.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPBase>();
-                if (node != null) return node.tryConnect(toFacing.Opposite);
+                if (node != null) return node.tryConnect(toFacing.Opposite, out unloadedChunkPos);
             }
 
             return false;
@@ -431,11 +436,6 @@ namespace Vintagestory.GameContent.Mechanics
                 }
 
                 bool chunksLoaded = spreadTo(Api, newNetwork, neibPos, new MechPowerPath(GetPropagationDirection(), this.gearedRatio), out Vec3i missingChunkPos);
-                if (network == null)
-                {
-                    if (DEBUG) Api.Logger.Notification("Incomplete chunkloading, possible issues with mechanical network around block " + neibPos);
-                    return null;
-                }
 
                 if (!chunksLoaded)
                 {
@@ -458,9 +458,15 @@ namespace Vintagestory.GameContent.Mechanics
                 BEBehaviorMPBase neib = Api.World.BlockAccessor.GetBlockEntity(neibPos).GetBehavior<BEBehaviorMPBase>();
                 if (OutFacingForNetworkDiscovery != null)
                 {
-                    if (tryConnect(OutFacingForNetworkDiscovery))
+                    if (tryConnect(OutFacingForNetworkDiscovery, out Vec3i missingChunkPos))
                     {
                         this.gearedRatio = neib.GetGearedRatio(OutFacingForNetworkDiscovery);  //no need to set propagationDir, it's already been set by tryConnect
+                    }
+                    else if (missingChunkPos != null)
+                    {
+                        network.AwaitChunkThenDiscover(missingChunkPos);
+                        manager.testFullyLoaded(network); // To trigger that allFullyLoaded gets false
+                        return network;
                     }
                 }
                 else

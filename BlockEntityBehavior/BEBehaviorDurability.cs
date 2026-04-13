@@ -64,7 +64,7 @@ namespace Vintagestory.GameContent
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
-            dsc.AppendLine(Lang.Get("Durability: {0}/{1}", RemainingDurability, Block.Durability));
+            dsc.AppendLine(Lang.Get("Durability: {0} / {1}", RemainingDurability, Block.Durability));
         }
     }
 }

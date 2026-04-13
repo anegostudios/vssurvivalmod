@@ -306,7 +306,7 @@ namespace Vintagestory.GameContent
         {
             base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
 
-            if (blockSel != null)
+            if (handling == EnumHandHandling.NotHandled && blockSel != null)
             {
                 byEntity.Stats.Set("walkspeed", "snowshovelingmod", -0.4f, true);
                 (byEntity as EntityPlayer).walkSpeed = byEntity.Stats.GetBlended("walkspeed");

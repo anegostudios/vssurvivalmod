@@ -239,25 +239,25 @@ public class BlockEntitySoilNutrition : BlockEntityFastForwardGrowth, ITexPositi
     /// <returns>true if it was a longer interval check (checked rain as well) so that an UpdateFarmlandBlock() is advisable</returns>
     protected bool updateMoistureLevel(double totalDays, float waterDistance, bool skyExposed, ClimateCondition baseClimate = null)
     {
-        tmpPos.Set(Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5);
-
         float minMoisture = GameMath.Clamp(1 - waterDistance / 4f, 0, 1);
-
-        if (lastMoistureLevelUpdateTotalDays > Api.World.Calendar.TotalDays)
-        {
-            // We need to rollback time when the blockEntity saved date is ahead of the calendar date: can happen if a schematic is imported
-            lastMoistureLevelUpdateTotalDays = Api.World.Calendar.TotalDays;
-            return false;
-        }
 
         double hoursPassed = Math.Min((totalDays - lastMoistureLevelUpdateTotalDays) * Api.World.Calendar.HoursPerDay, totalHoursWaterRetention);
         if (hoursPassed < 0.03f)
         {
+            if (hoursPassed < 0)
+            {
+                // We need to rollback time when the blockEntity saved date is ahead of the calendar date: can happen if a schematic is imported
+                lastMoistureLevelUpdateTotalDays = totalDays;
+                return false;
+            }
+
             // Get wet from a water source
             moistureLevel = Math.Max(moistureLevel, minMoisture);
 
             return false;
         }
+
+        tmpPos.Set(Pos.X + 0.5, Pos.Y + 0.5, Pos.Z + 0.5);
 
         // Dry out
         moistureLevel = Math.Max(minMoisture, moistureLevel - (float)hoursPassed / totalHoursWaterRetention);
@@ -279,12 +279,10 @@ public class BlockEntitySoilNutrition : BlockEntityFastForwardGrowth, ITexPositi
         return true;
     }
 
-
-    protected override void Update(float dt)
+    protected override void ShortUpdate(float dt)
     {
         bool skyExposed = Api.World.BlockAccessor.GetRainMapHeightAt(Pos.X, Pos.Z) <= Pos.Y + RainHeightOffset;
-        if (updateMoistureLevel(Api.World.Calendar.TotalHours / Api.World.Calendar.HoursPerDay, lastWaterDistance, skyExposed)) UpdateFarmlandBlock();
-        base.Update(dt);
+        if (updateMoistureLevel(Api.World.Calendar.TotalDays, lastWaterDistance, skyExposed)) UpdateFarmlandBlock();
     }
 
     protected override void beginIntervalledUpdate(out FarmlandFastForwardUpdate onInterval, out FarmlandUpdateEnd onEnd)

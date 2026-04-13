@@ -114,13 +114,20 @@ namespace Vintagestory.GameContent
             if (task is AiTaskSeekEntity)
             {
                 this.AnimManager.StartAnimation(mouthOpen);
-                callbackid = Api.Event.RegisterCallback((dt) => AnimManager.StartAnimation(mouthIdle), (int)(51 * 1000/30f));
+                callbackid = Api.Event.RegisterCallback((dt) =>
+                {
+                    callbackid = 0;
+                    AnimManager.StartAnimation(mouthIdle);
+                }, (int)(51 * 1000/30f));
             }
         }
 
         public override void Die(EnumDespawnReason reason = EnumDespawnReason.Death, DamageSource damageSourceForDeath = null)
         {
             base.Die(reason, damageSourceForDeath);
+
+            Api.Event.UnregisterCallback(callbackid);
+            callbackid = 0;
 
             this.AnimManager.StopAnimation(mouthOpen);
             this.AnimManager.StopAnimation(mouthIdle);
