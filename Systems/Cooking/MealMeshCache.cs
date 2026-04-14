@@ -161,6 +161,7 @@ namespace Vintagestory.GameContent
             if (nowTesselatingBlock == null) return null;  //This will occur if the pieStack changed to rot
 
             contentStacks = nowTesselatingBlock.GetContents(capi!.World, pieStack);
+            if (contentStacks.Length == 0) return null;
 
             int pieSize = pieStack?.Attributes.GetAsInt("pieSize") ?? 0;
             if (pieSize <= 0 || pieSize > 4) return null; // Prevent bad array access crash for pies with incorrect sizes
@@ -379,7 +380,7 @@ namespace Vintagestory.GameContent
                     {
                         source.ForStack = contentStacks[0]!;
 
-                        CompositeShape? cshape = contentStacks[0]!.ItemAttributes["inBowlShape"]?.AsObject(new CompositeShape() { Base = new ("shapes/block/food/meal/pickled.json") });
+                        CompositeShape? cshape = contentStacks[0]!.ItemAttributes["inBowlShape"]?.AsObject(new CompositeShape() { Base = new("shapes/block/food/meal/pickled.json") });
 
                         Shape contentShape = API.Common.Shape.TryGet(capi, cshape?.Base.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/"));
                         capi!.Tesselator.TesselateShape("picklednmealcontents", contentShape, out MeshData contentMesh, source);
