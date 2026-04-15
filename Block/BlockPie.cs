@@ -97,7 +97,7 @@ namespace Vintagestory.GameContent
                         ActionLangCode = "blockhelp-pie-addfilling",
                         MouseButton = EnumMouseButton.Right,
                         Itemstacks = fillStacks.ToArray(),
-                        GetMatchingStacks = (wi, bs, _) => GetBlockEntity<BlockEntityPie>(bs.Position) is { State: "raw", HasAllFilling: false } ? wi.Itemstacks : null
+                        GetMatchingStacks = (wi, bs, _) => GetBlockEntity<BlockEntityPie>(bs.Position) is { State: "raw", HasAllFilling: false } ? wi.Itemstacks.Where(stack => GetBlockEntity<BlockEntityPie>(bs.Position).CanAddIngredient(stack)).ToArray() : null
                     },
                     new() {
                         ActionLangCode = "blockhelp-pie-addcrust",
@@ -145,8 +145,6 @@ namespace Vintagestory.GameContent
         {
             return slot.Itemstack?.Attributes?.GetAsInt("pieSize") == 1 && State != "raw";
         }
-
-
 
 
         ModelTransform oneSliceTranformGui = new ModelTransform()
