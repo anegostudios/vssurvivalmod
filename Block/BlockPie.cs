@@ -365,8 +365,8 @@ namespace Vintagestory.GameContent
             ItemStack[] stacks = GetContents(api.World, pieStack);
             StringBuilder sb = new StringBuilder();
 
-            TransitionableProperties[] propsm = pieStack.Collectible.GetTransitionableProperties(api.World, pieStack, null);
-            if (propsm != null && propsm.Length > 0)
+            TransitionableProperties[]? propsm = pieStack.Collectible.GetTransitionableProperties(api.World, pieStack, null);
+            if (propsm?.Length > 0)
             {
                 pieStack.Collectible.AppendPerishableInfoText(bepInv[0], sb, api.World);
             }
@@ -383,62 +383,10 @@ namespace Vintagestory.GameContent
             return str;
         }
 
-        public override TransitionState? UpdateAndGetTransitionState(IWorldAccessor world, ItemSlot inslot, EnumTransitionType type)
-        {
-            ItemStack[] cstacks = GetContents(world, inslot.Itemstack);
-            UnspoilContents(world, cstacks);
-            SetContents(inslot.Itemstack, cstacks);
-
-            return base.UpdateAndGetTransitionState(world, inslot, type);
-        }
-
         public override TransitionState[]? UpdateAndGetTransitionStates(IWorldAccessor world, ItemSlot inslot)
         {
-            ItemStack[] cstacks = GetContents(world, inslot.Itemstack);
-            UnspoilContents(world, cstacks);
-            SetContents(inslot.Itemstack, cstacks);
-
-
             return base.UpdateAndGetTransitionStatesNative(world, inslot);
         }
-
-
-        public override string GetContentNutritionFacts(IWorldAccessor world, ItemSlot inSlotorFirstSlot, ItemStack[] contentStacks, EntityAgent? forEntity, bool mulWithStacksize = false, float nutritionMul = 1, float healthMul = 1)
-        {
-            UnspoilContents(world, contentStacks);
-
-            return base.GetContentNutritionFacts(world, inSlotorFirstSlot, contentStacks, forEntity, mulWithStacksize, nutritionMul, healthMul);
-        }
-
-
-        protected void UnspoilContents(IWorldAccessor world, ItemStack[] cstacks)
-        {
-            // Dont spoil the pie contents, the pie itself has a spoilage timer. Semi hacky fix reset their spoil timers each update
-
-            for (int i = 0; i < cstacks.Length; i++)
-            {
-                ItemStack cstack = cstacks[i];
-                if (cstack == null) continue;
-
-                if (!(cstack.Attributes["transitionstate"] is ITreeAttribute))
-                {
-                    cstack.Attributes["transitionstate"] = new TreeAttribute();
-                }
-                ITreeAttribute attr = (ITreeAttribute)cstack.Attributes["transitionstate"];
-
-                if (attr.HasAttribute("createdTotalHours"))
-                {
-                    attr.SetDouble("createdTotalHours", world.Calendar.TotalHours);
-                    attr.SetDouble("lastUpdatedTotalHours", world.Calendar.TotalHours);
-                    var transitionedHours = (attr["transitionedHours"] as FloatArrayAttribute)?.value;
-                    for (int j = 0; transitionedHours != null && j < transitionedHours.Length; j++)
-                    {
-                        transitionedHours[j] = 0;
-                    }
-                }
-            }
-        }
-
 
         public override float[] GetNutritionHealthMul(BlockPos? pos, ItemSlot? slot, EntityAgent? forEntity)
         {
