@@ -691,15 +691,50 @@ namespace Vintagestory.GameContent
                 // List that includes only food categories that are not already present
                 List<ItemStack?>? filteredValidStacks = allFoodCategories.Count > 1 ? new(validStacks) : [];
 
+
+
+                // For each food category, try to filter out non-matching mixing codes.
+                // If at least one ingredient is left, apply it to the actual ingredient
+                // list. Helps prevent incorrect mixing codes when multiple codes have
+                // the same food categories.
+                List<EnumFoodCategory> mixCodeFilterable = [];
+
+                // [ "mixed", "type-trailing" ]
+                string[] pieMixCode = recipe?.Code?.Split("-", 2) ?? ["single", ""];
+
+                if (pieMixCode.Length > 1)
+                {
+                    foreach (EnumFoodCategory cat in allFoodCategories)
+                    {
+                        int noOtherMixingCodesInCategory = filteredValidStacks
+                            .Where(stack =>
+                            {
+                                if (stack?.ItemAttributes["inPieProperties"].AsObject<InPieProperties>() is not { } props) return true;
+                                return props.FoodCategory == cat && props.MixingCodes.Except([pieMixCode[1]]).Count() == 0;
+                            })
+                            .Count();
+
+                        if (noOtherMixingCodesInCategory > 0)
+                        {
+                            // We can filter out non-matching mixing codes because we have at least one left for this category.
+                            filteredValidStacks = filteredValidStacks.Where(stack =>
+                            {
+                                if (stack?.ItemAttributes["inPieProperties"].AsObject<InPieProperties>() is not { } props) return true;
+                                return props.FoodCategory != cat || props.MixingCodes.Except([pieMixCode[1]]).Count() == 0;
+                            }).ToList();
+                        }
+                    }
+                }
+
+
                 while (ingredient.MinQuantity > 0)
                 {
+                    // Use the filtered list to fill out the other desired categories, if any remain.
                     if (ingredient.Code == "filling" && (filteredValidStacks?.Count ?? 0) > 0)
                     {
-                        // Use the filtered list to fill out the other desired categories.
                         ItemStack? newIngredient = filteredValidStacks![api.World.Rand.Next(filteredValidStacks!.Count)]?.Clone();
                         if (FillingFoodCategory(newIngredient) is EnumFoodCategory newCategory)
                         {
-                            Console.WriteLine($"Adding new included foodCat {newCategory}");
                             includedFoodCategories.Add(newCategory);
 
                             bool filterStackIfCategoryIncluded(ItemStack? stack)
