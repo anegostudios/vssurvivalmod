@@ -693,9 +693,9 @@ namespace Vintagestory.GameContent
                 sb.AppendLine(Lang.Get("nutrition-facts-line-satiety", Lang.Get("foodcategory-" + val.Key.ToString().ToLowerInvariant()), Math.Round(val.Value)));
             }
 
-            if (totalHealth != 0)
+            if (Math.Round(totalHealth, 2) != 0)
             {
-                sb.AppendLine("- " + Lang.Get("Health: {0}{1} hp", totalHealth > 0 ? "+" : "", totalHealth));
+                sb.AppendLine("- " + Lang.Get("Health: {0}{1} hp", totalHealth > 0 ? "+" : "", Math.Round(totalHealth, 2)));
             }
 
             return sb.ToString();
