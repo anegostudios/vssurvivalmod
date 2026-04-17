@@ -808,11 +808,6 @@ namespace Vintagestory.GameContent
         {
             if (inSlot.Itemstack is not ItemStack mealStack) return;
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
-            float temp = GetTemperature(world, mealStack);
-            if (temp > 20)
-            {
-                dsc.AppendLine(Lang.Get("Temperature: {0}°C", (int)temp));
-            }
 
             CookingRecipe? recipe = GetCookingRecipe(world, mealStack);
 
