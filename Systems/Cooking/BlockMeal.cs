@@ -297,7 +297,8 @@ namespace Vintagestory.GameContent
                 servingsLeft = Consume(byEntity.World, player, slot, stacks, servingsLeft, string.IsNullOrEmpty(recipeCode));
             }
 
-            if (servingsLeft <= 0)
+            // Delete tiny servings
+            if (servingsLeft < 0.01)
             {
                 if (handleAllServingsConsumed)
                 {
