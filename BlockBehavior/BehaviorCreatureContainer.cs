@@ -28,7 +28,7 @@ namespace Vintagestory.GameContent
     [DocumentAsJson]
     public class BlockBehaviorCreatureContainer : BlockBehavior
     {
-        public double CreatureSurvivalDays = 1;
+        public double CreatureSurvivalDays = 2;
         ICoreAPI api;
 
         public BlockBehaviorCreatureContainer(Block block) : base(block)

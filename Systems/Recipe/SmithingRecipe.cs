@@ -1,3 +1,4 @@
+using OpenTK.Windowing.GraphicsLibraryFramework;
 using Vintagestory.API;
 using Vintagestory.API.Common;
 
@@ -42,13 +43,27 @@ public class SmithingRecipe : LayeredVoxelRecipe, IConcreteCloneable<SmithingRec
     public override string RecipeCategoryCode => "smithing";
     protected override bool RotateRecipe => true;
 
+    /// <summary>
+    /// A unique identifier for this recipe, must remain unique and unchanging across game udpates.
+    /// Not used in 1.22 but will be used in 1.23
+    /// </summary>
+    public AssetLocation? Code;
 
+    protected override void FillPlaceHolder(string key, string value)
+    {
+        if (Code != null)
+        {
+            Code = Code.CopyWithPath(Code.Path.Replace("{" + key + "}", value));
+        }
+        base.FillPlaceHolder(key, value);
+    }
 
     public override SmithingRecipe Clone()
     {
         SmithingRecipe recipe = new();
 
         CloneTo(recipe);
+        recipe.Code = Code?.Clone();
 
         return recipe;
     }

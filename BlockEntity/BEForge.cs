@@ -166,14 +166,14 @@ namespace Vintagestory.GameContent
 
                 smokeQuads.MinPos.Set(Pos.X + 4 / 16f, Pos.Y + 14 / 16f, Pos.Z + 4 / 16f);
                 smokeQuads.AddPos.Set(8 / 16f, 0.1f, 8 / 16f);
-                smokeQuads.MinVelocity.Set(-0.125f, 0.5f, -0.125f);
-                smokeQuads.AddVelocity.Set(0.25f, 1.0f, 0.25f);
+                smokeQuads.MinVelocity.Set(-0.125f, 0.25f, -0.125f);
+                smokeQuads.AddVelocity.Set(0.25f, 0.5f, 0.25f);
 
-                smallMetalSparks.MinQuantity = (float)Math.Pow(extraOxygenRateRender, 3) * 300;
+                smallMetalSparks.MinQuantity = (float)Math.Pow(extraOxygenRateRender, 3) * 250;
                 smallMetalSparks.AddQuantity = 0;
                 Api.World.SpawnParticles(smallMetalSparks);
-                //smokeQuads.MinQuantity = extraOxygenRateRender * 2;
-                //Api.World.SpawnParticles(smokeQuads);
+                smokeQuads.MinQuantity = extraOxygenRateRender;
+                Api.World.SpawnParticles(smokeQuads);
             }
 
 
@@ -447,6 +447,7 @@ namespace Vintagestory.GameContent
             if (!FuelSlot.Empty)
             {
                 var oxygenBurnMul = 1 + extraOxygenRate;
+                dsc.AppendLine(Lang.Get("forge-fuel", FuelSlot.Itemstack.GetName()));
                 dsc.AppendLine(Lang.Get("forge-fuel-for-hour-amount", FuelLevel / oxygenBurnMul / BurnRate));
             }
         }
@@ -459,7 +460,7 @@ namespace Vintagestory.GameContent
             return IsBurning ? 7 : 0;
         }
 
-        public void CoolNow(float amountRel)
+        public void CoolNow(float amountRel, OnStackToCool onStackToCoolCallback)
         {
             bool playsound = false;
             if (burning)
@@ -478,7 +479,7 @@ namespace Vintagestory.GameContent
             if (temp > 20)
             {
                 playsound = temp > 100;
-                WorkItemStack.Collectible.SetTemperature(Api.World, WorkItemStack, Math.Min(1100, temp - amountRel * 20), false);
+                onStackToCoolCallback(WorkItemSlot, Pos.ToVec3d(), GlobalConstants.CollectibleDefaultTemperature, playsound);
                 MarkDirty(true);
             }
 

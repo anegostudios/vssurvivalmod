@@ -66,6 +66,7 @@ namespace Vintagestory.GameContent
             get { return rotationYDeg; }
             set {
                 rotationYDeg = value;
+                animRot.Y = value - 90;
                 rotMat = Matrixf.Create().Translate(0.5f, 0, 0.5f).RotateYDeg(rotationYDeg - 90).Translate(-0.5f, 0, -0.5f).Values;
             }
         }
@@ -75,6 +76,7 @@ namespace Vintagestory.GameContent
             inv = new InventoryGeneric(1, null, null);
         }
 
+        Vec3f animRot = new Vec3f();
         public override void Initialize(ICoreAPI api)
         {
             traptype = Block.Attributes["traptype"].AsString("small");
@@ -93,7 +95,7 @@ namespace Vintagestory.GameContent
             if (api.Side == EnumAppSide.Client)
             {
                 RegisterGameTickListener(OnClientTick, 1000);
-                animUtil?.InitializeAnimator("baskettrap", null, null, new Vec3f(0, rotationYDeg, 0));
+                animUtil?.InitializeAnimator("animaltrap" + Block.Code, null, null, animRot);
                 if (TrapState == EnumTrapState.Trapped)
                 {
                     animUtil?.StartAnimation(new AnimationMetaData() { Animation = "triggered", Code = "triggered" });

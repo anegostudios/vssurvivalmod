@@ -1,4 +1,6 @@
+using System.Text;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 
 #nullable disable
@@ -25,6 +27,17 @@ namespace Vintagestory.GameContent
         }
 
         protected override int RainHeightOffset => 0;
+
+        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
+        {
+            base.GetBlockInfo(forPlayer, dsc);
+
+            if (roomness > 0)
+            {
+                dsc.AppendLine();
+                dsc.AppendLine(Lang.Get("greenhousetempbonus"));
+            }
+        }
     }
 
 

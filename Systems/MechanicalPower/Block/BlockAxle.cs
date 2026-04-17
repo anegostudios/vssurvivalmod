@@ -22,6 +22,52 @@ namespace Vintagestory.GameContent.Mechanics
             return base.GetCollisionBoxes(blockAccessor, pos);
         }
 
+        public override int GetRetention(BlockPos pos, BlockFacing facing, EnumRetentionType type)
+        {
+            if (GetBEBehavior<BlockEntityBehaviorCoverable>(pos)?.WallStack?.Collectible is Block wallBlock)
+            {
+                    if (type == EnumRetentionType.Sound) return 10;
+
+                    var mat = wallBlock.GetBlockMaterial(api.World.BlockAccessor, pos);
+                    if (mat is EnumBlockMaterial.Ore or EnumBlockMaterial.Stone || mat == EnumBlockMaterial.Soil || mat == EnumBlockMaterial.Ceramic)
+                    {
+                        return -1;
+                    }
+                    return 1;
+            }
+            return base.GetRetention(pos, facing, type);
+        }
+
+        public override bool CanAttachBlockAt(IBlockAccessor blockAccessor, Block block, BlockPos pos, BlockFacing blockFace, Cuboidi attachmentArea = null)
+        {
+            if (GetBEBehavior<BlockEntityBehaviorCoverable>(pos)?.WallStack != null) return !IsOrientedTo(blockFace);
+            return base.CanAttachBlockAt(blockAccessor, block, pos, blockFace, attachmentArea);
+        }
+
+        public override int GetLightAbsorption(IWorldChunk chunk, BlockPos pos)
+        {
+            if (GetBEBehavior<BlockEntityBehaviorCoverable>(pos)?.WallStack?.Collectible is Block wallBlock)
+            {
+                return wallBlock.GetLightAbsorption(chunk, pos);
+            }
+            return base.GetLightAbsorption(chunk, pos);
+        }
+
+        public override int GetLightAbsorption(IBlockAccessor blockAccessor, BlockPos pos)
+        {
+            if (GetBEBehavior<BlockEntityBehaviorCoverable>(pos)?.WallStack?.Collectible is Block wallBlock)
+            {
+                return wallBlock.GetLightAbsorption(blockAccessor, pos);
+            }
+            return base.GetLightAbsorption(blockAccessor, pos);
+        }
+
+        public override float GetLiquidBarrierHeightOnSide(BlockFacing face, BlockPos pos)
+        {
+            if (GetBEBehavior<BlockEntityBehaviorCoverable>(pos)?.WallStack != null) return 1;
+            return base.GetLiquidBarrierHeightOnSide(face, pos);
+        }
+
         public bool IsOrientedTo(BlockFacing facing)
         {
             string dirs = LastCodePart();

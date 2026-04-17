@@ -1,5 +1,4 @@
 using System;
-using System.Linq;
 using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
@@ -522,6 +521,8 @@ namespace Vintagestory.GameContent
                 // Average transition states before adding
                 var sourceTransitionStates = liquidStack.Collectible.UpdateAndGetTransitionStates(api.World, new DummySlot(liquidStack));
                 var targetTransitionStates = stack.Collectible.UpdateAndGetTransitionStates(api.World, new DummySlot(stack));
+                if (!stack.Equals(api.World, liquidStack, GlobalConstants.IgnoredStackAttributes)) return 0;
+
                 if (sourceTransitionStates != null && targetTransitionStates != null)
                 {
                     float t = (float)moved / (moved + stack.StackSize);
@@ -581,6 +582,8 @@ namespace Vintagestory.GameContent
                 // Average transition states before adding
                 var sourceTransitionStates = liquidStack.Collectible.UpdateAndGetTransitionStates(api.World, new DummySlot(liquidStack));
                 var targetTransitionStates = stack.Collectible.UpdateAndGetTransitionStates(api.World, new DummySlot(stack));
+                if (!stack.Equals(api.World, liquidStack, GlobalConstants.IgnoredStackAttributes)) return 0;
+
                 if (sourceTransitionStates != null && targetTransitionStates != null)
                 {
                     float t = (float)movedItems / (movedItems + stack.StackSize);
@@ -1251,8 +1254,10 @@ namespace Vintagestory.GameContent
             {
                 if (op.MovableQuantity > 0)
                 {
-                    var sourceTransitionStates = sourceContent.Collectible.UpdateAndGetTransitionStates(api.World, op.SourceSlot);
-                    var targetTransitionStates = sinkContent.Collectible.UpdateAndGetTransitionStates(api.World, op.SinkSlot);
+                    var sourceTransitionStates = sourceContent.Collectible.UpdateAndGetTransitionStates(api.World, new DummySlot(sourceContent));
+                    var targetTransitionStates = sinkContent.Collectible.UpdateAndGetTransitionStates(api.World, new DummySlot(sinkContent));
+
+                    if (!sourceContent.Equals(op.World, sinkContent, GlobalConstants.IgnoredStackAttributes)) { op.MovableQuantity = 0; return; }
 
                     if (sourceTransitionStates != null && targetTransitionStates != null)
                     {

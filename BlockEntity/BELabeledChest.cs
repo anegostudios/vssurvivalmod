@@ -82,6 +82,10 @@ namespace Vintagestory.GameContent
 
                     return true;
                 }
+                else if (hotbarSlot?.Itemstack?.Collectible is ItemPadlock or ItemPlumbAndSquare)
+                {
+                    return false;
+                }
                 bool canPlaceBlock = hotbarSlot?.Itemstack?.Class == EnumItemClass.Block &&
                     (byPlayer.WorldData.CurrentGameMode == EnumGameMode.Survival || byPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative);
                 if (Block.PlacedPriorityInteract && canPlaceBlock) return false;

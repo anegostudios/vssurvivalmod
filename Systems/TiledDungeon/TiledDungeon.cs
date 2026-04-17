@@ -109,14 +109,14 @@ namespace Vintagestory.ServerMods
 
             if (surface != null)
             {
-                var asset = api.Assets.Get("worldgen/dungeontiles/" + surface + ".json");
+                var asset = api.Assets.GetManyInCategory("worldgen", "dungeontiles/" + surface + ".json").FirstOrDefault();
                 Surface = WorldGenStructureBase.LoadSchematic<BlockSchematicPartial>(api, asset, blockLayerConfig, null, null, 0, true);
                 TilesByCode[surface] = new DungeonTile() { ResolvedSchematics = new[] { Surface }, Code = surface };
             }
 
             if (start != null)
             {
-                var assetStart = api.Assets.Get("worldgen/dungeontiles/" + start + ".json");
+                var assetStart = api.Assets.GetManyInCategory("worldgen", "dungeontiles/" + start + ".json").FirstOrDefault();
                 Start = WorldGenStructureBase.LoadSchematic<BlockSchematicPartial>(api, assetStart, blockLayerConfig, null, null, 0, true);
                 TilesByCode[start] = new DungeonTile() { ResolvedSchematics = new[] { Start }, Code = start };
             }
@@ -126,8 +126,8 @@ namespace Vintagestory.ServerMods
                 var ends = new List<BlockSchematicPartial[]>();
                 foreach (var e in this.ends)
                 {
-                    var assetStart = api.Assets.Get("worldgen/dungeontiles/" + e + ".json");
-                    var blockSchematicPartials = WorldGenStructureBase.LoadSchematic<BlockSchematicPartial>(api, assetStart, blockLayerConfig, null, null, 0, true);
+                    var assetEnd = api.Assets.GetManyInCategory("worldgen", "dungeontiles/" + e + ".json").FirstOrDefault();
+                    var blockSchematicPartials = WorldGenStructureBase.LoadSchematic<BlockSchematicPartial>(api, assetEnd, blockLayerConfig, null, null, 0, true);
                     ends.Add(blockSchematicPartials);
 
                     if (!TilesByCode.TryAdd(e, new DungeonTile() { ResolvedSchematics = new[] { blockSchematicPartials }, Code = e }))

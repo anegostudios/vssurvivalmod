@@ -1,9 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 
 #nullable disable
 
@@ -101,7 +102,8 @@ namespace Vintagestory.GameContent
 
             ItemStack workItemStack = stack.Clone();
             workItemStack.StackSize = 1;
-            workItemStack.Collectible.SetTemperature(api.World, workItemStack, stack.Collectible.GetTemperature(api.World, stack));
+            // No idea why this was here. caused temperature to drop right away
+            //workItemStack.Collectible.SetTemperature(api.World, workItemStack, stack.Collectible.GetTemperature(api.World, stack));
 
             return workItemStack.Clone();
         }

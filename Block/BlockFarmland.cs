@@ -1,5 +1,6 @@
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 
 #nullable disable
 
@@ -62,5 +63,14 @@ namespace Vintagestory.GameContent
             return faceIndex == BlockFacing.indexDOWN;
         }
 
+
+        public override void OnBeingLookedAt(IPlayer byPlayer, BlockSelection blockSel, bool firstTick)
+        {
+            if (firstTick && api is ICoreServerAPI sapi)
+            {
+                BlockEntityFarmland befarmland = sapi.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityFarmland;
+                befarmland?.SendFullUpdateToClient(sapi, (IServerPlayer)byPlayer);
+            }
+        }
     }
 }

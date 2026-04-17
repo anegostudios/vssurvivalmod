@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -14,6 +14,24 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
+    public class ItemSlotAuction : ItemSlotSurvival
+    {
+        public ItemSlotAuction(InventoryBase inventory) : base(inventory)
+        {
+        }
+
+        public override bool CanHold(ItemSlot sourceSlot)
+        {
+            var bag = sourceSlot.Itemstack?.Collectible.GetCollectibleInterface<IHeldBag>() ?? null;
+
+            if (bag != null && !bag.IsEmpty(sourceSlot.Itemstack))
+            {
+                return false;
+            }
+            return base.CanHold(sourceSlot);
+        }
+    }
+
     public enum EnumAuctionState
     {
         Active = 0,
@@ -43,14 +61,14 @@ namespace Vintagestory.GameContent
         public float debtClient;
 
         /// <summary>
-        /// For modders, change this value if you want to increase/reduce delivery costs
+        /// Loaded from worldconfig, multiplier for the delivery price. 
         /// </summary>
         public float DeliveryPriceMul = 1f;
 
         /// <summary>
-        /// For modders, change this value if you want to increase auction times, does not affect cost
+        /// Loaded from worldconfig
         /// </summary>
-        public int DurationWeeksMul = 6;
+        public int DurationWeeksMul = 5;
 
         /// <summary>
         /// The % cut the trader takes from the profits (default is 0.1 which is 10%)
@@ -97,7 +115,7 @@ namespace Vintagestory.GameContent
         public void loadPricingConfig()
         {
             DeliveryPriceMul = api.World.Config.GetFloat("auctionHouseDeliveryPriceMul", 1);
-            DurationWeeksMul = api.World.Config.GetInt("auctionHouseDurationWeeksMul", 3);
+            DurationWeeksMul = api.World.Config.GetInt("auctionHouseDurationWeeksMul", 5);
             SalesCutRate = api.World.Config.GetFloat("auctionHouseSalesCutRate", 0.1f);
         }
 
@@ -342,17 +360,17 @@ namespace Vintagestory.GameContent
             switch (pkt.Action)
             {
                 case EnumAuctionAction.EnterAuctionHouse:
-
-                    if (!createAuctionSlotByPlayer.ContainsKey(fromPlayer.PlayerUID))
+                    InventoryGeneric ainv;
+                    if (!createAuctionSlotByPlayer.TryGetValue(fromPlayer.PlayerUID, out ainv))
                     {
-                        var ainv = createAuctionSlotByPlayer[fromPlayer.PlayerUID] = new InventoryGeneric(1, "auctionslot-" + fromPlayer.PlayerUID, sapi);
+                        ainv = createAuctionSlotByPlayer[fromPlayer.PlayerUID] = new InventoryGeneric(1, "auctionslot-" + fromPlayer.PlayerUID, sapi, (idx, inv) => new ItemSlotAuction(inv) { StorageType = EnumItemStorageFlags.General | EnumItemStorageFlags.Backpack });
                         // a negative weight prevents the auction slot from being consider as a suitable slot when shift clicking an item in the hotbar, that is because the default weight is 0 and it checks for >= 0
                         // this one here is for good measure but the important one in on the client side in the GuiDialogTrader constructor
                         ainv.OnGetSuitability = (s, t, isMerge) => -1f;
                         ainv.OnInventoryClosed += (plr) => ainv.DropAll(plr.Entity.Pos.XYZ);
                     }
 
-                    fromPlayer.InventoryManager.OpenInventory(createAuctionSlotByPlayer[fromPlayer.PlayerUID]);
+                    fromPlayer.InventoryManager.OpenInventory(ainv);
 
                     sendAuctions(auctions.Values, null, true, fromPlayer);
 

@@ -150,6 +150,7 @@ namespace Vintagestory.GameContent
         /// </summary>
         public List<ClayFormingRecipe> ClayFormingRecipes = new List<ClayFormingRecipe>();
 
+        ICoreAPI api;
 
         public override double ExecuteOrder()
         {
@@ -158,6 +159,7 @@ namespace Vintagestory.GameContent
 
         public override void StartPre(ICoreAPI api)
         {
+            this.api = api;
             canRegister = true;
         }
 
@@ -271,6 +273,17 @@ namespace Vintagestory.GameContent
         {
             if (!canRegister) throw new InvalidOperationException("Coding error: Can no long register cooking recipes. Register them during AssetsLoad/AssetsFinalize and with ExecuteOrder < 99999");
             recipe.RecipeId = SmithingRecipes.Count + 1;
+
+            if (recipe.Code == null)
+            {
+                api.Logger.Warning("Smithing recipe with output {0} has no code. For 1.23 all smithing recipes need to have a unique, unchanging code", recipe.Output.Code);
+            } else
+            {
+                if (SmithingRecipes.FirstOrDefault(r => r.Code == recipe.Code) != null)
+                {
+                    api.Logger.Warning("Smithing recipe with output {0} has a code that is already used by another recipe. For 1.23 all smithing recipes need to have a unique, unchanging code", recipe.Output.Code);
+                }
+            }
 
             SmithingRecipes.Add(recipe);
         }

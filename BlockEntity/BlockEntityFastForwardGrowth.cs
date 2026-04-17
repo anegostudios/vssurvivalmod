@@ -42,7 +42,7 @@ public class BlockEntityFastForwardGrowth : BlockEntity
             {
                 if (!(Api as ICoreServerAPI).World.IsFullyLoadedChunk(Pos)) return;
                 Update(dt);
-            }, 3500, rand.Next(3500));
+            }, 4500, rand.Next(4500));
         }
     }
 
@@ -94,8 +94,7 @@ public class BlockEntityFastForwardGrowth : BlockEntity
             // If we do have to check for a room, update roomness no more than twice per 24 hours
             if (hoursSinceLastUpdate > 12 || (((int)(totalHoursLastUpdate + hoursSinceLastUpdate) / 12 ^ (int)totalHoursLastUpdate / 12) & 1) == 1)
             {
-                Room room = msFarming.Roomreg?.GetRoomForPosition(upPos);
-                roomness = (room != null && room.SkylightCount > room.NonSkylightCount && room.ExitCount == 0) ? 1 : 0;
+                roomness = GetRoomness();
             }
         }
         else
@@ -135,6 +134,14 @@ public class BlockEntityFastForwardGrowth : BlockEntity
 
         endCallback?.Invoke();
     }
+
+
+    protected virtual int GetRoomness()
+    {
+        Room room = msFarming.Roomreg?.GetRoomForPosition(upPos);
+        return (room != null && room.SkylightCount > room.NonSkylightCount && room.ExitCount == 0) ? 1 : 0;
+    }
+
 
     // Called if there was no 3-4 hour interval yet, sub-classes may want to do something here e.g. BESoilNutrition still checks moisturelevel
     protected virtual void ShortUpdate(float dt)
@@ -183,12 +190,27 @@ public class BlockEntityFastForwardGrowth : BlockEntity
             // Pre v1.5.1
             totalHoursLastUpdate = tree.GetDouble("totalDaysFertilityCheck") * 24;
         }
+
+        roomness = tree.GetInt("roomness");
     }
+
     public override void ToTreeAttributes(ITreeAttribute tree)
     {
         base.ToTreeAttributes(tree);
         tree.SetDouble("totalHoursFertilityCheck", totalHoursLastUpdate);
+        tree.SetInt("roomness", roomness);
     }
 
     public double TotalHoursLastUpdate => totalHoursLastUpdate;
+
+    public virtual void SendFullUpdateToClient(ICoreServerAPI sapi, IServerPlayer player)
+    {
+        // Forces an immediate roomness update so that the clientside BlockInfo is correct - as for performance roomness is normally only updated every 12 hours
+
+        int oldRoomness = roomness;
+        bool skyExposed = sapi.World.BlockAccessor.GetRainMapHeightAt(Pos.X, Pos.Z) <= Pos.Y + RainHeightOffset;
+        roomness = skyExposed ? 0 : GetRoomness();
+
+        if (roomness != oldRoomness) MarkDirty();
+    }
 }

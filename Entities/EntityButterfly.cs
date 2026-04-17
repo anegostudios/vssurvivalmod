@@ -149,17 +149,17 @@ namespace Vintagestory.GameContent
 
             base.OnGameTick(dt);
 
-            if (cnt++ > 30)
-            {
-                float affectedness = World.BlockAccessor.GetLightLevel(Pos.XYZ.AsBlockPos, EnumLightLevelType.OnlySunLight) < 14 ? 1 : 0;
-                windMotion = Api.ModLoader.GetModSystem<WeatherSystemBase>().WeatherDataSlowAccess.GetWindSpeed(Pos.XYZ) * affectedness;
-                cnt = 0;
-            }
-
-            if (AnimManager.ActiveAnimationsByAnimCode.ContainsKey("fly"))
-            {
-                Pos.X += Math.Max(0, (windMotion - 0.2) / 20.0);
-            }
+            // if (cnt++ > 30)
+            // {
+            //     float affectedness = World.BlockAccessor.GetLightLevel(Pos.XYZ.AsBlockPos, EnumLightLevelType.OnlySunLight) > 14 ? 1 : 0;
+            //     windMotion = Api.ModLoader.GetModSystem<WeatherSystemBase>().WeatherDataSlowAccess.GetWindSpeed(Pos.XYZ) * affectedness;
+            //     cnt = 0;
+            // }
+            //
+            // if (AnimManager.ActiveAnimationsByAnimCode.ContainsKey("fly"))
+            // {
+            //     Pos.X += Math.Max(0, (windMotion - 0.2) / 20.0);
+            // }
 
             // What is this for? It seems to interfere with AiTaskButterflyWander Yaw setting causing them to circle in place
             /*if (Pos.SquareDistanceTo(Pos.XYZ) > 0.01 && !FeetInLiquid)

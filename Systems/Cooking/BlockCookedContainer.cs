@@ -12,7 +12,7 @@ using Vintagestory.API.Util;
 namespace Vintagestory.GameContent
 {
 
-    public class BlockCookedContainer : BlockCookedContainerBase, IInFirepitRendererSupplier, IContainedMeshSource, IContainedInteractable, IGroundStoredParticleEmitter, IAttachableToEntity
+    public class BlockCookedContainer : BlockCookedContainerBase, IInFirepitRendererSupplier, IContainedMeshSource, IGroundStoredParticleEmitter, IAttachableToEntity
     {
         public static SimpleParticleProperties smokeHeld;
         public static SimpleParticleProperties foodSparks;
@@ -135,7 +135,7 @@ namespace Vintagestory.GameContent
 
         public virtual string GetMeshCacheKey(ItemSlot slot)
         {
-            return meshCache!.GetMealHashCode(slot.Itemstack).ToString();
+            return meshCache!.GetMealHashCode(slot.Itemstack, new Vec3f(0, yoff/16f, 0)).ToString();
         }
 
 

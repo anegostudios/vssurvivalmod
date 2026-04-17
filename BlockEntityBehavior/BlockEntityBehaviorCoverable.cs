@@ -54,6 +54,7 @@ namespace Vintagestory.GameContent
             WallStack = new ItemStack(block);
             Blockentity.MarkDirty(true);
             Api.World.PlaySoundAt(block.Sounds.Place, Pos, 0.5f, byPlayer);
+            Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
         }
 
         public static bool SuitableMaterial(ItemSlot hslot)

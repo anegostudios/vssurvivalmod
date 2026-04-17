@@ -55,7 +55,11 @@ namespace Vintagestory.GameContent
 
             if (!auctionSys.createAuctionSlotByPlayer.TryGetValue(capi.World.Player.PlayerUID, out auctionSlotInv))
             {
-                auctionSys.createAuctionSlotByPlayer[capi.World.Player.PlayerUID] = auctionSlotInv = new InventoryGeneric(1, "auctionslot-" + capi.World.Player.PlayerUID, capi);
+                auctionSys.createAuctionSlotByPlayer[capi.World.Player.PlayerUID] = auctionSlotInv = new InventoryGeneric(1, "auctionslot-" + capi.World.Player.PlayerUID, capi,
+                    (idx, inv) => new ItemSlotAuction(inv) { StorageType = EnumItemStorageFlags.General | EnumItemStorageFlags.Backpack }
+                );
+
+
                 // a negative weight prevents the auction slot from being consider as a suitable slot when shift clicking an item in the hotbar, that is because the default weight is 0 and it checks for >= 0
                 auctionSlotInv.OnGetSuitability = (s, t, isMerge) => -1f;
             }
@@ -318,9 +322,7 @@ namespace Vintagestory.GameContent
                 SingleComposer.GetButton("cancelAuction").Visible = auction?.State == EnumAuctionState.Active;
                 SingleComposer.GetButton("retrieveItems").Visible = auction?.State == EnumAuctionState.Expired || (sold && auction.SellerUid != capi.World.Player.PlayerUID);
                 SingleComposer.GetButton("collectFunds").Visible = sold && auction.SellerUid == capi.World.Player.PlayerUID;
-
             }
-
         }
 
 

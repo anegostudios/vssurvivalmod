@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Client;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Util;
@@ -33,7 +33,7 @@ namespace Vintagestory.GameContent
 
         public override string ToggleKeyCombinationCode => null;
 
-        protected string gearIcon = "<itemstack type='item' code='gear-rusty' rsize='1.75' offy='2'>";
+        protected string gearIcon = "<itemstack type='item' code='gear-rusty' rsize='1.5' offy='0'>";
 
         ElementBounds dialogBounds;
 

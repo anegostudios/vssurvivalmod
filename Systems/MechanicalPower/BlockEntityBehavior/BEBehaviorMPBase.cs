@@ -421,6 +421,7 @@ namespace Vintagestory.GameContent.Mechanics
             BlockPos neibPos = Position.AddCopy(powerOutFacing);
             IMechanicalPowerBlock neibMechBlock = null;
             neibMechBlock = Api.World.BlockAccessor.GetBlock(neibPos) as IMechanicalPowerBlock;
+            if (neibMechBlock != null && !neibMechBlock.HasMechPowerConnectorAt(Api.World, neibPos, powerOutFacing.Opposite, Block as BlockMPBase)) neibMechBlock = null;    // neibMechBlock might be an axle or angled gears pointing the wrong way, so with no available connector -> not on the same network
 
             MechanicalNetwork neibNetwork = neibMechBlock == null ? null : neibMechBlock.GetNetwork(Api.World, neibPos);
 

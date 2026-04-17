@@ -197,11 +197,7 @@ namespace Vintagestory.GameContent
             if (this.block != block) return; // Block was already removed
 
             // Prevents duplication
-            Entity entity = world.GetNearestEntity(ourPos.ToVec3d().Add(0.5, 0.5, 0.5), 1, 1.5f, (e) =>
-            {
-                return e is EntityBlockFalling ebf && ebf.initialPos.Equals(ourPos);
-            });
-            if (entity != null) return;
+            if (FallingEntityAlreadyExists(world, ourPos)) return;
 
             // Change after falling, like a broken variant or a "lower shape"
             if (variantAfterFalling != null) block = world.BlockAccessor.GetBlock(variantAfterFalling);
@@ -210,6 +206,15 @@ namespace Vintagestory.GameContent
             EntityBlockFalling entityBf = new EntityBlockFalling(block, be, ourPos, fallSound, impactDamageMul, true, dustIntensity);
 
             world.SpawnEntity(entityBf);
+        }
+
+        public bool FallingEntityAlreadyExists(IWorldAccessor world, BlockPos ourPos)
+        {
+            Entity entity = world.GetNearestEntity(ourPos.ToVec3d().Add(0.5, 0.5, 0.5), 1, 1.5f, (e) =>
+            {
+                return e is EntityBlockFalling ebf && ebf.initialPos.Equals(ourPos);
+            });
+            return entity != null;
         }
 
         public virtual bool IsAttached(IBlockAccessor blockAccessor, BlockPos pos)

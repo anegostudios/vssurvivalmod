@@ -5,8 +5,6 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
-#nullable disable
-
 namespace Vintagestory.GameContent
 {
     public class ModSystemSnowShoveling : ModSystem
@@ -14,9 +12,9 @@ namespace Vintagestory.GameContent
         public override bool ShouldLoad(EnumAppSide forSide) => true;
 
         protected Dictionary<string, Vec3d> snowshovelingplayers = new();
-        protected ICoreServerAPI sapi;
-        protected ICoreClientAPI capi;
-        protected ILoadedSound shovellingSound;
+        protected ICoreServerAPI? sapi;
+        protected ICoreClientAPI? capi;
+        protected ILoadedSound? shovellingSound;
 
         public override void StartServerSide(ICoreServerAPI api)
         {
@@ -40,6 +38,7 @@ namespace Vintagestory.GameContent
 
         private void snowShovelTickClient(float dt)
         {
+            ArgumentNullException.ThrowIfNull(capi);
             if (capi.World.Player.CurrentBlockSelection?.Block?.BlockMaterial == EnumBlockMaterial.Snow)
             {
                 lookingAtSnowAccum = 1;
@@ -80,6 +79,8 @@ namespace Vintagestory.GameContent
 
         private void snowShovelTickServer(float dt)
         {
+            ArgumentNullException.ThrowIfNull(sapi);
+            int snowCapacity = 8; // Numbers between 4 and 12 generally seem to work well
             foreach (var (uid, prevpos) in snowshovelingplayers)
             {
                 var plr = sapi.World.PlayerByUid(uid);
@@ -90,180 +91,195 @@ namespace Vintagestory.GameContent
 
                 if (nowPos.DistanceTo(prevpos) > 0.01)
                 {
-                    var vw = plr.Entity.Pos.GetViewVector().ToVec3d();
-                    vw.Y = 0;
-                    var facing = BlockFacing.FromVector(vw);
-                    var dir = facing.Normald;
+                    Vec3d toDir = plr.Entity.Pos.GetViewVector().ToVec3d();
+                    toDir.Y = 0;
+                    toDir.Normalize();
+                    // No lock to cardinal directions, so diagonal pushing is allowed
 
                     var fromPos = prevpos.AsBlockPos;
 
                     prevpos.Add((nowPos - prevpos).Normalize().Mul(0.4));
                     prevpos.Y = nowPos.Y;
 
-                    Block block = getSnowyBlock(fromPos);
-                    if (block == null) continue;
+                    int snowLayers = Math.Min(snowCapacity, (int)Math.Ceiling(CountSnowLayers(fromPos)));
 
-                    // 1. Try to add snow left or right, if height is > 3
-                    // does not work well / is unsatisfying
-                    /*if (block.GetSnowLevel(fromPos) >= 3)
+                    // 1. On tall stacks, some snow may fall off to the left or right
+                    if (snowLayers > 3)
                     {
-                        bool left = sapi.World.Rand.NextDouble() < 0;
-
-                        if (left && tryMoveSnowTo(fromPos, dir.RotatedCopy(GameMath.PIHALF))) continue;
-                        if (!left && tryMoveSnowTo(fromPos, dir.RotatedCopy(-GameMath.PIHALF))) continue;
-                        if (!left && tryMoveSnowTo(fromPos, dir.RotatedCopy(GameMath.PIHALF))) continue;
-                        if (left && tryMoveSnowTo(fromPos, dir.RotatedCopy(-GameMath.PIHALF))) continue;
-                    }*/
+                        int amount1 = sapi.World.Rand.Next(snowLayers) / 3;
+                        int amount2 = sapi.World.Rand.Next(snowLayers) / 3;
+                        // Left/right order doesn't theoretically matter
+                        ShoveSnowColumn(fromPos, toDir.RotatedCopy(GameMath.PIHALF), amount1);
+                        ShoveSnowColumn(fromPos, toDir.RotatedCopy(-GameMath.PIHALF), amount2);
+                    }
 
                     // 2. Try to just add snow in front
-                    if (tryMoveSnowTo(fromPos, dir)) continue;
+                    ShoveSnowColumn(fromPos, toDir, snowCapacity);
 
-
-                    // 3. Can't move snow, no effect
-
-
+                    // 3. May fail to move all snow, with no further effect
                 }
             }
         }
 
-        private Block getSnowyBlock(BlockPos fromPos)
+        protected float CountSnowLayers(BlockPos fromPos)
         {
-            var block = sapi.World.BlockAccessor.GetBlock(fromPos);
-            if (block.GetSnowLevel(fromPos) == 0)
-            {
-                var abovePos = fromPos.UpCopy();
-                block = sapi.World.BlockAccessor.GetBlock(abovePos);
-                if (block.GetSnowLevel(abovePos) == 0) return null;
-            }
-
-            return block;
+            ArgumentNullException.ThrowIfNull(sapi);
+            Block block = sapi.World.BlockAccessor.GetBlock(fromPos);
+            float snow = block.GetSnowLevel(fromPos);
+            BlockPos tempPos = fromPos.UpCopy();
+            Block aboveBlock = sapi.World.BlockAccessor.GetBlock(tempPos);
+            snow += aboveBlock.GetSnowLevel(tempPos);
+            tempPos.Down().Down();
+            Block belowBlock = sapi.World.BlockAccessor.GetBlock(tempPos);
+            snow += belowBlock.GetSnowLevel(tempPos);
+            
+            return snow;
         }
 
-        // Returns true only if *all* snow was moved
-        public bool tryMoveSnowTo(BlockPos fromPos, Vec3d toDir)
+        public void ShoveSnowColumn(BlockPos fromPos, Vec3d toDir, float maxLayers)
         {
-            Block snowyBlock = getSnowyBlock(fromPos);
-            if (snowyBlock == null) return true;
-
-            var ba = sapi.World.BlockAccessor;
+            if (maxLayers <= 0) return;
 
             toDir.X = Math.Round(toDir.X);
             toDir.Y = Math.Round(toDir.Y);
             toDir.Z = Math.Round(toDir.Z);
 
-            bool isAboveGroundSnowLayer = snowyBlock is BlockSnow || snowyBlock is BlockSnowLayer;
+            // Shovel only sideways, not up/down
+            if (toDir.X == 0 && toDir.Z == 0) return;
 
-            var frontPos = fromPos + toDir.AsBlockPos;
-            var frontUpPos = frontPos.UpCopy();
+            ArgumentNullException.ThrowIfNull(sapi);
+            var blockAccessor = sapi.World.BlockAccessor;
 
-            if (isAboveGroundSnowLayer)
+            BlockPos currentSourcePos = fromPos;
+
+            // Want to get the locally highest snowy block, where "locally" is within one block up/down from target
+            BlockPos tempPos = fromPos.UpCopy();
+            Block aboveBlock = blockAccessor.GetBlock(tempPos);
+            float aboveSnow = aboveBlock.GetSnowLevel(tempPos);
+            if (aboveSnow > 0)
             {
-                frontPos.Down();
-                frontUpPos.Down();
-            }
-
-            var frontBlock = ba.GetBlock(frontPos);
-            var frontUpBlock = ba.GetBlock(frontUpPos);
-
-            float snowlevel = (float)Math.Ceiling(snowyBlock.GetSnowLevel(fromPos)); // Chiseled blocks returns 0.5 snow. Ugh.
-            float movedSnowLevel = 0;
-            var frontUpSnowLevel = frontUpBlock.GetSnowLevel(frontUpPos);
-
-            // We might be aiming at a snowblock above ground directly
-            if (isAboveGroundSnowLayer)
-            {
-                var frontBelowPos = frontPos.DownCopy();
-                var frontBelowBlock = ba.GetBlock(frontBelowPos);
-
-                if (frontBlock.Id == 0)
+                currentSourcePos = fromPos.UpCopy();
+                Block twiceAboveBlock = blockAccessor.GetBlock(tempPos.Up());
+                float twiceAboveSnow = twiceAboveBlock.GetSnowLevel(tempPos);
+                if (twiceAboveSnow > 0)
                 {
-                    float frontBelowSnow = frontBelowBlock.GetSnowLevel(frontBelowPos);
-                    if (frontBelowSnow > 0)
+                    // Too deep to shovel here
+                    return;
+                }
+            }
+            else
+            {
+                Block block = blockAccessor.GetBlock(fromPos);
+                float baseSnow = block.GetSnowLevel(fromPos);
+                if (baseSnow == 0)
+                {
+                    // In case the player is walking on top of the snow with the shovel
+                    currentSourcePos = tempPos.Down().Down();
+                    Block belowBlock = blockAccessor.GetBlock(tempPos);
+                    float belowSnow = belowBlock.GetSnowLevel(tempPos);
+                    if (belowSnow <= 0)
                     {
-                        snowyBlock = snowyBlock.GetSnowCoveredVariant(fromPos, snowlevel + frontBelowSnow);
-                        sapi.World.BlockAccessor.SetBlock(frontBelowBlock.GetSnowCoveredVariant(frontBelowPos, 0).Id, frontBelowPos);
+                        // No snow to shovel
+                        return;
                     }
-
-                    sapi.World.BlockAccessor.SetBlock(snowyBlock.Id, frontPos);
-                    sapi.World.BlockAccessor.SetBlock(0, fromPos);
-
-                    if (!frontBelowBlock.SideIsSolid(frontBelowPos, BlockFacing.UP.Index) && frontBelowBlock.Attributes?.IsTrue("canShovelSnowOnto") != true)
-                    {
-                        snowyBlock.GetBehavior<BlockBehaviorUnstableFalling>()?.createFallingBlock(sapi.World, frontPos);
-                    }
-
-                    spawnSnowParticles(fromPos, toDir);
-                    return true;
                 }
-
             }
 
-            // Not if there is already a snow block above
-            if (frontUpSnowLevel == 0)
+            float initialSnow = blockAccessor.GetBlock(currentSourcePos).GetSnowLevel(currentSourcePos);
+
+            BlockPos frontPos = fromPos + toDir.AsBlockPos;
+            // Handles flat movement and falling
+            frontPos.Y = Math.Min(frontPos.Y, currentSourcePos.Y);
+            bool needsFall = TryMoveSnow(currentSourcePos, frontPos, maxLayers, true);
+            spawnSnowParticles(fromPos, toDir);
+            float remainingSnow = blockAccessor.GetBlock(currentSourcePos).GetSnowLevel(currentSourcePos);
+
+            maxLayers -= initialSnow - remainingSnow;
+
+            if (remainingSnow == 0)
             {
-                movedSnowLevel = snowlevel;
-
-                // We're at a block edge
-                if (frontBlock.Id == 0)
-                {
-                    var extractedSnowBlock = sapi.World.GetBlock("snowlayer-1").GetSnowCoveredVariant(fromPos, snowlevel);
-                    var snowFreeBlock = snowyBlock.GetSnowCoveredVariant(fromPos, 0);
-
-                    sapi.World.BlockAccessor.SetBlock(extractedSnowBlock.Id, frontPos);
-                    snowyBlock.PerformSnowLevelUpdate(ba, fromPos, snowFreeBlock, 0);
-
-                    if (!sapi.World.BlockAccessor.GetBlock(frontPos.DownCopy()).SideIsSolid(frontPos.DownCopy(), BlockFacing.UP.Index)) {
-                        extractedSnowBlock.GetBehavior<BlockBehaviorUnstableFalling>()?.createFallingBlock(sapi.World, frontPos);
-                    }
-                }
-                else
-                {
-                    while (movedSnowLevel > 0)
-                    {
-                        var moreSnowyBlock = frontBlock.GetSnowCoveredVariant(frontPos, frontBlock.snowLevel + movedSnowLevel);
-                        if (moreSnowyBlock != null && frontBlock.Id != moreSnowyBlock.Id)
-                        {
-                            frontBlock.PerformSnowLevelUpdate(ba, frontPos, moreSnowyBlock, frontBlock.snowLevel + movedSnowLevel);
-                            snowyBlock.PerformSnowLevelUpdate(ba, fromPos, snowyBlock.GetSnowCoveredVariant(fromPos, snowlevel - movedSnowLevel), snowlevel - movedSnowLevel);
-                            spawnSnowParticles(fromPos, toDir);
-                            break;
-                        }
-
-                        movedSnowLevel = Math.Max(0, movedSnowLevel - 1);
-                    }
-                }
+                currentSourcePos.Down();
+                initialSnow = blockAccessor.GetBlock(currentSourcePos).GetSnowLevel(currentSourcePos);
+                needsFall = needsFall || TryMoveSnow(currentSourcePos, frontPos, maxLayers, true);
+                remainingSnow = blockAccessor.GetBlock(currentSourcePos).GetSnowLevel(currentSourcePos);
             }
-
-            float remainingSnow = snowlevel - movedSnowLevel;
-            if (remainingSnow == 0) return true;
-
-
-
-            // If we weren't able to move all the snow, lets pile it up
-            if (remainingSnow > 0 && (frontBlock.AllowSnowCoverage(sapi.World, frontPos) || frontBlock.Attributes?.IsTrue("canShovelSnowOnto") == true) && (frontUpBlock.BlockMaterial == EnumBlockMaterial.Snow || frontUpBlock.Id == 0))
+            if (needsFall)
             {
-                var refBlock = frontUpBlock;
-                if (frontUpSnowLevel == 0) refBlock = sapi.World.GetBlock("snowlayer-1");
-
-                float belowSnow = frontBlock.GetSnowLevel(frontPos);
-
-                var newSnowLevel = Math.Min(8, frontUpSnowLevel + remainingSnow + belowSnow);
-                remainingSnow = Math.Max(0, (frontUpSnowLevel + remainingSnow) - newSnowLevel);
-
-                sapi.World.BlockAccessor.SetBlock(refBlock.GetSnowCoveredVariant(frontUpPos, newSnowLevel).Id, frontUpPos);
-
-                snowyBlock.PerformSnowLevelUpdate(ba, fromPos, snowyBlock.GetSnowCoveredVariant(fromPos, remainingSnow), remainingSnow);
-
-                if (belowSnow > 0)
+                var falling = blockAccessor.GetBlock(frontPos).GetBehavior<BlockBehaviorUnstableFalling>();
+                if (falling != null)
                 {
-                    frontBlock.PerformSnowLevelUpdate(ba, frontPos, frontBlock.GetSnowCoveredVariant(frontPos, 0), 0);
+                    falling.createFallingBlock(sapi.World, frontPos);
                 }
-
-                spawnSnowParticles(fromPos, toDir);
-                return true;
             }
 
-            return false;
+            maxLayers -= initialSnow - remainingSnow;
+
+            // Handle uphill (or upsnow) movement
+            frontPos.Up();
+            TryMoveSnow(currentSourcePos, frontPos, maxLayers, false);
+        }
+
+        // Moves snow from one position to another, and triggers neighbor updates. Returns true if a falling block update is needed.
+        public bool TryMoveSnow(BlockPos fromPos, BlockPos toPos, float maxLevelMoved, bool allowFalling)
+        {
+            if (maxLevelMoved <= 0) return false;
+
+            ArgumentNullException.ThrowIfNull(sapi);
+            Block snowBlock = sapi.World.GetBlock("snowblock") ?? throw new Exception("Expected snow block to be included in game files");
+
+            Block fromBlock = sapi.World.BlockAccessor.GetBlock(fromPos);
+            float fromLevel = (float)Math.Ceiling(fromBlock.GetSnowLevel(fromPos)); // Ceiling, because chiseled blocks return 0.5f
+            Block toBlock = sapi.World.BlockAccessor.GetBlock(toPos);
+            float toLevel = (float)Math.Ceiling(toBlock.GetSnowLevel(toPos));
+
+            // Move snow layers into target block
+            // Deliberately skip checking block replaceable values, because the snow cover system does not do that in general
+            float toMove = (float)Math.Min(maxLevelMoved, fromLevel);
+            // Special case for air, to become snow block or snow layers
+            Block snowSink = toBlock.Id == 0 ? snowBlock : toBlock;
+            Block? newlySnowyBlock = snowSink.GetSnowCoveredVariant(toPos, toMove + toLevel);
+
+            Block? snowlessBlock = fromBlock.GetSnowCoveredVariant(fromPos, 0);
+            if (snowlessBlock == null)
+            {
+                // This should never happen, but returning early prevents snow duplication just in case it does
+                return false;
+            }
+
+            bool attached = true;
+            float remainingSnow = fromLevel;
+            if (newlySnowyBlock != null)
+            {
+                BlockPos downPos = toPos.DownCopy();
+                attached = sapi.World.BlockAccessor.GetBlock(downPos).CanAttachBlockAt(sapi.World.BlockAccessor, newlySnowyBlock, downPos, BlockFacing.UP);
+                var falling = newlySnowyBlock.GetBehavior<BlockBehaviorUnstableFalling>();
+                if (falling != null && !attached && (!allowFalling || falling.FallingEntityAlreadyExists(sapi.World, toPos)))
+                {
+                    return false;
+                }
+
+                toBlock.PerformSnowLevelUpdate(sapi.World.BlockAccessor, toPos, newlySnowyBlock, toMove + toLevel);
+                sapi.World.BlockAccessor.TriggerNeighbourBlockUpdate(toPos);
+                float snowLevelAfter = (float)Math.Ceiling(newlySnowyBlock.GetSnowLevel(toPos));
+                remainingSnow = fromLevel + toLevel - snowLevelAfter;
+
+                // Don't trigger the fall from here directly, in case the situation changes later
+            }
+            // Liquids melt the snow
+            else if (toBlock.IsLiquid())
+            {
+                remainingSnow = Math.Max(0, fromLevel - maxLevelMoved);
+            }
+
+            // And remove snow from the starting block
+            if (fromLevel > remainingSnow)
+            {
+                Block desnowedBlock = fromBlock.GetSnowCoveredVariant(fromPos, remainingSnow) ?? snowlessBlock;
+                fromBlock.PerformSnowLevelUpdate(sapi.World.BlockAccessor, fromPos, desnowedBlock, remainingSnow);
+                sapi.World.BlockAccessor.TriggerNeighbourBlockUpdate(fromPos);
+            }
+
+            return !attached;
         }
 
         private void spawnSnowParticles(BlockPos fromPos, Vec3d toDir)
@@ -309,10 +325,13 @@ namespace Vintagestory.GameContent
             if (handling == EnumHandHandling.NotHandled && blockSel != null)
             {
                 byEntity.Stats.Set("walkspeed", "snowshovelingmod", -0.4f, true);
-                (byEntity as EntityPlayer).walkSpeed = byEntity.Stats.GetBlended("walkspeed");
+                if (byEntity is EntityPlayer byPlayer)
+                {
+                    byPlayer.walkSpeed = byEntity.Stats.GetBlended("walkspeed");
+                    api.ModLoader.GetModSystem<ModSystemSnowShoveling>().BeginSnowShoveling(byPlayer.PlayerUID, blockSel.FullPosition);
+                }
 
                 handling = EnumHandHandling.PreventDefault;
-                api.ModLoader.GetModSystem<ModSystemSnowShoveling>().BeginSnowShoveling((byEntity as EntityPlayer).PlayerUID, blockSel.FullPosition);
             }
         }
 
@@ -324,17 +343,21 @@ namespace Vintagestory.GameContent
         public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             byEntity.Stats.Remove("walkspeed", "snowshovelingmod");
-            (byEntity as EntityPlayer).walkSpeed = byEntity.Stats.GetBlended("walkspeed");
-
-            api.ModLoader.GetModSystem<ModSystemSnowShoveling>().StopSnowShoveling((byEntity as EntityPlayer).PlayerUID);
+            if (byEntity is EntityPlayer byPlayer)
+            {
+                byPlayer.walkSpeed = byEntity.Stats.GetBlended("walkspeed");
+                api.ModLoader.GetModSystem<ModSystemSnowShoveling>().StopSnowShoveling(byPlayer.PlayerUID);
+            }
         }
 
         public override bool OnHeldInteractCancel(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
         {
             byEntity.Stats.Remove("walkspeed", "snowshovelingmod");
-            (byEntity as EntityPlayer).walkSpeed = byEntity.Stats.GetBlended("walkspeed");
-
-            api.ModLoader.GetModSystem<ModSystemSnowShoveling>().StopSnowShoveling((byEntity as EntityPlayer).PlayerUID);
+            if (byEntity is EntityPlayer byPlayer)
+            {
+                byPlayer.walkSpeed = byEntity.Stats.GetBlended("walkspeed");
+                api.ModLoader.GetModSystem<ModSystemSnowShoveling>().StopSnowShoveling(byPlayer.PlayerUID);
+            }
 
             return true;
         }

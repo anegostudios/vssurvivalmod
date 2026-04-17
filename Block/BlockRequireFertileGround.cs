@@ -1,5 +1,6 @@
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
 #nullable disable
@@ -100,5 +101,15 @@ namespace Vintagestory.GameContent
             return base.TryPlaceBlockForWorldGen(blockAccessor, pos, onBlockFace, worldGenRand, attributes);
         }
 
+
+        public override void OnBeingLookedAt(IPlayer byPlayer, BlockSelection blockSel, bool firstTick)
+        {
+            if (firstTick && api is ICoreServerAPI sapi)
+            {
+                // be will be non-null for berry-bushes (BlockEntityWildFruitingBush), for example
+                BlockEntityFastForwardGrowth be = sapi.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityFastForwardGrowth;
+                be?.SendFullUpdateToClient(sapi, (IServerPlayer)byPlayer);
+            }
+        }
     }
 }

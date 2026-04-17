@@ -79,7 +79,7 @@ namespace Vintagestory.GameContent
                 if (type.Code.Path.Contains("butterfly")) continue;
 
                 entityCodes.Add(type.Code.ToString());
-                entityNames.Add(Lang.Get("item-creature-" + type.Code.Path));
+                entityNames.Add(Lang.GetMatching("item-creature-" + type.Code.Path));
             }
 
             if (entityNames.Count == 0) return;

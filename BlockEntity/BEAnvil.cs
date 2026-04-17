@@ -274,9 +274,9 @@ namespace Vintagestory.GameContent
                 }
                 else if (workItemStack.Collectible is ItemWorkItem wi && wi.isBlisterSteel) return false;
 
-                if (SelectedRecipeId < 0)
+                var list = workableobj.GetMatchingRecipes(stack);
+                if (SelectedRecipeId < 0 || list.FirstOrDefault(r => r.RecipeId == SelectedRecipeId) == null)
                 {
-                    var list = workableobj.GetMatchingRecipes(stack);
                     if (list.Count == 1)
                     {
                         SelectedRecipeId = list[0].RecipeId;
@@ -1119,7 +1119,7 @@ namespace Vintagestory.GameContent
                     return;
                 }
 
-                var list = (WorkItemStack?.Collectible as ItemWorkItem)?.GetMatchingRecipes(workItemStack);
+                var list = (WorkItemStack?.Collectible as IAnvilWorkable)?.GetMatchingRecipes(workItemStack);
                 if (list == null || list.FirstOrDefault(r => r.RecipeId == recipeid) == null)
                 {
                     Api.World.Logger.Error("Client tried to selected smithing recipe with id {0}, but it is not a valid one for the given work item stack!", recipe.RecipeId);
@@ -1235,7 +1235,7 @@ namespace Vintagestory.GameContent
             {
                 workItemStack = null;
             }
-            workItemStack?.Collectible.OnLoadCollectibleMappings(worldForResolve, new DummySlot(workItemStack) ,oldBlockIdMapping, oldItemIdMapping, resolveImports);
+            workItemStack?.Collectible.OnLoadCollectibleMappings(worldForResolve, new DummySlot(workItemStack), oldBlockIdMapping, oldItemIdMapping, resolveImports);
         }
 
         public override void OnStoreCollectibleMappings(Dictionary<int, AssetLocation> blockIdMapping, Dictionary<int, AssetLocation> itemIdMapping)
@@ -1277,7 +1277,7 @@ namespace Vintagestory.GameContent
             tree.SetFloat("meshAngle", MeshAngle);
         }
 
-        public void CoolNow(float amountRel)
+        public void CoolNow(float amountRel, OnStackToCool onStackToCoolCallback)
         {
             if (workItemStack == null) return;
             float temp = workItemStack.Collectible.GetTemperature(Api.World, workItemStack);
@@ -1286,7 +1286,8 @@ namespace Vintagestory.GameContent
                 Api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), Pos, 0.25, null, false, 16);
             }
 
-            workItemStack.Collectible.SetTemperature(Api.World, workItemStack, Math.Max(20, temp - amountRel * 20), false);
+            onStackToCoolCallback(new DummySlot(workItemStack), Pos.ToVec3d(), GlobalConstants.CollectibleDefaultTemperature, false);
+
             MarkDirty(true);
         }
     }

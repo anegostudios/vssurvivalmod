@@ -200,8 +200,31 @@ namespace Vintagestory.ServerMods
 
         internal void Init()
         {
-            var asset = sapi.Assets.Get("worldgen/tileddungeons.json");
-            Tcfg = asset.ToObject<TiledDungeonConfig>();
+            var assets = sapi.Assets.GetMany<TiledDungeonConfig>(sapi.Logger, "worldgen/tileddungeons.json");
+            Tcfg = new TiledDungeonConfig();
+            Tcfg.RocktypeRemapGroups = new Dictionary<string, Dictionary<AssetLocation, AssetLocation>>();
+            var dungeons = new List<TiledDungeon>();
+
+            foreach (var (code, conf) in assets)
+            {
+                foreach (var remap in conf.RocktypeRemapGroups)
+                {
+                    if (Tcfg.RocktypeRemapGroups.TryGetValue(remap.Key, out var remapGroup))
+                    {
+                        foreach (var (source, target) in remap.Value)
+                        {
+                            remapGroup.TryAdd(source, target);
+                        }
+                    }
+                    else
+                    {
+                        Tcfg.RocktypeRemapGroups.TryAdd(remap.Key, remap.Value);
+                    }
+                }
+                dungeons.AddRange(conf.Dungeons);
+            }
+
+            Tcfg.Dungeons = dungeons.ToArray();
             Tcfg.Init(sapi);
         }
 

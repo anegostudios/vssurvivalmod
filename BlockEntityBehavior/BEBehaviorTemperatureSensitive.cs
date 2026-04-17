@@ -1,6 +1,7 @@
 using System;
 using Vintagestory.API;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
@@ -8,11 +9,36 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
+    public delegate void OnStackToCool(ItemSlot slot, Vec3d pos, float targettemp, bool sizzle);
 
     public interface ITemperatureSensitive
     {
         bool IsHot { get; }
-        void CoolNow(float amountRel);
+
+        /// <summary>
+        /// If you need to cool down an itemstack, make sure to use the "onStackToCoolCallback" callback so that quenchable 
+        /// items are correctly cooled down.
+        /// </summary>
+        /// <param name="amountRel"></param>
+        /// <param name="onStackToCoolCallback"></param>
+        void CoolNow(float amountRel, OnStackToCool onStackToCoolCallback);
+
+        public static void CoolStack(ICoreAPI api, ItemSlot slot, Vec3d pos, float amountRel, float targettemp, bool sizzle)
+        {
+            var stack = slot.Itemstack;
+            if (stack == null) return;
+            
+            if (stack.Collectible.HasBehavior<CollectibleBehaviorQuenchable>())
+            {
+                float dt = amountRel / 10f;
+                CollectibleBehaviorQuenchable.CoolToTemperature(api.World, slot, pos, dt, GlobalConstants.CollectibleDefaultTemperature, false);
+            }
+            else
+            {
+                float temp = stack.Collectible.GetTemperature(api.World, stack);
+                stack.Collectible.SetTemperature(api.World, stack, Math.Min(1100, temp - amountRel * 20), false);
+            }
+        }
     }
 
     /// <summary>
@@ -54,9 +80,14 @@ namespace Vintagestory.GameContent
             wateredSum += dt;
             if (wateredSum > 0.2f)
             {
-                its.CoolNow(1f);
+                its.CoolNow(1f, (slot, pos, temp, siz) => onStackToCool(slot, pos, temp, 1f, siz));
                 wateredSum -= 0.2f;
             }
+        }
+
+        private void onStackToCool(ItemSlot slot, Vec3d pos, float targettemp, float amount, bool sizzle)
+        {
+            ITemperatureSensitive.CoolStack(Api, slot, pos, amount, targettemp, sizzle);
         }
 
         private void onTick(float dt)
@@ -69,7 +100,7 @@ namespace Vintagestory.GameContent
             var lblock = Api.World.BlockAccessor.GetBlock(Pos, BlockLayersAccess.Fluid);
             if (lblock.IsLiquid() && lblock.LiquidCode != "lava")
             {
-                its.CoolNow(25f);
+                its.CoolNow(25f, (slot, pos, temp, siz) => onStackToCool(slot, pos, temp, 25f, siz));
                 return;
             }
 
@@ -85,7 +116,7 @@ namespace Vintagestory.GameContent
 
             if (rainCheck && Api.World.Rand.NextDouble() < rainLevel * 5)
             {
-                its.CoolNow(rainLevel);
+                its.CoolNow(rainLevel, (slot, pos, temp, siz) => onStackToCool(slot, pos, temp, rainLevel, siz));
             }
         }
 

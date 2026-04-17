@@ -40,11 +40,12 @@ namespace Vintagestory.GameContent.Mechanics
         public override void Initialize(ICoreAPI api, JsonObject properties)
         {
             bebconstructable = Blockentity.GetBehavior<BEBehaviorRightClickConstructable>();
+            facing = BlockFacing.FromCode(Block.Variant["side"]).Opposite;
+
             base.Initialize(api, properties);
 
             this.sound = new AssetLocation("sounds/block/waterwheel-wood");
             Blockentity.RegisterGameTickListener(CheckWater, 1000);
-            facing = BlockFacing.FromCode(Block.Variant["side"]).Opposite;
             diameter = properties["diameter"].AsInt(3);
 
             requiresMinFlowSpeed = properties["requiresMinFlowSpeed"].AsFloat(1.5f);
@@ -216,6 +217,25 @@ namespace Vintagestory.GameContent.Mechanics
             }
 
             return false;
+        }
+
+        public override MechanicalNetwork CreateJoinAndDiscoverNetwork(BlockFacing powerOutFacing)
+        {
+            var newNetwork = base.CreateJoinAndDiscoverNetwork(powerOutFacing);
+
+            // Attempt to also connect the MP block on the opposite side from our facing (otherwise it can sometimes be disconnected in MechanicalPowerMod.RebuildNetwork())
+            if (powerOutFacing == facing && newNetwork != null)
+            {
+                BlockPos neibPos = Position.AddCopy(powerOutFacing.Opposite);
+                BEBehaviorMPBase beMechBase = Api.World.BlockAccessor.GetBlockEntity(neibPos)?.GetBehavior<BEBehaviorMPBase>();
+                if (beMechBase != null) Api.Event.EnqueueMainThreadTask(() =>
+                        {
+                            var block = Api.World.BlockAccessor.GetBlock(neibPos) as IMechanicalPowerBlock;
+                            if (block != null && block.HasMechPowerConnectorAt(Api.World, neibPos, facing, Block as BlockMPBase)) beMechBase.tryConnect(facing);
+                        }, "waterwheel 2nd axis");
+            }
+
+            return newNetwork;
         }
 
         private float getFlowSpeed(Block block)

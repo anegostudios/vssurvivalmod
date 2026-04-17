@@ -377,6 +377,11 @@ namespace Vintagestory.GameContent
                         Shape contentShape = API.Common.Shape.TryGet(capi, cshape?.Base.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/"));
                         capi!.Tesselator.TesselateShape("picklednmealcontents", contentShape, out MeshData contentMesh, source);
 
+                        if (foodTranslate != null)
+                        {
+                            contentMesh.Translate(foodTranslate);
+                        }
+
                         return contentMesh;
                     }
                 }
@@ -501,7 +506,7 @@ namespace Vintagestory.GameContent
 
         public int GetMealHashCode(ItemStack stack, Vec3f? translate = null, string extraKey = "")
         {
-            if ((stack.Block as BlockContainer)?.GetContents(capi!.World, stack) is not ItemStack?[] contentStacks) return 0;
+            if ((stack.Block as BlockContainer)?.GetNonEmptyContents(capi!.World, stack) is not ItemStack?[] contentStacks) return 0;
 
             if (stack.Block is BlockPie)
             {

@@ -555,7 +555,7 @@ namespace Vintagestory.GameContent
             MarkDirty(true);
         }
 
-        public void CoolNow(float amountRel)
+        public void CoolNow(float amountRel, OnStackToCool onStackToCoolCallback)
         {
             float breakchance = Math.Max(0, amountRel - 0.6f) * Math.Max(Temperature - 250f, 0) / 5000f;
 

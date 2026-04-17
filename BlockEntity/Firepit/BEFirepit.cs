@@ -396,7 +396,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public void CoolNow(float amountRel)
+        public void CoolNow(float amountRel, OnStackToCool onStackToCoolCallback)
         {
             Api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), Pos, -0.5, null, false, 16);
 

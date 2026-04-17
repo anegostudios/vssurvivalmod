@@ -203,6 +203,11 @@ namespace Vintagestory.GameContent
             var pos = blockSel.Position;
             Block block = byEntity.World.BlockAccessor.GetBlock(pos);
 
+            if (block is BlockForge)
+            {
+                return;
+            }
+
             if (byPlayer.InventoryManager.OffhandTool != EnumTool.Hammer && byPlayer?.WorldData.CurrentGameMode != EnumGameMode.Creative)
             {
                 (api as ICoreClientAPI)?.TriggerIngameError(this, "nohammer", Lang.Get("Requires a hammer in the off hand"));
@@ -475,7 +480,7 @@ namespace Vintagestory.GameContent
                         {
                             mouseslot.TakeOut(1);
                             mouseslot.MarkDirty();
-                        }                        
+                        }
                     }
 
                     if (sapi?.Server.Config.LogBlockBreakPlace == true)

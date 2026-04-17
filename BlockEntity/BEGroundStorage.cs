@@ -280,7 +280,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public void CoolNow(float amountRel)
+        public void CoolNow(float amountRel, OnStackToCool onStackToCoolCallback)
         {
             if (!Inventory.Empty)
             {
@@ -289,6 +289,12 @@ namespace Vintagestory.GameContent
                     var slot = Inventory[index];
                     var itemStack = slot.Itemstack;
                     if (itemStack?.Collectible == null) continue;
+
+                    if (itemStack.Collectible.HasBehavior<CollectibleBehaviorQuenchable>())
+                    {
+                        onStackToCoolCallback(slot, Pos.ToVec3d(), GlobalConstants.CollectibleDefaultTemperature, true);
+                        continue;
+                    }
 
                     var temperature = itemStack.Collectible.GetTemperature(Api.World, itemStack);
                     var breakChance = Math.Max(0, amountRel - 0.6f) * Math.Max(temperature - 250f, 0) / 5000f;
@@ -317,6 +323,7 @@ namespace Vintagestory.GameContent
                         itemStack.Collectible.SetTemperature(Api.World, itemStack, Math.Max(20, temperature - amountRel * 20), false);
                     }
                 }
+
                 MarkDirty(true);
 
                 CheckInventoryClearedMidTick();

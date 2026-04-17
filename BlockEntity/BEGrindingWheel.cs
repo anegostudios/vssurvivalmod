@@ -32,7 +32,7 @@ namespace Vintagestory.GameContent
         public Dictionary<string, float> PlayersGrinding = new Dictionary<string, float>();
         public bool Grinding;
 
-        
+
 
         public virtual CompositeShape Shape
         {
@@ -128,10 +128,10 @@ namespace Vintagestory.GameContent
                     if (slot != null && slot.Itemstack.Collectible.HasBehavior<CollectibleBehaviorSharpenable>())
                     {
                         slot.Itemstack.Collectible.DamageItem(Api.World, plr.Entity, slot, (int)Math.Max(1, 0.003f * maxdura));
-                        
+
                     }
                     PlayersGrinding[uid] += dt;
-                    
+
                     var bhb = slot.Itemstack.Collectible.GetBehavior<CollectibleBehaviorBuffable>();
                     var curBuff = bhb.GetItemBuffs(slot.Itemstack).FirstOrDefault((buff) => buff.Code == "sharpened");
                     if (curBuff == null || curBuff.Multiplier < 1.099)
@@ -142,9 +142,9 @@ namespace Vintagestory.GameContent
                             RemainingDurability = curBuff == null ? (int)(maxdura / 4) : 0,
                             Multiplier = 1.01f,
                             StatCode = "critchance"
-                        }, true);
+                        }, EnumBuffAddType.AddOnDuplicate);
                     }
-                    
+
                 }
 
                 return;

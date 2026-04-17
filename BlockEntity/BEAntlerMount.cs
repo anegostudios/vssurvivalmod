@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -167,7 +167,7 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                sb.AppendLine(slot.Itemstack.GetName());
+                //sb.AppendLine(slot.Itemstack.GetName());
             }
         }
     }

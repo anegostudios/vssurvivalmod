@@ -70,15 +70,6 @@ public class BlockEntitySoilNutrition : BlockEntityFastForwardGrowth, ITexPositi
         totalHoursWaterRetention = Api.World.Calendar.HoursPerDay * 4; // Water stays for 4 days
         fertilityRecoverySpeed = Api.World.Config.GetFloat("fertilityRecoverySpeed", fertilityRecoverySpeed);
         growthRateMul = (float)Api.World.Config.GetDecimal("cropGrowthRateMul", growthRateMul);
-
-        if (api is ICoreServerAPI)
-        {
-            if (Api.World.Config.GetBool("processCrops", true))
-            {
-                RegisterGameTickListener(Update, 3500, rand.Next(3500));
-            }
-        }
-
         updateFertilizerQuad();
     }
 
@@ -501,7 +492,6 @@ public class BlockEntitySoilNutrition : BlockEntityFastForwardGrowth, ITexPositi
     {
         base.FromTreeAttributes(tree, worldForResolving);
         loadEnvData(tree);
-        roomness = tree.GetInt("roomness");
         updateFertilizerQuad();
     }
 
@@ -577,8 +567,6 @@ public class BlockEntitySoilNutrition : BlockEntityFastForwardGrowth, ITexPositi
         tree.SetDouble("lastMoistureLevelUpdateTotalDays", lastMoistureLevelUpdateTotalDays);
         tree.SetFloat("lastWaterDistance", lastWaterDistance);
         (tree as TreeAttribute).SetStringArray("permaBoosts", PermaBoosts.ToArray());
-        tree.SetInt("roomness", roomness);
-
 
         if (fertilizerOverlayStrength != null)
         {

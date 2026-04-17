@@ -2526,6 +2526,7 @@ namespace Vintagestory.GameContent
             bool groundStorable = stack.Collectible.HasBehavior<CollectibleBehaviorGroundStorable>();
             var dummySlot = new DummySlot(stack);
 
+            var cat = stack.Collectible.GetCollectibleInterface<IWearableStatsSupplier>()?.GetDressType(dummySlot).ToString().ToLowerInvariant();
             foreach (var val in allStacks)
             {
                 string[] placementSurfaces = Array.Empty<string>();
@@ -2534,7 +2535,8 @@ namespace Vintagestory.GameContent
                 if ((placementSurfaces.Length > 0 && placementSurfaces.Any(key => BlockBehaviorDisplay.GetDisplayableAttributes(new DummySlot(stack), key) != null)) ||
                     (val.Collectible is BlockShelf && BlockEntityShelf.GetShelvableLayout(stack) != null) ||
                     (val.Collectible is BlockToolRack && (stack.Collectible.GetTool(new DummySlot(stack)) != null || stack.ItemAttributes?["rackable"].AsBool() == true)) ||
-                    (val.Collectible is BlockPlantContainer && getPlantContainerProps(val, stack) != null))
+                    (val.Collectible is BlockPlantContainer && getPlantContainerProps(val, stack) != null) ||
+                    val.ItemAttributes?["allowedDresstypes"].AsArray<string>()?.Contains(cat) == true)
                 {
                     addToListUniquely(capi, displayStorables, val);
                 }
@@ -2638,6 +2640,7 @@ namespace Vintagestory.GameContent
             var stackLiquidInterface = stack.Collectible.GetCollectibleInterface<ILiquidInterface>();
             var dummySlot = new DummySlot();
 
+            var allowedDresstypes = stack.ItemAttributes?["allowedDresstypes"].AsArray<string>();
             string[] placementSurfaces = [..stack.Block?.GetBehavior<BlockBehaviorDisplay>()?.PlacementSurfaces.Select(ps => ps.DisplayCategory) ?? []];
             foreach (var val in allStacks)
             {
@@ -2648,6 +2651,7 @@ namespace Vintagestory.GameContent
                     (blockTrap != null && !stackDestroyedInTrap && blockTrap.IsAppetizingBait(capi, val) && blockTrap.CanFitBait(capi, val)))
                 {
                     addToListUniquely(capi, storables, val);
+                    continue;
                 }
 
                 dummySlot.Itemstack = val;
@@ -2656,6 +2660,17 @@ namespace Vintagestory.GameContent
                     ItemStack troughStack = val.GetEmptyClone();
                     troughStack.StackSize = contentConfig.QuantityPerFillLevel;
                     addToListUniquely(capi, storables, troughStack);
+                    continue;
+                }
+
+                if (allowedDresstypes != null)
+                {
+                    var cat = val.Collectible.GetCollectibleInterface<IWearableStatsSupplier>()?.GetDressType(dummySlot).ToString().ToLowerInvariant();
+                    if (allowedDresstypes.Contains(cat))
+                    {
+                        addToListUniquely(capi, storables, val);
+                        continue;
+                    }
                 }
 
                 if (val.ItemAttributes is not JsonObject attr) continue;
