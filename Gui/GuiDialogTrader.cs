@@ -56,7 +56,9 @@ namespace Vintagestory.GameContent
             if (!auctionSys.createAuctionSlotByPlayer.TryGetValue(capi.World.Player.PlayerUID, out auctionSlotInv))
             {
                 auctionSys.createAuctionSlotByPlayer[capi.World.Player.PlayerUID] = auctionSlotInv = new InventoryGeneric(1, "auctionslot-" + capi.World.Player.PlayerUID, capi,
-                    (idx, inv) => new ItemSlotAuction(inv) { StorageType = EnumItemStorageFlags.General | EnumItemStorageFlags.Backpack }
+                    (idx, inv) => new ItemSlotAuction(inv) {
+                        StorageType = EnumItemStorageFlags.General | EnumItemStorageFlags.Backpack | EnumItemStorageFlags.Outfit  | EnumItemStorageFlags.Metallurgy | EnumItemStorageFlags.Jewellery | EnumItemStorageFlags.Alchemy | EnumItemStorageFlags.Agriculture
+                    }
                 );
 
 

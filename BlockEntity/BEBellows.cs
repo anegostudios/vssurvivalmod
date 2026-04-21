@@ -25,7 +25,7 @@ namespace Vintagestory.GameContent
             originalAnimationSpeed = animation?.AnimationSpeed ?? 1;
         }
 
-        public bool Interact(IPlayer byPlayer)
+        public virtual bool Interact(IPlayer byPlayer)
         {
             var world = Api.World;
             if ((world.ElapsedMilliseconds - interactStartTotalMs) / 1000f < animationDuration / PumpingSpeed) return false;
@@ -54,8 +54,6 @@ namespace Vintagestory.GameContent
                 ranim.CurrentFrame = 0;
                 ranim.Iterations = 0;
             }
-
-
 
             return true;
         }

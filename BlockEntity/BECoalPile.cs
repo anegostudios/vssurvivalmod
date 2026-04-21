@@ -13,7 +13,7 @@ using Vintagestory.Common.Collectible.Block;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityCoalPile : BlockEntityItemPile, ITexPositionSource, IHeatSource, IExternalTickable
+    public class BlockEntityCoalPile : BlockEntityItemPile, ITexPositionSource, IHeatSource, IExternalTickable, IFallingBlockMeshSource
     {
         public static SimpleParticleProperties smokeParticles;
         public static SimpleParticleProperties smallMetalSparks;
@@ -521,16 +521,29 @@ namespace Vintagestory.GameContent
             capi.Tesselator.TesselateShape("coalpile", shape, out meshdata, decalTexSource);
         }
 
+        public string GetCacheKey(EntityBlockFalling fallingBlock)
+        {
+            return Block.Code + "falling" + 2;
+        }
+
+        public void OnFallingBlockTesselation(EntityBlockFalling fallingBlock, ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
+        {
+            tesselate(mesher, 2);
+        }
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
+        {
+            int size = Layers * 2;
+            tesselate(mesher, size);
+            return true;
+        }
+
+        private void tesselate(ITerrainMeshPool mesher, int size)
         {
             lock (inventoryLock)
             {
                 if (!inventory[0].Empty)
                 {
-                    int size = Layers * 2;
-                    if (mesher is ModSystemRenderFallingBlocksFast) size = 2; // Haxy solution >.>
-
                     Shape shape = capi.TesselatorManager.GetCachedShape(new AssetLocation("block/basic/layers/" + GameMath.Clamp(size, 2, 16) + "voxel"));
                     capi.Tesselator.TesselateShape("coalpile", shape, out MeshData meshdata, this);
 
@@ -545,12 +558,7 @@ namespace Vintagestory.GameContent
                     mesher.AddMeshData(meshdata);
                 }
             }
-
-            return true;
         }
-
-
-
 
         public override void OnBlockRemoved()
         {

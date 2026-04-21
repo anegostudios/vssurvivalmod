@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -313,8 +314,13 @@ namespace Vintagestory.GameContent
 
             if (!meshrefs.TryGetValue(mealhashcode, out MultiTextureMeshRef? mealMeshRef))
             {
-                MeshData mesh = GenMealInContainerMesh(containerBlock, forRecipe, contentStacks, foodTranslate);
+                if (Environment.CurrentManagedThreadId != RuntimeEnv.MainThreadId)
+                {
+                    if (capi != null && Environment.CurrentManagedThreadId == capi.TesselationThreadId) capi.Event.EnqueueMainThreadTask(() => GetOrCreateMealInContainerMeshRef(containerBlock, forRecipe, contentStacks, foodTranslate), "createmealmesh");    // Do it on the main thread instead
+                    throw new RetryTesselationException("Attempting to upload a new meal mesh outside of the main thread. If this occurs during tesselation, it should automatically retry. If not during tesselation, please only call this on the main thread!");
+                }
 
+                MeshData mesh = GenMealInContainerMesh(containerBlock, forRecipe, contentStacks, foodTranslate);
                 meshrefs[mealhashcode] = mealMeshRef = capi!.Render.UploadMultiTextureMesh(mesh);
             }
 

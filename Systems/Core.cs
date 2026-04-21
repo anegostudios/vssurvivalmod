@@ -635,6 +635,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockCropProp", typeof(BlockCropProp));
             api.RegisterBlockClass("BlockBellows", typeof(BlockBellows));
             api.RegisterBlockClass("BlockGrindingWheel", typeof(BlockGrindingWheel));
+            api.RegisterBlockClass("BlockMPConsumer", typeof(BlockMPConsumer));
             api.RegisterBlockClass("BlockWaterwheel", typeof(BlockWaterWheel));
 
         }
@@ -916,6 +917,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockEntityClass("JonasLensTower", typeof(BEJonasLensTower));
 
             api.RegisterBlockEntityClass("Bellows", typeof(BlockEntityBellows));
+            api.RegisterBlockEntityClass("MechPoweredBellows", typeof(BlockEntityMechPoweredBellows));
             api.RegisterBlockEntityClass("GrindingWheel", typeof(BlockEntityGrindingWheel));
             api.RegisterBlockEntityClass("WildFruitingBush", typeof(BlockEntityWildFruitingBush));
         }

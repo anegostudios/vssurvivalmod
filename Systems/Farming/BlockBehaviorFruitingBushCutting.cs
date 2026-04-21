@@ -1,6 +1,7 @@
 using System;
 using System.Text;
 using Vintagestory.API.Common;
+using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent;
 
@@ -27,5 +28,29 @@ public class BlockBehaviorFruitingBushCutting : BlockBehavior
         if (traits != null) BEBehaviorFruitingBush.addTraits(dsc, traits);
 
         base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
+    }
+
+    public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos, ref EnumHandling handling)
+    {
+        var beBeh = block.GetBEBehavior<BEBehaviorFruitingBushCutting>(pos);
+        if (beBeh != null)
+        {
+            handling = EnumHandling.PreventDefault;
+            return beBeh.GetCuttingItemStack(pos);
+        }
+
+        return base.OnPickBlock(world, pos, ref handling);
+    }
+
+    public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, ref float dropChanceMultiplier, ref EnumHandling handling)
+    {
+        var beBeh = block.GetBEBehavior<BEBehaviorFruitingBushCutting>(pos);
+        if (beBeh != null)
+        {
+            handling = EnumHandling.PreventDefault;
+            return [beBeh.GetCuttingItemStack(pos)];
+        }
+
+        return base.GetDrops(world, pos, byPlayer, ref dropChanceMultiplier, ref handling);
     }
 }

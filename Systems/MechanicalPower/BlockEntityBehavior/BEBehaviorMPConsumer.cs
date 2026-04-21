@@ -1,6 +1,8 @@
 using System;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 
 #nullable disable
 
@@ -8,12 +10,24 @@ namespace Vintagestory.GameContent.Mechanics
 {
     public class BEBehaviorMPConsumer : BEBehaviorMPBase
     {
-        protected float resistance = 0.1f;
+        public float Resistance = 0.1f;
 
         public Action OnConnected;
         public Action OnDisconnected;
 
-        public float TrueSpeed { get { return System.Math.Abs(Network?.Speed * GearedRatio ?? 0f); }}
+        public override CompositeShape Shape {
+            get => base.Shape;
+            set {
+                base.Shape = value;
+            }
+        }
+
+        public override float AngleRad
+        {
+            get { return base.AngleRad; }
+        }
+
+        public float TrueSpeed { get { return Math.Abs(Network?.Speed * GearedRatio ?? 0f); }}
 
         public BEBehaviorMPConsumer(BlockEntity blockentity) : base(blockentity)
         {
@@ -23,10 +37,33 @@ namespace Vintagestory.GameContent.Mechanics
         {
             base.Initialize(api, properties);
 
-            Shape = properties["mechPartShape"].AsObject<CompositeShape>(null);
-            Shape?.Base.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
+            var shape = properties["mechPartShape"].AsObject<CompositeShape>(null);
+            shape?.Base.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
 
-            resistance = properties["resistance"].AsFloat(0.1f);
+            if (shape != null)
+            {
+                this.Shape = shape;
+            }
+
+            Resistance = properties["resistance"].AsFloat(0.1f);
+
+            var orientations = Block.Variant["side"];
+            switch (orientations)
+            {
+                case "north":
+                    AxisSign = new int[] { 0, 0, -1 };
+                    break;
+                case "east":
+                    AxisSign = new int[] { -1, 0, 0 };
+                    break;
+                case "west":
+                    AxisSign = new int[] { -1, 0, 0 };
+                    break;
+                case "south":
+                    AxisSign = new int[] { 0, 0, -1 };
+                    break;
+            }
+
         }
 
 
@@ -44,13 +81,19 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override float GetResistance()
         {
-            return resistance;
+            return Resistance;
         }
 
         public override MechPowerPath[] GetMechPowerExits(MechPowerPath fromExitTurnDir)
         {
-            // This but' a dead end, baby!
             return Array.Empty<MechPowerPath>();
+        }
+
+        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
+        {
+            base.OnTesselation(mesher, tesselator);
+            return true;
+
         }
     }
 }

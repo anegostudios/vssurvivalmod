@@ -364,6 +364,8 @@ namespace Vintagestory.GameContent
             var baitStack = allInputSlots.FirstOrDefault(slot => slot.Itemstack?.Collectible.Attributes?.IsTrue("isFishBait") == true)?.Itemstack;
             if (baitStack != null)
             {
+                baitStack = baitStack.Clone();
+                baitStack.StackSize = 1;
                 outputSlot.Itemstack?.Attributes.SetItemstack("fishingBait", baitStack);
             }
         }

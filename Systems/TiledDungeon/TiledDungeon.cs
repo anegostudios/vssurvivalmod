@@ -98,7 +98,7 @@ namespace Vintagestory.ServerMods
         public int MinDepth { get; set; }
 
         [JsonProperty]
-        public Dictionary<string, int>? GroupMax = new Dictionary<string, int>();
+        public Dictionary<string, int>? GroupMax;
 
         public void Init(ICoreServerAPI api)
         {
@@ -211,36 +211,6 @@ namespace Vintagestory.ServerMods
                     replacewithblocklayersBlockids[j] = block.Id;
                 }
             }
-        }
-
-        public TiledDungeon Copy()
-        {
-            var dungeon = new TiledDungeon()
-            {
-                BuildProtected = BuildProtected,
-                BuildProtectionDesc = BuildProtectionDesc,
-                BuildProtectionName = BuildProtectionName,
-                Code = Code,
-                EndSchematics = EndSchematics,
-                MaxTiles = MaxTiles,
-                MinTiles = MinTiles,
-                RequireClosed = RequireClosed,
-                RequireOpened = RequireOpened,
-                RequireUnblocked = RequireUnblocked,
-                RequiredLandform = RequiredLandform,
-                StairCase = StairCase,
-                Start = Start,
-                Surface = Surface,
-                SurfaceConnectorName = SurfaceConnectorName,
-                Tiles = new List<DungeonTile>(Tiles),
-                TilesByCode = new Dictionary<string, DungeonTile>(TilesByCode),
-                Worldgen = Worldgen,
-                ends = ends,
-                start = start,
-                surface = surface,
-                totalChance = totalChance
-            };
-            return dungeon;
         }
     }
 }

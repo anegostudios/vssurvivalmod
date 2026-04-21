@@ -186,7 +186,20 @@ namespace Vintagestory.GameContent
                         bool repairable = value == "repairheldtool" ? (slot.Itemstack.Collectible.GetTool(slot) != null) : (slot.Itemstack.Collectible.FirstCodePart() == "armor");
 
                         if (repairable && d < max) {
-                            slot.Itemstack.Collectible.SetDurability(slot.Itemstack, Math.Min(max, d + rpcfg.Amount));
+                            slot.Itemstack.Attributes.SetString("lastRepairedBy", entity.GetName());
+                            var repairedCnt = slot.Itemstack.Attributes.GetInt("timesRepaired");
+                            slot.Itemstack.Attributes.SetInt("timesRepaired", repairedCnt + 1);
+
+                            int newDura = Math.Min(max, d + rpcfg.Amount);
+
+                            var cbbuffable = slot.Itemstack.Collectible.GetBehavior<CollectibleBehaviorBuffable>();
+                            if (cbbuffable != null && cbbuffable.GetItemBuffs(slot.Itemstack).Count > 0)
+                            {
+                                newDura = (int)Math.Min(max, d + rpcfg.Amount / (float)(repairedCnt/2 + 1));
+                            }
+
+                            slot.Itemstack.Collectible.SetDurability(slot.Itemstack, newDura);
+
                             slot.MarkDirty();
                         }
                     }

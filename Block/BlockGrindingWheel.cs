@@ -6,14 +6,13 @@ using Vintagestory.GameContent.Mechanics;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockGrindingWheel : BlockMPBase
-    {
-        public BlockFacing Facing;
 
-        public override void OnLoaded(ICoreAPI api)
+    public class BlockGrindingWheel : BlockMPConsumer
+    {
+
+        public override bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face, BlockMPBase forblock)
         {
-            base.OnLoaded(api);
-            Facing = BlockFacing.FromCode(Variant["side"]);
+            return face.GetCW() == Facing || face.GetCCW() == Facing;
         }
 
         public override void OnBlockPlaced(IWorldAccessor world, BlockPos blockPos, ItemStack byItemStack = null)
@@ -45,12 +44,5 @@ namespace Vintagestory.GameContent
             return base.OnBlockInteractCancel(secondsUsed, world, byPlayer, blockSel, cancelReason);
         }
 
-        public override void DidConnectAt(IWorldAccessor world, BlockPos pos, BlockFacing face) { }
-
-
-        public override bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face, BlockMPBase forblock)
-        {
-            return face.GetCW() == Facing || face.GetCCW() == Facing;
-        }
     }
 }

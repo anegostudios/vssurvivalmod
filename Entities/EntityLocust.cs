@@ -56,11 +56,22 @@ namespace Vintagestory.GameContent
             {
                 cnt = 0;
                 var pos = Pos;
-                Block belowBlock = World.BlockAccessor.GetBlockRaw((int)pos.X, (int)(pos.InternalY - 0.05f), (int)pos.Z);
-                Block insideblock = World.BlockAccessor.GetBlockRaw((int)pos.X, (int)(pos.InternalY + 0.01f), (int)pos.Z);
 
-                mul1 = belowBlock.Code == null || belowBlock.Code.Path.Contains("metalspike") ? 1 : belowBlock.WalkSpeedMultiplier;
-                mul2 = insideblock.Code == null || insideblock.Code.Path.Contains("metalspike") ? 1 : insideblock.WalkSpeedMultiplier;
+                int belowpos = (int)(pos.InternalY + 0.01f);
+                int insidepos = (int)(pos.InternalY - 0.05f);
+
+                if (belowpos != insidepos)
+                {
+                    Block belowBlock = World.BlockAccessor.GetBlockRaw((int)pos.X, belowpos, (int)pos.Z);
+                    Block insideblock = World.BlockAccessor.GetBlockRaw((int)pos.X, insidepos, (int)pos.Z);
+                    mul1 = belowBlock.Code == null || belowBlock.Code.Path.Contains("metalspike") ? 1 : belowBlock.WalkSpeedMultiplier;
+                    mul2 = insideblock.Code == null || insideblock.Code.Path.Contains("metalspike") ? 1 : insideblock.WalkSpeedMultiplier;
+                } else
+                {
+                    Block block = World.BlockAccessor.GetBlockRaw((int)pos.X, belowpos, (int)pos.Z);
+                    mul1 = 1;
+                    mul2 = block.Code == null || block.Code.Path.Contains("metalspike") ? 1 : block.WalkSpeedMultiplier;
+                }
             }
         }
 

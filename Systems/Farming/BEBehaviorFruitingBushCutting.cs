@@ -3,6 +3,7 @@ using System.Text;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent;
 
@@ -65,5 +66,12 @@ public class BEBehaviorFruitingBushCutting : BlockEntityBehavior
         base.ToTreeAttributes(tree);
         tree.SetDouble("matureTotalDays", matureTotalDays);
         tree.SetString("traits", traits);
+    }
+
+    public ItemStack GetCuttingItemStack(BlockPos pos)
+    {
+        var cutting = new ItemStack(Block.GetSnowCoveredVariant(pos, 0) ?? Block);
+        if (traits != null) cutting.Attributes.SetString("traits", traits);
+        return cutting;
     }
 }

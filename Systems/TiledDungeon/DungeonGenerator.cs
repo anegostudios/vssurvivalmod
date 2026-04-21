@@ -40,7 +40,6 @@ namespace Vintagestory.ServerMods
             var dgd = new DungeonGenWorkspace(dungeon, minTiles, maxTiles, openSet, placeTasks, existingStructures, gennedStructures,null);
 
             addTile(dgd, new ConnectorMetaData(), dungeon.start, rot, schematic, new FastVec3i(startPos), newloc);
-
             if (TryGenerateTiles(rnd, dgd))
             {
                 logger.Notification($"Dungeon with {placeTasks.Count} schematics generated");
@@ -66,14 +65,17 @@ namespace Vintagestory.ServerMods
 
             var tileIndices = new int[dgd.DungeonGenerator.Tiles.Count];
             for (int i = 0; i < tileIndices.Length; i++) tileIndices[i] = i;
-
-            var randomMax = dgd.MinTiles + lcgRnd.NextInt(dgd.MaxTiles + 1 - dgd.MinTiles);
-
+            ConnectorMetaData surfaceConnector = default;
             // Continue until we either tried too many times, the dungeon is fully enclosed, or we capped at max tiles
-            while (tries-- > 0 && dgd.OpenSet.Count > 0 && dgd.PlacedTiles < randomMax)
+            while (tries-- > 0 && dgd.OpenSet.Count > 0 && dgd.PlacedTiles < dgd.MaxTiles)
             {
                 // TODO: Popping the first element of a list is very inefficient. This needs a better datastructure
                 var openSide = dgd.OpenSet.PopFirst();
+                if (openSide.Name.Equals(dgd.DungeonGenerator.SurfaceConnectorName))
+                {
+                    surfaceConnector = openSide;
+                    openSide = dgd.OpenSet.PopFirst();
+                }
 
                 // This can result in a loop of 10 to 100 iterations where its just requeing the same few connectors over and over once were done generating everything else
                 // We might want to take these out into a separate set?
@@ -162,8 +164,12 @@ namespace Vintagestory.ServerMods
 
                     if (Intersects(dgd.GeneratedStructures, newloc)) continue;
                     if (Intersects(dgd.ExistingStructures, newloc)) continue;
-                    if (startPos.X < 0 || startPos.Y < 0 || startPos.Z < 0) continue; // Beyond block bounds
-                    if (startPos.X >= mapsize.X || startPos.Y >= mapsize.Y || startPos.Z >= mapsize.Z) continue; // Beyond block bounds
+                    // Beyond block bounds
+                    if (startPos.X < 0 || startPos.Y < 0 || startPos.Z < 0 || startPos.X >= mapsize.X || startPos.Y >= mapsize.Y || startPos.Z >= mapsize.Z)
+                    {
+                        logger.Warning($"Dungeon at {startPos} would reach out of bounds with tile {tile.Code} and schematic {schematic.FromFile}");
+                        continue;
+                    }
 
                     if (CheckIfNewPathsAreBlocked(tile, dgd, schematic, openSide, startPos)) continue;
 
@@ -180,6 +186,8 @@ namespace Vintagestory.ServerMods
             if (dgd.PlacedTiles >= dgd.MinTiles)
             {
                 AddEndCaps(dgd, lcgRnd);
+                if(surfaceConnector.Valid)
+                    dgd.OpenSet.Add(surfaceConnector);
                 return true;
             }
 
@@ -205,11 +213,12 @@ namespace Vintagestory.ServerMods
                 var newpos = con.Position.Add(startPos).Add(con.Facing.Normali * 2);
                 if (dgd.GeneratedStructures.Any(s => s.Location.Contains(newpos)))
                 {
-                    if (DebugLogging) logger.Notification("Failed to place tile {0} at {1} because it would block potential connector {2} at {3}", tilefordebug.Code, startPos, con.ToString(), newpos);
+                    if (DebugLogging) logger.Notification("Failed to place tile {0} at {1} because it would block potential connector {2} at {3} with other Dungeon tiles", tilefordebug.Code, startPos, con.ToString(), newpos);
                     return true;
                 }
                 if (dgd.ExistingStructures.Any(s => s.Location.Contains(newpos)))
                 {
+                    if (DebugLogging) logger.Notification("Failed to place tile {0} at {1} because it would block potential connector {2} at {3} with ExistingStructures", tilefordebug.Code, startPos, con.ToString(), newpos);
                     return true;
                 }
             }
@@ -243,6 +252,7 @@ namespace Vintagestory.ServerMods
             if (DebugLogging)
             {
                 debugLogs.Add(string.Format("Added tile {0} (total place tasks={1})", tileCode, dgd.PlaceTasks.Count));
+                debugLogs.Add(string.Join(",", dgd.PlaceTasks.Select(t => t.FileName)));
             }
 
             FilterOpenSet(schematic, startPos, dgd, openSide);
@@ -462,12 +472,20 @@ namespace Vintagestory.ServerMods
 
                 if (TryGenerateTiles(rnd, childDgd))
                 {
-                    if (dungeonTile.TileGenerator.RequireClosed != null && childDgd.OpenSet.Any(s => dungeonTile.TileGenerator.RequireClosed.Any(n => s.Name.Equals(n) || s.Targets.Contains(n))))
+                    if (dungeonTile.TileGenerator.RequireClosed != null &&
+                        childDgd.OpenSet.Any(s => dungeonTile.TileGenerator.RequireClosed.Any(n =>
+                            (s.Name.Length > 0 && s.Name.Equals(n)) ||
+                            (s.Targets.Length > 0 && s.Targets.Contains(n)))))
                     {
                         if (DebugLogging)
                         {
-                            var conn = childDgd.OpenSet.First(s => dungeonTile.TileGenerator.RequireClosed.Any(n => s.Name.Equals(n) || s.Targets.Contains(n)));
-                            debugLogs.Add(string.Format("Sub dungeon generator for tile " + dungeonTile.Code + ", cannot complete. 'RequireClosed' Connector {0} was not closable", conn));
+                            var conn = childDgd.OpenSet.Where(s =>
+                                dungeonTile.TileGenerator.RequireClosed.Any(n =>
+                                    (s.Name.Length > 0 && s.Name.Equals(n)) ||
+                                    (s.Targets.Length > 0 && s.Targets.Contains(n))
+                                )
+                            );
+                            debugLogs.Add(string.Format("Sub dungeon generator for tile " + dungeonTile.Code + ", cannot complete. 'RequireClosed' Connector {0} was not closable", string.Join(",", conn)));
                         }
 
                         rnd.NextDouble();
@@ -522,6 +540,7 @@ namespace Vintagestory.ServerMods
                 }
 
                 if (!found) {
+
                     var connector = selfCon.Clone().Offset(startPos);
                     connector = delegateRequireOpenedToParent(dgd.DungeonGenerator.RequireOpened, connector);
                     if (DebugLogging) connector.FromSchematicForDebug = schematic.FromFile;

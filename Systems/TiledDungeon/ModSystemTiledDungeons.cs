@@ -123,8 +123,7 @@ namespace Vintagestory.ServerMods
             Init();
 
             var code = (string)args[0];
-            // need copy else shuffle breaks determinism
-            var dungeon = Tcfg.Dungeons.FirstOrDefault(td => td.Code == code)?.Copy();
+            var dungeon = Tcfg.Dungeons.FirstOrDefault(td => td.Code == code);
 
             if (dungeon == null) return TextCommandResult.Error("No such dungeon defined");
             var rot = (bool)args[1] ? 4 : 1;
@@ -257,7 +256,7 @@ namespace Vintagestory.ServerMods
 
             var code = (string)args[0 + argOffset];
             var tiles = (int)args[1 + argOffset];
-            var dungeon = Tcfg.Dungeons.FirstOrDefault(td => td.Code == code)?.Copy();
+            var dungeon = Tcfg.Dungeons.FirstOrDefault(td => td.Code == code);
 
             if (dungeon == null) return TextCommandResult.Error("No such dungeon defined");
 

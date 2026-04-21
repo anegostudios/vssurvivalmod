@@ -428,7 +428,7 @@ namespace Vintagestory.GameContent
                     }
                     serverCh.SendPacket(new AuctionActionResponsePacket() { Action = pkt.Action, AuctionId = pkt.AuctionId, ErrorCode = failureCode, MoneyReceived = stack?.Collectible.Attributes?["currency"].Exists == true }, fromPlayer);
                     break;
-                    }
+                }
                 case EnumAuctionAction.PlaceAuction:
 
                     if (createAuctionSlotByPlayer.TryGetValue(fromPlayer.PlayerUID, out var inv))
@@ -439,8 +439,19 @@ namespace Vintagestory.GameContent
                             break;
                         }
 
-                        pkt.DurationWeeks = Math.Max(1, pkt.DurationWeeks);
+                        if (pkt.Price < 1)
+                        {
+                            serverCh.SendPacket(new AuctionActionResponsePacket() { Action = pkt.Action, AuctionId = pkt.AuctionId, ErrorCode = "atleast1gear" }, fromPlayer);
+                            break;
+                        }
 
+                        if (pkt.Price > 10000)
+                        {
+                            serverCh.SendPacket(new AuctionActionResponsePacket() { Action = pkt.Action, AuctionId = pkt.AuctionId, ErrorCode = "lessthan10000gears" }, fromPlayer);
+                            break;
+                        }
+
+                        pkt.DurationWeeks = Math.Max(1, pkt.DurationWeeks);
                         var auctioneerEntity = sapi.World.GetEntityById(pkt.AtAuctioneerEntityId);
                         PlaceAuction(inv[0], inv[0].StackSize, pkt.Price, pkt.DurationWeeks * 7 * 24, pkt.DurationWeeks / DurationWeeksMul, fromPlayer.Entity, auctioneerEntity, out string failureCode);
 
@@ -604,7 +615,7 @@ namespace Vintagestory.GameContent
 
                 int totalcost = auction.Price + deliveryCosts;
 
-                if (monehs < totalcost)
+                if (monehs < totalcost || totalcost < 0)
                 {
                     failureCode = "notenoughgears";
                     return;

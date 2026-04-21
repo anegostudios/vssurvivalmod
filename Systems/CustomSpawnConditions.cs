@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
@@ -6,6 +7,97 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
+    public class CreaturePopulation
+    {
+        public double PopulationSize = 10;
+        public double RestorationMul = 1.05f;
+        public double RetorationDaysInterval = 10;
+    }
+
+  /*  public class ModSystemCreatureDepletion : ModSystem
+    {
+        public override bool ShouldLoad(EnumAppSide forSide) => forSide == EnumAppSide.Server;
+
+        protected ICoreServerAPI sapi;
+        protected Dictionary<BlockPos, CreatureHarvest> harvestedLocations = new Dictionary<BlockPos, CreatureHarvest>();
+
+        protected Dictionary<AssetLocation, CreaturePopulation> creaturePopulations = new Dictionary<AssetLocation, CreaturePopulation>();
+
+        public int Scale = 64;
+
+        
+
+        public override double ExecuteOrder() => 1;
+
+        public override void StartServerSide(ICoreServerAPI api)
+        {
+            base.StartServerSide(api);
+            sapi = api;
+            api.Event.SaveGameLoaded += Event_SaveGameLoaded;
+            api.Event.GameWorldSave += Event_GameWorldSave;
+            
+            api.Event.RegisterGameTickListener(restoreFish, 10000, sapi.World.Rand.Next(1000));
+        }
+
+        private void Event_GameWorldSave()
+        {
+            sapi.WorldManager.SaveGame.StoreData("harvestedFishLocations", harvestedLocations);
+        }
+
+        private void Event_SaveGameLoaded()
+        {
+            try
+            {
+                harvestedLocations = sapi.WorldManager.SaveGame.GetData<Dictionary<BlockPos, CreatureHarvest>>("harvestedFishLocations");
+            }
+            catch
+            {
+                // Don't care if this is corrupted data, its unessential
+            }
+
+            if (harvestedLocations == null)
+            {
+                harvestedLocations = new Dictionary<BlockPos, CreatureHarvest>();
+            }
+        }
+
+        private void restoreFish(float dt)
+        {
+            var positions = new List<BlockPos>(harvestedLocations.Keys);
+            var totaldays = sapi.World.Calendar.TotalDays;
+            foreach (var pos in positions)
+            {
+                if (totaldays - harvestedLocations[pos].TotalDays > RestoreFishAfterDays)
+                {
+                    harvestedLocations.Remove(pos);
+                }
+            }
+        }
+
+        public void AddHarvest(BlockPos pos, int quantity)
+        {
+            CreatureHarvest harvest;
+            harvestedLocations.TryGetValue(pos / Scale, out harvest);
+            harvestedLocations[pos / Scale] = new CreatureHarvest()
+            {
+                TotalDays = sapi.World.Calendar.TotalDays,
+                Quantity = harvest.Quantity + quantity
+            };
+        }
+
+        public float GetHarvestAmount(BlockPos pos)
+        {
+            if (harvestedLocations.TryGetValue(pos / Scale, out var harvest))
+            {
+                return harvest.Quantity;
+            }
+
+            return 0;
+        }
+    }
+  */
+
+
 
     public class CustomSpawnConditions : ModSystem
     {
@@ -22,55 +114,19 @@ namespace Vintagestory.GameContent
             base.StartServerSide(api);
             this.sapi = api;
 
-            sapi.Event.OnTrySpawnEntity += Event_OnTrySpawnEntity;
+            sapi.Event.OnTrySpawnGroupNearOffthread += Event_OnTrySpawnGroupNearOffthread;
         }
 
-        private bool Event_OnTrySpawnEntity(IBlockAccessor blockAccessor, ref EntityProperties properties, Vec3d spawnPosition, long herdId)
+        private bool Event_OnTrySpawnGroupNearOffthread(IBlockAccessor blockaccessor, EntityProperties properties, BlockPos pos)
         {
-            /*if (properties.Code.Path.StartsWithFast("raccoon"))
+            if (properties.Attributes?["harshWinterSpawnRate"].Exists == true)
             {
-                for (int i = 0; i < BlockFacing.HORIZONTALS.Length; i++)
+                bool harshWinters = sapi.World.Config.GetString("harshWinters").ToBool(true);
+                if (harshWinters && sapi.World.Calendar.GetSeason(pos) == EnumSeason.Winter)
                 {
-                    BlockFacing facing = BlockFacing.HORIZONTALS[i];
-                    Vec3i dir = facing.Normali;
-
-                    Block block = blockAccessor.GetBlock((int)spawnPosition.X + dir.X, (int)spawnPosition.Y, (int)spawnPosition.Z + dir.Z);
-                    if (block is BlockLog)
-                    {
-                        return true;
-                    }
-
-                    block = blockAccessor.GetBlock((int)spawnPosition.X + dir.X + dir.X, (int)spawnPosition.Y, (int)spawnPosition.Z + dir.Z + dir.Z);
-                    if (block is BlockLog)
-                    {
-                        return true;
-                    }
-
-                    block = blockAccessor.GetBlock((int)spawnPosition.X + dir.X + dir.X, (int)spawnPosition.Y + 1, (int)spawnPosition.Z + dir.Z + dir.Z);
-                    if (block is BlockLog)
-                    {
-                        return true;
-                    }
+                    float spawnRate = properties.Attributes?["harshWinterSpawnRate"].AsFloat() ?? 1;
+                    return sapi.World.Rand.NextDouble() < spawnRate;
                 }
-
-                return false;
-            }
-
-
-            if (properties.Code.Path.StartsWithFast("butterfly"))
-            {
-                ClimateCondition climate = blockAccessor.GetClimateAt(new BlockPos((int)spawnPosition.X, (int)spawnPosition.Y, (int)spawnPosition.Z), EnumGetClimateMode.NowValues);
-                if (climate == null || climate.Temperature < 10) return false;
-            }*/
-
-            bool harshWinters = sapi.World.Config.GetString("harshWinters").ToBool(true);
-            var hemi = sapi.World.Calendar.OnGetHemisphere(spawnPosition.X, spawnPosition.Z);
-            var month = sapi.World.Calendar.MonthName;
-            if (hemi == EnumHemisphere.South) month += 6;
-            if (harshWinters && (month == EnumMonth.December || month == EnumMonth.January || month == EnumMonth.February))
-            {
-                float spawnRate = properties.Attributes?["harshWinterSpawnRate"].AsFloat() ?? 1;
-                return sapi.World.Rand.NextDouble() < spawnRate;
             }            
 
             float newWorldSpawnDelayHours = properties.Attributes?["newWorldSpawnDelayHours"].AsFloat() ?? 0;
@@ -81,5 +137,6 @@ namespace Vintagestory.GameContent
 
             return true;
         }
+
     }
 }

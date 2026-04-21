@@ -423,7 +423,7 @@ namespace Vintagestory.GameContent
                 BlockFacing facing = BlockFacing.HORIZONTALS[i];
                 if (facing == pathFacing) continue;
                 Block neighborLiquid = world.BlockAccessor.GetBlock(pos, BlockLayersAccess.Fluid);
-                if (neighborLiquid.IsLiquid() && neighborLiquid.LiquidLevel < liquidBlock.LiquidLevel && IsSameLiquid(liquidBlock, neighborLiquid))
+                if (neighborLiquid.IsLiquid() && (neighborLiquid.LiquidLevel < liquidBlock.LiquidLevel || pathFacing == BlockFacing.DOWN && neighborLiquid.LiquidLevel == liquidBlock.LiquidLevel) && IsSameLiquid(liquidBlock, neighborLiquid))
                 {
                     // Remove previous path
                     world.BulkBlockAccessor.SetBlock(0, pos, BlockLayersAccess.Fluid);

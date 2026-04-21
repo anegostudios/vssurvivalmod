@@ -131,6 +131,12 @@ namespace Vintagestory.GameContent
                 return true;
             }
 
+            if (price > 10000)
+            {
+                capi.TriggerIngameError(this, "lessthan10000gears", Lang.Get("Cannot sell for more than 10000 gears"));
+                return true;
+            }
+
             if (monehs < auctionSys.GetDepositCost(auctionSlotInv[0]) * weeks / auctionSys.DurationWeeksMul)
             {
                 capi.TriggerIngameError(this, "notenoughgears", Lang.Get("Not enough gears to pay the deposit"));
