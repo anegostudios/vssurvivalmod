@@ -70,7 +70,6 @@ namespace Vintagestory.GameContent
         /// Data about the level of browning/baking reached for the baked items
         /// </summary>
         private readonly OvenItemData[] bakingData;
-        private ItemStack lastRemoved = null;
         /// <summary>
         /// For rendering: degrees of rotation of contents depending on block variant - 0 is east
         /// </summary>
@@ -85,15 +84,12 @@ namespace Vintagestory.GameContent
         /// </summary>
         internal InventoryOven ovenInv;
 
-        EnumOvenContentMode OvenContentMode
+        public EnumOvenContentMode OvenContentMode
         {
             get
             {
-                var slot = ovenInv.FirstNonEmptySlot;
-                if (slot == null) return EnumOvenContentMode.Firewood;
-
-                BakingProperties bakingProps = BakingProperties.ReadFrom(slot.Itemstack);
-                if (bakingProps == null) return EnumOvenContentMode.Firewood;
+                if (ovenInv.FirstNonEmptySlot is not ItemSlot slot
+                    || BakingProperties.ReadFrom(slot.Itemstack) is not BakingProperties bakingProps) return EnumOvenContentMode.Firewood;
 
                 return bakingProps.LargeItem ? EnumOvenContentMode.SingleCenter : EnumOvenContentMode.Quadrants;
             }
@@ -113,21 +109,18 @@ namespace Vintagestory.GameContent
 
         public override string InventoryClassName => "oven";
 
-        public ItemSlot FuelSlot { get { return ovenInv[0]; } }
+        public ItemSlot FuelSlot => ovenInv[0];
 
-        public bool HasFuel => FuelSlot.Itemstack?.Collectible?.Attributes?.IsTrue("isClayOvenFuel") == true;
+        public bool HasFuel => FuelSlot.Itemstack?.ItemAttributes?.IsTrue("isClayOvenFuel") == true;
 
-        public bool IsBurning { get { return burning; } }
+        public bool IsBurning => burning;
 
         public bool HasBakeables
         {
             get
             {
-                for (int i = 0; i < bakeableCapacity; i++)
-                {
-                    if (!ovenInv[i].Empty && (i != 0 || !HasFuel)) return true;
-                }
-                return false;
+                if (HasFuel && FuelSlot.Itemstack?.ItemAttributes?.KeyExists("combustibleProperties") == true) return false;
+                return ovenInv.Take(4).Any(slot => !slot.Empty);
             }
         }
 
@@ -144,21 +137,14 @@ namespace Vintagestory.GameContent
 
         private void SetRotation()
         {
-            switch (Block.Variant["side"])
+            this.rotationDeg = Block.Variant["side"] switch
             {
-                case "south":
-                    this.rotationDeg = 270;
-                    break;
-                case "west":
-                    this.rotationDeg = 180;
-                    break;
-                case "east":
-                    this.rotationDeg = 0;
-                    break;
-                default:
-                    this.rotationDeg = 90;
-                    break;
-            }
+                "south" => 270,
+                "west" => 180,
+                "east" => 0,
+                _ => 90,
+            };
+
         }
 
 
@@ -168,82 +154,69 @@ namespace Vintagestory.GameContent
         {
             ItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
-            if (slot.Empty)
+            if (!byPlayer.Entity.Controls.ShiftKey)
             {
                 if (TryTake(byPlayer))
                 {
                     byPlayer.InventoryManager.BroadcastHotbarSlot();
                     return true;
                 }
+
                 return false;
             }
-            else
+
+            if (slot.Itemstack?.Collectible is not CollectibleObject co) return false;
+            AssetLocation stackName = co.Code;
+            CombustibleProperties? combustibleProperties = co.GetCombustibleProperties(Api.World, slot.Itemstack, null);
+
+            string? errCode;
+            string? errMessage;
+
+            if (co.Attributes?.IsTrue("isClayOvenFuel") == true)
             {
-                CollectibleObject colObj = slot.Itemstack.Collectible;
-                CombustibleProperties combustibleProperties = colObj.GetCombustibleProperties(Api.World, slot.Itemstack, null);
-
-                if (colObj.Attributes?.IsTrue("isClayOvenFuel") == true)
+                if (TryAddFuel(slot, out errCode, out errMessage))
                 {
-                    if (TryAddFuel(slot))
-                    {
-                        SoundAttributes? sound = slot.Itemstack?.Block?.Sounds?.Place;
-                        Api.World.PlaySoundAt(sound ?? GlobalConstants.DefaultBuildSound, byPlayer.Entity, byPlayer);
-                        byPlayer.InventoryManager.BroadcastHotbarSlot();
-                        (byPlayer as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
-                        return true;
-                    }
-
-                    return false;
-
-                }
-                else if (colObj.Attributes?["bakingProperties"] != null || combustibleProperties?.SmeltingType == EnumSmeltType.Bake && combustibleProperties.MeltingPoint < maxBakingTemperatureAccepted)  //Can't meaningfully bake anything requiring heat over 260 in the basic clay oven
-                {
-                    if (slot.Itemstack.Equals(Api.World, lastRemoved, GlobalConstants.IgnoredStackAttributes) && !ovenInv[0].Empty)
-                    {
-                        if (TryTake(byPlayer))
-                        {
-                            byPlayer.InventoryManager.BroadcastHotbarSlot();
-                            return true;
-                        }
-                    }
-                    else
-                    {
-                        var stackName = slot.Itemstack?.Collectible.Code;
-                        if (TryPut(slot))
-                        {
-                            SoundAttributes? sound = slot.Itemstack?.Block?.Sounds?.Place;
-                            Api.World.PlaySoundAt(sound ?? new SoundAttributes(new AssetLocation("sounds/player/buildhigh"), true) { Range = 16 }, byPlayer.Entity, byPlayer);
-                            byPlayer.InventoryManager.BroadcastHotbarSlot();
-                            Api.World.Logger.Audit("{0} Put 1x{1} into Clay oven at {2}.",
-                                byPlayer.PlayerName,
-                                stackName,
-                                Pos
-                            );
-                            return true;
-                        }
-                        else
-                        {
-                            if (slot.Itemstack.Block?.GetBehavior<BlockBehaviorCanIgnite>() == null)
-                            {
-                                if (Api is not ICoreClientAPI capi) return true;
-
-                                bool bakeable = BakingProperties.ReadFrom(slot.Itemstack) != null && slot.Itemstack.Attributes.GetBool("bakeable", true);
-                                if (slot.Empty || !bakeable) capi.TriggerIngameError(this, "notbakeable", Lang.Get("This item is not bakeable."));
-                                else if (!slot.Empty) capi.TriggerIngameError(this, "notbakeable", Lang.Get(burning ? "Wait until the fire is out" : "Oven is full"));
-
-                                return true;
-                            }
-                        }
-                    }
-
-                    return false;
-                }
-                else if (TryTake(byPlayer))
-                //TryTake with non-empty hotbar slot, filling available empty slots in player inventory
-                {
+                    SoundAttributes? sound = slot.Itemstack?.Block?.Sounds?.Place;
+                    Api.World.PlaySoundAt(sound ?? GlobalConstants.DefaultBuildSound, byPlayer.Entity, byPlayer);
                     byPlayer.InventoryManager.BroadcastHotbarSlot();
+                    Api.World.Logger.Audit("{0} Put 1x{1} into Clay oven at {2}.",
+                        byPlayer.PlayerName,
+                        stackName,
+                        Pos
+                    );
+                    (byPlayer as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+
                     return true;
                 }
+
+                (Api as ICoreClientAPI)?.TriggerIngameError(this, errCode, errMessage);
+
+                return false;
+            }
+
+
+            // Can't meaningfully bake anything requiring heat over 260 in the basic clay oven
+            if (co?.Attributes?.KeyExists("bakingProperties") == true || combustibleProperties?.SmeltingType == EnumSmeltType.Bake && combustibleProperties.MeltingPoint < maxBakingTemperatureAccepted)
+            {
+
+                if (TryPut(slot, out errCode, out errMessage))
+                {
+                    SoundAttributes? sound = slot.Itemstack?.Block?.Sounds?.Place;
+                    Api.World.PlaySoundAt(sound ?? new SoundAttributes(new AssetLocation("sounds/player/buildhigh"), true) { Range = 16 }, byPlayer.Entity, byPlayer);
+                    byPlayer.InventoryManager.BroadcastHotbarSlot();
+                    Api.World.Logger.Audit("{0} Put 1x{1} into Clay oven at {2}.",
+                        byPlayer.PlayerName,
+                        stackName,
+                        Pos
+                    );
+                    (byPlayer as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+                }
+                else if (slot.Itemstack.Block?.GetBehavior<BlockBehaviorCanIgnite>() == null)
+                {
+                    (Api as ICoreClientAPI)?.TriggerIngameError(this, errCode, errMessage);
+                }
+
+                return true;
             }
 
             return false;
@@ -251,123 +224,216 @@ namespace Vintagestory.GameContent
 
         protected virtual bool TryAddFuel(ItemSlot slot)
         {
-            if (IsBurning || HasBakeables) return false;
+            return TryAddFuel(slot, out _, out _);
+        }
 
-            if (FuelSlot.Empty || FuelSlot.Itemstack.StackSize < fuelitemCapacity)
+        protected virtual bool TryAddFuel(ItemSlot slot, out string? errCode, out string? errMessage)
+        {
+            errCode = null;
+            errMessage = null;
+
+            if (!CanAddFuel(slot.Itemstack, out errCode, out errMessage)) return false;
+
+            int moved = slot.TryPutInto(Api.World, FuelSlot);
+
+            if (moved > 0)
             {
-                int moved = slot.TryPutInto(Api.World, FuelSlot);
-
-                if (moved > 0)
-                {
-                    updateMesh(0);
-                    MarkDirty();
-                    lastRemoved = null;
-                }
-
-                return moved > 0;
+                updateMesh(0);
+                MarkDirty();
             }
 
-            return false;
+            return moved > 0;
         }
 
         protected virtual bool TryPut(ItemSlot slot)
         {
-            if (IsBurning || HasFuel) return false;
+            return TryPut(slot, out _, out _);
+        }
 
-            BakingProperties bakingProps = BakingProperties.ReadFrom(slot.Itemstack);
-            if (bakingProps == null) return false;
+        protected virtual bool TryPut(ItemSlot slot, out string? errCode, out string? errMessage)
+        {
+            // CanAddBakeable checks for large item requirements
+            if (!CanAddBakeable(slot.Itemstack, out errCode, out errMessage)) return false;
 
-            if (slot.Itemstack.Attributes.GetBool("bakeable", true) == false) return false;
+            int empty = Array.FindIndex(ovenInv.Take(4).ToArray(), slot => slot.Empty);
+            if (empty == -1) return false;
 
-            if (bakingProps.LargeItem && !ovenInv.Empty)
+            int moved = slot.TryPutInto(Api.World, ovenInv[empty]);
+
+            if (moved > 0)
             {
-                return false;
+                // We store the baked level data into the BlockEntity itself, for continuity and to avoid adding unwanted attributes to the ItemStacks (which e.g. could cause them not to stack)
+                bakingData[empty] = new OvenItemData(ovenInv[empty].Itemstack);
+                updateMesh(empty);
+
+                MarkDirty();
             }
 
-            for (int index = 0; index < bakeableCapacity; index++)
-            {
-                if (ovenInv[index].Empty)
-                {
-                    int moved = slot.TryPutInto(Api.World, ovenInv[index]);
-
-                    if (moved > 0)
-                    {
-                        // We store the baked level data into the BlockEntity itself, for continuity and to avoid adding unwanted attributes to the ItemStacks (which e.g. could cause them not to stack)
-                        bakingData[index] = new OvenItemData(ovenInv[index].Itemstack);
-                        updateMesh(index);
-
-                        MarkDirty();
-                        lastRemoved = null;
-                    }
-
-                    return moved > 0;
-                }
-                else if (index == 0)
-                {
-                    // Disallow other items from being inserted if slot 0 holds a large item (a pie)
-                    BakingProperties props = BakingProperties.ReadFrom(ovenInv[0].Itemstack);
-                    if (props != null && props.LargeItem) return false;
-                }
-            }
-            return false;
+            return moved > 0;
         }
 
         protected virtual bool TryTake(IPlayer byPlayer)
         {
-            if (IsBurning) return false;    // We cannot remove fuel once it is lit
+            // We cannot remove fuel once it is lit
+            if (IsBurning) return false;
 
             for (int index = bakeableCapacity; index >= 0; index--)
             {
-                if (!ovenInv[index].Empty)
+                if (ovenInv[index].Empty) continue;
+
+                ItemStack stack = ovenInv[index].TakeOut(1);
+                if (byPlayer.InventoryManager.TryGiveItemstack(stack))
                 {
-                    ItemStack stack = ovenInv[index].TakeOut(1);
-                    lastRemoved = stack == null ? null : stack.Clone();
-                    if (byPlayer.InventoryManager.TryGiveItemstack(stack))
-                    {
-                        SoundAttributes? sound = stack.Block?.Sounds?.Place;
-                        Api.World.PlaySoundAt(sound ?? new SoundAttributes(new AssetLocation("sounds/player/throw"), true) { Range = 16 }, byPlayer.Entity, byPlayer);
-                    }
-
-                    if (stack.StackSize > 0)
-                    {
-                        Api.World.SpawnItemEntity(stack, Pos);
-                    }
-                    Api.World.Logger.Audit("{0} Took 1x{1} from Clay oven at {2}.",
-                        byPlayer.PlayerName,
-                        stack.Collectible.Code,
-                        Pos
-                    );
-
-                    bakingData[index].CurHeightMul = 1; // Reset risenLevel to avoid brief render of unwanted size on next item inserted, if server/client not perfectly in sync - note this only really works if the newly inserted item can be assumed to have risenLevel of 0 i.e. dough
-                    updateMesh(index);
-                    MarkDirty();
-                    return true;
+                    SoundAttributes? sound = stack.Block?.Sounds?.Place;
+                    Api.World.PlaySoundAt(sound ?? new SoundAttributes(new AssetLocation("sounds/player/throw"), true) { Range = 16 }, byPlayer.Entity, byPlayer);
                 }
 
+                if (stack.StackSize > 0)
+                {
+                    Api.World.SpawnItemEntity(stack, Pos);
+                }
+
+                Api.World.Logger.Audit("{0} Took 1x{1} from Clay oven at {2}.",
+                    byPlayer.PlayerName,
+                    stack.Collectible.Code,
+                    Pos
+                );
+
+                bakingData[index].CurHeightMul = 1; // Reset risenLevel to avoid brief render of unwanted size on next item inserted, if server/client not perfectly in sync - note this only really works if the newly inserted item can be assumed to have risenLevel of 0 i.e. dough
+                updateMesh(index);
+                MarkDirty();
+                return true;
             }
+
             return false;
         }
 
-        public virtual ItemStack[] CanAdd(ItemStack[] itemstacks)
+        public bool CanAddBakeable(ItemStack stack)
         {
-            if (IsBurning) return null;
-            if (!FuelSlot.Empty) return null;
-            if (ovenTemperature <= EnvironmentTemperature() + 25) return null;   // Don't invite player to insert bakeable items in a cold oven - 25 degrees allows some hysteresis if SEASONS causes changes in enviro temperature
-            for (int i = 0; i < bakeableCapacity; i++)
-            {
-                if (ovenInv[i].Empty) return itemstacks;
-            }
-            return null;
+            return CanAddBakeable(stack, out _, out _);
         }
 
-        public virtual ItemStack[] CanAddAsFuel(ItemStack[] itemstacks)
+        /// <summary>
+        /// Whether or not the oven can currently accept a given bakeable item.
+        /// </summary>
+        /// <returns>True if either the oven is empty or there is enough space to accept the given item. Oven must not be burning or contain fuel.</returns>
+        public virtual bool CanAddBakeable(ItemStack stack, out string? errCode, out string? errMessage)
         {
-            if (IsBurning) return null;
-            for (int i = 0; i < bakeableCapacity; i++)
+            errCode = null;
+            errMessage = null;
+
+            if (IsBurning)
             {
-                if (!ovenInv[i].Empty) return null;
+                errCode = "fuelburning";
+                errMessage = Lang.Get("Wait until the fire is out");
+                return false;
             }
-            return (FuelSlot.StackSize < fuelitemCapacity) ? itemstacks : null;
+
+            if (HasFuel)
+            {
+                errCode = "fuelpresent";
+                errMessage = Lang.Get("ovenerror-notfuel");
+                return false;
+            }
+
+            // Don't invite player to insert bakeable items in a cold oven - 25 degrees allows some hysteresis if SEASONS causes changes in enviro temperature
+            if (ovenTemperature <= EnvironmentTemperature() + 25)
+            {
+                errCode = "toocold";
+                errMessage = Lang.Get("ovenerror-toocold");
+                return false;
+            }
+
+
+            if (ovenInv[0].Empty) return true;
+
+
+            if (stack.ItemAttributes?.KeyExists("bakingProperties") == false)
+            {
+                errCode = "notbakeable";
+                errMessage = Lang.Get("This item is not bakeable.");
+                return false;
+            }
+
+            // Large items take up all slots
+            if (BakingProperties.ReadFrom(ovenInv[0].Itemstack)?.LargeItem ?? false)
+            {
+                errCode = "ovenfull";
+                errMessage = Lang.Get("Oven is full");
+                return false;
+            }
+
+            if (ovenInv.Take(4).All(slot => !slot.Empty))
+            {
+                errCode = "ovenfull";
+                errMessage = Lang.Get("Oven is full");
+                return false;
+            }
+
+            // Handle held large item separately if not all slots are full
+            if (BakingProperties.ReadFrom(stack)?.LargeItem ?? false && !ovenInv[0].Empty)
+            {
+                errCode = "notenoughspace";
+                errMessage = Lang.Get("ovenerror-notenoughspace");
+                return false;
+            }
+
+            return true;
+        }
+
+        public bool CanAddFuel(ItemStack stack)
+        {
+            return CanAddFuel(stack, out _, out _);
+        }
+
+        /// <summary>
+        /// Whether or not the oven can currently accept a given fuel item.
+        /// </summary>
+        /// <returns>True if either the oven is empty or the fuel slot is of the same type and has space. Oven must not be burning or contain bakeables.</returns>
+        public virtual bool CanAddFuel(ItemStack stack, out string? errCode, out string? errMessage)
+        {
+            errCode = null;
+            errMessage = null;
+
+            if (FuelSlot.Empty) return true;
+
+            if (IsBurning)
+            {
+                errCode = "fuelburning";
+                errMessage = Lang.Get("Wait until the fire is out");
+                return false;
+            }
+
+            if (stack.ItemAttributes?.IsTrue("isClayOvenFuel") == false)
+            {
+                errCode = "notfuel";
+                errMessage = Lang.Get("ovenerror-notfuel");
+                return false;
+            }
+
+            if (HasFuel && FuelSlot.StackSize < fuelitemCapacity && !FuelSlot.Itemstack.Satisfies(stack))
+            {
+                errCode = "nonmatchingfuel";
+                errMessage = Lang.Get("ovenerror-nonmatchingfuel");
+                return false;
+            }
+
+            // Bakeables are already present
+            if (!FuelSlot.Empty && !HasFuel)
+            {
+                errCode = "notbakeable";
+                errMessage = Lang.Get("This item is not bakeable.");
+                return false;
+            }
+
+            if (FuelSlot.StackSize >= fuelitemCapacity)
+            {
+                errCode = "ovenfull";
+                errMessage = Lang.Get("Oven is full");
+                return false;
+            }
+
+            return true;
         }
 
         public bool TryIgnite()
@@ -836,7 +902,7 @@ namespace Vintagestory.GameContent
                 if (mesh != null) return mesh;
 
                 var stack = slot.Itemstack;
-                string shapeLoc = FuelSlot?.Itemstack?.Collectible?.Attributes?["ovenFuelShape"].AsString() ?? Block.Attributes["ovenFuelShape"].AsString();
+                string shapeLoc = FuelSlot?.Itemstack?.ItemAttributes?["ovenFuelShape"].AsString() ?? Block.Attributes["ovenFuelShape"].AsString();
 
                 var loc = AssetLocation.Create(shapeLoc, Block.Code.Domain).WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
                 nowTesselatingShape = Shape.TryGet(capi, loc);
