@@ -780,7 +780,7 @@ namespace Vintagestory.GameContent
                     break;
                 case EnumOvenContentMode.Quadrants:
                     // Top left
-                    offs[0] = new Vec3f(-2/16f, 1 / 16f, -2.5f / 16f);
+                    offs[0] = new Vec3f(-2 / 16f, 1 / 16f, -2.5f / 16f);
                     // Top right
                     offs[1] = new Vec3f(-2 / 16f, 1 / 16f, 2.5f / 16f);
                     // Bot left
@@ -789,7 +789,7 @@ namespace Vintagestory.GameContent
                     offs[3] = new Vec3f(3 / 16f, 1 / 16f, 2.5f / 16f);
                     break;
                 case EnumOvenContentMode.SingleCenter:
-                    offs[0] = new Vec3f(0, 1/16f, 0);
+                    offs[0] = new Vec3f(0, 1 / 16f, 0);
                     break;
             }
 

@@ -51,7 +51,7 @@ namespace Vintagestory.GameContent
             base.OnLoaded(api);
 
             if (api.Side != EnumAppSide.Client) return;
-            
+
             ICoreClientAPI capi = api as ICoreClientAPI;
 
             if (capi != null) interactions = ObjectCacheUtil.GetOrCreate(api, "ovenInteractions", () =>
@@ -128,7 +128,7 @@ namespace Vintagestory.GameContent
                     }
                 };
             });
-            
+
             InitializeParticles();
         }
 
