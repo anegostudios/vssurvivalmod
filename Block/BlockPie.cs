@@ -479,7 +479,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            var pieStack = stackInSlot!.Itemstack!.Clone();
+            ItemStack? pieStack = stackInSlot.Itemstack?.Clone();
             TakeSlice(ref pieStack);
             if (pieStack?.Attributes.GetAsInt("pieSize") == 1)
             {
@@ -622,16 +622,13 @@ namespace Vintagestory.GameContent
                     foreach (ItemStack? astack in ingredient.ValidStacks.Select(stack => stack.ResolvedItemstack))
                     {
                         if (ingredient.GetMatchingStack(astack) is not { } vstack) continue;
-                        if (astack?.Clone() is not { } stack) continue;
 
-                        stack.StackSize = vstack.StackSize;
-
-                        if (BlockLiquidContainerBase.GetContainableProps(stack) is { } props)
+                        if (astack?.Clone() is { } stack && BlockLiquidContainerBase.GetContainableProps(stack) is { } props)
                         {
-                            stack.StackSize *= (int)(props.ItemsPerLitre * ingredient.PortionSizeLitres);
+                            stack.StackSize = vstack.StackSize * (int)(props.ItemsPerLitre * ingredient.PortionSizeLitres);
+                            ingredientStacks.Add(stack);
                         }
-
-                        ingredientStacks.Add(stack);
+                        else ingredientStacks.Add(null);
                     }
 
                     if (ingredient.MinQuantity <= 0) ingredientStacks.Add(null);

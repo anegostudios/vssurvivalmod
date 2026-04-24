@@ -7,6 +7,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 
+#nullable enable
+
 namespace Vintagestory.GameContent
 {
     public enum EnumPiePartType
@@ -170,8 +172,7 @@ namespace Vintagestory.GameContent
 
             ItemSlot? hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
-            EnumTool? tool = hotbarSlot?.Itemstack?.Collectible.GetTool(hotbarSlot);
-            if (tool is EnumTool.Knife or EnumTool.Sword)
+            if (hotbarSlot?.Itemstack?.Collectible.GetTool(hotbarSlot) is { } tool && tool is EnumTool.Knife or EnumTool.Sword)
             {
                 if (pieBlock.State != "raw")
                 {
@@ -214,7 +215,7 @@ namespace Vintagestory.GameContent
             // If the pie can be picked up into the current hotbar slot,
             // skip trying to add the held stack as filling. Prevents
             // the cannot be added to pies" error message.
-            bool canPickUpIntoHand = hotbarSlot?.Empty == false && inv[0].Itemstack.Collectible.GetMergableQuantity(hotbarSlot.Itemstack, inv[0].Itemstack, EnumMergePriority.DirectMerge) > 0;
+            bool canPickUpIntoHand = hotbarSlot?.Empty == false && inv[0].Itemstack?.Collectible.GetMergableQuantity(hotbarSlot.Itemstack, inv[0].Itemstack, EnumMergePriority.DirectMerge) > 0;
 
             if (hotbarSlot?.Empty == false && !canPickUpIntoHand && pieBlock.State == "raw")
             {
@@ -260,20 +261,18 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public bool CanAddIngredient(ItemStack stack)
+        public bool CanAddIngredient(ItemStack? stack)
         {
             return CanAddIngredient(stack, out _, out _, out _);
         }
 
-        public bool CanAddIngredient(ItemStack stack, out int emptySlotIndex, out string? errCode, out string? errMessage)
+        public bool CanAddIngredient(ItemStack? stack, out int emptySlotIndex, out string? errCode, out string? errMessage)
         {
-            InPieProperties pieProps = stack.ItemAttributes?["inPieProperties"]?.AsObject<InPieProperties?>(null, stack.Collectible.Code.Domain);
-
             errCode = null;
             errMessage = null;
             emptySlotIndex = -1;
 
-            if (pieProps == null)
+            if (stack?.ItemAttributes["inPieProperties"].AsObject<InPieProperties>(null, stack.Collectible.Code.Domain) is not { } pieProps)
             {
                 errCode = "notpieable";
                 errMessage = Lang.Get("This item can not be added to pies");
@@ -368,23 +367,22 @@ namespace Vintagestory.GameContent
         private bool TryAddIngredientFrom(ItemSlot slot, IPlayer? byPlayer = null)
         {
             ICoreClientAPI? capi = byPlayer != null ? Api as ICoreClientAPI : null;
-            int emptySlotIndex = -1;
-            string? errCode = null;
-            string? errMessage = null;
-            if (!CanAddIngredient(slot.Itemstack, out emptySlotIndex, out errCode, out errMessage))
+
+            if (inv[0].Itemstack?.Block is not BlockPie pieBlock) return false;
+
+            if (!CanAddIngredient(slot.Itemstack, out int emptySlotIndex, out string? errCode, out string? errMessage))
             {
                 capi?.TriggerIngameError(this, errCode, errMessage);
                 return false;
             }
 
-            BlockPie pieBlock = inv[0].Itemstack.Block as BlockPie;
-            ItemStack?[] cStacks = pieBlock.GetContents(Api.World, inv[0].Itemstack);
+            ItemStack[] cStacks = pieBlock.GetContents(Api.World, inv[0].Itemstack);
             if (emptySlotIndex == 5)
             {
                 if (cStacks[5] == null)
                 {
                     // Crust attribute must exist to stack together
-                    inv[0].Itemstack.Attributes.SetString("topCrustType", "full");
+                    inv[0].Itemstack?.Attributes.SetString("topCrustType", "full");
                 }
                 else
                 {
