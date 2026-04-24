@@ -262,16 +262,15 @@ namespace Vintagestory.GameContent
 
         public bool CanAddIngredient(ItemStack stack)
         {
-            int dummy1 = 0;
-            string? dummy2 = null;
-            string? dummy3 = null;
-            return CanAddIngredient(stack, ref dummy1, ref dummy2, ref dummy3);
+            return CanAddIngredient(stack, out _, out _, out _);
         }
 
-        public bool CanAddIngredient(ItemStack stack, ref int emptySlotIndex, ref string? errCode, ref string? errMessage)
+        public bool CanAddIngredient(ItemStack stack, out int emptySlotIndex, out string? errCode, out string? errMessage)
         {
             InPieProperties pieProps = stack.ItemAttributes?["inPieProperties"]?.AsObject<InPieProperties?>(null, stack.Collectible.Code.Domain);
 
+            errCode = null;
+            errMessage = null;
             emptySlotIndex = -1;
 
             if (pieProps == null)
@@ -372,7 +371,7 @@ namespace Vintagestory.GameContent
             int emptySlotIndex = -1;
             string? errCode = null;
             string? errMessage = null;
-            if (!CanAddIngredient(slot.Itemstack, ref emptySlotIndex, ref errCode, ref errMessage))
+            if (!CanAddIngredient(slot.Itemstack, out emptySlotIndex, out errCode, out errMessage))
             {
                 capi?.TriggerIngameError(this, errCode, errMessage);
                 return false;
