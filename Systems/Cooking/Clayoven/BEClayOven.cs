@@ -7,7 +7,7 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
-#nullable disable
+#nullable enable
 
 namespace Vintagestory.GameContent
 {
@@ -74,10 +74,10 @@ namespace Vintagestory.GameContent
         /// For rendering: degrees of rotation of contents depending on block variant - 0 is east
         /// </summary>
         private int rotationDeg;
-        Random prng;
+        Random? prng = null;
         private int syncCount;
 
-        ILoadedSound ambientSound;
+        ILoadedSound? ambientSound;
 
         /// <summary>
         /// Slots 0-3: Baking items. Slot 0: Fuel  Note: Slot 0 doubles up for both uses, as an oven cannot hold both fuel and baking items at the same time!
@@ -131,7 +131,7 @@ namespace Vintagestory.GameContent
             ovenInv.LateInitialize(InventoryClassName + "-" + Pos, api);
 
             RegisterGameTickListener(OnBurnTick, 100);
-            this.prng = new Random((int)(this.Pos.GetHashCode()));
+            this.prng ??= new Random((int)(this.Pos.GetHashCode()));
             this.SetRotation();
         }
 
@@ -317,7 +317,7 @@ namespace Vintagestory.GameContent
         /// Whether or not the oven can currently accept a given bakeable item.
         /// </summary>
         /// <returns>True if either the oven is empty or there is enough space to accept the given item. Oven must not be burning or contain fuel.</returns>
-        public virtual bool CanAddBakeable(ItemStack stack, out string? errCode, out string? errMessage)
+        public virtual bool CanAddBakeable(ItemStack? stack, out string? errCode, out string? errMessage)
         {
             errCode = null;
             errMessage = null;
@@ -348,7 +348,7 @@ namespace Vintagestory.GameContent
             if (ovenInv[0].Empty) return true;
 
 
-            if (stack.ItemAttributes?.KeyExists("bakingProperties") == false)
+            if (stack?.ItemAttributes?.KeyExists("bakingProperties") == false)
             {
                 errCode = "notbakeable";
                 errMessage = Lang.Get("This item is not bakeable.");
@@ -381,7 +381,7 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public bool CanAddFuel(ItemStack stack)
+        public bool CanAddFuel(ItemStack? stack)
         {
             return CanAddFuel(stack, out _, out _);
         }
@@ -390,7 +390,7 @@ namespace Vintagestory.GameContent
         /// Whether or not the oven can currently accept a given fuel item.
         /// </summary>
         /// <returns>True if either the oven is empty or the fuel slot is of the same type and has space. Oven must not be burning or contain bakeables.</returns>
-        public virtual bool CanAddFuel(ItemStack stack, out string? errCode, out string? errMessage)
+        public virtual bool CanAddFuel(ItemStack? stack, out string? errCode, out string? errMessage)
         {
             errCode = null;
             errMessage = null;
@@ -404,7 +404,7 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            if (stack.ItemAttributes?.IsTrue("isClayOvenFuel") == false)
+            if (stack?.ItemAttributes?.IsTrue("isClayOvenFuel") == false)
             {
                 errCode = "notfuel";
                 errMessage = Lang.Get("ovenerror-notfuel");
@@ -481,18 +481,18 @@ namespace Vintagestory.GameContent
                 {
                     fuelBurnTime = 0;
                     burning = false;
-                    CombustibleProperties props = FuelSlot.Itemstack?.Collectible.GetCombustibleProperties(Api.World, FuelSlot.Itemstack, null);
-                    if (props?.SmeltedStack == null)
-                    {
-                        FuelSlot.Itemstack = null;
-                        for (int i = 0; i < bakeableCapacity; i++) bakingData[i].CurHeightMul = 1;
-                    }
-                    else
+                    CombustibleProperties? props = FuelSlot.Itemstack?.Collectible.GetCombustibleProperties(Api.World, FuelSlot.Itemstack, null);
+                    if (props?.SmeltedStack?.ResolvedItemstack?.Clone() is ItemStack smeltedStack)
                     {
                         // Allows for wood ash inserted by mods (for example, LazyWarlock's Tweaks)
                         int count = FuelSlot.StackSize;
-                        FuelSlot.Itemstack = props.SmeltedStack.ResolvedItemstack.Clone();
+                        FuelSlot.Itemstack = smeltedStack;
                         FuelSlot.Itemstack.StackSize = count * props.SmeltedRatio;
+                    }
+                    else
+                    {
+                        FuelSlot.Itemstack = null;
+                        for (int i = 0; i < bakeableCapacity; i++) bakingData[i].CurHeightMul = 1;
                     }
                     MarkDirty(true);
                 }
@@ -526,8 +526,7 @@ namespace Vintagestory.GameContent
         {
             for (int slotIndex = 0; slotIndex < bakeableCapacity; slotIndex++)
             {
-                ItemStack stack = ovenInv[slotIndex].Itemstack;
-                if (stack != null)
+                if (ovenInv[slotIndex].Itemstack is ItemStack stack && !stack.ItemAttributes.KeyExists("combustibleProperties"))
                 {
                     float nowTemp = HeatStack(stack, dt, slotIndex);
                     // Begin baking - or at least rising - when hot enough
@@ -607,41 +606,36 @@ namespace Vintagestory.GameContent
             if (currentLevel > levelTo)
             {
                 float nowTemp = bakeData.temp;
-                string resultCode = bakeProps?.ResultCode;
 
-                if (resultCode != null)
+                if (bakeProps?.ResultCode is string resultCode)
                 {
-                    ItemStack resultStack = null;
-                    if (slot.Itemstack.Class == EnumItemClass.Block)
+                    ItemStack? resultStack = null;
+                    if (slot.Itemstack?.Class == EnumItemClass.Block)
                     {
-                        Block block = Api.World.GetBlock(new AssetLocation(resultCode));
-                        if (block != null)
-                        {
-                            resultStack = new ItemStack(block);
-                        }
+                        if (Api.World.GetBlock(new AssetLocation(resultCode)) is Block block) resultStack = new ItemStack(block);
                     }
                     else
                     {
-                        Item item = Api.World.GetItem(new AssetLocation(resultCode));
-                        if (item != null) resultStack = new ItemStack(item);
+                        if (Api.World.GetItem(new AssetLocation(resultCode)) is Item item) resultStack = new ItemStack(item);
                     }
 
                     if (resultStack != null)
                     {
-                        TransitionableProperties[] tprops = resultStack.Collectible.GetTransitionableProperties(Api.World, slot.Itemstack, null);
-                        TransitionableProperties perishProps = tprops?.FirstOrDefault(p => p.Type == EnumTransitionType.Perish);
+                        TransitionableProperties?[] tprops = resultStack.Collectible.GetTransitionableProperties(Api.World, slot.Itemstack, null);
 
                         // Carry over freshness
-                        if (perishProps != null)
+                        if (tprops?.FirstOrDefault(p => p?.Type == EnumTransitionType.Perish) is TransitionableProperties perishProps)
                         {
                             CollectibleObject.CarryOverFreshness(Api, slot, resultStack, perishProps);
                         }
 
-                        ovenInv[slotIndex].Itemstack.Collectible.GetCollectibleInterface<IBakeableCallback>()?.OnBaked(ovenInv[slotIndex].Itemstack, resultStack);
+                        ovenInv[slotIndex].Itemstack?.Collectible.GetCollectibleInterface<IBakeableCallback>()?.OnBaked(ovenInv[slotIndex].Itemstack!, resultStack);
 
                         ovenInv[slotIndex].Itemstack = resultStack;
-                        bakingData[slotIndex] = new OvenItemData(resultStack);
-                        bakingData[slotIndex].temp = nowTemp;
+                        bakingData[slotIndex] = new OvenItemData(resultStack)
+                        {
+                            temp = nowTemp
+                        };
 
                         reDraw = true;
                     }
@@ -651,14 +645,16 @@ namespace Vintagestory.GameContent
                     // Allow the oven also to 'smelt' low-temperature bakeable items which do not have specific baking properties
 
                     ItemSlot result = new DummySlot(null);
-                    if (slot.Itemstack.Collectible.CanSmelt(Api.World, ovenInv, slot.Itemstack, null))
+                    if (slot.Itemstack?.Collectible.CanSmelt(Api.World, ovenInv, slot.Itemstack, null) ?? false)
                     {
                         slot.Itemstack.Collectible.DoSmelt(Api.World, ovenInv, ovenInv[slotIndex], result);
                         if (!result.Empty)
                         {
                             ovenInv[slotIndex].Itemstack = result.Itemstack;
-                            bakingData[slotIndex] = new OvenItemData(result.Itemstack);
-                            bakingData[slotIndex].temp = nowTemp;
+                            bakingData[slotIndex] = new OvenItemData(result.Itemstack)
+                            {
+                                temp = nowTemp
+                            };
                             reDraw = true;
                         }
                     }
@@ -770,8 +766,7 @@ namespace Vintagestory.GameContent
             {
                 if (!ovenInv[index].Empty)
                 {
-                    ItemStack stack = ovenInv[index].Itemstack;
-                    sb.Append(stack.GetName());
+                    sb.Append(ovenInv[index].Itemstack?.GetName());
                     sb.AppendLine(" (" + Lang.Get("{0}°C", (int)bakingData[index].temp) + ")");
                 }
             }
@@ -802,8 +797,8 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                ambientSound.Stop();
-                ambientSound.Dispose();
+                ambientSound!.Stop();
+                ambientSound!.Dispose();
                 ambientSound = null;
             }
 
@@ -894,27 +889,26 @@ namespace Vintagestory.GameContent
             return (OvenContentMode == EnumOvenContentMode.Firewood ? slot.StackSize + "x" : "") + base.getMeshCacheKey(slot) + scaleY;
         }
 
-        protected override MeshData getOrCreateMesh(ItemSlot slot, int index)
+        protected override MeshData? getOrCreateMesh(ItemSlot slot, int index)
         {
             if (OvenContentMode == EnumOvenContentMode.Firewood)
             {
-                MeshData mesh = getMesh(slot);
-                if (mesh != null) return mesh;
+                if (getMesh(slot) is MeshData mesh) return mesh;
 
-                var stack = slot.Itemstack;
-                string shapeLoc = FuelSlot?.Itemstack?.ItemAttributes?["ovenFuelShape"].AsString() ?? Block.Attributes["ovenFuelShape"].AsString();
+                ItemStack? stack = slot.Itemstack;
+                string? shapeLoc = FuelSlot.Itemstack?.ItemAttributes["ovenFuelShape"].AsString() ?? Block.Attributes["ovenFuelShape"].AsString();
 
                 var loc = AssetLocation.Create(shapeLoc, Block.Code.Domain).WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
                 nowTesselatingShape = Shape.TryGet(capi, loc);
-                nowTesselatingObj = stack.Collectible;
+                nowTesselatingObj = stack?.Collectible;
 
                 if (nowTesselatingShape == null)
                 {
-                    capi.Logger.Error("Stacking model shape for collectible " + stack.Collectible.Code + " not found. Block will be invisible!");
+                    capi.Logger.Error("Stacking model shape for collectible " + stack?.Collectible.Code + " not found. Block will be invisible!");
                     return null;
                 }
 
-                capi.Tesselator.TesselateShape("ovenFuelShape", nowTesselatingShape, out mesh, this, null, 0, 0, 0, stack.StackSize);
+                capi.Tesselator.TesselateShape("ovenFuelShape", nowTesselatingShape, out mesh, this, null, 0, 0, 0, stack?.StackSize);
 
                 string key = getMeshCacheKey(slot);
                 MeshCache[key] = mesh;
@@ -936,13 +930,13 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < particles.Length; i++)
             {
                 //reduced number of bright yellow flames - and reduces as the fuel burns
-                if (i >= 12 && prng.Next(0, 90) > this.fuelBurnTime) continue;
+                if (i >= 12 && prng!.Next(0, 90) > this.fuelBurnTime) continue;
 
                 //limit orange flames when fuel is almost burned
-                if (i >= 8 && i < 12 && prng.Next(0, 12) > this.fuelBurnTime) continue;
+                if (i >= 8 && i < 12 && prng!.Next(0, 12) > this.fuelBurnTime) continue;
 
                 //also randomise red flames
-                if (i >= 4 && i < 4 && prng.Next(0, 6) == 0) continue;
+                if (i >= 4 && i < 4 && prng!.Next(0, 6) == 0) continue;
 
                 //adjust flames to the number of logs, if less than 3 logs
                 if (i >= 4 && logsCount < 3)
@@ -985,8 +979,8 @@ namespace Vintagestory.GameContent
                 else
                 //set up flame positions with RNG (this way all three flame evolution particles will be in approx. same position)
                 {
-                    x[i] = prng.NextDouble() * 0.4f + 0.33f;   // the multiplier and offset gets the flame position aligned with the top surface of the logs
-                    z[i] = 0.26f + prng.Next(0, 3) * 0.2f + (float)prng.NextDouble() * 0.08f;
+                    x[i] = prng!.NextDouble() * 0.4f + 0.33f;   // the multiplier and offset gets the flame position aligned with the top surface of the logs
+                    z[i] = 0.26f + prng.Next(0, 3) * 0.2f + (float)prng!.NextDouble() * 0.08f;
                 }
 
                 manager.Spawn(bps);

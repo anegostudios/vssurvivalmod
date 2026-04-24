@@ -5,7 +5,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
-#nullable disable
+#nullable enable
 
 namespace Vintagestory.GameContent
 {
@@ -43,9 +43,9 @@ namespace Vintagestory.GameContent
 
 
 
-        WorldInteraction[] interactions;
-        AdvancedParticleProperties[] particles;
-        Vec3f[] basePos;
+        WorldInteraction[]? interactions;
+        AdvancedParticleProperties[]? particles;
+        Vec3f[]? basePos;
 
         public override void OnLoaded(ICoreAPI api)
         {
@@ -99,15 +99,6 @@ namespace Vintagestory.GameContent
                             return api.World.BlockAccessor.GetBlockEntity<BlockEntityOven>(bs.Position) is { } beo && !beo.ovenInv.Empty && !beo.IsBurning;
                         }
                     },
-                    new (){
-                        ActionLangCode = "blockhelp-oven-bakeable",
-                        HotKeyCode = "shift",
-                        MouseButton = EnumMouseButton.Right,
-                        Itemstacks = [.. bakeableStacklist],
-                        GetMatchingStacks = (wi, bs, es) => {
-                            return wi.Itemstacks.Where(stack => api.World.BlockAccessor.GetBlockEntity<BlockEntityOven>(bs.Position)?.CanAddBakeable(stack) == true).ToArray();
-                        }
-                    },
                     new ()
                     {
                         ActionLangCode = "blockhelp-oven-fuel",
@@ -116,6 +107,15 @@ namespace Vintagestory.GameContent
                         Itemstacks = [.. fuelStacklist],
                         GetMatchingStacks = (wi, bs, es) => {
                             return wi.Itemstacks.Where(stack => api.World.BlockAccessor.GetBlockEntity<BlockEntityOven>(bs.Position)?.CanAddFuel(stack) == true).ToArray();
+                        }
+                    },
+                    new (){
+                        ActionLangCode = "blockhelp-oven-bakeable",
+                        HotKeyCode = "shift",
+                        MouseButton = EnumMouseButton.Right,
+                        Itemstacks = [.. bakeableStacklist],
+                        GetMatchingStacks = (wi, bs, es) => {
+                            return wi.Itemstacks.Where(stack => api.World.BlockAccessor.GetBlockEntity<BlockEntityOven>(bs.Position)?.CanAddBakeable(stack) == true).ToArray();
                         }
                     },
                     new ()
@@ -149,8 +149,8 @@ namespace Vintagestory.GameContent
 
         EnumIgniteState IIgnitable.OnTryIgniteStack(EntityAgent byEntity, BlockPos pos, ItemSlot slot, float secondsIgniting)
         {
-            BlockEntityOven beo = byEntity.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityOven;
-            if (beo.IsBurning) return secondsIgniting > 2 ? EnumIgniteState.IgniteNow : EnumIgniteState.Ignitable;
+            BlockEntityOven? beo = byEntity.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityOven;
+            if (beo?.IsBurning ?? false) return secondsIgniting > 2 ? EnumIgniteState.IgniteNow : EnumIgniteState.Ignitable;
             return EnumIgniteState.NotIgnitable;
         }
 
@@ -164,8 +164,7 @@ namespace Vintagestory.GameContent
         {
             handling = EnumHandling.PreventDefault;
 
-            BlockEntityOven beo = byEntity.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityOven;
-            beo?.TryIgnite();
+            (byEntity.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityOven)?.TryIgnite();
         }
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
@@ -183,8 +182,8 @@ namespace Vintagestory.GameContent
 
         public override void OnAsyncClientParticleTick(IAsyncParticleManager manager, BlockPos pos, float windAffectednessAtPos, float secondsTicking)
         {
-            BlockEntityOven beo = manager.BlockAccess.GetBlockEntity(pos) as BlockEntityOven;
-            if (beo != null && beo.IsBurning) beo.RenderParticleTick(manager, pos, windAffectednessAtPos, secondsTicking, particles);
+            if (manager.BlockAccess.GetBlockEntity(pos) is BlockEntityOven beo && beo.IsBurning)
+                beo.RenderParticleTick(manager, pos, windAffectednessAtPos, secondsTicking, particles!);
 
             base.OnAsyncClientParticleTick(manager, pos, windAffectednessAtPos, secondsTicking);
         }
