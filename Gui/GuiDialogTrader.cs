@@ -55,11 +55,8 @@ namespace Vintagestory.GameContent
 
             if (!auctionSys.createAuctionSlotByPlayer.TryGetValue(capi.World.Player.PlayerUID, out auctionSlotInv))
             {
-                auctionSys.createAuctionSlotByPlayer[capi.World.Player.PlayerUID] = auctionSlotInv = new InventoryGeneric(1, "auctionslot-" + capi.World.Player.PlayerUID, capi,
-                    (idx, inv) => new ItemSlotAuction(inv) {
-                        StorageType = EnumItemStorageFlags.General | EnumItemStorageFlags.Backpack | EnumItemStorageFlags.Outfit  | EnumItemStorageFlags.Metallurgy | EnumItemStorageFlags.Jewellery | EnumItemStorageFlags.Alchemy | EnumItemStorageFlags.Agriculture
-                    }
-                );
+                auctionSys.createAuctionSlotByPlayer[capi.World.Player.PlayerUID] = auctionSlotInv
+                    = new InventoryGeneric(1, "auctionslot-" + capi.World.Player.PlayerUID, capi, (idx, inv) => new ItemSlotAuction(inv));
 
 
                 // a negative weight prevents the auction slot from being consider as a suitable slot when shift clicking an item in the hotbar, that is because the default weight is 0 and it checks for >= 0

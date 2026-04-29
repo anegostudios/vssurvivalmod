@@ -15,13 +15,6 @@ namespace Vintagestory.GameContent.Mechanics
         public Action OnConnected;
         public Action OnDisconnected;
 
-        public override CompositeShape Shape {
-            get => base.Shape;
-            set {
-                base.Shape = value;
-            }
-        }
-
         public override float AngleRad
         {
             get { return base.AngleRad; }
@@ -29,21 +22,14 @@ namespace Vintagestory.GameContent.Mechanics
 
         public float TrueSpeed { get { return Math.Abs(Network?.Speed * GearedRatio ?? 0f); }}
 
-        public BEBehaviorMPConsumer(BlockEntity blockentity) : base(blockentity)
-        {
-        }
+        public BEBehaviorMPConsumer(BlockEntity blockentity) : base(blockentity) { }
 
         public override void Initialize(ICoreAPI api, JsonObject properties)
         {
             base.Initialize(api, properties);
 
-            var shape = properties["mechPartShape"].AsObject<CompositeShape>(null);
-            shape?.Base.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
-
-            if (shape != null)
-            {
-                this.Shape = shape;
-            }
+            Shape = properties["mechPartShape"].AsObject<CompositeShape>(Block.Shape);
+            Shape?.Base.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
 
             Resistance = properties["resistance"].AsFloat(0.1f);
 
@@ -91,9 +77,9 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
-            base.OnTesselation(mesher, tesselator);
+            if (Block == null) return false;
             return true;
-
         }
+
     }
 }

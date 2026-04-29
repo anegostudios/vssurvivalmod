@@ -205,17 +205,14 @@ public class CollectibleBehaviorWearable : CollectibleBehaviorWearableAttachment
             }
         }
 
-        EnumCharacterDressType dressType = GetDressType(inSlot);
-        if ((api as ICoreClientAPI).Settings.Bool["extendedDebugInfo"])
+        EnumCharacterDressType dressType = GetDressType(inSlot);        
+        if (dressType == EnumCharacterDressType.Unknown)
         {
-            if (dressType == EnumCharacterDressType.Unknown)
-            {
-                dsc.AppendLine(Lang.Get("Cloth Category: Unknown"));
-            }
-            else
-            {
-                dsc.AppendLine(Lang.Get("Cloth Category: {0}", Lang.Get("clothcategory-" + dressType.ToString().ToLowerInvariant())));
-            }
+            dsc.AppendLine(Lang.Get("Clothing Category: Unknown"));
+        }
+        else
+        {
+            dsc.AppendLine(Lang.Get("Clothing Category: {0}", Lang.Get("clothcategory-" + dressType.ToString().ToLowerInvariant())));
         }
 
         ProtectionModifiers protectionModifiers = GetProtectionModifiers(inSlot);

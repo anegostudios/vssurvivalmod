@@ -840,7 +840,7 @@ namespace Vintagestory.GameContent
             DistillationProps dprops = getDistillationProps(stack);
             if (dprops != null)
             {
-                AddHeading(components, capi, "squeezesdesc-title", ref haveText);
+                AddHeading(components, capi, "One liter distills into", ref haveText);
 
                 var dstack = dprops.DistilledStack?.ResolvedItemStack.Clone();
                 if (dprops.Ratio != 0)

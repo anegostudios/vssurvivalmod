@@ -341,9 +341,9 @@ namespace Vintagestory.GameContent
                 int lz = z % chunksize;
                 int lx = x % chunksize;
                 var mc = ba.GetMapChunkAtBlockPos(tmp.Set(x, y, z));
-                int ty = rainheightmap ? mc.RainHeightMap[lz * chunksize + lx] : (mc.WorldGenTerrainHeightMap[lz * chunksize + lx]+1);
+                int ty = rainheightmap ? mc.RainHeightMap[lz * chunksize + lx] : mc.WorldGenTerrainHeightMap[lz * chunksize + lx];
 
-                Vec3d spawnpos = new Vec3d(x + 0.5, ty + 0.1, z + 0.5);
+                Vec3d spawnpos = new Vec3d(x + 0.5, ty + 1.1, z + 0.5);
                 Cuboidf collisionBox = etype.SpawnCollisionBox.OmniNotDownGrowBy(0.1f);
                 var colBlock = collisionTester.GetCollidingBlock(ba, collisionBox, spawnpos, false);
 
@@ -354,7 +354,7 @@ namespace Vintagestory.GameContent
                 {
                     var claim = sapi.World.Claims.Get(spawnpos.AsBlockPos);
                     // allow an entity to spawn inside the trader claim if it satisfies the min distance
-                    if (claim == null || claim.Any(c => c.AllowTraverseEveryone))
+                    if (claim == null || claim.Length == 0 || claim.Any(c => c.AllowTraverseEveryone))
                     {
                         spawned = true;
                         okspawnpos = spawnpos;

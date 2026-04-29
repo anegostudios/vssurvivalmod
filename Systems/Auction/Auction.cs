@@ -18,6 +18,7 @@ namespace Vintagestory.GameContent
     {
         public ItemSlotAuction(InventoryBase inventory) : base(inventory)
         {
+            StorageType = EnumItemStorageFlags.General | EnumItemStorageFlags.Backpack | EnumItemStorageFlags.Outfit | EnumItemStorageFlags.Metallurgy | EnumItemStorageFlags.Jewellery | EnumItemStorageFlags.Alchemy | EnumItemStorageFlags.Agriculture;
         }
 
         public override bool CanHold(ItemSlot sourceSlot)
@@ -363,7 +364,7 @@ namespace Vintagestory.GameContent
                     InventoryGeneric ainv;
                     if (!createAuctionSlotByPlayer.TryGetValue(fromPlayer.PlayerUID, out ainv))
                     {
-                        ainv = createAuctionSlotByPlayer[fromPlayer.PlayerUID] = new InventoryGeneric(1, "auctionslot-" + fromPlayer.PlayerUID, sapi, (idx, inv) => new ItemSlotAuction(inv) { StorageType = EnumItemStorageFlags.General | EnumItemStorageFlags.Backpack });
+                        ainv = createAuctionSlotByPlayer[fromPlayer.PlayerUID] = new InventoryGeneric(1, "auctionslot-" + fromPlayer.PlayerUID, sapi, (idx, inv) => new ItemSlotAuction(inv));
                         // a negative weight prevents the auction slot from being consider as a suitable slot when shift clicking an item in the hotbar, that is because the default weight is 0 and it checks for >= 0
                         // this one here is for good measure but the important one in on the client side in the GuiDialogTrader constructor
                         ainv.OnGetSuitability = (s, t, isMerge) => -1f;

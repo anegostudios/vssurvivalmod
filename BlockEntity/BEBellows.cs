@@ -51,6 +51,7 @@ namespace Vintagestory.GameContent
             var ranim = animUtil.animator?.GetAnimationState(animation.Code);
             if (ranim != null)
             {
+                ranim.SoundPlayedAtIteration = null;
                 ranim.CurrentFrame = 0;
                 ranim.Iterations = 0;
             }

@@ -1,4 +1,4 @@
-﻿using ProtoBuf;
+using ProtoBuf;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,8 +13,6 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-
-
     // Aaaaah protobuf sux. v1.9.6 format:
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
     public class BlockReinforcementOld
@@ -164,7 +162,7 @@ namespace Vintagestory.GameContent
                 .WithArgs(parsers.Word("groupname"))
                     .HandleWith(OnCmdRevokeGroup)
                 .EndSubCommand()
-                ;
+            ;
             
             api.ChatCommands.Create("gbre")
                 .WithDescription("Group owned Block reinforcement privilege management")
@@ -192,12 +190,12 @@ namespace Vintagestory.GameContent
                     .WithArgs(parsers.Word("groupname"))
                     .HandleWith(OnCmdGroupRevokeGroup)
                 .EndSubCommand()
-                ;
+            ;
 
             api.Permissions.RegisterPrivilege("denybreakreinforced", "Deny the ability to break reinforced blocks", false);
         }
 
-        private TextCommandResult OnCmdGroupRevokeGroup(TextCommandCallingArgs args)
+        protected TextCommandResult OnCmdGroupRevokeGroup(TextCommandCallingArgs args)
         {
             var player = args.Caller.Player as IServerPlayer;
             var groupId = args.Caller.FromChatGroupId;
@@ -220,7 +218,7 @@ namespace Vintagestory.GameContent
             return GrantRevokeGroupOwned2Group(player, groupId, args.Command.Name, groupName ,"none", EnumBlockAccessFlags.None, groupGrants);
         }
 
-        private TextCommandResult OnCmdGroupGrantGroup(TextCommandCallingArgs args)
+        protected TextCommandResult OnCmdGroupGrantGroup(TextCommandCallingArgs args)
         {
             var player = args.Caller.Player as IServerPlayer;
             var groupId = args.Caller.FromChatGroupId;
@@ -246,7 +244,7 @@ namespace Vintagestory.GameContent
             return GrantRevokeGroupOwned2Group(player, groupId, args.Command.Name, groupName ,flagString, flags, groupGrants);
         }
 
-        private static EnumBlockAccessFlags GetFlags(string flagString)
+        protected static EnumBlockAccessFlags GetFlags(string flagString)
         {
             var flags = EnumBlockAccessFlags.None;
             if (flagString != null)
@@ -259,7 +257,7 @@ namespace Vintagestory.GameContent
             return flags;
         }
 
-        private TextCommandResult OnCmdGroupRevoke(TextCommandCallingArgs args)
+        protected TextCommandResult OnCmdGroupRevoke(TextCommandCallingArgs args)
         {
             var player = args.Caller.Player as IServerPlayer;
             var groupId = args.Caller.FromChatGroupId;
@@ -291,7 +289,7 @@ namespace Vintagestory.GameContent
             return TextCommandResult.Success();
         }
 
-        private TextCommandResult OnCmdGroupGrant(TextCommandCallingArgs args)
+        protected TextCommandResult OnCmdGroupGrant(TextCommandCallingArgs args)
         {
             var player = args.Caller.Player as IServerPlayer;
             var groupId = args.Caller.FromChatGroupId;
@@ -324,7 +322,7 @@ namespace Vintagestory.GameContent
             return TextCommandResult.Success();
         }
 
-        private TextCommandResult OnCmdGrantGroup(TextCommandCallingArgs args)
+        protected TextCommandResult OnCmdGrantGroup(TextCommandCallingArgs args)
         {
             var groupName = args.Parsers[0].GetValue() as string;
             var flagString = args.Parsers[1].GetValue() as string;
@@ -332,13 +330,13 @@ namespace Vintagestory.GameContent
             return SetGroupPrivilege(args.Caller.Player as IServerPlayer, groupName, flags);
         }
 
-        private TextCommandResult OnCmdRevokeGroup(TextCommandCallingArgs args)
+        protected TextCommandResult OnCmdRevokeGroup(TextCommandCallingArgs args)
         {
             var groupName = args.Parsers[0].GetValue() as string;
             return SetGroupPrivilege(args.Caller.Player as IServerPlayer, groupName, EnumBlockAccessFlags.None);
         }
 
-        private TextCommandResult OnCmdGrant(TextCommandCallingArgs args)
+        protected TextCommandResult OnCmdGrant(TextCommandCallingArgs args)
         {
             var playerName = args.Parsers[0].GetValue() as string;
             var flagString = args.Parsers[1].GetValue() as string;
@@ -354,7 +352,7 @@ namespace Vintagestory.GameContent
             return SetPlayerPrivilege(args.Caller.Player as IServerPlayer, plrData.PlayerUID, flags);
         }
 
-        private TextCommandResult OnCmdRevoke(TextCommandCallingArgs args)
+        protected TextCommandResult OnCmdRevoke(TextCommandCallingArgs args)
         {
             var playerName = args.Parsers[0].GetValue() as string;
             var sapi = api as ICoreServerAPI;
@@ -434,12 +432,12 @@ namespace Vintagestory.GameContent
             return TextCommandResult.Success(msg);
         }
 
-        private void Event_PlayerJoin(IServerPlayer byPlayer)
+        protected void Event_PlayerJoin(IServerPlayer byPlayer)
         {
             serverChannel?.SendPacket(new PrivGrantsData() { privGrantsByOwningPlayerUid = privGrantsByOwningPlayerUid, privGrantsByOwningGroupUid = privGrantsByOwningGroupUid }, byPlayer);
         }
-        
-        private void onChunkData(ChunkReinforcementData msg)
+
+        protected void onChunkData(ChunkReinforcementData msg)
         {
             IWorldChunk chunk = api.World.BlockAccessor.GetChunk(msg.chunkX, msg.chunkY, msg.chunkZ);
             if (chunk != null)
@@ -448,26 +446,26 @@ namespace Vintagestory.GameContent
             }
         }
 
-        private void onPrivData(PrivGrantsData networkMessage)
+        protected void onPrivData(PrivGrantsData networkMessage)
         {
             this.privGrantsByOwningPlayerUid = networkMessage.privGrantsByOwningPlayerUid;
             this.privGrantsByOwningGroupUid = networkMessage.privGrantsByOwningGroupUid;
         }
 
-        void SyncPrivData()
+        protected void SyncPrivData()
         {
             serverChannel?.BroadcastPacket(new PrivGrantsData() { privGrantsByOwningPlayerUid = privGrantsByOwningPlayerUid, privGrantsByOwningGroupUid = privGrantsByOwningGroupUid });
         }
 
 
 
-        private void Event_GameWorldSave()
+        protected void Event_GameWorldSave()
         {
             (api as ICoreServerAPI).WorldManager.SaveGame.StoreData("blockreinforcementprivileges", SerializerUtil.Serialize(privGrantsByOwningPlayerUid));
             (api as ICoreServerAPI).WorldManager.SaveGame.StoreData("blockreinforcementprivilegesgroup", SerializerUtil.Serialize(privGrantsByOwningGroupUid));
         }
 
-        private void Event_SaveGameLoaded()
+        protected void Event_SaveGameLoaded()
         {
             byte[] data = (api as ICoreServerAPI).WorldManager.SaveGame.GetData("blockreinforcementprivileges");
             if (data != null)
@@ -503,7 +501,7 @@ namespace Vintagestory.GameContent
 
 
         #region Reinforcing and Locking
-        private void addReinforcementBehavior()
+        protected void addReinforcementBehavior()
         {
             foreach (Block block in api.World.Blocks)
             {
@@ -796,7 +794,7 @@ namespace Vintagestory.GameContent
 
 
 
-        Dictionary<int, BlockReinforcement> getOrCreateReinforcmentsAt(BlockPos pos)
+        protected Dictionary<int, BlockReinforcement> getOrCreateReinforcmentsAt(BlockPos pos)
         {
             byte[] data;
 
@@ -845,7 +843,7 @@ namespace Vintagestory.GameContent
             return reinforcmentsOfChunk;
         }
 
-        void SaveReinforcments(Dictionary<int, BlockReinforcement> reif, BlockPos pos)
+        protected void SaveReinforcments(Dictionary<int, BlockReinforcement> reif, BlockPos pos)
         {
             const int chunksize = GlobalConstants.ChunkSize;
             int chunkX = pos.X / chunksize;
@@ -932,20 +930,14 @@ namespace Vintagestory.GameContent
 
         #endregion
 
-        int toLocalIndex(BlockPos pos)
+        protected int toLocalIndex(BlockPos pos)
         {
             return toLocalIndex(pos.X % GlobalConstants.ChunkSize, pos.Y % GlobalConstants.ChunkSize, pos.Z % GlobalConstants.ChunkSize);
         }
 
-        int toLocalIndex(int x, int y, int z)
+        protected int toLocalIndex(int x, int y, int z)
         {
             return (y << 16) | (z << 8) | (x);
         }
-
-        Vec3i fromLocalIndex(int index)
-        {
-            return new Vec3i(index & 0xff, (index >> 16) & 0xff, (index >> 8) & 0xff);
-        }
-
     }
 }
