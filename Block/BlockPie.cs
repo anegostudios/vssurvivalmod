@@ -699,7 +699,7 @@ namespace Vintagestory.GameContent
                 // [ "mixed", "type-trailing" ]
                 string[] pieMixCode = recipe?.Code?.Split("-", 2) ?? ["single", ""];
 
-                if (pieMixCode.Length > 1)
+                if (pieMixCode[0] == "mixed")
                 {
                     foreach (EnumFoodCategory cat in allFoodCategories)
                     {
