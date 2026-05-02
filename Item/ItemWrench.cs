@@ -1,10 +1,11 @@
+using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
-
-#nullable disable
+using System;
+#nullable enable
 
 namespace Vintagestory.GameContent
 {
@@ -16,7 +17,7 @@ namespace Vintagestory.GameContent
 
     public class ItemWrench : Item
     {
-        SkillItem rotateSk;
+        SkillItem? rotateSk;
 
         public override void OnLoaded(ICoreAPI api)
         {
@@ -35,25 +36,22 @@ namespace Vintagestory.GameContent
             rotateSk?.Dispose();
         }
 
-        SkillItem[] GetExtraWrenchModes(IPlayer byPlayer, BlockSelection blockSelection)
+        SkillItem[]? GetExtraWrenchModes(IPlayer byPlayer, BlockSelection? blockSelection)
         {
-            if (blockSelection != null)
-            {
-                var block = api.World.BlockAccessor.GetBlock(blockSelection.Position);
-                var iewm = block.GetInterface<IExtraWrenchModes>(api.World, blockSelection.Position);
-                return iewm?.GetExtraWrenchModes(byPlayer, blockSelection);
-            }
+            if (blockSelection == null) return null;
 
-            return null;
+            return api.World.BlockAccessor
+                .GetBlock(blockSelection.Position)
+                .GetInterface<IExtraWrenchModes>(api.World, blockSelection.Position)?
+                .GetExtraWrenchModes(byPlayer, blockSelection);
         }
 
 
         public override int GetToolMode(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSelection)
         {
-            var skillItems = GetExtraWrenchModes(byPlayer, blockSelection);
-            if (skillItems != null) {
-                var block = api.World.BlockAccessor.GetBlock(blockSelection.Position);
-                return slot.Itemstack.Attributes.GetInt("toolMode-" + block.Id);
+            if (GetExtraWrenchModes(byPlayer, blockSelection) != null)
+            {
+                return slot.Itemstack!.Attributes.GetInt("toolMode-" + api.World.BlockAccessor.GetBlock(blockSelection.Position).Id);
             }
 
             return base.GetToolMode(slot, byPlayer, blockSelection);
@@ -61,10 +59,9 @@ namespace Vintagestory.GameContent
 
         public override SkillItem[] GetToolModes(ItemSlot slot, IClientPlayer forPlayer, BlockSelection blockSel)
         {
-            var skillItems = GetExtraWrenchModes(forPlayer, blockSel);
-            if (skillItems != null && skillItems.Length > 0)
+            if (GetExtraWrenchModes(forPlayer, blockSel) is SkillItem[] skillItems && skillItems.Length > 0)
             {
-                return new SkillItem[] { rotateSk }.Append(skillItems);
+                return [rotateSk!, .. skillItems];
             }
 
             return base.GetToolModes(slot, forPlayer, blockSel);
@@ -72,14 +69,12 @@ namespace Vintagestory.GameContent
 
         public override void SetToolMode(ItemSlot slot, IPlayer byPlayer, BlockSelection blockSelection, int toolMode)
         {
-            var skillItems = GetExtraWrenchModes(byPlayer, blockSelection);
-            if (skillItems != null && skillItems.Length > 0)
+            if (GetExtraWrenchModes(byPlayer, blockSelection)?.Length > 0)
             {
 #if DEBUG
                 api.World.Logger.Debug("Set wrench tool mode " + toolMode);
 #endif
-                var block = api.World.BlockAccessor.GetBlock(blockSelection.Position);
-                slot.Itemstack.Attributes.SetInt("toolMode-" + block.Id, toolMode);
+                slot?.Itemstack?.Attributes.SetInt("toolMode-" + api.World.BlockAccessor.GetBlock(blockSelection.Position).Id, toolMode);
                 return;
             }
 
@@ -92,7 +87,7 @@ namespace Vintagestory.GameContent
         public override void OnHeldAttackStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
             if (blockSel == null) return;
-            var player = (byEntity as EntityPlayer)?.Player;
+            IPlayer? player = (byEntity as EntityPlayer)?.Player;
 
             if (!byEntity.World.Claims.TryAccess(player, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
             {
@@ -102,7 +97,7 @@ namespace Vintagestory.GameContent
             }
 
 
-            if (handleModedInteract(slot, blockSel, player, 1))
+            if (player != null && handleModedInteract(slot, blockSel, player, 1))
             {
                 handling = EnumHandHandling.PreventDefault;
                 return;
@@ -110,7 +105,7 @@ namespace Vintagestory.GameContent
 
             if (rotate(byEntity, blockSel, 1))
             {
-                if (player.WorldData.CurrentGameMode != EnumGameMode.Creative)
+                if (player?.WorldData.CurrentGameMode != EnumGameMode.Creative)
                 {
                     DamageItem(api.World, byEntity, slot);
                 }
@@ -121,15 +116,13 @@ namespace Vintagestory.GameContent
 
         private bool handleModedInteract(ItemSlot slot, BlockSelection blockSel, IPlayer player, int interactmode)
         {
-            var skillItems = GetExtraWrenchModes(player, blockSel);
-            if (skillItems != null)
+            if (GetExtraWrenchModes(player, blockSel) != null)
             {
                 int mode = GetToolMode(slot, player, blockSel);
                 if (mode > 0)
                 {
-                    var block = api.World.BlockAccessor.GetBlock(blockSel.Position);
-                    var iewm = block.GetInterface<IExtraWrenchModes>(api.World, blockSel.Position);
-                    if (iewm != null)
+                    Block block = api.World.BlockAccessor.GetBlock(blockSel.Position);
+                    if (block.GetInterface<IExtraWrenchModes>(api.World, blockSel.Position) is IExtraWrenchModes iewm)
                     {
                         iewm.OnWrenchInteract(player, blockSel, mode - 1, interactmode);
                         return true;
@@ -146,7 +139,7 @@ namespace Vintagestory.GameContent
             if (handling == EnumHandHandling.PreventDefault) return;
             if (blockSel == null) return;
 
-            var player = (byEntity as EntityPlayer)?.Player;
+            IPlayer? player = (byEntity as EntityPlayer)?.Player;
 
             if (!byEntity.World.Claims.TryAccess(player, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
             {
@@ -156,8 +149,7 @@ namespace Vintagestory.GameContent
             }
 
 
-            var decors = api.World.BlockAccessor.GetSubDecors(blockSel.Position);
-            if (decors != null)
+            if (api.World.BlockAccessor.GetSubDecors(blockSel.Position) is Dictionary<int, Block> decors)
             {
                 int targetSubPos = blockSel.ToDecorIndex() / 6;
                 foreach (var decorAndPos in decors)
@@ -181,7 +173,7 @@ namespace Vintagestory.GameContent
             }
 
 
-            if (handleModedInteract(slot, blockSel, player, 0))
+            if (player != null && handleModedInteract(slot, blockSel, player, 0))
             {
                 handling = EnumHandHandling.PreventDefault;
                 return;
@@ -189,50 +181,54 @@ namespace Vintagestory.GameContent
 
             if (rotate(byEntity, blockSel, -1))
             {
-                if (player.WorldData.CurrentGameMode != EnumGameMode.Creative)
+                if (player?.WorldData.CurrentGameMode != EnumGameMode.Creative)
                 {
                     DamageItem(api.World, byEntity, slot);
                 }
             }
 
-            handling = EnumHandHandling.PreventDefault;
+            handling = EnumHandHandling.NotHandled;
         }
 
         private bool rotate(EntityAgent byEntity, BlockSelection blockSel, int dir)
         {
-            IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
-            if (byPlayer == null) return false;
+            if ((byEntity as EntityPlayer)?.Player is not IPlayer byPlayer) return false;
 
-            var block = api.World.BlockAccessor.GetBlock(blockSel.Position);
-            var iwre = block.GetInterface<IWrenchOrientable>(api.World, blockSel.Position);
-            if (iwre != null)
+            Block block = api.World.BlockAccessor.GetBlock(blockSel.Position);
+            if (block.GetInterface<IWrenchOrientable>(api.World, blockSel.Position) is IWrenchOrientable iwo)
             {
-                Rotate(blockSel, dir, byPlayer, block, iwre);
+                Rotate(blockSel, dir, byPlayer, block, iwo);
                 return true;
             }
 
-            BlockBehaviorWrenchOrientable bhWOrientable = block.GetBehavior<BlockBehaviorWrenchOrientable>();
-            if (bhWOrientable == null) return false;
+            if (block.GetBehavior<BlockBehaviorWrenchOrientable>() is not BlockBehaviorWrenchOrientable bwo) return false;
 
-            using var types = BlockBehaviorWrenchOrientable.VariantsByType[bhWOrientable.BaseCode].GetEnumerator();
-            
+            using var types = BlockBehaviorWrenchOrientable.VariantsByType[bwo.BaseCode].GetEnumerator();
+
             while (types.MoveNext())
             {
-                if (types.Current != null && types.Current.Equals(bhWOrientable.block.Code))
+                if (types.Current?.Equals(bwo.block.Code) ?? false)
                 {
                     break;
                 }
             }
 
             // advance to the next element, if at end take first
-            var newcode = types.MoveNext() ? types.Current : BlockBehaviorWrenchOrientable.VariantsByType[bhWOrientable.BaseCode].First();
-            var newblock = api.World.GetBlock(newcode);
+            var newCode = types.MoveNext() ? types.Current : BlockBehaviorWrenchOrientable.VariantsByType[bwo.BaseCode].First();
 
-            api.World.BlockAccessor.ExchangeBlock(newblock.Id, blockSel.Position);
-            if (api.Side == EnumAppSide.Client) api.World.BlockAccessor.RedrawNeighbouringChunk(blockSel.Position);
+            if (api.World.GetBlock(newCode) is Block newBlock)
+            {
 
-            api.World.PlaySoundAt(newblock.Sounds.Place, blockSel.Position, 0, byPlayer);
-            (api.World as IClientWorldAccessor)?.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+                api.World.BlockAccessor.ExchangeBlock(newBlock.Id, blockSel.Position);
+                if (api.Side == EnumAppSide.Client) api.World.BlockAccessor.RedrawNeighbouringChunk(blockSel.Position);
+
+                api.World.PlaySoundAt(newBlock.Sounds.Place, blockSel.Position, 0, byPlayer);
+                (api.World as IClientWorldAccessor)?.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+            }
+            else
+            {
+                api.World.Logger.Warning($"Couldn't find BlockBehaviorWrenchOrientable variant {newCode} for {block.Code}");
+            }
 
             return true;
         }

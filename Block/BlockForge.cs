@@ -8,26 +8,26 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
-#nullable disable
+#nullable enable
 
 namespace Vintagestory.GameContent
 {
     public class BlockForge : Block, IIgnitable
     {
-        WorldInteraction[] interactions;
+        WorldInteraction[]? interactions;
 
-        public List<ItemStack> coalStacklist = new List<ItemStack>();
+
+        public List<ItemStack> coalStacklist = [];
 
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
 
-            if (api.Side != EnumAppSide.Client) return;
-            ICoreClientAPI capi = api as ICoreClientAPI;
+            if (api is not ICoreClientAPI capi) return;
 
             interactions = ObjectCacheUtil.GetOrCreate(api, "forgeBlockInteractions", () =>
             {
-                List<ItemStack> heatableStacklist = new List<ItemStack>();
+                List<ItemStack> heatableStacklist = [];
                 List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(api, false);
 
                 foreach (CollectibleObject obj in api.World.Collectibles)
@@ -36,8 +36,7 @@ namespace Vintagestory.GameContent
 
                     if (firstCodePart == "ingot" || firstCodePart == "metalplate" || firstCodePart == "workitem")
                     {
-                        List<ItemStack> stacks = obj.GetHandBookStacks(capi);
-                        if (stacks != null) heatableStacklist.AddRange(stacks);
+                        if (obj.GetHandBookStacks(capi) is List<ItemStack> stacks) heatableStacklist.AddRange(stacks);
                     }
                     else
                     {
@@ -58,10 +57,9 @@ namespace Vintagestory.GameContent
                         Itemstacks = heatableStacklist.ToArray(),
                         GetMatchingStacks = (wi, bs, es) =>
                         {
-                            BlockEntityForge bef = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityForge;
-                            if (bef!= null && bef.WorkItemStack != null)
+                            if (api.World.BlockAccessor.GetBlockEntity(bs.Position) is BlockEntityForge bef && bef.WorkItemStack is ItemStack workStack)
                             {
-                                return wi.Itemstacks.Where(stack => stack.Equals(api.World, bef.WorkItemStack, GlobalConstants.IgnoredStackAttributes)).ToArray();
+                                return wi.Itemstacks.Where(stack => stack.Equals(api.World, workStack, GlobalConstants.IgnoredStackAttributes)).ToArray();
                             }
                             return wi.Itemstacks;
                         }
@@ -74,10 +72,9 @@ namespace Vintagestory.GameContent
                         Itemstacks = heatableStacklist.ToArray(),
                         GetMatchingStacks = (wi, bs, es) =>
                         {
-                            BlockEntityForge bef = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityForge;
-                            if (bef!= null && bef.WorkItemStack != null)
+                            if (api.World.BlockAccessor.GetBlockEntity(bs.Position) is BlockEntityForge bef && bef.WorkItemStack is ItemStack workStack)
                             {
-                                return new ItemStack[] { bef.WorkItemStack };
+                                return [ workStack ];
                             }
                             return null;
                         }
@@ -90,8 +87,7 @@ namespace Vintagestory.GameContent
                         Itemstacks = coalStacklist.ToArray(),
                         GetMatchingStacks = (wi, bs, es) =>
                         {
-                            BlockEntityForge bef = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityForge;
-                            if (bef!= null && bef.FuelLevel < 5/16f)
+                            if (api.World.BlockAccessor.GetBlockEntity(bs.Position) is BlockEntityForge bef && bef.FuelLevel < 5/16f)
                             {
                                 return wi.Itemstacks;
                             }
@@ -105,8 +101,7 @@ namespace Vintagestory.GameContent
                         MouseButton = EnumMouseButton.Right,
                         Itemstacks = canIgniteStacks.ToArray(),
                         GetMatchingStacks = (wi, bs, es) => {
-                            BlockEntityForge bef = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityForge;
-                            if (bef!= null && bef.CanIgnite && !bef.IsBurning)
+                            if (api.World.BlockAccessor.GetBlockEntity(bs.Position) is BlockEntityForge bef && bef.CanIgnite && !bef.IsBurning)
                             {
                                 return wi.Itemstacks;
                             }
@@ -132,32 +127,32 @@ namespace Vintagestory.GameContent
         {
             if (!base.DoPlaceBlock(world, byPlayer, blockSel, byItemStack)) return false;
 
-            var beforge = GetBlockEntity<BlockEntityForge>(blockSel.Position);
-            if (beforge == null) return true;
-            
+            if (GetBlockEntity<BlockEntityForge>(blockSel.Position) is not BlockEntityForge bef) return true;
+
             BlockPos targetPos = blockSel.DidOffset ? blockSel.Position.AddCopy(blockSel.Face.Opposite) : blockSel.Position;
             double dx = byPlayer.Entity.Pos.X - (targetPos.X + blockSel.HitPosition.X);
             double dz = (float)byPlayer.Entity.Pos.Z - (targetPos.Z + blockSel.HitPosition.Z);
             float angleHor = (float)Math.Atan2(dx, dz);
 
             float deg90 = GameMath.PIHALF;
-            beforge.MeshAngleRad = ((int)Math.Round(angleHor / deg90)) * deg90;
+            bef.MeshAngleRad = ((int)Math.Round(angleHor / deg90)) * deg90;
 
             return true;
         }
 
         EnumIgniteState IIgnitable.OnTryIgniteStack(EntityAgent byEntity, BlockPos pos, ItemSlot slot, float secondsIgniting)
         {
-            BlockEntityForge bea = byEntity.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityForge;
-            if (bea.IsBurning) return secondsIgniting > 2 ? EnumIgniteState.IgniteNow : EnumIgniteState.Ignitable;
+            if (byEntity.World.BlockAccessor.GetBlockEntity(pos) is BlockEntityForge bef && bef.IsBurning)
+            {
+                return secondsIgniting > 2 ? EnumIgniteState.IgniteNow : EnumIgniteState.Ignitable;
+            }
+
             return EnumIgniteState.NotIgnitable;
         }
 
         public EnumIgniteState OnTryIgniteBlock(EntityAgent byEntity, BlockPos pos, float secondsIgniting)
         {
-            BlockEntityForge bea = byEntity.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityForge;
-
-            if (bea==null || !bea.CanIgnite)
+            if (byEntity.World.BlockAccessor.GetBlockEntity(pos) is not BlockEntityForge bef || !bef.CanIgnite)
             {
                 return EnumIgniteState.NotIgnitablePreventDefault;
             }
@@ -167,18 +162,17 @@ namespace Vintagestory.GameContent
                 Random rand = byEntity.World.Rand;
                 Vec3d dpos = new Vec3d(pos.X + 2 / 8f + 4 / 8f * rand.NextDouble(), pos.InternalY + 7 / 8f, pos.Z + 2 / 8f + 4 / 8f * rand.NextDouble());
 
-                Block blockFire = byEntity.World.GetBlock(new AssetLocation("fire"));
+                if (byEntity.World.GetBlock(new AssetLocation("fire")) is Block blockFire)
+                {
 
-                AdvancedParticleProperties props = blockFire.ParticleProperties[blockFire.ParticleProperties.Length - 1];
-                props.basePos = dpos;
-                props.Quantity.avg = 1;
+                    AdvancedParticleProperties props = blockFire.ParticleProperties[blockFire.ParticleProperties.Length - 1];
+                    props.basePos = dpos;
+                    props.Quantity.avg = 1;
 
-                IPlayer byPlayer = null;
-                if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
+                    byEntity.World.SpawnParticles(props, byEntity.World.PlayerByUid((byEntity as EntityPlayer)?.PlayerUID));
 
-                byEntity.World.SpawnParticles(props, byPlayer);
-
-                props.Quantity.avg = 0;
+                    props.Quantity.avg = 0;
+                }
             }
 
             if (secondsIgniting >= 1.5f)
@@ -195,21 +189,17 @@ namespace Vintagestory.GameContent
 
             handling = EnumHandling.PreventDefault;
 
-            IPlayer byPlayer = null;
-            if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
-            if (byPlayer == null) return;
+            if (byEntity.World.PlayerByUid((byEntity as EntityPlayer)?.PlayerUID) == null) return;
 
-            BlockEntityForge bea = byEntity.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityForge;
-            bea?.TryIgnite();
+            (byEntity.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityForge)?.TryIgnite();
         }
 
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
-            BlockEntityForge bea = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityForge;
-            if (bea != null)
+            if (world.BlockAccessor.GetBlockEntity(blockSel.Position) is BlockEntityForge bef)
             {
-                return bea.OnPlayerInteract(world, byPlayer, blockSel);
+                return bef.OnPlayerInteract(world, byPlayer, blockSel);
             }
 
             return base.OnBlockInteractStart(world, byPlayer, blockSel);
