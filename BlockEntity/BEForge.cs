@@ -262,7 +262,7 @@ namespace Vintagestory.GameContent
 
         public bool OnPlayerInteract(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
-            ItemSlot heldSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
+            if (byPlayer?.InventoryManager?.ActiveHotbarSlot is not ItemSlot heldSlot) return false;
 
             if (!byPlayer.Entity.Controls.ShiftKey)
             {

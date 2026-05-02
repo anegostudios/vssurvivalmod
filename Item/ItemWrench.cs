@@ -139,6 +139,8 @@ namespace Vintagestory.GameContent
             if (handling == EnumHandHandling.PreventDefault) return;
             if (blockSel == null) return;
 
+            if (byEntity.World.BlockAccessor.GetBlockEntity<BlockEntityForge>(blockSel.Position) != null) return;
+
             IPlayer? player = (byEntity as EntityPlayer)?.Player;
 
             if (!byEntity.World.Claims.TryAccess(player, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
@@ -187,7 +189,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            handling = EnumHandHandling.NotHandled;
+            handling = EnumHandHandling.PreventDefault;
         }
 
         private bool rotate(EntityAgent byEntity, BlockSelection blockSel, int dir)
