@@ -433,7 +433,7 @@ namespace Vintagestory.GameContent
             abundanceValue *= pondSize / 1200f;
             if (printDebug)
             {
-                System.Diagnostics.Debug.WriteLine("Pond size: " + pondSize);
+                System.Diagnostics.Debug.WriteLine("3. Pond size: " + pondSize);
             }
 
             // 4. Now filter by fish depletion map
