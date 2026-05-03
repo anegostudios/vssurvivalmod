@@ -109,7 +109,6 @@ namespace Vintagestory.GameContent
     public class EntityBobber : EntityProjectile, IRopeRippedListener
     {
         protected float swimmingAccum = 0f;
-        protected float accum = 0f;
         protected float catchAccum = 0f;
         protected float junkCatchChance = 0f;
         protected EnumBobberState bobberState;
