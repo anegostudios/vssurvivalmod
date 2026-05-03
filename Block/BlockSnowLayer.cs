@@ -82,9 +82,12 @@ namespace Vintagestory.GameContent
             var uBlock = block;
             if (uBlock != null && nBlock?.GetSnowLevel(pos) < 8)
             {
-                while (nBlock.GetSnowLevel(pos) < 8 && uBlock != null)
+                while (uBlock != null && nBlock.GetSnowLevel(pos) < 8)
                 {
-                    nBlock = nBlock.GetSnowCoveredVariant(pos, nBlock.GetSnowLevel(pos) + 1);
+                    var nextnBlock = nBlock.GetSnowCoveredVariant(pos, nBlock.GetSnowLevel(pos) + 1);
+                    if (nextnBlock == null) break;
+
+                    nBlock = nextnBlock;
                     uBlock = uBlock.GetSnowCoveredVariant(pos, uBlock.GetSnowLevel(pos) - 1);
                 }
 

@@ -28,10 +28,8 @@ namespace Vintagestory.GameContent
         protected ICoreClientAPI capi;
         protected ILoadedSound grindSound;
         protected ILoadedSound turnSound;
-
         public Dictionary<string, float> PlayersGrinding = new Dictionary<string, float>();
         public bool Grinding;
-
 
 
         public virtual CompositeShape Shape
