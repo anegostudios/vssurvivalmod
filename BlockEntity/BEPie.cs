@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,6 +6,8 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
+
+#nullable enable
 
 namespace Vintagestory.GameContent
 {
@@ -170,13 +172,13 @@ namespace Vintagestory.GameContent
 
             ItemSlot? hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
-            EnumTool? tool = hotbarSlot?.Itemstack?.Collectible.GetTool(hotbarSlot);
-            if (tool is EnumTool.Knife or EnumTool.Sword)
+            if (hotbarSlot?.Itemstack?.Collectible.GetTool(hotbarSlot) is { } tool && tool is EnumTool.Knife or EnumTool.Sword)
             {
                 if (pieBlock.State != "raw")
                 {
                     if (Api.Side == EnumAppSide.Server && TakeSlice() is { } slicestack)
                     {
+                        hotbarSlot.Itemstack.Collectible.DamageItem(byPlayer.Entity.World, byPlayer.Entity, hotbarSlot);
                         if (!byPlayer.InventoryManager.TryGiveItemstack(slicestack))
                         {
                             Api.World.SpawnItemEntity(slicestack, Pos);
@@ -188,7 +190,8 @@ namespace Vintagestory.GameContent
                         );
                     }
 
-                } else
+                }
+                else
                 {
                     // Cycle top crust type
                     ItemStack?[] cStacks = pieBlock.GetContents(Api.World, inv[0].Itemstack);
@@ -209,7 +212,12 @@ namespace Vintagestory.GameContent
             //    a.) be of same foodcat
             //    b.) have props.AllowMixing set to true
 
-            if (hotbarSlot?.Empty == false && pieBlock.State == "raw")
+            // If the pie can be picked up into the current hotbar slot,
+            // skip trying to add the held stack as filling. Prevents
+            // the cannot be added to pies" error message.
+            bool canPickUpIntoHand = hotbarSlot?.Empty == false && inv[0].Itemstack?.Collectible.GetMergableQuantity(hotbarSlot.Itemstack, inv[0].Itemstack, EnumMergePriority.DirectMerge) > 0;
+
+            if (hotbarSlot?.Empty == false && !canPickUpIntoHand && pieBlock.State == "raw")
             {
                 bool added = TryAddIngredientFrom(hotbarSlot, byPlayer);
                 if (added)
@@ -227,6 +235,11 @@ namespace Vintagestory.GameContent
             {
                 inv[0].Itemstack?.Attributes.SetBool("bakeable", false);
                 inv[0].Itemstack?.Attributes.SetFloat("quantityServings", 0.25f);
+            }
+
+            if (byPlayer.Entity.Controls.ShiftKey)
+            {
+                return false;
             }
 
             if (Api.Side == EnumAppSide.Server)
@@ -248,19 +261,28 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        private bool TryAddIngredientFrom(ItemSlot slot, IPlayer? byPlayer = null)
+        public bool CanAddIngredient(ItemStack? stack)
         {
-            var capi = Api as ICoreClientAPI;
-            var pieProps = slot.Itemstack?.ItemAttributes?["inPieProperties"]?.AsObject<InPieProperties?>(null, slot.Itemstack.Collectible.Code.Domain);
-            if (pieProps == null)
+            return CanAddIngredient(stack, out _, out _, out _);
+        }
+
+        public bool CanAddIngredient(ItemStack? stack, out int emptySlotIndex, out string? errCode, out string? errMessage)
+        {
+            errCode = null;
+            errMessage = null;
+            emptySlotIndex = -1;
+
+            if (stack?.ItemAttributes["inPieProperties"].AsObject<InPieProperties>(null, stack.Collectible.Code.Domain) is not { } pieProps)
             {
-                if (byPlayer != null && capi != null) capi.TriggerIngameError(this, "notpieable", Lang.Get("This item can not be added to pies"));
+                errCode = "notpieable";
+                errMessage = Lang.Get("This item can not be added to pies");
                 return false;
             }
 
-            if (slot.StackSize < 2)
+            if (stack.StackSize < 2)
             {
-                if (byPlayer != null && capi != null) capi.TriggerIngameError(this, "notpieable", Lang.Get("Need at least 2 items each"));
+                errCode = "notpieable";
+                errMessage = Lang.Get("Need at least 2 items each");
                 return false;
             }
 
@@ -268,45 +290,38 @@ namespace Vintagestory.GameContent
 
             ItemStack?[] cStacks = pieBlock.GetContents(Api.World, inv[0].Itemstack);
 
-            bool isFull = cStacks[1] != null && cStacks[2] != null && cStacks[3] != null && cStacks[4] != null;
-            bool hasFilling = cStacks[1] != null || cStacks[2] != null || cStacks[3] != null || cStacks[4] != null;
-
-            if (isFull)
+            if (HasAllFilling)
             {
                 if (pieProps.PartType == EnumPiePartType.Crust)
                 {
-                    if (cStacks[5] == null)
-                    {
-                        cStacks[5] = slot.TakeOut(2);
-                        pieBlock.SetContents(inv[0].Itemstack, cStacks);
-                        // crust attribute must exist to stack together
-                        inv[0].Itemstack.Attributes.SetString("topCrustType", "full");
-                    } else inv[0].Itemstack = BlockPie.CycleTopCrustType(inv[0].Itemstack);
+                    emptySlotIndex = 5;
                     return true;
                 }
-                if (byPlayer != null && capi != null) capi.TriggerIngameError(this, "piefullfilling", Lang.Get("Can't add more filling - already completely filled pie"));
-                return false;
+                else
+                {
+                    errCode = "piefullfilling";
+                    errMessage = Lang.Get("Can't add more filling - already completely filled pie");
+                    return false;
+                }
             }
 
             if (pieProps.PartType != EnumPiePartType.Filling)
             {
-                if (byPlayer != null && capi != null) capi.TriggerIngameError(this, "pieneedsfilling", Lang.Get("Need to add a filling next"));
+                errCode = "pieneedsfilling";
+                errMessage = Lang.Get("Need to add a filling next");
                 return false;
             }
 
-
-            if (!hasFilling)
+            if (!HasAnyFilling)
             {
-                cStacks[1] = slot.TakeOut(2);
-                pieBlock.SetContents(inv[0].Itemstack, cStacks);
+                emptySlotIndex = 1;
                 return true;
             }
 
             var foodCats = cStacks.Select(BlockPie.FillingFoodCategory).ToArray();
             var stackprops = cStacks.Select(stack => stack?.ItemAttributes?["inPieProperties"]?.AsObject<InPieProperties?>(null, stack.Collectible.Code.Domain)).ToArray();
 
-            ItemStack? cstack = slot.Itemstack;
-            EnumFoodCategory foodCat = BlockPie.FillingFoodCategory(cstack);
+            EnumFoodCategory foodCat = BlockPie.FillingFoodCategory(stack);
 
             bool equal = true;
             bool foodCatEquals = true;
@@ -315,42 +330,70 @@ namespace Vintagestory.GameContent
 
             for (int i = 1; (equal || foodCatEquals || mixCodes.Any()) && i < cStacks.Length - 1; i++)
             {
-                if (cstack == null) continue;
+                if (stack == null) continue;
 
-                equal &= cStacks[i] == null || cstack.Equals(Api.World, cStacks[i], GlobalConstants.IgnoredStackAttributes);
+                equal &= cStacks[i] == null || stack.Equals(Api.World, cStacks[i], GlobalConstants.IgnoredStackAttributes);
                 foodCatEquals &= cStacks[i] == null || foodCats[i] == foodCat;
                 allowMixing &= stackprops[i]?.AllowMixing != false;
                 mixCodes = stackprops[i]?.MixingCodes.Intersect(mixCodes) ?? mixCodes;
 
-                cstack = cStacks[i];
+                stack = cStacks[i];
                 foodCat = foodCats[i];
             }
 
-            int emptySlotIndex = 2 + (cStacks[2] != null ? 1 + (cStacks[3] != null ? 1 : 0) : 0);
+            emptySlotIndex = 2 + (cStacks[2] != null ? 1 + (cStacks[3] != null ? 1 : 0) : 0);
 
             if (equal)
             {
-                cStacks[emptySlotIndex] = slot.TakeOut(2);
-                pieBlock.SetContents(inv[0].Itemstack, cStacks);
                 return true;
             }
 
             if (!foodCatEquals && !mixCodes.Any())
             {
-                if (byPlayer != null && capi != null) capi.TriggerIngameError(this, "piefullfilling", Lang.Get("piemaking-unabletomixingredient"));
+                errCode = "piefullfilling";
+                errMessage = Lang.Get("piemaking-unabletomixingredient");
                 return false;
-            } else
-            {
-                if (!allowMixing)
-                {
-                    if (byPlayer != null && capi != null) capi.TriggerIngameError(this, "piefullfilling", Lang.Get("piemaking-mixingnotallowed"));
-                    return false;
-                }
-
-                cStacks[emptySlotIndex] = slot.TakeOut(2);
-                pieBlock.SetContents(inv[0].Itemstack, cStacks);
-                return true;
             }
+            else if (!allowMixing)
+            {
+                errCode = "piefullfilling";
+                errMessage = Lang.Get("piemaking-mixingnotallowed");
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool TryAddIngredientFrom(ItemSlot slot, IPlayer? byPlayer = null)
+        {
+            ICoreClientAPI? capi = byPlayer != null ? Api as ICoreClientAPI : null;
+
+            if (inv[0].Itemstack?.Block is not BlockPie pieBlock) return false;
+
+            if (!CanAddIngredient(slot.Itemstack, out int emptySlotIndex, out string? errCode, out string? errMessage))
+            {
+                capi?.TriggerIngameError(this, errCode, errMessage);
+                return false;
+            }
+
+            ItemStack[] cStacks = pieBlock.GetContents(Api.World, inv[0].Itemstack);
+            if (emptySlotIndex == 5)
+            {
+                if (cStacks[5] == null)
+                {
+                    // Crust attribute must exist to stack together
+                    inv[0].Itemstack?.Attributes.SetString("topCrustType", "full");
+                }
+                else
+                {
+                    inv[0].Itemstack = BlockPie.CycleTopCrustType(inv[0].Itemstack);
+                    return true;
+                }
+            }
+            cStacks[emptySlotIndex] = slot.TakeOut(2);
+            pieBlock.SetContents(inv[0].Itemstack, cStacks);
+
+            return true;
         }
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)

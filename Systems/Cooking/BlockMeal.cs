@@ -62,7 +62,8 @@ namespace Vintagestory.GameContent
 
             if (CollisionBoxes[0] != null) gsSmokePos.Y = CollisionBoxes[0].MaxY;
 
-            BlockMeal[] mealBowls = ObjectCacheUtil.GetOrCreate(api, "allMealBowls", () => {
+            BlockMeal[] mealBowls = ObjectCacheUtil.GetOrCreate(api, "allMealBowls", () =>
+            {
                 List<BlockMeal> mealList = new();
                 foreach (var b in api.World.Blocks)
                 {
@@ -137,7 +138,7 @@ namespace Vintagestory.GameContent
 
         protected virtual bool tryHeldBeginEatMeal(ItemSlot slot, EntityAgent byEntity, ref EnumHandHandling handHandling)
         {
-            if (!byEntity.Controls.ShiftKey && GetContentNutritionProperties(api.World, slot, byEntity) != null)
+            if (GetContentNutritionProperties(api.World, slot, byEntity) != null)
             {
                 byEntity.World.RegisterCallback((dt) =>
                 {
@@ -296,7 +297,8 @@ namespace Vintagestory.GameContent
                 servingsLeft = Consume(byEntity.World, player, slot, stacks, servingsLeft, string.IsNullOrEmpty(recipeCode));
             }
 
-            if (servingsLeft <= 0)
+            // Delete tiny servings
+            if (servingsLeft < 0.01)
             {
                 if (handleAllServingsConsumed)
                 {
@@ -332,15 +334,19 @@ namespace Vintagestory.GameContent
                 }
                 else
                 {
-                    ItemStack? splitStack = slot.TakeOut(1);
-                    (foodSourceStack.Collectible as BlockMeal)?.SetQuantityServings(byEntity.World, splitStack, servingsLeft);
+                    ItemStack? partiallyEatenStack = slot.TakeOut(1);
+                    (foodSourceStack.Collectible as BlockMeal)?.SetQuantityServings(byEntity.World, partiallyEatenStack, servingsLeft);
 
-                    ItemStack originalStack = slot.Itemstack;
-                    slot.Itemstack = splitStack;
+                    ItemStack fullMealsStack = slot.TakeOutWhole();
+                    slot.Itemstack = partiallyEatenStack;
 
-                    if (!player.InventoryManager.TryGiveItemstack(originalStack, true))
+                    if (!player.InventoryManager.TryGiveItemstack(fullMealsStack, true))
                     {
-                        byEntity.World.SpawnItemEntity(originalStack, byEntity.Pos.XYZ);
+                        // If the player doesn't have an empty slot, make sure we give them
+                        // the stack of full meals instead of dropping everything except
+                        // the partially eaten one.
+                        slot.Itemstack = fullMealsStack;
+                        byEntity.World.SpawnItemEntity(partiallyEatenStack, byEntity.Pos.XYZ);
                     }
                 }
             }
@@ -680,6 +686,7 @@ namespace Vintagestory.GameContent
             }
 
             StringBuilder sb = new StringBuilder();
+            sb.AppendLine(Lang.Get("When eaten: {0} sat", Math.Round(totalSaturation.Values.Sum())));
             sb.AppendLine(Lang.Get("Nutrition Facts"));
 
             foreach (var val in totalSaturation)
@@ -687,9 +694,9 @@ namespace Vintagestory.GameContent
                 sb.AppendLine(Lang.Get("nutrition-facts-line-satiety", Lang.Get("foodcategory-" + val.Key.ToString().ToLowerInvariant()), Math.Round(val.Value)));
             }
 
-            if (totalHealth != 0)
+            if (Math.Round(totalHealth, 2) != 0)
             {
-                sb.AppendLine("- " + Lang.Get("Health: {0}{1} hp", totalHealth > 0 ? "+" : "", totalHealth));
+                sb.AppendLine("- " + Lang.Get("Health: {0}{1} hp", totalHealth > 0 ? "+" : "", Math.Round(totalHealth, 2)));
             }
 
             return sb.ToString();
@@ -802,11 +809,6 @@ namespace Vintagestory.GameContent
         {
             if (inSlot.Itemstack is not ItemStack mealStack) return;
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
-            float temp = GetTemperature(world, mealStack);
-            if (temp > 20)
-            {
-                dsc.AppendLine(Lang.Get("Temperature: {0}°C", (int)temp));
-            }
 
             CookingRecipe? recipe = GetCookingRecipe(world, mealStack);
 
@@ -922,7 +924,8 @@ namespace Vintagestory.GameContent
                             world.SpawnItemEntity(stacks[i], entityItem.Pos.XYZ);
                         }
                     }
-                } else
+                }
+                else
                 {
                     ItemStack rndStack = stacks[world.Rand.Next(stacks.Length)];
                     world.SpawnCubeParticles(entityItem.Pos.XYZ, rndStack, 0.3f, 25, 1, null);

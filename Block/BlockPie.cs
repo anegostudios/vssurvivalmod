@@ -10,6 +10,8 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
+#nullable enable
+
 namespace Vintagestory.GameContent
 {
     public class PieTopCrustType
@@ -95,7 +97,7 @@ namespace Vintagestory.GameContent
                         ActionLangCode = "blockhelp-pie-addfilling",
                         MouseButton = EnumMouseButton.Right,
                         Itemstacks = fillStacks.ToArray(),
-                        GetMatchingStacks = (wi, bs, _) => GetBlockEntity<BlockEntityPie>(bs.Position) is { State: "raw", HasAllFilling: false } ? wi.Itemstacks : null
+                        GetMatchingStacks = (wi, bs, _) => GetBlockEntity<BlockEntityPie>(bs.Position) is { State: "raw", HasAllFilling: false } ? wi.Itemstacks.Where(stack => GetBlockEntity<BlockEntityPie>(bs.Position).CanAddIngredient(stack)).ToArray() : null
                     },
                     new() {
                         ActionLangCode = "blockhelp-pie-addcrust",
@@ -143,8 +145,6 @@ namespace Vintagestory.GameContent
         {
             return slot.Itemstack?.Attributes?.GetAsInt("pieSize") == 1 && State != "raw";
         }
-
-
 
 
         ModelTransform oneSliceTranformGui = new ModelTransform()
@@ -267,15 +267,15 @@ namespace Vintagestory.GameContent
 
             if (cstack == null) return Lang.Get("pie-empty");
 
-            bool equal = true;
-            bool foodCatEquals = true;
+            bool singleIngredient = true;
+            bool singleFoodCat = true;
             IEnumerable<string> mixCodes = cstack.ItemAttributes["inPieProperties"].AsObject<InPieProperties>()?.MixingCodes ?? [];
-            for (int i = 2; (equal || foodCatEquals || mixCodes.Any()) && i < cStacks.Length - 1; i++)
+            for (int i = 2; (singleIngredient || singleFoodCat || mixCodes.Any()) && i < cStacks.Length - 1; i++)
             {
                 if (cStacks[i] == null) continue;
 
-                equal &= cstack.Equals(api.World, cStacks[i], GlobalConstants.IgnoredStackAttributes);
-                foodCatEquals &= cStacks[i] == null || foodCats[i] == foodCat;
+                singleIngredient &= cstack.Equals(api.World, cStacks[i], GlobalConstants.IgnoredStackAttributes);
+                singleFoodCat &= cStacks[i] == null || foodCats[i] == foodCat;
                 mixCodes = cstack.ItemAttributes["inPieProperties"].AsObject<InPieProperties>()?.MixingCodes.Intersect(mixCodes) ?? [];
 
                 cstack = cStacks[i];
@@ -289,14 +289,14 @@ namespace Vintagestory.GameContent
                 return Lang.Get("pie-single-rotten");
             }
 
-            if (equal)
+            if (singleIngredient)
             {
                 return Lang.Get("pie-single-" + cstack.Collectible.Code.ToShortString() + "-" + state);
             }
 
-            if (!foodCatEquals && mixCodes.Any())
+            if (!singleFoodCat && mixCodes.Any())
             {
-                return Lang.Get("pie-mixed-" + mixCodes.First() + "-" +state);
+                return Lang.Get("pie-mixed-" + mixCodes.First() + "-" + state);
             }
 
             return Lang.Get("pie-mixed-" + FillingFoodCategory(cStacks[1]).ToString().ToLowerInvariant() + "-" + state);
@@ -329,7 +329,7 @@ namespace Vintagestory.GameContent
 
             int pieSize = pieStack.Attributes.GetAsInt("pieSize");
             float servingsLeft = GetQuantityServings(world, pieStack);
-            if (!pieStack.Attributes.HasAttribute("quantityServings")) servingsLeft = 1;
+            if (pieStack.Attributes?.HasAttribute("quantityServings") == false) servingsLeft = pieStack.Attributes.GetAsInt("pieSize") / 4f;
 
             if (pieSize == 1)
             {
@@ -363,8 +363,8 @@ namespace Vintagestory.GameContent
             ItemStack[] stacks = GetContents(api.World, pieStack);
             StringBuilder sb = new StringBuilder();
 
-            TransitionableProperties[] propsm = pieStack.Collectible.GetTransitionableProperties(api.World, pieStack, null);
-            if (propsm != null && propsm.Length > 0)
+            TransitionableProperties[]? propsm = pieStack.Collectible.GetTransitionableProperties(api.World, pieStack, null);
+            if (propsm?.Length > 0)
             {
                 pieStack.Collectible.AppendPerishableInfoText(bepInv[0], sb, api.World);
             }
@@ -381,62 +381,10 @@ namespace Vintagestory.GameContent
             return str;
         }
 
-        public override TransitionState? UpdateAndGetTransitionState(IWorldAccessor world, ItemSlot inslot, EnumTransitionType type)
-        {
-            ItemStack[] cstacks = GetContents(world, inslot.Itemstack);
-            UnspoilContents(world, cstacks);
-            SetContents(inslot.Itemstack, cstacks);
-
-            return base.UpdateAndGetTransitionState(world, inslot, type);
-        }
-
         public override TransitionState[]? UpdateAndGetTransitionStates(IWorldAccessor world, ItemSlot inslot)
         {
-            ItemStack[] cstacks = GetContents(world, inslot.Itemstack);
-            UnspoilContents(world, cstacks);
-            SetContents(inslot.Itemstack, cstacks);
-
-
             return base.UpdateAndGetTransitionStatesNative(world, inslot);
         }
-
-
-        public override string GetContentNutritionFacts(IWorldAccessor world, ItemSlot inSlotorFirstSlot, ItemStack[] contentStacks, EntityAgent? forEntity, bool mulWithStacksize = false, float nutritionMul = 1, float healthMul = 1)
-        {
-            UnspoilContents(world, contentStacks);
-
-            return base.GetContentNutritionFacts(world, inSlotorFirstSlot, contentStacks, forEntity, mulWithStacksize, nutritionMul, healthMul);
-        }
-
-
-        protected void UnspoilContents(IWorldAccessor world, ItemStack[] cstacks)
-        {
-            // Dont spoil the pie contents, the pie itself has a spoilage timer. Semi hacky fix reset their spoil timers each update
-
-            for (int i = 0; i < cstacks.Length; i++)
-            {
-                ItemStack cstack = cstacks[i];
-                if (cstack == null) continue;
-
-                if (!(cstack.Attributes["transitionstate"] is ITreeAttribute))
-                {
-                    cstack.Attributes["transitionstate"] = new TreeAttribute();
-                }
-                ITreeAttribute attr = (ITreeAttribute)cstack.Attributes["transitionstate"];
-
-                if (attr.HasAttribute("createdTotalHours"))
-                {
-                    attr.SetDouble("createdTotalHours", world.Calendar.TotalHours);
-                    attr.SetDouble("lastUpdatedTotalHours", world.Calendar.TotalHours);
-                    var transitionedHours = (attr["transitionedHours"] as FloatArrayAttribute)?.value;
-                    for (int j = 0; transitionedHours != null && j < transitionedHours.Length; j++)
-                    {
-                        transitionedHours[j] = 0;
-                    }
-                }
-            }
-        }
-
 
         public override float[] GetNutritionHealthMul(BlockPos? pos, ItemSlot? slot, EntityAgent? forEntity)
         {
@@ -531,7 +479,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            var pieStack = stackInSlot.Itemstack.Clone();
+            ItemStack? pieStack = stackInSlot.Itemstack?.Clone();
             TakeSlice(ref pieStack);
             if (pieStack?.Attributes.GetAsInt("pieSize") == 1)
             {
@@ -554,8 +502,8 @@ namespace Vintagestory.GameContent
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
         {
-            var baseinteractions = base.GetPlacedBlockInteractionHelp(world, selection, forPlayer);
-            baseinteractions = baseinteractions.RemoveAt(1);
+            WorldInteraction[] baseinteractions = [ .. base.GetPlacedBlockInteractionHelp(world, selection, forPlayer)
+                .Where(bi => bi.ActionLangCode != "blockhelp-meal-eat" && bi.ActionLangCode != "blockhelp-behavior-rightclickpickup")];
 
             var allinteractions = interactions.Append(baseinteractions);
             return allinteractions;
@@ -671,19 +619,16 @@ namespace Vintagestory.GameContent
                     HashSet<ItemStack?> ingredientStacks = [];
 
                     ingredient.Resolve(api.World, "handbook meal recipes");
-                    foreach (var astack in ingredient.ValidStacks.Select(stack => stack.ResolvedItemstack))
+                    foreach (ItemStack? astack in ingredient.ValidStacks.Select(stack => stack.ResolvedItemstack))
                     {
                         if (ingredient.GetMatchingStack(astack) is not { } vstack) continue;
 
-                        ItemStack stack = astack.Clone();
-                        stack.StackSize = vstack.StackSize;
-
-                        if (BlockLiquidContainerBase.GetContainableProps(stack) is { } props)
+                        if (astack?.Clone() is { } stack && BlockLiquidContainerBase.GetContainableProps(stack) is { } props)
                         {
-                            stack.StackSize *= (int)(props.ItemsPerLitre * ingredient.PortionSizeLitres);
+                            stack.StackSize = vstack.StackSize * (int)(props.ItemsPerLitre * ingredient.PortionSizeLitres);
+                            ingredientStacks.Add(stack);
                         }
-
-                        ingredientStacks.Add(stack);
+                        else ingredientStacks.Add(null);
                     }
 
                     if (ingredient.MinQuantity <= 0) ingredientStacks.Add(null);
@@ -696,100 +641,149 @@ namespace Vintagestory.GameContent
 
             if (validStacksByIngredient == null) return new ItemStack?[6];
 
-            List<ItemStack?> randomMeal = [];
 
-            while (!recipe.Matches(randomMeal.ToArray()))
+
+            void addIngredient(ref List<ItemStack?> pie, string code, ref Dictionary<CookingRecipeIngredient, List<ItemStack?>> valIngStacks, ref CookingRecipeIngredient? requestedIngredient)
+            {
+                (CookingRecipeIngredient ingredient, List<ItemStack?> validStacks) = valIngStacks.FirstOrDefault(entry => entry.Key.Code == code);
+
+                // We want to fill out all the possible food categories if possible so that
+                // the correct pie type will be displayed. For example, if we're making a
+                // random pot pie, but we end up only adding vegetables, it will show up
+                // as a vegetable pie, which is confusing.
+                HashSet<EnumFoodCategory> allFoodCategories = [];
+                HashSet<EnumFoodCategory> includedFoodCategories = [];
+
+                // Try to fulfill the ingredient request
+                if (ingredient.Code == requestedIngredient?.Code)
+                {
+                    if (validStacks.First(stack => stack?.Collectible.Code == ingredientStack?.Collectible.Code) is { } stack)
+                    {
+                        if (FillingFoodCategory(stack) is EnumFoodCategory cat)
+                        {
+                            includedFoodCategories.Add(cat);
+                        }
+
+                        pie.Add(stack.Clone());
+
+                        ingredient.MinQuantity--;
+                        ingredient.MaxQuantity--;
+                    }
+
+                    requestedIngredient = null;
+                }
+
+                // Get all the available categories
+                if (ingredient.Code == "filling")
+                {
+                    foreach (ItemStack? stack in validStacks)
+                    {
+                        if (FillingFoodCategory(stack) is EnumFoodCategory cat && cat != EnumFoodCategory.NoNutrition)
+                        {
+                            allFoodCategories.Add(cat);
+                        }
+                    }
+                }
+
+                // List that includes only food categories that are not already present
+                List<ItemStack?>? filteredValidStacks = allFoodCategories.Count > 1 ? new(validStacks) : [];
+
+
+
+                // For each food category, try to filter out non-matching mixing codes.
+                // If at least one ingredient is left, apply it to the actual ingredient
+                // list. Helps prevent incorrect mixing codes when multiple codes have
+                // the same food categories.
+                List<EnumFoodCategory> mixCodeFilterable = [];
+
+                // [ "mixed", "type-trailing" ]
+                string[] pieMixCode = recipe?.Code?.Split("-", 2) ?? ["single", ""];
+
+                if (pieMixCode[0] == "mixed")
+                {
+                    foreach (EnumFoodCategory cat in allFoodCategories)
+                    {
+                        int noOtherMixingCodesInCategory = filteredValidStacks
+                            .Where(stack =>
+                            {
+                                if (stack?.ItemAttributes["inPieProperties"].AsObject<InPieProperties>() is not { } props) return true;
+                                return props.FoodCategory == cat && props.MixingCodes.Except([pieMixCode[1]]).Count() == 0;
+                            })
+                            .Count();
+
+                        if (noOtherMixingCodesInCategory > 0)
+                        {
+                            // We can filter out non-matching mixing codes because we have at least one left for this category.
+                            filteredValidStacks = filteredValidStacks.Where(stack =>
+                            {
+                                if (stack?.ItemAttributes["inPieProperties"].AsObject<InPieProperties>() is not { } props) return true;
+                                return props.FoodCategory != cat || props.MixingCodes.Except([pieMixCode[1]]).Count() == 0;
+                            }).ToList();
+                        }
+                    }
+                }
+
+
+                while (ingredient.MinQuantity > 0)
+                {
+                    // Use the filtered list to fill out the other desired categories, if any remain.
+                    if (ingredient.Code == "filling" && (filteredValidStacks?.Count ?? 0) > 0)
+                    {
+                        ItemStack? newIngredient = filteredValidStacks![api.World.Rand.Next(filteredValidStacks!.Count)]?.Clone();
+                        if (FillingFoodCategory(newIngredient) is EnumFoodCategory newCategory)
+                        {
+                            includedFoodCategories.Add(newCategory);
+
+                            bool filterStackIfCategoryIncluded(ItemStack? stack)
+                            {
+                                if (FillingFoodCategory(stack) is EnumFoodCategory category)
+                                {
+                                    return includedFoodCategories.Contains(category);
+                                }
+                                else { return false; }
+                            }
+
+                            filteredValidStacks!.RemoveAll(filterStackIfCategoryIncluded);
+                        }
+
+                        pie.Add(newIngredient);
+                    }
+                    else
+                    {
+                        // Otherwise, just pull any ingredient.
+                        pie.Add(validStacks[api.World.Rand.Next(validStacks.Count)]?.Clone());
+                    }
+
+                    ingredient.MinQuantity--;
+                    ingredient.MaxQuantity--;
+                }
+            }
+
+
+
+            List<ItemStack?> randomPie = [];
+            while (!recipe.Matches([.. randomPie]))
             {
                 var valIngStacks = new Dictionary<CookingRecipeIngredient, List<ItemStack?>>();
-                foreach (var entry in validStacksByIngredient) valIngStacks.Add(entry.Key.Clone(), entry.Value.ToList());
+                foreach (var entry in validStacksByIngredient) valIngStacks.Add(entry.Key.Clone(), [.. entry.Value]);
                 valIngStacks = valIngStacks.OrderBy(x => api.World.Rand.Next()).ToDictionary(item => item.Key, item => item.Value);
 
                 CookingRecipeIngredient? requestedIngredient = null;
                 if (ingredientStack != null)
                 {
-                    var validIngredients = recipe.Ingredients.Where(ingredient => ingredient.Matches(ingredientStack)).ToList();
+                    List<CookingRecipeIngredient> validIngredients = [.. recipe.Ingredients.Where(ingredient => ingredient.Matches(ingredientStack))];
                     requestedIngredient = validIngredients[api.World.Rand.Next(validIngredients.Count)].Clone();
                 }
 
-                randomMeal = [];
+                randomPie = [];
+                addIngredient(ref randomPie, "dough", ref valIngStacks, ref requestedIngredient);
+                addIngredient(ref randomPie, "filling", ref valIngStacks, ref requestedIngredient);
+                addIngredient(ref randomPie, "crust", ref valIngStacks, ref requestedIngredient);
 
-                var ingredient = valIngStacks.FirstOrDefault(entry => entry.Key.Code == "dough").Key;
-                var validStacks = valIngStacks.FirstOrDefault(entry => entry.Key.Code == "dough").Value;
-
-                if (ingredient.Code == requestedIngredient?.Code)
-                {
-                    if (validStacks.First(stack => stack?.Collectible.Code == ingredientStack?.Collectible.Code) is { } stack)
-                    {
-                        randomMeal.Add(stack.Clone());
-
-                        ingredient.MinQuantity--;
-                        ingredient.MaxQuantity--;
-                    }
-                    requestedIngredient = null;
-                }
-
-                while (ingredient.MinQuantity > 0)
-                {
-                    randomMeal.Add(validStacks[api.World.Rand.Next(validStacks.Count)]?.Clone());
-
-                    ingredient.MinQuantity--;
-                    ingredient.MaxQuantity--;
-                }
-
-                ingredient = valIngStacks.FirstOrDefault(entry => entry.Key.Code == "filling").Key;
-                validStacks = valIngStacks.FirstOrDefault(entry => entry.Key.Code == "filling").Value;
-
-                if (ingredient.Code == requestedIngredient?.Code)
-                {
-                    if (validStacks.First(stack => stack?.Collectible.Code == ingredientStack?.Collectible.Code) is { } stack)
-                    {
-                        randomMeal.Add(stack.Clone());
-
-                        ingredient.MinQuantity--;
-                        ingredient.MaxQuantity--;
-                    }
-                    requestedIngredient = null;
-                }
-
-                while (ingredient.MinQuantity > 0)
-                {
-                    randomMeal.Add(validStacks[api.World.Rand.Next(validStacks.Count)]?.Clone());
-
-                    ingredient.MinQuantity--;
-                    ingredient.MaxQuantity--;
-                }
-
-                ingredient = valIngStacks.FirstOrDefault(entry => entry.Key.Code == "crust").Key;
-                validStacks = valIngStacks.FirstOrDefault(entry => entry.Key.Code == "crust").Value;
-
-                if (requestedIngredient != null)
-                {
-                    if (ingredient.Code == requestedIngredient?.Code)
-                    {
-                        if (validStacks.First(stack => stack?.Collectible.Code == ingredientStack?.Collectible.Code) is { } stack)
-                        {
-                            randomMeal.Add(stack.Clone());
-                            ingredient.MaxQuantity--;
-
-                            requestedIngredient = null;
-                        }
-                    }
-                }
-                else if (ingredient.MaxQuantity > 0)
-                {
-                    var stack = validStacks[api.World.Rand.Next(validStacks.Count)];
-
-                    if (stack != null)
-                    {
-                        randomMeal.Add(stack.Clone());
-                        ingredient.MaxQuantity--;
-                    }
-                }
-
-                while (randomMeal.Count < 6) randomMeal.Add(null);
+                while (randomPie.Count < 6) randomPie.Add(null);
             }
 
-            return randomMeal.ToArray();
+            return [.. randomPie];
         }
 
         [return: NotNullIfNotNull(nameof(pieStack))]

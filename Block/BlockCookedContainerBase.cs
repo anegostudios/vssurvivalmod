@@ -419,7 +419,17 @@ namespace Vintagestory.GameContent
                 }
                 else
                 {
-                    served = ServeIntoStack(targetSlot, slot, api.World);
+                    // Try to put meals into other crocks instead of taking them out.
+                    // Makes interacting with shelves nicer since you can put a semi-full
+                    // crock in front of a full one. Bowls, etc. behavior is unchanged.
+                    if (targetSlot.Itemstack.Block is BlockCrock)
+                    {
+                        served = ServeIntoStack(slot, targetSlot, api.World);
+                    }
+                    else
+                    {
+                        served = ServeIntoStack(targetSlot, slot, api.World);
+                    }
                 }
 
                 slot.MarkDirty();
