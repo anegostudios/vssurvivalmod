@@ -315,9 +315,8 @@ namespace Vintagestory.GameContent
             PropickReading readings = new PropickReading();
             readings.Position = new Vec3d(pos.X, pos.Y, pos.Z);
 
-            foreach (var val in reg.OreMaps)
+            foreach ((string key, var map) in reg.OreMaps)
             {
-                IntDataMap2D map = val.Value;
                 int noiseSize = map.InnerSize;
 
                 float posXInRegionOre = (float)lx / regsize * noiseSize;
@@ -326,19 +325,21 @@ namespace Vintagestory.GameContent
                 int oreDist = map.GetUnpaddedColorLerped(posXInRegionOre, posZInRegionOre);
 
 
-                if (!ppws.depositsByCode.ContainsKey(val.Key))
+                if (!ppws.depositsByCode.ContainsKey(key))
                 {
                     continue;
                 }
 
-                ppws.depositsByCode[val.Key].GetPropickReading(pos, oreDist, blockColumn, out double ppt, out double totalFactor);
+                ppws.depositsByCode[key].GetPropickReading(pos, oreDist, blockColumn, out double ppt, out double totalFactor);
 
                 if (totalFactor > 0)
                 {
-                    var reading = new OreReading();
-                    reading.TotalFactor = totalFactor;
-                    reading.PartsPerThousand = ppt;
-                    readings.OreReadings[val.Key] = reading;
+                    var reading = new OreReading {
+                        DepositCode = key,
+                        TotalFactor = totalFactor,
+                        PartsPerThousand = ppt
+                    };
+                    readings.OreReadings[key] = reading;
                 }
             }
 

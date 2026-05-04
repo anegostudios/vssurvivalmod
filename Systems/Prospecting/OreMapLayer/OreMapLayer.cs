@@ -36,6 +36,7 @@ namespace Vintagestory.GameContent
         public LoadedTexture oremapTexture;
 
         string filterByOreCode;
+        public string FilterByOreCode => filterByOreCode;
 
         public OreMapLayer(ICoreAPI api, IWorldMapManager mapSink) : base(api, mapSink)
         {
@@ -73,17 +74,7 @@ namespace Vintagestory.GameContent
         {
             string key = "worldmap-layer-" + LayerGroupCode;
 
-            HashSet<string> orecodes = new HashSet<string>();
-            foreach (var val in ownPropickReadings)
-            {
-                foreach (var reading in val.OreReadings)
-                {
-                    orecodes.Add(reading.Key);
-                }
-            }
-
-            string[] values = new string[] { null }.Append(orecodes.ToArray());
-            string[] names = new string[] { Lang.Get("worldmap-ores-everything") }.Append(orecodes.Select(code => Lang.Get("ore-"+code)).ToArray());
+            var dropdownData = GetOreFilterDropdownData();
 
             ElementBounds dlgBounds =
                 ElementStdBounds.AutosizedMainDialog
@@ -103,7 +94,7 @@ namespace Vintagestory.GameContent
                     .AddShadedDialogBG(bgBounds, false)
                     .AddDialogTitleBar(Lang.Get("maplayer-prospecting"), () => { guiDialogWorldMap.Composers[key].Enabled = false; })
                     .BeginChildElements(bgBounds)
-                        .AddDropDown(values, names, Math.Max(0, values.IndexOf(filterByOreCode)), onSelectionChanged, ElementBounds.Fixed(0, 30, 160, 35))
+                        .AddDropDown(dropdownData, Math.Max(0, dropdownData.IndexOf(e => e.Value == filterByOreCode)), onSelectionChanged, ElementBounds.Fixed(0, 30, 160, 35))
                     .EndChildElements()
                     .Compose()
             ;
@@ -111,6 +102,16 @@ namespace Vintagestory.GameContent
             guiDialogWorldMap.Composers[key].Enabled = false;
         }
 
+        private DropDownEntry[] GetOreFilterDropdownData()
+        {
+            var readings = ownPropickReadings.SelectMany(val => val.OreReadings)
+                .Select(reading => reading.Key)
+                .Distinct()
+                .Select(code => new DropDownEntry(code, Lang.Get("ore-" + code)))
+                .OrderBy(e => e.Name, StringComparer.CurrentCulture);
+
+            return [new DropDownEntry(null, Lang.Get("worldmap-ores-everything")), ..readings];
+        }
 
         private void onSelectionChanged(string code, bool selected)
         {
@@ -244,14 +245,17 @@ namespace Vintagestory.GameContent
             {
                 var reading = ownPropickReadings[i];
 
-                if (filterByOreCode == null || (reading.GetTotalFactor(filterByOreCode) > PropickReading.MentionThreshold))
-                {
-                    OreMapComponent comp = new OreMapComponent(i, reading, this, api as ICoreClientAPI, filterByOreCode);
-                    wayPointComponents.Add(comp);
-                }
+                if (!ShouldDisplayReading(reading)) continue;
+                OreMapComponent comp = new OreMapComponent(i, reading, this, api as ICoreClientAPI, filterByOreCode);
+                wayPointComponents.Add(comp);
             }
 
             wayPointComponents.AddRange(tmpWayPointComponents);
+        }
+
+        private bool ShouldDisplayReading(PropickReading reading) {
+            if(filterByOreCode == null) return true;
+            return reading.GetTotalFactor(filterByOreCode) > PropickReading.MentionThreshold;
         }
 
 
