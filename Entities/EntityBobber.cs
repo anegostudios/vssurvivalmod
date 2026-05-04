@@ -352,14 +352,17 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            BaitStack = null;
-            WatchedAttributes.MarkPathDirty("baitStack");
-
-            foreach (ItemStack drop in drops)
+            if (drops.Length > 0) 
             {
-                if (!entityCatcher.TryGiveItemStack(drop))
+                BaitStack = null;
+                WatchedAttributes.MarkPathDirty("baitStack");
+                
+                foreach (ItemStack drop in drops)
                 {
-                    World.SpawnItemEntity(drop, entityCatcher.Pos.XYZ);
+                    if (!entityCatcher.TryGiveItemStack(drop))
+                    {
+                        World.SpawnItemEntity(drop, entityCatcher.Pos.XYZ);
+                    }
                 }
             }
         }
