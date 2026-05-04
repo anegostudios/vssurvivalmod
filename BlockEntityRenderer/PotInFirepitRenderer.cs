@@ -9,7 +9,7 @@ namespace Vintagestory.GameContent
     public class PotInFirepitRenderer : IInFirepitRenderer
     {
         public double RenderOrder => 0.5;
-        public int RenderRange => 20;
+        public int RenderRange => 200;
 
         ICoreClientAPI capi;
         MultiTextureMeshRef potWithFoodRef;
@@ -17,6 +17,9 @@ namespace Vintagestory.GameContent
         MultiTextureMeshRef lidRef;
         BlockPos pos;
         float temp;
+
+        Vec3d potPos;
+        Cuboidd aabb;
 
         ILoadedSound cookingSound;
 
@@ -28,6 +31,9 @@ namespace Vintagestory.GameContent
             this.capi = capi;
             this.pos = pos;
             this.isInOutputSlot = isInOutputSlot;
+
+            potPos = new Vec3d(pos.X + 0.5d, pos.Y + 0.5d, pos.Z + 0.5d);  // Firepit center
+            aabb = new Cuboidd(pos.X, pos.Y, pos.Z, pos.X + 1, pos.Y + 1, pos.Z + 1);
 
             BlockCookedContainer potBlock = capi.World.GetBlock(stack.Collectible.CodeWithVariant("type", "cooked")) as BlockCookedContainer;
 
@@ -59,9 +65,25 @@ namespace Vintagestory.GameContent
 
         public void OnRenderFrame(float deltaTime, EnumRenderStage stage)
         {
+            if (capi?.Render == null)
+                return;
+
+
             IRenderAPI rpi = capi.Render;
             Vec3d camPos = capi.World.Player.Entity.CameraPos;
 
+            // Checking the distance
+            double distanceSq = potPos.SquareDistanceTo(camPos);
+            if (distanceSq > RenderRange * RenderRange)
+                return;  // Skip if outside RenderRange
+
+            // Frustum-culling according to AABB
+            FrustumCulling culler = rpi.DefaultFrustumCuller;
+
+            if (!IsAABBInFrustum(culler, aabb))
+                return; // Skip if outside frustum
+
+            // Rest of rendering
             rpi.GlDisableCullFace();
             rpi.GlToggleBlend(true);
 
@@ -82,11 +104,10 @@ namespace Vintagestory.GameContent
 
 
             prog.ModelMatrix = ModelMat
-                .Identity()
-                .Translate(pos.X - camPos.X + 0.001f, pos.Y - camPos.Y, pos.Z - camPos.Z - 0.001f)
-                .Translate(0f, 1 / 16f, 0f)
-                .Values
-            ;
+                    .Identity()
+                    .Translate(pos.X - camPos.X + 0.001f, pos.Y - camPos.Y, pos.Z - camPos.Z - 0.001f)
+                    .Translate(0f, 1 / 16f, 0f)
+                    .Values;
 
             prog.ViewMatrix = rpi.CameraMatrixOriginf;
             prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
@@ -101,15 +122,14 @@ namespace Vintagestory.GameContent
                 float cookIntensity = GameMath.Clamp((temp - 50) / 50, 0, 1);
 
                 prog.ModelMatrix = ModelMat
-                    .Identity()
-                    .Translate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z)
-                    .Translate(0, 6.5f / 16f, 0)
-                    .Translate(-origx, 0, -origz)
-                    .RotateX(cookIntensity * GameMath.Sin(capi.World.ElapsedMilliseconds / 50f) / 60)
-                    .RotateZ(cookIntensity * GameMath.Sin(capi.World.ElapsedMilliseconds / 50f) / 60)
-                    .Translate(origx, 0, origz)
-                    .Values
-                ;
+                        .Identity()
+                        .Translate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z)
+                        .Translate(0, 6.5f / 16f, 0)
+                        .Translate(-origx, 0, -origz)
+                        .RotateX(cookIntensity * GameMath.Sin(capi.World.ElapsedMilliseconds / 50f) / 60)
+                        .RotateZ(cookIntensity * GameMath.Sin(capi.World.ElapsedMilliseconds / 50f) / 60)
+                        .Translate(origx, 0, origz)
+                        .Values;
                 prog.ViewMatrix = rpi.CameraMatrixOriginf;
                 prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
 
@@ -119,6 +139,30 @@ namespace Vintagestory.GameContent
 
             prog.Stop();
         }
+
+        // Auxiliary method for the AABB vs Frustum test
+        private bool IsAABBInFrustum(FrustumCulling culler, Cuboidd aabb)
+        {
+            double centerX = (aabb.MinX + aabb.MaxX) * 0.5;
+            double centerY = (aabb.MinY + aabb.MaxY) * 0.5;
+            double centerZ = (aabb.MinZ + aabb.MaxZ) * 0.5;
+            double dx = aabb.MaxX - aabb.MinX;
+            double dy = aabb.MaxY - aabb.MinY;
+            double dz = aabb.MaxZ - aabb.MinZ;
+
+            Sphere sphere = new Sphere(
+                (float)centerX,   
+                (float)centerY,
+                (float)centerZ,
+                (float)dx,
+                (float)dy,
+                (float)dz
+            );
+
+            return culler.InFrustum(sphere);
+        }
+
+
 
         public void OnUpdate(float temperature)
         {

@@ -20,7 +20,8 @@ namespace Vintagestory.GameContent
 
         // Temperature before the half second tick
         public float prevFurnaceTemperature = 20;
-
+        // flag to determine whether static or dynamic rendering is used
+        private bool prevForceStatic = false;
         // Current temperature of the furnace
         public float furnaceTemperature = 20;
         // Current temperature of the ore (Degree Celsius * deg
@@ -647,16 +648,40 @@ namespace Vintagestory.GameContent
 
         void UpdateRenderer()
         {
-            if (renderer == null) return;
+            if (renderer == null)
+                return;
 
-            ItemStack contentStack = inputStack == null ? outputStack : inputStack;
+
+            bool forceStatic = forceStaticMesh();
+
+            // If the mode has changed, we re-tessellate the block
+            if (forceStatic != prevForceStatic)
+            {
+                MarkDirty(true);
+                prevForceStatic = forceStatic;
+            }
+
+            // if we need static rendering of the pot mesh
+            if (forceStatic)
+            {
+                // Remove the dynamic renderer if there was one
+                if (renderer.contentStackRenderer != null)
+                {
+                    renderer.contentStackRenderer.Dispose();
+                    renderer.contentStackRenderer = null;
+                }
+                renderer.SetContents(null, null);
+                return;
+            }
+
+            ItemStack contentStack = inputStack ?? outputStack;
 
             bool useOldRenderer =
-                renderer.ContentStack != null &&
-                renderer.contentStackRenderer != null &&
-                contentStack?.Collectible is IInFirepitRendererSupplier &&
-                renderer.ContentStack.Equals(Api.World, contentStack, GlobalConstants.IgnoredStackAttributes)
-            ;
+                    renderer.ContentStack != null &&
+                    renderer.contentStackRenderer != null &&
+                    contentStack?.Collectible is IInFirepitRendererSupplier &&
+                    renderer.ContentStack.Equals(Api.World, contentStack, GlobalConstants.IgnoredStackAttributes)
+                ;
 
             if (useOldRenderer) return; // Otherwise the cooking sounds restarts all the time
 
@@ -867,24 +892,72 @@ namespace Vintagestory.GameContent
 
         public EnumFirepitModel CurrentModel { get; private set; }
 
+        public bool forceStaticMesh()
+        {
+            return (inputStack != null && furnaceTemperature < 50) && (inputStack?.Block?.Code.Path.Contains("claypot") ?? false);
+        }
+
+
+
+        private void AddPotStaticMesh(ITerrainMeshPool mesher, ITesselatorAPI tesselator, ItemStack potStack)
+        {
+            Block potBlock = potStack.Block;
+            if (potBlock == null) return;
+
+            // Unique keys for each pot type
+            string potKey = "pot-static-" + potBlock.Code;
+            string lidKey = "lid-static-" + potBlock.Code;
+
+            // Get or create a pot mesh
+            MeshData potMesh = ObjectCacheUtil.GetOrCreate<MeshData>(Api, potKey, () =>
+            {
+                MeshData mesh;
+                tesselator.TesselateShape(potBlock, Shape.TryGet(Api, "shapes/block/clay/pot-opened-empty.json"), out mesh);
+                mesh.Translate(0, 1 / 16f, 0);
+                return mesh;
+            });
+            mesher.AddMeshData(potMesh);
+
+            // Get or create a lid mesh
+            MeshData lidMesh = ObjectCacheUtil.GetOrCreate<MeshData>(Api, lidKey, () =>
+            {
+                MeshData mesh;
+                tesselator.TesselateShape(potBlock, Shape.TryGet(Api, "shapes/block/clay/pot-part-lid.json"), out mesh);
+                mesh.Translate(0, 6.5f / 16f, 0);
+                return mesh;
+            });
+            mesher.AddMeshData(lidMesh);
+        }
+
+
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
-            if (Block == null || Block.Code.Path.Contains("construct")) return false;
+            if (Block == null || Block.Code.Path.Contains("construct"))
+                return false;
 
-            
-            ItemStack contentStack = inputStack == null ? outputStack : inputStack;
-            MeshData contentmesh = getContentMesh(contentStack, tesselator);
-            if (contentmesh != null)
+
+
+            if (forceStaticMesh())
             {
-                mesher.AddMeshData(contentmesh);
+                // For the cold pot we use a static mesh with a lid
+                AddPotStaticMesh(mesher, tesselator, inputStack);
+                CurrentModel = EnumFirepitModel.Wide; // We indicate that there is a pot inside
+            }
+            else
+            {
+                ItemStack contentStack = inputStack ?? outputStack;
+                // Otherwise, the standard logic for getting the content mesh
+                MeshData contentmesh = getContentMesh(contentStack, tesselator);
+                if (contentmesh != null) mesher.AddMeshData(contentmesh);
+                // getContentMesh sets CurrentModel itself
             }
 
+            // The mesh of the block itself (fire/coals) is added as usual
             string burnState = Block.Variant["burnstate"];
             string contentState = CurrentModel.ToString().ToLowerInvariant();
             if (burnState == "cold" && fuelSlot.Empty) burnState = "extinct";
-            if (burnState == null) return true;
-
-            mesher.AddMeshData(getOrCreateMesh(burnState, contentState));
+            if (burnState != null)
+                mesher.AddMeshData(getOrCreateMesh(burnState, contentState));
 
             return true;
         }
@@ -990,3 +1063,4 @@ namespace Vintagestory.GameContent
         }
     }
 }
+
