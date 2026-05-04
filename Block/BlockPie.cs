@@ -117,31 +117,11 @@ namespace Vintagestory.GameContent
             displayContentsInfo = false;
         }
 
-
-        public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
+        public override bool CanEat(ItemSlot slot, EntityAgent byEntity)
         {
-            if (!canEat(slot)) return;
-            base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
-        }
-
-        public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
-        {
-            if (!canEat(slot)) return false;
-
-            return base.OnHeldInteractStep(secondsUsed, slot, byEntity, blockSel, entitySel);
-        }
-
-        public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
-        {
-            if (!canEat(slot)) return;
-
-            base.OnHeldInteractStop(secondsUsed, slot, byEntity, blockSel, entitySel);
-        }
-
-
-        protected bool canEat(ItemSlot slot)
-        {
-            return slot.Itemstack?.Attributes?.GetAsInt("pieSize") == 1 && State != "raw";
+            return slot.Itemstack?.Attributes?.GetAsInt("pieSize") == 1
+                && State != "raw"
+                && base.CanEat(slot, byEntity);
         }
 
 

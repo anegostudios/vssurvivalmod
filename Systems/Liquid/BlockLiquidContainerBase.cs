@@ -733,7 +733,7 @@ namespace Vintagestory.GameContent
             {
                 if (byEntity.Controls.ShiftKey) base.OnHeldInteractStart(itemslot, byEntity, blockSel, entitySel, firstEvent, ref handHandling);
 
-                if (handHandling != EnumHandHandling.PreventDefaultAction && CanDrinkFrom && GetNutritionPropertiesPerLitre(byEntity.World, itemslot.Itemstack, byEntity) != null)
+                if (handHandling != EnumHandHandling.PreventDefaultAction && CanEat(itemslot, byEntity))
                 {
                     tryEatBegin(itemslot, byEntity, ref handHandling, "drink", 4);
                     return;
@@ -782,7 +782,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (CanDrinkFrom && GetNutritionPropertiesPerLitre(byEntity.World, itemslot.Itemstack, byEntity) != null)
+            if (CanEat(itemslot, byEntity))
             {
                 tryEatBegin(itemslot, byEntity, ref handHandling, "drink", 4);
                 return;
@@ -872,6 +872,11 @@ namespace Vintagestory.GameContent
             (nutriProps.EatenStack.ResolvedItemstack.Collectible as BlockLiquidContainerBase)?.SetContent(nutriProps.EatenStack.ResolvedItemstack, null);
 
             return nutriProps;
+        }
+
+        public override bool CanEat(ItemSlot slot, EntityAgent byEntity)
+        {
+            return !slot.Empty && CanDrinkFrom && GetNutritionPropertiesPerLitre(byEntity.World, slot.Itemstack, byEntity) != null;
         }
 
         public FoodNutritionProperties GetNutritionPropertiesPerLitre(IWorldAccessor world, ItemStack itemstack, Entity forEntity)
