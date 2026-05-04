@@ -364,6 +364,9 @@ namespace Vintagestory.GameContent
                         World.SpawnItemEntity(drop, entityCatcher.Pos.XYZ);
                     }
                 }
+
+                ItemSlot slot = entityCatcher.ActiveHandItemSlot;
+                slot.Itemstack.Collectible.DamageItem(__instance.World, entityCatcher, slot);
             }
         }
 
