@@ -389,7 +389,7 @@ namespace Vintagestory.GameContent
             if (pondSize < 100) return null; // Check this early so that tiny ponds return quickly and with 0 abundance
 
             List<EntityProperties> spawnable = [];
-            Block block = World.BlockAccessor.GetBlock(Pos.XYZ.AsBlockPos, 2);
+            Block block = World.BlockAccessor.GetBlock(Pos.XYZ.AsBlockPos, BlockLayersAccess.FLUID);
             string bait = BaitStack?.Collectible.Attributes?["baitTag"].AsString() ?? "nobait";
 
             // Get animal spawn maps for this region
