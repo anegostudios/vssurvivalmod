@@ -238,7 +238,8 @@ namespace Vintagestory.GameContent
                     else 
                     {
                         Entity nearestEntity = ep.GetNearestEntity(Pos.XYZ, 1.0, (Entity e) => e is EntityFish, EnumEntitySearchType.Creatures);
-                        if (nearestEntity != null) 
+                        string bait = BaitStack?.Collectible.Attributes?["baitTag"].AsString() ?? "nobait";
+                        if (nearestEntity != null && nearestEntity.Properties.Attributes["baitTags"].AsArray<string>().Contains<string>(bait)) 
                         {
                             bobberState = EnumBobberState.EntityFishCatch;
                             caughtFish = nearestEntity as EntityFish;
