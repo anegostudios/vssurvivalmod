@@ -204,9 +204,6 @@ namespace Vintagestory.GameContent
         
         private void onServertick(float dt)
         {
-            float abundance = 0.5f;
-            getRandomFishEntityProperties(__instance.BaitStack, out abundance, false);
-
             if (Swimming && !wasSwimming)
             {
                 wasSwimming = true;
@@ -252,6 +249,7 @@ namespace Vintagestory.GameContent
                 case EnumBobberState.NoFishNearby:
                 {
                     // Wait according to abundance, then catch junk or fish from stock
+                    getRandomFishEntityProperties(__instance.BaitStack, out float abundance, false);
                     if (abundance > 0 && swimmingAccum > 5.0 / Math.Max(0.04, abundance)) 
                     {
                         bobberState = Api.World.Rand.NextDouble() < (double) junkCatchChance ? EnumBobberState.JunkCatch : EnumBobberState.NoEntityFishCatch; 
