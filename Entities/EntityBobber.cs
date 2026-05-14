@@ -548,6 +548,10 @@ namespace Vintagestory.GameContent
 
         public void OnRopeRipped(ClothSystem cs)
         {
+            EntityAgent entity = Api.World.GetEntityById(AttachedToEntityId) as EntityAgent;
+            ItemSlot slot = entity?.ActiveHandItemSlot;
+            slot?.Itemstack?.Collectible?.DamageItem(Api.World, entity, slot);
+            slot?.MarkDirty();
             Die();
         }
     }
