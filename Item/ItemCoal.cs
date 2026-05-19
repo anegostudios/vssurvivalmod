@@ -18,9 +18,9 @@ namespace Vintagestory.GameContent
             var inforgeprops = Attributes["inForge"];
 
             var tpd = inforgeprops["tempGainDeg"].AsInt();
-            if (tpd != 0) dsc.AppendLine(Lang.Get("coal-forgetemp-mod", tpd));
+            dsc.AppendLine(Lang.Get("coal-forgetemp-mod", 700 + tpd));
             var dm = inforgeprops["durationMul"].AsFloat();
-            if (dm != 1) dsc.AppendLine(Lang.Get("coal-forgedur-mod", dm));
+            dsc.AppendLine(Lang.Get("coal-forgedur-mod", 2f * dm));
         }
     }
 }
