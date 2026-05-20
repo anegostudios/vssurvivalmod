@@ -550,8 +550,12 @@ namespace Vintagestory.GameContent
         {
             EntityAgent entity = Api.World.GetEntityById(AttachedToEntityId) as EntityAgent;
             ItemSlot slot = entity?.ActiveHandItemSlot;
-            slot?.Itemstack?.Collectible?.DamageItem(Api.World, entity, slot);
-            slot?.MarkDirty();
+            CollectibleObject item = slot?.Itemstack?.Collectible;
+            if (item is ItemFishingPole)
+            {
+                item.DamageItem(Api.World, entity, slot);
+                slot?.MarkDirty();
+            }
             Die();
         }
     }
