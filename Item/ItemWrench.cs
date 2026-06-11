@@ -146,6 +146,8 @@ namespace Vintagestory.GameContent
             if (handling == EnumHandHandling.PreventDefault) return;
             if (blockSel == null) return;
 
+            if (byEntity.World.BlockAccessor.GetBlockEntity<BlockEntityForge>(blockSel.Position) != null) return;
+
             var player = (byEntity as EntityPlayer)?.Player;
 
             if (!byEntity.World.Claims.TryAccess(player, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
