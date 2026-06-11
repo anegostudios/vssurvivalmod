@@ -19,12 +19,12 @@ namespace Vintagestory.GameContent
 
         protected InventoryGeneric inv;
         protected ForgeContentsRenderer renderer;
-        protected float partialFuelConsumed;
-        protected bool burning;
-        protected double lastTickTotalHours;
-        protected ILoadedSound ambientSound;
-        protected Vec3f blockRotRad = new Vec3f();
-        protected bool clientSidePrevBurning;
+        protected float partialFuelConsumed = 0;
+        protected bool burning = false;
+        protected double lastTickTotalHours = 0;
+        protected ILoadedSound ambientSound = null;
+        protected Vec3f blockRotRad = new();
+        protected bool clientSidePrevBurning = false;
         public ItemSlot FuelSlot => inv[1];
         public ItemSlot WorkItemSlot => inv[0];
         public ItemStack WorkItemStack => inv[0].Itemstack;
@@ -33,12 +33,14 @@ namespace Vintagestory.GameContent
         public bool CanIgnite => !burning && FuelLevel > 0;
         public bool IsHot => (inv[1].Itemstack?.Collectible.GetTemperature(Api.World, inv[1].Itemstack) ?? 0) > 20;
 
-        // burnate 1 = means a1 coal per ingame hour
+        /// <summary>
+        /// The number of coal items burnt per hour
+        /// </summary>
         public virtual float BurnRate
         {
             get
             {
-                return 0.5f * 1/(FuelSlot.Itemstack?.ItemAttributes?["inForge"]["durationMul"].AsFloat() ?? 1f);
+                return 0.5f * 1 / (FuelSlot.Itemstack?.ItemAttributes?["inForge"]["durationMul"].AsFloat(1f) ?? 1f);
             }
         }
 
@@ -47,13 +49,14 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                return 700 + (FuelSlot.Itemstack?.ItemAttributes?["inForge"]["tempGainDeg"].AsInt() ?? 1);
+                return 700 + (FuelSlot.Itemstack?.ItemAttributes?["inForge"]["tempGainDeg"].AsInt(1) ?? 1);
             }
         }
+
         public float MaxExtraHeatRate = 1150 / 700f - 1;
-        public float extraOxygenRate;
-        public float extraOxygenRateRender;
-        public float extraOxygenRateParticles;
+        public float extraOxygenRate = 0;
+        public float extraOxygenRateRender = 0;
+        public float extraOxygenRateParticles = 0;
         public BlockFacing blowDirection = BlockFacing.NORTH;
 
         public virtual float MeshAngleRad
