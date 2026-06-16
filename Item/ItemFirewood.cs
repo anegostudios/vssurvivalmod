@@ -6,8 +6,7 @@ using Vintagestory.API.MathTools;
 namespace Vintagestory.GameContent
 {
     public class ItemFirewood : Item
-    {
-        
+    {    
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
             if (blockSel != null && byEntity?.World != null && byEntity.Controls.ShiftKey)
@@ -21,12 +20,7 @@ namespace Vintagestory.GameContent
                     return;
                 }
             }
-
             base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
         }
-
-
-
-
     }
 }
