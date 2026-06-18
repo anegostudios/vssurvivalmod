@@ -262,12 +262,18 @@ namespace Vintagestory.GameContent
             if (singleFilling) return pieProps[1]?.Texture;
 
             if (!singleFoodCat && mixingCodes.Length > 0)
-            {
-                if (pieMixingCodeFillingTextures.TryGetValue(mixingCodes[0].GetHashCode(), out var loc))
+            {   
+                key = mixingCodes[0].GetHashCode();
+                if (pieMixingCodeFillingTextures.TryGetValue(key, out var loc))
                 {
                     return loc;
                 }
-                else pieMixingCodeFillingTextures.Add(mixingCodes[0].GetHashCode(), new("block/food/pie/fill-mixed" + mixingCodes[0]));
+                else
+                {
+                    loc = new AssetLocation("block/food/pie/fill-mixed" + mixingCodes[0]);
+                    pieMixingCodeFillingTextures.Add(key, loc);
+                    return loc;
+                } 
             }
 
             return pieMixedCategoryFillingTextures[(int)fillingCat];
