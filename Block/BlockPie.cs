@@ -275,8 +275,8 @@ namespace Vintagestory.GameContent
                 if (cStacks[i] == null) continue;
 
                 equal &= cstack.Equals(api.World, cStacks[i], GlobalConstants.IgnoredStackAttributes);
-                foodCatEquals &= cStacks[i] == null || foodCats[i] == foodCat;
-                mixCodes = cstack.ItemAttributes["inPieProperties"].AsObject<InPieProperties>()?.MixingCodes.Intersect(mixCodes) ?? [];
+                foodCatEquals &= foodCats[i] == foodCat;
+                mixCodes = cStacks[i].ItemAttributes["inPieProperties"].AsObject<InPieProperties>()?.MixingCodes.Intersect(mixCodes) ?? [];
 
                 cstack = cStacks[i];
                 foodCat = foodCats[i];
