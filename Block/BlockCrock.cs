@@ -326,7 +326,15 @@ namespace Vintagestory.GameContent
                 {
                     if (quantityServings > 0)
                     {
-                        ServeIntoStack(gsslot, slot, byEntity.World);
+                        // Try to put meals into other crocks instead of taking them out.
+                        if (gsslot.Itemstack.Block is BlockCrock)
+                        {
+                            ServeIntoStack(slot, gsslot, byEntity.World);
+                        }
+                        else
+                        {
+                            ServeIntoStack(gsslot, slot, byEntity.World);
+                        }
                         gsslot.MarkDirty();
                         begs.MarkMeshesDirty();
                         begs.MarkDirty(true);
