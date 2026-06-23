@@ -867,7 +867,7 @@ namespace Vintagestory.GameContent
             nutriProps.Intoxication *= litres;
             nutriProps.Psychedelic *= litres;
 
-            nutriProps.EatenStack = new JsonItemStack { ResolvedItemstack = itemstack.Clone() };
+            nutriProps.EatenStack = new JsonItemStack { ResolvedItemstack = itemstack.Clone(), Code = itemstack.Collectible.Code };
             nutriProps.EatenStack.ResolvedItemstack.StackSize = 1;
             (nutriProps.EatenStack.ResolvedItemstack.Collectible as BlockLiquidContainerBase)?.SetContent(nutriProps.EatenStack.ResolvedItemstack, null);
 
