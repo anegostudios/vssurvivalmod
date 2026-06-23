@@ -296,7 +296,7 @@ namespace Vintagestory.GameContent
 
             if (!foodCatEquals && mixCodes.Any())
             {
-                return Lang.Get("pie-mixed-" + mixCodes.First() + "-" +state);
+                return Lang.Get("pie-mixed-" + mixCodes.First() + "-" + state);
             }
 
             return Lang.Get("pie-mixed-" + FillingFoodCategory(cStacks[1]).ToString().ToLowerInvariant() + "-" + state);
@@ -554,8 +554,8 @@ namespace Vintagestory.GameContent
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
         {
-            var baseinteractions = base.GetPlacedBlockInteractionHelp(world, selection, forPlayer);
-            baseinteractions = baseinteractions.RemoveAt(1);
+            WorldInteraction[] baseinteractions = [.. base.GetPlacedBlockInteractionHelp(world, selection, forPlayer)
+                .Where(bi => bi.ActionLangCode != "blockhelp-meal-eat" && bi.ActionLangCode != "blockhelp-meal-pickup")];
 
             var allinteractions = interactions.Append(baseinteractions);
             return allinteractions;
