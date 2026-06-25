@@ -325,22 +325,29 @@ namespace Vintagestory.GameContent
             }
             else
             {
+                BlockMeal? sourceMeal = foodSourceStack.Collectible as BlockMeal;
                 if (slot.Empty || slot.StackSize == 1)
                 {
-                    (foodSourceStack.Collectible as BlockMeal)?.SetQuantityServings(byEntity.World, foodSourceStack, servingsLeft);
+                    sourceMeal?.SetQuantityServings(byEntity.World, foodSourceStack, servingsLeft);
                     slot.Itemstack = foodSourceStack;
                 }
                 else
                 {
-                    ItemStack? splitStack = slot.TakeOut(1);
-                    (foodSourceStack.Collectible as BlockMeal)?.SetQuantityServings(byEntity.World, splitStack, servingsLeft);
+                    // Pull out the eaten stack first
+                    ItemStack partiallyEatenStack = slot.TakeOut(1);
+                    sourceMeal?.SetQuantityServings(byEntity.World, partiallyEatenStack, servingsLeft);
 
-                    ItemStack originalStack = slot.Itemstack;
-                    slot.Itemstack = splitStack;
+                    // Then pull out the remaining full meals and replace them with the partially eaten meal
+                    ItemStack fullMealsStack = slot.TakeOutWhole();
+                    slot.Itemstack = partiallyEatenStack;
 
-                    if (!player.InventoryManager.TryGiveItemstack(originalStack, true))
+                    if (!player.InventoryManager.TryGiveItemstack(fullMealsStack, true))
                     {
-                        byEntity.World.SpawnItemEntity(originalStack, byEntity.Pos.XYZ);
+                        // If the player doesn't have an empty slot, make sure we give them
+                        // the stack of full meals instead of dropping everything except
+                        // the partially eaten one.
+                        slot.Itemstack = fullMealsStack;
+                        byEntity.World.SpawnItemEntity(partiallyEatenStack, byEntity.Pos.XYZ);
                     }
                 }
             }
