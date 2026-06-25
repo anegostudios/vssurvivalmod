@@ -143,14 +143,14 @@ namespace Vintagestory.GameContent
         }
 
 
-        protected override void breakMultiBlock(BlockPos pos, IPlayer plr)
+        protected override bool breakMultiBlock(BlockPos pos, IPlayer plr)
         {
             if (trimMode)
             {
                 var block = api.World.BlockAccessor.GetBlock(pos);
                 var trimmedBlock = api.World.GetBlock(block.CodeWithVariant("tallgrass", "eaten"));
                 bool blockIsTallgrass = block.Variant.ContainsKey("tallgrass");
-                if (blockIsTallgrass && block == trimmedBlock) return;
+                if (blockIsTallgrass && block == trimmedBlock) return false;
 
                 if (blockIsTallgrass && trimmedBlock != null)
                 {
@@ -161,11 +161,11 @@ namespace Vintagestory.GameContent
                     var be = api.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityTransient;
                     if (be != null) be.ConvertToOverride = block.Code.ToShortString();
 
-                    return;
+                    return true;
                 }
             }
 
-            base.breakMultiBlock(pos, plr);
+            return base.breakMultiBlock(pos, plr);
         }
 
 

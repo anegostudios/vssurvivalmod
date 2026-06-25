@@ -65,7 +65,10 @@ namespace Vintagestory.GameContent
             IPlayer plr = world.PlayerByUid((byEntity as EntityPlayer).PlayerUID);
 
             //base.OnBlockBrokenWith(world, byEntity, itemslot, blockSel, dropQuantityMultiplier);
-            breakMultiBlock(blockSel.Position, plr);
+            if (breakMultiBlock(blockSel.Position, plr))
+            {
+                DamageItem(world, byEntity, itemslot);
+            }
 
             if (!CanMultiBreak(block)) return true;
 
@@ -80,10 +83,10 @@ namespace Vintagestory.GameContent
             {
                 if (!plr.Entity.World.Claims.TryAccess(plr, val.Key, EnumBlockAccessFlags.BuildOrBreak)) continue;
 
-                breakMultiBlock(val.Key, plr);
-
-                DamageItem(world, byEntity, itemslot);
-
+                if (breakMultiBlock(val.Key, plr))
+                {
+                    DamageItem(world, byEntity, itemslot);
+                }
                 q++;
                 if (q >= MultiBreakQuantity || itemslot.Itemstack == null) break;
             }
@@ -91,10 +94,11 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        protected virtual void breakMultiBlock(BlockPos pos, IPlayer plr)
+        protected virtual bool breakMultiBlock(BlockPos pos, IPlayer plr)
         {
             api.World.BlockAccessor.BreakBlock(pos, plr);
             api.World.BlockAccessor.MarkBlockDirty(pos);
+            return true;
         }
 
 
