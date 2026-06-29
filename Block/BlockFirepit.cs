@@ -105,10 +105,11 @@ namespace Vintagestory.GameContent
                 }
             }
 
+            if (capi is null) return;
 
-            interactions = ObjectCacheUtil.GetOrCreate(api, "firepitInteractions-"+Stage, () =>
+            interactions = ObjectCacheUtil.GetOrCreate(capi, "firepitInteractions-"+Stage, () =>
             {
-                List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(api, true);
+                List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(capi, true);
 
                 return new WorldInteraction[]
                 {
@@ -127,7 +128,7 @@ namespace Vintagestory.GameContent
                         MouseButton = EnumMouseButton.Right,
                         Itemstacks = canIgniteStacks.ToArray(),
                         GetMatchingStacks = (wi, bs, es) => {
-                            BlockEntityFirepit bef = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityFirepit;
+                            BlockEntityFirepit bef = capi.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityFirepit;
                             if (bef?.fuelSlot != null && !bef.fuelSlot.Empty && !bef.IsBurning)
                             {
                                 return wi.Itemstacks;

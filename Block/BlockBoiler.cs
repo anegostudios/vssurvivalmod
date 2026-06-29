@@ -23,14 +23,16 @@ namespace Vintagestory.GameContent
             partCollBoxes = (Cuboidf[])CollisionBoxes.Clone();
             partCollBoxes[0].Y1 = 7/16f;
 
-            boilerinteractions = ObjectCacheUtil.GetOrCreate(api, "boilerInteractions", () =>
+            if (api is not ICoreClientAPI capi) return;
+
+            boilerinteractions = ObjectCacheUtil.GetOrCreate(capi, "boilerInteractions", () =>
             {
-                List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(api, true);
+                List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(capi, true);
 
                 List<ItemStack> tinderStacks = new List<ItemStack>();
                 List<ItemStack> firewoodStacks = new List<ItemStack>();
 
-                foreach (CollectibleObject obj in api.World.Items)
+                foreach (CollectibleObject obj in capi.World.Items)
                 {
                     if (obj is ItemDryGrass)
                     {
@@ -52,7 +54,7 @@ namespace Vintagestory.GameContent
                         HotKeyCode = "shift",
                         Itemstacks = canIgniteStacks.ToArray(),
                         GetMatchingStacks = (wi, bs, es) => {
-                            BlockEntityBoiler bef = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityBoiler;
+                            BlockEntityBoiler bef = capi.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityBoiler;
                             if (bef != null && !bef.IsBurning && bef.fuelHours > 0 && bef.firepitStage >= 5)
                             {
                                 return wi.Itemstacks;
@@ -67,7 +69,7 @@ namespace Vintagestory.GameContent
                         Itemstacks = tinderStacks.ToArray(),
                         GetMatchingStacks = (wi, bs, es) =>
                         {
-                            BlockEntityBoiler bef = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityBoiler;
+                            BlockEntityBoiler bef = capi.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityBoiler;
                             if (bef != null && bef.firepitStage == 0) return wi.Itemstacks;
                             return null;
                         }
@@ -79,13 +81,14 @@ namespace Vintagestory.GameContent
                         Itemstacks = firewoodStacks.ToArray(),
                         GetMatchingStacks = (wi, bs, es) =>
                         {
-                            BlockEntityBoiler bef = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityBoiler;
+                            BlockEntityBoiler bef = capi.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityBoiler;
                             if (bef != null && bef.firepitStage > 0 && bef.fuelHours <= 6f) return wi.Itemstacks;
                             return null;
                         }
                     }
                 };
             });
+
         }
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)

@@ -22,15 +22,14 @@ namespace Vintagestory.GameContent
         {
             base.OnLoaded(api);
 
-            if (api.Side != EnumAppSide.Client) return;
-            ICoreClientAPI capi = api as ICoreClientAPI;
+            if (api is not ICoreClientAPI capi) return;
 
-            interactions = ObjectCacheUtil.GetOrCreate(api, "forgeBlockInteractions", () =>
+            interactions = ObjectCacheUtil.GetOrCreate(capi, "forgeBlockInteractions", () =>
             {
                 List<ItemStack> heatableStacklist = new List<ItemStack>();
-                List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(api, false);
+                List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(capi, false);
 
-                foreach (CollectibleObject obj in api.World.Collectibles)
+                foreach (CollectibleObject obj in capi.World.Collectibles)
                 {
                     string firstCodePart = obj.FirstCodePart();
 
@@ -58,10 +57,10 @@ namespace Vintagestory.GameContent
                         Itemstacks = heatableStacklist.ToArray(),
                         GetMatchingStacks = (wi, bs, es) =>
                         {
-                            BlockEntityForge bef = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityForge;
+                            BlockEntityForge bef = capi.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityForge;
                             if (bef!= null && bef.WorkItemStack != null)
                             {
-                                return wi.Itemstacks.Where(stack => stack.Equals(api.World, bef.WorkItemStack, GlobalConstants.IgnoredStackAttributes)).ToArray();
+                                return wi.Itemstacks.Where(stack => stack.Equals(capi.World, bef.WorkItemStack, GlobalConstants.IgnoredStackAttributes)).ToArray();
                             }
                             return wi.Itemstacks;
                         }
@@ -74,7 +73,7 @@ namespace Vintagestory.GameContent
                         Itemstacks = heatableStacklist.ToArray(),
                         GetMatchingStacks = (wi, bs, es) =>
                         {
-                            BlockEntityForge bef = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityForge;
+                            BlockEntityForge bef = capi.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityForge;
                             if (bef!= null && bef.WorkItemStack != null)
                             {
                                 return new ItemStack[] { bef.WorkItemStack };
@@ -90,7 +89,7 @@ namespace Vintagestory.GameContent
                         Itemstacks = coalStacklist.ToArray(),
                         GetMatchingStacks = (wi, bs, es) =>
                         {
-                            BlockEntityForge bef = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityForge;
+                            BlockEntityForge bef = capi.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityForge;
                             if (bef!= null && bef.FuelLevel < 5/16f)
                             {
                                 return wi.Itemstacks;
@@ -105,7 +104,7 @@ namespace Vintagestory.GameContent
                         MouseButton = EnumMouseButton.Right,
                         Itemstacks = canIgniteStacks.ToArray(),
                         GetMatchingStacks = (wi, bs, es) => {
-                            BlockEntityForge bef = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityForge;
+                            BlockEntityForge bef = capi.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityForge;
                             if (bef!= null && bef.CanIgnite && !bef.IsBurning)
                             {
                                 return wi.Itemstacks;

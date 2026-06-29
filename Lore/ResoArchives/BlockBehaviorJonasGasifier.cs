@@ -30,14 +30,13 @@ namespace Vintagestory.GameContent
         {
             base.OnLoaded(api);
 
-            if (api.Side != EnumAppSide.Client) return;
-            ICoreClientAPI capi = api as ICoreClientAPI;
+            if (api is not ICoreClientAPI capi) return;
 
-            BlockForge forgeBlock = api.World.GetBlock(new AssetLocation("forge")) as BlockForge;
+            BlockForge forgeBlock = capi.World.GetBlock(new AssetLocation("forge")) as BlockForge;
 
-            interactions = ObjectCacheUtil.GetOrCreate(api, "gasifierBlockInteractions", () =>
+            interactions = ObjectCacheUtil.GetOrCreate(capi, "gasifierBlockInteractions", () =>
             {
-                List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(api, false);
+                List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(capi, false);
 
                 return new WorldInteraction[] {
                     new WorldInteraction()
@@ -54,7 +53,7 @@ namespace Vintagestory.GameContent
                         MouseButton = EnumMouseButton.Right,
                         Itemstacks = canIgniteStacks.ToArray(),
                         GetMatchingStacks = (wi, bs, es) => {
-                            var bef = api.World.BlockAccessor.GetBlockEntity(bs.Position)?.GetBehavior<BEBehaviorJonasGasifier>();
+                            var bef = capi.World.BlockAccessor.GetBlockEntity(bs.Position)?.GetBehavior<BEBehaviorJonasGasifier>();
                             if (bef!= null && bef.HasFuel && !bef.Lit)
                             {
                                 return wi.Itemstacks;

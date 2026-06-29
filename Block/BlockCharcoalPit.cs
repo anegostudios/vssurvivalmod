@@ -14,9 +14,11 @@ namespace Vintagestory.GameContent
         {
             base.OnLoaded(api);
 
-            interactions = ObjectCacheUtil.GetOrCreate(api, "charcoalpitInteractions", () =>
+            if (api is not ICoreClientAPI capi) return;
+            
+            interactions = ObjectCacheUtil.GetOrCreate(capi, "charcoalpitInteractions", () =>
             {
-                List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(api, true);
+                List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(capi, true);
 
                 return new WorldInteraction[]
                 {
@@ -27,7 +29,7 @@ namespace Vintagestory.GameContent
                         HotKeyCode = "shift",
                         Itemstacks = canIgniteStacks.ToArray(),
                         GetMatchingStacks = (wi, bs, es) => {
-                            BlockEntityCharcoalPit? becp = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityCharcoalPit;
+                            BlockEntityCharcoalPit? becp = capi.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityCharcoalPit;
                             if (becp?.Lit == false)
                             {
                                 return wi.Itemstacks;

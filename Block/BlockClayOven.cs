@@ -50,17 +50,15 @@ namespace Vintagestory.GameContent
         {
             base.OnLoaded(api);
 
-            if (api.Side != EnumAppSide.Client) return;
-            
-            ICoreClientAPI capi = api as ICoreClientAPI;
+            if (api is not ICoreClientAPI capi) return;
 
-            if (capi != null) interactions = ObjectCacheUtil.GetOrCreate(api, "ovenInteractions", () =>
+            interactions = ObjectCacheUtil.GetOrCreate(capi, "ovenInteractions", () =>
             {
                 List<ItemStack> bakeableStacklist = [];
                 List<ItemStack> fuelStacklist = [];
-                List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(api, true);
+                List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(capi, true);
 
-                foreach (CollectibleObject obj in api.World.Collectibles)
+                foreach (CollectibleObject obj in capi.World.Collectibles)
                 {
                     // we test firewood first because LazyWarlock's mod adds a wood baking recipe, which we don't want to be treated as a bakeable item here
                     if (obj.Attributes?.IsTrue("isClayOvenFuel") == true)
@@ -83,8 +81,8 @@ namespace Vintagestory.GameContent
                     stack.Attributes.SetString("topCrustType", "square");
                     stack.Attributes.SetInt("bakeLevel", 0);
 
-                    ItemStack doughStack = new(api.World.GetItem("dough-spelt"), 2);
-                    ItemStack fillingStack = new(api.World.GetItem("fruit-redapple"), 2);
+                    ItemStack doughStack = new(capi.World.GetItem("dough-spelt"), 2);
+                    ItemStack fillingStack = new(capi.World.GetItem("fruit-redapple"), 2);
                     pieBlock.SetContents(stack, [doughStack, fillingStack, fillingStack, fillingStack, fillingStack, doughStack]);
                     stack.Attributes.SetFloat("quantityServings", 1);
                 }
@@ -98,7 +96,7 @@ namespace Vintagestory.GameContent
                         Itemstacks = bakeableStacklist.ToArray(),
                         GetMatchingStacks = (wi, bs, es) => {
                             if (wi.Itemstacks.Length == 0) return null;
-                            BlockEntityOven beo = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityOven;
+                            BlockEntityOven beo = capi.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityOven;
                             return beo != null ? beo.CanAdd(wi.Itemstacks) : null;
                         }
                     },
@@ -110,7 +108,7 @@ namespace Vintagestory.GameContent
                         Itemstacks = fuelStacklist.ToArray(),
                         GetMatchingStacks = (wi, bs, es) => {
                             //if (wi.Itemstacks.Length == 0) return null;
-                            BlockEntityOven beo = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityOven;
+                            BlockEntityOven beo = capi.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityOven;
                             return beo != null ? beo.CanAddAsFuel(fuelStacklist.ToArray()) : null;
                         }
                     },
@@ -122,7 +120,7 @@ namespace Vintagestory.GameContent
                         Itemstacks = canIgniteStacks.ToArray(),
                         GetMatchingStacks = (wi, bs, es) => {
                             if (wi.Itemstacks.Length == 0) return null;
-                            BlockEntityOven beo = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityOven;
+                            BlockEntityOven beo = capi.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityOven;
                             return beo != null && beo.CanIgnite() ? wi.Itemstacks : null;
                         }
                     }

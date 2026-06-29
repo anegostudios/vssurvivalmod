@@ -56,24 +56,26 @@ namespace Vintagestory.GameContent
 
             Dictionary<string, BuildStageMaterial[]> resolvedMats = new Dictionary<string, BuildStageMaterial[]>();
 
-            List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(api, true);
-            ingiteInteraction = new WorldInteraction[] { new WorldInteraction()
-            {
-                ActionLangCode = "blockhelp-firepit-ignite",
-                MouseButton = EnumMouseButton.Right,
-                HotKeyCode = "shift",
-                Itemstacks = canIgniteStacks.ToArray(),
-                GetMatchingStacks = (wi, bs, es) =>
+            if (api is ICoreClientAPI capi) {
+                List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(capi, true);
+                ingiteInteraction = new WorldInteraction[] { new WorldInteraction()
                 {
-                    BlockEntityPitKiln beg = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityPitKiln;
-                    if (beg?.Lit != true && beg?.CanIgnite == true)
+                    ActionLangCode = "blockhelp-firepit-ignite",
+                    MouseButton = EnumMouseButton.Right,
+                    HotKeyCode = "shift",
+                    Itemstacks = canIgniteStacks.ToArray(),
+                    GetMatchingStacks = (wi, bs, es) =>
                     {
-                        return wi.Itemstacks;
+                        BlockEntityPitKiln beg = capi.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityPitKiln;
+                        if (beg?.Lit != true && beg?.CanIgnite == true)
+                        {
+                            return wi.Itemstacks;
+                        }
+                        return null;
                     }
-                    return null;
                 }
+                };
             }
-            };
 
 
 
