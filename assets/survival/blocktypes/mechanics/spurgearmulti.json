@@ -1,0 +1,40 @@
+{
+	"code": "spurgearmulti",
+	"class": "BlockSpurGearMulti",
+	"attributes": {
+		"mechanicalPower": {
+			"renderer": "spurgearmulti"
+		}
+	},
+	"variantgroups": [
+		{ "code": "orientation", "states": ["s"] }
+	],
+	"entityClass": "Generic",
+	"entityBehaviors": [{ "name": "MPSpurGear" }],
+	"shape": { "base": "block/wood/mechanics/spurgear16" },
+	"blockmaterial": "Wood",
+	"textures": {
+		"wood": { "base": "block/wood/planks/generic" }
+	},
+	"drops": [],
+	"resistance": 3.5,
+	"lightAbsorption": 0,
+	"maxStackSize": 8,
+	"sidesolid": {
+		"all": false
+	},
+	"sideopaque": {
+		"all": false
+	},
+	"rainPermeable": true,
+	"collisionSelectionBoxes": [
+		{ "x1": 0.125, "y1": 0, "z1": 0.125, "x2": 0.875, "y2": 0.875, "z2": 0.875 }
+	],
+	"particleCollisionBox": { "x1": 0, "y1": 0, "z1": 0, "x2": 0, "y2": 0, "z2": 0 },
+	"sounds": {
+		"hit": "block/planks",
+		"break": "block/planks",
+		"place": "block/planks",
+		"walk": "walk/wood"
+	}
+}

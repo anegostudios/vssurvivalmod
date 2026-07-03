@@ -19,7 +19,21 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face, BlockMPBase forBlock)
         {
-            return face == Orientation || (forBlock == this && face != Orientation.Opposite);    // Side by side: powers any matching spur gear adjacent
+            // Original: face == Orientation || side-by-side matching spur gears
+            // Added: hub variant accepts both ends of the rotation axis (drive side + continuation)
+            if (face == Orientation) return true;
+            if (face == Orientation.Opposite && IsHubVariant()) return true;
+            if (forBlock == this && face != Orientation.Opposite) return true;
+
+            // Multi-disc block requesting connection on any face with a supported axle
+            if (forBlock is BlockSpurGearMulti) return face == Orientation || face == Orientation.Opposite;
+
+            return false;
+        }
+
+        bool IsHubVariant()
+        {
+            return Code.Path.StartsWith("spurgearhub-");
         }
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
@@ -35,20 +49,29 @@ namespace Vintagestory.GameContent.Mechanics
                 return false;
             }
 
-            BlockFacing targetFace = blockSel.Face.Opposite;
-            BlockPos pos = blockSel.Position.AddCopy(targetFace);
-            BlockEntity be = world.BlockAccessor.GetBlockEntity(pos);
-            IMechanicalPowerBlock neighbour = be?.Block as IMechanicalPowerBlock;
-
-            BEBehaviorMPAxle bempaxle = be?.GetBehavior<BEBehaviorMPAxle>();
-            if (bempaxle == null || !(bempaxle.Block as BlockMPBase).HasMechPowerConnectorAt(world, pos, targetFace, this))
+            // If clicking on an existing spur gear, redirect to multi-disc growth
+            Block targetBlock = world.BlockAccessor.GetBlock(blockSel.Position);
+            if (targetBlock is BlockSpurGear || targetBlock is BlockSpurGearMulti)
             {
-                failureCode = "requiresaxle";
-                return false;
+                if (BlockSpurGearMulti.TryAddDisc(world, blockSel.Position, blockSel.Face.Opposite, ref failureCode, byPlayer))
+                {
+                    if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
+                    {
+                        byPlayer.InventoryManager.ActiveHotbarSlot.TakeOut(1);
+                        byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                    }
+                    return true;
+                }
+                // Fall through to normal placement if adding a disc failed
             }
-            if (bempaxle != null && !BEBehaviorMPAxle.IsAttachedToBlock(world.BlockAccessor, neighbour as Block, pos))
+
+            // Scan all 6 faces for a valid axle, prioritizing the clicked face
+            BlockFacing targetFace = blockSel.Face.Opposite;
+            BlockPos targetPos = blockSel.Position.AddCopy(targetFace);
+            BlockEntity targetBe = world.BlockAccessor.GetBlockEntity(targetPos);
+
+            if (!TryFindAxle(world, blockSel.Position, targetFace, out targetFace, out targetPos, out targetBe, ref failureCode))
             {
-                failureCode = "axlemusthavesupport";
                 return false;
             }
 
@@ -85,12 +108,63 @@ namespace Vintagestory.GameContent.Mechanics
             return true;
         }
 
+        /// <summary>
+        /// Searches for a valid axle to attach the gear to, starting with the preferred face
+        /// and falling through to all other faces if that one fails.
+        /// </summary>
+        bool TryFindAxle(IWorldAccessor world, BlockPos gearPos, BlockFacing preferred, out BlockFacing foundFace, out BlockPos foundPos, out BlockEntity foundBe, ref string failureCode)
+        {
+            // Try preferred face first
+            if (CheckAxleFace(world, gearPos, preferred, out foundPos, out foundBe))
+            {
+                foundFace = preferred;
+                return true;
+            }
+
+            // Scan remaining faces
+            foreach (BlockFacing face in BlockFacing.ALLFACES)
+            {
+                if (face == preferred) continue;
+                if (CheckAxleFace(world, gearPos, face, out foundPos, out foundBe))
+                {
+                    foundFace = face;
+                    return true;
+                }
+            }
+
+            foundFace = preferred;
+            foundPos = null;
+            foundBe = null;
+            failureCode = "requiresaxle";
+            return false;
+        }
+
+        bool CheckAxleFace(IWorldAccessor world, BlockPos gearPos, BlockFacing face, out BlockPos axlePos, out BlockEntity axleBe)
+        {
+            axlePos = gearPos.AddCopy(face);
+            axleBe = world.BlockAccessor.GetBlockEntity(axlePos);
+
+            BEBehaviorMPAxle bempaxle = axleBe?.GetBehavior<BEBehaviorMPAxle>();
+            if (bempaxle == null) return false;
+            if (!(bempaxle.Block as BlockMPBase).HasMechPowerConnectorAt(world, axlePos, face, this)) return false;
+            if (!BEBehaviorMPAxle.IsAttachedToBlock(world.BlockAccessor, bempaxle.Block as Block, axlePos)) return false;
+
+            return true;
+        }
+
 
         public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
             var nblock = world.BlockAccessor.GetBlock(pos.AddCopy(Orientation));
             if (!(nblock is BlockMPBase) || nblock.SideIsSolid(world.BlockAccessor, pos, Orientation.Opposite.Index))
             {
+                // Before breaking, check if the hub-side axle still supports us
+                if (IsHubVariant())
+                {
+                    var hubBlock = world.BlockAccessor.GetBlock(pos.AddCopy(Orientation.Opposite));
+                    if (hubBlock is BlockMPBase) return; // Hub axle holds the gear
+                }
+
                 world.BlockAccessor.BreakBlock(pos, null);
                 return;
             }

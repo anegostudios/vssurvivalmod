@@ -1,0 +1,93 @@
+{
+	"code": "spurgearhub",
+	"class": "BlockSpurGear",
+	"attributes": {
+		"mechanicalPower": {
+			"renderer": "generic"
+		},
+		"handbook": {
+			"groupBy": ["spurgear-*"]
+		}
+	},
+	"variantgroups": [
+		{ "code": "orientation", "states": ["n", "e", "s", "w", "u", "d"] }
+	],
+	"entityClass": "Generic",
+	"entityBehaviors": [{ "name": "MPSpurGear" }],
+	"shapeByType": {
+		"*-n": { "base": "block/wood/mechanics/spurgear16", "overlays": [{ "base": "block/wood/mechanics/axle", "rotateY": 90 }] },
+		"*-e": { "base": "block/wood/mechanics/spurgear16", "rotateY": 270, "overlays": [{ "base": "block/wood/mechanics/axle" }] },
+		"*-s": { "base": "block/wood/mechanics/spurgear16", "rotateY": 180, "overlays": [{ "base": "block/wood/mechanics/axle", "rotateY": 90 }] },
+		"*-w": { "base": "block/wood/mechanics/spurgear16", "rotateY": 90, "overlays": [{ "base": "block/wood/mechanics/axle" }] },
+		"*-u": { "base": "block/wood/mechanics/spurgear16", "rotateX": 90, "overlays": [{ "base": "block/wood/mechanics/axle", "rotateZ": 90 }] },
+		"*-d": { "base": "block/wood/mechanics/spurgear16", "rotateX": 270, "overlays": [{ "base": "block/wood/mechanics/axle", "rotateZ": 90 }] }
+	},
+	"blockmaterial": "Wood",
+	"textures": {
+		"wood": { "base": "block/wood/planks/generic" }
+	},
+	"drops": [
+		{ "type": "block", "code": "spurgear-s" },
+		{ "type": "block", "code": "woodenaxle-ud", "quantity": { "avg": 1 } }
+	],
+	"resistance": 3.5,
+	"lightAbsorption": 0,
+	"maxStackSize": 8,
+	"sidesolid": {
+		"all": false
+	},
+	"sideopaque": {
+		"all": false
+	},
+	"rainPermeable": true,
+	"collisionSelectionBoxesByType": {
+		"*-n": [
+			{ "x1": 0.125, "y1": 0, "z1": 0.625, "x2": 0.85, "y2": 1, "z2": 1, "rotateY": 180 },
+			{ "x1": 0, "y1": 0, "z1": 0.25, "x2": 1, "y2": 0.875, "z2": 0.75, "rotateY": 90 }
+		],
+		"*-e": [
+			{ "x1": 0.125, "y1": 0, "z1": 0.625, "x2": 0.85, "y2": 1, "z2": 1, "rotateY": 90 },
+			{ "x1": 0, "y1": 0, "z1": 0.25, "x2": 1, "y2": 0.875, "z2": 0.75 }
+		],
+		"*-s": [
+			{ "x1": 0.125, "y1": 0, "z1": 0.625, "x2": 0.85, "y2": 1, "z2": 1, "rotateY": 0 },
+			{ "x1": 0, "y1": 0, "z1": 0.25, "x2": 1, "y2": 0.875, "z2": 0.75, "rotateY": 90 }
+		],
+		"*-w": [
+			{ "x1": 0.125, "y1": 0, "z1": 0.625, "x2": 0.85, "y2": 1, "z2": 1, "rotateY": 270 },
+			{ "x1": 0, "y1": 0, "z1": 0.25, "x2": 1, "y2": 0.875, "z2": 0.75 }
+		],
+		"*-u": [
+			{ "x1": 0.125, "y1": 0, "z1": 0.125, "x2": 0.875, "y2": 0.375, "z2": 0.875, "rotateX": 180 },
+			{ "x1": 0.25, "y1": 0, "z1": 0.25, "x2": 0.75, "y2": 1, "z2": 0.75 }
+		],
+		"*-d": [
+			{ "x1": 0.125, "y1": 0, "z1": 0.125, "x2": 0.875, "y2": 0.375, "z2": 0.875 },
+			{ "x1": 0.25, "y1": 0, "z1": 0.25, "x2": 0.75, "y2": 1, "z2": 0.75 }
+		]
+	},
+	"particleCollisionBox": { "x1": 0, "y1": 0, "z1": 0, "x2": 0, "y2": 0, "z2": 0 },
+	"heldTpIdleAnimation": "holdunderarm",
+	"tpHandTransform": {
+		"translation": { "x": -0.58, "y": -0.46, "z": -0.74 },
+		"rotation": { "x": 3, "y": -180, "z": -55 },
+		"scale": 0.8
+	},
+	"guiTransform": {
+		"rotation": { "x": 31, "y": -37, "z": 35 },
+		"origin": { "x": 0.6, "y": 0.5, "z": 0.9 },
+		"scale": 1.64
+	},
+	"groundTransform": {
+		"translation": { "x": 0, "y": 0, "z": 0 },
+		"rotation": { "x": 90, "y": 0, "z": 0 },
+		"origin": { "x": 0.5, "y": 0.5, "z": 1 },
+		"scale": 3.7
+	},
+	"sounds": {
+		"hit": "block/planks",
+		"break": "block/planks",
+		"place": "block/planks",
+		"walk": "walk/wood"
+	}
+}

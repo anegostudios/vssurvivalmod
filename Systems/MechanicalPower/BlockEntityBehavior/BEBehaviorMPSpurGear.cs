@@ -15,6 +15,29 @@ namespace Vintagestory.GameContent.Mechanics
         float angleOffset;
         public override float AngleRad => base.AngleRad + angleOffset;
 
+        // --- Multi-disc state (Scope 2) ---
+        // Bitmask: bit N set means a disc is mounted on BlockFacing.ALLFACES[N].
+        int discFaces;
+        public int DiscFaces => discFaces;
+        public int DiscCount
+        {
+            get
+            {
+                int n = 0;
+                for (int i = 0; i < 6; i++) { if ((discFaces & (1 << i)) != 0) n++; }
+                return n;
+            }
+        }
+        public bool HasDisc(BlockFacing face) => (discFaces & (1 << face.Index)) != 0;
+        public void SetDisc(BlockFacing face, bool present)
+        {
+            if (present) discFaces |= (1 << face.Index);
+            else discFaces &= ~(1 << face.Index);
+            Blockentity.MarkDirty(true);
+        }
+
+        internal bool IsMultiBlock => Block is BlockSpurGearMulti;
+
         public BEBehaviorMPSpurGear(BlockEntity blockentity) : base(blockentity)
         {
         }
@@ -50,8 +73,22 @@ namespace Vintagestory.GameContent.Mechanics
             }
         }
 
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
+        {
+            base.FromTreeAttributes(tree, worldAccessForResolve);
+            discFaces = tree.GetInt("discFaces", 0);
+        }
+
+        public override void ToTreeAttributes(ITreeAttribute tree)
+        {
+            base.ToTreeAttributes(tree);
+            if (discFaces != 0) tree.SetInt("discFaces", discFaces);
+        }
+
         public override MechPowerPath[] GetMechPowerExits(MechPowerPath entryDir)
         {
+            if (IsMultiBlock) return GetMultiDiscExits(entryDir);
+
             BlockFacing left, right, above, below;
 
             // Get the directions of potential neighbour connectable spur gears from this block's Facing
@@ -111,6 +148,28 @@ namespace Vintagestory.GameContent.Mechanics
             return paths.ToArray();
         }
 
+        /// <summary>
+        /// Multi-disc hub: each disc face that has a supported axle behind it is an exit.
+        /// Co-axial exits (same axis as entry) keep the same rotation direction.
+        /// Perpendicular exits invert (one effective mesh point).
+        /// </summary>
+        MechPowerPath[] GetMultiDiscExits(MechPowerPath entryDir)
+        {
+            BlockFacing entryFace = entryDir.OutFacing.Opposite;
+            List<MechPowerPath> paths = new List<MechPowerPath>();
+
+            foreach (BlockFacing face in BlockFacing.ALLFACES)
+            {
+                if (!HasDisc(face) || face == entryFace) continue;
+
+                bool coaxial = face == entryFace.Opposite;
+                bool invert = coaxial ? entryDir.invert : !entryDir.invert;
+                paths.Add(entryDir.PropagatedClone(face, invert, propagationDir));
+            }
+
+            return paths.ToArray();
+        }
+
 
         public override BlockFacing GetPropagatingTurnDir(BlockFacing toFacing)
         {
@@ -120,6 +179,11 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override float GetResistance()
         {
+            if (IsMultiBlock)
+            {
+                int count = DiscCount;
+                return count > 0 ? 0.0005f * count : 0.0005f;
+            }
             return 0.0005f;
         }
     }
