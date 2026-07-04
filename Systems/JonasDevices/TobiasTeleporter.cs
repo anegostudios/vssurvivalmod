@@ -115,8 +115,7 @@ public class TobiasTeleporter : ModSystem
         bett.OwnerPlayerUid = null;
         var side = block.Variant["side"];
         var tpPos = posVec + BlockTobiasTeleporter.GetTeleportOffset(side);
-        TeleporterData.TobiasTeleporterLocation = tpPos;
-        needsSaving = true;
+        SetTeleporterLocation(tpPos);
 
         return TextCommandResult.Success($"Tobias teleporter set to Tobias Cave");
     }
@@ -158,6 +157,12 @@ public class TobiasTeleporter : ModSystem
 
         location = null;
         return false;
+    }
+
+    public void SetTeleporterLocation(Vec3d pos)
+    {
+        TeleporterData.TobiasTeleporterLocation = pos;
+        needsSaving = true;
     }
 
     public bool TryGetPlayerLocation(string playerUid, out Vec3d location)

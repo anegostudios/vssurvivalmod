@@ -41,7 +41,8 @@ public class BlockEntityTobiasTeleporter : BlockEntityTeleporterBase
                 var block = sapi.World.BlockAccessor.GetBlock(Pos);
                 var side = block.Variant["side"];
                 var tpPos = Pos.ToVec3d() + BlockTobiasTeleporter.GetTeleportOffset(side);
-                SystemTobiasTeleporter.TeleporterData.TobiasTeleporterLocation = tpPos;
+                SystemTobiasTeleporter.SetTeleporterLocation(tpPos);
+                // SystemTobiasTeleporter.TeleporterData.TobiasTeleporterLocation = tpPos;
             }
             else if(!string.IsNullOrEmpty(OwnerPlayerUid))
             {
