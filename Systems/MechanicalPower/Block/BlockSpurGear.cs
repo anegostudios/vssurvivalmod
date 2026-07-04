@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -9,7 +8,7 @@ namespace Vintagestory.GameContent.Mechanics
 {
     public class BlockSpurGear : BlockMPBase
     {
-        protected BlockFacing Orientation; 
+        protected BlockFacing Orientation;
 
         public override void OnLoaded(ICoreAPI api)
         {
@@ -17,65 +16,155 @@ namespace Vintagestory.GameContent.Mechanics
             Orientation = BlockFacing.FromFirstLetter(Variant["orientation"]);
         }
 
-        public override bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face, BlockMPBase forBlock)
-        {
-            // Original: face == Orientation || side-by-side matching spur gears
-            // Added: hub variant accepts both ends of the rotation axis (drive side + continuation)
-            if (face == Orientation) return true;
-            if (face == Orientation.Opposite && IsHubVariant()) return true;
-            if (forBlock == this && face != Orientation.Opposite) return true;
-
-            // Multi-disc block requesting connection on any face with a supported axle
-            if (forBlock is BlockSpurGearMulti) return face == Orientation || face == Orientation.Opposite;
-
-            return false;
-        }
-
         bool IsHubVariant()
         {
-            return Code.Path.StartsWith("spurgearhub-");
+            return Code?.PathStartsWith("spurgearhub-") == true;
+        }
+
+        bool IsSameSpurGearVariant(Block block)
+        {
+            string path = block?.Code?.Path;
+            if (path == null || (!path.StartsWith("spurgear-") && !path.StartsWith("spurgearhub-"))) return false;
+            return block is BlockSpurGear && block.Variant?["orientation"] == Variant?["orientation"];
+        }
+
+        Block GetSpurGearVariant(IWorldAccessor world, bool hub, BlockFacing orientation)
+        {
+            string code = (hub ? "spurgearhub-" : "spurgear-") + orientation.Code[0];
+            return world.GetBlock(new AssetLocation(Code.Domain, code)) ?? world.GetBlock(new AssetLocation(code));
+        }
+
+        void ExchangeTo(IWorldAccessor world, BlockPos pos, Block toBlock)
+        {
+            world.BlockAccessor.ExchangeBlock(toBlock.BlockId, pos);
+
+            BEBehaviorMPBase bemp = world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPBase>();
+            if (bemp != null)
+            {
+                bemp.SetOrientations();
+                bemp.Shape = toBlock.Shape;
+                bemp.Blockentity.MarkDirty();
+            }
+        }
+
+        public bool IsHubAxleFace(BlockFacing face)
+        {
+            return face == Orientation.Opposite;
+        }
+
+        public bool TryAddHubAxle(IWorldAccessor world, BlockPos pos, BlockFacing connectedOnFace = null)
+        {
+            if (IsHubVariant()) return true;
+            if (!(GetSpurGearVariant(world, true, Orientation) is BlockMPBase hubBlock)) return false;
+
+            ExchangeTo(world, pos, hubBlock);
+            ReconnectAxis(world, pos, hubBlock, connectedOnFace);
+            return true;
+        }
+
+        void ReconnectAxis(IWorldAccessor world, BlockPos pos, BlockMPBase ownBlock, BlockFacing connectedOnFace)
+        {
+            if (connectedOnFace == Orientation || connectedOnFace == Orientation.Opposite)
+            {
+                TryReconnectFace(world, pos, ownBlock, connectedOnFace);
+                TryReconnectFace(world, pos, ownBlock, connectedOnFace.Opposite);
+                return;
+            }
+
+            TryReconnectFace(world, pos, ownBlock, Orientation);
+            TryReconnectFace(world, pos, ownBlock, Orientation.Opposite);
+        }
+
+        void TryReconnectFace(IWorldAccessor world, BlockPos pos, BlockMPBase ownBlock, BlockFacing face)
+        {
+            BlockPos npos = pos.AddCopy(face);
+            IMechanicalPowerBlock neighbour = world.BlockAccessor.GetBlock(npos) as IMechanicalPowerBlock;
+            if (neighbour == null) return;
+            if (!neighbour.HasMechPowerConnectorAt(world, npos, face.Opposite, ownBlock)) return;
+            if (!ownBlock.HasMechPowerConnectorAt(world, pos, face, neighbour as BlockMPBase)) return;
+
+            neighbour.DidConnectAt(world, npos, face.Opposite);
+            ownBlock.WasPlaced(world, pos, face);
+        }
+
+        bool AxisEndHolds(IWorldAccessor world, BlockPos pos, BlockFacing face)
+        {
+            BlockPos npos = pos.AddCopy(face);
+            return world.BlockAccessor.GetBlock(npos) is BlockMPBase nblock
+                && nblock.HasMechPowerConnectorAt(world, npos, face.Opposite, this)
+                && HasMechPowerConnectorAt(world, pos, face, nblock);
+        }
+
+        public override bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face, BlockMPBase forBlock)
+        {
+            if (face == Orientation || face == Orientation.Opposite) return true;
+            return IsSameSpurGearVariant(forBlock);
         }
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {
-            return new ItemStack(world.GetBlock(CodeWithVariant("orientation", "s")));
+            return new ItemStack(GetSpurGearVariant(world, false, BlockFacing.SOUTH));
         }
-
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
             if (!CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
             {
-                return false;
-            }
+                if (failureCode != "notreplaceable" || blockSel.Face == null) return false;
 
-            // If clicking on an existing spur gear, redirect to multi-disc growth
-            Block targetBlock = world.BlockAccessor.GetBlock(blockSel.Position);
-            if (targetBlock is BlockSpurGear || targetBlock is BlockSpurGearMulti)
-            {
-                if (BlockSpurGearMulti.TryAddDisc(world, blockSel.Position, blockSel.Face.Opposite, ref failureCode, byPlayer))
+                Block blockAtSelection = world.BlockAccessor.GetBlock(blockSel.Position);
+                if (blockAtSelection is BlockSpurGear || blockAtSelection is BlockSpurGearMulti)
                 {
-                    if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
-                    {
-                        byPlayer.InventoryManager.ActiveHotbarSlot.TakeOut(1);
-                        byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
-                    }
-                    return true;
+                    BlockFacing discFace = blockSel.Face.Opposite;
+                    return BlockSpurGearMulti.TryAddDisc(world, blockSel.Position, discFace, ref failureCode, byPlayer);
                 }
-                // Fall through to normal placement if adding a disc failed
+
+                if (!TryMoveSelectionToReplaceableNeighbour(world, byPlayer, blockSel, ref failureCode))
+                {
+                    return false;
+                }
             }
 
-            // Scan all 6 faces for a valid axle, prioritizing the clicked face
-            BlockFacing targetFace = blockSel.Face.Opposite;
-            BlockPos targetPos = blockSel.Position.AddCopy(targetFace);
-            BlockEntity targetBe = world.BlockAccessor.GetBlockEntity(targetPos);
-
-            if (!TryFindAxle(world, blockSel.Position, targetFace, out targetFace, out targetPos, out targetBe, ref failureCode))
+            if (TryRedirectToNeighbourMulti(world, byPlayer, blockSel, ref failureCode))
             {
+                return true;
+            }
+
+            BlockFacing targetFace = null;
+            Block toPlaceBlock = null;
+            BlockFacing clickedFace = blockSel.Face.Opposite;
+            bool unsupportedAxleSeen = false;
+
+            for (int i = -1; i < BlockFacing.ALLFACES.Length; i++)
+            {
+                BlockFacing face = i < 0 ? clickedFace : BlockFacing.ALLFACES[i];
+                if (i >= 0 && face == clickedFace) continue;
+
+                Block candidateBlock = GetSpurGearVariant(world, false, face) ?? world.GetBlock(CodeWithVariant("orientation", face.Code[0] + ""));
+                if (!(candidateBlock is BlockMPBase candidateMechBlock)) continue;
+
+                BlockPos npos = blockSel.Position.AddCopy(face);
+                BlockEntity nbe = world.BlockAccessor.GetBlockEntity(npos);
+                if (!(nbe?.Block is BlockMPBase neighbourBlock)) continue;
+                if (!neighbourBlock.HasMechPowerConnectorAt(world, npos, face.Opposite, candidateMechBlock)) continue;
+                if (nbe.GetBehavior<BEBehaviorMPAxle>() == null) continue;
+                if (!BEBehaviorMPAxle.IsAttachedToBlock(world.BlockAccessor, nbe.Block, npos))
+                {
+                    unsupportedAxleSeen = true;
+                    continue;
+                }
+
+                targetFace = face;
+                toPlaceBlock = candidateBlock;
+                break;
+            }
+
+            if (targetFace == null)
+            {
+                failureCode = unsupportedAxleSeen ? "axlemusthavesupport" : "requiresaxle";
                 return false;
             }
 
-            BlockSpurGear toPlaceBlock = world.GetBlock(CodeWithVariant("orientation", targetFace.Code[0] + "")) as BlockSpurGear;
             world.BlockAccessor.SetBlock(toPlaceBlock.BlockId, blockSel.Position);
 
             var selfBeh = GetBEBehavior<BEBehaviorMPBase>(blockSel.Position);
@@ -86,92 +175,94 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 var npos = blockSel.Position.AddCopy(exit.OutFacing);
                 var neibBlock = world.BlockAccessor.GetBlock(npos) as IMechanicalPowerBlock;
-                neibBlock?.DidConnectAt(world, blockSel.Position, exit.OutFacing.Opposite);
-                if (neibBlock != null)
+                neibBlock?.DidConnectAt(world, npos, exit.OutFacing.Opposite);
+                if (neibBlock != null && !selfBeh.tryConnect(exit.OutFacing))
                 {
-                    if (!selfBeh.tryConnect(exit.OutFacing))
-                    {
-                        // We might be trying to connect to a side which is has no power node, which means it has no network.
-                        // We first need to connect to a network, before we can connect our neighbours, so lets try to connect these again
-                        possiblyNetworklessCandidates.Add(exit.OutFacing);
-                    }
+                    possiblyNetworklessCandidates.Add(exit.OutFacing);
                 }
             }
 
-            // Looks like we managed to connect
             if (selfBeh.Network != null)
             {
                 foreach (var face in possiblyNetworklessCandidates) selfBeh.tryConnect(face);
             }
 
-
             return true;
         }
 
-        /// <summary>
-        /// Searches for a valid axle to attach the gear to, starting with the preferred face
-        /// and falling through to all other faces if that one fails.
-        /// </summary>
-        bool TryFindAxle(IWorldAccessor world, BlockPos gearPos, BlockFacing preferred, out BlockFacing foundFace, out BlockPos foundPos, out BlockEntity foundBe, ref string failureCode)
+        bool TryRedirectToNeighbourMulti(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref string failureCode)
         {
-            // Try preferred face first
-            if (CheckAxleFace(world, gearPos, preferred, out foundPos, out foundBe))
+            BlockFacing clickedFace = blockSel.Face;
+            if (clickedFace == null) return false;
+
+            BlockPos pos = blockSel.Position;
+            BlockFacing scanDir = clickedFace.Opposite;
+            for (int depth = 1; depth <= 2; depth++)
             {
-                foundFace = preferred;
-                return true;
+                BlockPos candidatePos = pos.AddCopy(scanDir, depth);
+                Block candidate = world.BlockAccessor.GetBlock(candidatePos);
+
+                if (candidate is BlockSpurGear || candidate is BlockSpurGearMulti)
+                {
+                    BlockFacing discFace = scanDir.Opposite;
+                    return BlockSpurGearMulti.TryAddDisc(world, candidatePos, discFace, ref failureCode, byPlayer);
+                }
+
+                if (candidate.BlockMaterial != EnumBlockMaterial.Wood && !(candidate is BlockMPBase))
+                {
+                    break;
+                }
             }
 
-            // Scan remaining faces
-            foreach (BlockFacing face in BlockFacing.ALLFACES)
+            return false;
+        }
+
+        bool TryMoveSelectionToReplaceableNeighbour(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref string failureCode)
+        {
+            BlockPos originalPos = blockSel.Position.Copy();
+            BlockFacing originalFace = blockSel.Face;
+            bool originalDidOffset = blockSel.DidOffset;
+
+            for (int i = -1; i < BlockFacing.ALLFACES.Length; i++)
             {
-                if (face == preferred) continue;
-                if (CheckAxleFace(world, gearPos, face, out foundPos, out foundBe))
+                BlockFacing face = i < 0 ? originalFace : BlockFacing.ALLFACES[i];
+                if (face == null || (i >= 0 && face == originalFace)) continue;
+
+                blockSel.Position = originalPos.AddCopy(face);
+                blockSel.Face = face;
+                blockSel.DidOffset = true;
+
+                string offsetFailureCode = null;
+                if (CanPlaceBlock(world, byPlayer, blockSel, ref offsetFailureCode))
                 {
-                    foundFace = face;
+                    failureCode = offsetFailureCode;
                     return true;
                 }
             }
 
-            foundFace = preferred;
-            foundPos = null;
-            foundBe = null;
-            failureCode = "requiresaxle";
+            blockSel.Position = originalPos;
+            blockSel.Face = originalFace;
+            blockSel.DidOffset = originalDidOffset;
             return false;
         }
-
-        bool CheckAxleFace(IWorldAccessor world, BlockPos gearPos, BlockFacing face, out BlockPos axlePos, out BlockEntity axleBe)
-        {
-            axlePos = gearPos.AddCopy(face);
-            axleBe = world.BlockAccessor.GetBlockEntity(axlePos);
-
-            BEBehaviorMPAxle bempaxle = axleBe?.GetBehavior<BEBehaviorMPAxle>();
-            if (bempaxle == null) return false;
-            if (!(bempaxle.Block as BlockMPBase).HasMechPowerConnectorAt(world, axlePos, face, this)) return false;
-            if (!BEBehaviorMPAxle.IsAttachedToBlock(world.BlockAccessor, bempaxle.Block as Block, axlePos)) return false;
-
-            return true;
-        }
-
 
         public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
             var nblock = world.BlockAccessor.GetBlock(pos.AddCopy(Orientation));
-            if (!(nblock is BlockMPBase) || nblock.SideIsSolid(world.BlockAccessor, pos, Orientation.Opposite.Index))
-            {
-                // Before breaking, check if the hub-side axle still supports us
-                if (IsHubVariant())
-                {
-                    var hubBlock = world.BlockAccessor.GetBlock(pos.AddCopy(Orientation.Opposite));
-                    if (hubBlock is BlockMPBase) return; // Hub axle holds the gear
-                }
+            bool frontHolds = nblock is BlockMPBase && !nblock.SideIsSolid(world.BlockAccessor, pos, Orientation.Opposite.Index);
 
-                world.BlockAccessor.BreakBlock(pos, null);
+            if (frontHolds)
+            {
+                base.OnNeighbourBlockChange(world, pos, neibpos);
                 return;
             }
 
-            base.OnNeighbourBlockChange(world, pos, neibpos);
+            bool hubHolds = IsHubVariant() && AxisEndHolds(world, pos, Orientation.Opposite);
+            if (!hubHolds)
+            {
+                world.BlockAccessor.BreakBlock(pos, null);
+            }
         }
-
 
         public override void DidConnectAt(IWorldAccessor world, BlockPos pos, BlockFacing face) { }
     }

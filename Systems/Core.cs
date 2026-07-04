@@ -493,6 +493,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockAxle", typeof(BlockAxle));
             api.RegisterBlockClass("BlockAngledGears", typeof(BlockAngledGears));
             api.RegisterBlockClass("BlockSpurGear", typeof(BlockSpurGear));
+            api.RegisterBlockClass("BlockSpurGearMulti", typeof(BlockSpurGearMulti));
             api.RegisterBlockClass("BlockWindmillRotor", typeof(BlockWindmillRotor));
             api.RegisterBlockClass("BlockToggle", typeof(BlockToggle));
             api.RegisterBlockClass("BlockPulverizer", typeof(BlockPulverizer));

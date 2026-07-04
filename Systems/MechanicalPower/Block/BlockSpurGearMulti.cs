@@ -2,18 +2,19 @@ using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
-using Vintagestory.GameContent.Mechanics;
 
 #nullable disable
 
 namespace Vintagestory.GameContent.Mechanics
 {
     /// <summary>
-    /// Multi-disc spur gear hub: one cell carrying up to six gear discs, one per face,
-    /// each mounted on its own supported axle, all coupled as one network node.
+    /// One block carrying multiple spur gear discs, one per face, each mounted on its own
+    /// supported axle and coupled as one network node.
     /// </summary>
     public class BlockSpurGearMulti : BlockMPBase
     {
+        const string GearsWouldJamFailureCode = "gearswouldjam";
+
         Cuboidf[][] discBoxes;
 
         public override void OnLoaded(ICoreAPI api)
@@ -46,7 +47,8 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face, BlockMPBase forBlock)
         {
-            return GetGearBehavior(world.BlockAccessor, pos)?.HasDisc(face) == true;
+            var beh = GetGearBehavior(world.BlockAccessor, pos);
+            return beh == null || beh.HasDisc(face);
         }
 
         public override void DidConnectAt(IWorldAccessor world, BlockPos pos, BlockFacing face) { }
@@ -83,16 +85,12 @@ namespace Vintagestory.GameContent.Mechanics
             return GetSelectionBoxes(blockAccessor, pos);
         }
 
-        /// <summary>
-        /// Grows a disc on the cell: a plain gear morphs to the multi block with both discs
-        /// set; an existing multi gains one bit.
-        /// </summary>
         public static bool TryAddDisc(IWorldAccessor world, BlockPos gearPos, BlockFacing requestedFace, ref string failureCode, IPlayer byPlayer = null)
         {
             Block current = world.BlockAccessor.GetBlock(gearPos);
-            BEBehaviorMPSpurGear currentBeh = GetGearBehavior(world.BlockAccessor, gearPos);
 
             BlockFacing existingOrientation = null;
+            BEBehaviorMPSpurGear currentBeh = GetGearBehavior(world.BlockAccessor, gearPos);
             if (current is BlockSpurGearMulti)
             {
                 if (currentBeh == null) return false;
@@ -119,23 +117,32 @@ namespace Vintagestory.GameContent.Mechanics
             BlockEntity axleBe = null;
             string bestFailure = null;
 
-            // Try requested face first, then scan all others
-            for (int i = -1; i < BlockFacing.ALLFACES.Length; i++)
+            for (int i = -2; i < 0; i++)
             {
-                BlockFacing candidate = i < 0 ? requestedFace : BlockFacing.ALLFACES[i];
-                if (candidate == null || (i >= 0 && candidate == requestedFace)) continue;
+                BlockFacing candidate = i == -2 ? requestedFace : requestedFace?.Opposite;
+                if (candidate == null) continue;
 
-                if (current is BlockSpurGearMulti && currentBeh.HasDisc(candidate)) continue;
-                if (existingOrientation != null && candidate == existingOrientation) continue;
+                string candidateFailure = null;
+                if (current is BlockSpurGearMulti && currentBeh.HasDisc(candidate))
+                {
+                    candidateFailure = "notreplaceable";
+                    RememberFailure(ref bestFailure, candidateFailure);
+                    continue;
+                }
+                if (existingOrientation != null && candidate == existingOrientation)
+                {
+                    candidateFailure = "notreplaceable";
+                    RememberFailure(ref bestFailure, candidateFailure);
+                    continue;
+                }
 
-                if (TryGetAddableAxle(world, gearPos, candidate, multiMech, out axleBe, out string candidateFailure))
+                if (TryGetAddableAxle(world, gearPos, candidate, multiMech, out axleBe, out candidateFailure))
                 {
                     face = candidate;
                     break;
                 }
 
-                if (candidateFailure != null && (bestFailure == null || candidateFailure == "axlemusthavesupport"))
-                    bestFailure = candidateFailure;
+                RememberFailure(ref bestFailure, candidateFailure);
             }
 
             if (face == null)
@@ -146,11 +153,12 @@ namespace Vintagestory.GameContent.Mechanics
 
             if (current is BlockSpurGearMulti)
             {
-                currentBeh.SetDisc(face, true);
+                GetGearBehavior(world.BlockAccessor, gearPos).SetDisc(face, true);
             }
             else
             {
                 Exchange(world, gearPos, multiBlock);
+
                 var beh = GetGearBehavior(world.BlockAccessor, gearPos);
                 if (beh == null) return false;
                 beh.SetDisc(existingOrientation, true);
@@ -160,6 +168,9 @@ namespace Vintagestory.GameContent.Mechanics
             BlockPos axlePos = gearPos.AddCopy(face);
             (world.BlockAccessor.GetBlock(axlePos) as IMechanicalPowerBlock)?.DidConnectAt(world, axlePos, face.Opposite);
             world.BlockAccessor.GetBlockEntity(gearPos)?.GetBehavior<BEBehaviorMPBase>()?.tryConnect(face);
+            GetGearBehavior(world.BlockAccessor, gearPos)?.OnDiscsChanged(face);
+
+            failureCode = null;
 
             if (byPlayer != null && face != requestedFace)
             {
@@ -170,11 +181,16 @@ namespace Vintagestory.GameContent.Mechanics
             return true;
         }
 
+        static void RememberFailure(ref string bestFailure, string candidateFailure)
+        {
+            if (candidateFailure == null) return;
+            if (bestFailure == null || candidateFailure == "axlemusthavesupport") bestFailure = candidateFailure;
+        }
+
         static bool TryGetAddableAxle(IWorldAccessor world, BlockPos gearPos, BlockFacing face, BlockSpurGearMulti multiMech, out BlockEntity axleBe, out string failureCode)
         {
             BlockPos axlePos = gearPos.AddCopy(face);
             axleBe = world.BlockAccessor.GetBlockEntity(axlePos);
-
             if (axleBe?.GetBehavior<BEBehaviorMPAxle>() == null
                 || !(axleBe.Block is BlockMPBase axleBlock)
                 || !axleBlock.HasMechPowerConnectorAt(world, axlePos, face.Opposite, multiMech))
@@ -195,6 +211,7 @@ namespace Vintagestory.GameContent.Mechanics
         internal static void Exchange(IWorldAccessor world, BlockPos pos, Block toBlock)
         {
             world.BlockAccessor.ExchangeBlock(toBlock.BlockId, pos);
+
             BEBehaviorMPBase bemp = world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPBase>();
             if (bemp != null)
             {
@@ -231,6 +248,7 @@ namespace Vintagestory.GameContent.Mechanics
                 if (!beh.HasDisc(face) || DiscHasConnector(world, pos, face)) continue;
 
                 beh.SetDisc(face, false);
+                beh.OnDiscsChanged(face);
                 removedAny = true;
                 world.SpawnItemEntity(new ItemStack(gearItem), pos.ToVec3d().Add(0.5, 0.5, 0.5));
             }
@@ -238,12 +256,14 @@ namespace Vintagestory.GameContent.Mechanics
             int count = beh.DiscCount;
             if (count == 0)
             {
-                if (removedAny) world.BlockAccessor.BreakBlock(pos, null);
+                if (removedAny)
+                {
+                    world.BlockAccessor.BreakBlock(pos, null);
+                }
                 return;
             }
             if (count > 1) return;
 
-            // One disc left: shrink back to the plain spur gear
             BlockFacing last = null;
             foreach (BlockFacing face in BlockFacing.ALLFACES)
             {

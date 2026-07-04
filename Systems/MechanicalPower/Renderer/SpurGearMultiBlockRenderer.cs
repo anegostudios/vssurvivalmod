@@ -85,10 +85,13 @@ namespace Vintagestory.GameContent.Mechanics
                     (float)(device.Position.Z - cameraPos.Z)
                 );
 
-                float rotation = device.AngleRad % GameMath.TWOPI;
                 foreach (BlockFacing face in BlockFacing.ALLFACES)
                 {
                     if (!gear.HasDisc(face) || matrixAndLightFloats[face.Index] == null) continue;
+
+                    BlockPos axlePos = device.Position.AddCopy(face);
+                    BEBehaviorMPBase axleBeh = capi.World.BlockAccessor.GetBlockEntity(axlePos)?.GetBehavior<BEBehaviorMPBase>();
+                    float rotation = (axleBeh?.AngleRad ?? device.AngleRad) % GameMath.TWOPI;
 
                     Vec3f axis = AxisSign(face);
                     int instanceIndex = faceInstanceCounts[face.Index]++;

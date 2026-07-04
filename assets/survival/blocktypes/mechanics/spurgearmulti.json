@@ -4,6 +4,9 @@
 	"attributes": {
 		"mechanicalPower": {
 			"renderer": "spurgearmulti"
+		},
+		"handbook": {
+			"groupBy": ["spurgear-*"]
 		}
 	},
 	"variantgroups": [
@@ -11,7 +14,9 @@
 	],
 	"entityClass": "Generic",
 	"entityBehaviors": [{ "name": "MPSpurGear" }],
-	"shape": { "base": "block/wood/mechanics/spurgear16" },
+	"shapeByType": {
+		"*-s": { "base": "block/wood/mechanics/spurgear16", "rotateY": 180 }
+	},
 	"blockmaterial": "Wood",
 	"textures": {
 		"wood": { "base": "block/wood/planks/generic" }
@@ -27,10 +32,29 @@
 		"all": false
 	},
 	"rainPermeable": true,
-	"collisionSelectionBoxes": [
-		{ "x1": 0.125, "y1": 0, "z1": 0.125, "x2": 0.875, "y2": 0.875, "z2": 0.875 }
-	],
+	"collisionSelectionBoxesByType": {
+		"*-s": [
+			{ "x1": 0.125, "y1": 0, "z1": 0.625, "x2": 0.85, "y2": 1, "z2": 1, "rotateY": 0 }
+		]
+	},
 	"particleCollisionBox": { "x1": 0, "y1": 0, "z1": 0, "x2": 0, "y2": 0, "z2": 0 },
+	"heldTpIdleAnimation": "holdunderarm",
+	"tpHandTransform": {
+		"translation": { "x": -0.58, "y": -0.46, "z": -0.74 },
+		"rotation": { "x": 3, "y": -180, "z": -55 },
+		"scale": 0.8
+	},
+	"guiTransform": {
+		"rotation": { "x": 31, "y": -37, "z": 35 },
+		"origin": { "x": 0.6, "y": 0.5, "z": 0.9 },
+		"scale": 1.64
+	},
+	"groundTransform": {
+		"translation": { "x": 0, "y": 0, "z": 0 },
+		"rotation": { "x": 90, "y": 0, "z": 0 },
+		"origin": { "x": 0.5, "y": 0.5, "z": 1 },
+		"scale": 3.7
+	},
 	"sounds": {
 		"hit": "block/planks",
 		"break": "block/planks",
