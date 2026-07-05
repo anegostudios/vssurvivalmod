@@ -166,8 +166,8 @@ public class TobiasTeleporter : ModSystem
     {
         if (TeleporterData.PlayerLocations.TryGetValue(playerUid, out var playerLocation))
         {
-            var sixMonths = sapi.World.Calendar.DaysPerMonth * TpCooldownInMonths;
-            if (!TeleporterData.PlayerLastUsages.TryGetValue(playerUid, out var playerLastUsage) || playerLastUsage.TotalDaysSinceLastTeleport + sixMonths < sapi.World.Calendar.TotalDays)
+            var tpCooldownInDays = sapi.World.Calendar.DaysPerMonth * TpCooldownInMonths;
+            if (!TeleporterData.PlayerLastUsages.TryGetValue(playerUid, out var playerLastUsage) || playerLastUsage.TotalDaysSinceLastTeleport + tpCooldownInDays < sapi.World.Calendar.TotalDays)
             {
                 location = playerLocation.Position;
                 return true;
@@ -221,7 +221,7 @@ public class TobiasTeleporter : ModSystem
 
     public double GetNextUsage()
     {
-        var sixMonths = capi.World.Calendar.DaysPerMonth * TpCooldownInMonths;
-        return Math.Max(0, sixMonths + OwnLastUsage - capi.World.Calendar.TotalDays);
+        var tpCooldownInDays = capi.World.Calendar.DaysPerMonth * TpCooldownInMonths;
+        return Math.Max(0, tpCooldownInDays + OwnLastUsage - capi.World.Calendar.TotalDays);
     }
 }
