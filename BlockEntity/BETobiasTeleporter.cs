@@ -245,6 +245,14 @@ public class BlockEntityTobiasTeleporter : BlockEntityTeleporterBase
         base.OnBlockRemoved();
     }
 
+    public override void OnBlockUnloaded()
+    {
+        translocatingSound?.Stop();
+        translocatingSound?.Dispose();
+
+        base.OnBlockUnloaded();
+    }
+
     public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
     {
         base.FromTreeAttributes(tree, worldAccessForResolve);
