@@ -140,6 +140,8 @@ public class TobiasTeleporter : ModSystem
         {
             location.TotalDaysSinceLastTeleport = sapi.World.Calendar.TotalDays;
             SendLastUsageToPlayer(player.Player as IServerPlayer);
+
+            needsSaving = true;
         }
     }
 
@@ -161,8 +163,11 @@ public class TobiasTeleporter : ModSystem
 
     public void SetTeleporterLocation(Vec3d pos)
     {
-        TeleporterData.TobiasTeleporterLocation = pos;
-        needsSaving = true;
+        if (TeleporterData.TobiasTeleporterLocation != pos)
+        {
+            TeleporterData.TobiasTeleporterLocation = pos;
+            needsSaving = true;
+        }
     }
 
     public bool TryGetPlayerLocation(string playerUid, out Vec3d location)

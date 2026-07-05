@@ -42,7 +42,6 @@ public class BlockEntityTobiasTeleporter : BlockEntityTeleporterBase
                 var side = block.Variant["side"];
                 var tpPos = Pos.ToVec3d() + BlockTobiasTeleporter.GetTeleportOffset(side);
                 SystemTobiasTeleporter.SetTeleporterLocation(tpPos);
-                // SystemTobiasTeleporter.TeleporterData.TobiasTeleporterLocation = tpPos;
             }
             else if(!string.IsNullOrEmpty(OwnerPlayerUid))
             {
