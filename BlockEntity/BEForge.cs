@@ -292,13 +292,12 @@ namespace Vintagestory.GameContent
             if (slot.Itemstack == null) return false;
 
             // Add fuel
-            if (slot.Itemstack.Collectible.GetCombustibleProperties(world, slot.Itemstack, null) is { BurnTemperature: > 1000 })
+            if (slot.Itemstack.Collectible.Attributes?.KeyExists("inForge") == true)
             {
                 if (FuelLevel > 4.5f) return false;
-                bool isFuel = slot.Itemstack.Collectible is ItemCoal or ItemOre;
                 if (slot.TryPutInto(Api.World, FuelSlot) == 0) return false;
 
-                if (isFuel) Api.World.PlaySoundAt(new AssetLocation("sounds/block/charcoal"), byPlayer, byPlayer, true, 16);
+                Api.World.PlaySoundAt(new AssetLocation("sounds/block/charcoal"), byPlayer, byPlayer, true, 16);
                 (Api as ICoreClientAPI)?.World.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
 
                 renderer?.SetContents(WorkItemStack, FuelLevel, burning, false, extraOxygenRateRender);
