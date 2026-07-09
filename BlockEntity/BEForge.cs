@@ -232,8 +232,6 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                partialFuelConsumed = 0;
-
                 if (Api.Side == EnumAppSide.Server && Api.World.Rand.NextDouble() < 0.05 && WorkItemStack != null)
                 {
                     float temp = WorkItemStack.Collectible.GetTemperature(Api.World, WorkItemStack);
@@ -415,7 +413,7 @@ namespace Vintagestory.GameContent
             lastTickTotalHours = tree.GetDouble("lastTickTotalHours");
             MeshAngleRad = tree.GetFloat("meshAngle", MeshAngleRad);
 
-            bool remesh = ((prevStack == null) ^ (WorkItemStack == null)) || (prevStack != null && WorkItemStack != null && (prevStack.StackSize != WorkItemStack.StackSize || !prevStack.Equals(Api.World, WorkItemStack, GlobalConstants.IgnoredStackAttributes)));            
+            bool remesh = ((prevStack == null) ^ (WorkItemStack == null)) || (prevStack != null && WorkItemStack != null && (prevStack.StackSize != WorkItemStack.StackSize || !prevStack.Equals(Api.World, WorkItemStack, GlobalConstants.IgnoredStackAttributes)));
             renderer?.SetContents(WorkItemStack, FuelLevel, burning, remesh, extraOxygenRateRender);
         }
 
@@ -468,7 +466,12 @@ namespace Vintagestory.GameContent
                 playsound = true;
                 partialFuelConsumed += (float)amountRel / 250f;
                 updateFuelLevel();
-                if (Api.World.Rand.NextDouble() < amountRel / 30f || FuelLevel <= 0)
+                if (FuelLevel <= 0)
+                {
+                    burning = false;
+                    partialFuelConsumed = 0f;
+                }
+                else if (Api.World.Rand.NextDouble() < amountRel / 30f)
                 {
                     burning = false;
                 }
