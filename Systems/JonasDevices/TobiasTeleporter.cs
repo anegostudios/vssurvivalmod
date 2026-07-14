@@ -148,7 +148,6 @@ public class TobiasTeleporter : ModSystem
             if (TeleporterData.PlayerLastUsages.TryGetValue(player.PlayerUID, out var playerLastUsage))
             {
                 playerLastUsage.TotalDaysSinceLastTeleport = sapi.World.Calendar.TotalDays;
-                SendLastUsageToPlayer(player.Player as IServerPlayer);
             }
             else
             {
@@ -157,7 +156,7 @@ public class TobiasTeleporter : ModSystem
                     TotalDaysSinceLastTeleport = sapi.World.Calendar.TotalDays
                 };
             }
-            
+            SendLastUsageToPlayer(player.Player as IServerPlayer);
             needsSaving = true;
         }
     }
@@ -208,8 +207,6 @@ public class TobiasTeleporter : ModSystem
         {
             Position = tpPos,
         };
-        var player = sapi.World.PlayerByUid(playerUid) as IServerPlayer;
-        SendLastUsageToPlayer(player);
         needsSaving = true;
     }
 
