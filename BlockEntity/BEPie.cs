@@ -149,7 +149,12 @@ namespace Vintagestory.GameContent
 
         public void OnPlaced(IPlayer? byPlayer)
         {
-            if (byPlayer?.InventoryManager.ActiveHotbarSlot.TakeOut(2) is not ItemStack doughStack) return;
+            if (byPlayer?.InventoryManager.ActiveHotbarSlot.Itemstack?.Clone() is not ItemStack doughStack) return;
+
+            if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
+            {
+                byPlayer.InventoryManager.ActiveHotbarSlot.TakeOut(2);
+            }
 
             ItemStack pie = new(Block);
             (pie.Block as BlockPie)?.SetContents(pie, [doughStack, null, null, null, null, null]);
@@ -266,6 +271,12 @@ namespace Vintagestory.GameContent
 
             if (inv[0].Itemstack?.Block is not BlockPie pieBlock) return false;
 
+            ItemStack? originalStack = null;
+            if (byPlayer?.WorldData.CurrentGameMode == EnumGameMode.Creative)
+            {
+                originalStack = slot.Itemstack?.Clone();
+            }
+
             ItemStack?[] cStacks = pieBlock.GetContents(Api.World, inv[0].Itemstack);
 
             bool isFull = cStacks[1] != null && cStacks[2] != null && cStacks[3] != null && cStacks[4] != null;
@@ -278,10 +289,12 @@ namespace Vintagestory.GameContent
                     if (cStacks[5] == null)
                     {
                         cStacks[5] = slot.TakeOut(2);
+                        if (byPlayer?.WorldData.CurrentGameMode == EnumGameMode.Creative) slot.Itemstack = originalStack;
                         pieBlock.SetContents(inv[0].Itemstack, cStacks);
                         // crust attribute must exist to stack together
                         inv[0].Itemstack.Attributes.SetString("topCrustType", "full");
-                    } else inv[0].Itemstack = BlockPie.CycleTopCrustType(inv[0].Itemstack);
+                    }
+                    else inv[0].Itemstack = BlockPie.CycleTopCrustType(inv[0].Itemstack);
                     return true;
                 }
                 if (byPlayer != null && capi != null) capi.TriggerIngameError(this, "piefullfilling", Lang.Get("Can't add more filling - already completely filled pie"));
@@ -298,6 +311,7 @@ namespace Vintagestory.GameContent
             if (!hasFilling)
             {
                 cStacks[1] = slot.TakeOut(2);
+                if (byPlayer?.WorldData.CurrentGameMode == EnumGameMode.Creative) slot.Itemstack = originalStack;
                 pieBlock.SetContents(inv[0].Itemstack, cStacks);
                 return true;
             }
@@ -331,6 +345,7 @@ namespace Vintagestory.GameContent
             if (equal)
             {
                 cStacks[emptySlotIndex] = slot.TakeOut(2);
+                if (byPlayer?.WorldData.CurrentGameMode == EnumGameMode.Creative) slot.Itemstack = originalStack;
                 pieBlock.SetContents(inv[0].Itemstack, cStacks);
                 return true;
             }
@@ -348,6 +363,7 @@ namespace Vintagestory.GameContent
                 }
 
                 cStacks[emptySlotIndex] = slot.TakeOut(2);
+                if (byPlayer?.WorldData.CurrentGameMode == EnumGameMode.Creative) slot.Itemstack = originalStack;
                 pieBlock.SetContents(inv[0].Itemstack, cStacks);
                 return true;
             }
