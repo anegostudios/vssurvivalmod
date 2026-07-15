@@ -209,7 +209,11 @@ namespace Vintagestory.GameContent
             //    a.) be of same foodcat
             //    b.) have props.AllowMixing set to true
 
-            if (hotbarSlot?.Empty == false && pieBlock.State == "raw")
+
+            // If the pie can be picked up into the current hotbar slot,
+            // skip trying to add the held stack as filling. Prevents
+            // the "cannot be added to pies" error message.
+            if (hotbarSlot?.Empty == false && pieBlock.State == "raw" && inv[0].Itemstack?.Collectible.GetMergableQuantity(hotbarSlot.Itemstack, inv[0].Itemstack, EnumMergePriority.DirectMerge) <= 0)
             {
                 bool added = TryAddIngredientFrom(hotbarSlot, byPlayer);
                 if (added)
