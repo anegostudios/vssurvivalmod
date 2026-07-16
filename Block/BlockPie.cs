@@ -296,7 +296,7 @@ namespace Vintagestory.GameContent
 
             if (!foodCatEquals && mixCodes.Any())
             {
-                return Lang.Get("pie-mixed-" + mixCodes.First() + "-" +state);
+                return Lang.Get("pie-mixed-" + mixCodes.First() + "-" + state);
             }
 
             return Lang.Get("pie-mixed-" + FillingFoodCategory(cStacks[1]).ToString().ToLowerInvariant() + "-" + state);
@@ -656,6 +656,58 @@ namespace Vintagestory.GameContent
             };
         }
 
+        private static void AddRandomIngredients(IWorldAccessor world, ref List<ItemStack?> pie, CookingRecipe recipe, string ingredientCode, ref Dictionary<CookingRecipeIngredient, List<ItemStack?>> valIngStacks, ref CookingRecipeIngredient? requestedIngredient, ItemStack? requestedIngredientStack)
+        {
+            (CookingRecipeIngredient ingredient, List<ItemStack?> validStacks) = valIngStacks.FirstOrDefault(entry => entry.Key.Code == ingredientCode);
+
+            List<ItemStack?> filteredValidStacks = validStacks;
+            string recipeCode = recipe.Code?.Split("-").ElementAtOrDefault(1) ?? "";
+
+            // Try to fulfill the ingredient request
+            if (ingredient.Code == requestedIngredient?.Code)
+            {
+                if (validStacks.First(stack => stack?.Collectible.Code == requestedIngredientStack?.Collectible.Code) is ItemStack addedStack)
+                {
+                    pie.Add(addedStack.Clone());
+
+                    filteredValidStacks = filteredValidStacks.Where(stack => FillingFoodCategory(stack) != FillingFoodCategory(addedStack)).ToList();
+
+                    ingredient.MinQuantity--;
+                    ingredient.MaxQuantity--;
+                }
+
+                requestedIngredient = null;
+
+                if (ingredient.MaxQuantity <= 0) return;
+            }
+
+            if (ingredientCode != "filling")
+            {
+                pie.Add(validStacks.ElementAtOrDefault(world.Rand.Next(validStacks.Count))?.Clone());
+                return;
+            }
+
+            while (ingredient.MinQuantity > 0)
+            {
+                if (filteredValidStacks.Count > 0)
+                {
+                    // Use the filtered list to fill out the other desired categories, if any remain.
+                    ItemStack? addedStack = filteredValidStacks![world.Rand.Next(filteredValidStacks!.Count)]?.Clone();
+                    filteredValidStacks = filteredValidStacks.Where(stack => FillingFoodCategory(stack) != FillingFoodCategory(addedStack)).ToList();
+
+                    pie.Add(addedStack);
+                }
+                else
+                {
+                    // Otherwise, just pull any ingredient.
+                    pie.Add(validStacks[world.Rand.Next(validStacks.Count)]?.Clone());
+                }
+
+                ingredient.MinQuantity--;
+                ingredient.MaxQuantity--;
+            }
+        }
+
         public static ItemStack?[] GenerateRandomPie(ICoreAPI api, ref Dictionary<CookingRecipeIngredient, HashSet<ItemStack?>>? cachedValidStacksByIngredient, CookingRecipe recipe, ItemStack? ingredientStack = null)
         {
             if (recipe.Ingredients == null) return new ItemStack?[6];
@@ -696,100 +748,24 @@ namespace Vintagestory.GameContent
 
             if (validStacksByIngredient == null) return new ItemStack?[6];
 
-            List<ItemStack?> randomMeal = [];
+            var valIngStacks = new Dictionary<CookingRecipeIngredient, List<ItemStack?>>();
+            foreach (var entry in validStacksByIngredient) valIngStacks.Add(entry.Key.Clone(), entry.Value.ToList());
+            valIngStacks = valIngStacks.OrderBy(x => api.World.Rand.Next()).ToDictionary(item => item.Key, item => item.Value);
 
-            while (!recipe.Matches(randomMeal.ToArray()))
+
+            CookingRecipeIngredient? requestedIngredient = null;
+            if (ingredientStack != null)
             {
-                var valIngStacks = new Dictionary<CookingRecipeIngredient, List<ItemStack?>>();
-                foreach (var entry in validStacksByIngredient) valIngStacks.Add(entry.Key.Clone(), entry.Value.ToList());
-                valIngStacks = valIngStacks.OrderBy(x => api.World.Rand.Next()).ToDictionary(item => item.Key, item => item.Value);
-
-                CookingRecipeIngredient? requestedIngredient = null;
-                if (ingredientStack != null)
-                {
-                    var validIngredients = recipe.Ingredients.Where(ingredient => ingredient.Matches(ingredientStack)).ToList();
-                    requestedIngredient = validIngredients[api.World.Rand.Next(validIngredients.Count)].Clone();
-                }
-
-                randomMeal = [];
-
-                var ingredient = valIngStacks.FirstOrDefault(entry => entry.Key.Code == "dough").Key;
-                var validStacks = valIngStacks.FirstOrDefault(entry => entry.Key.Code == "dough").Value;
-
-                if (ingredient.Code == requestedIngredient?.Code)
-                {
-                    if (validStacks.First(stack => stack?.Collectible.Code == ingredientStack?.Collectible.Code) is { } stack)
-                    {
-                        randomMeal.Add(stack.Clone());
-
-                        ingredient.MinQuantity--;
-                        ingredient.MaxQuantity--;
-                    }
-                    requestedIngredient = null;
-                }
-
-                while (ingredient.MinQuantity > 0)
-                {
-                    randomMeal.Add(validStacks[api.World.Rand.Next(validStacks.Count)]?.Clone());
-
-                    ingredient.MinQuantity--;
-                    ingredient.MaxQuantity--;
-                }
-
-                ingredient = valIngStacks.FirstOrDefault(entry => entry.Key.Code == "filling").Key;
-                validStacks = valIngStacks.FirstOrDefault(entry => entry.Key.Code == "filling").Value;
-
-                if (ingredient.Code == requestedIngredient?.Code)
-                {
-                    if (validStacks.First(stack => stack?.Collectible.Code == ingredientStack?.Collectible.Code) is { } stack)
-                    {
-                        randomMeal.Add(stack.Clone());
-
-                        ingredient.MinQuantity--;
-                        ingredient.MaxQuantity--;
-                    }
-                    requestedIngredient = null;
-                }
-
-                while (ingredient.MinQuantity > 0)
-                {
-                    randomMeal.Add(validStacks[api.World.Rand.Next(validStacks.Count)]?.Clone());
-
-                    ingredient.MinQuantity--;
-                    ingredient.MaxQuantity--;
-                }
-
-                ingredient = valIngStacks.FirstOrDefault(entry => entry.Key.Code == "crust").Key;
-                validStacks = valIngStacks.FirstOrDefault(entry => entry.Key.Code == "crust").Value;
-
-                if (requestedIngredient != null)
-                {
-                    if (ingredient.Code == requestedIngredient?.Code)
-                    {
-                        if (validStacks.First(stack => stack?.Collectible.Code == ingredientStack?.Collectible.Code) is { } stack)
-                        {
-                            randomMeal.Add(stack.Clone());
-                            ingredient.MaxQuantity--;
-
-                            requestedIngredient = null;
-                        }
-                    }
-                }
-                else if (ingredient.MaxQuantity > 0)
-                {
-                    var stack = validStacks[api.World.Rand.Next(validStacks.Count)];
-
-                    if (stack != null)
-                    {
-                        randomMeal.Add(stack.Clone());
-                        ingredient.MaxQuantity--;
-                    }
-                }
-
-                while (randomMeal.Count < 6) randomMeal.Add(null);
+                var validIngredients = recipe.Ingredients.Where(ingredient => ingredient.Matches(ingredientStack)).ToList();
+                requestedIngredient = validIngredients[api.World.Rand.Next(validIngredients.Count)].Clone();
             }
 
-            return randomMeal.ToArray();
+            List<ItemStack?> randomPie = [];
+            AddRandomIngredients(api.World, ref randomPie, recipe, "dough", ref valIngStacks, ref requestedIngredient, ingredientStack);
+            AddRandomIngredients(api.World, ref randomPie, recipe, "filling", ref valIngStacks, ref requestedIngredient, ingredientStack);
+            AddRandomIngredients(api.World, ref randomPie, recipe, "crust", ref valIngStacks, ref requestedIngredient, ingredientStack);
+
+            return [.. randomPie];
         }
 
         [return: NotNullIfNotNull(nameof(pieStack))]
