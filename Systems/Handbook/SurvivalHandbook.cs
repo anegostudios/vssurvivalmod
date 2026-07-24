@@ -164,14 +164,14 @@ namespace Vintagestory.GameContent
         {
             ObjectCacheUtil.GetOrCreate(capi, "valstacksbying-" + recipe.Code, () =>
             {
-                Dictionary<CookingRecipeIngredient, HashSet<ItemStack>> valStacksByIng = [];
+                Dictionary<CookingRecipeIngredient, HashSet<ItemStack?>> valStacksByIng = [];
 
-                foreach (var ingredient in recipe.Ingredients)
+                foreach (var ingredient in recipe.Ingredients ?? [])
                 {
-                    HashSet<ItemStack> ingredientStacks = [];
+                    HashSet<ItemStack?> ingredientStacks = [];
 
                     ingredient.Resolve(capi.World, "handbook meal recipes");
-                    foreach (var astack in ObjectCacheUtil.TryGet<ItemStack[]>(capi, "handbookallstacks"))
+                    foreach (ItemStack astack in ObjectCacheUtil.TryGet<ItemStack[]>(capi, "handbookallstacks") ?? [])
                     {
                         if (ingredient.GetMatchingStack(astack) is not CookingRecipeStack vstack) continue;
 
@@ -180,7 +180,16 @@ namespace Vintagestory.GameContent
 
                         if (BlockLiquidContainerBase.GetContainableProps(stack) is WaterTightContainableProps props)
                         {
-                            stack.StackSize *= (int)(props.ItemsPerLitre * ingredient.PortionSizeLitres);
+                            // Don't use *= in case the multiplier isn't an int because of nonstandard items per litre.
+                            // e.g. 30 * 150 * 0.01 = 45
+                            //      30 *= (int)(150 * 0.1) would still be 30 because the multiplier is 1.5 -> 1
+
+                            // Use ceil to make sure recipe matching works. Truncation breaks it.
+                            // e.g. 1 * 104 * 0.2 = 20.8 -> 21
+                            // Only 20 means CookingRecipe.Match will fail because it always truncates
+                            // and we will never have 104 items, only 100.
+
+                            //stack.StackSize = (int)Math.Ceiling(stack.StackSize * props.ItemsPerLitre * ingredient.PortionSizeLitres);
                         }
 
                         ingredientStacks.Add(stack);

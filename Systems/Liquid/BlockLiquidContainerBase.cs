@@ -125,7 +125,8 @@ namespace Vintagestory.GameContent
             if (Attributes?["capacityLitres"].Exists == true)
             {
                 capacityLitresFromAttributes = Attributes["capacityLitres"].AsInt(10);
-            } else
+            }
+            else
             {
                 var props = Attributes?["liquidContainerProps"]?.AsObject<LiquidTopOpenContainerProps>(null, Code.Domain);
                 if (props != null)
@@ -137,7 +138,8 @@ namespace Vintagestory.GameContent
             if (Attributes?["drinkPortionSize"].Exists == true)
             {
                 drinkPortionSizeFromAttributes = Attributes["drinkPortionSize"].AsInt(1);
-            } else
+            }
+            else
             {
                 var props = Attributes?["liquidContainerProps"]?.AsObject<LiquidTopOpenContainerProps>(null, Code.Domain);
                 if (props != null)
@@ -162,7 +164,7 @@ namespace Vintagestory.GameContent
                 foreach (CollectibleObject obj in api.World.Collectibles)
                 {
                     if (obj is BlockLiquidContainerBase blc && blc.IsTopOpened && blc.AllowHeldLiquidTransfer)
-                    liquidContainerStacks.Add(new ItemStack(obj));
+                        liquidContainerStacks.Add(new ItemStack(obj));
                 }
 
                 var lcstacks = liquidContainerStacks.ToArray();
@@ -309,20 +311,14 @@ namespace Vintagestory.GameContent
         }
 
 
-
+        public static WaterTightContainableProps? GetContainableProps(CollectibleObject? obj)
+        {
+            return obj?.Attributes?["waterTightContainerProps"].AsObject<WaterTightContainableProps?>(null, obj.Code.Domain);
+        }
 
         public static WaterTightContainableProps? GetContainableProps(ItemStack? stack)
         {
-            try
-            {
-                JsonObject? obj = stack?.ItemAttributes?["waterTightContainerProps"];
-                if (obj != null && obj.Exists) return obj.AsObject<WaterTightContainableProps>(null, stack!.Collectible.Code.Domain);
-                return null;
-            }
-            catch (Exception)
-            {
-                return null;
-            }
+            return GetContainableProps(stack?.Collectible);
         }
 
         /// <summary>
@@ -337,7 +333,7 @@ namespace Vintagestory.GameContent
             if (becontainer == null) return null;
 
             int slotid = GetContainerSlotId(pos);
-            if (slotid >=becontainer.Inventory.Count) return null;
+            if (slotid >= becontainer.Inventory.Count) return null;
 
             ItemStack? stack = becontainer.Inventory[slotid]?.Itemstack;
             if (stack == null) return null;
@@ -842,7 +838,8 @@ namespace Vintagestory.GameContent
 
             if (nutriProps.Health != 0)
             {
-                byEntity.ReceiveDamage(new DamageSource {
+                byEntity.ReceiveDamage(new DamageSource
+                {
                     Source = EnumDamageSource.Internal,
                     Type = nutriProps.Health > 0 ? EnumDamageType.Heal : EnumDamageType.Poison
                 }, Math.Abs(nutriProps.Health));
@@ -867,7 +864,7 @@ namespace Vintagestory.GameContent
             nutriProps.Intoxication *= litres;
             nutriProps.Psychedelic *= litres;
 
-            nutriProps.EatenStack = new JsonItemStack { ResolvedItemstack = itemstack.Clone() };
+            nutriProps.EatenStack = new JsonItemStack { ResolvedItemstack = itemstack.Clone(), Code = itemstack.Collectible.Code };
             nutriProps.EatenStack.ResolvedItemstack.StackSize = 1;
             (nutriProps.EatenStack.ResolvedItemstack.Collectible as BlockLiquidContainerBase)?.SetContent(nutriProps.EatenStack.ResolvedItemstack, null);
 
@@ -1043,7 +1040,7 @@ namespace Vintagestory.GameContent
             }
 
 
-            int moved = SplitStackAndPerformAction(byEntity, containerSlot, (stack) => { SetContent(stack, null); return contentStack.StackSize; } );
+            int moved = SplitStackAndPerformAction(byEntity, containerSlot, (stack) => { SetContent(stack, null); return contentStack.StackSize; });
 
             DoLiquidMovedEffects(byPlayer, contentStack, moved, EnumLiquidDirection.Pour);
             return true;

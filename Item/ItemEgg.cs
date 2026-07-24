@@ -3,8 +3,6 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 
-#nullable enable
-
 namespace Vintagestory.GameContent
 {
     public class ItemEgg : Item

@@ -683,6 +683,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockBehaviorClass("Door", typeof(BlockBehaviorDoor));
             api.RegisterBlockBehaviorClass("TrapDoor", typeof(BlockBehaviorTrapDoor));
             api.RegisterBlockBehaviorClass("Reparable", typeof(BlockBehaviorReparable));
+            api.RegisterBlockBehaviorClass("PieFormingSurface", typeof(BlockBehaviorPieFormingSurface));
 
             api.RegisterBlockBehaviorClass("JonasBoilerDoor", typeof(BlockBehaviorJonasBoilerDoor));
             api.RegisterBlockBehaviorClass("JonasHydraulicPump", typeof(BlockBehaviorJonasHydraulicPump));
