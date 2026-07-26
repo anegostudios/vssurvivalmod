@@ -520,8 +520,9 @@ namespace Vintagestory.GameContent
             {
                 Api.World.SpawnItemEntity(mashStack, Pos);
             }
-            Api.World.Logger.Audit("{0} Took 1x{1} from Fruitpress at {2}.",
+            Api.World.Logger.Audit("{0} Took {1}x{2} from Fruitpress at {3}.",
                 byPlayer.PlayerName,
+                mashStack.StackSize,
                 mashStack.Collectible.Code,
                 blockSel.Position
             );
