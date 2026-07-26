@@ -22,8 +22,63 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
+            BlockPos originalPos = blockSel.Position.Copy();
+            BlockFacing originalFace = blockSel.Face;
+            bool originalDidOffset = blockSel.DidOffset;
+            Block blockAtSelection = world.BlockAccessor.GetBlock(blockSel.Position);
+
             if (!CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
             {
+                if (failureCode != "notreplaceable") return false;
+
+                if (blockAtSelection is BlockSpurGear selectedGear)
+                {
+                    BlockFacing gearOrientation = BlockFacing.FromFirstLetter(selectedGear.Variant["orientation"]);
+                    BlockFacing hubFace = gearOrientation.Opposite;
+                    BlockPos hubAxlePos = originalPos.AddCopy(hubFace);
+
+                    Block blockAtHub = world.BlockAccessor.GetBlock(hubAxlePos);
+                    if (blockAtHub != null && blockAtHub.BlockId != 0 && !blockAtHub.IsReplacableBy(this))
+                    {
+                        failureCode = "notreplaceable";
+                        return false;
+                    }
+
+                    string axleRotation = (hubFace == BlockFacing.NORTH || hubFace == BlockFacing.SOUTH) ? "ns"
+                        : (hubFace == BlockFacing.UP || hubFace == BlockFacing.DOWN) ? "ud" : "we";
+                    Block axleVariant = world.GetBlock(new AssetLocation("game", "woodenaxle-" + axleRotation));
+                    if (axleVariant == null) axleVariant = world.GetBlock(new AssetLocation("woodenaxle-" + axleRotation));
+
+                    if (axleVariant != null && !BEBehaviorMPAxle.IsAttachedToBlock(world.BlockAccessor, axleVariant, hubAxlePos))
+                    {
+                        failureCode = "axlemusthavesupport";
+                        return false;
+                    }
+
+                    if (axleVariant != null)
+                    {
+                        world.BlockAccessor.SetBlock(axleVariant.BlockId, hubAxlePos);
+                    }
+
+                    if (selectedGear.TryAddHubAxle(world, originalPos, hubFace))
+                    {
+                        failureCode = null;
+                        return true;
+                    }
+
+                    if (axleVariant != null)
+                    {
+                        world.BlockAccessor.SetBlock(0, hubAxlePos);
+                    }
+                    return false;
+                }
+
+                if (blockAtSelection is BlockAxle selectedAxle
+                    && TryPlaceAcrossAdjacentSpurGear(world, blockSel, originalPos, originalFace, originalDidOffset, selectedAxle, ref failureCode))
+                {
+                    return true;
+                }
+
                 return false;
             }
 
@@ -71,6 +126,33 @@ namespace Vintagestory.GameContent.Mechanics
                 WasPlaced(world, blockSel.Position, null);
                 return true;
             }
+            return false;
+        }
+
+        bool TryPlaceAcrossAdjacentSpurGear(IWorldAccessor world, BlockSelection blockSel, BlockPos originalPos, BlockFacing originalFace, bool originalDidOffset, BlockAxle selectedAxle, ref string failureCode)
+        {
+            foreach (BlockFacing faceToGear in BlockFacing.ALLFACES)
+            {
+                BlockPos gearPos = originalPos.AddCopy(faceToGear);
+                if (!(world.BlockAccessor.GetBlock(gearPos) is BlockSpurGear gearBlock)) continue;
+
+                BlockFacing axleFaceFromGear = faceToGear.Opposite;
+                BlockFacing gearOrientation = BlockFacing.FromFirstLetter(gearBlock.Variant["orientation"]);
+                if (axleFaceFromGear != gearOrientation && axleFaceFromGear != gearOrientation.Opposite) continue;
+
+                if (!selectedAxle.HasMechPowerConnectorAt(world, originalPos, faceToGear, gearBlock)) continue;
+                if (!gearBlock.HasMechPowerConnectorAt(world, gearPos, axleFaceFromGear, selectedAxle)) continue;
+
+                if (gearBlock.IsHubAxleFace(axleFaceFromGear) && gearBlock.TryAddHubAxle(world, gearPos, axleFaceFromGear))
+                {
+                    failureCode = null;
+                    return true;
+                }
+            }
+
+            blockSel.Position = originalPos;
+            blockSel.Face = originalFace;
+            blockSel.DidOffset = originalDidOffset;
             return false;
         }
 

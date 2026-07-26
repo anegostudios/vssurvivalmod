@@ -28,7 +28,8 @@ namespace Vintagestory.GameContent.Mechanics
             { "transmission", typeof(TransmissionBlockRenderer) },
             { "clutch", typeof(ClutchBlockRenderer) },
             { "pulverizer", typeof(PulverizerRenderer) },
-            { "autorotor", typeof(CreativeRotorRenderer) }
+            { "autorotor", typeof(CreativeRotorRenderer) },
+            { "spurgearmulti", typeof(SpurGearMultiBlockRenderer) }
         };
         
         public MechNetworkRenderer(ICoreClientAPI capi, MechanicalPowerMod mechanicalPowerMod)
