@@ -361,7 +361,7 @@ namespace Vintagestory.GameContent
             if (packetid < 1000)
             {
                 var perms = new Entity.CachedAccessPerms(this, player);
-                if(!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "trader"))
+                if(!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.None, true, "trader"))
                 {
                     Inventory.InvNetworkUtil.SendInventoryRollback(player, packetid, data);
                     return;
@@ -373,7 +373,7 @@ namespace Vintagestory.GameContent
             if (packetid == 1000)
             {
                 var perms = new Entity.CachedAccessPerms(this, player);
-                if(!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "trader"))
+                if(!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.None, true, "trader"))
                 {
                     // Rennorb 23.06.2026 ux: I don't think anything needs to be reverted here. 
                     return;
@@ -395,7 +395,7 @@ namespace Vintagestory.GameContent
             if (packetid == 1001)
             {
                 var perms = new Entity.CachedAccessPerms(this, player);
-                if(!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "trader"))
+                if(!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.None, true, "trader"))
                 {
                     // No reverting needed. Just don't open the inventory.
                     return;
