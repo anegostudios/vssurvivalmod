@@ -684,11 +684,25 @@ namespace Vintagestory.GameContent
 
             if (packetid == BeginConvoPacketId)
             {
+                var perms = new Entity.CachedAccessPerms(this.entity, player);
+                if(!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "entity behavior conversable"))
+                {
+                    // Rennorb 23.06.2026 ux: Should we send the client something here? Probably needs some clientside code to make this completely smooth.
+                    return;
+                }
+
                 beginConvoServer(player);
             }
 
             if (packetid == SelectAnswerPacketId)
             {
+                var perms = new Entity.CachedAccessPerms(this.entity, player);
+                if(!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "entity behavior conversable"))
+                {
+                    // No need to revert this, just discard the request.
+                    return;
+                }
+
                 int id = SerializerUtil.Deserialize<int>(data);
                 var controller = GetOrCreateController(player.Entity);
 
@@ -697,6 +711,8 @@ namespace Vintagestory.GameContent
 
             if (packetid == CloseConvoPacketId)
             {
+                // No perms check, always allowed.
+
                 ControllerByPlayer.Remove(player.PlayerUID);
             }
         }

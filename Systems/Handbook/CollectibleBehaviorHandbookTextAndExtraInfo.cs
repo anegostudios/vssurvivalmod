@@ -970,7 +970,8 @@ namespace Vintagestory.GameContent
                 {
                     foreach (var val in allStacks)
                     {
-                        if (getjuiceableProps(val) is not { } jprops) continue;
+                        var jprops = getjuiceableProps(val);
+                        if (jprops == null) continue;
                         var litresLeft = val.Attributes?.GetDouble("juiceableLitresLeft") ?? 0;
                         var jstack = jprops.LiquidStack.ResolvedItemStack.Clone();
                         if (jprops.LitresPerItem != null)

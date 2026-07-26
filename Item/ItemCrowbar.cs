@@ -3,7 +3,8 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 
 
-#nullable disable
+#nullable disable annotations
+
 namespace Vintagestory.GameContent
 {
     public class ItemCrowbar : Item
@@ -23,7 +24,13 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
-            if (!firstEvent && (byEntity as EntityPlayer).Player.WorldData.CurrentGameMode == EnumGameMode.Creative) return;
+            var byPlayer = ((EntityPlayer)byEntity).Player;
+            if (!firstEvent && byPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative) return;
+
+            if (blockSel != null && !byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                return;
+            }
 
             var beh = getBeh(blockSel);
             if (beh != null)
@@ -64,9 +71,15 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
-            var beh = getBeh(blockSel);
-            bool creativeMode = (byEntity as EntityPlayer).Player.WorldData.CurrentGameMode == EnumGameMode.Creative;
+            var byPlayer = ((EntityPlayer) byEntity).Player;
+            bool creativeMode = byPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative;
 
+            if (blockSel != null && !byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+            {
+                return;
+            }
+
+            var beh = getBeh(blockSel);
             if (beh != null && (secondsUsed > 0.5f || creativeMode) && beh.Beams.Length > 0)
             {
                 api.World.PlaySoundAt(getSounds(beh).Break, blockSel.Position, 0.5, (byEntity as EntityPlayer)?.Player);

@@ -101,7 +101,7 @@ namespace Vintagestory.GameContent
 
             if (secondsUsed > 0.35f && secondsUsed < 0.87f)
             {
-                Vec3d dir = new Vec3d().AheadCopy(1, 0, byEntity.Pos.Yaw - GameMath.PI);
+                Vec3d dir = new Vec3d().Ahead(1, 0, byEntity.Pos.Yaw - GameMath.PI);
                 Vec3d pos = blockSel.Position.ToVec3d().Add(0.5 + dir.X, 1.03, 0.5 + dir.Z);
 
                 pos.X -= dir.X * secondsUsed * 1 / 0.75f * 1.2f;
@@ -112,8 +112,11 @@ namespace Vintagestory.GameContent
 
             if (secondsUsed > 0.6f && byEntity.Attributes.GetInt("didtill") == 0 && byEntity.World.Side == EnumAppSide.Server)
             {
-                byEntity.Attributes.SetInt("didtill", 1);
-                DoTill(secondsUsed, slot, byEntity, blockSel, entitySel);
+                if (byPlayer == null || byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+                {
+                    byEntity.Attributes.SetInt("didtill", 1);
+                    DoTill(secondsUsed, slot, byEntity, blockSel, entitySel);
+                }
             }
 
             return secondsUsed < 1;

@@ -240,6 +240,8 @@ namespace Vintagestory.GameContent
         {
             if (packetid == PlayerStoppedInteracting)
             {
+                // No access check here. This is always allowed.
+
                 interactingWithPlayer.Remove(player.Entity);
                 if (WatchedAttributes.GetString("tradingPlayerUID") == player.PlayerUID)
                 {

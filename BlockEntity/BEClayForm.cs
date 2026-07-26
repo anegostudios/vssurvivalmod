@@ -701,11 +701,11 @@ namespace Vintagestory.GameContent
             using (MemoryStream ms = new MemoryStream())
             {
                 BinaryWriter writer = new BinaryWriter(ms);
-                writer.Write(voxelPos.X);
-                writer.Write(voxelPos.Y);
-                writer.Write(voxelPos.Z);
-                writer.Write(mouseMode);
-                writer.Write((ushort)facing.Index);
+            writer.Write(voxelPos.X);
+            writer.Write(voxelPos.Y);
+            writer.Write(voxelPos.Z);
+            writer.Write(mouseMode);
+            writer.Write((ushort)facing.Index);
                 data = ms.ToArray();
             }
 
@@ -721,6 +721,19 @@ namespace Vintagestory.GameContent
         {
             if (packetid == (int)EnumClayFormingPacket.CancelSelect)
             {
+                if (selectedRecipeId == -1)
+                {
+                    return;
+                }
+
+                var perms = new BlockEntity.CachedAccessPerms(this.Api.World, this.Pos, player);
+                if (!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, false, "clay form")) // Do not validate picking range in case we got transported out of range.
+                {
+                    // No need to revert here, this cannot happen without packet manipulation.
+                    return;
+                }
+
+                // Rennorb 19.06.2026 security: Potentially griefable: surfaces do not track who placed them, therefore a second player could steal the rock by sending the cancel packet.
                 if (baseMaterial != null)
                 {
                     Api.World.SpawnItemEntity(baseMaterial, Pos);
@@ -730,6 +743,14 @@ namespace Vintagestory.GameContent
 
             if (packetid == (int)EnumClayFormingPacket.SelectRecipe)
             {
+                var perms = new BlockEntity.CachedAccessPerms(this.Api.World, this.Pos, player);
+                if (!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "clay form"))
+                {
+                    // Revert selection for that player:
+                    ((ICoreServerAPI)Api).Network.SendBlockEntityPacket((IServerPlayer)player, Pos, (int)EnumClayFormingPacket.CancelSelect);
+                    return;
+                }
+
                 int recipeid = SerializerUtil.Deserialize<int>(data);
                 ClayFormingRecipe recipe = Api.GetClayformingRecipes().FirstOrDefault(r => r.RecipeId == recipeid);
 
@@ -750,6 +771,13 @@ namespace Vintagestory.GameContent
 
             if (packetid == (int)EnumClayFormingPacket.OnUserOver)
             {
+                var perms = new BlockEntity.CachedAccessPerms(this.Api.World, this.Pos, player);
+                if (!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "clay form"))
+                {
+                    player.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                    return;
+                }
+
                 Vec3i voxelPos;
                 bool mouseMode;
                 BlockFacing facing;
@@ -766,6 +794,24 @@ namespace Vintagestory.GameContent
                 OnUseOver(player, voxelPos, facing, mouseMode);
                 Api.World.FrameProfiler.Leave();
             }
+        }
+
+
+        public override void OnReceivedServerPacket(int packetId, byte[] data)
+        {
+            switch(packetId)
+            {
+                case (int)EnumClayFormingPacket.CancelSelect:
+                    selectedRecipe = null;
+                    selectedRecipeId = -1;
+                    // Rennorb 21.06.2026 ux: This does not quite work to properly reset the client to a blank work item.
+                    //  The Green outlines are still there, but the interaction works properly (client can chose new recipe).
+                    CreateInitialWorkItem();
+                    RegenMeshAndSelectionBoxes(0);
+                    break;
+            }
+
+            base.OnReceivedServerPacket(packetId, data);
         }
 
 

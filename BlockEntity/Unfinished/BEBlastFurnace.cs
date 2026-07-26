@@ -215,6 +215,13 @@ namespace Vintagestory.GameContent
         {
             if (packetid < 1000)
             {
+                var perms = new BlockEntity.CachedAccessPerms(this.Api.World, this.Pos, player);
+                if (!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "blast furnace"))
+                {
+                    Inventory.InvNetworkUtil.SendInventoryRollback((IServerPlayer)player, packetid, data);
+                    return;
+                }
+
                 Inventory.InvNetworkUtil.HandleClientPacket(player, packetid, data);
 
                 // Tell server to save this chunk to disk again
@@ -225,6 +232,7 @@ namespace Vintagestory.GameContent
 
             if (packetid == (int)EnumBlockStovePacket.CloseGUI)
             {
+                // No permission checks here, closing the ui is always allowed.
                 if (player.InventoryManager != null)
                 {
                     player.InventoryManager.CloseInventory(Inventory);

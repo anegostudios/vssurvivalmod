@@ -3,10 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
-
-#nullable disable
 
 namespace Vintagestory.GameContent
 {
@@ -14,40 +11,49 @@ namespace Vintagestory.GameContent
     {
         public float ContainedHoneyLitres = 0.2f;
 
-        public bool CanSqueezeInto(Block block, BlockSelection blockSel)
+        [Obsolete("Use the overload that takes an actor for claim validation.", true)]
+        public bool CanSqueezeInto(Block block, BlockSelection? blockSel)
         {
-            var pos = blockSel?.Position;
+            if (blockSel == null) return block is BlockLiquidContainerTopOpened;
+            else return CanSqueezeInto(null, block, blockSel);
+        }
+        public bool CanSqueezeInto(EntityAgent? byEntity, Block block, BlockSelection blockSel)
+        {
+            var byPlayer = (byEntity as EntityPlayer)?.Player;
 
-            if (block is BlockLiquidContainerTopOpened blcto)
+            if (block is BlockLiquidContainerTopOpened blockLiquidContainer)
             {
-                return pos == null || !blcto.IsFull(pos);
+                if (blockLiquidContainer.IsFull(blockSel.Position)) return false;
+
+                return byPlayer == null || byEntity!.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use);
             }
 
-            if (pos != null)
+            if (block is BlockBarrel barrel && api.World.BlockAccessor.GetBlockEntity(blockSel.Position) is BlockEntityBarrel beb)
             {
-                if (block is BlockBarrel barrel && api.World.BlockAccessor.GetBlockEntity(blockSel.Position) is BlockEntityBarrel beb)
+                if (beb.Sealed || barrel.IsFull(blockSel.Position)) return false;
+
+                return byPlayer == null || byEntity!.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use);
+            }
+
+            if (api.World.BlockAccessor.GetBlockEntity(blockSel.Position) is BlockEntityGroundStorage beg)
+            {
+                var squeezeIntoSlot = beg.GetSlotAt(blockSel);
+                if (squeezeIntoSlot?.Itemstack?.Block is BlockLiquidContainerTopOpened itemLiquidContainer)
                 {
-                    return !beb.Sealed && !barrel.IsFull(pos);
-                }
-                else if (api.World.BlockAccessor.GetBlockEntity(pos) is BlockEntityGroundStorage beg)
-                {
-                    ItemSlot squeezeIntoSlot = beg.GetSlotAt(blockSel);
-                    if (squeezeIntoSlot?.Itemstack?.Block is BlockLiquidContainerTopOpened bowl)
-                    {
-                        return !bowl.IsFull(squeezeIntoSlot.Itemstack);
-                    }
+                    if (itemLiquidContainer.IsFull(squeezeIntoSlot.Itemstack)) return false;
+
+                    return byPlayer == null || byEntity!.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use);
                 }
             }
 
             return false;
         }
 
-        WorldInteraction[] interactions;
+        WorldInteraction[]? interactions;
 
         public override void OnLoaded(ICoreAPI api)
         {
             if (api.Side != EnumAppSide.Client) return;
-            ICoreClientAPI capi = api as ICoreClientAPI;
 
             interactions = ObjectCacheUtil.GetOrCreate(api, "honeyCombInteractions", () =>
             {
@@ -63,7 +69,7 @@ namespace Vintagestory.GameContent
                     }
 
 
-                    if (CanSqueezeInto(block, null))
+                    if (block is BlockLiquidContainerTopOpened)
                     {
                         stacks.Add(new ItemStack(block));
                     }
@@ -86,7 +92,7 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
-            if (blockSel?.Block != null && CanSqueezeInto(blockSel.Block, blockSel) && byEntity.Controls.ShiftKey)
+            if (blockSel?.Block != null && CanSqueezeInto(byEntity, blockSel.Block, blockSel) && byEntity.Controls.ShiftKey)
             {
                 handling = EnumHandHandling.PreventDefault;
                 if (api.World.Side == EnumAppSide.Client)
@@ -102,7 +108,7 @@ namespace Vintagestory.GameContent
 
         public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
-            if (blockSel?.Block != null && CanSqueezeInto(blockSel.Block, blockSel))
+            if (blockSel?.Block != null && CanSqueezeInto(byEntity, blockSel.Block, blockSel))
             {
                 if (!byEntity.Controls.ShiftKey) return false;
                 if (byEntity.World is IClientWorldAccessor)
@@ -124,17 +130,15 @@ namespace Vintagestory.GameContent
             if (blockSel != null)
             {
                 Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
-                if (CanSqueezeInto(block, blockSel))
+                if (CanSqueezeInto(byEntity, block, blockSel))
                 {
                     if (secondsUsed < 1.9f) return;
 
                     IWorldAccessor world = byEntity.World;
 
-                    if (!CanSqueezeInto(block, blockSel)) return;
-
                     ItemStack honeyStack = new ItemStack(world.GetItem(new AssetLocation("honeyportion")), 99999);
 
-                    BlockLiquidContainerTopOpened blockCnt = block as BlockLiquidContainerTopOpened;
+                    BlockLiquidContainerTopOpened? blockCnt = block as BlockLiquidContainerTopOpened;
                     if (blockCnt != null)
                     {
                         if (blockCnt.TryPutLiquid(blockSel.Position, honeyStack, ContainedHoneyLitres) == 0) return;
@@ -148,15 +152,12 @@ namespace Vintagestory.GameContent
                     }
                     else
                     {
-                        var beg = api.World.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityGroundStorage;
-                        if (beg != null)
+                        if (api.World.BlockAccessor.GetBlockEntity(blockSel.Position) is BlockEntityGroundStorage beg)
                         {
                             ItemSlot squeezeIntoSlot = beg.GetSlotAt(blockSel);
-
-                            if (squeezeIntoSlot != null && squeezeIntoSlot.Itemstack?.Block != null && CanSqueezeInto(squeezeIntoSlot.Itemstack.Block, null))
-                            {
+                            if (squeezeIntoSlot != null && squeezeIntoSlot.Itemstack?.Block != null) {
                                 blockCnt = squeezeIntoSlot.Itemstack.Block as BlockLiquidContainerTopOpened;
-                                blockCnt.TryPutLiquid(squeezeIntoSlot.Itemstack, honeyStack, ContainedHoneyLitres);
+                                blockCnt?.TryPutLiquid(squeezeIntoSlot.Itemstack, honeyStack, ContainedHoneyLitres);
                                 beg.MarkDirty(true);
                             }
                         }
@@ -165,8 +166,7 @@ namespace Vintagestory.GameContent
                     slot.TakeOut(1);
                     slot.MarkDirty();
 
-                    IPlayer byPlayer = null;
-                    if (byEntity is EntityPlayer) byPlayer = world.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
+                    var byPlayer = (byEntity as EntityPlayer)?.Player;
                     ItemStack stack = new ItemStack(world.GetItem(new AssetLocation("beeswax")));
                     if (byPlayer?.InventoryManager.TryGiveItemstack(stack) == false)
                     {

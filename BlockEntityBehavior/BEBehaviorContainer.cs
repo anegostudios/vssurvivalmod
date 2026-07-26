@@ -1,13 +1,9 @@
+using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
 namespace Vintagestory.GameContent;
 #nullable disable
-
-public interface ISlotCountProvider
-{
-    int GetSlotCount(BlockEntity uninitializedBlockEntity);
-}
 
 public abstract class BEBehaviorContainer : BlockEntityBehavior
 {
@@ -18,7 +14,7 @@ public abstract class BEBehaviorContainer : BlockEntityBehavior
     public BEBehaviorContainer(BlockEntity blockentity) : base(blockentity)
     {
         container = new InWorldContainer(() => Inventory, "bhinventory");
-    }    
+    }
 
     public override void Initialize(ICoreAPI api, JsonObject properties)
     {
@@ -43,4 +39,28 @@ public abstract class BEBehaviorContainer : BlockEntityBehavior
         container.ToTreeAttributes(tree);
     }
 
+    public override void OnLoadCollectibleMappings(IWorldAccessor world, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed, bool resolveImports)
+    {
+        base.OnLoadCollectibleMappings(world, oldBlockIdMapping, oldItemIdMapping, schematicSeed, resolveImports);
+        foreach (var slot in Inventory)
+        {
+            if (slot.Itemstack == null) continue;
+            if (!slot.Itemstack.FixMapping(oldBlockIdMapping, oldItemIdMapping, world))
+            {
+                slot.Itemstack = null;
+            }
+            else
+            {
+                slot.Itemstack.Collectible.OnLoadCollectibleMappings(world, slot, oldBlockIdMapping, oldItemIdMapping, resolveImports);
+            }
+        }
+    }
+
+    public override void OnStoreCollectibleMappings(Dictionary<int, AssetLocation> blockIdMapping, Dictionary<int, AssetLocation> itemIdMapping)
+    {
+        foreach (var slot in Inventory)
+        {
+            slot.Itemstack?.Collectible.OnStoreCollectibleMappings(Api.World, slot, blockIdMapping, itemIdMapping);
+        }
+    }
 }
