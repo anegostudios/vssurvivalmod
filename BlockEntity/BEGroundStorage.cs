@@ -134,7 +134,8 @@ namespace Vintagestory.GameContent
 
         public int Capacity
         {
-            get {
+            get
+            {
                 if (StorageProps == null) return 1;
                 switch (StorageProps.Layout)
                 {
@@ -149,6 +150,22 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public int StackHeight
+        {
+            get
+            {
+                int stackHeight = 1;
+                if (StorageProps.MaxStackingHeight > 0)
+                {
+                    BlockPos tempPos = Pos.Copy();
+                    while (Block.GetBlockEntity<BlockEntityGroundStorage>(tempPos.Down())?.inventory[0].Itemstack?.Equals(Api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes) == true)
+                    {
+                        stackHeight++;
+                    }
+                }
+                return stackHeight;
+            }
+        }
 
         public override InventoryBase Inventory
         {
@@ -631,23 +648,31 @@ namespace Vintagestory.GameContent
 
         public bool OnTryCreateKiln()
         {
-            ItemStack stack = inventory.FirstNonEmptySlot.Itemstack;
-            if (stack == null || StorageProps == null) return false;
+            return IsSuitableForKiln(true);
+        }
 
-            if (stack.StackSize > StorageProps.MaxFireable)
+        public bool IsSuitableForKiln(bool triggerIngameErrors = false)
+        {
+            if (StorageProps == null || inventory.Empty) return false;
+
+            foreach (ItemSlot slot in inventory)
             {
-                capi?.TriggerIngameError(this, "overfull", Lang.Get("Can only fire up to {0} at once.", StorageProps.MaxFireable));
-                return false;
+                ItemStack stack = slot.Itemstack;
+                if (stack == null) continue; // don't return false, as that would prevent building a pit kiln if some of the slots are empty
+
+                if (stack.StackSize > StorageProps.MaxFireable)
+                {
+                    if (triggerIngameErrors) capi?.TriggerIngameError(this, "overfull", Lang.Get("Can only fire up to {0} at once.", StorageProps.MaxFireable));
+                    return false;
+                }
+
+                CombustibleProperties combustibleProps = stack.Collectible.GetCombustibleProperties(Api.World, stack, null);
+                if (combustibleProps == null || combustibleProps.SmeltingType != EnumSmeltType.Fire)
+                {
+                    if (triggerIngameErrors) capi?.TriggerIngameError(this, "notfireable", Lang.Get("This is not a fireable block or item"));
+                    return false;
+                }
             }
-
-            CombustibleProperties combustibleProps = stack.Collectible.GetCombustibleProperties(Api.World, stack, null);
-            if (combustibleProps == null || combustibleProps.SmeltingType != EnumSmeltType.Fire)
-            {
-                capi?.TriggerIngameError(this, "notfireable", Lang.Get("This is not a fireable block or item", StorageProps.MaxFireable));
-                return false;
-            }
-
-
             return true;
         }
 
@@ -839,17 +864,7 @@ namespace Vintagestory.GameContent
                 {
                     if (!equalStack && bs.Face != BlockFacing.UP) return false;
 
-                    int stackHeight = 1;
-                    if (StorageProps.MaxStackingHeight > 0)
-                    {
-                        BlockPos tempPos = Pos.Copy();
-                        while (Block.GetBlockEntity<BlockEntityGroundStorage>(tempPos.Down())?.inventory[0].Itemstack?.Equals(Api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes) == true)
-                        {
-                            stackHeight++;
-                        }
-                    }
-
-                    if (StorageProps.MaxStackingHeight < 0 || stackHeight < StorageProps.MaxStackingHeight || !equalStack)
+                    if (StorageProps.MaxStackingHeight < 0 || StackHeight < StorageProps.MaxStackingHeight || !equalStack)
                     {
                         BlockGroundStorage bgs = pileblock as BlockGroundStorage;
                         var bsc = bs.Clone();

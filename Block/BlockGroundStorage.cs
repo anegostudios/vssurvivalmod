@@ -451,21 +451,34 @@ namespace Vintagestory.GameContent
             var beg = world.BlockAccessor.GetBlockEntity(selection.Position) as BlockEntityGroundStorage;
             if (beg?.StorageProps != null)
             {
-                var selSlot = beg.GetSlotAt(selection);
-                var containedInteractions = selSlot?.Itemstack?.Collectible.GetCollectibleInterface<IContainedInteractable>()?.GetContainedInteractionHelp(beg, selSlot, forPlayer, selection) ?? [];
-
                 int bulkquantity = beg.StorageProps.BulkTransferQuantity;
 
-                if (beg.StorageProps.Layout == EnumGroundStorageLayout.Stacking && !beg.Inventory.Empty)
+                List<WorldInteraction> interactions = [];
+
+                if (beg.IsSuitableForKiln(false))
                 {
-                    var canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(api, true).ToArray();
+                    BlockPitkiln blockpk = world.GetBlock(new AssetLocation("pitkiln")) as BlockPitkiln;
+                    blockpk.TryGetBuildStagesForGroundStorage(beg, out BuildStage[] buildStages);
 
-                    var collObj = beg.Inventory[0].Itemstack?.Collectible;
-                    if (collObj == null) return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer);
+                    interactions.Add(new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-pitkiln-build",
+                        MouseButton = EnumMouseButton.Right,
+                        HotKeyCode = "shift",
+                        Itemstacks = [buildStages[0].Materials[0].ItemStack]
+                    });
+                }
 
-                    return
-                    [
-                        new()
+                switch (beg.StorageProps.Layout)
+                {
+                    case EnumGroundStorageLayout.Stacking when !beg.Inventory.Empty:
+                    {
+                        var collObj = beg.Inventory[0]?.Itemstack?.Collectible;
+                        if (collObj == null) break;
+
+                        var canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(api, true).ToArray();
+
+                        interactions.Add(new()
                         {
                             ActionLangCode = "blockhelp-firepit-ignite",
                             MouseButton = EnumMouseButton.Right,
@@ -479,76 +492,72 @@ namespace Vintagestory.GameContent
                                 }
                                 return null;
                             }
-                        },
-                        new()
+                        });
+                        interactions.Add(new()
                         {
                             ActionLangCode = "blockhelp-groundstorage-addone",
                             MouseButton = EnumMouseButton.Right,
                             HotKeyCode = "shift",
                             Itemstacks = [new (collObj, 1)]
-                        },
-                        new()
+                        });
+                        interactions.Add(new()
                         {
                             ActionLangCode = "blockhelp-groundstorage-removeone",
                             MouseButton = EnumMouseButton.Right,
                             HotKeyCode = null
-                        },
-
-                        new()
+                        });
+                        interactions.Add(new()
                         {
                             ActionLangCode = "blockhelp-groundstorage-addbulk",
                             MouseButton = EnumMouseButton.Right,
                             HotKeyCodes = ["ctrl", "shift"],
                             Itemstacks = [new (collObj, bulkquantity)]
-                        },
-                        new()
+                        });
+                        interactions.Add(new()
                         {
                             ActionLangCode = "blockhelp-groundstorage-removebulk",
                             HotKeyCode = "ctrl",
                             MouseButton = EnumMouseButton.Right
-                        },
-                        ..containedInteractions,
-                        ..base.GetPlacedBlockInteractionHelp(world, selection, forPlayer)
-                    ];
-                }
+                        });
+                        break;
+                    }
 
-                if (beg.StorageProps.Layout == EnumGroundStorageLayout.SingleCenter)
-                {
-                    return
-                    [
-                        new WorldInteraction()
+                    case EnumGroundStorageLayout.SingleCenter:
+                    {
+                        interactions.Add(new()
                         {
                             ActionLangCode = "blockhelp-behavior-rightclickpickup",
                             MouseButton = EnumMouseButton.Right
-                        },
-                        ..containedInteractions,
-                        ..base.GetPlacedBlockInteractionHelp(world, selection, forPlayer)
-                    ];
-                }
+                        });
+                        break;
+                    }
 
-                if (beg.StorageProps.Layout == EnumGroundStorageLayout.Halves || beg.StorageProps.Layout == EnumGroundStorageLayout.Quadrants)
-                {
-                    return
-                    [
-                        new WorldInteraction()
+                    case EnumGroundStorageLayout.Halves:
+                    case EnumGroundStorageLayout.Quadrants:
+                    {
+                        interactions.Add(new()
                         {
                             ActionLangCode = "blockhelp-groundstorage-add",
                             MouseButton = EnumMouseButton.Right,
                             HotKeyCode = "shift",
                             Itemstacks = beg.StorageProps.Layout == EnumGroundStorageLayout.Halves ? groundStorablesHalves : groundStorablesQuadrants
-                        },
-                        new WorldInteraction()
+                        });
+                        interactions.Add(new()
                         {
                             ActionLangCode = "blockhelp-groundstorage-remove",
                             MouseButton = EnumMouseButton.Right,
                             HotKeyCode = null
-                        },
-                        ..containedInteractions,
-                        ..base.GetPlacedBlockInteractionHelp(world, selection, forPlayer)
-                    ];
+                        });
+                        break;
+                    }
+
+                    default: break;
                 }
 
-                return [.. containedInteractions, .. base.GetPlacedBlockInteractionHelp(world, selection, forPlayer)];
+                var selSlot = beg.GetSlotAt(selection);
+                var containedInteractions = selSlot?.Itemstack?.Collectible.GetCollectibleInterface<IContainedInteractable>()?.GetContainedInteractionHelp(beg, selSlot, forPlayer, selection) ?? [];
+
+                return [.. interactions, .. containedInteractions, .. base.GetPlacedBlockInteractionHelp(world, selection, forPlayer)];
             }
 
             return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer);

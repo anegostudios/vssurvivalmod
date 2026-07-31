@@ -165,6 +165,26 @@ namespace Vintagestory.GameContent
             return GetBlockEntity<BlockEntityGroundStorage>(blockSel.Position)?.OnPlayerInteractStart(byPlayer, blockSel) ?? false;
         }
 
+        public bool TryGetBuildStagesForGroundStorage(BlockEntityGroundStorage beg, out BuildStage[] buildStages)
+        {
+            bool found = false;
+            foreach (var val in BuildStagesByBlock)
+            {
+                if (!beg.Inventory[0].Empty && WildcardUtil.Match(new AssetLocation(val.Key), beg.Inventory[0].Itemstack.Collectible.Code))
+                {
+                    buildStages = val.Value;
+                    found = true;
+                    return true;
+                }
+            }
+            if (!found)
+            {
+                return BuildStagesByBlock.TryGetValue("*", out buildStages);
+            }
+            buildStages = null;
+            return false;
+        }
+
         public bool TryCreateKiln(IWorldAccessor world, IPlayer byPlayer, BlockPos pos)
         {
             ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
@@ -217,22 +237,7 @@ namespace Vintagestory.GameContent
                 if (!ok) return false;
 
 
-                BuildStage[] buildStages = null;
-                bool found = false;
-                foreach (var val in BuildStagesByBlock)
-                {
-                    if (!beg.Inventory[0].Empty && WildcardUtil.Match(new AssetLocation(val.Key), beg.Inventory[0].Itemstack.Collectible.Code))
-                    {
-                        buildStages = val.Value;
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found)
-                {
-                    BuildStagesByBlock.TryGetValue("*", out buildStages);
-                }
-
+                TryGetBuildStagesForGroundStorage(beg, out BuildStage[] buildStages);
                 if (buildStages == null) return false;
                 if (!hotbarSlot.Itemstack.Equals(world, buildStages[0].Materials[0].ItemStack, GlobalConstants.IgnoredStackAttributes) || hotbarSlot.StackSize < buildStages[0].Materials[0].ItemStack.StackSize) return false;
 
@@ -297,7 +302,7 @@ namespace Vintagestory.GameContent
                     return new WorldInteraction[] { new WorldInteraction() {
                         ActionLangCode = "blockhelp-pitkiln-build",
                         MouseButton = EnumMouseButton.Right,
-                        HotKeyCode = "shift",
+                        HotKeyCode = null,
                         Itemstacks = stacks.ToArray(),
                         GetMatchingStacks = (wi, bs, es) => {
                             return stacks;
