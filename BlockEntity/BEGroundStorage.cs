@@ -150,6 +150,48 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public bool IsFull
+        {
+            get
+            {
+                if (StorageProps == null) return false;
+                for (int slotId = 0; slotId < UsableSlots(StorageProps.Layout); slotId++)
+                {
+                    if (inventory[slotId].Empty) return false;
+                }
+                switch (StorageProps.Layout)
+                {
+                    case EnumGroundStorageLayout.SingleCenter:
+                    case EnumGroundStorageLayout.Halves:
+                    case EnumGroundStorageLayout.WallHalves:
+                    case EnumGroundStorageLayout.Quadrants: return true;
+                    case EnumGroundStorageLayout.Messy12: return inventory[0].StackSize >= 12;
+                    case EnumGroundStorageLayout.Stacking:
+                    {
+                        if (TotalStackSize >= Capacity)
+                        {
+                            BlockPos abovePos = Pos.UpCopy();
+                            var beg = Block.GetBlockEntity<BlockEntityGroundStorage>(abovePos);
+                            if (StorageProps.UpSolid && beg != null && beg.StorageProps.Layout == EnumGroundStorageLayout.Stacking &&
+                                beg.inventory[0].Itemstack?.Equals(Api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes) == true)
+                            {
+                                return beg.IsFull;
+                            }
+
+                            if (StorageProps.MaxStackingHeight > 0)
+                            {
+                                return StackHeight >= StorageProps.MaxStackingHeight;
+                            }
+
+                            return true;
+                        }
+                        return false;
+                    }
+                    default: return false;
+                }
+            }
+        }
+
         public int StackHeight
         {
             get

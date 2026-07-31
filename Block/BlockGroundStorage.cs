@@ -498,7 +498,15 @@ namespace Vintagestory.GameContent
                             ActionLangCode = "blockhelp-groundstorage-addone",
                             MouseButton = EnumMouseButton.Right,
                             HotKeyCode = "shift",
-                            Itemstacks = [new (collObj, 1)]
+                            Itemstacks = [new (collObj, 1)],
+                            GetMatchingStacks = (wi, bs, es) => {
+                                var begs = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityGroundStorage;
+                                if (begs?.IsFull == false)
+                                {
+                                    return wi.Itemstacks;
+                                }
+                                return null;
+                            }
                         });
                         interactions.Add(new()
                         {
@@ -511,7 +519,15 @@ namespace Vintagestory.GameContent
                             ActionLangCode = "blockhelp-groundstorage-addbulk",
                             MouseButton = EnumMouseButton.Right,
                             HotKeyCodes = ["ctrl", "shift"],
-                            Itemstacks = [new (collObj, bulkquantity)]
+                            Itemstacks = [new (collObj, bulkquantity)],
+                            GetMatchingStacks = (wi, bs, es) => {
+                                var begs = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityGroundStorage;
+                                if (begs?.IsFull == false)
+                                {
+                                    return wi.Itemstacks;
+                                }
+                                return null;
+                            }
                         });
                         interactions.Add(new()
                         {
@@ -540,7 +556,15 @@ namespace Vintagestory.GameContent
                             ActionLangCode = "blockhelp-groundstorage-add",
                             MouseButton = EnumMouseButton.Right,
                             HotKeyCode = "shift",
-                            Itemstacks = beg.StorageProps.Layout == EnumGroundStorageLayout.Halves ? groundStorablesHalves : groundStorablesQuadrants
+                            Itemstacks = beg.StorageProps.Layout == EnumGroundStorageLayout.Halves ? groundStorablesHalves : groundStorablesQuadrants,
+                            GetMatchingStacks = (wi, bs, es) => {
+                                var begs = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityGroundStorage;
+                                if (begs?.IsFull == false) // (begs?.GetSlotAt(bs).Empty == true) only updated when initially moving the mouse onto the block
+                                {
+                                    return wi.Itemstacks;
+                                }
+                                return null;
+                            }
                         });
                         interactions.Add(new()
                         {
