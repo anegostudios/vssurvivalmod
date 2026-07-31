@@ -517,12 +517,6 @@ namespace Vintagestory.GameContent
                         });
                         interactions.Add(new()
                         {
-                            ActionLangCode = "blockhelp-groundstorage-removeone",
-                            MouseButton = EnumMouseButton.Right,
-                            HotKeyCode = null
-                        });
-                        interactions.Add(new()
-                        {
                             ActionLangCode = "blockhelp-groundstorage-addbulk",
                             MouseButton = EnumMouseButton.Right,
                             HotKeyCodes = ["ctrl", "shift"],
@@ -535,6 +529,12 @@ namespace Vintagestory.GameContent
                                 }
                                 return null;
                             }
+                        });
+                        interactions.Add(new()
+                        {
+                            ActionLangCode = "blockhelp-groundstorage-removeone",
+                            MouseButton = EnumMouseButton.Right,
+                            HotKeyCode = null
                         });
                         interactions.Add(new()
                         {
