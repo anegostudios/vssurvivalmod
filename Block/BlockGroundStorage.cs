@@ -21,8 +21,7 @@ namespace Vintagestory.GameContent
 
     public class BlockGroundStorage : Block, ICombustible, IIgnitable
     {
-        protected ItemStack[] groundStorablesQuadrants;
-        protected ItemStack[] groundStorablesHalves;
+        protected Dictionary<EnumGroundStorageLayout, ItemStack[]> groundStorablesMixableByLayout;
         public ModelTransform[] Messy12Transforms;
 
         public static bool IsUsingContainedBlock; // This value is only relevant (and correct) client side
@@ -60,6 +59,7 @@ namespace Vintagestory.GameContent
             {
                 List<ItemStack> qstacks = new List<ItemStack>();
                 List<ItemStack> hstacks = new List<ItemStack>();
+                List<ItemStack> whstacks = new List<ItemStack>();
 
                 foreach (CollectibleObject obj in api.World.Collectibles)
                 {
@@ -72,13 +72,20 @@ namespace Vintagestory.GameContent
                     {
                         hstacks.Add(new ItemStack(obj));
                     }
+                    if (storableBh?.StorageProps.Layout == EnumGroundStorageLayout.WallHalves)
+                    {
+                        whstacks.Add(new ItemStack(obj));
+                    }
                 }
 
-                return new ItemStack[][] { qstacks.ToArray(), hstacks.ToArray() };
+                return new ItemStack[][] { qstacks.ToArray(), hstacks.ToArray(), whstacks.ToArray() };
             });
 
-            groundStorablesQuadrants = stacks[0];
-            groundStorablesHalves = stacks[1];
+            groundStorablesMixableByLayout = new() {
+                { EnumGroundStorageLayout.Quadrants, stacks[0] },
+                { EnumGroundStorageLayout.Halves, stacks[1] },
+                { EnumGroundStorageLayout.WallHalves, stacks[2] },
+            };
 
             if (api.Side == EnumAppSide.Client)
             {
@@ -548,6 +555,7 @@ namespace Vintagestory.GameContent
                         break;
                     }
 
+                    case EnumGroundStorageLayout.WallHalves:
                     case EnumGroundStorageLayout.Halves:
                     case EnumGroundStorageLayout.Quadrants:
                     {
@@ -555,8 +563,8 @@ namespace Vintagestory.GameContent
                         {
                             ActionLangCode = "blockhelp-groundstorage-add",
                             MouseButton = EnumMouseButton.Right,
-                            HotKeyCode = "shift",
-                            Itemstacks = beg.StorageProps.Layout == EnumGroundStorageLayout.Halves ? groundStorablesHalves : groundStorablesQuadrants,
+                            HotKeyCodes = beg.StorageProps.CtrlKey ? ["ctrl", "shift"] : ["shift"],
+                            Itemstacks = groundStorablesMixableByLayout[beg.StorageProps.Layout],
                             GetMatchingStacks = (wi, bs, es) => {
                                 var begs = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityGroundStorage;
                                 if (begs?.IsFull == false) // (begs?.GetSlotAt(bs).Empty == true) only updated when initially moving the mouse onto the block
