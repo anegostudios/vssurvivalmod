@@ -471,7 +471,7 @@ namespace Vintagestory.GameContent
 
                 switch (beg.StorageProps.Layout)
                 {
-                    case EnumGroundStorageLayout.Stacking when !beg.Inventory.Empty:
+                    case EnumGroundStorageLayout.Stacking or EnumGroundStorageLayout.Messy12 when !beg.Inventory.Empty:
                     {
                         var collObj = beg.Inventory[0]?.Itemstack?.Collectible;
                         if (collObj == null) break;
