@@ -1068,27 +1068,33 @@ namespace Vintagestory.GameContent
 
         public bool putOrGetItemSingle(ItemSlot ourSlot, IPlayer player, BlockSelection bs)
         {
-            ItemSlot hotbarSlot = player.InventoryManager.ActiveHotbarSlot;
-
-            if (!hotbarSlot.Empty && !inventory.Empty)
-            {
-                var hotbarlayout = hotbarSlot.Itemstack.Collectible.GetBehavior<CollectibleBehaviorGroundStorable>()?.StorageProps.Layout;
-                bool layoutEqual = StorageProps.Layout == hotbarlayout;
-
-                if (StorageProps.Layout == EnumGroundStorageLayout.Quadrants && hotbarlayout == EnumGroundStorageLayout.Messy12)
-                {
-                    layoutEqual = true;
-                    overrideLayout = EnumGroundStorageLayout.Quadrants;
-                }
-
-                if (!layoutEqual) return false;
-            }
-
             lock (inventoryLock)
             {
                 if (ourSlot.Empty)
                 {
+                    ItemSlot hotbarSlot = player.InventoryManager.ActiveHotbarSlot;
+
                     if (hotbarSlot.Empty || !player.Entity.Controls.ShiftKey) return false;
+
+                    if (!inventory.Empty)
+                    {
+                        var hotbarlayout = hotbarSlot.Itemstack.Collectible.GetBehavior<CollectibleBehaviorGroundStorable>()?.StorageProps.Layout;
+                        bool layoutEqual = StorageProps.Layout == hotbarlayout;
+
+                        if (StorageProps.Layout == EnumGroundStorageLayout.Quadrants && hotbarlayout == EnumGroundStorageLayout.Messy12)
+                        {
+                            layoutEqual = true;
+                            overrideLayout = EnumGroundStorageLayout.Quadrants;
+                        }
+
+                        // allows picking up Quadrants-layout items placed in SingleCenter while having an item in hand
+                        if (StorageProps.Layout == EnumGroundStorageLayout.SingleCenter && hotbarlayout == EnumGroundStorageLayout.Quadrants)
+                        {
+                            layoutEqual = true;
+                        }
+
+                        if (!layoutEqual) return false;
+                    }
 
                     if (player.WorldData.CurrentGameMode == EnumGameMode.Creative)
                     {
