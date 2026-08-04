@@ -1240,6 +1240,8 @@ namespace Vintagestory.GameContent
             if (Api != null)
             {
                 DetermineStorageProperties(null);
+
+                LightUpdate();
             }
 
             MeshAngle = tree.GetFloat("meshAngle");
