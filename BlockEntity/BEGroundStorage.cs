@@ -339,11 +339,20 @@ namespace Vintagestory.GameContent
 
         public override void CheckInventoryClearedMidTick()
         {
-            if (Inventory.Empty)
+            removeIfEmpty();
+        }
+
+        private bool removeIfEmpty()
+        {
+            if (!clientsideFirstPlacement && Inventory.Empty)
             {
                 // all slots are null, we need to destroy this GroundStorage BlockEntity
                 Api.World.BlockAccessor.SetBlock(0, Pos);
+                Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
+                return true;
             }
+
+            return false;
         }
 
         public void CoolNow(float amountRel, OnStackToCool onStackToCoolCallback)
@@ -523,6 +532,7 @@ namespace Vintagestory.GameContent
 
         public virtual bool OnPlayerInteractStart(IPlayer player, BlockSelection bs)
         {
+            isUsingSlot = null;
             int targetSlotId = GetSlotIdAt(bs);
             if (inventory[targetSlotId] is ItemSlot ourSlot && !ourSlot.Empty)
             {
@@ -543,7 +553,7 @@ namespace Vintagestory.GameContent
 
             DetermineStorageProperties(hotbarSlot);
 
-            bool ok = false;
+            bool didMoveItems = false;
 
             if (StorageProps != null)
             {
@@ -579,23 +589,25 @@ namespace Vintagestory.GameContent
                     case EnumGroundStorageLayout.Messy12:
                     case EnumGroundStorageLayout.Stacking:
                     {
-                        ok = putOrGetItemStacking(player, bs);
+                        didMoveItems = putOrGetItemStacking(player, bs);
                         break;
                     }
                     default:
                     {
-                        ok = putOrGetItemSingle(GetSlotAt(bs), player, bs);
+                        didMoveItems = putOrGetItemSingle(targetSlot, player, bs);
                         break;
                     }
                 }
             }
-            UpdateIgnitable();
-            renderer?.UpdateTemps();
 
-            if (ok)
-            {
-                MarkDirty();    // Don't re-draw on client yet, that will be handled in FromTreeAttributes after we receive an updating packet from the server  (updating meshes here would have the wrong inventory contents, and also create a potential race condition)
-            }
+            if (!didMoveItems) return false;
+
+            Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
+            Api.World.PlaySoundAt(StorageProps.PlaceRemoveSound, Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, player, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
+
+            // Don't re-draw on client yet, that will be handled in FromTreeAttributes after we receive an updating packet from the server,
+            // Updating meshes here would have the wrong inventory contents, and also create a potential race condition
+            MarkDirty();
 
             Cuboidf colBox = colBoxes[colBoxes.Length > targetSlotId ? targetSlotId : 0];
             if (CollisionTester.AabbIntersect(
@@ -610,24 +622,20 @@ namespace Vintagestory.GameContent
 
             (player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
 
-            if (inventory.Empty && !clientsideFirstPlacement)
+            if (removeIfEmpty()) return true;
+
+            regenCollisionSelectionBox();
+
+            UpdateIgnitable();
+            renderer?.UpdateTemps();
+
+            var lshv = GetLightHsv();
+            if ((lastLightHsv != null && lastLightHsv[2] > 0) && (lshv == null || lshv[2] == 0))
             {
-                Api.World.BlockAccessor.SetBlock(0, Pos);
-                Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
-                if (lastLightHsv != null && lastLightHsv[2] > 0)
-                {
-                    Api.World.BlockAccessor.RemoveBlockLight((byte[])lastLightHsv.Clone(), Pos);
-                }
-            } else
-            {
-                var lshv = GetLightHsv();
-                if ((lastLightHsv != null && lastLightHsv[2] > 0) && (lshv == null || lshv[2] == 0))
-                {
-                    Api.World.BlockAccessor.RemoveBlockLight((byte[])lastLightHsv.Clone(), Pos);
-                }
+                Api.World.BlockAccessor.RemoveBlockLight((byte[])lastLightHsv.Clone(), Pos);
             }
 
-            return ok;
+            return true;
         }
 
         public bool OnPlayerInteractStep(float secondsUsed, IPlayer byPlayer, BlockSelection blockSel)
@@ -737,8 +745,6 @@ namespace Vintagestory.GameContent
 
             if (StorageProps == null) return;  // Seems necessary to avoid crash with certain items placed in game version 1.15-pre.1?
 
-            regenCollisionSelectionBox();
-
             UpdateLegacyStorageLayouts();
 
             if (overrideLayout != null)
@@ -746,6 +752,8 @@ namespace Vintagestory.GameContent
                 this.StorageProps = StorageProps.Clone();
                 this.StorageProps.Layout = (EnumGroundStorageLayout)overrideLayout;
             }
+
+            regenCollisionSelectionBox();
         }
 
         private void regenCollisionSelectionBox()
@@ -753,7 +761,7 @@ namespace Vintagestory.GameContent
             List<Cuboidf> auxColBoxes = [];
             List<Cuboidf> auxSelBoxes = [];
 
-            float meshAngleDegRounded = MathF.Round(MeshAngle / GameMath.PIHALF) * 90;
+            float meshAngleDegRounded = MathF.Round(MeshAngle / GameMath.PIHALF) * 90; // ideally, instead of rounding angle, boxes should be rotated and downscaled
             Vec3d centerOrigin = new(0.5, 0.5, 0.5);
 
             for (int slotId = 0; slotId < UsableSlots(StorageProps.Layout); slotId++)
@@ -933,17 +941,13 @@ namespace Vintagestory.GameContent
 
         protected bool putOrGetItemStacking(IPlayer byPlayer, BlockSelection bs)
         {
-            if (Api.Side == EnumAppSide.Client)
-            {
-                (byPlayer as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
-                return true;
-            }
+            bool newStorage = inventory[0].Empty;
 
             ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
             bool sneaking = byPlayer.Entity.Controls.ShiftKey;
 
-            bool equalStack = inventory[0].Empty || !sneaking || (hotbarSlot.Itemstack != null && hotbarSlot.Itemstack.Equals(Api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes));
+            bool equalStack = newStorage || !sneaking || (hotbarSlot.Itemstack != null && hotbarSlot.Itemstack.Equals(Api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes));
 
             BlockPos abovePos = Pos.UpCopy();
             var beg = Block.GetBlockEntity<BlockEntityGroundStorage>(abovePos);
@@ -985,6 +989,29 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
+            // @MKMoose 04.08.2026
+            // Frankly I don't know why this function returned early
+            // It caused animations and other stuff to run when no items were actually being moved
+            // But if it is actually needed to return early, then predicting whether anything can be done seems better than a blanket true return
+            // Also added auditing instead of a silent return
+
+            // if (Api.Side == EnumAppSide.Client)
+            // {
+            //     // try to predict whether anything can be added or taken to trigger sounds and animations more correctly
+            //     // better to return a false positive than a false negative here, as a false negative prevents the client from doing anything
+            //     bool canMoveItems = (!IsFull && sneaking) || (!newStorage && !sneaking);
+
+            //     if (canMoveItems)
+            //     {
+            //         Api.World.Logger.Audit("{0} Tried interacting with existing Ground storage at {1} - client side returns early here.",
+            //             byPlayer.PlayerName,
+            //             Pos
+            //         );
+            //     }
+
+            //     return canMoveItems;
+            // }
+
             lock (inventoryLock)
             {
                 if (sneaking)
@@ -1008,75 +1035,24 @@ namespace Vintagestory.GameContent
 
             ItemSlot invSlot = inventory[0];
 
-            if (invSlot.Empty)
-            {
-                bool putBulk = player.Entity.Controls.CtrlKey;
+            ItemSlot sourceSlot = player.WorldData.CurrentGameMode == EnumGameMode.Creative ? new DummySlot(hotbarSlot.Itemstack.Clone()) : hotbarSlot;
 
-                if (hotbarSlot.TryPutInto(Api.World, invSlot, putBulk ? BulkTransferQuantity : TransferQuantity) > 0)
-                {
-                    Api.World.PlaySoundAt(StorageProps.PlaceRemoveSound.WithPathPrefixOnce("sounds/"), Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, null, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
-                    LightUpdate(invSlot.Itemstack);
-                }
+            bool newStorage = invSlot.Empty;
+            bool putBulk = player.Entity.Controls.CtrlKey;
 
-                Api.World.Logger.Audit("{0} Put {1}x{2} into new Ground storage at {3}.",
-                    player.PlayerName,
-                    TransferQuantity,
-                    invSlot.Itemstack.Collectible.Code,
-                    Pos
-                );
+            int quantityMoved = sourceSlot.TryPutInto(Api.World, invSlot, putBulk ? BulkTransferQuantity : TransferQuantity); //TEST temperature averaging
 
-                Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
-                regenCollisionSelectionBox();
-                return true;
-            }
+            if (quantityMoved <= 0) return false;
 
-            if (invSlot.Itemstack.Equals(Api.World, hotbarSlot.Itemstack, GlobalConstants.IgnoredStackAttributes))
-            {
-                bool putBulk = player.Entity.Controls.CtrlKey;
+            Api.World.Logger.Audit("{0} Put {1}x{2} into {3} Ground storage at {4}.",
+                player.PlayerName,
+                quantityMoved,
+                invSlot.Itemstack.Collectible.Code,
+                newStorage ? "new" : "",
+                Pos
+            );
 
-                int q = GameMath.Min(hotbarSlot.StackSize, putBulk ? BulkTransferQuantity : TransferQuantity, Capacity - TotalStackSize);
-
-                // add to the pile and average item temperatures
-                int oldSize = invSlot.Itemstack.StackSize;
-                invSlot.Itemstack.StackSize += q;
-                if (oldSize + q > 0)
-                {
-                    float tempPile = invSlot.Itemstack.Collectible.GetTemperature(Api.World, invSlot.Itemstack);
-                    float tempAdded = hotbarSlot.Itemstack.Collectible.GetTemperature(Api.World, hotbarSlot.Itemstack);
-                    invSlot.Itemstack.Collectible.SetTemperature(Api.World, invSlot.Itemstack, (tempPile * oldSize + tempAdded * q) / (oldSize + q), false);
-                }
-
-                if (player.WorldData.CurrentGameMode != EnumGameMode.Creative)
-                {
-                    hotbarSlot.TakeOut(q);
-                    hotbarSlot.OnItemSlotModified(null);
-                }
-
-                LightUpdate(invSlot.Itemstack);
-                Api.World.PlaySoundAt(StorageProps.PlaceRemoveSound.WithPathPrefixOnce("sounds/"), Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, null, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
-
-                Api.World.Logger.Audit("{0} Put {1}x{2} into Ground storage at {3}.",
-                    player.PlayerName,
-                    q,
-                    invSlot.Itemstack.Collectible.Code,
-                    Pos
-                );
-
-                Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
-                regenCollisionSelectionBox();
-
-                MarkDirty();
-
-                Cuboidf[] collBoxes = Api.World.BlockAccessor.GetBlock(Pos).GetCollisionBoxes(Api.World.BlockAccessor, Pos);
-                if (collBoxes != null && collBoxes.Length > 0 && CollisionTester.AabbIntersect(collBoxes[0], Pos.X, Pos.Y, Pos.Z, player.Entity.SelectionBox, player.Entity.Pos.XYZ))
-                {
-                    player.Entity.Pos.Y += collBoxes[0].Y2 - (player.Entity.Pos.Y - (int)player.Entity.Pos.Y);
-                }
-
-                return true;
-            }
-
-            return false;
+            return true;
         }
 
         public void LightUpdate(ItemStack itemstack)
@@ -1087,48 +1063,42 @@ namespace Vintagestory.GameContent
 
         public bool TryTakeItem(IPlayer player)
         {
-            bool takeBulk = player.Entity.Controls.CtrlKey;
-            int q = GameMath.Min(takeBulk ? BulkTransferQuantity : TransferQuantity, TotalStackSize);
+            int quantityMoved = 0;
 
             ItemStack stack = null;
             if (inventory[0]?.Itemstack != null)
             {
-                stack = inventory[0].TakeOut(q);
-                player.InventoryManager.TryGiveItemstack(stack);
+                bool takeBulk = player.Entity.Controls.CtrlKey;
 
-                if (stack.StackSize > 0)
+                stack = inventory[0].TakeOut(GameMath.Min(takeBulk ? BulkTransferQuantity : TransferQuantity, TotalStackSize));
+                quantityMoved = stack.StackSize;
+
+                if (!player.InventoryManager.TryGiveItemstack(stack))
                 {
                     Api.World.SpawnItemEntity(stack, Pos);
                 }
-
-                Api.World.Logger.Audit("{0} Took {1}x{2} from Ground storage at {3}.",
-                    player.PlayerName,
-                    q,
-                    stack.Collectible.Code,
-                    Pos
-                );
-
-                LightUpdate(stack);
             }
 
-            if (TotalStackSize == 0)
-            {
-                Api.World.BlockAccessor.SetBlock(0, Pos);
-                if (stack != null) Api.World.BlockAccessor.RemoveBlockLight(stack.Collectible.GetLightHsv(Api.World.BlockAccessor, null, stack), Pos);
-            }
-            else Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
+            if (quantityMoved <= 0) return false;
 
-            Api.World.PlaySoundAt(StorageProps.PlaceRemoveSound, Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, null, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
+            Api.World.Logger.Audit("{0} Took {1}x{2} from Ground storage at {3}.",
+                player.PlayerName,
+                quantityMoved,
+                stack.Collectible.Code,
+                Pos
+            );
 
-            MarkDirty();
-            regenCollisionSelectionBox();
-            (player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+            LightUpdate(stack);
+
+            removeIfEmpty();
 
             return true;
         }
 
         public bool putOrGetItemSingle(ItemSlot ourSlot, IPlayer player, BlockSelection bs)
         {
+            bool didMoveItem = false;
+
             lock (inventoryLock)
             {
                 if (ourSlot.Empty)
@@ -1137,7 +1107,8 @@ namespace Vintagestory.GameContent
 
                     if (hotbarSlot.Empty || !player.Entity.Controls.ShiftKey) return false;
 
-                    if (!inventory.Empty)
+                    bool newStorage = inventory.Empty;
+                    if (!newStorage)
                     {
                         var hotbarlayout = hotbarSlot.Itemstack.Collectible.GetBehavior<CollectibleBehaviorGroundStorable>()?.StorageProps.Layout;
                         bool layoutEqual = StorageProps.Layout == hotbarlayout;
@@ -1157,30 +1128,18 @@ namespace Vintagestory.GameContent
                         if (!layoutEqual) return false;
                     }
 
-                    if (player.WorldData.CurrentGameMode == EnumGameMode.Creative)
+                    ItemSlot sourceSlot = player.WorldData.CurrentGameMode == EnumGameMode.Creative ? new DummySlot(hotbarSlot.Itemstack.Clone()) : hotbarSlot;
+
+                    didMoveItem = sourceSlot.TryPutInto(Api.World, ourSlot, TransferQuantity) > 0;
+
+                    if (didMoveItem)
                     {
-                        ItemStack stack = hotbarSlot.Itemstack.Clone();
-                        stack.StackSize = 1;
-                        if (new DummySlot(stack).TryPutInto(Api.World, ourSlot, TransferQuantity) > 0) {
-                            Api.World.PlaySoundAt(StorageProps.PlaceRemoveSound, Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, player, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
-                            Api.World.Logger.Audit("{0} Put 1x{1} into Ground storage at {2}.",
-                                player.PlayerName,
-                                ourSlot.Itemstack.Collectible.Code,
-                                Pos
-                            );
-                            LightUpdate(stack);
-                        }
-                    } else {
-                        if (hotbarSlot.TryPutInto(Api.World, ourSlot, TransferQuantity) > 0)
-                        {
-                            Api.World.PlaySoundAt(StorageProps.PlaceRemoveSound, Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, player, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
-                            Api.World.Logger.Audit("{0} Put 1x{1} into Ground storage at {2}.",
-                                player.PlayerName,
-                                ourSlot.Itemstack.Collectible.Code,
-                                Pos
-                            );
-                            LightUpdate(ourSlot.Itemstack);
-                        }
+                        Api.World.Logger.Audit("{0} Put 1x{1} into {2} Ground storage at {3}.",
+                            player.PlayerName,
+                            ourSlot.Itemstack.Collectible.Code,
+                            newStorage ? "new" : "",
+                            Pos
+                        );
                     }
                 }
                 else
@@ -1190,21 +1149,19 @@ namespace Vintagestory.GameContent
                         Api.World.SpawnItemEntity(ourSlot.Itemstack, Pos);
                     }
 
-                    LightUpdate(ourSlot.Itemstack);
-
-                    Api.World.PlaySoundAt(StorageProps.PlaceRemoveSound, Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, player, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
-
                     Api.World.Logger.Audit("{0} Took 1x{1} from Ground storage at {2}.",
                         player.PlayerName,
                         ourSlot.Itemstack?.Collectible.Code,
                         Pos
                     );
+
                     ourSlot.Itemstack = null;
                     ourSlot.MarkDirty();
+                    didMoveItem = true;
                 }
             }
 
-            return true;
+            return didMoveItem;
         }
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
@@ -1770,6 +1727,8 @@ namespace Vintagestory.GameContent
         {
             byte[] lighthsv = null;
 
+            // not exactly the correct way to merge lights, but it's only wrong when there's 3+ sources of 2+ types
+            // would be nice to have a ColorUtil.MergeLightHSV() equivalent for a list of HSVs
             foreach (var slot in inventory)
             {
                 if (slot.Empty) continue;
