@@ -800,10 +800,19 @@ namespace Vintagestory.GameContent
                     {
                         selBox = stackStorageProps.SelectionBox.Clone();
                     }
+
+                    if (colBox == null && selBox == null && sourceStack?.Block != null && stackStorageProps.Layout == EnumGroundStorageLayout.SingleCenter)
+                    {
+                        colBox = sourceStack.Block.CollisionBoxes[0].Clone();
+                        selBox = sourceStack.Block.SelectionBoxes[0].Clone();
+                    }
                 }
 
+                bool usesCustomBoxes = colBox != null || selBox != null;
+
                 // different default height for WallHalves is just because current JSON definitions overwhelmingly favor it for WallHalves for some reason
-                selBox ??= colBox?.Clone() ?? new(0, 0, 0, 1, StorageProps.Layout == EnumGroundStorageLayout.WallHalves ? 0.1f : 0.125f, 1);
+                float height = StorageProps.Layout == EnumGroundStorageLayout.WallHalves ? 0.1f : 0.125f;
+                selBox ??= colBox?.Clone() ?? new(0, 0, 0, 1, height, 1);
                 colBox ??= new(0, 0, 0, 1, 0, 1);
 
                 switch (StorageProps.Layout)
@@ -821,9 +830,14 @@ namespace Vintagestory.GameContent
                         transformCuboidForQuadrants(selBox, slotId);
                         break;
                     }
-                    case EnumGroundStorageLayout.SingleCenter when stackStorageProps?.Layout == EnumGroundStorageLayout.Quadrants:
+                    case EnumGroundStorageLayout.SingleCenter:
                     {
                         float scale = 0.5f;
+                        if (stackStorageProps?.Layout == EnumGroundStorageLayout.SingleCenter)
+                        {
+                            if (usesCustomBoxes) break;
+                            scale = 0.8f;
+                        }
                         transformCuboidForSingleCenter(colBox, scale);
                         transformCuboidForSingleCenter(selBox, scale);
                         break;
