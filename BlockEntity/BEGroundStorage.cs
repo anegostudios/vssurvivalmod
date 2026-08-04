@@ -44,6 +44,9 @@ namespace Vintagestory.GameContent
 
         protected InventoryGeneric inventory;
 
+        /// <summary>
+        /// Properties of the ground storage - layout may be overridden, and other item-specific properties may not always be relevant
+        /// </summary>
         public GroundStorageProperties StorageProps { get; protected set; }
         public bool forceStorageProps = false;
         protected EnumGroundStorageLayout? overrideLayout;
@@ -520,8 +523,8 @@ namespace Vintagestory.GameContent
 
         public virtual bool OnPlayerInteractStart(IPlayer player, BlockSelection bs)
         {
-            isUsingSlot = null;
-            if (GetSlotAt(bs) is ItemSlot ourSlot && !ourSlot.Empty)
+            int targetSlotId = GetSlotIdAt(bs);
+            if (inventory[targetSlotId] is ItemSlot ourSlot && !ourSlot.Empty)
             {
                 var collIci = ourSlot.Itemstack.Collectible.GetCollectibleInterface<IContainedInteractable>();
                 if (collIci?.OnContainedInteractStart(this, ourSlot, player, bs) == true)
@@ -546,12 +549,12 @@ namespace Vintagestory.GameContent
             {
                 if (!hotbarSlot.Empty && StorageProps.CtrlKey && !player.Entity.Controls.CtrlKey) return false;
 
-                // fix RAD rotation being CCW - since n=0, e=-PiHalf, s=Pi, w=PiHalf so we swap east and west by inverting sign
-                // changed since > 1.18.1 since east west on WE rotation was broken, to allow upgrading/downgrading without issues we invert the sign for all* usages instead of saving new value
-                var hitPos = rotatedOffset(bs.HitPosition.ToVec3f(), -MeshAngle);
-
                 if (StorageProps.Layout == EnumGroundStorageLayout.Quadrants && inventory.Empty)
                 {
+                    // fix RAD rotation being CCW - since n=0, e=-PiHalf, s=Pi, w=PiHalf so we swap east and west by inverting sign
+                    // changed since > 1.18.1 since east west on WE rotation was broken, to allow upgrading/downgrading without issues we invert the sign for all* usages instead of saving new value
+                    var hitPos = rotatedOffset(bs.HitPosition.ToVec3f(), -MeshAngle);
+
                     double dx = Math.Abs(hitPos.X - 0.5);
                     double dz = Math.Abs(hitPos.Z - 0.5);
                     if (dx < 2 / 16f && dz < 2 / 16f)
@@ -561,40 +564,29 @@ namespace Vintagestory.GameContent
                     }
                 }
 
+                if (StorageProps.Layout == EnumGroundStorageLayout.SingleCenter && StorageProps.RandomizeCenterRotation)
+                {
+                    double randomX = Api.World.Rand.NextDouble() * 6.28 - 3.14;
+                    double randomZ = Api.World.Rand.NextDouble() * 6.28 - 3.14;
+                    MeshAngle = (float)Math.Atan2(randomX, randomZ);
+                }
+
+                targetSlotId = GetSlotIdAt(bs); // refresh the slot id in case StorageProps changed
+                ItemSlot targetSlot = inventory[targetSlotId];
+
                 switch (StorageProps.Layout)
                 {
-                    case EnumGroundStorageLayout.SingleCenter:
-                        if (StorageProps.RandomizeCenterRotation)
-                        {
-                            double randomX = Api.World.Rand.NextDouble() * 6.28 - 3.14;
-                            double randomZ = Api.World.Rand.NextDouble() * 6.28 - 3.14;
-                            MeshAngle = (float)Math.Atan2(randomX, randomZ);
-                        }
-                        ok = putOrGetItemSingle(inventory[0], player, bs);
-                        break;
-
-
-                    case EnumGroundStorageLayout.WallHalves:
-                    case EnumGroundStorageLayout.Halves:
-                        if (hitPos.X < 0.5)
-                        {
-                            ok = putOrGetItemSingle(inventory[0], player, bs);
-                        }
-                        else
-                        {
-                            ok = putOrGetItemSingle(inventory[1], player, bs);
-                        }
-                        break;
-
-                    case EnumGroundStorageLayout.Quadrants:
-                        int pos = ((hitPos.X > 0.5) ? 2 : 0) + ((hitPos.Z > 0.5) ? 1 : 0);
-                        ok = putOrGetItemSingle(inventory[pos], player, bs);
-                        break;
-
                     case EnumGroundStorageLayout.Messy12:
                     case EnumGroundStorageLayout.Stacking:
+                    {
                         ok = putOrGetItemStacking(player, bs);
                         break;
+                    }
+                    default:
+                    {
+                        ok = putOrGetItemSingle(GetSlotAt(bs), player, bs);
+                        break;
+                    }
                 }
             }
             UpdateIgnitable();
@@ -604,6 +596,19 @@ namespace Vintagestory.GameContent
             {
                 MarkDirty();    // Don't re-draw on client yet, that will be handled in FromTreeAttributes after we receive an updating packet from the server  (updating meshes here would have the wrong inventory contents, and also create a potential race condition)
             }
+
+            Cuboidf colBox = colBoxes[colBoxes.Length > targetSlotId ? targetSlotId : 0];
+            if (CollisionTester.AabbIntersect(
+                colBox,
+                Pos.X, Pos.Y, Pos.Z,
+                player.Entity.CollisionBox,
+                player.Entity.Pos.XYZ
+            ))
+            {
+                player.Entity.Pos.Y += colBox.Y2 - (player.Entity.Pos.Y - (int)player.Entity.Pos.Y);
+            }
+
+            (player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
 
             if (inventory.Empty && !clientsideFirstPlacement)
             {
@@ -660,36 +665,29 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public ItemSlot GetSlotAt(BlockSelection bs)
+        public int GetSlotIdAt(BlockSelection bs)
         {
-            if (StorageProps == null) return null;
-            var hitPos = rotatedOffset(bs.HitPosition.ToVec3f(), -MeshAngle);
+            if (StorageProps == null) return 0;
 
-            switch (StorageProps.Layout)
+            int selBoxId = bs.SelectionBoxIndex;
+            if (bs.Block is not BlockGroundStorage || UsableSlots(StorageProps.Layout) < selBoxId)
             {
-                case EnumGroundStorageLayout.Halves:
-                case EnumGroundStorageLayout.WallHalves:
-                    if (hitPos.X < 0.5)
-                    {
-                        return inventory[0];
-                    }
-                    else
-                    {
-                        return inventory[1];
-                    }
-
-                case EnumGroundStorageLayout.Quadrants:
-                    int pos = ((hitPos.X > 0.5) ? 2 : 0) + ((hitPos.Z > 0.5) ? 1 : 0);
-                    return inventory[pos];
-
-
-                case EnumGroundStorageLayout.SingleCenter:
-                case EnumGroundStorageLayout.Messy12:
-                case EnumGroundStorageLayout.Stacking:
-                    return inventory[0];
+                // by selection box is more robust, but by hit position is still a useful fallback (e.g. on initial placement)
+                var hitPos = rotatedOffset(bs.HitPosition.ToVec3f(), -MeshAngle);
+                selBoxId = StorageProps.Layout switch
+                {
+                    EnumGroundStorageLayout.Halves or EnumGroundStorageLayout.WallHalves => hitPos.X > 0.5 ? 1 : 0,
+                    EnumGroundStorageLayout.Quadrants => ((hitPos.X > 0.5) ? 2 : 0) + ((hitPos.Z > 0.5) ? 1 : 0),
+                    _ => 0,
+                };
             }
 
-            return null;
+            return selBoxId;
+        }
+
+        public ItemSlot GetSlotAt(BlockSelection bs)
+        {
+            return inventory[GetSlotIdAt(bs)];
         }
 
         public bool OnTryCreateKiln()
@@ -752,43 +750,102 @@ namespace Vintagestory.GameContent
 
         private void regenCollisionSelectionBox()
         {
-            ItemStack sourceStack = inventory.FirstNonEmptySlot?.Itemstack;
+            List<Cuboidf> auxColBoxes = [];
+            List<Cuboidf> auxSelBoxes = [];
 
-            Cuboidf colBox, selBox;
-            if (StorageProps.CollisionBox != null)
+            float meshAngleDegRounded = MathF.Round(MeshAngle / GameMath.PIHALF) * 90;
+            Vec3d centerOrigin = new(0.5, 0.5, 0.5);
+
+            for (int slotId = 0; slotId < UsableSlots(StorageProps.Layout); slotId++)
             {
-                colBox = selBox = StorageProps.CollisionBox.Clone();
-            }
-            else
-            {
-                if (sourceStack?.Block != null)
+                ItemStack sourceStack = inventory[slotId]?.Itemstack;
+
+                Cuboidf colBox = null;
+                Cuboidf selBox = null;
+
+                GroundStorageProperties stackStorageProps = sourceStack?.Collectible?.GetBehavior<CollectibleBehaviorGroundStorable>()?.StorageProps;
+
+                if (stackStorageProps != null)
                 {
-                    colBox = selBox = sourceStack.Block.CollisionBoxes[0].Clone();
+                    if (stackStorageProps.CollisionBox != null)
+                    {
+                        colBox = stackStorageProps.CollisionBox.Clone();
+                    }
+                    if (stackStorageProps.SelectionBox != null)
+                    {
+                        selBox = stackStorageProps.SelectionBox.Clone();
+                    }
                 }
-                else colBox = selBox = null;
+
+                // different default height for WallHalves is just because current JSON definitions overwhelmingly favor it for WallHalves for some reason
+                selBox ??= colBox?.Clone() ?? new(0, 0, 0, 1, StorageProps.Layout == EnumGroundStorageLayout.WallHalves ? 0.1f : 0.125f, 1);
+                colBox ??= new(0, 0, 0, 1, 0, 1);
+
+                switch (StorageProps.Layout)
+                {
+                    case EnumGroundStorageLayout.Halves:
+                    case EnumGroundStorageLayout.WallHalves:
+                    {
+                        transformCuboidForHalves(colBox, slotId);
+                        transformCuboidForHalves(selBox, slotId);
+                        break;
+                    }
+                    case EnumGroundStorageLayout.Quadrants:
+                    {
+                        transformCuboidForQuadrants(colBox, slotId);
+                        transformCuboidForQuadrants(selBox, slotId);
+                        break;
+                    }
+                    case EnumGroundStorageLayout.SingleCenter when stackStorageProps?.Layout == EnumGroundStorageLayout.Quadrants:
+                    {
+                        float scale = 0.5f;
+                        transformCuboidForSingleCenter(colBox, scale);
+                        transformCuboidForSingleCenter(selBox, scale);
+                        break;
+                    }
+                    case EnumGroundStorageLayout.Stacking:
+                    {
+                        if (StorageProps.CbScaleYByLayer != 0)
+                        {
+                            float scale = (int)Math.Ceiling(StorageProps.CbScaleYByLayer * sourceStack?.StackSize ?? 1);
+                            colBox.Y2 *= scale;
+                            selBox.Y2 *= scale;
+                        }
+                        break;
+                    }
+                    default: break;
+                }
+
+                auxColBoxes.Add(colBox.RotatedCopy(0, meshAngleDegRounded, 0, centerOrigin));
+                auxSelBoxes.Add(selBox.RotatedCopy(0, meshAngleDegRounded, 0, centerOrigin));
             }
 
-            if (StorageProps.SelectionBox != null)
-            {
-                selBox = StorageProps.SelectionBox.Clone();
-            }
+            colBoxes = [.. auxColBoxes];
+            selBoxes = [.. auxSelBoxes];
+        }
 
-            if (StorageProps.CbScaleYByLayer != 0)
-            {
-                colBox = colBox.Clone();
-                colBox.Y2 *= ((int)Math.Ceiling(StorageProps.CbScaleYByLayer * inventory[0].StackSize) * 8) / 8;
-
-                selBox = colBox;
-            }
-
-            if (colBox != null)
-            {
-                colBoxes[0] = colBox;
-            }
-            if (selBox != null)
-            {
-                selBoxes[0] = selBox;
-            }
+        private static void transformCuboidForHalves(Cuboidf cuboid, int slotId)
+        {
+            cuboid.X1 *= 0.5f;
+            cuboid.X2 *= 0.5f;
+            cuboid.Translate(halvesCenterOffsets[slotId] + new Vec3f(0.25f, 0, 0));
+        }
+        private static void transformCuboidForQuadrants(Cuboidf cuboid, int slotId)
+        {
+            cuboid.X1 *= 0.5f;
+            cuboid.X2 *= 0.5f;
+            cuboid.Z1 *= 0.5f;
+            cuboid.Z2 *= 0.5f;
+            cuboid.Translate(quadrantsCenterOffsets[slotId] + new Vec3f(0.25f, 0, 0.25f));
+        }
+        private static void transformCuboidForSingleCenter(Cuboidf cuboid, float scale = 1.0f)
+        {
+            cuboid.X1 *= scale;
+            cuboid.X2 *= scale;
+            cuboid.Z1 *= scale;
+            cuboid.Z2 *= scale;
+            float offset = (1 - scale) / 2;
+            cuboid.Translate(offset, 0, offset);
         }
 
         /// <summary>
@@ -860,7 +917,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public int UsableSlots(EnumGroundStorageLayout layout)
+        public static int UsableSlots(EnumGroundStorageLayout layout)
         {
             switch (layout)
             {
@@ -1384,6 +1441,17 @@ namespace Vintagestory.GameContent
             return tfMatrices;
         }
 
+        private static readonly Vec3f[] halvesCenterOffsets = [
+            new(-0.25f, 0, 0),
+            new(0.25f, 0, 0),
+        ];
+        private static readonly Vec3f[] quadrantsCenterOffsets = [
+            new(-0.25f, 0, -0.25f),
+            new(-0.25f, 0, 0.25f),
+            new(0.25f, 0, -0.25f),
+            new(0.25f, 0, 0.25f),
+        ];
+
         public void GetLayoutOffset(Vec3f[] offs)
         {
             if (StorageProps == null) return;
@@ -1397,21 +1465,11 @@ namespace Vintagestory.GameContent
 
                 case EnumGroundStorageLayout.Halves:
                 case EnumGroundStorageLayout.WallHalves:
-                    // Left
-                    offs[0] = new Vec3f(-0.25f, 0, 0);
-                    // Right
-                    offs[1] = new Vec3f(0.25f, 0, 0);
+                    for (int i = 0; i < 2; i++) offs[i] = halvesCenterOffsets[i];
                     break;
 
                 case EnumGroundStorageLayout.Quadrants:
-                    // Top left
-                    offs[0] = new Vec3f(-0.25f, 0, -0.25f);
-                    // Top right
-                    offs[1] = new Vec3f(-0.25f, 0, 0.25f);
-                    // Bot left
-                    offs[2] = new Vec3f(0.25f, 0, -0.25f);
-                    // Bot right
-                    offs[3] = new Vec3f(0.25f, 0, 0.25f);
+                    for (int i = 0; i < 4; i++) offs[i] = quadrantsCenterOffsets[i];
                     break;
             }
         }

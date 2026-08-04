@@ -315,19 +315,6 @@ namespace Vintagestory.GameContent
                 beg.OnPlayerInteractStart(player, blockSel);
             }
 
-            if (CollisionTester.AabbIntersect(
-                GetCollisionBoxes(world.BlockAccessor, pos)[0],
-                pos.X, pos.Y, pos.Z,
-                player.Entity.SelectionBox,
-                player.Entity.Pos.XYZ
-            ))
-            {
-                player.Entity.Pos.Y += GetCollisionBoxes(world.BlockAccessor, pos)[0].Y2;
-            }
-
-            (player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
-
-
             return true;
         }
 
@@ -478,9 +465,9 @@ namespace Vintagestory.GameContent
 
                 switch (beg.StorageProps.Layout)
                 {
-                    case EnumGroundStorageLayout.Stacking or EnumGroundStorageLayout.Messy12 when !beg.Inventory.Empty:
+                    case EnumGroundStorageLayout.Stacking or EnumGroundStorageLayout.Messy12:
                     {
-                        var collObj = beg.Inventory[0]?.Itemstack?.Collectible;
+                        var collObj = beg.Inventory?[0]?.Itemstack?.Collectible;
                         if (collObj == null) break;
 
                         var canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(api, true).ToArray();
@@ -493,7 +480,7 @@ namespace Vintagestory.GameContent
                             Itemstacks = canIgniteStacks,
                             GetMatchingStacks = (wi, bs, es) => {
                                 var begs = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityGroundStorage;
-                                if (begs?.IsBurning == false && begs?.CanIgnite == true)
+                                if (begs != null && !begs.Inventory.Empty && !begs.IsBurning && begs.CanIgnite)
                                 {
                                     return wi.Itemstacks;
                                 }
@@ -567,7 +554,7 @@ namespace Vintagestory.GameContent
                             Itemstacks = groundStorablesMixableByLayout[beg.StorageProps.Layout],
                             GetMatchingStacks = (wi, bs, es) => {
                                 var begs = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityGroundStorage;
-                                if (begs?.IsFull == false) // (begs?.GetSlotAt(bs).Empty == true) only updated when initially moving the mouse onto the block
+                                if (begs?.GetSlotAt(bs).Empty == true)
                                 {
                                     return wi.Itemstacks;
                                 }

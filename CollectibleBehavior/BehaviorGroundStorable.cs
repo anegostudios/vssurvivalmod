@@ -99,10 +99,7 @@ namespace Vintagestory.GameContent
 
     public class CollectibleBehaviorGroundStorable : CollectibleBehavior
     {
-        public GroundStorageProperties StorageProps { 
-            get; 
-            protected set; 
-        }
+        public GroundStorageProperties StorageProps { get; protected set; }
 
         public CollectibleBehaviorGroundStorable(CollectibleObject collObj) : base(collObj)
         {
@@ -140,7 +137,7 @@ namespace Vintagestory.GameContent
             {
                 new WorldInteraction
                 {
-                    HotKeyCodes = StorageProps.CtrlKey ? new string[] {"ctrl", "shift" } : new string[] {"shift"},
+                    HotKeyCodes = StorageProps.CtrlKey ? ["ctrl", "shift"] : ["shift"],
                     ActionLangCode = "heldhelp-place",
                     MouseButton = EnumMouseButton.Right
                 }
