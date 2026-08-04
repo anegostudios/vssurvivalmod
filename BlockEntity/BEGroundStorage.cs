@@ -346,8 +346,8 @@ namespace Vintagestory.GameContent
         {
             if (!clientsideFirstPlacement && Inventory.Empty)
             {
-                // all slots are null, we need to destroy this GroundStorage BlockEntity
                 Api.World.BlockAccessor.SetBlock(0, Pos);
+                LightUpdate();
                 Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
                 return true;
             }
@@ -528,7 +528,7 @@ namespace Vintagestory.GameContent
             return colBoxes;
         }
 
-        byte[] lastLightHsv;
+        byte[] lastLightHsv = new byte[3];
 
         public virtual bool OnPlayerInteractStart(IPlayer player, BlockSelection bs)
         {
@@ -554,6 +554,7 @@ namespace Vintagestory.GameContent
             DetermineStorageProperties(hotbarSlot);
 
             bool didMoveItems = false;
+            ItemStack targetOrMovedStack = null; // a copy of the target stack (not nulled if the original gets taken out), or the stack which was put into the slot
 
             if (StorageProps != null)
             {
@@ -584,6 +585,8 @@ namespace Vintagestory.GameContent
                 targetSlotId = GetSlotIdAt(bs); // refresh the slot id in case StorageProps changed
                 ItemSlot targetSlot = inventory[targetSlotId];
 
+                targetOrMovedStack = targetSlot.Itemstack?.Clone();
+
                 switch (StorageProps.Layout)
                 {
                     case EnumGroundStorageLayout.Messy12:
@@ -598,16 +601,29 @@ namespace Vintagestory.GameContent
                         break;
                     }
                 }
+
+                if (inventory[targetSlotId].Itemstack is ItemStack newStack) targetOrMovedStack = newStack;
             }
 
             if (!didMoveItems) return false;
 
-            Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
-            Api.World.PlaySoundAt(StorageProps.PlaceRemoveSound, Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, player, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
+            if (targetOrMovedStack != null)
+            {
+                // take the sound from the moved item, not from the saved StorageProps which might contain a sound for a different item
+                AssetLocation placeRemoveSound = targetOrMovedStack.Collectible?.GetBehavior<CollectibleBehaviorGroundStorable>()?.StorageProps?.PlaceRemoveSound;
+                Api.World.PlaySoundAt(placeRemoveSound, Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, player, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
+            }
 
-            // Don't re-draw on client yet, that will be handled in FromTreeAttributes after we receive an updating packet from the server,
+            if (removeIfEmpty()) return true;
+
+            LightUpdate();
+            Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
+
+            // Don't re-draw on client yet, that will be handled in FromTreeAttributes after we receive an updating packet from the server
             // Updating meshes here would have the wrong inventory contents, and also create a potential race condition
             MarkDirty();
+
+            regenCollisionSelectionBox();
 
             Cuboidf colBox = colBoxes[colBoxes.Length > targetSlotId ? targetSlotId : 0];
             if (CollisionTester.AabbIntersect(
@@ -622,18 +638,8 @@ namespace Vintagestory.GameContent
 
             (player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
 
-            if (removeIfEmpty()) return true;
-
-            regenCollisionSelectionBox();
-
             UpdateIgnitable();
             renderer?.UpdateTemps();
-
-            var lshv = GetLightHsv();
-            if ((lastLightHsv != null && lastLightHsv[2] > 0) && (lshv == null || lshv[2] == 0))
-            {
-                Api.World.BlockAccessor.RemoveBlockLight((byte[])lastLightHsv.Clone(), Pos);
-            }
 
             return true;
         }
@@ -1055,11 +1061,28 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public void LightUpdate(ItemStack itemstack)
+#nullable enable
+        public void LightUpdate(ItemStack? contextItemStack = null)
         {
-            lastLightHsv = itemstack.Collectible.GetLightHsv(Api.World.BlockAccessor, null, itemstack);
-            if (lastLightHsv != null && lastLightHsv[2] > 0) Api.World.BlockAccessor.ExchangeBlock(Block.Id, Pos); // Forces a lighting update
+            byte[] currentLightHsv = GetLightHsv();
+
+            if (currentLightHsv.SequenceEqual(lastLightHsv)) return;
+
+            // the provided stack should normally be unnecessary, but we can use it just in case
+            byte[] removeLightHsv = contextItemStack?.Collectible?.GetLightHsv(Api.World.BlockAccessor, null, contextItemStack) ?? new byte[3];
+
+            // pick the light with the highest radius to ensure that the full light radius gets updated
+            if (currentLightHsv[2] > removeLightHsv[2]) removeLightHsv = currentLightHsv;
+            if (lastLightHsv[2] > removeLightHsv[2]) removeLightHsv = lastLightHsv;
+
+            Api.World.BlockAccessor.RemoveBlockLight((byte[])removeLightHsv.Clone(), Pos);
+
+            // force a lighting update
+            Api.World.BlockAccessor.ExchangeBlock(Block.Id, Pos);
+
+            lastLightHsv = currentLightHsv;
         }
+#nullable disable
 
         public bool TryTakeItem(IPlayer player)
         {
