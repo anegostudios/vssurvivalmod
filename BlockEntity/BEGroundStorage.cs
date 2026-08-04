@@ -299,7 +299,6 @@ namespace Vintagestory.GameContent
                 bh.FuelPos = Pos.Copy();
                 bh.OnFireDeath = _ => { Extinguish(); };
             }
-            UpdateIgnitable();
 
             DetermineStorageProperties(null);
 
@@ -407,11 +406,22 @@ namespace Vintagestory.GameContent
 
         private void UpdateIgnitable()
         {
-            var cbhgs = Inventory[0].Itemstack?.Collectible?.GetBehavior<CollectibleBehaviorGroundStorable>();
-            if (cbhgs != null)
+            switch (StorageProps.Layout)
             {
-                burnHoursPerItem = JsonObject.FromJson(cbhgs.propertiesAtString)["burnHoursPerItem"].AsFloat(burnHoursPerItem);
+                // currently only stacking layouts are ignitable
+                case EnumGroundStorageLayout.Messy12:
+                case EnumGroundStorageLayout.Stacking:
+                    var cbhgs = Inventory[0].Itemstack?.Collectible?.GetBehavior<CollectibleBehaviorGroundStorable>();
+                    if (cbhgs != null)
+                    {
+                        burnHoursPerItem = JsonObject.FromJson(cbhgs.propertiesAtString)["burnHoursPerItem"].AsFloat();
+                    }
+                    break;
+                default:
+                    burnHoursPerItem = 0;
+                    break;
             }
+
         }
 
         /// <summary>
@@ -638,7 +648,6 @@ namespace Vintagestory.GameContent
 
             (player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
 
-            UpdateIgnitable();
             renderer?.UpdateTemps();
 
             return true;
@@ -758,6 +767,8 @@ namespace Vintagestory.GameContent
                 this.StorageProps = StorageProps.Clone();
                 this.StorageProps.Layout = (EnumGroundStorageLayout)overrideLayout;
             }
+
+            UpdateIgnitable();
 
             regenCollisionSelectionBox();
         }
