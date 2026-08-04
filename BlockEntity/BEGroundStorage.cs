@@ -987,11 +987,12 @@ namespace Vintagestory.GameContent
             bool equalStack = newStorage || !sneaking || (hotbarSlot.Itemstack?.Equals(Api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes) == true);
 
             BlockPos abovePos = Pos.UpCopy();
-            if (abovePos.Y >= Api.World.BlockAccessor.MapSizeY) return false;
 
             var beg = Block.GetBlockEntity<BlockEntityGroundStorage>(abovePos);
-            if (TotalStackSize >= Capacity && ((equalStack && beg?.StorageProps?.Layout == EnumGroundStorageLayout.Stacking) ||
-                (hotbarSlot.Empty && beg?.inventory[0].Itemstack?.Equals(Api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes) == true)))
+            if (TotalStackSize >= Capacity
+                && ((equalStack && beg?.StorageProps?.Layout == EnumGroundStorageLayout.Stacking)
+                    || (hotbarSlot.Empty && beg?.inventory[0].Itemstack?.Equals(Api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes) == true))
+                && (abovePos.Y < Api.World.BlockAccessor.MapSizeY))
             {
                 return beg.OnPlayerInteractStart(byPlayer, bs);
             }
@@ -1001,6 +1002,8 @@ namespace Vintagestory.GameContent
 
             if (sneaking && TotalStackSize >= Capacity)
             {
+                if (abovePos.Y >= Api.World.BlockAccessor.MapSizeY) return false;
+
                 Block pileblock = Api.World.BlockAccessor.GetBlock(Pos);
                 Block aboveblock = Api.World.BlockAccessor.GetBlock(abovePos);
 
