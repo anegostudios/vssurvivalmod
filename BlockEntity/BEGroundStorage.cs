@@ -345,8 +345,8 @@ namespace Vintagestory.GameContent
         {
             if (!clientsideFirstPlacement && Inventory.Empty)
             {
-                Api.World.BlockAccessor.SetBlock(0, Pos);
                 LightUpdate();
+                Api.World.BlockAccessor.SetBlock(0, Pos);
                 Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
                 return true;
             }
