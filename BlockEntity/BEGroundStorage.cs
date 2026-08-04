@@ -1046,7 +1046,9 @@ namespace Vintagestory.GameContent
             bool newStorage = invSlot.Empty;
             bool putBulk = player.Entity.Controls.CtrlKey;
 
-            int quantityMoved = sourceSlot.TryPutInto(Api.World, invSlot, putBulk ? BulkTransferQuantity : TransferQuantity); //TEST temperature averaging
+            int quantityToMove = putBulk ? BulkTransferQuantity : TransferQuantity;
+            ItemStackMoveOperation op = new(Api.World, EnumMouseButton.Left, 0, EnumMergePriority.DirectMerge, quantityToMove);
+            int quantityMoved = sourceSlot.TryPutInto(invSlot, ref op);
 
             if (quantityMoved <= 0) return false;
 
