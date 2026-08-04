@@ -845,6 +845,12 @@ namespace Vintagestory.GameContent
                 auxSelBoxes.Add(selBox.RotatedCopy(0, meshAngleDegRounded, 0, centerOrigin));
             }
 
+            // block interaction help Y offset only seems to be refreshed when hovering over a different block
+            // different offsets for blocks of the same type don't seem like they're currently possible
+            // float maxHeight = auxSelBoxes.Max(cuboid => cuboid.Y2);
+            // (Block as BlockGroundStorage)?.InteractionHelpYOffset = maxHeight * 0.5f + 0.45f; // has to be less than 1
+
+
             colBoxes = [.. auxColBoxes];
             selBoxes = [.. auxSelBoxes];
         }
@@ -964,11 +970,13 @@ namespace Vintagestory.GameContent
 
             bool sneaking = byPlayer.Entity.Controls.ShiftKey;
 
-            bool equalStack = newStorage || !sneaking || (hotbarSlot.Itemstack != null && hotbarSlot.Itemstack.Equals(Api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes));
+            bool equalStack = newStorage || !sneaking || (hotbarSlot.Itemstack?.Equals(Api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes) == true);
 
             BlockPos abovePos = Pos.UpCopy();
+            if (abovePos.Y >= Api.World.BlockAccessor.MapSizeY) return false;
+
             var beg = Block.GetBlockEntity<BlockEntityGroundStorage>(abovePos);
-            if (TotalStackSize >= Capacity && ((beg != null && equalStack && beg.StorageProps.Layout == EnumGroundStorageLayout.Stacking) ||
+            if (TotalStackSize >= Capacity && ((equalStack && beg?.StorageProps?.Layout == EnumGroundStorageLayout.Stacking) ||
                 (hotbarSlot.Empty && beg?.inventory[0].Itemstack?.Equals(Api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes) == true)))
             {
                 return beg.OnPlayerInteractStart(byPlayer, bs);
@@ -981,8 +989,6 @@ namespace Vintagestory.GameContent
             {
                 Block pileblock = Api.World.BlockAccessor.GetBlock(Pos);
                 Block aboveblock = Api.World.BlockAccessor.GetBlock(abovePos);
-
-                if (abovePos.Y >= Api.World.BlockAccessor.MapSizeY) return false;
 
                 if (aboveblock.IsReplacableBy(pileblock))
                 {
