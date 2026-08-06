@@ -25,6 +25,7 @@ namespace Vintagestory.GameContent
         public ModelTransform[] Messy12Transforms;
 
         public static bool IsUsingContainedBlock; // This value is only relevant (and correct) client side
+        private int lastLookedAtSlotId = 0; // used to determine which block to pick in OnPickBlock()
 
         public override void OnLoaded(ICoreAPI api)
         {
@@ -428,12 +429,24 @@ namespace Vintagestory.GameContent
             else return OnPickBlock(world, pos)?.GetName();
         }
 
+        public override void OnBeingLookedAt(IPlayer byPlayer, BlockSelection blockSel, bool firstTick)
+        {
+            // seems like it has to be done every frame so that it switches when hovering over a different slot
+            if (blockSel.Block.GetBlockEntity<BlockEntityGroundStorage>(blockSel) is BlockEntityGroundStorage beg)
+            {
+                lastLookedAtSlotId = beg.GetSlotIdAt(blockSel);
+            }
+
+            base.OnBeingLookedAt(byPlayer, blockSel, firstTick);
+        }
+
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {
-            var beg = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityGroundStorage;
-            if (beg != null)
+            BlockEntity be = world.BlockAccessor.GetBlockEntity(pos);
+            if (be is BlockEntityGroundStorage beg)
             {
-                return beg.Inventory.FirstNonEmptySlot?.Itemstack.Clone();
+                ItemSlot slot = beg.Inventory[lastLookedAtSlotId];
+                return slot?.Itemstack?.Clone() ?? beg.Inventory.FirstNonEmptySlot?.Itemstack.Clone();
             }
 
             return null;
