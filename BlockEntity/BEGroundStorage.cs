@@ -343,7 +343,7 @@ namespace Vintagestory.GameContent
 
         private bool removeIfEmpty()
         {
-            if (!clientsideFirstPlacement && Inventory.Empty)
+            if (Inventory.Empty)
             {
                 LightUpdate();
                 Api.World.BlockAccessor.SetBlock(0, Pos);
@@ -624,7 +624,7 @@ namespace Vintagestory.GameContent
                 Api.World.PlaySoundAt(placeRemoveSound, Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, player, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
             }
 
-            if (removeIfEmpty()) return true;
+            if (!clientsideFirstPlacement && removeIfEmpty()) return true;
 
             LightUpdate();
             Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
