@@ -62,6 +62,10 @@ namespace Vintagestory.GameContent
         protected virtual int invSlotCount => 4;
         protected Cuboidf[] colBoxes;
         protected Cuboidf[] selBoxes;
+        /// <summary>
+        /// used to push the player up after updating collision boxes when receiving a packet from the server
+        /// </summary>
+        protected Action clientCollisionCallback;
 
         ItemSlot isUsingSlot;
         /// <summary>
@@ -354,6 +358,19 @@ namespace Vintagestory.GameContent
             return false;
         }
 
+        protected void pushUpOnCollision(IPlayer player, Cuboidf colBox)
+        {
+            if (CollisionTester.AabbIntersect(
+                colBox,
+                Pos.X, Pos.Y, Pos.Z,
+                player.Entity.CollisionBox,
+                player.Entity.Pos.XYZ
+            ))
+            {
+                player.Entity.Pos.Y += colBox.Y2 - (player.Entity.Pos.Y - (int)player.Entity.Pos.Y);
+            }
+        }
+
         public void CoolNow(float amountRel, OnStackToCool onStackToCoolCallback)
         {
             if (!Inventory.Empty)
@@ -563,7 +580,7 @@ namespace Vintagestory.GameContent
 
             DetermineStorageProperties(hotbarSlot);
 
-            bool didMoveItems = false;
+            bool didMoveItems = false; // on the client side we don't move items so this is a prediction more than fact, on the server it's fully accurate
             ItemStack targetOrMovedStack = null; // a copy of the target stack (not nulled if the original gets taken out), or the stack which was put into the slot
 
             if (StorageProps != null)
@@ -615,38 +632,36 @@ namespace Vintagestory.GameContent
                 if (inventory[targetSlotId].Itemstack is ItemStack newStack) targetOrMovedStack = newStack;
             }
 
-            if (!didMoveItems) return false;
-
-            if (targetOrMovedStack != null)
+            if (targetOrMovedStack != null && didMoveItems)
             {
                 // take the sound from the moved item, not from the saved StorageProps which might contain a sound for a different item
                 AssetLocation placeRemoveSound = targetOrMovedStack.Collectible?.GetBehavior<CollectibleBehaviorGroundStorable>()?.StorageProps?.PlaceRemoveSound;
                 Api.World.PlaySoundAt(placeRemoveSound, Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, player, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
             }
 
-            if (!clientsideFirstPlacement && removeIfEmpty()) return true;
+            if (!clientsideFirstPlacement && removeIfEmpty()) return didMoveItems;
 
-            LightUpdate();
-            Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
+            if (!didMoveItems) return false;
 
             // Don't re-draw on client yet, that will be handled in FromTreeAttributes after we receive an updating packet from the server
             // Updating meshes here would have the wrong inventory contents, and also create a potential race condition
             MarkDirty();
 
-            regenCollisionSelectionBox();
-
-            Cuboidf colBox = colBoxes[colBoxes.Length > targetSlotId ? targetSlotId : 0];
-            if (CollisionTester.AabbIntersect(
-                colBox,
-                Pos.X, Pos.Y, Pos.Z,
-                player.Entity.CollisionBox,
-                player.Entity.Pos.XYZ
-            ))
+            // we don't move any items on the client side, so we can return early and update everything in FromTreeAttributes
+            if (Api.Side == EnumAppSide.Client)
             {
-                player.Entity.Pos.Y += colBox.Y2 - (player.Entity.Pos.Y - (int)player.Entity.Pos.Y);
+                (player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+
+                clientCollisionCallback += () => pushUpOnCollision(player, colBoxes[colBoxes.Length > targetSlotId ? targetSlotId : 0]);
+                return true;
             }
 
-            (player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+            LightUpdate();
+            Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
+
+            regenCollisionSelectionBox();
+
+            pushUpOnCollision(player, colBoxes[colBoxes.Length > targetSlotId ? targetSlotId : 0]);
 
             renderer?.UpdateTemps();
 
@@ -1013,6 +1028,20 @@ namespace Vintagestory.GameContent
 
                     if (StorageProps.MaxStackingHeight < 0 || StackHeight < StorageProps.MaxStackingHeight || !equalStack)
                     {
+                        // @MKMoose 05.08.2026
+                        // on the client side, don't create new storage and wait for server sync instead
+                        // it seems that creating new storage here sometimes causes desync that manifsests with a client-side BEGS in an air block
+                        // best guess is that it occurs when a client-side BGS gets created then removed but the server never realizes
+                        // so it leaves a client-side BEGS in an air block which doesn't get removed naturally, because it never existed on the server
+                        if (Api.Side == EnumAppSide.Client)
+                        {
+                            Api.World.Logger.Audit("{0} Tried creating new Ground storage at {1} - client side waits for the server here.",
+                                byPlayer.PlayerName,
+                                Pos
+                            );
+                            return true;
+                        }
+
                         BlockGroundStorage bgs = pileblock as BlockGroundStorage;
                         var bsc = bs.Clone();
                         bsc.Position = Pos;
@@ -1028,29 +1057,6 @@ namespace Vintagestory.GameContent
             {
                 return false;
             }
-
-            // @MKMoose 04.08.2026
-            // Frankly I don't know why this function returned early
-            // It caused animations and other stuff to run when no items were actually being moved
-            // But if it is actually needed to return early, then predicting whether anything can be done seems better than a blanket true return
-            // Also added auditing instead of a silent return
-
-            // if (Api.Side == EnumAppSide.Client)
-            // {
-            //     // try to predict whether anything can be added or taken to trigger sounds and animations more correctly
-            //     // better to return a false positive than a false negative here, as a false negative prevents the client from doing anything
-            //     bool canMoveItems = (!IsFull && sneaking) || (!newStorage && !sneaking);
-
-            //     if (canMoveItems)
-            //     {
-            //         Api.World.Logger.Audit("{0} Tried interacting with existing Ground storage at {1} - client side returns early here.",
-            //             byPlayer.PlayerName,
-            //             Pos
-            //         );
-            //     }
-
-            //     return canMoveItems;
-            // }
 
             lock (inventoryLock)
             {
@@ -1074,6 +1080,9 @@ namespace Vintagestory.GameContent
             if (hotbarSlot.Itemstack == null) return false;
 
             ItemSlot invSlot = inventory[0];
+
+            // return true to play sounds etc. on the client, but only move items on the server side
+            if (Api.Side == EnumAppSide.Client) return true;
 
             ItemSlot sourceSlot = player.WorldData.CurrentGameMode == EnumGameMode.Creative ? new DummySlot(hotbarSlot.Itemstack.Clone()) : hotbarSlot;
 
@@ -1127,6 +1136,9 @@ namespace Vintagestory.GameContent
             ItemStack stack = null;
             if (inventory[0]?.Itemstack != null)
             {
+                // return early on the client, but only move items on the server side
+                if (Api.Side == EnumAppSide.Client) return true;
+
                 bool takeBulk = player.Entity.Controls.CtrlKey;
 
                 stack = inventory[0].TakeOut(GameMath.Min(takeBulk ? BulkTransferQuantity : TransferQuantity, TotalStackSize));
@@ -1187,6 +1199,9 @@ namespace Vintagestory.GameContent
                         if (!layoutEqual) return false;
                     }
 
+                    // return early on the client, but only move items on the server side
+                    if (Api.Side == EnumAppSide.Client) return true;
+
                     ItemSlot sourceSlot = player.WorldData.CurrentGameMode == EnumGameMode.Creative ? new DummySlot(hotbarSlot.Itemstack.Clone()) : hotbarSlot;
 
                     didMoveItem = sourceSlot.TryPutInto(Api.World, ourSlot, TransferQuantity) > 0;
@@ -1203,6 +1218,9 @@ namespace Vintagestory.GameContent
                 }
                 else
                 {
+                    // return early on the client, but only move items on the server side
+                    if (Api.Side == EnumAppSide.Client) return true;
+
                     if (!player.InventoryManager.TryGiveItemstack(ourSlot.Itemstack, true))
                     {
                         Api.World.SpawnItemEntity(ourSlot.Itemstack, Pos);
@@ -1242,10 +1260,16 @@ namespace Vintagestory.GameContent
 
             if (Api != null)
             {
+                //? not sure
+                // CheckInventoryClearedMidTick();
+
                 DetermineStorageProperties(null);
 
                 LightUpdate();
             }
+
+            clientCollisionCallback?.Invoke();
+            clientCollisionCallback = null;
 
             MeshAngle = tree.GetFloat("meshAngle");
             AttachFace = BlockFacing.ALLFACES[tree.GetInt("attachFace")];
