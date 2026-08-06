@@ -345,7 +345,7 @@ namespace Vintagestory.GameContent
             removeIfEmpty();
         }
 
-        private bool removeIfEmpty()
+        protected bool removeIfEmpty()
         {
             if (Inventory.Empty)
             {
@@ -708,6 +708,7 @@ namespace Vintagestory.GameContent
             if (StorageProps == null) return 0;
 
             int selBoxId = bs.SelectionBoxIndex;
+
             if (bs.Block is not BlockGroundStorage || UsableSlots(StorageProps.Layout) < selBoxId)
             {
                 // by selection box is more robust, but by hit position is still a useful fallback (e.g. on initial placement)
@@ -737,9 +738,9 @@ namespace Vintagestory.GameContent
         {
             if (StorageProps == null || inventory.Empty) return false;
 
-            foreach (ItemSlot slot in inventory)
+            for (int slotId = 0; slotId < UsableSlots(StorageProps.Layout); slotId++)
             {
-                ItemStack stack = slot.Itemstack;
+                ItemStack stack = inventory[slotId].Itemstack;
                 if (stack == null) continue; // don't return false, as that would prevent building a pit kiln if some of the slots are empty
 
                 if (stack.StackSize > StorageProps.MaxFireable)
@@ -1073,13 +1074,13 @@ namespace Vintagestory.GameContent
 
         public virtual bool TryPutItem(IPlayer player)
         {
-            if (TotalStackSize >= Capacity) return false;
+            ItemSlot invSlot = inventory[0];
+
+            if (invSlot.StackSize >= Capacity) return false;
 
             ItemSlot hotbarSlot = player.InventoryManager.ActiveHotbarSlot;
 
             if (hotbarSlot.Itemstack == null) return false;
-
-            ItemSlot invSlot = inventory[0];
 
             // return true to play sounds etc. on the client, but only move items on the server side
             if (Api.Side == EnumAppSide.Client) return true;
@@ -1134,23 +1135,22 @@ namespace Vintagestory.GameContent
             int quantityMoved = 0;
 
             ItemStack stack = null;
-            if (inventory[0]?.Itemstack != null)
-            {
-                // return early on the client, but only move items on the server side
-                if (Api.Side == EnumAppSide.Client) return true;
+            if (inventory[0]?.Itemstack == null) return false;
 
-                bool takeBulk = player.Entity.Controls.CtrlKey;
+            // return true to play sounds etc. on the client, but only move items on the server side
+            if (Api.Side == EnumAppSide.Client) return true;
 
-                stack = inventory[0].TakeOut(GameMath.Min(takeBulk ? BulkTransferQuantity : TransferQuantity, TotalStackSize));
-                quantityMoved = stack.StackSize;
+            bool takeBulk = player.Entity.Controls.CtrlKey;
 
-                if (!player.InventoryManager.TryGiveItemstack(stack))
-                {
-                    Api.World.SpawnItemEntity(stack, Pos);
-                }
-            }
+            stack = inventory[0].TakeOut(GameMath.Min(takeBulk ? BulkTransferQuantity : TransferQuantity, TotalStackSize));
+            quantityMoved = stack.StackSize;
 
             if (quantityMoved <= 0) return false;
+
+            if (!player.InventoryManager.TryGiveItemstack(stack))
+            {
+                Api.World.SpawnItemEntity(stack, Pos);
+            }
 
             Api.World.Logger.Audit("{0} Took {1}x{2} from Ground storage at {3}.",
                 player.PlayerName,
@@ -1159,17 +1159,15 @@ namespace Vintagestory.GameContent
                 Pos
             );
 
-            LightUpdate(stack);
+            if (removeIfEmpty()) return true;
 
-            removeIfEmpty();
+            LightUpdate(stack);
 
             return true;
         }
 
         public bool putOrGetItemSingle(ItemSlot ourSlot, IPlayer player, BlockSelection bs)
         {
-            bool didMoveItem = false;
-
             lock (inventoryLock)
             {
                 if (ourSlot.Empty)
@@ -1204,17 +1202,18 @@ namespace Vintagestory.GameContent
 
                     ItemSlot sourceSlot = player.WorldData.CurrentGameMode == EnumGameMode.Creative ? new DummySlot(hotbarSlot.Itemstack.Clone()) : hotbarSlot;
 
-                    didMoveItem = sourceSlot.TryPutInto(Api.World, ourSlot, TransferQuantity) > 0;
+                    bool didMoveItem = sourceSlot.TryPutInto(Api.World, ourSlot, TransferQuantity) > 0;
 
-                    if (didMoveItem)
-                    {
-                        Api.World.Logger.Audit("{0} Put 1x{1} into {2} Ground storage at {3}.",
-                            player.PlayerName,
-                            ourSlot.Itemstack.Collectible.Code,
-                            newStorage ? "new" : "",
-                            Pos
-                        );
-                    }
+                    if (!didMoveItem) return false;
+
+                    Api.World.Logger.Audit("{0} Put 1x{1} into {2} Ground storage at {3}.",
+                        player.PlayerName,
+                        ourSlot.Itemstack.Collectible.Code,
+                        newStorage ? "new" : "",
+                        Pos
+                    );
+
+                    return true;
                 }
                 else
                 {
@@ -1234,11 +1233,10 @@ namespace Vintagestory.GameContent
 
                     ourSlot.Itemstack = null;
                     ourSlot.MarkDirty();
-                    didMoveItem = true;
+
+                    return true;
                 }
             }
-
-            return didMoveItem;
         }
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
@@ -1260,9 +1258,6 @@ namespace Vintagestory.GameContent
 
             if (Api != null)
             {
-                //? not sure
-                // CheckInventoryClearedMidTick();
-
                 DetermineStorageProperties(null);
 
                 LightUpdate();
