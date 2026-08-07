@@ -178,23 +178,22 @@ namespace Vintagestory.GameContent
                         return TotalStackSize >= 12;
 
                     case EnumGroundStorageLayout.Stacking:
-                        if (TotalStackSize >= Capacity)
+                        if (TotalStackSize < Capacity) return false;
+                        if (!StorageProps.UpSolid) return true;
+
+                        BlockPos abovePos = Pos.UpCopy();
+                        if (Block.GetBlockEntity<BlockEntityGroundStorage>(abovePos) is BlockEntityGroundStorage beg
+                            && beg.StorageProps?.Layout == EnumGroundStorageLayout.Stacking
+                            && beg.inventory[0].Itemstack?.Equals(Api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes) == true)
                         {
-                            if (!StorageProps.UpSolid) return true;
-
-                            BlockPos abovePos = Pos.UpCopy();
-                            if (Block.GetBlockEntity<BlockEntityGroundStorage>(abovePos) is BlockEntityGroundStorage beg
-                                && beg.StorageProps?.Layout == EnumGroundStorageLayout.Stacking
-                                && beg.inventory[0].Itemstack?.Equals(Api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes) == true)
-                            {
-                                return beg.IsFull;
-                            }
-
-                            if (StorageProps.MaxStackingHeight > 0)
-                            {
-                                return StackHeight >= StorageProps.MaxStackingHeight;
-                            }
+                            return beg.IsFull;
                         }
+
+                        if (StorageProps.MaxStackingHeight > 0)
+                        {
+                            return StackHeight >= StorageProps.MaxStackingHeight;
+                        }
+
                         return false;
 
                     default:
@@ -434,6 +433,7 @@ namespace Vintagestory.GameContent
                         burnHoursPerItem = JsonObject.FromJson(cbhgs.propertiesAtString)["burnHoursPerItem"].AsFloat();
                     }
                     break;
+
                 default:
                     burnHoursPerItem = 0;
                     break;
@@ -614,20 +614,11 @@ namespace Vintagestory.GameContent
 
                 targetOrMovedStack = targetSlot.Itemstack?.Clone();
 
-                switch (StorageProps.Layout)
+                didMoveItems = StorageProps.Layout switch
                 {
-                    case EnumGroundStorageLayout.Messy12:
-                    case EnumGroundStorageLayout.Stacking:
-                    {
-                        didMoveItems = putOrGetItemStacking(player, bs);
-                        break;
-                    }
-                    default:
-                    {
-                        didMoveItems = putOrGetItemSingle(targetSlot, player, bs);
-                        break;
-                    }
-                }
+                    EnumGroundStorageLayout.Messy12 or EnumGroundStorageLayout.Stacking => putOrGetItemStacking(player, bs),
+                    _ => putOrGetItemSingle(targetSlot, player, bs),
+                };
 
                 if (inventory[targetSlotId].Itemstack is ItemStack newStack) targetOrMovedStack = newStack;
             }
@@ -835,19 +826,16 @@ namespace Vintagestory.GameContent
                 {
                     case EnumGroundStorageLayout.Halves:
                     case EnumGroundStorageLayout.WallHalves:
-                    {
                         transformCuboidForHalves(colBox, slotId);
                         transformCuboidForHalves(selBox, slotId);
                         break;
-                    }
+
                     case EnumGroundStorageLayout.Quadrants:
-                    {
                         transformCuboidForQuadrants(colBox, slotId);
                         transformCuboidForQuadrants(selBox, slotId);
                         break;
-                    }
+
                     case EnumGroundStorageLayout.SingleCenter:
-                    {
                         float scale = 0.5f;
                         if (stackStorageProps?.Layout == EnumGroundStorageLayout.SingleCenter)
                         {
@@ -857,17 +845,16 @@ namespace Vintagestory.GameContent
                         transformCuboidForSingleCenter(colBox, scale);
                         transformCuboidForSingleCenter(selBox, scale);
                         break;
-                    }
+
                     case EnumGroundStorageLayout.Stacking:
-                    {
                         if (StorageProps.CbScaleYByLayer != 0)
                         {
-                            float scale = (int)Math.Ceiling(StorageProps.CbScaleYByLayer * sourceStack?.StackSize ?? 1);
-                            colBox.Y2 *= scale;
-                            selBox.Y2 *= scale;
+                            float heightMultiple = (int)Math.Ceiling(StorageProps.CbScaleYByLayer * sourceStack?.StackSize ?? 1);
+                            colBox.Y2 *= heightMultiple;
+                            selBox.Y2 *= heightMultiple;
                         }
                         break;
-                    }
+
                     default: break;
                 }
 
@@ -994,13 +981,13 @@ namespace Vintagestory.GameContent
 
         protected bool putOrGetItemStacking(IPlayer byPlayer, BlockSelection bs)
         {
-            bool newStorage = inventory[0].Empty;
+            bool isNewStorage = inventory[0].Empty;
 
             ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
             bool sneaking = byPlayer.Entity.Controls.ShiftKey;
 
-            bool equalStack = newStorage || !sneaking || (hotbarSlot.Itemstack?.Equals(Api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes) == true);
+            bool equalStack = isNewStorage || !sneaking || (hotbarSlot.Itemstack?.Equals(Api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes) == true);
 
             BlockPos abovePos = Pos.UpCopy();
 
@@ -1082,12 +1069,12 @@ namespace Vintagestory.GameContent
 
             if (hotbarSlot.Itemstack == null) return false;
 
-            // return true to play sounds etc. on the client, but only move items on the server side
+            // return early on the client, only move items on the server side
             if (Api.Side == EnumAppSide.Client) return true;
 
             ItemSlot sourceSlot = player.WorldData.CurrentGameMode == EnumGameMode.Creative ? new DummySlot(hotbarSlot.Itemstack.Clone()) : hotbarSlot;
 
-            bool newStorage = invSlot.Empty;
+            bool isNewStorage = invSlot.Empty;
             bool putBulk = player.Entity.Controls.CtrlKey;
 
             int quantityToMove = putBulk ? BulkTransferQuantity : TransferQuantity;
@@ -1096,11 +1083,11 @@ namespace Vintagestory.GameContent
 
             if (quantityMoved <= 0) return false;
 
-            Api.World.Logger.Audit("{0} Put {1}x{2} into {3} Ground storage at {4}.",
+            Api.World.Logger.Audit("{0} Put {1}x{2} into {3}Ground storage at {4}.",
                 player.PlayerName,
                 quantityMoved,
                 invSlot.Itemstack.Collectible.Code,
-                newStorage ? "new" : "",
+                isNewStorage ? "new " : "",
                 Pos
             );
 
@@ -1137,7 +1124,7 @@ namespace Vintagestory.GameContent
             ItemStack stack = null;
             if (inventory[0]?.Itemstack == null) return false;
 
-            // return true to play sounds etc. on the client, but only move items on the server side
+            // return early on the client, only move items on the server side
             if (Api.Side == EnumAppSide.Client) return true;
 
             bool takeBulk = player.Entity.Controls.CtrlKey;
@@ -1176,8 +1163,8 @@ namespace Vintagestory.GameContent
 
                     if (hotbarSlot.Empty || !player.Entity.Controls.ShiftKey) return false;
 
-                    bool newStorage = inventory.Empty;
-                    if (!newStorage)
+                    bool isNewStorage = inventory.Empty;
+                    if (!isNewStorage)
                     {
                         var hotbarlayout = hotbarSlot.Itemstack.Collectible.GetBehavior<CollectibleBehaviorGroundStorable>()?.StorageProps.Layout;
                         bool layoutEqual = StorageProps.Layout == hotbarlayout;
@@ -1197,7 +1184,7 @@ namespace Vintagestory.GameContent
                         if (!layoutEqual) return false;
                     }
 
-                    // return early on the client, but only move items on the server side
+                    // return early on the client, only move items on the server side
                     if (Api.Side == EnumAppSide.Client) return true;
 
                     ItemSlot sourceSlot = player.WorldData.CurrentGameMode == EnumGameMode.Creative ? new DummySlot(hotbarSlot.Itemstack.Clone()) : hotbarSlot;
@@ -1206,10 +1193,10 @@ namespace Vintagestory.GameContent
 
                     if (!didMoveItem) return false;
 
-                    Api.World.Logger.Audit("{0} Put 1x{1} into {2} Ground storage at {3}.",
+                    Api.World.Logger.Audit("{0} Put 1x{1} into {2}Ground storage at {3}.",
                         player.PlayerName,
                         ourSlot.Itemstack.Collectible.Code,
-                        newStorage ? "new" : "",
+                        isNewStorage ? "new " : "",
                         Pos
                     );
 
@@ -1217,7 +1204,7 @@ namespace Vintagestory.GameContent
                 }
                 else
                 {
-                    // return early on the client, but only move items on the server side
+                    // return early on the client, only move items on the server side
                     if (Api.Side == EnumAppSide.Client) return true;
 
                     if (!player.InventoryManager.TryGiveItemstack(ourSlot.Itemstack, true))
