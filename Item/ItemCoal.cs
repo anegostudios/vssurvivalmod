@@ -2,8 +2,6 @@ using System.Text;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 
-#nullable disable
-
 namespace Vintagestory.GameContent
 {
     public class ItemCoal : ItemPileable
