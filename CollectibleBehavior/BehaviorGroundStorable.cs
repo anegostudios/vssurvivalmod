@@ -5,8 +5,6 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
-#nullable disable
-
 namespace Vintagestory.GameContent
 {
     public enum EnumGroundStorageLayout
@@ -42,10 +40,10 @@ namespace Vintagestory.GameContent
     {
         public EnumGroundStorageLayout Layout = EnumGroundStorageLayout.SingleCenter;
         public int WallOffY = 1;
-        public AssetLocation PlaceRemoveSound = new AssetLocation("sounds/player/build");
+        public AssetLocation PlaceRemoveSound = new("sounds/player/build");
         public bool RandomizeSoundPitch;
         public bool RandomizeCenterRotation;
-        public AssetLocation StackingModel;
+        public AssetLocation StackingModel = null!;
 
         public int CuboidsPerModel = 1;
         public int ItemsPerModel = 1;
@@ -53,7 +51,7 @@ namespace Vintagestory.GameContent
         [Obsolete("Use CuboidsPerModel and ItemsPerModel instead")]
         public float ModelItemsToStackSizeRatio = 1;
 
-        public Dictionary<string, AssetLocation> StackingTextures;
+        public Dictionary<string, AssetLocation> StackingTextures = [];
         public int MaxStackingHeight = -1;
         public int StackingCapacity = 1;
         public int TransferQuantity = 1;
@@ -63,8 +61,8 @@ namespace Vintagestory.GameContent
         public bool SprintKey;
         public bool UpSolid = false;
 
-        public Cuboidf CollisionBox;
-        public Cuboidf SelectionBox;
+        public Cuboidf CollisionBox = null!;
+        public Cuboidf SelectionBox = null!;
         public float CbScaleYByLayer = 0;
 
         public int MaxFireable = 9999;
@@ -99,7 +97,7 @@ namespace Vintagestory.GameContent
 
     public class CollectibleBehaviorGroundStorable : CollectibleBehavior
     {
-        public GroundStorageProperties StorageProps { get; protected set; }
+        public GroundStorageProperties StorageProps { get; protected set; } = new();
 
         public CollectibleBehaviorGroundStorable(CollectibleObject collObj) : base(collObj)
         {
@@ -109,7 +107,7 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(properties);
 
-            StorageProps = properties.AsObject<GroundStorageProperties>(null, collObj.Code.Domain);
+            StorageProps = properties.AsObject<GroundStorageProperties>(new(), collObj.Code.Domain);
             if (!properties["itemsPerModel"].Exists)
             {
                 StorageProps.ItemsPerModel = StorageProps.TransferQuantity;
@@ -133,28 +131,28 @@ namespace Vintagestory.GameContent
         public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot, ref EnumHandling handling)
         {
             handling = EnumHandling.PassThrough;
-            return new WorldInteraction[]
-            {
+            return
+            [
                 new WorldInteraction
                 {
                     HotKeyCodes = StorageProps.CtrlKey ? ["ctrl", "shift"] : ["shift"],
                     ActionLangCode = "heldhelp-place",
                     MouseButton = EnumMouseButton.Right
                 }
-            };
+            ];
         }
 
 
 
         public static void Interact(ItemSlot itemslot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling, ref EnumHandling handling)
         {
-            IWorldAccessor world = byEntity?.World;
+            IWorldAccessor? world = byEntity?.World;
 
-            if (blockSel == null || world == null || !byEntity.Controls.ShiftKey) return;
+            if (blockSel == null || world == null || !byEntity!.Controls.ShiftKey) return;
 
 
-            IPlayer byPlayer = null;
-            if (byEntity is EntityPlayer) byPlayer = world.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
+            IPlayer? byPlayer = null;
+            if (byEntity is EntityPlayer player) byPlayer = world.PlayerByUid(player.PlayerUID);
             if (byPlayer == null) return;
 
             if (!world.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
@@ -164,14 +162,13 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            BlockGroundStorage blockgs = world.GetBlock(new AssetLocation("groundstorage")) as BlockGroundStorage;
-            if (blockgs == null) return;
+            if (world.GetBlock(new AssetLocation("groundstorage")) is not BlockGroundStorage blockgs) return;
 
             BlockEntity be = world.BlockAccessor.GetBlockEntity(blockSel.Position);
             BlockEntity beAbove = world.BlockAccessor.GetBlockEntity(blockSel.Position.UpCopy());
             if (be is BlockEntityGroundStorage || beAbove is BlockEntityGroundStorage)
             {
-                if (((be as BlockEntityGroundStorage) ?? (beAbove as BlockEntityGroundStorage)).OnPlayerInteractStart(byPlayer, blockSel))
+                if (((be as BlockEntityGroundStorage) ?? (beAbove as BlockEntityGroundStorage))?.OnPlayerInteractStart(byPlayer, blockSel) == true)
                 {
                     handHandling = EnumHandHandling.PreventDefault;
                 }
