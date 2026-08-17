@@ -12,7 +12,7 @@ using static OpenTK.Graphics.OpenGL.GL;
 namespace Vintagestory.GameContent.Mechanics
 {
 
-    
+
     public class BEBehaviorMPWaterWheel : BEBehaviorMPRotor
     {
         protected float flowRate;
@@ -35,7 +35,7 @@ namespace Vintagestory.GameContent.Mechanics
         protected override float TorqueFactor => flowRate;
 
         public override float AngleRad => base.AngleRad * dir;
-               
+
 
         public BEBehaviorMPWaterWheel(BlockEntity blockentity) : base(blockentity) { }
 
@@ -301,7 +301,7 @@ namespace Vintagestory.GameContent.Mechanics
                 if (blocked) sb.AppendLine(Lang.Get("Wheel is blocked, make sure the entire wheel is free from solid blocks."));
                 else sb.AppendLine(Lang.Get("waterwheel-suitable-power-source-blocks-nearby-blockamount", suitablePowerSourceBlockCount));
 
-                if (Api.World.EntityDebugMode)
+                if (Api.World.EntityDebugMode && forPlayer?.WorldData?.CurrentGameMode == EnumGameMode.Creative)
                 {
                     sb.AppendLine("<font color='#ccc'>flow vector= " + flowVec + "</font>");
                     sb.AppendLine("<font color='#ccc'>torque= " + TorqueFactor + "</font>");

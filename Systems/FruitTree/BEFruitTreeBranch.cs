@@ -14,7 +14,7 @@ namespace Vintagestory.GameContent
     {
         public int SideGrowth = 0;
         public Vec3i ParentOff;
-        
+
         public int GrowTries;
         public double lastGrowthAttemptTotalDays;
 
@@ -111,8 +111,8 @@ namespace Vintagestory.GameContent
                     }
                 }
             }
-            
-            
+
+
             updateProperties();
 
             initCustomBehaviors(parentPlantStack, callInitialize);
@@ -211,7 +211,7 @@ namespace Vintagestory.GameContent
             {  "branch-w-end", new int[] { 0, 5, 2, 4, 3, 1 } },
             {  "branch-e-end", new int[] { 0, 5, 2, 4, 3, 1 } }
         };
-        
+
 
         public void updateProperties()
         {
@@ -308,7 +308,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            
+
 
             capi.Tesselator.TesselateShape("fruittreebranch", nowTesselatingShape, out mesh, this, new Vec3f(cshape.rotateX, cshape.rotateY, cshape.rotateZ), 0, 0, 0, null, selectiveElements?.ToArray());
 
@@ -324,14 +324,14 @@ namespace Vintagestory.GameContent
             return (SideGrowth + "-" + PartType + "-" + FoliageState + "-" + GrowthDir.Index + "-" + shapekey + "-" + TreeType).GetHashCode();
         }
 
-        
+
 
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
             base.GetBlockInfo(forPlayer, dsc);
 
-            if (Api.World.EntityDebugMode)
+            if (Api.World.EntityDebugMode && forPlayer?.WorldData?.CurrentGameMode == EnumGameMode.Creative)
             {
                 dsc.AppendLine("LeavesState: " + FoliageState);
                 dsc.AppendLine("TreeType: " + TreeType);
@@ -437,6 +437,6 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        
+
     }
 }

@@ -10,7 +10,7 @@ namespace Vintagestory.GameContent
     public class GuiDialogCreateAuction : GuiDialog
     {
         int lastPrice = 1;
-        
+
         ModSystemAuction auctionSys;
         EntityAgent owningEntity;
 
@@ -77,8 +77,8 @@ namespace Vintagestory.GameContent
                 .AddShadedDialogBG(bgBounds, true)
                 .AddDialogTitleBar(Lang.Get("Create Auction"), OnCreateAuctionClose)
                 .BeginChildElements(bgBounds)
-                        .AddItemSlotGrid(auctionSlotInv, (p) => { 
-                            capi.Network.SendPacketClient(p); 
+                        .AddItemSlotGrid(auctionSlotInv, (p) => {
+                            capi.Network.SendPacketClient(p);
                         }, 1, null, slotBounds, "traderSellingSlots")
 
                         .AddStaticText(Lang.Get("Price in rusty gears"), CairoFont.WhiteSmallText(), priceLabelBounds)
@@ -96,7 +96,9 @@ namespace Vintagestory.GameContent
                 .Compose()
             ;
 
-            Composers["tradercreateauction"].GetNumberInput("price").SetValue(lastPrice);
+            var price = Composers["tradercreateauction"].GetNumberInput("price");
+            price.IntMode = true;
+            price.SetValue(lastPrice);
         }
 
         private void onPriceChanged(string text)
@@ -120,7 +122,7 @@ namespace Vintagestory.GameContent
 
         private bool OnCreateAuctionConfirm()
         {
-            var cmp = Composers["tradercreateauction"]; 
+            var cmp = Composers["tradercreateauction"];
             int monehs = InventoryTrader.GetPlayerAssets(capi.World.Player.Entity);
             int weeks = cmp.GetDropDown("duration").SelectedValue.ToInt(1);
             int price = (int)cmp.GetNumberInput("price").GetValue();
@@ -142,7 +144,7 @@ namespace Vintagestory.GameContent
                 capi.TriggerIngameError(this, "notenoughgears", Lang.Get("Not enough gears to pay the deposit"));
                 return true;
             }
-            
+
             auctionSys.PlaceAuctionClient(owningEntity, price, weeks);
             OnCreateAuctionClose();
 

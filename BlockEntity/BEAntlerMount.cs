@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -8,7 +9,7 @@ using Vintagestory.API.MathTools;
 namespace Vintagestory.GameContent
 {
 
-    public class BlockEntityAntlerMount : BlockEntityDisplay
+    public class BlockEntityAntlerMount : BlockEntityDisplay, IRotatable
     {
         public override InventoryBase Inventory => inv;
         public override string InventoryClassName => "antlermount";
@@ -169,6 +170,12 @@ namespace Vintagestory.GameContent
             {
                 //sb.AppendLine(slot.Itemstack.GetName());
             }
+        }
+
+        public void OnTransformed(IWorldAccessor worldAccessor, ITreeAttribute tree, int degreeRotation, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, EnumAxis? flipAxis)
+        {
+            bh ??= GetBehavior<BEBehaviorShapeMaterialFromAttributes>();
+            bh?.OnTransformed(worldAccessor, tree, degreeRotation, oldBlockIdMapping, oldItemIdMapping, flipAxis);
         }
     }
 }

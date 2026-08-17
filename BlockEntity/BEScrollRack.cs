@@ -9,7 +9,7 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityScrollRack : BlockEntityDisplay
+    public class BlockEntityScrollRack : BlockEntityDisplay, IRotatable
     {
         public override InventoryBase Inventory => inv;
         public override string InventoryClassName => "scrollrack";
@@ -318,6 +318,12 @@ namespace Vintagestory.GameContent
             }
 
             MarkDirty(true);
+        }
+
+        public void OnTransformed(IWorldAccessor worldAccessor, ITreeAttribute tree, int degreeRotation, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, EnumAxis? flipAxis)
+        {
+            bh ??= GetBehavior<BEBehaviorShapeMaterialFromAttributes>();
+            bh?.OnTransformed(worldAccessor, tree, degreeRotation, oldBlockIdMapping, oldItemIdMapping, flipAxis);
         }
     }
 }

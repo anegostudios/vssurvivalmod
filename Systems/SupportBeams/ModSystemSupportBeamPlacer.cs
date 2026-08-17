@@ -1,6 +1,7 @@
 using ProtoBuf;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Reflection;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -22,8 +23,6 @@ namespace Vintagestory.GameContent
         public BlockSelection Blocksel;
         [ProtoMember(3)]
         public bool PartialEnds;
-        [ProtoMember(4)]
-        public int BlockId;
     }
 
     public class ModSystemSupportBeamPlacer : ModSystem, IRenderer
@@ -55,16 +54,31 @@ namespace Vintagestory.GameContent
         public override void StartServerSide(ICoreServerAPI api)
         {
             api.Network.GetChannel("beamplacer").SetMessageHandler<BeamPlacePacket>(OnCompletePlaceClient);
+            api.Event.PlayerDisconnect += Event_PlayerDisconnect;
             base.StartServerSide(api);
+        }
+
+        private void Event_PlayerDisconnect(IServerPlayer byPlayer)
+        {
+            workspaceByPlayer.Remove(byPlayer.PlayerUID);
         }
 
         private void OnCompletePlaceClient(IServerPlayer fromPlayer, BeamPlacePacket packet)
         {
             var ws = getWorkSpace(fromPlayer.Entity);
             fromPlayer.Entity.BlockSelection = packet.Blocksel;
+
             if (packet.begin)
             {
-                beginPlace(ws, api.World.Blocks[packet.BlockId], fromPlayer.Entity, packet.Blocksel, packet.PartialEnds);
+                if (packet.Blocksel?.Position == null ||
+                    packet.Blocksel.Face == null ||
+                    fromPlayer.InventoryManager.ActiveHotbarSlot.Itemstack?.Block is not BlockSupportBeam)
+                {
+                    capi.Logger.Audit("An invalid support beam placement packet was sent from player {0}", fromPlayer.PlayerName);
+                    return;
+                }
+
+                beginPlace(ws, fromPlayer.InventoryManager.ActiveHotbarSlot.Itemstack.Block, fromPlayer.Entity, packet.Blocksel, packet.PartialEnds);
             }
             else
             {
@@ -114,7 +128,6 @@ namespace Vintagestory.GameContent
 
         private void beginPlace(BeamPlacerWorkSpace ws, Block block, EntityAgent byEntity, BlockSelection blockSel, bool partialEnds)
         {
-            //System.Diagnostics.Debug.WriteLine(api.Side + " begin place " + blockSel.FullPosition);
             ws.GridSize = byEntity.Controls.CtrlKey ? 16 : 4;
 
             ws.currentMeshes = getOrCreateBeamMeshes(block, (block as BlockSupportBeam)?.PartialEnds ?? false);
@@ -160,7 +173,6 @@ namespace Vintagestory.GameContent
             capi?.Network.GetChannel("beamplacer").SendPacket(new BeamPlacePacket() { 
                 Blocksel = blockSel, 
                 begin = true,
-                BlockId = block.Id,
                 PartialEnds = partialEnds
             });
         }
@@ -171,9 +183,7 @@ namespace Vintagestory.GameContent
             ws.nowBuilding = false;
             var be = api.World.BlockAccessor.GetBlockEntity(ws.startPos);
             var beh = be?.GetBehavior<BEBehaviorSupportBeam>();
-
-            var eplr = (byEntity as EntityPlayer);
-            //System.Diagnostics.Debug.WriteLine(api.Side + " complete place " + eplr.BlockSelection.FullPosition);
+            var eplr = byEntity as EntityPlayer;
 
             Vec3f nowEndOffset = getEndOffset(eplr.Player, ws);
 
@@ -181,6 +191,25 @@ namespace Vintagestory.GameContent
             {
                 return;
             }
+
+            if (ws.block.Id != slot.Itemstack?.Block?.Id || !(ws.block is BlockSupportBeam))
+            {
+                (api as ICoreClientAPI)?.TriggerIngameError(this, "invalbeamblock", Lang.Get("Invalid beam block"));
+                return;
+            }
+
+            var player = (byEntity as EntityPlayer)?.Player;
+            if (!api.World.Claims.TryAccess(player, ws.startPos.AddCopy(ws.startOffset), EnumBlockAccessFlags.BuildOrBreak))
+            {
+                player.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                return;
+            }
+            if (!api.World.Claims.TryAccess(player, ws.startPos.AddCopy(nowEndOffset), EnumBlockAccessFlags.BuildOrBreak))
+            {
+                player.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                return;
+            }
+
 
             if (beh == null)
             {
@@ -191,23 +220,16 @@ namespace Vintagestory.GameContent
                     return;
                 }
 
-                var player = (byEntity as EntityPlayer)?.Player;
-                if (!api.World.Claims.TryAccess(player, ws.startPos, EnumBlockAccessFlags.BuildOrBreak))
-                {
-                    player.InventoryManager.ActiveHotbarSlot.MarkDirty();
-                    return;
-                }
-
                 if (eplr.Player.WorldData.CurrentGameMode != EnumGameMode.Creative)
                 {
                     int len = (int)Math.Ceiling(nowEndOffset.DistanceTo(ws.startOffset));
                     if (slot.StackSize < len)
                     {
-                        (api as ICoreClientAPI)?.TriggerIngameError(this, "notenoughitems",
-                            Lang.Get("You need {0} beams to place a beam at this lenth", len));
+                        (api as ICoreClientAPI)?.TriggerIngameError(this, "notenoughitems", Lang.Get("You need {0} beams to place a beam at this lenth", len));
                         return;
                     }
                 }
+
 
                 api.World.BlockAccessor.SetBlock(ws.block.Id, ws.startPos);
                 be = api.World.BlockAccessor.GetBlockEntity(ws.startPos);
@@ -524,7 +546,11 @@ namespace Vintagestory.GameContent
                 if (!stable) continue;
 
                 double dist = DistanceToLine(point, beam.Start, beam.End);
-                if (dist < minDistance) minDistance = dist;
+                if (dist < minDistance)
+                {
+                    minDistance = dist;
+                    nearestBeam = beam;
+                }
             }
 
             beamstartend = nearestBeam;
