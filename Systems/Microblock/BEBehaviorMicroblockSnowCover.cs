@@ -1,9 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 #nullable disable
 
@@ -67,6 +69,7 @@ namespace Vintagestory.GameContent
 
         CuboidWithMaterial[] aboveCuboids = null;
 
+
         void buildSnowCuboids(BoolArray16x16x16 Voxels)
         {
             List<uint> snowCuboids = new List<uint>();
@@ -75,40 +78,38 @@ namespace Vintagestory.GameContent
             var aboveBe = Api?.World.BlockAccessor.GetBlockEntity(Pos.UpCopy()) as BlockEntityMicroBlock;
             CuboidWithMaterial[] newAboveCuboids = null;
 
-           
-            bool[,] snowVoxelVisited = new bool[16, 16];
+            // Replaced bool[16,16] heap allocation with stackalloc Span<bool> to avoid per-call GC pressure.
+            // Also flattened the 2D voxel/visited access into single-dimension indices for better cache locality.
+            Span<bool> snowVoxelVisited = stackalloc bool[256];
 
             for (int dy = 15; dy >= 0; dy--)
             {
+                int yOffset = dy * 16; // flat index base for the entire Y plane within Voxels
+
                 for (int dx = 0; dx < 16; dx++)
                 {
+                    int flatBase = dx * 256 + yOffset;     // base for Voxels.GetFlat(flatBase + dz)
+                    int visitedRowBase = dx * 16;           // base for snowVoxelVisited[dx*16+dz]
+
                     for (int dz = 0; dz < 16; dz++)
                     {
-                        if (snowVoxelVisited[dx, dz]) continue;
-                        bool ground = dy == 0 && !Voxels[dx, dy, dz];
-                        bool search = ground || Voxels[dx, dy, dz];
+                        int visitedIdx = visitedRowBase + dz;
+                        if (snowVoxelVisited[visitedIdx]) continue;
+
+                        bool voxelHere = Voxels.GetFlat(flatBase + dz);
+                        bool ground = dy == 0 && !voxelHere;
+                        bool search = ground || voxelHere;
 
                         if (!search) continue;
 
-                        if (dy == 15)
+                        if (dy == 15 && aboveBe != null && newAboveCuboids == null)
                         {
-                            if (aboveBe != null)
+                            newAboveCuboids = new CuboidWithMaterial[aboveBe.VoxelCuboids.Count];
+                            for (int i = 0; i < newAboveCuboids.Length; i++)
                             {
-                                if (newAboveCuboids == null)
-                                {
-                                    newAboveCuboids = new CuboidWithMaterial[aboveBe.VoxelCuboids.Count];
-                                    for (int i = 0; i < newAboveCuboids.Length; i++)
-                                    {
-                                        BlockEntityMicroBlock.FromUint(aboveBe.VoxelCuboids[i], newAboveCuboids[i] = new CuboidWithMaterial());
-                                    }
-                                }
-
-                                for (int i = 0; i < newAboveCuboids.Length; i++)
-                                {
-                                    if (newAboveCuboids[i].Contains(dx, dy, dz)) continue;
-                                }
+                                BlockEntityMicroBlock.FromUint(aboveBe.VoxelCuboids[i], newAboveCuboids[i] = new CuboidWithMaterial());
                             }
-
+                            // removed the now-empty loop that iterated aboveCuboids and called Contains() without using the result
                         }
 
                         CuboidWithMaterial cub = new CuboidWithMaterial()
@@ -122,7 +123,6 @@ namespace Vintagestory.GameContent
                             Z2 = dz + 0
                         };
 
-                        // Try grow this cuboid for as long as we can
                         bool didGrowAny = true;
                         while (didGrowAny)
                         {
@@ -137,7 +137,7 @@ namespace Vintagestory.GameContent
                         {
                             for (int x = cub.X1; x < cub.X2; x++)
                             {
-                                snowVoxelVisited[x, z] = true;
+                                snowVoxelVisited[x * 16 + z] = true; // flat index instead of [x, z]
                             }
                         }
 
@@ -189,38 +189,59 @@ namespace Vintagestory.GameContent
 
         #region Snowgrow
 
-        protected bool TrySnowableSurfaceGrowX(CuboidWithMaterial cub, BoolArray16x16x16 voxels, bool[,] voxelVisited, bool ground)
+        // Replaced bool[,] voxelVisited with Span<bool> to match stackalloc allocation in buildSnowCuboids.
+        // Also switched from multi-dimensional Voxels[x,y,z] to flat GetFlat(idx) access for better memory layout.
+        protected bool TrySnowableSurfaceGrowX(CuboidWithMaterial cub, BoolArray16x16x16 voxels, Span<bool> voxelVisited, bool ground)
         {
             if (cub.X2 > 15) return false;
 
+            int x2 = cub.X2;
+            int xBase = x2 * 256;
+            int yOffset = cub.Y1 * 16;
+            int aboveLen = aboveCuboids?.Length ?? 0;
+
             for (int z = cub.Z1; z < cub.Z2; z++)
             {
-                z = Math.Min(15, z);
-                if (aboveCuboids != null)
+                int zz = Math.Min(15, z);
+
+                if (aboveLen > 0)
                 {
-                    for (int i = 0; i < aboveCuboids.Length; i++) if (aboveCuboids[i].Contains(cub.X2, 0, z)) return false;
+                    for (int i = 0; i < aboveLen; i++) if (aboveCuboids[i].Contains(x2, 0, zz)) return false;
                 }
 
-                if (voxels[cub.X2, cub.Y1, z] == ground || voxelVisited[cub.X2, z] || (cub.Y1 < 15 && voxels[cub.X2, cub.Y1 + 1, z])) return false;
+                int idx = xBase + yOffset + zz; // flat index instead of voxels[x2, cub.Y1, z]
+                if (voxels.GetFlat(idx) == ground
+                    || voxelVisited[x2 * 16 + zz]       // flat visited access
+                    || (cub.Y1 < 15 && voxels.GetFlat(idx + 16))) // Y+1 is just +16 in flat layout
+                    return false;
             }
 
             cub.X2++;
             return true;
         }
 
-        protected bool TrySnowableSurfaceGrowZ(CuboidWithMaterial cub, BoolArray16x16x16 voxels, bool[,] voxelVisited, bool ground)
+        protected bool TrySnowableSurfaceGrowZ(CuboidWithMaterial cub, BoolArray16x16x16 voxels, Span<bool> voxelVisited, bool ground) // Span<bool> instead of bool[,]
         {
             if (cub.Z2 > 15) return false;
 
+            int z2 = cub.Z2;
+            int yOffset = cub.Y1 * 16;
+            int aboveLen = aboveCuboids?.Length ?? 0;
+
             for (int x = cub.X1; x < cub.X2; x++)
             {
-                x = Math.Min(15, x);
-                if (aboveCuboids != null)
+                int xx = Math.Min(15, x);
+
+                if (aboveLen > 0)
                 {
-                    for (int i = 0; i < aboveCuboids.Length; i++) if (aboveCuboids[i].Contains(x, 0, cub.Z2)) return false;
+                    for (int i = 0; i < aboveLen; i++) if (aboveCuboids[i].Contains(xx, 0, z2)) return false;
                 }
 
-                if (voxels[x, cub.Y1, cub.Z2] == ground || voxelVisited[x, cub.Z2] || (cub.Y1 < 15 && voxels[x, cub.Y1 + 1, cub.Z2])) return false;
+                int idx = xx * 256 + yOffset + z2; //flat index instead of voxels[x, cub.Y1, cub.Z2]
+                if (voxels.GetFlat(idx) == ground
+                    || voxelVisited[xx * 16 + z2]       // flat visited access
+                    || (cub.Y1 < 15 && voxels.GetFlat(idx + 16))) // Y+1 is just +16 in flat layout
+                    return false;
             }
 
             cub.Z2++;

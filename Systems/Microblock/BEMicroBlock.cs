@@ -52,7 +52,7 @@ namespace Vintagestory.GameContent
 
             var shape = be.GenShape();
             var text = JsonUtil.ToPrettyString<Shape>(shape);
-            text = 
+            text =
                 text
                 .Replace("Textures", "textures")
                 .Replace("Elements", "elements")
@@ -87,6 +87,20 @@ namespace Vintagestory.GameContent
         private static Cuboidf[] noSelectionBox = Array.Empty<Cuboidf>();
         private static byte[] singleByte255 = new byte[] { 255 };
         private static Vec3f centerBase = new Vec3f(0.5f, 0, 0.5f);
+
+
+        // ThreadLocal for BoolArray, byte[,,] and VoxelVisited — avoid new on every RebuildCuboidList; fixed uint[] buffer 4096 for cuboids (max 16³)
+        protected static readonly ThreadLocal<BoolArray16x16x16> RebuildVoxelsTL =
+            new ThreadLocal<BoolArray16x16x16>(() => new BoolArray16x16x16());
+        protected static readonly ThreadLocal<byte[,,]> RebuildMaterialsTL =
+            new ThreadLocal<byte[,,]>(() => new byte[16, 16, 16]);
+        protected static readonly ThreadLocal<BoolArray16x16x16> VoxelVisitedTL =
+            new ThreadLocal<BoolArray16x16x16>(() => new BoolArray16x16x16());
+
+        // Fixed buffer for cuboids (max 16*16*16 = 4096)
+        protected static ThreadLocal<uint[]> cuboidBufferTL = new ThreadLocal<uint[]>(() => new uint[4096]);
+        protected static uint[] CuboidBuffer => cuboidBufferTL.Value;
+
 
         // bits 0..3 = xmin
         // bits 4..7 = xmax
@@ -178,9 +192,9 @@ namespace Vintagestory.GameContent
                         block.Textures.TryGetValue("all", out ctex);
                     }
 
-                    shape.Textures[texCode] = ctex.Base.Path.Replace("*","1");
+                    shape.Textures[texCode] = ctex.Base.Path.Replace("*", "1");
 
-                    elem.Faces[facing.Code] = new ShapeElementFace() { Texture = texCode, Uv = new float[4] { 0,0,16,16 } };
+                    elem.Faces[facing.Code] = new ShapeElementFace() { Texture = texCode, Uv = new float[4] { 0, 0, 16, 16 } };
                 }
 
 #pragma warning restore CS0618
@@ -379,9 +393,10 @@ namespace Vintagestory.GameContent
         {
             base.GetBlockInfo(forPlayer, dsc);
 
-            
-            if (BlockName?.IndexOf('\n') > 0) {
-                dsc.AppendLine(Lang.Get(BlockName.Substring(BlockName.IndexOf('\n') + 1))); 
+
+            if (BlockName?.IndexOf('\n') > 0)
+            {
+                dsc.AppendLine(Lang.Get(BlockName.Substring(BlockName.IndexOf('\n') + 1)));
             }
             else
             {
@@ -474,27 +489,47 @@ namespace Vintagestory.GameContent
 
         public void ConvertToVoxels(out BoolArray16x16x16 voxels, out byte[,,] materials)
         {
-            voxels = new BoolArray16x16x16();
-            materials = new byte[16, 16, 16];
+
+            // instead of new BoolArray/byte[][] we use ThreadLocal + Span<byte> for flat addressing of byte[,,]; SetRangeTrue/Fill instead of nested loops
+            voxels = RebuildVoxelsTL.Value;
+            voxels.Clear();
+            materials = RebuildMaterialsTL.Value;
+            Array.Clear(materials, 0, 16 * 16 * 16); // clear stale data from previous block entities on this thread
+
+
+            // byte[,,] in .NET is stored contiguously in memory (row-major),
+            // so it's safe to get a flat Span and work with it as byte[4096].
+            // This removes 3D addressing (multiplications + 3 bounds checks) per element.
+            Span<byte> flatMaterials = MemoryMarshal.CreateSpan(ref materials[0, 0, 0], 16 * 16 * 16);
+
             CuboidWithMaterial cwm = tmpCuboids[0];
 
-            for (int i = 0; i < VoxelCuboids.Count; i++)
+            List<uint> list = VoxelCuboids;
+            int count = list.Count;
+
+            for (int i = 0; i < count; i++)
             {
-                FromUint(VoxelCuboids[i], cwm);
+                FromUint(list[i], cwm);
+
+                int lenZ = cwm.Z2 - cwm.Z1;
+                byte material = cwm.Material;
 
                 for (int dx = cwm.X1; dx < cwm.X2; dx++)
                 {
+                    int baseX = dx * 256; // 16*16
+
                     for (int dy = cwm.Y1; dy < cwm.Y2; dy++)
                     {
-                        for (int dz = cwm.Z1; dz < cwm.Z2; dz++)
-                        {
-                            voxels[dx, dy, dz] = true;
-                            materials[dx, dy, dz] = cwm.Material;
-                        }
+                        int baseIndex = baseX + dy * 16 + cwm.Z1;
+
+                        // instead of lenZ individual assignments, one mass call for the entire Z-bar
+                        voxels.SetRangeTrue(baseIndex, lenZ);
+                        flatMaterials.Slice(baseIndex, lenZ).Fill(material);
                     }
                 }
             }
         }
+
 
         public void RebuildCuboidList()
         {
@@ -770,106 +805,109 @@ namespace Vintagestory.GameContent
             MarkDirty(true);
         }
 
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        // VoxelVisited from ThreadLocal instead of new; Span<byte> flatMat instead of 3D addressing of VoxelMaterial; GetFlat/SetFlatTrue instead of indexers; CuboidBuffer[cuboidCount++] instead of List.Add; optimized bounds checking (isWest/isEast/xCenter/yCenter)
         protected void RebuildCuboidList(BoolArray16x16x16 Voxels, byte[,,] VoxelMaterial)
         {
-            BoolArray16x16x16 VoxelVisited = new BoolArray16x16x16();
+            BoolArray16x16x16 VoxelVisited = VoxelVisitedTL.Value;
+            VoxelVisited.Clear();
+
             int prevEmitSideAo = emitSideAo;
             emitSideAo = 0x3F;
             sidecenterSolid = new SmallBoolArray(SmallBoolArray.OnAllSides);
             float voxelCount = 0;
-
-            // And now let's rebuild the cuboids with some greedy search algo thing
-            List<uint> voxelCuboids = new List<uint>();
+            int cuboidCount = 0;
+            CuboidWithMaterial cub = tmpCuboids[0];
 
             int[] edgeVoxelsMissing = new int[6];
             int[] edgeCenterVoxelsMissing = new int[6];
 
             byte[] lightshv = GetLightHsv(Api.World.BlockAccessor);
 
+            // Flat Span instead of byte[,,] - removes 3-dimensional addressing for each voxel
+            Span<byte> flatMat = MemoryMarshal.CreateSpan(ref VoxelMaterial[0, 0, 0], 4096);
+
+            int idx = 0;
+
             for (int dx = 0; dx < 16; dx++)
             {
+                // Calculate dx once every 16 iterations, rather than dz every 4096 iterations
+                bool isWest = dx == 0;
+                bool isEast = dx == 15;
+                bool xCenter = dx >= 4 && dx <= 12;
+
                 for (int dy = 0; dy < 16; dy++)
                 {
-                    for (int dz = 0; dz < 16; dz++)
-                    {
-                        bool isVoxel = Voxels[dx, dy, dz];
+                    // Calculate once per 256 iterations (16 dx * 16 dy), not per 4096
+                    bool isDown = dy == 0;
+                    bool isUp = dy == 15;
+                    bool yCenter = dy >= 4 && dy <= 12;
 
-                        // North: Negative Z
-                        // East: Positive X
-                        // South: Positive Z
-                        // West: Negative X
-                        // Up: Positive Y
-                        // Down: Negative Y
+                    for (int dz = 0; dz < 16; dz++, idx++)
+                    {
+                        bool isVoxel = Voxels.GetFlat(idx);
+
                         if (!isVoxel)
                         {
                             if (dz == 0)
                             {
                                 edgeVoxelsMissing[BlockFacing.NORTH.Index]++;
-                                if (Math.Abs(dy - 8) < 5 && Math.Abs(dx - 8) < 5) edgeCenterVoxelsMissing[BlockFacing.NORTH.Index]++;
+                                if (yCenter && xCenter) edgeCenterVoxelsMissing[BlockFacing.NORTH.Index]++;
                             }
-                            if (dx == 15)
+                            if (isEast)
                             {
                                 edgeVoxelsMissing[BlockFacing.EAST.Index]++;
-                                if (Math.Abs(dy - 8) < 5 && Math.Abs(dz - 8) < 5) edgeCenterVoxelsMissing[BlockFacing.EAST.Index]++;
+                                if (yCenter && dz >= 4 && dz <= 12) edgeCenterVoxelsMissing[BlockFacing.EAST.Index]++;
                             }
                             if (dz == 15)
                             {
                                 edgeVoxelsMissing[BlockFacing.SOUTH.Index]++;
-                                if (Math.Abs(dy - 8) < 5 && Math.Abs(dx - 8) < 5) edgeCenterVoxelsMissing[BlockFacing.SOUTH.Index]++;
+                                if (yCenter && xCenter) edgeCenterVoxelsMissing[BlockFacing.SOUTH.Index]++;
                             }
-                            if (dx == 0)
+                            if (isWest)
                             {
                                 edgeVoxelsMissing[BlockFacing.WEST.Index]++;
-                                if (Math.Abs(dy - 8) < 5 && Math.Abs(dz - 8) < 5) edgeCenterVoxelsMissing[BlockFacing.WEST.Index]++;
+                                if (yCenter && dz >= 4 && dz <= 12) edgeCenterVoxelsMissing[BlockFacing.WEST.Index]++;
                             }
-                            if (dy == 15)
+                            if (isUp)
                             {
                                 edgeVoxelsMissing[BlockFacing.UP.Index]++;
-                                if (Math.Abs(dz - 8) < 5 && Math.Abs(dx - 8) < 5) edgeCenterVoxelsMissing[BlockFacing.UP.Index]++;
+                                if (dz >= 4 && dz <= 12 && xCenter) edgeCenterVoxelsMissing[BlockFacing.UP.Index]++;
                             }
-                            if (dy == 0)
+                            if (isDown)
                             {
                                 edgeVoxelsMissing[BlockFacing.DOWN.Index]++;
-                                if (Math.Abs(dz - 8) < 5 && Math.Abs(dx - 8) < 5) edgeCenterVoxelsMissing[BlockFacing.DOWN.Index]++;
+                                if (dz >= 4 && dz <= 12 && xCenter) edgeCenterVoxelsMissing[BlockFacing.DOWN.Index]++;
                             }
                             continue;
                         }
-                        else
-                        {
-                            voxelCount++;
-                        }
 
-                        if (VoxelVisited[dx, dy, dz]) continue;
+                        voxelCount++;
 
-                        CuboidWithMaterial cub = new CuboidWithMaterial()
-                        {
-                            Material = VoxelMaterial[dx, dy, dz],
-                            X1 = dx,
-                            Y1 = dy,
-                            Z1 = dz,
-                            X2 = dx + 1,
-                            Y2 = dy + 1,
-                            Z2 = dz + 1
-                        };
+                        if (VoxelVisited.GetFlat(idx)) continue;
 
-                        // Try grow this cuboid for as long as we can
+                        cub.X1 = dx; cub.Y1 = dy; cub.Z1 = dz;
+                        cub.X2 = dx + 1; cub.Y2 = dy + 1; cub.Z2 = dz + 1;
+                        cub.Material = flatMat[idx];
+
                         bool didGrowAny = true;
                         while (didGrowAny)
                         {
                             didGrowAny = false;
-                            didGrowAny |= TryGrowX(cub, Voxels, VoxelVisited, VoxelMaterial);
-                            didGrowAny |= TryGrowY(cub, Voxels, VoxelVisited, VoxelMaterial);
-                            didGrowAny |= TryGrowZ(cub, Voxels, VoxelVisited, VoxelMaterial);
+                            didGrowAny |= TryGrowX(cub, Voxels, VoxelVisited, flatMat);
+                            didGrowAny |= TryGrowY(cub, Voxels, VoxelVisited, flatMat);
+                            didGrowAny |= TryGrowZ(cub, Voxels, VoxelVisited, flatMat);
                         }
 
-                        voxelCuboids.Add(ToUint(cub));
+                        CuboidBuffer[cuboidCount++] = ToUint(cub);
                     }
                 }
             }
 
-            this.VoxelCuboids = voxelCuboids;
-
-            bool doEmitSideAo = edgeVoxelsMissing[0] < 64 || edgeVoxelsMissing[1] < 64 || edgeVoxelsMissing[2] < 64 || edgeVoxelsMissing[3] < 64 || edgeVoxelsMissing[4] < 64 || edgeVoxelsMissing[5] < 64;
+            bool doEmitSideAo = edgeVoxelsMissing[0] < 64 || edgeVoxelsMissing[1] < 64 ||
+                                edgeVoxelsMissing[2] < 64 || edgeVoxelsMissing[3] < 64 ||
+                                edgeVoxelsMissing[4] < 64 || edgeVoxelsMissing[5] < 64;
 
             if (absorbAnyLight != doEmitSideAo)
             {
@@ -888,11 +926,7 @@ namespace Vintagestory.GameContent
                 sidecenterSolid[i] = edgeCenterVoxelsMissing[i] < 5;
                 if ((sideAlmostSolid[i] = edgeVoxelsMissing[i] <= 32)) emitFlags += 1 << i;
             }
-            //if (emitFlags != 0x3F)
-            //{
-            //    if (emitFlags == 0x3E && emitFlags == 0x3D && emitFlags == 0x3B && emitFlags == 0x37) emitFlags = 0x3F;  // If only one side missing, treat as full cube
-            //    else emitFlags &= 0x30;
-            //}
+
             emitSideAo = lightshv[2] < 10 && doEmitSideAo ? emitFlags : 0;
 
             if (BlockIds.Length == 1 && Api.World.GetBlock(BlockIds[0]).RenderPass == EnumChunkRenderPass.Meta)
@@ -912,11 +946,17 @@ namespace Vintagestory.GameContent
                 }
             }
 
+            // sync rebuilt cuboids from fixed buffer back to instance list
+            VoxelCuboids = new List<uint>(cuboidCount);
+            for (int i = 0; i < cuboidCount; i++)
+                VoxelCuboids.Add(CuboidBuffer[i]);
+
             if (DisplacesLiquid())
             {
                 Api.World.BlockAccessor.SetBlock(0, Pos, BlockLayersAccess.Fluid);
             }
         }
+
 
         private void RedrawNeighbourChunkIfAoChanged(int prevEmitSideAo)
         {
@@ -937,78 +977,91 @@ namespace Vintagestory.GameContent
 
 
 
-        protected bool TryGrowX(CuboidWithMaterial cub, BoolArray16x16x16 voxels, BoolArray16x16x16 voxelVisited, byte[,,] voxelMaterial)
+        // Span<byte> voxelMaterial instead of byte[,,], GetFlat/SetFlatTrue instead of indexers, calculate baseXY in advance
+        protected bool TryGrowX(CuboidWithMaterial cub, BoolArray16x16x16 voxels, BoolArray16x16x16 voxelVisited, Span<byte> voxelMaterial)
         {
             if (cub.X2 > 15) return false;
 
+            int baseX = cub.X2 * 256;
+
             for (int y = cub.Y1; y < cub.Y2; y++)
             {
+                int baseXY = baseX + y * 16;
                 for (int z = cub.Z1; z < cub.Z2; z++)
                 {
-                    if (!voxels[cub.X2, y, z] || voxelVisited[cub.X2, y, z] || voxelMaterial[cub.X2, y, z] != cub.Material) return false;
+                    int idx = baseXY + z;
+                    if (!voxels.GetFlat(idx) || voxelVisited.GetFlat(idx) || voxelMaterial[idx] != cub.Material) return false;
                 }
             }
 
             for (int y = cub.Y1; y < cub.Y2; y++)
             {
+                int baseXY = baseX + y * 16;
                 for (int z = cub.Z1; z < cub.Z2; z++)
-                {
-                    voxelVisited[cub.X2, y, z] = true;
-                }
+                    voxelVisited.SetFlatTrue(baseXY + z);
             }
 
             cub.X2++;
             return true;
         }
 
-        protected bool TryGrowY(CuboidWithMaterial cub, BoolArray16x16x16 voxels, BoolArray16x16x16 voxelVisited, byte[,,] voxelMaterial)
+
+        // Span<byte> voxelMaterial instead of byte[,,], GetFlat/SetFlatTrue, baseY calculated once
+        protected bool TryGrowY(CuboidWithMaterial cub, BoolArray16x16x16 voxels, BoolArray16x16x16 voxelVisited, Span<byte> voxelMaterial)
         {
             if (cub.Y2 > 15) return false;
 
+            int baseY = cub.Y2 * 16;
+
             for (int x = cub.X1; x < cub.X2; x++)
             {
+                int baseXY = x * 256 + baseY;
                 for (int z = cub.Z1; z < cub.Z2; z++)
                 {
-                    if (!voxels[x, cub.Y2, z] || voxelVisited[x, cub.Y2, z] || voxelMaterial[x, cub.Y2, z] != cub.Material) return false;
+                    int idx = baseXY + z;
+                    if (!voxels.GetFlat(idx) || voxelVisited.GetFlat(idx) || voxelMaterial[idx] != cub.Material) return false;
                 }
             }
 
             for (int x = cub.X1; x < cub.X2; x++)
             {
+                int baseXY = x * 256 + baseY;
                 for (int z = cub.Z1; z < cub.Z2; z++)
-                {
-                    voxelVisited[x, cub.Y2, z] = true;
-                }
+                    voxelVisited.SetFlatTrue(baseXY + z);
             }
 
             cub.Y2++;
             return true;
         }
 
-        protected bool TryGrowZ(CuboidWithMaterial cub, BoolArray16x16x16 voxels, BoolArray16x16x16 voxelVisited, byte[,,] voxelMaterial)
+
+        //  Span<byte> voxelMaterial instead of byte[,,], GetFlat/SetFlatTrue, z2 moved outside the loop
+        protected bool TryGrowZ(CuboidWithMaterial cub, BoolArray16x16x16 voxels, BoolArray16x16x16 voxelVisited, Span<byte> voxelMaterial)
         {
             if (cub.Z2 > 15) return false;
 
+            int z2 = cub.Z2;
+
             for (int x = cub.X1; x < cub.X2; x++)
             {
+                int baseX = x * 256;
                 for (int y = cub.Y1; y < cub.Y2; y++)
                 {
-                    if (!voxels[x, y, cub.Z2] || voxelVisited[x, y, cub.Z2] || voxelMaterial[x, y, cub.Z2] != cub.Material) return false;
+                    int idx = baseX + y * 16 + z2;
+                    if (!voxels.GetFlat(idx) || voxelVisited.GetFlat(idx) || voxelMaterial[idx] != cub.Material) return false;
                 }
             }
 
             for (int x = cub.X1; x < cub.X2; x++)
             {
+                int baseX = x * 256;
                 for (int y = cub.Y1; y < cub.Y2; y++)
-                {
-                    voxelVisited[x, y, cub.Z2] = true;
-                }
+                    voxelVisited.SetFlatTrue(baseX + y * 16 + z2);
             }
 
             cub.Z2++;
             return true;
         }
-
 
 
         public virtual void RegenSelectionBoxes(IWorldAccessor worldForResolve, IPlayer byPlayer)
@@ -1044,7 +1097,8 @@ namespace Vintagestory.GameContent
 
                 selectionBoxesStd = selectionBoxesStdTmp.Where(ele => ele != null).ToArray();
                 selectionBoxesMetaMode = selBoxesMetaModeTmp.ToArray();
-            } else
+            }
+            else
             {
                 for (int i = 0; i < VoxelCuboids.Count; i++)
                 {
@@ -1371,7 +1425,7 @@ namespace Vintagestory.GameContent
                 var material = (VoxelCuboids[j] >> 24) & 0xFFu;
                 if (material >= index)
                 {
-                    VoxelCuboids[j] = (uint)((VoxelCuboids[j] & ~(255 << 24)) | ((material-1) << 24));
+                    VoxelCuboids[j] = (uint)((VoxelCuboids[j] & ~(255 << 24)) | ((material - 1) << 24));
                 }
             }
         }
@@ -1445,7 +1499,7 @@ namespace Vintagestory.GameContent
                 if (DecorIdsRotated == null || DecorIdsRotated.Length < DecorIds.Length) DecorIdsRotated = new int[DecorIds.Length];
                 for (var i = 0; i < 4; i++)
                 {
-                    DecorIdsRotated[i] = DecorIds[GameMath.Mod(i + rotationY/90, 4)];
+                    DecorIdsRotated[i] = DecorIds[GameMath.Mod(i + rotationY / 90, 4)];
                 }
 
                 DecorIdsRotated[4] = DecorIds[4];
@@ -2132,7 +2186,8 @@ namespace Vintagestory.GameContent
                 if (AnyFrostable)
                 {
                     targetMesh.AddColorMapIndex(blockMat.ClimateMapIndex, blockMat.SeasonMapIndex, blockMat.Frostable);
-                } else
+                }
+                else
                 {
                     targetMesh.AddColorMapIndex(blockMat.ClimateMapIndex, blockMat.SeasonMapIndex);
                 }
@@ -2229,22 +2284,22 @@ namespace Vintagestory.GameContent
                 {
                     case 0:
                         u = (uc - 1f) * uSize + 1f - uOffset;
-                        v =       -vc * vSize + 1f - vOffset;
+                        v = -vc * vSize + 1f - vOffset;
                         break;
                     case 1:
                         u = (uc - 1f) * uSize + 1f - uOffset;
-                        v =       -vc * vSize + 1f - vOffset;
+                        v = -vc * vSize + 1f - vOffset;
                         break;
                     case 2:
-                        u =  uc * uSize + uOffset;
+                        u = uc * uSize + uOffset;
                         v = -vc * vSize + 1f - vOffset;
                         break;
                     case 3:
-                        u =  uc * uSize + uOffset;
+                        u = uc * uSize + uOffset;
                         v = -vc * vSize + 1f - vOffset;
                         break;
                     case 4:
-                        u =       -uc * uSize + 1f - uOffset;
+                        u = -uc * uSize + 1f - uOffset;
                         v = (vc - 1f) * vSize + 1f - vOffset;
                         break;
                     case 5:
@@ -2257,10 +2312,10 @@ namespace Vintagestory.GameContent
 
         }
 
-    /// <summary>
-    /// Is coordinate agnostic, can iterate over any of the 6 planes
-    /// </summary>
-    public unsafe ref struct GenPlaneInfo
+        /// <summary>
+        /// Is coordinate agnostic, can iterate over any of the 6 planes
+        /// </summary>
+        public unsafe ref struct GenPlaneInfo
         {
             public RefList<VoxelMaterial> blockMaterials;
             public RefList<VoxelMaterial> decorMaterials;
@@ -2427,7 +2482,7 @@ namespace Vintagestory.GameContent
             }
 
             if (!resolveImports) return;
-            
+
             int newMatIndex = -1;
             int len = BlockIds.Length;
             for (int i = 0; i < len; i++)
@@ -2560,6 +2615,7 @@ namespace Vintagestory.GameContent
     }
 
 
+
     /// <summary>
     /// Compact storage for 4096 bits (16x16x16), occupying exactly 512 bytes of memory.
     /// </summary>
@@ -2602,6 +2658,12 @@ namespace Vintagestory.GameContent
             voxels[index >> 6] |= (1UL << (index & 63));
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool GetFlat(int index) => (voxels[index >> 6] & (1UL << (index & 63))) != 0;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void SetFlatTrue(int index) => voxels[index >> 6] |= (1UL << (index & 63));
+
         // Indexer for full backward compatibility with the legacy array[x, y, z] syntax
         public bool this[int x, int y, int z]
         {
@@ -2611,6 +2673,40 @@ namespace Vintagestory.GameContent
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set => Set(x, y, z, value);
         }
-    }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void SetRangeTrue(int startIndex, int length)
+        {
+            if (length <= 0) return;
+
+            int bitOffset = startIndex & 63;
+            int wordIndex = startIndex >> 6;
+
+            if (bitOffset + length <= 64)
+            {
+                ulong mask = length == 64 ? ulong.MaxValue : ((1UL << length) - 1) << bitOffset;
+                voxels[wordIndex] |= mask;
+                return;
+            }
+
+            // first (partial) word
+            voxels[wordIndex] |= ulong.MaxValue << bitOffset;
+            int remaining = length - (64 - bitOffset);
+            wordIndex++;
+
+            // full words
+            while (remaining >= 64)
+            {
+                voxels[wordIndex++] = ulong.MaxValue;
+                remaining -= 64;
+            }
+
+            // tail
+            if (remaining > 0)
+            {
+                voxels[wordIndex] |= (1UL << remaining) - 1;
+            }
+        }
+    }
+    
 }
