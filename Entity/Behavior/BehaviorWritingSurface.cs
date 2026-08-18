@@ -184,20 +184,50 @@ namespace Vintagestory.GameContent
         public override void OnReceivedClientPacket(IServerPlayer player, int packetid, byte[] data, ref EnumHandling handled)
         {
             base.OnReceivedClientPacket(player, packetid, data, ref handled);
-            
+
             if (packetid == (int)WritingSurfacePackets.Open)
             {
+                var perms = new Entity.CachedAccessPerms(this.entity, player);
+                if(!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "entity behavior writing surface"))
+                {
+                    // No need to revert this, just discard the request.
+                    return;
+                }
+
                 loadPigment(player.Entity);
             }
 
             if (packetid == (int)WritingSurfacePackets.Cancel)
             {
+                var perms = new Entity.CachedAccessPerms(this.entity, player);
+                if(!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, false, "entity behavior writing surface")) // No range check here, we might have gotten moved away.
+                {
+                    // No need to revert this, cannot get here without packet manipulation.
+                    return;
+                }
+
                 player.Entity.TryGiveItemStack(tempStack);
                 tempStack = null;
             }
 
             if (packetid == (int)WritingSurfacePackets.Save)
             {
+                var perms = new Entity.CachedAccessPerms(this.entity, player);
+                if(!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "entity behavior writing surface"))
+                {
+                    // Revert the text change for that client:
+                    ((ICoreServerAPI)entity.Api).Network.SendEntityPacket(player, entity.EntityId, (int)WritingSurfacePackets.Cancel, SerializerUtil.Serialize(new TextDataPacket() {
+                        FontSize = this.FontSize,
+                        Text     = this.Text,
+                    }));
+
+                    // Don't forget to give the chalk item back:
+                    player.InventoryManager.TryGiveItemstack(tempStack);
+                    tempStack = null;
+
+                    return;
+                }
+
                 // 85% chance to get back the item
                 if (entity.World.Rand.NextDouble() < 0.85)
                 {
@@ -212,6 +242,27 @@ namespace Vintagestory.GameContent
                 entity.MarkShapeModified();
                 Color = tempColor;
             }
+        }
+
+        public override void OnReceivedServerPacket(int packetId, byte[] data, ref EnumHandling handled)
+        {
+            switch (packetId)
+            {
+                case (int)WritingSurfacePackets.Cancel:
+                {
+                    var pkg = SerializerUtil.Deserialize<TextDataPacket>(data);
+                    this.Text = pkg.Text;
+                    this.FontSize = pkg.FontSize;
+
+                    entity.MarkShapeModified();
+
+                    handled = EnumHandling.Handled;
+
+                    break;
+                }
+            }
+
+            base.OnReceivedServerPacket(packetId, data, ref handled);
         }
 
         private bool loadPigment(EntityAgent eagent)

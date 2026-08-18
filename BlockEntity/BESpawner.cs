@@ -554,6 +554,11 @@ namespace Vintagestory.GameContent
         {
             if (packetid == 1001)
             {
+				if (fromPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
+                {
+                    Api.Logger.Audit($"{fromPlayer.PlayerName} not in creative mode tried to set spawner data at {Pos}");
+                    return;
+                }            	
                 Data = SerializerUtil.Deserialize<BESpawnerData>(bytes);
                 MarkDirty();
             }

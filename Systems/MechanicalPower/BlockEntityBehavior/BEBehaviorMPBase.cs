@@ -365,7 +365,7 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
         {
-            if (Api.World.EntityDebugMode)
+            if (Api.World.EntityDebugMode && forPlayer?.WorldData?.CurrentGameMode == EnumGameMode.Creative)
             {
                 sb.AppendLine(string.Format("<font color='#ccc'>networkid: {0}  turnDir: {1}  {2}  {3:G3}</font>", NetworkId, propagationDir, network?.TurnDir.ToString(), gearedRatio));
                 sb.AppendLine(string.Format("<font color='#ccc'>speed: {0:G4}  avail torque: {1:G4}  torque sum: {2:G4}  resist sum: {3:G4}</font>", network?.Speed * this.GearedRatio, network?.TotalAvailableTorque / this.GearedRatio, network?.NetworkTorque / this.GearedRatio, network?.NetworkResistance / this.GearedRatio));

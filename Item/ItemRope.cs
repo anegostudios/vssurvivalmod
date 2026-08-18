@@ -138,15 +138,19 @@ namespace Vintagestory.GameContent
             }
 
             ClothPoint[] pEnds = sys?.Ends;
+            IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
 
             // Place new rope
             if (sys == null)
             {
                 if (blockSel != null && api.World.BlockAccessor.GetBlock(blockSel.Position).HasBehavior<BlockBehaviorRopeTieable>())
                 {
-                    sys = attachToBlock(byEntity, blockSel.Position, slot, null);
-                } else
-                if (entitySel != null)
+                    if (byPlayer == null || byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+                    {
+                        sys = attachToBlock(byEntity, blockSel.Position, slot, null);
+                    }
+                }
+                else if (entitySel != null)
                 {
                     sys = attachToEntity(byEntity, entitySel, slot, null, out bool relayRopeInteractions);
                     if (relayRopeInteractions) {
@@ -160,13 +164,16 @@ namespace Vintagestory.GameContent
                 if (sys != null) splitStack(slot, byEntity);
 
 
-            // Modify existing rope
-            } else
+            }
+            else // Modify existing rope
             {
                 // Remove rope from world (looking at block it is currently attached to)
                 if (blockSel != null && (blockSel.Position.Equals(pEnds[0].PinnedToBlockPos) || blockSel.Position.Equals(pEnds[1].PinnedToBlockPos)))
                 {
-                    detach(sys, slot, byEntity, null, blockSel.Position);
+                    if (byPlayer == null || byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+                    {
+                        detach(sys, slot, byEntity, null, blockSel.Position);
+                    }
                     return;
                 }
 
@@ -180,8 +187,11 @@ namespace Vintagestory.GameContent
                 // Connect rope to something else
                 if (blockSel != null && api.World.BlockAccessor.GetBlock(blockSel.Position).HasBehavior<BlockBehaviorRopeTieable>())
                 {
-                    sys = attachToBlock(byEntity, blockSel.Position, slot, sys);
-                    pEnds = sys?.Ends;
+                    if (byPlayer == null || byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+                    {
+                        sys = attachToBlock(byEntity, blockSel.Position, slot, sys);
+                        pEnds = sys?.Ends;
+                    }
                 }
                 else if (entitySel != null)
                 {

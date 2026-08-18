@@ -432,6 +432,7 @@ public sealed class EntityErel : EntityAgent
     {
         ModSystemDevastationEffects msdevaeff = Api.ModLoader.GetModSystem<ModSystemDevastationEffects>();
         Vec3d loc = Pos.Dimension == 0 ? msdevaeff.DevaLocationPresent : msdevaeff.DevaLocationPast;
+        if (loc == null) return 0;
         return Pos.DistanceTo(loc);
     }
     private void setCurrentShape(int dimension)

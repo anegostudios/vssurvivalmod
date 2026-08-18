@@ -467,11 +467,6 @@ namespace Vintagestory.GameContent
             FilterItems();
         }
 
-        private int CountMatches(string text, Regex regex)
-        {
-            return regex.Matches(text).Count;
-        }
-
         public void FilterItems()
         {
             shownHandbookPages.Clear();
@@ -533,16 +528,6 @@ namespace Vintagestory.GameContent
             );
         }
 
-        public static Regex RegexFromSearchText(string searchText, bool strict = false)
-        {
-            string[] searchWords = Regex.Split(searchText, "\\s+", RegexOptions.Multiline);
-            var pattern = $"({string.Join("|", searchWords.Where(w => w != "").Select(w => {
-                w = Regex.Escape(w.ToSearchFriendly().Trim());
-                return strict ? @$"\b{w}\b" : w;
-            }))})";
-            return new Regex(pattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled | RegexOptions.Multiline);
-        }
-
         public override void OnRenderGUI(float deltaTime)
         {
             if (browseHistory.Count == 0 || browseHistory.Peek().SearchText != null)
@@ -583,7 +568,5 @@ namespace Vintagestory.GameContent
             overviewGui?.Dispose();
             detailViewGui?.Dispose();
         }
-
-
     }
 }

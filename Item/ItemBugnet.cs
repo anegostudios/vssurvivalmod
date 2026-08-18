@@ -39,7 +39,7 @@ namespace Vintagestory.GameContent
         {
             var entity = sapi.World.GetEntityById(packet.entityId);
 
-            if (entity == null || entity.Pos.DistanceTo(fromPlayer.Entity.Pos.XYZ.Add(fromPlayer.Entity.LocalEyePos)) > fromPlayer.WorldData.PickingRange)
+            if (entity == null || !fromPlayer.IsInInteractionRangeOf(entity, 0)) // Rennorb 2026.07.06: Slack will change to standardized .25 in 1.23.
             {
                 return;
             }

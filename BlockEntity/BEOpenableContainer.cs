@@ -141,6 +141,8 @@ namespace Vintagestory.GameContent
         {
             if (packetid == (int)EnumBlockEntityPacketId.Close)
             {
+                // No perms check here, closing is always allowed.
+
                 player.InventoryManager?.CloseInventory(Inventory);
                 data = SerializerUtil.Serialize(new OpenContainerLidPacket(player.Entity.EntityId, false));
                 ((ICoreServerAPI)Api).Network.BroadcastBlockEntityPacket(
@@ -151,17 +153,16 @@ namespace Vintagestory.GameContent
                 );
             }
 
-
-            if (!Api.World.Claims.TryAccess(player, Pos, EnumBlockAccessFlags.Use))
-            {
-                Api.World.Logger.Audit("Player {0} sent an inventory packet to openable container at {1} but has no claim access. Rejected.", player.PlayerName, Pos);
-                return;
-            }
-
             if (packetid < 1000)
             {
-                Inventory.InvNetworkUtil.HandleClientPacket(player, packetid, data);
+                var perms = new BlockEntity.CachedAccessPerms(this.Api.World, this.Pos, player);
+                if (!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "openable container"))
+                {
+                    Inventory.InvNetworkUtil.SendInventoryRollback((IServerPlayer)player, packetid, data);
+                    return;
+                }
 
+                Inventory.InvNetworkUtil.HandleClientPacket(player, packetid, data);
                 // Tell server to save this chunk to disk again
                 Api.World.BlockAccessor.GetChunkAtBlockPos(Pos).MarkModified();
 
@@ -170,6 +171,13 @@ namespace Vintagestory.GameContent
 
             if (packetid == (int)EnumBlockEntityPacketId.Open)
             {
+                var perms = new BlockEntity.CachedAccessPerms(this.Api.World, this.Pos, player);
+                if (!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "openable container"))
+                {
+                    // No reverting, just don't open it.
+                    return;
+                }
+
                 player.InventoryManager?.OpenInventory(Inventory);
                 data = SerializerUtil.Serialize(new OpenContainerLidPacket(player.Entity.EntityId, true));
                 ((ICoreServerAPI)Api).Network.BroadcastBlockEntityPacket(

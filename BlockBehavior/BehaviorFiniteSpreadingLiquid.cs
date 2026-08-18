@@ -324,6 +324,14 @@ namespace Vintagestory.GameContent
                     // First try spreading downwards, if not on solid ground
                     if ((onSolidGround || !TrySpreadDownwards(world, ourSolid, ourBlock, pos)) && liquidLevel > 1) // Can we still spread somewhere
                     {
+                        // Pre-check if rapid flowing water already flowing into normal water, in that case we terminate here and do not spread any further
+                        if (!multiplySpread)
+                        {
+                            string flow = ourBlock.Variant["flow"];
+                            if (OtherLiquidOnSide(ourBlock, world.BlockAccessor, pos, flow[0])) return;
+                            if (flow.Length > 1 && OtherLiquidOnSide(ourBlock, world.BlockAccessor, pos, flow[1])) return;
+                        }
+
                         List<PosAndDist> downwardPaths = FindDownwardPaths(world, pos, ourBlock);
                         if (downwardPaths.Count > 0) // Prefer flowing to downward paths rather than outward
                         {
@@ -357,6 +365,20 @@ namespace Vintagestory.GameContent
 
                 
             }
+        }
+
+        private bool OtherLiquidOnSide(Block ourBlock, IBlockAccessor blockAccessor, BlockPos pos, char dir)
+        {
+            BlockFacing facing = BlockFacing.FromFirstLetter(dir);
+            if (facing == null) return false;
+
+            pos.Add(facing);
+            Block nblock = blockAccessor.GetBlock(pos, BlockLayersAccess.Fluid);
+            pos.Add(facing.Opposite);
+
+            if (nblock.IsLiquid() && !IsSameLiquid(ourBlock, nblock)) return true;       // Rapid flowing water into any other type of liquid should be destroyed
+
+            return false;
         }
 
         private int CountNearbySourceBlocks(IBlockAccessor blockAccessor, BlockPos pos, Block ourBlock)
@@ -698,30 +720,30 @@ namespace Vintagestory.GameContent
         /// Tries to lower the liquid level at the given position if the liquid is not connected to a source.
         /// 
         /// </summary>
-        /// <param name="ourBlock"></param>
+        /// <param name="ourLiquid"></param>
         /// <param name="world"></param>
         /// <param name="pos"></param>
         /// <returns>True if the liquid was lowered at the given position, false otherwise</returns>
-        private bool TryLoweringLiquidLevel(Block ourBlock, IWorldAccessor world, BlockPos pos)
+        private bool TryLoweringLiquidLevel(Block ourLiquid, IWorldAccessor world, BlockPos pos)
         {
-            if (IsLiquidSourceBlock(ourBlock) == false)
+            if (IsLiquidSourceBlock(ourLiquid) == false)
             {
-                int nlevel = GetMaxNeighbourLiquidLevel(ourBlock, world, pos, out bool fedByOneNeighbour);
-                if (nlevel <= ourBlock.LiquidLevel || !fedByOneNeighbour)     // If not fedByOneNeighbour then not directly connected, so our block is "wrong" (e.g. rapid flowing water stream looping back on itself)
+                int nlevel = GetMaxNeighbourLiquidLevel(ourLiquid, world, pos, out bool fedByOneNeighbour);
+                if (nlevel <= ourLiquid.LiquidLevel || !fedByOneNeighbour)     // If not fedByOneNeighbour then not directly connected, so our block is "wrong" (e.g. rapid flowing water stream looping back on itself)
                 {
-                    LowerLiquidLevelAndNotifyNeighbors(ourBlock, pos, world);
+                    LowerLiquidLevelAndNotifyNeighbors(ourLiquid, pos, world);
                     return true;
                 }
 
-                if (!multiplySpread && ourBlock.Variant["flow"] != "d")     // Brute force fix non-removed flowing-5 next to d-6
+                if (!multiplySpread && ourLiquid.Variant["flow"] != "d")     // Brute force fix non-removed flowing-5 next to d-6
                 {
                     BlockPos npos = pos.Copy();
                     for (int i = 0; i < BlockFacing.HORIZONTALS.Length; i++)
                     {
                         BlockFacing.HORIZONTALS[i].IterateThruFacingOffsets(npos);
-                        if (HasBetterFlowDirection(npos, pos, world, ourBlock))
+                        if (HasBetterFlowDirection(npos, pos, world, ourLiquid) && HasOneFeed(pos, world, ourLiquid, API.Client.Tesselation.TileSideEnum.GetOpposite(i)))
                         {
-                            LowerLiquidLevelAndNotifyNeighbors(ourBlock, pos, world);
+                            LowerLiquidLevelAndNotifyNeighbors(ourLiquid, pos, world);
                             return true;
                         }
                     }
@@ -747,17 +769,34 @@ namespace Vintagestory.GameContent
         {
             Block ourLiquid = world.BlockAccessor.GetBlock(ourpos, BlockLayersAccess.Fluid);
             if (!IsSameLiquid(neibBlock, ourLiquid)) return false;
-            if (ourLiquid.Variant["flow"] != "d") return false;
+            if (ourLiquid.Variant["flow"] != "d" && ourLiquid.LiquidLevel < 6) return false;
 
-            Block neighborSolid = world.BlockAccessor.GetBlock(ourpos.Down(), BlockLayersAccess.Solid);
-            bool lowerBarrier = neighborSolid.GetLiquidBarrierHeightOnSide(BlockFacing.UP, ourpos) < ourLiquid.LiquidLevel / MAXLEVEL_float;
+            Block belowSolid = world.BlockAccessor.GetBlock(ourpos.Down(), BlockLayersAccess.Solid);
+            bool lowerBarrier = belowSolid.GetLiquidBarrierHeightOnSide(BlockFacing.UP, ourpos) < ourLiquid.LiquidLevel / MAXLEVEL_float;
             ourpos.Up();   // revert the ourpos.Down() two lines above
             if (lowerBarrier) return true;
 
-            Block ourSolid = world.BlockAccessor.GetBlock(ourpos.Up(), BlockLayersAccess.Solid);
+            Block ourSolid = world.BlockAccessor.GetBlock(ourpos, BlockLayersAccess.Solid);
             if (CanSpreadIntoBlock(ourLiquid, ourSolid, ourpos, ourpos.DownCopy(), BlockFacing.DOWN, world)) return true;
             // For the future, can maybe also test other neighbours if better than npos
             return false;
+        }
+
+        private bool HasOneFeed(BlockPos pos, IWorldAccessor world, Block ourLiquid, int skipDirection)
+        {
+            int feeds = 0;
+            BlockPos npos = pos.Copy();
+            for (int i = 0; i < BlockFacing.HORIZONTALS.Length; i++)
+            {
+                BlockFacing.HORIZONTALS[i].IterateThruFacingOffsets(npos);
+                Block neibLiquid = i == skipDirection ?
+                    world.BlockAccessor.GetBlockAbove(pos, BlockLayersAccess.Fluid) :      // We will skip skipDirection but it reduces code duplication to check the block above instead, instead of simply continuing
+                    world.BlockAccessor.GetBlock(npos, BlockLayersAccess.Fluid);
+                if (!IsSameLiquid(neibLiquid, ourLiquid)) continue;
+
+                if (neibLiquid.LiquidLevel > ourLiquid.LiquidLevel) feeds++;
+            }
+            return feeds == 1;
         }
 
         private bool TrySpreadIntoBlock(Block ourblock, Block ourSolid, BlockPos pos, BlockPos npos, BlockFacing facing, IWorldAccessor world)

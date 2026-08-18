@@ -286,7 +286,7 @@ namespace Vintagestory.GameContent.Mechanics
             else if (turnDir == turnDir2.Opposite) turnDir = turnDir1;
             else if (turnDir == turnDir1.Opposite) turnDir = turnDir2;
             path = new MechPowerPath(turnDir, path.gearingRatio, null, false);
-            
+
             base.SetPropagationDirection(path);
         }
 
@@ -359,7 +359,7 @@ namespace Vintagestory.GameContent.Mechanics
         public override MechPowerPath[] GetMechPowerExits(MechPowerPath fromExitTurnDir)
         {
             // This method could be called from another (earlier in the loading chunk) block's Initialise() method, i.e. before this itself is initialised.
-            if (this.orientation == null) this.SetOrientations();  
+            if (this.orientation == null) this.SetOrientations();
 
             string orientations = (Block as BlockAngledGears).Orientation;
             if (orientations.Length < 2 || orientations[0] != orientations[1])
@@ -384,7 +384,7 @@ namespace Vintagestory.GameContent.Mechanics
                     BlockFacing pathFacing = connectors[i];
 
                     // An angled gear's output side rotates in the opposite sense from the input side
-                    paths[i] = new MechPowerPath(pathFacing, this.GearedRatio, null, pathFacing == inputSide ? invert : !invert);   
+                    paths[i] = new MechPowerPath(pathFacing, this.GearedRatio, null, pathFacing == inputSide ? invert : !invert);
                 }
                 return paths;
             }
@@ -401,7 +401,7 @@ namespace Vintagestory.GameContent.Mechanics
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
         {
             base.GetBlockInfo(forPlayer, sb);
-            if (Api.World.EntityDebugMode)
+            if (Api.World.EntityDebugMode && forPlayer?.WorldData?.CurrentGameMode == EnumGameMode.Creative)
             {
                 string orientations = Block.Variant["orientation"];
                 bool rev = propagationDir == axis1 || propagationDir == axis2;

@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -9,6 +11,14 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
+    public class WeightedAuction
+    {
+        public int NameLength;
+        public int NameMatches;
+        public int StrictNameMatches;
+        public int SellerMatches;
+        public int StrictSellerMatches;
+    }
 
     public class GuiDialogTrader : GuiDialog
     {
@@ -25,6 +35,9 @@ namespace Vintagestory.GameContent
         int rows = 4;
         int cols = 4;
         int curTab = 0;
+        private string currentSearchText = string.Empty;
+        private int currentPriceMin = 0;
+        private int currentPriceMax = ModSystemAuction.PriceMax;
 
 
         ModSystemAuction auctionSys;
@@ -44,6 +57,7 @@ namespace Vintagestory.GameContent
             auctionSys.OnCellUpdateClient = () =>
             {
                 listElem?.ReloadCells(auctions);
+                ApplySearchFilters();
                 updateScrollbarBounds();
             };
             auctionSys.curTraderClient = owningEntity as EntityTradingHumanoid;
@@ -64,11 +78,8 @@ namespace Vintagestory.GameContent
             }
 
             capi.Network.SendPacketClient(capi.World.Player.InventoryManager.OpenInventory(auctionSlotInv));
-
             Compose();
         }
-
-
 
         public void Compose()
         {
@@ -172,21 +183,66 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            double listHeight = 377;
-            ElementBounds stackListBounds = ElementBounds.Fixed(0, 25, 700, listHeight); //.FixedUnder(searchFieldBounds, 5);
-            clipBounds = stackListBounds.ForkBoundingParent();
-            ElementBounds insetBounds = stackListBounds.FlatCopy().FixedGrow(3).WithFixedOffset(0, 0);
+            var stackListBounds = ElementBounds.Fixed(0, 25, 770, 377);
 
-            ElementBounds scrollbarBounds = insetBounds.CopyOffsetedSibling(3 + stackListBounds.fixedWidth + 7).WithFixedWidth(20);
+            auctions = curTab switch
+            {
+                2 => auctionSys.ownAuctions,
+                _ => auctionSys.activeAuctions
+            };
+
+            var showSearch = auctions.Count > capi.Settings.Int["auctionSearchbarThreshold"];
+
+            var searchFieldBounds = ElementBounds.Fixed(0, 25, 280, 30);
+            var minTextSize = CairoFont.WhiteSmallText().GetTextExtents(Lang.Get("auction-search-pricemin")).Width / RuntimeEnv.GUIScale;
+            var maxTextSize = CairoFont.WhiteSmallText().GetTextExtents(Lang.Get("auction-search-pricemax")).Width / RuntimeEnv.GUIScale;
+            var minTextBounds = ElementBounds.Fixed(0, 25, 16 + minTextSize, 30).RightOf(searchFieldBounds).WithFixedOffset(10, 3);
+            var priceMin = ElementBounds.Fixed(0, 25, 80, 30).RightOf(minTextBounds);
+            var minGearIcon = ElementBounds.Fixed(0, 30, 20, 30).RightOf(priceMin).WithFixedOffset(3, 0);
+            var maxTextBounds = ElementBounds.Fixed(0, 25, 16 + maxTextSize, 30).RightOf(minGearIcon).WithFixedOffset(25, 3);
+            var priceMax = ElementBounds.Fixed(0, 25, 80, 30).RightOf(maxTextBounds).WithFixedOffset(0, 0);
+            var maxGearIcon = ElementBounds.Fixed(0, 30, 20, 30).RightOf(priceMax).WithFixedOffset(3, 0);
+            var clearBounds = ElementBounds.Fixed(0, 25, 30, 30).RightOf(maxGearIcon).WithFixedOffset(25, -2);
+
+
+            if (showSearch && (curTab == 1 || curTab == 2))
+            {
+                stackListBounds = stackListBounds.FixedUnder(searchFieldBounds).WithFixedOffset(0, -10);
+                var searchbarWidth = searchFieldBounds.fixedWidth + minTextBounds.fixedWidth + priceMin.fixedWidth + maxTextBounds.fixedWidth + priceMax.fixedWidth + maxGearIcon.fixedWidth + clearBounds.fixedWidth;
+                stackListBounds.fixedWidth = Math.Max(stackListBounds.fixedWidth, searchbarWidth);
+            }
+
+            clipBounds = stackListBounds.ForkBoundingParent();
+            var insetBounds = stackListBounds.FlatCopy();
+            var scrollbarBounds = insetBounds.CopyOffsetedSibling(3 + stackListBounds.fixedWidth + 7).WithFixedWidth(20);
+
+            var gearStack = capi.ModLoader.GetModSystem<ModSystemAuction>().SingleCurrencyStack;
+            var fl = CairoFont.WhiteDetailText().UnscaledFontsize;
+            RichTextComponentBase[] gearIcon = [new ItemstackTextComponent(capi, gearStack, fl * 3f, 0, EnumFloat.Inline)
+            {
+                VerticalAlign = EnumVerticalAlign.Top,
+                offX = -GuiElement.scaled(fl * 0.5f),
+                offY = -GuiElement.scaled(fl * 0.75f)
+            }];
 
             if (curTab == 1)
             {
-                auctions = auctionSys.activeAuctions;
-
                 SingleComposer
+                    .AddIf(showSearch)
+                        .AddTextInput(searchFieldBounds, OnSearchTextChanged, CairoFont.WhiteSmallishText(), "searchField")
+                        .AddStaticText(Lang.Get("auction-search-pricemin"), CairoFont.WhiteSmallText(), minTextBounds)
+                        .AddNumberInput(priceMin, OnPriceMinChange, CairoFont.WhiteSmallishText(), "priceMin")
+                        .AddRichtext(gearIcon, minGearIcon)
+                        .AddRichtext(Lang.Get("auction-search-pricemax"), CairoFont.WhiteSmallText(), maxTextBounds)
+                        .AddNumberInput(priceMax, OnPriceMaxChange, CairoFont.WhiteSmallishText(), "priceMax")
+                        .AddRichtext(gearIcon, maxGearIcon)
+
+                        .AddButton("X", OnClear, clearBounds, EnumButtonStyle.Normal, "clearBtn")
+                        .AddHoverText(Lang.Get("auction-search-reset"), CairoFont.WhiteSmallText(), 150, clearBounds, "clearBtnHover")
+                    .EndIf()
                     .BeginClip(clipBounds)
                         .AddInset(insetBounds, 3)
-                        .AddCellList(stackListBounds, createCell, auctionSys.activeAuctions, "stacklist")
+                        .AddCellList(stackListBounds, createCell, auctions, "stacklist")
                     .EndClip()
                     .AddVerticalScrollbar(OnNewScrollbarValue, scrollbarBounds, "scrollbar")
 
@@ -197,8 +253,6 @@ namespace Vintagestory.GameContent
 
             if (curTab == 2)
             {
-                auctions = auctionSys.ownAuctions;
-
                 ElementBounds button = ElementBounds.Fixed(EnumDialogArea.RightFixed, 0, 0, 0, 0).WithFixedPadding(8, 5);
                 string placeStr = Lang.Get("Place Auction");
                 string cancelStr = Lang.Get("Cancel Auction");
@@ -206,6 +260,18 @@ namespace Vintagestory.GameContent
                 double placelen = CairoFont.ButtonText().GetTextExtents(placeStr).Width / RuntimeEnv.GUIScale;
 
                 SingleComposer
+                    .AddIf(showSearch)
+                        .AddTextInput(searchFieldBounds, OnSearchTextChanged, CairoFont.WhiteSmallishText(), "searchField")
+                        .AddStaticText(Lang.Get("auction-search-pricemin"), CairoFont.WhiteSmallText(), minTextBounds)
+                        .AddNumberInput(priceMin, OnPriceMinChange, CairoFont.WhiteSmallishText(), "priceMin")
+                        .AddRichtext(gearIcon, minGearIcon)
+                        .AddRichtext(Lang.Get("auction-search-pricemax"), CairoFont.WhiteSmallText(), maxTextBounds)
+                        .AddNumberInput(priceMax, OnPriceMaxChange, CairoFont.WhiteSmallishText(), "priceMax")
+                        .AddRichtext(gearIcon, maxGearIcon)
+
+                        .AddButton("X", OnClear, clearBounds, EnumButtonStyle.Normal, "clearBtn")
+                        .AddHoverText(Lang.Get("auction-search-reset"), CairoFont.WhiteSmallText(), 150, clearBounds, "clearBtnHover")
+                    .EndIf()
                     .BeginClip(clipBounds)
                         .AddInset(insetBounds, 3)
                         .AddCellList(stackListBounds, createCell, auctionSys.ownAuctions, "stacklist")
@@ -231,18 +297,169 @@ namespace Vintagestory.GameContent
 
                 updateScrollbarBounds();
 
+                if (showSearch)
+                {
+                    var searchField = SingleComposer.GetTextInput("searchField");
+                    searchField.SetPlaceHolderText(Lang.Get("auction-search-placeholder"));
+                    searchField.SetValue(currentSearchText);
+
+                    var priceMinInput = SingleComposer.GetNumberInput("priceMin");
+                    priceMinInput.IntMode = true;
+                    priceMinInput.SetValue(currentPriceMin);
+
+                    var priceMaxInput = SingleComposer.GetNumberInput("priceMax");
+                    priceMaxInput.IntMode = true;
+                    priceMaxInput.SetValue(currentPriceMax);
+                    UpdateClearButton();
+                    ApplySearchFilters();
+
+                }
 
                 didClickAuctionElem(-1);
             }
         }
 
+        private bool OnClear()
+        {
+            ResetSearch();
+            SingleComposer.GetTextInput("searchField")?.SetValue(currentSearchText);
+            SingleComposer.GetNumberInput("priceMin")?.SetValue(currentPriceMin);
+            SingleComposer.GetNumberInput("priceMax")?.SetValue(currentPriceMax);
+            ApplySearchFilters();
+            return true;
+        }
+
+        private void ResetSearch()
+        {
+            currentSearchText = string.Empty;
+            currentPriceMin = 0;
+            currentPriceMax = ModSystemAuction.PriceMax;
+        }
+
+        private void OnPriceMinChange(string text)
+        {
+            currentPriceMin = Math.Max(text.ToInt(), 0);
+            ApplySearchFilters();
+        }
+
+        private void OnPriceMaxChange(string text)
+        {
+            currentPriceMax = Math.Min(text.ToInt(), ModSystemAuction.PriceMax);
+            ApplySearchFilters();
+        }
+
+        private void OnSearchTextChanged(string text)
+        {
+            if (currentSearchText == text) return;
+            currentSearchText = text;
+            ApplySearchFilters();
+        }
+
+        private void ApplySearchFilters()
+        {
+            if (curTab != 1 && curTab != 2) return;
+
+            UpdateClearButton();
+
+            var stacklist = SingleComposer.GetCellList<Auction>("stacklist");
+            if (stacklist == null) return;
+
+            var regex = RegexFromSearchText(currentSearchText);
+            var strictRegex = RegexFromSearchText(currentSearchText, true);
+            var weightedAuctions = new List<WeightedAuction>();
+
+            foreach (var cell in stacklist.elementCells)
+            {
+                var auctionCell = (cell as AuctionCellEntry);
+                var auction = auctionCell.auction;
+                auctionCell.weightedAuction = null;
+                auctionCell.skipHeightCalcOnce = true; // Not necessary to recalc height just for sorting / visible flag setting. Big performance boost
+
+                if (auction.Price < currentPriceMin || auction.Price > currentPriceMax) {
+                    auctionCell.Visible = false;
+                    continue;
+                }
+
+                var name = auction.ItemStack.GetName();
+                var nameMatches = CountMatches(name, regex);
+                var strictNameMatches = CountMatches(name, strictRegex);
+                var sellerMatches = CountMatches(auction.SellerName, regex);
+                var strictSellerMatches = CountMatches(auction.SellerName, strictRegex);
+
+                auctionCell.Visible = nameMatches > 0 || sellerMatches > 0;
+
+                if (auctionCell.Visible)
+                {
+                    (cell as AuctionCellEntry).weightedAuction = new WeightedAuction()
+                    {
+                        NameLength = name.Length,
+                        NameMatches = nameMatches,
+                        StrictNameMatches = strictNameMatches,
+                        SellerMatches = sellerMatches,
+                        StrictSellerMatches = strictSellerMatches,
+                    };
+                }
+            }
+            
+            if (currentSearchText.Length > 0)
+            {
+                stacklist.elementCells.Sort((a, b) =>
+                {
+                    var wa = (a as AuctionCellEntry).weightedAuction;
+                    var wb = (b as AuctionCellEntry).weightedAuction;
+                    if (wa == null && wb == null) return 0;
+                    if (wa == null) return 1;
+                    if (wb == null) return -1;
+
+                    // Start by comparing strict collectible name matches in the title
+                    var strictNameMatches = wb.StrictNameMatches - wa.StrictNameMatches;
+                    if (strictNameMatches != 0) return strictNameMatches;
+                    // Then for fuzzier matches in the collectible name
+                    var nameMatches = wb.NameMatches - wa.NameMatches;
+                    if (nameMatches != 0) return nameMatches;
+
+                    // Start by comparing strict player name matches
+                    var strictSellerMatches = wb.StrictSellerMatches - wa.StrictSellerMatches;
+                    if (strictSellerMatches != 0) return strictSellerMatches;
+                    // Then for fuzzier matches in the player name
+                    var sellerMatches = wb.SellerMatches - wa.SellerMatches;
+                    if (sellerMatches != 0) return sellerMatches;
+
+                    // Then for length of the collectible
+                    var lengthSort = wa.NameLength - wb.NameLength;
+                    if (lengthSort != 0) return lengthSort;
+
+                    return 0;
+                });
+            }
+
+            stacklist.FilterCells((cell) =>
+            {
+                var auctionCell = (cell as AuctionCellEntry);
+                return auctionCell.Visible;
+            });
+
+            updateScrollbarBounds();
+        }
+
+        private void UpdateClearButton()
+        {
+            var clearBtn = SingleComposer.GetHoverText("clearBtnHover");
+            if (clearBtn == null) return;
+
+            var showClear = !string.IsNullOrWhiteSpace(currentSearchText) || (int)SingleComposer.GetNumberInput("priceMin").GetValue() != 0 || (int)SingleComposer.GetNumberInput("priceMax").GetValue() != ModSystemAuction.PriceMax;
+            SingleComposer.GetButton("clearBtn").Visible = showClear;
+            
+            clearBtn.SetAutoDisplay(showClear);
+        }
 
         void updateScrollbarBounds()
         {
             if (listElem == null) return;
-            SingleComposer.GetScrollbar("scrollbar")?.Bounds.CalcWorldBounds();
+            var scrollbar = SingleComposer.GetScrollbar("scrollbar");
+            scrollbar?.Bounds.CalcWorldBounds();
 
-            SingleComposer.GetScrollbar("scrollbar")?.SetHeights(
+            scrollbar?.SetHeights(
                 (float)(clipBounds.fixedHeight),
                 (float)(listElem.Bounds.fixedHeight)
             );
