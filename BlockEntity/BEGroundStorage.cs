@@ -11,8 +11,6 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 using Vintagestory.Common.Collectible.Block;
 
-#nullable disable
-
 namespace Vintagestory.GameContent
 {
     public class BlockEntityGroundStorage : BlockEntityDisplay, IBlockEntityContainer, IRotatable, IHeatSource, ITemperatureSensitive, IExternalTickable
@@ -44,7 +42,10 @@ namespace Vintagestory.GameContent
 
         protected InventoryGeneric inventory;
 
-        public GroundStorageProperties StorageProps { get; protected set; }
+        /// <summary>
+        /// Properties of the ground storage - layout may be overridden, and other item-specific properties may not always be relevant
+        /// </summary>
+        public GroundStorageProperties? StorageProps { get; protected set; }
         public bool forceStorageProps = false;
         protected EnumGroundStorageLayout? overrideLayout;
 
@@ -59,15 +60,19 @@ namespace Vintagestory.GameContent
         protected virtual int invSlotCount => 4;
         protected Cuboidf[] colBoxes;
         protected Cuboidf[] selBoxes;
+        /// <summary>
+        /// used to push the player up after updating collision boxes when receiving a packet from the server
+        /// </summary>
+        protected Action? clientCollisionCallback = null;
 
-        ItemSlot isUsingSlot;
+        ItemSlot? isUsingSlot = null;
         /// <summary>
         /// Needed to suppress client-side "set this block to air on empty inventory" functionality for newly placed blocks
         /// otherwise set block to air can be triggered e.g. by the second tick of a player's right-click block interaction client-side, before the first server packet arrived to set the inventory to non-empty (due to lag of any kind)
         /// </summary>
         public bool clientsideFirstPlacement = false;
 
-        private GroundStorageRenderer renderer;
+        private GroundStorageRenderer? renderer = null;
         public bool UseRenderer;
         public bool NeedsRetesselation;
 
@@ -79,7 +84,7 @@ namespace Vintagestory.GameContent
         /// <summary>
         /// used for custom scales when using GroundStorageRenderer
         /// </summary>
-        public ModelTransform[] ModelTransformsRenderer = new ModelTransform[4];
+        public ModelTransform?[] ModelTransformsRenderer = new ModelTransform[4];
 
         /// <summary>
         /// For Stacking layout only, cache each uploaded mesh so that it can be reused by the GroundStorageRenderer
@@ -89,7 +94,7 @@ namespace Vintagestory.GameContent
 
         private bool burning;
         private double burnStartTotalHours;
-        private ILoadedSound ambientSound;
+        private ILoadedSound? ambientSound = null;
         private long listenerId;
         private float burnHoursPerItem;
         private BlockFacing[] facings = (BlockFacing[])BlockFacing.ALLFACES.Clone();
@@ -134,7 +139,8 @@ namespace Vintagestory.GameContent
 
         public int Capacity
         {
-            get {
+            get
+            {
                 if (StorageProps == null) return 1;
                 switch (StorageProps.Layout)
                 {
@@ -149,6 +155,67 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public bool IsFull
+        {
+            get
+            {
+                if (StorageProps == null) return false;
+                for (int slotId = 0; slotId < UsableSlots(StorageProps.Layout); slotId++)
+                {
+                    if (inventory[slotId]?.Empty == true) return false;
+                }
+                switch (StorageProps.Layout)
+                {
+                    case EnumGroundStorageLayout.SingleCenter:
+                    case EnumGroundStorageLayout.Halves:
+                    case EnumGroundStorageLayout.WallHalves:
+                    case EnumGroundStorageLayout.Quadrants:
+                        return true;
+
+                    case EnumGroundStorageLayout.Messy12:
+                        return TotalStackSize >= 12;
+
+                    case EnumGroundStorageLayout.Stacking:
+                        if (TotalStackSize < Capacity) return false;
+                        if (!StorageProps.UpSolid) return true;
+
+                        BlockPos abovePos = Pos.UpCopy();
+                        if (Block.GetBlockEntity<BlockEntityGroundStorage>(abovePos) is BlockEntityGroundStorage beg
+                            && beg.StorageProps?.Layout == EnumGroundStorageLayout.Stacking
+                            && beg.inventory[0].Itemstack?.Equals(Api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes) == true)
+                        {
+                            return beg.IsFull;
+                        }
+
+                        if (StorageProps.MaxStackingHeight > 0)
+                        {
+                            return StackHeight >= StorageProps.MaxStackingHeight;
+                        }
+
+                        return false;
+
+                    default:
+                        return false;
+                }
+            }
+        }
+
+        public int StackHeight
+        {
+            get
+            {
+                int stackHeight = 1;
+                if (StorageProps?.MaxStackingHeight > 0)
+                {
+                    BlockPos tempPos = Pos.Copy();
+                    while (Block.GetBlockEntity<BlockEntityGroundStorage>(tempPos.Down())?.inventory[0].Itemstack?.Equals(Api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes) == true)
+                    {
+                        stackHeight++;
+                    }
+                }
+                return stackHeight;
+            }
+        }
 
         public override InventoryBase Inventory
         {
@@ -163,7 +230,7 @@ namespace Vintagestory.GameContent
         public override string AttributeTransformCode => "groundStorageTransform";
 
         public float MeshAngle { get; set; }
-        public BlockFacing AttachFace { get; set; }
+        public BlockFacing AttachFace { get; set; } = BlockFacing.DOWN;
 
         public override TextureAtlasPosition this[string textureCode]
         {
@@ -183,7 +250,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public bool CanAttachBlockAt(BlockFacing blockFace, Cuboidi attachmentArea)
+        public bool CanAttachBlockAt(BlockFacing blockFace, Cuboidi? attachmentArea)
         {
             if (StorageProps == null) return false;
             return blockFace == BlockFacing.UP && StorageProps.Layout == EnumGroundStorageLayout.Stacking && inventory[0].StackSize == Capacity && StorageProps.UpSolid;
@@ -204,12 +271,12 @@ namespace Vintagestory.GameContent
             selBoxes = new Cuboidf[] { new Cuboidf(0, 0, 0, 1, 0.25f, 1) };
         }
 
-        private ItemSlot GetAutoPullFromSlot(BlockFacing atBlockFace)
+        private ItemSlot? GetAutoPullFromSlot(BlockFacing atBlockFace)
         {
             return null;
         }
 
-        private ItemSlot GetAutoPushIntoSlot(BlockFacing atBlockFace, ItemSlot fromSlot)
+        private ItemSlot? GetAutoPushIntoSlot(BlockFacing atBlockFace, ItemSlot fromSlot)
         {
             return null;
         }
@@ -233,7 +300,6 @@ namespace Vintagestory.GameContent
                 bh.FuelPos = Pos.Copy();
                 bh.OnFireDeath = _ => { Extinguish(); };
             }
-            UpdateIgnitable();
 
             DetermineStorageProperties(null);
 
@@ -273,10 +339,32 @@ namespace Vintagestory.GameContent
 
         public override void CheckInventoryClearedMidTick()
         {
+            removeIfEmpty();
+        }
+
+        protected bool removeIfEmpty()
+        {
             if (Inventory.Empty)
             {
-                // all slots are null, we need to destroy this GroundStorage BlockEntity
+                LightUpdate();
                 Api.World.BlockAccessor.SetBlock(0, Pos);
+                Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
+                return true;
+            }
+
+            return false;
+        }
+
+        protected void pushUpOnCollision(IPlayer player, Cuboidf colBox)
+        {
+            if (CollisionTester.AabbIntersect(
+                colBox,
+                Pos.X, Pos.Y, Pos.Z,
+                player.Entity.CollisionBox,
+                player.Entity.Pos.XYZ
+            ))
+            {
+                player.Entity.Pos.Y += colBox.Y2 - (player.Entity.Pos.Y - (int)player.Entity.Pos.Y);
             }
         }
 
@@ -332,10 +420,21 @@ namespace Vintagestory.GameContent
 
         private void UpdateIgnitable()
         {
-            var cbhgs = Inventory[0].Itemstack?.Collectible?.GetBehavior<CollectibleBehaviorGroundStorable>();
-            if (cbhgs != null)
+            switch (StorageProps?.Layout)
             {
-                burnHoursPerItem = JsonObject.FromJson(cbhgs.propertiesAtString)["burnHoursPerItem"].AsFloat(burnHoursPerItem);
+                // currently only stacking layouts are ignitable
+                case EnumGroundStorageLayout.Messy12:
+                case EnumGroundStorageLayout.Stacking:
+                    var cbhgs = Inventory[0].Itemstack?.Collectible?.GetBehavior<CollectibleBehaviorGroundStorable>();
+                    if (cbhgs != null)
+                    {
+                        burnHoursPerItem = JsonObject.FromJson(cbhgs.propertiesAtString)["burnHoursPerItem"].AsFloat();
+                    }
+                    break;
+
+                default:
+                    burnHoursPerItem = 0;
+                    break;
             }
         }
 
@@ -366,7 +465,7 @@ namespace Vintagestory.GameContent
                     return stack;
                 }
             }
-            return null;
+            return contents;
         }
 
         #region For trailer making
@@ -453,12 +552,13 @@ namespace Vintagestory.GameContent
             return colBoxes;
         }
 
-        byte[] lastLightHsv;
+        byte[] lastLightHsv = new byte[3];
 
         public virtual bool OnPlayerInteractStart(IPlayer player, BlockSelection bs)
         {
             isUsingSlot = null;
-            if (GetSlotAt(bs) is ItemSlot ourSlot && !ourSlot.Empty)
+            int targetSlotId = GetSlotIdAt(bs);
+            if (inventory[targetSlotId] is ItemSlot ourSlot && !ourSlot.Empty)
             {
                 var collIci = ourSlot.Itemstack.Collectible.GetCollectibleInterface<IContainedInteractable>();
                 if (collIci?.OnContainedInteractStart(this, ourSlot, player, bs) == true)
@@ -477,18 +577,19 @@ namespace Vintagestory.GameContent
 
             DetermineStorageProperties(hotbarSlot);
 
-            bool ok = false;
+            bool didMoveItems = false; // on the client side we don't move items so this is a prediction more than fact, on the server it's fully accurate
+            ItemStack? targetOrMovedStack = null; // a copy of the target stack (not nulled if the original gets taken out), or the stack which was put into the slot
 
             if (StorageProps != null)
             {
                 if (!hotbarSlot.Empty && StorageProps.CtrlKey && !player.Entity.Controls.CtrlKey) return false;
 
-                // fix RAD rotation being CCW - since n=0, e=-PiHalf, s=Pi, w=PiHalf so we swap east and west by inverting sign
-                // changed since > 1.18.1 since east west on WE rotation was broken, to allow upgrading/downgrading without issues we invert the sign for all* usages instead of saving new value
-                var hitPos = rotatedOffset(bs.HitPosition.ToVec3f(), -MeshAngle);
-
                 if (StorageProps.Layout == EnumGroundStorageLayout.Quadrants && inventory.Empty)
                 {
+                    // fix RAD rotation being CCW - since n=0, e=-PiHalf, s=Pi, w=PiHalf so we swap east and west by inverting sign
+                    // changed since > 1.18.1 since east west on WE rotation was broken, to allow upgrading/downgrading without issues we invert the sign for all* usages instead of saving new value
+                    var hitPos = rotatedOffset(bs.HitPosition.ToVec3f(), -MeshAngle);
+
                     double dx = Math.Abs(hitPos.X - 0.5);
                     double dz = Math.Abs(hitPos.Z - 0.5);
                     if (dx < 2 / 16f && dz < 2 / 16f)
@@ -498,68 +599,61 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-                switch (StorageProps.Layout)
+                if (StorageProps.Layout == EnumGroundStorageLayout.SingleCenter && StorageProps.RandomizeCenterRotation)
                 {
-                    case EnumGroundStorageLayout.SingleCenter:
-                        if (StorageProps.RandomizeCenterRotation)
-                        {
-                            double randomX = Api.World.Rand.NextDouble() * 6.28 - 3.14;
-                            double randomZ = Api.World.Rand.NextDouble() * 6.28 - 3.14;
-                            MeshAngle = (float)Math.Atan2(randomX, randomZ);
-                        }
-                        ok = putOrGetItemSingle(inventory[0], player, bs);
-                        break;
-
-
-                    case EnumGroundStorageLayout.WallHalves:
-                    case EnumGroundStorageLayout.Halves:
-                        if (hitPos.X < 0.5)
-                        {
-                            ok = putOrGetItemSingle(inventory[0], player, bs);
-                        }
-                        else
-                        {
-                            ok = putOrGetItemSingle(inventory[1], player, bs);
-                        }
-                        break;
-
-                    case EnumGroundStorageLayout.Quadrants:
-                        int pos = ((hitPos.X > 0.5) ? 2 : 0) + ((hitPos.Z > 0.5) ? 1 : 0);
-                        ok = putOrGetItemSingle(inventory[pos], player, bs);
-                        break;
-
-                    case EnumGroundStorageLayout.Messy12:
-                    case EnumGroundStorageLayout.Stacking:
-                        ok = putOrGetItemStacking(player, bs);
-                        break;
+                    double randomX = Api.World.Rand.NextDouble() * 6.28 - 3.14;
+                    double randomZ = Api.World.Rand.NextDouble() * 6.28 - 3.14;
+                    MeshAngle = (float)Math.Atan2(randomX, randomZ);
                 }
+
+                targetSlotId = GetSlotIdAt(bs); // refresh the slot id in case StorageProps changed
+                ItemSlot targetSlot = inventory[targetSlotId];
+
+                targetOrMovedStack = targetSlot.Itemstack?.Clone();
+
+                didMoveItems = StorageProps.Layout switch
+                {
+                    EnumGroundStorageLayout.Messy12 or EnumGroundStorageLayout.Stacking => putOrGetItemStacking(player, bs),
+                    _ => putOrGetItemSingle(targetSlot, player, bs),
+                };
+
+                if (inventory[targetSlotId].Itemstack is ItemStack newStack) targetOrMovedStack = newStack;
             }
-            UpdateIgnitable();
+
+            if (targetOrMovedStack != null && didMoveItems)
+            {
+                // take the sound from the moved item, not from the saved StorageProps which might contain a sound for a different item
+                AssetLocation? placeRemoveSound = targetOrMovedStack.Collectible?.GetBehavior<CollectibleBehaviorGroundStorable>()?.StorageProps?.PlaceRemoveSound;
+                Api.World.PlaySoundAt(placeRemoveSound, Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, player, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
+            }
+
+            if (!clientsideFirstPlacement && removeIfEmpty()) return didMoveItems;
+
+            if (!didMoveItems) return false;
+
+            // Don't re-draw on client yet, that will be handled in FromTreeAttributes after we receive an updating packet from the server
+            // Updating meshes here would have the wrong inventory contents, and also create a potential race condition
+            MarkDirty();
+
+            // we don't move any items on the client side, so we can return early and update everything in FromTreeAttributes
+            if (Api.Side == EnumAppSide.Client)
+            {
+                (player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+
+                clientCollisionCallback += () => pushUpOnCollision(player, colBoxes[colBoxes.Length > targetSlotId ? targetSlotId : 0]);
+                return true;
+            }
+
+            LightUpdate();
+            Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
+
+            regenCollisionSelectionBox();
+
+            pushUpOnCollision(player, colBoxes[colBoxes.Length > targetSlotId ? targetSlotId : 0]);
+
             renderer?.UpdateTemps();
 
-            if (ok)
-            {
-                MarkDirty();    // Don't re-draw on client yet, that will be handled in FromTreeAttributes after we receive an updating packet from the server  (updating meshes here would have the wrong inventory contents, and also create a potential race condition)
-            }
-
-            if (inventory.Empty && !clientsideFirstPlacement)
-            {
-                Api.World.BlockAccessor.SetBlock(0, Pos);
-                Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
-                if (lastLightHsv != null && lastLightHsv[2] > 0)
-                {
-                    Api.World.BlockAccessor.RemoveBlockLight((byte[])lastLightHsv.Clone(), Pos);
-                }
-            } else
-            {
-                var lshv = GetLightHsv();
-                if ((lastLightHsv != null && lastLightHsv[2] > 0) && (lshv == null || lshv[2] == 0))
-                {
-                    Api.World.BlockAccessor.RemoveBlockLight((byte[])lastLightHsv.Clone(), Pos);
-                }
-            }
-
-            return ok;
+            return true;
         }
 
         public bool OnPlayerInteractStep(float secondsUsed, IPlayer byPlayer, BlockSelection blockSel)
@@ -597,127 +691,213 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public ItemSlot GetSlotAt(BlockSelection bs)
+        public int GetSlotIdAt(BlockSelection bs)
         {
-            if (StorageProps == null) return null;
-            var hitPos = rotatedOffset(bs.HitPosition.ToVec3f(), -MeshAngle);
+            if (StorageProps == null) return 0;
 
-            switch (StorageProps.Layout)
+            int selBoxId = bs.SelectionBoxIndex;
+
+            if (bs.Block is not BlockGroundStorage || UsableSlots(StorageProps.Layout) < selBoxId)
             {
-                case EnumGroundStorageLayout.Halves:
-                case EnumGroundStorageLayout.WallHalves:
-                    if (hitPos.X < 0.5)
-                    {
-                        return inventory[0];
-                    }
-                    else
-                    {
-                        return inventory[1];
-                    }
-
-                case EnumGroundStorageLayout.Quadrants:
-                    int pos = ((hitPos.X > 0.5) ? 2 : 0) + ((hitPos.Z > 0.5) ? 1 : 0);
-                    return inventory[pos];
-
-
-                case EnumGroundStorageLayout.SingleCenter:
-                case EnumGroundStorageLayout.Messy12:
-                case EnumGroundStorageLayout.Stacking:
-                    return inventory[0];
+                // by selection box is more robust, but by hit position is still a useful fallback (e.g. on initial placement)
+                var hitPos = rotatedOffset(bs.HitPosition.ToVec3f(), -MeshAngle);
+                selBoxId = StorageProps.Layout switch
+                {
+                    EnumGroundStorageLayout.Halves or EnumGroundStorageLayout.WallHalves => hitPos.X > 0.5 ? 1 : 0,
+                    EnumGroundStorageLayout.Quadrants => ((hitPos.X > 0.5) ? 2 : 0) + ((hitPos.Z > 0.5) ? 1 : 0),
+                    _ => 0,
+                };
             }
 
-            return null;
+            return selBoxId;
+        }
+
+        public ItemSlot GetSlotAt(BlockSelection bs)
+        {
+            return inventory[GetSlotIdAt(bs)];
         }
 
         public bool OnTryCreateKiln()
         {
-            ItemStack stack = inventory.FirstNonEmptySlot.Itemstack;
-            if (stack == null || StorageProps == null) return false;
+            return IsSuitableForKiln(true);
+        }
 
-            if (stack.StackSize > StorageProps.MaxFireable)
+        public bool IsSuitableForKiln(bool triggerIngameErrors = false)
+        {
+            if (StorageProps == null || inventory.Empty) return false;
+
+            for (int slotId = 0; slotId < UsableSlots(StorageProps.Layout); slotId++)
             {
-                capi?.TriggerIngameError(this, "overfull", Lang.Get("Can only fire up to {0} at once.", StorageProps.MaxFireable));
-                return false;
+                ItemStack? stack = inventory[slotId].Itemstack;
+                if (stack == null) continue; // don't return false, as that would prevent building a pit kiln if some of the slots are empty
+
+                if (stack.StackSize > StorageProps.MaxFireable)
+                {
+                    if (triggerIngameErrors) capi?.TriggerIngameError(this, "overfull", Lang.Get("Can only fire up to {0} at once.", StorageProps.MaxFireable));
+                    return false;
+                }
+
+                CombustibleProperties combustibleProps = stack.Collectible.GetCombustibleProperties(Api.World, stack, null);
+                if (combustibleProps == null || combustibleProps.SmeltingType != EnumSmeltType.Fire)
+                {
+                    if (triggerIngameErrors) capi?.TriggerIngameError(this, "notfireable", Lang.Get("This is not a fireable block or item"));
+                    return false;
+                }
             }
-
-            CombustibleProperties combustibleProps = stack.Collectible.GetCombustibleProperties(Api.World, stack, null);
-            if (combustibleProps == null || combustibleProps.SmeltingType != EnumSmeltType.Fire)
-            {
-                capi?.TriggerIngameError(this, "notfireable", Lang.Get("This is not a fireable block or item", StorageProps.MaxFireable));
-                return false;
-            }
-
-
             return true;
         }
 
-        public virtual void DetermineStorageProperties(ItemSlot sourceSlot)
+        public virtual void DetermineStorageProperties(ItemSlot? sourceSlot)
         {
-            ItemStack sourceStack = inventory.FirstNonEmptySlot?.Itemstack ?? sourceSlot?.Itemstack;
+            ItemStack? sourceStack = inventory.FirstNonEmptySlot?.Itemstack ?? sourceSlot?.Itemstack;
 
-            var StorageProps = this.StorageProps;
+            GroundStorageProperties? candidateStorageProps = this.StorageProps;
             if (!forceStorageProps)
             {
-                if (StorageProps == null)
+                if (candidateStorageProps == null)
                 {
                     if (sourceStack == null) return;
 
-                    StorageProps = this.StorageProps = sourceStack.Collectible?.GetBehavior<CollectibleBehaviorGroundStorable>()?.StorageProps;
+                    candidateStorageProps = this.StorageProps = sourceStack.Collectible?.GetBehavior<CollectibleBehaviorGroundStorable>()?.StorageProps;
                 }
             }
 
-            if (StorageProps == null) return;  // Seems necessary to avoid crash with certain items placed in game version 1.15-pre.1?
-
-            regenCollisionSelectionBox();
+            if (candidateStorageProps == null) return;  // Seems necessary to avoid crash with certain items placed in game version 1.15-pre.1?
 
             UpdateLegacyStorageLayouts();
 
             if (overrideLayout != null)
             {
-                this.StorageProps = StorageProps.Clone();
+                this.StorageProps = candidateStorageProps.Clone();
                 this.StorageProps.Layout = (EnumGroundStorageLayout)overrideLayout;
             }
+
+            UpdateIgnitable();
+
+            regenCollisionSelectionBox();
         }
 
         private void regenCollisionSelectionBox()
         {
-            ItemStack sourceStack = inventory.FirstNonEmptySlot?.Itemstack;
+            List<Cuboidf> auxColBoxes = [];
+            List<Cuboidf> auxSelBoxes = [];
 
-            Cuboidf colBox, selBox;
-            if (StorageProps.CollisionBox != null)
+            float meshAngleDegRounded = MathF.Round(MeshAngle / GameMath.PIHALF) * 90; // ideally, instead of rounding angle, boxes should be rotated and downscaled
+            Vec3d centerOrigin = new(0.5, 0.5, 0.5);
+
+            if (StorageProps == null)
             {
-                colBox = selBox = StorageProps.CollisionBox.Clone();
+                selBoxes = [new(0, 0, 0, 1, 0.125f, 1)];
+                colBoxes = [new(0, 0, 0, 1, 0, 1)];
+                return;
             }
-            else
+
+            for (int slotId = 0; slotId < UsableSlots(StorageProps.Layout); slotId++)
             {
-                if (sourceStack?.Block != null)
+                ItemStack? sourceStack = inventory[slotId]?.Itemstack;
+
+                Cuboidf? colBox = null;
+                Cuboidf? selBox = null;
+
+                GroundStorageProperties? stackStorageProps = sourceStack?.Collectible?.GetBehavior<CollectibleBehaviorGroundStorable>()?.StorageProps;
+
+                if (stackStorageProps != null)
                 {
-                    colBox = selBox = sourceStack.Block.CollisionBoxes[0].Clone();
+                    if (stackStorageProps.CollisionBox != null)
+                    {
+                        colBox = stackStorageProps.CollisionBox.Clone();
+                    }
+                    if (stackStorageProps.SelectionBox != null)
+                    {
+                        selBox = stackStorageProps.SelectionBox.Clone();
+                    }
+
+                    if (colBox == null && selBox == null && sourceStack?.Block != null && stackStorageProps.Layout == EnumGroundStorageLayout.SingleCenter)
+                    {
+                        colBox = sourceStack.Block.CollisionBoxes[0].Clone();
+                        selBox = sourceStack.Block.SelectionBoxes[0].Clone();
+                    }
                 }
-                else colBox = selBox = null;
+
+                bool usesCustomBoxes = colBox != null || selBox != null;
+
+                // different default height for WallHalves is just because current JSON definitions overwhelmingly favor it for WallHalves for some reason
+                float height = StorageProps.Layout == EnumGroundStorageLayout.WallHalves ? 0.1f : 0.125f;
+                selBox ??= colBox?.Clone() ?? new(0, 0, 0, 1, height, 1);
+                colBox ??= new(0, 0, 0, 1, 0, 1);
+
+                switch (StorageProps.Layout)
+                {
+                    case EnumGroundStorageLayout.Halves:
+                    case EnumGroundStorageLayout.WallHalves:
+                        transformCuboidForHalves(colBox, slotId);
+                        transformCuboidForHalves(selBox, slotId);
+                        break;
+
+                    case EnumGroundStorageLayout.Quadrants:
+                        transformCuboidForQuadrants(colBox, slotId);
+                        transformCuboidForQuadrants(selBox, slotId);
+                        break;
+
+                    case EnumGroundStorageLayout.SingleCenter:
+                        float scale = 0.5f;
+                        if (stackStorageProps?.Layout == EnumGroundStorageLayout.SingleCenter)
+                        {
+                            if (usesCustomBoxes) break;
+                            scale = 0.8f;
+                        }
+                        transformCuboidForSingleCenter(colBox, scale);
+                        transformCuboidForSingleCenter(selBox, scale);
+                        break;
+
+                    case EnumGroundStorageLayout.Stacking:
+                        if (StorageProps.CbScaleYByLayer != 0)
+                        {
+                            float heightMultiple = (int)Math.Ceiling(StorageProps.CbScaleYByLayer * sourceStack?.StackSize ?? 1);
+                            colBox.Y2 *= heightMultiple;
+                            selBox.Y2 *= heightMultiple;
+                        }
+                        break;
+
+                    default: break;
+                }
+
+                auxColBoxes.Add(colBox.RotatedCopy(0, meshAngleDegRounded, 0, centerOrigin));
+                auxSelBoxes.Add(selBox.RotatedCopy(0, meshAngleDegRounded, 0, centerOrigin));
             }
 
-            if (StorageProps.SelectionBox != null)
-            {
-                selBox = StorageProps.SelectionBox.Clone();
-            }
+            // block interaction help Y offset only seems to be refreshed when hovering over a different block
+            // different offsets for blocks of the same type don't seem like they're currently possible
+            // float maxHeight = auxSelBoxes.Max(cuboid => cuboid.Y2);
+            // (Block as BlockGroundStorage)?.InteractionHelpYOffset = maxHeight * 0.5f + 0.45f; // has to be less than 1
 
-            if (StorageProps.CbScaleYByLayer != 0)
-            {
-                colBox = colBox.Clone();
-                colBox.Y2 *= ((int)Math.Ceiling(StorageProps.CbScaleYByLayer * inventory[0].StackSize) * 8) / 8;
 
-                selBox = colBox;
-            }
+            colBoxes = [.. auxColBoxes];
+            selBoxes = [.. auxSelBoxes];
+        }
 
-            if (colBox != null)
-            {
-                colBoxes[0] = colBox;
-            }
-            if (selBox != null)
-            {
-                selBoxes[0] = selBox;
-            }
+        private static void transformCuboidForHalves(Cuboidf cuboid, int slotId)
+        {
+            cuboid.X1 *= 0.5f;
+            cuboid.X2 *= 0.5f;
+            cuboid.Translate(halvesCenterOffsets[slotId] + new Vec3f(0.25f, 0, 0));
+        }
+        private static void transformCuboidForQuadrants(Cuboidf cuboid, int slotId)
+        {
+            cuboid.X1 *= 0.5f;
+            cuboid.X2 *= 0.5f;
+            cuboid.Z1 *= 0.5f;
+            cuboid.Z2 *= 0.5f;
+            cuboid.Translate(quadrantsCenterOffsets[slotId] + new Vec3f(0.25f, 0, 0.25f));
+        }
+        private static void transformCuboidForSingleCenter(Cuboidf cuboid, float scale = 1.0f)
+        {
+            cuboid.X1 *= scale;
+            cuboid.X2 *= scale;
+            cuboid.Z1 *= scale;
+            cuboid.Z2 *= scale;
+            float offset = (1 - scale) / 2;
+            cuboid.Translate(offset, 0, offset);
         }
 
         /// <summary>
@@ -789,38 +969,37 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public int UsableSlots(EnumGroundStorageLayout layout)
+        public static int UsableSlots(EnumGroundStorageLayout layout)
         {
-            switch (layout)
+            return layout switch
             {
-                case EnumGroundStorageLayout.SingleCenter: return 1;
-                case EnumGroundStorageLayout.Halves: return 2;
-                case EnumGroundStorageLayout.WallHalves: return 2;
-                case EnumGroundStorageLayout.Quadrants: return 4;
-                case EnumGroundStorageLayout.Messy12: return 1;
-                case EnumGroundStorageLayout.Stacking: return 1;
-                default: return 0;
-            }
+                EnumGroundStorageLayout.SingleCenter => 1,
+                EnumGroundStorageLayout.Halves => 2,
+                EnumGroundStorageLayout.WallHalves => 2,
+                EnumGroundStorageLayout.Quadrants => 4,
+                EnumGroundStorageLayout.Messy12 => 1,
+                EnumGroundStorageLayout.Stacking => 1,
+                _ => 0,
+            };
         }
 
         protected bool putOrGetItemStacking(IPlayer byPlayer, BlockSelection bs)
         {
-            if (Api.Side == EnumAppSide.Client)
-            {
-                (byPlayer as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
-                return true;
-            }
+            bool isNewStorage = inventory[0].Empty;
 
             ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
             bool sneaking = byPlayer.Entity.Controls.ShiftKey;
 
-            bool equalStack = inventory[0].Empty || !sneaking || (hotbarSlot.Itemstack != null && hotbarSlot.Itemstack.Equals(Api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes));
+            bool equalStack = isNewStorage || !sneaking || (hotbarSlot.Itemstack?.Equals(Api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes) == true);
 
             BlockPos abovePos = Pos.UpCopy();
+
             var beg = Block.GetBlockEntity<BlockEntityGroundStorage>(abovePos);
-            if (TotalStackSize >= Capacity && ((beg != null && equalStack && beg.StorageProps.Layout == EnumGroundStorageLayout.Stacking) ||
-                (hotbarSlot.Empty && beg?.inventory[0].Itemstack?.Equals(Api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes) == true)))
+            if (TotalStackSize >= Capacity
+                && ((equalStack && beg?.StorageProps?.Layout == EnumGroundStorageLayout.Stacking)
+                    || (hotbarSlot.Empty && beg?.inventory[0].Itemstack?.Equals(Api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes) == true))
+                && (abovePos.Y < Api.World.BlockAccessor.MapSizeY))
             {
                 return beg.OnPlayerInteractStart(byPlayer, bs);
             }
@@ -830,28 +1009,32 @@ namespace Vintagestory.GameContent
 
             if (sneaking && TotalStackSize >= Capacity)
             {
+                if (abovePos.Y >= Api.World.BlockAccessor.MapSizeY) return false;
+
                 Block pileblock = Api.World.BlockAccessor.GetBlock(Pos);
                 Block aboveblock = Api.World.BlockAccessor.GetBlock(abovePos);
-
-                if (abovePos.Y >= Api.World.BlockAccessor.MapSizeY) return false;
 
                 if (aboveblock.IsReplacableBy(pileblock))
                 {
                     if (!equalStack && bs.Face != BlockFacing.UP) return false;
 
-                    int stackHeight = 1;
-                    if (StorageProps.MaxStackingHeight > 0)
+                    if (StorageProps.MaxStackingHeight < 0 || StackHeight < StorageProps.MaxStackingHeight || !equalStack)
                     {
-                        BlockPos tempPos = Pos.Copy();
-                        while (Block.GetBlockEntity<BlockEntityGroundStorage>(tempPos.Down())?.inventory[0].Itemstack?.Equals(Api.World, inventory[0].Itemstack, GlobalConstants.IgnoredStackAttributes) == true)
+                        // @MKMoose 05.08.2026
+                        // on the client side, don't create new storage and wait for server sync instead
+                        // it seems that creating new storage here sometimes causes desync that manifsests with a client-side BEGS in an air block
+                        // best guess is that it occurs when a client-side BGS gets created then removed but the server never realizes
+                        // so it leaves a client-side BEGS in an air block which doesn't get removed naturally, because it never existed on the server
+                        if (Api.Side == EnumAppSide.Client)
                         {
-                            stackHeight++;
+                            Api.World.Logger.Audit("{0} Tried creating new Ground storage at {1} - client side waits for the server here.",
+                                byPlayer.PlayerName,
+                                Pos
+                            );
+                            return true;
                         }
-                    }
 
-                    if (StorageProps.MaxStackingHeight < 0 || stackHeight < StorageProps.MaxStackingHeight || !equalStack)
-                    {
-                        BlockGroundStorage bgs = pileblock as BlockGroundStorage;
+                        if (pileblock is not BlockGroundStorage bgs) return false;
                         var bsc = bs.Clone();
                         bsc.Position = Pos;
                         bsc.Face = BlockFacing.UP;
@@ -882,205 +1065,166 @@ namespace Vintagestory.GameContent
 
         public virtual bool TryPutItem(IPlayer player)
         {
-            if (TotalStackSize >= Capacity) return false;
+            ItemSlot invSlot = inventory[0];
+
+            if (invSlot.StackSize >= Capacity) return false;
 
             ItemSlot hotbarSlot = player.InventoryManager.ActiveHotbarSlot;
 
             if (hotbarSlot.Itemstack == null) return false;
 
-            ItemSlot invSlot = inventory[0];
+            // return early on the client, only move items on the server side
+            if (Api.Side == EnumAppSide.Client) return true;
 
-            if (invSlot.Empty)
-            {
-                bool putBulk = player.Entity.Controls.CtrlKey;
+            ItemSlot sourceSlot = player.WorldData.CurrentGameMode == EnumGameMode.Creative ? new DummySlot(hotbarSlot.Itemstack.Clone()) : hotbarSlot;
 
-                if (hotbarSlot.TryPutInto(Api.World, invSlot, putBulk ? BulkTransferQuantity : TransferQuantity) > 0)
-                {
-                    Api.World.PlaySoundAt(StorageProps.PlaceRemoveSound.WithPathPrefixOnce("sounds/"), Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, null, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
-                    LightUpdate(invSlot.Itemstack);
-                }
+            bool isNewStorage = invSlot.Empty;
+            bool putBulk = player.Entity.Controls.CtrlKey;
 
-                Api.World.Logger.Audit("{0} Put {1}x{2} into new Ground storage at {3}.",
-                    player.PlayerName,
-                    TransferQuantity,
-                    invSlot.Itemstack.Collectible.Code,
-                    Pos
-                );
+            int quantityToMove = putBulk ? BulkTransferQuantity : TransferQuantity;
+            ItemStackMoveOperation op = new(Api.World, EnumMouseButton.Left, 0, EnumMergePriority.DirectMerge, quantityToMove);
+            int quantityMoved = sourceSlot.TryPutInto(invSlot, ref op);
 
-                Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
-                regenCollisionSelectionBox();
-                return true;
-            }
+            if (quantityMoved <= 0) return false;
 
-            if (invSlot.Itemstack.Equals(Api.World, hotbarSlot.Itemstack, GlobalConstants.IgnoredStackAttributes))
-            {
-                bool putBulk = player.Entity.Controls.CtrlKey;
+            Api.World.Logger.Audit("{0} Put {1}x{2} into {3}Ground storage at {4}.",
+                player.PlayerName,
+                quantityMoved,
+                invSlot.Itemstack!.Collectible.Code,
+                isNewStorage ? "new " : "",
+                Pos
+            );
 
-                int q = GameMath.Min(hotbarSlot.StackSize, putBulk ? BulkTransferQuantity : TransferQuantity, Capacity - TotalStackSize);
-
-                // add to the pile and average item temperatures
-                int oldSize = invSlot.Itemstack.StackSize;
-                invSlot.Itemstack.StackSize += q;
-                if (oldSize + q > 0)
-                {
-                    float tempPile = invSlot.Itemstack.Collectible.GetTemperature(Api.World, invSlot.Itemstack);
-                    float tempAdded = hotbarSlot.Itemstack.Collectible.GetTemperature(Api.World, hotbarSlot.Itemstack);
-                    invSlot.Itemstack.Collectible.SetTemperature(Api.World, invSlot.Itemstack, (tempPile * oldSize + tempAdded * q) / (oldSize + q), false);
-                }
-
-                if (player.WorldData.CurrentGameMode != EnumGameMode.Creative)
-                {
-                    hotbarSlot.TakeOut(q);
-                    hotbarSlot.OnItemSlotModified(null);
-                }
-
-                LightUpdate(invSlot.Itemstack);
-                Api.World.PlaySoundAt(StorageProps.PlaceRemoveSound.WithPathPrefixOnce("sounds/"), Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, null, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
-
-                Api.World.Logger.Audit("{0} Put {1}x{2} into Ground storage at {3}.",
-                    player.PlayerName,
-                    q,
-                    invSlot.Itemstack.Collectible.Code,
-                    Pos
-                );
-
-                Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
-                regenCollisionSelectionBox();
-
-                MarkDirty();
-
-                Cuboidf[] collBoxes = Api.World.BlockAccessor.GetBlock(Pos).GetCollisionBoxes(Api.World.BlockAccessor, Pos);
-                if (collBoxes != null && collBoxes.Length > 0 && CollisionTester.AabbIntersect(collBoxes[0], Pos.X, Pos.Y, Pos.Z, player.Entity.SelectionBox, player.Entity.Pos.XYZ))
-                {
-                    player.Entity.Pos.Y += collBoxes[0].Y2 - (player.Entity.Pos.Y - (int)player.Entity.Pos.Y);
-                }
-
-                return true;
-            }
-
-            return false;
+            return true;
         }
 
-        public void LightUpdate(ItemStack itemstack)
+        public void LightUpdate(ItemStack? contextItemStack = null)
         {
-            lastLightHsv = itemstack.Collectible.GetLightHsv(Api.World.BlockAccessor, null, itemstack);
-            if (lastLightHsv != null && lastLightHsv[2] > 0) Api.World.BlockAccessor.ExchangeBlock(Block.Id, Pos); // Forces a lighting update
+            byte[] currentLightHsv = GetLightHsv();
+
+            if (currentLightHsv.SequenceEqual(lastLightHsv)) return;
+
+            // the provided stack should normally be unnecessary, but we can use it just in case
+            byte[] removeLightHsv = contextItemStack?.Collectible?.GetLightHsv(Api.World.BlockAccessor, null, contextItemStack) ?? new byte[3];
+
+            // pick the light with the highest radius to ensure that the full light radius gets updated
+            if (currentLightHsv[2] > removeLightHsv[2]) removeLightHsv = currentLightHsv;
+            if (lastLightHsv[2] > removeLightHsv[2]) removeLightHsv = lastLightHsv;
+
+            Api.World.BlockAccessor.RemoveBlockLight((byte[])removeLightHsv.Clone(), Pos);
+
+            // force a lighting update
+            Api.World.BlockAccessor.ExchangeBlock(Block.Id, Pos);
+
+            lastLightHsv = currentLightHsv;
         }
 
         public bool TryTakeItem(IPlayer player)
         {
+            int quantityMoved = 0;
+
+            if (inventory[0]?.Itemstack == null) return false;
+
+            // return early on the client, only move items on the server side
+            if (Api.Side == EnumAppSide.Client) return true;
+
             bool takeBulk = player.Entity.Controls.CtrlKey;
-            int q = GameMath.Min(takeBulk ? BulkTransferQuantity : TransferQuantity, TotalStackSize);
 
-            ItemStack stack = null;
-            if (inventory[0]?.Itemstack != null)
+            ItemStack stack = inventory[0].TakeOut(GameMath.Min(takeBulk ? BulkTransferQuantity : TransferQuantity, TotalStackSize));
+            quantityMoved = stack.StackSize;
+
+            if (quantityMoved <= 0) return false;
+
+            if (!player.InventoryManager.TryGiveItemstack(stack))
             {
-                stack = inventory[0].TakeOut(q);
-                player.InventoryManager.TryGiveItemstack(stack);
-
-                if (stack.StackSize > 0)
-                {
-                    Api.World.SpawnItemEntity(stack, Pos);
-                }
-
-                Api.World.Logger.Audit("{0} Took {1}x{2} from Ground storage at {3}.",
-                    player.PlayerName,
-                    q,
-                    stack.Collectible.Code,
-                    Pos
-                );
-
-                LightUpdate(stack);
+                Api.World.SpawnItemEntity(stack, Pos);
             }
 
-            if (TotalStackSize == 0)
-            {
-                Api.World.BlockAccessor.SetBlock(0, Pos);
-                if (stack != null) Api.World.BlockAccessor.RemoveBlockLight(stack.Collectible.GetLightHsv(Api.World.BlockAccessor, null, stack), Pos);
-            }
-            else Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
+            Api.World.Logger.Audit("{0} Took {1}x{2} from Ground storage at {3}.",
+                player.PlayerName,
+                quantityMoved,
+                stack.Collectible.Code,
+                Pos
+            );
 
-            Api.World.PlaySoundAt(StorageProps.PlaceRemoveSound, Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, null, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
+            if (removeIfEmpty()) return true;
 
-            MarkDirty();
-            regenCollisionSelectionBox();
-            (player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+            LightUpdate(stack);
 
             return true;
         }
 
         public bool putOrGetItemSingle(ItemSlot ourSlot, IPlayer player, BlockSelection bs)
         {
-            ItemSlot hotbarSlot = player.InventoryManager.ActiveHotbarSlot;
-
-            if (!hotbarSlot.Empty && !inventory.Empty)
-            {
-                var hotbarlayout = hotbarSlot.Itemstack.Collectible.GetBehavior<CollectibleBehaviorGroundStorable>()?.StorageProps.Layout;
-                bool layoutEqual = StorageProps.Layout == hotbarlayout;
-
-                if (StorageProps.Layout == EnumGroundStorageLayout.Quadrants && hotbarlayout == EnumGroundStorageLayout.Messy12)
-                {
-                    layoutEqual = true;
-                    overrideLayout = EnumGroundStorageLayout.Quadrants;
-                }
-
-                if (!layoutEqual) return false;
-            }
-
             lock (inventoryLock)
             {
                 if (ourSlot.Empty)
                 {
+                    ItemSlot hotbarSlot = player.InventoryManager.ActiveHotbarSlot;
+
                     if (hotbarSlot.Empty || !player.Entity.Controls.ShiftKey) return false;
 
-                    if (player.WorldData.CurrentGameMode == EnumGameMode.Creative)
+                    bool isNewStorage = inventory.Empty;
+                    if (!isNewStorage && StorageProps != null)
                     {
-                        ItemStack stack = hotbarSlot.Itemstack.Clone();
-                        stack.StackSize = 1;
-                        if (new DummySlot(stack).TryPutInto(Api.World, ourSlot, TransferQuantity) > 0) {
-                            Api.World.PlaySoundAt(StorageProps.PlaceRemoveSound, Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, player, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
-                            Api.World.Logger.Audit("{0} Put 1x{1} into Ground storage at {2}.",
-                                player.PlayerName,
-                                ourSlot.Itemstack.Collectible.Code,
-                                Pos
-                            );
-                            LightUpdate(stack);
-                        }
-                    } else {
-                        if (hotbarSlot.TryPutInto(Api.World, ourSlot, TransferQuantity) > 0)
+                        var hotbarlayout = hotbarSlot.Itemstack.Collectible.GetBehavior<CollectibleBehaviorGroundStorable>()?.StorageProps.Layout;
+                        bool layoutEqual = StorageProps.Layout == hotbarlayout;
+
+                        if (StorageProps.Layout == EnumGroundStorageLayout.Quadrants && hotbarlayout == EnumGroundStorageLayout.Messy12)
                         {
-                            Api.World.PlaySoundAt(StorageProps.PlaceRemoveSound, Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, player, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
-                            Api.World.Logger.Audit("{0} Put 1x{1} into Ground storage at {2}.",
-                                player.PlayerName,
-                                ourSlot.Itemstack.Collectible.Code,
-                                Pos
-                            );
-                            LightUpdate(ourSlot.Itemstack);
+                            layoutEqual = true;
+                            overrideLayout = EnumGroundStorageLayout.Quadrants;
                         }
+
+                        // allows picking up Quadrants-layout items placed in SingleCenter while having an item in hand
+                        if (StorageProps.Layout == EnumGroundStorageLayout.SingleCenter && hotbarlayout == EnumGroundStorageLayout.Quadrants)
+                        {
+                            layoutEqual = true;
+                        }
+
+                        if (!layoutEqual) return false;
                     }
+
+                    // return early on the client, only move items on the server side
+                    if (Api.Side == EnumAppSide.Client) return true;
+
+                    ItemSlot sourceSlot = player.WorldData.CurrentGameMode == EnumGameMode.Creative ? new DummySlot(hotbarSlot.Itemstack.Clone()) : hotbarSlot;
+
+                    bool didMoveItem = sourceSlot.TryPutInto(Api.World, ourSlot, TransferQuantity) > 0;
+
+                    if (!didMoveItem) return false;
+
+                    Api.World.Logger.Audit("{0} Put 1x{1} into {2}Ground storage at {3}.",
+                        player.PlayerName,
+                        ourSlot.Itemstack!.Collectible.Code,
+                        isNewStorage ? "new " : "",
+                        Pos
+                    );
+
+                    return true;
                 }
                 else
                 {
+                    // return early on the client, only move items on the server side
+                    if (Api.Side == EnumAppSide.Client) return true;
+
                     if (!player.InventoryManager.TryGiveItemstack(ourSlot.Itemstack, true))
                     {
                         Api.World.SpawnItemEntity(ourSlot.Itemstack, Pos);
                     }
-
-                    LightUpdate(ourSlot.Itemstack);
-
-                    Api.World.PlaySoundAt(StorageProps.PlaceRemoveSound, Pos.X + 0.5, Pos.InternalY, Pos.Z + 0.5, player, 0.88f + (float)Api.World.Rand.NextDouble() * 0.24f, 16);
 
                     Api.World.Logger.Audit("{0} Took 1x{1} from Ground storage at {2}.",
                         player.PlayerName,
                         ourSlot.Itemstack?.Collectible.Code,
                         Pos
                     );
+
                     ourSlot.Itemstack = null;
                     ourSlot.MarkDirty();
+
+                    return true;
                 }
             }
-
-            return true;
         }
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
@@ -1103,7 +1247,12 @@ namespace Vintagestory.GameContent
             if (Api != null)
             {
                 DetermineStorageProperties(null);
+
+                LightUpdate();
             }
+
+            clientCollisionCallback?.Invoke();
+            clientCollisionCallback = null;
 
             MeshAngle = tree.GetFloat("meshAngle");
             AttachFace = BlockFacing.ALLFACES[tree.GetInt("attachFace")];
@@ -1144,11 +1293,11 @@ namespace Vintagestory.GameContent
             tree.SetBool("burning", burning);
             tree.SetDouble("lastTickTotalHours", burnStartTotalHours);
             tree.SetFloat("meshAngle", MeshAngle);
-            tree.SetInt("attachFace", AttachFace?.Index ?? 0);
+            tree.SetInt("attachFace", AttachFace.Index);
             tree.SetBool("isExternallyTicked", IsExternallyTicked);
         }
 
-        public override void OnBlockBroken(IPlayer byPlayer = null)
+        public override void OnBlockBroken(IPlayer? byPlayer = null)
         {
             // Handled by block.GetDrops()
             /*if (Api.World.Side == EnumAppSide.Server)
@@ -1161,21 +1310,19 @@ namespace Vintagestory.GameContent
 
         public virtual string GetBlockName()
         {
-            var props = StorageProps;
-            if (props == null || inventory.Empty) return Lang.Get("Empty pile");
+            if (StorageProps == null || inventory.Empty) return Lang.Get("Empty pile");
 
             string[] contentSummary = getContentSummary();
             if (contentSummary.Length == 1)
             {
                 var firstSlot = inventory.FirstNonEmptySlot;
 
-                ItemStack stack = firstSlot.Itemstack;
-                int sumQ = inventory.Sum(s => s.StackSize);
+                ItemStack stack = firstSlot.Itemstack!;
+                if (TotalStackSize == 1) return stack.GetName();
 
-                string name = firstSlot.Itemstack.Collectible.GetCollectibleInterface<IContainedCustomName>()?.GetContainedName(firstSlot, sumQ);
+                string? name = stack.Collectible.GetCollectibleInterface<IContainedCustomName>()?.GetContainedName(firstSlot, TotalStackSize);
+
                 if (name != null) return name;
-
-                if (sumQ == 1) return stack.GetName();
                 return contentSummary[0];
             }
 
@@ -1188,9 +1335,9 @@ namespace Vintagestory.GameContent
 
             string[] contentSummary = getContentSummary();
 
-            ItemStack stack = inventory.FirstNonEmptySlot.Itemstack;
+            ItemStack? stack = inventory.FirstNonEmptySlot.Itemstack;
             // Only add supplemental info for non-BlockEntities (otherwise it will be wrong or will get into a recursive loop, because right now this BEGroundStorage is the BlockEntity)
-            if (contentSummary.Length == 1 && stack.Collectible.GetCollectibleInterface<IContainedCustomName>() == null && stack.Class == EnumItemClass.Block && ((Block)stack.Collectible).EntityClass == null)
+            if (contentSummary.Length == 1 && stack?.Collectible.GetCollectibleInterface<IContainedCustomName>() == null && stack?.Class == EnumItemClass.Block && ((Block)stack.Collectible).EntityClass == null)
             {
                 string detailedInfo = stack.Block.GetPlacedBlockInfo(Api.World, Pos, forPlayer);
                 if (detailedInfo != null && detailedInfo.Length > 0) dsc.Append(detailedInfo);
@@ -1268,11 +1415,8 @@ namespace Vintagestory.GameContent
             {
                 capi.Event.EnqueueMainThreadTask(() =>
                 {
-                    if (renderer != null)
-                    {
-                        renderer.Dispose();
-                        renderer = null;
-                    }
+                    renderer?.Dispose();
+                    renderer = null;
                 }, "groundStorageRendererD");
             }
             NeedsRetesselation = false;
@@ -1282,7 +1426,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        protected Vec3f rotatedOffset(Vec3f offset, float radY)
+        protected static Vec3f rotatedOffset(Vec3f offset, float radY)
         {
             Matrixf mat = new Matrixf();
             mat.Translate(0.5f, 0.5f, 0.5f).RotateY(radY).Translate(-0.5f, -0.5f, -0.5f);
@@ -1317,6 +1461,17 @@ namespace Vintagestory.GameContent
             return tfMatrices;
         }
 
+        private static readonly Vec3f[] halvesCenterOffsets = [
+            new(-0.25f, 0, 0),
+            new(0.25f, 0, 0),
+        ];
+        private static readonly Vec3f[] quadrantsCenterOffsets = [
+            new(-0.25f, 0, -0.25f),
+            new(-0.25f, 0, 0.25f),
+            new(0.25f, 0, -0.25f),
+            new(0.25f, 0, 0.25f),
+        ];
+
         public void GetLayoutOffset(Vec3f[] offs)
         {
             if (StorageProps == null) return;
@@ -1330,21 +1485,11 @@ namespace Vintagestory.GameContent
 
                 case EnumGroundStorageLayout.Halves:
                 case EnumGroundStorageLayout.WallHalves:
-                    // Left
-                    offs[0] = new Vec3f(-0.25f, 0, 0);
-                    // Right
-                    offs[1] = new Vec3f(0.25f, 0, 0);
+                    for (int i = 0; i < 2; i++) offs[i] = halvesCenterOffsets[i];
                     break;
 
                 case EnumGroundStorageLayout.Quadrants:
-                    // Top left
-                    offs[0] = new Vec3f(-0.25f, 0, -0.25f);
-                    // Top right
-                    offs[1] = new Vec3f(-0.25f, 0, 0.25f);
-                    // Bot left
-                    offs[2] = new Vec3f(0.25f, 0, -0.25f);
-                    // Bot right
-                    offs[3] = new Vec3f(0.25f, 0, 0.25f);
+                    for (int i = 0; i < 4; i++) offs[i] = quadrantsCenterOffsets[i];
                     break;
             }
         }
@@ -1354,9 +1499,13 @@ namespace Vintagestory.GameContent
             return (StorageProps?.Layout == EnumGroundStorageLayout.Messy12 ? "messy12-" : "") + ItemModelCount + "x" + base.getMeshCacheKey(slot);
         }
 
-        protected override MeshData getOrCreateMesh(ItemSlot slot, int index)
+        protected override MeshData? getOrCreateMesh(ItemSlot slot, int index)
         {
-            var stack = slot.Itemstack;
+            if (slot.Itemstack is not ItemStack stack)
+            {
+                return null;
+            }
+
             if (stack.Class == EnumItemClass.Block)
             {
                 if (stack.Block is IBlockMealContainer be and not BlockCrock) // Crocks don't render the actual meal mesh
@@ -1387,7 +1536,7 @@ namespace Vintagestory.GameContent
                 applyDefaultTranforms(stack, meshDataOne);
 
                 var meshData12 = meshDataOne.Clone().Clear();
-                var bgs = Block as BlockGroundStorage;
+                if (Block is not BlockGroundStorage bgs) return meshData12;
 
                 for (int i = 0; i < stack.StackSize; i++)
                 {
@@ -1412,8 +1561,9 @@ namespace Vintagestory.GameContent
 
                 if (mesh != null)
                 {
-                    if (UploadedMeshCache.TryGetValue(key, out MeshRefs[index]))
+                    if (UploadedMeshCache.TryGetValue(key, out MultiTextureMeshRef? meshRef))
                     {
+                        MeshRefs[index] = meshRef;
                         return mesh;
                     }
                     /// if the key is not in the cache, then we need to re-upload the mesh and re-populate MeshRefs
@@ -1470,14 +1620,16 @@ namespace Vintagestory.GameContent
             return meshData;
         }
 
-#nullable enable
         public virtual void GetOrCreateMealMesh(IBlockMealContainer be, ItemStack stack, int index)
         {
             var mealMeshCache = capi.ModLoader.GetModSystem<MealMeshCache>();
+            if (mealMeshCache == null) return;
             Vec3f? vec = be is BlockCookedContainer bc ? new Vec3f(0, bc.yoff / 16f, 0) : null;
-            MeshRefs[index] = mealMeshCache.GetOrCreateMealInContainerMeshRef(be, stack, vec);
+            if (mealMeshCache.GetOrCreateMealInContainerMeshRef(be, stack, vec) is MultiTextureMeshRef meshRef)
+            {
+                MeshRefs[index] = meshRef;
+            }
         }
-#nullable disable
 
         public void TryIgnite()
         {
@@ -1643,13 +1795,16 @@ namespace Vintagestory.GameContent
 
         public byte[] GetLightHsv()
         {
-            byte[] lighthsv = null;
+            byte[]? lighthsv = null;
 
+            // not exactly the correct way to merge lights, because it gives more weight to the last slots
+            // but it's only wrong when there's 3+ sources of 2+ different colors so it doesn't matter too much
+            // would be nice to have a ColorUtil.MergeLightHSV() equivalent for a list of HSVs
             foreach (var slot in inventory)
             {
-                if (slot.Empty) continue;
-                var stacklighthsv = slot.Itemstack?.Collectible?.GetLightHsv(Api.World.BlockAccessor, null, slot.Itemstack);
-                if (lighthsv == null) lighthsv = (byte[])stacklighthsv?.Clone();
+                if (slot.Itemstack?.Collectible?.GetLightHsv(Api.World.BlockAccessor, null, slot.Itemstack) is not byte[] stacklighthsv) continue;
+
+                if (lighthsv == null) lighthsv = (byte[])stacklighthsv.Clone();
                 else lighthsv = ColorUtil.MergeLightHSV(lighthsv, stacklighthsv);
             }
 
@@ -1664,7 +1819,7 @@ namespace Vintagestory.GameContent
 
             AttachFace = BlockFacing.ALLFACES[tree.GetInt("attachFace")];
             AttachFace = AttachFace.FaceWhenRotatedBy(0, -degreeRotation * GameMath.DEG2RAD, 0);
-            tree.SetInt("attachFace", AttachFace?.Index ?? 0);
+            tree.SetInt("attachFace", AttachFace.Index);
         }
 
         public override void OnBlockUnloaded()
@@ -1690,7 +1845,7 @@ namespace Vintagestory.GameContent
         {
             if (capi == null) return; // we're server side then
 
-            Dictionary<string, MultiTextureMeshRef> UploadedMeshCache = ObjectCacheUtil.TryGet<Dictionary<string, MultiTextureMeshRef>>(capi, "groundStorageUMC");
+            Dictionary<string, MultiTextureMeshRef>? UploadedMeshCache = ObjectCacheUtil.TryGet<Dictionary<string, MultiTextureMeshRef>>(capi, "groundStorageUMC");
             if (UploadedMeshCache != null)
             {
                 foreach (var mesh in UploadedMeshCache.Values)
