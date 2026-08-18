@@ -950,6 +950,8 @@ namespace Vintagestory.GameContent
             // If the same liquids, we can replace if the neighbour liquid is at a lower level
             if (IsSameLiquid(ourblock, neighborLiquid))
             {
+                if (IsLiquidSourceBlock(neighborLiquid)) return false;
+
                 if (!IsLiquidSourceBlock(ourblock) && neighborLiquid is IBlockFlowing neighborFlowing && ourblock is IBlockFlowing ourFlowing)
                 {
                     float neibFlow = neighborFlowing.FlowRate(npos);
