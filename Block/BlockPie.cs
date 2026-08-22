@@ -27,6 +27,11 @@ namespace Vintagestory.GameContent
         public string State => Variant["state"];
         protected override bool PlacedBlockEating => false;
 
+        public override bool CanAcceptMealServings(ItemStack containerStack)
+        {
+            return false;
+        }
+
         public EnumShelvableLayout? GetShelvableType(ItemStack stack)
         {
             return stack.Attributes.GetAsInt("pieSize") switch

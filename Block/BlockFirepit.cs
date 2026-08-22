@@ -276,7 +276,7 @@ namespace Vintagestory.GameContent
                         }
                     }
 
-                    if (stack.Collectible.Attributes?.IsTrue("mealContainer") == true && !activated)
+                    if (BlockCookedContainerBase.IsMealContainer(stack) == true && !activated)
                     {
                         ItemSlot potSlot = null;
                         if (bef.inputStack?.Collectible is BlockCookedContainer)

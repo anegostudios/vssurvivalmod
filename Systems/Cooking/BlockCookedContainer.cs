@@ -58,7 +58,7 @@ namespace Vintagestory.GameContent
 
                 foreach (CollectibleObject obj in api.World.Collectibles)
                 {
-                    if (obj.Attributes?.IsTrue("mealContainer") == true)
+                    if (IsMealContainer(new ItemStack(obj)))
                     {
                         List<ItemStack> stacks = obj.GetHandBookStacks(capi);
                         if (stacks != null) fillableStacklist.AddRange(stacks);
@@ -374,7 +374,7 @@ namespace Vintagestory.GameContent
         {
             ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
-            if (!hotbarSlot.Empty && hotbarSlot.Itemstack.Collectible.Attributes?.IsTrue("mealContainer") == true)
+            if (!hotbarSlot.Empty && IsMealContainer(hotbarSlot.Itemstack))
             {
                 return (world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityCookedContainer)?.ServeInto(byPlayer, hotbarSlot) ?? false;
             }
@@ -411,7 +411,7 @@ namespace Vintagestory.GameContent
                 }
 
                 Block selectedBlock = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
-                if (selectedBlock?.Attributes?.IsTrue("mealContainer") == true)
+                if (IsMealContainer(new ItemStack(selectedBlock)))
                 {
                     if (!byEntity.Controls.ShiftKey) return;
                     ServeIntoBowl(selectedBlock, blockSel.Position, slot, byEntity.World);
@@ -429,7 +429,7 @@ namespace Vintagestory.GameContent
                         return;
                     }
 
-                    if (gsslot.Itemstack.ItemAttributes?.IsTrue("mealContainer") == true)
+                    if (IsMealContainer(gsslot.Itemstack))
                     {
                         if (quantityServings > 0)
                         {

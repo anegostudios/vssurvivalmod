@@ -45,6 +45,11 @@ namespace Vintagestory.GameContent
             });
         }
 
+        public override bool CanAcceptMealServings(ItemStack containerStack)
+        {
+            return containerStack.Attributes?.GetBool("sealed") == false;
+        }
+
         public override float GetContainingTransitionModifierContained(IWorldAccessor world, ItemSlot inSlot, EnumTransitionType transType)
         {
             float mul = 1;
@@ -302,7 +307,7 @@ namespace Vintagestory.GameContent
             Block block = api.World.BlockAccessor.GetBlock(blockSel.Position);
             float quantityServings = (float)crockStack.Attributes.GetDecimal("quantityServings");
 
-            if (block?.Attributes?.IsTrue("mealContainer") == true)
+            if (IsMealContainer(new ItemStack(block)))
             {
                 if (!byEntity.Controls.ShiftKey) return;
                 if (quantityServings > 0)
@@ -322,7 +327,7 @@ namespace Vintagestory.GameContent
                     return;
                 }
 
-                if (gsslot.Itemstack.ItemAttributes?.IsTrue("mealContainer") == true)
+                if (IsMealContainer(gsslot.Itemstack))
                 {
                     if (quantityServings > 0)
                     {
@@ -426,7 +431,7 @@ namespace Vintagestory.GameContent
         {
             ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
-            if (!hotbarSlot.Empty && hotbarSlot.Itemstack.Collectible.Attributes?.IsTrue("mealContainer") == true && (!(hotbarSlot.Itemstack.Collectible is BlockCrock) || hotbarSlot.StackSize == 1))
+            if (!hotbarSlot.Empty && IsMealContainer(hotbarSlot.Itemstack) && (hotbarSlot.Itemstack.Collectible is not BlockCrock || hotbarSlot.StackSize == 1))
             {
                 if (world.BlockAccessor.GetBlockEntity(blockSel.Position) is not BlockEntityCrock bec) return false;
 

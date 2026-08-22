@@ -23,7 +23,7 @@ namespace Vintagestory.GameContent
 
                 foreach (var obj in api.World.Collectibles)
                 {
-                    if (obj?.Attributes?["mealContainer"]?.AsBool() == true || obj is IContainedInteractable or IBlockMealContainer ||
+                    if (BlockCookedContainerBase.IsMealContainer(new ItemStack(obj)) || obj is IContainedInteractable ||
                         obj?.Attributes?["canSealCrock"]?.AsBool() == true)
                     {
                         usableItemStacklist.Add(new ItemStack(obj));
