@@ -24,6 +24,15 @@ namespace Vintagestory.GameContent
         void SetQuantityServings(IWorldAccessor world, ItemStack containerStack, float quantityServings);
         public CookingRecipe? GetCookingRecipe(IWorldAccessor world, ItemStack? containerStack);
 
+        /// <summary>
+        /// Can this container actually accept a meal serving?
+        ///
+        /// Used to prevent items like pie slices from vanishing when trying to
+        /// </summary>
+        public bool CanAcceptMealServings(ItemStack containerStack)
+        {
+            return true;
+        }
     }
 
     public interface IBlockEntityMealContainer
@@ -748,7 +757,10 @@ namespace Vintagestory.GameContent
             return api.GetCookingRecipe(recipecode);
         }
 
-
+        public virtual bool CanAcceptMealServings(ItemStack containerStack)
+        {
+            return true;
+        }
 
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {

@@ -17,9 +17,25 @@ namespace Vintagestory.GameContent
 
             ObjectCacheUtil.GetOrCreate<ItemStack[]>(api, "mealcontainers", () =>
             {
-                return [.. api.World.Collectibles.Where(obj => obj.Attributes?.IsTrue("mealContainer") == true)
+                return [.. api.World.Collectibles.Where(obj => IsMealContainer(new ItemStack(obj)))
                                                  .SelectMany(obj => obj.GetHandBookStacks(api as ICoreClientAPI) ?? [])];
             });
+        }
+
+        /// <summary>
+        /// Can this ItemStack accept meal servings?
+        ///
+        /// Used to prevent items like pies and sealed crocks from trying to take servings.
+        /// </summary>
+        public static bool IsMealContainer(ItemStack containerStack)
+        {
+            return containerStack.ItemAttributes?.IsTrue("mealContainer") == true
+                || (containerStack.Collectible as IBlockMealContainer)?.CanAcceptMealServings(containerStack) == true;
+        }
+
+        public virtual bool CanAcceptMealServings(ItemStack containerStack)
+        {
+            return true;
         }
 
         public void SetContents(string? recipeCode, float servings, ItemStack containerStack, ItemStack[] stacks)
@@ -161,7 +177,8 @@ namespace Vintagestory.GameContent
         public override int GetMergableQuantity(ItemStack sinkStack, ItemStack sourceStack, EnumMergePriority priority)
         {
             if (priority != EnumMergePriority.AutoMerge &&
-                (sourceStack?.Block is IBlockMealContainer || (sourceStack?.Collectible?.Attributes?.IsTrue("mealContainer") ?? false)) &&
+                sourceStack != null &&
+                IsMealContainer(sourceStack) &&
                 GetServings(api.World, sinkStack) > 0)
                 return Math.Max(1, Math.Min(MaxStackSize - sinkStack.StackSize, sourceStack.StackSize));
 
@@ -170,7 +187,7 @@ namespace Vintagestory.GameContent
 
         public override void TryMergeStacks(ItemStackMergeOperation op)
         {
-            if (op.SourceSlot.Itemstack!.Block is IBlockMealContainer || op.SourceSlot.Itemstack.Collectible.Attributes?.IsTrue("mealContainer") == true)
+            if (!op.SourceSlot.Empty && IsMealContainer(op.SourceSlot.Itemstack))
             {
                 if (op.CurrentPriority != EnumMergePriority.DirectMerge)
                 {
@@ -404,7 +421,7 @@ namespace Vintagestory.GameContent
             var targetSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
             if (targetSlot.Empty) return false;
 
-            if ((targetSlot.Itemstack.Collectible.Attributes?.IsTrue("mealContainer") == true || targetSlot.Itemstack.Block is IBlockMealContainer) && GetServings(api.World, slot.Itemstack) > 0)
+            if (IsMealContainer(targetSlot.Itemstack) && GetServings(api.World, slot.Itemstack) > 0)
             {
                 bool served = false;
                 if (targetSlot.StackSize > 1)

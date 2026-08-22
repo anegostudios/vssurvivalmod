@@ -115,7 +115,7 @@ namespace Vintagestory.GameContent
 
                 invColl = inv[i].Itemstack.Collectible;
 
-                if (obj?.Attributes?["mealContainer"]?.AsBool() == true || obj is IContainedInteractable or IBlockMealContainer)
+                if (BlockCookedContainerBase.IsMealContainer(stack) || obj is IContainedInteractable)
                 {
                     return invColl is BlockCookedContainerBase;
                 }
