@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using ProtoBuf;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -22,7 +23,7 @@ public class PlayerLocationData
 public class PlayerLastUsageData
 {
     [ProtoMember(1)]
-    public double TotalDaysSinceLastTeleport;
+    public double LastTeleportTotalDays;
 }
 
 [ProtoContract]
@@ -101,7 +102,7 @@ public class TobiasTeleporter : ModSystem
     {
         if (TeleporterData.PlayerLastUsages.TryGetValue(byplayer.PlayerUID, out var playerLastUsage))
         {
-            var message = new TobiasLastUsage() { LastUsage = playerLastUsage.TotalDaysSinceLastTeleport };
+            var message = new TobiasLastUsage() { LastUsage = playerLastUsage.LastTeleportTotalDays };
             serverChannel.SendPacket(message, byplayer);
         }
     }
@@ -141,24 +142,40 @@ public class TobiasTeleporter : ModSystem
         TeleporterData = sapi.WorldManager.SaveGame.GetData("tobiasTeleporterData", new TobiasTeleporterData());
     }
 
+    //TODO? could be moved to Api and renamed into something like GetControllingPlayer()
+    public static EntityPlayer GetPlayerForTeleportingEntity(Entity teleportingEntity)
+    {
+        if (teleportingEntity is EntityPlayer player)
+        {
+            return player;
+        }
+
+        if (teleportingEntity.GetInterface<IMountable>() is IMountable mountable)
+        {
+            return mountable.Seats.FirstOrDefault(s => s.Passenger is EntityPlayer).Passenger as EntityPlayer;
+        }
+
+        return null;
+    }
+
     public void UpdatePlayerLastTeleport(Entity entity)
     {
-        if (entity is EntityPlayer player)
+        EntityPlayer player = GetPlayerForTeleportingEntity(entity);
+        if (player == null) return;
+
+        if (TeleporterData.PlayerLastUsages.TryGetValue(player.PlayerUID, out var playerLastUsage))
         {
-            if (TeleporterData.PlayerLastUsages.TryGetValue(player.PlayerUID, out var playerLastUsage))
-            {
-                playerLastUsage.TotalDaysSinceLastTeleport = sapi.World.Calendar.TotalDays;
-            }
-            else
-            {
-                TeleporterData.PlayerLastUsages[player.PlayerUID] = new PlayerLastUsageData()
-                {
-                    TotalDaysSinceLastTeleport = sapi.World.Calendar.TotalDays
-                };
-            }
-            SendLastUsageToPlayer(player.Player as IServerPlayer);
-            needsSaving = true;
+            playerLastUsage.LastTeleportTotalDays = sapi.World.Calendar.TotalDays;
         }
+        else
+        {
+            TeleporterData.PlayerLastUsages[player.PlayerUID] = new PlayerLastUsageData()
+            {
+                LastTeleportTotalDays = sapi.World.Calendar.TotalDays
+            };
+        }
+        SendLastUsageToPlayer(player.Player as IServerPlayer);
+        needsSaving = true;
     }
 
     public bool IsAllowedToTeleport(string playerUid, out Vec3d location)
@@ -166,7 +183,7 @@ public class TobiasTeleporter : ModSystem
         if (TeleporterData.PlayerLocations.TryGetValue(playerUid, out var playerLocation))
         {
             var tpCooldownInDays = sapi.World.Calendar.DaysPerMonth * TpCooldownInMonths;
-            if (!TeleporterData.PlayerLastUsages.TryGetValue(playerUid, out var playerLastUsage) || playerLastUsage.TotalDaysSinceLastTeleport + tpCooldownInDays < sapi.World.Calendar.TotalDays)
+            if (!TeleporterData.PlayerLastUsages.TryGetValue(playerUid, out var playerLastUsage) || playerLastUsage.LastTeleportTotalDays + tpCooldownInDays < sapi.World.Calendar.TotalDays)
             {
                 location = playerLocation.Position;
                 return true;

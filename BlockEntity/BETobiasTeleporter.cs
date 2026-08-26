@@ -82,17 +82,20 @@ public class BlockEntityTobiasTeleporter : BlockEntityTeleporterBase
 
     public override void OnEntityCollide(Entity entity)
     {
+        EntityPlayer player = TobiasTeleporter.GetPlayerForTeleportingEntity(entity);
+        if (player == null) return;
+
         if (Api.Side == EnumAppSide.Server)
         {
-            if (entity is EntityPlayer player)
+            if (IsAtTobiasCave && SystemTobiasTeleporter.TryGetPlayerLocation(player.PlayerUID, out _)
+                || (SystemTobiasTeleporter.IsAllowedToTeleport(player.PlayerUID, out _) && player.PlayerUID.Equals(OwnerPlayerUid)))
             {
-                if (IsAtTobiasCave && SystemTobiasTeleporter.TryGetPlayerLocation(player.PlayerUID, out _) || (SystemTobiasTeleporter.IsAllowedToTeleport(player.PlayerUID, out _) && player.PlayerUID.Equals(OwnerPlayerUid)))
-                    base.OnEntityCollide(entity);
+                base.OnEntityCollide(entity);
             }
         }
-        else
+        else if (somebodyIsTeleporting)
         {
-            if (entity is EntityPlayer player && somebodyIsTeleporting && (IsAtTobiasCave && SystemTobiasTeleporter.OwnLastUsage != 0 || player.PlayerUID.Equals(OwnerPlayerUid)))
+            if (IsAtTobiasCave && SystemTobiasTeleporter.OwnLastUsage != 0 || player.PlayerUID.Equals(OwnerPlayerUid))
             {
                 base.OnEntityCollide(entity);
             }
@@ -108,18 +111,21 @@ public class BlockEntityTobiasTeleporter : BlockEntityTeleporterBase
         }
     }
 
-    public override Vec3d GetTarget(Entity forEntity)
+    public override Vec3d GetTarget(Entity entity)
     {
+        EntityPlayer player  = TobiasTeleporter.GetPlayerForTeleportingEntity(entity);
+        if (player == null) return null;
+
         if (IsAtTobiasCave)
         {
-            if (forEntity is EntityPlayer player && SystemTobiasTeleporter.TryGetPlayerLocation(player.PlayerUID, out var location))
+            if (SystemTobiasTeleporter.TryGetPlayerLocation(player.PlayerUID, out var location))
             {
                 return location;
             }
         }
         else
         {
-            if (forEntity is EntityPlayer player && player.PlayerUID.Equals(OwnerPlayerUid))
+            if (player.PlayerUID.Equals(OwnerPlayerUid))
             {
                 return SystemTobiasTeleporter.TeleporterData.TobiasTeleporterLocation;
             }
@@ -130,14 +136,14 @@ public class BlockEntityTobiasTeleporter : BlockEntityTeleporterBase
 
     protected override void didTeleport(Entity entity)
     {
-        if (entity is EntityPlayer)
-        {
-            manager.DidTranslocateServer((entity as EntityPlayer).Player as IServerPlayer);
-        }
+        EntityPlayer player = TobiasTeleporter.GetPlayerForTeleportingEntity(entity);
+        if (player == null) return;
 
-        if (entity.Pos.DistanceTo(SystemTobiasTeleporter.TeleporterData.TobiasTeleporterLocation) < 2)
+        manager.DidTranslocateServer(player.Player as IServerPlayer);
+
+        if (player.Pos.DistanceTo(SystemTobiasTeleporter.TeleporterData.TobiasTeleporterLocation) < 2)
         {
-            SystemTobiasTeleporter.UpdatePlayerLastTeleport(entity);
+            SystemTobiasTeleporter.UpdatePlayerLastTeleport(player);
             MarkDirty();
         }
     }
