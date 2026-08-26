@@ -145,6 +145,12 @@ public class TobiasTeleporter : ModSystem
     //TODO? could be moved to Api and renamed into something like GetControllingPlayer()
     public static EntityPlayer GetPlayerForTeleportingEntity(Entity teleportingEntity)
     {
+        // safeguard against teleporting multiple players on a mount, as that could be exploited to bypass TobiasTeleporter's current limitations
+        if (teleportingEntity.GetInterface<IMountable>()?.Seats.Count(s => s.Passenger is EntityPlayer) > 1)
+        {
+            return null;
+        }
+
         // if the entity is a player, return it directly
         if (teleportingEntity is EntityPlayer player)
         {
