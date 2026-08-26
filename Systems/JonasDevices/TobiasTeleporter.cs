@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using ProtoBuf;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -16,9 +17,13 @@ public class PlayerLocationData
 {
     [ProtoMember(1)]
     public Vec3d Position;
+}
 
-    [ProtoMember(2)]
-    public double TotalDaysSinceLastTeleport;
+[ProtoContract]
+public class PlayerLastUsageData
+{
+    [ProtoMember(1)]
+    public double LastTeleportTotalDays;
 }
 
 [ProtoContract]
@@ -29,6 +34,9 @@ public class TobiasTeleporterData
 
     [ProtoMember(2)]
     public Dictionary<string, PlayerLocationData> PlayerLocations = new Dictionary<string, PlayerLocationData>();
+
+    [ProtoMember(3)]
+    public Dictionary<string, PlayerLastUsageData> PlayerLastUsages = new Dictionary<string, PlayerLastUsageData>();
 }
 
 [ProtoContract]
@@ -92,9 +100,9 @@ public class TobiasTeleporter : ModSystem
 
     private void SendLastUsageToPlayer(IServerPlayer byplayer)
     {
-        if (TeleporterData.PlayerLocations.TryGetValue(byplayer.PlayerUID, out var playerLocation))
+        if (TeleporterData.PlayerLastUsages.TryGetValue(byplayer.PlayerUID, out var playerLastUsage))
         {
-            var message = new TobiasLastUsage() { LastUsage = playerLocation.TotalDaysSinceLastTeleport };
+            var message = new TobiasLastUsage() { LastUsage = playerLastUsage.LastTeleportTotalDays };
             serverChannel.SendPacket(message, byplayer);
         }
     }
@@ -115,8 +123,7 @@ public class TobiasTeleporter : ModSystem
         bett.OwnerPlayerUid = null;
         var side = block.Variant["side"];
         var tpPos = posVec + BlockTobiasTeleporter.GetTeleportOffset(side);
-        TeleporterData.TobiasTeleporterLocation = tpPos;
-        needsSaving = true;
+        SetTeleporterLocation(tpPos);
 
         return TextCommandResult.Success($"Tobias teleporter set to Tobias Cave");
     }
@@ -135,29 +142,73 @@ public class TobiasTeleporter : ModSystem
         TeleporterData = sapi.WorldManager.SaveGame.GetData("tobiasTeleporterData", new TobiasTeleporterData());
     }
 
+    //TODO? could be moved to Api and renamed into something like GetControllingPlayer()
+    public static EntityPlayer GetPlayerForTeleportingEntity(Entity teleportingEntity)
+    {
+        // safeguard against teleporting multiple players on a mount, as that could be exploited to bypass TobiasTeleporter's current limitations
+        if (teleportingEntity.GetInterface<IMountable>()?.Seats.Count(s => s.Passenger is EntityPlayer) > 1)
+        {
+            return null;
+        }
+
+        // if the entity is a player, return it directly
+        if (teleportingEntity is EntityPlayer player)
+        {
+            return player;
+        }
+
+        // if the entity is a mount, try returning the player controlling the mount
+        if (teleportingEntity.GetInterface<IMountable>()?.Controller is EntityPlayer controllerPlayer)
+        {
+            return controllerPlayer;
+        }
+
+        return null;
+    }
+
     public void UpdatePlayerLastTeleport(Entity entity)
     {
-        if (entity is EntityPlayer player && TeleporterData.PlayerLocations.TryGetValue(player.PlayerUID, out var location))
+        EntityPlayer player = GetPlayerForTeleportingEntity(entity);
+        if (player == null) return;
+
+        if (TeleporterData.PlayerLastUsages.TryGetValue(player.PlayerUID, out var playerLastUsage))
         {
-            location.TotalDaysSinceLastTeleport = sapi.World.Calendar.TotalDays;
-            SendLastUsageToPlayer(player.Player as IServerPlayer);
+            playerLastUsage.LastTeleportTotalDays = sapi.World.Calendar.TotalDays;
         }
+        else
+        {
+            TeleporterData.PlayerLastUsages[player.PlayerUID] = new PlayerLastUsageData()
+            {
+                LastTeleportTotalDays = sapi.World.Calendar.TotalDays
+            };
+        }
+        SendLastUsageToPlayer(player.Player as IServerPlayer);
+        needsSaving = true;
     }
 
     public bool IsAllowedToTeleport(string playerUid, out Vec3d location)
     {
-        if (TeleporterData.PlayerLocations.TryGetValue(playerUid, out var data))
+        if (TeleporterData.PlayerLocations.TryGetValue(playerUid, out var playerLocation))
         {
-            var sixMonths = sapi.World.Calendar.DaysPerMonth * TpCooldownInMonths;
-            if (data.TotalDaysSinceLastTeleport + sixMonths < sapi.World.Calendar.TotalDays)
+            var tpCooldownInDays = sapi.World.Calendar.DaysPerMonth * TpCooldownInMonths;
+            if (!TeleporterData.PlayerLastUsages.TryGetValue(playerUid, out var playerLastUsage) || playerLastUsage.LastTeleportTotalDays + tpCooldownInDays < sapi.World.Calendar.TotalDays)
             {
-                location = data.Position;
+                location = playerLocation.Position;
                 return true;
             }
         }
 
         location = null;
         return false;
+    }
+
+    public void SetTeleporterLocation(Vec3d pos)
+    {
+        if (TeleporterData.TobiasTeleporterLocation != pos)
+        {
+            TeleporterData.TobiasTeleporterLocation = pos;
+            needsSaving = true;
+        }
     }
 
     public bool TryGetPlayerLocation(string playerUid, out Vec3d location)
@@ -180,25 +231,19 @@ public class TobiasTeleporter : ModSystem
         TeleporterData.PlayerLocations[playerUid] = new PlayerLocationData()
         {
             Position = tpPos,
-            TotalDaysSinceLastTeleport = sapi.World.Calendar.TotalDays - sapi.World.Calendar.DaysPerMonth * TpCooldownInMonths
         };
-        var player = sapi.World.PlayerByUid(playerUid) as IServerPlayer;
-        SendLastUsageToPlayer(player);
         needsSaving = true;
     }
 
     public void RemovePlayerTeleporter(string ownerPlayerUid)
     {
         TeleporterData.PlayerLocations.Remove(ownerPlayerUid);
-        var player = sapi.World.PlayerByUid(ownerPlayerUid);
-        var message = new TobiasLastUsage() { LastUsage = 0 };
-        serverChannel.SendPacket(message, player as IServerPlayer);
         needsSaving = true;
     }
 
     public double GetNextUsage()
     {
-        var sixMonths = capi.World.Calendar.DaysPerMonth * TpCooldownInMonths;
-        return Math.Max(0, sixMonths + OwnLastUsage - capi.World.Calendar.TotalDays);
+        var tpCooldownInDays = capi.World.Calendar.DaysPerMonth * TpCooldownInMonths;
+        return Math.Max(0, tpCooldownInDays + OwnLastUsage - capi.World.Calendar.TotalDays);
     }
 }
