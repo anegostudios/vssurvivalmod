@@ -129,14 +129,25 @@ namespace Vintagestory.GameContent
 
         public override void OnReceivedClientPacket(IPlayer player, int packetid, byte[] data)
         {
-            if (!Api.World.Claims.TryAccess(player, Pos, EnumBlockAccessFlags.BuildOrBreak))
-            {
-                player.InventoryManager.ActiveHotbarSlot.MarkDirty();
-                return;
-            }
-
             if (packetid == (int)EnumSignPacketId.SaveText)
             {
+                var perms = new BlockEntity.CachedAccessPerms(this.Api.World, this.Pos, player);
+                if (!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "sign"))
+                {
+                    player.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                    // Revert the text change for that client:
+                    ((ICoreServerAPI)Api).Network.SendBlockEntityPacket<EditSignPacket>((IServerPlayer)player, Pos, (int)EnumSignPacketId.NowText, new() {
+                        FontSize = this.fontSize,
+                        Text     = this.text,
+                    });
+
+                    // Don't forget to give the chalk item back:
+                    player.InventoryManager.TryGiveItemstack(tempStack);
+                    tempStack = null;
+
+                    return;
+                }
+
                 var packet = SerializerUtil.Deserialize<EditSignPacket>(data);
                 this.fontSize = packet.FontSize;
                 SetText(packet.Text);
@@ -150,6 +161,15 @@ namespace Vintagestory.GameContent
 
             if (packetid == (int)EnumSignPacketId.CancelEdit && tempStack != null)
             {
+                var perms = new BlockEntity.CachedAccessPerms(this.Api.World, this.Pos, player);
+                if (!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, false, "sign")) // Do not validate picking range in case we got transported out of range.
+                {
+                    player.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                    // No need to revert here, this cannot happen without packet manipulation.
+                    return;
+                }
+
+                // Rennorb 19.06.2026 security: Potentially griefable: signs do not track who placed them, therefore a second player could steal the sign by sending the cancel packet.
                 player.InventoryManager.TryGiveItemstack(tempStack);
                 tempStack = null;
             }

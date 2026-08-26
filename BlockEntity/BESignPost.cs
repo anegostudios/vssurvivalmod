@@ -92,6 +92,25 @@ namespace Vintagestory.GameContent
         {
             if (packetid == (int)EnumSignPacketId.SaveText)
             {
+                var perms = new BlockEntity.CachedAccessPerms(this.Api.World, this.Pos, player);
+                if (!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "signpost"))
+                {
+                    // Revert the text change for that client:
+                    var ms = new MemoryStream(512);
+                    var writer = new BinaryWriter(ms);
+                    for (int i = 0; i < 8; i++)
+                    {
+                        writer.Write(textByCardinalDirection[i]);
+                    }
+                    ((ICoreServerAPI)Api).Network.SendBlockEntityPacket((IServerPlayer)player, Pos, (int)EnumSignPacketId.NowText, ms.ToArray());
+
+                    // Don't forget to give the calk item back:
+                    player.InventoryManager.TryGiveItemstack(tempStack);
+                    tempStack = null;
+
+                    return;
+                }
+
                 using (MemoryStream ms = new MemoryStream(data))
                 {
                     BinaryReader reader = new BinaryReader(ms);
@@ -117,6 +136,14 @@ namespace Vintagestory.GameContent
 
             if (packetid == (int)EnumSignPacketId.CancelEdit && tempStack != null)
             {
+                var perms = new BlockEntity.CachedAccessPerms(this.Api.World, this.Pos, player);
+                if (!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, false, "signpost")) // Do not validate picking range in case we got transported out of range.
+                {
+                    // No need to revert here, this cannot happen without packet manipulation.
+                    return;
+                }
+
+                // Rennorb 19.06.2026 security: Potentially griefable: signs do not track who placed them, therefore a second player could steal the sign by sending the cancel packet.
                 player.InventoryManager.TryGiveItemstack(tempStack);
                 tempStack = null;
             }
@@ -178,6 +205,8 @@ namespace Vintagestory.GameContent
                         signRenderer.SetNewText(textByCardinalDirection, color);
                     }
                 }
+
+                MarkDirty(true);
             }
         }
 

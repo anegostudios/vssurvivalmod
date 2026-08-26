@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -33,12 +32,14 @@ namespace Vintagestory.GameContent
         public bool CanIgnite => !burning && FuelLevel > 0;
         public bool IsHot => (inv[1].Itemstack?.Collectible.GetTemperature(Api.World, inv[1].Itemstack) ?? 0) > 20;
 
-        // burnate 1 = means a1 coal per ingame hour
+        /// <summary>
+        /// The number of coal items burnt per hour
+        /// </summary>
         public virtual float BurnRate
         {
             get
             {
-                return 0.5f * 1/(FuelSlot.Itemstack?.ItemAttributes?["inForge"]["durationMul"].AsFloat() ?? 1f);
+                return 0.5f * 1 / (FuelSlot.Itemstack?.ItemAttributes?["inForge"]["durationMul"].AsFloat(1f) ?? 1f);
             }
         }
 
@@ -47,7 +48,7 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                return 700 + (FuelSlot.Itemstack?.ItemAttributes?["inForge"]["tempGainDeg"].AsInt() ?? 1);
+                return 700 + (FuelSlot.Itemstack?.ItemAttributes?["inForge"]["tempGainDeg"].AsInt(1) ?? 1);
             }
         }
         public float MaxExtraHeatRate = 1150 / 700f - 1;

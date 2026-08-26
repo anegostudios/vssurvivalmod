@@ -22,9 +22,9 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 string side = Block.Variant["orientation"];
 
-                CompositeShape shape = new CompositeShape() { 
-                    Base = new AssetLocation("shapes/block/wood/mechanics/transmission-leftgear.json"), Overlays = new CompositeShape[] { 
-                           new CompositeShape() { Base = new AssetLocation("shapes/block/wood/mechanics/transmission-rightgear.json") } } 
+                CompositeShape shape = new CompositeShape() {
+                    Base = new AssetLocation("shapes/block/wood/mechanics/transmission-leftgear.json"), Overlays = new CompositeShape[] {
+                           new CompositeShape() { Base = new AssetLocation("shapes/block/wood/mechanics/transmission-rightgear.json") } }
                 };
 
                 if (side == "ns")
@@ -167,7 +167,7 @@ namespace Vintagestory.GameContent.Mechanics
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
         {
             base.GetBlockInfo(forPlayer, sb);
-            if (Api.World.EntityDebugMode)
+            if (Api.World.EntityDebugMode && forPlayer?.WorldData?.CurrentGameMode == EnumGameMode.Creative)
             {
                 sb.AppendLine(string.Format(Lang.Get(engaged ? "Engaged" : "Disengaged")));
             }

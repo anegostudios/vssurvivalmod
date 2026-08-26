@@ -187,7 +187,6 @@ namespace Vintagestory.GameContent
 
             if (!blockBroken)
             {
-                BlockFacing blockFacing = BlockFacing.FromCode(Block.LastCodePart()).Opposite;
                 var feetPos = Pos.AddCopy(facing);
 
                 foreach (BlockFacing facing in BlockFacing.HORIZONTALS)
@@ -197,11 +196,13 @@ namespace Vintagestory.GameContent
 
                     if (!Api.World.CollisionTester.IsColliding(Api.World.BlockAccessor, entityAgent.SelectionBox, placePos, false))
                     {
+                        placePos.Y %= BlockPos.DimensionBoundary;
                         entityAgent.TeleportTo(placePos);
                         break;
                     }
                     if (!Api.World.CollisionTester.IsColliding(Api.World.BlockAccessor, entityAgent.SelectionBox, placePosFeet, false))
                     {
+                        placePosFeet.Y %= BlockPos.DimensionBoundary;
                         entityAgent.TeleportTo(placePosFeet);
                         break;
                     }

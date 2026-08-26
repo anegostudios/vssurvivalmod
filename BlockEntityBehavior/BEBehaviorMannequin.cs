@@ -1,6 +1,4 @@
-using System;
 using System.Collections.Generic;
-using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -74,7 +72,7 @@ public class BEBehaviorMannequin : BEBehaviorRotatablePlaceable, IInteractable, 
         container.Init(Api, () => Pos, () => Blockentity.MarkDirty(true));
         regenMesh();
     }
-    
+
 
     protected virtual void regenMesh()
     {
@@ -160,7 +158,7 @@ public class BEBehaviorMannequin : BEBehaviorRotatablePlaceable, IInteractable, 
                         Api.World.SpawnItemEntity(slot.Itemstack, Pos);
                     }
                     slot.Itemstack = null;
-                }                
+                }
             }
         }
         else

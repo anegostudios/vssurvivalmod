@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -185,73 +185,85 @@ namespace Vintagestory.GameContent
             if (remainingwater <= 0) return base.OnHeldInteractStep(secondsUsed, slot, byEntity, blockSel, entitySel);
 
             IWorldAccessor world = byEntity.World;
-
-            BlockPos targetPos = blockSel.Position;
+            IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
 
             if (api.World.Side == EnumAppSide.Server)
             {
-                var beburningBh = world.BlockAccessor.GetBlockEntity(blockSel.Position.AddCopy(blockSel.Face))?.GetBehavior<BEBehaviorBurning>();
-                if (beburningBh != null) beburningBh.KillFire(false);
-
-                beburningBh = world.BlockAccessor.GetBlockEntity(blockSel.Position)?.GetBehavior<BEBehaviorBurning>();
-                if (beburningBh != null) beburningBh.KillFire(false);
-
-                var beits = GetBEBehavior<BEBehaviorTemperatureSensitive>(blockSel.Position);
-                if (beits != null)
+                foreach (var pos in new BlockPos[2] { blockSel.Position.AddCopy(blockSel.Face), blockSel.Position })
                 {
-                    beits.OnWatered(secondsUsed - prevsecondsused);
+                    var burning = world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorBurning>();
+                    if (burning == null) continue;
+
+                    if (byPlayer != null && !byEntity.World.Claims.TryAccess(byPlayer, pos, EnumBlockAccessFlags.Use)) continue;
+
+                    burning.KillFire(false);
                 }
 
-                for (int dx = -2; dx < 2; dx++)
                 {
-                    for (int dy = -2; dy < 2; dy++)
+                    var tempSensitive = GetBEBehavior<BEBehaviorTemperatureSensitive>(blockSel.Position);
+                    if (tempSensitive != null)
                     {
-                        for (int dz = -2; dz < 2; dz++)
+                        if (byPlayer == null || byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.Use))
                         {
-                            int x = (int)(blockSel.HitPosition.X * 16) + dx;
-                            int y = (int)(blockSel.HitPosition.Y * 16) + dy;
-                            int z = (int)(blockSel.HitPosition.Z * 16) + dz;
-                            if (x < 0 || x > 15 || y < 0 || y > 15 || z < 0 || z > 15) continue;
+                            tempSensitive.OnWatered(secondsUsed - prevsecondsused);
+                        }
+                    }
+                }
 
-                            DecorBits decorPosition = new DecorBits(blockSel.Face, x, 15 - y, z);
-                            Block decorblock = world.BlockAccessor.GetDecor(blockSel.Position, decorPosition);
-                            if (decorblock?.FirstCodePart() == "caveart")
+                if (byPlayer == null || byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+                {
+                    for (int dx = -2; dx < 2; dx++)
+                    {
+                        for (int dy = -2; dy < 2; dy++)
+                        {
+                            for (int dz = -2; dz < 2; dz++)
                             {
-                                world.BlockAccessor.BreakDecor(blockSel.Position, blockSel.Face, decorPosition);
+                                int x = (int)(blockSel.HitPosition.X * 16) + dx;
+                                int y = (int)(blockSel.HitPosition.Y * 16) + dy;
+                                int z = (int)(blockSel.HitPosition.Z * 16) + dz;
+                                if (x < 0 || x > 15 || y < 0 || y > 15 || z < 0 || z > 15) continue;
+
+                                DecorBits decorPosition = new DecorBits(blockSel.Face, x, 15 - y, z);
+                                Block decorblock = world.BlockAccessor.GetDecor(blockSel.Position, decorPosition);
+                                if (decorblock?.FirstCodePart() == "caveart")
+                                {
+                                    world.BlockAccessor.BreakDecor(blockSel.Position, blockSel.Face, decorPosition);
+                                }
                             }
                         }
                     }
                 }
             }
 
-            Block block = world.BlockAccessor.GetBlock(blockSel.Position);
-            bool notOnSolidblock = false;
-            if (block.CollisionBoxes == null || block.CollisionBoxes.Length == 0)
+            BlockPos actualTargetBlockPos = blockSel.Position;
+            bool notOnSolidBlock = false;
+
+            Block targetBlock = world.BlockAccessor.GetBlock(blockSel.Position);
+            if (targetBlock.CollisionBoxes == null || targetBlock.CollisionBoxes.Length == 0)
             {
-                block = world.BlockAccessor.GetBlock(blockSel.Position, BlockLayersAccess.Fluid);
-                if ((block.CollisionBoxes == null || block.CollisionBoxes.Length == 0) && !block.IsLiquid())
+                targetBlock = world.BlockAccessor.GetBlock(blockSel.Position, BlockLayersAccess.Fluid);
+                if ((targetBlock.CollisionBoxes == null || targetBlock.CollisionBoxes.Length == 0) && !targetBlock.IsLiquid())
                 {
-                    notOnSolidblock = true;
-                    targetPos = targetPos.DownCopy();
+                    notOnSolidBlock = true;
+                    actualTargetBlockPos = actualTargetBlockPos.DownCopy();
                 }
             }
 
-            BlockEntityFarmland be = world.BlockAccessor.GetBlockEntity(targetPos) as BlockEntityFarmland;
-            if (be != null)
+            
+            if (world.BlockAccessor.GetBlockEntity(actualTargetBlockPos) is BlockEntityFarmland farmland)
             {
-                be.WaterFarmland(secondsUsed - prevsecondsused);
+                if (byPlayer == null || byEntity.World.Claims.TryAccess(byPlayer, actualTargetBlockPos, EnumBlockAccessFlags.Use))
+                {
+                    farmland.WaterFarmland(secondsUsed - prevsecondsused);
+                }
             }
             
             float speed = 3f;
 
-            IPlayer byPlayer = null;
-            if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
-
-
             if (secondsUsed > 1 / speed)
             {
                 Vec3d pos = blockSel.Position.ToVec3d().Add(blockSel.HitPosition);
-                if (notOnSolidblock) pos.Y = (int)pos.Y + 0.05;
+                if (notOnSolidBlock) pos.Y = (int)pos.Y + 0.05;
                 WaterParticles.MinPos = pos.Add(-0.125 / 2, 1 / 16f, -0.125 / 2);
                 byEntity.World.SpawnParticles(WaterParticles, byPlayer);
             }

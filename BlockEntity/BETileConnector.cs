@@ -56,6 +56,8 @@ public class BETileConnector : BlockEntity, IRotatable
     {
         if (packetid != 0) return;
 
+        // Rennorb 20.06.2026 security: Should this check perms?
+
         var tree = new TreeAttribute();
         tree.FromBytes(data);
         Target = tree.GetString("target","");
