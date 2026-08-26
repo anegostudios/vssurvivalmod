@@ -145,14 +145,16 @@ public class TobiasTeleporter : ModSystem
     //TODO? could be moved to Api and renamed into something like GetControllingPlayer()
     public static EntityPlayer GetPlayerForTeleportingEntity(Entity teleportingEntity)
     {
+        // if the entity is a player, return it directly
         if (teleportingEntity is EntityPlayer player)
         {
             return player;
         }
 
-        if (teleportingEntity.GetInterface<IMountable>() is IMountable mountable)
+        // if the entity is a mount, try returning the player controlling the mount
+        if (teleportingEntity.GetInterface<IMountable>()?.Controller is EntityPlayer controllerPlayer)
         {
-            return mountable.Seats.FirstOrDefault(s => s.Passenger is EntityPlayer).Passenger as EntityPlayer;
+            return controllerPlayer;
         }
 
         return null;
