@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -8,10 +9,11 @@ namespace Vintagestory.GameContent.Mechanics
 {
     public class GenericMechBlockRenderer : MechBlockRenderer
     {
-        CustomMeshDataPartFloat matrixAndLightFloats;
-        MeshRef blockMeshRef;
+        private CustomMeshDataPartFloat matrixAndLightFloats;
+        private List<MeshGroup> meshGroups;
 
-        public GenericMechBlockRenderer(ICoreClientAPI capi, MechanicalPowerMod mechanicalPowerMod, Block textureSoureBlock, CompositeShape shapeLoc) : base(capi, mechanicalPowerMod)
+        public GenericMechBlockRenderer(ICoreClientAPI capi, MechanicalPowerMod mechanicalPowerMod, Block textureSoureBlock, CompositeShape shapeLoc)
+            : base(capi, mechanicalPowerMod)
         {
             AssetLocation loc = shapeLoc.Base.Clone().WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
 
@@ -19,21 +21,21 @@ namespace Vintagestory.GameContent.Mechanics
             Vec3f rot = new Vec3f(shapeLoc.rotateX, shapeLoc.rotateY, shapeLoc.rotateZ);
 
             capi.Tesselator.TesselateShape(textureSoureBlock, shape, out MeshData blockMesh, rot, shapeLoc.QuantityElements, shapeLoc.SelectiveElements);
-            
+
             if (shapeLoc.Overlays != null)
             {
                 for (int i = 0; i < shapeLoc.Overlays.Length; i++)
                 {
                     CompositeShape ovShapeCmp = shapeLoc.Overlays[i];
                     rot = new Vec3f(ovShapeCmp.rotateX, ovShapeCmp.rotateY, ovShapeCmp.rotateZ);
-                    
+
                     Shape ovshape = API.Common.Shape.TryGet(capi, ovShapeCmp.Base.Clone().WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json"));
                     capi.Tesselator.TesselateShape(textureSoureBlock, ovshape, out MeshData overlayMesh, rot);
                     blockMesh.AddMeshData(overlayMesh);
                 }
             }
 
-            // 16 floats matrix, 4 floats light rgbs
+            // 16 floats matrix, 4 floats light rgba
             blockMesh.CustomFloats = matrixAndLightFloats = new CustomMeshDataPartFloat((16 + 4) * 10100)
             {
                 Instanced = true,
@@ -44,15 +46,17 @@ namespace Vintagestory.GameContent.Mechanics
             };
             blockMesh.CustomFloats.SetAllocationSize((16 + 4) * 10100);
 
-            this.blockMeshRef = capi.Render.UploadMesh(blockMesh);
+            // UploadMeshGrouped splits by atlas and uploads each part,
+            // all parts sharing matrixAndLightFloats as their instanced buffer.
+            meshGroups = UploadMeshGrouped(blockMesh, matrixAndLightFloats);
         }
 
-        
         protected override void UpdateLightAndTransformMatrix(int index, Vec3f distToCamera, float rotation, IMechanicalPowerRenderable dev)
         {
             float rotX = rotation * dev.AxisSign[0];
             float rotY = rotation * dev.AxisSign[1];
             float rotZ = rotation * dev.AxisSign[2];
+
             if (dev is BEBehaviorMPToggle tog && (rotX == 0 ^ tog.IsRotationReversed()))
             {
                 rotY = GameMath.PI;
@@ -68,18 +72,14 @@ namespace Vintagestory.GameContent.Mechanics
 
             if (quantityBlocks > 0)
             {
-                matrixAndLightFloats.Count = quantityBlocks * 20;
-                updateMesh.CustomFloats = matrixAndLightFloats;
-                capi.Render.UpdateMesh(blockMeshRef, updateMesh);
-                capi.Render.RenderMeshInstanced(blockMeshRef, quantityBlocks);
+                RenderGroups(prog, meshGroups, matrixAndLightFloats, quantityBlocks);
             }
         }
 
         public override void Dispose()
         {
             base.Dispose();
-
-            blockMeshRef?.Dispose();
+            DisposeGroups(meshGroups);
         }
     }
 }

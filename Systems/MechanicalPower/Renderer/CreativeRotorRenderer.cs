@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -14,52 +15,42 @@ namespace Vintagestory.GameContent.Mechanics
         CustomMeshDataPartFloat matrixAndLightFloats3;
         CustomMeshDataPartFloat matrixAndLightFloats4;
         CustomMeshDataPartFloat matrixAndLightFloats5;
-        MeshRef blockMeshRef1;
-        MeshRef blockMeshRef2;
-        MeshRef blockMeshRef3;
-        MeshRef blockMeshRef4;
+
+        List<MeshGroup> meshGroups1;   // axle
+        List<MeshGroup> meshGroups2;   // contra-rotating parts
+        List<MeshGroup> meshGroups3;   // spinbar
+        List<MeshGroup> meshGroups4;   // spinball (same mesh, used for both ball instances)
+
         Vec3f axisCenter = new Vec3f(0.5f, 0.5f, 0.5f);
 
         public CreativeRotorRenderer(ICoreClientAPI capi, MechanicalPowerMod mechanicalPowerMod, Block textureSoureBlock, CompositeShape shapeLoc) : base(capi, mechanicalPowerMod)
         {
-
-            AssetLocation loc = new AssetLocation("shapes/block/metal/mechanics/creativerotor-axle.json");
-
-            Shape shape = API.Common.Shape.TryGet(capi, loc);
             Vec3f rot = new Vec3f(shapeLoc.rotateX, shapeLoc.rotateY, shapeLoc.rotateZ);
 
-            capi.Tesselator.TesselateShape(textureSoureBlock, shape, out MeshData blockMesh1, rot);
-
-            rot = new Vec3f(shapeLoc.rotateX, shapeLoc.rotateY, shapeLoc.rotateZ);
-            Shape ovshape = API.Common.Shape.TryGet(capi, new AssetLocation("shapes/block/metal/mechanics/creativerotor-contra.json"));
-            capi.Tesselator.TesselateShape(textureSoureBlock, ovshape, out MeshData blockMesh2, rot);
-            Shape ovshape2 = API.Common.Shape.TryGet(capi, new AssetLocation("shapes/block/metal/mechanics/creativerotor-spinbar.json"));
-            capi.Tesselator.TesselateShape(textureSoureBlock, ovshape2, out MeshData blockMesh3, rot);
-            Shape ovshape3 = API.Common.Shape.TryGet(capi, new AssetLocation("shapes/block/metal/mechanics/creativerotor-spinball.json"));
-            capi.Tesselator.TesselateShape(textureSoureBlock, ovshape3, out MeshData blockMesh4, rot);
-
-            //blockMesh1.Rgba2 = null;
-            //blockMesh2.Rgba2 = null;
-            //blockMesh3.Rgba2 = null;
-            //blockMesh4.Rgba2 = null;
+            capi.Tesselator.TesselateShape(textureSoureBlock, API.Common.Shape.TryGet(capi, new AssetLocation("shapes/block/metal/mechanics/creativerotor-axle.json")), out MeshData blockMesh1, rot);
+            capi.Tesselator.TesselateShape(textureSoureBlock, API.Common.Shape.TryGet(capi, new AssetLocation("shapes/block/metal/mechanics/creativerotor-contra.json")), out MeshData blockMesh2, rot);
+            capi.Tesselator.TesselateShape(textureSoureBlock, API.Common.Shape.TryGet(capi, new AssetLocation("shapes/block/metal/mechanics/creativerotor-spinbar.json")), out MeshData blockMesh3, rot);
+            capi.Tesselator.TesselateShape(textureSoureBlock, API.Common.Shape.TryGet(capi, new AssetLocation("shapes/block/metal/mechanics/creativerotor-spinball.json")), out MeshData blockMesh4, rot);
 
             int count = (16 + 4) * 2100;
-            // 16 floats matrix, 4 floats light rgbs
-            blockMesh1.CustomFloats = matrixAndLightFloats1 = createCustomFloats(count);
-            blockMesh2.CustomFloats = matrixAndLightFloats2 = createCustomFloats(count);
-            blockMesh3.CustomFloats = matrixAndLightFloats3 = createCustomFloats(count);
-            blockMesh4.CustomFloats = matrixAndLightFloats4 = createCustomFloats(count);
-            matrixAndLightFloats5 = createCustomFloats(count);
 
-            this.blockMeshRef1 = capi.Render.UploadMesh(blockMesh1);
-            this.blockMeshRef2 = capi.Render.UploadMesh(blockMesh2);
-            this.blockMeshRef3 = capi.Render.UploadMesh(blockMesh3);
-            this.blockMeshRef4 = capi.Render.UploadMesh(blockMesh4);
+            blockMesh1.CustomFloats = matrixAndLightFloats1 = CreateCustomFloats(count);
+            blockMesh2.CustomFloats = matrixAndLightFloats2 = CreateCustomFloats(count);
+            blockMesh3.CustomFloats = matrixAndLightFloats3 = CreateCustomFloats(count);
+            blockMesh4.CustomFloats = matrixAndLightFloats4 = CreateCustomFloats(count);
+            // Ball 5 shares the same mesh groups as ball 4 but uses an independent transform buffer
+            matrixAndLightFloats5 = CreateCustomFloats(count);
+
+            meshGroups1 = UploadMeshGrouped(blockMesh1, matrixAndLightFloats1);
+            meshGroups2 = UploadMeshGrouped(blockMesh2, matrixAndLightFloats2);
+            meshGroups3 = UploadMeshGrouped(blockMesh3, matrixAndLightFloats3);
+            // meshGroups4 is uploaded once; rendered twice with different float buffers (ball 4 and ball 5)
+            meshGroups4 = UploadMeshGrouped(blockMesh4, matrixAndLightFloats4);
         }
 
-        private CustomMeshDataPartFloat createCustomFloats(int count)
+        private CustomMeshDataPartFloat CreateCustomFloats(int count)
         {
-            CustomMeshDataPartFloat result = new CustomMeshDataPartFloat(count)
+            var result = new CustomMeshDataPartFloat(count)
             {
                 Instanced = true,
                 InterleaveOffsets = new int[] { 0, 16, 32, 48, 64 },
@@ -79,53 +70,40 @@ namespace Vintagestory.GameContent.Mechanics
             float axX = -Math.Abs(dev.AxisSign[0]);
             float axZ = -Math.Abs(dev.AxisSign[2]);
 
-            //axle
-            float rotX = rot1 * axX;
-            float rotZ = rot1 * axZ;
-            UpdateLightAndTransformMatrix(matrixAndLightFloats1.Values, index, distToCamera, dev.LightRgba, rotX, rotZ, axisCenter, null);
+            // Axle
+            UpdateLightAndTransformMatrix(matrixAndLightFloats1.Values, index, distToCamera, dev.LightRgba, rot1 * axX, rot1 * axZ, axisCenter, null);
 
-            //contra-rotating axle parts
-            rotX = rot2 * axX;
-            rotZ = rot2 * axZ;
-            UpdateLightAndTransformMatrix(matrixAndLightFloats2.Values, index, distToCamera, dev.LightRgba, rotX, rotZ, axisCenter, null);
+            // Contra-rotating axle
+            UpdateLightAndTransformMatrix(matrixAndLightFloats2.Values, index, distToCamera, dev.LightRgba, rot2 * axX, rot2 * axZ, axisCenter, null);
 
-            //the spin bar
-            rotX = rot3 * axX;
-            rotZ = rot3 * axZ;
-            UpdateLightAndTransformMatrix(matrixAndLightFloats3.Values, index, distToCamera, dev.LightRgba, rotX, rotZ, axisCenter, null);
+            // Spinbar
+            UpdateLightAndTransformMatrix(matrixAndLightFloats3.Values, index, distToCamera, dev.LightRgba, rot3 * axX, rot3 * axZ, axisCenter, null);
 
-            //position the ball on the spin bar (45 degrees ahead of the spinbar)
-            rotX = (rot3 + GameMath.PI / 4) * axX;
-            rotZ = (rot3 + GameMath.PI / 4) * axZ;
-            TransformMatrix(distToCamera, rotX, rotZ, axisCenter);
+            // Ball 4: position on spinbar (45° ahead), then apply its own spin
+            TransformMatrix(distToCamera, (rot3 + GameMath.PI / 4) * axX, (rot3 + GameMath.PI / 4) * axZ, axisCenter);
+            float b4rotX = axX == 0 ? rot1 * 2f : 0f;
+            float b4rotZ = axZ == 0 ? -rot1 * 2f : 0f;
+            float offX4 = dev.AxisSign[0] * 0.05f;
+            float offZ4 = dev.AxisSign[2] * 0.05f;
+            UpdateLightAndTransformMatrix(matrixAndLightFloats4.Values, index, distToCamera, dev.LightRgba, b4rotX, b4rotZ, new Vec3f(0.5f + offX4, 0.5f, 0.5f + offZ4), (float[])tmpMat.Clone());
 
-            rotX = axX == 0 ? rot1 * 2f : 0f;
-            rotZ = axZ == 0 ? -rot1 * 2f : 0f;
-            axX = dev.AxisSign[0] * 0.05f;
-            axZ = dev.AxisSign[2] * 0.05f;
-            UpdateLightAndTransformMatrix(matrixAndLightFloats4.Values, index, distToCamera, dev.LightRgba, rotX, rotZ, new Vec3f(0.5f + axX, 0.5f, 0.5f + axZ), (float[])tmpMat.Clone());
-
-            //position the other ball on the spin bar (225 degrees ahead of the spinbar i.e. opposite side from the first one)
-            rotX = (rot3 + GameMath.PI * 1.25f) * -Math.Abs(dev.AxisSign[0]);
-            rotZ = (rot3 + GameMath.PI * 1.25f) * -Math.Abs(dev.AxisSign[2]);
-            TransformMatrix(distToCamera, rotX, rotZ, axisCenter);
-
-            rotX = axX == 0 ? rot1 * 2f : 0f;
-            rotZ = axZ == 0 ? -rot1 * 2f : 0f;
-            UpdateLightAndTransformMatrix(matrixAndLightFloats5.Values, index, distToCamera, dev.LightRgba, rotX, rotZ, new Vec3f(0.5f + axX, 0.5f, 0.5f + axZ), (float[])tmpMat.Clone());
+            // Ball 5: opposite side of spinbar (225° ahead)
+            TransformMatrix(distToCamera, (rot3 + GameMath.PI * 1.25f) * -Math.Abs(dev.AxisSign[0]), (rot3 + GameMath.PI * 1.25f) * -Math.Abs(dev.AxisSign[2]), axisCenter);
+            float b5rotX = offX4 == 0 ? rot1 * 2f : 0f;
+            float b5rotZ = offZ4 == 0 ? -rot1 * 2f : 0f;
+            UpdateLightAndTransformMatrix(matrixAndLightFloats5.Values, index, distToCamera, dev.LightRgba, b5rotX, b5rotZ, new Vec3f(0.5f + offX4, 0.5f, 0.5f + offZ4), (float[])tmpMat.Clone());
         }
 
         /// <summary>
-        /// Set up tmpMat - expected to be used with a later call to UpdateLightAndTransformMatrix passing in tmpMat as an initial matrix
+        /// Builds tmpMat representing the current world-space position of a sub-element
+        /// before its own local rotation is applied. Pass the result as initialTransform to
+        /// the overload of UpdateLightAndTransformMatrix that accepts an initial matrix.
         /// </summary>
         private void TransformMatrix(Vec3f distToCamera, float rotX, float rotZ, Vec3f axis)
         {
             Mat4f.Identity(tmpMat);
             Mat4f.Translate(tmpMat, tmpMat, distToCamera.X + axis.X, distToCamera.Y + axis.Y, distToCamera.Z + axis.Z);
-            quat[0] = 0;
-            quat[1] = 0;
-            quat[2] = 0;
-            quat[3] = 1;
+            quat[0] = 0; quat[1] = 0; quat[2] = 0; quat[3] = 1;
             if (rotX != 0f) Quaterniond.RotateX(quat, quat, rotX);
             if (rotZ != 0f) Quaterniond.RotateZ(quat, quat, rotZ);
             Mat4f.MulQuat(tmpMat, quat);
@@ -133,7 +111,8 @@ namespace Vintagestory.GameContent.Mechanics
         }
 
         /// <summary>
-        /// The initialTransform parameter is either null, to start with the Identity matrix and apply the camera transform, or for movable+rotating sub-elements can pass in an existing matrix which represents the current positioning of the sub-element (prior to the sub-element's own rotation)
+        /// When initialTransform is null: starts from Identity + camera translation.
+        /// When initialTransform is provided: continues from that matrix (for compound-rotating sub-elements).
         /// </summary>
         protected void UpdateLightAndTransformMatrix(float[] values, int index, Vec3f distToCamera, Vec4f lightRgba, float rotX, float rotZ, Vec3f axis, float[] initialTransform)
         {
@@ -145,15 +124,11 @@ namespace Vintagestory.GameContent.Mechanics
             else
                 Mat4f.Translate(tmpMat, tmpMat, axis.X, axis.Y, axis.Z);
 
-            quat[0] = 0;
-            quat[1] = 0;
-            quat[2] = 0;
-            quat[3] = 1;
+            quat[0] = 0; quat[1] = 0; quat[2] = 0; quat[3] = 1;
             if (rotX != 0f) Quaterniond.RotateX(quat, quat, rotX);
             if (rotZ != 0f) Quaterniond.RotateZ(quat, quat, rotZ);
 
             Mat4f.MulQuat(tmpMat, quat);
-
             Mat4f.Translate(tmpMat, tmpMat, -axis.X, -axis.Y, -axis.Z);
 
             int j = index * 20;
@@ -161,11 +136,7 @@ namespace Vintagestory.GameContent.Mechanics
             values[++j] = lightRgba.G;
             values[++j] = lightRgba.B;
             values[++j] = lightRgba.A;
-
-            for (int i = 0; i < 16; i++)
-            {
-                values[++j] = tmpMat[i];
-            }
+            for (int i = 0; i < 16; i++) values[++j] = tmpMat[i];
         }
 
         public override void OnRenderFrame(float deltaTime, IShaderProgram prog)
@@ -174,39 +145,25 @@ namespace Vintagestory.GameContent.Mechanics
 
             if (quantityBlocks > 0)
             {
-                matrixAndLightFloats1.Count = quantityBlocks * 20;
-                updateMesh.CustomFloats = matrixAndLightFloats1;
-                capi.Render.UpdateMesh(blockMeshRef1, updateMesh);
-                capi.Render.RenderMeshInstanced(blockMeshRef1, quantityBlocks);
-                matrixAndLightFloats2.Count = quantityBlocks * 20;
-                updateMesh.CustomFloats = matrixAndLightFloats2;
-                capi.Render.UpdateMesh(blockMeshRef2, updateMesh);
-                capi.Render.RenderMeshInstanced(blockMeshRef2, quantityBlocks);
-                matrixAndLightFloats3.Count = quantityBlocks * 20;
-                updateMesh.CustomFloats = matrixAndLightFloats3;
-                capi.Render.UpdateMesh(blockMeshRef3, updateMesh);
-                capi.Render.RenderMeshInstanced(blockMeshRef3, quantityBlocks);
+                RenderGroups(prog, meshGroups1, matrixAndLightFloats1, quantityBlocks);
+                RenderGroups(prog, meshGroups2, matrixAndLightFloats2, quantityBlocks);
+                RenderGroups(prog, meshGroups3, matrixAndLightFloats3, quantityBlocks);
 
-                //Sub elements 4 and 5 are the two spinbar balls, each has the exact same mesh (blockMeshRef4) but a different transform
-                matrixAndLightFloats4.Count = quantityBlocks * 20;
-                updateMesh.CustomFloats = matrixAndLightFloats4;
-                capi.Render.UpdateMesh(blockMeshRef4, updateMesh);
-                capi.Render.RenderMeshInstanced(blockMeshRef4, quantityBlocks);
-                matrixAndLightFloats5.Count = quantityBlocks * 20;
-                updateMesh.CustomFloats = matrixAndLightFloats5;
-                capi.Render.UpdateMesh(blockMeshRef4, updateMesh);
-                capi.Render.RenderMeshInstanced(blockMeshRef4, quantityBlocks);
+                // Both spinbar balls share the same mesh geometry (meshGroups4) but have
+                // independent transform buffers, so we render the groups twice.
+                RenderGroups(prog, meshGroups4, matrixAndLightFloats4, quantityBlocks);
+                RenderGroups(prog, meshGroups4, matrixAndLightFloats5, quantityBlocks);
             }
         }
 
         public override void Dispose()
         {
             base.Dispose();
-
-            blockMeshRef1?.Dispose();
-            blockMeshRef2?.Dispose();
-            blockMeshRef3?.Dispose();
-            blockMeshRef4?.Dispose();
+            DisposeGroups(meshGroups1);
+            DisposeGroups(meshGroups2);
+            DisposeGroups(meshGroups3);
+            DisposeGroups(meshGroups4);
+            // meshGroups5 does not exist: it reuses meshGroups4's MeshRefs, already disposed above
         }
     }
 }

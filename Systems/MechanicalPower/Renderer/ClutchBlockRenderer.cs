@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -10,27 +11,20 @@ namespace Vintagestory.GameContent.Mechanics
     {
         CustomMeshDataPartFloat matrixAndLightFloats1;
         CustomMeshDataPartFloat matrixAndLightFloats2;
-        MeshRef blockMeshRef1;
-        MeshRef blockMeshRef2;
+        List<MeshGroup> meshGroups1;
+        List<MeshGroup> meshGroups2;
 
         public ClutchBlockRenderer(ICoreClientAPI capi, MechanicalPowerMod mechanicalPowerMod, Block textureSoureBlock, CompositeShape shapeLoc) : base(capi, mechanicalPowerMod)
         {
-
-            AssetLocation loc = new AssetLocation("shapes/block/wood/mechanics/clutch-arm.json");
-
-            Shape shape = API.Common.Shape.TryGet(capi, loc);
             Vec3f rot = new Vec3f(shapeLoc.rotateX, shapeLoc.rotateY, shapeLoc.rotateZ);
 
-            capi.Tesselator.TesselateShape(textureSoureBlock, shape, out MeshData blockMesh1, rot);
-
-            rot = new Vec3f(shapeLoc.rotateX, shapeLoc.rotateY, shapeLoc.rotateZ);
+            Shape shape = API.Common.Shape.TryGet(capi, new AssetLocation("shapes/block/wood/mechanics/clutch-arm.json"));
             Shape ovshape = API.Common.Shape.TryGet(capi, new AssetLocation("shapes/block/wood/mechanics/clutch-drum.json"));
+
+            capi.Tesselator.TesselateShape(textureSoureBlock, shape, out MeshData blockMesh1, rot);
             capi.Tesselator.TesselateShape(textureSoureBlock, ovshape, out MeshData blockMesh2, rot);
 
-            //blockMesh1.Rgba2 = null;
-            //blockMesh2.Rgba2 = null;
-
-            // 16 floats matrix, 4 floats light rgbs
+            // 16 floats matrix, 4 floats light rgba
             blockMesh1.CustomFloats = matrixAndLightFloats1 = new CustomMeshDataPartFloat((16 + 4) * 10100)
             {
                 Instanced = true,
@@ -40,6 +34,7 @@ namespace Vintagestory.GameContent.Mechanics
                 StaticDraw = false,
             };
             blockMesh1.CustomFloats.SetAllocationSize((16 + 4) * 10100);
+
             blockMesh2.CustomFloats = matrixAndLightFloats2 = new CustomMeshDataPartFloat((16 + 4) * 10100)
             {
                 Instanced = true,
@@ -50,15 +45,15 @@ namespace Vintagestory.GameContent.Mechanics
             };
             blockMesh2.CustomFloats.SetAllocationSize((16 + 4) * 10100);
 
-            this.blockMeshRef1 = capi.Render.UploadMesh(blockMesh1);
-            this.blockMeshRef2 = capi.Render.UploadMesh(blockMesh2);
+            meshGroups1 = UploadMeshGrouped(blockMesh1, matrixAndLightFloats1);
+            meshGroups2 = UploadMeshGrouped(blockMesh2, matrixAndLightFloats2);
         }
-
 
         protected override void UpdateLightAndTransformMatrix(int index, Vec3f distToCamera, float rotation, IMechanicalPowerRenderable dev)
         {
             BEClutch clutch = dev as BEClutch;
             if (clutch == null) return;
+
             float rot1 = clutch.AngleRad;
             float rot2 = clutch.RotationNeighbour();
 
@@ -95,7 +90,6 @@ namespace Vintagestory.GameContent.Mechanics
             Mat4f.MulQuat(tmpMat, quat);
 
             Mat4f.Translate(tmpMat, tmpMat, -axis.X, -axis.Y, -axis.Z);
-            //if (xtraTransform != null) Mat4f.Mul(tmpMat, tmpMat, xtraTransform);
 
             int j = index * 20;
             values[j] = lightRgba.R;
@@ -104,9 +98,8 @@ namespace Vintagestory.GameContent.Mechanics
             values[++j] = lightRgba.A;
 
             for (int i = 0; i < 16; i++)
-            {
                 values[++j] = tmpMat[i];
-            }
+
             return tmpMat;
         }
 
@@ -116,23 +109,16 @@ namespace Vintagestory.GameContent.Mechanics
 
             if (quantityBlocks > 0)
             {
-                matrixAndLightFloats1.Count = quantityBlocks * 20;
-                updateMesh.CustomFloats = matrixAndLightFloats1;
-                capi.Render.UpdateMesh(blockMeshRef1, updateMesh);
-                capi.Render.RenderMeshInstanced(blockMeshRef1, quantityBlocks);
-                matrixAndLightFloats2.Count = quantityBlocks * 20;
-                updateMesh.CustomFloats = matrixAndLightFloats2;
-                capi.Render.UpdateMesh(blockMeshRef2, updateMesh);
-                capi.Render.RenderMeshInstanced(blockMeshRef2, quantityBlocks);
+                RenderGroups(prog, meshGroups1, matrixAndLightFloats1, quantityBlocks);
+                RenderGroups(prog, meshGroups2, matrixAndLightFloats2, quantityBlocks);
             }
         }
 
         public override void Dispose()
         {
             base.Dispose();
-
-            blockMeshRef1?.Dispose();
-            blockMeshRef2?.Dispose();
+            DisposeGroups(meshGroups1);
+            DisposeGroups(meshGroups2);
         }
     }
 }
