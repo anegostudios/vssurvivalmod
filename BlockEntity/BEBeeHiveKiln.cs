@@ -107,20 +107,20 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
         switch (Orientation.Code)
         {
             case "east":
-            {
-                rotYDeg = 270;
-                break;
-            }
+                {
+                    rotYDeg = 270;
+                    break;
+                }
             case "west":
-            {
-                rotYDeg = 90;
-                break;
-            }
+                {
+                    rotYDeg = 90;
+                    break;
+                }
             case "south":
-            {
-                rotYDeg = 180;
-                break;
-            }
+                {
+                    rotYDeg = 180;
+                    break;
+                }
         }
 
         structure.InitForUse(rotYDeg);
@@ -216,7 +216,7 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
         var fuelPos = new BlockPos(Pos.dimension);
         for (var j = 0; j < 9; j++)
         {
-            fuelPos.Set(particlePositions[j].X, particlePositions[j].Y-1, particlePositions[j].Z);
+            fuelPos.Set(particlePositions[j].X, particlePositions[j].Y - 1, particlePositions[j].Z);
             var blockEntity = Api.World.BlockAccessor.GetBlockEntity(fuelPos);
             if (blockEntity == null && Api.World.BlockAccessor.GetChunkAtBlockPos(fuelPos) == null)
             {
@@ -259,6 +259,13 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
             markDirty = true;
         }
 
+        /// Apply anti-cheese measure if the player tries to break the
+        /// structure itself instead of the door
+        if (beforeStructureComplete && !StructureComplete)
+        {
+            ApplyAccumulatedDamage();
+        }
+
         if (receivesHeat)
         {
             if (!StructureComplete || beBehaviorDoor.Opened)
@@ -293,19 +300,7 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
         // check damage every 7 * 24h = 168 ingame hours to damage - same time as cementation furnace
         if (TotalHoursHeatReceived >= KilnBreakAfterHours)
         {
-            TotalHoursHeatReceived = 0;
-            structure.WalkMatchingBlocks(Api.World, Pos, (block, pos) =>
-            {
-                var heatResistance = block.Attributes?["heatResistance"].AsFloat(1) ?? 1;
-
-                if (Api.World.Rand.NextDouble() > heatResistance)
-                {
-                    var nowBlock = Api.World.GetBlock(block.CodeWithVariant("state", "damaged"));
-                    Api.World.BlockAccessor.SetBlock(nowBlock.Id, pos);
-                    StructureComplete = false;
-                    markDirty = true;
-                }
-            });
+            ApplyAccumulatedDamage();
         }
 
         if (markDirty)
@@ -321,7 +316,7 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
         var fuelPos = new BlockPos(0);
         for (var j = 0; j < 9; j++)
         {
-            fuelPos.Set(particlePositions[j].X, particlePositions[j].Y-1, particlePositions[j].Z);
+            fuelPos.Set(particlePositions[j].X, particlePositions[j].Y - 1, particlePositions[j].Z);
             var blockEntity = Api.World.BlockAccessor.GetBlockEntity(fuelPos);
             if (blockEntity is BlockEntityCoalPile becp && becp.IsBurning)
             {
@@ -373,7 +368,7 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
                         }
 
                         var heatReceived = (hoursHeatReceived - hoursHeatingUp);
-                        if(temp >= ItemBurnTemperature && heatReceived > 0)
+                        if (temp >= ItemBurnTemperature && heatReceived > 0)
                         {
                             itemHoursHeatReceived = itemSlot.Itemstack.Attributes.GetFloat("hoursHeatReceived") + heatReceived;
                             itemSlot.Itemstack.Attributes.SetFloat("hoursHeatReceived", itemHoursHeatReceived);
@@ -604,5 +599,40 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
         var rotateYRad = tree.GetFloat("rotateYRad");
         rotateYRad = (rotateYRad - degreeRotation * GameMath.DEG2RAD) % GameMath.TWOPI;
         tree.SetFloat("rotateYRad", rotateYRad);
+    }
+
+    /// Anti-cheese:
+    ///
+    /// Apply all accumulated damage before resetting the timer.
+    /// Prevents simply breaking and replacing components from
+    /// stopping all damage.
+    ///
+    /// This is important for the beehive kiln because its function is not
+    /// applied in discrete chunks like the cementation furnace, where breaking
+    /// it before the timer is up has no value and just wastes fuel.
+    public void ApplyAccumulatedDamage()
+    {
+
+        bool markDirty = false;
+        double timeMul = TotalHoursHeatReceived / KilnBreakAfterHours;
+        TotalHoursHeatReceived = 0;
+
+        structure.WalkMatchingBlocks(Api.World, Pos, (block, pos) =>
+        {
+            var heatResistance = block.Attributes?["heatResistance"].AsFloat(1) ?? 1;
+
+            if (Api.World.Rand.NextDouble() > 1 - ((1 - heatResistance) * timeMul))
+            {
+                var nowBlock = Api.World.GetBlock(block.CodeWithVariant("state", "damaged"));
+                Api.World.BlockAccessor.SetBlock(nowBlock.Id, pos);
+                StructureComplete = false;
+                markDirty = true;
+            }
+        });
+
+        if (markDirty)
+        {
+            MarkDirty();
+        }
     }
 }
