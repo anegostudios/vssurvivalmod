@@ -45,14 +45,15 @@ namespace Vintagestory.GameContent.Mechanics
         protected virtual void UpdateCustomFloatBuffer()
         {
             Vec3d pos = capi.World.Player.Entity.CameraPos;
-
+            BlockPos devPos;
             int i = 0;
             foreach (var dev in renderedDevices.Values)
             {
                 //double precision int-double subtraction is needed here (even though the desired result is a float).  
                 // It's needed to have enough significant figures in the result, as the integer size could be large e.g. 50000 but the difference should be small (can easily be less than 5)
-                tmp.Set((float)(dev.Position.X - pos.X), (float)(dev.Position.InternalY - pos.Y), (float)(dev.Position.Z - pos.Z));  
-
+                devPos=dev.Position;
+                tmp.Set((float)(devPos.X - pos.X), (float)(devPos.InternalY - pos.Y), (float)(devPos.Z - pos.Z));  
+                
                 UpdateLightAndTransformMatrix(i, tmp, dev.AngleRad % GameMath.TWOPI, dev);
                 i++;
             }
@@ -102,4 +103,5 @@ namespace Vintagestory.GameContent.Mechanics
         }
     }
 }
+
 
