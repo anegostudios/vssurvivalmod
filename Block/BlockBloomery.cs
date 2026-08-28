@@ -152,7 +152,8 @@ namespace Vintagestory.GameContent
             {
                 
                 if (hotbarstack == null) return true;
-                if (beb.TryAdd(byPlayer, byPlayer.Entity.Controls.CtrlKey ? 5 : 1))
+                int largeAmount = hotbarstack.Collectible.Code.PathStartsWith("nugget") ? 20 : 5;
+                if (beb.TryAdd(byPlayer, byPlayer.Entity.Controls.CtrlKey ? largeAmount : 1))
                 {
                     if (world.Side == EnumAppSide.Client) (byPlayer as IClientPlayer).TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
                 }
