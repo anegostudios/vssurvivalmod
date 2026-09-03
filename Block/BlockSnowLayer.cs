@@ -75,20 +75,19 @@ namespace Vintagestory.GameContent
 
         public override bool OnFallOnto(IWorldAccessor world, BlockPos pos, Block block, TreeAttribute blockEntityAttributes)
         {
-            var selfHeight = height;
-            var fallingBlockHeight = block.GetSnowLevel(pos);
-
-            var nBlock = world.BlockAccessor.GetMostSolidBlock(pos);
-            var uBlock = block;
-            if (uBlock != null && nBlock?.GetSnowLevel(pos) < 8)
+            var targetPosBlock = world.BlockAccessor.GetMostSolidBlock(pos);
+            var fallingBlock = block;
+            if (fallingBlock != null && targetPosBlock?.GetSnowLevel(pos) < 8)
             {
-                while (uBlock != null && nBlock.GetSnowLevel(pos) < 8)
+                var originalPos = new FastVec3i(pos);
+                // if the target is snow, move all snow from falling to target
+                while (fallingBlock is BlockSnowLayer && targetPosBlock.GetSnowLevel(pos) < 8)
                 {
-                    var nextnBlock = nBlock.GetSnowCoveredVariant(pos, nBlock.GetSnowLevel(pos) + 1);
+                    var nextnBlock = targetPosBlock.GetSnowCoveredVariant(pos, targetPosBlock.GetSnowLevel(pos) + 1);
                     if (nextnBlock == null) break;
 
-                    nBlock = nextnBlock;
-                    uBlock = uBlock.GetSnowCoveredVariant(pos, uBlock.GetSnowLevel(pos) - 1);
+                    targetPosBlock = nextnBlock;
+                    fallingBlock = fallingBlock.GetSnowCoveredVariant(pos, fallingBlock.GetSnowLevel(pos) - 1);
                 }
 
                 int downId = 0;
@@ -98,14 +97,17 @@ namespace Vintagestory.GameContent
                     if (downId != 0) pos.Up();
                 }
 
-                world.BlockAccessor.SetBlock(nBlock.BlockId, pos);
+                world.BlockAccessor.SetBlock(targetPosBlock.BlockId, pos);
 
-                if (uBlock != null)
+                if (fallingBlock != null)
                 {
                     BlockPos upos = pos.UpCopy();
                     Block aboveBlock = world.BlockAccessor.GetMostSolidBlock(upos);
-                    if (aboveBlock.BlockId == 0) world.BlockAccessor.SetBlock(uBlock.BlockId, upos);
-                    else aboveBlock.OnFallOnto(world, pos, uBlock, blockEntityAttributes);
+                    if (aboveBlock.BlockId == 0) world.BlockAccessor.SetBlock(fallingBlock.BlockId, upos);
+                    else if(!originalPos.Equals(pos)) // we do want to prevent an infinite loop on the same position
+                    {
+                        aboveBlock.OnFallOnto(world, pos, fallingBlock, blockEntityAttributes);
+                    }
                 }
 
                 world.BlockAccessor.TriggerNeighbourBlockUpdate(pos);

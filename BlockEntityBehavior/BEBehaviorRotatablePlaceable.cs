@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Common;
@@ -7,7 +6,7 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent;
 
-public class BEBehaviorRotatablePlaceable : BlockEntityBehavior, IMultiBlockColSelBoxes
+public class BEBehaviorRotatablePlaceable : BlockEntityBehavior, IMultiBlockColSelBoxes, IRotatable
 {
     Cuboidf[][] selectionBoxes;
     Cuboidf[][] collisionboxes;
@@ -57,7 +56,7 @@ public class BEBehaviorRotatablePlaceable : BlockEntityBehavior, IMultiBlockColS
         var rotatedBoxes = new Cuboidf[(int)height + 1][];
 
         int y = 0;
-        while (y < height) 
+        while (y < height)
         {
             var boxes = origboxes.Select(box => box.RotatedCopy(0, MeshAngleRad * GameMath.RAD2DEG, 0, new Vec3d(0.5, 0, 0.5))).ToArray();
             foreach (var box in boxes)
@@ -86,9 +85,15 @@ public class BEBehaviorRotatablePlaceable : BlockEntityBehavior, IMultiBlockColS
         return selectionBoxes[GameMath.Clamp(-offset.Y, 0, selectionBoxes.Length - 1)];
     }
 
-
     public bool DoPartialSelection()
     {
         return true;
+    }
+
+    public void OnTransformed(IWorldAccessor worldAccessor, ITreeAttribute tree, int degreeRotation, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, EnumAxis? flipAxis)
+    {
+        MeshAngleRad = tree.GetFloat("meshAngleRad");
+        MeshAngleRad -= degreeRotation * GameMath.DEG2RAD;
+        tree.SetFloat("meshAngleRad", MeshAngleRad);
     }
 }

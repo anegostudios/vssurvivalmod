@@ -4,6 +4,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 
 #nullable disable
 
@@ -306,8 +307,14 @@ namespace Vintagestory.GameContent
 
             if (packetid < 1000)
             {
-                Inventory.InvNetworkUtil.HandleClientPacket(player, packetid, data);
+                var perms = new BlockEntity.CachedAccessPerms(this.Api.World, this.Pos, player);
+                if (!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "barrel"))
+                {
+                    Inventory.InvNetworkUtil.SendInventoryRollback((IServerPlayer)player, packetid, data);
+                    return;
+                }
 
+                Inventory.InvNetworkUtil.HandleClientPacket(player, packetid, data);
                 // Tell server to save this chunk to disk again
                 Api.World.BlockAccessor.GetChunkAtBlockPos(Pos).MarkModified();
 
@@ -316,17 +323,33 @@ namespace Vintagestory.GameContent
 
             if (packetid == (int)EnumBlockEntityPacketId.Close)
             {
+                    // No permission checks here, closing the ui is always allowed.
+
                 player.InventoryManager?.CloseInventory(Inventory);
             }
 
             if (packetid == (int)EnumBlockEntityPacketId.Open)
             {
+                var perms = new BlockEntity.CachedAccessPerms(this.Api.World, this.Pos, player);
+                if (!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "barrel"))
+                {
+                    // No reverting, just drop the request.
+                    return;
+                }
+
                 player.InventoryManager?.OpenInventory(Inventory);
             }
 
 
             if (packetid == 1337)
             {
+                var perms = new BlockEntity.CachedAccessPerms(this.Api.World, this.Pos, player);
+                if (!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "barrel"))
+                {
+                    ((ICoreServerAPI)Api).Network.SendBlockEntityPacket((IServerPlayer)player, Pos, 1338);
+                    return;
+                }
+
                 SealBarrel();
             }
         }
@@ -335,12 +358,21 @@ namespace Vintagestory.GameContent
         {
             base.OnReceivedServerPacket(packetid, data);
 
-            if (packetid == (int)EnumBlockEntityPacketId.Close)
+            switch (packetid)
             {
-                (Api.World as IClientWorldAccessor).Player.InventoryManager.CloseInventory(Inventory);
-                invDialog?.TryClose();
-                invDialog?.Dispose();
-                invDialog = null;
+                case (int)EnumBlockEntityPacketId.Close:
+                    (Api.World as IClientWorldAccessor).Player.InventoryManager.CloseInventory(Inventory);
+                    invDialog?.TryClose();
+                    invDialog?.Dispose();
+                    invDialog = null;
+                    break;
+
+                case 1338:
+                    Sealed = false;
+                    SealedSinceTotalHours = 0;
+                    currentMesh = null;   // Trigger a re-tesselation. 
+                    MarkDirty(true);
+                    break;
             }
         }
 

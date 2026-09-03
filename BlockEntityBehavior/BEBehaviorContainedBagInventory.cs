@@ -41,6 +41,8 @@ public class BEBehaviorContainedBagInventory : BlockEntityBehavior
 
     public override void OnReceivedClientPacket(IPlayer player, int packetid, byte[] data)
     {
+        // Perms are checked in the OnReceiveClientPacket of the inventories, where we will know how to roll the interaction back if required.
+
         int targetSlotId = packetid >> PacketIdBitShift;
         int first15Bits = (1 << PacketIdBitShift) - 1;
         packetid = packetid & first15Bits;
@@ -154,14 +156,15 @@ public class BlockEntityContainedBagWorkspace
             return;
         }
 
-        if (!be.Api.World.Claims.TryAccess(player, be.Pos, EnumBlockAccessFlags.Use))
-        {
-            be.Api.World.Logger.Audit("Player {0} sent an inventory packet to ground stored held bag at {1} but has no claim access. Rejected.", player.PlayerName, be.Pos);
-            return;
-        }
-
         if (packetid < 1000)
         {
+            var perms = new BlockEntity.CachedAccessPerms(this.be.Api.World, this.be.Pos, player);
+            if(!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "ground stored held bag"))
+            {
+                wrapperInv.InvNetworkUtil.SendInventoryRollback((IServerPlayer)player, packetid, data);
+                return;
+            }
+
             wrapperInv.InvNetworkUtil.HandleClientPacket(player, packetid, data);
 
             // Tell server to save this chunk to disk again
@@ -172,11 +175,20 @@ public class BlockEntityContainedBagWorkspace
 
         if (packetid == (int)EnumBlockEntityPacketId.Close)
         {
+            // No perms check, closing is always allowed. 
+
             player.InventoryManager?.CloseInventory(wrapperInv);
         }
 
         if (packetid == (int)EnumBlockEntityPacketId.Open)
         {
+            var perms = new BlockEntity.CachedAccessPerms(this.be.Api.World, this.be.Pos, player);
+            if(!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "ground stored held bag"))
+            {
+                // No rolling back, just reject.
+                return;
+            }
+
             player.InventoryManager?.OpenInventory(wrapperInv);
         }
     }

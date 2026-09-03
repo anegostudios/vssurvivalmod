@@ -223,14 +223,16 @@ namespace Vintagestory.GameContent
 
         public override void OnReceivedClientPacket(IPlayer player, int packetid, byte[] data)
         {
-            if (!Api.World.Claims.TryAccess(player, Pos, EnumBlockAccessFlags.BuildOrBreak))
-            {
-                player.InventoryManager.ActiveHotbarSlot.MarkDirty();
-                return;
-            }
-
             if (packetid == (int)EnumSignPacketId.SaveText)
             {
+                var perms = new BlockEntity.CachedAccessPerms(this.Api.World, this.Pos, player);
+                if (!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "chisel"))
+                {
+                    player.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                    // Rennorb 20.06.2026 ux: Revert block state for that player.
+                    return;
+                }
+
                 var packet = SerializerUtil.Deserialize<EditSignPacket>(data);
                 BlockName = packet.Text;
                 MarkDirty(true, player);
@@ -241,6 +243,14 @@ namespace Vintagestory.GameContent
 
             if (packetid == 1010)
             {
+                var perms = new BlockEntity.CachedAccessPerms(this.Api.World, this.Pos, player);
+                if (!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "chisel"))
+                {
+                    player.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                    // Rennorb 20.06.2026 ux: Revert block state for that player.
+                    return;
+                }
+
                 Vec3i voxelPos;
                 bool isBreak;
                 BlockFacing facing;
@@ -256,7 +266,12 @@ namespace Vintagestory.GameContent
                 UpdateVoxel(player, player.InventoryManager.ActiveHotbarSlot, voxelPos, facing, isBreak);
             }
 
-            if (packetid == 1011) PickBlockMaterial(player);
+            if (packetid == 1011)
+            {
+                // Picking only affects the chisel tool the player is holding, so no need to do the relatively expensive permission checks here.
+
+                PickBlockMaterial(player);
+            }
         }
 
 

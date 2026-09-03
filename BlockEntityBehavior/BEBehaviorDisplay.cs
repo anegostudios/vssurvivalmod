@@ -1,5 +1,4 @@
 using Newtonsoft.Json.Linq;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
@@ -13,11 +12,6 @@ namespace Vintagestory.GameContent;
 
 #nullable disable
 
-public interface IDisplayable
-{
-    public EnumShelvableLayout? GetDisplayCategory(ItemSlot slot) => EnumShelvableLayout.Quadrants;
-    public ModelTransform GetDisplayTransform(ItemSlot slot) => null;
-}
 public class ItemSlotDisplay : ItemSlotSurvival
 {
     public string DisplayCategory;
@@ -452,7 +446,6 @@ public class BEBehaviorDisplay : BEBehaviorContainer, IInteractable, IRotatableP
     public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
     {
         base.FromTreeAttributes(tree, worldAccessForResolve);
-        container.FromTreeAttributes(tree, worldAccessForResolve);
         MeshAngleRad = tree.GetFloat("meshAngleRad");
 
         if (tree.HasAttribute("rotation"))
@@ -492,16 +485,16 @@ public class BEBehaviorDisplay : BEBehaviorContainer, IInteractable, IRotatableP
         }
     }
 
-    public override void OnLoadCollectibleMappings(IWorldAccessor worldForNewMappings, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed, bool resolveImports)
+    public override void OnLoadCollectibleMappings(IWorldAccessor world, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed, bool resolveImports)
     {
-        base.OnLoadCollectibleMappings(worldForNewMappings, oldBlockIdMapping, oldItemIdMapping, schematicSeed, resolveImports);
-        if (displayStack?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForNewMappings) == false)
+        base.OnLoadCollectibleMappings(world, oldBlockIdMapping, oldItemIdMapping, schematicSeed, resolveImports);
+        if (displayStack?.FixMapping(oldBlockIdMapping, oldItemIdMapping, world) == false)
         {
             displayStack = null;
         }
         else
         {
-            displayStack?.Collectible.OnLoadCollectibleMappings(worldForNewMappings, new DummySlot(displayStack), oldBlockIdMapping, oldItemIdMapping, resolveImports);
+            displayStack?.Collectible.OnLoadCollectibleMappings(world, new DummySlot(displayStack), oldBlockIdMapping, oldItemIdMapping, resolveImports);
         }
     }
 

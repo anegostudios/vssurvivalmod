@@ -50,7 +50,7 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
         {
-            if (Api.World.EntityDebugMode)
+            if (Api.World.EntityDebugMode && forPlayer?.WorldData?.CurrentGameMode == EnumGameMode.Creative)
             {
                 if (Principal == null)
                 {

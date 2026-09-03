@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -9,7 +10,7 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityBookshelf : BlockEntityDisplay
+    public class BlockEntityBookshelf : BlockEntityDisplay, IRotatable
     {
         public override InventoryBase Inventory => inv;
         public override string InventoryClassName => "bookshelf";
@@ -241,6 +242,12 @@ namespace Vintagestory.GameContent
             {
                 sb.AppendLine(slot.Itemstack.GetName());
             }
+        }
+
+        public void OnTransformed(IWorldAccessor worldAccessor, ITreeAttribute tree, int degreeRotation, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, EnumAxis? flipAxis)
+        {
+            bh ??= GetBehavior<BEBehaviorShapeMaterialFromAttributes>();
+            bh?.OnTransformed(worldAccessor, tree, degreeRotation, oldBlockIdMapping, oldItemIdMapping, flipAxis);
         }
     }
 }

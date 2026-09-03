@@ -133,7 +133,7 @@ namespace Vintagestory.GameContent.Mechanics
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
         {
             base.GetBlockInfo(forPlayer, sb);
-            if (Api.World.EntityDebugMode)
+            if (Api.World.EntityDebugMode && forPlayer?.WorldData?.CurrentGameMode == EnumGameMode.Creative)
             {
                 //sb.AppendLine(string.Format(Lang.Get("Rotation: {0} - {1} - {2} - {3}", this.isRotationReversed(), propagationDir, network?.TurnDir, this.GearedRatio)));
             }

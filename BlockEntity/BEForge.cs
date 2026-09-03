@@ -45,7 +45,7 @@ namespace Vintagestory.GameContent
         {
             get
             {
-                return 700 + (FuelSlot.Itemstack?.ItemAttributes?["inForge"]["tempGainDeg"].AsInt() ?? 1);
+                return 700 + (FuelSlot.Itemstack?.ItemAttributes?["inForge"]["tempGainDeg"].AsInt(1) ?? 1);
             }
         }
         public static int DefaultExtraHeatMaxTemperature => 1150;

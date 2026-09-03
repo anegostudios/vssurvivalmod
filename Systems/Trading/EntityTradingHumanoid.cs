@@ -360,11 +360,25 @@ namespace Vintagestory.GameContent
 
             if (packetid < 1000)
             {
+                var perms = new Entity.CachedAccessPerms(this, player);
+                if(!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.None, true, "trader"))
+                {
+                    Inventory.InvNetworkUtil.SendInventoryRollback(player, packetid, data);
+                    return;
+                }
+
                 Inventory.InvNetworkUtil.HandleClientPacket(player, packetid, data);
                 return;
             }
             if (packetid == 1000)
             {
+                var perms = new Entity.CachedAccessPerms(this, player);
+                if(!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.None, true, "trader"))
+                {
+                    // Rennorb 23.06.2026 ux: I don't think anything needs to be reverted here. 
+                    return;
+                }
+
                 EnumTransactionResult result = Inventory.TryBuySell(player);
                 if (result == EnumTransactionResult.Success)
                 {
@@ -380,16 +394,25 @@ namespace Vintagestory.GameContent
             }
             if (packetid == 1001)
             {
+                var perms = new Entity.CachedAccessPerms(this, player);
+                if(!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.None, true, "trader"))
+                {
+                    // No reverting needed. Just don't open the inventory.
+                    return;
+                }
+
                 player.InventoryManager.OpenInventory(Inventory);
             }
 
             if (packetid == PlayerStoppedInteracting)
             {
-                interactingWithPlayer.Remove(player.Entity);
-                if (WatchedAttributes.GetString("tradingPlayerUID") == player.PlayerUID)
-                {
-                    WatchedAttributes.RemoveAttribute("tradingPlayerUID");
-                }
+                    // No perms check here, this is always allowed.
+
+                    interactingWithPlayer.Remove(player.Entity);
+                    if (WatchedAttributes.GetString("tradingPlayerUID") == player.PlayerUID)
+                    {
+                        WatchedAttributes.RemoveAttribute("tradingPlayerUID");
+                    }
             }
         }
 

@@ -28,7 +28,7 @@ namespace Vintagestory.GameContent.Mechanics
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref EnumHandling handling)
         {
             var hslot = byPlayer.InventoryManager.ActiveHotbarSlot;
-            if (byPlayer.Entity.Controls.Sprint && byPlayer.InventoryManager.OffhandHotbarSlot.Itemstack?.Collectible.GetTool(byPlayer.InventoryManager.OffhandHotbarSlot) == EnumTool.Wrench)
+            if (byPlayer.Entity.Controls.CtrlKey && byPlayer.InventoryManager.OffhandHotbarSlot.Itemstack?.Collectible.GetTool(byPlayer.InventoryManager.OffhandHotbarSlot) == EnumTool.Wrench)
             {
                 if (BlockEntityBehaviorCoverable.SuitableMaterial(hslot))
                 {

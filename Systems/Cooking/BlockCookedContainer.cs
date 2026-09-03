@@ -522,7 +522,7 @@ namespace Vintagestory.GameContent
                 if (quantityServings > 0)
                 {
                     ItemStack[] myStacks = GetNonEmptyContents(api.World, inv[1].Itemstack);
-                    if (myStacks.Length > 0)
+                    if (myStacks.Length > 0 && inv.CookingSlots.Length > 0)
                     {
                         myStacks[0].StackSize = quantityServings;
                         inv.CookingSlots[0].Itemstack = myStacks[0];

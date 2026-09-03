@@ -31,7 +31,7 @@ namespace Vintagestory.GameContent
 
         public override void Initialize(ICoreAPI api, JsonObject properties)
         {
-            
+
             base.Initialize(api, properties);
             brokenDropsRatio = properties["brokenDropsRatio"].AsFloat(1);
             var stages = properties["stages"].AsObject<ConstructionStage[]>();
@@ -76,7 +76,7 @@ namespace Vintagestory.GameContent
         {
             base.GetBlockInfo(forPlayer, dsc);
 
-            if (Api.World.EntityDebugMode)
+            if (Api.World.EntityDebugMode && forPlayer?.WorldData?.CurrentGameMode == EnumGameMode.Creative)
             {
                 dsc.AppendLine("<font color='#ccc'>construction stage= " + rcc.CurrentCompletedStage + " of " + rcc.Stages.Length + "</font>");
             }

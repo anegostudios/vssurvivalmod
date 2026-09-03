@@ -662,19 +662,48 @@ namespace Vintagestory.GameContent
         {
             switch (packetid)
             {
-                case PacketIdScrewStart:
+                case PacketIdScrewStart: {
+                    var perms = new BlockEntity.CachedAccessPerms(this.Api.World, this.Pos, fromPlayer);
+                    if (!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "fruit press"))
+                    {
+                        // Rennorb 20.06.2026 ux: Revert block state for that player.
+                        break;
+                    }
+
                     compressAnimMeta.AnimationSpeed = 0.5f;
                     animUtil.StartAnimation(compressAnimMeta);
                     squeezeSoundPlayed = false;
                     lastLiquidTransferTotalHours = Api.World.Calendar.TotalHours;
                     if (listenerId == 0) listenerId = RegisterGameTickListener(onTick100msServer, 25);
                     (Api as ICoreServerAPI)?.Network.BroadcastBlockEntityPacket(Pos, PacketIdAnimUpdate, new FruitPressAnimPacket() { AnimationState = EnumFruitPressAnimState.ScrewStart, AnimationSpeed = 0.5f });
+
                     break;
-                case PacketIdScrewContinue:
+                }
+
+
+                case PacketIdScrewContinue: {
+                    var perms = new BlockEntity.CachedAccessPerms(this.Api.World, this.Pos, fromPlayer);
+                    if (!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "fruit press"))
+                    {
+                        // Rennorb 20.06.2026 ux: Revert block state for that player.
+                        break;
+                    }
+
                     compressAnimMeta.AnimationSpeed = 0.5f;
                     (Api as ICoreServerAPI)?.Network.BroadcastBlockEntityPacket(Pos, PacketIdAnimUpdate, new FruitPressAnimPacket() { AnimationState = EnumFruitPressAnimState.ScrewContinue, AnimationSpeed = 0.5f });
+
                     break;
-                case PacketIdUnscrew:
+                }
+
+
+                case PacketIdUnscrew: {
+                    var perms = new BlockEntity.CachedAccessPerms(this.Api.World, this.Pos, fromPlayer);
+                    if (!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "fruit press"))
+                    {
+                        // Rennorb 20.06.2026 ux: Revert block state for that player.
+                        break;
+                    }
+
                     compressAnimMeta.AnimationSpeed = 1.5f;
                     animUtil.StopAnimation("compress");
                     (Api as ICoreServerAPI)?.Network.BroadcastBlockEntityPacket(Pos, PacketIdAnimUpdate, new FruitPressAnimPacket() { AnimationState = EnumFruitPressAnimState.Unscrew, AnimationSpeed = 1.5f });
@@ -684,7 +713,9 @@ namespace Vintagestory.GameContent
                         UnregisterGameTickListener(listenerId);
                         listenerId = 0;
                     }
+
                     break;
+                }
             }
 
             base.OnReceivedClientPacket(fromPlayer, packetid, data);

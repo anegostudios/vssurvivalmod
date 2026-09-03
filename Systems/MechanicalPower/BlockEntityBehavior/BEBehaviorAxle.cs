@@ -288,7 +288,7 @@ namespace Vintagestory.GameContent.Mechanics
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
         {
             base.GetBlockInfo(forPlayer, sb);
-            if (Api.World.EntityDebugMode)
+            if (Api.World.EntityDebugMode && forPlayer?.WorldData?.CurrentGameMode == EnumGameMode.Creative)
             {
                 string orientations = Block.Variant["orientation"];
                 sb.AppendLine(string.Format(Lang.Get("Orientation: {0}", orientations)));

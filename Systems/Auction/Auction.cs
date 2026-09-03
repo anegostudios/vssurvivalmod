@@ -43,6 +43,9 @@ namespace Vintagestory.GameContent
 
     public class ModSystemAuction : ModSystem
     {
+        public const int PriceMax = 10_000;
+        public const int DurationWeeksMax = 25;
+        public const int DurationWeeksMin = 5;
         protected ICoreAPI api;
         protected ICoreServerAPI sapi;
         protected ICoreClientAPI capi;
@@ -62,7 +65,7 @@ namespace Vintagestory.GameContent
         public float debtClient;
 
         /// <summary>
-        /// Loaded from worldconfig, multiplier for the delivery price. 
+        /// Loaded from worldconfig, multiplier for the delivery price.
         /// </summary>
         public float DeliveryPriceMul = 1f;
 
@@ -76,6 +79,10 @@ namespace Vintagestory.GameContent
         /// </summary>
         public float SalesCutRate = 0.1f;
 
+        /// <summary>
+        /// The amount of auctions a player can have concurrently
+        /// </summary>
+        public int MaxAuctionsPerPlayer = 100;
 
 
         public int DeliveryCostsByDistance(Vec3d src, Vec3d dst)
@@ -118,6 +125,7 @@ namespace Vintagestory.GameContent
             DeliveryPriceMul = api.World.Config.GetFloat("auctionHouseDeliveryPriceMul", 1);
             DurationWeeksMul = api.World.Config.GetInt("auctionHouseDurationWeeksMul", 5);
             SalesCutRate = api.World.Config.GetFloat("auctionHouseSalesCutRate", 0.1f);
+            MaxAuctionsPerPlayer = api.World.Config.GetInt("maxAuctionsPerPlayer", 100);
         }
 
         #region Client
@@ -337,7 +345,7 @@ namespace Vintagestory.GameContent
                 if (activeAuctions > 0) { sb.AppendLine(Lang.Get("{0} active auctions", activeAuctions)); }
                 if (soldAuctions > 0) { sb.AppendLine(Lang.Get("{0} sold auctions", soldAuctions)); }
                 if (expiredAuctions > 0) { sb.AppendLine(Lang.Get("{0} expired auctions", expiredAuctions)); }
-                if (enroutePurchasedAuctions > 0) { sb.AppendLine(Lang.Get("{0} purchased auctions en-route", readyPurchasedAuctions)); }
+                if (enroutePurchasedAuctions > 0) { sb.AppendLine(Lang.Get("{0} purchased auctions en-route", enroutePurchasedAuctions)); }
                 if (readyPurchasedAuctions > 0) { sb.AppendLine(Lang.Get("{0} purchased auctions ready for pick-up", readyPurchasedAuctions)); }
 
                 byPlayer.SendMessage(GlobalConstants.GeneralChatGroup, sb.ToString(), EnumChatType.Notification);
@@ -358,18 +366,12 @@ namespace Vintagestory.GameContent
         {
             if (!auctionHouseEnabled) return;
 
-            static bool PlayerIsTooFarAway(IServerPlayer player, Entity auctioneer)
-            {
-                var range = player.WorldData.PickingRange;
-                return auctioneer.Pos.SquareDistanceTo(player.Entity.Pos) > (range * range);
-            }
-
             switch (pkt.Action)
             {
                 case EnumAuctionAction.EnterAuctionHouse:
                 {
                     var auctioneer = sapi.World.GetEntityById(pkt.AtAuctioneerEntityId);
-                    if (PlayerIsTooFarAway(fromPlayer, auctioneer)) return;
+                    if (!fromPlayer.IsInInteractionRangeOf(auctioneer, slack: 0)) return;
 
                     InventoryGeneric ainv;
                     if (!createAuctionSlotByPlayer.TryGetValue(fromPlayer.PlayerUID, out ainv))
@@ -389,7 +391,7 @@ namespace Vintagestory.GameContent
                 }
 
                 case EnumAuctionAction.LeaveAuctionHouse:
-                    // No need to check PlayerIsTooFarAway here, this will only work if the other events were in range either way
+                    // No need to check IsInInteractionRangeOf here, this will only work if the other events were in range either way
                     // and we might be just outside the range when this gets received because hte player is currently walking away.
                     Event_PlayerDisconnect(fromPlayer);
                     break;
@@ -397,7 +399,7 @@ namespace Vintagestory.GameContent
                 case EnumAuctionAction.PurchaseAuction:
                 {
                     var auctioneer = sapi.World.GetEntityById(pkt.AtAuctioneerEntityId);
-                    if (PlayerIsTooFarAway(fromPlayer, auctioneer)) return;
+                    if (!fromPlayer.IsInInteractionRangeOf(auctioneer, slack: 0)) return;
 
                     PurchaseAuction(pkt.AuctionId, fromPlayer.Entity, auctioneer, pkt.WithDelivery, out string failureCode);
                     serverCh.SendPacket(new AuctionActionResponsePacket() { Action = pkt.Action, AuctionId = pkt.AuctionId, ErrorCode = failureCode }, fromPlayer);
@@ -407,7 +409,7 @@ namespace Vintagestory.GameContent
                 case EnumAuctionAction.RetrieveAuction:
                 {
                     var auctioneer = sapi.World.GetEntityById(pkt.AtAuctioneerEntityId);
-                    if (PlayerIsTooFarAway(fromPlayer, auctioneer)) return;
+                    if (!fromPlayer.IsInInteractionRangeOf(auctioneer, slack: 0)) return;
 
                     auctions.TryGetValue(pkt.AuctionId, out var auction);
                     var state = auction?.State;
@@ -455,7 +457,7 @@ namespace Vintagestory.GameContent
                 case EnumAuctionAction.PlaceAuction:
                 {
                     var auctioneer = sapi.World.GetEntityById(pkt.AtAuctioneerEntityId);
-                    if (PlayerIsTooFarAway(fromPlayer, auctioneer)) return;
+                    if (!fromPlayer.IsInInteractionRangeOf(auctioneer, slack: 0)) return;
 
                     if (!createAuctionSlotByPlayer.TryGetValue(fromPlayer.PlayerUID, out var inv)) break;
 
@@ -471,13 +473,13 @@ namespace Vintagestory.GameContent
                         break;
                     }
 
-                    if (pkt.Price > 10000)
+                    if (pkt.Price > PriceMax)
                     {
                         serverCh.SendPacket(new AuctionActionResponsePacket() { Action = pkt.Action, AuctionId = pkt.AuctionId, ErrorCode = "lessthan10000gears" }, fromPlayer);
                         break;
                     }
 
-                    pkt.DurationWeeks = Math.Max(1, pkt.DurationWeeks);
+                    pkt.DurationWeeks = Math.Clamp(pkt.DurationWeeks, DurationWeeksMin, DurationWeeksMax);
                     PlaceAuction(inv[0], inv[0].StackSize, pkt.Price, pkt.DurationWeeks * 7 * 24, pkt.DurationWeeks / DurationWeeksMul, fromPlayer.Entity, auctioneer, out string failureCode);
 
                     if (failureCode != null)
@@ -496,25 +498,23 @@ namespace Vintagestory.GameContent
         }
 
         /// <summary>
-        /// Returns all not yet expired auctions
-        /// </summary>
-        /// <returns></returns>
-        public List<Auction> GetActiveAuctions()
-        {
-            return auctions.Values.Where(ac => ac.State == EnumAuctionState.Active || ac.State == EnumAuctionState.Sold).ToList();
-        }
-
-        /// <summary>
-        /// Returns all own auctions, active or expired
+        /// Returns own auctions which are not yet bought.
+        /// Bought auctions will count towards the buyers limit
         /// </summary>
         /// <param name="player"></param>
         /// <returns></returns>
-        public List<Auction> GetAuctionsFrom(IPlayer player)
+        public List<Auction> GetAuctionsForLimitFrom(IPlayer player)
         {
             List<Auction> auctions = new List<Auction>();
             foreach (var auction in this.auctions.Values)
             {
-                if (auction.SellerName == player.PlayerUID)
+                if (auction.State != EnumAuctionState.Sold &&
+                    auction.SellerUid == player.PlayerUID)
+                {
+                    auctions.Add(auction);
+                }
+                if (auction.State == EnumAuctionState.Sold &&
+                    auction.BuyerUid == player.PlayerUID)
                 {
                     auctions.Add(auction);
                 }
@@ -558,7 +558,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            if (GetAuctionsFrom((sellerEntity as EntityPlayer).Player).Count > 30)
+            if (GetAuctionsForLimitFrom(((EntityPlayer)sellerEntity).Player).Count >= MaxAuctionsPerPlayer)
             {
                 failureCode = "toomanyauctions";
                 return;
@@ -629,7 +629,7 @@ namespace Vintagestory.GameContent
                 }
 
                 // Already purchased
-                if (auction.BuyerName != null)
+                if (auction.BuyerName != null || auction.State != EnumAuctionState.Active)
                 {
                     failureCode = "alreadypurchased";
                     return;
@@ -670,12 +670,6 @@ namespace Vintagestory.GameContent
 
             failureCode = "nosuchauction";
             return;
-        }
-
-        public void DeleteActiveAuction(long auctionId)
-        {
-            auctions.Remove(auctionId);
-            sendAuctions(null, new long[] { auctionId });
         }
 
         public ItemStack RetrieveAuction(long auctionId, long atAuctioneerEntityId, EntityPlayer reqEntity, out string failureCode)

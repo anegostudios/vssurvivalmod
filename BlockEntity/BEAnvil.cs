@@ -1109,6 +1109,13 @@ namespace Vintagestory.GameContent
         {
             if (packetid == (int)EnumAnvilPacket.SelectRecipe)
             {
+                var perms = new BlockEntity.CachedAccessPerms(this.Api.World, this.Pos, player);
+                if (!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "anvil"))
+                {
+                    // Rennorb 20.06.2026 ux: Revert block state for that player.
+                    return;
+                }
+
                 int recipeid = SerializerUtil.Deserialize<int>(data);
                 SmithingRecipe recipe = Api.GetSmithingRecipes().FirstOrDefault(r => r.RecipeId == recipeid);
 
@@ -1137,12 +1144,32 @@ namespace Vintagestory.GameContent
 
             if (packetid == (int)EnumAnvilPacket.CancelSelect)
             {
+                if (SelectedRecipeId == -1)
+                {
+                    return;
+                }
+
+                var perms = new BlockEntity.CachedAccessPerms(this.Api.World, this.Pos, player);
+                if (!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, false, "anvil")) // Do not validate picking range in case we got transported out of range.
+                {
+                    // No need to revert here, this cannot happen without packet manipulation.
+                    return;
+                }
+
+                // Rennorb 19.06.2026 security: Potentially griefable: anvils do not track who placed the item, therefore a second player could steal the work item by sending the cancel packet.
                 ditchWorkItemStack(player);
                 return;
             }
 
             if (packetid == (int)EnumAnvilPacket.OnUserOver)
             {
+                var perms = new BlockEntity.CachedAccessPerms(this.Api.World, this.Pos, player);
+                if (!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "anvil"))
+                {
+                    // Rennorb 20.06.2026 ux: Revert block state for that player.
+                    return;
+                }
+
                 Vec3i voxelPos;
                 using (MemoryStream ms = new MemoryStream(data))
                 {
