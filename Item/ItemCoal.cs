@@ -2,8 +2,6 @@ using System.Text;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 
-#nullable disable
-
 namespace Vintagestory.GameContent
 {
     public class ItemCoal : ItemPileable
@@ -20,7 +18,7 @@ namespace Vintagestory.GameContent
             var tpd = inforgeprops["tempGainDeg"].AsInt();
             if (tpd != 0) dsc.AppendLine(Lang.Get("coal-forgetemp-mod", tpd));
             var dm = inforgeprops["durationMul"].AsFloat();
-            if (dm != 1) dsc.AppendLine(Lang.Get("coal-forgedur-mod", dm));
+            if (dm != 1) dsc.AppendLine(Lang.Get("coal-forgedur-mod", dm - 1));
         }
     }
 }
