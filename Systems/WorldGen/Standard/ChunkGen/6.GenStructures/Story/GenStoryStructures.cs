@@ -133,14 +133,18 @@ namespace Vintagestory.GameContent
         protected ICoreServerAPI api;
         protected bool genStoryStructures;
         protected Cuboidi tmpCuboid = new Cuboidi();
-
         public BlockLayerConfig blockLayerConfig;
+
+        // key structure code; stores structures that don't fit into the world height at all (computed once in InitWorldGen)
+        private HashSet<string> tooTallStructures;
+        // key structure code; stores those for which we have already reported a vertical shift during this session
+        private readonly HashSet<string> reportedShifted = new();
+        // Y=0 is reserved for the mantle (mantle blocks)
+        private const int minValidY = 1; 
 
         public StoryStructures Structures;
         public bool StoryStructureInstancesDirty = false;
-
         public override double ExecuteOrder() { return 0.2; }
-
         public override void StartServerSide(ICoreServerAPI api)
         {
             this.api = api;
@@ -373,9 +377,23 @@ namespace Vintagestory.GameContent
             {
                 struc.MinSpawnDistX = (int)(struc.MinSpawnDistX * distScale);
                 struc.MinSpawnDistZ = (int)(struc.MinSpawnDistZ * distScale);
-
                 struc.MaxSpawnDistX = (int)(struc.MaxSpawnDistX * distScale);
                 struc.MaxSpawnDistZ = (int)(struc.MaxSpawnDistZ * distScale);
+            }
+            // precompute which story structures cannot fit into the usable world height range,
+            // so OnChunkColumnGen doesn't have to look this up (FirstOrDefault + size check) per generated column
+            int maxY = api.WorldManager.MapSizeY;
+
+            tooTallStructures = new HashSet<string>();
+            foreach (var struc in scfg.Structures)
+            {
+                int sizeY = struc.schematicData.SizeY;
+                if (IsStructureTooTall(sizeY, maxY))
+                {
+                    tooTallStructures.Add(struc.Code);
+                    api.Logger.Error(
+                        $"Story structure '{struc.Code}' is taller ({sizeY} blocks) than the usable world height ({maxY - minValidY} blocks). It will not be spawned.");
+                }
             }
 
             DetermineStoryStructures();
@@ -677,6 +695,37 @@ namespace Vintagestory.GameContent
             worldgenBlockAccessor = chunkProvider.GetBlockAccessor(false);
         }
 
+        /// <summary>
+        /// Clamp the structure's Y coordinates to ensure it fits within the world's valid height range.
+        /// Returns true if the structure had to be shifted to fit.
+        /// </summary>
+        private static bool ClampStructureY(Cuboidi strucloc, BlockPos startPos, int sizeY, int maxY)
+        {
+            int maxValidY = maxY - 1;
+
+            int blockMinY = strucloc.Y1;
+
+            // First align from the bottom...
+            if (blockMinY < minValidY)
+                blockMinY = minValidY;
+
+            //... then ensure the top by recalculating the permissible range for the lower boundary
+            int maxAllowedMinY = maxValidY - sizeY + 1;
+            if (blockMinY > maxAllowedMinY)
+                blockMinY = maxAllowedMinY;
+
+            bool wasShifted = blockMinY != strucloc.Y1;
+
+            strucloc.Y1 = blockMinY;
+            strucloc.Y2 = blockMinY + sizeY;
+            startPos.Y = blockMinY;
+
+            return wasShifted;
+        }
+
+        // Check if the structure's height exceeds the maximum allowed height in the world.
+        internal static bool IsStructureTooTall(int sizeY, int maxY) => sizeY > maxY - minValidY;
+
         private void OnChunkColumnGen(IChunkColumnGenerateRequest request)
         {
             if (!genStoryStructures) return;
@@ -687,62 +736,70 @@ namespace Vintagestory.GameContent
             tmpCuboid.Set(chunkX * chunksize, 0, chunkZ * chunksize, chunkX * chunksize + chunksize, chunks.Length * chunksize, chunkZ * chunksize + chunksize);
             worldgenBlockAccessor.BeginColumn();
 
+            int maxY = worldgenBlockAccessor.MapSizeY;
+
             foreach (var (strucCode, strucInst) in Structures)
             {
+                if (tooTallStructures.Contains(strucCode))
+                    continue;
+
                 var strucloc = strucInst.Location;
                 if (!strucloc.Intersects(tmpCuboid)) continue;
+
+                var structure = scfg.Structures.FirstOrDefault(s => s.Code == strucCode);
+                if (structure == null)
+                    continue;
+
+                int sizeY = structure.schematicData.SizeY;
 
                 if (!strucInst.DidGenerate)
                 {
                     strucInst.DidGenerate = true;
                     StoryStructureInstancesDirty = true;
                 }
+
                 var startPos = new BlockPos(strucloc.X1, strucloc.Y1, strucloc.Z1, 0);
+                int offsetY = structure.schematicData.OffsetY;
+                bool isDirty = false;
 
-                var structure = scfg.Structures.First(s => s.Code == strucCode);
-
+                // 1. Calculate base coordinates depending on placement type
                 if (structure.UseWorldgenHeight)
                 {
-                    int h;
-                    if (strucInst.WorldgenHeight >= 0)
+                    if (strucInst.WorldgenHeight < 0)
                     {
-                        h = strucInst.WorldgenHeight;
-                    }
-                    else
-                    {
-                        h = chunks[0].MapChunk.WorldGenTerrainHeightMap[(startPos.Z % chunksize) * chunksize + (startPos.X % chunksize)];
+                        int h = chunks[0].MapChunk.WorldGenTerrainHeightMap[(startPos.Z % chunksize) * chunksize + (startPos.X % chunksize)];
                         strucInst.WorldgenHeight = h;
-                        strucloc.Y1 = h + structure.schematicData.OffsetY;
-                        strucloc.Y2 = strucloc.Y1 + structure.schematicData.SizeY;
-                        StoryStructureInstancesDirty = true;
+                        strucloc.Y1 = h + offsetY;
+                        strucloc.Y2 = strucloc.Y1 + sizeY;
+                        isDirty = true;
                     }
-
-                    startPos.Y = h + structure.schematicData.OffsetY;
                 }
                 else if(structure.Placement == EnumStructurePlacement.SurfaceRuin)
                 {
-                    int h;
-                    if (strucInst.WorldgenHeight >= 0)
+                    if (strucInst.WorldgenHeight < 0)
                     {
-                        h = strucInst.WorldgenHeight;
-                    }
-                    else
-                    {
-                        h = chunks[0].MapChunk.WorldGenTerrainHeightMap[(startPos.Z % chunksize) * chunksize + (startPos.X % chunksize)];
+                        int h = chunks[0].MapChunk.WorldGenTerrainHeightMap[(startPos.Z % chunksize) * chunksize + (startPos.X % chunksize)];
                         strucInst.WorldgenHeight = h;
-                        strucloc.Y1 = h - structure.schematicData.SizeY + structure.schematicData.OffsetY;
-                        strucloc.Y2 = strucloc.Y1 + structure.schematicData.SizeY;
-                        StoryStructureInstancesDirty = true;
+                        strucloc.Y1 = h - sizeY + offsetY;
+                        strucloc.Y2 = strucloc.Y1 + sizeY;
+                        isDirty = true;
                     }
-                    startPos.Y = h - structure.schematicData.SizeY + structure.schematicData.OffsetY;
                 }
                 else if(structure.Placement == EnumStructurePlacement.Surface)
                 {
-                    strucloc.Y1 = api.World.SeaLevel + structure.schematicData.OffsetY;
-                    strucloc.Y2 = strucloc.Y1 + structure.schematicData.SizeY;
-                    StoryStructureInstancesDirty = true;
+                    strucloc.Y1 = api.World.SeaLevel + offsetY;
+                    strucloc.Y2 = strucloc.Y1 + sizeY;
+                    isDirty = true;
+                }
 
-                    startPos.Y = strucloc.Y1;
+                // 2. Apply hard clipping and boundary protection
+                bool wasShifted = ClampStructureY(strucloc, startPos, sizeY, maxY);
+                if (isDirty) StoryStructureInstancesDirty = true;
+                if (wasShifted)
+                {
+                    StoryStructureInstancesDirty = true;
+                    if (reportedShifted.Add(strucCode))
+                        api.Logger.Warning($"Story structure '{strucCode}' was shifted vertically to keep it within the world's valid height range.");
                 }
 
                 Block rockBlock = null;
