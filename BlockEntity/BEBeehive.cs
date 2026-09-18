@@ -231,15 +231,21 @@ namespace Vintagestory.GameContent
             int minX = -8 + 8 * (scanIteration / 2);
             int minZ = -8 + 8 * (scanIteration % 2);
             int size = 8;
+            
+            IBlockAccessor blockAccessor = Api.World.BlockAccessor;
+            BlockPos scanPos = new BlockPos(Pos.dimension);
 
             Api.World.BlockAccessor.WalkBlocks(Pos.AddCopy(minX, -7, minZ), Pos.AddCopy(minX + size - 1, 4, minZ + size - 1), (block, x, y, z) =>
             {
                 if (block.Id == 0) return;
+                // Set the current position
+                scanPos.Set(x, y, z);
 
                 // First we do costly Attributes check only if the block is a plant
-                if (block.BlockMaterial == EnumBlockMaterial.Plant)
+                // using position aware block material and attributes
+                if (block.GetBlockMaterial(blockAccessor, scanPos) == EnumBlockMaterial.Plant)
                 {
-                    if (block.Attributes?.IsTrue("beeFeed") == true) scanQuantityNearbyFlowers++;
+                    if (block.GetAttributes(blockAccessor, scanPos)?.IsTrue("beeFeed") == true) scanQuantityNearbyFlowers++;
                     return;
                 }
 
