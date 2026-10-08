@@ -205,7 +205,7 @@ public class CollectibleBehaviorWearable : CollectibleBehaviorWearableAttachment
             }
         }
 
-        EnumCharacterDressType dressType = GetDressType(inSlot);        
+        EnumCharacterDressType dressType = GetDressType(inSlot);
         if (dressType == EnumCharacterDressType.Unknown)
         {
             dsc.AppendLine(Lang.Get("Clothing Category: Unknown"));
@@ -447,18 +447,19 @@ public class CollectibleBehaviorWearable : CollectibleBehaviorWearableAttachment
         float repairValuePerItem = 2f / origMatCount;
         // How much the mat repairs in durability
         float repairDurabilityPerItem = repairValuePerItem * maxDur;
-        // Divide missing durability by repair per item = items needed for full repair
-        int fullRepairMatCount = (int)Math.Max(1, Math.Round((maxDur - curDur) / repairDurabilityPerItem));
+        // How many material types the repair uses (to divide the cost amongst all materials)
+        var matTypeCount = GetRepairMatTypeCount(inSlots);
+        // Materials per type needed for full repair (divide missing durability by repair per material)
+        int fullRepairMatCount = (int)Math.Ceiling((maxDur - curDur) / (repairDurabilityPerItem * matTypeCount));
         // Limit repair value to smallest stack size of all repair mats
         var minMatStackSize = GetInputRepairCount(inSlots);
-        // Divide the cost amongst all mats
-        var matTypeCount = GetRepairMatTypeCount(inSlots);
 
-        var availableRepairMatCount = Math.Min(fullRepairMatCount, minMatStackSize * matTypeCount);
+        // Number of materials per type the repair will consume
         matCostPerMatType = Math.Min(fullRepairMatCount, minMatStackSize);
+        var availableRepairItemCount = matCostPerMatType * matTypeCount;
 
         // Repairing costs half as many materials as newly creating it
-        repairValue = (float)availableRepairMatCount / origMatCount * 2;
+        repairValue = (float)availableRepairItemCount / origMatCount * 2;
     }
 
     protected virtual int GetRepairMatTypeCount(ItemSlot[] slots)
