@@ -507,7 +507,9 @@ public class CollectibleBehaviorWearable : CollectibleBehaviorWearableAttachment
     {
         var stack = outputSlot.Itemstack;
 
+        var ingredientsMatched = 0;
         var origMatCount = 0;
+        Dictionary<int, int> matCountsByIngredientsMatched = [];
 
         foreach (var recipe in api.World.GridRecipes)
         {
@@ -523,21 +525,30 @@ public class CollectibleBehaviorWearable : CollectibleBehaviorWearableAttachment
                         jstack.Resolve(api.World, string.Format("recipe '{0}' repair mat", recipe.Name));
                         if (jstack.ResolvedItemstack == null) continue;
 
-                        if (inputSlots.Any(s => jstack.ResolvedItemstack.Satisfies(s.Itemstack) == true))
+                        if (!inputSlots.Any(s => jstack.ResolvedItemstack.Satisfies(s.Itemstack))) continue;
+
                         origMatCount += jstack.ResolvedItemstack.StackSize;
                     }
                     else
                     {
-                        if (inputSlots.Any(s => ingred.SatisfiesAsIngredient(s.Itemstack, false) == true))
+                        if (!inputSlots.Any(s => ingred.SatisfiesAsIngredient(s.Itemstack, false))) continue;
+
                         origMatCount += ingred.Quantity;
                     }
+
+                    ingredientsMatched++;
                 }
 
-                break;
+                matCountsByIngredientsMatched.TryAdd(ingredientsMatched, origMatCount);
+
+                ingredientsMatched = 0;
+                origMatCount = 0;
             }
         }
 
-        return origMatCount;
+        // pick the material count from the recipe which matched the highest number of ingredients
+        // this allows to e.g. select the correct recipe for armor-body-hide-bear which can be made using a pelt or using a pelt with head
+        return matCountsByIngredientsMatched.MaxBy(p => p.Key).Value;
     }
 
     public override TransitionState[] UpdateAndGetTransitionStates(IWorldAccessor world, ItemSlot inslot, ref EnumHandling handling)
