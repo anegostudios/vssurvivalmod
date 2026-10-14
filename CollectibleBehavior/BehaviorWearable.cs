@@ -205,7 +205,7 @@ public class CollectibleBehaviorWearable : CollectibleBehaviorWearableAttachment
             }
         }
 
-        EnumCharacterDressType dressType = GetDressType(inSlot);        
+        EnumCharacterDressType dressType = GetDressType(inSlot);
         if (dressType == EnumCharacterDressType.Unknown)
         {
             dsc.AppendLine(Lang.Get("Clothing Category: Unknown"));
@@ -447,18 +447,19 @@ public class CollectibleBehaviorWearable : CollectibleBehaviorWearableAttachment
         float repairValuePerItem = 2f / origMatCount;
         // How much the mat repairs in durability
         float repairDurabilityPerItem = repairValuePerItem * maxDur;
-        // Divide missing durability by repair per item = items needed for full repair
-        int fullRepairMatCount = (int)Math.Max(1, Math.Round((maxDur - curDur) / repairDurabilityPerItem));
+        // How many material types the repair uses (to divide the cost amongst all materials)
+        var matTypeCount = GetRepairMatTypeCount(inSlots);
+        // Materials per type needed for full repair (divide missing durability by repair per material)
+        int fullRepairMatCount = (int)Math.Ceiling((maxDur - curDur) / (repairDurabilityPerItem * matTypeCount));
         // Limit repair value to smallest stack size of all repair mats
         var minMatStackSize = GetInputRepairCount(inSlots);
-        // Divide the cost amongst all mats
-        var matTypeCount = GetRepairMatTypeCount(inSlots);
 
-        var availableRepairMatCount = Math.Min(fullRepairMatCount, minMatStackSize * matTypeCount);
+        // Number of materials per type the repair will consume
         matCostPerMatType = Math.Min(fullRepairMatCount, minMatStackSize);
+        var availableRepairItemCount = matCostPerMatType * matTypeCount;
 
         // Repairing costs half as many materials as newly creating it
-        repairValue = (float)availableRepairMatCount / origMatCount * 2;
+        repairValue = (float)availableRepairItemCount / origMatCount * 2;
     }
 
     protected virtual int GetRepairMatTypeCount(ItemSlot[] slots)
@@ -505,9 +506,10 @@ public class CollectibleBehaviorWearable : CollectibleBehaviorWearableAttachment
     public virtual int GetOrigMatCount(ItemSlot[] inputSlots, ItemSlot outputSlot)
     {
         var stack = outputSlot.Itemstack;
-        var matStack = inputSlots.FirstOrDefault(slot => !slot.Empty && slot.Itemstack.Collectible != collObj).Itemstack;
 
+        var ingredientsMatched = 0;
         var origMatCount = 0;
+        Dictionary<int, int> matCountsByIngredientsMatched = [];
 
         foreach (var recipe in api.World.GridRecipes)
         {
@@ -521,22 +523,32 @@ public class CollectibleBehaviorWearable : CollectibleBehaviorWearableAttachment
                     {
                         var jstack = ingred.RecipeAttributes["repairMat"].AsObject<JsonItemStack>();
                         jstack.Resolve(api.World, string.Format("recipe '{0}' repair mat", recipe.Name));
-                        if (jstack.ResolvedItemstack != null)
-                        {
-                            origMatCount += jstack.ResolvedItemstack.StackSize;
-                        }
+                        if (jstack.ResolvedItemstack == null) continue;
+
+                        if (!inputSlots.Any(s => jstack.ResolvedItemstack.Satisfies(s.Itemstack))) continue;
+
+                        origMatCount += jstack.ResolvedItemstack.StackSize;
                     }
                     else
                     {
+                        if (!inputSlots.Any(s => ingred.SatisfiesAsIngredient(s.Itemstack, false))) continue;
+
                         origMatCount += ingred.Quantity;
                     }
+
+                    ingredientsMatched++;
                 }
 
-                break;
+                matCountsByIngredientsMatched.TryAdd(ingredientsMatched, origMatCount);
+
+                ingredientsMatched = 0;
+                origMatCount = 0;
             }
         }
 
-        return origMatCount;
+        // pick the material count from the recipe which matched the highest number of ingredients
+        // this allows to e.g. select the correct recipe for armor-body-hide-bear which can be made using a pelt or using a pelt with head
+        return matCountsByIngredientsMatched.MaxBy(p => p.Key).Value;
     }
 
     public override TransitionState[] UpdateAndGetTransitionStates(IWorldAccessor world, ItemSlot inslot, ref EnumHandling handling)
