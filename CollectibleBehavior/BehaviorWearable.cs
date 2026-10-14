@@ -506,7 +506,6 @@ public class CollectibleBehaviorWearable : CollectibleBehaviorWearableAttachment
     public virtual int GetOrigMatCount(ItemSlot[] inputSlots, ItemSlot outputSlot)
     {
         var stack = outputSlot.Itemstack;
-        var matStack = inputSlots.FirstOrDefault(slot => !slot.Empty && slot.Itemstack.Collectible != collObj).Itemstack;
 
         var origMatCount = 0;
 
@@ -522,13 +521,14 @@ public class CollectibleBehaviorWearable : CollectibleBehaviorWearableAttachment
                     {
                         var jstack = ingred.RecipeAttributes["repairMat"].AsObject<JsonItemStack>();
                         jstack.Resolve(api.World, string.Format("recipe '{0}' repair mat", recipe.Name));
-                        if (jstack.ResolvedItemstack != null)
-                        {
-                            origMatCount += jstack.ResolvedItemstack.StackSize;
-                        }
+                        if (jstack.ResolvedItemstack == null) continue;
+
+                        if (inputSlots.Any(s => jstack.ResolvedItemstack.Satisfies(s.Itemstack) == true))
+                        origMatCount += jstack.ResolvedItemstack.StackSize;
                     }
                     else
                     {
+                        if (inputSlots.Any(s => ingred.SatisfiesAsIngredient(s.Itemstack, false) == true))
                         origMatCount += ingred.Quantity;
                     }
                 }
