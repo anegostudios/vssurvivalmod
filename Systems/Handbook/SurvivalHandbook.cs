@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -119,12 +120,19 @@ namespace Vintagestory.GameContent
             {
                 if (capi.IsShuttingDown) break;
 
-                GuiHandbookItemStackPage elem = new GuiHandbookItemStackPage(capi, stack)
+                try
                 {
-                    Visible = true
-                };
+                    GuiHandbookItemStackPage elem = new GuiHandbookItemStackPage(capi, stack)
+                    {
+                        Visible = true
+                    };
 
-                pages.Add(elem);
+                    pages.Add(elem);
+                }
+                catch (System.Exception ex)
+                {
+                    capi.Logger.Warning("Handbook page creation failed for {0}, skipping. A mod's GetHeldItemInfo is likely at fault: {1}", stack?.Collectible?.Code, ex.Message);
+                }
             }
 
             return pages;
@@ -132,7 +140,14 @@ namespace Vintagestory.GameContent
 
         private void onComposePage(GuiHandbookPage page, GuiComposer detailViewGui, ElementBounds textBounds, ActionConsumable<string> openDetailPageFor)
         {
-            page.ComposePage(detailViewGui, textBounds, ObjectCacheUtil.TryGet<ItemStack[]>(capi, "handbookallstacks"), openDetailPageFor);
+            try
+            {
+                page.ComposePage(detailViewGui, textBounds, ObjectCacheUtil.TryGet<ItemStack[]>(capi, "handbookallstacks"), openDetailPageFor);
+            }
+            catch (System.Exception ex)
+            {
+                capi.Logger.Warning("Failed composing handbook page for {0}: {1}", page?.PageCode, ex.Message);
+            }
         }
 
         protected List<ItemStack> SetupBehaviorAndGetItemStacks()
