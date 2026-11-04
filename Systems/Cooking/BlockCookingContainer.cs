@@ -281,7 +281,7 @@ namespace Vintagestory.GameContent
                 return Lang.Get(message, quantity, outputName?.ToLower() ?? Lang.Get("unknown"));
             }
 
-            if (!stacks.All(stack => stack == null)) return Lang.Get("mealcreation-norecipe");
+            if (stacks.Length > 0) return Lang.Get("mealcreation-norecipe");
             return null;
 
         }
@@ -293,6 +293,7 @@ namespace Vintagestory.GameContent
         public CookingRecipe? GetMatchingCookingRecipe(IWorldAccessor world, ItemStack[] stacks, out int quantityServings)
         {
             quantityServings = 0;
+            if (stacks == null || stacks.Length == 0) return null;
             if (world.Api.GetCookingRecipes() is not List<CookingRecipe> recipes) return null;
 
             bool isDirtyPot = Attributes["isDirtyPot"].AsBool(false);
@@ -330,18 +331,38 @@ namespace Vintagestory.GameContent
 
 
 
+        [ThreadStatic]
+        private static List<ItemStack>? scratchCookingStacks;
+
+        [ThreadStatic]
+        private static int cookingDepth;
+
         public ItemStack[] GetCookingStacks(ISlotProvider cookingSlotsProvider, bool clone = true)
         {
-            List<ItemStack> stacks = new List<ItemStack>(4);
+            if (cookingSlotsProvider?.Slots == null || cookingSlotsProvider.Slots.Length == 0) return Array.Empty<ItemStack>();
 
-            for (int i = 0; i < cookingSlotsProvider.Slots.Length; i++)
+            bool reuse = cookingDepth == 0;
+            cookingDepth++;
+            List<ItemStack> stacks = reuse ? (scratchCookingStacks ??= new List<ItemStack>(4)) : new List<ItemStack>(4);
+
+            try
             {
-                ItemStack? stack = cookingSlotsProvider.Slots[i].Itemstack;
-                if (stack == null) continue;
-                stacks.Add(clone ? stack.Clone() : stack);
-            }
+                ItemSlot[] slots = cookingSlotsProvider.Slots;
+                for (int i = 0; i < slots.Length; i++)
+                {
+                    ItemStack? stack = slots[i]?.Itemstack;
+                    if (stack == null) continue;
+                    stacks.Add(clone ? stack.Clone() : stack);
+                }
 
-            return stacks.ToArray();
+                if (stacks.Count == 0) return Array.Empty<ItemStack>();
+                return stacks.ToArray();
+            }
+            finally
+            {
+                if (reuse) stacks.Clear();
+                cookingDepth--;
+            }
         }
 
         public IInFirepitRenderer GetRendererWhenInFirepit(ItemStack stack, BlockEntityFirepit firepit, bool forOutputSlot)
