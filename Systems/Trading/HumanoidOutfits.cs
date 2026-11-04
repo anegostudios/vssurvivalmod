@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Util;
 
@@ -11,6 +12,7 @@ namespace Vintagestory.GameContent
     public class HumanoidOutfits : ModSystem
     {
         Dictionary<string, HumanoidWearableProperties> propsByConfigFilename = new Dictionary<string, HumanoidWearableProperties>();
+        Dictionary<AssetLocation, CompositeTexture> cachedTextures = new Dictionary<AssetLocation, CompositeTexture>();
         
         ICoreAPI api;
 
@@ -27,6 +29,11 @@ namespace Vintagestory.GameContent
         public override void Start(ICoreAPI api)
         {
             this.api = api;
+        }
+
+        public override void StartClientSide(ICoreClientAPI api)
+        {
+            api.Event.ReloadTextures += cachedTextures.Clear;
         }
 
         public HumanoidWearableProperties loadProps(AssetLocation configFilename)
@@ -137,9 +144,24 @@ namespace Vintagestory.GameContent
             return cshapes;
         }
 
+        public CompositeTexture GetOrCreateCachedTexture(AssetLocation loc, ICoreClientAPI capi, SourceStringComponents sourceForLogging)
+        {
+            if (!cachedTextures.TryGetValue(loc, out var cmpt))
+            {
+                cmpt = new CompositeTexture(loc);
+                cmpt.Bake(capi.Assets);
+                capi.EntityTextureAtlas.GetOrInsertTexture(new AssetLocationAndSource(cmpt.Baked.TextureFilenames[0], sourceForLogging), out int textureSubid, out _);
+                cmpt.Baked.TextureSubId = textureSubid;
+                cachedTextures[loc] = cmpt;
+            }
+
+            return cmpt;
+        }
+
         public void Reload()
         {
             propsByConfigFilename.Clear();
+            cachedTextures.Clear();
         }
     }
 

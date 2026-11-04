@@ -141,7 +141,14 @@ namespace Vintagestory.GameContent
             entityShape = newShape;
 
             string[] outfitCodes = OutfitCodes;
-            TexturedWeightedCompositeShape[] cshapes = humanoidOutfits.Outfit2Shapes(OutfitConfigFileName, OutfitCodes);
+            if (outfitCodes == null || outfitCodes.Length == 0)
+            {
+                bool c = true;
+                base.OnTesselation(ref entityShape, shapePathForLogging, ref c);
+                return;
+            }
+
+            TexturedWeightedCompositeShape[] cshapes = humanoidOutfits.Outfit2Shapes(OutfitConfigFileName, outfitCodes);
 
             var slots = OutfitSlots;
 
@@ -169,6 +176,7 @@ namespace Vintagestory.GameContent
 
             for (int i = 0; i < outfitCodes.Length; i++)
             {
+                if (i >= cshapes.Length) break;
                 var twcshape = cshapes[i];
                 if (twcshape == null) continue;
 
@@ -205,11 +213,7 @@ namespace Vintagestory.GameContent
         /// <returns></returns>
         private CompositeTexture CreateCompositeTexture(AssetLocation loc, ICoreClientAPI capi, SourceStringComponents sourceForLogging)
         {
-            var cmpt = new CompositeTexture(loc);
-            cmpt.Bake(capi.Assets);
-            capi.EntityTextureAtlas.GetOrInsertTexture(new AssetLocationAndSource(cmpt.Baked.TextureFilenames[0], sourceForLogging), out int textureSubid, out _);
-            cmpt.Baked.TextureSubId = textureSubid;
-            return cmpt;
+            return humanoidOutfits.GetOrCreateCachedTexture(loc, capi, sourceForLogging);
         }
 
 
