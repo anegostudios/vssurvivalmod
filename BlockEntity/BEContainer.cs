@@ -85,27 +85,55 @@ namespace Vintagestory.GameContent
             base.OnBlockBroken(byPlayer);
         }
 
+        [ThreadStatic]
+        private static List<ItemStack> scratchNonEmptyStacks;
+
+        [ThreadStatic]
+        private static int nonEmptyDepth;
+
         public ItemStack[] GetNonEmptyContentStacks(bool cloned = true)
         {
-            List<ItemStack> stacklist = new List<ItemStack>();
-            foreach (var slot in Inventory)
-            {
-                if (slot.Empty) continue;
-                stacklist.Add(cloned ? slot.Itemstack.Clone() : slot.Itemstack);
-            }
+            if (Inventory == null) return Array.Empty<ItemStack>();
 
-            return stacklist.ToArray();
+            bool reuse = nonEmptyDepth == 0;
+            nonEmptyDepth++;
+            List<ItemStack> stacklist = reuse ? (scratchNonEmptyStacks ??= new List<ItemStack>()) : new List<ItemStack>();
+            try
+            {
+                foreach (var slot in Inventory)
+                {
+                    if (slot.Empty) continue;
+                    stacklist.Add(cloned ? slot.Itemstack.Clone() : slot.Itemstack);
+                }
+
+                if (stacklist.Count == 0) return Array.Empty<ItemStack>();
+                return stacklist.ToArray();
+            }
+            finally
+            {
+                if (reuse) stacklist.Clear();
+                nonEmptyDepth--;
+            }
         }
 
         public ItemStack[] GetContentStacks(bool cloned = true)
         {
-            List<ItemStack> stacklist = new List<ItemStack>();
+            if (Inventory == null) return Array.Empty<ItemStack>();
+
+            int count = Inventory.Count;
+            if (count == 0) return Array.Empty<ItemStack>();
+
+            ItemStack[] stacks = new ItemStack[count];
+            int i = 0;
             foreach (var slot in Inventory)
             {
-                stacklist.Add(cloned ? slot.Itemstack?.Clone() : slot.Itemstack);
+                if (i < count)
+                {
+                    stacks[i++] = cloned ? slot.Itemstack?.Clone() : slot.Itemstack;
+                }
             }
 
-            return stacklist.ToArray();
+            return stacks;
         }
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
