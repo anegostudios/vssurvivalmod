@@ -2,6 +2,8 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
+using System.Threading;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -316,7 +318,10 @@ namespace Vintagestory.GameContent
             {
                 if (Environment.CurrentManagedThreadId != RuntimeEnv.MainThreadId)
                 {
-                    if (capi != null && Environment.CurrentManagedThreadId == capi.TesselationThreadId) capi.Event.EnqueueMainThreadTask(() => GetOrCreateMealInContainerMeshRef(containerBlock, forRecipe, contentStacks, foodTranslate), "createmealmesh");    // Do it on the main thread instead
+                    if (capi != null && IsTesselationThread(Environment.CurrentManagedThreadId))
+                    {
+                        capi.Event.EnqueueMainThreadTask(() => GetOrCreateMealInContainerMeshRef(containerBlock, forRecipe, contentStacks, foodTranslate), "createmealmesh");    // Do it on the main thread instead
+                    }
                     throw new RetryTesselationException("Attempting to upload a new meal mesh outside of the main thread. If this occurs during tesselation, it should automatically retry. If not during tesselation, please only call this on the main thread!");
                 }
 
@@ -325,6 +330,40 @@ namespace Vintagestory.GameContent
             }
 
             return mealMeshRef;
+        }
+
+        private static System.Func<ICoreClientAPI, int, bool>? isTesselationThreadDelegate;
+        private static bool delegateInitialized;
+
+        protected virtual bool IsTesselationThread(int threadId)
+        {
+            if (capi == null) return false;
+            if (threadId == capi.TesselationThreadId) return true;
+
+            if (!delegateInitialized)
+            {
+                delegateInitialized = true;
+                MethodInfo? method = capi.GetType().GetMethod("IsTesselationThread", BindingFlags.Public | BindingFlags.Instance, null, new[] { typeof(int) }, null);
+                if (method != null && method.ReturnType == typeof(bool))
+                {
+                    isTesselationThreadDelegate = (c, id) => (bool)method.Invoke(c, new object[] { id })!;
+                }
+            }
+
+            if (isTesselationThreadDelegate != null)
+            {
+                try
+                {
+                    if (isTesselationThreadDelegate(capi, threadId)) return true;
+                }
+                catch
+                {
+                    // Fall through to thread name check on reflection invocation errors
+                }
+            }
+
+            string? name = Thread.CurrentThread.Name;
+            return name != null && name.StartsWith("tesselate", StringComparison.OrdinalIgnoreCase);
         }
 
 
