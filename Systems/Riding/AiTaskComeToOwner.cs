@@ -1,8 +1,6 @@
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
-#nullable disable
-
 namespace Vintagestory.GameContent
 {
 
@@ -10,8 +8,11 @@ namespace Vintagestory.GameContent
     {
         long lastExecutedMs;
 
-        public AiTaskComeToOwner(EntityAgent entity, JsonObject taskConfig, JsonObject aiConfig) : base(entity, taskConfig, aiConfig)
+        public AiTaskComeToOwner(EntityAgent entity, JsonObject taskConfig, JsonObject aiConfig) : base(entity, taskConfig, aiConfig) { }
+
+        protected override void SetDefaultValues()
         {
+            base.SetDefaultValues();
             minSeekSeconds = 10f;
         }
 
@@ -23,10 +24,12 @@ namespace Vintagestory.GameContent
                 lastExecutedMs = -99999;
                 return false;
             }
+            string uid = tree.GetString("uid");
+            var plr = entity.World.PlayerByUid(uid);
+            targetEntity = plr?.Entity;
 
             float lastCallDelta = (entity.World.ElapsedMilliseconds - lastExecutedMs) / 1000f;
-            if (lastCallDelta < 20) return base.ShouldExecute();
-            return false;
+            return lastCallDelta < 20 && base.ShouldExecute();
         }
 
 
@@ -34,32 +37,17 @@ namespace Vintagestory.GameContent
         {
             lastExecutedMs = entity.World.ElapsedMilliseconds;
 
+            // Set owner here too, because the flute calls start directly
             var tree = entity.WatchedAttributes.GetTreeAttribute("ownedby");
-            if (tree == null) return;
-
+            if (tree == null)
+            {
+                return;
+            }
             string uid = tree.GetString("uid");
             var plr = entity.World.PlayerByUid(uid);
             targetEntity = plr?.Entity;
 
-            if (targetEntity != null)
-            {
-                float size = targetEntity.SelectionBox.XSize;
-                pathTraverser.NavigateTo_Async(targetEntity.Pos.XYZ, moveSpeed, size + 0.2f, OnGoalReached, OnStuck, null, 1000, 1);
-                targetOffset.Set(entity.World.Rand.NextDouble() * 2 - 1, 0, entity.World.Rand.NextDouble() * 2 - 1);
-                stuck = false;
-            }
-
             base.StartExecute();
-        }
-
-        public override bool CanContinueExecute()
-        {
-            return pathTraverser.Ready;
-        }
-
-        public override bool ContinueExecute(float dt)
-        {
-            return targetEntity != null && base.ContinueExecute(dt);
         }
     }
 }

@@ -1,3 +1,4 @@
+using Newtonsoft.Json;
 using System;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -49,7 +50,14 @@ namespace Vintagestory.GameContent
         float spawnAngleRad;
         bool immobile;
 
-        float sensingRange;
+        [Obsolete("Use searchRange instead")]
+        [JsonProperty]
+        protected float sensingRange
+        {
+            get => searchRange;
+            set => searchRange = value;
+        }
+
         float firingRangeMin;
         float firingRangeMax;
         float abortRange;
@@ -68,7 +76,6 @@ namespace Vintagestory.GameContent
             this.projectileDamage = taskConfig["projectileDamage"].AsFloat(1f);
             this.projectileDamageTier = taskConfig["projectileDamageTier"].AsInt(1);
 
-            this.sensingRange = taskConfig["sensingRange"].AsFloat(30f);
             this.firingRangeMin = taskConfig["firingRangeMin"].AsFloat(14f);
             this.firingRangeMax = taskConfig["firingRangeMax"].AsFloat(26f);
             this.abortRange = taskConfig["abortRange"].AsFloat(14f);
@@ -85,6 +92,7 @@ namespace Vintagestory.GameContent
         {
             base.SetDefaultValues();
             ExecutionChance = 0.1;
+            searchRange = 30f;
         }
 
         public override void AfterInitialize()
@@ -112,7 +120,7 @@ namespace Vintagestory.GameContent
 
             lastSearchTotalMs = entity.World.ElapsedMilliseconds;
 
-            float range = sensingRange;
+            float range = searchRange;
             targetEntity = partitionUtil.GetNearestEntity(entity.Pos.XYZ, range, (e) => IsTargetableEntity(e, range) && hasDirectContact(e, range, range/2f) && aimableDirection(e), EnumEntitySearchType.Creatures);
 
             return targetEntity != null && !inAbortRange;
@@ -160,7 +168,7 @@ namespace Vintagestory.GameContent
                 return range >= (RequireShortRangeAttacks(entity, targetEntity) ? 1.5f : firingRangeMin) && range <= firingRangeMax;
             }
         }
-        bool inSensingRange => targetEntity.Pos.DistanceTo(entity.Pos) <= sensingRange;
+        bool inSensingRange => targetEntity.Pos.DistanceTo(entity.Pos) <= searchRange;
         bool inAbortRange => targetEntity.Pos.DistanceTo(entity.Pos) <= (RequireShortRangeAttacks(entity, targetEntity) ? 1.5f : abortRange); // Can't flee means we need to shoot from short range
 
         void updateState()
@@ -256,7 +264,7 @@ namespace Vintagestory.GameContent
                     return;
 
                 case EnumTurretState.TurretModeFired:
-                    var range = sensingRange;
+                    var range = searchRange;
                     if (inAbortRange || !targetEntity.Alive || !targetablePlayerMode((targetEntity as EntityPlayer)?.Player) || !hasDirectContact(targetEntity, range, range / 2f))
                     {
                         abort();

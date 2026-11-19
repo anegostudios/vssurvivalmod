@@ -1,4 +1,5 @@
-﻿using ProtoBuf;
+﻿using System.ComponentModel;
+using ProtoBuf;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -12,7 +13,7 @@ namespace Vintagestory.GameContent
     {
         [ProtoMember(1)]
         public int RiftId;
-        [ProtoMember(2)]
+        [ProtoMember(2), DefaultValue(1f)]
         public float Size = 1f;
         [ProtoMember(3)]
         public Vec3d Position;

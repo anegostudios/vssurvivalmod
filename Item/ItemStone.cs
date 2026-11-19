@@ -239,6 +239,11 @@ namespace Vintagestory.GameContent
 
         public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot)
         {
+            if (((ICoreClientAPI)api).World.Player.Entity.Attributes.GetInt("aiming") != 0)
+            {
+                return [new WorldInteraction { ActionLangCode = "general-cancel", MouseButton = EnumMouseButton.Left }];
+            }
+
             return new WorldInteraction[] {
                 new WorldInteraction()
                 {

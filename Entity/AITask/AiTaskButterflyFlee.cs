@@ -105,9 +105,7 @@ namespace Vintagestory.GameContent
             if (world.Rand.NextDouble() < 0.2)
             {
                 updateTargetPos();
-                pathTraverser.CurrentTarget.X = targetPos.X;
-                pathTraverser.CurrentTarget.Y = targetPos.Y;
-                pathTraverser.CurrentTarget.Z = targetPos.Z;
+                pathTraverser.CurrentTarget!.Set(targetPos);
             }
 
 

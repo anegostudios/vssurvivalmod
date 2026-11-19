@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using System.Linq;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
 #nullable disable
@@ -9,29 +11,65 @@ namespace Vintagestory.GameContent.Mechanics
     public class BlockAngledGears : BlockMPBase
     {
         public string Orientation;
+        bool doubled;
+        BlockFacing[] facings;
+        string supportOrientation;
+        BlockFacing[] supportFacings;
 
         public override void OnLoaded(ICoreAPI api)
         {
             Orientation = Variant["orientation"];
+            doubled = Orientation.Length == 2 && Orientation[0] == Orientation[1];
+
+            facings = [.. Orientation.Select(BlockFacing.FromFirstLetter)];
+            if (doubled) facings[1] = facings[1].Opposite;
+
+            supportOrientation = doubled ? $"{Orientation[0]}" : Orientation;
+            supportFacings = doubled ? [facings[0]] : facings;
+
+            AngledGearProfile = Attributes?["angledGearProfile"].AsString();
+            AngledGearPartnerProfile = Attributes?["angledGearPartnerProfile"].AsString();
+            JsonObject meshPhase = Attributes?["angledGearMeshPhaseDeg"];
+            MeshPhaseDeg = meshPhase?.Exists == true ? meshPhase.AsFloat() : null;
+            HasShaft = Attributes?["angledGearHasShaft"].AsBool() ?? false;
+
             base.OnLoaded(api);
         }
 
-        public BlockFacing[] Facings
+        public BlockFacing[] Facings => facings;
+
+        public string AngledGearProfile { get; private set; }
+        public string AngledGearPartnerProfile { get; private set; }
+        public float? MeshPhaseDeg { get; private set; }
+        public bool HasShaft { get; private set; }
+
+        // Perpendicular gears in one block mesh only when each names the other's profile.
+        public bool CanMeshWith(BlockAngledGears other)
         {
-            get
-            {
-                string dirs = Orientation;
-                BlockFacing[] facings = new BlockFacing[dirs.Length];
-                for (int i = 0; i < dirs.Length; i++)
-                {
-                    facings[i] = BlockFacing.FromFirstLetter(dirs[i]);
-                }
+            return AngledGearProfile == other.AngledGearPartnerProfile && AngledGearPartnerProfile == other.AngledGearProfile;
+        }
 
-                //special case for angled gears on large gears
-                if (facings.Length == 2 && facings[1] == facings[0]) facings[1] = facings[1].Opposite;
+        Cuboidf[] getCageGearBoxes(IBlockAccessor blockAccessor, BlockPos pos, bool collision)
+        {
+            Cuboidf[] boxes = collision ? base.GetCollisionBoxes(blockAccessor, pos) : base.GetSelectionBoxes(blockAccessor, pos);
+            if (!doubled || boxes?.Length == 0) return boxes;
 
-                return facings;
-            }
+            BlockFacing gearFace = BlockFacing.FromFirstLetter(Orientation[0]);
+            Block principalBlock = blockAccessor.GetBlock(pos.AddCopy(gearFace.Opposite));
+            Cuboidf[] rimBoxes = BlockMPMultiblockGear.GetOrientedRimBoxes(principalBlock, collision);
+            if (rimBoxes == null) return boxes;
+
+            return [boxes[0], rimBoxes[0]];
+        }
+
+        public override Cuboidf[] GetSelectionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
+        {
+            return getCageGearBoxes(blockAccessor, pos, false);
+        }
+
+        public override Cuboidf[] GetCollisionBoxes(IBlockAccessor blockAccessor, BlockPos pos)
+        {
+            return getCageGearBoxes(blockAccessor, pos, true);
         }
 
         public bool IsDeadEnd()
@@ -50,61 +88,52 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face, BlockMPBase forBlock)
         {
-            if (IsDeadEnd())
-            {
-                BlockFacing nowFace = BlockFacing.FromFirstLetter(Orientation[0]);
-                if (nowFace.IsAdjacent(face))
-                {
-                    return true;
-                }
-            }
-
-            return IsOrientedTo(face);
+            // Angled gears only engage perpendicular gears inside a shared block.
+            if (forBlock is BlockAngledGears || forBlock is BlockAngledGearMulti) return false;
+            return HasCompatibleConnector(forBlock) && IsOrientedTo(face);
         }
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {
-            return new ItemStack(world.GetBlock(CodeWithVariant("orientation", "s")));
+            return GetBEBehavior<BEBehaviorMPBase>(pos)?.GetPlacedStack() ?? new ItemStack(world.GetBlock(CodeWithVariant("orientation", "s")));
         }
 
 
-        public Block getGearBlock(IWorldAccessor world, bool cageGear, BlockFacing facing, BlockFacing adjFacing = null)
+        public Block GetGearBlock(IWorldAccessor world, bool cageGear, BlockFacing facing, BlockFacing adjFacing = null)
         {
             if (adjFacing == null)
             {
                 char orient = facing.Code[0];
-                return world.GetBlock(new AssetLocation(FirstCodePart() + (cageGear ? "-" + orient + orient : "-" + orient)));
+                string orientation = cageGear ? new string(orient, 2) : $"{orient}";
+                return world.GetBlock(CodeWithVariant("orientation", orientation));
             }
 
-            AssetLocation loc = new AssetLocation(FirstCodePart() + "-" + adjFacing.Code[0] + facing.Code[0]);
+            AssetLocation loc = CodeWithVariant("orientation", $"{adjFacing.Code[0]}{facing.Code[0]}");
             Block toPlaceBlock = world.GetBlock(loc);
 
             if (toPlaceBlock == null)
             {
-                loc = new AssetLocation(FirstCodePart() + "-" + facing.Code[0] + adjFacing.Code[0]);
+                loc = CodeWithVariant("orientation", $"{facing.Code[0]}{adjFacing.Code[0]}");
                 toPlaceBlock = world.GetBlock(loc);
             }
 
             return toPlaceBlock;
         }
 
+        public BlockAngledGearMulti GetMultiGearBlock(IWorldAccessor world)
+        {
+            string code = Attributes["multiGearBlockCode"].AsString();
+            return code == null ? null : world.GetBlock(AssetLocation.Create(code, Code.Domain)) as BlockAngledGearMulti;
+        }
+
         public override void DidConnectAt(IWorldAccessor world, BlockPos pos, BlockFacing face)
         {
-            if (IsDeadEnd())
-            {
-                BlockFacing nowFace = BlockFacing.FromFirstLetter(Orientation[0]);
-                if (nowFace.IsAdjacent(face))
-                {
-                    Block toPlaceBlock = getGearBlock(world, false, Facings[0], face);
-                    (toPlaceBlock as BlockMPBase).ExchangeBlockAt(world, pos);
-                }
-            }
+            // Each gear is placed individually, so connections do not upgrade this block.
         }
 
         public bool CanPlaceBlock(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref string failureCode, Block blockExisting)
         {
-            BlockMPMultiblockGear testMultiblock = blockExisting as BlockMPMultiblockGear;
-            if (testMultiblock != null && !testMultiblock.IsReplacableByGear(world, blockSel.Position))
+            if (blockExisting is BlockMPMultiblockGear testMultiblock && !testMultiblock.IsReplacableByGear(world, blockSel.Position))
             {
                 failureCode = "notreplaceable";
                 return false;
@@ -112,79 +141,152 @@ namespace Vintagestory.GameContent.Mechanics
             return base.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode);
         }
 
+        public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
+        {
+            if (TryHandleGearInHand(world, byPlayer, blockSel)) return true;
+            return base.OnBlockInteractStart(world, byPlayer, blockSel);
+        }
+
+        public static bool TryHandleGearInHand(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
+        {
+            var hotbarSlot = byPlayer?.InventoryManager?.ActiveHotbarSlot;
+            if (hotbarSlot?.Itemstack?.Block is not BlockAngledGears) return false;
+
+            // Prevent placement from falling back to another axle.
+            string failureCode = "";
+            if (BlockAngledGearMulti.TryAddGear(world, blockSel.Position, blockSel.Face, hotbarSlot.Itemstack, ref failureCode))
+            {
+                if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
+                {
+                    hotbarSlot.TakeOut(1);
+                    hotbarSlot.MarkDirty();
+                }
+            }
+            return true;
+        }
+
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
-            Block blockExisting = world.BlockAccessor.GetBlock(blockSel.Position);
+            IBlockAccessor blockAccessor = world.BlockAccessor;
+            if (blockSel.Face != null)
+            {
+                BlockPos clickedPos = blockSel.Position.AddCopy(blockSel.Face.Opposite);
+                if (blockAccessor.GetBlockEntity(clickedPos)?.GetBehavior<BEBehaviorMPAxle>() != null)
+                {
+                    return BlockAngledGearMulti.TryPlaceGearOnAxle(world, byPlayer, itemstack, clickedPos, blockSel.Face, ref failureCode);
+                }
+            }
+
+            Block blockExisting = blockAccessor.GetBlock(blockSel.Position);
+
+            // Redirect placement on an existing gear to the shared block.
+            if (blockExisting is BlockAngledGears || blockExisting is BlockAngledGearMulti)
+            {
+                if (blockSel.Face == null)
+                {
+                    failureCode = "requiresaxle";
+                    return false;
+                }
+                return BlockAngledGearMulti.TryAddGear(world, blockSel.Position, blockSel.Face.Opposite, itemstack, ref failureCode);
+            }
+
             if (!CanPlaceBlock(world, byPlayer, blockSel, ref failureCode, blockExisting))
             {
                 return false;
             }
 
-            BlockFacing firstFace = null;
-            BlockFacing secondFace = null;
+            BlockFacing connectionFace = null;
             BlockMPMultiblockGear largeGearEdge = blockExisting as BlockMPMultiblockGear;
             bool validLargeGear = false;
+            EnumAxis largeGearAxleAxis = EnumAxis.Y;
             if (largeGearEdge != null)
             {
-                BEMPMultiblock be = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BEMPMultiblock;
-                if (be != null) validLargeGear = be.Principal != null;
+                BEMPMultiblock be = blockAccessor.GetBlockEntity(blockSel.Position) as BEMPMultiblock;
+                if (be?.Principal != null && blockAccessor.GetBlock(be.Principal) is BlockLargeGear3m largeGear)
+                {
+                    validLargeGear = true;
+                    largeGearAxleAxis = BlockLargeGear3m.GetGearAxis(largeGear);
+                }
             }
 
-            foreach (BlockFacing face in BlockFacing.ALLFACES)
+            // Prefer the axle the player aimed at over another neighbour.
+            BlockFacing preferredFace = blockSel.Face?.Opposite;
+            BlockPos connectionPos = blockSel.Position.Copy();
+            if (preferredFace != null && (!validLargeGear || preferredFace.Axis != largeGearAxleAxis))
             {
-                if (validLargeGear && (face == BlockFacing.UP || face == BlockFacing.DOWN)) continue;
-                BlockPos pos = blockSel.Position.AddCopy(face);
-                IMechanicalPowerBlock block = world.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
-                if (block != null && block.HasMechPowerConnectorAt(world, pos, face.Opposite, this))
+                connectionPos.Add(preferredFace);
+                IMechanicalPowerBlock preferredBlock = blockAccessor.GetBlock(connectionPos) as IMechanicalPowerBlock;
+                if (preferredBlock?.HasMechPowerConnectorAt(world, connectionPos, preferredFace.Opposite, this) == true)
                 {
-                    if (firstFace == null)
+                    connectionFace = preferredFace;
+                }
+            }
+
+            if (connectionFace == null)
+            {
+                connectionPos.Set(blockSel.Position);
+                foreach (BlockFacing face in BlockFacing.ALLFACES)
+                {
+                    face.IterateThruFacingOffsets(connectionPos);
+                    if (face == preferredFace) continue;
+                    if (validLargeGear && face.Axis == largeGearAxleAxis) continue;
+
+                    IMechanicalPowerBlock block = blockAccessor.GetBlock(connectionPos) as IMechanicalPowerBlock;
+                    if (block != null && block.HasMechPowerConnectorAt(world, connectionPos, face.Opposite, this))
                     {
-                        firstFace = face;
-                    } else
-                    {
-                        if (face.IsAdjacent(firstFace))
-                        {
-                            secondFace = face;
-                            break;
-                        }
+                        connectionFace = face;
+                        break;
                     }
                 }
             }
 
-            if (firstFace != null)
+            if (connectionFace != null)
             {
-                BlockPos firstPos = blockSel.Position.AddCopy(firstFace);
-                BlockEntity be = world.BlockAccessor.GetBlockEntity(firstPos);
+                BlockEntity be = blockAccessor.GetBlockEntity(connectionPos);
                 IMechanicalPowerBlock neighbour = be?.Block as IMechanicalPowerBlock;
 
-                BEBehaviorMPAxle bempaxle = be?.GetBehavior<BEBehaviorMPAxle>();
-                if (bempaxle != null && !BEBehaviorMPAxle.IsAttachedToBlock(world.BlockAccessor, neighbour as Block, firstPos))
+                if (validLargeGear)
                 {
-                    failureCode = "axlemusthavesupport";
+                    Block toPlaceBlock = GetGearBlock(world, true, connectionFace);
+                    if (toPlaceBlock == null)
+                    {
+                        failureCode = "notreplaceable";
+                        return false;
+                    }
+
+                    BlockEntity largeGearBE = largeGearEdge.GearPlaced(world, blockSel.Position);
+                    blockAccessor.SetBlock(toPlaceBlock.BlockId, blockSel.Position, itemstack);
+
+                    BEBehaviorMPAngledGears beAngledGear = blockAccessor.GetBlockEntity(blockSel.Position)?.GetBehavior<BEBehaviorMPAngledGears>();
+                    if (beAngledGear == null) return true; // Matches other blocks above the build limit.
+                    if (largeGearBE?.GetBehavior<BEBehaviorMPBase>() is BEBehaviorMPLargeGear3m largeGear)
+                    {
+                        beAngledGear.AddToLargeGearNetwork(largeGear, connectionFace);
+                    }
+
+                    neighbour?.DidConnectAt(world, connectionPos, connectionFace.Opposite);
+                    beAngledGear.newlyPlaced = true;
+                    beAngledGear.tryConnect(connectionFace);
+                    beAngledGear.newlyPlaced = false;
+
+                    return true;
+                }
+
+                BlockAngledGearMulti multiGearBlock = GetMultiGearBlock(world);
+                if (multiGearBlock == null)
+                {
+                    failureCode = "requiresaxle";
                     return false;
                 }
 
-                BlockEntity largeGearBE = validLargeGear ? largeGearEdge.GearPlaced(world, blockSel.Position) : null;
+                blockAccessor.SetBlock(multiGearBlock.BlockId, blockSel.Position);
 
-                Block toPlaceBlock = getGearBlock(world, validLargeGear, firstFace, secondFace);
-                world.BlockAccessor.SetBlock(toPlaceBlock.BlockId, blockSel.Position);
+                BEBehaviorMPAngledGears multiGear = blockAccessor.GetBlockEntity(blockSel.Position)?.GetBehavior<BEBehaviorMPAngledGears>();
+                if (multiGear == null) return true;
+                multiGear.TryAddGear(connectionFace, itemstack);
+                BlockAngledGearMulti.RefreshPowerConnections(world, blockSel.Position);
 
-                if (secondFace != null)
-                {
-                    BlockPos secondPos = blockSel.Position.AddCopy(secondFace);
-                    IMechanicalPowerBlock neighbour2 = world.BlockAccessor.GetBlock(secondPos) as IMechanicalPowerBlock;
-                    neighbour2?.DidConnectAt(world, secondPos, secondFace.Opposite);
-                }
-
-                BEBehaviorMPAngledGears beAngledGear = world.BlockAccessor.GetBlockEntity(blockSel.Position)?.GetBehavior<BEBehaviorMPAngledGears>();
-                if (beAngledGear == null) return true; //fixes CTD when trying to place above block limit without an error message, to match other blocks
-                if (largeGearBE?.GetBehavior<BEBehaviorMPBase>() is BEBehaviorMPLargeGear3m largeGear) beAngledGear.AddToLargeGearNetwork(largeGear, firstFace);
-
-                //do this last even for the first face so that both neighbours are correctly set
-                neighbour?.DidConnectAt(world, firstPos, firstFace.Opposite);
-                beAngledGear.newlyPlaced = true;
-                if (!beAngledGear.tryConnect(firstFace) && secondFace != null) beAngledGear.tryConnect(secondFace);
-                beAngledGear.newlyPlaced = false;
+                neighbour?.DidConnectAt(world, connectionPos, connectionFace.Opposite);
 
                 return true;
             }
@@ -203,20 +305,18 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
         {
-            string orients = Orientation;
-            if (orients.Length == 2 && orients[0] == orients[1]) orients = "" + orients[0];
+            string orients = supportOrientation;
+            List<BlockFacing> lostFacings = [];
+            BEBehaviorMPBase ownBehavior = world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPBase>();
 
-            BlockFacing[] facings;
-            facings = orients.Length == 1 ? new BlockFacing[] { BlockFacing.FromFirstLetter(orients[0]) } : new BlockFacing[] { BlockFacing.FromFirstLetter(orients[0]), BlockFacing.FromFirstLetter(orients[1]) };
-
-            List<BlockFacing> lostFacings = new List<BlockFacing>();
-
-            foreach (BlockFacing facing in facings)
+            foreach (BlockFacing facing in supportFacings)
             {
                 BlockPos npos = pos.AddCopy(facing);
+                if (world.BlockAccessor.GetChunkAtBlockPos(npos) == null) continue;
+
                 IMechanicalPowerBlock nblock = world.BlockAccessor.GetBlock(npos) as IMechanicalPowerBlock;
 
-                if (nblock == null || !nblock.HasMechPowerConnectorAt(world, npos, facing.Opposite, this) || world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPBase>()?.disconnected == true)
+                if (nblock == null || !nblock.HasMechPowerConnectorAt(world, npos, facing.Opposite, this) || ownBehavior?.disconnected == true)
                 {
                     lostFacings.Add(facing);
                 }
@@ -230,27 +330,24 @@ namespace Vintagestory.GameContent.Mechanics
 
             if (lostFacings.Count > 0)
             {
-                orients = orients.Replace("" + lostFacings[0].Code[0], "");
-                Block toPlaceBlock = world.GetBlock(new AssetLocation(FirstCodePart() + "-" + orients));
+                if (world.Side == EnumAppSide.Server)
+                {
+                    world.SpawnItemEntity(OnPickBlock(world, pos), pos.ToVec3d().Add(0.5, 0.5, 0.5));
+                }
+
+                orients = orients.Replace($"{lostFacings[0].Code[0]}", "");
+                Block toPlaceBlock = world.GetBlock(CodeWithVariant("orientation", orients));
                 (toPlaceBlock as BlockMPBase).ExchangeBlockAt(world, pos);
                 BlockEntity be = world.BlockAccessor.GetBlockEntity(pos);
-                BEBehaviorMPBase bemp = be.GetBehavior<BEBehaviorMPBase>();
-                bemp.LeaveNetwork();
-
-
-                //check for connect to adjacent valid facings, similar to TryPlaceBlock
-                BlockFacing firstFace = BlockFacing.FromFirstLetter(orients[0]);
-                BlockPos firstPos = pos.AddCopy(firstFace);
-                BlockEntity beNeib = world.BlockAccessor.GetBlockEntity(firstPos);
+                BEBehaviorMPAngledGears bemp = be.GetBehavior<BEBehaviorMPAngledGears>();
+                BlockFacing remainingFace = BlockFacing.FromFirstLetter(orients[0]);
+                BlockPos remainingPos = pos.AddCopy(remainingFace);
+                BlockEntity beNeib = world.BlockAccessor.GetBlockEntity(remainingPos);
                 IMechanicalPowerBlock neighbour = beNeib?.Block as IMechanicalPowerBlock;
 
-                BEBehaviorMPAxle bempaxle = beNeib?.GetBehavior<BEBehaviorMPAxle>();
-                if (bempaxle != null && !BEBehaviorMPAxle.IsAttachedToBlock(world.BlockAccessor, neighbour as Block, firstPos))
-                {
-                    return;
-                }
-                neighbour?.DidConnectAt(world, firstPos, firstFace.Opposite);
-                WasPlaced(world, pos, firstFace);
+                neighbour?.DidConnectAt(world, remainingPos, remainingFace.Opposite);
+                if (bemp?.Network != null) bemp.RebuildNetworks(bemp.GetConnectedNetworks());
+                if (bemp?.Network == null) WasPlaced(world, pos, remainingFace);
             }
 
         }
@@ -272,66 +369,56 @@ namespace Vintagestory.GameContent.Mechanics
 
             world.BlockAccessor.RemoveBlockEntity(pos);
 
-            //For large gear usage, allow an angled gear when broken to be replaced by a dummy block if appropriate
-            string orient = Variant["orientation"];
-            if (orient.Length == 2 && orient[1] == orient[0])
+            // Restore the large gear multiblock when a cage gear is broken.
+            if (doubled)
             {
-                BlockMPMultiblockGear.OnGearDestroyed(world, pos, orient[0]);
+                BlockMPMultiblockGear.OnGearDestroyed(world, pos, Orientation[0]);
             }
         }
 
-        internal void ToPegGear(IWorldAccessor world, BlockPos pos)
+        public void ToPegGear(IWorldAccessor world, BlockPos pos)
         {
-            string orient = Variant["orientation"];
-            if (orient.Length == 2 && orient[1] == orient[0])
+            if (doubled)
             {
-                Block toPlaceBlock = world.GetBlock(new AssetLocation(FirstCodePart() + "-" + orient[0]));
+                Block toPlaceBlock = world.GetBlock(CodeWithVariant("orientation", $"{Orientation[0]}"));
                 ((BlockMPBase)toPlaceBlock).ExchangeBlockAt(world, pos);
                 BEBehaviorMPAngledGears beg = world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPAngledGears>();
                 beg?.ClearLargeGear();
-
-                //#TODO: do a firstface/second face axle check as in TryPlaceBlock()
+                if (beg?.Network != null) beg.RebuildNetworks(beg.GetConnectedNetworks());
+                if (beg?.Network == null) beg?.tryConnect(BlockFacing.FromFirstLetter(Orientation[0]));
             }
         }
 
         public override AssetLocation GetRotatedBlockCode(int angle)
         {
-            var last = LastCodePart();
-            string first;
-            string second = string.Empty;
-            if (last.Length > 1)
+            return getTransformedBlockCode(angle, null);
+        }
+
+        public override AssetLocation GetHorizontallyFlippedBlockCode(EnumAxis axis)
+        {
+            return getTransformedBlockCode(0, axis);
+        }
+
+        public override AssetLocation GetVerticallyFlippedBlockCode()
+        {
+            return getTransformedBlockCode(0, EnumAxis.Y);
+        }
+
+        AssetLocation getTransformedBlockCode(int angle, EnumAxis? flipAxis)
+        {
+            char[] transformed = Variant["orientation"].ToCharArray();
+            for (int i = 0; i < transformed.Length; i++)
             {
-                first = last.Substring(0, 1);
-                second = last.Substring(1);
-            }
-            else
-            {
-                first = last;
+                BlockFacing facing = BlockFacing.FromFirstLetter(transformed[i]);
+                if (facing.Axis == flipAxis) facing = facing.Opposite;
+                transformed[i] = facing.GetHorizontalRotated(angle).Code[0];
             }
 
-            if (first != "u" &&  first != "d")
-            {
-                var beforeFacing = BlockFacing.FromFirstLetter(first);
-                int rotatedIndex = GameMath.Mod(beforeFacing.HorizontalAngleIndex - angle / 90, 4);
-                var nowFacing = BlockFacing.HORIZONTALS_ANGLEORDER[rotatedIndex];
-                first = nowFacing.Code.Substring(0, 1);
-            }
+            string orientation = new(transformed);
+            AssetLocation transformedCode = CodeWithVariant("orientation", orientation);
+            if (orientation.Length < 2 || api.World.GetBlock(transformedCode) != null) return transformedCode;
 
-            if (second != "u" &&  second != "d")
-            {
-                var beforeFacing = BlockFacing.FromFirstLetter(second);
-                int rotatedIndex = GameMath.Mod(beforeFacing.HorizontalAngleIndex - angle / 90, 4);
-                var nowFacing = BlockFacing.HORIZONTALS_ANGLEORDER[rotatedIndex];
-                second = nowFacing.Code.Substring(0, 1);
-            }
-            var newOrientation = CodeWithParts(first+second);
-
-            if (api.World.GetBlock(newOrientation) == null)
-            {
-                return CodeWithParts(second+first);
-            }
-
-            return newOrientation;
+            return CodeWithVariant("orientation", $"{orientation[1]}{orientation[0]}");
         }
     }
 }

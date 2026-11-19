@@ -184,7 +184,7 @@ namespace Vintagestory.GameContent
         public override int GetQuantitySlots(ItemStack bagstack)
         {
             if (collObj is not BlockCrate crate) return 0;
-            
+
             string type = bagstack.Attributes.GetString("type") ?? crate.Props.DefaultType;
             int quantity = crate.Props[type].QuantitySlots;
             return quantity;
@@ -371,7 +371,7 @@ namespace Vintagestory.GameContent
             return shape;
         }
 
-        public CompositeShape GetAttachedShape(ItemStack stack, string slotCode)
+        public CompositeShape GetAttachedShape(ItemStack stack, Entity onentity, string slotCode)
         {
             return null;
         }
@@ -461,9 +461,9 @@ namespace Vintagestory.GameContent
 
 
                     string type = bect.type;
-                    string rotatatableInterval = Props[type].RotatatableInterval;
+                    string rotatableInterval = Props[type].RotatatableInterval;
 
-                    if (rotatatableInterval == "22.5degnot45deg")
+                    if (rotatableInterval == "22.5degnot45deg")
                     {
                         float rounded90degRad = ((int)Math.Round(angleHor / GameMath.PIHALF)) * GameMath.PIHALF;
                         float deg45rad = GameMath.PIHALF / 4;
@@ -478,10 +478,17 @@ namespace Vintagestory.GameContent
                             bect.MeshAngle = rounded90degRad;
                         }
                     }
-                    if (rotatatableInterval == "22.5deg")
+                    if (rotatableInterval == "22.5deg")
                     {
                         float deg22dot5rad = GameMath.PIHALF / 4;
                         float roundRad = ((int)Math.Round(angleHor / deg22dot5rad)) * deg22dot5rad;
+                        bect.MeshAngle = roundRad;
+                    }
+
+                    if (rotatableInterval == "45deg")
+                    {
+                        float deg45rad = GameMath.PIHALF / 2;
+                        float roundRad = ((int)Math.Round(angleHor / deg45rad)) * deg45rad;
                         bect.MeshAngle = roundRad;
                     }
                 }

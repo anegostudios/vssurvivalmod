@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Client;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
@@ -77,6 +77,9 @@ namespace Vintagestory.GameContent
                 return;
             }
             if (blockSel == null) return;
+
+            // Silently fail outside the normal dimension
+            if (blockSel.Position.dimension != 0) return;
 
             Block block = api.World.BlockAccessor.GetBlock(blockSel.Position);
             if (block is BlockStaticTranslocator) return;

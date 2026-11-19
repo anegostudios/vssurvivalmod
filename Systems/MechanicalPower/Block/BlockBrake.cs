@@ -1,4 +1,3 @@
-using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
@@ -78,27 +77,6 @@ namespace Vintagestory.GameContent.Mechanics
             return false;
         }
 
-        public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
-        {
-            BEBehaviorMPAxle bempaxle = world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPAxle>();
-            if (bempaxle != null && !BEBehaviorMPAxle.IsAttachedToBlock(world.BlockAccessor, bempaxle.Block, pos))
-            {
-                foreach (BlockFacing face in BlockFacing.HORIZONTALS)
-                {
-                    BlockPos npos = pos.AddCopy(face);
-                    BlockAngledGears blockagears = world.BlockAccessor.GetBlock(npos) as BlockAngledGears;
-                    if (blockagears == null) continue;
-                    if (blockagears.Facings.Contains(face.Opposite) && blockagears.Facings.Length == 1)
-                    {
-                        world.BlockAccessor.BreakBlock(npos, null);
-                    }
-                }
-            }
-
-            base.OnNeighbourBlockChange(world, pos, neibpos);
-        }
-
-
         public override void DidConnectAt(IWorldAccessor world, BlockPos pos, BlockFacing face)
         {
 
@@ -108,6 +86,11 @@ namespace Vintagestory.GameContent.Mechanics
         {
             BEBrake bebrake = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BEBrake;
             return bebrake?.OnInteract(byPlayer) == true;
+        }
+
+        public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
+        {
+            return Drops[0].ResolvedItemstack.Clone();
         }
 
     }

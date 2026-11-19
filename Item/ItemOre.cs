@@ -105,8 +105,10 @@ namespace Vintagestory.GameContent
             return blockMaterial is EnumBlockMaterial.Stone or EnumBlockMaterial.Metal or EnumBlockMaterial.Mantle or EnumBlockMaterial.Brick or EnumBlockMaterial.Ore;
         }
 
-        public bool OnContainedInteractStart(BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        public bool OnContainedInteractStart(BlockEntity be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
         {
+            if (be is not BlockEntityGroundStorage) return false;
+
             if (Attributes?["metalUnits"].Exists != true ||
                 byPlayer.InventoryManager.ActiveTool != EnumTool.Hammer ||
                 !byPlayer.Entity.Controls.ShiftKey ||
@@ -124,7 +126,7 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public bool OnContainedInteractStep(float secondsUsed, BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        public bool OnContainedInteractStep(float secondsUsed, BlockEntity be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
         {
             if (Attributes?["metalUnits"].Exists != true ||
                 !CanBreakOnMaterial(be.Api.World.BlockAccessor.GetBlock(be.Pos.DownCopy()).BlockMaterial) ||
@@ -150,9 +152,10 @@ namespace Vintagestory.GameContent
             return secondsUsed < 2f;
         }
 
-        public void OnContainedInteractStop(float secondsUsed, BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        public void OnContainedInteractStop(float secondsUsed, BlockEntity be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
         {
-            if (Attributes?["metalUnits"].Exists != true ||
+            var inventory = (be as BlockEntityGroundStorage)?.Inventory;
+            if (inventory == null || Attributes?["metalUnits"].Exists != true ||
                 !CanBreakOnMaterial(be.Api.World.BlockAccessor.GetBlock(be.Pos.DownCopy()).BlockMaterial) ||
                 byPlayer.InventoryManager.ActiveTool != EnumTool.Hammer)
             {
@@ -185,21 +188,23 @@ namespace Vintagestory.GameContent
                 if (slot.StackSize <= smashed) slot.Itemstack = null;
                 else slot.Itemstack.StackSize -= smashed;
                 be.MarkDirty(true);
-                if (be.Inventory.Empty) be.Api.World.BlockAccessor.SetBlock(0, blockSel.Position);
+                if (inventory.Empty) be.Api.World.BlockAccessor.SetBlock(0, blockSel.Position);
 
                 be.Api.World.PlaySoundAt("sounds/block/rock-break-pickaxe", blockSel.Position, 0);
             }
         }
 
-        public bool OnContainedInteractCancel(float secondsUsed, BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel, EnumItemUseCancelReason cancelReason)
+        public bool OnContainedInteractCancel(float secondsUsed, BlockEntity be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel, EnumItemUseCancelReason cancelReason)
         {
             byPlayer.Entity.StopAnimation("hammerhit-fp");
             return true;
         }
 
 
-        public WorldInteraction[] GetContainedInteractionHelp(BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        public WorldInteraction[] GetContainedInteractionHelp(BlockEntity be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
         {
+            if (be is not BlockEntityGroundStorage) return [];
+
             if (Attributes?["metalUnits"].Exists == true && CanBreakOnMaterial(be.Api.World.BlockAccessor.GetBlock(be.Pos.DownCopy()).BlockMaterial))
             {
                 bool notProtected = true;

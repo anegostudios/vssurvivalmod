@@ -1,9 +1,11 @@
+using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 
 namespace Vintagestory.GameContent
 {
@@ -32,9 +34,9 @@ namespace Vintagestory.GameContent
         [DocumentAsJson("Optional", "None")]
         public JsonItemStack? CookedStack;
 
-        public override void FromBytes(BinaryReader reader, IClassRegistryAPI instancer)
+        public override void FromBytes(ref BinarySpanReader reader, IClassRegistryAPI instancer)
         {
-            base.FromBytes(reader, instancer);
+            base.FromBytes(ref reader, instancer);
 
             if (!reader.ReadBoolean())
             {
@@ -48,8 +50,8 @@ namespace Vintagestory.GameContent
 
             if (!reader.ReadBoolean())
             {
-                CookedStack = new JsonItemStack();
-                CookedStack.FromBytes(reader, instancer);
+                CookedStack = new JsonItemStack { Code = null! };
+                CookedStack.FromBytes(ref reader, instancer);
             }
         }
 
@@ -151,8 +153,13 @@ namespace Vintagestory.GameContent
         /// </summary>
         public IWorldAccessor? world;
 
+        [Obsolete("Prefer using the BinarySpanReader overload.")]
         [MemberNotNull(nameof(Code), nameof(ValidStacks))]
         public virtual void FromBytes(BinaryReader reader, IClassRegistryAPI instancer)
+            => reader.UnsafeActAsBinarySpanReader(instancer, FromBytes);
+
+        [MemberNotNull(nameof(Code), nameof(ValidStacks))]
+        public virtual void FromBytes(ref BinarySpanReader reader, IClassRegistryAPI instancer)
         {
             Code = reader.ReadString();
             MinQuantity = reader.ReadInt32();
@@ -164,10 +171,9 @@ namespace Vintagestory.GameContent
             ValidStacks = new CookingRecipeStack[q];
             for (int i = 0; i < q; i++)
             {
-                ValidStacks[i] = new CookingRecipeStack();
-                ValidStacks[i].FromBytes(reader, instancer);
+                ValidStacks[i] = new CookingRecipeStack { Code = null! };
+                ValidStacks[i].FromBytes(ref reader, instancer);
             }
-
         }
 
         public virtual void ToBytes(BinaryWriter writer)

@@ -4,20 +4,21 @@ using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
+using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
 #nullable disable
 
 namespace Vintagestory.GameContent;
 
-public class CollectibleBehaviorTypedTexture : CollectibleBehavior
+public class CollectibleBehaviorTypedTexture : CollectibleBehavior, IContainedMeshSource
 {
+    protected ICoreClientAPI capi;
     protected string[] materialTypes;
     protected string[] defaults;
     protected string[] translationEntries;
     public CompositeShape CompositeShape;
     public Dictionary<string, string> TextureMapping;
-
 
     public CollectibleBehaviorTypedTexture(CollectibleObject collObj) : base(collObj)
     {
@@ -26,6 +27,9 @@ public class CollectibleBehaviorTypedTexture : CollectibleBehavior
     public override void OnLoaded(ICoreAPI api)
     {
         base.OnLoaded(api);
+
+        capi = api as ICoreClientAPI;
+
         materialTypes = collObj.Attributes?["materialTypes"].AsArray<string>();
         if (materialTypes == null || materialTypes.Length == 0)
         {
@@ -71,18 +75,7 @@ public class CollectibleBehaviorTypedTexture : CollectibleBehavior
 
         if (!meshes.TryGetValue(dictKey, out renderinfo.ModelRef))
         {
-            var shape = capi.TesselatorManager.GetCachedShape(CompositeShape.Base);
-            Dictionary<string, string> materials = GetMaterials(itemstack);
-
-            var typedTextureSource = new TypedTextureSource(capi, capi.BlockTextureAtlas, collObj.Code.Domain, TextureMapping, materials);
-            capi.Tesselator.TesselateShape(new TesselationMetaData()
-            {
-                TexSource = typedTextureSource,
-                TypeForLogging = "CollectibleBehaviorTypedTextureMesh",
-                SelectiveElements = CompositeShape.SelectiveElements,
-                IgnoreElements = CompositeShape.IgnoreElements
-            }, shape, out var meshdata);
-
+            var meshdata = GenMesh(renderinfo.InSlot, capi.ItemTextureAtlas, null);
             renderinfo.ModelRef = meshes[dictKey] = capi.Render.UploadMultiTextureMesh(meshdata);
         }
     }
@@ -111,5 +104,27 @@ public class CollectibleBehaviorTypedTexture : CollectibleBehavior
             string materialLangEntry = translationEntries[i].Replace("{" + materialTypes[i] + "}", material);
             dsc.AppendLine(Lang.Get("materialtype-" + materialTypes[i], Lang.Get(materialLangEntry)));
         }
+    }
+
+    public MeshData GenMesh(ItemSlot slot, ITextureAtlasAPI targetAtlas, BlockPos atBlockPos)
+    {
+        var shape = capi.TesselatorManager.GetCachedShape(CompositeShape.Base);
+        Dictionary<string, string> materials = GetMaterials(slot.Itemstack);
+
+        var typedTextureSource = new TypedTextureSource(capi, capi.BlockTextureAtlas, collObj.Code.Domain, TextureMapping, materials);
+        capi.Tesselator.TesselateShape(new TesselationMetaData()
+        {
+            TexSource = typedTextureSource,
+            TypeForLogging = "CollectibleBehaviorTypedTextureMesh",
+            SelectiveElements = CompositeShape.SelectiveElements,
+            IgnoreElements = CompositeShape.IgnoreElements
+        }, shape, out var meshdata);
+
+        return meshdata;
+    }
+
+    public string GetMeshCacheKey(ItemSlot slot)
+    {
+        return slot.Itemstack.Collectible.Code.ToShortString() + "-" + getDictKey(slot.Itemstack);
     }
 }

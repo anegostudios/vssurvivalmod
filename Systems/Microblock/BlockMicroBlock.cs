@@ -676,8 +676,7 @@ namespace Vintagestory.GameContent
             BlockEntityMicroBlock be = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
             if (be != null)
             {
-                blockModelData = be.GenMesh(); // Must gen mesh here, we might run into race conditions otherwise
-                decalModelData = be.CreateDecalMesh(decalTexSource);
+                be.CreateDecalMeshes(decalTexSource, out blockModelData, out decalModelData);
                 return;
             }
 

@@ -1,6 +1,7 @@
 using System.IO;
 using Vintagestory.API;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 
 namespace Vintagestory.GameContent
 {
@@ -31,9 +32,9 @@ namespace Vintagestory.GameContent
         public float Litres;
         #endregion
 
-        public override void FromBytes(BinaryReader reader, IClassRegistryAPI instancer)
+        public override void FromBytes(ref BinarySpanReader reader, IClassRegistryAPI instancer)
         {
-            base.FromBytes(reader, instancer);
+            base.FromBytes(ref reader, instancer);
 
             Litres = reader.ReadSingle();
         }
@@ -59,7 +60,7 @@ namespace Vintagestory.GameContent
 
         public override BarrelOutputStack Clone()
         {
-            BarrelOutputStack result = new();
+            BarrelOutputStack result = new BarrelOutputStack { Code = null! };
 
             CloneTo(result);
 

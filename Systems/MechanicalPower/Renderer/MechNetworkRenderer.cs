@@ -23,7 +23,10 @@ namespace Vintagestory.GameContent.Mechanics
         public static Dictionary<string, Type> RendererByCode = new Dictionary<string, Type>()
         {
             { "generic", typeof(GenericMechBlockRenderer) },
+            { "axlearm", typeof(AxleArmRenderer) },
+            { "spurgear", typeof(SpurGearRenderer) },
             { "angledgears", typeof(AngledGearsBlockRenderer) },
+            { "angledgearmulti", typeof(AngledGearMultiBlockRenderer) },
             { "angledgearcage", typeof(AngledCageGearRenderer) },
             { "transmission", typeof(TransmissionBlockRenderer) },
             { "clutch", typeof(ClutchBlockRenderer) },
@@ -92,7 +95,6 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 capi.Render.GlToggleBlend(false); // Seems to break SSAO without
                 prog.Use();
-                prog.BindTexture2D("tex", capi.BlockTextureAtlas.Positions[0].atlasTextureId, 0);
                 prog.Uniform("rgbaFogIn", capi.Render.FogColor);
                 prog.Uniform("rgbaAmbientIn", capi.Render.AmbientColor);
                 prog.Uniform("fogMinIn", capi.Render.FogMin);
@@ -102,8 +104,12 @@ namespace Vintagestory.GameContent.Mechanics
 
                 for (int i = 0; i < MechBlockRenderer.Count; i++)
                 {
+                    // Renderers registered by mods may still draw without binding their own atlas page or UV offset state.
+                    prog.BindTexture2D("tex", capi.BlockTextureAtlas.Positions[0].atlasTextureId, 0);
+                    prog.Uniform("useUvOffset", 0);
                     MechBlockRenderer[i].OnRenderFrame(deltaTime, prog);
                 }
+                prog.Uniform("useUvOffset", 0);
 
                 prog.Stop();
             }

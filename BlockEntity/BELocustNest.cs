@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -75,11 +75,11 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void OnReceivedClientPacket(IPlayer fromPlayer, int packetid, byte[] bytes)
+        public override void OnReceivedClientPacket(IServerPlayer fromPlayer, int packetId, SerializedData packetData, ref CachedAccessPerms perms)
         {
-            base.OnReceivedClientPacket(fromPlayer, packetid, bytes);
+            base.OnReceivedClientPacket(fromPlayer, packetId, packetData, ref perms);
 
-            if (packetid == 123)
+            if (packetId == 123)
             {
                 if (Api.World.Rand.NextDouble() < 0.25 && insideLocustCount > 0)
                 {

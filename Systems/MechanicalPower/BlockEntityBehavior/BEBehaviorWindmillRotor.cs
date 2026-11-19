@@ -188,9 +188,16 @@ namespace Vintagestory.GameContent.Mechanics
                 if (obstructed(sailLength + 1))
                 {
                     Api.World.PlaySoundAt(new AssetLocation("sounds/effect/toolbreak"), Position, 0, null, false, 20, 1f);
+
+                    var sailStack = SailStack;
+                    Api.World.Logger.Audit("Dropped {0}x{1} because they where obstructed at rotor {2}.",
+                        sailStack.StackSize * sailLength,
+                        sailStack.Collectible.Code,
+                        Pos
+                    );
                     while (sailLength-- > 0)
                     {
-                        Api.World.SpawnItemEntity(SailStack, Blockentity.Pos);
+                        Api.World.SpawnItemEntity(sailStack, Blockentity.Pos);
                     }
                     sailLength = 0;
                     Blockentity.MarkDirty(true);
@@ -201,9 +208,16 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override void OnBlockBroken(IPlayer byPlayer = null)
         {
+            var sailStack = SailStack;
+            Api.World.Logger.Audit("{0} Got {1}x{2} dropped from breaking the rotor at {3}.",
+                byPlayer?.PlayerName,
+                sailStack.StackSize * sailLength,
+                sailStack.Collectible.Code,
+                Pos
+            );
             while (sailLength-- > 0)
             {
-                Api.World.SpawnItemEntity(SailStack, Blockentity.Pos);
+                Api.World.SpawnItemEntity(sailStack, Blockentity.Pos);
             }
 
             base.OnBlockBroken(byPlayer);
@@ -245,6 +259,12 @@ namespace Vintagestory.GameContent.Mechanics
                 slot.TakeOut(sailStack.StackSize);
                 slot.MarkDirty();
             }
+            Api.World.Logger.Audit("{0} Put {1}x{2} onto rotor at {3}.",
+                byPlayer.PlayerName,
+                sailStack.StackSize,
+                sailStack.Collectible.Code,
+                Pos
+            );
 
             sailLength++;
             updateShape(Api.World);
@@ -264,7 +284,9 @@ namespace Vintagestory.GameContent.Mechanics
 
             for (int dxz = -len; dxz <= len; dxz++)
             {
-                for (int dy = -len; dy <= len; dy++)
+                int len2 = (int)Math.Sqrt(len * len - dxz * dxz);
+
+                for (int dy = -len2; dy <= len2; dy++)
                 {
                     if (dxz == 0 && dy == 0) continue;
                     if (len > 1 && Math.Abs(dxz) == len && Math.Abs(dy) == len) continue;
@@ -277,8 +299,14 @@ namespace Vintagestory.GameContent.Mechanics
                     Cuboidf[] collBoxes = block.GetCollisionBoxes(Api.World.BlockAccessor, tmpPos);
                     if (collBoxes != null && collBoxes.Length > 0 && !(block is BlockSnowLayer) && !(block is BlockSnow))
                     {
-
+                        //var ps = tmpPos.ToVec3d() + new Vec3d(0.5, 0.5, 0.5);
+                        //Api.World.SpawnParticles(1, ColorUtil.ColorFromRgba([255, 0, 0, 255]), ps, ps, new(), new(), 1, 0, 1, EnumParticleModel.Cube);
                         return true;
+                    }
+                    else
+                    {
+                        //var ps = tmpPos.ToVec3d() + new Vec3d(0.5, 0.5, 0.5);
+                        //Api.World.SpawnParticles(1, ColorUtil.ColorFromRgba([255, 255, 255, 255]), ps, ps, new(), new(), 1, 0, 1, EnumParticleModel.Cube);
                     }
                 }
             }
@@ -345,12 +373,12 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
         {
-            base.GetBlockInfo(forPlayer, sb);
-
             sb.AppendLine(string.Format(Lang.Get("Wind speed: {0}%", (int)(100*windSpeed))));
             sb.AppendLine(Lang.Get("Sails power output: {0} kN", (int)(sailLength / 5f * 100f * powerMul * (turbulenceExposed ? 0.5f : 1f))));
 
             if (turbulenceExposed) sb.AppendLine("Exposed to turbulence from nearby windmill, power output reduced by 50%.");
+
+            base.GetBlockInfo(forPlayer, sb);
         }
     }
 }

@@ -23,25 +23,51 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face, BlockMPBase forBlock)
         {
-            return face == powerOutFacing;
+            return face == powerOutFacing && HasCompatibleConnector(forBlock);
         }
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
         {
-            if (!CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
+            BlockAxle.TryGetHorizontalEndPlacement(world, blockSel, out BlockAxle clickedAxle, out BlockPos axlePos, out BlockFacing axleEnd, out BlockSelection placement);
+
+            if (!CanPlaceBlock(world, byPlayer, placement, ref failureCode))
             {
                 return false;
             }
 
-            BlockFacing face = GetFacingForPlacement(world, blockSel.Position, true, out bool invalid);
+            if (axleEnd != null)
+            {
+                if (!HasCompatibleConnector(clickedAxle))
+                {
+                    failureCode = "incompatibleconnector";
+                    return false;
+                }
+
+                Block toPlaceBlock = world.GetBlock(CodeWithVariant("side", axleEnd.Code));
+                world.BlockAccessor.SetBlock(toPlaceBlock.BlockId, placement.Position, itemstack);
+
+                clickedAxle.DidConnectAt(world, axlePos, axleEnd);
+                WasPlaced(world, placement.Position, axleEnd.Opposite);
+                return true;
+            }
+
+            // The block is placed here rather than through doPlace that way it receives the held stack.
+            BlockFacing face = GetFacingForPlacement(world, placement.Position, false, out bool invalid);
             if (invalid) return false;
 
             bool ok = face != null;
-            if (!ok) ok = base.TryPlaceBlock(world, byPlayer, itemstack, blockSel, ref failureCode);
+            if (ok)
+            {
+                Block toPlaceBlock = world.GetBlock(CodeWithVariant("side", face.Opposite.Code));
+                world.BlockAccessor.SetBlock(toPlaceBlock.BlockId, placement.Position, itemstack);
+                BlockPos neighbourPos = placement.Position.AddCopy(face);
+                (world.BlockAccessor.GetBlock(neighbourPos) as IMechanicalPowerBlock)?.DidConnectAt(world, neighbourPos, face.Opposite);
+            }
+            else ok = base.TryPlaceBlock(world, byPlayer, itemstack, placement, ref failureCode);
 
             if (ok)
             {
-                WasPlaced(world, blockSel.Position, face);      // face may be null here if we called the base method
+                WasPlaced(world, placement.Position, face);      // face may be null here if we called the base method
             }
             return ok;
         }
@@ -53,17 +79,19 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 BlockPos pos = position.AddCopy(face);
                 IMechanicalPowerBlock block = world.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
-                if (block != null)
+                // Prevent rotor back-to-back placement, regardless of connector type.
+                if (block is IMPPowered)
+                {
+                    if (!block.HasMechPowerConnectorAt(world, pos, face.Opposite, null)) continue;
+
+                    invalid = true;
+                    return null;
+                }
+
+                if (block != null && HasCompatibleConnector(block as BlockMPBase))
                 {
                     if (block.HasMechPowerConnectorAt(world, pos, face.Opposite, this))
                     {
-                        //Prevent rotor back-to-back placement
-                        if (block is IMPPowered)
-                        {
-                            invalid = true;
-                            return null;
-                        }
-
                         if (doPlace)
                         {
                             Block toPlaceBlock = world.GetBlock(CodeWithVariant("side", face.Opposite.Code));

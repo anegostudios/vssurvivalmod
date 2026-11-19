@@ -70,26 +70,6 @@ namespace Vintagestory.GameContent
                     KillFire(true);
                 }
             };
-
-            OnFireDeath = (consumefuel) =>
-            {
-                if (consumefuel)
-                {
-                    var becontainer = Api.World.BlockAccessor.GetBlockEntity(FuelPos) as BlockEntityContainer;
-                    becontainer?.OnBlockBroken();
-
-                    Api.World.BlockAccessor.SetBlock(0, FuelPos);
-                    Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(FuelPos);
-                    if (AllowFireSpread)
-                    {
-                        TrySpreadTo(FuelPos);
-                    }
-                }
-
-                Api.World.BlockAccessor.SetBlock(0, FirePos);
-
-                Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(FirePos);
-            };
         }
 
         float getBurnDuration(BlockPos pos)
@@ -122,6 +102,28 @@ namespace Vintagestory.GameContent
             }
 
             AllowFireSpread = Api.World.Config.GetBool("allowFireSpread");
+
+            OnFireDeath = OnCallFireDeath;
+        }
+
+        private void OnCallFireDeath(bool consumefuel)
+        {
+            if (consumefuel)
+            {
+                var becontainer = Api.World.BlockAccessor.GetBlockEntity(FuelPos) as BlockEntityContainer;
+                becontainer?.OnBlockBroken();
+
+                Api.World.BlockAccessor.SetBlock(0, FuelPos);
+                Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(FuelPos);
+                if (AllowFireSpread)
+                {
+                    TrySpreadTo(FuelPos);
+                }
+            }
+
+            Api.World.BlockAccessor.SetBlock(0, FirePos);
+
+            Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(FirePos);
         }
 
         public void OnFirePlaced(BlockFacing fromFacing, string startedByPlayerUid)
@@ -334,7 +336,7 @@ namespace Vintagestory.GameContent
             Blockentity.UnregisterGameTickListener(l2);
             l1 = 0;
             l2 = 0;
-            OnFireDeath(consumeFuel);
+            OnFireDeath?.Invoke(consumeFuel);
             unloaded = true;
         }
 

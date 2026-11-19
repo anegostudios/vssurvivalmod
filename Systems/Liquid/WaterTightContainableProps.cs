@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 
@@ -6,6 +7,8 @@ using Vintagestory.API.Common;
 
 namespace Vintagestory.GameContent
 {
+    /// <!--<jsonalias>liquidContainerProps</jsonalias>-->
+    [DocumentAsJson]
     public class LiquidTopOpenContainerProps
     {
         public float CapacityLitres = 10f;
@@ -15,8 +18,11 @@ namespace Vintagestory.GameContent
         public AssetLocation OpaqueContentShapeLoc;
         public AssetLocation LiquidContentShapeLoc;
         public float LiquidMaxYTranslate;
+        public BlockSounds FullBlockSounds;
+        public HeldSounds FullHeldSounds;
     }
 
+    [DocumentAsJson]
     public class WaterTightContainableProps
     {
         public bool Containable;

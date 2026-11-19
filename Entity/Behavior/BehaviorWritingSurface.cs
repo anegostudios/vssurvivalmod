@@ -1,6 +1,7 @@
 using ProtoBuf;
-using Vintagestory.API;
+using System;
 using System.Linq;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -9,6 +10,7 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+using static OpenTK.Graphics.OpenGL.GL;
 
 #nullable disable
 
@@ -47,7 +49,8 @@ namespace Vintagestory.GameContent
     ///        "textVoxelHeight": 6,
     ///        "fontName": "Almendra",
     ///        "verticalAlign": "Middle",
-    ///        "boldFont": true
+    ///        "boldFont": true,
+    ///        "maxLength": 50000
     ///    },
     ///    "writingSurfaces": [ "LPlaqueAP", "RPlaqueAP" ]
     /// },
@@ -68,6 +71,10 @@ namespace Vintagestory.GameContent
     [AddDocumentationProperty("pigment", "Use on a collectible type. If set and the collectible is used to write on a writing surface with this behavior, its pigment color will be used for text color.", "Vintagestory.API.Datastructures.JsonObject", "Optional", "None", true)]
     public class EntityBehaviorWritingSurface : EntityBehavior, ITexPositionSource
     {
+        // Only used if none is set via the json attribute.
+        // Rennorb: This was introduced after the fact, so we need to set some sensible default. I arbitrarily chose 1K.
+        public const int DEFAULT_MAX_TEXT_LENGTH = 1024;
+
         protected MultiTextureMeshRef meshref;
         protected ICoreClientAPI capi;
         protected LoadedTexture loadedTexture;
@@ -119,12 +126,14 @@ namespace Vintagestory.GameContent
 
         public override void Initialize(EntityProperties properties, JsonObject attributes)
         {
+            signTextConfig = attributes["fontConfig"].AsObject<TextAreaConfig>();
+            if (signTextConfig.MaxLength == -1) signTextConfig.MaxLength = DEFAULT_MAX_TEXT_LENGTH;
+
             capi = entity.World.Api as ICoreClientAPI;
             if (capi != null)
             {
                 capi.Event.ReloadTextures += Event_ReloadTextures;
                 entity.WatchedAttributes.RegisterModifiedListener(SurfaceName + "_writingSurfaceText", entity.MarkShapeModified);
-                signTextConfig = attributes["fontConfig"].AsObject<TextAreaConfig>();
                 font = new CairoFont(signTextConfig.FontSize, signTextConfig.FontName, new double[] { 0, 0, 0, 0.8 });
                 if (signTextConfig.BoldFont) font.WithWeight(Cairo.FontWeight.Bold);
                 font.LineHeightMultiplier = 0.9f;
@@ -181,79 +190,93 @@ namespace Vintagestory.GameContent
             capi.Network.SendEntityPacket(entity.EntityId, (int)WritingSurfacePackets.Open);
         }
 
-        public override void OnReceivedClientPacket(IServerPlayer player, int packetid, byte[] data, ref EnumHandling handled)
+        public override void OnReceivedClientPacket(IServerPlayer player, int packetId, SerializedData packetData, ref EnumHandling handled, ref Entity.CachedAccessPerms perms)
         {
-            base.OnReceivedClientPacket(player, packetid, data, ref handled);
+            base.OnReceivedClientPacket(player, packetId, packetData, ref handled, ref perms);
 
-            if (packetid == (int)WritingSurfacePackets.Open)
+            switch (packetId)
             {
-                var perms = new Entity.CachedAccessPerms(this.entity, player);
-                if(!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "entity behavior writing surface"))
-                {
-                    // No need to revert this, just discard the request.
-                    return;
-                }
+                case (int)WritingSurfacePackets.Open:
+                    if(!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "entity behavior writing surface"))
+                    {
+                        // No need to revert this, just discard the request.
+                        break;
+                    }
 
-                loadPigment(player.Entity);
-            }
+                    loadPigment(player.Entity);
 
-            if (packetid == (int)WritingSurfacePackets.Cancel)
-            {
-                var perms = new Entity.CachedAccessPerms(this.entity, player);
-                if(!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, false, "entity behavior writing surface")) // No range check here, we might have gotten moved away.
-                {
-                    // No need to revert this, cannot get here without packet manipulation.
-                    return;
-                }
+                    break;
 
-                player.Entity.TryGiveItemStack(tempStack);
-                tempStack = null;
-            }
 
-            if (packetid == (int)WritingSurfacePackets.Save)
-            {
-                var perms = new Entity.CachedAccessPerms(this.entity, player);
-                if(!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "entity behavior writing surface"))
-                {
-                    // Revert the text change for that client:
-                    ((ICoreServerAPI)entity.Api).Network.SendEntityPacket(player, entity.EntityId, (int)WritingSurfacePackets.Cancel, SerializerUtil.Serialize(new TextDataPacket() {
-                        FontSize = this.FontSize,
-                        Text     = this.Text,
-                    }));
+                case (int)WritingSurfacePackets.Cancel:
+                    if(!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, false, "entity behavior writing surface")) // No range check here, we might have gotten moved away.
+                    {
+                        // No need to revert this, cannot get here without packet manipulation.
+                        break;
+                    }
 
-                    // Don't forget to give the chalk item back:
-                    player.InventoryManager.TryGiveItemstack(tempStack);
+                    player.Entity.TryGiveItemStack(tempStack);
                     tempStack = null;
 
-                    return;
-                }
+                    break;
 
-                // 85% chance to get back the item
-                if (entity.World.Rand.NextDouble() < 0.85)
-                {
-                    player.Entity.TryGiveItemStack(tempStack);
-                }
-                tempStack = null;
 
-                var pkg = SerializerUtil.Deserialize<TextDataPacket>(data);
-                this.Text = pkg.Text;
-                this.FontSize = pkg.FontSize;
+                case (int)WritingSurfacePackets.Save:
+                    void resetSignForThatPlayer()
+                    {
+                        // Revert the text change for that client:
+                        ((ICoreServerAPI)entity.Api).Network.SendEntityPacket(player, entity.EntityId, (int)WritingSurfacePackets.Cancel, SerializerUtil.Serialize(new TextDataPacket() {
+                            FontSize = this.FontSize,
+                            Text     = this.Text,
+                        }));
 
-                entity.MarkShapeModified();
-                Color = tempColor;
+                        // Don't forget to give the chalk item back:
+                        player.InventoryManager.TryGiveItemstack(tempStack);
+                        tempStack = null;
+                    }
+
+                    if (!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "entity behavior writing surface"))
+                    {
+                        resetSignForThatPlayer();
+                        break;
+                    }
+
+                    var pkg = packetData.Deserialize<TextDataPacket>();
+                    if (pkg.Text.Length > signTextConfig.MaxLength)
+                    {
+                        resetSignForThatPlayer();
+                        this.entity.Api.Logger.Audit("Player {0} tried to set excessive text (len = {1}) to a writing surface.", player.PlayerName, pkg.Text.Length);
+                        break;
+                    }
+
+                    this.Text = pkg.Text;
+                    this.FontSize = pkg.FontSize;
+
+                    entity.MarkShapeModified();
+                    Color = tempColor;
+
+
+                    // 85% chance to get back the item
+                    if (entity.World.Rand.NextDouble() < 0.85)
+                    {
+                        player.Entity.TryGiveItemStack(tempStack);
+                    }
+                    tempStack = null;
+
+                    break;
             }
         }
 
-        public override void OnReceivedServerPacket(int packetId, byte[] data, ref EnumHandling handled)
+        public override void OnReceivedServerPacket(int packetId, SerializedData packetData, ref EnumHandling handled)
         {
             switch (packetId)
             {
                 case (int)WritingSurfacePackets.Cancel:
                 {
-                    var pkg = SerializerUtil.Deserialize<TextDataPacket>(data);
+                    var pkg = packetData.Deserialize<TextDataPacket>();
+
                     this.Text = pkg.Text;
                     this.FontSize = pkg.FontSize;
-
                     entity.MarkShapeModified();
 
                     handled = EnumHandling.Handled;
@@ -262,7 +285,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            base.OnReceivedServerPacket(packetId, data, ref handled);
+            base.OnReceivedServerPacket(packetId, packetData, ref handled);
         }
 
         private bool loadPigment(EntityAgent eagent)

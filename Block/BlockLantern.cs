@@ -14,13 +14,13 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockLantern : Block, ITexPositionSource, IAttachableToEntity, IContainedMeshSource, IContainedInteractable
+    public class BlockLantern : Block, ITexPositionSource, IAttachableToEntity, IContainedMeshSource, IContainedInteractable, IHandbookListGrouping
     {
         protected IAttachableToEntity attrAtta;
         #region IAttachableToEntity
         public int RequiresBehindSlots { get; set; } = 0;
         string IAttachableToEntity.GetCategoryCode(ItemStack stack) => attrAtta?.GetCategoryCode(stack);
-        CompositeShape IAttachableToEntity.GetAttachedShape(ItemStack stack, string slotCode) => attrAtta?.GetAttachedShape(stack, slotCode);
+        CompositeShape IAttachableToEntity.GetAttachedShape(ItemStack stack, Entity onentity, string slotCode) => attrAtta?.GetAttachedShape(stack, onentity, slotCode);
         string[] IAttachableToEntity.GetDisableElements(ItemStack stack) => attrAtta?.GetDisableElements(stack);
         string[] IAttachableToEntity.GetKeepElements(ItemStack stack) => attrAtta?.GetKeepElements(stack);
         string IAttachableToEntity.GetTexturePrefixCode(ItemStack stack) => attrAtta?.GetTexturePrefixCode(stack);
@@ -418,12 +418,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public WorldInteraction[] GetContainedInteractionHelp(BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
-        {
-            return [];
-        }
-
-        public bool OnContainedInteractStart(BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        public bool OnContainedInteractStart(BlockEntity be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
         {
             string lining = slot.Itemstack.Attributes.GetString("lining");
             string glass = slot.Itemstack.Attributes.GetString("glass");
@@ -477,14 +472,26 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-        public bool OnContainedInteractStep(float secondsUsed, BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        public string[] GetListGroupingForHandbook(ItemStack stack, string[] listGroupCodesFromAttributes)
         {
-            return false;
-        }
+            if (listGroupCodesFromAttributes == null || listGroupCodesFromAttributes.Length == 0) return listGroupCodesFromAttributes;
 
-        public void OnContainedInteractStop(float secondsUsed, BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
-        {
+            string material = stack.Attributes.GetString("material");
+            string lining = stack.Attributes.GetString("lining");
+            string glass = stack.Attributes.GetString("glass", "quartz");
+            var variants = new API.Datastructures.OrderedDictionary<string, string>();
+            if (material != null) variants.Add("material", material);
+            if (lining != null) variants.Add("lining", lining);
+            if (glass != null) variants.Add("glass", glass);
 
+            if (variants.Count == 0) return listGroupCodesFromAttributes;
+
+            for (int i = 0; i < listGroupCodesFromAttributes.Length; i++)
+            {
+                listGroupCodesFromAttributes[i] = FillPlaceHolderOptimized(listGroupCodesFromAttributes[i], variants);
+            }
+
+            return listGroupCodesFromAttributes;
         }
     }
 }

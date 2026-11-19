@@ -34,7 +34,7 @@ namespace Vintagestory.GameContent
 
         /*public override bool DoPlaceBlock(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ItemStack byItemStack)
         {
-            LCGRandom rand = new LCGRandom(world.Seed + world.ElapsedMilliseconds);
+            LCGRandom rand = new LCGRandom(world.SeedWorldgen + world.ElapsedMilliseconds);
             TryPlaceBlockForWorldGen(world.BlockAccessor, blockSel.Position, blockSel.Face, rand);
             return true;
         }*/

@@ -1,4 +1,4 @@
-﻿
+
 #nullable disable
 
 using System;
@@ -65,13 +65,15 @@ namespace Vintagestory.GameContent
                         .AddVerticalScrollbar(OnNewScrollbarvalue, scrollbarBounds, "scrollbar")
                     .EndIf()
                     .AddSmallButton(Lang.Get("Cancel"), OnButtonCancel, cancelButtonBounds)
-                    .AddDropDown(sizes, sizes, sizes.IndexOf("" + signConfig.FontSize), onfontsizechanged, fontSizeBounds)
+                    .AddDropDown(sizes, sizes, sizes.IndexOf("" + signConfig.FontSize), onfontsizechanged, fontSizeBounds, "fontsizeselector")
                     .AddSmallButton(Lang.Get("Save"), OnButtonSave, saveButtonBounds)
                 .EndChildElements()
                 .Compose()
             ;
 
-            SingleComposer.GetTextArea("text").SetMaxHeight((int)(signConfig.MaxHeight * RuntimeEnv.GUIScale));
+            var input = SingleComposer.GetTextArea("text");
+            input.SetMaxHeight((int)(signConfig.MaxHeight * RuntimeEnv.GUIScale));
+            input.SetMaxLength(signConfig.MaxLength);
 
 
             if (signConfig.WithScrollbar)
@@ -92,10 +94,21 @@ namespace Vintagestory.GameContent
         {
             var textArea = SingleComposer.GetTextArea("text");
             string text = textArea.GetText();
+
+            float prevSize = FontSize;
+
             textArea.SetFont(textArea.Font.Clone().WithFontSize(FontSize = code.ToInt()));
             textArea.Font.WithFontSize(FontSize = code.ToInt());
-            textArea.SetMaxHeight(signConfig.MaxHeight);
-            textArea.SetValue(text);
+            textArea.SetMaxHeight((int)(signConfig.MaxHeight * RuntimeEnv.GUIScale));
+
+            if (!textArea.SetValue(text))
+            {
+                textArea.SetFont(textArea.Font.Clone().WithFontSize(FontSize = prevSize));
+                textArea.Font.WithFontSize(FontSize = prevSize);
+                textArea.SetMaxHeight((int)(signConfig.MaxHeight * RuntimeEnv.GUIScale));
+                capi.TriggerIngameError(this, "fontsizechangefailed", Lang.Get("The selected font size is too big for the current text. Please shorten the text or select a smaller font size."));
+                capi.Event.EnqueueMainThreadTask(() => { SingleComposer.GetDropDown("fontsizeselector").SetSelectedValue(""+prevSize); }, "resetfontsize");
+            }
         }
 
         public override void OnGuiOpened()

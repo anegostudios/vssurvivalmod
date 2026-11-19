@@ -106,16 +106,6 @@ public class CollectibleBehaviorWearable : CollectibleBehaviorWearableAttachment
                 ProtectionModifiers = null;
             }
         }
-
-
-        if (ProtectionModifiers != null && ProtectionModifiers.PerTierFlatDamageReductionLoss == null)
-        {
-            ProtectionModifiers.PerTierFlatDamageReductionLoss = defMods?.PerTierFlatDamageReductionLoss;
-        }
-        if (ProtectionModifiers != null && ProtectionModifiers.PerTierRelativeProtectionLoss == null)
-        {
-            ProtectionModifiers.PerTierRelativeProtectionLoss = defMods?.PerTierRelativeProtectionLoss;
-        }
     }
 
     public override void OnUnloaded(ICoreAPI api)
@@ -215,62 +205,13 @@ public class CollectibleBehaviorWearable : CollectibleBehaviorWearableAttachment
             dsc.AppendLine(Lang.Get("Clothing Category: {0}", Lang.Get("clothcategory-" + dressType.ToString().ToLowerInvariant())));
         }
 
-        ProtectionModifiers protectionModifiers = GetProtectionModifiers(inSlot);
-        if (protectionModifiers != null)
-        {
-            if (protectionModifiers.FlatDamageReduction != 0)
-            {
-                dsc.AppendLine(Lang.Get("Flat damage reduction: {0} hp", protectionModifiers.FlatDamageReduction));
-            }
-
-            if (protectionModifiers.RelativeProtection != 0)
-            {
-                dsc.AppendLine(Lang.Get("Percent protection: {0}%", (int)(100 * protectionModifiers.RelativeProtection)));
-            }
-
-            dsc.AppendLine(Lang.Get("Protection tier: {0}", (int)(protectionModifiers.ProtectionTier)));
-        }
-
-        StatModifiers statModifiers = GetStatModifiers(inSlot);
-        if (statModifiers != null)
-        {
-            if (protectionModifiers != null) dsc.AppendLine();
-
-            if (statModifiers.healingeffectivness != 0)
-            {
-                dsc.AppendLine(Lang.Get("Healing effectivness: {0}%", (int)(100 * statModifiers.healingeffectivness)));
-            }
-
-            if (statModifiers.hungerrate != 0)
-            {
-                dsc.AppendLine(Lang.Get("Hunger rate: {1}{0}%", (int)(100 * statModifiers.hungerrate), statModifiers.hungerrate > 0 ? "+" : ""));
-            }
-
-            if (statModifiers.rangedWeaponsAcc != 0)
-            {
-                dsc.AppendLine(Lang.Get("Ranged Weapon Accuracy: {1}{0}%", (int)(100 * statModifiers.rangedWeaponsAcc), statModifiers.rangedWeaponsAcc > 0 ? "+" : ""));
-            }
-
-            if (statModifiers.rangedWeaponsSpeed != 0)
-            {
-                dsc.AppendLine(Lang.Get("Ranged Weapon Charge Time: {1}{0}%", -(int)(100 * statModifiers.rangedWeaponsSpeed), -statModifiers.rangedWeaponsSpeed > 0 ? "+" : ""));
-            }
-
-            if (statModifiers.walkSpeed != 0)
-            {
-                dsc.AppendLine(Lang.Get("Walk speed: {1}{0}%", (int)(100 * statModifiers.walkSpeed), statModifiers.walkSpeed > 0 ? "+" : ""));
-            }
-        }
-
-
-        if (protectionModifiers?.HighDamageTierResistant == true)
-        {
-            dsc.AppendLine("<font color=\"#86aad0\">" + Lang.Get("High damage tier resistant") + "</font> " + Lang.Get("When damaged by a higher tier attack, the loss of protection is only half as much."));
-        }
+        bool broken = inSlot.Itemstack.Collectible.GetRemainingDurability(inSlot.Itemstack) == 0;
+        GetProtectionModifiers(inSlot)?.GetDescription(dsc, world.Api, broken);
+        GetStatModifiers(inSlot)?.GetDescription(dsc, broken);
 
         if (GetDressType(inSlot) == EnumCharacterDressType.Head)
         {
-            var rainProt = collObj.Attributes["rainProtectionPerc"].AsFloat(0);
+            var rainProt = GetRainProtectionPercentage(inSlot);
             if (rainProt > 0)
             {
                 dsc.AppendLine(Lang.Get("wearable-protection-from-rain", (int)(rainProt * 100)));
@@ -610,7 +551,7 @@ public class CollectibleBehaviorWearable : CollectibleBehaviorWearableAttachment
                 return 0;
             }
 
-            float repstr = sourceStack?.ItemAttributes?["clothingRepairStrength"].AsFloat(0) ?? 0;
+            float repstr = GetClothingRepairStrength(sourceStack);
             if (repstr > 0)
             {
                 if (sinkStack.Attributes.GetFloat("condition") < 1)
@@ -632,7 +573,7 @@ public class CollectibleBehaviorWearable : CollectibleBehaviorWearableAttachment
     {
         if (op.CurrentPriority == EnumMergePriority.DirectMerge)
         {
-            float repstr = op.SourceSlot.Itemstack.ItemAttributes?["clothingRepairStrength"].AsFloat(0) ?? 0;
+            float repstr = GetClothingRepairStrength(op.SourceSlot.Itemstack);
 
             if (repstr > 0 && op.SinkSlot.Itemstack.Attributes.GetFloat("condition") < 1)
             {
@@ -676,5 +617,15 @@ public class CollectibleBehaviorWearable : CollectibleBehaviorWearableAttachment
     public virtual float GetMaxWarmth(ItemSlot inslot)
     {
         return inslot.Itemstack.ItemAttributes?["warmth"].AsFloat(0) ?? 0;
+    }
+
+    public virtual float GetRainProtectionPercentage(ItemSlot inSlot)
+    {
+        return inSlot?.Itemstack?.ItemAttributes?["rainProtectionPerc"].AsFloat(0) ?? 0;
+    }
+
+    public static float GetClothingRepairStrength(ItemStack itemstack)
+    {
+        return itemstack?.ItemAttributes?["clothingRepairStrength"].AsFloat(0) ?? 0;
     }
 }

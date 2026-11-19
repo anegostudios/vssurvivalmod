@@ -14,11 +14,9 @@ public class ErelAnimManager : AnimationManager
 {
     EntityErel entityErel;
 
-    public override void Init(ICoreAPI api, Entity entity)
+    public ErelAnimManager(EntityErel entity) : base(entity)
     {
-        base.Init(api, entity);
-
-        entityErel = entity as EntityErel;
+        entityErel = entity;
     }
 
     public override bool StartAnimation(AnimationMetaData animdata)
@@ -28,11 +26,11 @@ public class ErelAnimManager : AnimationManager
         return base.StartAnimation(animdata);
     }
 
-    protected override void onReceivedServerAnimation(AnimationMetaData animmetadata)
+    protected override void onReceivedServerAnimation(ref AnimationMetaData animmetadata)
     {
         if (entityErel.StandingOnGround && animmetadata.Code == "hurt") return;
 
-        base.onReceivedServerAnimation(animmetadata);
+        base.onReceivedServerAnimation(ref animmetadata);
     }
 }
 
@@ -76,7 +74,7 @@ public sealed class EntityErel : EntityAgent
     {
         SimulationRange = 1024;
 
-        this.AnimManager = erelAnimManager = new ErelAnimManager();
+        this.AnimManager = erelAnimManager = new ErelAnimManager(this);
     }
 
     public override void Initialize(EntityProperties properties, ICoreAPI api, long InChunkIndex3d)

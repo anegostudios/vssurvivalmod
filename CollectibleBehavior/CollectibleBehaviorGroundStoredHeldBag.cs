@@ -24,10 +24,10 @@ namespace Vintagestory.GameContent
             CloseSound = properties["closeSound"].AsObject<SoundAttributes?>(null, collObj.Code.Domain, true);
         }
 
-        public virtual bool OnContainedInteractStart(BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        public virtual bool OnContainedInteractStart(BlockEntity be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
         {
             var bebh = be.GetBehavior<BEBehaviorContainedBagInventory>();
-            
+
             if (bebh == null || !byPlayer.Entity.Controls.CtrlKey) return false;
             var bagInv = bebh.BagInventories[slot.Inventory.GetSlotId(slot)];
 
@@ -36,16 +36,7 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public bool OnContainedInteractStep(float secondsUsed, BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
-        {
-            return false;
-        }
-        public void OnContainedInteractStop(float secondsUsed, BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
-        {
-
-        }
-
-        public WorldInteraction[] GetContainedInteractionHelp(BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        public WorldInteraction[] GetContainedInteractionHelp(BlockEntity be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
         {
             if (be.GetBehavior<BEBehaviorContainedBagInventory>() == null) return [];
 

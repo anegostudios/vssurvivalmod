@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
@@ -25,7 +26,7 @@ namespace Vintagestory.GameContent
 
         public int Scale = 64;
 
-        
+
 
         public override double ExecuteOrder() => 1;
 
@@ -35,7 +36,7 @@ namespace Vintagestory.GameContent
             sapi = api;
             api.Event.SaveGameLoaded += Event_SaveGameLoaded;
             api.Event.GameWorldSave += Event_GameWorldSave;
-            
+
             api.Event.RegisterGameTickListener(restoreFish, 10000, sapi.World.Rand.Next(1000));
         }
 
@@ -114,28 +115,23 @@ namespace Vintagestory.GameContent
             base.StartServerSide(api);
             this.sapi = api;
 
-            sapi.Event.OnTrySpawnGroupNearOffthread += Event_OnTrySpawnGroupNearOffthread;
+            sapi.Event.OnTrySpawnEntity += Event_OnTrySpawnEntity;
         }
 
-        private bool Event_OnTrySpawnGroupNearOffthread(IBlockAccessor blockaccessor, EntityProperties properties, BlockPos pos)
+        private bool Event_OnTrySpawnEntity(IBlockAccessor blockAccessor, ref EntityProperties properties, Vec3d spawnPosition, long herdId)
         {
             if (properties.Attributes?["harshWinterSpawnRate"].Exists == true)
             {
                 bool harshWinters = sapi.World.Config.GetString("harshWinters").ToBool(true);
-                if (harshWinters && sapi.World.Calendar.GetSeason(pos) == EnumSeason.Winter)
+                if (harshWinters && sapi.World.Calendar.GetSeason(spawnPosition.X, spawnPosition.Z) == EnumSeason.Winter)
                 {
                     float spawnRate = properties.Attributes?["harshWinterSpawnRate"].AsFloat() ?? 1;
                     return sapi.World.Rand.NextDouble() < spawnRate;
                 }
-            }            
-
-            float newWorldSpawnDelayHours = properties.Attributes?["newWorldSpawnDelayHours"].AsFloat() ?? 0;
-            if (sapi.World.Calendar.ElapsedHours < newWorldSpawnDelayHours)
-            {
-                return false;
             }
 
-            return true;
+            float newWorldSpawnDelayHours = properties.Attributes?["newWorldSpawnDelayHours"].AsFloat() ?? 0;
+            return sapi.World.Calendar.ElapsedHours >= newWorldSpawnDelayHours;
         }
 
     }

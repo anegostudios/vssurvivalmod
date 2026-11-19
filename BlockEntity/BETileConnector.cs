@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -5,6 +6,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 using Vintagestory.ServerMods;
 
 namespace Vintagestory.GameContent;
@@ -52,14 +54,18 @@ public class BETileConnector : BlockEntity, IRotatable
         capi.Network.SendBlockEntityPacket(Pos, 0, ms.ToArray());
     }
 
-    public override void OnReceivedClientPacket(IPlayer fromPlayer, int packetid, byte[] data)
+    public override void OnReceivedClientPacket(IServerPlayer fromPlayer, int packetId, SerializedData packetData, ref CachedAccessPerms perms)
     {
-        if (packetid != 0) return;
+        if (packetId != 0) return;
 
-        // Rennorb 20.06.2026 security: Should this check perms?
+        if (fromPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
+        {
+            Api.Logger.Audit("Player {0} tried to update a tileConnector without being in creative mode.", fromPlayer.PlayerName);
+            return;
+        }
 
         var tree = new TreeAttribute();
-        tree.FromBytes(data);
+        tree.FromBytes(packetData.RawData);
         Target = tree.GetString("target","");
         Name = tree.GetString("name", "");
 

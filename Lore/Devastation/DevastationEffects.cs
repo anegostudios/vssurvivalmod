@@ -7,6 +7,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
@@ -594,20 +595,17 @@ public class ModSystemDevastationEffects : ModSystem, IRenderer
             string className = "unknown";
             try
             {
-                using (MemoryStream ms = new MemoryStream(erelBytes))
-                {
-                    BinaryReader reader = new BinaryReader(ms);
-                    className = reader.ReadString();
-                    Entity entity = sapi.ClassRegistry.CreateEntity(className);
+                var reader = new BinarySpanReader(erelBytes);
+                className = reader.ReadString();
+                Entity entity = sapi.ClassRegistry.CreateEntity(className);
 
-                    entity.FromBytes(reader, false, sapi.World.RemappedEntities);
+                entity.FromBytes(ref reader, false, sapi.World.RemappedEntities);
 
-                    this.entityErel = (EntityErel)entity;
+                this.entityErel = (EntityErel)entity;
 
-                    const int cs = GlobalConstants.ChunkSize;
-                    long chunkindex3d = sapi.WorldManager.ChunkIndex3D((int)entity.Pos.X / cs, (int)entity.Pos.Y / cs, (int)entity.Pos.Z / cs);
-                    sapi.World.LoadEntity(entityErel, chunkindex3d);
-                }
+                const int cs = GlobalConstants.ChunkSize;
+                long chunkindex3d = sapi.WorldManager.ChunkIndex3D((int)entity.Pos.X / cs, (int)entity.Pos.Y / cs, (int)entity.Pos.Z / cs);
+                sapi.World.LoadEntity(entityErel, chunkindex3d);
             }
             catch (Exception e)
             {

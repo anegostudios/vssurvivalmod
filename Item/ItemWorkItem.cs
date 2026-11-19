@@ -88,7 +88,7 @@ namespace Vintagestory.GameContent
 
             if (workitemStack.Collectible.FirstCodePart() == "ironbloom")
             {
-                tposSlag = capi.BlockTextureAtlas.GetPosition(capi.World.GetBlock(new AssetLocation("anvil-copper")), "ironbloom");
+                tposSlag = capi.BlockTextureAtlas.GetPosition(capi.World.GetBlock(new AssetLocation("anvil-singlehorn-copper")), "ironbloom");
                 tposMetal = capi.BlockTextureAtlas.GetPosition(capi.World.GetBlock(new AssetLocation("ingotpile")), "iron");
             }
             else

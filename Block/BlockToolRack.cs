@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Util;
@@ -34,46 +34,11 @@ namespace Vintagestory.GameContent
         }
 
 
-        WorldInteraction[] interactions;
-
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
 
             collectedToolTextures = false;
-
-            if (api.Side != EnumAppSide.Client) return;
-            ICoreClientAPI capi = api as ICoreClientAPI;
-
-
-            interactions = ObjectCacheUtil.GetOrCreate(api, "toolrackBlockInteractions", () =>
-            {
-                List<ItemStack> rackableStacklist = new List<ItemStack>();
-
-                foreach (CollectibleObject obj in api.World.Collectibles)
-                {
-                    if (obj.Tool == null && obj.Attributes?["rackable"].AsBool() != true) continue;
-                    
-                    List<ItemStack> stacks = obj.GetHandBookStacks(capi);
-                    if (stacks != null) rackableStacklist.AddRange(stacks);
-                }
-
-                return new WorldInteraction[] {
-                    new WorldInteraction()
-                    {
-                        ActionLangCode = "blockhelp-toolrack-place",
-                        HotKeyCode = null,
-                        MouseButton = EnumMouseButton.Right,
-                        Itemstacks = rackableStacklist.ToArray()
-                    },
-                    new WorldInteraction()
-                    {
-                        ActionLangCode = "blockhelp-toolrack-take",
-                        HotKeyCode = null,
-                        MouseButton = EnumMouseButton.Right,
-                    }
-                };
-            });
         }
 
 
@@ -140,6 +105,47 @@ namespace Vintagestory.GameContent
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
         {
+            WorldInteraction[] interactions = ObjectCacheUtil.GetOrCreate(api, "toolrackBlockInteractions", () =>
+            {
+                List<ItemStack> rackableStacklist = new List<ItemStack>();
+
+                int count = 5;
+                string currentCodePart = "";
+
+                foreach (var hstack in ObjectCacheUtil.TryGet<ItemStack[]>(api, "handbookallstacks"))
+                {
+                    if (hstack.Collectible.Tool == null && hstack.Collectible.Attributes?["rackable"].AsBool() != true) continue;
+
+                    if (hstack.Collectible.Code.FirstPathPart() != currentCodePart)
+                    {
+                        currentCodePart = hstack.Collectible.Code.FirstPathPart();
+                        count = 0;
+                    }
+
+                    if (count >= 5) continue;
+
+                    rackableStacklist.Add(hstack);
+                }
+
+                rackableStacklist.Shuffle(api.World.Rand);
+
+                return new WorldInteraction[] {
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-toolrack-place",
+                        HotKeyCode = null,
+                        MouseButton = EnumMouseButton.Right,
+                        Itemstacks = rackableStacklist.ToArray()
+                    },
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "blockhelp-toolrack-take",
+                        HotKeyCode = null,
+                        MouseButton = EnumMouseButton.Right,
+                    }
+                };
+            });
+
             return interactions.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
         }
     }

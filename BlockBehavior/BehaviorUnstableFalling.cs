@@ -210,7 +210,7 @@ namespace Vintagestory.GameContent
 
         public bool FallingEntityAlreadyExists(IWorldAccessor world, BlockPos ourPos)
         {
-            Entity entity = world.GetNearestEntity(ourPos.ToVec3d().Add(0.5, 0.5, 0.5), 1, 1.5f, (e) =>
+            Entity entity = world.GetNearestEntity(ourPos.ToVec3d().Add(0.5, 0.5, 0.5), 0.5f, 0.5f, (e) =>
             {
                 return e is EntityBlockFalling ebf && ebf.initialPos.Equals(ourPos);
             });

@@ -214,6 +214,7 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
         var currentTotalHours = Api.World.Calendar.TotalHours;
         var minHeatHours = float.MaxValue;
         var fuelPos = new BlockPos(Pos.dimension);
+        bool forceStandardSmelt = false;
         for (var j = 0; j < 9; j++)
         {
             fuelPos.Set(particlePositions[j].X, particlePositions[j].Y-1, particlePositions[j].Z);
@@ -232,10 +233,12 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
             if (blockEntity is BlockEntityCoalPile becp && becp.IsBurning)
             {
                 heatHours = becp.GetHoursLeft(currentTotalHours);
+                forceStandardSmelt |= ForcesStandardSmelt(Api, becp.inventory[0].Itemstack);
             }
             else if (blockEntity is BlockEntityGroundStorage gs && gs.IsBurning)
             {
                 heatHours = gs.GetHoursLeft(currentTotalHours);
+                forceStandardSmelt |= ForcesStandardSmelt(Api, gs.Inventory[0].Itemstack);
             }
             // Api.Logger.Notification($"hh {j}: {heatHours:F3}");
 
@@ -285,7 +288,7 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
             // Api.Logger.Notification($"TH:{TotalHoursHeatReceived:F3} T:{currentTotalHours:F3} NTH:{TotalHoursHeatReceived+heatHoursReceived:F3}");
 
             TotalHoursHeatReceived += heatHoursReceived;
-            UpdateGroundStorage(heatHoursReceived);
+            updateGroundStorage(heatHoursReceived, forceStandardSmelt);
             TotalHoursLastUpdate = currentTotalHours;
             markDirty = true;
         }
@@ -334,7 +337,7 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
         }
     }
 
-    private void UpdateGroundStorage(float hoursHeatReceived)
+    private void updateGroundStorage(float hoursHeatReceived, bool forceStandardSmelt)
     {
         var doorOpen = GetOpenDoors();
 
@@ -383,7 +386,7 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
 
                     if (itemHoursHeatReceived >= ItemBurnTimeHours)
                     {
-                        ConvertItemToBurned(groundStorage, itemSlot, doorOpen);
+                        fireItemInGroundStorage(groundStorage, itemSlot, doorOpen.ToString(), forceStandardSmelt);
                     }
                 }
 
@@ -392,7 +395,14 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
         }
     }
 
-    private void ConvertItemToBurned(BlockEntityGroundStorage groundStorage, ItemSlot itemSlot, int doorOpen)
+    /// <summary>
+    /// Fires the item in the ground storage, replacing it with the smelted version or the beehive kiln version if applicable. 
+    /// </summary>
+    /// <param name="groundStorage"></param>
+    /// <param name="itemSlot"></param>
+    /// <param name="doorOpen"></param>
+    /// <param name="forceStandardSmelt">If true, forces the use of the standard smelting process instead of the beehive kiln process</param>
+    private void fireItemInGroundStorage(BlockEntityGroundStorage groundStorage, ItemSlot itemSlot, string doorOpen, bool forceStandardSmelt)
     {
         groundStorage.forceStorageProps = true;
 
@@ -401,24 +411,44 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
             var rawStack = itemSlot.Itemstack;
             var rawCombustibleProps = rawStack.Collectible.GetCombustibleProperties(Api.World, rawStack, null);
             var firedStack = rawCombustibleProps?.SmeltedStack?.ResolvedItemstack;
-            var kiln = rawStack.Collectible.Attributes?["beehivekiln"];
-            var stack = kiln?[doorOpen.ToString()]?.AsObject<JsonItemStack>();
+            var kilnStack = forceStandardSmelt ? null : rawStack.Collectible.Attributes?["beehivekiln"][doorOpen].AsObject<JsonItemStack>();
             var temp = itemSlot.Itemstack.Collectible.GetTemperature(Api.World, itemSlot.Itemstack);
-            if (kiln?.Exists == true && stack?.Resolve(Api.World, "beehivekiln-burn") == true)
+            if (!forceStandardSmelt && kilnStack?.Resolve(Api.World, "beehivekiln-burn") == true)
             {
-                itemSlot.Itemstack = stack.ResolvedItemstack.Clone();
-                itemSlot.Itemstack.StackSize = rawStack.StackSize / rawCombustibleProps.SmeltedRatio;
+                itemSlot.Itemstack = kilnStack.ResolvedItemstack.Clone();
+                itemSlot.Itemstack!.StackSize = rawStack.StackSize / (rawCombustibleProps?.SmeltedRatio ?? 1);
             }
             else if (firedStack != null)
             {
                 itemSlot.Itemstack = firedStack.Clone();
-                itemSlot.Itemstack.StackSize = rawStack.StackSize / rawCombustibleProps.SmeltedRatio;
+                itemSlot.Itemstack!.StackSize = rawStack.StackSize / rawCombustibleProps.SmeltedRatio;
             }
             itemSlot.Itemstack.Collectible.SetTemperature(Api.World, itemSlot.Itemstack, temp);
             itemSlot.MarkDirty();
         }
 
         groundStorage.MarkDirty(true);
+    }
+
+    protected static TagSet forceStandardSmelt = TagSet.Empty;
+
+    /// <summary>
+    /// If true, causes the bee hive kiln to smelt items into the default smelting result instead of the door-opening specific one
+    /// </summary>
+    /// <param name="api"></param>
+    /// <param name="fuelStack"></param>
+    /// <returns></returns>
+    public static bool ForcesStandardSmelt(ICoreAPI api, ItemStack fuelStack)
+    {
+        var fuelObject = fuelStack?.Collectible;
+        if (fuelObject == null) return false;
+
+        if (forceStandardSmelt.IsEmpty)
+        {
+            api.CollectibleTagRegistry.TryCreateTagSet(out forceStandardSmelt, "smeltbehavior-forcestandard");
+        }
+
+        return forceStandardSmelt.Overlaps(fuelObject.GetTags(fuelStack));
     }
 
     private int GetOpenDoors()
@@ -516,7 +546,7 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
         Orientation = BlockFacing.FromFirstLetter(tree.GetString("orientation"));
         TotalHoursHeatReceived = tree.GetDouble("totalHoursHeatReceived");
 
-        if (Api is ICoreClientAPI && structure.TransformedOffsets == null)    // In multiplayer, other players receiving this BE will not yet have called Init() - see also BlockBeeHiveKilnDoor.placeDoor() method which is called only on the client placing the door 
+        if (Api is ICoreClientAPI && structure.TransformedOffsets == null)    // In multiplayer, other players receiving this BE will not yet have called Init() - see also BlockBeeHiveKilnDoor.placeDoor() method which is called only on the client placing the door
         {
             Init();
         }

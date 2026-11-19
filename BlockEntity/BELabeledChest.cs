@@ -13,6 +13,10 @@ namespace Vintagestory.GameContent
 {
     public class BlockEntityLabeledChest : BlockEntityGenericTypedContainer
     {
+        // Rennorb 2026.07.09 ux: This should really be calculated dynamically based on the space on the sign,
+        //  but a rough limit of 255 should at least be better than no limit at all.
+        const int MAX_TEXT_LENGTH = 255;
+
         string text = "";
         ChestLabelRenderer labelrenderer;
         int color;
@@ -99,29 +103,42 @@ namespace Vintagestory.GameContent
 
 
 
-        public override void OnReceivedClientPacket(IPlayer player, int packetid, byte[] data)
+        public override void OnReceivedClientPacket(IServerPlayer player, int packetId, SerializedData packetData, ref CachedAccessPerms perms)
         {
-            if (packetid == (int)EnumSignPacketId.SaveText)
+            switch (packetId)
             {
-                var perms = new BlockEntity.CachedAccessPerms(this.Api.World, this.Pos, player);
-                if (!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "labeled chest"))
-                {
-                    // Revert the text change for that client:
-                    ((ICoreServerAPI)Api).Network.SendBlockEntityPacket<EditSignPacket>((IServerPlayer)player, Pos, (int)EnumSignPacketId.NowText, new() {
-                        FontSize = this.fontSize,
-                        Text     = this.text,
-                    });
+                case (int)EnumSignPacketId.SaveText:
+                    void resetSignForThatPlayer()
+                    {
+                        // Revert the text change for that client:
+                        ((ICoreServerAPI)Api).Network.SendBlockEntityPacket<EditSignPacket>((IServerPlayer)player, Pos, (int)EnumSignPacketId.NowText, new() {
+                            FontSize = this.fontSize,
+                            Text     = this.text,
+                        });
 
-                    // Don't forget to give the chalk item back:
-                    player.InventoryManager.TryGiveItemstack(tempStack);
-                    tempStack = null;
-                }
-                else // player is allowed to do it
-                {
-                    var packet = SerializerUtil.Deserialize<EditSignPacket>(data);
-                    this.text = packet.Text;
+                        // Don't forget to give the chalk item back:
+                        player.InventoryManager.TryGiveItemstack(tempStack);
+                        tempStack = null;
+                    }
 
-                    this.fontSize = packet.FontSize;
+                    if (!perms.TryAccessingBlockAtPos(EnumBlockAccessFlags.Use, true, "labeled chest"))
+                    {
+                        resetSignForThatPlayer();
+                        break;
+                    }
+
+                    var packet = packetData.Deserialize<EditSignPacket>();
+                    if (packet.Text.Length > MAX_TEXT_LENGTH)
+                    {
+                        resetSignForThatPlayer();
+                        Api.Logger.Audit("{0} tried to set excessive text (len = {1}) to a sign at {2}", player.PlayerName, packet.Text.Length, Pos);
+                        break;
+                    }
+
+                    Api.Logger.Audit("{0} changed labeled chest text from '{1}' to '{2}' ({3}) at {4}", player.PlayerName, text.Replace("\n","\\n"), packet.Text.Replace("\n","\\n"), packet.FontSize, Pos);
+                    text = packet.Text;
+
+                    fontSize = packet.FontSize;
                     color = tempColor;
 
                     MarkDirty(true);
@@ -134,35 +151,39 @@ namespace Vintagestory.GameContent
                     {
                         player.InventoryManager.TryGiveItemstack(tempStack);
                     }
-                }
-            }
 
-            if (packetid == (int)EnumSignPacketId.CancelEdit && tempStack != null)
-            {
-                var perms = new BlockEntity.CachedAccessPerms(this.Api.World, this.Pos, player);
-                if (!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, false, "labeled chest")) // Do not validate picking range in case we got transported out of range.
-                {
-                    // No need to revert here, this cannot happen without packet manipulation.
-                }
-                else // player is allowed to do it
-                {
-                    // Rennorb 19.06.2026 security: Potentially griefable: labeled chests do not track who placed them, therefore a second player could steal the chest by sending the cancel packet.
+                    break;
+
+                case (int)EnumSignPacketId.CancelEdit:
+                    if (tempStack == null)
+                    {
+                        break;
+                    }
+
+                    if (!perms.TryAccessingBlockAtPos(EnumBlockAccessFlags.Use, false, "labeled chest")) // Do not validate picking range in case we got transported out of range.
+                    {
+                        // No need to revert here, this cannot happen without packet manipulation.
+                        break;
+                    }
+
                     player.InventoryManager.TryGiveItemstack(tempStack);
                     tempStack = null;
-                }
+
+                    break;
             }
 
-            base.OnReceivedClientPacket(player, packetid, data);
+
+            base.OnReceivedClientPacket(player, packetId, packetData, ref perms);
         }
 
 
-        public override void OnReceivedServerPacket(int packetid, byte[] data)
+        public override void OnReceivedServerPacket(int packetId, SerializedData packetData)
         {
-            if (packetid == (int)EnumSignPacketId.OpenDialog)
+            if (packetId == (int)EnumSignPacketId.OpenDialog)
             {
                 if (editDialog != null && editDialog.IsOpened()) return;
 
-                editDialog = new GuiDialogBlockEntityTextInput(Lang.Get("Edit Label text"), Pos, text, Api as ICoreClientAPI, new TextAreaConfig() { MaxWidth = 200, MaxHeight = 96 }.CopyWithFontSize(this.fontSize));
+                editDialog = new GuiDialogBlockEntityTextInput(Lang.Get("Edit Label text"), Pos, text, Api as ICoreClientAPI, new TextAreaConfig() { MaxWidth = 200, MaxHeight = 96, MaxLength = MAX_TEXT_LENGTH }.CopyWithFontSize(this.fontSize));
                 editDialog.OnTextChanged = DidChangeTextClientSide;
                 editDialog.OnCloseCancel = () =>
                 {
@@ -173,9 +194,9 @@ namespace Vintagestory.GameContent
             }
 
 
-            if (packetid == (int)EnumSignPacketId.NowText)
+            if (packetId == (int)EnumSignPacketId.NowText)
             {
-                var packet = SerializerUtil.Deserialize<EditSignPacket>(data);
+                var packet = packetData.Deserialize<EditSignPacket>();
                 if (labelrenderer != null)
                 {
                     labelrenderer.fontSize = packet.FontSize;
@@ -183,7 +204,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            base.OnReceivedServerPacket(packetid, data);
+            base.OnReceivedServerPacket(packetId, packetData);
         }
 
 

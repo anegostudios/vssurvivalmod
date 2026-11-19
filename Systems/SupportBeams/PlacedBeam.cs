@@ -17,6 +17,8 @@ namespace Vintagestory.GameContent
         public int BlockId;
         [ProtoMember(4)]
         public int FacingIndex;
+        [ProtoMember(5)]
+        public int PlaceIndex;
 
         private Block block;
 

@@ -2,6 +2,7 @@ using Newtonsoft.Json;
 using ProtoBuf;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -88,17 +89,34 @@ namespace Vintagestory.GameContent
         public string Waning;
     }
 
-    [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
+    [ProtoContract]
     public class TemporalStormRunTimeData
     {
+        [ProtoMember(6), DefaultValue("default")]
         public string spawnPatternCode="default";
+
+        [ProtoMember(4)]
         public bool nowStormActive;
+
+        [ProtoMember(8), DefaultValue(99)]
         public int stormDayNotify = 99;
+
+        [ProtoMember(9)]
         public float stormGlitchStrength;
+
+        [ProtoMember(7)]
         public double stormActiveTotalDays = 0;
+
+        [ProtoMember(3), DefaultValue(5)]
         public double nextStormTotalDays = 5;
+
+        [ProtoMember(2)]
         public EnumTempStormStrength nextStormStrength = 0;
+
+        [ProtoMember(1)]
         public double nextStormStrDouble;
+
+        [ProtoMember(5)]
         public Dictionary<string, int> rareSpawnCount;
     }
 

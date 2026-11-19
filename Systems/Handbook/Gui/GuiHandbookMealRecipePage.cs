@@ -89,7 +89,6 @@ namespace Vintagestory.GameContent
             {
                 dummySlot = new(new(capi.World.BlockAccessor.GetBlock("pie-perfect")), unspoilableInventory);
                 dummySlot.Itemstack!.Attributes.SetInt("pieSize", 4);
-                dummySlot.Itemstack.Attributes.SetString("topCrustType", BlockPie.TopCrustTypes[capi.World.Rand.Next(BlockPie.TopCrustTypes.Length)].Code);
                 dummySlot.Itemstack.Attributes.SetInt("bakeLevel", 2);
             }
             else
@@ -143,10 +142,10 @@ namespace Vintagestory.GameContent
             if ((secondsVisible -= dt) <= 0)
             {
                 secondsVisible = 1;
-                if (isPie) dummySlot.Itemstack?.Attributes.SetString("topCrustType", BlockPie.TopCrustTypes[capi.World.Rand.Next(BlockPie.TopCrustTypes.Length)].Code);
-                else dummySlot.Itemstack = new(BlockMeal.RandomMealBowl(capi));
+                if (!isPie) dummySlot.Itemstack = new(BlockMeal.RandomMealBowl(capi));
                 var cachedValidStacks = ObjectCacheUtil.TryGet<Dictionary<CookingRecipeIngredient, HashSet<ItemStack?>>?>(capi, "valstacksbying-" + Recipe.Code);
-                mealBlock?.SetContents(Recipe.Code, dummySlot.Itemstack!, isPie ? BlockPie.GenerateRandomPie(capi, ref cachedValidStacks, Recipe) : Recipe.GenerateRandomMeal(capi, ref cachedValidStacks, ObjectCacheUtil.TryGet<ItemStack[]>(capi, "handbookallstacks"), slots), 1);
+                mealBlock?.SetContents(Recipe.Code, dummySlot.Itemstack!, isPie ? BlockPie.GenerateRandomPie(capi, ref cachedValidStacks, Recipe) : Recipe.GenerateRandomMeal(capi, ref cachedValidStacks, ObjectCacheUtil.TryGet<ItemStack[]>(capi, "handbookallstacks"), slots));
+                if (isPie) dummySlot.Itemstack?.Attributes.SetString("topCrustType", BlockPie.GetRandomCrustType(capi.World));
             }
 
             if (Texture == null || scissorBounds == null)
@@ -167,7 +166,7 @@ namespace Vintagestory.GameContent
             capi.Render.Render2DTexturePremultipliedAlpha(
                 Texture.TextureId,
                 (x + size + GuiElement.scaled(25)),
-                y + size / 4 - GuiElement.scaled(3),
+                y + size / 2 - Texture.Height / 2,
                 Texture.Width,
                 Texture.Height,
                 50

@@ -11,6 +11,27 @@ namespace Vintagestory.GameContent.Mechanics
     {
         public float ratio = 5.5f;
 
+        EnumAxis gearAxis => BlockLargeGear3m.GetGearAxis(Block);
+
+        BlockFacing[] axleFacings => BlockLargeGear3m.GetAxleFacings(Block);
+
+        BlockFacing[] ringFacings => BlockLargeGear3m.GetRingFacings(Block);
+
+        // The disc sits opposite the axle stub where the rim meets its ring gears.
+        bool rimMirrored
+        {
+            get
+            {
+                BlockFacing stub = Block == null ? BlockFacing.UP : BlockLargeGear3m.GetStubFacing(Block);
+                return stub == BlockFacing.DOWN || stub == BlockFacing.SOUTH || stub == BlockFacing.EAST;
+            }
+        }
+
+        public bool IsRimInverted()
+        {
+            return (GetPropagationDirection() == axleFacings[1]) ^ rimMirrored;
+        }
+
         public BEBehaviorMPLargeGear3m(BlockEntity blockentity) : base(blockentity)
         {
         }
@@ -19,66 +40,63 @@ namespace Vintagestory.GameContent.Mechanics
         {
             base.Initialize(api, properties);
 
-            this.AxisSign = new int[3] { 0, 1, 0 };
-
-            if (api.Side == EnumAppSide.Client)
+            this.AxisSign = gearAxis switch
             {
-                Blockentity.RegisterGameTickListener(onEverySecond, 1000);
-            }
+                EnumAxis.Z => [0, 0, -1],
+                EnumAxis.X => [-1, 0, 0],
+                _ => [0, 1, 0]
+            };
         }
 
         public override bool IsInvertedNetworkFor(BlockPos pos)
         {
-            return propagationDir == BlockFacing.DOWN;
-        }
-
-        private void onEverySecond(float dt)
-        {
-            float speed = network == null ? 0 : network.Speed;
-
-            if (Api.World.Rand.NextDouble() < speed / 4f)
-            {
-                Api.World.PlaySoundAt(new AssetLocation("sounds/block/woodcreak"), Position.X + 0.5, Position.Y + 0.5, Position.Z + 0.5, null, 0.85f + speed);
-            }
+            return propagationDir == axleFacings[1]; // [1] = DOWN / SOUTH / EAST
         }
 
         public override void SetPropagationDirection(MechPowerPath path)
         {
+            BlockFacing turnDir = getPropagationDirection(path);
+            var axles = axleFacings;
+            float gearedRatio = path.gearingRatio;
+            if (path.NetworkDir().IsAdjacent(axles[0]))
+            {
+                gearedRatio /= ratio;
+            }
+
+            base.SetPropagationDirection(new MechPowerPath(turnDir, gearedRatio, null, false, path.AngleTransform));
+        }
+
+        BlockFacing getPropagationDirection(MechPowerPath path)
+        {
             BlockFacing turnDir = path.NetworkDir();
-            if (turnDir != BlockFacing.UP && turnDir != BlockFacing.DOWN)
-            {
-                turnDir = path.IsInvertedTowards(Position) ? BlockFacing.UP : BlockFacing.DOWN;  //network coming in (clockwise) from any of the 4 sides should then propagate (clockwise) in the down direction
-                this.GearedRatio = path.gearingRatio / ratio;
-            }
-            else
-            {
-                this.GearedRatio = path.gearingRatio;
-            }
-            if (this.propagationDir == turnDir.Opposite && this.network != null)
-            {
-                if (!network.DirectionHasReversed) network.TurnDir = network.TurnDir == EnumRotDirection.Clockwise ? EnumRotDirection.Counterclockwise : EnumRotDirection.Clockwise;
-                network.DirectionHasReversed = true;
-            }
-            this.propagationDir = turnDir;
+            var axles = axleFacings;
+            if (!turnDir.IsAdjacent(axles[0])) return turnDir;
+            return path.IsInvertedTowards(Position) ^ rimMirrored ? axles[0] : axles[1];
+        }
+
+        protected override bool isPropagationDirectionConsistent(MechPowerPath path)
+        {
+            return propagationDir == getPropagationDirection(path);
         }
 
         public override bool IsPropagationDirection(BlockPos fromPos, BlockFacing test)
         {
             if (propagationDir == test) return true;
 
-            if (test.IsHorizontal)
+            var axles = axleFacings;
+            if (test.IsAdjacent(axles[0])) // Ring gear face.
             {
-                // Directions coming in from the sides correspond to this having a propagation direction of DOWN
-                if (fromPos.AddCopy(test) == this.Position) return this.propagationDir == BlockFacing.DOWN;
-                if (fromPos.AddCopy(test.Opposite) == this.Position) return this.propagationDir == BlockFacing.UP;
+                BlockFacing facing = Position.FacingFrom(fromPos);
+                if (facing == test) return propagationDir == (rimMirrored ? axles[0] : axles[1]);
+                if (facing == test.Opposite) return propagationDir == (rimMirrored ? axles[1] : axles[0]);
             }
 
             return false;
         }
 
         public override float GetGearedRatio(BlockFacing face)
-        {   
-            return face.IsHorizontal ? this.GearedRatio * ratio : this.GearedRatio;
+        {
+            return face.IsAdjacent(axleFacings[0]) ? this.GearedRatio * ratio : this.GearedRatio;
         }
 
 
@@ -86,31 +104,40 @@ namespace Vintagestory.GameContent.Mechanics
         {
             BlockFacing face = pathDir.OutFacing;
             BELargeGear3m beg = Blockentity as BELargeGear3m;
+            var axles = axleFacings;
+            var ring = ringFacings;
+            BlockPos ringPos = new BlockPos(Position.dimension);
             int index = 0;
-            if (face == BlockFacing.UP || face == BlockFacing.DOWN)
+
+            if (face.Axis == axles[0].Axis) // Axle entry or exit.
             {
                 MechPowerPath[] paths = new MechPowerPath[2 + beg.CountGears(Api)];
                 paths[index] = pathDir;
-                paths[++index] = new MechPowerPath(pathDir.OutFacing.Opposite, pathDir.gearingRatio, null, !pathDir.invert);
-                bool sideInvert = face == BlockFacing.DOWN ^ pathDir.invert;
-                for (int i = 0; i < 4; i++)
+                paths[++index] = pathDir.PropagatedClone(pathDir.OutFacing.Opposite, !pathDir.invert);
+                bool ringInvert = face == axles[1] ^ pathDir.invert ^ rimMirrored;
+                foreach (BlockFacing ringFace in ring)
                 {
-                    BlockFacing horizFace = BlockFacing.HORIZONTALS[i];
-                    if (beg.HasGearAt(Api, Position.AddCopy(horizFace))) paths[++index] = new MechPowerPath(horizFace, pathDir.gearingRatio * ratio, null, sideInvert);  //invert all horizontal output paths
+                    if (beg.HasGearAt(Api, ringPos.Set(Position).Add(ringFace)))
+                    {
+                        // Invert all ring output paths.
+                        paths[++index] = new MechPowerPath(ringFace, pathDir.gearingRatio * ratio, null, ringInvert, pathDir.AngleTransform);
+                    }
                 }
                 return paths;
             }
 
             MechPowerPath[] pathss = new MechPowerPath[2 + beg.CountGears(Api)];
             bool invert = pathDir.IsInvertedTowards(Position);
-            pathss[0] = new MechPowerPath(BlockFacing.DOWN, pathDir.gearingRatio / ratio, null, invert);
-            pathss[1] = new MechPowerPath(BlockFacing.UP, pathDir.gearingRatio / ratio, null, !invert);
+            pathss[0] = new MechPowerPath(axles[1], pathDir.gearingRatio / ratio, null, invert ^ rimMirrored, pathDir.AngleTransform);
+            pathss[1] = new MechPowerPath(axles[0], pathDir.gearingRatio / ratio, null, !invert ^ rimMirrored, pathDir.AngleTransform);
             index = 1;
-            bool sidesInvert = face == BlockFacing.DOWN ^ !invert;  //invert power in the opposite sense if power fed in from one of the sides instead of through up/down axle
-            for (int i = 0; i < 4; i++)
+            // Ring paths invert in the opposite sense when power enters from the ring instead of the axle.
+            foreach (BlockFacing ringFace in ring)
             {
-                BlockFacing horizFace = BlockFacing.HORIZONTALS[i];
-                if (beg.HasGearAt(Api, Position.AddCopy(horizFace))) pathss[++index] = new MechPowerPath(horizFace, pathDir.gearingRatio, null, sidesInvert);  //horizontals match the gearing ratio of the input horizontal
+                if (beg.HasGearAt(Api, ringPos.Set(Position).Add(ringFace)))
+                {
+                    pathss[++index] = pathDir.PropagatedClone(ringFace, !invert);  // Ring outputs keep the input ratio.
+                }
             }
             return pathss;
         }
@@ -133,7 +160,7 @@ namespace Vintagestory.GameContent.Mechanics
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
         {
             base.GetBlockInfo(forPlayer, sb);
-            if (Api.World.EntityDebugMode && forPlayer?.WorldData?.CurrentGameMode == EnumGameMode.Creative)
+            if (Api.World.EntityDebugMode)
             {
                 //sb.AppendLine(string.Format(Lang.Get("Rotation: {0} - {1} - {2} - {3}", this.isRotationReversed(), propagationDir, network?.TurnDir, this.GearedRatio)));
             }
@@ -141,7 +168,8 @@ namespace Vintagestory.GameContent.Mechanics
 
         internal float GetSmallgearAngleRad()
         {
-            return AngleRad * ratio;
+            float angle = rimMirrored ? GameMath.TWOPI - AngleRad : AngleRad;
+            return angle * ratio;
         }
     }
 }

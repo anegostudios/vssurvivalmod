@@ -62,7 +62,8 @@ namespace Vintagestory.GameContent
 
             if (CollisionBoxes[0] != null) gsSmokePos.Y = CollisionBoxes[0].MaxY;
 
-            BlockMeal[] mealBowls = ObjectCacheUtil.GetOrCreate(api, "allMealBowls", () => {
+            ObjectCacheUtil.GetOrCreate(api, "allMealBowls", () =>
+            {
                 List<BlockMeal> mealList = new();
                 foreach (var b in api.World.Blocks)
                 {
@@ -76,7 +77,7 @@ namespace Vintagestory.GameContent
 
         public override string GetHeldTpUseAnimation(ItemSlot activeHotbarSlot, Entity forEntity)
         {
-            return "eat";
+            return CanEat(activeHotbarSlot, forEntity as EntityAgent) ? "eat" : base.GetHeldTpUseAnimation(activeHotbarSlot, forEntity);
         }
 
         /// <summary>
@@ -132,12 +133,21 @@ namespace Vintagestory.GameContent
             tryFinishEatMeal(secondsUsed, slot, byEntity, true);
         }
 
+        public override bool CanEat(ItemSlot slot, EntityAgent byEntity)
+        {
+            // Can't look up container contents without a world accessor
+            if (byEntity?.World == null)
+            {
+                return false;
+            }
 
+            return !slot.Empty && GetContentNutritionProperties(byEntity.World, slot, byEntity) != null;
+        }
 
 
         protected virtual bool tryHeldBeginEatMeal(ItemSlot slot, EntityAgent byEntity, ref EnumHandHandling handHandling)
         {
-            if (!byEntity.Controls.ShiftKey && GetContentNutritionProperties(api.World, slot, byEntity) != null)
+            if (!byEntity.Controls.ShiftKey && CanEat(slot, byEntity))
             {
                 byEntity.World.RegisterCallback((dt) =>
                 {
@@ -154,29 +164,27 @@ namespace Vintagestory.GameContent
             return false;
         }
 
+
         protected bool tryPlacedBeginEatMeal(ItemSlot slot, IPlayer byPlayer)
         {
-            if (GetContentNutritionProperties(api.World, slot, byPlayer.Entity) != null)
+            if (!CanEat(slot, byPlayer as EntityAgent)) return false;
+
+            api.World.RegisterCallback((dt) =>
             {
-                api.World.RegisterCallback((dt) =>
+                if (byPlayer.Entity.Controls.HandUse == EnumHandInteract.BlockInteract)
                 {
-                    if (byPlayer.Entity.Controls.HandUse == EnumHandInteract.BlockInteract)
-                    {
-                        byPlayer.Entity.PlayEntitySound("eat", byPlayer);
-                    }
-                }, 500);
+                    byPlayer.Entity.PlayEntitySound("eat", byPlayer);
+                }
+            }, 500);
 
-                byPlayer.Entity.StartAnimation("eat");
+            byPlayer.Entity.StartAnimation("eat");
 
-                return true;
-            }
-
-            return false;
+            return true;
         }
 
         protected virtual bool tryHeldContinueEatMeal(float secondsUsed, ItemSlot slot, EntityAgent byEntity)
         {
-            if (GetContentNutritionProperties(byEntity.World, slot, byEntity) == null) return false;
+            if (!CanEat(slot, byEntity)) return false;
 
             Vec3d pos = byEntity.Pos.AheadCopy(0.4f).XYZ.Add(byEntity.LocalEyePos);
             pos.Y -= 0.4f;
@@ -219,64 +227,60 @@ namespace Vintagestory.GameContent
 
         protected bool tryPlacedContinueEatMeal(float secondsUsed, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
         {
-            if (!byPlayer.Entity.Controls.ShiftKey || GetContentNutritionProperties(api.World, slot, byPlayer.Entity) == null || slot.Itemstack is not ItemStack stack) return false;
+            if (!byPlayer.Entity.Controls.ShiftKey || slot.Itemstack is not ItemStack stack || !CanEat(slot, byPlayer as EntityAgent)) return false;
 
-            if (api.Side == EnumAppSide.Client)
+            // Let the client decide when to finish eating
+            if (api.Side.IsServer()) return true;
+
+            ModelTransform tf = new ModelTransform();
+            tf.Origin.Set(1.1f, 0.5f, 0.5f);
+            tf.EnsureDefaultValues();
+
+            if (ItemClass == EnumItemClass.Item)
             {
-                ModelTransform tf = new ModelTransform();
-                tf.Origin.Set(1.1f, 0.5f, 0.5f);
-                tf.EnsureDefaultValues();
-
-                if (ItemClass == EnumItemClass.Item)
+                if (secondsUsed > 0.5f)
                 {
-                    if (secondsUsed > 0.5f)
-                    {
-                        tf.Translation.X = GameMath.Sin(30 * secondsUsed) / 10;
-                    }
-
-                    tf.Translation.Z += -Math.Min(1.6f, secondsUsed * 4 * 1.57f);
-                    tf.Translation.Y += Math.Min(0.15f, secondsUsed * 2);
-
-                    tf.Rotation.Y -= Math.Min(85f, secondsUsed * 350 * 1.5f);
-                    tf.Rotation.X += Math.Min(40f, secondsUsed * 350 * 0.75f);
-                    tf.Rotation.Z += Math.Min(30f, secondsUsed * 350 * 0.75f);
-                }
-                else
-                {
-                    tf.Translation.X -= Math.Min(1.7f, secondsUsed * 4 * 1.8f) / FpHandTransform.ScaleXYZ.X;
-                    tf.Translation.Y += Math.Min(0.4f, secondsUsed * 1.8f) / FpHandTransform.ScaleXYZ.X;
-                    tf.Scale = 1 + Math.Min(0.5f, secondsUsed * 4 * 1.8f) / FpHandTransform.ScaleXYZ.X;
-                    tf.Rotation.X += Math.Min(40f, secondsUsed * 350 * 0.75f) / FpHandTransform.ScaleXYZ.X;
-
-                    if (secondsUsed > 0.5f)
-                    {
-                        tf.Translation.Y += GameMath.Sin(30 * secondsUsed) / 10 / FpHandTransform.ScaleXYZ.Y;
-                    }
+                    tf.Translation.X = GameMath.Sin(30 * secondsUsed) / 10;
                 }
 
+                tf.Translation.Z += -Math.Min(1.6f, secondsUsed * 4 * 1.57f);
+                tf.Translation.Y += Math.Min(0.15f, secondsUsed * 2);
 
+                tf.Rotation.Y -= Math.Min(85f, secondsUsed * 350 * 1.5f);
+                tf.Rotation.X += Math.Min(40f, secondsUsed * 350 * 0.75f);
+                tf.Rotation.Z += Math.Min(30f, secondsUsed * 350 * 0.75f);
+            }
+            else
+            {
+                tf.Translation.X -= Math.Min(1.7f, secondsUsed * 4 * 1.8f) / FpHandTransform.ScaleXYZ.X;
+                tf.Translation.Y += Math.Min(0.4f, secondsUsed * 1.8f) / FpHandTransform.ScaleXYZ.X;
+                tf.Scale = 1 + Math.Min(0.5f, secondsUsed * 4 * 1.8f) / FpHandTransform.ScaleXYZ.X;
+                tf.Rotation.X += Math.Min(40f, secondsUsed * 350 * 0.75f) / FpHandTransform.ScaleXYZ.X;
 
-                if (secondsUsed > 0.5f && (int)(30 * secondsUsed) % 7 == 1)
+                if (secondsUsed > 0.5f)
                 {
-                    ItemStack[] contents = GetNonEmptyContents(api.World, stack);
-                    if (contents.Length > 0)
-                    {
-                        ItemStack rndStack = contents[api.World.Rand.Next(contents.Length)];
-                        api.World.SpawnCubeParticles(blockSel.Position.ToVec3d().Add(0.5f, 2 / 16f, 0.5f), rndStack, 0.2f, 4, 0.5f);
-                    }
+                    tf.Translation.Y += GameMath.Sin(30 * secondsUsed) / 10 / FpHandTransform.ScaleXYZ.Y;
                 }
-
-                return secondsUsed <= 1.5f;
             }
 
-            // Let the client decide when he is done eating
-            return true;
+            if (secondsUsed > 0.5f && (int)(30 * secondsUsed) % 7 == 1)
+            {
+                ItemStack[] contents = GetNonEmptyContents(api.World, stack);
+                if (contents.Length > 0)
+                {
+                    ItemStack rndStack = contents[api.World.Rand.Next(contents.Length)];
+                    api.World.SpawnCubeParticles(blockSel.Position.ToVec3d().Add(0.5f, 2 / 16f, 0.5f), rndStack, 0.2f, 4, 0.5f);
+                }
+            }
+
+            return secondsUsed <= 1.5f;
         }
 
 
         protected virtual bool tryFinishEatMeal(float secondsUsed, ItemSlot slot, EntityAgent byEntity, bool handleAllServingsConsumed)
         {
             FoodNutritionProperties[]? multiProps = GetContentNutritionProperties(byEntity.World, slot, byEntity);
+            byEntity.StopAnimation("eat");
 
             if (byEntity.World.Side == EnumAppSide.Client || multiProps == null || secondsUsed < 1.45) return false;
 
@@ -351,21 +355,21 @@ namespace Vintagestory.GameContent
 
 
 
-        public bool OnContainedInteractStart(BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        public virtual bool OnContainedInteractStart(BlockEntity be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
         {
             if (!byPlayer.Entity.Controls.ShiftKey) return false;
 
             return tryPlacedBeginEatMeal(slot, byPlayer);
         }
 
-        public bool OnContainedInteractStep(float secondsUsed, BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        public virtual bool OnContainedInteractStep(float secondsUsed, BlockEntity be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
         {
             if (!byPlayer.Entity.Controls.ShiftKey) return false;
 
             return tryPlacedContinueEatMeal(secondsUsed, slot, byPlayer, blockSel);
         }
 
-        public void OnContainedInteractStop(float secondsUsed, BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        public virtual void OnContainedInteractStop(float secondsUsed, BlockEntity be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
         {
             if (tryFinishEatMeal(secondsUsed, slot, byPlayer.Entity, true))
             {
@@ -373,9 +377,11 @@ namespace Vintagestory.GameContent
             }
         }
 
-
-
-
+        public virtual bool OnContainedInteractCancel(float secondsUsed, BlockEntity be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel, EnumItemUseCancelReason cancelReason)
+        {
+            byPlayer.Entity.StopAnimation("eat");
+            return true;
+        }
 
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
@@ -582,10 +588,10 @@ namespace Vintagestory.GameContent
 
                 float spoilState = 0;
                 DummySlot slot = new DummySlot(contentStack, inSlot.Inventory);
-                if (!timeFrozen)
+                // Time frozen contents do not transition
+                if (!timeFrozen && !contentStack.Attributes.GetBool("timeFrozen"))
                 {
-                    TransitionState? state = contentStack.Collectible.UpdateAndGetTransitionState(world, slot, EnumTransitionType.Perish);
-                    spoilState = state != null ? state.TransitionLevel : 0;
+                    spoilState = contentStack.Collectible.UpdateAndGetTransitionState(world, slot, EnumTransitionType.Perish)?.TransitionLevel ?? 0;
                 }
 
                 float satLossMul = GlobalConstants.FoodSpoilageSatLossMul(spoilState, mealStack, forEntity);
@@ -922,7 +928,8 @@ namespace Vintagestory.GameContent
                             world.SpawnItemEntity(stacks[i], entityItem.Pos.XYZ);
                         }
                     }
-                } else
+                }
+                else
                 {
                     ItemStack rndStack = stacks[world.Rand.Next(stacks.Length)];
                     world.SpawnCubeParticles(entityItem.Pos.XYZ, rndStack, 0.3f, 25, 1, null);
@@ -1068,11 +1075,13 @@ namespace Vintagestory.GameContent
             ];
         }
 
-        public WorldInteraction[] GetContainedInteractionHelp(BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        public virtual WorldInteraction[] GetContainedInteractionHelp(BlockEntity be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
         {
+            if (!CanEat(slot, byPlayer.Entity)) return [];
+
             return
             [
-                new()
+                new WorldInteraction
                 {
                     ActionLangCode = "blockhelp-meal-eat",
                     MouseButton = EnumMouseButton.Right,

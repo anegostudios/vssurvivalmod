@@ -3,6 +3,7 @@ using ProtoBuf;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
@@ -295,7 +296,7 @@ namespace Vintagestory.GameContent
 
         private void LoadClasses()
         {
-            characterClasses = [];                                                           
+            characterClasses = [];
             Dictionary<AssetLocation, JToken> files = api.Assets.GetMany<JToken>(api.Logger, "config/characterclasses");
             int classQuantity = 0;
 
@@ -365,7 +366,7 @@ namespace Vintagestory.GameContent
             {
                 var bh = eplayer.GetBehavior<EntityBehaviorPlayerInventory>();
                 var essr = capi?.World.Player.Entity.Properties.Client.Renderer as EntityShapeRenderer;
-                
+
                 bh.doReloadShapeAndSkin = false;
 
                 IInventory inv = bh.Inventory;
@@ -432,7 +433,7 @@ namespace Vintagestory.GameContent
             CharacterClass charclass = characterClasses.FirstOrDefault(c => c.Code == classcode);
             if (charclass == null) throw new ArgumentException("Not a valid character class code!");
 
-            // Reset 
+            // Reset
             foreach (var stats in eplr.Stats)
             {
                 foreach (var statmod in stats.Value.ValuesByKey)
@@ -602,7 +603,7 @@ namespace Vintagestory.GameContent
 
             var classChangeMonths = sapi.World.Config.GetDecimal("allowClassChangeAfterMonths", -1);
             var allowOneFreeClassChange = sapi.World.Config.GetBool("allowOneFreeClassChange");
-           
+
             // allow players that already played on the server to also reselect their character like new players
             if(allowOneFreeClassChange && byPlayer.ServerData.LastCharacterSelectionDate == null)
             {
@@ -611,14 +612,21 @@ namespace Vintagestory.GameContent
             else if(classChangeMonths >= 0)
             {
                 var date = DateTime.UtcNow;
-                var lastDateChange = byPlayer.ServerData.LastCharacterSelectionDate ?? byPlayer.ServerData.FirstJoinDate ?? "1/1/1970 00:00 AM";
-                var monthsPassed = date.Subtract(DateTimeOffset.Parse(lastDateChange).UtcDateTime).TotalDays / 30.0;
+                var lastDateChange = byPlayer.ServerData.LastCharacterSelectionDate ?? byPlayer.ServerData.FirstJoinDate ?? "1970-01-01T00:00:00.0000000+00:00";
+                DateTimeOffset lastSelectDate;
+                if (!DateTimeOffset.TryParse(lastDateChange, out lastSelectDate))
+                {
+                    sapi.Logger.Warning("Failed to parse LastCharacterSelectionDate: {0} for playerUID {1}", lastDateChange, byPlayer.PlayerUID);
+                    lastSelectDate = DateTimeOffset.Now;
+                }
+
+                var monthsPassed = date.Subtract(lastSelectDate.UtcDateTime).TotalDays / 30.0;
                 if (classChangeMonths < monthsPassed)
                 {
                     byPlayer.Entity.WatchedAttributes.SetBool("allowcharselonce", true);
                 }
             }
-                
+
 
             sapi.Network.GetChannel("charselection").SendPacket(new CharacterSelectedState() { DidSelect = didSelect }, byPlayer);
         }
@@ -707,8 +715,7 @@ namespace Vintagestory.GameContent
                     bh.selectSkinPart(skinpart.Key, skinpart.Value, false);
                 }
 
-                var date = DateTime.UtcNow;
-                fromPlayer.ServerData.LastCharacterSelectionDate = date.ToShortDateString() + " " + date.ToShortTimeString();
+                fromPlayer.ServerData.LastCharacterSelectionDate = DateTime.UtcNow.ToString("O");
 
                 // allow players that just joined to immediately re select the class
                 var allowOneFreeClassChange = sapi.World.Config.GetBool("allowOneFreeClassChange");

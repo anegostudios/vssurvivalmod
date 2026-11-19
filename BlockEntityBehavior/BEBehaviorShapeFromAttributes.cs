@@ -384,25 +384,19 @@ namespace Vintagestory.GameContent
 
         public void Rotate(EntityAgent byEntity, BlockSelection blockSel, int dir)
         {
-            if (byEntity.Controls.ShiftKey)
+            float deg22dot5rad = GameMath.PIHALF / 4;
+
+            if (blockSel.Face.Axis == EnumAxis.X)
             {
-                if (blockSel.Face.Axis == EnumAxis.X)
-                {
-                    rotateX += GameMath.PIHALF * dir;
-                }
-                if (blockSel.Face.Axis == EnumAxis.Y)
-                {
-                    rotateY += GameMath.PIHALF * dir;
-                }
-                if (blockSel.Face.Axis == EnumAxis.Z)
-                {
-                    rotateZ += GameMath.PIHALF * dir;
-                }
+                rotateX += deg22dot5rad * dir * (blockSel.Face.Negative ? -1 : 1);
             }
-            else
+            if (blockSel.Face.Axis == EnumAxis.Y)
             {
-                float deg22dot5rad = GameMath.PIHALF / 4;
-                rotateY += deg22dot5rad * dir;
+                rotateY += deg22dot5rad * dir * (blockSel.Face.Negative ? -1 : 1);
+            }
+            if (blockSel.Face.Axis == EnumAxis.Z)
+            {
+                rotateZ += deg22dot5rad * dir * (blockSel.Face.Negative ? -1 : 1);
             }
 
             loadMesh();

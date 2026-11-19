@@ -10,6 +10,7 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+using Vintagestory.Datastructures;
 using Vintagestory.ServerMods;
 using Vintagestory.ServerMods.NoObf;
 
@@ -152,18 +153,18 @@ namespace Vintagestory.GameContent
 
             Structures = new StoryStructures();
 
-            var worldGenStructures = api.ModLoader.GetModSystem<ModSystemWorldGenStructures>();
-            worldGenStructures.RegisterProvider(Structures);
-            worldGenStructures.OnRegenFinalized += FinalizeRegeneration;
 
             if (TerraGenConfig.DoDecorationPass)
             {
+                var worldGenStructures = api.ModLoader.GetModSystem<ModSystemWorldGenStructures>()!;
+                worldGenStructures.RegisterProvider(Structures);
+                worldGenStructures.OnRegenFinalized += FinalizeRegeneration;
                 api.Event.InitWorldGenerator(InitWorldGen, "standard");
                 api.Event.ChunkColumnGeneration(OnChunkColumnGen, EnumWorldGenPass.Vegetation, "standard");
                 api.Event.GetWorldgenBlockAccessor(OnWorldGenBlockAccessor);
 
                 api.Event.WorldgenHook(GenerateHookStructure, "standard", "genHookStructure");
-                api.ModLoader.GetModSystem<GenVegetationAndPatches>().RegisterPatchModifier(this);
+                api.ModLoader.GetModSystem<GenVegetationAndPatches>()?.RegisterPatchModifier(this);
                 genBlockLayers = api.ModLoader.GetModSystem<GenBlockLayers>();
             }
 
@@ -329,7 +330,7 @@ namespace Vintagestory.GameContent
             genStoryStructures = api.World.Config.GetAsString("loreContent", "true").ToBool(true);
             if (!genStoryStructures) return;
 
-            strucRand = new LCGRandom(api.WorldManager.Seed + 1095);
+            strucRand = new LCGRandom(api.WorldManager.SeedWorldgen + 1095);
 
             var assets = api.Assets.GetMany<WorldGenStoryStructuresConfig>(api.Logger, "worldgen/storystructures.json");
 
@@ -363,7 +364,7 @@ namespace Vintagestory.GameContent
 
             scfg.Structures = structures.ToArray();
 
-            grassRand = new LCGRandom(api.WorldManager.Seed);
+            grassRand = new LCGRandom(api.WorldManager.SeedWorldgen);
 
             blockLayerConfig = BlockLayerConfig.GetInstance(api);
             scfg.Init(api, blockLayerConfig.RockStrata, blockLayerConfig);
@@ -380,7 +381,7 @@ namespace Vintagestory.GameContent
 
             DetermineStoryStructures();
             // reset strucRand after DetermineStoryStructures was run
-            strucRand.SetWorldSeed(api.WorldManager.Seed + 1095);
+            strucRand.SetWorldSeed(api.WorldManager.SeedWorldgen + 1095);
         }
 
         private TextCommandResult OnTpStoryLoc(TextCommandCallingArgs args)
@@ -433,7 +434,7 @@ namespace Vintagestory.GameContent
                     // this also makes sure this wont get called on /wgen regen again which would throw because the test methods can only be called pre RunGame
                     if (!data.Contains(wgenStoryStructure.Code))
                     {
-                        strucRand.SetWorldSeed(api.WorldManager.Seed + 1095 + i);
+                        strucRand.SetWorldSeed(api.WorldManager.SeedWorldgen + 1095 + i);
                         TryAddStoryLocation(wgenStoryStructure);
                         data.Add(wgenStoryStructure.Code);
                     }
@@ -796,14 +797,18 @@ namespace Vintagestory.GameContent
                     {
                         rockBlock = worldgenBlockAccessor.GetBlock(new AssetLocation(strucInst.RockBlockCode));
                     }
-
                 }
-                int blocksPlaced = structure.schematicData.PlacePartial(
-                    chunks, worldgenBlockAccessor, api.World,
-                    chunkX, chunkZ, startPos, EnumReplaceMode.ReplaceAll, structure.Placement,
-                    GlobalConfig.ReplaceMetaBlocks, GlobalConfig.ReplaceMetaBlocks, structure.resolvedRockTypeRemaps,
-                    structure.replacewithblocklayersBlockids, rockBlock, structure.DisableSurfaceTerrainBlending
-                );
+
+                var data = new SchematicPlacementData(worldgenBlockAccessor, api.World)
+                {
+                    StartPos = startPos,
+                    DisableSurfaceTerrainBlending = structure.DisableSurfaceTerrainBlending,
+                };
+                data.Set(chunks, chunkX, chunkZ, EnumReplaceMode.ReplaceAll, structure.Placement,
+                    GlobalConfig.ReplaceMetaBlocks, structure.resolvedRockTypeRemaps,
+                    structure.replacewithblocklayersBlockids, rockBlock);
+
+                int blocksPlaced = structure.schematicData.PlacePartial(data);
 
                 if (blocksPlaced > 0)
                 {
@@ -1046,12 +1051,20 @@ namespace Vintagestory.GameContent
                 var entranceMinZ = int.MaxValue;
                 var entranceMaxX = 0;
                 var entranceMaxZ = 0;
+
+                var placeData = new SchematicPlacementData(blockAccessor, api.World)
+                {
+                    ReplaceMeta = GlobalConfig.ReplaceMetaBlocks,
+                    ReplaceBlockEntities = true,
+                    DisplaceWater = true,
+                };
                 foreach (int ix in bestIndices)
                 {
                     var struc = structures[ix];
                     var offset = offsets[ix];
                     BlockPos posPlace = pos.AddCopy(offset.X, offset.Y, offset.Z);
-                    struc.PlaceRespectingBlockLayers(blockAccessor, api.World, posPlace, 0, 0, 0, 0, null, Array.Empty<int>(), GlobalConfig.ReplaceMetaBlocks, true, false, true);
+                    placeData.StartPos = posPlace;
+                    struc.PlaceRespectingBlockLayers(placeData);
                     pos.Y += struc.SizeY;
 
                     entranceMinX = Math.Min(entranceMinX, posPlace.X);
@@ -1122,7 +1135,7 @@ namespace Vintagestory.GameContent
                     Block block = api.World.GetBlock(hookStruct.ReplaceWithBlocklayers[i]);
                     if (block == null)
                     {
-                        api.Logger.Error(string.Format("Hook structure with code {0} has replace block layer {1} defined, but no such block found!", code, hookStruct.ReplaceWithBlocklayers[i]));
+                        api.Logger.Error("Hook structure with code {0} has replace block layer {1} defined, but no such block found!", code, hookStruct.ReplaceWithBlocklayers[i]);
                         return;
                     }
                     else
@@ -1150,7 +1163,19 @@ namespace Vintagestory.GameContent
             structTop.Init(blockAccessor);
 
             pos.Add(endElement.dx, endElement.dy, endElement.dz);
-            structTop.PlaceRespectingBlockLayers(blockAccessor, api.World, pos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, null, replaceblockids, GlobalConfig.ReplaceMetaBlocks, true, true);
+            var data = new SchematicPlacementData(blockAccessor, api.World)
+            {
+                ReplaceMeta = GlobalConfig.ReplaceMetaBlocks,
+                ReplaceWithBlockLayersBlockids = replaceblockids,
+                ClimateBotLeft = climateBotLeft,
+                ClimateBotRight = climateBotRight,
+                ClimateUpLeft = climateUpLeft,
+                ClimateUpRight = climateUpRight,
+                ReplaceBlockEntities = true,
+                SuppressSoilIfAirBelow = true,
+                StartPos = pos
+            };
+            structTop.PlaceRespectingBlockLayers(data);
 
             var locationEnd = new Cuboidi(pos.X, pos.Y, pos.Z, pos.X + structTop.SizeX, pos.Y + structTop.SizeY, pos.Z + structTop.SizeZ);
             region.AddGeneratedStructure(new GeneratedStructure()

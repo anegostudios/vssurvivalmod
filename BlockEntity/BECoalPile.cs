@@ -77,17 +77,11 @@ namespace Vintagestory.GameContent
 
         public float BurnHoursPerLayer = 4f;
 
-        public bool IsBurning
-        {
-            get { return burning; }
-        }
+        public bool IsBurning => burning;
 
-        public bool CanIgnite
-        {
-            get { return !burning; }
-        }
+        public bool CanIgnite => !burning;
 
-        public int BurnTemperature => inventory[0].Itemstack.Collectible.GetCombustibleProperties(Api.World, inventory[0].Itemstack, null)?.BurnTemperature ?? 0;
+        public int BurnTemperature => inventory[0].Itemstack?.Collectible.GetCombustibleProperties(Api.World, inventory[0].Itemstack, null)?.BurnTemperature ?? 0;
 
         public bool IsExternallyTicked { get; set; }
 

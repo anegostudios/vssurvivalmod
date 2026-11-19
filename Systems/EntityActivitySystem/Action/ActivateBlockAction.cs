@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -71,7 +71,7 @@ namespace Vintagestory.GameContent
                 };
 
                 var args = activateArgs == null ? null : TreeAttribute.FromJson(activateArgs) as ITreeAttribute;
-                block.Activate(vas.Entity.World, new Caller() { Entity = vas.Entity, Type = EnumCallerType.Entity, Pos = vas.Entity.Pos.XYZ }, blockSel, args);
+                block.Activate(vas.Entity.World, Caller.FromEntity(vas.Entity), blockSel, args);
             }
         }
 

@@ -1,8 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using Newtonsoft.Json;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
 namespace Vintagestory.ServerMods
@@ -100,6 +104,13 @@ namespace Vintagestory.ServerMods
         [JsonProperty]
         public Dictionary<string, int>? GroupMax;
 
+        [JsonProperty]
+        public Dictionary<string, int>? KeyCountByRoomCode;
+
+        [JsonProperty]
+        public Dictionary<string, int>? SkipGenerationCategories;
+        public Dictionary<int, int>? SkipGenerationFlags;
+
         public void Init(ICoreServerAPI api)
         {
             totalChance = 0;
@@ -111,14 +122,20 @@ namespace Vintagestory.ServerMods
             {
                 var asset = api.Assets.GetManyInCategory("worldgen", "dungeontiles/" + surface + ".json").FirstOrDefault();
                 Surface = WorldGenStructureBase.LoadSchematic<BlockSchematicPartial>(api, asset, blockLayerConfig, null, null, 0, true);
-                TilesByCode[surface] = new DungeonTile() { ResolvedSchematics = new[] { Surface }, Code = surface };
+                if (!TilesByCode.TryAdd(surface, new DungeonTile() { ResolvedSchematics = new[] { Surface }, Code = surface }))
+                {
+                    api.Logger.Error($"Dungeon {Code} has a surface with duplicate tile code: {surface}. Tile will be skipped.");
+                }
             }
 
             if (start != null)
             {
                 var assetStart = api.Assets.GetManyInCategory("worldgen", "dungeontiles/" + start + ".json").FirstOrDefault();
                 Start = WorldGenStructureBase.LoadSchematic<BlockSchematicPartial>(api, assetStart, blockLayerConfig, null, null, 0, true);
-                TilesByCode[start] = new DungeonTile() { ResolvedSchematics = new[] { Start }, Code = start };
+                if (!TilesByCode.TryAdd(start, new DungeonTile() { ResolvedSchematics = new[] { Start }, Code = start }))
+                {
+                    api.Logger.Error($"Dungeon {Code} has a start with duplicate tile code: {start}. Tile will be skipped.");
+                }
             }
 
             if (ends != null)
@@ -211,6 +228,34 @@ namespace Vintagestory.ServerMods
                     replacewithblocklayersBlockids[j] = block.Id;
                 }
             }
+
+            if (SkipGenerationCategories != null)
+            {
+                SkipGenerationFlags = new Dictionary<int, int>();
+                foreach (var category in SkipGenerationCategories)
+                {
+                    int key = BitConverter.ToInt32(SHA256.HashData(Encoding.UTF8.GetBytes(category.Key.ToLowerInvariant())));
+                    if (!ModStdWorldGen.AllHashCodes.Contains(key))
+                    {
+                        api.Logger.Warning($"Unknown skip generation category for dungeon {Code}: {category.Key}");
+                    }
+                    SkipGenerationFlags.Add(key, category.Value);
+                }
+            }
+        }
+
+        public void SetKeyAttributes(TreeAttribute attr, BlockPos startPos)
+        {
+            if (KeyCountByRoomCode == null) return;
+
+            attr.SetString("keyId", $"{startPos.X},{startPos.Y},{startPos.Z}");
+            var treeAttribute = new TreeAttribute();
+            foreach (var (name, count) in KeyCountByRoomCode)
+            {
+                treeAttribute.SetInt(name, count);
+            }
+
+            attr.SetAttribute("keyCountByRoomCode", treeAttribute);
         }
     }
 }

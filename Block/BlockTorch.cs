@@ -59,23 +59,25 @@ namespace Vintagestory.GameContent
 
             if (IsExtinct)
             {
-                interactions = ObjectCacheUtil.GetOrCreate(api, "torchInteractions" + FirstCodePart(), () =>
-                {
-                    List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(api, true);
+                if (api is ICoreClientAPI capi) {
+                    interactions = ObjectCacheUtil.GetOrCreate(capi, "torchInteractions" + FirstCodePart(), () =>
+                    {
+                        List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(capi, true);
 
-                    return new WorldInteraction[]
-                    {
-                    new WorldInteraction()
-                    {
-                        ActionLangCode = "blockhelp-firepit-ignite",
-                        MouseButton = EnumMouseButton.Right,
-                        Itemstacks = canIgniteStacks.ToArray(),
-                        GetMatchingStacks = (wi, bs, es) => {
-                            return wi.Itemstacks;
+                        return new WorldInteraction[]
+                        {
+                        new WorldInteraction()
+                        {
+                            ActionLangCode = "blockhelp-firepit-ignite",
+                            MouseButton = EnumMouseButton.Right,
+                            Itemstacks = canIgniteStacks.ToArray(),
+                            GetMatchingStacks = (wi, bs, es) => {
+                                return wi.Itemstacks;
+                            }
                         }
-                    }
-                    };
-                });
+                        };
+                    });
+                }
             }
         }
 

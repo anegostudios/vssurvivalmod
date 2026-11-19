@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Text;
 using Vintagestory.API.Common;
@@ -150,6 +150,7 @@ namespace Vintagestory.GameContent
 
         protected virtual void OnInvClosed(IPlayer player)
         {
+            invDialog?.TryClose();
             invDialog?.Dispose();
             invDialog = null;
         }
@@ -302,6 +303,8 @@ namespace Vintagestory.GameContent
                             targetSlot.MarkDirty();
                             MarkDirty(false);
                             beFlow?.MarkDirty();
+
+                            beContainer.Inventory.DidAutoMove(sourceSlot, targetSlot, qmoved);
                         }
 
                         if (qmoved > 0 && Api.World.Rand.NextDouble() < 0.2)
@@ -384,6 +387,8 @@ namespace Vintagestory.GameContent
 
                         itemFlowAccum -= qmoved;
 
+                        beContainer.Inventory.DidAutoMove(sourceSlot, targetSlot, qmoved);
+
                         return true;
                     }
                     else
@@ -441,12 +446,6 @@ namespace Vintagestory.GameContent
             }
 
             return true;
-        }
-
-
-        public override void OnReceivedServerPacket(int packetid, byte[] data)
-        {
-            base.OnReceivedServerPacket(packetid, data);
         }
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)

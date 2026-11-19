@@ -10,6 +10,43 @@ using Vintagestory.Client.NoObf;
 
 namespace Vintagestory.API.Common;
 
+
+public class ModSystemThreadStaticCollisionTester : ModSystem
+{
+    public static MultiCollisionTester CollisionTester
+    {
+        get
+        {
+            var threadID = System.Threading.Thread.CurrentThread.ManagedThreadId;
+            if (disposableCollisionTesters.TryGetValue(threadID, out var mCollisionTester)) return mCollisionTester;
+            return disposableCollisionTesters[threadID] = new MultiCollisionTester();
+        }
+    }
+    // Looks a bit heavy, but we write to this only once per game per thread; then later we can ensure that we dispose of all the blockAccessors even if the thread itself is *not* disposed (ThreadPool threads for example are not disposed)
+    private static System.Collections.Concurrent.ConcurrentDictionary<int, MultiCollisionTester> disposableCollisionTesters = new(4, 16);
+
+    public override bool ShouldLoad(ICoreAPI api) => true;
+    public override double ExecuteOrder() => 0;
+
+    public override void StartClientSide(ICoreClientAPI api)
+    {
+        api.Event.LeaveWorld += DisposeCollisionTesters;
+    }
+
+    public override void StartServerSide(ICoreServerAPI api)
+    {
+        api.Event.ServerRunPhase(EnumServerRunPhase.Shutdown, DisposeCollisionTesters);
+    }
+
+    private void DisposeCollisionTesters()
+    {
+        disposableCollisionTesters.Clear();
+    }
+
+}
+
+
+
 /// <summary>
 /// Passive physics system for entities with support for multiple collision boxes.
 /// <br/>Uses the "passivephysicsmultibox" code
@@ -42,19 +79,9 @@ public class EntityBehaviorPassivePhysicsMultiBox : EntityBehaviorPassivePhysics
     protected Cuboidf[] CollisionBoxes;
     WireframeCube entityWf;
 
-    [ThreadStatic]
-    protected internal static MultiCollisionTester mcollisionTester;
+    protected internal static MultiCollisionTester mcollisionTester => ModSystemThreadStaticCollisionTester.CollisionTester;
 
-    public EntityBehaviorPassivePhysicsMultiBox(Entity entity) : base(entity)
-    {
-        mcollisionTester ??= new MultiCollisionTester();   // Required on clientside
-    }
-
-    public static void InitServer(ICoreServerAPI sapi)
-    {
-        mcollisionTester = new MultiCollisionTester();
-        sapi.Event.PhysicsThreadStart += () => mcollisionTester = new MultiCollisionTester();
-    }
+    public EntityBehaviorPassivePhysicsMultiBox(Entity entity) : base(entity) { }
 
 
     public double RenderOrder => 0.5;
@@ -64,14 +91,14 @@ public class EntityBehaviorPassivePhysicsMultiBox : EntityBehaviorPassivePhysics
     public void Dispose()
     {
         entityWf?.Dispose();
-        capi?.Event.UnregisterRenderer(this, EnumRenderStage.Opaque);
+        capi?.Event.UnregisterRenderer(this, EnumRenderStage.AfterOIT);
     }
 
     public override void Initialize(EntityProperties properties, JsonObject attributes)
     {
         if (entity.Api is ICoreClientAPI capi)
         {
-            capi.Event.RegisterRenderer(this, EnumRenderStage.Opaque, "PassivePhysicsMultiBoxWf");
+            capi.Event.RegisterRenderer(this, EnumRenderStage.AfterOIT, "PassivePhysicsMultiBoxWf");
             entityWf = WireframeCube.CreateCenterOriginCube(capi, ColorUtil.WhiteArgb);
         }
 
@@ -131,23 +158,27 @@ public class EntityBehaviorPassivePhysicsMultiBox : EntityBehaviorPassivePhysics
         mcollisionTester.ApplyTerrainCollision(CollisionBoxes, CollisionBoxes.Length, entity, pos, dtFactor, ref newPos, 0, CollisionYExtra);
     }
 
-    Matrixf mat = new Matrixf();
+    // The multibox solver does not publish contacts through the single-body tester.
+    protected override Collider getSupportingCollider() => null;
+
+    protected override bool slidingOnSteepCollider => false;
+
     Vec3d tmpPos = new Vec3d();
     float pushVelocityMul = 1;
 
     public bool AdjustCollisionBoxesToYaw(float dtFac, bool push, float newYaw)
     {
+        CollisionQueryFilter filter = new(CollisionLayer.Entity, excludedOwnerEntityId: entity.EntityId);
+        if (push && !mcollisionTester.CanRotate(entity.World.BlockAccessor, entity.World.CollisionScene, OrigCollisionBoxes, entity.Pos, newYaw, filter)) return false;
         adjustBoxesToYaw(newYaw);
 
-        if (push)
+        if (push && newYaw == entity.Pos.Yaw)
         {
             tmpPos.Set(entity.Pos.X, entity.Pos.Y, entity.Pos.Z);
             Cuboidd ccollbox = mcollisionTester.GetCollidingCollisionBox(entity.World.BlockAccessor, CollisionBoxes, CollisionBoxes.Length, tmpPos, false);
             if (ccollbox != null)
             {
-                bool pushed = PushoutOfCollisionbox(dtFac / 60f, ccollbox);
-                if (pushed) return true;
-                return false;
+                return PushoutOfCollisionbox(dtFac / 60f, ccollbox);
             }
         }
 
@@ -156,31 +187,17 @@ public class EntityBehaviorPassivePhysicsMultiBox : EntityBehaviorPassivePhysics
 
     private void adjustBoxesToYaw(float newYaw)
     {
+        double cosYaw = Math.Cos(newYaw + GameMath.PI);
+        double sinYaw = Math.Sin(newYaw + GameMath.PI);
         for (int i = 0; i < OrigCollisionBoxes.Length; i++)
         {
-            var ocollbox = OrigCollisionBoxes[i];
-
-            // This is the offset from center we need to rotate around
-            float x = ocollbox.MidX;
-            float y = ocollbox.MidY;
-            float z = ocollbox.MidZ;
-
-            mat.Identity();
-            mat.RotateY(newYaw + GameMath.PI);
-            var newMid = mat.TransformVector(new Vec4d(x, y, z, 1));
-
-            var collbox = CollisionBoxes[i];
-            double motionX = newMid.X - collbox.MidX;
-            double motionZ = newMid.Z - collbox.MidZ;
-
-            if (Math.Abs(motionX) > 0.01 || Math.Abs(motionZ) > 0.01)
-            {
-                float wh = ocollbox.Width / 2;
-                float hh = ocollbox.Height / 2;
-                float lh = ocollbox.Length / 2;
-
-                collbox.Set((float)newMid.X - wh, (float)newMid.Y - hh, (float)newMid.Z - lh, (float)newMid.X + wh, (float)newMid.Y + hh, (float)newMid.Z + lh);
-            }
+            var box = OrigCollisionBoxes[i];
+            // Multibox physics rotates the centers while keeping the boxes upright.
+            float x = (float)(box.MidX * cosYaw + box.MidZ * sinYaw);
+            float z = (float)(-box.MidX * sinYaw + box.MidZ * cosYaw);
+            float halfWidth = box.HalfExtentX;
+            float halfLength = box.HalfExtentZ;
+            CollisionBoxes[i].Set(x - halfWidth, box.Y1, z - halfLength, x + halfWidth, box.Y2, z + halfLength);
         }
     }
 
@@ -192,6 +209,8 @@ public class EntityBehaviorPassivePhysicsMultiBox : EntityBehaviorPassivePhysics
         double posZ = entity.Pos.Z;
 
         var ba = entity.World.BlockAccessor;
+        var collTester = mcollisionTester;
+
 
         Vec3i pushDir = null;
         double shortestDist = 99;
@@ -206,8 +225,8 @@ public class EntityBehaviorPassivePhysicsMultiBox : EntityBehaviorPassivePhysics
             {
                 var r = dist / 4f;
 
-                Cuboidd ccollbox = mcollisionTester.GetCollidingCollisionBox(ba, CollisionBoxes, CollisionBoxes.Length, tmpPos.Set(posX + cardinal.Normali.X * r, posY, posZ + cardinal.Normali.Z * r), false);
-                if (ccollbox == null)
+                Cuboidd ccollbox = collTester.GetCollidingCollisionBox(ba, CollisionBoxes, CollisionBoxes.Length, tmpPos.Set(posX + cardinal.Normali.X * r, posY, posZ + cardinal.Normali.Z * r), false);
+                if (ccollbox == null && collTester.CanTranslate(entity.World.CollisionScene, CollisionBoxes, entity.Pos, cardinal.Normali.X * r, 0, cardinal.Normali.Z * r, new CollisionQueryFilter(CollisionLayer.Entity, excludedOwnerEntityId: entity.EntityId)))
                 {
                     if (r < shortestDist)
                     {
@@ -227,15 +246,11 @@ public class EntityBehaviorPassivePhysicsMultiBox : EntityBehaviorPassivePhysics
 
         dt = Math.Min(dt, 0.1f);
 
-        // Add some tiny amounts of random horizontal motion to give it a chance to wiggle out of an edge case
-        float rndx = ((float)entity.World.Rand.NextDouble() - 0.5f) / 600f;
-        float rndz = ((float)entity.World.Rand.NextDouble() - 0.5f) / 600f;
-
         entity.Pos.X += pushDir.X * dt * 1.5f;
         entity.Pos.Z += pushDir.Z * dt * 1.5f;
 
-        entity.Pos.Motion.X = pushVelocityMul * pushDir.X * dt + rndx;
-        entity.Pos.Motion.Z = pushVelocityMul * pushDir.Z * dt + rndz;
+        entity.Pos.Motion.X = pushVelocityMul * pushDir.X * dt;
+        entity.Pos.Motion.Z = pushVelocityMul * pushDir.Z * dt;
 
         return true;
     }

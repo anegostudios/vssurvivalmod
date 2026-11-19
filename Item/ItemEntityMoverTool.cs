@@ -83,7 +83,12 @@ public class ItemEntityMoverTool : Item, IHeldItemOnMouseWheel
             },
             new()
             {
-                ActionLangCode = Lang.Get("Use mouse wheel to adjust entity distance (hold 'Shift' for more precise adjustments)"),
+                ActionLangCode = Lang.Get("Mouse wheel to adjust entity distance (hold 'Shift' precise distance"),
+                MouseButton = EnumMouseButton.Wheel
+            },
+            new()
+            {
+                ActionLangCode = Lang.Get("Mouse wheel + Sprint to rotate"),
                 MouseButton = EnumMouseButton.Wheel
             }
         ];
@@ -231,12 +236,12 @@ public class ItemEntityMoverTool : Item, IHeldItemOnMouseWheel
         {
             long entityId = inSlot.Itemstack.Attributes.GetLong(entityIdAttribute);
             Entity target = api.World.GetEntityById(entityId);
-            target.Pos.Yaw += args.deltaPrecise / 3f;
+            target.Pos.Yaw += args.DeltaY / 3f;
         }
         else
         {
             double factor = byPlayer.Controls.ShiftKey ? shiftMouseWheelSensitivity : mouseWheelSensitivity;
-            double offset = args.deltaPrecise * factor;
+            double offset = args.DeltaY * factor;
             double distance = inSlot.Itemstack.Attributes.GetDouble(distanceAttribute);
             distance = Math.Max(distance + offset, 0);
             inSlot.Itemstack.Attributes.SetDouble(distanceAttribute, distance);

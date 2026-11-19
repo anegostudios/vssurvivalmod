@@ -94,7 +94,7 @@ namespace Vintagestory.GameContent
         {
             if (target == EnumItemRenderTarget.HandTpOff && Attributes["shapeByOpening"].Exists)
             {
-                var hslot = capi.World.Player.InventoryManager.ActiveHotbarSlot;
+                var hslot = (renderinfo.InSlot.Inventory as InventoryBasePlayer)?.Player.Entity.RightHandItemSlot;
                 var opening = hslot.Empty ? null : hslot.Itemstack.Collectible.Attributes?["tongOpening"].AsString(null);
 
                 if (!string.IsNullOrEmpty(opening)) {
@@ -157,6 +157,7 @@ namespace Vintagestory.GameContent
                 if (stack.Collectible.GetTemperature(forEntity.World, stack) > GlobalConstants.TooHotToTouchTemperature)
                 {
                     var opening = stack.Collectible.Attributes?["tongOpening"]?.AsString("1") ?? "1";
+                    if (opening == "mediumwide") opening = "1";
                     tpIdleAnim = "holdbothhands-tongs" + opening;
                     return true;
                 }

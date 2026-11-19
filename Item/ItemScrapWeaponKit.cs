@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -106,9 +106,17 @@ namespace Vintagestory.GameContent
                 if (api.Side == EnumAppSide.Server)
                 {
                     ItemStack resultstack = craftResultStacks[api.World.Rand.Next(craftResultStacks.Length)];
-                    slot.Itemstack = resultstack.Clone();
-                    slot.MarkDirty();
-                } else
+                    if (slot.CanHold(new DummySlot(resultstack)))
+                    {
+                        slot.Itemstack = resultstack.Clone();
+                        slot.MarkDirty();
+                    }
+                    else
+                    {
+                        api.World.SpawnItemEntity(resultstack, byEntity.Pos.AsBlockPos);
+                    }
+                }
+                else
                 {
                     slot.Itemstack.TempAttributes.SetBool("consumed", true);
                 }

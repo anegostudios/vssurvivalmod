@@ -1,4 +1,5 @@
 using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -10,6 +11,7 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+using Vintagestory.Datastructures;
 
 #nullable disable
 
@@ -47,14 +49,14 @@ namespace Vintagestory.GameContent
             smallMetalSparks.VertexFlags = 128;
             smallMetalSparks.AddPos.Set(1 / 16f, 0, 1 / 16f);
             smallMetalSparks.ParticleModel = EnumParticleModel.Quad;
-            smallMetalSparks.LifeLength = 0.03f;
             smallMetalSparks.MinVelocity = new Vec3f(-2f, 1f, -2f);
             smallMetalSparks.AddVelocity = new Vec3f(4f, 2f, 4f);
             smallMetalSparks.MinQuantity = 6;
             smallMetalSparks.AddQuantity = 12;
             smallMetalSparks.MinSize = 0.1f;
-            smallMetalSparks.MaxSize = 0.1f;
-            smallMetalSparks.SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.LINEAR, -0.1f);
+            smallMetalSparks.MaxSize = 0.1f;           
+            smallMetalSparks.LifeLength = 0.06f;
+            smallMetalSparks.SizeEvolve = new EvolvingNatFloat(EnumTransformFunction.LINEAR, -0.07f);
 
 
             bigMetalSparks = new SimpleParticleProperties(
@@ -94,9 +96,11 @@ namespace Vintagestory.GameContent
         }
         #endregion
 
+        const int NO_RECIPE = -1;
+
         // Permanent data
         ItemStack workItemStack;
-        public int SelectedRecipeId = -1;
+        public int SelectedRecipeId = NO_RECIPE;
         public byte[,,] Voxels = new byte[16, 6, 16]; // Only the first 2 bits of each byte are used and serialized
 
 
@@ -273,6 +277,7 @@ namespace Vintagestory.GameContent
                     rotation = workItemStack.Attributes.GetInt("rotation");
                 }
                 else if (workItemStack.Collectible is ItemWorkItem wi && wi.isBlisterSteel) return false;
+                else if (workItemStack != null && SelectedRecipeId == NO_RECIPE) return false;
 
                 var list = workableobj.GetMatchingRecipes(stack);
                 if (SelectedRecipeId < 0 || list.FirstOrDefault(r => r.RecipeId == SelectedRecipeId) == null)
@@ -403,21 +408,17 @@ namespace Vintagestory.GameContent
 
             if (voxelMat == EnumVoxelMaterial.Metal && temp > 800)
             {
-
-
-
-                bigMetalSparks.MinPos = Pos.ToVec3d().AddCopy(voxelPos.X / 16f, voxYOff + voxelPos.Y / 16f + 0.0625f, voxelPos.Z / 16f);
+                bigMetalSparks.MinPos = Pos.ToVec3d().AddCopy(voxelPos.X / 16f, voxYOff + voxelPos.Y / 16f, voxelPos.Z / 16f);
                 bigMetalSparks.AddPos.Set(1 / 16f, 0, 1 / 16f);
-                bigMetalSparks.VertexFlags = (byte)GameMath.Clamp((int)(temp - 700) / 2, 32, 128);
+                bigMetalSparks.VertexFlags = (byte)GameMath.Clamp((int)(temp - 700) / 1.2f, 32, 255);
 
                 Api.World.SpawnParticles(bigMetalSparks, byPlayer);
 
-
-                smallMetalSparks.MinPos = Pos.ToVec3d().AddCopy(voxelPos.X / 16f, voxYOff + voxelPos.Y / 16f + 0.0625f, voxelPos.Z / 16f);
-                smallMetalSparks.VertexFlags = (byte)GameMath.Clamp((int)(temp - 770) / 3, 32, 128);
+                smallMetalSparks.MinPos = Pos.ToVec3d().AddCopy(voxelPos.X / 16f, voxYOff + voxelPos.Y / 16f, voxelPos.Z / 16f);
+                smallMetalSparks.VertexFlags = (byte)GameMath.Clamp((int)(temp - 770) / 1.2f, 32, 255);
                 smallMetalSparks.AddPos.Set(1 / 16f, 0, 1 / 16f);
 
-
+                
 
                 Api.World.SpawnParticles(smallMetalSparks, byPlayer);
             }
@@ -584,7 +585,7 @@ namespace Vintagestory.GameContent
                 outstack.Collectible.SetTemperature(Api.World, outstack, workItemStack.Collectible.GetTemperature(Api.World, workItemStack));
                 workItemStack = null;
 
-                SelectedRecipeId = -1;
+                SelectedRecipeId = NO_RECIPE;
 
                 if (byPlayer?.InventoryManager.TryGiveItemstack(outstack) == true)
                 {
@@ -655,7 +656,7 @@ namespace Vintagestory.GameContent
             RegenMeshAndSelectionBoxes();
             MarkDirty();
             rotation = 0;
-            SelectedRecipeId = -1;
+            SelectedRecipeId = NO_RECIPE;
         }
 
         private bool MatchesRecipe()
@@ -1000,7 +1001,7 @@ namespace Vintagestory.GameContent
             base.FromTreeAttributes(tree, worldForResolving);
             Voxels = deserializeVoxels(tree.GetBytes("voxels"));
             workItemStack = tree.GetItemstack("workItemStack");
-            SelectedRecipeId = tree.GetInt("selectedRecipeId", -1);
+            SelectedRecipeId = tree.GetInt("selectedRecipeId", NO_RECIPE);
             rotation = tree.GetInt("rotation");
 
             if (Api != null && workItemStack != null)
@@ -1105,86 +1106,93 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnReceivedClientPacket(IPlayer player, int packetid, byte[] data)
+        public override void OnReceivedClientPacket(IServerPlayer player, int packetId, SerializedData packetData, ref CachedAccessPerms perms)
         {
-            if (packetid == (int)EnumAnvilPacket.SelectRecipe)
+            switch (packetId)
             {
-                var perms = new BlockEntity.CachedAccessPerms(this.Api.World, this.Pos, player);
-                if (!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "anvil"))
+                case (int)EnumAnvilPacket.SelectRecipe:
                 {
-                    // Rennorb 20.06.2026 ux: Revert block state for that player.
-                    return;
+                    if (!perms.TryAccessingBlockAtPos(EnumBlockAccessFlags.Use, true, "anvil"))
+                    {
+                        // Rennorb 20.06.2026 ux: Revert block state for that player.
+                        break;
+                    }
+
+                    int recipeid = packetData.Deserialize<int>();
+                    SmithingRecipe recipe = Api.GetSmithingRecipes().FirstOrDefault(r => r.RecipeId == recipeid);
+
+                    if (recipe == null)
+                    {
+                        Api.World.Logger.Error("Client tried to selected smithing recipe with id {0}, but no such recipe exists!");
+                        ditchWorkItemStack(player);
+                        break;
+                    }
+
+                    var availRecipes = (WorkItemStack?.Collectible as IAnvilWorkable)?.GetMatchingRecipes(workItemStack);
+                    if (availRecipes?.FirstOrDefault(r => r.RecipeId == recipeid) == null)
+                    {
+                        Api.World.Logger.Error("Client tried to selected smithing recipe with id {0}, but it is not a valid one for the given work item stack!", recipe.RecipeId);
+                        ditchWorkItemStack(player);
+                        break;
+                    }
+
+                    SelectedRecipeId = recipe.RecipeId;
+
+                    // Tell server to save this chunk to disk again
+                    MarkDirty();
+                    Api.World.BlockAccessor.GetChunkAtBlockPos(Pos).MarkModified();
+
+                    break;
                 }
 
-                int recipeid = SerializerUtil.Deserialize<int>(data);
-                SmithingRecipe recipe = Api.GetSmithingRecipes().FirstOrDefault(r => r.RecipeId == recipeid);
 
-                if (recipe == null)
-                {
-                    Api.World.Logger.Error("Client tried to selected smithing recipe with id {0}, but no such recipe exists!");
+                case (int)EnumAnvilPacket.CancelSelect:
+                    if (SelectedRecipeId == NO_RECIPE)
+                    {
+                        break;
+                    }
+
+                    if (!perms.TryAccessingBlockAtPos(EnumBlockAccessFlags.Use, false, "anvil")) // Do not validate picking range in case we got transported out of range.
+                    {
+                        // No need to revert here, this cannot happen without packet manipulation.
+                        break;
+                    }
+
+                    // Rennorb 19.06.2026 security: Potentially griefable: anvils do not track who placed the item, therefore a second player could steal the work item by sending the cancel packet.
                     ditchWorkItemStack(player);
-                    return;
-                }
 
-                var list = (WorkItemStack?.Collectible as IAnvilWorkable)?.GetMatchingRecipes(workItemStack);
-                if (list == null || list.FirstOrDefault(r => r.RecipeId == recipeid) == null)
+                    break;
+
+
+                case (int)EnumAnvilPacket.OnUserOver:
                 {
-                    Api.World.Logger.Error("Client tried to selected smithing recipe with id {0}, but it is not a valid one for the given work item stack!", recipe.RecipeId);
-                    ditchWorkItemStack(player);
-                    return;
+                    if (!perms.TryAccessingBlockAtPos(EnumBlockAccessFlags.Use, true, "anvil"))
+                    {
+                        // Rennorb 20.06.2026 ux: Revert block state for that player.
+                        break;
+                    }
+
+                    var reader = packetData.AsBinaryReader();
+                    var voxelPos = new Vec3i(
+                        reader.ReadInt32LE(),
+                        reader.ReadInt32LE(),
+                        reader.ReadInt32LE()
+                    );
+
+                    OnUseOver(player, voxelPos, new BlockSelection() { Position = Pos });
+
+                    break;
                 }
-
-
-                SelectedRecipeId = recipe.RecipeId;
-
-                // Tell server to save this chunk to disk again
-                MarkDirty();
-                Api.World.BlockAccessor.GetChunkAtBlockPos(Pos).MarkModified();
             }
 
-            if (packetid == (int)EnumAnvilPacket.CancelSelect)
-            {
-                if (SelectedRecipeId == -1)
-                {
-                    return;
-                }
-
-                var perms = new BlockEntity.CachedAccessPerms(this.Api.World, this.Pos, player);
-                if (!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, false, "anvil")) // Do not validate picking range in case we got transported out of range.
-                {
-                    // No need to revert here, this cannot happen without packet manipulation.
-                    return;
-                }
-
-                // Rennorb 19.06.2026 security: Potentially griefable: anvils do not track who placed the item, therefore a second player could steal the work item by sending the cancel packet.
-                ditchWorkItemStack(player);
-                return;
-            }
-
-            if (packetid == (int)EnumAnvilPacket.OnUserOver)
-            {
-                var perms = new BlockEntity.CachedAccessPerms(this.Api.World, this.Pos, player);
-                if (!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "anvil"))
-                {
-                    // Rennorb 20.06.2026 ux: Revert block state for that player.
-                    return;
-                }
-
-                Vec3i voxelPos;
-                using (MemoryStream ms = new MemoryStream(data))
-                {
-                    BinaryReader reader = new BinaryReader(ms);
-                    voxelPos = new Vec3i(reader.ReadInt32(), reader.ReadInt32(), reader.ReadInt32());
-                }
-
-                OnUseOver(player, voxelPos, new BlockSelection() { Position = Pos });
-            }
+            // Rennorb 20.06.2026 explain: Why not call the base here?
+            // base.OnReceivedClientPacket(player, packetId, data, ref perms);
         }
 
-        bool CanDoRecipe(IClientWorldAccessor world, IRecipeBase recipe, ItemStack ingredient)
+        bool canDoRecipe(IClientWorldAccessor world, IRecipeBase recipe, ItemStack ingredient)
         {
             DummySlot slot = new(ingredient);
-            return world.Api.Event.TriggerMatchesRecipe(world.Player, recipe, [slot]);
+            return (recipe as SmithingRecipe)?.AnvilType == ((BlockAnvil)Block).AnvilType && world.Api.Event.TriggerMatchesRecipe(world.Player, recipe, [slot]);
         }
 
         internal void OpenDialog(ItemStack ingredient)
@@ -1193,7 +1201,7 @@ namespace Vintagestory.GameContent
             ICoreClientAPI capi = Api as ICoreClientAPI;
 
             IAnvilWorkable workableobj = ingredient.Collectible.GetCollectibleInterface<IAnvilWorkable>();
-            List<SmithingRecipe> recipes = workableobj.GetMatchingRecipes(ingredient).Where(r => CanDoRecipe(clientWorld, r, ingredient)).ToList();
+            List<SmithingRecipe> recipes = workableobj.GetMatchingRecipes(ingredient).Where(r => canDoRecipe(clientWorld, r, ingredient)).ToList();
 
             List<ItemStack> stacks = recipes
                 .Select(r => r.Output.ResolvedItemstack)

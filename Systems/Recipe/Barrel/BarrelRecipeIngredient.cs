@@ -1,6 +1,7 @@
 using System.IO;
 using Vintagestory.API;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 
 namespace Vintagestory.GameContent
 {
@@ -54,9 +55,9 @@ namespace Vintagestory.GameContent
             return result;
         }
 
-        public override void FromBytes(BinaryReader reader, IWorldAccessor resolver)
+        public override void FromBytes(ref BinarySpanReader reader, IWorldAccessor resolver)
         {
-            base.FromBytes(reader, resolver);
+            base.FromBytes(ref reader, resolver);
 
             bool isset = reader.ReadBoolean();
             if (isset)

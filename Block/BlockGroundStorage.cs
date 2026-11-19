@@ -245,7 +245,7 @@ namespace Vintagestory.GameContent
             Block belowBlock = world.BlockAccessor.GetBlock(posBelow);
             if (!belowBlock.CanAttachBlockAt(world.BlockAccessor, this, posBelow, BlockFacing.UP)) return false;
 
-            var storageProps = player.InventoryManager.ActiveHotbarSlot.Itemstack.Collectible.GetBehavior<CollectibleBehaviorGroundStorable>()?.StorageProps;
+            var storageProps = player.InventoryManager.ActiveHotbarSlot.Itemstack.Collectible.GetBehavior<CollectibleBehaviorGroundStorable>()?.GetStorageProperties(player.InventoryManager.ActiveHotbarSlot.Itemstack);
             if (storageProps != null && storageProps.CtrlKey && !player.Entity.Controls.CtrlKey)
             {
                 return false;
@@ -392,7 +392,7 @@ namespace Vintagestory.GameContent
             if (be is BlockEntityGroundStorage beg)
             {
                 ItemSlot slot = beg.Inventory.ToArray().Shuffle(capi.World.Rand).FirstOrDefault(s => !s.Empty);
-                if (slot != null)
+                if (slot?.Itemstack?.Collectible != null)
                 {
                     return slot.Itemstack.Collectible.GetRandomColor(capi, slot.Itemstack);
                 }
@@ -407,10 +407,11 @@ namespace Vintagestory.GameContent
             if (be is BlockEntityGroundStorage beg)
             {
                 ItemSlot slot = beg.Inventory.ToArray().Shuffle(capi.World.Rand).FirstOrDefault(s => !s.Empty);
-                if (slot != null)
+                if (slot?.Itemstack?.Collectible != null)
                 {
                     return slot.Itemstack.Collectible.GetRandomColor(capi, slot.Itemstack);
-                } else
+                }
+                else
                 {
                     return 0;
                 }

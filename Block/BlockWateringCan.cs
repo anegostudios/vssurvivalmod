@@ -9,7 +9,7 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockWateringCan : Block
+    public class BlockWateringCan : Block, IContainedCustomName
     {
         public float CapacitySeconds = 32;
 
@@ -33,7 +33,7 @@ namespace Vintagestory.GameContent
             WaterParticles.AddQuantity = 1;
 
             CapacitySeconds = Attributes?["capacitySeconds"].AsFloat(32) ?? 32;
-        }       
+        }
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling)
         {
@@ -257,7 +257,7 @@ namespace Vintagestory.GameContent
                     farmland.WaterFarmland(secondsUsed - prevsecondsused);
                 }
             }
-            
+
             float speed = 3f;
 
             if (secondsUsed > 1 / speed)
@@ -322,8 +322,8 @@ namespace Vintagestory.GameContent
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
-            
-            dsc.AppendLine();            
+
+            dsc.AppendLine();
 
             double perc = Math.Round(100 * GetRemainingWateringSeconds(inSlot.Itemstack) / CapacitySeconds);
             string colorn = ColorUtil.Int2Hex(GuiStyle.DamageColorGradient[(int)GameMath.Clamp(perc, 0, 99)]);
@@ -335,8 +335,18 @@ namespace Vintagestory.GameContent
             {
                 dsc.AppendLine(string.Format("<font color=\"{0}\">" + Lang.Get("{0}% full", perc) + "</font>", colorn));
             }
-            
+
         }
 
+        public string GetContainedName(ItemSlot inSlot, int quantity)
+        {
+            return inSlot.Itemstack!.GetName();
+        }
+
+        public string GetContainedInfo(ItemSlot inSlot)
+        {
+            double perc = Math.Round(100 * GetRemainingWateringSeconds(inSlot.Itemstack) / CapacitySeconds);
+            return perc < 1 ? Lang.Get("Empty") : Lang.Get("{0}% full", perc);
+        }
     }
 }

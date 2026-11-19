@@ -40,6 +40,7 @@ namespace Vintagestory.GameContent
         ICoreClientAPI capi;
 
         bool receivesHeat;
+        bool sufficientFuelHeat;
         float receivesHeatSmooth; // 0..1
         double progress; // 0..1
         double totalHoursLastUpdate;
@@ -223,20 +224,13 @@ namespace Vintagestory.GameContent
 
             if (!blockScs.IsCompleteCoffin(Pos))
             {
-                capi?.TriggerIngameError(this, "incomplete", Lang.Get("Cannot fill an incomplete coffin, place the other half first"));
+                capi?.TriggerIngameError(this, "incomplete", Lang.Get("cementationfurnace-incompletecoffin"));
                 return false;
             }
 
-            ItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
-
-
-            if (!slot.Empty)
-            {
-                if (IngotCount / 4 >= CoalLayerCount) return AddCoal(slot);
-                else return AddIngot(slot);
-            }
-
-            return true;
+            ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
+            if (hotbarSlot.Empty) return true;
+            return IngotCount / 4 >= CoalLayerCount ? AddCoal(hotbarSlot) : AddIngot(hotbarSlot);
         }
 
 
@@ -245,27 +239,27 @@ namespace Vintagestory.GameContent
         {
             if (CoalLayerCount >= 5)
             {
-                capi?.TriggerIngameError(this, "notenoughfuel", Lang.Get("This stone coffin is full already"));
+                capi?.TriggerIngameError(this, "fullcoffin", Lang.Get("cementationfurnace-fullcoffin"));
                 return false;
             }
 
             var props = slot.Itemstack.Collectible.GetCombustibleProperties(Api.World, slot.Itemstack, null);
             if (props == null || props.BurnTemperature < 1300)
             {
-                capi?.TriggerIngameError(this, "wrongfuel", Lang.Get("Needs a layer of high-quality carbon-bearing material (coke or charcoal)"));
+                capi?.TriggerIngameError(this, "wrongfuel", Lang.Get("cementationfurnace-wrongfuel"));
                 return false;
             }
 
             if (slot.Itemstack.StackSize < 8)
             {
-                capi?.TriggerIngameError(this, "notenoughfuel", Lang.Get("Each layer requires 8 pieces of fuel"));
+                capi?.TriggerIngameError(this, "notenoughfuel", Lang.Get("cementationfurnace-notenoughfuel"));
                 return false;
             }
 
             int moved = slot.TryPutInto(Api.World, inv[0], 8);
             if (moved == 0)
             {
-                capi?.TriggerIngameError(this, "cannotmixfuels", Lang.Get("Cannot mix materials, it will mess with the carburisation process!"));
+                capi?.TriggerIngameError(this, "cannotmixfuels", Lang.Get("cementationfurnace-cannotmixfuels"));
                 return false;
             }
 
@@ -279,13 +273,13 @@ namespace Vintagestory.GameContent
         {
             if (IngotCount >= 16)
             {
-                capi?.TriggerIngameError(this, "notenoughfuel", Lang.Get("This stone coffin is full already"));
+                capi?.TriggerIngameError(this, "fullcoffin", Lang.Get("cementationfurnace-fullcoffin"));
                 return false;
             }
 
             if (slot.Itemstack.ItemAttributes?["carburizableProps"].Exists == false)
             {
-                capi?.TriggerIngameError(this, "wrongfuel", Lang.Get("Next add some carburizable metal ingots"));
+                capi?.TriggerIngameError(this, "wrongingot", Lang.Get("cementationfurnace-wrongingot"));
                 return false;
             }
 
@@ -293,7 +287,7 @@ namespace Vintagestory.GameContent
             int moved = slot.TryPutInto(inv[1], ref op);
             if (moved == 0)
             {
-                capi?.TriggerIngameError(this, "cannotmixfuels", Lang.Get("Cannot mix ingots, it will mess with the carburisation process!"));
+                capi?.TriggerIngameError(this, "cannotmixingots", Lang.Get("cementationfurnace-cannotmixingots"));
                 return false;
             }
 
@@ -375,6 +369,7 @@ namespace Vintagestory.GameContent
             var currentTotalHours = Api.World.Calendar.TotalHours;
 
             var minHeatHours = float.MaxValue;
+            sufficientFuelHeat = true;
             foreach (var fuelPosition in FuelPositions)
             {
                 var heatHours = 0f;
@@ -391,6 +386,7 @@ namespace Vintagestory.GameContent
                 if (be is BlockEntityCoalPile becp && becp.IsBurning)
                 {
                     heatHours = becp.GetHoursLeft(currentTotalHours);
+                    sufficientFuelHeat &= becp.BurnTemperature >= 800;
                 }
                 // Api.Logger.Notification($"hh: {heatHours:F3}");
 
@@ -405,7 +401,7 @@ namespace Vintagestory.GameContent
                 totalHoursLastUpdate = currentTotalHours;
             }
 
-            receivesHeat = minHeatHours > 0;
+            receivesHeat = minHeatHours > 0 && sufficientFuelHeat;
 
             MultiblockStructure msInUse = null;
             BlockPos posInUse = null;
@@ -654,36 +650,29 @@ namespace Vintagestory.GameContent
         {
             if (processComplete)
             {
-                dsc.AppendLine(Lang.Get("Carburization process complete. Break to retrieve blister steel."));
+                dsc.AppendLine(Lang.Get("cementationfurnace-finishedfiring", inv[1].GetStackName()));
                 return;
             }
 
-            if (IsFull) {
-                if (!hasLid())
-                {
-                    dsc.AppendLine(Lang.Get("Stone coffin lid is missing"));
-                } else
+            if (IsFull)
+            {
+                string code = "coffinlidmissing";
+                if (hasLid())
                 {
                     if (!StructureComplete)
                     {
-                        dsc.AppendLine(Lang.Get("Structure incomplete! Can't get hot enough, carburization paused."));
+                        dsc.AppendLine(Lang.Get("cementationfurnace-structureincomplete"));
                         return;
                     }
-
-                    if (receivesHeat)
-                    {
-                        dsc.AppendLine(Lang.Get("Okay! Receives heat!"));
-                    } else
-                    {
-                        dsc.AppendLine(Lang.Get("Ready to be fired. Ignite a pile of coal below each stone coffin half."));
-                    }
-
+                    code = !sufficientFuelHeat ? "lowheatfuel" : receivesHeat ? "receivesheat" : "readytobefired";
                 }
+
+                dsc.AppendLine(Lang.Get($"cementationfurnace-{code}"));
             }
 
             if (progress > 0)
             {
-                dsc.AppendLine(Lang.Get("Carburization: {0}% complete", (int)(progress * 100)));
+                dsc.AppendLine(Lang.Get("cementationfurnace-firingprogress", (int)(progress * 100)));
             }
 
         }

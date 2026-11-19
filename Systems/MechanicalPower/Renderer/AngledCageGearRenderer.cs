@@ -8,8 +8,11 @@ namespace Vintagestory.GameContent.Mechanics
 {
     public class AngledCageGearRenderer : MechBlockRenderer
     {
-        CustomMeshDataPartFloat matrixAndLightFloats;
-        MeshRef blockMeshRef;
+        static readonly Vec2f noUvOffset = new();
+
+        readonly MaterialMeshPool pool;
+        readonly float[] lightAndTransform = new float[InstanceDataSize];
+        readonly Vec2f materialUvOffset = new();
 
         public AngledCageGearRenderer(ICoreClientAPI capi, MechanicalPowerMod mechanicalPowerMod, Block textureSoureBlock, CompositeShape shapeLoc) : base(capi, mechanicalPowerMod)
         {
@@ -19,7 +22,8 @@ namespace Vintagestory.GameContent.Mechanics
             Shape shape = API.Common.Shape.TryGet(capi, loc);
             Vec3f rot = new Vec3f(shapeLoc.rotateX, shapeLoc.rotateY, shapeLoc.rotateZ);
 
-            capi.Tesselator.TesselateShape(textureSoureBlock, shape, out MeshData blockMesh, rot);
+            var meshes = tesselateMaterialPieces(textureSoureBlock, shape, rot);
+            MeshData blockMesh = meshes[0].Mesh;
 
             if (shapeLoc.Overlays != null)
             {
@@ -36,51 +40,45 @@ namespace Vintagestory.GameContent.Mechanics
 
             //blockMesh.Rgba2 = null;
 
-            // 16 floats matrix, 4 floats light rgbs
-            blockMesh.CustomFloats = matrixAndLightFloats = new CustomMeshDataPartFloat((16 + 4) * 10100)
-            {
-                Instanced = true,
-                InterleaveOffsets = new int[] { 0, 16, 32, 48, 64 },
-                InterleaveSizes = new int[] { 4, 4, 4, 4, 4 },
-                InterleaveStride = 16 + 4 * 16,
-                StaticDraw = false,
-            };
-            blockMesh.CustomFloats.SetAllocationSize((16 + 4) * 10100);
-
-            this.blockMeshRef = capi.Render.UploadMesh(blockMesh);
+            pool = uploadMaterialMeshPool(meshes);
         }
 
         
         protected override void UpdateLightAndTransformMatrix(int index, Vec3f distToCamera, float rotation, IMechanicalPowerRenderable dev)
         {
             BEBehaviorMPAngledGears gear = dev as BEBehaviorMPAngledGears;
-            rotation = gear.LargeGearAngleRad(rotation);
+            rotation = gear.GetLargeGearAngleRad(rotation);
 
             float rotX = rotation * dev.AxisSign[0];
             float rotY = rotation * dev.AxisSign[1];
             float rotZ = rotation * dev.AxisSign[2];
 
-            UpdateLightAndTransformMatrix(matrixAndLightFloats.Values, index, distToCamera, dev.LightRgba, rotX, rotY, rotZ);
+            UpdateLightAndTransformMatrix(lightAndTransform, 0, distToCamera, dev.LightRgba, rotX, rotY, rotZ);
+            foreach (var piece in pool.Pieces)
+            {
+                Vec2f uvOffset = noUvOffset;
+                if (piece.MaterialTextureCode != null)
+                {
+                    gear.TryGetMaterialUvOffset(piece.MaterialTextureCode, materialUvOffset);
+                    uvOffset = materialUvOffset;
+                }
+                setMaterialInstance(piece.Floats.Values, index, lightAndTransform, uvOffset);
+            }
         }
 
         public override void OnRenderFrame(float deltaTime, IShaderProgram prog)
         {
             UpdateCustomFloatBuffer();
 
-            if (quantityBlocks > 0)
-            {
-                matrixAndLightFloats.Count = quantityBlocks * 20;
-                updateMesh.CustomFloats = matrixAndLightFloats;
-                capi.Render.UpdateMesh(blockMeshRef, updateMesh);
-                capi.Render.RenderMeshInstanced(blockMeshRef, quantityBlocks);
-            }
+            pool.Count = quantityBlocks;
+            renderMaterialMeshPool(prog, pool);
         }
 
         public override void Dispose()
         {
             base.Dispose();
 
-            blockMeshRef?.Dispose();
+            disposeMaterialMeshPool(pool);
         }
     }
 }

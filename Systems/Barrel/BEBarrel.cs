@@ -1,3 +1,4 @@
+using ProperVersion;
 using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -301,64 +302,64 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void OnReceivedClientPacket(IPlayer player, int packetid, byte[] data)
+        public override void OnReceivedClientPacket(IServerPlayer player, int packetId, SerializedData data, ref CachedAccessPerms perms)
         {
-            base.OnReceivedClientPacket(player, packetid, data);
-
-            if (packetid < 1000)
+            switch (packetId)
             {
-                var perms = new BlockEntity.CachedAccessPerms(this.Api.World, this.Pos, player);
-                if (!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "barrel"))
-                {
-                    Inventory.InvNetworkUtil.SendInventoryRollback((IServerPlayer)player, packetid, data);
-                    return;
-                }
+                case < (int)EnumBlockEntityPacketId.Open:
+                    if (!perms.TryAccessingBlockAtPos(EnumBlockAccessFlags.Use, true, "barrel"))
+                    {
+                        Inventory.InvNetworkUtil.SendInventoryRollback(player, packetId, data);
+                        break;
+                    }
 
-                Inventory.InvNetworkUtil.HandleClientPacket(player, packetid, data);
-                // Tell server to save this chunk to disk again
-                Api.World.BlockAccessor.GetChunkAtBlockPos(Pos).MarkModified();
+                    Inventory.InvNetworkUtil.HandleClientPacket(player, packetId, data);
+                    // Tell server to save this chunk to disk again
+                    Api.World.BlockAccessor.GetChunkAtBlockPos(Pos).MarkModified();
 
-                return;
-            }
+                    break;
 
-            if (packetid == (int)EnumBlockEntityPacketId.Close)
-            {
+
+                case (int)EnumBlockEntityPacketId.Open:
+                    if (!perms.TryAccessingBlockAtPos(EnumBlockAccessFlags.Use, true, "barrel"))
+                    {
+                         // No reverting, just drop the request.
+                        break;
+                    }
+
+                    player.InventoryManager?.OpenInventory(Inventory);
+
+                    break;
+
+
+                case (int)EnumBlockEntityPacketId.Close:
                     // No permission checks here, closing the ui is always allowed.
 
-                player.InventoryManager?.CloseInventory(Inventory);
+                    player.InventoryManager?.CloseInventory(Inventory);
+
+                    break;
+
+
+                case (int)BarrelPacketId.Seal:
+                    if (!perms.TryAccessingBlockAtPos(EnumBlockAccessFlags.Use, true, "barrel"))
+                    {
+                        ((ICoreServerAPI)Api).Network.SendBlockEntityPacket(player, Pos, (int)BarrelPacketId.RevertSeal);
+                        break;
+                    }
+
+                    SealBarrel();
+
+                    break;
             }
 
-            if (packetid == (int)EnumBlockEntityPacketId.Open)
-            {
-                var perms = new BlockEntity.CachedAccessPerms(this.Api.World, this.Pos, player);
-                if (!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "barrel"))
-                {
-                    // No reverting, just drop the request.
-                    return;
-                }
-
-                player.InventoryManager?.OpenInventory(Inventory);
-            }
-
-
-            if (packetid == 1337)
-            {
-                var perms = new BlockEntity.CachedAccessPerms(this.Api.World, this.Pos, player);
-                if (!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "barrel"))
-                {
-                    ((ICoreServerAPI)Api).Network.SendBlockEntityPacket((IServerPlayer)player, Pos, 1338);
-                    return;
-                }
-
-                SealBarrel();
-            }
+            base.OnReceivedClientPacket(player, packetId, data, ref perms);
         }
 
-        public override void OnReceivedServerPacket(int packetid, byte[] data)
+        public override void OnReceivedServerPacket(int packetId, SerializedData packetData)
         {
-            base.OnReceivedServerPacket(packetid, data);
+            base.OnReceivedServerPacket(packetId, packetData);
 
-            switch (packetid)
+            switch (packetId)
             {
                 case (int)EnumBlockEntityPacketId.Close:
                     (Api.World as IClientWorldAccessor).Player.InventoryManager.CloseInventory(Inventory);
@@ -367,7 +368,7 @@ namespace Vintagestory.GameContent
                     invDialog = null;
                     break;
 
-                case 1338:
+                case (int)BarrelPacketId.RevertSeal:
                     Sealed = false;
                     SealedSinceTotalHours = 0;
                     currentMesh = null;   // Trigger a re-tesselation. 
@@ -463,5 +464,11 @@ namespace Vintagestory.GameContent
             ICoolingMedium icm = liquidSlot.Itemstack.Collectible.GetCollectibleInterface<ICoolingMedium>();
             return icm?.CanCool(slot, pos) ?? false;
         }
+    }
+
+    enum BarrelPacketId
+    {
+        Seal = 1337,
+        RevertSeal = 1338,
     }
 }

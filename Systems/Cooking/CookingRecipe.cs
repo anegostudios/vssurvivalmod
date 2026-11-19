@@ -5,6 +5,7 @@ using System.Linq;
 using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
@@ -28,7 +29,7 @@ namespace Vintagestory.GameContent
         /// <returns>The name of the food type.</returns>
         public string GetNameForIngredients(IWorldAccessor worldForResolve, string recipeCode, ItemStack[] stacks)
         {
-            API.Datastructures.OrderedDictionary<ItemStack, int> quantitiesByStack = new ();
+            API.Datastructures.OrderedDictionary<ItemStack, int> quantitiesByStack = new();
             quantitiesByStack = mergeStacks(worldForResolve, stacks);
 
             CookingRecipe recipe = worldForResolve.Api.GetCookingRecipe(recipeCode);
@@ -529,7 +530,7 @@ namespace Vintagestory.GameContent
 
         protected static API.Datastructures.OrderedDictionary<ItemStack, int> mergeStacks(IWorldAccessor worldForResolve, ItemStack[] stacks)
         {
-            API.Datastructures.OrderedDictionary<ItemStack, int> dict = new ();
+            API.Datastructures.OrderedDictionary<ItemStack, int> dict = new();
 
             List<ItemStack> stackslist = [.. stacks];
             while (stackslist.Count > 0)
@@ -714,39 +715,40 @@ namespace Vintagestory.GameContent
 
         public bool Matches(ItemStack?[] inputStacks, ref int quantityServings)
         {
-            if (Ingredients == null) return false;
+            if (Ingredients == null || inputStacks.Length == 0) return false;
 
-            List<ItemStack?> inputStacksList = new(inputStacks);
-            List<CookingRecipeIngredient> ingredientList = [.. Ingredients];
+            var ingredients = Ingredients;
+            var inputStackSizes = new (int, float)[inputStacks.Length];
 
             int totalOutputQuantity = 99999;
 
-            int[] curQuantities = new int[ingredientList.Count];
+            int[] curQuantities = new int[ingredients.Length];
             for (int i = 0; i < curQuantities.Length; i++) curQuantities[i] = 0;
 
-            while (inputStacksList.Count > 0)
+            for (int i = 0; i < inputStacks.Length; i++)
             {
-                var inputStack = inputStacksList[0];
-                inputStacksList.RemoveAt(0);
+                var inputStack = inputStacks[i];
                 if (inputStack == null) continue;
 
                 bool found = false;
-                for (int i = 0; i < ingredientList.Count; i++)
+                for (int j = 0; j < ingredients.Length; j++)
                 {
-                    CookingRecipeIngredient ingred = ingredientList[i];
+                    CookingRecipeIngredient ingred = ingredients[j];
 
                     if (ingred.GetMatchingStack(inputStack) is CookingRecipeStack jstack)
                     {
-                        if (curQuantities[i] >= ingred.MaxQuantity) continue;
+                        if (curQuantities[j] >= ingred.MaxQuantity) continue;
                         int stackPortion = inputStack.StackSize / jstack.StackSize;
 
                         if (BlockLiquidContainerBase.GetContainableProps(inputStack) is WaterTightContainableProps props)
                         {
-                            stackPortion = (int)(inputStack.StackSize / jstack.StackSize / props.ItemsPerLitre / ingred.PortionSizeLitres);
+                            // Casting to float is necessary if the stack size ratio is not a whole number
+                            stackPortion = (int)(inputStack.StackSize / (jstack.StackSize * props.ItemsPerLitre * ingred.PortionSizeLitres));
                         }
 
                         totalOutputQuantity = Math.Min(totalOutputQuantity, stackPortion);
-                        curQuantities[i]++;
+                        inputStackSizes[i] = (jstack.StackSize, ingred.PortionSizeLitres);
+                        curQuantities[j]++;
                         found = true;
                         break;
                     }
@@ -757,9 +759,9 @@ namespace Vintagestory.GameContent
             }
 
             // Any required ingredients left?
-            for (int i = 0; i < ingredientList.Count; i++)
+            for (int i = 0; i < ingredients.Length; i++)
             {
-                if (curQuantities[i] < ingredientList[i].MinQuantity) return false;
+                if (curQuantities[i] < ingredients[i].MinQuantity) return false;
             }
 
             quantityServings = totalOutputQuantity;
@@ -769,11 +771,14 @@ namespace Vintagestory.GameContent
             {
                 var stack = inputStacks[i];
                 if (stack == null) continue;
+                (int jStackSize, float portionSizeLitres) = inputStackSizes[i];
 
-                int jStackSize = GetIngrendientFor(stack)?.GetMatchingStack(stack)?.StackSize ?? 1;
                 if (BlockLiquidContainerBase.GetContainableProps(stack) is WaterTightContainableProps props)
                 {
-                    if (stack.StackSize / jStackSize != (int)(quantityServings * props.ItemsPerLitre * (GetIngrendientFor(stack)?.PortionSizeLitres ?? 100))) quantityServings = -1;
+                    // See SurvivalHandbook.CreateCachedMealRecipeStacks
+                    int haveItems = stack.StackSize / jStackSize;
+                    int wantItems = (int)Math.Ceiling(quantityServings * props.ItemsPerLitre * portionSizeLitres);
+                    if (haveItems != wantItems) quantityServings = -1;
                 }
                 else if (stack.StackSize / jStackSize != quantityServings) quantityServings = -1;
 
@@ -809,9 +814,9 @@ namespace Vintagestory.GameContent
             CooksInto?.Resolve(world, sourceForErrorLogging);
         }
 
-        public ItemStack?[] GenerateRandomMeal(ICoreAPI api, ref Dictionary<CookingRecipeIngredient, HashSet<ItemStack?>>? cachedValidStacksByIngredient, ItemStack[] allstacks, int slots = 4, ItemStack? ingredientStack = null)
+        public ItemStack?[] GenerateRandomMeal(ICoreAPI api, ref Dictionary<CookingRecipeIngredient, HashSet<ItemStack?>>? cachedValidStacksByIngredient, ItemStack[]? allstacks, int slots = 4, ItemStack? ingredientStack = null)
         {
-            if (Ingredients == null) return new ItemStack?[slots];
+            if (Ingredients == null || allstacks == null) return new ItemStack?[slots];
 
             var validStacksByIngredient = cachedValidStacksByIngredient;
 
@@ -833,7 +838,10 @@ namespace Vintagestory.GameContent
 
                         if (BlockLiquidContainerBase.GetContainableProps(stack) is WaterTightContainableProps props)
                         {
-                            stack.StackSize *= (int)(props.ItemsPerLitre * ingredient.PortionSizeLitres);
+                            // Use ceil to make sure recipe matching works. Truncation breaks it.
+                            // e.g. 1 * 104 * 0.2 = 20.8 -> 21
+                            // Only 20 means CookingRecipe.Matches will fail because it truncates the ratio
+                            stack.StackSize = (int)Math.Ceiling(stack.StackSize * props.ItemsPerLitre * ingredient.PortionSizeLitres);
                         }
 
                         ingredientStacks.Add(stack);
@@ -851,8 +859,10 @@ namespace Vintagestory.GameContent
 
             List<ItemStack?> randomMeal = new();
 
-            while (!Matches(randomMeal.ToArray()))
+            int limit = 0;
+            while (!Matches(randomMeal.ToArray()) && limit < 10)
             {
+                limit++;
                 var valIngStacks = new Dictionary<CookingRecipeIngredient, List<ItemStack?>>();
                 foreach (var entry in validStacksByIngredient) valIngStacks.Add(entry.Key.Clone(), entry.Value.ToList());
                 valIngStacks = valIngStacks.OrderBy(x => api.World.Rand.Next()).ToDictionary(item => item.Key, item => item.Value);
@@ -982,9 +992,7 @@ namespace Vintagestory.GameContent
         /// <summary>
         /// Deserializes the alloy
         /// </summary>
-        /// <param name="reader"></param>
-        /// <param name="resolver"></param>
-        public void FromBytes(BinaryReader reader, IWorldAccessor resolver)
+        public void FromBytes(ref BinarySpanReader reader, IWorldAccessor resolver)
         {
             Code = reader.ReadString();
             Ingredients = new CookingRecipeIngredient[reader.ReadInt32()];
@@ -992,7 +1000,7 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < Ingredients.Length; i++)
             {
                 Ingredients[i] = new CookingRecipeIngredient() { Code = null!, ValidStacks = null! };
-                Ingredients[i].FromBytes(reader, resolver.ClassRegistry);
+                Ingredients[i].FromBytes(ref reader, resolver.ClassRegistry);
                 Ingredients[i].Resolve(resolver, "[FromBytes]");
             }
 
@@ -1002,12 +1010,12 @@ namespace Vintagestory.GameContent
             }
 
             PerishableProps = new TransitionableProperties();
-            PerishableProps.FromBytes(reader, resolver.ClassRegistry);
+            PerishableProps.FromBytes(ref reader, resolver.ClassRegistry);
 
             if (reader.ReadBoolean())
             {
-                CooksInto = new JsonItemStack();
-                CooksInto.FromBytes(reader, resolver.ClassRegistry);
+                CooksInto = new JsonItemStack { Code = null! };
+                CooksInto.FromBytes(ref reader, resolver.ClassRegistry);
                 CooksInto.Resolve(resolver, "[FromBytes]");
             }
 

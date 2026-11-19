@@ -207,7 +207,7 @@ namespace Vintagestory.GameContent
             OutStack.Collectible.SetTemperature(Api.World, OutSlot.Itemstack, 900, true);
 
             FuelSlot.Itemstack = null;
-            
+
             OreStack.StackSize -= q * combustibleProps.SmeltedRatio;
             if (OreSlot.StackSize == 0) OreSlot.Itemstack = null;
 
@@ -232,12 +232,12 @@ namespace Vintagestory.GameContent
                 Vec3d particlePos = smallMetalSparks.MinPos;
                 particlePos.Set(Pos.X + 0.5, Pos.Y, Pos.Z + 0.5);
                 particlePos.Sub(dir.X * (6/16.0) + 2/16f, 0, dir.Z * (6 / 16.0) + 2/16f);
-                
+
                 smallMetalSparks.MinPos = particlePos;
                 smallMetalSparks.VertexFlags = (byte)renderer.glowLevel;
                 smallMetalSparks.MinVelocity = new Vec3f(-0.5f - dir.X, -0.3f, -0.5f - dir.Z);
-                smallMetalSparks.AddVelocity = new Vec3f(1f - dir.X, 0.6f, 1f - dir.Z);                
-                
+                smallMetalSparks.AddVelocity = new Vec3f(1f - dir.X, 0.6f, 1f - dir.Z);
+
                 Api.World.SpawnParticles(smallMetalSparks, null);
             }
         }
@@ -263,7 +263,7 @@ namespace Vintagestory.GameContent
 
                 return true;
             }
-            
+
             return false;
         }
 
@@ -279,7 +279,7 @@ namespace Vintagestory.GameContent
             CombustibleProperties combustibleProps = sourceSlot.Itemstack.Collectible.GetCombustibleProperties(Api.World, sourceSlot.Itemstack, null);
             if (combustibleProps == null) return true;
 
-            if (combustibleProps.SmeltedStack != null && combustibleProps.MeltingPoint < MaxTemp && combustibleProps.MeltingPoint >= MinTemp) 
+            if (combustibleProps.SmeltedStack != null && combustibleProps.MeltingPoint < MaxTemp && combustibleProps.MeltingPoint >= MinTemp)
             {
                 if (sourceSlot.TryPutInto(Api.World, OreSlot, Math.Min(OreCapacity - OreSlot.StackSize, quantity)) > 0)
                 {
@@ -293,7 +293,7 @@ namespace Vintagestory.GameContent
 
             if (combustibleProps.BurnTemperature >= 1200 && combustibleProps.BurnDuration > 30)
             {
-                int maxRequired = (int)Math.Ceiling((float)OreSlot.StackSize / Ore2FuelRatio); 
+                int maxRequired = (int)Math.Ceiling((float)OreSlot.StackSize / Ore2FuelRatio);
 
                 if (sourceSlot.TryPutInto(Api.World, FuelSlot, Math.Min(maxRequired - FuelSlot.StackSize, quantity)) > 0)
                 {
@@ -352,7 +352,7 @@ namespace Vintagestory.GameContent
             renderer?.Dispose();
             ambientSound?.Dispose();
         }
-    
+
         public override void OnBlockRemoved()
         {
             renderer?.Dispose();
@@ -384,7 +384,7 @@ namespace Vintagestory.GameContent
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
-            if (Api.World.EntityDebugMode && forPlayer?.WorldData?.CurrentGameMode == EnumGameMode.Creative)
+            if (Api.World.EntityDebugMode)
             {
                 dsc.AppendLine(string.Format("Burning: {3}, Current total days: {0}, BurningStart total days: {1}, BurningUntil total days: {2}", Api.World.Calendar.TotalDays, burningStartTotalDays, burningUntilTotalDays, burning));
             }

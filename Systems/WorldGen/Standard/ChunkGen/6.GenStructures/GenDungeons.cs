@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Linq;
 using ProtoBuf;
 using Vintagestory.API.Common;
@@ -8,6 +9,7 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 using Vintagestory.Common.Collectible.Block;
+using Vintagestory.Datastructures;
 using Vintagestory.GameContent;
 using Vintagestory.ServerMods.NoObf;
 
@@ -45,6 +47,74 @@ namespace Vintagestory.ServerMods
         }
     }
 
+    public class DungeonProvider : IStructureProvider
+    {
+        public List<DungeonLocation> Dungeons = new List<DungeonLocation>();
+        public Dictionary<string, Dictionary<int,int>> DungeonSkipGenerationFlags = new ();
+        public Dictionary<long, List<DungeonPlaceTask>> dungeonPlaceTasksByRegion = new Dictionary<long, List<DungeonPlaceTask>>();
+
+        private int regionSize, mapSizeX;
+        public void Init(TiledDungeonConfig tcfg, ICoreServerAPI sapi)
+        {
+            regionSize = sapi.World.BlockAccessor.RegionSize;
+            mapSizeX = sapi.World.BlockAccessor.MapSizeX;
+            DungeonSkipGenerationFlags.Clear();
+            foreach (var dungeon in tcfg.Dungeons)
+            {
+                if (dungeon.SkipGenerationFlags != null)
+                {
+                    DungeonSkipGenerationFlags.Add(dungeon.Code, dungeon.SkipGenerationFlags);
+                }
+            }
+        }
+
+        public void LoadFromSavegame(ISaveGame saveGame)
+        {
+            var dungeons = saveGame.GetData<List<DungeonLocation>>("dungeonLocations");
+            if (dungeons != null)
+            {
+                Dungeons.AddRange(dungeons);
+            }
+        }
+
+        public long MapRegionIndex2D(int regionX, int regionZ)
+        {
+            return ((long)regionZ) * (mapSizeX / regionSize) + regionX;
+        }
+
+        public IStructureLocation? GetBlockingStructureAt(int x, int z, int category)
+        {
+            var regionIndex = MapRegionIndex2D(x/regionSize, z/regionSize);
+            if (!dungeonPlaceTasksByRegion.TryGetValue(regionIndex, out var list))
+            {
+                return null;
+            }
+            foreach (var loc in list)
+            {
+                if (DungeonSkipGenerationFlags.TryGetValue(loc.Code, out var flags))
+                {
+                    if(!flags.TryGetValue(category, out var checkRadius)) continue;
+
+                    if (checkRadius == 0 && loc.Location.Contains(x, z)) return loc;
+
+                    var distSq = loc.DungeonBoundaries.FastCenter.HorDistanceSqTo(x, z);
+
+                    if (checkRadius > 0 && distSq < checkRadius * checkRadius)
+                    {
+                        return loc;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        public bool PreventPlacementAt(int x, int z, int category)
+        {
+            return GetBlockingStructureAt(x, z, category) != null;
+        }
+    }
+
     public class GenDungeons : ModStdWorldGen
     {
         private ModSystemTiledDungeons tiledDungeonsSys = null!;
@@ -52,14 +122,12 @@ namespace Vintagestory.ServerMods
         private ICoreServerAPI sapi = null!;
         private LCGRandom rand = null!;
 
-        private Dictionary<long, List<DungeonPlaceTask>> dungeonPlaceTasksByRegion = new Dictionary<long, List<DungeonPlaceTask>>();
-
         private int regionSize;
         private BlockPos spawnPos = null!;
         private GenStoryStructures storyStructSys = null!;
         private GenBlockLayers genBlockLayers = null!;
         private LCGRandom grassRand = null!;
-        public List<DungeonLocation> Dungeons = new List<DungeonLocation>();
+        public DungeonProvider DungeonProvider = new DungeonProvider();
         public bool DungeonsDirty = false;
 
         public override double ExecuteOrder() { return 0.12; }
@@ -74,9 +142,10 @@ namespace Vintagestory.ServerMods
 
             tiledDungeonsSys = api.ModLoader.GetModSystem<ModSystemTiledDungeons>();
 
-            // Disabled because unfinished
             if (TerraGenConfig.DoDecorationPass)
             {
+                api.ModLoader.GetModSystem<ModSystemWorldGenStructures>()?.RegisterProvider(DungeonProvider);
+
                 api.Event.MapRegionGeneration(onMapRegionGen, "standard");
                 api.Event.ChunkColumnGeneration(onChunkColumnGen, EnumWorldGenPass.TerrainFeatures, "standard");
                 api.Event.GetWorldgenBlockAccessor(OnWorldGenBlockAccessor);
@@ -87,12 +156,84 @@ namespace Vintagestory.ServerMods
                 api.Event.MapRegionLoaded += Event_MapRegionLoaded;
                 api.Event.InitWorldGenerator(OnInitWorldGenerator, "standard");
                 genBlockLayers = api.ModLoader.GetModSystem<GenBlockLayers>();
+
+                sapi.ChatCommands.GetOrCreate("wgen")
+                    .BeginSubCommand("dungeon")
+                        .BeginSubCommand("addwaypoints").WithAlias("addway")
+                            .RequiresPlayer()
+                            .WithDescription("Add all generated dungeons as waypoints to the map")
+                            .HandleWith(OnAddDungeonWaypoints)
+                        .EndSubCommand()
+                        .BeginSubCommand("deletewaypoints").WithAlias("delway")
+                            .RequiresPlayer()
+                            .WithDescription("Remove all generated dungeon waypoints from the map")
+                            .HandleWith(OnDeleteDungeonWaypoints)
+                        .EndSubCommand()
+                    .EndSubCommand();
             }
+        }
+
+        private TextCommandResult OnDeleteDungeonWaypoints(TextCommandCallingArgs args)
+        {
+            var player = (IServerPlayer)args.Caller.Player;
+            var wml = sapi.ModLoader.GetModSystem<WorldMapManager>()?.MapLayers.FirstOrDefault(ml => ml is WaypointMapLayer) as WaypointMapLayer;
+
+            if (wml == null) return TextCommandResult.Error("Could not find waypoint map layer");
+
+            var ownWaypoints = wml.Waypoints.Where(w => w.OwningPlayerUid == player.PlayerUID).ToList();
+            var count = 0;
+            foreach (var dungeon in DungeonProvider.Dungeons)
+            {
+                var w = ownWaypoints.FirstOrDefault(w =>
+                    w.OwningPlayerUid == player.PlayerUID &&
+                    w.Position.Equals(dungeon.Position.ToVec3d()));
+                if (w != null)
+                {
+                    if (wml.Waypoints.Remove(w))
+                    {
+                        count++;
+                    }
+                }
+            }
+
+            wml.ResendWaypoints(player);
+            return TextCommandResult.Success($"Removed {count} dungeons waypoints from the map.");
+        }
+
+        private TextCommandResult OnAddDungeonWaypoints(TextCommandCallingArgs args)
+        {
+            var player = (IServerPlayer)args.Caller.Player;
+            var wml = sapi.ModLoader.GetModSystem<WorldMapManager>()?.MapLayers.FirstOrDefault(ml => ml is WaypointMapLayer) as WaypointMapLayer;
+
+            if (wml == null) return TextCommandResult.Error("Could not find waypoint map layer");
+            var ownWaypoints = wml.Waypoints.Where(w => w.OwningPlayerUid == player.PlayerUID).ToList();
+
+            foreach (var dungeon in DungeonProvider.Dungeons)
+            {
+                if (!ownWaypoints.Any(w =>
+                        w.OwningPlayerUid == player.PlayerUID &&
+                        w.Position.Equals(dungeon.Position.ToVec3d())))
+                {
+                    wml.AddWaypoint(new Waypoint
+                    {
+                        Color = ColorUtil.ColorFromRgba(43, 173, 251, 255),
+                        Icon = "ruin-undergroundlarge",
+                        Pinned = false,
+                        Position = dungeon.Position.ToVec3d(),
+                        OwningPlayerUid = player.PlayerUID,
+                        Title = "",
+                    }, player);
+                }
+            }
+
+            wml.ResendWaypoints(player);
+            return TextCommandResult.Success($"Added {DungeonProvider.Dungeons.Count} dungeons to the map.");
         }
 
         private void OnInitWorldGenerator()
         {
             tiledDungeonsSys.Init();
+            DungeonProvider.Init(tiledDungeonsSys.Tcfg, sapi);
             var df = sapi.WorldManager.SaveGame.DefaultSpawn;
             if (df != null)
             {
@@ -103,14 +244,28 @@ namespace Vintagestory.ServerMods
             }
 
             storyStructSys = sapi.ModLoader.GetModSystem<GenStoryStructures>();
-            grassRand = new LCGRandom(sapi.WorldManager.Seed);
+            grassRand = new LCGRandom(sapi.WorldManager.SeedWorldgen);
         }
 
         private void OnWorldGenBlockAccessor(IChunkProviderThread chunkProvider)
         {
             worldgenBlockAccessor = chunkProvider.GetBlockAccessor(false);
-            rand = new LCGRandom(sapi.WorldManager.Seed ^ 8991827198);
+            rand = new LCGRandom(sapi.WorldManager.SeedWorldgen ^ 8991827198);
             regionSize = sapi.World.BlockAccessor.RegionSize;
+        }
+
+        private void Event_GameWorldSave()
+        {
+            if (DungeonsDirty)
+            {
+                sapi.WorldManager.SaveGame.StoreData("dungeonLocations", SerializerUtil.Serialize(DungeonProvider.Dungeons));
+                DungeonsDirty = false;
+            }
+        }
+
+        private void Event_SaveGameLoaded()
+        {
+            DungeonProvider.LoadFromSavegame(sapi.WorldManager.SaveGame);
         }
 
         private void Event_MapRegionLoaded(Vec2i mapCoord, IMapRegion region)
@@ -120,7 +275,16 @@ namespace Vintagestory.ServerMods
                 var tasks = region.GetModdata<List<DungeonPlaceTask>>("dungeonPlaceTasks");
                 if (tasks != null)
                 {
-                    dungeonPlaceTasksByRegion[MapRegionIndex2D(mapCoord.X, mapCoord.Y)] = tasks;
+                    foreach (var placeTask in tasks)
+                    {
+                        if(placeTask.AttributesBytes != null)
+                        {
+                            var reader = new BinarySpanReader(placeTask.AttributesBytes);
+                            placeTask.Attributes = new TreeAttribute();
+                            placeTask.Attributes.FromBytes(ref reader);
+                        }
+                    }
+                    DungeonProvider.dungeonPlaceTasksByRegion[MapRegionIndex2D(mapCoord.X, mapCoord.Y)] = tasks;
                 }
             }
             catch
@@ -129,28 +293,21 @@ namespace Vintagestory.ServerMods
             }
         }
 
-        private void Event_GameWorldSave()
-        {
-            if (DungeonsDirty)
-            {
-                sapi.WorldManager.SaveGame.StoreData("dungeonLocations", SerializerUtil.Serialize(Dungeons));
-                DungeonsDirty = false;
-            }
-        }
-
-        private void Event_SaveGameLoaded()
-        {
-            var strucs = sapi.WorldManager.SaveGame.GetData<List<DungeonLocation>>("dungeonLocations");
-            if (strucs != null)
-            {
-                Dungeons.AddRange(strucs);
-            }
-        }
-
         private void Event_MapRegionUnloaded(Vec2i mapCoord, IMapRegion region)
         {
-            if (dungeonPlaceTasksByRegion.TryGetValue(MapRegionIndex2D(mapCoord.X, mapCoord.Y), out var list) && list.Any(d => d.IsDirty))
+            if (DungeonProvider.dungeonPlaceTasksByRegion.TryGetValue(MapRegionIndex2D(mapCoord.X, mapCoord.Y), out var list) && list.Any(d => d.IsDirty))
             {
+                var ms = new FastMemoryStream();
+                var writer = new BinaryWriter(ms);
+                foreach (var placeTask in list.Where(placeTask => placeTask.IsDirty))
+                {
+                    ms.Reset();
+                    if (placeTask.Attributes?.Count > 0)
+                    {
+                        placeTask.Attributes.ToBytes(writer);
+                        placeTask.AttributesBytes = ms.ToArray();
+                    }
+                }
                 region.SetModdata("dungeonPlaceTasks", list);
             }
         }
@@ -158,17 +315,16 @@ namespace Vintagestory.ServerMods
         private void onMapRegionGen(IMapRegion mapRegion, int regionX, int regionZ, ITreeAttribute? chunkGenParams = null)
         {
             int size = sapi.WorldManager.RegionSize;
-            var mapRand = new LCGRandom(sapi.WorldManager.Seed ^ 8991827198);
+            var mapRand = new LCGRandom(sapi.WorldManager.SeedWorldgen ^ 8991827198);
             mapRand.InitPositionSeed(regionX * size, regionZ * size);
 
             long mapRegionIndex = MapRegionIndex2D(regionX, regionZ);
-
-            if (dungeonPlaceTasksByRegion.ContainsKey(mapRegionIndex))
+            if (DungeonProvider.dungeonPlaceTasksByRegion.ContainsKey(mapRegionIndex))
             {
-                Dungeons.RemoveAll(d => d.Position.X / regionSize == regionX && d.Position.Z / regionSize == regionZ);
+                DungeonProvider.Dungeons.RemoveAll(d => d.Position.X / regionSize == regionX && d.Position.Z / regionSize == regionZ);
             }
 
-            dungeonPlaceTasksByRegion[mapRegionIndex] = new List<DungeonPlaceTask>();
+            DungeonProvider.dungeonPlaceTasksByRegion[mapRegionIndex] = new List<DungeonPlaceTask>();
 
             var dungeons = tiledDungeonsSys.Tcfg.Dungeons.Where(d => d.Worldgen).ToList();
 
@@ -204,10 +360,9 @@ namespace Vintagestory.ServerMods
 
                     if (placeTask != null)
                     {
-                        sapi.Logger.Debug($"Dungeon {dungeon.Code} @: /tp ={posx} {posy} ={posz}");
                         placeTask.IsDirty = true;
-                        dungeonPlaceTasksByRegion[mapRegionIndex].Add(placeTask);
-                        Dungeons.Add(new DungeonLocation(dungeonStartPos, placeTask.Code, placeTask.DungeonBoundaries));
+                        DungeonProvider.dungeonPlaceTasksByRegion[mapRegionIndex].Add(placeTask);
+                        DungeonProvider.Dungeons.Add(new DungeonLocation(dungeonStartPos, placeTask.Code, placeTask.DungeonBoundaries));
                         DungeonsDirty = true;
                         mapRegion.AddGeneratedStructures(placeTask.GeneratedStructures);
                         didGen = true;
@@ -242,7 +397,7 @@ namespace Vintagestory.ServerMods
         private bool SatisfiesMinDistance(int posx, int posy, int posz)
         {
             bool satisfiesDistance = true;
-            foreach (var pos in Dungeons)
+            foreach (var pos in DungeonProvider.Dungeons)
             {
                 if (pos.Position.DistanceSqTo(posx, posy, posz) < tiledDungeonsSys.Tcfg.MinDistanceSq)
                 {
@@ -340,7 +495,7 @@ namespace Vintagestory.ServerMods
 
         public long MapRegionIndex2D(int regionX, int regionZ)
         {
-            return ((long)regionZ) * (sapi.WorldManager.MapSizeX / sapi.WorldManager.RegionSize) + regionX;
+            return ((long)regionZ) * (sapi.WorldManager.MapSizeX / regionSize) + regionX;
         }
 
         private void onChunkColumnGen(IChunkColumnGenerateRequest request)
@@ -360,7 +515,10 @@ namespace Vintagestory.ServerMods
                 for (int dz = -1; dz <= 1; dz++)
                 {
                     var mapRegionIndex2D = MapRegionIndex2D(regionx + dx, regionz + dz);
-                    if (!dungeonPlaceTasksByRegion.TryGetValue(mapRegionIndex2D, out var dungePlaceTasks)) continue;
+                    if (!DungeonProvider.dungeonPlaceTasksByRegion.TryGetValue(mapRegionIndex2D, out var dungePlaceTasks)) continue;
+
+                    var data = new SchematicPlacementData(worldgenBlockAccessor, sapi.World);
+                    data.Set(request.Chunks, request.ChunkX, request.ChunkZ, EnumReplaceMode.ReplaceAll, null, GlobalConfig.ReplaceMetaBlocks);
 
                     foreach (var placeTask in dungePlaceTasks)
                     {
@@ -391,8 +549,9 @@ namespace Vintagestory.ServerMods
                         {
                             rockBlock = worldgenBlockAccessor.GetBlock(placeTask.RockBlockCode);
                         }
+                        data.RockBlock = rockBlock;
 
-                        generateDungeonPartial(region, dungeon, placeTask, request.Chunks, request.ChunkX, request.ChunkZ, rockBlock);
+                        generateDungeonPartial(dungeon, placeTask, data);
 
                         if (placeTask.StairsConnector == null) continue;
 
@@ -402,109 +561,115 @@ namespace Vintagestory.ServerMods
 
                         // pregenrate the surface connection and then store it
                         // this needs to be done here since now we have the final terrain height
-                        if (placeTask.SurfacePlaceTasks == null && dungeon.StairCase != null)
-                        {
-                            var pos = new BlockPos(connector.Position.X, connector.Position.Y, connector.Position.Z);
-                            var height = sapi.World.BlockAccessor.GetTerrainMapheightAt(pos);
-                            if (height == 0) continue;
-                            // skip if we get our of range where we can generate, should not happen if the stairs and surface rooms are not larger than 2 chunks
-                            height += dungeon.surfaceYOffset;
+                        if (preGenDungeonStairs(placeTask, dungeon, region)) continue;
 
-                            rand.InitPositionSeed(connector.Position.X, connector.Position.Y, connector.Position.Z);
-                            var tileIndices = new int[dungeon.StairCase.Tiles.Count];
-                            for (int i = 0; i < tileIndices.Length; i++) tileIndices[i] = i;
-
-                            DungeonGenWorkspace dgd = new DungeonGenWorkspace(dungeon.StairCase, 0, 0, [], [], [], [], null);
-
-                            var currHeight = connector.Position.Y;
-
-                            var surfacePlaceTasks = new List<TilePlaceTask>();
-
-                            var tries = 40;
-                            ConnectorMetaData curConnector = connector;
-                            BlockSchematicPartial? schematic = null;
-                            DungeonTile? tile = null;
-                            while (tries-- > 0 && currHeight < height && curConnector.Facing != null)
-                            {
-                                FastVec3i? offsetPos = null;
-
-                                if (!pickStairTile(dgd, curConnector, tileIndices, ref schematic, ref tile, ref offsetPos)) continue;
-                                if (currHeight == height) break; // exit if we reached the final height
-                                if (currHeight + schematic.SizeY >= height) continue; // retry with the chance to get a smaller tile that still fits
-                                currHeight += schematic.SizeY;
-
-                                var fastPos = curConnector.Position.AddCopy(curConnector.Facing).Sub(offsetPos.Value);
-                                var startPos = new BlockPos(fastPos.X, fastPos.Y, fastPos.Z);
-
-                                surfacePlaceTasks.Add(new TilePlaceTask()
-                                {
-                                    Rotation = connector.Rotation,
-                                    Pos = startPos,
-                                    FileName = schematic.FromFile,
-                                    TileCode = tile.Code,
-                                    SizeX = schematic.SizeX,
-                                    SizeY = schematic.SizeY,
-                                    SizeZ = schematic.SizeZ,
-                                });
-
-                                curConnector = schematic.Connectors.First(p => !p.ConnectsTo(curConnector)).Clone().Offset(fastPos);
-                                var location = new Cuboidi(startPos, startPos.AddCopy(schematic.SizeX, schematic.SizeY, schematic.SizeZ));
-
-                                if (cuboid.Intersects(location))
-                                {
-                                    region.AddGeneratedStructure(new GeneratedStructure()
-                                    {
-                                        Code = schematic.FromFile.GetNameWithDomain(),
-                                        Group = "stairs",
-                                        Location = location,
-                                        SuppressTreesAndShrubs = true,
-                                        SuppressRivulets = true
-                                    });
-                                }
-                            }
-
-                            if (curConnector.Facing != null && dungeon.Surface != null)
-                            {
-                                schematic = dungeon.Surface[connector.Rotation];
-                                var offset = schematic.Connectors.First(p => p.ConnectsTo(curConnector)).Position;
-                                var fastPos = curConnector.Position.AddCopy(curConnector.Facing).Sub(offset);
-                                var startPos = new BlockPos(fastPos.X, fastPos.Y, fastPos.Z);
-
-                                surfacePlaceTasks.Add(new TilePlaceTask()
-                                {
-                                    Rotation = connector.Rotation,
-                                    Pos = startPos,
-                                    FileName = schematic.FromFile,
-                                    TileCode = "surface",
-                                    SizeX = schematic.SizeX,
-                                    SizeY = schematic.SizeY,
-                                    SizeZ = schematic.SizeZ,
-                                });
-                                var location = new Cuboidi(startPos, startPos.AddCopy(schematic.SizeX, schematic.SizeY, schematic.SizeZ));
-                                if (cuboid.Intersects(location))
-                                {
-                                    region.AddGeneratedStructure(new GeneratedStructure()
-                                    {
-                                        Code = schematic.FromFile.GetNameWithDomain(),
-                                        Group = "stairs",
-                                        Location = location,
-                                        SuppressTreesAndShrubs = true,
-                                        SuppressRivulets = true
-                                    });
-                                }
-                            }
-
-                            placeTask.SurfacePlaceTasks = surfacePlaceTasks;
-                            placeTask.IsDirty = true;
-                        }
-
-                        if (placeTask.SurfacePlaceTasks != null)
-                        {
-                            generateDungeonSurfacePartial(request ,region, dungeon, placeTask.SurfacePlaceTasks, request.Chunks, request.ChunkX, request.ChunkZ, rockBlock);
-                        }
+                        generateDungeonSurfacePartial(dungeon, placeTask, request, data);
                     }
                 }
             }
+        }
+
+        private bool preGenDungeonStairs(DungeonPlaceTask placeTask, TiledDungeon dungeon, IMapRegion region)
+        {
+            if (placeTask.SurfacePlaceTasks != null || dungeon.StairCase == null || placeTask.StairsConnector == null)
+            {
+                return false;
+            }
+
+            ConnectorMetaData connector = placeTask.StairsConnector.Value;
+            var pos = new BlockPos(connector.Position.X, connector.Position.Y, connector.Position.Z);
+            var height = worldgenBlockAccessor.GetTerrainMapheightAt(pos);
+            if (height == 0) return true;
+            // skip if we get our of range where we can generate, should not happen if the stairs and surface rooms are not larger than 2 chunks
+            height += dungeon.surfaceYOffset;
+
+            rand.InitPositionSeed(connector.Position.X, connector.Position.Y, connector.Position.Z);
+            var tileIndices = new int[dungeon.StairCase.Tiles.Count];
+            for (int i = 0; i < tileIndices.Length; i++) tileIndices[i] = i;
+
+            var dgd = new DungeonGenWorkspace(dungeon.StairCase, 0, 0, [], [], [], [], null);
+
+            var currHeight = connector.Position.Y;
+
+            var surfacePlaceTasks = new List<TilePlaceTask>();
+
+            var tries = 40;
+            ConnectorMetaData curConnector = connector;
+            BlockSchematicPartial? schematic = null;
+            DungeonTile? tile = null;
+            while (tries-- > 0 && currHeight < height && curConnector.Facing != null)
+            {
+                FastVec3i? offsetPos = null;
+
+                if (!pickStairTile(dgd, curConnector, tileIndices, ref schematic, ref tile, ref offsetPos)) continue;
+                if (currHeight == height) break; // exit if we reached the final height
+                if (currHeight + schematic.SizeY >= height) continue; // retry with the chance to get a smaller tile that still fits
+                currHeight += schematic.SizeY;
+
+                var fastPos = curConnector.Position.AddCopy(curConnector.Facing).Sub(offsetPos.Value);
+                var startPos = new BlockPos(fastPos.X, fastPos.Y, fastPos.Z);
+
+                surfacePlaceTasks.Add(new TilePlaceTask()
+                {
+                    Rotation = connector.Rotation,
+                    Pos = startPos,
+                    FileName = schematic.FromFile,
+                    TileCode = tile.Code,
+                    SizeX = schematic.SizeX,
+                    SizeY = schematic.SizeY,
+                    SizeZ = schematic.SizeZ,
+                });
+
+                curConnector = schematic.Connectors.First(p => !p.ConnectsTo(curConnector)).Clone().Offset(fastPos);
+                var location = new Cuboidi(startPos, startPos.AddCopy(schematic.SizeX, schematic.SizeY, schematic.SizeZ));
+
+                if (placeTask.DungeonBoundaries.Intersects(location))
+                {
+                    region.AddGeneratedStructure(new GeneratedStructure()
+                    {
+                        Code = schematic.FromFile.GetNameWithDomain(),
+                        Group = "stairs",
+                        Location = location,
+                        SuppressTreesAndShrubs = true,
+                        SuppressRivulets = true
+                    });
+                }
+            }
+
+            if (curConnector.Facing != null && dungeon.Surface != null)
+            {
+                schematic = dungeon.Surface[connector.Rotation];
+                var offset = schematic.Connectors.First(p => p.ConnectsTo(curConnector)).Position;
+                var fastPos = curConnector.Position.AddCopy(curConnector.Facing).Sub(offset);
+                var startPos = new BlockPos(fastPos.X, fastPos.Y, fastPos.Z);
+
+                surfacePlaceTasks.Add(new TilePlaceTask()
+                {
+                    Rotation = connector.Rotation,
+                    Pos = startPos,
+                    FileName = schematic.FromFile,
+                    TileCode = "surface",
+                    SizeX = schematic.SizeX,
+                    SizeY = schematic.SizeY,
+                    SizeZ = schematic.SizeZ,
+                });
+                var location = new Cuboidi(startPos, startPos.AddCopy(schematic.SizeX, schematic.SizeY, schematic.SizeZ));
+                if (placeTask.DungeonBoundaries.Intersects(location))
+                {
+                    region.AddGeneratedStructure(new GeneratedStructure()
+                    {
+                        Code = schematic.FromFile.GetNameWithDomain(),
+                        Group = "stairs",
+                        Location = location,
+                        SuppressTreesAndShrubs = true,
+                        SuppressRivulets = true
+                    });
+                }
+            }
+
+            placeTask.SurfacePlaceTasks = surfacePlaceTasks;
+            placeTask.IsDirty = true;
+            return false;
         }
 
 
@@ -543,9 +708,11 @@ namespace Vintagestory.ServerMods
             return false;
         }
 
-        private void generateDungeonSurfacePartial(IChunkColumnGenerateRequest request, IMapRegion region, TiledDungeon dungeon, List<TilePlaceTask> placeTasks, IServerChunk[] chunks, int chunkX, int chunkZ, Block? rockBlock)
+        private void generateDungeonSurfacePartial(TiledDungeon dungeon, DungeonPlaceTask dungeonPlaceTask, IChunkColumnGenerateRequest request, SchematicPlacementData data)
         {
-            foreach (var placeTask in placeTasks)
+            if (dungeonPlaceTask.SurfacePlaceTasks == null) return;
+
+            foreach (var placeTask in dungeonPlaceTask.SurfacePlaceTasks)
             {
                 BlockSchematicPartial? schematic = null;
                 if (placeTask.TileCode == null || !dungeon.StairCase.TilesByCode.TryGetValue(placeTask.TileCode, out var tile))
@@ -577,17 +744,23 @@ namespace Vintagestory.ServerMods
                 }
 
                 if (schematic == null) continue;
-                var placed = schematic.PlacePartial(chunks, worldgenBlockAccessor, sapi.World, chunkX, chunkZ, placeTask.Pos, EnumReplaceMode.ReplaceAll, null, GlobalConfig.ReplaceMetaBlocks, true, dungeon.resolvedRockTypeRemaps, dungeon.replacewithblocklayersBlockids, rockBlock);
+
+                data.Set(placeTask.Pos, dungeon.resolvedRockTypeRemaps, dungeon.replacewithblocklayersBlockids);
+                data.Attributes ??= new TreeAttribute();
+                data.Attributes.SetString("keyId", placeTask.Pos.ToString());
+
+                var placed = schematic.PlacePartial(data);
                 if (placed > 0)
                 {
                     UpdateHeightmap(request, worldgenBlockAccessor);
                     GenerateGrass(sapi, request, grassRand, genBlockLayers);
+                    dungeonPlaceTask.IsDirty |= data.AttributesDirty;
                 }
 
-                if (request.ChunkX == placeTask.Pos.X / chunksize && request.ChunkZ == placeTask.Pos.Z / chunksize)
+                if (data.ChunkX == placeTask.Pos.X / chunksize && data.ChunkZ == placeTask.Pos.Z / chunksize)
                 {
                     var location = new Cuboidi(placeTask.Pos, placeTask.Pos.AddCopy(schematic.SizeX, schematic.SizeY, schematic.SizeZ));
-                    region.AddGeneratedStructure(new GeneratedStructure()
+                    data.Chunks[0].MapChunk.MapRegion.AddGeneratedStructure(new GeneratedStructure()
                     {
                         Code = schematic.FromFile.GetNameWithDomain(),
                         Group = dungeon.Code,
@@ -611,8 +784,9 @@ namespace Vintagestory.ServerMods
             }
         }
 
-        private void generateDungeonPartial(IMapRegion region, TiledDungeon dungeon, DungeonPlaceTask dungeonPlaceTask, IServerChunk[] chunks, int chunkX, int chunkZ, Block? rockBlock)
+        private void generateDungeonPartial(TiledDungeon dungeon, DungeonPlaceTask dungeonPlaceTask, SchematicPlacementData data)
         {
+            data.Attributes = dungeonPlaceTask.Attributes;
             foreach (var placeTask in dungeonPlaceTask.TilePlaceTasks)
             {
                 if (!dungeon.TilesByCode.TryGetValue(placeTask.TileCode, out var tile)) continue; // Ignore dungeon tiles that no longer exist in assets
@@ -634,11 +808,19 @@ namespace Vintagestory.ServerMods
                 }
 
                 var schematic = tile.ResolvedSchematics[roomIndex][placeTask.Rotation];
-                schematic.PlacePartial(chunks, worldgenBlockAccessor, sapi.World, chunkX, chunkZ, placeTask.Pos, EnumReplaceMode.ReplaceAll, null, GlobalConfig.ReplaceMetaBlocks, true, dungeon.resolvedRockTypeRemaps, dungeon.replacewithblocklayersBlockids, rockBlock);
-                if (chunkX == placeTask.Pos.X / chunksize && chunkZ == placeTask.Pos.Z / chunksize)
+
+                data.Set(placeTask.Pos, dungeon.resolvedRockTypeRemaps, dungeon.replacewithblocklayersBlockids);
+
+                var placed = schematic.PlacePartial(data);
+                if (placed > 0)
+                {
+                    dungeonPlaceTask.IsDirty |= data.AttributesDirty;
+                }
+
+                if (data.ChunkX == placeTask.Pos.X / chunksize && data.ChunkZ == placeTask.Pos.Z / chunksize)
                 {
                     var location = new Cuboidi(placeTask.Pos, placeTask.Pos.AddCopy(schematic.SizeX, schematic.SizeY, schematic.SizeZ));
-                    region.AddGeneratedStructure(new GeneratedStructure()
+                    data.Chunks[0].MapChunk.MapRegion.AddGeneratedStructure(new GeneratedStructure()
                     {
                         Code = schematic.FromFile.GetNameWithDomain(),
                         Group = dungeonPlaceTask.Code,

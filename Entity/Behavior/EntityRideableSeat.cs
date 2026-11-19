@@ -18,6 +18,7 @@ namespace Vintagestory.GameContent
         protected EntityPos seatPos = new EntityPos();
         protected Matrixf modelmat = new Matrixf();
         protected string RideableClassName = "rideableanimal";
+        protected virtual bool ApplyEntityRenderAnglesToSeatPosition => true;
 
         public override Vec3f LocalEyePos
         {
@@ -66,7 +67,7 @@ namespace Vintagestory.GameContent
                     // Note this is not mathematically correct - sin (x/2) + sin(x/2) != sin(x) - but works as a good enough approximation
                     modelmat.RotateZ((float)mountedEntity.StepPitch * (1 - pitchApplied));
 
-                    if (esr != null)
+                    if (esr != null && ApplyEntityRenderAnglesToSeatPosition)
                     {
                         modelmat.RotateX(esr.nowSwivelRad + esr.xangle);
                         modelmat.RotateY(esr.yangle);
@@ -95,9 +96,9 @@ namespace Vintagestory.GameContent
                 // Deliberately leaves out the rotation from animating the attachment point, because we don't actually want to exactly match the elk's motions
                 if (apap != null)
                 {
-                    seatPos.Roll += (float)apap.AttachPoint.RotationX;
-                    seatPos.Yaw += (float)apap.AttachPoint.RotationY;
-                    seatPos.Pitch += (float)apap.AttachPoint.RotationZ;
+                    seatPos.Roll += (float)apap.AttachPoint.RotationX * GameMath.DEG2RAD;
+                    seatPos.Yaw += (float)apap.AttachPoint.RotationY * GameMath.DEG2RAD;
+                    seatPos.Pitch += (float)apap.AttachPoint.RotationZ * GameMath.DEG2RAD;
                 }
 
                 return seatPos;
@@ -194,8 +195,23 @@ namespace Vintagestory.GameContent
 
         public override float FpHandPitchFollow => 0.2f;
 
+        #region Rider hunger
+
+        public float RiderSatietyLossPerSecond;
+        public float RiderSatietyLossPerMovementSecond;
+        public float RiderSatietyLossPerSprintSecond;
+        public float RiderSatietyLossPerJump;
+
+        #endregion
         public EntityRideableSeat(IMountable mountablesupplier, string seatId, SeatConfig config) : base(mountablesupplier, seatId, config)
         {
+            var hungerProps = config?.Attributes?["riderSatLoss"];
+            if (hungerProps?.Exists != true) return;
+
+            RiderSatietyLossPerSecond = hungerProps["perSec"].AsFloat();
+            RiderSatietyLossPerMovementSecond = hungerProps["perMoveSec"].AsFloat();
+            RiderSatietyLossPerSprintSecond = hungerProps["perSprintSec"].AsFloat();
+            RiderSatietyLossPerJump = hungerProps["perJump"].AsFloat();
         }
 
         public override bool CanMount(EntityAgent entityAgent)
@@ -209,10 +225,9 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            var ebho = Entity.GetBehavior<EntityBehaviorOwnable>();
-            if (ebho != null && !ebho.IsOwner(player) && config.Controllable)
+            if (config.Controllable && EntityUtil.RestrictedByOwnership(Entity, entityAgent))
             {
-                (player.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "requiersownership", Lang.Get("mount-interact-requiresownership"));
+                (player.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "requiresownership", Lang.Get("mount-interact-requiresownership"));
                 return false;
             }
             return true;
@@ -239,7 +254,6 @@ namespace Vintagestory.GameContent
             if (Entity != null)
             {
                 Entity.GetBehavior<EntityBehaviorTaskAI>()?.TaskManager.StopTasks();
-                Entity.StartAnimation("idle");
 
                 var capi = entityAgent.Api as ICoreClientAPI;
                 if (capi != null && capi.World.Player.Entity.EntityId == entityAgent.EntityId) // Isself

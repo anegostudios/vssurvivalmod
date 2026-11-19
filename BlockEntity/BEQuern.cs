@@ -480,16 +480,11 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnReceivedClientPacket(IPlayer player, int packetid, byte[] data)
+        public override void OnReceivedServerPacket(int packetId, SerializedData packetData)
         {
-            base.OnReceivedClientPacket(player, packetid, data);
-        }
+            base.OnReceivedServerPacket(packetId, packetData);
 
-        public override void OnReceivedServerPacket(int packetid, byte[] data)
-        {
-            base.OnReceivedServerPacket(packetid, data);
-
-            if (packetid == (int)EnumBlockEntityPacketId.Close)
+            if (packetId == (int)EnumBlockEntityPacketId.Close)
             {
                 (Api.World as IClientWorldAccessor).Player.InventoryManager.CloseInventory(Inventory);
                 invDialog?.TryClose();

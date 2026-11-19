@@ -79,7 +79,7 @@ namespace Vintagestory.GameContent
         {
             if (world.BlockAccessor.GetBlockEntity(pos) is BlockEntityChisel bec && (api as ICoreClientAPI)?.World.Player.InventoryManager.ActiveTool == EnumTool.Chisel)
             {
-                ((ICoreClientAPI)api).Network.SendBlockEntityPacket(pos, 1011);
+                ((ICoreClientAPI)api).Network.SendBlockEntityPacket(pos, (int)ChiselPacketId.Pick);
                 return null;
             }
 
@@ -220,7 +220,7 @@ namespace Vintagestory.GameContent
         }
 
         public int RequiresBehindSlots { get; set; } = 0;
-        public CompositeShape GetAttachedShape(ItemStack stack, string slotCode) => null;
+        public CompositeShape GetAttachedShape(ItemStack stack, Entity onentity, string slotCode) => null;
         public string GetCategoryCode(ItemStack stack) => "chiseled";
         public string[] GetDisableElements(ItemStack stack) => [];
         public string[] GetKeepElements(ItemStack stack) => [];

@@ -43,7 +43,14 @@ namespace Vintagestory.GameContent
 
                 if (!byPlayer.HasPrivilege("denybreakreinforced"))
                 {
-                    modBre.ConsumeStrength(pos, 1);
+                    if (byPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative)
+                    {
+                        modBre.ConsumeStrength(pos, bre.Strength);
+                    }
+                    else
+                    {
+                        modBre.ConsumeStrength(pos, 1);
+                    }
 
                     world.BlockAccessor.MarkBlockDirty(pos);
                 }

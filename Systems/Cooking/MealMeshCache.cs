@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,7 +8,6 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
-
 
 namespace Vintagestory.GameContent
 {
@@ -44,21 +43,22 @@ namespace Vintagestory.GameContent
         protected Shape? nowTesselatingShape;
 
         BlockPie? nowTesselatingBlock;
-        ItemStack[]? contentStacks;
+        ItemStack?[]? contentStacks;
         AssetLocation? crustTextureLoc;
         AssetLocation? fillingTextureLoc;
-        AssetLocation? topCrustTextureLoc;
+        AssetLocation? toppingTextureLoc;
 
         public TextureAtlasPosition this[string textureCode]
         {
             get
             {
-                AssetLocation texturePath = crustTextureLoc!;
-                if (textureCode == "filling") texturePath = fillingTextureLoc!;
-                if (textureCode == "topcrust")
+                var texturePath = textureCode switch
                 {
-                    texturePath = topCrustTextureLoc!;
-                }
+                    "filling" => fillingTextureLoc,
+                    "topcrust" => toppingTextureLoc,
+                    "topping" => toppingTextureLoc,
+                    _ => crustTextureLoc
+                };
 
                 if (texturePath == null)
                 {
@@ -153,89 +153,71 @@ namespace Vintagestory.GameContent
 
         public MeshData? GetPieMesh(ItemStack? pieStack, ModelTransform? transform = null)
         {
-            // Slot 0: Base dough
-            // Slot 1: Filling
-            // Slot 2: Crust dough
-
             nowTesselatingBlock = pieStack?.Block as BlockPie;
-            if (nowTesselatingBlock == null) return null;  //This will occur if the pieStack changed to rot
+            if (nowTesselatingBlock == null) return null;  // This will occur if the pieStack changed to rot.
 
             contentStacks = nowTesselatingBlock.GetContents(capi!.World, pieStack);
+            if (contentStacks.Length < 6) return null; // Pies are supposed to always have 6 stacks.
 
             int pieSize = pieStack?.Attributes.GetAsInt("pieSize") ?? 0;
+            if (pieSize <= 0 || pieSize > 4) return null; // Prevent bad array access crash for pies with invalid sizes.
 
-
-            // At this spot we have to determine the textures for "dough" and "filling"
-            // Texture determination rules:
-            // 1. dough is simple: first itemstack must be dough, take from attributes
-            // 2. pie allows 4 items as fillings, but with specific mixing rules
-            //    - berries/fruit can be mixed
-            //    - vegetables can be mixed
-            //    - meat can be mixed
-            // no other mixing allowed
-
-            // Thus we deduce: It's enough to test if
-            // a) all 4 fillings are equal: Then use texture from inPieProperties from first one
-            // b) Otherwise use hardcoded
-            //    for item.NutritionProps.FoodCategory == Vegetable   => block/food/pie/fill-mixedvegetable.png
-            //    for item.NutritionProps.FoodCategory == Protein   => block/food/pie/fill-mixedmeat.png
-            //    for item.NutritionProps.FoodCategory == Fruit   => block/food/pie/fill-mixedfruit.png
-
-            var stackprops = contentStacks.Select(stack => stack?.ItemAttributes?["inPieProperties"]?.AsObject<InPieProperties?>(null, stack.Collectible.Code.Domain)).ToArray();
+            // This is where we find the dough and filling textures.
+            //
+            // For dough, the texture is taken from the attributes. Vanilla doughs
+            // use the path "block/food/pie/{type}{bakeLevel}"
+            //
+            // For filling, we need to check whether the pie is single-ingredient. If not,
+            // we look for the texture named after the first mixing code.
+            //
+            // Single-ingredient: "block/food/pie/fill-<name>.png"
+            // By mixing code: "block/food/pie/fill-mixed<tag>.png"
 
             int bakeLevel = pieStack?.Attributes.GetAsInt("bakeLevel", 0) ?? 0;
+            InPieProperties?[] stackPieProps = contentStacks.Select(InPieProperties.ReadFrom).ToArray();
 
-            if (stackprops.Length == 0) return null;
-
-
-            ItemStack cstack = contentStacks[1];
-            var foodCats = contentStacks.Select(BlockPie.FillingFoodCategory).ToArray();
-            EnumFoodCategory foodCat = foodCats[1];
-
-            bool equal = true;
-            bool foodCatEquals = true;
-            IEnumerable<string> mixCodes = stackprops[1]?.MixingCodes ?? [];
-            for (int i = 2; (equal || foodCatEquals || mixCodes.Any()) && i < contentStacks.Length - 1; i++)
+            bool singleIngredient = contentStacks[1] != null;
+            string[] mixCodes = [..stackPieProps[1]?.MixingCodes ?? []];
+            for (int i = 2; i < contentStacks.Length - 1; i++)
             {
-                if (contentStacks[i] == null || cstack == null) continue;
+                if (contentStacks[i] == null) continue;
 
-                equal &= cstack.Equals(capi.World, contentStacks[i], GlobalConstants.IgnoredStackAttributes);
-                foodCatEquals &= contentStacks[i] == null || foodCats[i] == foodCats[1];
-                mixCodes = stackprops[i]?.MixingCodes.Intersect(mixCodes) ?? [];
+                singleIngredient &= contentStacks[1]!.Equals(capi.World, contentStacks[i], GlobalConstants.IgnoredStackAttributes);
+                mixCodes = InPieProperties.GetSharedMixingCodes(stackPieProps[i], mixCodes);
 
-                cstack = contentStacks[i];
-                foodCat = foodCats[i];
+                if (!singleIngredient && mixCodes.Length == 0) break;
             }
 
-
-            if (ContentsRotten(contentStacks))
+            var crustTexture = stackPieProps[0]?.Texture;
+            if (crustTexture != null)
             {
-                crustTextureLoc = new AssetLocation("block/rot/rot");
-                fillingTextureLoc = new AssetLocation("block/rot/rot");
-                topCrustTextureLoc = new AssetLocation("block/rot/rot");
+                crustTextureLoc = crustTexture.Clone();
+                crustTextureLoc.Path = crustTextureLoc.Path.Replace("{bakelevel}", "" + (bakeLevel + 1));
+                fillingTextureLoc = new AssetLocation("block/transparent");
             }
-            else
+            else if (stackPieProps[0] != null)
             {
-                if (stackprops[0] != null)
-                {
-                    crustTextureLoc = stackprops[0]!.Texture.Clone();
-                    crustTextureLoc.Path = crustTextureLoc.Path.Replace("{bakelevel}", "" + (bakeLevel + 1));
-                    fillingTextureLoc = new AssetLocation("block/transparent");
-                }
+                capi!.Logger.Error($"Bottom crust {contentStacks[0]!.Collectible.Code} does not have a texture!");
+            }
 
-                topCrustTextureLoc = new AssetLocation("block/transparent");
-                if (stackprops[5] != null)
+            toppingTextureLoc = new AssetLocation("block/transparent");
+            var toppingTexture = stackPieProps[5]?.Texture;
+            if (toppingTexture != null)
+            {
+                toppingTextureLoc = toppingTexture.Clone();
+                if (stackPieProps[5]!.PartType == EnumPiePartType.Crust)
                 {
-                    topCrustTextureLoc = stackprops[5]!.Texture.Clone();
-                    topCrustTextureLoc.Path = topCrustTextureLoc.Path.Replace("{bakelevel}", "" + (bakeLevel + 1));
+                    toppingTextureLoc.Path = toppingTextureLoc.Path.Replace("{bakelevel}", "" + (bakeLevel + 1));
                 }
+            }
+            else if (stackPieProps[5] != null)
+            {
+                capi!.Logger.Error($"Topping {contentStacks[5]!.Collectible.Code} does not have a texture!");
+            }
 
-                if (contentStacks[1] != null)
-                {
-                    var fillingCat = foodCats[1];
-                    if (fillingCat == EnumFoodCategory.NoNutrition) fillingCat = EnumFoodCategory.Unknown;
-                    fillingTextureLoc = getPieFillingTexture(stackprops, mixCodes.ToArray(), equal, foodCatEquals, fillingCat);
-                }
+            if (contentStacks[1] != null)
+            {
+                fillingTextureLoc = getPieFillingTextureLocation(stackPieProps, mixCodes.FirstOrDefault(), singleIngredient);
             }
 
 
@@ -245,9 +227,22 @@ namespace Vintagestory.GameContent
             AssetLocation shapeloc = isComplete ? pieShapeBySize[pieSize - 1] : pieShapeLocByFillLevel[fillLevel];
 
             shapeloc.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/");
-            Shape shape = API.Common.Shape.TryGet(capi, shapeloc);
+            Shape shape = Shape.TryGet(capi, shapeloc);
 
-            string topCrustShapeElement = BlockPie.TopCrustTypes.First(type => type.Code.EqualsFast(BlockPie.GetTopCrustType(pieStack) ?? "full")).ShapeElement;
+            string topCrustShapeElement;
+            if (stackPieProps[5]?.PartType == EnumPiePartType.Topping)
+            {
+                topCrustShapeElement = stackPieProps[5]!.ToppingShapeElement ?? "";
+
+                if (topCrustShapeElement == "")
+                {
+                    capi!.Logger.Error($"MealMeshCache tried to get topping shape element for {contentStacks[5]!.Collectible.Code}, but it was not found.");
+                }
+            }
+            else
+            {
+                topCrustShapeElement = BlockPie.TopCrustTypes.First(type => type.Code.EqualsFast(BlockPie.GetTopCrustType(pieStack) ?? "full")).ShapeElement;
+            }
             string[] selectiveElements = ["origin/base/crust regular/*", "origin/base/filling/*", "origin/base/base-quarter/*", "origin/base/fillingquarter/*", topCrustShapeElement];
 
             capi.Tesselator.TesselateShape("pie", shape, out MeshData mesh, this, null, 0, 0, 0, null, selectiveElements);
@@ -256,33 +251,22 @@ namespace Vintagestory.GameContent
             return mesh;
         }
 
-        public Dictionary<int, AssetLocation> pieMixingCodeFillingTextures = [];
-        private AssetLocation? getPieFillingTexture(InPieProperties?[] pieProps, string[] mixingCodes, bool singleFilling, bool singleFoodCat, EnumFoodCategory fillingCat)
+        public readonly Dictionary<int, AssetLocation> pieMixingCodeFillingTextures = [];
+        private AssetLocation? getPieFillingTextureLocation(InPieProperties?[] pieProps, string? mixingCode, bool singleIngredient)
         {
-            if (singleFilling) return pieProps[1]?.Texture;
+            if (singleIngredient) return pieProps[1]?.Texture;
 
-            if (!singleFoodCat && mixingCodes.Length > 0)
+            if (mixingCode == null)
             {
-                if (pieMixingCodeFillingTextures.TryGetValue(mixingCodes[0].GetHashCode(), out var loc))
-                {
-                    return loc;
-                }
-                else pieMixingCodeFillingTextures.Add(mixingCodes[0].GetHashCode(), new("block/food/pie/fill-mixed" + mixingCodes[0]));
+                capi!.Logger.Error("Pie does not have any mixing codes. Using default unknown texture.");
+                return new("block/food/pie/fill-unknown");
             }
 
-            return pieMixedCategoryFillingTextures[(int)fillingCat];
+            int hashCode = mixingCode.GetHashCode();
+            if (pieMixingCodeFillingTextures.TryGetValue(hashCode, out var loc)) return loc;
+
+            return pieMixingCodeFillingTextures[hashCode] = new("block/food/pie/fill-mixed" + mixingCode);
         }
-
-
-        public AssetLocation[] pieMixedCategoryFillingTextures = [
-            new ("block/food/pie/fill-mixedfruit"),
-            new ("block/food/pie/fill-mixedvegetable"),
-            new ("block/food/pie/fill-mixedmeat"),
-            new ("block/food/pie/fill-mixedgrain"),
-            new ("block/food/pie/fill-mixedcheese"),
-            new ("block/food/pie/fill-unknown")
-        ];
-
 
         public Dictionary<int, MultiTextureMeshRef> GetCookedMeshRefs()
         {
@@ -378,7 +362,7 @@ namespace Vintagestory.GameContent
                     {
                         source.ForStack = contentStacks[0]!;
 
-                        CompositeShape? cshape = contentStacks[0]!.ItemAttributes["inBowlShape"]?.AsObject(new CompositeShape() { Base = new ("shapes/block/food/meal/pickled.json") });
+                        CompositeShape? cshape = contentStacks[0]!.ItemAttributes["inBowlShape"]?.AsObject(new CompositeShape() { Base = new("shapes/block/food/meal/pickled.json") });
 
                         Shape contentShape = API.Common.Shape.TryGet(capi, cshape?.Base.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/"));
                         capi!.Tesselator.TesselateShape("picklednmealcontents", contentShape, out MeshData contentMesh, source);

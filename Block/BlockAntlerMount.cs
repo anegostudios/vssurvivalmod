@@ -145,9 +145,7 @@ namespace Vintagestory.GameContent
             var bemount = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityAntlerMount;
             if (bemount == null) return base.GetPlacedBlockName(world, pos);
 
-            if (bemount.Inventory.Empty) return Lang.Get("block-antlermount-" + bemount.Type);
-
-            return bemount.Inventory[0].Itemstack!.GetName();
+            return Lang.Get("block-antlermount-" + bemount.Type);
         }
 
         public override string GetPlacedBlockInfo(IWorldAccessor world, BlockPos pos, IPlayer forPlayer)
@@ -155,9 +153,7 @@ namespace Vintagestory.GameContent
             var bemount = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityAntlerMount;
             if (bemount == null) return base.GetPlacedBlockInfo(world, pos, forPlayer);
 
-            if (bemount.Inventory.Empty) return base.GetPlacedBlockInfo(world, pos, forPlayer) + "\n" + Lang.Get("Material: {0}", Lang.Get("material-" + bemount.Material));
-
-            return base.GetPlacedBlockInfo(world, pos, forPlayer);
+            return base.GetPlacedBlockInfo(world, pos, forPlayer) + "\n" + Lang.Get("Material: {0}", Lang.Get("material-" + bemount.Material));
         }
 
         public override string GetHeldItemName(ItemStack itemStack)

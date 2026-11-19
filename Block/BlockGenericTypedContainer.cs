@@ -98,7 +98,7 @@ namespace Vintagestory.GameContent
             string type = stack.Attributes?.GetString("type", defaultType);
             return Attributes["attachableCategoryCode"][type].AsString("chest");
         }
-        public CompositeShape GetAttachedShape(ItemStack stack, string slotCode) => null;
+        public CompositeShape GetAttachedShape(ItemStack stack, Entity onentity, string slotCode) => null;
 
         public void CollectTextures(ItemStack stack, Shape shape, string texturePrefixCode, Dictionary<string, CompositeTexture> intoDict) {
 
@@ -140,7 +140,7 @@ namespace Vintagestory.GameContent
             variantByGroupInventory = Attributes["variantByGroupInventory"].AsString(null);
         }
 
-        
+
         public string GetType(IBlockAccessor blockAccessor, BlockPos pos)
         {
             BlockEntityGenericTypedContainer be = blockAccessor.GetBlockEntity(pos) as BlockEntityGenericTypedContainer;
@@ -184,9 +184,9 @@ namespace Vintagestory.GameContent
 
 
                     string type = bect.type;
-                    string rotatatableInterval = Attributes?["rotatatableInterval"][type]?.AsString("22.5deg") ?? "22.5deg";
+                    string rotatableInterval = Attributes?["rotatatableInterval"][type]?.AsString("22.5deg") ?? "22.5deg";
 
-                    if (rotatatableInterval == "22.5degnot45deg")
+                    if (rotatableInterval == "22.5degnot45deg")
                     {
                         float rounded90degRad = ((int)Math.Round(angleHor / GameMath.PIHALF)) * GameMath.PIHALF;
                         float deg45rad = GameMath.PIHALF / 4;
@@ -201,10 +201,16 @@ namespace Vintagestory.GameContent
                             bect.MeshAngle = rounded90degRad;
                         }
                     }
-                    if (rotatatableInterval == "22.5deg")
+                    if (rotatableInterval == "22.5deg")
                     {
                         float deg22dot5rad = GameMath.PIHALF / 4;
                         float roundRad = ((int)Math.Round(angleHor / deg22dot5rad)) * deg22dot5rad;
+                        bect.MeshAngle = roundRad;
+                    }
+                    if (rotatableInterval == "45deg")
+                    {
+                        float deg45rad = GameMath.PIHALF / 2;
+                        float roundRad = ((int)Math.Round(angleHor / deg45rad)) * deg45rad;
                         bect.MeshAngle = roundRad;
                     }
                 }
@@ -219,7 +225,7 @@ namespace Vintagestory.GameContent
             Dictionary<string, MultiTextureMeshRef> meshrefs = new Dictionary<string, MultiTextureMeshRef>();
             string key = "genericTypedContainerMeshRefs" + FirstCodePart() + SubtypeInventory;
 
-            
+
             meshrefs = ObjectCacheUtil.GetOrCreate(capi, key, () =>
             {
                 Dictionary<string, MeshData> meshes = GenGuiMeshes(capi);
@@ -231,7 +237,7 @@ namespace Vintagestory.GameContent
 
                 return meshrefs;
             });
-            
+
 
             string type = itemstack.Attributes.GetString("type", defaultType);
 
@@ -251,7 +257,7 @@ namespace Vintagestory.GameContent
 
             string key = "genericTypedContainerMeshRefs" + FirstCodePart() + SubtypeInventory;
             Dictionary<string, MultiTextureMeshRef> meshrefs = ObjectCacheUtil.TryGet<Dictionary<string, MultiTextureMeshRef>>(api, key);
-            
+
             if (meshrefs != null) {
                 foreach (var val in meshrefs)
                 {
@@ -271,7 +277,7 @@ namespace Vintagestory.GameContent
 
         public Dictionary<string, MeshData> GenGuiMeshes(ICoreClientAPI capi)
         {
-            string[] types = this.Attributes["types"].AsArray<string>();            
+            string[] types = this.Attributes["types"].AsArray<string>();
 
             Dictionary<string, MeshData> meshes = new Dictionary<string, MeshData>();
 
@@ -288,7 +294,7 @@ namespace Vintagestory.GameContent
         public Shape GetShape(ICoreAPI capi, string shapename)
         {
             if (shapename == null) return null;
-            
+
             AssetLocation shapeloc = AssetLocation.Create(shapename, Code.Domain).WithPathPrefixOnce("shapes/");
             Shape shape = API.Common.Shape.TryGet(capi, shapeloc + ".json");
             if (shape == null)
@@ -329,7 +335,7 @@ namespace Vintagestory.GameContent
             tesselator.TesselateShape(meta, shape, out MeshData mesh);
             return mesh;
         }
-        
+
         public override void GetDecal(IWorldAccessor world, BlockPos pos, ITexPositionSource decalTexSource, ref MeshData decalModelData, ref MeshData blockModelData)
         {
             BlockEntityGenericTypedContainer be = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityGenericTypedContainer;
@@ -443,18 +449,18 @@ namespace Vintagestory.GameContent
 
             if (Attributes?["drop"]?[type]?.AsBool() == false)
             {
-                return Array.Empty<BlockDropItemStack>(); 
+                return Array.Empty<BlockDropItemStack>();
             } else
             {
                 return new BlockDropItemStack[] { new BlockDropItemStack(handbookStack) };
             }
         }
 
-        
+
 
         public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
         {
-            return new ItemStack[] { new ItemStack(world.GetBlock(CodeWithVariant("side", "east"))) };
+            return new ItemStack[] { OnPickBlock(world, pos) };
         }
 
         public override string GetHeldItemName(ItemStack itemStack)

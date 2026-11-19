@@ -12,6 +12,7 @@ namespace Vintagestory.GameContent
     {
         int height;
         bool canMelt;
+        public static int MaxHeight = 8;
 
         public override void OnLoaded(ICoreAPI api)
         {
@@ -51,11 +52,11 @@ namespace Vintagestory.GameContent
         public override Block GetSnowCoveredVariant(BlockPos pos, float snowLevel)
         {
             if ((int)snowLevel <= 0) return api.World.Blocks[0];
-            if ((int)snowLevel < 8)
+            if ((int)snowLevel < MaxHeight)
             {
                 return api.World.GetBlock(CodeWithVariant("height", ""+(int)snowLevel));
             }
-            if ((int)snowLevel >= 8) return api.World.GetBlock("snowblock");
+            if ((int)snowLevel >= MaxHeight) return api.World.GetBlock("snowblock");
 
             return null;
         }
@@ -67,7 +68,7 @@ namespace Vintagestory.GameContent
             if (fallingBlock is BlockSnowLayer || fallingBlock is BlockSnow)
             {
                 BlockSnowLayer ourBlock = world.BlockAccessor.GetMostSolidBlock(pos) as BlockSnowLayer;
-                return ourBlock != null && ourBlock.height < 8;
+                return ourBlock != null && ourBlock.height < MaxHeight;
             }
 
             return false;
@@ -77,11 +78,11 @@ namespace Vintagestory.GameContent
         {
             var targetPosBlock = world.BlockAccessor.GetMostSolidBlock(pos);
             var fallingBlock = block;
-            if (fallingBlock != null && targetPosBlock?.GetSnowLevel(pos) < 8)
+            if (fallingBlock != null && targetPosBlock?.GetSnowLevel(pos) < MaxHeight)
             {
                 var originalPos = new FastVec3i(pos);
                 // if the target is snow, move all snow from falling to target
-                while (fallingBlock is BlockSnowLayer && targetPosBlock.GetSnowLevel(pos) < 8)
+                while (fallingBlock is BlockSnowLayer && targetPosBlock.GetSnowLevel(pos) < MaxHeight)
                 {
                     var nextnBlock = targetPosBlock.GetSnowCoveredVariant(pos, targetPosBlock.GetSnowLevel(pos) + 1);
                     if (nextnBlock == null) break;

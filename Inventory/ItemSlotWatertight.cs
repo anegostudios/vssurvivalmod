@@ -82,8 +82,16 @@ namespace Vintagestory.GameContent
                     ItemStack bowlStack = new ItemStack(world.GetBlock(AssetLocation.Create(sourceSlot.Itemstack.ItemAttributes["emptiedBlockCode"].AsString(), sourceSlot.Itemstack.Collectible.Code.Domain)));
                     if (sourceSlot.StackSize == 1)
                     {
-                        sourceSlot.Itemstack = bowlStack;
-                    } else
+                        if (sourceSlot.CanHold(new DummySlot(bowlStack)))
+                        {
+                            sourceSlot.Itemstack = bowlStack;
+                        }
+                        else
+                        {
+                            return;
+                        }
+                    }
+                    else
                     {
                         sourceSlot.Itemstack.StackSize--;
                         if (!op.ActingPlayer.InventoryManager.TryGiveItemstack(bowlStack))
@@ -125,7 +133,8 @@ namespace Vintagestory.GameContent
                     int moved = liqCntBlock.TryPutLiquid(sourceSlot.Itemstack, Itemstack, toMoveLitres / sourceSlot.Itemstack.StackSize);
                     TakeOut(moved * sourceSlot.Itemstack.StackSize);
                     MarkDirty();
-                } else
+                }
+                else
                 {
                     if (itemstack.Equals(world, contentStack, GlobalConstants.IgnoredStackAttributes))
                     {
@@ -150,7 +159,14 @@ namespace Vintagestory.GameContent
 
                     if (sourceSlot.StackSize == 1)
                     {
-                        sourceSlot.Itemstack = outBlockStack;
+                        if (sourceSlot.CanHold(new DummySlot(outBlockStack)))
+                        {
+                            sourceSlot.Itemstack = outBlockStack;
+                        }
+                        else
+                        {
+                            return;
+                        }
                     }
                     else
                     {

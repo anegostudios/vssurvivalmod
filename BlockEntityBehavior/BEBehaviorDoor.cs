@@ -7,6 +7,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 
 #nullable disable
 
@@ -87,12 +88,23 @@ namespace Vintagestory.GameContent
         public bool Opened => opened;
         public bool InvertHandles => invertHandles;
         public string StoryLockedCode;
+        public string RoomCode;
+        public string KeyId;
+        public bool LockedByKey;
 
         public BEBehaviorDoor(BlockEntity blockentity) : base(blockentity)
         {
             boxesClosed = Block.CollisionBoxes;
 
             doorBh = Block.GetBehavior<BlockBehaviorDoor>();
+        }
+
+        protected override BlockEntityAnimationUtil CreateAnimationUtil(ICoreAPI api)
+        {
+            float easingSpeed = Block.Attributes?["easingSpeed"].AsFloat(10) ?? 10;
+            return api.Side == EnumAppSide.Client
+                ? new BlockEntityAnimationUtil(api, Blockentity, BlockEntityAnimationUtil.CalculateSettleDuration(easingSpeed))
+                : base.CreateAnimationUtil(api);
         }
 
         public override void Initialize(ICoreAPI api, JsonObject properties)
@@ -217,7 +229,8 @@ namespace Vintagestory.GameContent
 
                 if (doorBh.animatableOrigMesh != null)
                 {
-                    animUtil.InitializeAnimator(doorBh.animatableDictKey, doorBh.animatableOrigMesh, doorBh.animatableShape, null);
+                    animUtil.InitializeAnimator(doorBh.animatableDictKey, doorBh.animatableOrigMesh, doorBh.animatableShape, null, shareSourceMesh: true);
+                    UpdateMeshAndAnimations();
                 }
             }
 
@@ -227,11 +240,13 @@ namespace Vintagestory.GameContent
         protected virtual void UpdateMeshAndAnimations()
         {
             mesh = doorBh.animatableOrigMesh.Clone();
+            float rot = invertHandles ? -RotateYRad : RotateYRad;
+            animUtil.renderer.rotationDeg.Y = rot * GameMath.RAD2DEG;
+            animUtil.renderer.ScaleX = invertHandles ? -1 : 1;
+            animUtil.renderer.backfaceCulling = !invertHandles;
             if (RotateYRad != 0)
             {
-                float rot = invertHandles ? -RotateYRad : RotateYRad;
                 mesh = mesh.Rotate(0, rot, 0);
-                animUtil.renderer.rotationDeg.Y = rot * GameMath.RAD2DEG;
             }
 
             if (invertHandles)
@@ -240,10 +255,8 @@ namespace Vintagestory.GameContent
                 Matrixf matf = new Matrixf();
                 matf.Translate(0.5f, 0.5f, 0.5f).Scale(-1, 1, 1).Translate(-0.5f, -0.5f, -0.5f);
                 mesh.MatrixTransform(matf.Values);
-
-                animUtil.renderer.backfaceCulling = false;
-                animUtil.renderer.ScaleX = -1;
             }
+            animUtil.RefreshStaticMesh();
         }
 
         protected virtual void UpdateHitBoxes()
@@ -377,14 +390,10 @@ namespace Vintagestory.GameContent
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
         {
-            if (mesh == null)
-            {
-                UpdateMeshAndAnimations();
-            }
-
             bool skipMesh = base.OnTesselation(mesher, tessThreadTesselator);
             if (!skipMesh)
             {
+                if (mesh == null) UpdateMeshAndAnimations();
                 mesher.AddMeshData(mesh);
             }
             return true;
@@ -402,6 +411,10 @@ namespace Vintagestory.GameContent
             leftDoorOffset = tree.GetVec3i("leftDoorPos");
             rightDoorOffset = tree.GetVec3i("rightDoorPos");
             StoryLockedCode = tree.GetString("storyLockedCode");
+
+            RoomCode = tree.GetString("roomCode");
+            KeyId = tree.GetString("keyId");
+            LockedByKey = tree.GetBool("lockedByKey");
 
             if (opened != beforeOpened && animUtil != null) ToggleDoorWing(opened);
             if (Api != null && Api.Side is EnumAppSide.Client)
@@ -427,6 +440,19 @@ namespace Vintagestory.GameContent
             {
                 tree.SetString("storyLockedCode", StoryLockedCode);
             }
+            if (RoomCode != null)
+            {
+                tree.SetString("roomCode", RoomCode);
+            }
+            if (KeyId != null)
+            {
+                tree.SetString("keyId", KeyId);
+            }
+            if (LockedByKey)
+            {
+                tree.SetBool("lockedByKey", LockedByKey);
+            }
+
             if (leftDoorOffset != null) tree.SetVec3i("leftDoorPos", leftDoorOffset);
             if (rightDoorOffset != null) tree.SetVec3i("rightDoorPos", rightDoorOffset);
         }
@@ -453,6 +479,16 @@ namespace Vintagestory.GameContent
             RotateYRad = tree.GetFloat("rotateYRad");
             RotateYRad = (RotateYRad - degreeRotation * GameMath.DEG2RAD) % GameMath.TWOPI;
             tree.SetFloat("rotateYRad", RotateYRad);
+        }
+
+        public override bool OnPlacementBySchematicCustom(ICoreServerAPI sapi, IBlockAccessor worldAccessor, ITreeAttribute schematicTreeData)
+        {
+            if (LockedByKey)
+            {
+                KeyId = schematicTreeData.GetString("keyId");
+            }
+
+            return false;
         }
     }
 }

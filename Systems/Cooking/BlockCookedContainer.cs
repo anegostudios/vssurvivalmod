@@ -28,7 +28,7 @@ namespace Vintagestory.GameContent
         public int RequiresBehindSlots { get; set; } = 0;
         public bool IsAttachable(Entity toEntity, ItemStack itemStack) => attrAtta != null;
         string? IAttachableToEntity.GetCategoryCode(ItemStack stack) => attrAtta?.GetCategoryCode(stack);
-        CompositeShape? IAttachableToEntity.GetAttachedShape(ItemStack stack, string slotCode) => attrAtta?.GetAttachedShape(stack, slotCode);
+        CompositeShape? IAttachableToEntity.GetAttachedShape(ItemStack stack, Entity onentity, string slotCode) => attrAtta?.GetAttachedShape(stack, onentity, slotCode);
         string[]? IAttachableToEntity.GetDisableElements(ItemStack stack) => attrAtta?.GetDisableElements(stack);
         string[]? IAttachableToEntity.GetKeepElements(ItemStack stack) => attrAtta?.GetKeepElements(stack);
         string? IAttachableToEntity.GetTexturePrefixCode(ItemStack stack) => attrAtta?.GetTexturePrefixCode(stack);
@@ -437,6 +437,29 @@ namespace Vintagestory.GameContent
                             gsslot.MarkDirty();
                             begs.MarkMeshesDirty();
                             begs.MarkDirty(true);
+                        }
+
+                        handHandling = EnumHandHandling.PreventDefault;
+                        return;
+                    }
+                }
+
+                if (block.HasBehavior<BlockBehaviorDisplay>())
+                {
+                    if (!byEntity.Controls.ShiftKey) return;
+                    var behDisplay = block.GetBEBehavior<BEBehaviorDisplay>(blockSel.Position);
+                    if (blockSel?.SelectionBoxId == null || behDisplay?.InventoryInv[blockSel.SelectionBoxId] is not ItemSlot bdslot || bdslot.Empty)
+                    {
+                        return;
+                    }
+
+                    if (bdslot.Itemstack.ItemAttributes?.IsTrue("mealContainer") == true)
+                    {
+                        if (quantityServings > 0)
+                        {
+                            ServeIntoStack(bdslot, slot, byEntity.World);
+                            bdslot.MarkDirty();
+                            behDisplay.Blockentity.MarkDirty(true);
                         }
 
                         handHandling = EnumHandHandling.PreventDefault;

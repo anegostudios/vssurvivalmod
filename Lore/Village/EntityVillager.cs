@@ -19,7 +19,7 @@ namespace Vintagestory.GameContent
 
         public EntityVillager()
         {
-            AnimManager = new PersonalizedAnimationManager();
+            AnimManager = new PersonalizedAnimationManager(this);
         }
 
         public string Personality
@@ -94,24 +94,24 @@ namespace Vintagestory.GameContent
         }
 
         MusicTrack track;
-        public override void OnReceivedServerPacket(int packetid, byte[] data)
+        public override void OnReceivedServerPacket(int packetId, SerializedData packetData)
         {
-            base.OnReceivedServerPacket(packetid, data);
+            base.OnReceivedServerPacket(packetId, packetData);
 
-            if (packetid == (int)EntityServerPacketId.Hurt)
+            if (packetId == (int)EntityServerPacketId.Hurt)
             {
                 if (!Alive) return;
                 TalkUtil.Talk(EnumTalkType.Hurt);
             }
-            if (packetid == (int)EntityServerPacketId.Death)
+            if (packetId == (int)EntityServerPacketId.Death)
             {
                 TalkUtil.Talk(EnumTalkType.Death);
             }
-            if (packetid == (int)EntityServerPacketId.PlayMusic)
+            if (packetId == (int)EntityServerPacketId.PlayMusic)
             {
                 if (track != null) return;
 
-                var pkt = SerializerUtil.Deserialize<SongPacket>(data);
+                var pkt = packetData.Deserialize<SongPacket>();
                 var capi = Api as ICoreClientAPI;
 
                 startLoadingMs = Api.World.ElapsedMilliseconds;
@@ -123,7 +123,7 @@ namespace Vintagestory.GameContent
                 };
                 capi.StartTrack(track, EnumSoundType.MusicGlitchunaffected, (s) => onTrackLoaded(s, pkt.SecondsPassed));
             }
-            if (packetid == (int)EntityServerPacketId.StopMusic)
+            if (packetId == (int)EntityServerPacketId.StopMusic)
             {
                 track?.Stop();
                 track = null;
@@ -131,9 +131,9 @@ namespace Vintagestory.GameContent
                 wasStopped = true;
                 TalkUtil.ShouldDoIdleTalk = true;
             }
-            if (packetid == (int)EntityServerPacketId.Talk)
+            if (packetId == (int)EntityServerPacketId.Talk)
             {
-                TalkUtil.Talk((EnumTalkType)SerializerUtil.Deserialize<int>(data));
+                TalkUtil.Talk((EnumTalkType)packetData.Deserialize<int>());
             }
         }
 
@@ -236,9 +236,9 @@ namespace Vintagestory.GameContent
             return base.Dialog_DialogTriggers(triggeringEntity, value, data);
         }
 
-        public override void OnReceivedClientPacket(IServerPlayer player, int packetid, byte[] data)
+        public override void OnReceivedClientPacket(IServerPlayer player, int packetId, SerializedData packetData, ref CachedAccessPerms perms)
         {
-            if (packetid == PlayerStoppedInteracting)
+            if (packetId == PlayerStoppedInteracting)
             {
                 // No access check here. This is always allowed.
 
@@ -249,7 +249,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            base.OnReceivedClientPacket(player, packetid, data);
+            base.OnReceivedClientPacket(player, packetId, packetData, ref perms);
         }
 
 
@@ -323,9 +323,9 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void FromBytes(BinaryReader reader, bool forClient)
+        public override void FromBytes(ref BinarySpanReader reader, bool forClient)
         {
-            base.FromBytes(reader, forClient);
+            base.FromBytes(ref reader, forClient);
 
             (AnimManager as PersonalizedAnimationManager).Personality = Personality;
         }

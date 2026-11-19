@@ -1,6 +1,7 @@
 using ProtoBuf;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Reflection;
 using Vintagestory.API.Client;
@@ -24,26 +25,26 @@ namespace Vintagestory.GameContent
             new JsonItemStack() { Type = EnumItemClass.Block, Code = new AssetLocation("torch-up"), StackSize = 1 }
         };
 
-        [ProtoMember(1)]
+        [ProtoMember(1), DefaultValue(new float[] { 0.015f, 0.176f, 0.206f, 0.236f, 0.266f, 0.296f, 0.326f, 0.356f, 0.386f, 0.416f, 0.446f, 0.476f, 0.506f, 0.536f, 0.566f, 0.596f, 0.626f, 0.656f, 0.686f, 0.716f, 0.746f, 0.776f, 0.806f, 0.836f, 0.866f, 0.896f, 0.926f, 0.956f, 0.986f, 1f, 1f, 1f})]
         public float[] SunLightLevels = new float[] { 0.015f, 0.176f, 0.206f, 0.236f, 0.266f, 0.296f, 0.326f, 0.356f, 0.386f, 0.416f, 0.446f, 0.476f, 0.506f, 0.536f, 0.566f, 0.596f, 0.626f, 0.656f, 0.686f, 0.716f, 0.746f, 0.776f, 0.806f, 0.836f, 0.866f, 0.896f, 0.926f, 0.956f, 0.986f, 1f, 1f, 1f};
 
-        [ProtoMember(2)]
+        [ProtoMember(2), DefaultValue(new float[] { 0.016f, 0.146f, 0.247f, 0.33f, 0.401f, 0.463f, 0.519f, 0.569f, 0.615f, 0.656f, 0.695f, 0.73f, 0.762f, 0.792f, 0.82f, 0.845f, 0.868f, 0.89f, 0.91f, 0.927f, 0.944f, 0.958f, 0.972f, 0.983f, 0.993f, 1f, 1f, 1f, 1f, 1f, 1f, 1f })]
         public float[] BlockLightLevels = new float[] { 0.016f, 0.146f, 0.247f, 0.33f, 0.401f, 0.463f, 0.519f, 0.569f, 0.615f, 0.656f, 0.695f, 0.73f, 0.762f, 0.792f, 0.82f, 0.845f, 0.868f, 0.89f, 0.91f, 0.927f, 0.944f, 0.958f, 0.972f, 0.983f, 0.993f, 1f, 1f, 1f, 1f, 1f, 1f, 1f };
-        [ProtoMember(3)]
+        [ProtoMember(3), DefaultValue(1f)]
         public float PerishSpeedModifier = 1f;
-        [ProtoMember(4)]
+        [ProtoMember(4), DefaultValue(1)]
         public float CreatureDamageModifier = 1;
-        [ProtoMember(5)]
+        [ProtoMember(5), DefaultValue(1)]
         public float ToolDurabilityModifier = 1;
-        [ProtoMember(6)]
+        [ProtoMember(6), DefaultValue(1)]
         public float ToolMiningSpeedModifier = 1;
-        [ProtoMember(7)]
+        [ProtoMember(7), DefaultValue(1)]
         public float HungerSpeedModifier = 1;
-        [ProtoMember(8)]
+        [ProtoMember(8), DefaultValue(1.5f)]
         public float BaseMoveSpeed = 1.5f;
-        [ProtoMember(9)]
+        [ProtoMember(9), DefaultValue(22)]
         public int SunBrightness = 22;
-        [ProtoMember(10)]
+        [ProtoMember(10), DefaultValue(50000)]
         public int PolarEquatorDistance = 50000;
 
 
@@ -213,10 +214,7 @@ namespace Vintagestory.GameContent
             AiTaskRegistry.Register<AiTaskStayInRange>("stayinrange");
             AiTaskRegistry.Register<AiTaskTurretMode>("turretmode");
             AiTaskRegistry.Register<AiTaskFollowLeadHolder>("followleadholder");
-            AiTaskRegistry.Register<AiTaskFollowLeadHolderR>("followleadholder-r");
-            AiTaskRegistry.Register<AiTaskSeekBobber>("seekbobber");            
-
-            EntityBehaviorPassivePhysicsMultiBox.InitServer(api);   // Needed to guarantee registration to the OnPhysicsThreadStart event before that event is fired, even if no entities with this behavior (i.e. boats) are yet loaded in the early game - it might be hours before we see one of these entities
+            AiTaskRegistry.Register<AiTaskSeekBobber>("seekbobber");
         }
 
         private void Event_PlayerJoin(IServerPlayer byPlayer)
@@ -492,6 +490,7 @@ namespace Vintagestory.GameContent
 
             api.RegisterBlockClass("BlockAxle", typeof(BlockAxle));
             api.RegisterBlockClass("BlockAngledGears", typeof(BlockAngledGears));
+            api.RegisterBlockClass("BlockAngledGearMulti", typeof(BlockAngledGearMulti));
             api.RegisterBlockClass("BlockSpurGear", typeof(BlockSpurGear));
             api.RegisterBlockClass("BlockWindmillRotor", typeof(BlockWindmillRotor));
             api.RegisterBlockClass("BlockToggle", typeof(BlockToggle));
@@ -544,10 +543,14 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockClutch", typeof(BlockClutch));
             api.RegisterBlockClass("BlockTransmission", typeof(BlockTransmission));
             api.RegisterBlockClass("BlockBrake", typeof(BlockBrake));
+            api.RegisterBlockClass("BlockBrakeFrame", typeof(BlockBrakeFrame));
+            api.RegisterBlockClass("BlockAxleAttachmentAssembly", typeof(BlockAxleAttachmentAssembly));
             api.RegisterBlockClass("BlockCreativeRotor", typeof(BlockCreativeRotor));
             api.RegisterBlockClass("BlockLargeGear3m", typeof(BlockLargeGear3m));
             api.RegisterBlockClass("BlockMPMultiblockGear", typeof(BlockMPMultiblockGear));
             api.RegisterBlockClass("BlockMPMultiblockPulverizer", typeof(BlockMPMultiblockPulverizer));
+            api.RegisterBlockClass("BlockMPMultiblockBellows", typeof(BlockMPMultiblockBellows));
+            api.RegisterBlockClass("BlockMechanicalBellows", typeof(BlockMechanicalBellows));
 
             api.RegisterBlockClass("BlockDisplayCase", typeof(BlockDisplayCase));
             api.RegisterBlockClass("BlockTapestry", typeof(BlockTapestry));
@@ -635,7 +638,9 @@ namespace Vintagestory.GameContent
             api.RegisterBlockClass("BlockCropProp", typeof(BlockCropProp));
             api.RegisterBlockClass("BlockBellows", typeof(BlockBellows));
             api.RegisterBlockClass("BlockGrindingWheel", typeof(BlockGrindingWheel));
+            api.RegisterBlockClass("BlockGrindingWheelAssembly", typeof(BlockGrindingWheelAssembly));
             api.RegisterBlockClass("BlockMPConsumer", typeof(BlockMPConsumer));
+            api.RegisterBlockClass("BlockAxleArm", typeof(BlockAxleArm));
             api.RegisterBlockClass("BlockWaterwheel", typeof(BlockWaterWheel));
 
         }
@@ -674,6 +679,7 @@ namespace Vintagestory.GameContent
             api.RegisterBlockBehaviorClass("HeatSource", typeof(BlockBehaviorHeatSource));
             api.RegisterBlockBehaviorClass("BreakSnowFirst", typeof(BlockBehaviorBreakSnowFirst));
             api.RegisterBlockBehaviorClass("RopeTieable", typeof(BlockBehaviorRopeTieable));
+            api.RegisterBlockBehaviorClass("LinkageEndpoint", typeof(BlockBehaviorLinkageEndpoint));
             api.RegisterBlockBehaviorClass("MyceliumHost", typeof(BlockBehaviorMyceliumHost));
             api.RegisterBlockBehaviorClass("WrenchOrientable", typeof(BlockBehaviorWrenchOrientable));
             api.RegisterBlockBehaviorClass("ElevatorControl", typeof(BlockBehaviorElevatorControl));
@@ -700,6 +706,10 @@ namespace Vintagestory.GameContent
             api.RegisterBlockBehaviorClass("CabinetDoors", typeof(BlockBehaviorCabinetDoors));
             api.RegisterBlockBehaviorClass("FruitingBush", typeof(BlockBehaviorFruitingBush));
             api.RegisterBlockBehaviorClass("FruitingBushCutting", typeof(BlockBehaviorFruitingBushCutting));
+            api.RegisterBlockBehaviorClass("FruitingBushMesh", typeof(BlockBehaviorFruitingBushMesh));
+
+            api.RegisterBlockBehaviorClass("DamageOnTouch", typeof(BlockBehaviorDamageOnTouch));
+            api.RegisterBlockBehaviorClass("BounceOnImpact", typeof(BlockBehaviorBounceOnImpact));
         }
 
         private void RegisterDefaultBlockEntityBehaviors()
@@ -707,11 +717,14 @@ namespace Vintagestory.GameContent
             api.RegisterBlockEntityBehaviorClass("Animatable", typeof(BEBehaviorAnimatable));
 
             api.RegisterBlockEntityBehaviorClass("MPAxle", typeof(BEBehaviorMPAxle));
+            api.RegisterBlockEntityBehaviorClass("MPGrindingWheel", typeof(BEBehaviorMPGrindingWheel));
             api.RegisterBlockEntityBehaviorClass("MPToggle", typeof(BEBehaviorMPToggle));
             api.RegisterBlockEntityBehaviorClass("MPAngledGears", typeof(BEBehaviorMPAngledGears));
             api.RegisterBlockEntityBehaviorClass("MPSpurGear", typeof(BEBehaviorMPSpurGear));
             api.RegisterBlockEntityBehaviorClass("MPConsumer", typeof(BEBehaviorMPConsumer));
+            api.RegisterBlockEntityBehaviorClass("MPAxleArm", typeof(BEBehaviorMPAxleArm));
             api.RegisterBlockEntityBehaviorClass("MPBrake", typeof(BEBehaviorMPBrake));
+            api.RegisterBlockEntityBehaviorClass("AxleAttachmentFrame", typeof(BEBehaviorAxleAttachmentFrame));
             api.RegisterBlockEntityBehaviorClass("MPTransmission", typeof(BEBehaviorMPTransmission));
             api.RegisterBlockEntityBehaviorClass("MPWindmillRotor", typeof(BEBehaviorWindmillRotor));
             api.RegisterBlockEntityBehaviorClass("MPCreativeRotor", typeof(BEBehaviorMPCreativeRotor));
@@ -779,9 +792,28 @@ namespace Vintagestory.GameContent
             api.RegisterCollectibleBehaviorClass("GroundStoredProcessable", typeof(CollectibleBehaviorGroundStoredProcessable));
             api.RegisterCollectibleBehaviorClass("GroundStoredHeldBag", typeof(CollectibleBehaviorGroundStoredHeldBag));
             api.RegisterCollectibleBehaviorClass("Sharpenable", typeof(CollectibleBehaviorSharpenable));
+            api.RegisterCollectibleBehaviorClass("UnderwaterMiningPenalty", typeof(CollectibleBehaviorUnderwaterMiningPenalty));
             api.RegisterCollectibleBehaviorClass("TypedDisplayableProps", typeof(CollectibleBehaviorTypedDisplayableProps));
             api.RegisterCollectibleBehaviorClass("Wearable", typeof(CollectibleBehaviorWearable));
+            api.RegisterCollectibleBehaviorClass("CombinedWearable", typeof(CollectibleBehaviorCombinedWearable));
+            api.RegisterCollectibleBehaviorClass("CombinedWearableInventoryShape", typeof(CollectibleBehaviorCombinedInventoryShape));
+            api.RegisterCollectibleBehaviorClass("CombinedWearableItemName", typeof(CollectibleBehaviorCombinedItemName));
+            api.RegisterCollectibleBehaviorClass("CombinedWearableStats", typeof(CollectibleBehaviorCombinedStats));
+            api.RegisterCollectibleBehaviorClass("CombinedWearableArmor", typeof(CollectibleBehaviorCombinedArmor));
+            api.RegisterCollectibleBehaviorClass("ArmorBitStats", typeof(CollectibleBehaviorArmorBitStats));
+            api.RegisterCollectibleBehaviorClass("CombinedWearableAttachedShape", typeof(CollectibleBehaviorCombinedWearableAttachedShape));
+            api.RegisterCollectibleBehaviorClass("WearableBitAttachedShape", typeof(CollectibleBehaviorWearableBitAttachedShape));
+            api.RegisterCollectibleBehaviorClass("FlippableArmorBit", typeof(CollectibleBehaviorFlippableArmorBit));
+            api.RegisterCollectibleBehaviorClass("DropOnBreak", typeof(CollectibleBehaviorDropOnBreak));
             api.RegisterCollectibleBehaviorClass("TypedTexture", typeof(CollectibleBehaviorTypedTexture));
+            api.RegisterCollectibleBehaviorClass("MechanicalMaterial", typeof(CollectibleBehaviorMechanicalMaterial));
+            api.RegisterCollectibleBehaviorClass("Ammunition", typeof(CollectibleBehaviorAmmunition));
+            api.RegisterCollectibleBehaviorClass("ArmorRepairTool", typeof(CollectibleBehaviorArmorRepairTool));
+            api.RegisterCollectibleBehaviorClass("ArmorDisassemlyTool", typeof(CollectibleBehaviorArmorDisassemlyTool));
+            api.RegisterCollectibleBehaviorClass("ArmorShapeVariantFlipperTool", typeof(CollectibleBehaviorArmorShapeVariantFlipperTool));
+            api.RegisterCollectibleBehaviorClass("ArmorTextureVariantFlipperTool", typeof(CollectibleBehaviorArmorTextureVariantFlipperTool));
+            api.RegisterCollectibleBehaviorClass("ArmorCombinationTool", typeof(CollectibleBehaviorArmorCombinationTool));
+            api.RegisterCollectibleBehaviorClass("EquippableWearable", typeof(CollectibleBehaviorEquippableWearable));
         }
 
 
@@ -984,6 +1016,7 @@ namespace Vintagestory.GameContent
             api.RegisterItemClass("ItemScrapWeaponKit", typeof(ItemScrapWeaponKit));
             api.RegisterItemClass("ItemCheese", typeof(ItemCheese));
             api.RegisterItemClass("ItemCoal", typeof(ItemCoal));
+            api.RegisterItemClass("ItemLinkage", typeof(ItemLinkage));
             api.RegisterItemClass("ItemRope", typeof(ItemRope));
             api.RegisterItemClass("ItemMeasuringRope", typeof(ItemMeasuringRope));
             api.RegisterItemClass("ItemTreeSeed", typeof(ItemTreeSeed));
@@ -996,6 +1029,7 @@ namespace Vintagestory.GameContent
             api.RegisterItemClass("ItemCreatureInventory", typeof(ItemCreatureInventory));
 
             api.RegisterItemClass("ItemLocatorMap", typeof(ItemLocatorMap));
+            api.RegisterItemClass("ItemDoorKey", typeof(ItemDoorKey));
             api.RegisterItemClass("ItemBook", typeof(ItemBook));
             api.RegisterItemClass("ItemRollable", typeof(ItemRollable));
             api.RegisterItemClass("ItemDeadButterfly", typeof(ItemDeadButterfly));
@@ -1022,6 +1056,7 @@ namespace Vintagestory.GameContent
             api.RegisterItemClass("ItemSnowShovel", typeof(ItemSnowshovel));
 
             api.RegisterItemClass("ItemEntityMover", typeof(ItemEntityMoverTool));
+            api.RegisterItemClass("ItemDebugTool", typeof(ItemDebugTool));
         }
 
 
@@ -1031,6 +1066,7 @@ namespace Vintagestory.GameContent
             api.RegisterEntity("EntityPlayerBot", typeof(EntityPlayerBot));
             api.RegisterEntity("EntityAnimalBot", typeof(EntityAnimalBot));
             api.RegisterEntity("EntityProjectile", typeof(EntityProjectile));
+            api.RegisterEntity("EntityBluntProjectile", typeof(EntityBluntProjectile));
             api.RegisterEntity("EntityThrownStone", typeof(EntityThrownStone));
             api.RegisterEntity("EntityBeeMob", typeof(EntityBeeMob));
             api.RegisterEntity("EntityButterfly", typeof(EntityButterfly));
@@ -1074,6 +1110,8 @@ namespace Vintagestory.GameContent
             api.RegisterEntityBehaviorClass("rideable", typeof(EntityBehaviorRideable));
             api.RegisterEntityBehaviorClass("attachable", typeof(EntityBehaviorAttachable));
             api.RegisterEntityBehaviorClass("rideableaccessories", typeof(EntityBehaviorRideableAccessories));
+            api.RegisterEntityBehaviorClass("wearablescraftingstand", typeof(EntityBehaviorWearablesCraftingStand));
+            api.RegisterEntityBehaviorClass("craftingstandselectionboxes", typeof(EntityBehaviorCraftingStandSelectionBoxes));
 
             api.RegisterEntityBehaviorClass("seraphinventory", typeof(EntityBehaviorSeraphInventory));
             api.RegisterEntityBehaviorClass("mortallywoundable", typeof(EntityBehaviorMortallyWoundable));

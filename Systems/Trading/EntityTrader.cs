@@ -2,6 +2,7 @@ using System.IO;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
@@ -46,7 +47,7 @@ namespace Vintagestory.GameContent
 
         public EntityTrader()
         {
-            AnimManager = new PersonalizedAnimationManager();
+            AnimManager = new PersonalizedAnimationManager(this);
         }
 
         public override void Initialize(EntityProperties properties, ICoreAPI api, long InChunkIndex3d)
@@ -75,18 +76,21 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnReceivedServerPacket(int packetid, byte[] data)
+        public override void OnReceivedServerPacket(int packetId, SerializedData packetData)
         {
-            base.OnReceivedServerPacket(packetid, data);
+            base.OnReceivedServerPacket(packetId, packetData);
 
-            if (packetid == (int)EntityServerPacketId.Hurt)
+            switch((EntityServerPacketId)packetId)
             {
-                if (!Alive) return;
-                talkUtil.Talk(EnumTalkType.Hurt);
-            }
-            if (packetid == (int)EntityServerPacketId.Death)
-            {
-                talkUtil.Talk(EnumTalkType.Death);
+                case EntityServerPacketId.Hurt:
+                    if (!Alive) return;
+                    talkUtil.Talk(EnumTalkType.Hurt);
+                    break;
+
+
+                case EntityServerPacketId.Death:
+                    talkUtil.Talk(EnumTalkType.Death);
+                    break;
             }
         }
 
@@ -119,9 +123,9 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void FromBytes(BinaryReader reader, bool forClient)
+        public override void FromBytes(ref BinarySpanReader reader, bool forClient)
         {
-            base.FromBytes(reader, forClient);
+            base.FromBytes(ref reader, forClient);
             (AnimManager as PersonalizedAnimationManager).Personality = this.Personality;
         }
 

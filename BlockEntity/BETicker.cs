@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -44,14 +44,9 @@ namespace Vintagestory.GameContent
             Block block = Api.World.BlockAccessor.GetBlockOnSide(Pos, facing);
             if (block != null)
             {
+                var caller = Caller.FromBlock(Pos);
                 try
                 {
-                    var caller = new Caller() { 
-                        CallerPrivileges = new string[] { "*" }, 
-                        Pos = Pos.ToVec3d(), 
-                        Type = EnumCallerType.Block 
-                    };
-
                     block.Activate(Api.World, caller, new BlockSelection(Pos.AddCopy(facing), facing.Opposite, block));
                 }
                 catch (Exception e)
@@ -122,13 +117,13 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnReceivedClientPacket(IPlayer fromPlayer, int packetid, byte[] data)
+        public override void OnReceivedClientPacket(IServerPlayer fromPlayer, int packetId, SerializedData packetData, ref CachedAccessPerms perms)
         {
-            base.OnReceivedClientPacket(fromPlayer, packetid, data);
+            base.OnReceivedClientPacket(fromPlayer, packetId, packetData, ref perms);
 
-            if (packetid == 12 && BlockEntityGuiConfigurableCommands.CanEditCommandblocks(fromPlayer))
+            if (packetId == 12 && BlockEntityGuiConfigurableCommands.CanEditCommandblocks(fromPlayer))
             {
-                var packet = SerializerUtil.Deserialize<EditTickerPacket>(data);
+                var packet = packetData.Deserialize<EditTickerPacket>();
                 tickIntervalMs = packet.Interval.ToInt(500);
                 active = packet.Active;
 

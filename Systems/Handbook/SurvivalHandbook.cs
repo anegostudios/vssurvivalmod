@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -9,7 +11,12 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public delegate void InitCustomPagesDelegate(List<GuiHandbookPage> pages);
+    public interface IHandbookListGrouping
+    {
+        string[] GetListGroupingForHandbook(ItemStack stack, string[]? listGroupCodesFromAttributes);
+    }
+
+    public delegate void InitCustomPagesDelegate(List<IFlatListItem> pages);
 
     public class ModSystemSurvivalHandbook : ModSystem
     {
@@ -18,7 +25,7 @@ namespace Vintagestory.GameContent
 
         public event InitCustomPagesDelegate OnInitCustomPages;
 
-        internal void TriggerOnInitCustomPages(List<GuiHandbookPage> pages)
+        internal void TriggerOnInitCustomPages(List<IFlatListItem> pages)
         {
             OnInitCustomPages?.Invoke(pages);
         }
@@ -77,9 +84,13 @@ namespace Vintagestory.GameContent
             capi.Logger.VerboseDebug("Done initialising handbook");
         }
 
-        private List<GuiHandbookPage> onCreatePagesAsync()
+        private List<IFlatListItem> onCreatePagesAsync()
         {
-            var pages = new List<GuiHandbookPage>();
+            bool doGroupings = capi.Settings.Bool["handbookGroupings"];
+
+            // This stuff ought to happen via interface, not hardcoded loads
+
+            var listItems = new List<IFlatListItem>();
             foreach (var recipe in capi.GetCookingRecipes())
             {
                 if (capi.IsShuttingDown) break;
@@ -93,7 +104,7 @@ namespace Vintagestory.GameContent
 
                     CreateCachedMealRecipeStacks(recipe);
 
-                    pages.Add(elem);
+                    listItems.Add(elem);
                 }
             }
 
@@ -112,9 +123,10 @@ namespace Vintagestory.GameContent
 
                 CreateCachedMealRecipeStacks(recipe);
 
-                pages.Add(elem);
+                listItems.Add(elem);
             }
 
+            Dictionary<string, INestedListItemWithChildren> nestedListItemsByCode = [];
             foreach (ItemStack stack in ObjectCacheUtil.TryGet<ItemStack[]>(capi, "handbookallstacks"))
             {
                 if (capi.IsShuttingDown) break;
@@ -124,10 +136,28 @@ namespace Vintagestory.GameContent
                     Visible = true
                 };
 
-                pages.Add(elem);
+                string[]? listGroupCodes = stack.ItemAttributes?["handbook"]?["listGroupCode"]?.AsArray<string>();
+                listGroupCodes = !doGroupings ? null : stack.Collectible.GetCollectibleInterface<IHandbookListGrouping>()?.GetListGroupingForHandbook(stack, listGroupCodes) ?? listGroupCodes;
+                if (listGroupCodes != null)
+                {
+                    INestedListItemWithChildren[] nestedListItems = new INestedListItemWithChildren[listGroupCodes.Length];
+                    for (int i = 0; i < listGroupCodes.Length; i++)
+                    {
+                        if (!nestedListItemsByCode.TryGetValue(listGroupCodes[i], out var nestedListItem))
+                        {
+                            nestedListItemsByCode[listGroupCodes[i]] = nestedListItem = new GuiHandbookNestedListItem(listGroupCodes[i]);
+                            if (i == 0) listItems.Add(nestedListItem);
+                            else nestedListItems[i - 1].Children.Add(nestedListItem);
+                        }
+
+                        nestedListItems[i] = nestedListItem;
+                        if (i == listGroupCodes.Length - 1) nestedListItem.Children.Add(elem);
+                    }
+                }
+                else listItems.Add(elem);
             }
 
-            return pages;
+            return listItems;
         }
 
         private void onComposePage(GuiHandbookPage page, GuiComposer detailViewGui, ElementBounds textBounds, ActionConsumable<string> openDetailPageFor)
@@ -180,7 +210,10 @@ namespace Vintagestory.GameContent
 
                         if (BlockLiquidContainerBase.GetContainableProps(stack) is WaterTightContainableProps props)
                         {
-                            stack.StackSize *= (int)(props.ItemsPerLitre * ingredient.PortionSizeLitres);
+                            // Use ceil to make sure recipe matching works. Truncation breaks it.
+                            // e.g. 1 * 104 * 0.2 = 20.8 -> 21
+                            // Only 20 means CookingRecipe.Matches will fail because it truncates the ratio
+                            stack.StackSize = (int)Math.Ceiling(stack.StackSize * props.ItemsPerLitre * ingredient.PortionSizeLitres);
                         }
 
                         ingredientStacks.Add(stack);

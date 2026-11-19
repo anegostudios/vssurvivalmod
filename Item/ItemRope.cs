@@ -26,20 +26,6 @@ namespace Vintagestory.GameContent
         ClothManager cm;
         SkillItem[] toolModes;
 
-        public override void TryMergeStacks(ItemStackMergeOperation op)
-        {
-            var sinkId = op.SinkSlot.Itemstack.Attributes.GetInt("clothId");
-            var srcId = op.SourceSlot.Itemstack.Attributes.GetInt("clothId");
-
-            if (sinkId != 0 || srcId != 0)
-            {
-                op.MovableQuantity = 0;
-                return;
-            }
-
-            base.TryMergeStacks(op);
-        }
-
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
@@ -287,10 +273,9 @@ namespace Vintagestory.GameContent
             relayRopeInteractions = false;
             Entity toEntity = toEntitySel.Entity;
 
-            var ebho = toEntity.GetBehavior<EntityBehaviorOwnable>();
-            if (ebho != null && !ebho.IsOwner(byEntity))
+            if (EntityUtil.RestrictedByOwnership(toEntity, byEntity))
             {
-                (toEntity.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "requiersownership", Lang.Get("mount-interact-requiresownership"));
+                (toEntity.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "requiresownership", Lang.Get("mount-interact-requiresownership"));
                 return null;
             }
 

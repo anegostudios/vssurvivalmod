@@ -211,58 +211,56 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public override void OnReceivedClientPacket(IPlayer player, int packetid, byte[] data)
+        public override void OnReceivedClientPacket(IServerPlayer player, int packetId, SerializedData packetData, ref CachedAccessPerms perms)
         {
-            if (packetid < 1000)
+            switch (packetId)
             {
-                var perms = new BlockEntity.CachedAccessPerms(this.Api.World, this.Pos, player);
-                if (!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "blast furnace"))
-                {
-                    Inventory.InvNetworkUtil.SendInventoryRollback((IServerPlayer)player, packetid, data);
-                    return;
-                }
+                case < (int)EnumBlockStovePacket.OpenGUI:
+                    if (!perms.TryAccessingBlockAtPos(EnumBlockAccessFlags.Use, true, "blast furnace"))
+                    {
+                        Inventory.InvNetworkUtil.SendInventoryRollback(player, packetId, packetData);
+                        break;
+                    }
 
-                Inventory.InvNetworkUtil.HandleClientPacket(player, packetid, data);
+                    Inventory.InvNetworkUtil.HandleClientPacket(player, packetId, packetData);
+                    // Tell server to save this chunk to disk again
+                    Api.World.BlockAccessor.GetChunkAtBlockPos(Pos).MarkModified();
 
-                // Tell server to save this chunk to disk again
-                Api.World.BlockAccessor.GetChunkAtBlockPos(Pos).MarkModified();
+                    break;
 
-                return;
+
+                case (int)EnumBlockStovePacket.CloseGUI:
+                    // No permission checks here, closing the ui is always allowed.
+
+                    player.InventoryManager?.CloseInventory(Inventory);
+
+                    break;
             }
 
-            if (packetid == (int)EnumBlockStovePacket.CloseGUI)
-            {
-                // No permission checks here, closing the ui is always allowed.
-                if (player.InventoryManager != null)
-                {
-                    player.InventoryManager.CloseInventory(Inventory);
-                }
-            }
+            // Rennorb 20.06.2026 explain: Why not call the base here?
+            // base.OnReceivedClientPacket(player, packetId, data, ref perms);
         }
 
-        public override void OnReceivedServerPacket(int packetid, byte[] data)
+        public override void OnReceivedServerPacket(int packetId, SerializedData packetData)
         {
-            if (packetid == (int)EnumBlockStovePacket.OpenGUI)
+            if (packetId == (int)EnumBlockStovePacket.OpenGUI)
             {
-                using (MemoryStream ms = new MemoryStream(data))
-                {
-                    BinaryReader reader = new BinaryReader(ms);
+                var reader = packetData.AsBinaryReader();
 
-                    string dialogClassName = reader.ReadString();
-                    string dialogTitle = reader.ReadString();
+                string dialogClassName = reader.ReadString();
+                string dialogTitle = reader.ReadString();
 
-                    TreeAttribute tree = new TreeAttribute();
-                    tree.FromBytes(reader);
-                    Inventory.FromTreeAttributes(tree);
-                    Inventory.ResolveBlocksOrItems();
+                TreeAttribute tree = new TreeAttribute();
+                tree.FromBytes(ref reader);
+                Inventory.FromTreeAttributes(tree);
+                Inventory.ResolveBlocksOrItems();
 
-                    IClientWorldAccessor clientWorld = (IClientWorldAccessor)Api.World;
+                IClientWorldAccessor clientWorld = (IClientWorldAccessor)Api.World;
 
-                    //clientWorld.OpenDialog(dialogClassName, dialogTitle, Inventory);
-                }
+                //clientWorld.OpenDialog(dialogClassName, dialogTitle, Inventory);
             }
 
-            if (packetid == (int)EnumBlockEntityPacketId.Close)
+            if (packetId == (int)EnumBlockEntityPacketId.Close)
             {
                 IClientWorldAccessor clientWorld = (IClientWorldAccessor)Api.World;
                 clientWorld.Player.InventoryManager.CloseInventory(Inventory);

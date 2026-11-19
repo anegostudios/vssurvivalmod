@@ -147,8 +147,7 @@ namespace Vintagestory.GameContent
 
                     childEntity.Attributes.SetString("origin", "reproduction");
                     childEntity.WatchedAttributes.SetInt("generation", chickData.GetInt("generation", 0));
-                    EntityAgent eagent = childEntity as EntityAgent;
-                    if (eagent != null) eagent.HerdId = chickData.GetLong("herdID", 0);
+                    (childEntity as EntityAgent)?.HerdId = chickData.GetLong("herdID", 0);
                     Api.World.SpawnEntity(childEntity);
 
                     inventory[i].Itemstack = null;

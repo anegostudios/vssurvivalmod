@@ -319,6 +319,8 @@ namespace Vintagestory.GameContent
         public void DetermineBuildStages()
         {
             BlockPitkiln blockpk = this.Block as BlockPitkiln;
+            if (blockpk == null) return;
+
             bool found = false;
             foreach (var val in blockpk.BuildStagesByBlock)
             {
@@ -555,7 +557,7 @@ namespace Vintagestory.GameContent
             var begs = Api.World.BlockAccessor.GetBlockEntity(Pos) as BlockEntityGroundStorage;
 
             ItemStack sourceStack = inventory.FirstNonEmptySlot?.Itemstack;
-            var storeprops = sourceStack?.Collectible.GetBehavior<CollectibleBehaviorGroundStorable>()?.StorageProps;
+            var storeprops = sourceStack?.Collectible.GetBehavior<CollectibleBehaviorGroundStorable>()?.GetStorageProperties(sourceStack);
 
             begs.ForceStorageProps(storeprops ?? StorageProps);
 

@@ -101,7 +101,7 @@ namespace Vintagestory.GameContent
                     return true;
                 }
 
-                
+
             } else
             {
                 BlockEntityStaticTranslocator be = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityStaticTranslocator;
@@ -131,10 +131,7 @@ namespace Vintagestory.GameContent
         public override void OnEntityCollide(IWorldAccessor world, Entity entity, BlockPos pos, BlockFacing facing, Vec3d collideSpeed, bool isImpact)
         {
             base.OnEntityCollide(world, entity, pos, facing, collideSpeed, isImpact);
-
-            BlockEntityStaticTranslocator be = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityStaticTranslocator;
-            if (be == null) return;
-            be.OnEntityCollide(entity);
+            GetBlockEntity<BlockEntityStaticTranslocator>(pos)?.OnEntityCollide(entity);
         }
 
         public override string GetPlacedBlockInfo(IWorldAccessor world, BlockPos pos, IPlayer forPlayer)

@@ -16,11 +16,34 @@ namespace Vintagestory.GameContent
     {
         protected float rotInterval = GameMath.PIHALF / 4;
 
+        WorldInteraction[]? interactions;
+
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
 
-            if (api is ICoreClientAPI capi) AddTrappableHandbookInfo(capi);
+            if (api is not ICoreClientAPI capi) return;
+
+            AddTrappableHandbookInfo(capi);
+
+            interactions = ObjectCacheUtil.GetOrCreate(api, "trapInteractions", () =>
+            {
+                ItemStack[] baitStacks = api.World.Collectibles.SelectMany(obj => obj.GetHandBookStacks(capi) ?? [])
+                                                               .Where(stack => IsAppetizingBait(capi, stack) && CanFitBait(capi, stack)).ToArray();
+
+                return new WorldInteraction[] {
+                    new() {
+                        ActionLangCode = "blockhelp-baskettrap-addbait",
+                        MouseButton = EnumMouseButton.Right,
+                        Itemstacks = baitStacks,
+                        GetMatchingStacks = (wi, bs, _) => {
+                            var trap = GetBlockEntity<BlockEntityAnimalTrap>(bs.Position);
+                            if (trap?.TrapState is not EnumTrapState.Empty) return null;
+                            return trap.Inventory[0]!.Empty ? wi.Itemstacks : null;
+                        }
+                    }
+                };
+            });
         }
 
         public override bool DoPlaceBlock(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ItemStack byItemStack)
@@ -211,6 +234,11 @@ namespace Vintagestory.GameContent
             }
 
             base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
+        }
+
+        public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)
+        {
+            return interactions.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
         }
     }
 }

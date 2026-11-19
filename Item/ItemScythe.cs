@@ -91,8 +91,8 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            byEntity.Attributes.SetBool("didBreakBlocks", false);
-            byEntity.Attributes.SetBool("didPlayScytheSound", false);
+            var scytheAnim = byEntity.AnimManager.GetAnimationState(slot.Itemstack.Collectible.HeldTpHitAnimation);
+            byEntity.Attributes.SetBool("didPassScytheFrame", scytheAnim.CurrentFrame >= 14);
             handling = EnumHandHandling.PreventDefault;
         }
 
@@ -121,24 +121,28 @@ namespace Vintagestory.GameContent
             var block = api.World.BlockAccessor.GetBlock(blockSelection.Position);
             IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
 
-            var canmultibreak = CanMultiBreak(api.World.BlockAccessor.GetBlock(blockSelection.Position));
+            var canmultibreak = CanMultiBreak(block);
+            var scytheAnim = byEntity.AnimManager.GetAnimationState(slot.Itemstack.Collectible.HeldTpHitAnimation);
 
-            if (canmultibreak && secondsPassed > 0.75f && byEntity.Attributes.GetBool("didPlayScytheSound") == false)
+            if (scytheAnim.CurrentFrame < 14)
             {
-                api.World.PlaySoundAt(new AssetLocation("sounds/tool/scythe1"), byEntity, byPlayer, true, 16);
-                byEntity.Attributes.SetBool("didPlayScytheSound", true);
+                byEntity.Attributes.SetBool("didPassScytheFrame", false);
+                return;
             }
 
-            if (canmultibreak && secondsPassed > 1.05f && byEntity.Attributes.GetBool("didBreakBlocks") == false)
+            if (byEntity.Attributes.GetBool("didPassScytheFrame")) return;
+            byEntity.Attributes.SetBool("didPassScytheFrame", true);
+
+            if (canmultibreak)
             {
+                api.World.PlaySoundAt(new AssetLocation("sounds/tool/scythe1"), byEntity, byPlayer, true, 16);
+
                 if (byEntity.World.Side == EnumAppSide.Server && byEntity.World.Claims.TryAccess(byPlayer, blockSelection.Position, EnumBlockAccessFlags.BuildOrBreak))
                 {
                     trimMode = slot.Itemstack.Attributes.GetInt("toolMode", 0) == 0;
 
                     OnBlockBrokenWith(byEntity.World, byEntity, slot, blockSelection);
                 }
-
-                byEntity.Attributes.SetBool("didBreakBlocks", true);
             }
         }
 

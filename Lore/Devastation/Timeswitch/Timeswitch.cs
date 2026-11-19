@@ -1,8 +1,7 @@
-using Cairo;
 using ProtoBuf;
-using SkiaSharp;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -11,6 +10,7 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+using Vintagestory.Datastructures;
 using Vintagestory.ServerMods;
 
 #nullable disable
@@ -43,11 +43,11 @@ namespace Vintagestory.GameContent
         public int baseChunkX;
         [ProtoMember(5)]
         public int baseChunkZ;
-        [ProtoMember(6)]
+        [ProtoMember(6), DefaultValue(3)]
         public int size = 3;
         [ProtoMember(7)]
         public int forcedY = 0;
-        [ProtoMember(8)]
+        [ProtoMember(8), DefaultValue("")]
         public string failureReason = "";
 
         public TimeSwitchState() { }  // Parameter-less constructor used by NetworkChannel
@@ -139,7 +139,9 @@ namespace Vintagestory.GameContent
             float guiscale = 8f / 13f * RuntimeEnv.GUIScale;
 
             float slotTexSize = (float)GuiElement.scaled(GuiElementPassiveItemSlot.unscaledSlotSize);
-            capi.Render.Render2DTexture(slotTexId, x - (float)GuiElement.scaled(4), y - (float)GuiElement.scaled(5), slotTexSize, slotTexSize, z-300);
+            capi.Render.Render2DTexture(slotTexId, x, y, slotTexSize, slotTexSize, z-300);
+            x += (float)GuiElement.scaled(4);
+            y += (float)GuiElement.scaled(5);
 
             capi.Render.Render2DTexture(iconTex.TextureId, x, y, iconTex.Width * guiscale, iconTex.Height * guiscale, z);
 
@@ -634,8 +636,13 @@ namespace Vintagestory.GameContent
             BlockPos originPos = start.AddCopy(0, OtherDimension * BlockPos.DimensionBoundary, 0);
             var blockAccess = sapi.World.BlockAccessor;
             blocks.Init(blockAccess);
-            blocks.Place(blockAccess, sapi.World, originPos, EnumReplaceMode.ReplaceAll, true);
-            blocks.PlaceDecors(blockAccess, originPos);
+            SchematicPlacementData data = new(blockAccess, sapi.World)
+            {
+                StartPos = originPos,
+                ReplaceMode = EnumReplaceMode.ReplaceAll,
+                ReplaceMeta = true,
+            };
+            blocks.Place(data);
 
             if (player != null)
             {
@@ -825,9 +832,13 @@ namespace Vintagestory.GameContent
 
             blocks.Init(blockAccessor);
             blocks.blockLayerConfig = genGenStoryStructures.blockLayerConfig;
-
-            blocks.Place(blockAccessor, sapi.World, start, EnumReplaceMode.ReplaceAllNoAir, true);
-            blocks.PlaceDecors(blockAccessor, start);
+            SchematicPlacementData data = new(blockAccessor, sapi.World)
+            {
+                StartPos = start,
+                ReplaceMode = EnumReplaceMode.ReplaceAllNoAir,
+                ReplaceMeta = true,
+            };
+            blocks.Place(data);
         }
 
         private bool AreAllDim0ChunksGenerated(IBlockAccessor wgenBlockAccessor)

@@ -2,8 +2,6 @@
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
-#nullable disable
-
 namespace Vintagestory.GameContent
 {
     // Concept time
@@ -29,14 +27,13 @@ namespace Vintagestory.GameContent
 
         }
 
-
         public override bool DoPlaceBlock(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ItemStack byItemStack)
         {
             bool val = base.DoPlaceBlock(world, byPlayer, blockSel, byItemStack);
 
             if (val)
             {
-                BlockEntityBucket bect = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityBucket;
+                BlockEntityBucket? bect = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityBucket;
                 if (bect != null)
                 {
                     BlockPos targetPos = blockSel.DidOffset ? blockSel.Position.AddCopy(blockSel.Face.Opposite) : blockSel.Position;
@@ -52,12 +49,5 @@ namespace Vintagestory.GameContent
 
             return val;
         }
-
-
-
-
-
-
-
     }
 }

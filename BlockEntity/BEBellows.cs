@@ -16,6 +16,7 @@ namespace Vintagestory.GameContent
         protected float animationDuration = 4f / 3f;
         protected long interactStartTotalMs;
         protected float originalAnimationSpeed = 1;
+        protected float airPerStroke = 0.2f;
         protected AnimationMetaData? animation;
 
         public override void Initialize(ICoreAPI api)
@@ -23,6 +24,7 @@ namespace Vintagestory.GameContent
             base.Initialize(api);
             animation = Block.Attributes?["bellowAnimation"].AsObject<AnimationMetaData>();
             originalAnimationSpeed = animation?.AnimationSpeed ?? 1;
+            airPerStroke = Block.Attributes?["airPerStroke"].AsFloat(airPerStroke) ?? airPerStroke;
         }
 
         public virtual bool Interact(IPlayer byPlayer)
@@ -37,7 +39,7 @@ namespace Vintagestory.GameContent
             {
                 var facingPos = Pos.AddCopy(facing);
                 var block = world.BlockAccessor.GetBlock(facingPos);
-                block.GetInterface<IBellowsAirReceiver>(world, facingPos)?.BlowAirInto(world, facingPos, 0.2f, facing);
+                block.GetInterface<IBellowsAirReceiver>(world, facingPos)?.BlowAirInto(world, facingPos, airPerStroke, facing);
                 GetBehavior<BEBehaviorDurability>()?.DamageBlock(1);
 
             }, (int)(733 / PumpingSpeed));
@@ -64,8 +66,7 @@ namespace Vintagestory.GameContent
             BlockEntityAnimationUtil? animUtil = GetBehavior<BEBehaviorAnimatable>()?.animUtil;
             if (animUtil?.animator == null)
             {
-                float rotY = BlockFacing.FromCode(Block.Variant["side"]).HorizontalAngleIndex * 90 + 180;
-                animUtil?.InitializeAnimator("bellows" + Block.Code, null, null, new Vec3f(0, rotY, 0));
+                animUtil?.InitializeAnimator("bellows" + Block.Code, null, null, new Vec3f(0, Block.Shape.rotateY, 0));
             }
 
             return base.OnTesselation(mesher, tessThreadTesselator);

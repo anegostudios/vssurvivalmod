@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using ProtoBuf;
 using Vintagestory.API.Client;
@@ -23,18 +24,20 @@ namespace Vintagestory.GameContent
 
     public class BlockEntitySign : BlockEntity , IRotatable
     {
+        public const int MaxTextLength = 1024;
+
         public string text = "";
-        BlockEntitySignRenderer signRenderer;
-        int color;
-        int tempColor;
-        ItemStack tempStack;
-        float angleRad;
-        float fontSize = 20;
+        protected BlockEntitySignRenderer signRenderer;
+        protected int color;
+        protected int tempColor;
+        protected ItemStack tempStack;
+        protected float angleRad;
+        protected float fontSize = 20;
+        protected BlockSign blockSign;
+        protected GuiDialogBlockEntityTextInput editDialog;
+        protected MeshData mesh;
 
         public Cuboidf[] colSelBox;
-
-        BlockSign blockSign;
-
         public bool Translateable { get; set; }
 
         public virtual float MeshAngleRad
@@ -58,7 +61,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        
+
 
         public override void Initialize(ICoreAPI api)
         {
@@ -87,7 +90,7 @@ namespace Vintagestory.GameContent
             signRenderer?.Dispose();
             signRenderer = null;
         }
-        
+
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
@@ -127,52 +130,68 @@ namespace Vintagestory.GameContent
             tree.SetBool("translateable", Translateable);
         }
 
-        public override void OnReceivedClientPacket(IPlayer player, int packetid, byte[] data)
+        public override void OnReceivedClientPacket(IServerPlayer player, int packetId, SerializedData packetData, ref CachedAccessPerms perms)
         {
-            if (packetid == (int)EnumSignPacketId.SaveText)
+            switch (packetId)
             {
-                var perms = new BlockEntity.CachedAccessPerms(this.Api.World, this.Pos, player);
-                if (!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "sign"))
-                {
-                    player.InventoryManager.ActiveHotbarSlot.MarkDirty();
-                    // Revert the text change for that client:
-                    ((ICoreServerAPI)Api).Network.SendBlockEntityPacket<EditSignPacket>((IServerPlayer)player, Pos, (int)EnumSignPacketId.NowText, new() {
-                        FontSize = this.fontSize,
-                        Text     = this.text,
-                    });
+                case (int)EnumSignPacketId.SaveText:
+                    void resetSignForThatPlayer()
+                    {
+                        player.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                        // Revert the text change for that client:
+                        ((ICoreServerAPI)Api).Network.SendBlockEntityPacket<EditSignPacket>(player, Pos, (int)EnumSignPacketId.NowText, new() {
+                            FontSize = this.fontSize,
+                            Text     = this.text,
+                        });
 
-                    // Don't forget to give the chalk item back:
+                        // Don't forget to give the chalk item back:
+                        player.InventoryManager.TryGiveItemstack(tempStack);
+                        tempStack = null;
+                    }
+
+                    if (!perms.TryAccessingBlockAtPos(EnumBlockAccessFlags.Use, true, "sign"))
+                    {
+                        resetSignForThatPlayer();
+                        return;
+                    }
+
+                    var packet = packetData.Deserialize<EditSignPacket>();
+                    if (packet.Text.Length > MaxTextLength)
+                    {
+                        resetSignForThatPlayer();
+                        Api.Logger.Audit("{0} tried to set excessive text (len = {1}) on a sign block at {2}", player.PlayerName, packet.Text.Length, Pos);
+                        return;
+                    }
+
+                    fontSize = packet.FontSize;
+                    Api.Logger.Audit("{0} changed sign text from '{1}' to '{2}' ({3}) at {4}", player.PlayerName, text.Replace("\n","\\n"), packet.Text.Replace("\n","\\n"), packet.FontSize, Pos);
+                    SetText(packet.Text);
+
+                    // 85% chance to get back the item
+                    if (Api.World.Rand.NextDouble() < 0.85)
+                    {
+                        player.InventoryManager.TryGiveItemstack(tempStack);
+                    }
+
+                    return;
+
+
+                case (int)EnumSignPacketId.CancelEdit:
+                    if (tempStack == null) return;
+
+                    if (!perms.TryAccessingBlockAtPos(EnumBlockAccessFlags.Use, false, "sign")) // Do not validate picking range in case we got transported out of range.
+                    {
+                        player.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                        // No need to revert here, this cannot happen without packet manipulation.
+                        return;
+                    }
+
                     player.InventoryManager.TryGiveItemstack(tempStack);
                     tempStack = null;
-
                     return;
-                }
-
-                var packet = SerializerUtil.Deserialize<EditSignPacket>(data);
-                this.fontSize = packet.FontSize;
-                SetText(packet.Text);
-
-                // 85% chance to get back the item
-                if (Api.World.Rand.NextDouble() < 0.85)
-                {
-                    player.InventoryManager.TryGiveItemstack(tempStack);
-                }
             }
 
-            if (packetid == (int)EnumSignPacketId.CancelEdit && tempStack != null)
-            {
-                var perms = new BlockEntity.CachedAccessPerms(this.Api.World, this.Pos, player);
-                if (!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, false, "sign")) // Do not validate picking range in case we got transported out of range.
-                {
-                    player.InventoryManager.ActiveHotbarSlot.MarkDirty();
-                    // No need to revert here, this cannot happen without packet manipulation.
-                    return;
-                }
-
-                // Rennorb 19.06.2026 security: Potentially griefable: signs do not track who placed them, therefore a second player could steal the sign by sending the cancel packet.
-                player.InventoryManager.TryGiveItemstack(tempStack);
-                tempStack = null;
-            }
+            base.OnReceivedClientPacket(player, packetId, packetData, ref perms);
         }
 
         public void SetText(string text)
@@ -184,15 +203,21 @@ namespace Vintagestory.GameContent
             Api.World.BlockAccessor.GetChunkAtBlockPos(Pos).MarkModified();
         }
 
-        GuiDialogBlockEntityTextInput editDialog;
-        public override void OnReceivedServerPacket(int packetid, byte[] data)
+
+        public override void OnReceivedServerPacket(int packetId, SerializedData packetData)
         {
-            if (packetid == (int)EnumSignPacketId.OpenDialog)
+            if (packetId == (int)EnumSignPacketId.OpenDialog)
             {
                 if (editDialog != null && editDialog.IsOpened()) return;
 
                 editDialog = new GuiDialogBlockEntityTextInput(Lang.Get("Edit Sign text"), Pos, text, Api as ICoreClientAPI, blockSign?.signConfig.CopyWithFontSize(this.fontSize));
-                editDialog.OnTextChanged = DidChangeTextClientSide;
+                editDialog.OnTextChanged = (string text) =>
+                {
+                    if (editDialog == null) return;
+                    this.fontSize = editDialog.FontSize;
+                    signRenderer.fontSize = this.fontSize;
+                    signRenderer?.SetNewText(text, tempColor);
+                };
                 editDialog.OnCloseCancel = () =>
                 {
                     signRenderer.SetNewText(text, color);
@@ -202,24 +227,15 @@ namespace Vintagestory.GameContent
             }
 
 
-            if (packetid == (int)EnumSignPacketId.NowText)
+            if (packetId == (int)EnumSignPacketId.NowText)
             {
-                var packet = SerializerUtil.Deserialize<EditSignPacket>(data);
+                var packet = packetData.Deserialize<EditSignPacket>();
                 if (signRenderer != null)
                 {
                     signRenderer.fontSize = packet.FontSize;
                     signRenderer.SetNewText(packet.Text, color);
                 }
             }
-        }
-
-
-        private void DidChangeTextClientSide(string text)
-        {
-            if (editDialog == null) return;
-            this.fontSize = editDialog.FontSize;
-            signRenderer.fontSize = this.fontSize;
-            signRenderer?.SetNewText(text, tempColor);
         }
 
 
@@ -258,7 +274,7 @@ namespace Vintagestory.GameContent
             signRenderer?.Dispose();
         }
 
-        MeshData mesh;
+
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
         {
@@ -300,6 +316,6 @@ namespace Vintagestory.GameContent
         OpenDialog = 1001,
         SaveText = 1002,
         CancelEdit = 1003
-            
+
     }
 }

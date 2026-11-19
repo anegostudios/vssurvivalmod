@@ -92,6 +92,20 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public override bool OnPlacementBySchematicCustom(ICoreServerAPI sapi, IBlockAccessor worldAccessor, ITreeAttribute schematicTreeData)
+        {
+            var result = false;
+            foreach (var slot in Inventory)
+            {
+                if (slot.Itemstack != null)
+                {
+                    result |= slot.Itemstack.Collectible.OnPlacementBySchematicCustom(sapi, slot, schematicTreeData);
+                }
+            }
+
+            return result;
+        }
+
         public override void OnBlockPlaced(ItemStack byItemStack = null)
         {
             if (byItemStack?.Attributes != null)
@@ -175,7 +189,7 @@ namespace Vintagestory.GameContent
             tree.SetFloat("meshAngle", MeshAngle);
         }
 
-        protected virtual void InitInventory(Block block)
+        public virtual void InitInventory(Block block)
         {
             if (block?.Attributes != null)
             {
@@ -335,9 +349,9 @@ namespace Vintagestory.GameContent
                 byPlayer.InventoryManager.OpenInventory(inventory);
                 data = SerializerUtil.Serialize(new OpenContainerLidPacket(byPlayer.Entity.EntityId, LidOpenEntityId.Count > 0));
                 ((ICoreServerAPI)Api).Network.BroadcastBlockEntityPacket(
-                    Pos,
+                    new(Pos),
                     (int)EnumBlockContainerPacketId.OpenLidOthers,
-                    data,
+                    new SerializedData(data),
                     (IServerPlayer)byPlayer
                 );
             }

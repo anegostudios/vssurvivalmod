@@ -80,6 +80,7 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldActionAnimStart(ItemSlot slot, EntityAgent byEntity, EnumHandInteract type)
         {
+            base.OnHeldActionAnimStart(slot, byEntity, type);
             var eplr = byEntity as EntityPlayer;
             var byPlayer = eplr.Player;
             var blockSel = eplr.BlockSelection;
@@ -200,6 +201,17 @@ namespace Vintagestory.GameContent
             var blockSel = byPlayer.CurrentBlockSelection;
             if (blockSel == null) return;
             if (strikingItem != byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack) return;
+
+            BlockEntity be = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position);
+
+            if (merge)
+            {
+                if (!(be is BlockEntityAnvilPart beap) || !beap.TestReadyToMerge(false)) return;
+            }
+            else
+            {
+                if (!(byEntity.World.BlockAccessor.GetBlock(blockSel.Position) is BlockAnvil)) return;
+            }
 
             byPlayer.Entity.World.PlaySoundAt(
                 merge ? new AssetLocation("sounds/effect/anvilmergehit") : new AssetLocation("sounds/effect/anvilhit"),

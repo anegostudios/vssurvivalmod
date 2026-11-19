@@ -103,9 +103,9 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
         {
-            base.GetBlockInfo(forPlayer, sb);
             sb.AppendLine(string.Format(Lang.Get("mechanical-torque-kn", (int)(TorqueFactor * 100))));
-            sb.AppendLine(string.Format(Lang.Get("mechanical-speed-rps", System.Math.Round(speedSetting * 0.1f,2))));
+            sb.AppendLine(Lang.Get("mechanical-target-speed-rpm", TargetSpeed * rpmPerSpeedUnit));
+            base.GetBlockInfo(forPlayer, sb);
         }
 
     }

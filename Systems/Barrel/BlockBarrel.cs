@@ -181,7 +181,7 @@ namespace Vintagestory.GameContent
 
             if (!issealed)
             {
-                var containerProps = liquidContentStack?.ItemAttributes?["waterTightContainerProps"];
+                var containerProps = GetContainableProps(liquidContentStack);
 
                 MeshData contentMesh =
                     getContentMeshFromAttributes(contentStack, liquidContentStack, forBlockPos) ??
@@ -211,10 +211,10 @@ namespace Vintagestory.GameContent
             return barrelMesh;
         }
 
-        private MeshData getContentMeshLiquids(ItemStack contentStack, ItemStack liquidContentStack, BlockPos forBlockPos, JsonObject containerProps)
+        private MeshData getContentMeshLiquids(ItemStack contentStack, ItemStack liquidContentStack, BlockPos forBlockPos, WaterTightContainableProps containerProps)
         {
-            bool isopaque = containerProps?["isopaque"].AsBool(false) == true;
-            bool isliquid = containerProps?.Exists == true;
+            bool isopaque = containerProps?.IsOpaque == true;
+            bool isliquid = containerProps != null;
             if (liquidContentStack != null && (isliquid || contentStack == null))
             {
                 AssetLocation shapefilepath = contentsShape;
@@ -394,34 +394,11 @@ namespace Vintagestory.GameContent
             if (api.Side != EnumAppSide.Client) return;
             ICoreClientAPI capi = api as ICoreClientAPI;
 
-            interactions = ObjectCacheUtil.GetOrCreate(api, "liquidContainerBase", () =>
+            interactions = interactions.Append(ObjectCacheUtil.GetOrCreate(api, "barrelInteractions", () =>
             {
-                List<ItemStack> liquidContainerStacks = new List<ItemStack>();
-
-                foreach (CollectibleObject obj in api.World.Collectibles)
-                {
-                    if (obj is ILiquidSource || obj is ILiquidSink || obj is BlockWateringCan)
-                    {
-                        List<ItemStack> stacks = obj.GetHandBookStacks(capi);
-                        if (stacks != null) liquidContainerStacks.AddRange(stacks);
-                    }
-                }
-
-                ItemStack[] lstacks = liquidContainerStacks.ToArray();
                 ItemStack[] linenStack = new ItemStack[] { new ItemStack(api.World.GetBlock(new AssetLocation("linen-normal-down"))) };
 
                 return new WorldInteraction[] {
-                    new WorldInteraction()
-                    {
-                        ActionLangCode = "blockhelp-bucket-rightclick",
-                        MouseButton = EnumMouseButton.Right,
-                        Itemstacks = lstacks,
-                        GetMatchingStacks = (wi, bs, ws) =>
-                        {
-                            BlockEntityBarrel bebarrel = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityBarrel;
-                            return bebarrel?.Sealed == false ? lstacks : null;
-                        }
-                    },
                     new WorldInteraction()
                     {
                         ActionLangCode = "blockhelp-barrel-takecottagecheese",
@@ -436,7 +413,7 @@ namespace Vintagestory.GameContent
                         }
                     }
                 };
-            });
+            }));
         }
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection blockSel, IPlayer forPlayer)

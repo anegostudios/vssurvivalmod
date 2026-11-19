@@ -40,7 +40,7 @@ namespace Vintagestory.GameContent
 
         public override void Start(EntityActivity act)
         {
-            vas.Entity.TeleportToDouble(TargetX + vas.ActivityOffset.X, TargetY + vas.ActivityOffset.Y, TargetZ + vas.ActivityOffset.Z);
+            vas.Entity.TeleportToDouble(TargetX + vas.ActivityOffset.X, TargetY + vas.ActivityOffset.InternalY, TargetZ + vas.ActivityOffset.Z);
             vas.Entity.Controls.StopAllMovement();
             vas.wppathTraverser.Stop();
             vas.Entity.Pos.Yaw = (float)Yaw;

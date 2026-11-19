@@ -10,25 +10,23 @@ namespace Vintagestory.GameContent.Mechanics
 {
     public class BEBehaviorMPConsumer : BEBehaviorMPBase
     {
+        bool passThrough;
+
         public float Resistance = 0.1f;
 
         public Action OnConnected;
         public Action OnDisconnected;
 
-        public override float AngleRad
-        {
-            get { return base.AngleRad; }
-        }
-
-        public float TrueSpeed { get { return Math.Abs(Network?.Speed * GearedRatio ?? 0f); }}
+        public float TrueSpeed => Math.Abs(CurrentSpeed);
 
         public BEBehaviorMPConsumer(BlockEntity blockentity) : base(blockentity) { }
 
         public override void Initialize(ICoreAPI api, JsonObject properties)
         {
+            passThrough = properties["passThrough"].AsBool();
             base.Initialize(api, properties);
 
-            Shape = properties["mechPartShape"].AsObject<CompositeShape>(Block.Shape);
+            Shape = properties["mechPartShape"].AsObject(Shape);
             Shape?.Base.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
 
             Resistance = properties["resistance"].AsFloat(0.1f);
@@ -72,7 +70,9 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override MechPowerPath[] GetMechPowerExits(MechPowerPath fromExitTurnDir)
         {
-            return Array.Empty<MechPowerPath>();
+            // Consumers are usually dead ends, but ones with a through-shaft can carry power out the other side.
+            if (passThrough) return base.GetMechPowerExits(fromExitTurnDir);
+            return [];
         }
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)

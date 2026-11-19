@@ -25,7 +25,7 @@ public class BlockBituCoal: BlockOre
         {
             regionChunkSize = sapi.WorldManager.RegionSize / chunksize;
             rockStrata= BlockLayerConfig.GetInstance(sapi).RockStrata;
-            rand = new LCGRandom(api.World.Seed);
+            rand = new LCGRandom(sapi.World.SeedWorldgen);
         }
     }
 

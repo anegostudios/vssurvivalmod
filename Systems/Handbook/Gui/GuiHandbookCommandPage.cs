@@ -53,7 +53,7 @@ namespace Vintagestory.GameContent
             capi.Render.Render2DTexturePremultipliedAlpha(
                 Texture.TextureId,
                 x + size,
-                y + size - GuiElement.scaled(3),
+                y + size / 2 - Texture.Height / 2,
                 Texture.Width,
                 Texture.Height,
                 50
@@ -88,8 +88,8 @@ namespace Vintagestory.GameContent
         {
             if (string.IsNullOrEmpty(searchText) || string.IsNullOrEmpty(TextCacheAll)) return 0;
 
-            var regex = GuiDialogHandbook.RegexFromSearchText(searchText);
-            if (TextCacheTitle != null && regex.Matches(TextCacheTitle).Count > 0) return 0;
+            var regex = GuiDialog.RegexFromSearchText(searchText);
+            if (regex == null || (TextCacheTitle != null && regex.Count(TextCacheTitle) > 0)) return 0;
 
             string[] matches = regex.Split(TextCacheAll);
             if (matches.Length < 2) return 0;

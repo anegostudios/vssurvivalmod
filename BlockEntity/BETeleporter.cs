@@ -57,26 +57,16 @@ namespace Vintagestory.GameContent
             {
                 return;
             }
-            if (!tpingEntities.TryGetValue(entity.EntityId, out TeleportingEntity tpe))
+            if (!tpingEntities.TryGetValue(entity.EntityId, out var tpe))
             {
-                tpingEntities[entity.EntityId] = tpe = new TeleportingEntity()
-                {
-                    Entity = entity
-                };
+                tpingEntities[entity.EntityId] = tpe = new TeleportingEntity { Entity = entity };
             }
 
             tpe.LastCollideMs = Api.World.ElapsedMilliseconds;
 
-
-            if (Api.Side == EnumAppSide.Client)
-            {
-                lastEntityCollideMs = Api.World.ElapsedMilliseconds;
-
-                if ((Api as ICoreClientAPI).World.Player.Entity == entity)
-                {
-                    lastOwnPlayerCollideMs = Api.World.ElapsedMilliseconds;
-                }
-            }
+            if (Api.World is not IClientWorldAccessor cWorld) return;
+            lastEntityCollideMs = cWorld.ElapsedMilliseconds;
+            if (cWorld.Player.Entity == entity) lastOwnPlayerCollideMs = cWorld.ElapsedMilliseconds;
         }
 
         protected virtual void HandleTeleportingServer(float dt)
@@ -153,16 +143,31 @@ namespace Vintagestory.GameContent
                 {
                     var targetPos = tpTarget.Clone();
                     if (tpLocationIsOffset) targetPos.Add(Pos.X, Pos.Y, Pos.Z);
+                    var entityPos = entity.Pos.XYZFast;
                     entity.TeleportTo(targetPos); // Fugly, need some better exit pos thing
                     toremove.Add(val.Key);
 
+                    var mountable = entity.GetInterface<IMountable>();
                     if (entity is EntityPlayer player)
                     {
-                        Api.World.Logger.Audit("Teleporting player {0} from {1} to {2}", player.GetBehavior<EntityBehaviorNameTag>().DisplayName, entity.Pos.AsBlockPos, tpTarget);
+                        Api.World.Logger.Audit("Teleporting player {0} from {1} to {2}", player.GetBehavior<EntityBehaviorNameTag>()?.DisplayName, entityPos, tpTarget);
+                    }
+                    else if (mountable?.AnyMounted() == true)
+                    {
+                        var names = mountable.Seats.Select(s =>
+                        {
+                            if (s.Passenger is EntityPlayer eplr)
+                            {
+                                return eplr.GetBehavior<EntityBehaviorNameTag>()?.DisplayName;
+                            }
+
+                            return s.Passenger.Code.ToString() + $" ({s.Passenger.EntityId})";
+                        });
+                        Api.World.Logger.Audit("Teleporting entity {0} ({1}) with [{2}] mounted from {3} to {4}", entity.Code, entity.EntityId, string.Join(',', names), entityPos, tpTarget);
                     }
                     else
                     {
-                        Api.World.Logger.Audit("Teleporting entity {0} from {1} to {2}", entity.Code, entity.Pos.AsBlockPos, tpTarget);
+                        Api.World.Logger.Audit("Teleporting entity {0} ({1}) from {2} to {3}", entity.Code, entity.EntityId, entityPos, tpTarget);
                     }
 
                     didTeleport(entity);
@@ -233,24 +238,12 @@ namespace Vintagestory.GameContent
 
             if (api.Side == EnumAppSide.Server)
             {
-                ICoreServerAPI sapi = api as ICoreServerAPI;
-
                 tpLocation = manager.GetOrCreateLocation(Pos);
 
                 RegisterGameTickListener(OnServerGameTick, 50);
             } else
             {
                 RegisterGameTickListener(OnClientGameTick, 50);
-
-                teleportingSound = (api as ICoreClientAPI).World.LoadSound(new SoundParams()
-                {
-                    Location = new AssetLocation("sounds/block/teleporter.ogg"),
-                    ShouldLoop = true,
-                    Position = Pos.ToVec3f(),
-                    RelativePosition = false,
-                    DisposeOnFinish = false,
-                    Volume = 0.5f
-                });
             }
 
             ownBlock = Block as BlockTeleporter;
@@ -273,7 +266,7 @@ namespace Vintagestory.GameContent
 
         protected virtual void HandleSoundClient(float dt)
         {
-            var capi = Api as ICoreClientAPI;
+            var capi = (ICoreClientAPI)Api;
 
             long msEllapsed = capi.World.ElapsedMilliseconds - lastEntityCollideMs;
 
@@ -288,19 +281,28 @@ namespace Vintagestory.GameContent
                 teleSoundPitch = Math.Min(6, teleSoundPitch + dt);
             }
 
-            if (teleportingSound != null)
-            {
-                teleportingSound.SetVolume(teleSoundVolume);
-                teleportingSound.SetPitch(teleSoundPitch);
+            if (teleportingSound == null && teleSoundVolume <= 0) return;
 
-                if (teleportingSound.IsPlaying)
-                {
-                    if (teleSoundVolume <= 0) teleportingSound.Stop();
-                }
-                else
-                {
-                    if (teleSoundVolume > 0) teleportingSound.Start();
-                }
+            teleportingSound ??= capi.World.LoadSound(new SoundParams()
+            {
+                Location = new AssetLocation("sounds/block/teleporter.ogg"),
+                ShouldLoop = true,
+                Position = Pos.ToVec3f(),
+                RelativePosition = false,
+                DisposeOnFinish = false,
+                Volume = teleSoundVolume
+            });
+
+            teleportingSound.SetVolume(teleSoundVolume);
+            teleportingSound.SetPitch(teleSoundPitch);
+
+            if (teleportingSound.IsPlaying)
+            {
+                if (teleSoundVolume <= 0) teleportingSound.Stop();
+            }
+            else
+            {
+                if (teleSoundVolume > 0) teleportingSound.Start();
             }
         }
 

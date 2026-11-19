@@ -1,11 +1,8 @@
 using ProtoBuf;
 using System;
 using System.Collections.Generic;
-using System.Drawing;
-using System.Reflection;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -23,6 +20,8 @@ namespace Vintagestory.GameContent
         public BlockSelection Blocksel;
         [ProtoMember(3)]
         public bool PartialEnds;
+        //[ProtoMember(4)]
+        //public int BlockId; - why did I add this? It lets a client create any block they want!
     }
 
     public class ModSystemSupportBeamPlacer : ModSystem, IRenderer
@@ -54,13 +53,7 @@ namespace Vintagestory.GameContent
         public override void StartServerSide(ICoreServerAPI api)
         {
             api.Network.GetChannel("beamplacer").SetMessageHandler<BeamPlacePacket>(OnCompletePlaceClient);
-            api.Event.PlayerDisconnect += Event_PlayerDisconnect;
             base.StartServerSide(api);
-        }
-
-        private void Event_PlayerDisconnect(IServerPlayer byPlayer)
-        {
-            workspaceByPlayer.Remove(byPlayer.PlayerUID);
         }
 
         private void OnCompletePlaceClient(IServerPlayer fromPlayer, BeamPlacePacket packet)
@@ -70,15 +63,7 @@ namespace Vintagestory.GameContent
 
             if (packet.begin)
             {
-                if (packet.Blocksel?.Position == null ||
-                    packet.Blocksel.Face == null ||
-                    fromPlayer.InventoryManager.ActiveHotbarSlot.Itemstack?.Block is not BlockSupportBeam)
-                {
-                    capi.Logger.Audit("An invalid support beam placement packet was sent from player {0}", fromPlayer.PlayerName);
-                    return;
-                }
-
-                beginPlace(ws, fromPlayer.InventoryManager.ActiveHotbarSlot.Itemstack.Block, fromPlayer.Entity, packet.Blocksel, packet.PartialEnds);
+                beginPlace(ws, fromPlayer.InventoryManager.ActiveHotbarSlot.Itemstack.Block /*api.World.Blocks[packet.BlockId]*/, fromPlayer.Entity, packet.Blocksel, packet.PartialEnds);
             }
             else
             {
@@ -173,6 +158,7 @@ namespace Vintagestory.GameContent
             capi?.Network.GetChannel("beamplacer").SendPacket(new BeamPlacePacket() { 
                 Blocksel = blockSel, 
                 begin = true,
+                //BlockId = block.Id,
                 PartialEnds = partialEnds
             });
         }
@@ -183,6 +169,7 @@ namespace Vintagestory.GameContent
             ws.nowBuilding = false;
             var be = api.World.BlockAccessor.GetBlockEntity(ws.startPos);
             var beh = be?.GetBehavior<BEBehaviorSupportBeam>();
+
             var eplr = byEntity as EntityPlayer;
 
             Vec3f nowEndOffset = getEndOffset(eplr.Player, ws);
@@ -192,31 +179,19 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            if (ws.block.Id != slot.Itemstack?.Block?.Id || !(ws.block is BlockSupportBeam))
-            {
-                (api as ICoreClientAPI)?.TriggerIngameError(this, "invalbeamblock", Lang.Get("Invalid beam block"));
-                return;
-            }
-
-            var player = (byEntity as EntityPlayer)?.Player;
-            if (!api.World.Claims.TryAccess(player, ws.startPos.AddCopy(ws.startOffset), EnumBlockAccessFlags.BuildOrBreak))
-            {
-                player.InventoryManager.ActiveHotbarSlot.MarkDirty();
-                return;
-            }
-            if (!api.World.Claims.TryAccess(player, ws.startPos.AddCopy(nowEndOffset), EnumBlockAccessFlags.BuildOrBreak))
-            {
-                player.InventoryManager.ActiveHotbarSlot.MarkDirty();
-                return;
-            }
-
-
             if (beh == null)
             {
                 var hereBlock = api.World.BlockAccessor.GetBlock(ws.startPos);
                 if (hereBlock.Replaceable < 6000)
                 {
                     (api as ICoreClientAPI)?.TriggerIngameError(this, "notplaceablehere", Lang.Get("Cannot place here, a block is in the way"));
+                    return;
+                }
+
+                var player = (byEntity as EntityPlayer)?.Player;
+                if (!api.World.Claims.TryAccess(player, ws.startPos, EnumBlockAccessFlags.BuildOrBreak))
+                {
+                    player.InventoryManager.ActiveHotbarSlot.MarkDirty();
                     return;
                 }
 
@@ -229,7 +204,6 @@ namespace Vintagestory.GameContent
                         return;
                     }
                 }
-
 
                 api.World.BlockAccessor.SetBlock(ws.block.Id, ws.startPos);
                 be = api.World.BlockAccessor.GetBlockEntity(ws.startPos);
@@ -393,7 +367,7 @@ namespace Vintagestory.GameContent
             ws.currentMeshRef = capi.Render.UploadMultiTextureMesh(mesh);
         }
 
-        public static MeshData generateMesh(Vec3f start, Vec3f end, BlockFacing facing, MeshData[] origMeshes, float slumpPerMeter)
+        public static MeshData generateMesh(Vec3f start, Vec3f end, BlockFacing facing, MeshData[] origMeshes, float slumpPerMeter, float scale=1)
         {
             var outMesh = new MeshData(4, 6).WithRenderpasses().WithXyzFaces().WithColorMaps();
 
@@ -403,19 +377,10 @@ namespace Vintagestory.GameContent
             double dY = end.Y - start.Y;
             double dZ = end.Z - start.Z;
             double len = Math.Sqrt(dZ * dZ + dY * dY + dX * dX);
-            double horlen = Math.Sqrt(dZ * dZ + dX * dX);
 
             var normalize = 1 / Math.Max(1, len);
             var dir = new Vec3f((float)(dX * normalize), (float)(dY * normalize), (float)(dZ * normalize));
-            float yaw = (float)Math.Atan2(-dX, -dZ) + GameMath.PIHALF;
-            float basepitch = (float)Math.Atan2(horlen, -dY) + GameMath.PIHALF;
-
-            // Sin and Cos are both 1 at 45 deg.
-            float yawExtend = Math.Abs((float)(Math.Sin(yaw) * Math.Cos(yaw)));
-            float pitchExtend = Math.Abs((float)(Math.Sin(basepitch) * Math.Cos(basepitch)));
-
-            float distTo45Deg = Math.Max(yawExtend, pitchExtend);
-            float extend = 1 / 16f * distTo45Deg * 4;
+            GetBeamTransform(dX, dY, dZ, out float yaw, out float basepitch, out float extend);
 
             float slump = 0;
             len += extend;
@@ -447,9 +412,18 @@ namespace Vintagestory.GameContent
                 Mat4f.Translate(mat, mat, sectionStart.X, sectionStart.Y + slump, sectionStart.Z);
                 Mat4f.RotateY(mat, mat, yaw);
                 Mat4f.RotateZ(mat, mat, pitch);
-                Mat4f.Scale(mat, mat, new float[] { xscale, 1, 1 });
+                
+                if (scale > 1) Mat4f.Translate(mat, mat, 0.01f, 0, 0);
+
+                Mat4f.Scale(mat, mat, new float[] { scale, scale, scale });
+                Mat4f.Scale(mat, mat, new float[] { xscale / scale, 1, 1 });
                 Mat4f.Translate(mat, mat, -1f, -0.125f, -0.5f);
 
+                if (scale != 1f)
+                {
+                    Mat4f.Translate(mat, mat, new float[] { (1 - scale) / 2, (1 - scale) / 2, (1 - scale) / 2 });
+                    Mat4f.Scale(mat, mat, new float[] { scale, scale, scale });
+                }
 
                 var mesh = origMeshes[index].Clone();
                 mesh.MatrixTransform(mat);
@@ -460,29 +434,20 @@ namespace Vintagestory.GameContent
             return outMesh;
         }
 
-        public static float[] GetAlignMatrix(IVec3 startPos, IVec3 endPos, BlockFacing facing)
+        /// <summary>
+        /// Calculates the shared orientation and end extension for a straight support beam.
+        /// </summary>
+        public static void GetBeamTransform(double deltaX, double deltaY, double deltaZ, out float yaw, out float pitch, out float endExtension)
         {
-            double dX = startPos.XAsDouble - endPos.XAsDouble;
-            double dY = startPos.YAsDouble - endPos.YAsDouble;
-            double dZ = startPos.ZAsDouble - endPos.ZAsDouble;
-            double len = Math.Sqrt(dZ * dZ + dY * dY + dX * dX);
-            double horlen = Math.Sqrt(dZ * dZ + dX * dX);
+            double horizontalLength = Math.Sqrt(deltaZ * deltaZ + deltaX * deltaX);
+            yaw = (float)Math.Atan2(-deltaX, -deltaZ) + GameMath.PIHALF;
+            pitch = (float)Math.Atan2(horizontalLength, -deltaY) + GameMath.PIHALF;
 
-            float yaw = (float)Math.Atan2(dX, dZ) + GameMath.PIHALF;
-            float pitch = (float)Math.Atan2(horlen, dY) + GameMath.PIHALF;
-
-            float[] mat = new float[16];
-            Mat4f.Identity(mat);
-            Mat4f.Translate(mat, mat, (float)startPos.XAsDouble, (float)startPos.YAsDouble, (float)startPos.ZAsDouble);
-            Mat4f.RotateY(mat, mat, yaw);
-            Mat4f.RotateZ(mat, mat, pitch);
-            Mat4f.Scale(mat, mat, new float[] { (float)len, 1, 1 });
-            Mat4f.Translate(mat, mat, -1f, -0.125f, -0.5f);
-            return mat;
+            // Sin and cos are both 1 at 45 degrees.
+            float yawExtension = Math.Abs((float)(Math.Sin(yaw) * Math.Cos(yaw)));
+            float pitchExtension = Math.Abs((float)(Math.Sin(pitch) * Math.Cos(pitch)));
+            endExtension = 4 / 16f * Math.Max(yawExtension, pitchExtension);
         }
-
-
-
 
         BeamPlacerWorkSpace getWorkSpace(EntityAgent forEntity)
         {
@@ -546,11 +511,7 @@ namespace Vintagestory.GameContent
                 if (!stable) continue;
 
                 double dist = DistanceToLine(point, beam.Start, beam.End);
-                if (dist < minDistance)
-                {
-                    minDistance = dist;
-                    nearestBeam = beam;
-                }
+                if (dist < minDistance) minDistance = dist;
             }
 
             beamstartend = nearestBeam;

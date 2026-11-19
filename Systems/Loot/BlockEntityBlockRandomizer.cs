@@ -117,20 +117,20 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void OnReceivedClientPacket(IPlayer fromPlayer, int packetid, byte[] data)
+        public override void OnReceivedClientPacket(IServerPlayer fromPlayer, int packetId, SerializedData packetData, ref CachedAccessPerms perms)
         {
-            base.OnReceivedClientPacket(fromPlayer, packetid, data);
+            base.OnReceivedClientPacket(fromPlayer, packetId, packetData, ref perms);
 
-            if (packetid == 1130)
+            if (packetId == 1130)
             {
                 if (!fromPlayer.HasPrivilege("controlserver"))
                 {
-                    (fromPlayer as IServerPlayer).SendIngameError("noprivilege", "No privilege to set up a loot randomizer");
+                    fromPlayer.SendIngameError("noprivilege", "No privilege to set up a loot randomizer");
                     return;
                 }
 
                 TreeAttribute tree = new TreeAttribute();
-                tree.FromBytes(data);
+                tree.FromBytes(packetData.RawData);
                 for (int i = 0; i < 10; i++)
                 {
                     var stree = tree["stack" + i] as TreeAttribute;

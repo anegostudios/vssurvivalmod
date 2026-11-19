@@ -177,7 +177,7 @@ namespace Vintagestory.GameContent
 
             bebarrel.SealBarrel();
 
-            capi.Network.SendBlockEntityPacket(BlockEntityPosition, 1337);
+            capi.Network.SendBlockEntityPacket(BlockEntityPosition, (int)BarrelPacketId.Seal);
             capi.World.PlaySoundAt(new AssetLocation("sounds/player/seal"), BlockEntityPosition, 0.4, null);
 
             TryClose();

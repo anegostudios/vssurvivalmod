@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
@@ -187,7 +187,7 @@ namespace Vintagestory.GameContent
 
         private void loadMesh()
         {
-            if (Api == null || Api.Side != EnumAppSide.Client) return;
+            if (Api == null || Api.Side != EnumAppSide.Client || config == null) return;
             capi = Api as ICoreClientAPI;
             if (Type == null) return;
 

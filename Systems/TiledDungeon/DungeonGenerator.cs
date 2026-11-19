@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 using Vintagestory.Common.Collectible.Block;
@@ -42,12 +43,15 @@ namespace Vintagestory.ServerMods
             addTile(dgd, new ConnectorMetaData(), dungeon.start, rot, schematic, new FastVec3i(startPos), newloc);
             if (TryGenerateTiles(rnd, dgd))
             {
-                logger.Notification($"Dungeon with {placeTasks.Count} schematics generated");
                 if (DebugLogging && dgd.OpenSet.Count > 0) debugLogs.Add(string.Format("But {0} sides could not be closed", dgd.OpenSet.Count));
 
                 var stairsCon = openSet.FirstOrDefault(c => c.Name == dungeon.SurfaceConnectorName);
                 if(stairsCon.Valid) stairsCon.FacingInt = stairsCon.Facing.Index;
-                return new DungeonPlaceTask(dungeon.Code, placeTasks, gennedStructures, openSet, stairsCon);
+
+                var attr =  new TreeAttribute();
+                dungeon.SetKeyAttributes(attr, startPos);
+
+                return new DungeonPlaceTask(dungeon.Code, placeTasks, gennedStructures, openSet, stairsCon, attr);
             }
 
             return null;
@@ -293,7 +297,6 @@ namespace Vintagestory.ServerMods
                         {
                             offsetPos = path.Position;
                             schematic = schematicByRot[rot];
-                            k = endLength;
                             break;
                         }
                     }
@@ -305,9 +308,13 @@ namespace Vintagestory.ServerMods
 
                     if (startPos.X < 0 || startPos.Y < 0 || startPos.Z < 0) continue; // Beyond block bounds
                     if (startPos.X >= mapsize.X || startPos.Y >= mapsize.Y || startPos.Z >= mapsize.Z) continue; // Beyond block bounds
+                    if (Intersects(dgd.GeneratedStructures, newloc)) continue;
+                    if (Intersects(dgd.ExistingStructures, newloc)) continue;
 
                     addTile(dgd, openCon, dgd.DungeonGenerator.ends[curSchematicIndex], rot, schematic, startPos, newloc);
+                    dgd.OpenSet.Remove(openCon);
                     added++;
+                    break;
                 }
             }
 

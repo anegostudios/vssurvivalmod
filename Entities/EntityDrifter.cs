@@ -12,12 +12,12 @@ public class RemapAnimationManager : AnimationManager
 
     public string IdleAnimation = "crawlidle";
 
-    public RemapAnimationManager()
+    public RemapAnimationManager(Entity entity) : base(entity)
     {
 
     }
 
-    public RemapAnimationManager(Dictionary<string, string> remaps)
+    public RemapAnimationManager(Entity entity, Dictionary<string, string> remaps) : base(entity)
     {
         this.Remaps = remaps;
     }
@@ -147,7 +147,7 @@ public class EntityDrifter : EntityHumanoid
 
             properties.CanClimb = alternativeCanClimb;
 
-            AnimManager = new RemapAnimationManager(animationsRemapping) { IdleAnimation = alternativeIdleAnimationCode };
+            AnimManager = new RemapAnimationManager(this, animationsRemapping) { IdleAnimation = alternativeIdleAnimationCode };
         }
         else
         {

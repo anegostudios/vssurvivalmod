@@ -680,6 +680,12 @@ namespace Vintagestory.GameContent
                 return null;
             }
 
+            if (!auction.WithDelivery && auction.SrcAuctioneerEntityId != atAuctioneerEntityId && auction.SrcAuctioneerEntityPos.DistanceTo(reqEntity.Pos.XYZ) > 100)
+            {
+                failureCode = "wrongtrader";
+                return null;
+            }
+
             // Buyer: Retrieve your purchase
             if (reqEntity.PlayerUID == auction.BuyerUid)
             {
@@ -702,12 +708,6 @@ namespace Vintagestory.GameContent
                     auction.RetrievableTotalHours = sapi.World.Calendar.TotalHours + 6;
                     failureCode = null;
                     sendAuctions(new Auction[] { auction }, null);
-                    return null;
-                }
-
-                if (!auction.WithDelivery && (auction.SrcAuctioneerEntityId != atAuctioneerEntityId && auction.SrcAuctioneerEntityPos.DistanceTo(reqEntity.Pos.XYZ) > 100))
-                {
-                    failureCode = "wrongtrader";
                     return null;
                 }
 

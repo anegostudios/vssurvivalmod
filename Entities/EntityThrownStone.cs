@@ -3,6 +3,7 @@ using System;
 using System.IO;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
@@ -50,6 +51,7 @@ namespace Vintagestory.GameContent
         float IProjectile.Damage { get => Damage; set => Damage = value; }
         int IProjectile.DamageTier { get => DamageTier; set => DamageTier = value; }
         EnumDamageType IProjectile.DamageType { get => DamageType; set => DamageType = value; }
+        bool IProjectile.ApplyUnderwaterPenalty { get; set; } = true;
         bool IProjectile.IgnoreInvFrames { get => IgnoreInvFrames; set => IgnoreInvFrames = value; }
         ItemStack? IProjectile.ProjectileStack { get => ProjectileStack; set => ProjectileStack = value; }
         ItemStack? IProjectile.WeaponStack { get; set; }
@@ -67,6 +69,7 @@ namespace Vintagestory.GameContent
             Damage = config.Damage;
             DamageTier = config.DamageTier;
             NonCollectible = config.Collectible;
+            ((IProjectile)this).ApplyUnderwaterPenalty = config.ApplyUnderwaterPenalty ?? (DamageType != EnumDamageType.PiercingAttack);
         }
         #endregion
 
@@ -241,12 +244,12 @@ namespace Vintagestory.GameContent
             ProjectileStack?.ToBytes(writer);
         }
 
-        public override void FromBytes(BinaryReader reader, bool fromServer)
+        public override void FromBytes(ref BinarySpanReader reader, bool fromServer)
         {
-            base.FromBytes(reader, fromServer);
+            base.FromBytes(ref reader, fromServer);
             beforeCollided = reader.ReadBoolean();
 
-            ProjectileStack = World == null ? new ItemStack(reader) : new ItemStack(reader, World);
+            ProjectileStack = World == null ? new ItemStack(ref reader) : new ItemStack(ref reader, World);
         }
     }
 }

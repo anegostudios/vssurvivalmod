@@ -76,7 +76,7 @@ namespace Vintagestory.GameContent
         {
             base.GetBlockInfo(forPlayer, dsc);
 
-            if (Api.World.EntityDebugMode && forPlayer?.WorldData?.CurrentGameMode == EnumGameMode.Creative)
+            if (Api.World.EntityDebugMode)
             {
                 dsc.AppendLine("<font color='#ccc'>construction stage= " + rcc.CurrentCompletedStage + " of " + rcc.Stages.Length + "</font>");
             }

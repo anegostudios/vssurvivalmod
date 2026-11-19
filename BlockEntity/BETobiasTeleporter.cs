@@ -67,32 +67,23 @@ public class BlockEntityTobiasTeleporter : BlockEntityTeleporterBase
         else
         {
             RegisterGameTickListener(OnClientGameTick, 50);
-
-            translocatingSound = (api as ICoreClientAPI).World.LoadSound(new SoundParams()
-            {
-                Location = new AssetLocation("sounds/effect/translocate-active.ogg"),
-                ShouldLoop = true,
-                Position = Pos.ToVec3f(),
-                RelativePosition = false,
-                DisposeOnFinish = false,
-                Volume = 0.5f
-            });
         }
     }
 
     public override void OnEntityCollide(Entity entity)
     {
+        if (entity is not EntityPlayer player) return;
+
         if (Api.Side == EnumAppSide.Server)
         {
-            if (entity is EntityPlayer player)
+            if (IsAtTobiasCave && SystemTobiasTeleporter.TryGetPlayerLocation(player.PlayerUID, out _) || (SystemTobiasTeleporter.IsAllowedToTeleport(player.PlayerUID, out _) && player.PlayerUID.Equals(OwnerPlayerUid)))
             {
-                if (IsAtTobiasCave && SystemTobiasTeleporter.TryGetPlayerLocation(player.PlayerUID, out _) || (SystemTobiasTeleporter.IsAllowedToTeleport(player.PlayerUID, out _) && player.PlayerUID.Equals(OwnerPlayerUid)))
-                    base.OnEntityCollide(entity);
+                base.OnEntityCollide(entity);
             }
         }
         else
         {
-            if (entity is EntityPlayer player && somebodyIsTeleporting && (IsAtTobiasCave && SystemTobiasTeleporter.OwnLastUsage != 0 || player.PlayerUID.Equals(OwnerPlayerUid)))
+            if (somebodyIsTeleporting && (IsAtTobiasCave && SystemTobiasTeleporter.OwnLastUsage != 0 || player.PlayerUID.Equals(OwnerPlayerUid)))
             {
                 base.OnEntityCollide(entity);
             }
@@ -207,7 +198,7 @@ public class BlockEntityTobiasTeleporter : BlockEntityTeleporterBase
 
     protected virtual void HandleSoundClient(float dt)
     {
-        var capi = Api as ICoreClientAPI;
+        var capi = (ICoreClientAPI)Api;
         bool ownTranslocate = !(capi.World.ElapsedMilliseconds - lastOwnPlayerCollideMs > 200);
         bool otherTranslocate = !(capi.World.ElapsedMilliseconds - lastEntityCollideMs > 200);
 
@@ -223,6 +214,17 @@ public class BlockEntityTobiasTeleporter : BlockEntityTeleporterBase
             translocPitch = Math.Max(translocPitch - dt, 0.5f);
         }
 
+        if (translocatingSound == null && translocVolume <= 0) return;
+
+        translocatingSound ??= capi.World.LoadSound(new SoundParams()
+        {
+            Location = new AssetLocation("sounds/effect/translocate-active.ogg"),
+            ShouldLoop = true,
+            Position = Pos.ToVec3f(),
+            RelativePosition = false,
+            DisposeOnFinish = false,
+            Volume = translocVolume
+        });
 
         if (translocatingSound.IsPlaying)
         {
@@ -242,6 +244,12 @@ public class BlockEntityTobiasTeleporter : BlockEntityTeleporterBase
         translocatingSound?.Dispose();
 
         base.OnBlockRemoved();
+    }
+
+    public override void OnBlockUnloaded()
+    {
+        translocatingSound?.Dispose();
+        base.OnBlockUnloaded();
     }
 
     public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)

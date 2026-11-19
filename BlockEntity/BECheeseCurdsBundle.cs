@@ -123,7 +123,7 @@ namespace Vintagestory.GameContent
                 startSqueezeAnim();
             } else
             {
-                (Api as ICoreServerAPI).Network.BroadcastBlockEntityPacket(Pos, 1010);
+                (Api as ICoreServerAPI).Network.BroadcastBlockEntityPacket(new FastBlockPos(Pos), 1010);
             }
 
             Api.World.PlaySoundAt(new AssetLocation("sounds/player/wetclothsqueeze.ogg"), Pos.X + 0.5, Pos.InternalY + 0.5, Pos.Z + 0.5, byPlayer, false);
@@ -144,14 +144,14 @@ namespace Vintagestory.GameContent
             });
         }
 
-        public override void OnReceivedServerPacket(int packetid, byte[] data)
+        public override void OnReceivedServerPacket(int packetId, SerializedData packetData)
         {
-            if (packetid == 1010)
+            if (packetId == 1010)
             {
                 startSqueezeAnim();
             }
 
-            base.OnReceivedServerPacket(packetid, data);
+            base.OnReceivedServerPacket(packetId, packetData);
         }
 
         float secondsPassed;

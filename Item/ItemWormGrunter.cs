@@ -102,7 +102,7 @@ namespace Vintagestory.GameContent
 
         private void onWorldReady()
         {
-            noiseGen = NormalizedSimplexNoise.FromDefaultOctaves(2, 1, 0.9, sapi.World.Seed);
+            noiseGen = NormalizedSimplexNoise.FromDefaultOctaves(2, 1, 0.9, sapi.World.SeedWorldgen);
         }
 
         public float GetInitialDensity(BlockPos pos)
@@ -112,6 +112,8 @@ namespace Vintagestory.GameContent
             return  f * Math.Max(0, (climate.Fertility - 0.2f) * 1.3f);
         }
 
+
+        static int DepletionMapSize = 3;
         public float GetEarthWormAmount(BlockPos pos)
         {
             var availableWorms = GetInitialDensity(pos) * 10;
@@ -120,7 +122,8 @@ namespace Vintagestory.GameContent
             // Linearly drop from one to zero from 10C to 0C
             availableWorms *= GameMath.Clamp(temp / 10f, 0, 1);
 
-            if (harvestedLocations.TryGetValue(pos / 3, out var harvest)) // Super simple "area" check by dividing the position by 3
+            var harvestPos = new BlockPos(pos.X / DepletionMapSize, 0, pos.Z / DepletionMapSize);
+            if (harvestedLocations.TryGetValue(harvestPos, out var harvest)) // Super simple "area" check by dividing the position by 3
             {
                 availableWorms -= harvest.Quantity;
             }
@@ -131,8 +134,11 @@ namespace Vintagestory.GameContent
         public void AddHarvest(BlockPos pos, int quantity)
         {
             CreatureHarvest harvest;
-            harvestedLocations.TryGetValue(pos / 3, out harvest);
-            harvestedLocations[pos/3] = new CreatureHarvest() { TotalDays = sapi.World.Calendar.TotalDays, Quantity = harvest.Quantity + quantity };
+
+            var harvestPos = new BlockPos(pos.X / DepletionMapSize, 0, pos.Z / DepletionMapSize);
+
+            harvestedLocations.TryGetValue(harvestPos, out harvest);
+            harvestedLocations[harvestPos] = new CreatureHarvest() { TotalDays = sapi.World.Calendar.TotalDays, Quantity = harvest.Quantity + quantity };
         }
     }
 

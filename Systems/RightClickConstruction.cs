@@ -332,7 +332,7 @@ namespace Vintagestory.GameContent
 
                         if (soundLoc == null)
                         {
-                            soundLoc = stack.Collectible.GetBehavior<CollectibleBehaviorGroundStorable>()?.StorageProps?.PlaceRemoveSound;
+                            soundLoc = stack.Collectible.GetBehavior<CollectibleBehaviorGroundStorable>()?.GetStorageProperties(stack)?.PlaceRemoveSound;
                         }
 
                         if (soundLoc != null)

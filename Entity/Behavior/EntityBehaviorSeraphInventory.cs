@@ -16,6 +16,9 @@ namespace Vintagestory.GameContent
 
         InventoryGear inv;
 
+        // These slots are rendered as held items, not step parented onto the seraph
+        protected override bool ShouldAddGearToShape(ItemSlot slot) => slot != inv[15] && slot != inv[16];
+
         public EntityBehaviorSeraphInventory(Entity entity) : base(entity)
         {
             eagent = entity as EntityAgent;

@@ -78,7 +78,7 @@ namespace Vintagestory.GameContent
             capi.Render.Render2DTexturePremultipliedAlpha(
                 Texture.TextureId,
                 (x + pad),
-                y + size / 4 - GuiElement.scaled(3),
+                y + size / 2 - Texture.Height / 2,
                 Texture.Width,
                 Texture.Height,
                 50

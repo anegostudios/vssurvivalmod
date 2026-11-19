@@ -4,6 +4,7 @@ using System.Text;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Server;
+using Vintagestory.Datastructures;
 using Vintagestory.ServerMods.NoObf;
 
 #nullable disable
@@ -56,8 +57,6 @@ namespace Vintagestory.ServerMods
 
         private void CreateCommands()
         {
-
-            var parsers = api.ChatCommands.Parsers;
             api.ChatCommands.GetOrCreate("wgen")
                 .BeginSubCommand("testvillage")
                     .WithDescription("Testvillage command")
@@ -92,8 +91,6 @@ namespace Vintagestory.ServerMods
                 .EndSubCommand()
                 ;
         }
-
-
 
         private TextCommandResult OnCmdTestVillage(TextCommandCallingArgs args)
         {
@@ -185,6 +182,12 @@ namespace Vintagestory.ServerMods
             var chunkX = pos.X / _chunksize;
             var chunkZ = pos.Z / _chunksize;
             var chunkY = pos.Y / _chunksize;
+            var data = new SchematicPlacementData(api.World.BlockAccessor, api.World)
+            {
+                StartPos = pos,
+                ReplaceMeta = GlobalConfig.ReplaceMetaBlocks,
+                ReplaceMode = schematic.ReplaceMode,
+            };
             switch (struc.Placement)
             {
                 case EnumStructurePlacement.SurfaceRuin:
@@ -196,27 +199,31 @@ namespace Vintagestory.ServerMods
                         var rlZ = chunkZ % _regionChunkSize;
 
                         var facC = (float)climateMap.InnerSize / _regionChunkSize;
-                        var climateUpLeft = climateMap.GetUnpaddedInt((int)(rlX * facC), (int)(rlZ * facC));
-                        var climateUpRight = climateMap.GetUnpaddedInt((int)(rlX * facC + facC), (int)(rlZ * facC));
-                        var climateBotLeft = climateMap.GetUnpaddedInt((int)(rlX * facC), (int)(rlZ * facC + facC));
-                        var climateBotRight = climateMap.GetUnpaddedInt((int)(rlX * facC + facC), (int)(rlZ * facC + facC));
-                        schematic.PlaceRespectingBlockLayers(api.World.BlockAccessor, api.World, pos, climateUpLeft, climateUpRight, climateBotLeft, climateBotRight, struc.resolvedRockTypeRemaps, struc.replacewithblocklayersBlockids, GlobalConfig.ReplaceMetaBlocks);
+                        data.ClimateUpLeft = climateMap.GetUnpaddedInt((int)(rlX * facC), (int)(rlZ * facC));
+                        data.ClimateUpRight = climateMap.GetUnpaddedInt((int)(rlX * facC + facC), (int)(rlZ * facC));
+                        data.ClimateBotLeft = climateMap.GetUnpaddedInt((int)(rlX * facC), (int)(rlZ * facC + facC));
+                        data.ClimateBotRight = climateMap.GetUnpaddedInt((int)(rlX * facC + facC), (int)(rlZ * facC + facC));
+                        data.ResolvedRockTypeRemaps = struc.resolvedRockTypeRemaps;
+                        data.ReplaceWithBlockLayersBlockids = struc.replacewithblocklayersBlockids;
+
+                        schematic.PlaceRespectingBlockLayers(data);
                         break;
                     }
                 case EnumStructurePlacement.Underwater:
                     break;
                 case EnumStructurePlacement.Underground:
+                {
+                    if (struc.resolvedRockTypeRemaps != null)
                     {
-                        if (struc.resolvedRockTypeRemaps != null)
-                        {
-                            schematic.PlaceReplacingBlocks(api.World.BlockAccessor, api.World, pos, schematic.ReplaceMode, struc.resolvedRockTypeRemaps, null, GlobalConfig.ReplaceMetaBlocks);
-                        }
-                        else
-                        {
-                            schematic.Place(api.World.BlockAccessor, api.World, pos, GlobalConfig.ReplaceMetaBlocks);
-                        }
-                        break;
+                        data.ResolvedRockTypeRemaps = struc.resolvedRockTypeRemaps;
+                        schematic.PlaceReplacingBlocks(data);
                     }
+                    else
+                    {
+                        schematic.Place(data);
+                    }
+                    break;
+                }
                 default:
                     throw new ArgumentOutOfRangeException();
             }

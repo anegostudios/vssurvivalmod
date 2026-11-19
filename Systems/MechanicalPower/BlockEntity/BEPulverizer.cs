@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -14,11 +15,19 @@ namespace Vintagestory.GameContent.Mechanics
     /// <summary>
     /// Add dummy block for Pulverizer upper part, etc
     /// </summary>
-    public class BEPulverizer : BlockEntityDisplay
+    public class BEPulverizer : BlockEntityDisplay, IRotatable
     {
+        // The fitted parts are kept in hidden slots after the two input slots.
+        const int leftCapSlot = 2;
+        const int rightCapSlot = 3;
+        const int toggleSlot = 4;
+        const int leftPounderSlot = 5;
+        const int rightPounderSlot = 6;
+        const int slotCount = rightPounderSlot + 1;
+        static readonly AssetLocation legacyToggleCode = new("pulverizertoggle-oak");
+        static readonly AssetLocation legacyPounderCode = new("pounder-oak");
+
         public BlockFacing Facing { get; protected set; } = BlockFacing.NORTH;
-        readonly AssetLocation pounderName = new AssetLocation("pounder-oak");
-        readonly AssetLocation toggleName = new AssetLocation("pulverizertoggle-oak");
 
         public Vec4f lightRbs = new Vec4f();
         public virtual Vec4f LightRgba { get { return lightRbs; } }
@@ -32,11 +41,13 @@ namespace Vintagestory.GameContent.Mechanics
         internal Matrixf mat = new Matrixf();
 
         BEBehaviorMPPulverizer pvBh;
+        bool legacyPartsMigrated;
 
-        public bool hasAxle;
-        public bool hasLPounder;
-        public bool hasRPounder;
-        public bool hasPounderCaps => !inv[2].Empty;
+        public ItemStack ToggleStack => inv[toggleSlot].Itemstack;
+        public ItemStack LeftPounderStack => inv[leftPounderSlot].Itemstack;
+        public ItemStack RightPounderStack => inv[rightPounderSlot].Itemstack;
+        public ItemStack LeftCapStack => inv[leftCapSlot].Itemstack;
+        public ItemStack RightCapStack => inv[rightCapSlot].Itemstack;
 
         public int CapMetalTierL;
         public int CapMetalTierR;
@@ -44,13 +55,15 @@ namespace Vintagestory.GameContent.Mechanics
         public int CapMetalIndexL;
         public int CapMetalIndexR;
 
-        public bool IsComplete => hasAxle && hasLPounder && hasRPounder && hasPounderCaps;
+        public bool IsComplete => ToggleStack != null && LeftPounderStack != null && RightPounderStack != null && LeftCapStack != null && RightCapStack != null;
+
+        public bool CanCrush(bool right) => ToggleStack != null && (right ? RightPounderStack != null && RightCapStack != null : LeftPounderStack != null && LeftCapStack != null);
 
         public override int DisplayedItems => 2;
 
         public BEPulverizer()
         {
-            inv = new InventoryPulverizer(this, 3);
+            inv = new InventoryPulverizer(this, slotCount);
             inv.SlotModified += Inv_SlotModified;
         }
 
@@ -108,30 +121,30 @@ namespace Vintagestory.GameContent.Mechanics
 
         private void OnServerTick(float dt)
         {
-            if (!IsComplete) return;
+            if (ToggleStack == null) return;
 
-            float nwspeed = pvBh.Network?.Speed ?? 0;
-            nwspeed = Math.Abs(nwspeed * 3f) * pvBh.GearedRatio;
+            float nwspeed = Math.Abs(pvBh.CurrentSpeed) * 3f;
 
-            if (!inv[0].Empty)
+            // Slot 0 is crushed by the right pounder and slot 1 by the left one.
+            if (CanCrush(true) && !inv[0].Empty)
             {
                 accumLeft += dt * nwspeed;
 
                 if (accumLeft > 5)
                 {
                     accumLeft = 0;
-                    Crush(0, CapMetalTierL, -4 / 16d);
+                    Crush(0, CapMetalTierR, -4 / 16d);
                 }
             }
 
-            if (!inv[1].Empty)
+            if (CanCrush(false) && !inv[1].Empty)
             {
                 accumRight += dt * nwspeed;
 
                 if (accumRight > 5)
                 {
                     accumRight = 0;
-                    Crush(1, CapMetalTierR, 4 / 16d);
+                    Crush(1, CapMetalTierL, 4 / 16d);
                 }
             }
         }
@@ -173,20 +186,22 @@ namespace Vintagestory.GameContent.Mechanics
             base.OnTesselation(mesher, tesselator);
 
             ICoreClientAPI capi = Api as ICoreClientAPI;
+            BlockPulverizer pulverizerBlock = (BlockPulverizer)Block;
+            ItemStack frameStack = pvBh.GetPlacedStack();
+            string materialKey = pulverizerBlock.GetMaterialKey(frameStack);
 
-
-            MeshData meshTop = ObjectCacheUtil.GetOrCreate(capi, "pulverizertopmesh-"+rotateY, () =>
+            MeshData meshTop = ObjectCacheUtil.GetOrCreate(capi, $"pulverizertopmesh-{rotateY}-{materialKey}", () =>
             {
                 Shape shapeTop = API.Common.Shape.TryGet(capi, "shapes/block/wood/mechanics/pulverizer-top.json");
-                capi.Tesselator.TesselateShape(Block, shapeTop, out MeshData mesh, new Vec3f(0, rotateY, 0));
+                capi.Tesselator.TesselateShape(Block.Code + " top", shapeTop, out MeshData mesh, pulverizerBlock.GetMaterialTextureSource(capi, shapeTop, Block.Code + " top", frameStack), new Vec3f(0, rotateY, 0));
 
                 return mesh;
             });
 
-            MeshData meshBase = ObjectCacheUtil.GetOrCreate(capi, "pulverizerbasemesh-" + rotateY, () =>
+            MeshData meshBase = ObjectCacheUtil.GetOrCreate(capi, $"pulverizerbasemesh-{rotateY}-{materialKey}", () =>
             {
                 Shape shapeBase = API.Common.Shape.TryGet(capi, "shapes/block/wood/mechanics/pulverizer-base.json");
-                capi.Tesselator.TesselateShape(Block, shapeBase, out MeshData mesh, new Vec3f(0, rotateY, 0));
+                capi.Tesselator.TesselateShape(Block.Code + " base", shapeBase, out MeshData mesh, pulverizerBlock.GetMaterialTextureSource(capi, shapeBase, Block.Code + " base", frameStack), new Vec3f(0, rotateY, 0));
 
                 return mesh;
             });
@@ -202,24 +217,8 @@ namespace Vintagestory.GameContent.Mechanics
             return true;
         }
 
-        /// <summary>
-        /// Add the specific parts of this Pulverizer, to the block drops  (the caps will drop anyhow as they are in inventory)
-        /// </summary>
-        public ItemStack[] getDrops(IWorldAccessor world, ItemStack pulvFrame)
-        {
-            int pounders = 0;
-            if (hasLPounder) pounders++;
-            if (hasRPounder) pounders++;
-            ItemStack[] result = new ItemStack[pounders + (hasAxle ? 2 : 1)];
-            int index = 0;
-            result[index++] = pulvFrame;
-            for (int i = 0; i < pounders; i++)
-            {
-                result[index++] = new ItemStack(world.GetItem(pounderName));
-            }
-            if (hasAxle) result[index] = new ItemStack(world.GetItem(toggleName));
-            return result;
-        }
+        [Obsolete("Fitted parts now drop from Inventory. Use Block.GetDrops() for the frame.")]
+        public ItemStack[] getDrops(IWorldAccessor world, ItemStack pulvFrame) => [pulvFrame];
 
         public bool OnInteract(IPlayer byPlayer, BlockSelection blockSel)
         {
@@ -235,7 +234,7 @@ namespace Vintagestory.GameContent.Mechanics
                 TryTake(targetSlot, byPlayer);
             } else
             {
-                if (TryAddPart(handslot, byPlayer))
+                if (TryAddPart(handslot, targetSlot, byPlayer))
                 {
                     Api.World.PlaySoundAt(Block.Sounds.Place, Pos, -0.25, byPlayer);
                     (Api as ICoreClientAPI)?.World.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
@@ -253,66 +252,62 @@ namespace Vintagestory.GameContent.Mechanics
         }
 
 
-        private bool TryAddPart(ItemSlot slot, IPlayer toPlayer)
+        private bool TryAddPart(ItemSlot slot, ItemSlot targetSlot, IPlayer toPlayer)
         {
-            if (!hasAxle && slot.Itemstack.Collectible.Code.Path == "pulverizertoggle-oak")
+            BlockPulverizer pulverizerBlock = (BlockPulverizer)Block;
+            TagSet tags = slot.Itemstack.Collectible.GetTags(slot.Itemstack);
+
+            if (ToggleStack == null && tags.Overlaps(pulverizerBlock.ToggleTag))
             {
-                if (toPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
-                {
-                    slot.TakeOut(1);
-                    slot.MarkDirty();
-                }
-                hasAxle = true;
-                MarkDirty(true);
+                insertPart(slot, toggleSlot, toPlayer);
+                pvBh.OnToggleInserted();
                 return true;
             }
 
-            if ((!hasLPounder || !hasRPounder) && slot.Itemstack.Collectible.Code.Path == "pounder-oak")
+            if ((LeftPounderStack == null || RightPounderStack == null) && tags.Overlaps(pulverizerBlock.PounderTag))
             {
-                if (toPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
-                {
-                    slot.TakeOut(1);
-                    slot.MarkDirty();
-                }
-                if (hasLPounder) hasRPounder = true;
-                hasLPounder = true;
-                MarkDirty(true);
+                insertPart(slot, LeftPounderStack != null ? rightPounderSlot : leftPounderSlot, toPlayer);
                 return true;
             }
 
-            if (slot.Itemstack.Collectible.FirstCodePart() == "poundercap")
+            if (tags.Overlaps(pulverizerBlock.PounderCapTag))
             {
-                if (hasLPounder && hasRPounder)
+                bool left = targetSlot == inv[1];
+                if (left ? LeftPounderStack != null : RightPounderStack != null)
                 {
-                    if (slot.Itemstack.StackSize < 2)
+                    // Each pounder takes its own cap, so the clicked side is fitted or has its cap swapped.
+                    int capSlot = left ? leftCapSlot : rightCapSlot;
+                    ItemStack fittedCap = inv[capSlot].Itemstack;
+                    if (fittedCap != null && !toPlayer.InventoryManager.TryGiveItemstack(fittedCap, true))
                     {
-                        (Api as ICoreClientAPI)?.TriggerIngameError(this, "require2caps", Lang.Get("Please add 2 caps at the same time!"));
-                        return true;
+                        Api.World.SpawnItemEntity(fittedCap, Pos);
                     }
 
-                    ItemStack stack = slot.TakeOut(2);
-                    if (!inv[2].Empty)
-                    {
-                        if (!toPlayer.InventoryManager.TryGiveItemstack(inv[2].Itemstack, true))
-                        {
-                            Api.World.SpawnItemEntity(inv[2].Itemstack, Pos);
-                        }
-                    }
-
-                    inv[2].Itemstack = stack;
-
-                    slot.MarkDirty();
-                    MarkDirty(true);
-                    UpdateCaps();
+                    insertPart(slot, capSlot, toPlayer);
                 }
                 else
                 {
-                    (Api as ICoreClientAPI)?.TriggerIngameError(this, "require2pounders", Lang.Get("Please add pounders before adding caps!"));
+                    (Api as ICoreClientAPI)?.TriggerIngameError(this, "requirepounder", Lang.Get("Please add a pounder on this side first!"));
                 }
                 return true;
             }
 
             return false;
+        }
+
+        void insertPart(ItemSlot fromSlot, int partSlotId, IPlayer byPlayer)
+        {
+            ItemStack partStack = fromSlot.Itemstack.Clone();
+            partStack.StackSize = 1;
+            if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
+            {
+                fromSlot.TakeOut(1);
+                fromSlot.MarkDirty();
+            }
+
+            inv[partSlotId].Itemstack = partStack;
+            inv[partSlotId].MarkDirty();
+            MarkDirty(true);
         }
 
         private void TryPut(ItemSlot fromSlot, ItemSlot intoSlot)
@@ -338,14 +333,26 @@ namespace Vintagestory.GameContent.Mechanics
 
         public void UpdateCaps()
         {
-            string metal = "nometal";
-            if (!inv[2].Empty) metal = inv[2].Itemstack.Collectible.Variant["metal"];
+            string metalL = getCapMetal(inv[leftCapSlot]);
+            string metalR = getCapMetal(inv[rightCapSlot]);
 
+            CapMetalTierL = getMetalTier(metalL);
+            CapMetalTierR = getMetalTier(metalR);
+
+            CapMetalIndexL = Math.Max(0, PulverizerRenderer.metals.IndexOf(metalL));
+            CapMetalIndexR = Math.Max(0, PulverizerRenderer.metals.IndexOf(metalR));
+        }
+
+        static string getCapMetal(ItemSlot capSlot)
+        {
+            return capSlot.Itemstack?.Collectible?.Variant["metal"] ?? "nometal";
+        }
+
+        int getMetalTier(string metal)
+        {
             MetalPropertyVariant metalvar = null;
             if (metal != null) Api.ModLoader.GetModSystem<SurvivalCoreSystem>().metalsByCode.TryGetValue(metal, out metalvar);
-            CapMetalTierL = CapMetalTierR = Math.Max(metalvar?.Tier ?? 0, 0);
-
-            CapMetalIndexL = CapMetalIndexR = Math.Max(0, PulverizerRenderer.metals.IndexOf(metal));
+            return Math.Max(metalvar?.Tier ?? 0, 0);
         }
 
 
@@ -376,21 +383,92 @@ namespace Vintagestory.GameContent.Mechanics
         {
             base.FromTreeAttributes(tree, worldAccessForResolve);
 
-            hasLPounder = tree.GetBool("hasLPounder");
-            hasRPounder = tree.GetBool("hasRPounder");
-            hasAxle = tree.GetBool("hasAxle");
+            legacyPartsMigrated = tree.HasAttribute("hasAxle");
+            if (legacyPartsMigrated) migrateLegacyParts(tree, worldAccessForResolve);
+
+            // A synced inventory raises no slot modified event, so the caps are refreshed here.
+            if (Api != null) UpdateCaps();
 
             // Do this last!!!
             RedrawAfterReceivingTreeAttributes(worldAccessForResolve);     // Redraw on client after we have completed receiving the update from server
         }
 
-        public override void ToTreeAttributes(ITreeAttribute tree)
+        // Older saves stored the toggle and pounders as flags and both caps as one stack.
+        void migrateLegacyParts(ITreeAttribute tree, IWorldAccessor world)
         {
-            base.ToTreeAttributes(tree);
+            migrateLegacyPart(tree.GetBool("hasAxle"), toggleSlot, legacyToggleCode, world);
+            migrateLegacyPart(tree.GetBool("hasLPounder"), leftPounderSlot, legacyPounderCode, world);
+            migrateLegacyPart(tree.GetBool("hasRPounder"), rightPounderSlot, legacyPounderCode, world);
 
-            tree.SetBool("hasLPounder", hasLPounder);
-            tree.SetBool("hasRPounder", hasRPounder);
-            tree.SetBool("hasAxle", hasAxle);
+            ItemStack caps = inv[leftCapSlot].Itemstack;
+            if (caps?.StackSize > 1 && inv[rightCapSlot].Empty)
+            {
+                ItemStack cap = caps.Clone();
+                cap.StackSize = 1;
+                inv[leftCapSlot].Itemstack = cap;
+                inv[rightCapSlot].Itemstack = cap.Clone();
+            }
+        }
+
+        void migrateLegacyPart(bool fitted, int partSlotId, AssetLocation itemCode, IWorldAccessor world)
+        {
+            if (!fitted || !inv[partSlotId].Empty) return;
+
+            Item item = world.GetItem(itemCode);
+            if (item != null) inv[partSlotId].Itemstack = new ItemStack(item);
+        }
+
+        public override void OnLoadCollectibleMappings(IWorldAccessor worldForResolve, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed, bool resolveImports)
+        {
+            ItemStack[] legacyParts = null;
+            if (legacyPartsMigrated)
+            {
+                // Reconstructed parts already use this world's IDs, not the schematic's IDs.
+                legacyParts = new ItemStack[slotCount - toggleSlot];
+                for (int i = toggleSlot; i < slotCount; i++)
+                {
+                    legacyParts[i - toggleSlot] = inv[i].Itemstack;
+                    inv[i].Itemstack = null;
+                }
+            }
+
+            base.OnLoadCollectibleMappings(worldForResolve, oldBlockIdMapping, oldItemIdMapping, schematicSeed, resolveImports);
+
+            if (legacyParts != null)
+            {
+                for (int i = toggleSlot; i < slotCount; i++) inv[i].Itemstack = legacyParts[i - toggleSlot];
+            }
+            legacyPartsMigrated = false;
+
+            if (Api != null) UpdateCaps();
+        }
+
+        public void OnTransformed(IWorldAccessor worldAccessor, ITreeAttribute tree, int degreeRotation, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, EnumAxis? flipAxis)
+        {
+            if (flipAxis != EnumAxis.X && flipAxis != EnumAxis.Z) return;
+
+            bool legacyParts = tree.HasAttribute("hasAxle");
+            if (legacyParts) swapAttributes(tree, "hasLPounder", "hasRPounder");
+
+            ITreeAttribute slots = tree.GetTreeAttribute("inventory")?.GetTreeAttribute("slots");
+            if (slots == null) return;
+
+            swapAttributes(slots, "0", "1");
+            if (!legacyParts)
+            {
+                swapAttributes(slots, leftCapSlot.ToString(), rightCapSlot.ToString());
+                swapAttributes(slots, leftPounderSlot.ToString(), rightPounderSlot.ToString());
+            }
+        }
+
+        static void swapAttributes(ITreeAttribute tree, string firstKey, string secondKey)
+        {
+            IAttribute first = tree[firstKey];
+            IAttribute second = tree[secondKey];
+            tree.RemoveAttribute(firstKey);
+            tree.RemoveAttribute(secondKey);
+            if (first != null) tree[secondKey] = first;
+            if (second != null) tree[firstKey] = second;
         }
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
@@ -404,12 +482,16 @@ namespace Vintagestory.GameContent.Mechanics
                 sb.AppendLine("  " + inv[i].StackSize + " x " + inv[i].GetStackName());
             }
 
-            if (empty) sb.AppendLine("  " + Lang.Get("nothing"));
+            if (empty) sb.AppendLine("  " + Lang.Get("Nothing"));
+
+            pvBh.GetBlockInfo(forPlayer, sb);
         }
     }
 
     public class InventoryPulverizer : InventoryDisplayed
     {
+        const int inputSlotCount = 2;
+
         public InventoryPulverizer(BlockEntity be, int size) : base(be, size, "pulverizer-0", null)
         {
             slots = GenEmptySlots(size);
@@ -418,8 +500,15 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override float GetSuitability(ItemSlot sourceSlot, ItemSlot targetSlot, bool isMerge)
         {
-            if (targetSlot == slots[slots.Length - 1]) return 0;  //disallow hoppers/chutes to place any items in the PounderCap slot
+            if (GetSlotId(targetSlot) >= inputSlotCount) return 0;  // Hoppers and chutes may only fill the input slots
             return base.GetSuitability(sourceSlot, targetSlot, isMerge);
+        }
+
+        public override ItemSlot GetAutoPushIntoSlot(BlockFacing atBlockFace, ItemSlot fromSlot)
+        {
+            ItemSlot slot = base.GetAutoPushIntoSlot(atBlockFace, fromSlot);
+            int slotId = GetSlotId(slot);
+            return slotId >= 0 && slotId < inputSlotCount ? slot : null;
         }
     }
 

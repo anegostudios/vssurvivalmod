@@ -53,16 +53,20 @@ namespace Vintagestory.GameContent
 
         public override string GetHeldTpHitAnimation(ItemSlot slot, Entity byEntity)
         {
-            if ((byEntity as EntityPlayer)?.EntitySelection != null)
+            if ((byEntity as EntityPlayer)?.BlockSelection != null)
             {
-                return "axehit";
+                return HeldTpHitAnimation;
             }
+
             return base.GetHeldTpHitAnimation(slot, byEntity);
         }
 
         public override void OnHeldAttackStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandHandling handling)
         {
-            base.OnHeldAttackStart(slot, byEntity, blockSel, entitySel, ref handling);
+            if (blockSel == null)
+            {
+                base.OnHeldAttackStart(slot, byEntity, blockSel, entitySel, ref handling);
+            }
         }
 
         public override bool OnHeldAttackStep(float secondsPassed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel)

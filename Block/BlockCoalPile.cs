@@ -42,12 +42,11 @@ namespace Vintagestory.GameContent
         {
             base.OnLoaded(api);
 
-            if (api.Side != EnumAppSide.Client) return;
-            ICoreClientAPI capi = api as ICoreClientAPI;
+            if (api is not ICoreClientAPI capi) return;
 
-            interactions = ObjectCacheUtil.GetOrCreate(api, "coalBlockInteractions", () =>
+            interactions = ObjectCacheUtil.GetOrCreate(capi, "coalBlockInteractions", () =>
             {
-                List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(api, false);
+                List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(capi, false);
 
                 return new WorldInteraction[] {
                     new WorldInteraction()
@@ -55,7 +54,7 @@ namespace Vintagestory.GameContent
                         ActionLangCode = "blockhelp-coalpile-addcoal",
                         MouseButton = EnumMouseButton.Right,
                         HotKeyCode = "shift",
-                        Itemstacks = new ItemStack[] { new ItemStack(api.World.GetItem(new AssetLocation("charcoal")), 2) }
+                        Itemstacks = new ItemStack[] { new ItemStack(capi.World.GetItem(new AssetLocation("charcoal")), 2) }
                     },
                     new WorldInteraction()
                     {
@@ -70,7 +69,7 @@ namespace Vintagestory.GameContent
                         MouseButton = EnumMouseButton.Right,
                         Itemstacks = canIgniteStacks.ToArray(),
                         GetMatchingStacks = (wi, bs, es) => {
-                            BlockEntityForge bef = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityForge;
+                            BlockEntityForge bef = capi.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityForge;
                             if (bef!= null && bef.CanIgnite && !bef.IsBurning)
                             {
                                 return wi.Itemstacks;
@@ -320,32 +319,19 @@ namespace Vintagestory.GameContent
         {
             base.OnEntityCollide(world, entity, pos, facing, collideSpeed, isImpact);
 
-            if (world.Side == EnumAppSide.Server)
+            if (world.Side != EnumAppSide.Server || GetBlockEntity<BlockEntityCoalPile>(pos)?.IsBurning != true) return;
+
+            long lastBurnMs = entity.Attributes.GetLong("lastCoalBurnTick");
+
+            if (world.ElapsedMilliseconds - lastBurnMs > 1000)
             {
-                BlockEntityCoalPile be = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityCoalPile;
-                if (be?.IsBurning == true)
-                {
-                    long lastBurnMs = entity.Attributes.GetLong("lastCoalBurnTick");
+                entity.ReceiveDamage(new DamageSource() { DamageTier = 0, Source = EnumDamageSource.Block, SourceBlock = this, SourcePos = pos.ToVec3d(), Type = EnumDamageType.Fire }, 1f);
+                entity.Attributes.SetLong("lastCoalBurnTick", world.ElapsedMilliseconds);
 
-                    if (world.ElapsedMilliseconds - lastBurnMs > 1000)
-                    {
-                        entity.ReceiveDamage(new DamageSource() { DamageTier = 0, Source = EnumDamageSource.Block, SourceBlock = this, SourcePos = pos.ToVec3d(), Type = EnumDamageType.Fire }, 1f);
-                        entity.Attributes.SetLong("lastCoalBurnTick", world.ElapsedMilliseconds);
-
-                        if (world.Rand.NextDouble() < 0.125)
-                        {
-                            entity.Ignite();
-                        }
-                    }
-
-                    if (lastBurnMs > world.ElapsedMilliseconds)
-                    {
-                        entity.Attributes.SetLong("lastCoalBurnTick", world.ElapsedMilliseconds);
-                    }
-                }
-
-
+                if (world.Rand.NextDouble() < 0.125) entity.Ignite();
             }
+
+            if (lastBurnMs > world.ElapsedMilliseconds) entity.Attributes.SetLong("lastCoalBurnTick", world.ElapsedMilliseconds);
         }
 
         public override float GetTraversalCost(BlockPos pos, EnumAICreatureType creatureType)

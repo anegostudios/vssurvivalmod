@@ -1,13 +1,15 @@
 using System.Collections.Generic;
+using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
+using static OpenTK.Graphics.OpenGL.GL;
 
 namespace Vintagestory.GameContent;
 
-public class BEBehaviorMannequin : BEBehaviorRotatablePlaceable, IInteractable, ITexPositionSource, IRotatablePlaceable
+public class BEBehaviorMannequin : BEBehaviorRotatablePlaceable, IInteractableWithHelp, ITexPositionSource, IRotatablePlaceable
 {
     public InventoryBase Inventory { get; set; }
     public Size2i AtlasSize => capi!.BlockTextureAtlas.Size;
@@ -229,5 +231,69 @@ public class BEBehaviorMannequin : BEBehaviorRotatablePlaceable, IInteractable, 
         mesher.AddMeshData(capi!.TesselatorManager.GetDefaultBlockMesh(Block), tfMatrix);
 
         return true;
+    }
+
+    public WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer, ref EnumHandling handling)
+    {
+        if (selection == null)
+        {
+            return [];
+        }
+
+        handling = EnumHandling.Handled;
+
+        string key = "interactionhelp-mannequin-" + Block.Code;
+        var stacks = ObjectCacheUtil.GetOrCreate(capi, key, () =>
+        {
+            List<ItemStack> stacks = new List<ItemStack>();
+
+            foreach (var hstack in ObjectCacheUtil.TryGet<ItemStack[]>(capi, "handbookallstacks"))
+            {
+                var iatta = IAttachableToEntity.FromCollectible(hstack.Collectible);
+                if (iatta == null) continue;
+
+                var cat = hstack.ItemAttributes?["clothescategory"].AsString();
+
+                if (hstack.Collectible.GetCollectibleInterface<IWearableStatsSupplier>() is IWearableStatsSupplier wearableStats)
+                {
+                    cat = wearableStats.GetDressType(new DummySlot(hstack)).ToString().ToLowerInvariant();
+                }
+
+                if (!allowedDresstypes.Contains(cat)) continue;
+
+                stacks.Add(hstack);
+            }
+
+            stacks.Shuffle(capi.World.Rand);
+
+            return stacks;
+        });
+
+        WorldInteraction[] interactions = [];
+
+        if (stacks.Count == 0) return interactions;
+
+        if (Inventory.Any(slot => slot.Empty))
+        {
+            interactions = interactions.Append(new WorldInteraction()
+            {
+                ActionLangCode = "attachableentity-attach",
+                Itemstacks = stacks.ToArray(),
+                MouseButton = EnumMouseButton.Right,
+                HotKeyCode = "ctrl"
+            });
+        }
+
+        if (Inventory.FirstNonEmptySlot != null)
+        {
+            interactions = interactions.Append(new WorldInteraction()
+            {
+                ActionLangCode = "attachableentity-detach",
+                MouseButton = EnumMouseButton.Right,
+                HotKeyCode = "shift"
+            });
+        }
+
+        return interactions;
     }
 }

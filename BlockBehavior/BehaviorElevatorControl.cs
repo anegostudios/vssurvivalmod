@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Vintagestory.API;
 using Vintagestory.API.Client;
@@ -56,6 +57,10 @@ public class BlockBehaviorElevatorControl : BlockBehavior
         handling = EnumHandling.PreventSubsequent;
         if (byPlayer.Entity.Api.Side == EnumAppSide.Server)
         {
+            if (byPlayer.Entity.Pos.InternalY < blockSel.Position.InternalY - 1)
+            {
+                return false;
+            }
             var beBehaviorElevatorControl = block.GetBEBehavior<BEBehaviorElevatorControl>(blockSel.Position);
             if (byPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative && byPlayer.Entity.Controls.Sneak)
             {

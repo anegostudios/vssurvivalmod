@@ -18,7 +18,7 @@ namespace Vintagestory.GameContent
         private BlockPos pos;
         
 
-        MeshRef meshref;
+        MultiTextureMeshRef meshref;
         public Matrixf ModelMat = new Matrixf();
 
         public float AngleRad;
@@ -27,7 +27,7 @@ namespace Vintagestory.GameContent
         {
             this.api = coreClientAPI;
             this.pos = pos;
-            meshref = coreClientAPI.Render.UploadMesh(mesh);
+            meshref = coreClientAPI.Render.UploadMultiTextureMesh(mesh);
         }
 
         public double RenderOrder
@@ -51,7 +51,6 @@ namespace Vintagestory.GameContent
             rpi.GlToggleBlend(true);
 
             IStandardShaderProgram prog = rpi.PreparedStandardShader(pos.X, pos.Y, pos.Z);
-            prog.Tex2D = api.BlockTextureAtlas.AtlasTextures[0].TextureId;
 
 
             prog.ModelMatrix = ModelMat
@@ -65,7 +64,7 @@ namespace Vintagestory.GameContent
 
             prog.ViewMatrix = rpi.CameraMatrixOriginf;
             prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
-            rpi.RenderMesh(meshref);
+            rpi.RenderMultiTextureMesh(meshref, "tex");
             prog.Stop();
 
 

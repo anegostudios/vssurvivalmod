@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
@@ -15,12 +16,13 @@ namespace Vintagestory.GameContent
 {
     public enum EnumBobberState
     {
-        Baiting = 0,
-        NoFishNearby = 1,
-        FishNearby = 2,
-        NoEntityFishCatch = 3,
-        JunkCatch = 4,
-        NoCatch = 5
+        Baiting = 0, // Waiting to see if there's something to catch
+        NoFishNearby = 1, // Waiting to catch a non-entity fish or junk
+        FishNearby = 2, // Waiting to catch an entity fish
+        NoEntityFishCatch = 3, // Catching a non-entity fish
+        JunkCatch = 4, // Catching junk
+        NoCatch = 5, // Nothing currently catchable, so wait a bit
+        EntityFishCatch = 6 // Catching an entity fish
     }
 
 
@@ -109,7 +111,6 @@ namespace Vintagestory.GameContent
     public class EntityBobber : EntityProjectile, IRopeRippedListener
     {
         protected float swimmingAccum = 0f;
-        protected float accum = 0f;
         protected float catchAccum = 0f;
         protected float junkCatchChance = 0f;
         protected EnumBobberState bobberState;
@@ -126,7 +127,7 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public ItemStack BaitStack { get; set; }        
+        public ItemStack BaitStack { get; set; }
 
         public long AttachedToEntityId
         {
@@ -134,7 +135,7 @@ namespace Vintagestory.GameContent
             set { WatchedAttributes.SetLong("attachedToEntityId", value); }
         }
 
-        // The time stamp in total hours when the bobber was cast. 
+        // The time stamp in total hours when the bobber was cast.
         public double CastTotalHours
         {
             get { return WatchedAttributes.GetDouble("castTotalHours"); }
@@ -147,7 +148,7 @@ namespace Vintagestory.GameContent
 
             ep = api.ModLoader.GetModSystem<EntityPartitioning>();
 
-            junkCatchChance = properties.Attributes["junkCatchChance"].AsFloat(0);
+            junkCatchChance = properties.Attributes["junkCatchChance"].AsFloat(junkCatchChance);
 
             impactSound = null;
 
@@ -157,7 +158,7 @@ namespace Vintagestory.GameContent
             var cs = cm.GetClothSystemAttachedToEntity(EntityId);
 
             if (api.World.GetEntityById(AttachedToEntityId) == null)
-            {   
+            {
                 if (cs != null) cm.UnregisterCloth(cs.ClothId);
                 Die();
             }
@@ -177,10 +178,13 @@ namespace Vintagestory.GameContent
             {
                 var cm = Api.ModLoader.GetModSystem<ClothManager>();
                 var cs = cm.GetClothSystemAttachedToEntity(EntityId);
-                if (cs != null) cs.CanRip = true;
-                ripSet = true;
-            }            
-            
+                if (cs != null)
+                {
+                    cs.CanRip = true;
+                    ripSet = true;
+                }
+            }
+
 
             if (Swimming)
             {
@@ -202,7 +206,7 @@ namespace Vintagestory.GameContent
             base.OnGameTick(dt);
         }
 
-        
+
         private void onServertick(float dt)
         {
             if (Swimming && !wasSwimming)
@@ -214,80 +218,93 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (swimmingAccum > 1)
+            switch(bobberState)
             {
-                if (bobberState == EnumBobberState.Baiting)
+                case EnumBobberState.Baiting:
                 {
-                    var efish = ep.GetNearestEntity(Pos.XYZ, 20, (e) => e is EntityFish, EnumEntitySearchType.Creatures);
-                    bobberState = efish == null ? EnumBobberState.NoFishNearby : EnumBobberState.FishNearby;
-                }
-
-                if (bobberState == EnumBobberState.FishNearby && swimmingAccum > 15)
-                {
-                    bobberState = EnumBobberState.NoFishNearby;
-                }
-
-                bool hasCatchable = HasCatchable(BaitStack, out var catchLikelihood);
-
-                if (bobberState == EnumBobberState.NoFishNearby && catchLikelihood > 0 && swimmingAccum > 5 / Math.Max(0.04, catchLikelihood))
-                {
-                    if (Api.World.Rand.NextDouble() < junkCatchChance)
+                    // Wait 1 second after casting, then check for nearby entities
+                    if (swimmingAccum > 1f)
                     {
-                        bobberState = EnumBobberState.JunkCatch;
+                        Entity fishEntity = ep.GetNearestEntity(Pos.XYZ, 20.0, e => e is EntityFish, EnumEntitySearchType.Creatures);
+                        bobberState = fishEntity == null ? EnumBobberState.NoFishNearby : EnumBobberState.FishNearby;
+                    }
+                    break;
+                }
+                case EnumBobberState.FishNearby:
+                {
+                    // Catch entity if it comes close enough, or assume it's gone if it doesn't arrive after 15 seconds
+                    if (swimmingAccum > 15f)
+                    {
+                        bobberState = EnumBobberState.NoFishNearby;
+                        break;
+                    }
+
+                    Entity fishEntity = ep.GetNearestEntity(Pos.XYZ, 1.0, e => e is EntityFish, EnumEntitySearchType.Creatures);
+                    string bait = BaitStack?.Collectible.Attributes?["baitTag"].AsString() ?? "nobait";
+                    if (fishEntity != null && fishEntity.Properties.Attributes["baitTags"].AsArray<string>().Contains(bait))
+                    {
+                        bobberState = EnumBobberState.EntityFishCatch;
+                        caughtFish = (EntityFish)fishEntity;
                         catchAccum += dt;
                         playCatchEffects();
                     }
-                    else
+                    break;
+                }
+                case EnumBobberState.NoFishNearby:
+                {
+                    if (!Swimming) break;
+                    // Wait according to abundance, then catch junk or fish from stock
+                    bool hasCatchable = HasCatchable(BaitStack, out float abundance);
+                    if (abundance > 0 && swimmingAccum > 5.0 / Math.Max(0.04, abundance))
                     {
-
-                        bobberState = EnumBobberState.NoEntityFishCatch;
-                        catchAccum += dt;
-                        if (hasCatchable)
+                        bobberState = Api.World.Rand.NextDouble() < junkCatchChance ? EnumBobberState.JunkCatch : hasCatchable ? EnumBobberState.NoEntityFishCatch : EnumBobberState.NoCatch;
+                        if (bobberState != EnumBobberState.NoCatch)
                         {
+                            catchAccum += dt;
                             playCatchEffects();
                         }
-                        else
-                        {
-                            bobberState = EnumBobberState.NoCatch;
-                            catchAccum = 0;
-                            swimmingAccum = 0;
-                        }
                     }
+                    break;
                 }
-            }
-
-
-            if (catchAccum == 0)
-            {
-                accum += dt;
-                if (accum > 0.2f)
+                case EnumBobberState.NoEntityFishCatch:
+                case EnumBobberState.JunkCatch:
+                case EnumBobberState.EntityFishCatch:
                 {
-                    var efish = ep.GetNearestEntity(Pos.XYZ, 1, (e) => e is EntityFish, EnumEntitySearchType.Creatures);
-                    if (efish != null)
+                    // Wait 0.7 seconds for player to reel in catch, then reset
+                    if (catchAccum > 0.7f)
                     {
-                        caughtFish = efish as EntityFish;
-                        catchAccum += dt;
-                        playCatchEffects();
-                    }
-                }
-            }
-            else
-            {
-                if (catchAccum > 0.7f)
-                {
-                    catchAccum = 0;
-                    caughtFish = null;
-                    bobberState = EnumBobberState.Baiting;
-
-                    if (caughtFish != null && caughtFish.Pos.DistanceTo(Pos) < 1)
-                    {
-                        var tm = caughtFish.GetBehavior<EntityBehaviorTaskAI>().TaskManager;
-                        var task = tm?.GetTask("fleebobber");
-                        if (task != null && task.ShouldExecute())
+                        if (caughtFish != null)
                         {
-                            tm.ExecuteTask(task, task.Slot);
+                            AiTaskManager taskManager = caughtFish.GetBehavior<EntityBehaviorTaskAI>()?.TaskManager;
+                            IAiTask aiTask = taskManager?.GetTask("fleebobber");
+                            if (aiTask != null && aiTask.ShouldExecute())
+                            {
+                                taskManager.ExecuteTask(aiTask, aiTask.Slot);
+                            }
+                            caughtFish = null;
                         }
+
+                        BaitStack = null;
+                        WatchedAttributes.MarkPathDirty("baitStack");
+                        catchAccum = 0f;
+                        swimmingAccum = 0f;
+                        bobberState = EnumBobberState.Baiting;
+                        break;
                     }
+
+                    catchAccum += dt;
+                    break;
+                }
+                case EnumBobberState.NoCatch:
+                {
+                    // Make sure we're not baiting constantly when there's no catch to be made.
+                    if (swimmingAccum > 60f)
+                    {
+                        catchAccum = 0f;
+                        swimmingAccum = 0f;
+                        bobberState = EnumBobberState.Baiting;
+                    }
+                    break;
                 }
             }
         }
@@ -306,86 +323,71 @@ namespace Vintagestory.GameContent
 
         public void TryCatchFish(EntityAgent entityCatcher)
         {
-            if (caughtFish != null && caughtFish.Alive)
+            ItemStack[] drops = [];
+
+            switch(bobberState)
             {
-                BaitStack = null;
-                WatchedAttributes.MarkPathDirty("baitStack");
-
-                caughtFish.Die(EnumDespawnReason.Expire);
-                var dropStacks = caughtFish.GetDrops(World, caughtFish.Pos.XYZInt.AsBlockPos, (entityCatcher as EntityPlayer)?.Player);
-                if (dropStacks == null) return;
-
-                foreach (var dropStack in dropStacks)
+                case EnumBobberState.EntityFishCatch:
                 {
-                    if (!entityCatcher.TryGiveItemStack(dropStack))
+                    // Kill entity and take its drops
+                    if (caughtFish != null && caughtFish.Alive)
                     {
-                        World.SpawnItemEntity(dropStack, entityCatcher.Pos.XYZ);
+                        caughtFish.Die(EnumDespawnReason.Expire);
+                        drops = caughtFish.GetDrops(World, caughtFish.Pos.XYZInt.AsBlockPos, (entityCatcher as EntityPlayer)?.Player);
                     }
+                    break;
                 }
-
-                return;
-            }
-
-            if (bobberState == EnumBobberState.NoEntityFishCatch)
-            {
-                EntityProperties etype = getRandomFishEntityProperties(BaitStack, out float abundancevalue);
-                if (etype == null) return;
-
-                BaitStack = null;
-                WatchedAttributes.MarkPathDirty("baitStack");
-
-                var collObj = etype.Drops[0].ResolvedItemstack.Collectible;
-                var age = Api.World.Rand.NextDouble() > abundancevalue ? "adult" : "juvenile";
-                CollectibleObject deadFishItem = Api.World.GetItem(collObj.CodeWithVariant("age", age));
-                if (deadFishItem == null) deadFishItem = collObj;
-
-                ItemStack dropStack;
-                if (deadFishItem != null)
+                case EnumBobberState.NoEntityFishCatch:
                 {
-                    dropStack = new ItemStack(deadFishItem);
-                    dropStack.ResolveBlockOrItem(Api.World);
-                } else
-                {
-                    dropStack = etype.Drops[0].ResolvedItemstack.Clone();
+                    // Harvest stock fish and age it according to abundance if possible
+                    EntityProperties fishCatch = getRandomFishEntityProperties(BaitStack, out float abundance);
+                    if (fishCatch?.Drops[0].ResolvedItemstack is not ItemStack fishStack) return;
+
+                    string age = Api.World.Rand.NextDouble() < abundance ? "adult" : "juvenile";
+                    CollectibleObject agedFish = Api.World.GetItem(fishStack.Collectible.CodeWithVariant("age", age));
+                    fishStack = agedFish != null ? new ItemStack(agedFish) : fishStack.Clone();
+
+                    drops = [fishStack];
+
+                    Api.ModLoader.GetModSystem<ModSystemFishDepletion>().AddHarvest(Pos.XYZ.AsBlockPos, 1);
+                    break;
                 }
-
-                if (!entityCatcher.TryGiveItemStack(dropStack))
+                case EnumBobberState.JunkCatch:
                 {
-                    World.SpawnItemEntity(dropStack, entityCatcher.Pos.XYZ);
-                }
+                    // Get weighted random junk from pool
+                    WeightedBlockDropItemstack[] junkCatches = Properties.Attributes?["junkCatches"].AsObject<WeightedBlockDropItemstack[]>()?.Shuffle(Api.World.Rand);
+                    if (junkCatches == null) return;
 
-                Api.ModLoader.GetModSystem<ModSystemFishDepletion>().AddHarvest(Pos.XYZ.AsBlockPos, 1);
-            }
-
-            if (bobberState == EnumBobberState.JunkCatch)
-            {
-                BaitStack = null;
-                WatchedAttributes.MarkPathDirty("baitStack");
-
-                var drops = Properties.Attributes["junkCatches"].AsObject<WeightedBlockDropItemstack[]>();
-                float totalWeight = 0;
-                foreach (var drop in drops)
-                {
-                    totalWeight += drop.Weight;
-                }
-                var rndval = Api.World.Rand.NextDouble() * totalWeight;
-
-                drops.Shuffle(Api.World.Rand);
-                foreach (var drop in drops)
-                {
-                    rndval -= drop.Weight;
-                    if (rndval < 0)
+                    double selection = Api.World.Rand.NextDouble() * junkCatches.Sum(junkCatch => junkCatch.Weight);
+                    foreach (WeightedBlockDropItemstack junkCatch in junkCatches)
                     {
-                        drop.Resolve(Api.World, "bobber junk catch", Code);
-                        var dropStack = drop.ResolvedItemstack.Clone();
-                        if (!entityCatcher.TryGiveItemStack(dropStack))
+                        selection -= junkCatch.Weight;
+                        if (selection < 0d && junkCatch.Resolve(Api.World, "bobber junk catch", Code))
                         {
-                            World.SpawnItemEntity(dropStack, entityCatcher.Pos.XYZ);
+                            drops = [junkCatch.ResolvedItemstack.Clone()];
+                            break;
                         }
-                        break;
                     }
+                    break;
                 }
             }
+
+            if (drops.Length <= 0) return;
+
+            BaitStack = null;
+            WatchedAttributes.MarkPathDirty("baitStack");
+
+            foreach (ItemStack drop in drops)
+            {
+                if (!entityCatcher.TryGiveItemStack(drop))
+                {
+                    World.SpawnItemEntity(drop, entityCatcher.Pos.XYZ);
+                }
+            }
+
+            ItemSlot slot = entityCatcher.ActiveHandItemSlot;
+            (slot?.Itemstack?.Collectible as ItemFishingPole)?.DamageItem(World, entityCatcher, slot);
+            slot?.MarkDirty();
         }
 
 
@@ -399,80 +401,74 @@ namespace Vintagestory.GameContent
         private EntityProperties getRandomFishEntityProperties(ItemStack baitStack, out float abundanceValue, bool printDebug = false)
         {
             var pos = Pos.XYZ;
-            tmpPos.Set(pos.XInt, (int)(World.SeaLevel * 1.09), pos.ZInt);
+            tmpPos.Set(pos.XInt, (int)(World.SeaLevel * 1.09), pos.ZInt); // Adjust for the 9% above sea level climate check
 
-            abundanceValue = 0;
+            abundanceValue = 0f;
 
             var climate = World.BlockAccessor.GetClimateAt(tmpPos, EnumGetClimateMode.WorldGenValues);
-            if (climate == null)
-            {
-                return null;
-            }
+            if (climate == null) return null;
+
+            tmpPos.Set(pos.XInt, pos.YInt, pos.ZInt); // We have to set the location back for the rest of the checks
+            Block block = World.BlockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid);
 
             // 1. Prefilter by suitable climate
-            List<KeyValuePair<string, EntityProperties>> suitableFishPropsWithMapCode = new List<KeyValuePair<string, EntityProperties>>();
-            foreach (var etype in World.EntityTypes)
+            List<KeyValuePair<string?, EntityProperties>> suitableEntityTypesWithMapCode = [];
+            foreach (EntityProperties entityType in World.EntityTypes)
             {
-                string mapcode = etype.Server.SpawnConditions?.Climate?.MapCode ?? etype.Server.SpawnConditions?.Runtime?.MapCode ?? etype.Server.SpawnConditions?.Worldgen?.MapCode;
-                if (mapcode != null)
-                {
-                    ClimateSpawnCondition climateSpawnConds = etype.Server.SpawnConditions?.Climate ?? (ClimateSpawnCondition)etype.Server.SpawnConditions?.Runtime ?? etype.Server.SpawnConditions?.Worldgen;
-                    if (climateSpawnConds.MatchesClimate(climate))
-                    {
-                        // Also make sure that we're in the correct kind of water
-                        tmpPos.Set(pos.XInt, pos.YInt, pos.ZInt);
-                        BaseSpawnConditions baseSpawnConds = (BaseSpawnConditions)etype.Server.SpawnConditions?.Runtime ?? etype.Server.SpawnConditions?.Worldgen;
-                        var liquidBlock = World.BlockAccessor.GetBlock(tmpPos, BlockLayersAccess.Fluid);
-                        if (baseSpawnConds.CanSpawnInside(liquidBlock))
-                        {
-                            suitableFishPropsWithMapCode.Add(new KeyValuePair<string, EntityProperties>(mapcode, etype));
-                        }
-                    }
-                }
+                SpawnConditions spawnConditions = entityType.Server.SpawnConditions;
+                if (spawnConditions == null) continue;
+
+                BaseSpawnConditions baseSpawnConditions = spawnConditions.Runtime ?? spawnConditions.Worldgen as BaseSpawnConditions;
+                if (baseSpawnConditions == null) continue;
+
+                ClimateSpawnCondition spawnClimate = spawnConditions.Climate ?? baseSpawnConditions;
+
+                // Then we make sure it can spawn in the current climate
+                if (!spawnClimate.MatchesClimate(climate) || !baseSpawnConditions.CanSpawnInside(block)) continue;
+
+                string? mapCode = spawnConditions.Climate?.MapCode ?? baseSpawnConditions.MapCode;
+
+                suitableEntityTypesWithMapCode.Add(new KeyValuePair<string?, EntityProperties>(mapCode, entityType));
             }
 
             if (printDebug)
             {
-                System.Diagnostics.Debug.WriteLine("1. Climate suitable fish types: " + string.Join(", ", suitableFishPropsWithMapCode.Select(kv => kv.Value.Code)));
+                System.Diagnostics.Debug.WriteLine("1. Climate suitable fish types: " + string.Join(", ", suitableEntityTypesWithMapCode.Select(kv => kv.Value.Code)));
             }
+
+            if (suitableEntityTypesWithMapCode.Count == 0) return null;
 
             // 2. Now filter by animal map matching
-            var regionSize = World.BlockAccessor.RegionSize;
-            var mr = World.BlockAccessor.GetMapRegion(pos.XInt / regionSize, pos.ZInt / regionSize);
-            int noiseSizeDensityMap = regionSize / TerraGenConfig.animalMapScale;
-            int posX = pos.XInt;
-            int posZ = pos.ZInt;
-            List<EntityProperties> suitableFishProps = new List<EntityProperties>();
-            foreach (var val in mr.AnimalSpawnMaps)
+            int regionSize = World.BlockAccessor.RegionSize;
+            int animalMapsPerRegion = regionSize / TerraGenConfig.animalMapScale;
+            int xInRegion = pos.XInt % regionSize;
+            int zInRegion = pos.ZInt % regionSize;
+            float xInAnimalMap = GameMath.Clamp((float)xInRegion / (float)regionSize * (float)animalMapsPerRegion, 0f, animalMapsPerRegion - 1);
+            float zInAnimalMap = GameMath.Clamp((float)zInRegion / (float)regionSize * (float)animalMapsPerRegion, 0f, animalMapsPerRegion - 1);
+            IMapRegion mapRegion = World.BlockAccessor.GetMapRegion(pos.XInt / regionSize, pos.ZInt / regionSize);
+
+            List<EntityProperties> suitableEntityTypes = [];
+            foreach ((string? mapCode, var entityType) in suitableEntityTypesWithMapCode)
             {
-                int lx = posX % regionSize;
-                int lz = posZ % regionSize;
-
-                float posXInRegionOre = GameMath.Clamp((float)lx / regionSize * noiseSizeDensityMap, 0, noiseSizeDensityMap - 1);
-                float posZInRegionOre = GameMath.Clamp((float)lz / regionSize * noiseSizeDensityMap, 0, noiseSizeDensityMap - 1);
-
-                float density = val.Value.GetUnpaddedLerped(posXInRegionOre, posZInRegionOre);
-                if (density > 128)
+                if (mapCode == null || mapRegion.AnimalSpawnMaps.Get(mapCode).GetUnpaddedLerped(xInAnimalMap, zInAnimalMap) > 128f)
                 {
-                    var eprops = suitableFishPropsWithMapCode.FirstOrDefault(fprops => fprops.Key == val.Key).Value;
-                    if (eprops != null)
-                    {
-                        suitableFishProps.Add(eprops);
-                    }
+                    suitableEntityTypes.Add(entityType);
                 }
             }
 
             if (printDebug)
             {
-                System.Diagnostics.Debug.WriteLine("2. After fish type map filter: " + string.Join(", ", suitableFishProps.Select(props => props.Code)));
+                System.Diagnostics.Debug.WriteLine("2. After fish type map filter: " + string.Join(", ", suitableEntityTypes.Select(props => props.Code)));
             }
 
-            if (suitableFishProps.Count == 0) return null;
+            if (suitableEntityTypes.Count == 0) return null;
 
+            // 3. Now filter by overall "fish frequency map"
+            var fishingSupportSystem = Api.ModLoader.GetModSystem<FishingSupportModSystem>();
+            if (fishingSupportSystem?.FishFrequencyMapNoise == null) return null;
 
-            // 3. Now filter by overal "fish frequency map"
-            var noiseval = (Api.ModLoader.GetModSystem<FishingSupportModSystem>().NoiseGen.Noise(pos.X, pos.Z) - 0.4f) * 3;
-            abundanceValue = (float)GameMath.Clamp(noiseval, 0.2f, 1);
+            double noisyAbundance = (fishingSupportSystem.FishFrequencyMapNoise.Noise(pos.X, pos.Z) - 0.4f) * 3.0;
+            abundanceValue = (float)GameMath.Clamp(noisyAbundance, 0.2f, 1.0);
 
             if (printDebug)
             {
@@ -496,48 +492,39 @@ namespace Vintagestory.GameContent
 
             abundanceValue *= pondSize / 1200f;
 
-            // 6. Now filter by fish depletion map
-            float harvestedHere = Api.ModLoader.GetModSystem<ModSystemFishDepletion>().GetHarvestAmount(Pos.XYZ.AsBlockPos);
-
-            float max = ModSystemFishDepletion.MaxHarvestablePerLocation * 0.8f;
-            var mul = 1 - GameMath.Clamp(harvestedHere / max - 0.2f, 0, 1);
-            abundanceValue *= mul;
-
-            if (printDebug)
-            {
-                System.Diagnostics.Debug.WriteLine("5. Fish depletion here: " + ((1-mul) * 100) + "% (caught: "+harvestedHere+")");
-            }
-
-            // 7. Now filter by bait
-            var baitTag = BaitStack?.Collectible.Attributes?["baitTag"].AsString() ?? "nobait";
-            for (int i = 0; i < suitableFishProps.Count; i++)
-            {
-                var fishProps = suitableFishProps[i];
-                var fishInterestedBaits = fishProps.Attributes["baitTags"].AsArray<string>();
-
-                if (!fishInterestedBaits.Contains(baitTag))
-                {
-                    suitableFishProps.RemoveAt(i);
-                    i--;
-                }
-            }
+            // 5. Now filter by fish depletion map
+            float alreadyHarvested = Api.ModLoader.GetModSystem<ModSystemFishDepletion>().GetHarvestAmount(tmpPos);
+            float maxHarvestable = ModSystemFishDepletion.MaxHarvestablePerLocation * 0.8f;
+            float remainingHarvestable = 1f - GameMath.Clamp(alreadyHarvested / maxHarvestable - 0.2f, 0f, 1f);
+            abundanceValue *= remainingHarvestable;
 
             if (printDebug)
             {
-                System.Diagnostics.Debug.WriteLine("2. After bait filter: " + string.Join(", ", suitableFishProps.Select(props => props.Code)));
+                System.Diagnostics.Debug.WriteLine($"5. Fish depletion here {(1 - remainingHarvestable) * 100}% (caught: {alreadyHarvested})");
             }
 
-            if (suitableFishProps.Count == 0) return null;
+            if (abundanceValue <= 0) return null;
 
-            // 8. Pick a random one from the leftovers
-            var fishprops = suitableFishProps[Api.World.Rand.Next(suitableFishProps.Count)];
+            // 6. Now filter by bait
+            string baitTag = baitStack?.Collectible.Attributes?["baitTag"].AsString() ?? "nobait";
+            suitableEntityTypes = [.. suitableEntityTypes.Where(entityType => entityType.Attributes?["baitTags"].AsArray<string>()?.Contains(baitTag) ?? false)];
 
             if (printDebug)
             {
-                System.Diagnostics.Debug.WriteLine("6. Randomly selected fish: " + fishprops.Code);
+                System.Diagnostics.Debug.WriteLine("6. After bait filter: " + string.Join(", ", suitableEntityTypes.Select(props => props.Code)));
             }
 
-            return fishprops;
+            if (suitableEntityTypes.Count == 0) return null;
+
+            // 7. Pick a random one from the leftovers
+            var selectedEntityType = suitableEntityTypes[Api.World.Rand.Next(suitableEntityTypes.Count)];
+
+            if (printDebug)
+            {
+                System.Diagnostics.Debug.WriteLine("7. Randomly selected fish: " + selectedEntityType.Code);
+            }
+
+            return selectedEntityType;
         }
 
 
@@ -607,12 +594,10 @@ namespace Vintagestory.GameContent
             World.SpawnParticles(SplashParticleProps);
         }
 
-        public override double SwimmingOffsetY => 0.2f;
 
-
-        public override void FromBytes(BinaryReader reader, bool isSync)
+        public override void FromBytes(ref BinarySpanReader reader, bool isSync)
         {
-            base.FromBytes(reader, isSync);
+            base.FromBytes(ref reader, isSync);
 
             BaitStack = WatchedAttributes.GetItemstack("baitStack", null);
             if (Api?.World != null) BaitStack?.ResolveBlockOrItem(Api.World);
@@ -628,6 +613,16 @@ namespace Vintagestory.GameContent
         public void OnRopeRipped(ClothSystem cs)
         {
             Die();
+
+            EntityAgent entity = Api.World.GetEntityById(AttachedToEntityId) as EntityAgent;
+            if (entity?.ActiveHandItemSlot is ItemSlot slot && slot.Itemstack?.Collectible is ItemFishingPole poleObj)
+            {
+                slot.Itemstack.Attributes.RemoveAttribute("fishing");
+                slot.Itemstack.Attributes.RemoveAttribute("bobberEntityId");
+                slot.Itemstack.Attributes.RemoveAttribute("fishingEntityId");
+                poleObj.DamageItem(Api.World, entity, slot);
+                slot.MarkDirty();
+            }
         }
     }
 }

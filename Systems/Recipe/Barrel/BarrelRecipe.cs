@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using Vintagestory.API;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 
 namespace Vintagestory.GameContent;
 
@@ -174,9 +175,9 @@ public class BarrelRecipe : RecipeBase, IByteSerializable, IConcreteCloneable<Ba
         writer.Write(SealHours);
     }
 
-    public override void FromBytes(BinaryReader reader, IWorldAccessor resolver)
+    public override void FromBytes(ref BinarySpanReader reader, IWorldAccessor resolver)
     {
-        base.FromBytes(reader, resolver);
+        base.FromBytes(ref reader, resolver);
 
         Code = reader.ReadString();
         BarrelRecipeIngredient[] Ingredients = new BarrelRecipeIngredient[reader.ReadInt32()];
@@ -185,13 +186,13 @@ public class BarrelRecipe : RecipeBase, IByteSerializable, IConcreteCloneable<Ba
         for (int i = 0; i < Ingredients.Length; i++)
         {
             var ingredient = new BarrelRecipeIngredient();
-            ingredient.FromBytes(reader, resolver);
+            ingredient.FromBytes(ref reader, resolver);
             ingredient.Resolve(resolver, "Barrel Recipe (FromBytes)", this);
             Ingredients[i] = ingredient;
         }
 
-        Output = new BarrelOutputStack();
-        Output.FromBytes(reader, resolver.ClassRegistry);
+        Output = new BarrelOutputStack { Code = null! };
+        Output.FromBytes(ref reader, resolver.ClassRegistry);
         Output.Resolve(resolver, "Barrel Recipe (FromBytes)");
 
         SealHours = reader.ReadDouble();
@@ -253,7 +254,7 @@ public class BarrelRecipe : RecipeBase, IByteSerializable, IConcreteCloneable<Ba
     protected virtual bool ShouldBeInLiquidSlot(ItemStack? stack)
     {
         // Minor Fugly hack - copied from LiquidContainer.cs
-        return stack?.ItemAttributes?["waterTightContainerProps"].Exists == true;
+        return BlockLiquidContainerBase.GetContainableProps(stack) != null;
     }
 
     protected virtual List<(ItemSlot slot, BarrelRecipeIngredient ingredient)> PairInput(ItemSlot[] inputSlots)

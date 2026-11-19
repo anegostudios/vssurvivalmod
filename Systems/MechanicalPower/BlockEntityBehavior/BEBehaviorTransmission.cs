@@ -1,3 +1,4 @@
+using System;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -137,11 +138,13 @@ namespace Vintagestory.GameContent.Mechanics
             }
             else
             {
-                rot = node.Network.AngleRad * node.GearedRatio;
+                double angle = node is BEBehaviorMPBase behavior
+                    ? behavior.UnreversedAngleRad
+                    : node.Network.TotalAngleRad * node.GearedRatio;
                 bool invert = node.GetPropagationDirection() != orients[side];
                 if (side == 1) invert = !invert;
-                if (invert) rot = GameMath.TWOPI - rot;
-                rotPrev[side] = rot;
+                if (invert) angle = Math.Tau - angle;
+                rotPrev[side] = rot = (float)GameMath.Mod(angle, Math.Tau);
             }
             return rot;
         }
@@ -167,7 +170,7 @@ namespace Vintagestory.GameContent.Mechanics
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
         {
             base.GetBlockInfo(forPlayer, sb);
-            if (Api.World.EntityDebugMode && forPlayer?.WorldData?.CurrentGameMode == EnumGameMode.Creative)
+            if (Api.World.EntityDebugMode)
             {
                 sb.AppendLine(string.Format(Lang.Get(engaged ? "Engaged" : "Disengaged")));
             }

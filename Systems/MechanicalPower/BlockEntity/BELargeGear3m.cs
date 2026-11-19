@@ -15,14 +15,15 @@ namespace Vintagestory.GameContent.Mechanics
         {
             this.gear = new BlockPos[4];
             IBlockAccessor accessor = api.World.BlockAccessor;
-            TestGear(accessor, this.Pos.NorthCopy());
-            TestGear(accessor, this.Pos.SouthCopy());
-            TestGear(accessor, this.Pos.WestCopy());
-            TestGear(accessor, this.Pos.EastCopy());
+            BlockPos gearPos = new BlockPos(Pos.dimension);
+            foreach (BlockFacing facing in BlockLargeGear3m.GetRingFacings(Block))
+            {
+                testGear(accessor, gearPos.Set(Pos).Add(facing));
+            }
             base.Initialize(api);
         }
 
-        private void TestGear(IBlockAccessor accessor, BlockPos pos)
+        private void testGear(IBlockAccessor accessor, BlockPos pos)
         {
             if (accessor.GetBlock(pos) is BlockAngledGears)
             {
@@ -42,12 +43,13 @@ namespace Vintagestory.GameContent.Mechanics
 
         bool IGearAcceptor.CanAcceptGear(BlockPos pos)
         {
-            if (pos.Y != Pos.Y) return false;
-            int dx = Pos.X - pos.X;
-            int dz = Pos.Z - pos.Z;
-            if (dx != 0 && dz != 0) return false;  //one of dx and dz must be 0
             if (HasGearAt(pos)) return false;
-            return dx + dz == 1 || dx + dz == -1;  //this should always be true if replacing a multiblock fake block with this gear as center, but check just in case
+            foreach (BlockFacing facing in BlockLargeGear3m.GetRingFacings(Block))
+            {
+                Vec3i normal = facing.Normali;
+                if (pos.X == Pos.X + normal.X && pos.Y == Pos.Y + normal.Y && pos.Z == Pos.Z + normal.Z) return true;
+            }
+            return false;
         }
 
         public bool HasGears()
@@ -103,7 +105,7 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 if (gear[i] == null)
                 {
-                    gear[i] = pos;
+                    gear[i] = pos.Copy();
                     return;
                 }
             }

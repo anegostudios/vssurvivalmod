@@ -16,7 +16,7 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face, BlockMPBase forBlock)
         {
-            return IsOrientedTo(face);
+            return HasCompatibleConnector(forBlock) && IsOrientedTo(face);
         }
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref string failureCode)
@@ -31,7 +31,7 @@ namespace Vintagestory.GameContent.Mechanics
                 BlockPos pos = blockSel.Position.AddCopy(face);
 
                 IMechanicalPowerBlock block = world.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
-                if (block != null)
+                if (block != null && HasCompatibleConnector(block as BlockMPBase))
                 {
                     BlockFacing faceOpposite = face.Opposite;
                     if (block.HasMechPowerConnectorAt(world, pos, faceOpposite, this))
@@ -55,7 +55,7 @@ namespace Vintagestory.GameContent.Mechanics
                             //Test for connection on opposite side as well
                             pos = blockSel.Position.AddCopy(faceOpposite);
                             block = world.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
-                            if (block != null && block.HasMechPowerConnectorAt(world, pos, face, this))
+                            if (block != null && HasCompatibleConnector(block as BlockMPBase) && block.HasMechPowerConnectorAt(world, pos, face, this))
                             {
                                 block.DidConnectAt(world, pos, face);
                                 WasPlaced(world, blockSel.Position, faceOpposite);

@@ -38,9 +38,9 @@ namespace Vintagestory.GameContent
 
     public class EntityBehaviorConversable : EntityBehavior
     {
-        public static int BeginConvoPacketId = 1213;
-        public static int SelectAnswerPacketId = 1214;
-        public static int CloseConvoPacketId = 1215;
+        public const int BeginConvoPacketId = 1213;
+        public const int SelectAnswerPacketId = 1214;
+        public const int CloseConvoPacketId = 1215;
 
         public Dictionary<string, DialogueController> ControllerByPlayer = new Dictionary<string, DialogueController>();
         public GuiDialogueDialog Dialog;
@@ -229,14 +229,7 @@ namespace Vintagestory.GameContent
                         EntitiesArgParser test = new EntitiesArgParser("test", world.Api, true);
                         TextCommandCallingArgs packedArgs = new TextCommandCallingArgs()
                         {
-                            Caller = new Caller()
-                            {
-                                Type = EnumCallerType.Console,
-                                CallerRole = "admin",
-                                CallerPrivileges = new string[] { "*" },
-                                FromChatGroupId = GlobalConstants.ConsoleGroup,
-                                Pos = new Vec3d(0.5, 0.5, 0.5)
-                            },
+                            Caller = Caller.FromConsole(pos: new Vec3d(0.5, 0.5, 0.5)),
                             RawArgs = new CmdArgs(arg)
                         };
                         EnumParseResult result = test.TryProcess(packedArgs);
@@ -298,6 +291,11 @@ namespace Vintagestory.GameContent
             {
                 var spawnentity = entity.Api.ClassRegistry.CreateEntity(etype);
                 spawnentity.Pos.SetPos(spawnpos);
+                if (cfg.Trained)
+                {
+                    spawnentity.WatchedAttributes.SetInt("remainingSaddleBreaksRequired", 0);
+                    spawnentity.WatchedAttributes.SetDouble("training", 1.0);
+                }
                 entity.World.SpawnEntity(spawnentity);
                 entity.World.Logger.Audit($"Spawned {entityCode} at {spawnpos} ({range}/{cfg.MinDistance}) by {entity.Code} for {forplayer.PlayerName}");
 
@@ -678,42 +676,47 @@ namespace Vintagestory.GameContent
             (world.Api as ICoreClientAPI).Network.SendEntityPacket(entity.EntityId, CloseConvoPacketId);
         }
 
-        public override void OnReceivedClientPacket(IServerPlayer player, int packetid, byte[] data, ref EnumHandling handled)
+        public override void OnReceivedClientPacket(IServerPlayer player, int packetId, SerializedData packetData, ref EnumHandling handled, ref Entity.CachedAccessPerms perms)
         {
-            base.OnReceivedClientPacket(player, packetid, data, ref handled);
+            base.OnReceivedClientPacket(player, packetId, packetData, ref handled, ref perms);
 
-            if (packetid == BeginConvoPacketId)
+            switch (packetId)
             {
-                var perms = new Entity.CachedAccessPerms(this.entity, player);
-                if(!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.None, true, "entity behavior conversable"))
+                case BeginConvoPacketId:
+                    if(!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.None, true, "entity behavior conversable"))
+                    {
+                        // Rennorb 23.06.2026 ux: Should we send the client something here? Probably needs some clientside code to make this completely smooth.
+                        break;
+                    }
+
+                    beginConvoServer(player);
+
+                    break;
+
+
+                case SelectAnswerPacketId:
                 {
-                    // Rennorb 23.06.2026 ux: Should we send the client something here? Probably needs some clientside code to make this completely smooth.
-                    return;
+                    if(!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.None, true, "entity behavior conversable"))
+                    {
+                        // No need to revert this, just discard the request.
+                        break;
+                    }
+
+                    int id = packetData.Deserialize<int>();
+                    var controller = GetOrCreateController(player.Entity);
+
+                    controller.PlayerSelectAnswerById(id);
+
+                    break;
                 }
 
-                beginConvoServer(player);
-            }
 
-            if (packetid == SelectAnswerPacketId)
-            {
-                var perms = new Entity.CachedAccessPerms(this.entity, player);
-                if(!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.None, true, "entity behavior conversable"))
-                {
-                    // No need to revert this, just discard the request.
-                    return;
-                }
+                case CloseConvoPacketId:
+                    // No perms check, always allowed.
 
-                int id = SerializerUtil.Deserialize<int>(data);
-                var controller = GetOrCreateController(player.Entity);
+                    ControllerByPlayer.Remove(player.PlayerUID);
 
-                controller.PlayerSelectAnswerById(id);
-            }
-
-            if (packetid == CloseConvoPacketId)
-            {
-                // No perms check, always allowed.
-
-                ControllerByPlayer.Remove(player.PlayerUID);
+                    break;
             }
         }
 
@@ -723,11 +726,11 @@ namespace Vintagestory.GameContent
             controller.ContinueExecute();
         }
 
-        public override void OnReceivedServerPacket(int packetid, byte[] data, ref EnumHandling handled)
+        public override void OnReceivedServerPacket(int packetId, SerializedData packetData, ref EnumHandling handled)
         {
-            base.OnReceivedServerPacket(packetid, data, ref handled);
+            base.OnReceivedServerPacket(packetId, packetData, ref handled);
 
-            if (packetid == BeginConvoPacketId)
+            if (packetId == BeginConvoPacketId)
             {
                 ICoreClientAPI capi = entity.World.Api as ICoreClientAPI;
                 EntityPlayer entityplr = capi.World.Player.Entity;
@@ -744,7 +747,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (packetid == CloseConvoPacketId)
+            if (packetId == CloseConvoPacketId)
             {
                 ControllerByPlayer.Clear();
                 Dialog?.TryClose();
@@ -759,5 +762,6 @@ namespace Vintagestory.GameContent
         public float Range;
         public JsonItemStack[] GiveStacks;
         public int MinDistance;
+        public bool Trained;
     }
 }

@@ -27,7 +27,6 @@ namespace Vintagestory.GameContent
         private readonly Vec3d ownPos = new Vec3d();
 
         protected float moveSpeed = 0.02f;
-        protected float searchRange = 25f;
         protected float targetRange = 15f;
         protected float rangeTolerance = 2f;
         protected bool stopNow = false;
@@ -56,7 +55,6 @@ namespace Vintagestory.GameContent
         public AiTaskStayInRange(EntityAgent entity, JsonObject taskConfig, JsonObject aiConfig) : base(entity, taskConfig, aiConfig)
         {
             moveSpeed = taskConfig["movespeed"].AsFloat(0.02f);
-            searchRange = taskConfig["searchRange"].AsFloat(25);
             targetRange = taskConfig["targetRange"].AsFloat(15);
             rangeTolerance = taskConfig["targetRangeTolerance"].AsFloat(2);
             searchWaitMs = taskConfig["searchWaitMs"].AsInt(4000);

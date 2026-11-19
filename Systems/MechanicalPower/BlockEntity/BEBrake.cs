@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -9,51 +9,23 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent.Mechanics
 {
-    public class BEBrake : BlockEntity
+    public class BEBrake : BlockEntity, IRotatable
     {
         public bool Engaged { get; protected set; }
-
-
-        BlockEntityAnimationUtil animUtil
-        {
-            get { return GetBehavior<BEBehaviorAnimatable>().animUtil; }
-        }
-
-        public override void Initialize(ICoreAPI api)
-        {
-            base.Initialize(api);
-
-            /*if (api.World.Side == EnumAppSide.Client)
-            {
-                float rotY = Block.Shape.rotateY;
-                animUtil.InitializeAnimator("brake", new Vec3f(0, rotY, 0));
-                
-            }*/
-
-
-        }
-
-
-        private void OnClientGameTick(float dt)
-        {
-            /*            if (ownBlock == null || Api?.World == null || !canTeleport || !Activated) return;
-
-                        if (playerInside)
-                        {
-                            animUtil.StartAnimation(new AnimationMetaData() { Animation = "idle", Code = "idle", AnimationSpeed = 1, EaseInSpeed = 100, EaseOutSpeed = 100, BlendMode = EnumAnimationBlendMode.Average });
-                            animUtil.StartAnimation(new AnimationMetaData() { Animation = "teleport", Code = "teleport", AnimationSpeed = 1, EaseInSpeed = 8, EaseOutSpeed = 8, BlendMode = EnumAnimationBlendMode.Add });
-                        }
-                        else
-                        {
-                            animUtil.StopAnimation("teleport");
-                        }*/
-        }
 
         MeshData ownMesh;
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
         {
             base.OnTesselation(mesher, tessThreadTesselator);
+
+            BlockBrakeFrame frameBlock = Block as BlockBrakeFrame ?? (Block as BlockAxleAttachmentAssembly)?.FrameBlock as BlockBrakeFrame;
+            if (frameBlock != null)
+            {
+                ItemStack frameStack = GetBehavior<BEBehaviorAxleAttachmentFrame>().GetFrameStack();
+                mesher.AddMeshData(frameBlock.GetFrameMesh(Api as ICoreClientAPI, tessThreadTesselator, frameStack, Engaged));
+                return true;
+            }
 
             if (!Engaged)
             {
@@ -118,6 +90,14 @@ namespace Vintagestory.GameContent.Mechanics
             base.ToTreeAttributes(tree);
 
             tree.SetBool("engaged", Engaged);
+        }
+
+        public void OnTransformed(IWorldAccessor worldAccessor, ITreeAttribute tree, int degreeRotation, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, EnumAxis? flipAxis)
+        {
+            foreach (var bh in Behaviors)
+            {
+                (bh as IRotatable)?.OnTransformed(worldAccessor, tree, degreeRotation, oldBlockIdMapping, oldItemIdMapping, flipAxis);
+            }
         }
     }
 }

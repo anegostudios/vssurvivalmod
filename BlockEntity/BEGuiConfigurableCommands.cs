@@ -118,15 +118,9 @@ namespace Vintagestory.GameContent
             {
                 RegisterDelayedCallback((dt) =>
                 {
+                    var caller = Caller.FromBlock(Pos);
                     try
                     {
-                        var caller = new Caller()
-                        {
-                            CallerPrivileges = new string[] { "*" },
-                            Pos = Pos.ToVec3d(),
-                            Type = EnumCallerType.Block
-                        };
-
                         OnInteract(caller);
                     }
                     catch (Exception e)
@@ -183,14 +177,14 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnReceivedClientPacket(IPlayer fromPlayer, int packetid, byte[] data)
+        public override void OnReceivedClientPacket(IServerPlayer fromPlayer, int packetId, SerializedData packetData, ref CachedAccessPerms perms)
         {
-            base.OnReceivedClientPacket(fromPlayer, packetid, data);
+            base.OnReceivedClientPacket(fromPlayer, packetId, packetData, ref perms);
 
-            if (packetid == 12 && CanEditCommandblocks(fromPlayer))
+            if (packetId == 12 && CanEditCommandblocks(fromPlayer))
             {
-                CallingPrivileges = (fromPlayer as IServerPlayer).Role.AutoGrant ? new string[] { "*" } : fromPlayer.Privileges;
-                UpdateFromPacket(data);
+                CallingPrivileges = fromPlayer.Role.AutoGrant ? new string[] { "*" } : fromPlayer.Privileges;
+                UpdateFromPacket(packetData);
             }
         }
 
@@ -199,9 +193,15 @@ namespace Vintagestory.GameContent
             return player.WorldData.CurrentGameMode == EnumGameMode.Creative && (player.HasPrivilege("controlserver") || player.Entity.World.Config.GetBool("allowCreativeModeCommandBlocks") == true);
         }
 
-        protected virtual void UpdateFromPacket(byte[] data)
+        [Obsolete("Prefer using the SerializedData overload.")]
+        protected virtual void UpdateFromPacket(byte[] packetData)
         {
-            var packet = SerializerUtil.Deserialize<BlockEntityCommandPacket>(data);
+            UpdateFromPacket(new SerializedData(packetData));
+        }
+
+        protected virtual void UpdateFromPacket(SerializedData packetData)
+        {
+            var packet = packetData.Deserialize<BlockEntityCommandPacket>();
             this.Commands = packet.Commands;
             this.Silent = packet.Silent;
             MarkDirty(true);

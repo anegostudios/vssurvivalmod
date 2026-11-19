@@ -57,6 +57,8 @@ public class TypedTextureSource : ITexPositionSource
 
 public class BEBehaviorCabinetDoors : BEBehaviorAnimatable, IInteractable
 {
+    private const float DoorEaseOutSpeed = 4;
+
     protected bool opened = false;
     protected Cuboidf[]? selectionBoxesOpened;
     protected Cuboidf[]? selectionBoxesClosed;
@@ -65,6 +67,13 @@ public class BEBehaviorCabinetDoors : BEBehaviorAnimatable, IInteractable
     public ItemStack? DoorStack => doorStack;
     public BEBehaviorCabinetDoors(BlockEntity blockentity) : base(blockentity)
     {
+    }
+
+    protected override BlockEntityAnimationUtil CreateAnimationUtil(ICoreAPI api)
+    {
+        return api.Side == EnumAppSide.Client
+            ? new BlockEntityAnimationUtil(api, Blockentity, BlockEntityAnimationUtil.CalculateSettleDuration(DoorEaseOutSpeed))
+            : base.CreateAnimationUtil(api);
     }
 
     public override void Initialize(ICoreAPI api, JsonObject properties)
@@ -77,16 +86,16 @@ public class BEBehaviorCabinetDoors : BEBehaviorAnimatable, IInteractable
     private void updateAnimationState()
     {
         if (!opened) animUtil?.StopAnimation("opened");
-        else animUtil?.StartAnimation(new AnimationMetaData() { Animation = "opened", Code = "opened", AnimationSpeed = 0.7f, EaseOutSpeed = 4 });
+        else animUtil?.StartAnimation(new AnimationMetaData() { Animation = "opened", Code = "opened", AnimationSpeed = 0.7f, EaseOutSpeed = DoorEaseOutSpeed });
     }
 
     public bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref EnumHandling handling)
     {
+        var slot = byPlayer.InventoryManager.ActiveHotbarSlot;
         if (doorStack == null)
         {
             if (byPlayer.Entity.Controls.CtrlKey)
             {
-                var slot = byPlayer.InventoryManager?.ActiveHotbarSlot;
                 var titem = slot?.Itemstack?.Collectible.GetCollectibleBehavior<CollectibleBehaviorTypedTexture>(true);
                 if (titem != null)
                 {
@@ -111,7 +120,7 @@ public class BEBehaviorCabinetDoors : BEBehaviorAnimatable, IInteractable
             return false;
         }
 
-        if (byPlayer.Entity.Controls.CtrlKey && byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack?.Collectible.Tool == EnumTool.Wrench)
+        if (byPlayer.Entity.Controls.CtrlKey && slot?.Itemstack?.Collectible?.GetTool(slot) == EnumTool.Wrench)
         {
             if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative && !byPlayer.InventoryManager.TryGiveItemstack(doorStack))
             {
@@ -121,11 +130,8 @@ public class BEBehaviorCabinetDoors : BEBehaviorAnimatable, IInteractable
             playDoorPlaceRemoveSound(DoorStack, byPlayer);
 
             doorStack = null;
-            doorMesh = null;
             opened = false;
-            animUtil.animator = null;
-            animUtil.renderer?.Dispose();
-            animUtil.renderer = null;
+            resetDoorMesh();
             handling = EnumHandling.PreventSubsequent;
             Blockentity.MarkDirty(true);
             return true;
@@ -134,6 +140,7 @@ public class BEBehaviorCabinetDoors : BEBehaviorAnimatable, IInteractable
         if (blockSel.SelectionBoxId == "door")
         {
             opened = !opened;
+            playDoorOpenCloseSound(doorStack, opened, byPlayer);
             updateAnimationState();
             handling = EnumHandling.PreventDefault;
             return true;
@@ -144,13 +151,20 @@ public class BEBehaviorCabinetDoors : BEBehaviorAnimatable, IInteractable
 
     protected void playDoorPlaceRemoveSound(ItemStack doorStack, IPlayer byPlayer)
     {
-        var soundAttr = new SoundAttributes()
+        var soundAttr = doorStack.Collectible.Attributes["placeRemoveSound"].AsObject<SoundAttributes?>(null, doorStack.Collectible.Code.Domain, false);
+        if (soundAttr != null)
         {
-            Location = AssetLocation.Create(doorStack.Collectible.Attributes["placeRemoveSound"].AsString("block/planks"), doorStack.Collectible.Code.Domain).WithPathPrefixOnce("sounds/"),
-            Range = 8,
-            Type = EnumSoundType.Sound
-        };
-        Api.World.PlaySoundAt(soundAttr, Pos, 0.5f, byPlayer);
+            Api.World.PlaySoundAt(soundAttr.Value, Pos, 0, byPlayer);
+        }
+    }
+
+    protected void playDoorOpenCloseSound(ItemStack doorStack, bool open, IPlayer byPlayer)
+    {
+        var soundAttr = doorStack.Collectible.Attributes[open ? "openSound" : "closeSound"].AsObject<SoundAttributes?>(null, doorStack.Collectible.Code.Domain, false);
+        if (soundAttr != null)
+        {
+            Api.World.PlaySoundAt(soundAttr.Value, Pos, 0, byPlayer);
+        }
     }
 
     public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
@@ -158,13 +172,22 @@ public class BEBehaviorCabinetDoors : BEBehaviorAnimatable, IInteractable
         base.FromTreeAttributes(tree, worldAccessForResolve);
         opened = tree.GetBool("opened");
 
-        var doorStackWasNull = doorStack == null;
-        doorStack = tree.GetItemstack("doorStack");
-        doorStack?.ResolveBlockOrItem(worldAccessForResolve);
+        var newDoorStack = tree.GetItemstack("doorStack");
+        newDoorStack?.ResolveBlockOrItem(worldAccessForResolve);
+        bool doorChanged = doorStack == null ? newDoorStack != null : !doorStack.Equals(worldAccessForResolve, newDoorStack);
+        doorStack = newDoorStack;
 
-        if (doorStack != null && doorStackWasNull && worldAccessForResolve.Side == EnumAppSide.Client)
+        if (doorChanged)
         {
-            Blockentity.MarkDirty(true);
+            resetDoorMesh();
+            if (worldAccessForResolve.Side == EnumAppSide.Client) Blockentity.MarkDirty(true);
+        }
+
+        if (animUtil?.renderer is { } renderer && renderer.rotationDeg.Y != getDoorRotationDeg())
+        {
+            renderer.rotationDeg.Y = getDoorRotationDeg();
+            animUtil.RefreshStaticMesh();
+            selectionBoxesOpened = selectionBoxesClosed = null;
         }
         updateAnimationState();
     }
@@ -195,11 +218,30 @@ public class BEBehaviorCabinetDoors : BEBehaviorAnimatable, IInteractable
 
     MeshData? doorMesh;
 
+    private void resetDoorMesh()
+    {
+        doorMesh = null;
+        if (animUtil == null) return;
+
+        // Pending chunk callbacks belong to the old door and must not revive it after removal/replacement.
+        animUtil.Dispose();
+        animUtil = CreateAnimationUtil(Api);
+    }
+
+    private float getDoorRotationDeg()
+    {
+        return Block.Shape.rotateY + GameMath.RAD2DEG * (Blockentity.GetBehavior<IRotatablePlaceable>()?.MeshAngleRad ?? 0);
+    }
+
     public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
     {
         if (doorStack == null) return false;
 
         ensureMeshExists(tessThreadTesselator);
+        if (doorMesh == null) return false;
+
+        // Only the doors belong to this animator; the cabinet body and contents still tessellate normally.
+        if (animUtil.OnTesselation(mesher)) return false;
 
         if (animUtil.activeAnimationsByAnimCode.Count > 0 || (animUtil.animator != null && animUtil.animator.ActiveAnimationCount > 0)) return false;
 
@@ -226,11 +268,11 @@ public class BEBehaviorCabinetDoors : BEBehaviorAnimatable, IInteractable
 
         // I'm not sure how to best do this in a way that is not hardcoded
         AssetLocation shapeLoc = titem.CompositeShape.Base.Clone();
-        shapeLoc.Path = shapeLoc.Path.Replace("middle", Block.Variant["section"]);
+        shapeLoc.Path = shapeLoc.Path.Replace("inventory", Block.Variant["section"]);
         var shape = capi.Assets.Get<Shape>(shapeLoc.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json"));
 
         var dictKey = "cabinetdoors-" + Block.Code;
-        var rot = new Vec3f(0, GameMath.RAD2DEG * Blockentity.GetBehavior<IRotatablePlaceable>()?.MeshAngleRad ?? 0, 0);
+        var rot = new Vec3f(0, getDoorRotationDeg(), 0);
 
         string animkey = Block.Shape.ToString();
 
@@ -239,7 +281,7 @@ public class BEBehaviorCabinetDoors : BEBehaviorAnimatable, IInteractable
         var texSource = new TypedTextureSource(capi, capi.BlockTextureAtlas, doorStack!.Collectible.Code.Domain, titem.TextureMapping, materials);
 
         doorMesh = animUtil.CreateMesh(animkey, shape, out Shape animatableShape, texSource, new TesselationMetaData() {  });
-        animUtil.InitializeAnimator(dictKey, doorMesh, animatableShape, rot);
+        animUtil.InitializeAnimator(dictKey, doorMesh, animatableShape, rot, shareSourceMesh: true);
         updateAnimationState();
     }
 

@@ -4,6 +4,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -199,9 +200,9 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void FromBytes(BinaryReader reader, bool isSync)
+        public override void FromBytes(ref BinarySpanReader reader, bool isSync)
         {
-            base.FromBytes(reader, isSync);
+            base.FromBytes(ref reader, isSync);
             rcc.FromTreeAttributes(WatchedAttributes);
         }
 

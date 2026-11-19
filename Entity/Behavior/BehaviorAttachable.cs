@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
+using System.Security.Claims;
 using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -281,18 +283,18 @@ namespace Vintagestory.GameContent
 
         public override bool TryGiveItemStack(ItemStack itemstack, ref EnumHandling handling)
         {
-            int index = 0;
-            DummySlot sourceslot = new DummySlot(itemstack);
-            foreach (var slot in inv)
+            var selectionBehavior = entity.GetBehavior<EntityBehaviorSelectionBoxes>();
+            if (selectionBehavior != null)
             {
-                var targetSlot = GetSlotFromSelectionBoxIndex(index);
-                if (targetSlot != null && TryAttach(sourceslot, index, null))
+                DummySlot sourceslot = new DummySlot(itemstack);
+                for (int i = 0; i < selectionBehavior.selectionBoxes.Length; ++i)
                 {
-                    handling = EnumHandling.PreventDefault;
-                    return true;
+                    if (TryAttach(sourceslot, i, null))
+                    {
+                        handling = EnumHandling.PreventDefault;
+                        return true;
+                    }
                 }
-
-                index++;
             }
 
             return base.TryGiveItemStack(itemstack, ref handling);
@@ -401,10 +403,9 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            var ebho = entity.GetBehavior<EntityBehaviorOwnable>();
-            if (ebho != null && !ebho.IsOwner(byEntity))
+            if (EntityUtil.RestrictedByOwnership(entity, byEntity))
             {
-                (entity.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "requiersownership", Lang.Get("mount-interact-requiresownership"));
+                (entity.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "requiresownership", Lang.Get("mount-interact-requiresownership"));
                 return false;
             }
 
@@ -434,6 +435,8 @@ namespace Vintagestory.GameContent
             if (iatta == null || !iatta.IsAttachable(entity, itemslot.Itemstack)) return false;
 
             int slotIndex = GetSlotIndexFromSelectionBoxIndex(selectionBoxIndex);
+            if (slotIndex < 0) return false;
+
             ItemSlot targetSlot = inv[slotIndex];
             string code = iatta.GetCategoryCode(itemslot.Itemstack);
             WearableSlotConfig slotConfig = wearableSlots[slotIndex];
@@ -490,11 +493,9 @@ namespace Vintagestory.GameContent
                 }
             }
 
-
-            var ebho = entity.GetBehavior<EntityBehaviorOwnable>();
-            if (ebho != null && !ebho.IsOwner(byEntity))
+            if (EntityUtil.RestrictedByOwnership(entity, byEntity))
             {
-                (entity.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "requiersownership", Lang.Get("mount-interact-requiresownership"));
+                (entity.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "requiresownership", Lang.Get("mount-interact-requiresownership"));
                 return false;
             }
 
@@ -575,24 +576,46 @@ namespace Vintagestory.GameContent
             base.OnEntityDespawn(despawn);
         }
 
-
-        public override void OnReceivedClientPacket(IServerPlayer player, int packetid, byte[] data, ref EnumHandling handled)
+        [Obsolete("Use the SerializedData overload.")] // Rennorb 03.07.2026: We call this for at least one more version to give mods time.
+        public override void OnReceivedClientPacket(IServerPlayer player, int packetId, byte[] packetData, ref EnumHandling handled)
         {
             int i = 0;
             foreach (var slot in inv)
             {
-                var iai = slot.Itemstack?.Collectible.GetCollectibleInterface<IAttachedInteractions>();
-                iai?.OnReceivedClientPacket(slot, i, entity, player, packetid, data, ref handled, storeInv);
+                if (slot.Itemstack != null)
+                {
+                    var iai = slot.Itemstack.Collectible.GetCollectibleInterface<IAttachedInteractions>();
+                    iai?.OnReceivedClientPacket(slot, i, entity, player, packetId, packetData, ref handled, storeInv);
+                    if (handled == EnumHandling.PreventSubsequent) break;
+                }
+
                 i++;
-                if (handled == EnumHandling.PreventSubsequent) break;
+            }
+        }
+
+
+        public override void OnReceivedClientPacket(IServerPlayer player, int packetId, SerializedData packetData, ref EnumHandling handled, ref Entity.CachedAccessPerms perms)
+        {
+            int i = 0;
+            foreach (var slot in inv)
+            {
+                if (slot.Itemstack != null)
+                {
+                    var iai = slot.Itemstack.Collectible.GetCollectibleInterface<IAttachedInteractions>();
+                    iai?.OnReceivedClientPacket(slot, i, entity, player, packetId, packetData, ref handled, ref perms, storeInv);
+                    if (handled == EnumHandling.PreventSubsequent) break;
+                }
+
+                i++;
             }
         }
 
         public override WorldInteraction[] GetInteractionHelp(IClientWorldAccessor world, EntitySelection es, IClientPlayer player, ref EnumHandling handled)
         {
-            if (es.SelectionBoxIndex > 0)
+            int slotIndex = GetSlotIndexFromSelectionBoxIndex(es.SelectionBoxIndex - 1);
+            if (slotIndex >= 0)
             {
-                return AttachableInteractionHelp.GetOrCreateInteractionHelp(world.Api, this, wearableSlots, es.SelectionBoxIndex - 1, GetSlotFromSelectionBoxIndex(es.SelectionBoxIndex - 1));
+                return AttachableInteractionHelp.GetOrCreateInteractionHelp(world.Api, this, wearableSlots, slotIndex, inv[slotIndex]);
             }
 
             return base.GetInteractionHelp(world, es, player, ref handled);

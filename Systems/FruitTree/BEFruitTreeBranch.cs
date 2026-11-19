@@ -331,7 +331,7 @@ namespace Vintagestory.GameContent
         {
             base.GetBlockInfo(forPlayer, dsc);
 
-            if (Api.World.EntityDebugMode && forPlayer?.WorldData?.CurrentGameMode == EnumGameMode.Creative)
+            if (Api.World.EntityDebugMode)
             {
                 dsc.AppendLine("LeavesState: " + FoliageState);
                 dsc.AppendLine("TreeType: " + TreeType);

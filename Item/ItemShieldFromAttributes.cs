@@ -14,7 +14,7 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class ItemShieldFromAttributes : ItemShield, IContainedMeshSource, IAttachableToEntity, IHandbookGrouping
+    public class ItemShieldFromAttributes : ItemShield, IContainedMeshSource, IAttachableToEntity, IHandbookGrouping, IHandbookListGrouping
     {
         public const string ShieldMeshRefsKey = "shieldmeshrefs";
         private ICoreClientAPI capi;
@@ -27,7 +27,7 @@ namespace Vintagestory.GameContent
         #region IAttachableToEntity
         public new int RequiresBehindSlots { get; set; } = 0;
         string IAttachableToEntity.GetCategoryCode(ItemStack stack) => AttachableToEntity?.GetCategoryCode(stack);
-        CompositeShape IAttachableToEntity.GetAttachedShape(ItemStack stack, string slotCode) => AttachableToEntity?.GetAttachedShape(stack, slotCode);
+        CompositeShape IAttachableToEntity.GetAttachedShape(ItemStack stack, Entity onentity, string slotCode) => AttachableToEntity?.GetAttachedShape(stack, onentity, slotCode);
         string[] IAttachableToEntity.GetDisableElements(ItemStack stack) => AttachableToEntity?.GetDisableElements(stack);
         string[] IAttachableToEntity.GetKeepElements(ItemStack stack) => AttachableToEntity?.GetKeepElements(stack);
         string IAttachableToEntity.GetTexturePrefixCode(ItemStack stack)
@@ -280,7 +280,7 @@ namespace Vintagestory.GameContent
             Dictionary<string, string> attributes = getAttributesFromItemstack(stack);
 
             if (attributes.Count == 0) return Code;
-            
+
             return AssetLocation.Create(Code.Path + "-" + string.Join("-", attributes.Values), Code.Domain);
         }
 
@@ -292,6 +292,27 @@ namespace Vintagestory.GameContent
             }
 
             return wildcard;
+        }
+
+        public string[] GetListGroupingForHandbook(ItemStack stack, string[] listGroupCodesFromAttributes)
+        {
+            if (listGroupCodesFromAttributes == null || listGroupCodesFromAttributes.Length == 0) return listGroupCodesFromAttributes;
+
+            var variants = new API.Datastructures.OrderedDictionary<string, string>();
+            foreach ((string key, _) in variantGroups)
+            {
+                var value = stack.Attributes.GetString(key);
+                if (value != null) variants.Add(key, value);
+            }
+
+            if (variants.Count == 0) return listGroupCodesFromAttributes;
+
+            for (int i = 0; i < listGroupCodesFromAttributes.Length; i++)
+            {
+                listGroupCodesFromAttributes[i] = FillPlaceHolderOptimized(listGroupCodesFromAttributes[i], variants);
+            }
+
+            return listGroupCodesFromAttributes;
         }
     }
 }

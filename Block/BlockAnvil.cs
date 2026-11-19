@@ -14,6 +14,8 @@ namespace Vintagestory.GameContent
     {
         public int MetalTier { get; private set; } = 0;
 
+        public string AnvilType;
+
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
@@ -21,6 +23,8 @@ namespace Vintagestory.GameContent
             var metalsByCode = api.ModLoader.GetModSystem<SurvivalCoreSystem>().metalsByCode;
 
             if (metalsByCode.TryGetValue(Variant["metal"] ?? LastCodePart(), out var metalVariant)) MetalTier = metalVariant.Tier;
+
+            AnvilType = Variant["type"] ?? "singlehorn";
         }
 
 

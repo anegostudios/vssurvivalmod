@@ -1,4 +1,4 @@
-﻿using Cairo;
+using Cairo;
 using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -24,7 +24,7 @@ namespace VSSurvivalMod.Systems.ChiselModes
                 chiselEntity.Pos,
                 chiselEntity.BlockName,
                 chiselEntity.Api as ICoreClientAPI,
-                new TextAreaConfig() { MaxWidth = 500 }
+                new TextAreaConfig() { MaxWidth = 500, MaxLength = BlockEntityChisel.MAX_RENAME_TEXT_LENGTH }
             );
             dlg.OnTextChanged = (text) => chiselEntity.BlockName = text;
             dlg.OnCloseCancel = () => chiselEntity.BlockName = prevName;

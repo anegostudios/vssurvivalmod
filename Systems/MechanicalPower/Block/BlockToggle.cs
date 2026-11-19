@@ -1,4 +1,3 @@
-using System.Linq;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
@@ -64,28 +63,6 @@ namespace Vintagestory.GameContent.Mechanics
             }
             return false;
         }
-
-
-        public override void OnNeighbourBlockChange(IWorldAccessor world, BlockPos pos, BlockPos neibpos)
-        {
-            BEBehaviorMPToggle bemptoggle = world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPToggle>();
-            if (bemptoggle != null && !bemptoggle.IsAttachedToBlock())
-            {
-                foreach (BlockFacing face in BlockFacing.HORIZONTALS)
-                {
-                    BlockPos npos = pos.AddCopy(face);
-                    BlockAngledGears blockagears = world.BlockAccessor.GetBlock(npos) as BlockAngledGears;
-                    if (blockagears == null) continue;
-                    if (blockagears.Facings.Contains(face.Opposite) && blockagears.Facings.Length == 1)
-                    {
-                        world.BlockAccessor.BreakBlock(npos, null);
-                    }
-                }
-            }
-
-            base.OnNeighbourBlockChange(world, pos, neibpos);
-        }
-
 
         public override void DidConnectAt(IWorldAccessor world, BlockPos pos, BlockFacing face)
         {

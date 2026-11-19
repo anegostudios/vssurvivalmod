@@ -25,6 +25,7 @@ namespace Vintagestory.GameContent
 
                     Block filledBlock = world.GetBlock(CodeWithVariant("state", "filled"));
                     world.BlockAccessor.ExchangeBlock(filledBlock.BlockId, blockSel.Position);
+                    world.Logger.Audit("{0} put a torch into holder at {1}", byPlayer.PlayerName, blockSel.Position);
 
                     if (Sounds?.Place != null)
                     {
@@ -40,6 +41,7 @@ namespace Vintagestory.GameContent
                 {
                     Block filledBlock = world.GetBlock(CodeWithVariant("state", "empty"));
                     world.BlockAccessor.ExchangeBlock(filledBlock.BlockId, blockSel.Position);
+                    world.Logger.Audit("{0} took a torch from holder at {1}", byPlayer.PlayerName, blockSel.Position);
 
                     if (Sounds?.Place != null)
                     {
@@ -79,7 +81,7 @@ namespace Vintagestory.GameContent
                     }
                 }.Append(base.GetPlacedBlockInteractionHelp(world, selection, forPlayer));
             }
-            
+
         }
     }
 }

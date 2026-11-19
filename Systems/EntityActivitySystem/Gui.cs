@@ -1,18 +1,18 @@
-﻿using Vintagestory.API.Common.CommandAbbr;
-using Vintagestory.API.Client;
-using Vintagestory.API.Common;
-using Vintagestory.API.Config;
-using System;
-using Vintagestory.API.Util;
-using System.Linq;
-using Vintagestory.API.Datastructures;
-using System.IO;
 using Newtonsoft.Json;
 using ProtoBuf;
-using Vintagestory.API.Server;
+using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using Vintagestory.API.Client;
+using Vintagestory.API.Common;
+using Vintagestory.API.Common.CommandAbbr;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 #nullable disable
 
@@ -102,6 +102,12 @@ namespace Vintagestory.GameContent
 
         private void storeActivityCollectionPacket(ActivityCollectionsJsonPacket packet)
         {
+            if(capi?.Settings.Bool["developerMode"] != true)
+            {
+                capi.Logger.Warning("Received "+nameof(ActivityCollectionsJsonPacket)+" but developer mode is not active.");
+                return;
+            }
+
             JsonSerializerSettings settings = new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.All };
             foreach (var json in packet.Collections)
             {
@@ -116,7 +122,7 @@ namespace Vintagestory.GameContent
 
         private static void saveCollection(EntityActivityCollection collection)
         {
-            string filepath = Path.Combine(GamePaths.AssetsPath, "survival", "config", "activitycollections", GamePaths.ReplaceInvalidChars(collection.Name) + ".json");
+            string filepath = Path.Join(GamePaths.AssetsPath, "survival/config/activitycollections", GamePaths.ReplaceInvalidChars(collection.Name) + ".json");
             JsonSerializerSettings settings = new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.All };
             string json = JsonConvert.SerializeObject(collection, Formatting.Indented, settings);
             File.WriteAllText(filepath, json);
@@ -230,7 +236,6 @@ namespace Vintagestory.GameContent
         public API.Datastructures.OrderedDictionary<AssetLocation, EntityActivityCollection> collections = new ();
         private void Event_PlayerJoin(IServerPlayer player)
         {
-            JsonSerializerSettings settings = new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.All };
             sapi.Assets.Reload(AssetCategory.config);
             var files = sapi.Assets.GetMany("config/activitycollections/");
 
@@ -265,8 +270,14 @@ namespace Vintagestory.GameContent
 
         private void onClientPacket(IServerPlayer fromPlayer, ApplyConfigPacket packet)
         {
+            if (fromPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
+            {
+                sapi.Logger.Audit("Player {0} tried to modify an entity Activity without sufficient privileges.", fromPlayer.PlayerName);
+                return;
+            }
+
             var e = sapi.World.GetEntityById(packet.EntityId);
-            if (e==null)
+            if (e == null)
             {
                 fromPlayer.SendMessage(GlobalConstants.GeneralChatGroup, "No such entity id loaded", EnumChatType.Notification);
                 return;
@@ -724,10 +735,10 @@ namespace Vintagestory.GameContent
             string filepath;
             if (isNew)
             {
-                filepath = Path.Combine(GamePaths.AssetsPath, "survival", "config", "activitycollections", GamePaths.ReplaceInvalidChars(collection.Name) + ".json");
+                filepath = Path.Join(GamePaths.AssetsPath, "survival/config/activitycollections", GamePaths.ReplaceInvalidChars(collection.Name) + ".json");
             } else
             {
-                filepath = Path.Combine(GamePaths.AssetsPath, "survival", this.assetpath.Path);
+                filepath = Path.Join(GamePaths.AssetsPath, "survival", this.assetpath.Path);
             }
 
             JsonSerializerSettings settings = new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.All };

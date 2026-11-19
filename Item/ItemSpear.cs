@@ -47,6 +47,11 @@ namespace Vintagestory.GameContent
 
         public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
+            if (byEntity.World.Side == EnumAppSide.Client && byEntity.Controls.LeftMouseDown)
+            {
+                byEntity.RequestedHandUseCancelReason = EnumItemUseCancelReason.PlayerTriggered;
+            }
+
             return true;
         }
 
@@ -112,11 +117,16 @@ namespace Vintagestory.GameContent
 
             var pitch = (byEntity as EntityPlayer).talkUtil.pitchModifier;
             byPlayer.Entity.World.PlaySoundAt(new AssetLocation("sounds/player/strike"), byPlayer.Entity, byPlayer, pitch * 0.9f + (float)api.World.Rand.NextDouble() * 0.2f, 16, 0.35f);
+
+            
         }
 
         public override void OnHeldAttackStop(float secondsPassed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSelection, EntitySelection entitySel)
         {
-
+            if (GetBehavior<CollectibleBehaviorAnimationAuthoritative>()?.IsMeleeAttackMove == true)
+            {
+                (byEntity as EntityPlayer).IsPerformingMeleeAttack = false;
+            }
         }
 
 
@@ -138,6 +148,11 @@ namespace Vintagestory.GameContent
 
         public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot)
         {
+            if (((ICoreClientAPI)api).World.Player.Entity.Attributes.GetInt("aiming") != 0)
+            {
+                return [new WorldInteraction { ActionLangCode = "general-cancel", MouseButton = EnumMouseButton.Left }];
+            }
+
             return new WorldInteraction[] {
                 new WorldInteraction()
                 {

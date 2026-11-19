@@ -111,16 +111,6 @@ namespace Vintagestory.GameContent
                     ProtectionModifiers = null;
                 }
             }
-
-
-            if (ProtectionModifiers != null && ProtectionModifiers.PerTierFlatDamageReductionLoss == null)
-            {
-                ProtectionModifiers.PerTierFlatDamageReductionLoss = defMods?.PerTierFlatDamageReductionLoss;
-            }
-            if (ProtectionModifiers != null && ProtectionModifiers.PerTierRelativeProtectionLoss == null)
-            {
-                ProtectionModifiers.PerTierRelativeProtectionLoss = defMods?.PerTierRelativeProtectionLoss;
-            }
         }
     }
 }

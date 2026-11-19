@@ -2,16 +2,17 @@ using System;
 using System.Collections.Generic;
 using ProtoBuf;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.Common.Collectible.Block;
 
 namespace Vintagestory.ServerMods;
 
 [ProtoContract]
-public class DungeonPlaceTask
+public class DungeonPlaceTask: IStructureLocation
 {
     [ProtoMember(1)]
-    public string Code;
+    public string Code { get; set; }
 
     [ProtoMember(2)]
     public List<TilePlaceTask> TilePlaceTasks;
@@ -28,6 +29,12 @@ public class DungeonPlaceTask
     [ProtoMember(7)]
     public string? RockBlockCode { get; set; }
 
+    [ProtoMember(8)]
+    public byte[]? AttributesBytes;
+    public ITreeAttribute? Attributes;
+
+
+    public Cuboidi Location => DungeonBoundaries;
     public List<GeneratedStructure> GeneratedStructures;
 
     public List<ConnectorMetaData> OpenSet { get; set; }
@@ -38,7 +45,8 @@ public class DungeonPlaceTask
     {
     }
 
-    public DungeonPlaceTask(string code, List<TilePlaceTask> tilePlaceTasks, List<GeneratedStructure> generatedStructures, List<ConnectorMetaData> openSet, ConnectorMetaData stairsCon)
+
+    public DungeonPlaceTask(string code, List<TilePlaceTask> tilePlaceTasks, List<GeneratedStructure> generatedStructures, List<ConnectorMetaData> openSet, ConnectorMetaData stairsCon, TreeAttribute schematicTreeData)
     {
         Code = code;
         TilePlaceTasks = tilePlaceTasks;
@@ -46,6 +54,7 @@ public class DungeonPlaceTask
         OpenSet = openSet;
         StairsConnector = stairsCon;
         IsDirty = true;
+        Attributes = schematicTreeData;
         GenBoundaries();
     }
 

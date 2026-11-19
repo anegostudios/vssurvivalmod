@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -137,16 +137,10 @@ namespace Vintagestory.GameContent
                 cp.Trigger();
             }
 
-            var caller = new Caller()
-            {
-                CallerPrivileges = new string[] { "*" },
-                Pos = Pos.ToVec3d(),
-                Type = EnumCallerType.Block
-            };
-
             var becs = Blockentity as BlockEntityCommands;
             if (becs != null)
             {
+                var caller = Caller.FromBlock(Pos);
                 becs.CallingPrivileges = caller.CallerPrivileges;
                 becs.Execute(caller, on ? oncommands : offcommands);
             }            

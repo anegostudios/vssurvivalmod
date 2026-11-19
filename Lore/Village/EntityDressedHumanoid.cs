@@ -126,6 +126,11 @@ namespace Vintagestory.GameContent
         public override void OnTesselation(ref Shape entityShape, string shapePathForLogging)
         {
             var capi = Api as ICoreClientAPI;
+            if (capi == null)
+            {
+                base.OnTesselation(ref entityShape, shapePathForLogging);
+                return;
+            }
 
             // Reset textures to default
             var textDict = new FastSmallDictionary<string, CompositeTexture>(0);

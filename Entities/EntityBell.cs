@@ -1,6 +1,7 @@
-﻿using Vintagestory.API.Client;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.Util;
 
 #nullable disable
@@ -35,11 +36,11 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void OnReceivedServerPacket(int packetid, byte[] data)
+        public override void OnReceivedServerPacket(int packetId, SerializedData packetData)
         {
-            if (packetid == 1025)
+            if (packetId == 1025)
             {
-                AssetLocation loc = SerializerUtil.Deserialize<AssetLocation>(data);
+                var loc = packetData.Deserialize<AssetLocation>();
 
                 if (alarmSound == null)
                 {
@@ -62,12 +63,12 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (packetid == 1026)
+            if (packetId == 1026)
             {
                 alarmSound?.FadeOutAndStop(0.25f);
             }
 
-            base.OnReceivedServerPacket(packetid, data);
+            base.OnReceivedServerPacket(packetId, packetData);
         }
 
         public override void OnEntityDespawn(EntityDespawnData despawn)

@@ -1,6 +1,8 @@
 using OpenTK.Windowing.GraphicsLibraryFramework;
+using System.IO;
 using Vintagestory.API;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 
 namespace Vintagestory.GameContent;
 
@@ -44,6 +46,11 @@ public class SmithingRecipe : LayeredVoxelRecipe, IConcreteCloneable<SmithingRec
     protected override bool RotateRecipe => true;
 
     /// <summary>
+    /// The type of anvil required for this smithing recipe
+    /// </summary>
+    public string AnvilType = "singlehorn";
+
+    /// <summary>
     /// A unique identifier for this recipe, must remain unique and unchanging across game udpates.
     /// Not used in 1.22 but will be used in 1.23
     /// </summary>
@@ -64,7 +71,20 @@ public class SmithingRecipe : LayeredVoxelRecipe, IConcreteCloneable<SmithingRec
 
         CloneTo(recipe);
         recipe.Code = Code?.Clone();
+        recipe.AnvilType = AnvilType;
 
         return recipe;
+    }
+
+    public override void ToBytes(BinaryWriter writer)
+    {
+        base.ToBytes(writer);
+        writer.Write(AnvilType);
+    }
+
+    public override void FromBytes(ref BinarySpanReader reader, IWorldAccessor resolver)
+    {
+        base.FromBytes(ref reader, resolver);
+        AnvilType = reader.ReadString();
     }
 }

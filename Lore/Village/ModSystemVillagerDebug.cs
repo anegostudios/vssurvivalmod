@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Common;
+using Vintagestory.API.Common;
 using Vintagestory.API.Server;
 using Vintagestory.API.Common.CommandAbbr;
 using Vintagestory.Essentials;
@@ -88,7 +88,7 @@ namespace Vintagestory.GameContent
                     .WithArgs(api.ChatCommands.Parsers.Entities("entity"))
                     .HandleWith((args) => CmdUtil.EntityEach(args, (e) =>
                     {
-                        if (e == args.Caller.Entity) return TextCommandResult.Success("Ignoring removal of caller");
+                        if (e == args.Caller.Entity) return TextCommandResult.Success("Ignoring caller");
                         var ebh = e.GetBehavior<EntityBehaviorActivityDriven>();
                         if (ebh != null)
                         {

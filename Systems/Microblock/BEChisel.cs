@@ -1,4 +1,5 @@
 using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -7,7 +8,10 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+using Vintagestory.Datastructures;
+using Vintagestory.GameContent.Mechanics;
 using VSSurvivalMod.Systems.ChiselModes;
 
 #nullable disable
@@ -16,6 +20,8 @@ namespace Vintagestory.GameContent
 {
     public class BlockEntityChisel : BlockEntityMicroBlock
     {
+        public const int MAX_RENAME_TEXT_LENGTH = 255;
+
         public static bool ForceDetailingMode = false;
         public static ChiselMode defaultMode = new OneByChiselMode();
         public ushort[] AvailMaterialQuantities;
@@ -42,7 +48,7 @@ namespace Vintagestory.GameContent
                 ItemSlot slot = player?.InventoryManager?.ActiveHotbarSlot;
                 ItemStack stack = slot?.Itemstack;
 
-                return Api.Side == EnumAppSide.Client && (stack?.Collectible?.GetTool(slot) == EnumTool.Chisel || ForceDetailingMode); 
+                return Api.Side == EnumAppSide.Client && (stack?.Collectible?.GetTool(slot) == EnumTool.Chisel || ForceDetailingMode);
             }
         }
 
@@ -137,13 +143,26 @@ namespace Vintagestory.GameContent
 
         public void PickBlockMaterial(IPlayer byPlayer)
         {
-            if (byPlayer != null && byPlayer.InventoryManager?.ActiveHotbarSlot is ItemSlot slot && slot.Itemstack?.Collectible is ItemChisel chisel)
+            if (byPlayer?.InventoryManager?.ActiveHotbarSlot is ItemSlot slot && slot.Itemstack?.Collectible is ItemChisel chisel)
             {
-                var hitPos = byPlayer.CurrentBlockSelection.HitPosition;
-                Vec3i voxPos = new Vec3i(Math.Min(15, (int)(hitPos.X * 16)), Math.Min(15, (int)(hitPos.Y * 16)), Math.Min(15, (int)(hitPos.Z * 16)));
-                int matNum = GetVoxelMaterialAt(voxPos);
+                var blockSel = byPlayer.CurrentBlockSelection;
+                var hitPos = blockSel.HitPosition.Clone();
+                hitPos *= 16;
+                switch (blockSel.Face.Index)
+                {
+                    case BlockFacing.indexEAST:
+                        hitPos.X--;
+                        break;
+                    case BlockFacing.indexUP:
+                        hitPos.Y--;
+                        break;
+                    case BlockFacing.indexSOUTH:
+                        hitPos.Z--;
+                        break;
+                }
+                int matNum = GetVoxelMaterialAt(hitPos.AsVec3i);
                 int toolMode = (byte)Math.Max(0, BlockIds.IndexOf(matNum)) + chisel.ToolModes.Length;
-                chisel.SetToolMode(slot, byPlayer, byPlayer.CurrentBlockSelection, toolMode);
+                chisel.SetToolMode(slot, byPlayer, blockSel, toolMode);
             }
         }
 
@@ -213,65 +232,74 @@ namespace Vintagestory.GameContent
                 data = ms.ToArray();
             }
 
-            ((ICoreClientAPI)Api).Network.SendBlockEntityPacket(
-                Pos,
-                (int)1010,
-                data
-            );
+            ((ICoreClientAPI)Api).Network.SendBlockEntityPacket(Pos, (int)ChiselPacketId.UseOver, data);
         }
 
 
-        public override void OnReceivedClientPacket(IPlayer player, int packetid, byte[] data)
+        public override void OnReceivedClientPacket(IServerPlayer player, int packetId, SerializedData packetData, ref CachedAccessPerms perms)
         {
-            if (packetid == (int)EnumSignPacketId.SaveText)
+            switch (packetId)
             {
-                var perms = new BlockEntity.CachedAccessPerms(this.Api.World, this.Pos, player);
-                if (!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "chisel"))
+                case (int)EnumSignPacketId.SaveText:
                 {
-                    player.InventoryManager.ActiveHotbarSlot.MarkDirty();
-                    // Rennorb 20.06.2026 ux: Revert block state for that player.
-                    return;
+                    if (!perms.TryAccessingBlockAtPos(EnumBlockAccessFlags.Use, true, "chisel"))
+                    {
+                        player.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                        // Rennorb 20.06.2026 ux: Revert block state for that player.
+                        break;
+                    }
+
+                    var packet = packetData.Deserialize<EditSignPacket>();
+                    if (packet.Text.Length > MAX_RENAME_TEXT_LENGTH)
+                    {
+                        player.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                        // Rennorb 20.06.2026 ux: Revert block state for that player.
+                        Api.Logger.Audit("{0} tried to set excessive text (len = {1}) when renaming a block at {2}", player.PlayerName, packet.Text.Length, Pos);
+                        break;
+                    }
+                    Api.Logger.Audit("{0} changed chiselblock name from '{1}' to '{2}' at {3}", player.PlayerName, BlockName.Replace("\n","\\n"), packet.Text.Replace("\n","\\n"), Pos);
+                    BlockName = packet.Text;
+                    MarkDirty(true, player);
+                    // Tell server to save this chunk to disk again
+                    Api.World.BlockAccessor.GetChunkAtBlockPos(Pos).MarkModified();
+
+                    break;
                 }
 
-                var packet = SerializerUtil.Deserialize<EditSignPacket>(data);
-                BlockName = packet.Text;
-                MarkDirty(true, player);
-                // Tell server to save this chunk to disk again
-                Api.World.BlockAccessor.GetChunkAtBlockPos(Pos).MarkModified();
-            }
-
-
-            if (packetid == 1010)
-            {
-                var perms = new BlockEntity.CachedAccessPerms(this.Api.World, this.Pos, player);
-                if (!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "chisel"))
+                case (int)ChiselPacketId.UseOver:
                 {
-                    player.InventoryManager.ActiveHotbarSlot.MarkDirty();
-                    // Rennorb 20.06.2026 ux: Revert block state for that player.
-                    return;
+                    if (!perms.TryAccessingBlockAtPos(EnumBlockAccessFlags.Use, true, "chisel"))
+                    {
+                        player.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                        // Rennorb 20.06.2026 ux: Revert block state for that player.
+                        break;
+                    }
+
+                    var reader = packetData.AsBinaryReader();
+                    var voxelPos = new Vec3i(
+                        reader.ReadInt32LE(),
+                        reader.ReadInt32LE(),
+                        reader.ReadInt32LE()
+                    );
+                    var isBreak = reader.ReadBoolean();
+                    var facing = BlockFacing.ALLFACES[reader.ReadUInt16LE()];
+                    nowmaterialIndex = Math.Clamp(reader.ReadUInt8LE(), (byte)0, (byte)(BlockIds.Length - 1));
+
+                    UpdateVoxel(player, player.InventoryManager.ActiveHotbarSlot, voxelPos, facing, isBreak);
+
+                    break;
                 }
 
-                Vec3i voxelPos;
-                bool isBreak;
-                BlockFacing facing;
-                using (MemoryStream ms = new MemoryStream(data))
-                {
-                    BinaryReader reader = new BinaryReader(ms);
-                    voxelPos = new Vec3i(reader.ReadInt32(), reader.ReadInt32(), reader.ReadInt32());
-                    isBreak = reader.ReadBoolean();
-                    facing = BlockFacing.ALLFACES[reader.ReadInt16()];
-                    nowmaterialIndex = (byte)Math.Clamp(reader.ReadByte(), 0, BlockIds.Length - 1);
-                }
 
-                UpdateVoxel(player, player.InventoryManager.ActiveHotbarSlot, voxelPos, facing, isBreak);
+                case (int)ChiselPacketId.Pick:
+                    // Picking only affects the chisel tool the player is holding, so no need to do the relatively expensive permission checks here.
+
+                    PickBlockMaterial(player);
+                    break;
             }
 
-            if (packetid == 1011)
-            {
-                // Picking only affects the chisel tool the player is holding, so no need to do the relatively expensive permission checks here.
-
-                PickBlockMaterial(player);
-            }
+            // Rennorb 20.06.2026 explain: Why not call the base here?
+            // base.OnReceivedClientPacket(player, packetId, data, ref perms);
         }
 
 
@@ -283,7 +311,7 @@ namespace Vintagestory.GameContent
                 if (forPlayer == null) forPlayer = (Api.World as IClientWorldAccessor).Player;
 
                 int nowSize = GetChiselSize(forPlayer);
-                
+
                 if (prevSize > 0 && prevSize != nowSize)
                 {
                     selectionBoxesVoxels = null;
@@ -385,6 +413,11 @@ namespace Vintagestory.GameContent
             {
                 selectionBoxesVoxels = null;
             }
+
+            if (Api?.Side == EnumAppSide.Server)
+            {
+                Api.ModLoader.GetModSystem<ModSystemLinkage>().OnBlockCollisionBoxesChanged(Pos);
+            }
         }
 
 
@@ -412,7 +445,7 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < VoxelCuboids.Count; i++)
             {
                 FromUint(VoxelCuboids[i], cwm);
-                
+
                 for (int x1 = cwm.X1; x1 < cwm.X2; x1 += chiselSize)
                 {
                     for (int y1 = cwm.Y1; y1 < cwm.Y2; y1 += chiselSize)
@@ -484,7 +517,7 @@ namespace Vintagestory.GameContent
                     }
                 }
             }*/
-            
+
             if (!BlockIds.Contains(addblock.Id))
             {
                 isFull = false;
@@ -510,7 +543,7 @@ namespace Vintagestory.GameContent
         {
             int index = BlockIds.IndexOf(block.Id);
             if (AvailMaterialQuantities != null && index >= 0)
-            {   
+            {
                 AvailMaterialQuantities = AvailMaterialQuantities.RemoveAt(index);
             }
 
@@ -549,5 +582,11 @@ namespace Vintagestory.GameContent
         }
 
 
+    }
+
+    enum ChiselPacketId
+    {
+        UseOver = 1010,
+        Pick    = 1011,
     }
 }

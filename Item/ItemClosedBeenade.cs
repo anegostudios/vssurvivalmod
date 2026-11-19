@@ -39,6 +39,11 @@ namespace Vintagestory.GameContent
 
         public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
+            if (byEntity.World.Side == EnumAppSide.Client && byEntity.Controls.LeftMouseDown)
+            {
+                byEntity.RequestedHandUseCancelReason = EnumItemUseCancelReason.PlayerTriggered;
+            }
+
             if (byEntity.World is IClientWorldAccessor)
             {
                 ModelTransform tf = new ModelTransform();
@@ -101,6 +106,11 @@ namespace Vintagestory.GameContent
 
         public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot)
         {
+            if (((ICoreClientAPI)api).World.Player.Entity.Attributes.GetInt("aiming") != 0)
+            {
+                return [new WorldInteraction { ActionLangCode = "general-cancel", MouseButton = EnumMouseButton.Left }];
+            }
+
             return new WorldInteraction[] {
                 new WorldInteraction()
                 {

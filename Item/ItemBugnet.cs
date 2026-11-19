@@ -4,8 +4,6 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
-#nullable disable
-
 namespace Vintagestory.GameContent
 {
     [ProtoContract]
@@ -32,33 +30,41 @@ namespace Vintagestory.GameContent
         public override void StartServerSide(ICoreServerAPI api)
         {
             sapi = api;
-            api.Network.GetChannel("catchcreature").SetMessageHandler<CatchCreaturePacket>(onCatchCreature);
+            api.Network.GetChannel("catchcreature").SetMessageHandler<CatchCreaturePacket>(onClientPacket);
         }
 
-        private void onCatchCreature(IServerPlayer fromPlayer, CatchCreaturePacket packet)
+        private void onClientPacket(IServerPlayer fromPlayer, CatchCreaturePacket packet)
         {
-            var entity = sapi.World.GetEntityById(packet.entityId);
-
-            if (entity == null || !fromPlayer.IsInInteractionRangeOf(entity, 0)) // Rennorb 2026.07.06: Slack will change to standardized .25 in 1.23.
+            var heldItem = fromPlayer.Entity.ActiveHandItemSlot?.Itemstack?.Collectible;
+            if (heldItem is not ItemBugnet)
             {
                 return;
             }
 
-            if (entity.Properties.Attributes?["netCaughtItemCode"].Exists == true)
+            var entity = sapi.World.GetEntityById(packet.entityId);
+            if (entity == null || !fromPlayer.IsInInteractionRangeOf(entity))
             {
-                entity.Die(EnumDespawnReason.Death, new DamageSource() { Source = EnumDamageSource.Entity, SourceEntity = fromPlayer.Entity, Type = EnumDamageType.BluntAttack });
+                return;
+            }
 
-                var stack = new ItemStack(sapi.World.GetItem(new AssetLocation(entity.Properties.Attributes["netCaughtItemCode"].AsString())));
+            var caughtItemCode = entity.Properties.Attributes?["netCaughtItemCode"];
+            if (caughtItemCode?.Exists != true)
+            {
+                return;
+            }
 
-                if (!fromPlayer.Entity.TryGiveItemStack(stack))
-                {
-                    sapi.World.SpawnItemEntity(stack, fromPlayer.Entity.Pos.XYZ);
-                }
+            entity.Die(EnumDespawnReason.Death, new DamageSource() { Source = EnumDamageSource.Entity, SourceEntity = fromPlayer.Entity, Type = EnumDamageType.BluntAttack });
 
-                if (fromPlayer.Entity.ActiveHandItemSlot?.Itemstack?.Collectible is ItemBugnet && fromPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
-                {
-                    fromPlayer.Entity.ActiveHandItemSlot.Itemstack.Collectible.DamageItem(sapi.World, fromPlayer.Entity, fromPlayer.Entity.ActiveHandItemSlot, 1);
-                }
+            var stack = new ItemStack(sapi.World.GetItem(new AssetLocation(caughtItemCode.AsString())));
+
+            if (!fromPlayer.Entity.TryGiveItemStack(stack))
+            {
+                sapi.World.SpawnItemEntity(stack, fromPlayer.Entity.Pos.XYZ);
+            }
+
+            if (fromPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
+            {
+                heldItem.DamageItem(sapi.World, fromPlayer.Entity, fromPlayer.Entity.ActiveHandItemSlot, 1);
             }
         }
     }
@@ -72,8 +78,8 @@ namespace Vintagestory.GameContent
                 Vec3d srcpos = byEntity.Pos.XYZ.Add(byEntity.LocalEyePos);
                 var range = 2.5f;
 
-                BlockSelection bsel = new BlockSelection();
-                EntitySelection esel = new EntitySelection();
+                BlockSelection? bsel = new BlockSelection();
+                EntitySelection? esel = new EntitySelection();
                 BlockFilter bfilter = (pos, block) => (block == null || block.RenderPass != EnumChunkRenderPass.Meta/* || ClientSettings.RenderMetaBlocks*/);
                 EntityFilter efilter = (e) => e.Alive && (e.IsInteractable || e.Properties.Attributes?["netCaughtItemCode"].Exists == true) && e.EntityId != byEntity.EntityId;
 
@@ -81,7 +87,7 @@ namespace Vintagestory.GameContent
 
                 if (esel?.Entity?.Properties.Attributes?["netCaughtItemCode"].Exists == true)
                 {
-                    (api as ICoreClientAPI).Network.GetChannel("catchcreature").SendPacket(new CatchCreaturePacket() { entityId = esel.Entity.EntityId });
+                    ((ICoreClientAPI)api).Network.GetChannel("catchcreature").SendPacket(new CatchCreaturePacket() { entityId = esel.Entity.EntityId });
                 }
             }
 

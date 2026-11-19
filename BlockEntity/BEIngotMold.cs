@@ -481,7 +481,7 @@ namespace Vintagestory.GameContent
         {
             if (lastPouringMarkdirtyMs + 500 < Api.World.ElapsedMilliseconds)
             {
-                MarkDirty(true);
+                MarkDirty();
                 lastPouringMarkdirtyMs = Api.World.ElapsedMilliseconds + 500;
             }
 
@@ -504,12 +504,13 @@ namespace Vintagestory.GameContent
                 SelectedFillLevel += amountToFill;
                 amount -= amountToFill;
                 UpdateIngotRenderer();
+                MarkDirty();
             }
         }
 
         public void OnPourOver()
         {
-            MarkDirty(true);
+            MarkDirty();
         }
 
 
@@ -702,6 +703,13 @@ namespace Vintagestory.GameContent
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
+            int previousQuantityMolds = QuantityMolds;
+            bool wasShatteredLeft = ShatteredLeft;
+            bool wasShatteredRight = ShatteredRight;
+            float previousMeshAngle = MeshAngle;
+            var previousMoldLeft = MoldLeft?.Block;
+            var previousMoldRight = MoldRight?.Block;
+
             base.FromTreeAttributes(tree, worldForResolving);
 
             ContentsLeft = tree.GetItemstack("contentsLeft");
@@ -731,7 +739,10 @@ namespace Vintagestory.GameContent
 
             UpdateIngotRenderer();
 
-            if (Api?.Side == EnumAppSide.Client)
+            // Fill levels and temperatures are handled by the separate ingot renderer.
+            if (Api?.Side == EnumAppSide.Client && (
+                previousQuantityMolds != QuantityMolds || wasShatteredLeft != ShatteredLeft || wasShatteredRight != ShatteredRight ||
+                previousMeshAngle != MeshAngle || previousMoldLeft != MoldLeft?.Block || previousMoldRight != MoldRight?.Block))
             {
                 GenMeshes();
                 Api.World.BlockAccessor.MarkBlockDirty(Pos);

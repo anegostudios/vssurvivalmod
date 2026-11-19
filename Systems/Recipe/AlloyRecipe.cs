@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using Vintagestory.API;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.Server;
 
 #nullable disable
@@ -216,21 +217,19 @@ namespace Vintagestory.GameContent
         /// <summary>
         /// Deserializes the alloy
         /// </summary>
-        /// <param name="reader"></param>
-        /// <param name="resolver"></param>
-        public void FromBytes(BinaryReader reader, IWorldAccessor resolver)
+        public void FromBytes(ref BinarySpanReader reader, IWorldAccessor resolver)
         {
             Ingredients = new MetalAlloyIngredient[reader.ReadInt32()];
 
             for (int i = 0; i < Ingredients.Length; i++)
             {
-                Ingredients[i] = new MetalAlloyIngredient();
-                Ingredients[i].FromBytes(reader, resolver.ClassRegistry);
+                Ingredients[i] = new MetalAlloyIngredient { Code = null! };
+                Ingredients[i].FromBytes(ref reader, resolver.ClassRegistry);
                 Ingredients[i].Resolve(resolver, "[FromBytes]");
             }
 
-            Output = new JsonItemStack();
-            Output.FromBytes(reader, resolver.ClassRegistry);
+            Output = new JsonItemStack { Code = null! };
+            Output.FromBytes(ref reader, resolver.ClassRegistry);
             Output.Resolve(resolver, "[FromBytes]");
         }
 

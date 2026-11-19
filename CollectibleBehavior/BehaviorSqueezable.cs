@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
@@ -16,9 +17,18 @@ namespace Vintagestory.GameContent
         public JsonItemStack[]? ReturnStacks { get; set; }
         public AssetLocation? SqueezingSound { get; set; }
         protected AssetLocation? liquidItemCode { get; set; }
-        public Item? SqueezedLiquid { get; set; }
 
+        #nullable disable
+        ICoreAPI Api;
+        #nullable enable
+
+        [Obsolete("Use CanSqueezeInto(ItemSlot, IWorldAccessor, Block, BlockSelection?) instead")]
         public virtual bool CanSqueezeInto(IWorldAccessor world, Block block, BlockSelection? blockSel)
+        {
+            return CanSqueezeInto(null, world, block, blockSel);
+        }
+
+        public virtual bool CanSqueezeInto(ItemSlot? fromSlot, IWorldAccessor world, Block block, BlockSelection? blockSel)
         {
             var pos = blockSel?.Position;
 
@@ -48,7 +58,6 @@ namespace Vintagestory.GameContent
 
         public CollectibleBehaviorSqueezable(CollectibleObject collObj) : base(collObj)
         {
-            this.collObj = collObj;
         }
 
         public override void Initialize(JsonObject properties)
@@ -73,17 +82,14 @@ namespace Vintagestory.GameContent
         }
 
         WorldInteraction[]? interactions;
+
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
 
-            ReturnStacks?.Foreach(returnStack => returnStack?.Resolve(api.World, "returnStack for squeezing item ", collObj.Code));
+            Api = api;
 
-            SqueezedLiquid = api.World.GetItem(liquidItemCode);
-            if (SqueezedLiquid == null)
-            {
-                api.World.Logger.Warning("Unable to resolve liquid item code '{0}' for item {1}. Will ignore.", liquidItemCode, collObj.Code);
-            }
+            ReturnStacks?.Foreach(returnStack => returnStack?.Resolve(api.World, "returnStack for squeezing item ", collObj.Code));
 
             if (api is not ICoreClientAPI capi) return;
 
@@ -122,15 +128,38 @@ namespace Vintagestory.GameContent
             AddSqueezableHandbookInfo(capi);
         }
 
+        public virtual float GetSqueezeTime(ItemSlot slot) => SqueezeTime;
+        public virtual float GetSqueezedLitres(ItemSlot slot) => SqueezedLitres;
+        public virtual string GetAnimationCode(ItemSlot slot) => AnimationCode;
+        public virtual JsonItemStack[]? GetReturnStacks(ItemSlot slot) => ReturnStacks;
+        public virtual AssetLocation? GetSqueezingSound(ItemSlot slot) => SqueezingSound;
+
+        public virtual ItemStack? GetLiquidStack(ItemSlot slot)
+        {
+            if (liquidItemCode == null)
+            {
+                return null;
+            }
+
+            Item? squeezedLiquid = Api.World.GetItem(liquidItemCode);
+            if (squeezedLiquid == null)
+            {
+                Api.World.Logger.Warning($"Unable to resolve liquid item code '{liquidItemCode}' for item {collObj.Code}. Will ignore.");
+                return null;
+            }
+
+            return new ItemStack(squeezedLiquid, 99999);
+        }
+
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handHandling, ref EnumHandling handling)
         {
-            if (blockSel?.Block != null && CanSqueezeInto(byEntity.World, blockSel.Block, blockSel) && byEntity.Controls.ShiftKey)
+            if (blockSel?.Block != null && CanSqueezeInto(slot, byEntity.World, blockSel.Block, blockSel) && byEntity.Controls.ShiftKey)
             {
                 handling = EnumHandling.PreventDefault;
                 handHandling = EnumHandHandling.PreventDefault;
                 if (byEntity.World.Side == EnumAppSide.Client)
                 {
-                    byEntity.World.PlaySoundAt(SqueezingSound, byEntity, null, true, 16, 0.5f);
+                    byEntity.World.PlaySoundAt(GetSqueezingSound(slot), byEntity, null, true, 16, 0.5f);
                 }
             }
             else base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handHandling, ref handling);
@@ -138,14 +167,14 @@ namespace Vintagestory.GameContent
 
         public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandling handling)
         {
-            if (blockSel?.Block != null && CanSqueezeInto(byEntity.World, blockSel.Block, blockSel))
+            if (blockSel?.Block != null && CanSqueezeInto(slot, byEntity.World, blockSel.Block, blockSel))
             {
                 handling = EnumHandling.PreventDefault;
 
                 if (!byEntity.Controls.ShiftKey) return false;
-                if (byEntity.World is IClientWorldAccessor) byEntity.StartAnimation(AnimationCode);
+                if (byEntity.World is IClientWorldAccessor) byEntity.StartAnimation(GetAnimationCode(slot));
 
-                return secondsUsed < SqueezeTime;
+                return secondsUsed < GetSqueezeTime(slot);
             }
 
             return base.OnHeldInteractStep(secondsUsed, slot, byEntity, blockSel, entitySel, ref handling);
@@ -153,38 +182,39 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, ref EnumHandling handling)
         {
-            byEntity.StopAnimation(AnimationCode);
+            byEntity.StopAnimation(GetAnimationCode(slot));
 
             if (blockSel != null)
             {
                 Block block = byEntity.World.BlockAccessor.GetBlock(blockSel.Position);
-                if (CanSqueezeInto(byEntity.World, block, blockSel))
+                if (CanSqueezeInto(slot, byEntity.World, block, blockSel))
                 {
                     handling = EnumHandling.PreventDefault;
 
-                    if (secondsUsed < SqueezeTime - 0.05f || SqueezedLiquid == null || byEntity.World.Side == EnumAppSide.Client) return;
+                    ItemStack? squeezedStack = GetLiquidStack(slot);
+
+                    if (secondsUsed < GetSqueezeTime(slot) - 0.05f || squeezedStack == null || byEntity.World.Side == EnumAppSide.Client) return;
 
                     IWorldAccessor world = byEntity.World;
 
-                    if (!CanSqueezeInto(world, block, blockSel)) return;
+                    if (!CanSqueezeInto(slot, world, block, blockSel)) return;
 
-                    ItemStack squeezedStack = new ItemStack(SqueezedLiquid, 99999);
-
+                    float squeezedLitres = GetSqueezedLitres(slot);
                     if (block is BlockLiquidContainerTopOpened blockCnt)
                     {
-                        if (blockCnt.TryPutLiquid(blockSel.Position, squeezedStack, SqueezedLitres) == 0) return;
+                        if (blockCnt.TryPutLiquid(blockSel.Position, squeezedStack, squeezedLitres) == 0) return;
                     }
                     else if (block is BlockBarrel blockBarrel && world.BlockAccessor.GetBlockEntity(blockSel.Position) is BlockEntityBarrel beb)
                     {
                         if (beb.Sealed) return;
-                        if (blockBarrel.TryPutLiquid(blockSel.Position, squeezedStack, SqueezedLitres) == 0) return;
+                        if (blockBarrel.TryPutLiquid(blockSel.Position, squeezedStack, squeezedLitres) == 0) return;
                     }
                     else if (world.BlockAccessor.GetBlockEntity(blockSel.Position) is BlockEntityGroundStorage beg &&
                             beg.GetSlotAt(blockSel) is ItemSlot squeezeIntoSlot &&
                             squeezeIntoSlot.Itemstack?.Block is BlockLiquidContainerTopOpened begCnt &&
-                            CanSqueezeInto(world, begCnt, null))
+                            CanSqueezeInto(slot, world, begCnt, null))
                     {
-                        if (begCnt.TryPutLiquid(squeezeIntoSlot.Itemstack, squeezedStack, SqueezedLitres) == 0) return;
+                        if (begCnt.TryPutLiquid(squeezeIntoSlot.Itemstack, squeezedStack, squeezedLitres) == 0) return;
                         beg.MarkDirty(true);
                     }
 
@@ -193,7 +223,8 @@ namespace Vintagestory.GameContent
 
                     IPlayer? byPlayer = world.PlayerByUid((byEntity as EntityPlayer)?.PlayerUID);
 
-                    ReturnStacks?.Foreach(returnStack =>
+                    JsonItemStack[]? returnsStacks = GetReturnStacks(slot);
+                    returnsStacks?.Foreach(returnStack =>
                     {
                         if (returnStack.ResolvedItemstack?.Clone() is not ItemStack stack) return;
 
@@ -211,7 +242,7 @@ namespace Vintagestory.GameContent
 
         public override bool OnHeldInteractCancel(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason, ref EnumHandling handling)
         {
-            byEntity.StopAnimation(AnimationCode);
+            byEntity.StopAnimation(GetAnimationCode(slot));
             return base.OnHeldInteractCancel(secondsUsed, slot, byEntity, blockSel, entitySel, cancelReason, ref handling);
         }
 

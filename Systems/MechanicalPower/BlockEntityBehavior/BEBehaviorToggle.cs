@@ -97,7 +97,7 @@ namespace Vintagestory.GameContent.Mechanics
 
             //Speed limit when joining a toggle to an existing network: this is to prevent crazy bursts of Helvehammer speed on first connection if the network was spinning fast (with low resistances)
             // (if the network has enough torque to drive faster than this - which is going to be uncommon - then the network speed can increase after the toggle is joined to the network)
-            float speed = network == null ? 0f : Math.Abs(network.Speed * this.GearedRatio) * 1.6f;
+            float speed = Math.Abs(CurrentSpeed) * 1.6f;
             if (speed > 1f)
             {
                 network.Speed /= speed;
@@ -121,10 +121,23 @@ namespace Vintagestory.GameContent.Mechanics
 
         MeshData getStandMesh(string orient)
         {
-            return ObjectCacheUtil.GetOrCreate(Api, Block.Code + "-" + orient + "-stand", () =>
+            BlockMPBase toggleBlock = Block as BlockMPBase;
+            ItemStack stack = PlacedStack;
+            string materialKey = toggleBlock?.GetMaterialKey(stack);
+            string cacheKey = materialKey == null ? $"{Block.Code}-{orient}-stand" : $"{Block.Code}-{orient}-stand-{materialKey}";
+            return ObjectCacheUtil.GetOrCreate(Api, cacheKey, () =>
             {
                 Shape shape = API.Common.Shape.TryGet(capi, toggleStandLoc);
-                capi.Tesselator.TesselateShape(Block, shape, out MeshData mesh);
+                MeshData mesh;
+                if (materialKey == null)
+                {
+                    capi.Tesselator.TesselateShape(Block, shape, out mesh);
+                }
+                else
+                {
+                    string sourceForLogging = $"{Block.Code} stand";
+                    capi.Tesselator.TesselateShape(sourceForLogging, shape, out mesh, toggleBlock.GetMaterialTextureSource(capi, shape, sourceForLogging, stack));
+                }
 
                 if (orient == "ns")
                 {

@@ -13,6 +13,7 @@ namespace Vintagestory.GameContent
 
     public class BlockEntityForge : BlockEntityContainer, IHeatSource, ITemperatureSensitive, IBellowsAirReceiver
     {
+        private float MaxFuelLevel = 4.5f;
         protected static SimpleParticleProperties smallMetalSparks;
         protected static SimpleParticleProperties smokeQuads;
 
@@ -77,6 +78,9 @@ namespace Vintagestory.GameContent
             base.Initialize(api);
 
             inv.LateInitialize("forge-" + Pos, api);
+            inv.OnGetAutoPullFromSlot = GetAutoPullFromSlot;
+            inv.OnGetAutoPushIntoSlot = GetAutoPushIntoSlot;
+            inv.OnDidAutoMove = DidAutoMove;
 
             if (api is ICoreClientAPI)
             {
@@ -101,6 +105,8 @@ namespace Vintagestory.GameContent
                 smokeQuads.OpacityEvolve = EvolvingNatFloat.create(EnumTransformFunction.QUADRATIC, -16f);
             }
         }
+
+        
 
         private void onEventBusEvent(string eventName, ref EnumHandling handling, IAttribute data)
         {
@@ -295,9 +301,9 @@ namespace Vintagestory.GameContent
             if (slot.Itemstack == null) return false;
 
             // Add fuel
-            if (slot.Itemstack.Collectible.GetCombustibleProperties(world, slot.Itemstack, null) is { BurnTemperature: > 1000 })
+            if (isSuitableFuel(slot))
             {
-                if (FuelLevel > 4.5f) return false;
+                if (FuelLevel > MaxFuelLevel) return false;
                 bool isFuel = slot.Itemstack.Collectible is ItemCoal or ItemOre;
                 if (slot.TryPutInto(Api.World, FuelSlot) == 0) return false;
 
@@ -310,12 +316,8 @@ namespace Vintagestory.GameContent
                 return true;
             }
 
-
-            string firstCodePart = slot.Itemstack.Collectible.FirstCodePart();
-            bool forgableGeneric = slot.Itemstack.Collectible.Attributes?.IsTrue("forgable") == true;
-
-            // Add heatable item
-            if (WorkItemStack == null && (firstCodePart == "ingot" || firstCodePart == "metalplate" || firstCodePart == "workitem" || forgableGeneric))
+            // Forge is empty and this is a heatable item 
+            if (WorkItemStack == null && isHeatableItem(slot))
             {
                 WorkItemSlot.Itemstack = slot.TakeOut(1);
 
@@ -334,7 +336,7 @@ namespace Vintagestory.GameContent
             }
 
             // Merge heatable item
-            if (!forgableGeneric && WorkItemStack != null && WorkItemStack.Equals(Api.World, slot.Itemstack, GlobalConstants.IgnoredStackAttributes) && WorkItemStack.StackSize < 4 && WorkItemStack.StackSize < WorkItemStack.Collectible.MaxStackSize)
+            if (isMergeHeatableItem(slot))
             {
                 float myTemp = WorkItemStack.Collectible.GetTemperature(Api.World, WorkItemStack);
                 float histemp = slot.Itemstack.Collectible.GetTemperature(Api.World, slot.Itemstack);
@@ -360,6 +362,23 @@ namespace Vintagestory.GameContent
             return false;
         }
 
+        protected virtual bool isSuitableFuel(ItemSlot slot)
+        {
+            return slot.Itemstack.Collectible.GetCombustibleProperties(Api.World, slot.Itemstack, null) is { BurnTemperature: > 1000 };
+        }
+
+        protected virtual bool isHeatableItem(ItemSlot slot)
+        {
+            string firstCodePart = slot.Itemstack.Collectible.FirstCodePart();
+            bool forgableGeneric = slot.Itemstack.Collectible.Attributes?.IsTrue("forgable") == true;
+            return firstCodePart == "ingot" || firstCodePart == "metalplate" || firstCodePart == "workitem" || forgableGeneric;
+        }
+
+        protected virtual bool isMergeHeatableItem(ItemSlot slot)
+        {
+            bool forgableGeneric = slot.Itemstack.Collectible.Attributes?.IsTrue("forgable") == true;
+            return !forgableGeneric && WorkItemStack != null && WorkItemStack.Equals(Api.World, slot.Itemstack, GlobalConstants.IgnoredStackAttributes) && WorkItemStack.StackSize < 4 && WorkItemStack.StackSize < WorkItemStack.Collectible.MaxStackSize;
+        }
 
         public override void OnBlockRemoved()
         {
@@ -508,6 +527,32 @@ namespace Vintagestory.GameContent
             return true;
         }
 
+
+        private ItemSlot GetAutoPullFromSlot(BlockFacing atBlockFace)
+        {
+            return null;
+        }
+
+
+        private ItemSlot GetAutoPushIntoSlot(BlockFacing atBlockFace, ItemSlot fromSlot)
+        {
+            if (isSuitableFuel(fromSlot) && (FuelSlot.Empty || FuelSlot.Itemstack.Equals(Api.World, fromSlot.Itemstack, GlobalConstants.IgnoredStackAttributes)) && FuelLevel < MaxFuelLevel)
+            {
+                return FuelSlot;
+            }
+
+            if ((WorkItemStack == null && isHeatableItem(fromSlot)) || isMergeHeatableItem(fromSlot))
+            {
+                return WorkItemSlot;
+            }
+
+            return null;
+        }
+
+        private void DidAutoMove(ItemSlot slot1, ItemSlot slot2, int arg3)
+        {
+            MarkDirty();
+        }
 
     }
 }

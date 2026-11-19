@@ -57,19 +57,6 @@ namespace Vintagestory.GameContent
             setupGameTickers();
 
             ownBlock = this.Block as BlockCorpseReturnTeleporter;
-
-            if (api.World.Side == EnumAppSide.Client)
-            {
-                translocatingSound = (api as ICoreClientAPI).World.LoadSound(new SoundParams()
-                {
-                    Location = new AssetLocation("sounds/effect/translocate-active.ogg"),
-                    ShouldLoop = true,
-                    Position = Pos.ToVec3f(),
-                    RelativePosition = false,
-                    DisposeOnFinish = false,
-                    Volume = 0.5f
-                });
-            }
         }
 
 
@@ -174,7 +161,7 @@ namespace Vintagestory.GameContent
 
         protected virtual void HandleSoundClient(float dt)
         {
-            var capi = Api as ICoreClientAPI;
+            var capi = (ICoreClientAPI)Api;
             bool ownTranslocate = !(capi.World.ElapsedMilliseconds - lastOwnPlayerCollideMs > 200);
             bool otherTranslocate = !(capi.World.ElapsedMilliseconds - lastEntityCollideMs > 200);
 
@@ -190,6 +177,17 @@ namespace Vintagestory.GameContent
                 translocPitch = Math.Max(translocPitch - dt, 0.5f);
             }
 
+            if (translocatingSound == null && translocVolume <= 0) return;
+
+            translocatingSound ??= capi.World.LoadSound(new SoundParams()
+            {
+                Location = new AssetLocation("sounds/effect/translocate-active.ogg"),
+                ShouldLoop = true,
+                Position = Pos.ToVec3f(),
+                RelativePosition = false,
+                DisposeOnFinish = false,
+                Volume = translocVolume
+            });
 
             if (translocatingSound.IsPlaying)
             {
@@ -243,7 +241,7 @@ namespace Vintagestory.GameContent
         {
             var slot = byPlayer.InventoryManager.ActiveHotbarSlot;
             if (!HasFuel && !slot.Empty)
-            {   
+            {
                 if (slot.Itemstack.ItemAttributes?.IsTrue("corpseReturnFuel") == true)
                 {
                     HasFuel = true;
@@ -266,7 +264,7 @@ namespace Vintagestory.GameContent
         }
     }
 
-    
+
 
     public class BlockCorpseReturnTeleporter : Block
     {
@@ -280,10 +278,7 @@ namespace Vintagestory.GameContent
         public override void OnEntityCollide(IWorldAccessor world, Entity entity, BlockPos pos, BlockFacing facing, Vec3d collideSpeed, bool isImpact)
         {
             base.OnEntityCollide(world, entity, pos, facing, collideSpeed, isImpact);
-
-            BlockEntityCorpseReturnTeleporter be = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityCorpseReturnTeleporter;
-            if (be == null) return;
-            be.OnEntityCollide(entity);
+            GetBlockEntity<BlockEntityCorpseReturnTeleporter>(pos)?.OnEntityCollide(entity);
         }
 
     }

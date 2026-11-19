@@ -86,7 +86,13 @@ namespace Vintagestory.GameContent
                 Shapes[val.Key] = new FruitTreeShape() { Shape = shape, CShape = val.Value };
             }
 
-            var rnd = new LCGRandom(api.World.Seed);
+            LCGRandom rnd = null;
+            var sapi = api as ICoreServerAPI;
+            if (sapi != null)
+            {
+                rnd = new LCGRandom(sapi.World.SeedWorldgen);
+            }
+
             foreach (var prop in TypeProps)
             {
                 foreach (var bdstack in prop.Value.FruitStacks)
@@ -94,7 +100,10 @@ namespace Vintagestory.GameContent
                     bdstack.Resolve(api.World, "fruit tree FruitStacks ", Code);
                 }
 
-                (api as ICoreServerAPI)?.RegisterTreeGenerator(new AssetLocation("fruittree-" + prop.Key), (blockAccessor, pos, treegenParams) => GrowTree(blockAccessor, pos, prop.Key, treegenParams.size, rnd));
+                if (sapi != null)
+                {
+                    sapi.RegisterTreeGenerator(new AssetLocation("fruittree-" + prop.Key), (blockAccessor, pos, treegenParams) => GrowTree(blockAccessor, pos, prop.Key, treegenParams.size, rnd));
+                }
             }
         }
 
@@ -117,6 +126,11 @@ namespace Vintagestory.GameContent
 
             if (grafted && TypeProps.TryGetValue(aimedBe.TreeType, out var rootProps) && TypeProps.TryGetValue(itemstack.Attributes.GetString("type"), out var selfProprs))
             {
+                if (rootProps.GraftType != null && rootProps.GraftType != selfProprs.GraftType)
+                {
+                    failureCode = "fruittreecutting-grafttype";
+                    return false;
+                }
                 if (rootProps.CycleType != selfProprs.CycleType)
                 {
                     failureCode = "fruittreecutting-ctypemix";

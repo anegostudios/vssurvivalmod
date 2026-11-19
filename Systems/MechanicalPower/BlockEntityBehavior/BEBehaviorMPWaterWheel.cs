@@ -17,7 +17,7 @@ namespace Vintagestory.GameContent.Mechanics
     {
         protected float flowRate;
         protected BlockFacing facing;
-        protected float dir;
+        protected float waterDirection;
         protected BEBehaviorRightClickConstructable bebconstructable;
         protected Vec3f flowVec = new Vec3f();
         protected bool blocked = false;
@@ -33,8 +33,7 @@ namespace Vintagestory.GameContent.Mechanics
         protected override double AccelerationFactor => 0.05d;
         protected override float TargetSpeed => (float)Math.Min(0.3f, flowRate);
         protected override float TorqueFactor => flowRate;
-
-        public override float AngleRad => base.AngleRad * dir;
+        protected override float TorqueDirection => base.TorqueDirection * waterDirection;
 
 
         public BEBehaviorMPWaterWheel(BlockEntity blockentity) : base(blockentity) { }
@@ -61,12 +60,19 @@ namespace Vintagestory.GameContent.Mechanics
             return bebconstructable?.shape;
         }
 
+        public override float GetTorque(long tick, float speed, out float resistance)
+        {
+            float torque = base.GetTorque(tick, speed, out resistance);
+            if (flowRate <= 0) resistance += Resistance;
+            return torque;
+        }
+
         public override MechPowerPath[] GetMechPowerExits(MechPowerPath entryDir)
         {
-            return new MechPowerPath[] {
+            return [
                 entryDir,
-                new MechPowerPath(entryDir.OutFacing.Opposite, entryDir.gearingRatio, Position, !entryDir.invert)
-            };
+                entryDir.PropagatedClone(entryDir.OutFacing.Opposite, !entryDir.invert, fromPos: Position)
+            ];
         }
 
         public bool OnAttemptConstruction(IPlayer byPlayer, BlockSelection blockSel)
@@ -172,51 +178,38 @@ namespace Vintagestory.GameContent.Mechanics
                 lastWaterPos = firstWaterPos;
             }
 
-            if (lastWaterBlock != null)
+            var bh = lastWaterBlock?.GetBehavior<BlockBehaviorFiniteSpreadingLiquid>();
+            if (Api.Side == EnumAppSide.Server && bh != null)
             {
-                // Figure out the *next* block in this rivulet's flow, and ensure it's set to a normal flowing water (not rapid), if not already
-
+                // Water leaving the wheel must return to normal flow.
+                var blockAccessor = Api.World.BlockAccessor;
                 pos.Set(lastWaterPos);
-                pos.Down();
-                if (!ReplaceRapidWater(pos) && lastWaterBlock.LiquidLevel > 1)    // If liquidLevel == 1, the only possible flow would be downwards
+                Block solidBlock = blockAccessor.GetBlock(pos, BlockLayersAccess.Solid);
+                BlockPos npos = pos.Copy();
+                foreach (BlockFacing face in BlockFacing.ALLFACES)
                 {
-                    pos.Up();
-                    // If we did not find water below, now look in the direction of flow of this block
-                    FastVec3f pushVector = (lastWaterBlock as IBlockFlowing).GetPushVector(pos).Normalize();
-                    pos.Add(pushVector.X * 1.5f, 0, pushVector.Z * 1.5f);
-                    if (!ReplaceRapidWater(pos) && Math.Abs(pushVector.X) + Math.Abs(pushVector.Z) > 1f)
+                    face.IterateThruFacingOffsets(npos);
+                    if (face == BlockFacing.UP) continue;
+
+                    // An existing falling column is still an outlet even when spreading cannot replace it.
+                    if (face == BlockFacing.DOWN || bh.CanSpreadIntoBlock(lastWaterBlock, solidBlock, pos, npos, face, Api.World)) ReplaceRapidWater(npos);
+                }
+
+                // Downstream paths may be empty between liquid updates.
+                foreach (var path in bh.FindDownwardPaths(Api.World, pos, lastWaterBlock))
+                {
+                    if (!bh.CanSpreadIntoBlock(lastWaterBlock, solidBlock, pos, path.pos, path.pos.FacingFrom(pos), Api.World)) continue;
+                    if (blockAccessor.GetBlock(path.pos, BlockLayersAccess.Fluid).BlockId == 0)
                     {
-                        // Now test the two straight positions if this is a diagonal flowing block
-                        // First straight position: Z move only
-                        pos.Add(pushVector.X * -1.5f, 0, 0);
-                        if (!ReplaceRapidWater(pos))
-                        {
-                            // Second straight position: X move only
-                            pos.Add(pushVector.X * 1.5f, 0, -pushVector.Z * 1.5f);
-                            if (!ReplaceRapidWater(pos))
-                            {
-                                // Found no water in any of the positions expected adjacent to the last water block
-#if DEBUG
-                                // Throw exception in debug build, so that coding team can hopefully spot this and fix. In release build do nothing (only possible consequence is that rapid water does not get destroyed by a waterwheel in a certain configuration)
-                                throw new Exception("Could not find water exit position from waterwheel at " + Pos);
-#endif
-                            }
-                        }
+                        blockAccessor.SetBlock(bh.GetLessLiquidBlockId(Api.World, path.pos, lastWaterBlock), path.pos, BlockLayersAccess.Fluid);
                     }
+
+                    ReplaceRapidWater(path.pos);
                 }
             }
 
             flowRate = Math.Abs(moment * 750);
-            if (flowRate > 0)
-            {
-                float prevDir = dir;
-                dir = Math.Sign(moment) * -1;
-                if (dir != prevDir)
-                {
-                    bool oppositeDir = (dir < 0);
-                    this.SetPropagationDirection(new MechPowerPath(oppositeDir ? facing.Opposite : facing, 1, Pos, false));
-                }
-            }
+            if (flowRate > 0) waterDirection = -Math.Sign(moment);
 
             if (incomplete)
             {
@@ -254,16 +247,15 @@ namespace Vintagestory.GameContent.Mechanics
         {
             var newNetwork = base.CreateJoinAndDiscoverNetwork(powerOutFacing);
 
-            // Attempt to also connect the MP block on the opposite side from our facing (otherwise it can sometimes be disconnected in MechanicalPowerMod.RebuildNetwork())
-            if (powerOutFacing == facing && newNetwork != null)
+            if (powerOutFacing != facing || newNetwork == null) return newNetwork;
+
+            // Producers begin discovery through one face, so spread the same network through the other shaft end.
+            BlockFacing oppositeFacing = powerOutFacing.Opposite;
+            var oppositePath = new MechPowerPath(oppositeFacing, GearedRatio, Position, GetPropagationDirection() != oppositeFacing, AngleTransform);
+            if (!spreadTo(Api, newNetwork, Position.AddCopy(oppositeFacing), oppositePath, out Vec3i missingChunkPos))
             {
-                BlockPos neibPos = Position.AddCopy(powerOutFacing.Opposite);
-                BEBehaviorMPBase beMechBase = Api.World.BlockAccessor.GetBlockEntity(neibPos)?.GetBehavior<BEBehaviorMPBase>();
-                if (beMechBase != null) Api.Event.EnqueueMainThreadTask(() =>
-                        {
-                            var block = Api.World.BlockAccessor.GetBlock(neibPos) as IMechanicalPowerBlock;
-                            if (block != null && block.HasMechPowerConnectorAt(Api.World, neibPos, facing, Block as BlockMPBase)) beMechBase.tryConnect(facing);
-                        }, "waterwheel 2nd axis");
+                newNetwork.AwaitChunkThenDiscover(missingChunkPos);
+                manager.testFullyLoaded(newNetwork);
             }
 
             return newNetwork;
@@ -288,8 +280,6 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
         {
-            base.GetBlockInfo(forPlayer, sb);
-
             if (!bebconstructable.IsComplete)
             {
                 sb.AppendLine(Lang.Get("waterwheel-construction-step-with-stage-current-and-total", bebconstructable.CurrentCompletedStage, bebconstructable.Stages));
@@ -301,7 +291,7 @@ namespace Vintagestory.GameContent.Mechanics
                 if (blocked) sb.AppendLine(Lang.Get("Wheel is blocked, make sure the entire wheel is free from solid blocks."));
                 else sb.AppendLine(Lang.Get("waterwheel-suitable-power-source-blocks-nearby-blockamount", suitablePowerSourceBlockCount));
 
-                if (Api.World.EntityDebugMode && forPlayer?.WorldData?.CurrentGameMode == EnumGameMode.Creative)
+                if (Api.World.EntityDebugMode)
                 {
                     sb.AppendLine("<font color='#ccc'>flow vector= " + flowVec + "</font>");
                     sb.AppendLine("<font color='#ccc'>torque= " + TorqueFactor + "</font>");
@@ -309,6 +299,8 @@ namespace Vintagestory.GameContent.Mechanics
                     sb.AppendLine("<font color='#ccc'>flowrate = " + flowRate + "</font>");
                 }
             }
+
+            base.GetBlockInfo(forPlayer, sb);
         }
     }
 }

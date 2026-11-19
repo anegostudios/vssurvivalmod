@@ -1,3 +1,4 @@
+using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -39,24 +40,44 @@ public class BEBehaviorContainedBagInventory : BlockEntityBehavior
         }
     }
 
-    public override void OnReceivedClientPacket(IPlayer player, int packetid, byte[] data)
+    [Obsolete("Use the SerializedData overload.")] // Rennorb 03.07.2026: We call this for at least one more version to give mods time.
+    public override void OnReceivedClientPacket(IPlayer player, int packetId, byte[] packetData)
+    {
+        int targetSlotId = packetId >> PacketIdBitShift;
+        const int first15Bits = (1 << PacketIdBitShift) - 1;
+        packetId = packetId & first15Bits;
+
+        BagInventories[targetSlotId].OnReceivedClientPacket(player, packetId, packetData);
+    }
+
+    public override void OnReceivedClientPacket(IServerPlayer player, int packetId, SerializedData packetData, ref BlockEntity.CachedAccessPerms perms)
     {
         // Perms are checked in the OnReceiveClientPacket of the inventories, where we will know how to roll the interaction back if required.
 
-        int targetSlotId = packetid >> PacketIdBitShift;
-        int first15Bits = (1 << PacketIdBitShift) - 1;
-        packetid = packetid & first15Bits;
+        int targetSlotId = packetId >> PacketIdBitShift;
+        const int first15Bits = (1 << PacketIdBitShift) - 1;
+        packetId = packetId & first15Bits;
 
-        BagInventories[targetSlotId].OnReceivedClientPacket(player, packetid, data);
+        BagInventories[targetSlotId].OnReceivedClientPacket(player, packetId, packetData, ref perms);
     }
 
-    public override void OnReceivedServerPacket(int packetid, byte[] data)
+    [Obsolete("Use the SerializedData overload.")] // Rennorb 11.08.2026: We call this for at least one more version to give mods time.
+    public override void OnReceivedServerPacket(int packetId, byte[] packetData)
     {
-        int targetSlotId = packetid >> PacketIdBitShift;
-        int first15Bits = (1 << PacketIdBitShift) - 1;
-        packetid = packetid & first15Bits;
+        int targetSlotId = packetId >> PacketIdBitShift;
+        const int first15Bits = (1 << PacketIdBitShift) - 1;
+        packetId = packetId & first15Bits;
 
-        BagInventories[targetSlotId].OnReceivedServerPacket(packetid, data);
+        BagInventories[targetSlotId].OnReceivedServerPacket(packetId, packetData);
+    }
+
+    public override void OnReceivedServerPacket(int packetId, SerializedData packetData)
+    {
+        int targetSlotId = packetId >> PacketIdBitShift;
+        const int first15Bits = (1 << PacketIdBitShift) - 1;
+        packetId = packetId & first15Bits;
+
+        BagInventories[targetSlotId].OnReceivedServerPacket(packetId, packetData);
     }
 
     public virtual void Dispose()
@@ -147,7 +168,12 @@ public class BlockEntityContainedBagWorkspace
         return true;
     }
 
-    public void OnReceivedClientPacket(IPlayer player, int packetid, byte[] data)
+    [Obsolete("Prefer using the SerializedData overload.", true)]
+    public void OnReceivedClientPacket(IPlayer player, int packetId, byte[] packetData)
+    {
+    }
+
+    public void OnReceivedClientPacket(IServerPlayer player, int packetId, SerializedData packetData, ref BlockEntity.CachedAccessPerms perms)
     {
         if (be.Inventory[slotId].Itemstack?.Collectible is not CollectibleObject obj ||
             obj.GetBehavior<CollectibleBehaviorGroundStoredHeldBag>() == null ||
@@ -156,44 +182,49 @@ public class BlockEntityContainedBagWorkspace
             return;
         }
 
-        if (packetid < 1000)
+        switch (packetId)
         {
-            var perms = new BlockEntity.CachedAccessPerms(this.be.Api.World, this.be.Pos, player);
-            if(!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "ground stored held bag"))
-            {
-                wrapperInv.InvNetworkUtil.SendInventoryRollback((IServerPlayer)player, packetid, data);
-                return;
-            }
+            case < (int)EnumBlockEntityPacketId.Open:
+                if(!perms.TryAccessingBlockAtPos(EnumBlockAccessFlags.Use, true, "ground stored held bag"))
+                {
+                    wrapperInv.InvNetworkUtil.SendInventoryRollback(player, packetId, packetData);
+                    return;
+                }
 
-            wrapperInv.InvNetworkUtil.HandleClientPacket(player, packetid, data);
+                wrapperInv.InvNetworkUtil.HandleClientPacket(player, packetId, packetData);
 
-            // Tell server to save this chunk to disk again
-            be.Api.World.BlockAccessor.GetChunkAtBlockPos(be.Pos).MarkModified();
+                // Tell server to save this chunk to disk again
+                be.Api.World.BlockAccessor.GetChunkAtBlockPos(be.Pos).MarkModified();
 
-            return;
-        }
+                break;
 
-        if (packetid == (int)EnumBlockEntityPacketId.Close)
-        {
-            // No perms check, closing is always allowed. 
+            case (int)EnumBlockEntityPacketId.Open:
+                if(!perms.TryAccessingBlockAtPos(EnumBlockAccessFlags.Use, true, "ground stored held bag"))
+                {
+                    // No rolling back, just reject.
+                    return;
+                }
 
-            player.InventoryManager?.CloseInventory(wrapperInv);
-        }
+                player.InventoryManager?.OpenInventory(wrapperInv);
 
-        if (packetid == (int)EnumBlockEntityPacketId.Open)
-        {
-            var perms = new BlockEntity.CachedAccessPerms(this.be.Api.World, this.be.Pos, player);
-            if(!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "ground stored held bag"))
-            {
-                // No rolling back, just reject.
-                return;
-            }
+                break;
 
-            player.InventoryManager?.OpenInventory(wrapperInv);
+            case (int)EnumBlockEntityPacketId.Close:
+                // No perms check, closing is always allowed. 
+
+                player.InventoryManager?.CloseInventory(wrapperInv);
+
+                break;
         }
     }
 
-    public void OnReceivedServerPacket(int packetid, byte[] data)
+    [Obsolete("Prefer using the SerializedData overload.")]
+    public void OnReceivedServerPacket(int packetId, byte[] packetData)
+    {
+
+    }
+
+    public void OnReceivedServerPacket(int packetId, SerializedData packetData)
     {
         if (be.Inventory[slotId].Itemstack?.Collectible is not CollectibleObject obj ||
             obj.GetBehavior<CollectibleBehaviorGroundStoredHeldBag>() == null ||
@@ -204,7 +235,7 @@ public class BlockEntityContainedBagWorkspace
 
         IClientWorldAccessor clientWorld = (IClientWorldAccessor)be.Api.World;
 
-        if (packetid == (int)EnumBlockContainerPacketId.OpenInventory)
+        if (packetId == (int)EnumBlockContainerPacketId.OpenInventory)
         {
             if (invDialog != null)
             {
@@ -214,7 +245,7 @@ public class BlockEntityContainedBagWorkspace
                 return;
             }
 
-            var blockContainer = BlockEntityContainerOpen.FromBytes(data);
+            var blockContainer = BlockEntityContainerOpen.FromBytes(packetData);
             wrapperInv.FromTreeAttributes(blockContainer.Tree);
             wrapperInv.ResolveBlocksOrItems();
 
@@ -233,7 +264,7 @@ public class BlockEntityContainedBagWorkspace
             invDialog.OnClosed += () => OnBagInvDialogClosed(clientWorld.Player);
         }
 
-        if (packetid == (int)EnumBlockEntityPacketId.Close)
+        if (packetId == (int)EnumBlockEntityPacketId.Close)
         {
             clientWorld.Player.InventoryManager.CloseInventoryAndSync(wrapperInv);
             if (invDialog?.IsOpened() == true) invDialog?.TryClose();

@@ -487,7 +487,7 @@ namespace Vintagestory.GameContent
 
             if (insetSlotBounds.PointInside(capi.Input.MouseX, capi.Input.MouseY) && curTab == 0)
             {
-                charZoom = GameMath.Clamp(charZoom + args.deltaPrecise / 5f, 0.5f, 1f);
+                charZoom = GameMath.Clamp(charZoom + args.DeltaY / 5f, 0.5f, 1f);
             }
         }
 

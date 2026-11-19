@@ -8,6 +8,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Config;
 using System.Collections.Generic;
 using System.Collections;
+using Vintagestory.API.Datastructures;
 
 #nullable disable
 
@@ -98,6 +99,12 @@ namespace Vintagestory.GameContent
 
             capi.Tesselator.TesselateShape(meta, shape, out var meshdata);
 
+            // Remove "weak frost" flag, which is used for entity rendering only. It overlaps with a wind mode so it causes held items to move in the wind
+            for (int i = 0; i < meshdata.VerticesCount; i++)
+            {
+                meshdata.Flags[i] &= ~EnumWindBitModeMask.Fruit;
+            }
+
             return capi.Render.UploadMultiTextureMesh(meshdata);
         }
 
@@ -131,6 +138,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
+            ITreeAttribute spawnerTree = slot.Itemstack.Attributes.GetTreeAttribute("spawner");
             if (!(byEntity is EntityPlayer) || player.WorldData.CurrentGameMode != EnumGameMode.Creative)
             {
                 slot.TakeOut(1);
@@ -174,7 +182,12 @@ namespace Vintagestory.GameContent
                 }
 
                 entity.WatchedAttributes.SetBool("noSpawnAnim", true);
+                if (spawnerTree != null)
+                {
+                    entity.WatchedAttributes["spawner"] = spawnerTree;
+                }
                 byEntity.World.SpawnEntity(entity);
+                entity.WatchedAttributes.RemoveAttribute("spawner");
 
                 handHandling = EnumHandHandling.PreventDefaultAction;
             }

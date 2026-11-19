@@ -302,7 +302,7 @@ namespace Vintagestory.GameContent
             Block block = api.World.BlockAccessor.GetBlock(blockSel.Position);
             float quantityServings = (float)crockStack.Attributes.GetDecimal("quantityServings");
 
-            if (block?.Attributes?.IsTrue("mealContainer") == true)
+            if (block.Attributes?.IsTrue("mealContainer") == true)
             {
                 if (!byEntity.Controls.ShiftKey) return;
                 if (quantityServings > 0)
@@ -330,6 +330,29 @@ namespace Vintagestory.GameContent
                         gsslot.MarkDirty();
                         begs.MarkMeshesDirty();
                         begs.MarkDirty(true);
+                    }
+
+                    handHandling = EnumHandHandling.PreventDefault;
+                    return;
+                }
+            }
+
+            if (block.HasBehavior<BlockBehaviorDisplay>())
+            {
+                if (!byEntity.Controls.ShiftKey) return;
+                var behDisplay = block.GetBEBehavior<BEBehaviorDisplay>(blockSel.Position);
+                if (blockSel?.SelectionBoxId == null || behDisplay?.InventoryInv[blockSel.SelectionBoxId] is not ItemSlot bdslot || bdslot.Empty)
+                {
+                    return;
+                }
+
+                if (bdslot.Itemstack.ItemAttributes?.IsTrue("mealContainer") == true)
+                {
+                    if (quantityServings > 0)
+                    {
+                        ServeIntoStack(bdslot, slot, byEntity.World);
+                        bdslot.MarkDirty();
+                        behDisplay.Blockentity.MarkDirty(true);
                     }
 
                     handHandling = EnumHandHandling.PreventDefault;
@@ -781,10 +804,11 @@ namespace Vintagestory.GameContent
             base.TryMergeStacks(op);
         }
 
-        public override bool OnContainedInteractStart(BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        public override bool OnContainedInteractStart(BlockEntity be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
         {
             var handSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
-            if (handSlot.Itemstack?.Collectible.Attributes?["canSealCrock"]?.AsBool() == true)
+            if (handSlot.Empty) return false;
+            if (handSlot.Itemstack.Collectible.Attributes?["canSealCrock"]?.AsBool() == true)
             {
                 if (IsFullAndUnsealed(slot.Itemstack))
                 {
@@ -800,14 +824,42 @@ namespace Vintagestory.GameContent
                 return true;
             }
 
+            if (byPlayer.WorldData.EntityControls.ShiftKey && IsEmpty(slot.Itemstack)) // We can serve into an empty crock in ground storage
+            {
+                if (handSlot.Itemstack.Block is not BlockCookedContainerBase mealContainer) return false;
+
+                if (mealContainer.GetQuantityServings(be.Api.World, handSlot.Itemstack) > 0)
+                {
+                    mealContainer.ServeIntoStack(slot, handSlot, be.Api.World);
+                    slot.MarkDirty();
+                    (be as BlockEntityDisplay)?.MarkMeshesDirty();
+                    be.MarkDirty(true);
+                    return true;
+                }
+            }
+
             return base.OnContainedInteractStart(be, slot, byPlayer, blockSel);
         }
 
-        public override WorldInteraction[] GetContainedInteractionHelp(BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        public override WorldInteraction[] GetContainedInteractionHelp(BlockEntity be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
         {
             var baseInteractions = base.GetContainedInteractionHelp(be, slot, byPlayer, blockSel);
 
-            if (baseInteractions.Length == 0 || IsEmpty(slot.Itemstack)) return [];
+            if (baseInteractions.Length == 0) return [];
+
+            if (IsEmpty(slot.Itemstack))
+            {
+                return
+                [
+                    new()
+                    {
+                        ActionLangCode = "blockhelp-cookingcontainer-putfood",
+                        MouseButton = EnumMouseButton.Right,
+                        HotKeyCode = "shift",
+                        Itemstacks = TooltipMealStacks(api)
+                    }
+                ];
+            }
 
             if (slot.Itemstack?.Attributes.GetBool("sealed") == true) return baseInteractions;
 

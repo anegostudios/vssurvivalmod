@@ -1,3 +1,4 @@
+using Newtonsoft.Json;
 using System;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -14,7 +15,15 @@ namespace Vintagestory.GameContent
         int durationMs;
         int releaseAtMs;
         long lastSearchTotalMs;
-        float maxDist = 15f;
+
+        [Obsolete("Use searchRange instead")]
+        [JsonProperty]
+        protected float maxDist
+        {
+            get => searchRange;
+            set => searchRange = value;
+        }
+
         protected int searchWaitMs = 2000;
         float accum = 0;
         bool didThrow;
@@ -36,7 +45,6 @@ namespace Vintagestory.GameContent
             this.releaseAtMs = taskConfig["releaseAtMs"].AsInt(1000);
             this.projectileDamage = taskConfig["projectileDamage"].AsFloat(1f);
             this.projectileDamageTier = taskConfig["projectileDamageTier"].AsInt(0);
-            this.maxDist = taskConfig["maxDist"].AsFloat(15f);
             this.yawInaccuracy = taskConfig["yawInaccuracy"].AsFloat(0f);
 
             this.projectileCode = AssetLocation.Create(taskConfig["projectileCode"].AsString("thrownstone-{rock}"), entity.Code.Domain);
@@ -51,6 +59,7 @@ namespace Vintagestory.GameContent
         {
             base.SetDefaultValues();
             ExecutionChance = 0.1;
+            searchRange = 15f;
         }
 
 
@@ -64,7 +73,7 @@ namespace Vintagestory.GameContent
             if (WhenInEmotionStates == null && rand.NextDouble() > 0.5f) return false;
             if (cooldownUntilMs > entity.World.ElapsedMilliseconds) return false;
 
-            float range = maxDist;
+            float range = searchRange;
             lastSearchTotalMs = entity.World.ElapsedMilliseconds;
 
             targetEntity = partitionUtil.GetNearestEntity(entity.Pos.XYZ, range, (e) => IsTargetableEntity(e, range) && hasDirectContact(e, range, range/2f) && aimableDirection(e), EnumEntitySearchType.Creatures);

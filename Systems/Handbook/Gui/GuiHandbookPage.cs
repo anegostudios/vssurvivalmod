@@ -10,14 +10,14 @@ namespace Vintagestory.GameContent
         string HandbookPageCodeForStack(IWorldAccessor world, ItemStack stack);
     }
 
-    public struct WeightedHandbookPage
+    public struct WeightedHandbookListItem
     {
         public int TitleMatches;
         public int StrictTitleMatches;
         public int TextMatches;
         public int TitleLength;
         public float SearchWeight;
-        public GuiHandbookPage Page;
+        public IFlatListItem ListItem;
     }
 
     public struct PageText
@@ -28,7 +28,6 @@ namespace Vintagestory.GameContent
 
     public abstract class GuiHandbookPage : IFlatListItem
     {
-        public int PageNumber;
         public abstract string PageCode { get; }
 
         public abstract string CategoryCode { get; }

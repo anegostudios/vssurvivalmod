@@ -48,9 +48,9 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(api);
 
-            if (api is ICoreServerAPI)
+            if (api is ICoreServerAPI sapi)
             {
-                normalRandom = new NormalRandom(api.World.Seed);
+                normalRandom = new NormalRandom(sapi.World.SeedWorldgen);
                 growListenerId = RegisterGameTickListener(CheckGrow, 2000);
             }
         }

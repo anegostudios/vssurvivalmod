@@ -1,7 +1,9 @@
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -77,22 +79,6 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            if (mode == EnumInteractMode.Interact && byEntity.Controls.ShiftKey && byEntity.RightHandItemSlot.Empty && GetBehavior<EntityBehaviorAttachable>()?.Inventory.Empty == true)
-            {
-                ItemStack stack = new ItemStack(byEntity.World.GetItem(Code));
-                if (!byEntity.TryGiveItemStack(stack))
-                {
-                    byEntity.World.SpawnItemEntity(stack, Pos.XYZ);
-                }
-                byEntity.World.Logger.Audit("{0} Picked up 1x{1} at {2}.",
-                    byEntity.GetName(),
-                    stack.Collectible.Code,
-                     Pos
-                );
-                Die();
-                return;
-            }
-
             if (mode == EnumInteractMode.Interact && byEntity.RightHandItemSlot?.Itemstack?.Collectible is ItemWrench)
             {
                 AnimManager.StopAnimation(poses[CurPose]);
@@ -117,6 +103,20 @@ namespace Vintagestory.GameContent
             }
 
             return base.ReceiveDamage(damageSource, damage);
+        }
+
+        public override WorldInteraction[] GetInteractionHelp(IClientWorldAccessor world, EntitySelection es, IClientPlayer player)
+        {
+            WorldInteraction[] interactions = new WorldInteraction[]
+            {
+                new WorldInteraction()
+                {
+                    ActionLangCode = "entityhelp-armorstand-change-pose",
+                    MouseButton = EnumMouseButton.Right,
+                    Itemstacks = ObjectCacheUtil.GetToolStacks(world.Api, EnumTool.Wrench)
+                }
+            };
+            return interactions.Append(base.GetInteractionHelp(world, es, player));
         }
     }
 }

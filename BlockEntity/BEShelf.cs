@@ -1,6 +1,6 @@
 using System;
+using System.Collections.Generic;
 using System.Text;
-using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
@@ -22,54 +22,164 @@ namespace Vintagestory.GameContent
         public ModelTransform? GetOnShelfTransform(ItemStack stack) => null;
     }
 
-
-
-    public class BlockEntityShelf : BlockEntityDisplay
+    public class BlockEntityShelf : BlockEntity
     {
-        protected static int slotCount = 8;
+        private const int OldShelfSlotCount = 8;
+        private const int OldShelfSlotsPerSurface = 4;
+        private const string OldShelfInventoryTreeName = "inventory";
+        private const string OldShelfInventoryId = "shelf-0";
+        private const string ShelfDisplayCategory = "shelf";
 
-        protected InventoryGeneric inv;
-        public override InventoryBase Inventory => inv;
-        public override string InventoryClassName => "shelf";
-        public override string AttributeTransformCode => "onshelfTransform";
-        protected string GetSlotType(int slotid) => "shelf";
+        private const float OldShelfLeftX = 4f;
+        private const float OldShelfRightX = 12f;
+        private const float OldShelfBackZ = 4f;
+        private const float OldShelfFrontZ = 10f;
+        private const float OldShelfCenterX = 8f;
+        private const float OldShelfCenterZ = 6.5f;
 
-        public BlockEntityShelf()
-        {
-            inv = new InventoryGeneric(slotCount, "shelf-0", null, (id, inv) => new ItemSlotDisplay(inv, GetSlotType(id)));
-        }
+        private bool migratedOldInventory;
 
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
+            SyncDisplayAngle(api.World);
 
-            // Must be added after Initialize(), so we can override the transition speed value
-            inv.OnAcquireTransitionSpeed += Inv_OnAcquireTransitionSpeed;
-        }
-
-        protected float Inv_OnAcquireTransitionSpeed(EnumTransitionType transType, ItemStack stack, float baseMul)
-        {
-            if (transType is EnumTransitionType.Dry or EnumTransitionType.Melt)
+            if (migratedOldInventory && api.Side == EnumAppSide.Server)
             {
-                // Since we can now have multiple OnAcquireTransitionSpeed invocations stacked we have to multiply this to offset the base 0.25f
-                return (container.Room?.ExitCount == 0 ? 2f : 0.5f) * 4f;
+                MarkDirty(true);
             }
-            if (Api == null) return 0;
-
-            if (transType is not EnumTransitionType.Ripen) return 1;
-
-            return GameMath.Clamp((1 - container.GetPerishRate() - 0.5f) * 3, 0, 1);
         }
 
-        public bool OnInteract(IPlayer byPlayer, BlockSelection blockSel)
+        public override void OnBlockPlaced(ItemStack byItemStack = null)
         {
-            ItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
+            base.OnBlockPlaced(byItemStack);
+            SyncDisplayAngle(Api?.World);
+        }
 
-            if (TryUse(byPlayer, blockSel)) return true;
-            else if (slot.Empty) return TryTake(byPlayer, blockSel);
-            else if (GetShelvableLayout(slot.Itemstack) != null) return TryPut(byPlayer, blockSel);
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
+        {
+            base.FromTreeAttributes(tree, worldAccessForResolve);
+            SyncDisplayAngle(worldAccessForResolve);
+            TryMigrateOldInventory(tree, worldAccessForResolve);
+        }
 
-            return false;
+        public override void ToTreeAttributes(ITreeAttribute tree)
+        {
+            SyncDisplayAngle();
+            base.ToTreeAttributes(tree);
+        }
+
+        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
+        {
+            BlockSelection blockSel = forPlayer.CurrentBlockSelection;
+            BEBehaviorDisplay display = GetBehavior<BEBehaviorDisplay>();
+
+            if (blockSel != null && blockSel.Position.Equals(Pos) && display != null)
+            {
+                var slotLoc = BlockBehaviorDisplay.decodeSlotid(blockSel.SelectionBoxId);
+                if (slotLoc?.IsPlacedItem == true)
+                {
+                    ItemSlot slot = display.InventoryInv[slotLoc.EncodedLocation];
+                    if (slot != null && !slot.Empty)
+                    {
+                        float ripenRate = GameMath.Clamp((1 - display.GetPerishRate() - 0.5f) * 3, 0, 1);
+                        sb.Append(PerishableInfoCompact(Api, slot, ripenRate));
+                        return;
+                    }
+                }
+            }
+
+            base.GetBlockInfo(forPlayer, sb);
+
+            if (blockSel == null || !blockSel.Position.Equals(Pos) || display == null) return;
+
+            float shelfRipenRate = GameMath.Clamp((1 - display.GetPerishRate() - 0.5f) * 3, 0, 1);
+            if (shelfRipenRate > 0)
+            {
+                sb.AppendLine(Lang.Get("Suitable spot for food ripening."));
+            }
+        }
+        // The block still stores the wall side in its code. Display uses meshAngleRad so the shelf mesh,
+        // placement grid and displayed item meshes all rotate from the same value.
+        private void SyncDisplayAngle(IWorldAccessor worldForResolve = null)
+        {
+            if (Block == null) return;
+
+            var display = GetBehavior<BEBehaviorDisplay>();
+            display?.SetMeshAngleRad(GetShelfAngleRad(), worldForResolve);
+        }
+
+        private void TryMigrateOldInventory(ITreeAttribute tree, IWorldAccessor worldForResolve)
+        {
+            ITreeAttribute oldInvTree = tree.GetTreeAttribute(OldShelfInventoryTreeName);
+            BEBehaviorDisplay display = GetBehavior<BEBehaviorDisplay>();
+            BlockBehaviorDisplay displayBlock = Block?.GetBehavior<BlockBehaviorDisplay>();
+            if (oldInvTree == null || display == null || displayBlock == null || !display.InventoryInv.Empty) return;
+
+            InventoryGeneric oldInv = new InventoryGeneric(OldShelfSlotCount, OldShelfInventoryId, worldForResolve.Api, (id, inv) => new ItemSlotDisplay(inv, ShelfDisplayCategory));
+            oldInv.Pos = Pos;
+            oldInv.FromTreeAttributes(oldInvTree);
+            oldInv.ResolveBlocksOrItems();
+
+            List<(string slotId, ItemStack stack)> migratedStacks = new List<(string slotId, ItemStack stack)>();
+            for (int i = 0; i < oldInv.Count; i++)
+            {
+                if (oldInv[i].Empty) continue;
+
+                if (GetShelvableLayout(oldInv[i].Itemstack) is not EnumShelvableLayout layout) return;
+
+                int surfaceIndex = i >= OldShelfSlotsPerSurface ? 1 : 0;
+                PlacementSurface surface = displayBlock.PlacementSurfaces[surfaceIndex];
+                if (BlockBehaviorDisplay.GetDisplayableAttributes(oldInv[i], surface) == null) return;
+
+                string slotId = GetMigratedSlotId(i, surfaceIndex, layout);
+                if (migratedStacks.Exists(val => val.slotId == slotId)) return;
+
+                migratedStacks.Add((slotId, oldInv[i].Itemstack.Clone()));
+            }
+
+            if (migratedStacks.Count == 0) return;
+
+            for (int i = 0; i < migratedStacks.Count; i++)
+            {
+                display.InventoryInv.Allocate(migratedStacks[i].slotId);
+                display.InventoryInv[migratedStacks[i].slotId].Itemstack = migratedStacks[i].stack;
+            }
+
+            migratedOldInventory = true;
+            display.MarkDisplayDirty(worldForResolve);
+        }
+
+        private static string GetMigratedSlotId(int oldSlotId, int surfaceIndex, EnumShelvableLayout layout)
+        {
+            float x = (oldSlotId % OldShelfSlotsPerSurface) >= 2 ? OldShelfRightX : OldShelfLeftX;
+            float z = (oldSlotId % 2) == 0 ? OldShelfBackZ : OldShelfFrontZ;
+
+            if (layout == EnumShelvableLayout.SingleCenter)
+            {
+                x = OldShelfCenterX;
+                z = OldShelfCenterZ;
+            }
+            else if (layout == EnumShelvableLayout.Halves)
+            {
+                z = OldShelfCenterZ;
+            }
+
+            return new SlotLocation(x, 0, z)
+            {
+                PlacementSurfaceIndex = surfaceIndex
+            }.EncodedLocation;
+        }
+
+        private float GetShelfAngleRad()
+        {
+            return Block.LastCodePart() switch
+            {
+                "east" => 270 * GameMath.DEG2RAD,
+                "west" => 90 * GameMath.DEG2RAD,
+                "south" => 180 * GameMath.DEG2RAD,
+                _ => 0
+            };
         }
 
         public static EnumShelvableLayout? GetShelvableLayout(ItemStack? stack)
@@ -90,284 +200,6 @@ namespace Vintagestory.GameContent
             layout ??= attr?["shelvable"].AsBool() == true ? EnumShelvableLayout.Quadrants : null;
 
             return layout;
-        }
-
-        public bool CanUse(ItemStack? stack, BlockSelection blockSel)
-        {
-            if (stack == null) return false;
-
-            var obj = stack.Collectible;
-            bool up = blockSel.SelectionBoxIndex > 1;
-            bool left = (blockSel.SelectionBoxIndex % 2) == 0;
-            var shelvableLayout = GetShelvableLayout(inv[up ? 4 : 0].Itemstack);
-            if (shelvableLayout is not EnumShelvableLayout.SingleCenter)
-            {
-                if (!left) shelvableLayout = GetShelvableLayout(inv[up ? 6 : 2].Itemstack);
-            }
-
-            int start = (up ? 4 : 0) + (shelvableLayout is EnumShelvableLayout.SingleCenter ? 0 : (left ? 0 : 2));
-            int end = start + (shelvableLayout is EnumShelvableLayout.Halves or EnumShelvableLayout.SingleCenter ? 1 : 2);
-
-            CollectibleObject invColl;
-            for (int i = end - 1; i >= start; i--)
-            {
-                if (inv[i].Empty) continue;
-
-                invColl = inv[i].Itemstack.Collectible;
-
-                if (obj?.Attributes?["mealContainer"]?.AsBool() == true || obj is IContainedInteractable or IBlockMealContainer)
-                {
-                    return invColl is BlockCookedContainerBase;
-                }
-
-                if (obj?.Attributes?["canSealCrock"]?.AsBool() == true)
-                {
-                    return invColl is BlockCrock;
-                }
-            }
-
-            return false;
-        }
-
-        public bool CanPlace(ItemStack? stack, BlockSelection blockSel, out bool canTake)
-        {
-            bool up = blockSel.SelectionBoxIndex > 1;
-            bool left = (blockSel.SelectionBoxIndex % 2) == 0;
-
-            if (GetShelvableLayout(inv[up ? 4 : 0].Itemstack) is EnumShelvableLayout shelvableLayoutFullSlot &&
-                (shelvableLayoutFullSlot is EnumShelvableLayout.SingleCenter || (shelvableLayoutFullSlot is EnumShelvableLayout.Halves && left)) ||
-                (GetShelvableLayout(inv[up ? 6 : 2].Itemstack) is EnumShelvableLayout.Halves && !left))
-            {
-                canTake = true;
-                return false;
-            }
-
-            var shelvableLayout = GetShelvableLayout(stack);
-
-            int start = (up ? 4 : 0) + (shelvableLayout is EnumShelvableLayout.SingleCenter ? 0 : (left ? 0 : 2));
-            int end = start + (shelvableLayout is EnumShelvableLayout.Halves or EnumShelvableLayout.SingleCenter ? 1 : 2);
-
-            canTake = false;
-            bool canPlace = false;
-            for (int i = end - 1; i >= start; i--)
-            {
-                if (inv[i].Empty) canPlace = true;
-                else canTake = true;
-            }
-
-            return canPlace;
-        }
-
-        private bool TryUse(IPlayer player, BlockSelection blockSel)
-        {
-            bool up = blockSel.SelectionBoxIndex > 1;
-            bool left = (blockSel.SelectionBoxIndex % 2) == 0;
-            var shelvableLayout = GetShelvableLayout(inv[up ? 4 : 0].Itemstack);
-            if (shelvableLayout is not EnumShelvableLayout.SingleCenter)
-            {
-                if (!left) shelvableLayout = GetShelvableLayout(inv[up ? 6 : 2].Itemstack);
-            }
-
-            int start = (up ? 4 : 0) + (shelvableLayout is EnumShelvableLayout.SingleCenter ? 0 : (left ? 0 : 2));
-            int end = start + (shelvableLayout is EnumShelvableLayout.Halves or EnumShelvableLayout.SingleCenter ? 1 : 2);
-
-            if (player.Entity.Controls.ShiftKey) return false;
-
-            for (int i = end - 1; i >= start; i--)
-            {
-                var collIci = inv[i].Itemstack?.Collectible.GetCollectibleInterface<IContainedInteractable>();
-                if (collIci != null)
-                {
-                    if (collIci.OnContainedInteractStart(this, inv[i], player, blockSel))
-                    {
-                        MarkDirty();
-                        return true;
-                    }
-                }
-            }
-
-            return false;
-        }
-
-        private bool TryPut(IPlayer byPlayer, BlockSelection blockSel)
-        {
-            var heldSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
-
-            bool up = blockSel.SelectionBoxIndex > 1;
-            bool left = (blockSel.SelectionBoxIndex % 2) == 0;
-
-            int filledSlots = 0;
-            var shelvableLayout = GetShelvableLayout(heldSlot.Itemstack);
-
-            int start = (up ? 4 : 0) + (shelvableLayout is EnumShelvableLayout.SingleCenter ? 0 : (left ? 0 : 2));
-            int end = start + (shelvableLayout is EnumShelvableLayout.SingleCenter ? 4 : 2);
-
-            if (shelvableLayout is EnumShelvableLayout.Halves or EnumShelvableLayout.SingleCenter)
-            {
-                for (int i = start; i < end; i++)
-                {
-                    if (!inv[i].Empty)
-                    {
-                        var layout = GetShelvableLayout(inv[i].Itemstack);
-                        filledSlots += layout is EnumShelvableLayout.SingleCenter ? 4 : layout is EnumShelvableLayout.Halves ? 2 : 1;
-                    }
-                }
-            }
-
-            if (filledSlots > 0 && filledSlots < (shelvableLayout is EnumShelvableLayout.SingleCenter ? 4 : 2))
-            {
-                (Api as ICoreClientAPI)?.TriggerIngameError(this, "needsmorespace", Lang.Get("shelfhelp-needsmorespace-error"));
-                return false;
-            }
-
-            if (shelvableLayout is not EnumShelvableLayout.SingleCenter) shelvableLayout = GetShelvableLayout(inv[up ? 4 : 0].Itemstack);
-            if (shelvableLayout is not EnumShelvableLayout.SingleCenter && !left) shelvableLayout = GetShelvableLayout(inv[up ? 6 : 2].Itemstack);
-
-            start = (up ? 4 : 0) + (shelvableLayout is EnumShelvableLayout.SingleCenter ? 0 : (left ? 0 : 2));
-            end = start + (shelvableLayout is EnumShelvableLayout.Halves or EnumShelvableLayout.SingleCenter ? 1 : 2);
-
-            for (int i = start; i < end; i++)
-            {
-                if (!inv[i].Empty) continue;
-
-                int moved = heldSlot.TryPutInto(Api.World, inv[i]);
-                MarkDirty();
-                (Api as ICoreClientAPI)?.World.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
-
-                if (moved > 0)
-                {
-                    Api.World.PlaySoundAt(inv[i].Itemstack?.Block?.Sounds?.Place ?? GlobalConstants.DefaultBuildSound, byPlayer.Entity, byPlayer);
-                    Api.World.Logger.Audit("{0} Put 1x{1} into Shelf at {2}.",
-                        byPlayer.PlayerName,
-                        inv[i].Itemstack?.Collectible.Code,
-                        Pos
-                    );
-                    return true;
-                }
-
-                return false;
-            }
-
-            (Api as ICoreClientAPI)?.TriggerIngameError(this, "shelffull", Lang.Get("shelfhelp-shelffull-error"));
-            return false;
-        }
-
-        private bool TryTake(IPlayer byPlayer, BlockSelection blockSel)
-        {
-            bool up = blockSel.SelectionBoxIndex > 1;
-            bool left = (blockSel.SelectionBoxIndex % 2) == 0;
-            var shelvableLayout = GetShelvableLayout(inv[up ? 4 : 0].Itemstack);
-            if (shelvableLayout is not EnumShelvableLayout.SingleCenter)
-            {
-                if (!left) shelvableLayout = GetShelvableLayout(inv[up ? 6 : 2].Itemstack);
-            }
-
-            int start = (up ? 4 : 0) + (shelvableLayout is EnumShelvableLayout.SingleCenter ? 0 : (left ? 0 : 2));
-            int end = start + (shelvableLayout is EnumShelvableLayout.SingleCenter ? 4 : 2);
-
-            for (int i = end - 1; i >= start; i--)
-            {
-                if (inv[i].Empty) continue;
-
-                ItemStack? stack = inv[i].TakeOut(1);
-                if (byPlayer.InventoryManager.TryGiveItemstack(stack))
-                {
-                    SoundAttributes? sound = stack?.Block?.Sounds?.Place;
-                    Api.World.PlaySoundAt(sound ?? GlobalConstants.DefaultBuildSound, byPlayer.Entity, byPlayer);
-                }
-
-                if (stack?.StackSize > 0)
-                {
-                    Api.World.SpawnItemEntity(stack, Pos);
-                }
-                Api.World.Logger.Audit("{0} Took 1x{1} from Shelf at {2}.",
-                    byPlayer.PlayerName,
-                    stack?.Collectible.Code,
-                    Pos
-                );
-
-                (Api as ICoreClientAPI)?.World.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
-                MarkDirty();
-
-                return true;
-            }
-
-            return false;
-        }
-
-        protected override float[][] genTransformationMatrices()
-        {
-            float[][] tfMatrices = new float[slotCount][];
-
-            for (int index = 0; index < slotCount; index++)
-            {
-                var shelvableType = GetShelvableLayout(inv[index].Itemstack);
-
-                float x = ((index % 4) >= 2) ? 12 / 16f : 4 / 16f;
-                float y = index >= 4 ? 10 / 16f : 2 / 16f;
-                float z = (index % 2 == 0) ? 4 / 16f : 10 / 16f;
-
-                if (index is 0 or 4 && shelvableType is EnumShelvableLayout.SingleCenter) x = 0.5f;
-                if (index is 0 or 2 or 4 or 6 && shelvableType is EnumShelvableLayout.Halves or EnumShelvableLayout.SingleCenter) z = 0.4f;
-
-                tfMatrices[index] =
-                    new Matrixf()
-                    .Translate(0.5f, 0, 0.5f)
-                    .RotateYDeg(Block.Shape.rotateY)
-                    .Translate(x - 0.5f, y, z - 0.5f)
-                    .Translate(-0.5f, 0, -0.5f)
-                    .Values
-                ;
-            }
-
-            return tfMatrices;
-        }
-
-
-        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
-        {
-            base.FromTreeAttributes(tree, worldForResolving);
-
-            // Do this last!!!
-            RedrawAfterReceivingTreeAttributes(worldForResolving);     // Redraw on client after we have completed receiving the update from server
-        }
-
-        #region Block info
-
-        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
-        {
-            base.GetBlockInfo(forPlayer, sb);
-
-
-            float ripenRate = GameMath.Clamp(((1 - container.GetPerishRate()) - 0.5f) * 3, 0, 1);
-            if (ripenRate > 0)
-            {
-                sb.Append(Lang.Get("Suitable spot for food ripening."));
-            }
-
-            sb.AppendLine();
-
-            bool up = forPlayer.CurrentBlockSelection != null && forPlayer.CurrentBlockSelection.SelectionBoxIndex > 1;
-
-            for (int j = 3; j >= 0; j--)
-            {
-                int i = j + (up ? 4 : 0);
-                i ^= 2;   //Display shelf contents text for items from left-to-right, not right-to-left
-
-                if (inv[i].Empty) continue;
-
-                ItemStack? stack = inv[i].Itemstack;
-
-                var transitionableProps = stack?.Collectible?.GetTransitionableProperties(Api.World, stack, forPlayer.Entity);
-                if (transitionableProps != null && transitionableProps.Length > 0)
-                {
-                    sb.Append(PerishableInfoCompact(Api, inv[i], ripenRate));
-                }
-                else
-                {
-                    sb.AppendLine(stack?.Collectible.GetCollectibleInterface<IContainedCustomName>()?.GetContainedInfo(inv[i]) ?? stack?.GetName() ?? Lang.Get("unknown"));
-                }
-            }
         }
 
         public static string PerishableInfoCompact(ICoreAPI Api, ItemSlot contentSlot, float ripenRate, bool withStackName = true)
@@ -463,6 +295,16 @@ namespace Vintagestory.GameContent
             return dsc.ToString();
         }
 
-        #endregion
+        public override void OnLoadCollectibleMappings(IWorldAccessor world, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed, bool resolveImports)
+        {
+            var display = GetBehavior<BEBehaviorDisplay>();
+            display.OnLoadCollectibleMappings(world, oldBlockIdMapping, oldItemIdMapping, schematicSeed, resolveImports);
+        }
+
+        public override void OnStoreCollectibleMappings(Dictionary<int, AssetLocation> blockIdMapping, Dictionary<int, AssetLocation> itemIdMapping)
+        {
+            var display = GetBehavior<BEBehaviorDisplay>();
+            display.OnStoreCollectibleMappings(blockIdMapping, itemIdMapping);
+        }
     }
 }

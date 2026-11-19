@@ -40,6 +40,11 @@ public class BEBehaviorFruitingBush : BlockEntityBehavior, IAnimalFoodSource, IL
 
         bhBush = Block.GetBehavior<BlockBehaviorFruitingBush>();
 
+        if (bhBush == null)
+        {
+            throw new InvalidOperationException($"Was not able to find 'BlockBehaviorFruitingBush' block behavior when initializing 'BEBehaviorFruitingBush' block entity behavior for block '{Block.Code}'.");
+        }
+
         if (api is ICoreServerAPI)
         {
             api.ModLoader.GetModSystem<POIRegistry>().AddPOI(this);
@@ -147,7 +152,7 @@ public class BEBehaviorFruitingBush : BlockEntityBehavior, IAnimalFoodSource, IL
                 // If we're not in the ripe stage we have to reverse the previous time removed from the timer
                 if (BState.Growthstate != EnumFruitingBushGrowthState.Ripe) BState.TransitionHoursLeft += hourIntervall * lightGrowthSpeedFactor;
                 if (isYoung) BState.MatureTotalDays += hourIntervall * lightGrowthSpeedFactor / Api.World.Calendar.HoursPerDay;
-                Blockentity.MarkDirty(true);
+                Blockentity.MarkDirty();
                 return;
             }
 
@@ -176,7 +181,7 @@ public class BEBehaviorFruitingBush : BlockEntityBehavior, IAnimalFoodSource, IL
                     consumeNutrients();
                 }
             }
-            else Blockentity.MarkDirty(true);
+            else Blockentity.MarkDirty();
         };
     }
 
@@ -325,27 +330,27 @@ public class BEBehaviorFruitingBush : BlockEntityBehavior, IAnimalFoodSource, IL
         }
     }
 
-    protected virtual float getHarvestTimeMul()
+    public virtual float getHarvestTimeMul()
     {
         if (BState.Traits.Contains("weakclusteredberries")) return 1.35f;
         if (BState.Traits.Contains("strongclusteredberries")) return 0.65f;
         return 1;
     }
-    protected virtual float getYieldMul()
+    public virtual float getYieldMul()
     {
         if (BState.Traits.Contains("heavybearer")) return 1.15f;
         if (BState.Traits.Contains("shybearer")) return 0.85f;
         return 1;
     }
 
-    protected virtual float getNutrientUseMul()
+    public virtual float getNutrientUseMul()
     {
         if (BState.Traits.Contains("weakrooted")) return 1.3f;
         if (BState.Traits.Contains("strongrooted")) return 0.7f;
         return 1;
     }
 
-    protected virtual float getRipeTimeMul()
+    public virtual float getRipeTimeMul()
     {
         if (BState.Traits.Contains("thinskinnedfruit")) return 0.65f;
         if (BState.Traits.Contains("thickskinnedfruit")) return 1.35f;

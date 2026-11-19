@@ -31,21 +31,7 @@ namespace Vintagestory.GameContent
             base.Initialize(api);
 
             setupGameTickers();
-
-            if (api.World.Side == EnumAppSide.Client)
-            {
-                translocatingSound = (api as ICoreClientAPI).World.LoadSound(new SoundParams()
-                {
-                    Location = new AssetLocation("sounds/effect/translocate-active.ogg"),
-                    ShouldLoop = true,
-                    Position = Pos.ToVec3f(),
-                    RelativePosition = false,
-                    DisposeOnFinish = false,
-                    Volume = 0.5f
-                });
-            }
         }
-
 
         public void setupGameTickers()
         {
@@ -72,7 +58,7 @@ namespace Vintagestory.GameContent
                 if (plr.Entity.Pos.DistanceTo(Pos.ToVec3d().Add(0.5, 0, 0.5)) < 5)
                 {
                     var pos = plr.GetSpawnPosition(false);
-                    plr.Entity.TeleportToDouble(pos.X, pos.Y, pos.Z);
+                    plr.Entity.TeleportToDouble(pos.X, pos.InternalY, pos.Z);
 
                     Api.World.PlaySoundAt(new AssetLocation("sounds/effect/translocate-breakdimension"), plr.Entity.Pos.X, plr.Entity.Pos.InternalY, plr.Entity.Pos.Z, null, false, 16);
                 }
@@ -88,7 +74,7 @@ namespace Vintagestory.GameContent
 
                 var block = Api.World.GetBlock(new AssetLocation("basereturnteleporter-fried"));
                 Api.World.BlockAccessor.SetBlock(block.Id, Pos);
-            }            
+            }
         }
 
         private void OnClientGameTick(float dt)
@@ -124,16 +110,15 @@ namespace Vintagestory.GameContent
             animUtil.StartAnimation(meta);
         }
 
-
         protected void HandleSoundClient(float dt)
         {
-            var capi = Api as ICoreClientAPI;
+            var capi = (ICoreClientAPI)Api;
 
             if (activated)
             {
                 translocVolume = Math.Min(0.5f, translocVolume + dt / 3);
                 translocPitch = Math.Min(translocPitch + dt / 3, 2.5f);
-                if (capi != null && capi.World.Player.Entity.Pos.DistanceTo(Pos.ToVec3d().Add(0.5, 0, 0.5)) < 5)
+                if (capi.World.Player.Entity.Pos.DistanceTo(Pos.ToVec3d().Add(0.5, 0, 0.5)) < 5)
                 {
                     capi.World.AddCameraShake(0.0575f);
                 }
@@ -144,6 +129,17 @@ namespace Vintagestory.GameContent
                 translocPitch = Math.Max(translocPitch - dt, 0.5f);
             }
 
+            if (translocatingSound == null && translocVolume <= 0) return;
+
+            translocatingSound ??= capi.World.LoadSound(new SoundParams()
+            {
+                Location = new AssetLocation("sounds/effect/translocate-active.ogg"),
+                ShouldLoop = true,
+                Position = Pos.ToVec3f(),
+                RelativePosition = false,
+                DisposeOnFinish = false,
+                Volume = translocVolume
+            });
 
             if (translocatingSound.IsPlaying)
             {

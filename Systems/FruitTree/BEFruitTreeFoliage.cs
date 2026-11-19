@@ -44,7 +44,7 @@ namespace Vintagestory.GameContent
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
             base.GetBlockInfo(forPlayer, dsc);
-            if (Api.World.EntityDebugMode && forPlayer?.WorldData?.CurrentGameMode == EnumGameMode.Creative)
+            if (Api.World.EntityDebugMode)
             {
                 dsc.AppendLine("TreeType: " + TreeType);
                 dsc.AppendLine("FoliageState: " + FoliageState);

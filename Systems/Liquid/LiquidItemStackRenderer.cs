@@ -24,11 +24,11 @@ namespace Vintagestory.GameContent
             stackSizeFont.FontWeight = FontWeight.Bold;
             stackSizeFont.Color = new double[] { 1, 1, 1, 1 };
             stackSizeFont.StrokeColor = new double[] { 0, 0, 0, 1 };
-            stackSizeFont.StrokeWidth = RuntimeEnv.GUIScale + 0.25;
+            stackSizeFont.StrokeWidth = RuntimeEnv.GUIScale / RuntimeEnv.DPIHScale + 0.25;
 
             litreTextTextures = new Dictionary<string, LoadedTexture>();
 
-            api.Settings.AddWatcher<float>("guiScale", (newvalue) =>
+            api.Settings.AddWatcher<float>("guiScale", newvalue =>
             {
                 stackSizeFont.StrokeWidth = newvalue + 0.25;
 
@@ -89,15 +89,8 @@ namespace Vintagestory.GameContent
             if (showStackSize)
             {
                 float litreFloat = (float)itemstack.StackSize / props?.ItemsPerLitre ?? 1;
-                string litres;
-                if (litreFloat < 0.1)
-                {
-                    litres = Lang.Get("{0} mL", (int)(litreFloat * 1000));
-                } else
-                {
-                    litres = Lang.Get("{0:0.##} L", litreFloat);
-                }
-                
+                string litres = litreFloat < 0.1 ? Lang.Get("{0} mL", (int)(litreFloat * 1000)) : Lang.Get("{0:0.##} L", litreFloat);
+
                 float mul = size / (float)GuiElement.scaled(32 * 0.8f);
 
                 var texttex = GetOrCreateLitreTexture(litres, size, mul);
@@ -105,11 +98,11 @@ namespace Vintagestory.GameContent
                 capi.Render.GlToggleBlend(true, EnumBlendMode.PremultipliedAlpha);
 
                 capi.Render.Render2DLoadedTexture(texttex,
-                    (int)(posX + size + 1 - texttex.Width - GuiElement.scaled(1)),
+                    (int)(posX + size + GuiElement.scaled(1) - texttex.Width - GuiElement.scaled(1)),
                     (int)(posY + size - texttex.Height + mul * GuiElement.scaled(3) - GuiElement.scaled(5)),
                     (int)posZ + 60
                 );
-                
+
                 capi.Render.GlToggleBlend(true, EnumBlendMode.Standard);
             }
 

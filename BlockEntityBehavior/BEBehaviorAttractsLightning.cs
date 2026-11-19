@@ -109,10 +109,11 @@ namespace Vintagestory.GameContent
 
             yDiff = GameMath.Min(40, yDiff);
 
-            var posA = new Vec2d(Blockentity.Pos.X, Blockentity.Pos.Z);
+            // Centers the protective area on the lightning rod
+            var posA = new Vec2d(ourPos.X + 0.5, ourPos.Z + 0.5);
             if (posA.DistanceTo(impactPos.X, impactPos.Z) > yDiff) return;
 
-            impactPos = Blockentity.Pos.ToVec3d();
+            impactPos.Set(posA.X, ourRainHeight, posA.Y);
         }
     }
 }

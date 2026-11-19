@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -19,7 +20,7 @@ namespace Vintagestory.GameContent
         OpenLidOthers = 5001
     }
 
-    [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
+    [ProtoContract]
     public class OpenContainerLidPacket
     {
         [ProtoMember(1)]
@@ -59,17 +60,16 @@ namespace Vintagestory.GameContent
             return ms.ToArray();
         }
 
-        public static BlockEntityContainerOpen FromBytes(byte[] data)
+        public static BlockEntityContainerOpen FromBytes(SerializedData data)
         {
             var inst = new BlockEntityContainerOpen();
 
-            using var ms = new MemoryStream(data);
-            var reader = new BinaryReader(ms);
+            var reader = data.AsBinaryReader();
             inst.BlockEntity = reader.ReadString();
             inst.DialogTitle = reader.ReadString();
             inst.Columns = reader.ReadByte();
             inst.Tree = new TreeAttribute();
-            inst.Tree.FromBytes(reader);
+            inst.Tree.FromBytes(ref reader);
 
             return inst;
         }
@@ -137,64 +137,71 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void OnReceivedClientPacket(IPlayer player, int packetid, byte[] data)
+        public override void OnReceivedClientPacket(IServerPlayer player, int packetId, SerializedData data, ref CachedAccessPerms perms)
         {
-            if (packetid == (int)EnumBlockEntityPacketId.Close)
+            switch (packetId)
             {
-                // No perms check here, closing is always allowed.
+                case < (int)EnumBlockEntityPacketId.Open:
+                    if (!perms.TryAccessingBlockAtPos(EnumBlockAccessFlags.Use, true, "openable container"))
+                    {
+                        Inventory.InvNetworkUtil.SendInventoryRollback(player, packetId, data);
+                        break;
+                    }
 
-                player.InventoryManager?.CloseInventory(Inventory);
-                data = SerializerUtil.Serialize(new OpenContainerLidPacket(player.Entity.EntityId, false));
-                ((ICoreServerAPI)Api).Network.BroadcastBlockEntityPacket(
-                    Pos,
-                    (int)EnumBlockContainerPacketId.OpenLidOthers,
-                    data,
-                    (IServerPlayer)player
-                );
-            }
+                    Inventory.InvNetworkUtil.HandleClientPacket(player, packetId, data);
+                    // Tell server to save this chunk to disk again
+                    Api.World.BlockAccessor.GetChunkAtBlockPos(Pos).MarkModified();
 
-            if (packetid < 1000)
-            {
-                var perms = new BlockEntity.CachedAccessPerms(this.Api.World, this.Pos, player);
-                if (!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "openable container"))
+                    break;
+
+
+                case (int)EnumBlockEntityPacketId.Open:
                 {
-                    Inventory.InvNetworkUtil.SendInventoryRollback((IServerPlayer)player, packetid, data);
-                    return;
+                    if (!perms.TryAccessingBlockAtPos(EnumBlockAccessFlags.Use, true, "openable container"))
+                    {
+                        // No reverting, just don't open it.
+                        break;
+                    }
+
+                    player.InventoryManager?.OpenInventory(Inventory);
+                    var responseData = SerializerUtil.Serialize(new OpenContainerLidPacket(player.Entity.EntityId, true));
+                    ((ICoreServerAPI)Api).Network.BroadcastBlockEntityPacket(
+                        new(Pos),
+                        (int)EnumBlockContainerPacketId.OpenLidOthers,
+                        new SerializedData(responseData),
+                        player
+                    );
+
+                    break;
                 }
 
-                Inventory.InvNetworkUtil.HandleClientPacket(player, packetid, data);
-                // Tell server to save this chunk to disk again
-                Api.World.BlockAccessor.GetChunkAtBlockPos(Pos).MarkModified();
 
-                return;
-            }
-
-            if (packetid == (int)EnumBlockEntityPacketId.Open)
-            {
-                var perms = new BlockEntity.CachedAccessPerms(this.Api.World, this.Pos, player);
-                if (!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "openable container"))
+                case (int)EnumBlockEntityPacketId.Close:
                 {
-                    // No reverting, just don't open it.
-                    return;
-                }
+                    // No perms check here, closing is always allowed.
 
-                player.InventoryManager?.OpenInventory(Inventory);
-                data = SerializerUtil.Serialize(new OpenContainerLidPacket(player.Entity.EntityId, true));
-                ((ICoreServerAPI)Api).Network.BroadcastBlockEntityPacket(
-                    Pos,
-                    (int)EnumBlockContainerPacketId.OpenLidOthers,
-                    data,
-                    (IServerPlayer)player
-                );
+                    player.InventoryManager?.CloseInventory(Inventory);
+                    var responseData = SerializerUtil.Serialize(new OpenContainerLidPacket(player.Entity.EntityId, false));
+                    ((ICoreServerAPI)Api).Network.BroadcastBlockEntityPacket(
+                        new(Pos),
+                        (int)EnumBlockContainerPacketId.OpenLidOthers,
+                        new SerializedData(responseData),
+                        player
+                    );
+
+                    break;
+                }
             }
 
+            // Rennorb 20.06.2026 explain: Why not call the base here?
+            // base.OnReceivedClientPacket(player, packetId, data, ref perms);
         }
 
-        public override void OnReceivedServerPacket(int packetid, byte[] data)
+        public override void OnReceivedServerPacket(int packetId, SerializedData packetData)
         {
             IClientWorldAccessor clientWorld = (IClientWorldAccessor)Api.World;
 
-            if (packetid == (int)EnumBlockContainerPacketId.OpenInventory)
+            if (packetId == (int)EnumBlockContainerPacketId.OpenInventory)
             {
                 if (invDialog != null)
                 {
@@ -204,7 +211,7 @@ namespace Vintagestory.GameContent
                     return;
                 }
 
-                var blockContainer = BlockEntityContainerOpen.FromBytes(data);
+                var blockContainer = BlockEntityContainerOpen.FromBytes(packetData);
                 Inventory.FromTreeAttributes(blockContainer.Tree);
                 Inventory.ResolveBlocksOrItems();
 
@@ -217,9 +224,9 @@ namespace Vintagestory.GameContent
                 invDialog.TryOpen();
             }
 
-            if (packetid == (int)EnumBlockContainerPacketId.OpenLidOthers)
+            if (packetId == (int)EnumBlockContainerPacketId.OpenLidOthers)
             {
-                var containerPacket = SerializerUtil.Deserialize<OpenContainerLidPacket>(data);
+                var containerPacket = packetData.Deserialize<OpenContainerLidPacket>();
 
                 if(this is BlockEntityGenericTypedContainer genericContainer)
                 {
@@ -239,7 +246,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (packetid == (int)EnumBlockEntityPacketId.Close)
+            if (packetId == (int)EnumBlockEntityPacketId.Close)
             {
                 clientWorld.Player.InventoryManager.CloseInventory(Inventory);
                 if (invDialog?.IsOpened() == true) invDialog?.TryClose();

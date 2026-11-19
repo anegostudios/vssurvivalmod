@@ -163,6 +163,7 @@ namespace Vintagestory.GameContent
         public override string AttributeTransformCode => "groundStorageTransform";
 
         public float MeshAngle { get; set; }
+        public float[] QuadrantMeshAngleOffset { get; set; } = new float[4];
         public BlockFacing AttachFace { get; set; }
 
         public override TextureAtlasPosition this[string textureCode]
@@ -196,12 +197,17 @@ namespace Vintagestory.GameContent
             {
                 slot.StorageType |= EnumItemStorageFlags.Backpack;
             }
-
+            inventory.SlotModified += Inventory_SlotModified;
             inventory.OnGetAutoPushIntoSlot = GetAutoPushIntoSlot;
             inventory.OnGetAutoPullFromSlot = GetAutoPullFromSlot;
 
             colBoxes = new Cuboidf[] { new Cuboidf(0, 0, 0, 1, 0.25f, 1) };
             selBoxes = new Cuboidf[] { new Cuboidf(0, 0, 0, 1, 0.25f, 1) };
+        }
+
+        protected void Inventory_SlotModified(int slotId)
+        {
+            MarkDirty(true);
         }
 
         private ItemSlot GetAutoPullFromSlot(BlockFacing atBlockFace)
@@ -335,7 +341,7 @@ namespace Vintagestory.GameContent
             var cbhgs = Inventory[0].Itemstack?.Collectible?.GetBehavior<CollectibleBehaviorGroundStorable>();
             if (cbhgs != null)
             {
-                burnHoursPerItem = JsonObject.FromJson(cbhgs.propertiesAtString)["burnHoursPerItem"].AsFloat(burnHoursPerItem);
+                burnHoursPerItem = cbhgs.GetStorageProperties(Inventory[0].Itemstack)?.BurnHoursPerItem ?? burnHoursPerItem;
             }
         }
 
@@ -432,15 +438,16 @@ namespace Vintagestory.GameContent
         {
             for (int i = 0; i < inventory.Count; i++)
             {
-                if (inventory[i].Itemstack is not { Collectible: IBlockMealContainer blockMeal } stack) continue;
+                if (inventory[i].Itemstack is not ItemStack stack || stack.Collectible is not IBlockMealContainer blockMeal) continue;
 
                 var recipe = recipes[Api.World.Rand.Next(recipes.Length)];
                 var cachedValidStacks = ObjectCacheUtil.TryGet<Dictionary<CookingRecipeIngredient, HashSet<ItemStack>>>(Api, "trailermaking-cachedvalidstacks-" + recipe.Code);
                 blockMeal.SetContents(recipe.Code, stack, recipe.GenerateRandomMeal(Api, ref cachedValidStacks, null));
-                updateMesh(i);
+                GetOrCreateMealMesh(blockMeal, stack, i);
             }
 
-            MarkDirty();
+            MarkMeshesDirty();
+            Api.World.BlockAccessor.MarkBlockDirty(Pos);
         }*/
         #endregion
         public Cuboidf[] GetSelectionBoxes()
@@ -501,12 +508,7 @@ namespace Vintagestory.GameContent
                 switch (StorageProps.Layout)
                 {
                     case EnumGroundStorageLayout.SingleCenter:
-                        if (StorageProps.RandomizeCenterRotation)
-                        {
-                            double randomX = Api.World.Rand.NextDouble() * 6.28 - 3.14;
-                            double randomZ = Api.World.Rand.NextDouble() * 6.28 - 3.14;
-                            MeshAngle = (float)Math.Atan2(randomX, randomZ);
-                        }
+                        setSingleCenterRotation(player, bs);
                         ok = putOrGetItemSingle(inventory[0], player, bs);
                         break;
 
@@ -526,6 +528,7 @@ namespace Vintagestory.GameContent
                     case EnumGroundStorageLayout.Quadrants:
                         int pos = ((hitPos.X > 0.5) ? 2 : 0) + ((hitPos.Z > 0.5) ? 1 : 0);
                         ok = putOrGetItemSingle(inventory[pos], player, bs);
+                        setQuadrantRotationOffsets(pos, player, bs);
                         break;
 
                     case EnumGroundStorageLayout.Messy12:
@@ -562,6 +565,75 @@ namespace Vintagestory.GameContent
             return ok;
         }
 
+        void setSingleCenterRotation(IPlayer player, BlockSelection bs)
+        {
+            if (StorageProps.RandomizeCenterRotation)
+            {
+                double randomX = Api.World.Rand.NextDouble() * 6.28 - 3.14;
+                double randomZ = Api.World.Rand.NextDouble() * 6.28 - 3.14;
+                MeshAngle = (float)Math.Atan2(randomX, randomZ);
+            }
+            else if (StorageProps.CenterRotationMode != EnumGroundStorageRotationMode.Deg90)
+            {
+                double dx = player.Entity.Pos.X - (Pos.X + bs.HitPosition.X);
+                double dz = player.Entity.Pos.Z - (Pos.Z + bs.HitPosition.Z);
+                float angleHor = (float)Math.Atan2(dx, dz);
+
+                float deg45rad = GameMath.PIHALF / 2;
+                float deg22dot5rad = GameMath.PIHALF / 4;
+
+                switch (StorageProps.CenterRotationMode)
+                {
+                    case EnumGroundStorageRotationMode.Deg45:
+                        MeshAngle = (int)Math.Round(angleHor / deg45rad) * deg45rad;
+                        break;
+                    case EnumGroundStorageRotationMode.Deg22Dot5:
+                        MeshAngle = (int)Math.Round(angleHor / deg22dot5rad) * deg22dot5rad;
+                        break;
+                    case EnumGroundStorageRotationMode.Deg22Dot5NotDeg45:
+                        float angleDiff = angleHor - MeshAngle;
+                        if (Math.Abs(angleDiff) >= deg22dot5rad) MeshAngle += deg22dot5rad * Math.Sign(angleDiff);
+                        break;
+                }
+            }
+        }
+
+        void setQuadrantRotationOffsets(int slotIndex, IPlayer player, BlockSelection bs)
+        {
+            var storageProps = inventory[slotIndex].Itemstack?.Collectible.GetBehavior<CollectibleBehaviorGroundStorable>()?.GetStorageProperties(inventory[slotIndex].Itemstack);
+            if (storageProps?.QuadrantRotationMode is EnumGroundStorageRotationMode rotationMode)
+            {
+                double dx = player.Entity.Pos.X - (Pos.X + bs.HitPosition.X);
+                double dz = player.Entity.Pos.Z - (Pos.Z + bs.HitPosition.Z);
+                float angleHor = (float)Math.Atan2(dx, dz);
+
+                float deg45rad = GameMath.PIHALF / 2;
+                float deg22dot5rad = GameMath.PIHALF / 4;
+
+                switch (rotationMode)
+                {
+                    case EnumGroundStorageRotationMode.Deg90:
+                        QuadrantMeshAngleOffset[slotIndex] = (int)Math.Round(angleHor / GameMath.PIHALF) * GameMath.PIHALF;
+                        break;
+                    case EnumGroundStorageRotationMode.Deg45:
+                        QuadrantMeshAngleOffset[slotIndex] = (int)Math.Round(angleHor / deg45rad) * deg45rad;
+                        break;
+                    case EnumGroundStorageRotationMode.Deg22Dot5:
+                        QuadrantMeshAngleOffset[slotIndex] = (int)Math.Round(angleHor / deg22dot5rad) * deg22dot5rad - MeshAngle;
+                        break;
+                    case EnumGroundStorageRotationMode.Deg22Dot5NotDeg45:
+                        float angleDiff = angleHor - MeshAngle;
+                        QuadrantMeshAngleOffset[slotIndex] = (int)Math.Round(angleHor / GameMath.PIHALF) * GameMath.PIHALF;
+                        if (Math.Abs(angleDiff) >= deg22dot5rad) QuadrantMeshAngleOffset[slotIndex] += deg22dot5rad * Math.Sign(angleDiff);
+                        break;
+                }
+
+                QuadrantMeshAngleOffset[slotIndex] -= MeshAngle;
+                MarkMeshesDirty();
+            }
+            else QuadrantMeshAngleOffset[slotIndex] = 0;
+        }
+
         public bool OnPlayerInteractStep(float secondsUsed, IPlayer byPlayer, BlockSelection blockSel)
         {
             var collIci = isUsingSlot?.Itemstack?.Collectible.GetCollectibleInterface<IContainedInteractable>();
@@ -577,10 +649,7 @@ namespace Vintagestory.GameContent
         public void OnPlayerInteractStop(float secondsUsed, IPlayer byPlayer, BlockSelection blockSel)
         {
             var collIci = isUsingSlot?.Itemstack?.Collectible.GetCollectibleInterface<IContainedInteractable>();
-            if (collIci != null)
-            {
-                collIci.OnContainedInteractStop(secondsUsed, this, isUsingSlot, byPlayer, blockSel);
-            }
+            collIci?.OnContainedInteractStop(secondsUsed, this, isUsingSlot, byPlayer, blockSel);
 
             isUsingSlot = null;
         }
@@ -588,13 +657,9 @@ namespace Vintagestory.GameContent
         public bool OnPlayerInteractCancel(float secondsUsed, IPlayer byPlayer, BlockSelection blockSel, EnumItemUseCancelReason cancelReason)
         {
             var collIci = isUsingSlot?.Itemstack?.Collectible.GetCollectibleInterface<IContainedInteractable>();
-            if (collIci != null)
-            {
-                collIci.OnContainedInteractCancel(secondsUsed, this, isUsingSlot, byPlayer, blockSel, cancelReason);
-            }
 
             isUsingSlot = null;
-            return true;
+            return collIci?.OnContainedInteractCancel(secondsUsed, this, isUsingSlot, byPlayer, blockSel, cancelReason) ?? true;
         }
 
         public ItemSlot GetSlotAt(BlockSelection bs)
@@ -662,7 +727,7 @@ namespace Vintagestory.GameContent
                 {
                     if (sourceStack == null) return;
 
-                    StorageProps = this.StorageProps = sourceStack.Collectible?.GetBehavior<CollectibleBehaviorGroundStorable>()?.StorageProps;
+                    StorageProps = this.StorageProps = sourceStack.Collectible?.GetBehavior<CollectibleBehaviorGroundStorable>()?.GetStorageProperties(sourceStack);
                 }
             }
 
@@ -1015,7 +1080,7 @@ namespace Vintagestory.GameContent
 
             if (!hotbarSlot.Empty && !inventory.Empty)
             {
-                var hotbarlayout = hotbarSlot.Itemstack.Collectible.GetBehavior<CollectibleBehaviorGroundStorable>()?.StorageProps.Layout;
+                var hotbarlayout = hotbarSlot.Itemstack.Collectible.GetBehavior<CollectibleBehaviorGroundStorable>()?.GetStorageProperties(hotbarSlot.Itemstack)?.Layout;
                 bool layoutEqual = StorageProps.Layout == hotbarlayout;
 
                 if (StorageProps.Layout == EnumGroundStorageLayout.Quadrants && hotbarlayout == EnumGroundStorageLayout.Messy12)
@@ -1106,6 +1171,10 @@ namespace Vintagestory.GameContent
             }
 
             MeshAngle = tree.GetFloat("meshAngle");
+            QuadrantMeshAngleOffset[0] = tree.GetFloat("quadrantMeshAngleOffset1");
+            QuadrantMeshAngleOffset[1] = tree.GetFloat("quadrantMeshAngleOffset2");
+            QuadrantMeshAngleOffset[2] = tree.GetFloat("quadrantMeshAngleOffset3");
+            QuadrantMeshAngleOffset[3] = tree.GetFloat("quadrantMeshAngleOffset4");
             AttachFace = BlockFacing.ALLFACES[tree.GetInt("attachFace")];
             bool wasBurning = burning;
 
@@ -1144,6 +1213,10 @@ namespace Vintagestory.GameContent
             tree.SetBool("burning", burning);
             tree.SetDouble("lastTickTotalHours", burnStartTotalHours);
             tree.SetFloat("meshAngle", MeshAngle);
+            tree.SetFloat("quadrantMeshAngleOffset1", QuadrantMeshAngleOffset[0]);
+            tree.SetFloat("quadrantMeshAngleOffset2", QuadrantMeshAngleOffset[1]);
+            tree.SetFloat("quadrantMeshAngleOffset3", QuadrantMeshAngleOffset[2]);
+            tree.SetFloat("quadrantMeshAngleOffset4", QuadrantMeshAngleOffset[3]);
             tree.SetInt("attachFace", AttachFace?.Index ?? 0);
             tree.SetBool("isExternallyTicked", IsExternallyTicked);
         }
@@ -1219,17 +1292,24 @@ namespace Vintagestory.GameContent
         {
             API.Datastructures.OrderedDictionary<string, int> dict = new ();
 
+            if (StorageProps.Layout == EnumGroundStorageLayout.SingleCenter)
+            {
+                var slot = inventory.FirstNonEmptySlot;
+                var stackInfo = slot?.Itemstack?.Collectible.GetCollectibleInterface<IContainedCustomName>()?.GetContainedInfo(slot);
+                if (stackInfo != null) return [stackInfo];
+            }
+
             foreach (var slot in inventory)
             {
                 if (slot.Empty) continue;
 
-                string stackName = slot.Itemstack.GetName();
+                string stackInfo = slot.Itemstack.GetName();
 
-                stackName = slot.Itemstack.Collectible.GetCollectibleInterface<IContainedCustomName>()?.GetContainedInfo(slot) ?? stackName;
+                stackInfo = slot.Itemstack.Collectible.GetCollectibleInterface<IContainedCustomName>()?.GetContainedInfo(slot) ?? stackInfo;
 
-                if (!dict.TryGetValue(stackName, out int cnt)) cnt = 0;
+                if (!dict.TryGetValue(stackInfo, out int cnt)) cnt = 0;
 
-                dict[stackName] = cnt + slot.StackSize;
+                dict[stackInfo] = cnt + slot.StackSize;
             }
 
             return dict.Select(elem => Lang.Get("{0}x {1}", elem.Value, elem.Key)).ToArray();
@@ -1305,10 +1385,15 @@ namespace Vintagestory.GameContent
                 Vec3f off = offs[i];
                 off = new Matrixf().RotateY(MeshAngle).TransformVector(off.ToVec4f(0)).XYZ;
 
+                float rotationAngle = MeshAngle;
+                if (StorageProps.Layout == EnumGroundStorageLayout.Quadrants)
+                {
+                    rotationAngle += QuadrantMeshAngleOffset[i];
+                }
                 tfMatrices[i] =
                     new Matrixf()
                     .Translate(off.X + 0.5f, off.Y, off.Z + 0.5f)
-                    .RotateY(MeshAngle)
+                    .RotateY(rotationAngle)
                     .Translate(-0.5f, 0, -0.5f)
                     .Values
                 ;
@@ -1431,7 +1516,16 @@ namespace Vintagestory.GameContent
                         return null;
                     }
 
-                    capi.Tesselator.TesselateShape("storagePile", nowTesselatingShape, out mesh, this, null, 0, 0, 0, StorageProps.CuboidsPerModel * ItemModelCount);
+                    if (StorageProps.CuboidsPerModel <= -1)
+                    {
+                        var selectiveElements = nowTesselatingShape.Elements.Select(ele => ele.Name + "/*").Take(ItemModelCount).ToArray();
+                        capi.Tesselator.TesselateShape("storagePile", nowTesselatingShape, out mesh, this, null, 0, 0, 0, null, selectiveElements);
+                    } else
+                    {
+                        capi.Tesselator.TesselateShape("storagePile", nowTesselatingShape, out mesh, this, null, 0, 0, 0, StorageProps.CuboidsPerModel * ItemModelCount);
+                    }
+
+                    
                 }
 
                 MeshCache[key] = mesh;

@@ -13,6 +13,8 @@ namespace Vintagestory.GameContent
 {
     public class EidolonAnimManager : AnimationManager
     {
+        public EidolonAnimManager(Entity entity): base(entity) { }
+
         public override void OnReceivedServerAnimations(int[] activeAnimations, int activeAnimationsCount, float[] activeAnimationSpeeds)
         {
             base.OnReceivedServerAnimations(activeAnimations, activeAnimationsCount, activeAnimationSpeeds);
@@ -40,7 +42,7 @@ namespace Vintagestory.GameContent
 
         public EntityEidolon()
         {
-            AnimManager = new EidolonAnimManager();
+            AnimManager = new EidolonAnimManager(this);
         }
 
         public override void Initialize(EntityProperties properties, ICoreAPI api, long InChunkIndex3d)

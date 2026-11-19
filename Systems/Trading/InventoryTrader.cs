@@ -734,6 +734,7 @@ namespace Vintagestory.GameContent
             {
                 ItemSlotTrade slot = GetBuyingSlot(i);
                 if (slot.Itemstack == null) continue;
+                if (slot.TradeItem.Stock == 0) continue;
 
                 string[] ignoredAttributes = slot.TradeItem.AttributesToIgnore == null ? ignoredAttrs : ignoredAttrs.Append(slot.TradeItem.AttributesToIgnore.Split(','));
                 if (slot.Itemstack.Equals(Api.World, forStack, ignoredAttributes) || slot.Itemstack.Satisfies(forStack))

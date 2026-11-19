@@ -243,11 +243,11 @@ namespace Vintagestory.GameContent
                 var charInv = eplr.Player.InventoryManager.GetOwnInventory(GlobalConstants.characterInvClassName);
                 var headSlot = charInv?.FirstOrDefault(slot => (slot as ItemSlotCharacter).Type == EnumCharacterDressType.Head);
 
-                if (headSlot != null && !headSlot.Empty)
-                {
-                    wetnessFromRain *= GameMath.Clamp(1 - headSlot.Itemstack.ItemAttributes["rainProtectionPerc"].AsFloat(0), 0, 1);
+                    if (headSlot != null && !headSlot.Empty && headSlot.Itemstack.Collectible.GetCollectibleInterface<IWearable>() is IWearable headWearable)
+                    {
+                        wetnessFromRain *= GameMath.Clamp(1 - headWearable.GetRainProtectionPercentage(headSlot), 0, 1);
+                    }
                 }
-            }
 
             Wetness = GameMath.Clamp(
                 Wetness
@@ -265,9 +265,8 @@ namespace Vintagestory.GameContent
             // Can bear anything above 10 degrees without clothing, while standing still
             float hereTemperature = conds.Temperature + clothingBonus + sprintBonus - wetnessDebuff;
 
-            float tempDiff = hereTemperature - GameMath.Clamp(hereTemperature, bodyTemperatureResistance, 50);
             // Above 10 degrees, slowly warms up
-            if (tempDiff == 0) tempDiff = Math.Max((hereTemperature - bodyTemperatureResistance), 0);
+            float tempDiff = hereTemperature - bodyTemperatureResistance;
 
             float ambientTempChange = GameMath.Clamp(tempDiff / 6f, -6, 6);
 

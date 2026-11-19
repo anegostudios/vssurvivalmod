@@ -42,7 +42,7 @@ namespace Vintagestory.GameContent
         #region IAttachableToEntity
         public int RequiresBehindSlots { get; set; } = 0;
         string? IAttachableToEntity.GetCategoryCode(ItemStack stack) => AttachableToEntity?.GetCategoryCode(stack);
-        CompositeShape? IAttachableToEntity.GetAttachedShape(ItemStack stack, string slotCode) => AttachableToEntity?.GetAttachedShape(stack, slotCode);
+        CompositeShape? IAttachableToEntity.GetAttachedShape(ItemStack stack, Entity onentity, string slotCode) => AttachableToEntity?.GetAttachedShape(stack, onentity, slotCode);
         string[]? IAttachableToEntity.GetDisableElements(ItemStack stack) => AttachableToEntity?.GetDisableElements(stack);
         string[]? IAttachableToEntity.GetKeepElements(ItemStack stack) => AttachableToEntity?.GetKeepElements(stack);
         string? IAttachableToEntity.GetTexturePrefixCode(ItemStack stack) => AttachableToEntity?.GetTexturePrefixCode(stack);

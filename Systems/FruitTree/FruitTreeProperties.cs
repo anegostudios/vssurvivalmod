@@ -40,6 +40,7 @@ namespace Vintagestory.GameContent
 
         public float CuttingRootingChance = 0.25f;
         public float CuttingGraftChance = 0.5f;
+        public string GraftType = null;
     }
 
 

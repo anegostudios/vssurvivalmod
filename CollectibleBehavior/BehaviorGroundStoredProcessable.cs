@@ -171,7 +171,7 @@ namespace Vintagestory.GameContent
             RemainingItem?.Resolve(api.World, "remainingItem of item ", collObj.Code);
         }
 
-        bool canProcessOnSurfaceMaterial(BlockEntityContainer be, IPlayer byPlayer)
+        bool canProcessOnSurfaceMaterial(BlockEntity be)
         {
             if (RequiredSurfaceMaterials == null) return true;
 
@@ -179,8 +179,10 @@ namespace Vintagestory.GameContent
             return RequiredSurfaceMaterials.Contains(belowMaterial);
         }
 
-        public bool OnContainedInteractStart(BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        public bool OnContainedInteractStart(BlockEntity be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
         {
+            if (be is not BlockEntityGroundStorage) return false;
+
             if (Tool != null && byPlayer.InventoryManager.ActiveTool != Tool) return false;
 
             if (!byPlayer.Entity.Controls.ShiftKey) return false;
@@ -190,7 +192,7 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            if (!canProcessOnSurfaceMaterial(be, byPlayer))
+            if (!canProcessOnSurfaceMaterial(be))
             {
                 (be.Api as ICoreClientAPI)?.TriggerIngameError(this, "needssolidsurface", Lang.Get(surfaceErrorLangCode));
                 return false;
@@ -205,7 +207,7 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-        public bool OnContainedInteractStep(float secondsUsed, BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        public bool OnContainedInteractStep(float secondsUsed, BlockEntity be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
         {
             if (Tool != null && byPlayer.InventoryManager.ActiveTool != Tool) return false;
 
@@ -213,7 +215,7 @@ namespace Vintagestory.GameContent
 
             if (blockSel == null) return false;
 
-            if (!canProcessOnSurfaceMaterial(be, byPlayer)) return false;
+            if (!canProcessOnSurfaceMaterial(be)) return false;
 
             if (ProcessingAnimationCode != null && byPlayer.Entity.World is IClientWorldAccessor) byPlayer.Entity.StartAnimation(ProcessingAnimationCode);
 
@@ -230,12 +232,14 @@ namespace Vintagestory.GameContent
             return secondsUsed < ProcessTime;
         }
 
-        public void OnContainedInteractStop(float secondsUsed, BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        public void OnContainedInteractStop(float secondsUsed, BlockEntity be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
         {
+            var inventory = (be as BlockEntityGroundStorage)?.Inventory;
+            if (inventory == null) return;
             byPlayer.Entity.StopAnimation(ProcessingAnimationCode);
             if (Tool != null && byPlayer.InventoryManager.ActiveTool != Tool) return;
 
-            if (!canProcessOnSurfaceMaterial(be, byPlayer)) return;
+            if (!canProcessOnSurfaceMaterial(be)) return;
 
             if (secondsUsed > ProcessTime - 0.05f && (ProcessedStacks != null || RemainingItem != null) && be.Api.World.Side == EnumAppSide.Server)
             {
@@ -317,7 +321,7 @@ namespace Vintagestory.GameContent
                 }
                 else slot.Itemstack = remainingStack;
                 be.MarkDirty(true);
-                if (be.Inventory.Empty) be.Api.World.BlockAccessor.SetBlock(0, blockSel.Position);
+                if (inventory.Empty) be.Api.World.BlockAccessor.SetBlock(0, blockSel.Position);
 
                 if (Tool != null)
                 {
@@ -329,18 +333,20 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public bool OnContainedInteractCancel(float secondsUsed, BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel, EnumItemUseCancelReason cancelReason)
+        public bool OnContainedInteractCancel(float secondsUsed, BlockEntity be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel, EnumItemUseCancelReason cancelReason)
         {
             byPlayer.Entity.StopAnimation(ProcessingAnimationCode);
             return true;
         }
 
 
-        public WorldInteraction[] GetContainedInteractionHelp(BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        public WorldInteraction[] GetContainedInteractionHelp(BlockEntity be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
         {
+            if (be is not BlockEntityGroundStorage) return [];
+
             if (ProcessedStacks != null || RemainingItem != null)
             {
-                if (!canProcessOnSurfaceMaterial(be, byPlayer)) return [];
+                if (!canProcessOnSurfaceMaterial(be)) return [];
 
                 bool notProtected = true;
 

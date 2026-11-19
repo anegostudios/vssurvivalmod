@@ -1,48 +1,24 @@
+using System.Collections.Generic;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 using Vintagestory.GameContent.Mechanics;
-
-#nullable disable
 
 namespace Vintagestory.GameContent
 {
-
-    public class BlockGrindingWheel : BlockMPConsumer
+    public class BlockGrindingWheel : BlockAxleAttachment
     {
-
-        public override bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face, BlockMPBase forblock)
+        public MeshData GetFrameMesh(ICoreClientAPI capi, ITesselatorAPI tesselator, ItemStack? frameStack)
         {
-            return face.GetCW() == Facing || face.GetCCW() == Facing;
+            Dictionary<string, MeshData> meshes = ObjectCacheUtil.GetOrCreate(capi, "grindingWheelFrameMeshes", () => new Dictionary<string, MeshData>());
+            string key = $"{Code}-{GetMaterialKey(frameStack)}";
+            if (meshes.TryGetValue(key, out MeshData? mesh)) return mesh;
+
+            string sourceForLogging = $"{Code} frame";
+            Shape shape = API.Common.Shape.TryGet(capi, Shape.Base.Clone().WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json"));
+            tesselator.TesselateShape(sourceForLogging, shape, out MeshData frameMesh, GetMaterialTextureSource(capi, shape, sourceForLogging, frameStack), new Vec3f(Shape.rotateX, Shape.rotateY, Shape.rotateZ), quantityElements: Shape.QuantityElements, selectiveElements: Shape.SelectiveElements);
+            return meshes[key] = frameMesh;
         }
-
-        public override void OnBlockPlaced(IWorldAccessor world, BlockPos blockPos, ItemStack byItemStack = null)
-        {
-            base.OnBlockPlaced(world, blockPos, byItemStack);
-
-            WasPlaced(world, blockPos, null);
-        }
-
-        public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
-        {
-            return true;
-        }
-
-        public override bool OnBlockInteractStep(float secondsUsed, IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
-        {
-            return GetBlockEntity<BlockEntityGrindingWheel>(blockSel.Position).OnInteractStep(secondsUsed, byPlayer, blockSel);
-        }
-
-        public override void OnBlockInteractStop(float secondsUsed, IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
-        {
-            GetBlockEntity<BlockEntityGrindingWheel>(blockSel.Position).OnInteractStop(secondsUsed, byPlayer, blockSel);
-            base.OnBlockInteractStop(secondsUsed, world, byPlayer, blockSel);
-        }
-
-        public override bool OnBlockInteractCancel(float secondsUsed, IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, EnumItemUseCancelReason cancelReason)
-        {
-            GetBlockEntity<BlockEntityGrindingWheel>(blockSel.Position).OnInteractStop(secondsUsed, byPlayer, blockSel);
-            return base.OnBlockInteractCancel(secondsUsed, world, byPlayer, blockSel, cancelReason);
-        }
-
     }
 }

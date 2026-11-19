@@ -46,15 +46,15 @@ namespace Vintagestory.GameContent
             {
                 var page = val;
                 page.Init(capi);
-                allHandbookPages.Add(page);
+                allHandbookListItems.Add(page);
             }
 
-            capi.ModLoader.GetModSystem<ModSystemSurvivalHandbook>().TriggerOnInitCustomPages(allHandbookPages);
-            for (int i = 0; i < allHandbookPages.Count; i++)
+            capi.ModLoader.GetModSystem<ModSystemSurvivalHandbook>().TriggerOnInitCustomPages(allHandbookListItems);
+            for (int i = 0; i < allHandbookListItems.Count; i++)
             {
-                var page = allHandbookPages[i];
+                if (allHandbookListItems[i] is not GuiHandbookPage page) continue;
                 categoryCodes.Add(page.CategoryCode);
-                pageNumberByPageCode[page.PageCode] = i;
+                pageElementByPageCode[page.PageCode] = page;
             }
 
             return categoryCodes;
@@ -72,7 +72,7 @@ namespace Vintagestory.GameContent
             });
             tabs.Add(new HandbookTab()
             {
-                PaddingTop = 20,
+                PaddingTop = GuiElement.scaled(20),
                 DataInt = 0,
                 Name = Lang.Get("handbook-category-everything"),
                 CategoryCode = null

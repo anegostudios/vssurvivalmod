@@ -272,8 +272,7 @@ namespace Vintagestory.GameContent
                 if (Data.SpawnRangeMode == EnumSpawnRangeMode.WithinMinMaxRange && (distanceSq < Data.MinPlayerRange * Data.MinPlayerRange || distanceSq > Data.MaxPlayerRange * Data.MaxPlayerRange)) return;
             }
 
-            // Disabled until rc.6
-            /*if (Data.ClimateMode > 0)
+            if (Data.ClimateMode > 0)
             {
                 var mode = Data.ClimateMode == 1 ? EnumGetClimateMode.NowValues : EnumGetClimateMode.WorldGenValues;
                 var climate = Api.World.BlockAccessor.GetClimateAt(Pos, mode);
@@ -289,7 +288,7 @@ namespace Vintagestory.GameContent
                     if (mode == EnumGetClimateMode.WorldGenValues) decrementSpawnCount(); // self destruct if stuff can never spawn here
                     return;
                 }
-            }*/
+            }
 
             if (type == null) return;
 
@@ -538,11 +537,11 @@ namespace Vintagestory.GameContent
             dlg.OnClosed += () => { dlg?.Dispose(); dlg = null; };
         }
 
-        public override void OnReceivedServerPacket(int packetid, byte[] bytes)
+        public override void OnReceivedServerPacket(int packetId, SerializedData packetData)
         {
-            if (packetid == 1000)
+            if (packetId == 1000)
             {
-                Data = SerializerUtil.Deserialize<BESpawnerData>(bytes);
+                Data = packetData.Deserialize<BESpawnerData>();
                 if (dlg?.IsOpened() == true)
                 {
                     dlg.UpdateFromServer(Data);
@@ -550,16 +549,17 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void OnReceivedClientPacket(IPlayer fromPlayer, int packetid, byte[] bytes)
+        public override void OnReceivedClientPacket(IServerPlayer fromPlayer, int packetId, SerializedData packetData, ref CachedAccessPerms perms)
         {
-            if (packetid == 1001)
+            if (packetId == 1001)
             {
-				if (fromPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
+                if (fromPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
                 {
                     Api.Logger.Audit($"{fromPlayer.PlayerName} not in creative mode tried to set spawner data at {Pos}");
                     return;
-                }            	
-                Data = SerializerUtil.Deserialize<BESpawnerData>(bytes);
+                }
+
+                Data = packetData.Deserialize<BESpawnerData>();
                 MarkDirty();
             }
         }

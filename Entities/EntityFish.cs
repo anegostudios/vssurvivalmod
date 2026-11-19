@@ -44,6 +44,14 @@ namespace Vintagestory.GameContent
         public double BaitBobberSeekChance { get; set; } = 0.5;
         public double FleeAwaySpeed { get; set; } = 0.5;
 
+        public override void Initialize(EntityProperties properties, ICoreAPI api, long InChunkIndex3d)
+        {
+            base.Initialize(properties, api, InChunkIndex3d);
+
+            NoBaitBobberSeekChance = properties.Attributes["noBaitBobberSeekChance"].AsDouble(NoBaitBobberSeekChance);
+            BaitBobberSeekChance = properties.Attributes["baitBobberSeekChance"].AsDouble(BaitBobberSeekChance);
+            FleeAwaySpeed = properties.Attributes["fleeAwaySpeed"].AsDouble(FleeAwaySpeed);
+        }
 
         public override void AfterInitialized(bool onFirstSpawn)
         {

@@ -15,6 +15,8 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override CompositeShape Shape { 
             get {
+                if (Block is BlockAxleAttachmentAssembly) return base.Shape;
+
                 string side = Block.Variant["side"];
 
                 CompositeShape shape = new CompositeShape() { Base = new AssetLocation("shapes/block/wood/mechanics/axle.json") };
@@ -27,7 +29,7 @@ namespace Vintagestory.GameContent.Mechanics
                 return shape;
             }
             set {
-
+                if (Block is BlockAxleAttachmentAssembly) base.Shape = value;
             }
         }
 
@@ -42,21 +44,12 @@ namespace Vintagestory.GameContent.Mechanics
             base.Initialize(api, properties);
 
             bebrake.RegisterGameTickListener(OnEvery50Ms, 100);
+        }
 
-            string side = Block.Variant["side"];
-            switch (side)
-            {
-                case "north":
-                case "south":
-                    AxisSign = new int[] { -1, 0, 0 };
-                    break;
-
-                case "east":
-                case "west":
-                    AxisSign = new int[] { 0, 0, -1 };
-                    break;
-            }
-
+        public override void SetOrientations()
+        {
+            BlockFacing facing = BlockFacing.FromCode(Block.Variant["side"]);
+            setAxleAxis(facing.GetCW().Axis);
         }
 
         protected override bool AddStands => false;
@@ -67,11 +60,12 @@ namespace Vintagestory.GameContent.Mechanics
         private void OnEvery50Ms(float dt)
         {
             resistance = GameMath.Clamp(resistance + dt / (bebrake.Engaged ? 20 : -10), 0, 3);
+            float speed = System.Math.Abs(CurrentSpeed);
 
-            if (bebrake.Engaged && network != null && network.Speed > 0.1)
+            if (bebrake.Engaged && speed > 0.1)
             {
                 Api.World.SpawnParticles(
-                    network.Speed * 1.7f, 
+                    speed * 1.7f,
                     ColorUtil.ColorFromRgba(60, 60, 60, 100),
                     Position.ToVec3d().Add(0.1f, 0.5f, 0.1f), 
                     Position.ToVec3d().Add(0.8f, 0.3f, 0.8f), 
@@ -87,7 +81,8 @@ namespace Vintagestory.GameContent.Mechanics
         {
             if (Api.Side != EnumAppSide.Client) return;
 
-            if (resistance > 0 && bebrake.Engaged && network != null && network.Speed > 0.1)
+            float speed = System.Math.Abs(CurrentSpeed);
+            if (resistance > 0 && bebrake.Engaged && speed > 0.1)
             {
                 if (brakeSound == null || !brakeSound.IsPlaying)
                 {
@@ -103,7 +98,7 @@ namespace Vintagestory.GameContent.Mechanics
                     brakeSound.Start();
                 }
 
-                brakeSound.SetPitch(GameMath.Clamp(network.Speed * 1.5f + 0.2f, 0.5f, 1));
+                brakeSound.SetPitch(GameMath.Clamp(speed * 1.5f + 0.2f, 0.5f, 1));
             }
             else
             {

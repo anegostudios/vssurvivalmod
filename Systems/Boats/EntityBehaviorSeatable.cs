@@ -22,7 +22,7 @@ namespace Vintagestory.GameContent
         }
     }
 
-    public class EntityBehaviorSeatable : EntityBehavior, IVariableSeatsMountable
+    public class EntityBehaviorSeatable : EntityBehavior, IVariableSeatsMountable, IRenderer
     {
         public IMountableSeat[] Seats { get; set; }
         public SeatConfig[] SeatConfigs;
@@ -31,6 +31,15 @@ namespace Vintagestory.GameContent
         ICoreAPI Api => entity.Api;
 
         bool interactMountAnySeat;
+
+
+        #region Rider hunger
+
+        public float RiderSatietyLossPerSecond = 0.12f;
+        public float RiderSatietyLossPerMovementSecond = 0.12f;
+
+        #endregion
+
 
         public event CanSitDelegate CanSit;
 
@@ -59,6 +68,8 @@ namespace Vintagestory.GameContent
             SeatConfigs = attributes["seats"].AsObject<SeatConfig[]>();
 
             interactMountAnySeat = attributes["interactMountAnySeat"].AsBool(false);
+            RiderSatietyLossPerSecond = attributes["riderSatLossPerSec"].AsFloat(RiderSatietyLossPerSecond);
+            RiderSatietyLossPerMovementSecond = attributes["riderSatLossPerMoveSec"].AsFloat(RiderSatietyLossPerMovementSecond);
 
             int i = 0;
             foreach (var seatConfig in SeatConfigs)
@@ -108,6 +119,29 @@ namespace Vintagestory.GameContent
             }
         }
 
+
+        double IRenderer.RenderOrder => 0.026;
+        int IRenderer.RenderRange => 9999;
+
+        void IRenderer.OnRenderFrame(float deltaTime, EnumRenderStage stage)
+        {
+            if (((ICoreClientAPI)Api).IsGamePaused) return;
+            foreach (var seat in Seats)
+            {
+                seat.Passenger?.Pos.SetPos(seat.SeatPosition);
+            }
+        }
+
+        public override void OnEntityDespawn(EntityDespawnData despawn)
+        {
+            (Api as ICoreClientAPI)?.Event.UnregisterRenderer(this, EnumRenderStage.Before);
+            base.OnEntityDespawn(despawn);
+        }
+
+        void IDisposable.Dispose()
+        {
+            (Api as ICoreClientAPI)?.Event.UnregisterRenderer(this, EnumRenderStage.Before);
+        }
 
         public bool TryMount(EntityAgent carriedCreature)
         {
@@ -168,7 +202,7 @@ namespace Vintagestory.GameContent
                     handled = EnumHandling.PreventSubsequent;
                     if (Api.Side == EnumAppSide.Server)
                     {
-                        Api.World.Logger.Audit("{0} mounts/embarks a {1} at {2}.", byEntity?.GetName(), entity.Code.ToShortString(), entity.Pos.AsBlockPos);
+                        Api.World.Logger.Audit("{0} mounts/embarks a {1} ({2}) at {3}.", byEntity?.GetName(), entity.Code.ToShortString(), entity.EntityId, entity.Pos.AsBlockPos);
                     }
                     return;
                 }
@@ -215,7 +249,7 @@ namespace Vintagestory.GameContent
                 {
                     if (Api.Side == EnumAppSide.Server)
                     {
-                        Api.World.Logger.Audit("{0} mounts/embarks a {1} at {2}.", byEntity?.GetName(), entity.Code.ToShortString(), entity.Pos.AsBlockPos);
+                        Api.World.Logger.Audit("{0} mounts/embarks a {1} ({2}) at {3}.", byEntity?.GetName(), entity.Code.ToShortString(), entity.EntityId, entity.Pos.AsBlockPos);
                     }
                     return;
                 }
@@ -229,7 +263,7 @@ namespace Vintagestory.GameContent
                 {
                     if (Api.Side == EnumAppSide.Server)
                     {
-                        Api.World.Logger.Audit("{0} mounts/embarks a {1} at {2}.", byEntity?.GetName(), entity.Code.ToShortString(), entity.Pos.AsBlockPos);
+                        Api.World.Logger.Audit("{0} mounts/embarks a {1} ({2}) at {3}.", byEntity?.GetName(), entity.Code.ToShortString(), entity.EntityId, entity.Pos.AsBlockPos);
                     }
                     return;
                 }
@@ -242,7 +276,7 @@ namespace Vintagestory.GameContent
             var bha = entity.GetBehavior<EntityBehaviorAttachable>();
             if (bha != null)
             {
-                var slot = bha.GetSlotConfigFromAPName(seat.Config.APName);
+                var slot = bha.GetSlotConfigFromAPName(seat.Config.APName) ?? bha.GetSlotConfigFromAPName(seat.Config.SelectionBox);
                 if (slot?.Empty == false)
                 {
                     return
@@ -279,6 +313,7 @@ namespace Vintagestory.GameContent
         {
             int index = Seats.IndexOf(s => s.SeatId == seatId);
             if (index < 0) return;
+            (Seats[index].Passenger as EntityAgent)?.TryUnmount(true);
             Seats = Seats.RemoveAt(index);
             entity.WatchedAttributes.MarkAllDirty();
         }
@@ -382,7 +417,7 @@ namespace Vintagestory.GameContent
             base.OnEntityDeath(damageSourceForDeath);
 
             foreach (var seat in Seats) {
-                (seat?.Passenger as EntityAgent)?.TryUnmount();
+                (seat?.Passenger as EntityAgent)?.TryUnmount(true);
             }
         }
     }

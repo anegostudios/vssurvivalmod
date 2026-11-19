@@ -42,7 +42,7 @@ namespace Vintagestory.GameContent
     /// {
     ///  "code": "rideable",
     ///  "interactMountAnySeat": true,
-    ///  "seats": [{ "apName": "Rider", "selectionBox": "MidAP", "bodyYawLimit": 1.83, "controllable": true, "mountOffset": { "x": -0.05, "y": -0.69, "z": 0 }, "eyeOffsetX": -0.37 }],
+    ///  "seats": [{ "apName": "Rider", "selectionBox": "MidAP", "bodyYawLimit": 1.83, "controllable": true, "riderOffset": { x: 0, y: -0.55, z: 0 }, "eyeOffsetX": -0.37 }],
     ///  "rideableGaitOrder": ["walkback", "idle", "walk", "sprint"],
     ///  "controls": {
     ///      "walkback": {
@@ -85,7 +85,7 @@ namespace Vintagestory.GameContent
     [DocumentAsJson]
     [AddDocumentationProperty("saddleBreaksRequired", "How many saddle breaks are required before entity can be ridden", "Vintagestory.API.MathTools.NatFloat", "Optional", "None", true)]
     [AddDocumentationProperty("controlScheme", "Use this on a collectible type. Overrides control scheme for when entity is ridden", "System.String", "Recommended", "None", true)]
-    public class EntityBehaviorRideable(Entity entity) : EntityBehaviorSeatable(entity), IMountable, IRenderer, IMountableListener
+    public class EntityBehaviorRideable(Entity entity) : EntityBehaviorSeatable(entity), IMountable, IRenderer, IMountableListener, IMountedHungerProvider
     {
         // List of gaits in order of keypress controls for the rideable entity. In practice, this is usually the same as ordering by increasing speed, but doesn't have to be.
         public FastSmallDictionary<EnumHabitat, List<GaitMeta>> RideableGaitOrder = new(1);
@@ -105,6 +105,7 @@ namespace Vintagestory.GameContent
         // Time the player last jumped.
         protected long lastJumpMs;
         protected bool jumpNow;
+        protected int jumpCounter;
         protected EntityAgent eagent = (EntityAgent)entity;
 
         protected FastSmallDictionary<string, ControlMeta> Controls = new(1);
@@ -120,8 +121,29 @@ namespace Vintagestory.GameContent
 
         protected ControlMeta? curControlMeta = null;
         public ControlMeta? CurrentControlMeta => curControlMeta;
+        protected string? currentRiderTurnAnimationCode;
 
         protected EnumControlScheme scheme;
+
+        #region Rider hunger
+
+        protected float riderSatietyLossPerSprintSecond = 0.36f;
+        protected float riderSatietyLossPerJump = 0.1f;
+
+        public float OnMountedHungerTick(EntityAgent mountedEntity, float deltaTime)
+        {
+            var seat = mountedEntity.MountedOn as EntityRideableSeat;
+            float penalty = RiderSatietyLossPerSecond + seat!.RiderSatietyLossPerSecond;
+            if (IsSprinting()) penalty += riderSatietyLossPerSprintSecond + seat.RiderSatietyLossPerSprintSecond;
+            else if (ebg.CurrentGait.HasMotion) penalty += RiderSatietyLossPerMovementSecond + seat.RiderSatietyLossPerMovementSecond;
+            penalty *= deltaTime; // Multiply the total by seconds
+            penalty += (riderSatietyLossPerJump + seat.RiderSatietyLossPerJump) * jumpCounter;
+
+            jumpCounter = 0;
+            return penalty;
+        }
+
+        #endregion
 
         #region Semitamed animals
 
@@ -135,6 +157,11 @@ namespace Vintagestory.GameContent
         /// </summary>
         [DocumentAsJson("Optional", "None")]
         protected string? tamedEntityCode;
+        /// <summary>
+        /// How many saddle breaks a newly spawned entity needs before it is fully tamed
+        /// </summary>
+        [DocumentAsJson("Optional", "None")]
+        protected NatFloat? saddleBreaksRequired;
 
         public int RemainingSaddleBreaks
         {
@@ -185,11 +212,7 @@ namespace Vintagestory.GameContent
 
             if (attributes["saddleBreaksRequired"].Exists)
             {
-                if (!entity.WatchedAttributes.HasAttribute("remainingSaddleBreaksRequired") && entity.Api.Side == EnumAppSide.Server)
-                {
-                    RemainingSaddleBreaks = GameMath.RoundRandom(entity.Api.World.Rand, attributes["saddleBreaksRequired"].AsObject<NatFloat>()!.nextFloat(1, entity.Api.World.Rand));
-                }
-
+                saddleBreaksRequired = attributes["saddleBreaksRequired"].AsObject<NatFloat>();
                 saddleBreakDayInterval = attributes["saddleBreakDayInterval"].AsFloat();
                 tamedEntityCode = attributes["tamedEntityCode"].AsString();
                 saddleBreakGaitCode = attributes["saddleBreakGait"].AsString();
@@ -204,6 +227,9 @@ namespace Vintagestory.GameContent
                 }
             }
 
+            riderSatietyLossPerSprintSecond = attributes["riderSatLossPerSprintSec"].AsFloat(riderSatietyLossPerSprintSecond);
+            riderSatietyLossPerJump = attributes["riderSatLossPerJump"].AsFloat(riderSatietyLossPerJump);
+
             MinGeneration = attributes["minGeneration"].AsInt(0);
             GaitOrderCodes = attributes["rideableGaitOrder"].AsObject<FastSmallDictionary<EnumHabitat, string?[]>>();
             string?[]? oldFormatLandGaits = attributes["rideableGaitOrder"].AsArray<string>();
@@ -216,8 +242,15 @@ namespace Vintagestory.GameContent
 
             foreach (var val in Controls.Values)
             {
+                val.RiderAnim?.ClientSide = true;
+                val.PassengerAnim?.ClientSide = true;
+                val.RiderTurnLeftAnim?.ClientSide = true;
+                val.RiderTurnRightAnim?.ClientSide = true;
+
                 val.RiderAnim?.Init();
                 val.PassengerAnim?.Init();
+                val.RiderTurnLeftAnim?.Init();
+                val.RiderTurnRightAnim?.Init();
             }
             curControlMeta = Controls["idle"];
 
@@ -225,6 +258,12 @@ namespace Vintagestory.GameContent
             if (entity.Api.Event is IServerEventAPI serverEvents)
             {
                 serverEvents.MountGaitReceived += ReceiveGaitFromClient;
+            }
+
+            if (entity.WatchedAttributes.GetTreeAttribute("spawner")?.GetBool("trained") == true)
+            {
+                RemainingSaddleBreaks = 0;
+                entity.WatchedAttributes.SetDouble("training", 1.0);
             }
         }
 
@@ -290,6 +329,67 @@ namespace Vintagestory.GameContent
             GaitOrderCodes = null;
 
             saddleBreakGait = ebg!.Gaits.FirstOrDefault(g => g.Value.Code == saddleBreakGaitCode).Value;
+
+            if (saddleBreaksRequired != null && entity.Api.Side == EnumAppSide.Server)
+            {
+                if (!entity.WatchedAttributes.HasAttribute("remainingSaddleBreaksRequired"))
+                {
+                    // In older saves, fully tamed entities didn't record remaining saddle breaks at all
+                    RemainingSaddleBreaks = onFirstSpawn ? GameMath.RoundRandom(entity.Api.World.Rand, saddleBreaksRequired.nextFloat(1, entity.Api.World.Rand)) : 0;
+                }
+                // For compat with elk from older saves
+                if (RemainingSaddleBreaks <= 0 && !entity.WatchedAttributes.HasAttribute("training"))
+                {
+                    entity.WatchedAttributes.SetDouble("training", 1.0);
+                }
+            }
+
+            eagent.AnimManager.OnStartAnimation += ResolveRiderAnimation;
+            eagent.AnimManager.OnAnimationReceived += ResolveRiderAnimation;
+            if (HasControllingPassenger()) RefreshCurrentGaitAnimation();
+        }
+
+        protected virtual bool ResolveRiderAnimation(ref AnimationMetaData animationMeta, ref EnumHandling handling)
+        {
+            if (!HasControllingPassenger() || animationMeta.TriggeredBy?.DefaultAnim == true) return false;
+
+            string animation = animationMeta.Animation + "-rider";
+            if (!HasAnimation(animation)) return false;
+
+            string code = animationMeta is GaitMeta ? animationMeta.Animation : animationMeta.Code;
+            animationMeta = animationMeta.Clone();
+            animationMeta.Animation = animation;
+            animationMeta.Code = code;
+            animationMeta.CodeCrc32 = AnimationMetaData.GetCrc32(code);
+
+            return false;
+        }
+
+        protected virtual bool HasControllingPassenger()
+        {
+            return Seats.Any(seat => seat.Config.Controllable && seat.Passenger != null);
+        }
+
+        protected virtual bool HasAnimation(string animation)
+        {
+            if (eagent.AnimManager.Animator?.GetAnimationState(animation) != null) return true;
+            return entity.Properties.Client.LoadedShapeForEntity?.AnimationsByCrc32.ContainsKey(AnimationMetaData.GetCrc32(animation)) == true;
+        }
+
+        protected virtual void RefreshCurrentGaitAnimation()
+        {
+            if (ebg?.CurrentGait?.Animation == null) return;
+
+            eagent.AnimManager.StopAnimation(ebg.CurrentGait.Animation);
+            eagent.AnimManager.StartAnimation(ebg.CurrentGait);
+        }
+
+        protected virtual void StopRiderAnimations()
+        {
+            foreach (string code in eagent.AnimManager.ActiveAnimationsByAnimCode.Keys.ToArray())
+            {
+                if (code.EndsWith("-rider", StringComparison.OrdinalIgnoreCase)) eagent.AnimManager.StopAnimation(code);
+            }
         }
 
         // toggleFastest lets you cycle between the fastest two gaits by calling this repeatedly - e.g. between canter and gallop, by pressing the same button again
@@ -310,10 +410,20 @@ namespace Vintagestory.GameContent
                 // If the current gait is not part of the rideable order, try to find the next fastest
                 if (currentIndex < 0)
                 {
-                    return order.FirstOrDefault(
-                        g => forward? g.MoveSpeed > currentGait.MoveSpeed : g.MoveSpeed < currentGait.MoveSpeed,
-                        order[order.Count-1]
-                    );
+                    if (forward)
+                    {
+                        return order.FirstOrDefault(
+                            g => (int)g.Direction >= (int)currentGait.Direction && g.MoveSpeed > currentGait.MoveSpeed,
+                            order[order.Count-1]
+                        );
+                    }
+                    else
+                    {
+                        return order.FirstOrDefault(
+                            g => (int)g.Direction <= (int)currentGait.Direction && g.MoveSpeed < currentGait.MoveSpeed,
+                            order[order.Count-1]
+                        );
+                    }
                 }
                 int nextIndex = forward ? currentIndex + 1 : currentIndex - 1;
 
@@ -359,6 +469,9 @@ namespace Vintagestory.GameContent
             {
                 serverEvents.MountGaitReceived -= ReceiveGaitFromClient;
             }
+
+            eagent.AnimManager.OnStartAnimation -= ResolveRiderAnimation;
+            eagent.AnimManager.OnAnimationReceived -= ResolveRiderAnimation;
 
             if (entity.Api.Side == EnumAppSide.Server)
             {
@@ -493,7 +606,6 @@ namespace Vintagestory.GameContent
             if (entity.World.ElapsedMilliseconds - lastJumpMs < 2000 && entity.World.ElapsedMilliseconds - lastJumpMs > 200 && entity.OnGround)
             {
                 eagent.StopAnimation("jump");
-                eagent.AnimManager.AnimationsDirty = true;
             }
         }
 
@@ -528,17 +640,18 @@ namespace Vintagestory.GameContent
                 if (seat.Passenger is EntityPlayer eplr)
                 {
                     eplr.Controls.LeftMouseDown = seat.Controls.LeftMouseDown;
+                    float headYawRange = ebg.CurrentGait.Code == "walkback" ? 145 * GameMath.DEG2RAD : GameMath.PIHALF;
                     if (eplr.HeadYawLimits == null)
                     {
                         eplr.BodyYawLimits = new AngleConstraint(entity.Pos.Yaw + seat.Config.MountRotation.Y * GameMath.DEG2RAD, seat.Config.BodyYawLimit ?? GameMath.PIHALF);
-                        eplr.HeadYawLimits = new AngleConstraint(entity.Pos.Yaw + seat.Config.MountRotation.Y * GameMath.DEG2RAD, GameMath.PIHALF);
+                        eplr.HeadYawLimits = new AngleConstraint(entity.Pos.Yaw + seat.Config.MountRotation.Y * GameMath.DEG2RAD, headYawRange);
                     }
                     else
                     {
                         eplr.BodyYawLimits.X = entity.Pos.Yaw + seat.Config.MountRotation.Y * GameMath.DEG2RAD;
                         eplr.BodyYawLimits.Y = seat.Config.BodyYawLimit ?? GameMath.PIHALF;
                         eplr.HeadYawLimits.X = entity.Pos.Yaw + seat.Config.MountRotation.Y * GameMath.DEG2RAD;
-                        eplr.HeadYawLimits.Y = GameMath.PIHALF;
+                        eplr.HeadYawLimits.Y = headYawRange;
                     }
 
                 }
@@ -588,10 +701,18 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-                if (!canride) continue;
+                if (!canride)
+                {
+                    if (currentRiderTurnAnimationCode != null && seat.Passenger is EntityAgent riderAgent)
+                    {
+                        riderAgent.AnimManager.StopAnimation(currentRiderTurnAnimationCode);
+                        currentRiderTurnAnimationCode = null;
+                    }
+                    continue;
+                }
 
 
-                // Only able to jump every 1500ms. Only works while on the ground. (But for clients on the pillion we omit the ground check, because the elk already left the ground before we receive the Jump control) 
+                // Only able to jump every 1500ms. Only works while on the ground. (But for clients on the pillion we omit the ground check, because the elk already left the ground before we receive the Jump control)
                 if (controls.Jump && entity.World.ElapsedMilliseconds - lastJumpMs > 1500 && entity.Alive && (entity.OnGround || coyoteTimer > 0 || (entity.Api.Side == EnumAppSide.Client && entity.EntityId != Controller.EntityId)))
                 {
                     lastJumpMs = entity.World.ElapsedMilliseconds;
@@ -653,10 +774,23 @@ namespace Vintagestory.GameContent
                 }
 
                 #region Motion update
+                AnimationMetaData? riderTurnAnimation = null;
                 if (canturn && (controls.Left || controls.Right))
                 {
                     float dir = controls.Left ? 1 : -1;
                     angularMotion += ebg.GetYawMultiplier() * dir * dt;
+                    if (!ebg.CurrentGait.HasBackwardMotion)
+                    {
+                        riderTurnAnimation = controls.Left ? curControlMeta?.RiderTurnLeftAnim : curControlMeta?.RiderTurnRightAnim;
+                    }
+                }
+
+                if (seat.Passenger is EntityAgent rider && currentRiderTurnAnimationCode != riderTurnAnimation?.Code)
+                {
+                    if (currentRiderTurnAnimationCode != null) rider.AnimManager.StopAnimation(currentRiderTurnAnimationCode);
+
+                    currentRiderTurnAnimationCode = riderTurnAnimation?.Code;
+                    if (riderTurnAnimation != null) rider.AnimManager.StartAnimation(riderTurnAnimation);
                 }
                 #endregion
             }
@@ -704,13 +838,13 @@ namespace Vintagestory.GameContent
             {
                 IsInMidJump = true;
                 jumpNow = false;
+                jumpCounter++;
                 if (eagent.Properties.Client.Renderer is EntityShapeRenderer esr)
                     esr.LastJumpMs = capi!.InWorldEllapsedMilliseconds;
 
                 nowControlMeta = Controls["jump"];
 
                 entity.AnimManager.StartAnimation(ebg.Gaits["jump"]);
-                eagent.AnimManager.AnimationsDirty = true;
 
                 EntityPlayer? entityPlayer = entity as EntityPlayer;
                 IPlayer? player = entityPlayer?.World.PlayerByUid(entityPlayer!.PlayerUID);
@@ -750,6 +884,9 @@ namespace Vintagestory.GameContent
                     ConvertToTamedAnimal();
                     return;
                 }
+                double prevTraining = entity.WatchedAttributes.GetDouble("training");
+                double initialSaddleBreaks = (RemainingSaddleBreaks + 1) / Math.Max(0.001, 1 - prevTraining);
+                entity.WatchedAttributes.SetDouble("training", 1 - Math.Max(0.001, RemainingSaddleBreaks / initialSaddleBreaks));
             }
         }
 
@@ -758,12 +895,23 @@ namespace Vintagestory.GameContent
             var api = entity.World.Api;
 
             if (api.Side == EnumAppSide.Client) return;
+
+            entity.WatchedAttributes.SetDouble("training", 1.0);
+
+            if (tamedEntityCode == null) return;
+
             var etype = api.World.GetEntityType(AssetLocation.Create(tamedEntityCode, entity.Code.Domain));
-            if (etype == null) return;
+            if (etype == null)
+            {
+                entity.Api.Logger.Error("Unable to find entity type " + tamedEntityCode + " for taming " + entity.Code);
+                return;
+            }
 
             var entitytamed = api.World.ClassRegistry.CreateEntity(etype);
             entitytamed.Pos.SetFrom(entity.Pos);
             entitytamed.WatchedAttributes = (SyncedTreeAttribute)entity.WatchedAttributes.Clone();
+
+            entitytamed.WatchedAttributes.SetLong("logicalId", entity.LogicalId);
 
             entity.Die(EnumDespawnReason.Expire);
             api.World.SpawnEntity(entitytamed);
@@ -799,6 +947,12 @@ namespace Vintagestory.GameContent
 
         public virtual void DidUnmount(EntityAgent entityAgent)
         {
+            StopRiderAnimations();
+            if (currentRiderTurnAnimationCode != null)
+            {
+                entityAgent.AnimManager.StopAnimation(currentRiderTurnAnimationCode);
+                currentRiderTurnAnimationCode = null;
+            }
             ebg.SetIdle();
             curControlMeta = null;
 
@@ -825,6 +979,7 @@ namespace Vintagestory.GameContent
         {
             UpdateControlScheme();
             mountedTotalMs = entity.Api.World.ElapsedMilliseconds;
+            RefreshCurrentGaitAnimation();
         }
 
         public override bool ToleratesDamageFrom(Entity eOther, ref EnumHandling handling)
@@ -845,26 +1000,6 @@ namespace Vintagestory.GameContent
             }
             base.GetInfoText(infotext);
         }
-
-
-    }
-
-    public class ElkAnimationManager : AnimationManager
-    {
-        public string animAppendix = "-antlers";
-
-        public override void ResetAnimation(string animCode)
-        {
-            base.ResetAnimation(animCode);
-            base.ResetAnimation(animCode + animAppendix);
-        }
-
-        public override void StopAnimation(string code)
-        {
-            base.StopAnimation(code);
-            base.StopAnimation(code + animAppendix);
-            AnimationsDirty = true;
-        }
     }
 
     public class ControlMeta : AnimationMetaData
@@ -873,6 +1008,8 @@ namespace Vintagestory.GameContent
         public float MoveSpeed; // Overrides GaitMeta MoveSpeed
         public AnimationMetaData RiderAnim;
         public AnimationMetaData PassengerAnim;
+        public AnimationMetaData? RiderTurnLeftAnim;
+        public AnimationMetaData? RiderTurnRightAnim;
 
 
         /// <summary>

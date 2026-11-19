@@ -165,13 +165,13 @@ namespace Vintagestory.GameContent
 
         public override void Start(ICoreAPI api)
         {
-            CookingRecipes = api.RegisterRecipeRegistry<RecipeRegistryGeneric<CookingRecipe>>("cookingrecipes").Recipes;
-            MetalAlloys = api.RegisterRecipeRegistry<RecipeRegistryGeneric<AlloyRecipe>>("alloyrecipes").Recipes;
+            CookingRecipes = api.RegisterCustomRegistry<RecipeRegistryGeneric<CookingRecipe>>("cookingrecipes").Recipes;
+            MetalAlloys = api.RegisterCustomRegistry<RecipeRegistryGeneric<AlloyRecipe>>("alloyrecipes").Recipes;
 
-            SmithingRecipes = api.RegisterRecipeRegistry<RecipeRegistryGeneric<SmithingRecipe>>("smithingrecipes").Recipes;
-            KnappingRecipes = api.RegisterRecipeRegistry<RecipeRegistryGeneric<KnappingRecipe>>("knappingrecipes").Recipes;
-            ClayFormingRecipes = api.RegisterRecipeRegistry<RecipeRegistryGeneric<ClayFormingRecipe>>("clayformingrecipes").Recipes;
-            BarrelRecipes = api.RegisterRecipeRegistry<RecipeRegistryGeneric<BarrelRecipe>>("barrelrecipes").Recipes;
+            SmithingRecipes = api.RegisterCustomRegistry<RecipeRegistryGeneric<SmithingRecipe>>("smithingrecipes").Recipes;
+            KnappingRecipes = api.RegisterCustomRegistry<RecipeRegistryGeneric<KnappingRecipe>>("knappingrecipes").Recipes;
+            ClayFormingRecipes = api.RegisterCustomRegistry<RecipeRegistryGeneric<ClayFormingRecipe>>("clayformingrecipes").Recipes;
+            BarrelRecipes = api.RegisterCustomRegistry<RecipeRegistryGeneric<BarrelRecipe>>("barrelrecipes").Recipes;
         }
 
 

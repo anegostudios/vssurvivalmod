@@ -1,4 +1,4 @@
-﻿using ProtoBuf;
+using ProtoBuf;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -92,10 +92,7 @@ namespace Vintagestory.GameContent
         public void DidProbe(PropickReading results, IServerPlayer splr)
         {
             var oml = api.ModLoader.GetModSystem<WorldMapManager>().MapLayers.FirstOrDefault(ml => ml is OreMapLayer) as OreMapLayer;
-            if (oml == null) return;
-
-            var readings = oml.getOrLoadReadings(splr);
-            readings.Add(results);
+            oml?.AddWaypoint(results, splr);
         }
     }
 

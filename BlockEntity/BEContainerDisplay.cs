@@ -12,13 +12,22 @@ namespace Vintagestory.GameContent
 {
     public interface IContainedInteractable
     {
-        WorldInteraction[] GetContainedInteractionHelp(BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel);
-        bool OnContainedInteractStart(BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel);
-        bool OnContainedInteractStep(float secondsUsed, BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel);
-        void OnContainedInteractStop(float secondsUsed, BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel);
-        bool OnContainedInteractCancel(float secondsUsed, BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel, EnumItemUseCancelReason cancelReason)
+        WorldInteraction[] GetContainedInteractionHelp(BlockEntity be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
         {
-            return true; // In order to avoid breaking mods we'll return true by default
+            return [];
+        }
+        bool OnContainedInteractStart(BlockEntity be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel);
+        bool OnContainedInteractStep(float secondsUsed, BlockEntity be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        {
+            return false;
+        }
+        void OnContainedInteractStop(float secondsUsed, BlockEntity be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        {
+
+        }
+        bool OnContainedInteractCancel(float secondsUsed, BlockEntity be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel, EnumItemUseCancelReason cancelReason)
+        {
+            return true;
         }
     }
 

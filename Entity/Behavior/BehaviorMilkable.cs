@@ -225,9 +225,9 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnReceivedServerPacket(int packetid, byte[] data, ref EnumHandling handled)
+        public override void OnReceivedServerPacket(int packetId, SerializedData packetData, ref EnumHandling handled)
         {
-            if (packetid == 1337)
+            if (packetId == 1337)
             {
                 clientCanContinueMilking = false;
                 (entity.Api as ICoreClientAPI)?.TriggerIngameError(this, "notready", Lang.Get("Became stressed from the milking attempt. Not milkable while stressed."));

@@ -51,7 +51,7 @@ namespace Vintagestory.API.Common
                 return;
             }
 
-            if (itemstack.Collectible.Attributes?.IsTrue("barrelMoveToLiquidSlot") == true || (stackable && itemstack.Collectible.Attributes?["waterTightContainerProps"].Exists == true))
+            if (itemstack.Collectible.Attributes?.IsTrue("barrelMoveToLiquidSlot") == true || (stackable && BlockLiquidContainerBase.GetContainableProps(itemstack) != null))
             {
                 if (stackable)
                 {
@@ -83,7 +83,8 @@ namespace Vintagestory.API.Common
             ItemSlotLiquidOnly liquidSlot = (ItemSlotLiquidOnly)inventory[1];
             IWorldAccessor world = inventory.Api.World;
 
-            if (sourceSlot?.Itemstack?.Collectible is ILiquidSink sink && !liquidSlot.Empty && sink.AllowHeldLiquidTransfer)
+            var sink = sourceSlot?.Itemstack?.Collectible?.GetCollectibleInterface<ILiquidSink>();
+            if (sink != null && !liquidSlot.Empty && sink.AllowHeldLiquidTransfer)
             {
                 ItemStack liqSlotStack = liquidSlot.Itemstack;
                 var curTargetLiquidStack = sink.GetContent(sourceSlot.Itemstack);
@@ -132,7 +133,8 @@ namespace Vintagestory.API.Common
 
             IWorldAccessor world = inventory.Api.World;
 
-            if (sourceSlot.Itemstack.Collectible is ILiquidSource source && source.AllowHeldLiquidTransfer && source.GetCurrentLitres(sourceSlot.Itemstack) > 0)
+            var source = sourceSlot.Itemstack.Collectible.GetCollectibleInterface<ILiquidSource>();
+            if (source != null && source.AllowHeldLiquidTransfer)
             {
                 ItemSlotLiquidOnly liquidSlot = inventory[1] as ItemSlotLiquidOnly;
 

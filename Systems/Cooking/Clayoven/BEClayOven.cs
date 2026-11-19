@@ -166,7 +166,8 @@ namespace Vintagestory.GameContent
 
         public virtual bool OnInteract(IPlayer byPlayer, BlockSelection bs)
         {
-            ItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
+            ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
+            ItemSlot slot = byPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative ? new DummySlot(hotbarSlot.Itemstack?.Clone()) : hotbarSlot;
 
             if (slot.Empty)
             {
@@ -196,7 +197,7 @@ namespace Vintagestory.GameContent
                     return false;
 
                 }
-                else if (colObj.Attributes?["bakingProperties"] != null || combustibleProperties?.SmeltingType == EnumSmeltType.Bake && combustibleProperties.MeltingPoint < maxBakingTemperatureAccepted)  //Can't meaningfully bake anything requiring heat over 260 in the basic clay oven
+                else if (BakingProperties.ReadFrom(slot.Itemstack) != null || combustibleProperties?.SmeltingType == EnumSmeltType.Bake && combustibleProperties.MeltingPoint < maxBakingTemperatureAccepted)  //Can't meaningfully bake anything requiring heat over 260 in the basic clay oven
                 {
                     if (slot.Itemstack.Equals(Api.World, lastRemoved, GlobalConstants.IgnoredStackAttributes) && !ovenInv[0].Empty)
                     {
@@ -449,7 +450,7 @@ namespace Vintagestory.GameContent
 
 
             // Sync to client every 500ms
-            if (++syncCount % 5 == 0 && (IsBurning || prevOvenTemperature != ovenTemperature || !Inventory[0].Empty || !Inventory[1].Empty || !Inventory[2].Empty || !Inventory[3].Empty))
+            if (++syncCount % 5 == 0 && (IsBurning || (int)prevOvenTemperature != (int)ovenTemperature)) // || !Inventory[0].Empty || !Inventory[1].Empty || !Inventory[2].Empty || !Inventory[3].Empty)) - this is not needed. causes chunk redraws inworld and in the map twice a second for each block entity. big performance leak. Tyron Nov17, 2026
             {
                 MarkDirty();
                 prevOvenTemperature = ovenTemperature;
@@ -780,7 +781,7 @@ namespace Vintagestory.GameContent
                     break;
                 case EnumOvenContentMode.Quadrants:
                     // Top left
-                    offs[0] = new Vec3f(-2/16f, 1 / 16f, -2.5f / 16f);
+                    offs[0] = new Vec3f(-2 / 16f, 1 / 16f, -2.5f / 16f);
                     // Top right
                     offs[1] = new Vec3f(-2 / 16f, 1 / 16f, 2.5f / 16f);
                     // Bot left
@@ -789,7 +790,7 @@ namespace Vintagestory.GameContent
                     offs[3] = new Vec3f(3 / 16f, 1 / 16f, 2.5f / 16f);
                     break;
                 case EnumOvenContentMode.SingleCenter:
-                    offs[0] = new Vec3f(0, 1/16f, 0);
+                    offs[0] = new Vec3f(0, 1 / 16f, 0);
                     break;
             }
 

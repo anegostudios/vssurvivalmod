@@ -228,10 +228,26 @@ namespace Vintagestory.GameContent
             return inSlot.Itemstack.GetName();
         }
 
-        public bool OnContainedInteractStart(BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        public bool OnContainedInteractStart(BlockEntity be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
         {
             ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
-            if (hotbarSlot.Empty || hotbarSlot.Itemstack.Collectible is not ILiquidInterface heldObj) return false;
+            if (hotbarSlot.Empty) return false;
+
+            if (byPlayer.WorldData.EntityControls.ShiftKey &&
+                slot.Itemstack?.Collectible.Attributes?.IsTrue("mealContainer") == true &&
+                hotbarSlot.Itemstack.Block is BlockCookedContainerBase mealContainer &&
+                mealContainer.GetQuantityServings(be.Api.World, hotbarSlot.Itemstack) > 0)
+            {
+                // This allows us to pour a meal into an empty bowl in ground storage without center placing it
+                mealContainer.ServeIntoStack(slot, hotbarSlot, be.Api.World);
+                slot.MarkDirty();
+                (be as BlockEntityDisplay)?.MarkMeshesDirty();
+                be.MarkDirty(true);
+                return true;
+            }
+
+            var heldObj = hotbarSlot.Itemstack?.Collectible?.GetCollectibleInterface<ILiquidInterface>();
+            if (heldObj == null) return false;
 
             bool singleTake = byPlayer.WorldData.EntityControls.ShiftKey;
             bool singlePut = byPlayer.WorldData.EntityControls.CtrlKey;
@@ -277,17 +293,7 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-        public bool OnContainedInteractStep(float secondsUsed, BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
-        {
-            return false;
-        }
-
-        public void OnContainedInteractStop(float secondsUsed, BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
-        {
-            return;
-        }
-
-        public WorldInteraction[] GetContainedInteractionHelp(BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        public WorldInteraction[] GetContainedInteractionHelp(BlockEntity be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
         {
             bool notProtected = true;
 
@@ -297,7 +303,23 @@ namespace Vintagestory.GameContent
                 if (resp != EnumWorldAccessResponse.Granted) notProtected = false;
             }
 
-            if (notProtected) return interactions;
+            if (notProtected)
+            {
+                if (slot.Itemstack?.Collectible.Attributes?.IsTrue("mealContainer") == true)
+                {
+                    return
+                    [
+                        ..interactions,
+                        new() {
+                            ActionLangCode = "blockhelp-cookingcontainer-putfood",
+                            MouseButton = EnumMouseButton.Right,
+                            HotKeyCode = "shift",
+                            Itemstacks = BlockCookedContainerBase.TooltipMealStacks(api)
+                        }
+                    ];
+                }
+                return interactions;
+            }
 
             return [];
         }

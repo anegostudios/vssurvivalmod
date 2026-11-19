@@ -1,5 +1,7 @@
-﻿using Vintagestory.API.Common;
+using Vintagestory.API.Client;
+using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 #nullable disable
 
@@ -37,6 +39,19 @@ namespace Vintagestory.GameContent
             }
 
             base.OnInteract(byEntity, slot, hitPosition, mode);
+        }
+
+        public override WorldInteraction[] GetInteractionHelp(IClientWorldAccessor world, EntitySelection es, IClientPlayer player)
+        {
+            return [
+                new WorldInteraction()
+                {
+                    ActionLangCode = "entityhelp-strawdummy-pickup",
+                    MouseButton = EnumMouseButton.Right,
+                    HotKeyCode = "shift"
+                },
+                ..base.GetInteractionHelp(world, es, player)
+            ];
         }
 
     }

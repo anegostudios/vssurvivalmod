@@ -15,13 +15,13 @@ using Vintagestory.GameContent.Mechanics;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityGrindingWheel : BlockEntity, IMechanicalPowerRenderable
+    public class BlockEntityGrindingWheel : BlockEntity, IMechanicalPowerRenderable, IRotatable
     {
         public BlockFacing Facing => BlockFacing.FromCode(Block.Variant["side"]);
         public virtual BlockPos Position { get { return Pos; } }
         public virtual Vec4f LightRgba { get; set; } = new Vec4f();
         public virtual int[] AxisSign { get; set; }
-        public virtual float AngleRad => GetBehavior<BEBehaviorMPConsumer>().AngleRad;
+        public virtual float AngleRad => mechanicalPower?.AngleRad ?? 0;
 
         protected CompositeShape shape = null;
         protected MechanicalPowerMod manager;
@@ -30,33 +30,30 @@ namespace Vintagestory.GameContent
         protected ILoadedSound turnSound;
         public Dictionary<string, float> PlayersGrinding = new Dictionary<string, float>();
         public bool Grinding;
+        ItemStack grindstoneStack;
+        BEBehaviorMPGrindingWheel mechanicalPower;
+        public bool HasGrindstone => (Block as BlockGrindingWheelAssembly)?.IsGrindstone(grindstoneStack) == true;
+
 
 
         public virtual CompositeShape Shape
         {
-            get { return shape; }
+            get { return mechanicalPower?.Shape ?? shape; }
             set
             {
-                CompositeShape prev = Shape;
-                if (prev != null && manager != null)
-                {
-                    manager.RemoveDeviceForRender(this);
-                    this.shape = value;
-                    manager.AddDeviceForRender(this);
-                }
-                else
-                {
-                    this.shape = value;
-                }
+                shape = value;
+                if (mechanicalPower != null) mechanicalPower.Shape = value;
             }
         }
 
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
-            this.Shape = this.Block.Shape;
+            mechanicalPower = GetBehavior<BEBehaviorMPGrindingWheel>();
             manager = Api.ModLoader.GetModSystem<MechanicalPowerMod>();
-            manager.AddDeviceForRender(this);
+            shape = mechanicalPower?.Shape ?? Block.Shape;
+            mechanicalPower?.RefreshComponents();
+            scheduleLegacyMigration();
 
             AxisSign = new int[3] { 0, 0, 0 };
             switch (Facing.Index)
@@ -77,14 +74,72 @@ namespace Vintagestory.GameContent
 
             capi = api as ICoreClientAPI;
 
-            RegisterGameTickListener(checkIsGrinding, 100);
+            if (mechanicalPower != null) RegisterGameTickListener(checkIsGrinding, 100);
+        }
+
+        const string partsVersionKey = "grindingWheelParts";
+        ITreeAttribute legacyWheelState;
+        long legacyMigrationCallback;
+
+
+        void scheduleLegacyMigration()
+        {
+            if (Api?.Side != EnumAppSide.Server || legacyWheelState == null || legacyMigrationCallback != 0) return;
+
+            // Replacing this entity while its chunk is initializing would change the collection being loaded.
+            legacyMigrationCallback = RegisterDelayedCallback(migrateLegacyWheel, 0);
+        }
+
+        void migrateLegacyWheel(float dt)
+        {
+            legacyMigrationCallback = 0;
+            IBlockAccessor blockAccessor = Api.World.BlockAccessor;
+            if (legacyWheelState == null || blockAccessor.GetBlockEntity(Pos) != this || Block is not BlockGrindingWheel frameBlock) return;
+
+            BlockGrindingWheelAssembly assembly = frameBlock.AssemblyBlock as BlockGrindingWheelAssembly
+                ?? throw new InvalidOperationException($"Grinding wheel frame {Block.Code} has no grinding wheel assembly");
+            BlockAxle axle = Api.World.GetBlock(AssetLocation.Create(frameBlock.Attributes["legacyAxleBlockCode"].AsString(), frameBlock.Code.Domain)) as BlockAxle
+                ?? throw new InvalidOperationException($"Grinding wheel frame {Block.Code} has no legacy axle block");
+            axle = Api.World.GetBlock(axle.CodeWithVariant("rotation", assembly.Variant["rotation"])) as BlockAxle
+                ?? throw new InvalidOperationException($"Grinding wheel frame {Block.Code} has no legacy axle for rotation {assembly.Variant["rotation"]}");
+            Item grindstone = Api.World.GetItem(AssetLocation.Create(frameBlock.Attributes["legacyGrindstoneItemCode"].AsString(), frameBlock.Code.Domain))
+                ?? throw new InvalidOperationException($"Grinding wheel frame {Block.Code} has no legacy grindstone item");
+            ItemStack stoneStack = new(grindstone);
+            if (!assembly.IsGrindstone(stoneStack)) throw new InvalidOperationException($"Grinding wheel frame {Block.Code} has an invalid legacy grindstone item");
+
+            ITreeAttribute state = legacyWheelState.Clone();
+            state.SetBool(partsVersionKey, true);
+            state.SetInt("posx", Pos.X);
+            state.SetInt("posy", Pos.InternalY);
+            state.SetInt("posz", Pos.Z);
+            state.SetString("blockCode", assembly.Code.ToShortString());
+
+            blockAccessor.SetBlock(assembly.BlockId, Pos);
+            BlockEntityGrindingWheel wheel = blockAccessor.GetBlockEntity(Pos) as BlockEntityGrindingWheel
+                ?? throw new InvalidOperationException($"Grinding wheel assembly {assembly.Code} has no grinding wheel block entity");
+            wheel.FromTreeAttributes(state, Api.World);
+            wheel.OnBlockPlaced(new ItemStack(axle));
+            wheel.GetBehavior<BEBehaviorAxleAttachmentFrame>().SetFrameStack(new ItemStack(frameBlock));
+            wheel.SetGrindstone(stoneStack);
+            assembly.WasPlaced(Api.World, Pos, null);
         }
 
         long sparkTickListener;
-        float turnSpeed => GetBehavior<BEBehaviorMPConsumer>().TrueSpeed;
+        float turnSpeed => Math.Abs(mechanicalPower?.CurrentSpeed ?? 0);
 
         private void checkIsGrinding(float dt)
         {
+            if (!HasGrindstone)
+            {
+                PlayersGrinding.Clear();
+                if (Grinding)
+                {
+                    Grinding = false;
+                    if (Api.Side == EnumAppSide.Server) MarkDirty(true);
+                }
+                stopSounds();
+                return;
+            }
             if (Api.Side == EnumAppSide.Server)
             {
                 if (Grinding && PlayersGrinding.Count == 0)
@@ -166,10 +221,10 @@ namespace Vintagestory.GameContent
                 turnSound.Start();
             }
 
-            if (Math.Abs(turnSpeed) > 0.05)
+            if (turnSpeed > 0.05)
             {
                 if (!turnSound.IsPlaying) turnSound.Start();
-                turnSound.SetPitch(Math.Abs(turnSpeed));
+                turnSound.SetPitch(turnSpeed);
             } else
             {
                 if (turnSound != null && turnSound.IsPlaying) turnSound.Stop();
@@ -179,7 +234,7 @@ namespace Vintagestory.GameContent
 
             if (Grinding)
             {
-                grindSound.SetPitch(Math.Abs(turnSpeed));
+                grindSound.SetPitch(turnSpeed);
 
                 if (sparkTickListener == 0)
                 {
@@ -229,7 +284,9 @@ namespace Vintagestory.GameContent
             Api.World.SpawnParticles(props);
         }
 
-        protected MeshData StandMesh => ObjectCacheUtil.GetOrCreate(capi, "grindingwheel-standmesh" + Facing.Code, () => getMesh(["stand1/*", "stand2/*"]));
+        BlockGrindingWheel frameBlock => Block as BlockGrindingWheel ?? (Block as BlockGrindingWheelAssembly)?.FrameBlock as BlockGrindingWheel;
+
+        protected MeshData StandMesh => frameBlock.GetFrameMesh(capi, capi.Tesselator, GetBehavior<BEBehaviorAxleAttachmentFrame>().GetFrameStack());
         protected MeshData getMesh(string[] selEles)
         {
             Shape shape = API.Common.Shape.TryGet(capi, "shapes/block/wood/mechanics/grindingwheel.json");
@@ -254,32 +311,90 @@ namespace Vintagestory.GameContent
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
-            LightRgba = Api.World.BlockAccessor.GetLightRGBs(Pos);
-            mesher.AddMeshData(StandMesh);
+            base.OnTesselation(mesher, tesselator);
+            LightRgba = mechanicalPower?.LightRgba ?? Api.World.BlockAccessor.GetLightRGBs(Pos);
+            mesher.AddMeshData(frameBlock.GetFrameMesh(capi, tesselator, GetBehavior<BEBehaviorAxleAttachmentFrame>().GetFrameStack()));
             return true;
         }
+
+        public bool SetGrindstone(ItemStack stack)
+        {
+            if (HasGrindstone || Block is not BlockGrindingWheelAssembly assembly || !assembly.IsGrindstone(stack)) return false;
+
+            grindstoneStack = stack.Clone();
+            grindstoneStack.StackSize = 1;
+            mechanicalPower?.RefreshComponents();
+            MarkDirty(true);
+            return true;
+        }
+
+        public ItemStack GetGrindstoneStack() => HasGrindstone ? grindstoneStack.Clone() : null;
+
+        public string GetGrindstoneMaterial() => HasGrindstone && grindstoneStack.Collectible.Variant.TryGetValue("stone", out string stone) ? stone : null;
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
         {
             base.FromTreeAttributes(tree, worldAccessForResolve);
-
-            if (worldAccessForResolve.Side == EnumAppSide.Client)
-            {
-                Grinding = tree.GetBool("grinding");
-            }
+            grindstoneStack = tree.GetItemstack("grindstoneStack");
+            grindstoneStack?.ResolveBlockOrItem(worldAccessForResolve);
+            Grinding = HasGrindstone && tree.GetBool("grinding");
+            legacyWheelState = Block is BlockGrindingWheel && tree.HasAttribute("grinding") && !tree.HasAttribute(partsVersionKey) ? tree.Clone() : null;
+            if (Api != null) mechanicalPower?.RefreshComponents();
+            scheduleLegacyMigration();
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
         {
             base.ToTreeAttributes(tree);
-
             tree.SetBool("grinding", Grinding);
+            if (grindstoneStack == null) tree.RemoveAttribute("grindstoneStack");
+            else tree.SetItemstack("grindstoneStack", grindstoneStack);
+            if (legacyWheelState != null)
+            {
+                tree.MergeTree(legacyWheelState);
+                tree.SetInt("posx", Pos.X);
+                tree.SetInt("posy", Pos.InternalY);
+                tree.SetInt("posz", Pos.Z);
+                tree.SetString("blockCode", Block.Code.ToShortString());
+            }
+            else tree.SetBool(partsVersionKey, true);
+        }
+
+        public override void OnLoadCollectibleMappings(IWorldAccessor worldForNewMappings, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed, bool resolveImports)
+        {
+            base.OnLoadCollectibleMappings(worldForNewMappings, oldBlockIdMapping, oldItemIdMapping, schematicSeed, resolveImports);
+            if (grindstoneStack != null)
+            {
+                if (!grindstoneStack.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForNewMappings) || (Block as BlockGrindingWheelAssembly)?.IsGrindstone(grindstoneStack) != true)
+                {
+                    grindstoneStack = null;
+                }
+                else
+                {
+                    grindstoneStack.Collectible.OnLoadCollectibleMappings(worldForNewMappings, new DummySlot(grindstoneStack), oldBlockIdMapping, oldItemIdMapping, resolveImports);
+                }
+            }
+            if (Api != null) mechanicalPower?.RefreshComponents();
+        }
+
+        public override void OnStoreCollectibleMappings(Dictionary<int, AssetLocation> blockIdMapping, Dictionary<int, AssetLocation> itemIdMapping)
+        {
+            base.OnStoreCollectibleMappings(blockIdMapping, itemIdMapping);
+            grindstoneStack?.Collectible?.OnStoreCollectibleMappings(Api.World, new DummySlot(grindstoneStack), blockIdMapping, itemIdMapping);
+        }
+
+        public void OnTransformed(IWorldAccessor worldAccessor, ITreeAttribute tree, int degreeRotation, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, EnumAxis? flipAxis)
+        {
+            foreach (var behavior in Behaviors)
+            {
+                (behavior as IRotatable)?.OnTransformed(worldAccessor, tree, degreeRotation, oldBlockIdMapping, oldItemIdMapping, flipAxis);
+            }
         }
 
         public bool OnInteractStart(IPlayer byPlayer, BlockSelection blockSel)
         {
-            if (!canBuff(byPlayer.InventoryManager.ActiveHotbarSlot)) return false;
-            if (Math.Abs(turnSpeed) < 0.1) return false;
+            if (!HasGrindstone || !canBuff(byPlayer.InventoryManager.ActiveHotbarSlot)) return false;
+            if (turnSpeed < 0.1) return false;
 
             PlayersGrinding[byPlayer.PlayerUID]=0;
             if (grindSound == null) loadGrindSound();
@@ -297,9 +412,20 @@ namespace Vintagestory.GameContent
 
         public bool OnInteractStep(float secondsUsed, IPlayer byPlayer, BlockSelection blockSel)
         {
-            if (!canBuff(byPlayer.InventoryManager.ActiveHotbarSlot)) return false;
+            if (!HasGrindstone || !canBuff(byPlayer.InventoryManager.ActiveHotbarSlot)) return false;
 
             return true;
+        }
+
+        void stopSounds()
+        {
+            turnSound?.Stop();
+            grindSound?.Stop();
+            if (sparkTickListener != 0)
+            {
+                UnregisterGameTickListener(sparkTickListener);
+                sparkTickListener = 0;
+            }
         }
 
         public override void OnBlockUnloaded()

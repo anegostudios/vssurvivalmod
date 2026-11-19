@@ -31,3 +31,6 @@ dotnet_diagnostic.S1104.severity = none
 
 # CA2241: Provide correct arguments to formatting methods
 dotnet_diagnostic.CA2241.severity = error
+
+# xUnit2013 - Do not use equality check to check for collection size.
+dotnet_diagnostic.xUnit2013.severity = suggestion

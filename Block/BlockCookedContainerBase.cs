@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -399,7 +400,7 @@ namespace Vintagestory.GameContent
 
 
 
-        public virtual bool OnContainedInteractStart(BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        public virtual bool OnContainedInteractStart(BlockEntity be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
         {
             var targetSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
             if (targetSlot.Empty) return false;
@@ -432,17 +433,7 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-        public bool OnContainedInteractStep(float secondsUsed, BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
-        {
-            return false;
-        }
-
-        public void OnContainedInteractStop(float secondsUsed, BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
-        {
-
-        }
-
-        public virtual WorldInteraction[] GetContainedInteractionHelp(BlockEntityContainer be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        public virtual WorldInteraction[] GetContainedInteractionHelp(BlockEntity be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
         {
             bool notProtected = true;
 
@@ -485,6 +476,77 @@ namespace Vintagestory.GameContent
             };
 
             return dummySlot;
+        }
+
+        public static ItemStack[] TooltipMealStacks(ICoreAPI api)
+        {
+            // We want to create different random meals for all cooking pot and crock variants,
+            // We pick out just one random recipe to use for all meals for performance reasons
+            return ObjectCacheUtil.GetOrCreate(api, "tooltipMealStacks", () =>
+            {
+                CookingRecipe[] recipes = api.GetCookingRecipes().Where(recipe => recipe.CooksInto == null).ToArray();
+                var selRecipe = recipes[api.World.Rand.Next(recipes.Length)];
+                var possibleStacks = api.World.Collectibles.Select(obj => new ItemStack(obj));
+                List<ItemStack> mealContainers = [];
+                foreach (var block in api.World.Blocks)
+                {
+                    if (block is not BlockCookedContainerBase) continue;
+                    if (block.Attributes?["isDirtyPot"].AsBool() == true) continue;
+                    mealContainers.Add(new ItemStack(block));
+                }
+
+                Dictionary<CookingRecipeIngredient, HashSet<ItemStack?>> valStacksByIng = [];
+
+                foreach (var ingredient in selRecipe.Ingredients!)
+                {
+                    HashSet<ItemStack?> ingredientStacks = [];
+
+                    ingredient.Resolve(api.World, "tooltip recipe randomizer");
+                    foreach (var astack in possibleStacks)
+                    {
+                        if (ingredient.GetMatchingStack(astack) is not CookingRecipeStack vstack) continue;
+
+                        ItemStack stack = astack.Clone();
+                        stack.StackSize = vstack.StackSize;
+
+                        if (BlockLiquidContainerBase.GetContainableProps(stack) is WaterTightContainableProps props)
+                        {
+                            stack.StackSize *= (int)(props.ItemsPerLitre * ingredient.PortionSizeLitres);
+                        }
+
+                        ingredientStacks.Add(stack);
+                    }
+
+                    var validStacks = ingredient.ValidStacks.Select(vStack => vStack.ResolvedItemstack).Where(stack => stack != null);
+
+                    foreach (var vstack in validStacks)
+                    {
+                        if (vstack == null) continue;
+                        ItemStack stack = vstack.Clone();
+
+                        if (BlockLiquidContainerBase.GetContainableProps(stack) is WaterTightContainableProps props)
+                        {
+                            stack.StackSize *= (int)(props.ItemsPerLitre * ingredient.PortionSizeLitres);
+                        }
+
+                        ingredientStacks.Add(stack);
+                    }
+
+                    if (ingredient.MinQuantity <= 0) ingredientStacks.Add(null);
+
+                    valStacksByIng.Add(ingredient.Clone(), ingredientStacks);
+                }
+
+                List<ItemStack> tooltipStacks = [];
+                foreach (var mealStack in mealContainers)
+                {
+                    (mealStack.Block as BlockCookedContainerBase)?.SetContents(selRecipe.Code, mealStack, selRecipe.GenerateRandomMeal(api, ref valStacksByIng, null));
+                    tooltipStacks.Add(mealStack);
+                }
+
+                valStacksByIng = null;
+                return tooltipStacks.ToArray();
+            });
         }
     }
 

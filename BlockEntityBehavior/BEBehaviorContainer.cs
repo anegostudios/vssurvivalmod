@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent;
 #nullable disable
@@ -22,6 +23,18 @@ public abstract class BEBehaviorContainer : BlockEntityBehavior
         Inventory.Pos = Pos;
         Inventory.Api = api;
         Inventory.ResolveBlocksOrItems();
+        container.Init(api, () => Pos, () => Blockentity.MarkDirty(true));
+        Blockentity.RegisterGameTickListener(OnTick, 10000);
+    }
+
+    private void OnTick(float dt)
+    {
+        container.OnTick(dt);
+    }
+
+    public float GetPerishRate()
+    {
+        return container.GetPerishRate();
     }
 
     public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
@@ -62,5 +75,19 @@ public abstract class BEBehaviorContainer : BlockEntityBehavior
         {
             slot.Itemstack?.Collectible.OnStoreCollectibleMappings(Api.World, slot, blockIdMapping, itemIdMapping);
         }
+    }
+
+    public override bool OnPlacementBySchematicCustom(ICoreServerAPI sapi, IBlockAccessor worldAccessor, ITreeAttribute schematicTreeData)
+    {
+        var result = false;
+        foreach (var slot in Inventory)
+        {
+            if (slot.Itemstack != null)
+            {
+                result |= slot.Itemstack.Collectible.OnPlacementBySchematicCustom(sapi ,slot, schematicTreeData);
+            }
+        }
+
+        return result;
     }
 }

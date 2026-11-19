@@ -14,10 +14,10 @@ namespace Vintagestory.GameContent.Mechanics
         CustomMeshDataPartFloat matrixAndLightFloats3;
         CustomMeshDataPartFloat matrixAndLightFloats4;
         CustomMeshDataPartFloat matrixAndLightFloats5;
-        MeshRef blockMeshRef1;
-        MeshRef blockMeshRef2;
-        MeshRef blockMeshRef3;
-        MeshRef blockMeshRef4;
+        MultiTextureMeshRef blockMeshRef1;
+        MultiTextureMeshRef blockMeshRef2;
+        MultiTextureMeshRef blockMeshRef3;
+        MultiTextureMeshRef blockMeshRef4;
         Vec3f axisCenter = new Vec3f(0.5f, 0.5f, 0.5f);
 
         public CreativeRotorRenderer(ICoreClientAPI capi, MechanicalPowerMod mechanicalPowerMod, Block textureSoureBlock, CompositeShape shapeLoc) : base(capi, mechanicalPowerMod)
@@ -44,17 +44,16 @@ namespace Vintagestory.GameContent.Mechanics
             //blockMesh4.Rgba2 = null;
 
             int count = (16 + 4) * 2100;
-            // 16 floats matrix, 4 floats light rgbs
-            blockMesh1.CustomFloats = matrixAndLightFloats1 = createCustomFloats(count);
-            blockMesh2.CustomFloats = matrixAndLightFloats2 = createCustomFloats(count);
-            blockMesh3.CustomFloats = matrixAndLightFloats3 = createCustomFloats(count);
-            blockMesh4.CustomFloats = matrixAndLightFloats4 = createCustomFloats(count);
+            matrixAndLightFloats1 = createCustomFloats(count);
+            matrixAndLightFloats2 = createCustomFloats(count);
+            matrixAndLightFloats3 = createCustomFloats(count);
+            matrixAndLightFloats4 = createCustomFloats(count);
             matrixAndLightFloats5 = createCustomFloats(count);
 
-            this.blockMeshRef1 = capi.Render.UploadMesh(blockMesh1);
-            this.blockMeshRef2 = capi.Render.UploadMesh(blockMesh2);
-            this.blockMeshRef3 = capi.Render.UploadMesh(blockMesh3);
-            this.blockMeshRef4 = capi.Render.UploadMesh(blockMesh4);
+            this.blockMeshRef1 = uploadInstancedMesh(blockMesh1, matrixAndLightFloats1);
+            this.blockMeshRef2 = uploadInstancedMesh(blockMesh2, matrixAndLightFloats2);
+            this.blockMeshRef3 = uploadInstancedMesh(blockMesh3, matrixAndLightFloats3);
+            this.blockMeshRef4 = uploadInstancedMesh(blockMesh4, matrixAndLightFloats4);
         }
 
         private CustomMeshDataPartFloat createCustomFloats(int count)
@@ -174,28 +173,13 @@ namespace Vintagestory.GameContent.Mechanics
 
             if (quantityBlocks > 0)
             {
-                matrixAndLightFloats1.Count = quantityBlocks * 20;
-                updateMesh.CustomFloats = matrixAndLightFloats1;
-                capi.Render.UpdateMesh(blockMeshRef1, updateMesh);
-                capi.Render.RenderMeshInstanced(blockMeshRef1, quantityBlocks);
-                matrixAndLightFloats2.Count = quantityBlocks * 20;
-                updateMesh.CustomFloats = matrixAndLightFloats2;
-                capi.Render.UpdateMesh(blockMeshRef2, updateMesh);
-                capi.Render.RenderMeshInstanced(blockMeshRef2, quantityBlocks);
-                matrixAndLightFloats3.Count = quantityBlocks * 20;
-                updateMesh.CustomFloats = matrixAndLightFloats3;
-                capi.Render.UpdateMesh(blockMeshRef3, updateMesh);
-                capi.Render.RenderMeshInstanced(blockMeshRef3, quantityBlocks);
+                renderInstancedMesh(prog, blockMeshRef1, matrixAndLightFloats1, quantityBlocks);
+                renderInstancedMesh(prog, blockMeshRef2, matrixAndLightFloats2, quantityBlocks);
+                renderInstancedMesh(prog, blockMeshRef3, matrixAndLightFloats3, quantityBlocks);
 
                 //Sub elements 4 and 5 are the two spinbar balls, each has the exact same mesh (blockMeshRef4) but a different transform
-                matrixAndLightFloats4.Count = quantityBlocks * 20;
-                updateMesh.CustomFloats = matrixAndLightFloats4;
-                capi.Render.UpdateMesh(blockMeshRef4, updateMesh);
-                capi.Render.RenderMeshInstanced(blockMeshRef4, quantityBlocks);
-                matrixAndLightFloats5.Count = quantityBlocks * 20;
-                updateMesh.CustomFloats = matrixAndLightFloats5;
-                capi.Render.UpdateMesh(blockMeshRef4, updateMesh);
-                capi.Render.RenderMeshInstanced(blockMeshRef4, quantityBlocks);
+                renderInstancedMesh(prog, blockMeshRef4, matrixAndLightFloats4, quantityBlocks);
+                renderInstancedMesh(prog, blockMeshRef4, matrixAndLightFloats5, quantityBlocks);
             }
         }
 

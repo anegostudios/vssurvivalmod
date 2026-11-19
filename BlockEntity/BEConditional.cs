@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Client;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
@@ -58,17 +58,7 @@ namespace Vintagestory.GameContent
             return (entityCondParser.GetValue() as Entity[]).Length > 0 ? 2 : 1;
         }
 
-        Caller getCaller()
-        {
-            return new Caller()
-            {
-                Type = EnumCallerType.Console,
-                CallerRole = "admin",
-                CallerPrivileges = new string[] { "*" },
-                FromChatGroupId = GlobalConstants.ConsoleGroup,
-                Pos = new Vec3d(0.5, 0.5, 0.5).Add(this.Pos)
-            };
-        }
+        Caller getCaller() => Caller.FromConsole(pos: new Vec3d(0.5, 0.5, 0.5).Add(this.Pos));
 
         public override bool OnInteract(Caller caller)
         {

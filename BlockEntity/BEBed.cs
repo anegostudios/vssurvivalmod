@@ -4,7 +4,6 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
 #nullable disable
@@ -191,18 +190,16 @@ namespace Vintagestory.GameContent
 
                 foreach (BlockFacing facing in BlockFacing.HORIZONTALS)
                 {
-                    Vec3d placePos = Pos.ToVec3d().AddCopy(facing).Add(0.5, 0.001, 0.5);
-                    Vec3d placePosFeet = feetPos.ToVec3d().AddCopy(facing).Add(0.5, 0.001, 0.5);
+                    Vec3d placePos = Pos.ToVec3d().Add(facing).Add(0.5, 0.001, 0.5);
+                    Vec3d placePosFeet = feetPos.ToVec3d().Add(facing).Add(0.5, 0.001, 0.5);
 
                     if (!Api.World.CollisionTester.IsColliding(Api.World.BlockAccessor, entityAgent.SelectionBox, placePos, false))
                     {
-                        placePos.Y %= BlockPos.DimensionBoundary;
                         entityAgent.TeleportTo(placePos);
                         break;
                     }
                     if (!Api.World.CollisionTester.IsColliding(Api.World.BlockAccessor, entityAgent.SelectionBox, placePosFeet, false))
                     {
-                        placePosFeet.Y %= BlockPos.DimensionBoundary;
                         entityAgent.TeleportTo(placePosFeet);
                         break;
                     }

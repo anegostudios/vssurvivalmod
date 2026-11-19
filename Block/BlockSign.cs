@@ -23,7 +23,8 @@ namespace Vintagestory.GameContent
     ///     "textVoxelHeight": 6,
     ///     "fontName": "Almendra",
     ///     "verticalAlign": "Middle",
-    ///     "boldFont": true
+    ///     "boldFont": true,
+    ///     "maxLength": 1000
     /// }
     /// </code></example>
     [DocumentAsJson]
@@ -101,6 +102,12 @@ namespace Vintagestory.GameContent
         [DocumentAsJson("Optional", "false")]
         public bool WithScrollbar = false;
 
+        /// <summary>
+        /// The total number of characters allowed. -1 means no limit.
+        /// </summary>
+        [DocumentAsJson("Optional", "-1")]
+        public int MaxLength = -1;
+
         public TextAreaConfig CopyWithFontSize(float fontSize)
         {
             return new TextAreaConfig()
@@ -116,7 +123,8 @@ namespace Vintagestory.GameContent
                 textVoxelOffsetY = textVoxelOffsetY,
                 textVoxelOffsetZ = textVoxelOffsetZ,
                 WithScrollbar = WithScrollbar,
-                VerticalAlign = VerticalAlign
+                VerticalAlign = VerticalAlign,
+                MaxLength = MaxLength,
             };
         }
     }
@@ -139,6 +147,7 @@ namespace Vintagestory.GameContent
             {
                 signConfig = this.Attributes.AsObject<TextAreaConfig>(signConfig);
             }
+            signConfig.MaxLength = BlockEntitySign.MaxTextLength;
 
             if (api.Side != EnumAppSide.Client) return;
             AfterSignRenderer.Registered = false;

@@ -77,10 +77,7 @@ namespace Vintagestory.GameContent
         public override void OnEntityCollide(IWorldAccessor world, Entity entity, BlockPos pos, BlockFacing facing, Vec3d collideSpeed, bool isImpact)
         {
             base.OnEntityCollide(world, entity, pos, facing, collideSpeed, isImpact);
-
-            BlockEntityTeleporter be = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityTeleporter;
-            if (be == null) return;
-            be.OnEntityCollide(entity);
+            GetBlockEntity<BlockEntityTeleporter>(pos)?.OnEntityCollide(entity);
         }
 
     }

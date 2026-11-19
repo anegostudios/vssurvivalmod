@@ -1,6 +1,8 @@
 using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -21,7 +23,7 @@ public class ItemSlotDisplay : ItemSlotSurvival
     }
 }
 
-public class BEBehaviorDisplay : BEBehaviorContainer, IInteractable, IRotatablePlaceable, ITexPositionSource
+public class BEBehaviorDisplay : BEBehaviorContainer, ILongInteractable, IInteractableWithHelp, IRotatablePlaceable, ITexPositionSource
 {
     protected MeshData blockMesh;
     protected ICoreClientAPI capi;
@@ -31,7 +33,9 @@ public class BEBehaviorDisplay : BEBehaviorContainer, IInteractable, IRotatableP
     protected override string InventoryClassName => "cabinet";
     protected Cuboidf[] selectionBoxes;
     protected Cuboidf[] collisionboxes;
+    protected Cuboidf[] shelfSelectionBoxes;
     protected InventoryInfinite inventory;
+    ItemSlot isUsingSlot;
 
     protected ItemStack displayStack;
     public ItemStack DisplayStack => displayStack;
@@ -155,26 +159,149 @@ public class BEBehaviorDisplay : BEBehaviorContainer, IInteractable, IRotatableP
         return GameMath.Clamp((1 - container.GetPerishRate() - 0.5f) * 3, 0, 1);
     }
 
+    public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
+    {
+        base.GetBlockInfo(forPlayer, sb);
+
+        BlockSelection blockSel = forPlayer.CurrentBlockSelection;
+        if (blockSel == null || !blockSel.Position.Equals(Pos)) return;
+
+        var slotLoc = BlockBehaviorDisplay.decodeSlotid(blockSel.SelectionBoxId);
+        if (slotLoc?.IsPlacedItem != true) return;
+
+        ItemSlot slot = inventory[slotLoc.EncodedLocation];
+        if (slot == null || slot.Empty) return;
+
+        ItemStack stack = slot.Itemstack;
+        TransitionState[] transitionStates = stack.Collectible.UpdateAndGetTransitionStates(Api.World, slot);
+        if (transitionStates != null)
+        {
+            foreach (TransitionState state in transitionStates)
+            {
+                if (state.Props.Type != EnumTransitionType.Perish) continue;
+
+                float perishRate = stack.Collectible.GetTransitionRateMul(Api.World, slot, state.Props.Type);
+                if (perishRate <= 0) continue;
+
+                float transitionLevel = state.TransitionLevel;
+                float freshHoursLeft = state.FreshHoursLeft / perishRate;
+
+                sb.Append(stack.GetName());
+
+                if (transitionLevel > 0)
+                {
+                    sb.Append(", " + Lang.Get("{0}% spoiled", (int)Math.Round(transitionLevel * 100)));
+                }
+                else
+                {
+                    double hoursPerday = Api.World.Calendar.HoursPerDay;
+
+                    if (freshHoursLeft / hoursPerday >= Api.World.Calendar.DaysPerYear)
+                    {
+                        sb.Append(", " + Lang.Get("fresh for {0} years", Math.Round(freshHoursLeft / hoursPerday / Api.World.Calendar.DaysPerYear, 1)));
+                    }
+                    else if (freshHoursLeft > hoursPerday)
+                    {
+                        sb.Append(", " + Lang.Get("fresh for {0} days", Math.Round(freshHoursLeft / hoursPerday, 1)));
+                    }
+                    else
+                    {
+                        sb.Append(", " + Lang.Get("fresh for {0} hours", Math.Round(freshHoursLeft, 1)));
+                    }
+                }
+
+                sb.AppendLine();
+                return;
+            }
+        }
+
+        sb.AppendLine(stack.Collectible.GetCollectibleInterface<IContainedCustomName>()?.GetContainedInfo(slot) ?? stack.GetName());
+    }
+
     public bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref EnumHandling handling)
     {
+        if (Api.Side == EnumAppSide.Client && BlockBehaviorDisplay.IsUsingContainedBlock)
+        {
+            handling = EnumHandling.PreventDefault;
+            return true;
+        }
         if (blockSel.SelectionBoxId == null) return false;
         ItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
-        if (slot.Empty)
+        if (TryUse(byPlayer, blockSel, ref handling)) return true;
+        if (slot.Empty) return TryTake(byPlayer, blockSel, ref handling);
+        string selectedSlotId = getSelectedNonEmptySlotId(blockSel);
+        if (selectedSlotId != null && byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack?.Collectible.GetTool(byPlayer.InventoryManager.ActiveHotbarSlot) == EnumTool.Wrench)
         {
-            return TryTake(byPlayer, blockSel, ref handling);
-        } else
-        {
-            string selectedSlotId = getSelectedNonEmptySlotId(blockSel);
-            if (selectedSlotId != null && byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack?.Collectible.GetTool(byPlayer.InventoryManager.ActiveHotbarSlot) == EnumTool.Wrench)
-            {
-                return TryRotate(selectedSlotId, byPlayer, blockSel, ref handling);
-            }
-
-            return TryPut(byPlayer, blockSel, ref handling);
+            return TryRotate(selectedSlotId, byPlayer, blockSel, ref handling);
         }
+
+        return TryPut(byPlayer, blockSel, ref handling);
     }
 
+    public bool OnBlockInteractStep(float secondsUsed, IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref EnumHandling handling)
+    {
+        handling = EnumHandling.PreventSubsequent;
+        var collIci = isUsingSlot?.Itemstack?.Collectible.GetCollectibleInterface<IContainedInteractable>();
+        if (collIci != null)
+        {
+            return collIci.OnContainedInteractStep(secondsUsed, Blockentity, isUsingSlot, byPlayer, blockSel);
+        }
+
+        isUsingSlot = null;
+        return false;
+    }
+
+    public void OnBlockInteractStop(float secondsUsed, IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref EnumHandling handling)
+    {
+        handling = EnumHandling.PreventSubsequent;
+        var collIci = isUsingSlot?.Itemstack?.Collectible.GetCollectibleInterface<IContainedInteractable>();
+        collIci?.OnContainedInteractStop(secondsUsed, Blockentity, isUsingSlot, byPlayer, blockSel);
+
+        isUsingSlot = null;
+    }
+
+    public bool OnBlockInteractCancel(float secondsUsed, IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref EnumHandling handling)
+    {
+        handling = EnumHandling.PreventSubsequent;
+        var collIci = isUsingSlot?.Itemstack?.Collectible.GetCollectibleInterface<IContainedInteractable>();
+
+        isUsingSlot = null;
+        return collIci?.OnContainedInteractCancel(secondsUsed, Blockentity, isUsingSlot, byPlayer, blockSel, EnumItemUseCancelReason.ReleasedMouse) ?? true;
+    }
+
+    public WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer, ref EnumHandling handling)
+    {
+        string selectedSlotId = getSelectedNonEmptySlotId(selection);
+        if (selectedSlotId == null) return [];
+
+        var slot = inventory[selectedSlotId];
+        return slot.Itemstack?.Collectible.GetCollectibleInterface<IContainedInteractable>()?.GetContainedInteractionHelp(Blockentity, slot, forPlayer, selection) ?? [];
+    }
+
+
+    private bool TryUse(IPlayer player, BlockSelection blockSel, ref EnumHandling handling)
+    {
+        string selectedSlotId = getSelectedNonEmptySlotId(blockSel);
+        if (selectedSlotId == null) return false;
+
+        var slot = inventory[selectedSlotId];
+
+        if (slot != null && !slot.Empty)
+        {
+            var collIci = slot.Itemstack?.Collectible.GetCollectibleInterface<IContainedInteractable>();
+            if (collIci != null && collIci.OnContainedInteractStart(Blockentity, slot, player, blockSel))
+            {
+                handling = EnumHandling.PreventSubsequent;
+                BlockBehaviorDisplay.IsUsingContainedBlock = true;
+                isUsingSlot = slot;
+                Blockentity.MarkDirty();
+                return true;
+            }
+        }
+
+        return false;
+    }
 
 
     protected bool TryTake(IPlayer byPlayer, BlockSelection blockSel, ref EnumHandling handling)
@@ -237,10 +364,8 @@ public class BEBehaviorDisplay : BEBehaviorContainer, IInteractable, IRotatableP
         var slotLoc = BlockBehaviorDisplay.decodeSlotid(targetSlotId);
         if (slotLoc == null) return false;
         var psurface = bhd.PlacementSurfaces[slotLoc.PlacementSurfaceIndex];
-        string displayType = psurface.DisplayCategory ?? "shelf";
 
-        var heldAttr = heldSlot.Itemstack.Collectible.Attributes;
-        DisplayableAttributes heldDAttr = BlockBehaviorDisplay.GetDisplayableAttributes(heldSlot, displayType);
+        DisplayableAttributes heldDAttr = BlockBehaviorDisplay.GetDisplayableAttributes(heldSlot, psurface);
 
         handling = EnumHandling.PreventSubsequent;
 
@@ -317,7 +442,7 @@ public class BEBehaviorDisplay : BEBehaviorContainer, IInteractable, IRotatableP
     {
         var slotLoc = BlockBehaviorDisplay.decodeSlotid(collidingSlotId);
         var psurface = Block.GetBehavior<BlockBehaviorDisplay>().PlacementSurfaces[slotLoc.PlacementSurfaceIndex];
-        if (heldDAttr.Category != BlockBehaviorDisplay.GetDisplayableAttributes(inventory[slotLoc.EncodedLocation], psurface.DisplayCategory).Category) return false;
+        if (heldDAttr.Category != BlockBehaviorDisplay.GetDisplayableAttributes(inventory[slotLoc.EncodedLocation], psurface).Category) return false;
 
         SlotLocation topSlotLoc = slotLoc;
         while (inventory[topSlotLoc.EncodedLocation]?.Empty == false) topSlotLoc = topSlotLoc.UpCopy();
@@ -385,20 +510,23 @@ public class BEBehaviorDisplay : BEBehaviorContainer, IInteractable, IRotatableP
         foreach (var (slotid, slot) in inventory.SlotsByslotId)
         {
             if (slot.Empty) continue;
-            var size = BlockBehaviorDisplay.getItemSize(slot, getDisplayType(slotid));
+
             var slotLoc = BlockBehaviorDisplay.decodeSlotid(slotid);
-            if (slotLoc.PlacementSurfaceIndex == placeSurfaceIndex)
-            {
-                var box = new Cuboidf(
-                    slotLoc.X - size.Width / 2,
-                    slotLoc.Y,
-                    slotLoc.Z - size.Length / 2,
-                    slotLoc.X + size.Width / 2,
-                    slotLoc.Y + 1,
-                    slotLoc.Z + size.Length / 2
-                );
-                mapping.Add(new KeyValuePair<Cuboidf, string>(box, slotid));
-            }
+            if (slotLoc.PlacementSurfaceIndex != placeSurfaceIndex) continue;
+
+            var psurface = Block.GetBehavior<BlockBehaviorDisplay>().PlacementSurfaces[slotLoc.PlacementSurfaceIndex];
+            var size = BlockBehaviorDisplay.getItemSize(slot, psurface);
+            if (size == null) continue;
+
+            var box = new Cuboidf(
+                slotLoc.X - size.Width / 2,
+                slotLoc.Y,
+                slotLoc.Z - size.Length / 2,
+                slotLoc.X + size.Width / 2,
+                slotLoc.Y + 1,
+                slotLoc.Z + size.Length / 2
+            );
+            mapping.Add(new KeyValuePair<Cuboidf, string>(box, slotid));
         }
 
         return mapping;
@@ -460,7 +588,6 @@ public class BEBehaviorDisplay : BEBehaviorContainer, IInteractable, IRotatableP
 
         displayStack = tree.GetItemstack("displayStack");
         displayStack?.ResolveBlockOrItem(worldAccessForResolve);
-
 
         MarkMeshesDirty(worldAccessForResolve);
     }
@@ -530,7 +657,7 @@ public class BEBehaviorDisplay : BEBehaviorContainer, IInteractable, IRotatableP
 
         texSource = null;
 
-        foreach (var (slotid, slot) in inventory.SlotsByslotId)
+        foreach (var (slotid, slot) in inventory.SlotsByslotId.ToList())
         {
             var slotLoc = BlockBehaviorDisplay.decodeSlotid(slotid);
 
@@ -539,10 +666,11 @@ public class BEBehaviorDisplay : BEBehaviorContainer, IInteractable, IRotatableP
             var slotd = slot as ItemSlotDisplay;
             getOrCreateMesh(slotd);
 
-            var attr = BlockBehaviorDisplay.GetDisplayableAttributes(slot, getDisplayType(slotid));
+            var psurface = psurfaces[slotLoc.PlacementSurfaceIndex];
+            var attr = BlockBehaviorDisplay.GetDisplayableAttributes(slot, psurface);
             if (attr == null) return;
 
-            var surfaceVoxelOffset = psurfaces[slotLoc.PlacementSurfaceIndex].VoxelPosition;
+            var surfaceVoxelOffset = psurface.VoxelPosition;
             var slotVoxelOffset = slotLoc;
             var voxelOffsetToSlot = BlockBehaviorDisplay.getOffsetFromPreviewCuboid(attr.Size, MeshAngleRad);
             float stackingOffsetY = slotLoc.Y * attr.Size.Height;
@@ -697,6 +825,26 @@ public class BEBehaviorDisplay : BEBehaviorContainer, IInteractable, IRotatableP
         return meshSource?.GetMeshCacheKey(slot) ?? slot.Itemstack.Collectible.Code.ToString();
     }
 
+    public void SetMeshAngleRad(float angleRad, IWorldAccessor worldForResolving)
+    {
+        if (MeshAngleRad == angleRad) return;
+
+        MeshAngleRad = angleRad;
+        selectionBoxes = null;
+        collisionboxes = null;
+        shelfSelectionBoxes = null;
+        allBoxes = null;
+
+        if (worldForResolving != null)
+        {
+            MarkMeshesDirty(worldForResolving);
+        }
+    }
+
+    public void MarkDisplayDirty(IWorldAccessor worldForResolving)
+    {
+        MarkMeshesDirty(worldForResolving);
+    }
 
     /// <summary>
     /// Methods implementing this class need to call this at the conclusion of their FromTreeAttributes implementation.  See BEGroundStorage for an example!
@@ -738,7 +886,6 @@ public class BEBehaviorDisplay : BEBehaviorContainer, IInteractable, IRotatableP
             generateMeshes();
         }
 
-        inventory.ResolveBlocksOrItems();
         foreach (var (slotid, slot) in inventory.SlotsByslotId)
         {
             if (slot.Empty || slot.Itemstack.Collectible?.Code == null) continue;
@@ -767,9 +914,13 @@ public class BEBehaviorDisplay : BEBehaviorContainer, IInteractable, IRotatableP
             regenSelectionBoxes();
         }
 
-        if (capi != null) {
+        if (capi != null)
+        {
+            // Filtered selection boxes so placed items win over covered grid cells.
+            if (Blockentity is BlockEntityShelf) return shelfSelectionBoxes;
+
             var bhd = Block.GetBehavior<BlockBehaviorDisplay>();
-            if (bhd.placingItemsPreview(this)) return allBoxes;
+            if (bhd.UsingItemsPreview(this) || bhd.placingItemsPreview(this)) return allBoxes;
         }
 
         return selectionBoxes;
@@ -780,9 +931,14 @@ public class BEBehaviorDisplay : BEBehaviorContainer, IInteractable, IRotatableP
     private void regenSelectionBoxes()
     {
         List<Cuboidf> cuboids = new List<Cuboidf>();
+        // Keep the box groups separate so shelves can remove only grid cells covered by placed items.
+        List<Cuboidf> blockCuboids = new List<Cuboidf>();
+        List<Cuboidf> placementCuboids = new List<Cuboidf>();
+        List<Cuboidf> placedItemCuboids = new List<Cuboidf>();
 
         // 1. The selection boxes of the block itself
-        cuboids.AddRange(rotatedCopy(Block.SelectionBoxes));
+        blockCuboids.AddRange(rotatedCopy(Block.SelectionBoxes));
+        cuboids.AddRange(blockCuboids);
 
         // 2. Placement selection
         var selBoxes = Block.GetBehavior<BlockBehaviorDisplay>().SelectionBoxes;
@@ -792,6 +948,7 @@ public class BEBehaviorDisplay : BEBehaviorContainer, IInteractable, IRotatableP
             rotBox.Y1 -= 1 / 16f;
             rotBox.Y2 = rotBox.Y1 + 1 / 16f;
             cuboids.Add(rotBox);
+            placementCuboids.Add(rotBox);
         }
         selectionBoxes = cuboids.ToArray();
 
@@ -801,15 +958,17 @@ public class BEBehaviorDisplay : BEBehaviorContainer, IInteractable, IRotatableP
         foreach (var (slotid, slot) in inventory.SlotsByslotId)
         {
             if (slot.Empty) continue;
-            var dattr = BlockBehaviorDisplay.GetDisplayableAttributes(slot, getDisplayType(slotid));
+
+            var slotLoc = BlockBehaviorDisplay.decodeSlotid(slotid);
+            var psurface = psurfaces[slotLoc.PlacementSurfaceIndex];
+            var dattr = BlockBehaviorDisplay.GetDisplayableAttributes(slot, psurface);
             if (dattr == null) continue;
 
             var w = dattr.Size.Width / 16f;
             var h = dattr.Size.Height / 16f;
             var l = dattr.Size.Length / 16f;
-            var slotLoc = BlockBehaviorDisplay.decodeSlotid(slotid);
 
-            var surfaceVoxelOffset = psurfaces[slotLoc.PlacementSurfaceIndex].VoxelPosition;
+            var surfaceVoxelOffset = psurface.VoxelPosition;
             var slotVoxelOffset = slotLoc;
             var voxelOffsetToSlot = BlockBehaviorDisplay.getOffsetFromPreviewCuboid(dattr.Size, MeshAngleRad);
             float stackingOffsetY = slotLoc.Y * dattr.Size.Height;
@@ -823,18 +982,33 @@ public class BEBehaviorDisplay : BEBehaviorContainer, IInteractable, IRotatableP
                 )
             ;
 
-            cuboids.Add(rotatedCopy(cub));
+
+            var rotCub = rotatedCopy(cub);
+            cuboids.Add(rotCub);
+            // Remember item boxes so shelves can hide covered grid cells.
+            placedItemCuboids.Add(rotCub);
         }
+
+        // Let placed items win over grid cells on the same shelf surface.
+        List<Cuboidf> shelfBoxes = new List<Cuboidf>();
+        shelfBoxes.AddRange(blockCuboids);
+        shelfBoxes.AddRange(placementCuboids.Where(cell => !placedItemCuboids.Any(itemBox => overlapsSameSurfaceXZ(cell, itemBox))));
+        shelfBoxes.AddRange(placedItemCuboids);
+        shelfSelectionBoxes = shelfBoxes.ToArray();
 
         allBoxes = cuboids.ToArray();
     }
 
-    private string getDisplayType(string slotid)
+    // XZ only, but only within the same shelf surface.
+    private static bool overlapsSameSurfaceXZ(Cuboidf a, Cuboidf b)
     {
-        var slotLoc = BlockBehaviorDisplay.decodeSlotid(slotid);
-        var psurface = Block.GetBehavior<BlockBehaviorDisplay>().PlacementSurfaces[slotLoc.PlacementSurfaceIndex];
-        string displayType = psurface.DisplayCategory ?? "shelf";
-        return displayType;
+        var aLoc = BlockBehaviorDisplay.decodeSlotid((a as CuboidfWithId)?.Id);
+        var bLoc = BlockBehaviorDisplay.decodeSlotid((b as CuboidfWithId)?.Id);
+
+        if (aLoc == null || bLoc == null) return false;
+        if (aLoc.PlacementSurfaceIndex != bLoc.PlacementSurfaceIndex) return false;
+
+        return a.X1 < b.X2 && a.X2 > b.X1 && a.Z1 < b.Z2 && a.Z2 > b.Z1;
     }
 
     protected CuboidfWithId[] rotatedCopy(Cuboidf[] cuboids)

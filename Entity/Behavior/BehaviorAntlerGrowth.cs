@@ -153,6 +153,12 @@ namespace Vintagestory.GameContent
             {
                 accum3s = 0;
 
+                if (entity.WatchedAttributes.HasAttribute("overrideAntlerStage"))
+                {
+                    SetAntler(entity.WatchedAttributes.GetInt("overrideAntlerStage"));
+                    return;
+                }
+
                 if (beginGrowMonth >= 0)
                 {
                     updateAntlerStateYearly();

@@ -1,6 +1,7 @@
 using System.IO;
 using Vintagestory.API;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 
 #nullable disable
 
@@ -35,9 +36,9 @@ namespace Vintagestory.GameContent
         [DocumentAsJson("Required")]
         public float MaxRatio;
 
-        public override void FromBytes(BinaryReader reader, IClassRegistryAPI instancer)
+        public override void FromBytes(ref BinarySpanReader reader, IClassRegistryAPI instancer)
         {
-            base.FromBytes(reader, instancer);
+            base.FromBytes(ref reader, instancer);
             MinRatio = reader.ReadSingle();
             MaxRatio = reader.ReadSingle();
         }

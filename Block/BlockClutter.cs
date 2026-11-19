@@ -39,6 +39,7 @@ namespace Vintagestory.GameContent
         public Shape ShapeLOD2Resolved { get; set; }
         public string HashKey => Code;
         public bool RandomizeYSize { get; set; } = true;
+        public bool CreativeInv { get; set; } = true;
 
         [Obsolete("Use RandomizeYSize instead")]
         public bool Randomize
@@ -187,7 +188,11 @@ namespace Vintagestory.GameContent
                 };
 
                 jstack.Resolve(api.World, ClassType + " type");
-                stacks.Add(jstack);
+
+                if (ct.CreativeInv)
+                {
+                    stacks.Add(jstack);
+                }
             }
 
             this.CreativeInventoryStacks = new CreativeTabAndStackList[]

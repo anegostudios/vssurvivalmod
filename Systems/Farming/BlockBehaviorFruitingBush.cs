@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using Vintagestory.API;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent;
 
@@ -13,6 +13,19 @@ public class NpkNutrients {
     public NpkNutrients() { }
     public NpkNutrients Clone() => new NpkNutrients(N,P,K);
     public static NpkNutrients operator *(NpkNutrients left, float right) => new NpkNutrients(left.N * right, left.P * right, left.K * right);
+}
+
+public class BlockBehaviorFruitingBushMesh : BlockBehavior
+{
+    public BlockBehaviorFruitingBushMesh(Block block) : base(block)
+    {
+    }
+
+    
+    public override void GetDecal(IWorldAccessor world, BlockPos pos, ITexPositionSource decalTexSource, ref MeshData decalModelData, ref MeshData blockModelData)
+    {
+        block.GetBEBehavior<BEBehaviorFruitingBushMesh>(pos)?.GetDecal(world, pos, decalTexSource, ref decalModelData, ref blockModelData);
+    }
 }
 
 public class BlockBehaviorFruitingBush : BlockBehavior
@@ -107,4 +120,5 @@ public class BlockBehaviorFruitingBush : BlockBehavior
         handling = EnumHandling.PassThrough;
         return beh.GetRipeDrops(byPlayer);
     }
+
 }

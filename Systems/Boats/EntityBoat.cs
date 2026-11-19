@@ -47,9 +47,40 @@ namespace Vintagestory.GameContent
             this.api = api;
             api.Event.RegisterGameTickListener(onTickServer, 200);
             api.Event.EntityMounted += Event_EntityMounted;
+            api.Event.PlayerDisconnect += Event_PlayerDisconnect;
         }
 
         Dictionary<string, EntityPlayer> playersOnRatlines = new();
+
+        private void Event_PlayerDisconnect(IServerPlayer player)
+        {
+            var entity = player.Entity;
+            if (entity == null) return;
+
+            var boat = entity.MountedOn?.Entity as EntityBoat;
+            if (boat == null)
+            {
+                var physics = entity.GetBehavior<PhysicsBehaviorBase>();
+                if (entity.World.CollisionScene.TryGetCollider(physics?.StandingColliderId ?? 0, out var collider))
+                {
+                    boat = entity.World.GetEntityById(collider.OwnerEntityId) as EntityBoat;
+                }
+            }
+
+            if (boat == null) return;
+
+            foreach (var otherPlayer in entity.World.AllOnlinePlayers)
+            {
+                var otherEntity = otherPlayer.Entity;
+                if (otherEntity == null || otherEntity == entity) continue;
+                if (otherEntity.MountedOn?.Entity == boat) return;
+
+                var physics = otherEntity.GetBehavior<PhysicsBehaviorBase>();
+                if (entity.World.CollisionScene.TryGetCollider(physics?.StandingColliderId ?? 0, out var collider) && collider.OwnerEntityId == boat.EntityId) return;
+            }
+
+            boat.FurlSails();
+        }
 
 
         private void Event_EntityUnmounted(EntityAgent mountingEntity, IMountableSeat mountedSeat)
@@ -103,7 +134,7 @@ namespace Vintagestory.GameContent
                 {
                     if (remainStrengthHours < 0)
                     {
-                        eplr.TryUnmount();
+                        eplr.TryUnmount(true);
                     }
                     // Reduce strength
                 } else
@@ -215,10 +246,9 @@ namespace Vintagestory.GameContent
         IMountableSeat CreateSeat(IMountable mountable, string seatId, SeatConfig config = null);
     }
 
-    public class EntityBoat : Entity, IRenderer, ISeatInstSupplier, IMountableListener
+    public class EntityBoat : Entity, IRenderer, ISeatInstSupplier, IMountableListener, IMountedHungerProvider, IKinematicColliderTransformProvider
     {
         public override double FrustumSphereRadius => base.FrustumSphereRadius * 2.5;
-        public override bool IsCreature => true; // For RepulseAgents behavior to work
 
         // current forward speed
         public double ForwardSpeed = 0.0;
@@ -255,7 +285,8 @@ namespace Vintagestory.GameContent
         /// </summary>
         public virtual float SpeedMultiplier { get; set; } = 1f;
 
-        public double RenderOrder => 0;
+        // Update the pose after network interpolation and before collider publication.
+        public double RenderOrder => 0.005;
         public int RenderRange => 999;
 
 
@@ -269,10 +300,60 @@ namespace Vintagestory.GameContent
         bool unfurlSails;
         string weatherVaneAnimCode;
 
+        #region Rider hunger
+
+        protected float riderSatietyLossPerSteeringSecond = 0.12f;
+        protected float riderSatietyLossPerPaddlingSecond = 0.24f;
+
+        public float OnMountedHungerTick(EntityAgent mountedEntity, float deltaTime)
+        {
+            var bh = GetBehavior<EntityBehaviorSeatable>();
+            if (bh == null) return 0;
+            var seat = mountedEntity.MountedOn as EntityBoatSeat;
+
+            float penalty = bh.RiderSatietyLossPerSecond + seat!.RiderSatietyLossPerSecond;
+            penalty += ForwardSpeed > 0 ? bh.RiderSatietyLossPerMovementSecond + seat.RiderSatietyLossPerMovementSecond : 0;
+            if (bh.Controller == null ||
+                !seat.Config.Controllable ||
+                mountedEntity.EntityId != CurrentlyControllingEntityId ||
+                !HasPaddle(mountedEntity))
+            {
+                return penalty * deltaTime;
+            }
+
+            var controls = seat.controls;
+
+            if (controls.Left || controls.Right)
+            {
+                penalty += riderSatietyLossPerSteeringSecond + seat.RiderSatietyLossPerSteeringSecond;
+            }
+
+            if (requiresPaddlingTool && (controls.Forward || controls.Backward))
+            {
+                penalty += riderSatietyLossPerPaddlingSecond + seat.RiderSatietyLossPerPaddlingSecond;
+            }
+
+            return penalty * deltaTime;
+        }
+
+        #endregion
+
         protected int sailPosition
         {
             get { return WatchedAttributes.GetInt("sailPosition", 0); } // 0 = furled, 1 = half, 2 = unfurled
             set { WatchedAttributes.SetInt("sailPosition", value); }
+        }
+
+        public void FurlSails()
+        {
+            if (!unfurlSails) return;
+
+            sailPosition = 0;
+            ForwardSpeed = 0;
+            AngularVelocity = 0;
+            Pos.Motion.X = Pos.Motion.Z = 0;
+            StopAnimation("turnLeft");
+            StopAnimation("turnRight");
         }
 
         long CurrentlyControllingEntityId = 0;
@@ -295,10 +376,14 @@ namespace Vintagestory.GameContent
             requiresPaddlingTool = properties.Attributes["requiresPaddlingTool"].AsBool(false);
             unfurlSails = properties.Attributes["unfurlSails"].AsBool(false);
 
+            riderSatietyLossPerSteeringSecond = properties.Attributes["riderSatLossPerSteerSec"].AsFloat(riderSatietyLossPerSteeringSecond);
+            riderSatietyLossPerPaddlingSecond = properties.Attributes["riderSatLossPerPaddleSec"].AsFloat(riderSatietyLossPerPaddlingSecond);
+
             capi = api as ICoreClientAPI;
             if (capi != null)
             {
                 capi.Event.RegisterRenderer(this, EnumRenderStage.Before, "boatsim");
+                capi.Event.RegisterRenderer(GetBehavior<EntityBehaviorSeatable>(), EnumRenderStage.Before, "boatseats");
                 modsysSounds = api.ModLoader.GetModSystem<ModSystemBoatingSoundAndRatlineStamina>();
             }
         }
@@ -331,8 +416,17 @@ namespace Vintagestory.GameContent
             base.OnTesselation(ref entityShape, shapePathForLogging);
         }
 
-
-        float curRotMountAngleZ=0f;
+        private const double swayPhasePerSecond = 4;
+        private const int swayPhaseCycles = 6;
+        private const float swayWindUpdateInterval = 0.25f;
+        [ThreadStatic]
+        private static double[] colliderRotation;
+        private float swayWindUpdateTime = swayWindUpdateInterval;
+        private float swayWindSpeed;
+        private float targetSwayWindSpeed;
+        private double swayPhase;
+        private float forwardPitch;
+        private float curRotMountAngleZ;
         public Vec3f mountAngle = new Vec3f();
 
         public virtual void OnRenderFrame(float dt, EnumRenderStage stage)
@@ -341,29 +435,12 @@ namespace Vintagestory.GameContent
             if (capi.IsGamePaused) return;
 
             updateBoatAngleAndMotion(dt);
-
-            long ellapseMs = capi.InWorldEllapsedMilliseconds;
-            float forwardpitch = 0;
-            if (Swimming)
-            {
-                double gamespeed = capi.World.Calendar.SpeedOfTime / 60f;
-                float intensity = (0.15f + GlobalConstants.CurrentWindSpeedClient.X * 0.9f) * (unfurlSails ? 0.7f : 1f);
-                float diff = GameMath.DEG2RAD / 2f * intensity;
-
-                mountAngle.X = GameMath.Sin((float)(ellapseMs / 1000.0 * 2 * gamespeed)) * 8 * diff;
-                mountAngle.Y = GameMath.Cos((float)(ellapseMs / 2000.0 * 2 * gamespeed)) * 3 * diff;
-                mountAngle.Z = -GameMath.Sin((float)(ellapseMs / 3000.0 * 2 * gamespeed)) * 8 * diff;
-
-                curRotMountAngleZ += ((float)AngularVelocity * 5 * Math.Sign(ForwardSpeed) - curRotMountAngleZ) * dt*5;
-                forwardpitch = -(float)ForwardSpeed * 1.3f * (unfurlSails ? 0.5f : 1f);
-            }
+            updateBoatSway(dt);
 
             var esr = Properties.Client.Renderer as EntityShapeRenderer;
             if (esr == null) return;
 
-            esr.xangle = mountAngle.X + curRotMountAngleZ;
-            esr.yangle = mountAngle.Y;
-            esr.zangle = mountAngle.Z + forwardpitch; // Weird. Pitch ought to be xangle.
+            getBoatSwayAngles(out esr.xangle, out esr.yangle, out esr.zangle);
 
             if (AnimManager.Animator != null)
             {
@@ -395,9 +472,63 @@ namespace Vintagestory.GameContent
                 }
 
                 updateBoatAngleAndMotion(dt);
+                updateBoatSway(dt);
             }
 
             base.OnGameTick(dt);
+        }
+
+        public ColliderTransform GetKinematicColliderTransform()
+        {
+            return getBoatTransform(true);
+        }
+
+        // Moves a world position from the unswayed boat pose into its current rendered and collision pose.
+        public void ApplySwayToPosition(EntityPos pos)
+        {
+            ColliderTransform baseTransform = getBoatTransform(false);
+            baseTransform.InverseTransformPoint(pos.X, pos.Y, pos.Z, out double localX, out double localY, out double localZ);
+            GetKinematicColliderTransform().TransformPoint(localX, localY, localZ, out double x, out double y, out double z);
+            pos.SetPos(x, y, z);
+        }
+
+        private ColliderTransform getBoatTransform(bool includeSway)
+        {
+            var pos = Pos;
+            double[] rotation = colliderRotation ??= Quaterniond.Create();
+            rotation[0] = 0;
+            rotation[1] = 0;
+            rotation[2] = 0;
+            rotation[3] = 1;
+            Quaterniond.RotateX(rotation, rotation, pos.Pitch);
+            Quaterniond.RotateY(rotation, rotation, pos.Yaw + GameMath.PIHALF);
+            Quaterniond.RotateZ(rotation, rotation, pos.Roll);
+            if (includeSway)
+            {
+                getBoatSwayAngles(out float angleX, out float angleY, out float angleZ);
+                Quaterniond.RotateX(rotation, rotation, angleX);
+                Quaterniond.RotateY(rotation, rotation, angleY);
+                Quaterniond.RotateZ(rotation, rotation, angleZ);
+            }
+            Quaterniond.RotateY(rotation, rotation, -GameMath.PIHALF);
+
+            ColliderTransform rotationTransform = new(
+                0, 0, 0,
+                rotation[0], rotation[1], rotation[2], rotation[3]
+            );
+            double pivotY = SelectionBox.Y2 / 2;
+            rotationTransform.TransformPoint(0, pivotY, 0, out double pivotX, out double rotatedPivotY, out double pivotZ);
+            return new ColliderTransform(
+                pos.X - pivotX, pos.Y + pivotY - rotatedPivotY, pos.Z - pivotZ,
+                rotation[0], rotation[1], rotation[2], rotation[3]
+            );
+        }
+
+        private void getBoatSwayAngles(out float angleX, out float angleY, out float angleZ)
+        {
+            angleX = mountAngle.X + curRotMountAngleZ;
+            angleY = mountAngle.Y;
+            angleZ = mountAngle.Z + forwardPitch;
         }
 
         public override void OnAsyncParticleTick(float dt, IAsyncParticleManager manager)
@@ -439,6 +570,8 @@ namespace Vintagestory.GameContent
             }
         }
 
+        private const int rotationCollisionIterations = 8;
+
         protected virtual void updateBoatAngleAndMotion(float dt)
         {
             // Ignore lag spikes
@@ -479,6 +612,9 @@ namespace Vintagestory.GameContent
             ForwardSpeed += (motion.X * SpeedMultiplier - ForwardSpeed) * dt;
             AngularVelocity += (motion.Y * SpeedMultiplier - AngularVelocity) * dt;
 
+            var controller = GetBehavior<EntityBehaviorSeatable>().Controller;
+            if (capi != null ? controller != capi.World.Player.Entity : controller != null) return;
+
             var pos = Pos;
 
             if (ForwardSpeed != 0.0)
@@ -489,35 +625,73 @@ namespace Vintagestory.GameContent
             }
 
             var bh = GetBehavior<EntityBehaviorPassivePhysicsMultiBox>();
-            bool canTurn = true;
-
             if (AngularVelocity != 0.0)
             {
                 float yawDelta = (float)AngularVelocity * dt * 30f;
-
-                if (bh.AdjustCollisionBoxesToYaw(dt, true, Pos.Yaw + yawDelta))
+                float fraction = 1;
+                if (!bh.AdjustCollisionBoxesToYaw(dt * 60, true, pos.Yaw + yawDelta))
                 {
-                    pos.Yaw += yawDelta;
+                    float blockedFraction = 1;
+                    fraction = 0;
+                    // Approach the contact angle without moving the hull to make room for the turn.
+                    for (int i = 0; i < rotationCollisionIterations; i++)
+                    {
+                        float testFraction = (fraction + blockedFraction) / 2;
+                        if (bh.AdjustCollisionBoxesToYaw(dt * 60, true, pos.Yaw + yawDelta * testFraction))
+                        {
+                            fraction = testFraction;
+                        }
+                        else
+                        {
+                            blockedFraction = testFraction;
+                        }
+                    }
+                    bh.AdjustCollisionBoxesToYaw(dt * 60, false, pos.Yaw + yawDelta * fraction);
                 }
-                else canTurn = false;
-            } else
-            {
-                canTurn = bh.AdjustCollisionBoxesToYaw(dt, true, Pos.Yaw);
-            }
-
-            if (!canTurn)
-            {
-                if (bh.AdjustCollisionBoxesToYaw(dt, true, Pos.Yaw - 0.1f))
-                {
-                    pos.Yaw -= 0.0002f;
-                }
-                else if (bh.AdjustCollisionBoxesToYaw(dt, true, Pos.Yaw + 0.1f))
-                {
-                    pos.Yaw += 0.0002f;
-                }
+                pos.Yaw += yawDelta * fraction;
+                AngularVelocity *= fraction;
             }
 
             pos.Roll = 0;
+        }
+
+        private void updateBoatSway(float dt)
+        {
+            float steeringRoll = 0;
+            forwardPitch = 0;
+            float targetX = 0;
+            float targetY = 0;
+            float targetZ = 0;
+            if (Swimming)
+            {
+                swayWindUpdateTime += dt;
+                if (swayWindUpdateTime >= swayWindUpdateInterval)
+                {
+                    targetSwayWindSpeed = (float)World.BlockAccessor.GetWindSpeedAt(Pos.XYZ).X;
+                    swayWindUpdateTime = 0;
+                }
+
+                swayWindSpeed += (targetSwayWindSpeed - swayWindSpeed) * Math.Min(dt * 2, 1);
+                swayPhase = (swayPhase + dt * swayPhasePerSecond) % (Math.PI * 2 * swayPhaseCycles);
+                double phase = swayPhase;
+                float intensity = (0.15f + swayWindSpeed * 0.9f) * (unfurlSails ? 0.7f : 1f);
+                float diff = GameMath.DEG2RAD / 2f * intensity;
+                targetX = (float)Math.Sin(phase) * 8 * diff;
+                targetY = (float)Math.Cos(phase / 2) * 3 * diff;
+                targetZ = -(float)Math.Sin(phase / 3) * 8 * diff;
+                steeringRoll = (float)AngularVelocity * 5 * Math.Sign(ForwardSpeed);
+                forwardPitch = -(float)ForwardSpeed * 1.3f * (unfurlSails ? 0.5f : 1f);
+            }
+            else
+            {
+                swayWindUpdateTime = swayWindUpdateInterval;
+            }
+
+            float follow = 1 - (float)Math.Exp(-dt * 5);
+            mountAngle.X += (targetX - mountAngle.X) * follow;
+            mountAngle.Y += (targetY - mountAngle.Y) * follow;
+            mountAngle.Z += (targetZ - mountAngle.Z) * follow;
+            curRotMountAngleZ += (steeringRoll - curRotMountAngleZ) * follow;
         }
 
         protected virtual bool HasPaddle(Entity entity)
@@ -535,7 +709,7 @@ namespace Vintagestory.GameContent
         {
             int seatsRowing = 0;
 
-            double linearMotion = 0;
+            double linearMotion = unfurlSails ? dt * sailPosition * 1.5f : 0;
             double angularMotion = 0;
 
             var bh = GetBehavior<EntityBehaviorSeatable>();
@@ -583,7 +757,7 @@ namespace Vintagestory.GameContent
                     continue;
                 }
 
-                if (controls.Left == controls.Right && capi == null)    // If we do this client-side, for a non-controlling player it seems some ticks the controls are 0 and so the rudder gets reset to center.  If the controls really are 0 then the server will tell the clients to stop the animations anyhow
+                if (controls.Left == controls.Right && (capi == null || seat.Passenger == capi.World.Player.Entity))
                 {
                     StopAnimation("turnLeft");
                     StopAnimation("turnRight");
@@ -600,11 +774,6 @@ namespace Vintagestory.GameContent
                 }
 
                 float str = ++seatsRowing == 1 ? 1 : 0.5f;
-
-                if (unfurlSails && sailPosition > 0)
-                {
-                    linearMotion += str * dt * sailPosition * 1.5f;
-                }
 
                 if (!controls.TriesToMove)
                 {
@@ -649,6 +818,12 @@ namespace Vintagestory.GameContent
 
                     linearMotion += str * dir * dt * ctrlstr;
                 }
+            }
+
+            if (bh.Controller == null)
+            {
+                StopAnimation("turnLeft");
+                StopAnimation("turnRight");
             }
 
             return new Vec2d(linearMotion, angularMotion);

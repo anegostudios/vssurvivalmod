@@ -13,17 +13,19 @@ namespace Vintagestory.GameContent
 
     public class CollectibleBehaviorTypedDisplayableProps(CollectibleObject collObj) : CollectibleBehavior(collObj), IDisplayableProps
     {
+        public string TargetAttribute;
         public Dictionary<string, Dictionary<string, DisplayableAttributes>>? PropsByCode;
 
         public override void Initialize(JsonObject properties)
         {
             base.Initialize(properties);
-            PropsByCode = properties["displayable"].AsObject<Dictionary<string, Dictionary<string, DisplayableAttributes>>>();
+            TargetAttribute = properties["targetAttribute"].AsString("type");
+            PropsByCode = properties["displayable"].AsObject<Dictionary<string, Dictionary<string, DisplayableAttributes>>>(null, collObj.Code.Domain);
         }
 
         public virtual DisplayableAttributes? GetDisplayableProps(ItemSlot inSlot, string displayType)
         {
-            if (PropsByCode == null || inSlot.Itemstack?.Attributes.GetString("type", "") is not { } type) return null;
+            if (PropsByCode == null || inSlot.Itemstack?.Attributes.GetString(TargetAttribute, "") is not string type) return null;
             var propsByDisplay = PropsByCode.FirstOrDefault(code => WildcardUtil.Match(code.Key, type)).Value;
 
             return propsByDisplay?.TryGetValue(displayType);

@@ -69,6 +69,7 @@ namespace Vintagestory.GameContent.Mechanics
 
         public BEBehaviorMPPulverizer(BlockEntity blockentity) : base(blockentity)
         {
+            bepu = (BEPulverizer)blockentity;
         }
 
 
@@ -107,10 +108,36 @@ namespace Vintagestory.GameContent.Mechanics
             rightSlidePos = mat.TransformVector(new Vec4f(11.5f / 16f - 0.5f, 4 / 16f, -2.5f / 16f, 0f)).XYZ.ToVec3d().Add(Position).Add(0.5, 0, 0.5);
         }
 
+        protected override float? getSpeedForDisplay(IPlayer forPlayer) => bepu.ToggleStack != null ? CurrentSpeed : null;
+
         public override float GetResistance()
         {
             bepu = Blockentity as BEPulverizer;
-            return bepu.hasAxle ? 0.085f : 0.005f;
+            return bepu.ToggleStack != null ? 0.085f : 0.005f;
+        }
+
+        public override MechPowerPath[] GetMechPowerExits(MechPowerPath entryDir)
+        {
+            // The frame by itself has no axle or toggle and should not carry power through.
+            if (bepu.ToggleStack == null) return [];
+            return base.GetMechPowerExits(entryDir);
+        }
+
+        protected override bool isNetworkConnectedAt(BlockFacing face)
+        {
+            return bepu.ToggleStack != null && base.isNetworkConnectedAt(face);
+        }
+
+        public void OnToggleInserted()
+        {
+            if (Api.Side != EnumAppSide.Server) return;
+
+            BlockFacing faceA = BlockFacing.FromCode(Block.Variant["side"]).GetCCW();
+            BlockFacing faceB = faceA.Opposite;
+
+            CreateJoinAndDiscoverNetwork(faceA);
+            CreateJoinAndDiscoverNetwork(faceB);
+            tryConnect(faceA);
         }
 
         public override void JoinNetwork(MechanicalNetwork network)
@@ -119,7 +146,7 @@ namespace Vintagestory.GameContent.Mechanics
 
             //Speed limit when joining to an existing network: this is to prevent crazy bursts of speed on first connection if the network was spinning fast (with low resistances)
             // (if the network has enough torque to drive faster than this - which is going to be uncommon - then the network speed can increase after this is joined to the network)
-            float speed = network == null ? 0f : Math.Abs(network.Speed * this.GearedRatio) * 1.6f;
+            float speed = Math.Abs(CurrentSpeed) * 1.6f;
             if (speed > 1f)
             {
                 network.Speed /= speed;
@@ -151,7 +178,7 @@ namespace Vintagestory.GameContent.Mechanics
 
         internal void OnClientSideImpact(bool right)
         {
-            if (!bepu.IsComplete) return;
+            if (bepu.ToggleStack == null) return;
 
             Vec4f offset = right ? rightOffset : leftOffset;
             int slotid = right ? 0 : 1;
@@ -160,7 +187,7 @@ namespace Vintagestory.GameContent.Mechanics
 
             Api.World.PlaySoundAt(hitSound, hitPos.X, hitPos.Y, hitPos.Z, null, true, 8);
 
-            if (!bepu.Inventory[slotid].Empty)
+            if (bepu.CanCrush(right) && !bepu.Inventory[slotid].Empty)
             {
                 ItemStack stack = bepu.Inventory[slotid].Itemstack;
 

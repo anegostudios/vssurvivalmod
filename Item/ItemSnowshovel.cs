@@ -15,12 +15,14 @@ namespace Vintagestory.GameContent
         protected ICoreServerAPI? sapi;
         protected ICoreClientAPI? capi;
         protected ILoadedSound? shovellingSound;
+        protected Block meltableSnowBlock = null!;
 
         public override void StartServerSide(ICoreServerAPI api)
         {
             sapi = api;
             api.Event.RegisterGameTickListener(snowShovelTickServer, 75);
             sapi.Event.PlayerDisconnect += OnPlayerPlayerDisconnect;
+            meltableSnowBlock = sapi.World.GetBlock("meltablesnowblock") ?? throw new Exception("Expected meltable snow block to be included in game files");
         }
 
         public override void StartClientSide(ICoreClientAPI api)
@@ -132,7 +134,7 @@ namespace Vintagestory.GameContent
             tempPos.Down().Down();
             Block belowBlock = sapi.World.BlockAccessor.GetBlock(tempPos);
             snow += belowBlock.GetSnowLevel(tempPos);
-            
+
             return snow;
         }
 
@@ -225,7 +227,6 @@ namespace Vintagestory.GameContent
             if (maxLevelMoved <= 0) return false;
 
             ArgumentNullException.ThrowIfNull(sapi);
-            Block snowBlock = sapi.World.GetBlock("snowblock") ?? throw new Exception("Expected snow block to be included in game files");
 
             Block fromBlock = sapi.World.BlockAccessor.GetBlock(fromPos);
             float fromLevel = (float)Math.Ceiling(fromBlock.GetSnowLevel(fromPos)); // Ceiling, because chiseled blocks return 0.5f
@@ -236,8 +237,16 @@ namespace Vintagestory.GameContent
             // Deliberately skip checking block replaceable values, because the snow cover system does not do that in general
             float toMove = (float)Math.Min(maxLevelMoved, fromLevel);
             // Special case for air, to become snow block or snow layers
-            Block snowSink = toBlock.Id == 0 ? snowBlock : toBlock;
-            Block? newlySnowyBlock = snowSink.GetSnowCoveredVariant(toPos, toMove + toLevel);
+            Block snowSink = toBlock.Id == 0 ? meltableSnowBlock : toBlock;
+            Block? newlySnowyBlock;
+            if (toBlock is BlockSnowLayer && toMove + toLevel >= BlockSnowLayer.MaxHeight)
+            {
+                newlySnowyBlock = meltableSnowBlock;
+            }
+            else
+            {
+                newlySnowyBlock = snowSink.GetSnowCoveredVariant(toPos, toMove + toLevel);
+            }
 
             Block? snowlessBlock = fromBlock.GetSnowCoveredVariant(fromPos, 0);
             if (snowlessBlock == null)

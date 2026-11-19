@@ -8,8 +8,8 @@ namespace Vintagestory.GameContent.Mechanics
 {
     public class AngledGearsBlockRenderer : MechBlockRenderer
     {
-        MeshRef gearboxCage;
-        MeshRef gearboxPeg;
+        MultiTextureMeshRef gearboxCage;
+        MultiTextureMeshRef gearboxPeg;
 
         CustomMeshDataPartFloat floatsPeg;
         CustomMeshDataPartFloat floatsCage;
@@ -23,8 +23,7 @@ namespace Vintagestory.GameContent.Mechanics
             capi.Tesselator.TesselateShape(textureSoureBlock, API.Common.Shape.TryGet(capi, "shapes/block/wood/mechanics/angledgearbox-peg.json"), out MeshData gearboxPegMesh, rot);
 
             
-            // 16 floats matrix, 4 floats light rgbs
-            gearboxPegMesh.CustomFloats = floatsPeg = new CustomMeshDataPartFloat((16 + 4) * 10100)
+            floatsPeg = new CustomMeshDataPartFloat((16 + 4) * 10100)
             {
                 Instanced = true,
                 InterleaveOffsets = new int[] { 0, 16, 32, 48, 64 },
@@ -32,12 +31,12 @@ namespace Vintagestory.GameContent.Mechanics
                 InterleaveStride = 16 + 4 * 16,
                 StaticDraw = false,
             };
-            gearboxPegMesh.CustomFloats.SetAllocationSize((16 + 4) * 10100);
+            floatsPeg.SetAllocationSize((16 + 4) * 10100);
 
-            gearboxCageMesh.CustomFloats = floatsCage = floatsPeg.Clone();
+            floatsCage = floatsPeg.Clone();
 
-            this.gearboxPeg = capi.Render.UploadMesh(gearboxPegMesh);
-            this.gearboxCage = capi.Render.UploadMesh(gearboxCageMesh);
+            this.gearboxPeg = uploadInstancedMesh(gearboxPegMesh, floatsPeg);
+            this.gearboxCage = uploadInstancedMesh(gearboxCageMesh, floatsCage);
         }
 
         protected override void UpdateLightAndTransformMatrix(int index, Vec3f distToCamera, float rotationRad, IMechanicalPowerRenderable dev)
@@ -73,17 +72,8 @@ namespace Vintagestory.GameContent.Mechanics
 
             if (quantityBlocks > 0)
             {
-                floatsPeg.Count = quantityBlocks * 20;
-                floatsCage.Count = quantityBlocks * 20;
-
-                updateMesh.CustomFloats = floatsPeg;
-                capi.Render.UpdateMesh(gearboxPeg, updateMesh);
-
-                updateMesh.CustomFloats = floatsCage;
-                capi.Render.UpdateMesh(gearboxCage, updateMesh);
-
-                capi.Render.RenderMeshInstanced(gearboxPeg, quantityBlocks);
-                capi.Render.RenderMeshInstanced(gearboxCage, quantityBlocks);
+                renderInstancedMesh(prog, gearboxPeg, floatsPeg, quantityBlocks);
+                renderInstancedMesh(prog, gearboxCage, floatsCage, quantityBlocks);
             }
         }
 

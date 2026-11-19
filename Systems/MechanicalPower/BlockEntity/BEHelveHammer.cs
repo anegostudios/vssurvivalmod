@@ -22,6 +22,8 @@ namespace Vintagestory.GameContent.Mechanics
         BEBehaviorMPToggle mptoggle;
         ITexPositionSource blockTexSource;
 
+        public ItemStack PlacedStack { get; private set; }
+
         ItemStack hammerStack;
         public ItemStack HammerStack
         {
@@ -46,6 +48,7 @@ namespace Vintagestory.GameContent.Mechanics
         BlockEntityAnvil targetAnvil;
 
         double angleBefore;
+        bool falling;
         bool didHit;
         float vibrate;
 
@@ -80,7 +83,8 @@ namespace Vintagestory.GameContent.Mechanics
                 double angle = Math.Abs(Math.Sin(x) / 4.5);
                 float outAngle = (float)angle;
 
-                if (angleBefore > angle)
+                if (angleBefore != angle) falling = angleBefore > angle;
+                if (falling)
                 {
                     outAngle -= (float)(totalIngameSeconds - ellapsedInameSecGrow) * 1.5f;
                 }
@@ -171,6 +175,13 @@ namespace Vintagestory.GameContent.Mechanics
         {
             base.OnBlockPlaced(byItemStack);
 
+            if (byItemStack != null)
+            {
+                PlacedStack = byItemStack.Clone();
+                PlacedStack.StackSize = 1;
+                MarkDirty(true);
+            }
+
             rnd = (float)Api.World.Rand.NextDouble() / 10;
         }
 
@@ -181,13 +192,27 @@ namespace Vintagestory.GameContent.Mechanics
 
         void setRenderer()
         {
-            if (HammerStack != null && renderer == null && Api?.Side == EnumAppSide.Client)
-            {
-                renderer = new HelveHammerRenderer(Api as ICoreClientAPI, this, Pos, GenHammerMesh());
-                (Api as ICoreClientAPI).Event.RegisterRenderer(renderer, EnumRenderStage.Opaque, "helvehammer");
-                (Api as ICoreClientAPI).Event.RegisterRenderer(renderer, EnumRenderStage.ShadowFar, "helvehammer");
-                (Api as ICoreClientAPI).Event.RegisterRenderer(renderer, EnumRenderStage.ShadowNear, "helvehammer");
-            }
+            if (capi == null) return;
+
+            renderer?.Dispose();
+            renderer = null;
+            if (HammerStack == null) return;
+
+            renderer = new HelveHammerRenderer(capi, this, Pos, GenHammerMesh());
+            capi.Event.RegisterRenderer(renderer, EnumRenderStage.Opaque, "helvehammer");
+            capi.Event.RegisterRenderer(renderer, EnumRenderStage.ShadowFar, "helvehammer");
+            capi.Event.RegisterRenderer(renderer, EnumRenderStage.ShadowNear, "helvehammer");
+        }
+
+        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
+        {
+            BlockHelveHammer block = (BlockHelveHammer)Block;
+            if (block.MaterialProperties?.GetMaterialKey(PlacedStack) == null) return base.OnTesselation(mesher, tesselator);
+
+            Shape shape = capi.TesselatorManager.GetCachedShape(block.Shape.Base);
+            tesselator.TesselateShape(block.Code + " base", shape, out MeshData mesh, block.GetMaterialTextureSource(capi, shape, block.Code + " base", PlacedStack), new Vec3f(0, block.Shape.rotateY, 0));
+            mesher.AddMeshData(mesh);
+            return true;
         }
 
         public override void OnBlockBroken(IPlayer byPlayer = null)
@@ -204,8 +229,10 @@ namespace Vintagestory.GameContent.Mechanics
             Block block = Api.World.BlockAccessor.GetBlock(Pos);
             if (block.BlockId == 0) return null;
             ITesselatorAPI mesher = ((ICoreClientAPI)Api).Tesselator;
-            Shape shape = API.Common.Shape.TryGet(Api, "shapes/block/wood/mechanics/helvehammer.json");
-            mesher.TesselateShape("helvehammerhead", shape, out MeshData mesh, this, new Vec3f(0, block.Shape.rotateY, 0));
+            Shape shape = capi.TesselatorManager.GetCachedShape(HammerStack.Item.Shape.Base);
+            var materialBehavior = HammerStack.Collectible.GetCollectibleBehavior<CollectibleBehaviorMechanicalMaterial>(true);
+            ITexPositionSource textureSource = materialBehavior?.GetMaterialTextureSource(shape, HammerStack, capi.BlockTextureAtlas) ?? this;
+            mesher.TesselateShape("helvehammerhead", shape, out MeshData mesh, textureSource, new Vec3f(0, block.Shape.rotateY, 0));
 
             return mesh;
         }
@@ -224,7 +251,7 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 float weirdOffset = 0.62f;
 
-                float speed = Math.Abs(mptoggle.Network.Speed) * mptoggle.GearedRatio;
+                float speed = Math.Abs(mptoggle.CurrentSpeed);
                 accumHits += speed * weirdOffset * dt * 8f;
 
                 if (accumHits > GameMath.PIHALF)
@@ -303,6 +330,9 @@ namespace Vintagestory.GameContent.Mechanics
         {
             base.FromTreeAttributes(tree, worldAccessForResolve);
 
+            PlacedStack = tree.GetItemstack("placedStack");
+            PlacedStack?.ResolveBlockOrItem(worldAccessForResolve);
+
             hammerStack = tree.GetItemstack("hammerStack");
             hammerStack?.ResolveBlockOrItem(worldAccessForResolve);
             HammerStack = hammerStack;
@@ -314,6 +344,8 @@ namespace Vintagestory.GameContent.Mechanics
         {
             base.ToTreeAttributes(tree);
             tree.SetItemstack("hammerStack", HammerStack);
+            if (PlacedStack == null) tree.RemoveAttribute("placedStack");
+            else tree.SetItemstack("placedStack", PlacedStack);
 
             tree.SetFloat("rnd", rnd);
         }
@@ -338,6 +370,12 @@ namespace Vintagestory.GameContent.Mechanics
         {
             base.OnLoadCollectibleMappings(worldForNewMappings, oldBlockIdMapping, oldItemIdMapping, schematicSeed, resolveImports);
 
+            if (PlacedStack != null)
+            {
+                if (!PlacedStack.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForNewMappings)) PlacedStack = null;
+                else PlacedStack.Collectible.OnLoadCollectibleMappings(worldForNewMappings, new DummySlot(PlacedStack), oldBlockIdMapping, oldItemIdMapping, resolveImports);
+            }
+
             hammerStack?.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForNewMappings);
         }
 
@@ -345,6 +383,7 @@ namespace Vintagestory.GameContent.Mechanics
         {
             base.OnStoreCollectibleMappings(blockIdMapping, itemIdMapping);
 
+            PlacedStack?.Collectible.OnStoreCollectibleMappings(Api.World, new DummySlot(PlacedStack), blockIdMapping, itemIdMapping);
             hammerStack?.Collectible.OnStoreCollectibleMappings(Api.World, new DummySlot(HammerStack), blockIdMapping, itemIdMapping);
         }
     }
