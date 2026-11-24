@@ -100,4 +100,14 @@ public class BlockBeeHiveKilnDoor : BlockGeneric
 
         return base.GetPlacedBlockInteractionHelp(world, selection, forPlayer);
     }
+
+    public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
+    {
+        var behaviorDoor = world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorDoor>();
+        var blockEntityBeeHiveKiln = behaviorDoor.Blockentity as BlockEntityBeeHiveKiln;
+
+        blockEntityBeeHiveKiln.ApplyAccumulatedDamage();
+
+        base.OnBlockBroken(world, pos, byPlayer);
+    }
 }
