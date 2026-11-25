@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Common;
+using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Util;
 
@@ -38,7 +38,7 @@ namespace Vintagestory.GameContent
 
         public static ContentConfig getContentConfig(IWorldAccessor world, ContentConfig[] contentConfigs, ItemSlot sourceSlot)
         {
-            if (sourceSlot.Empty) return null;
+            if (sourceSlot.Empty || contentConfigs == null) return null;
             
             for (int i = 0; i < contentConfigs.Length; i++)
             {

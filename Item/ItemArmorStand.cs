@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Client;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
@@ -15,11 +15,11 @@ namespace Vintagestory.GameContent
             if (blockSel == null) return;
             IPlayer player = byEntity.World.PlayerByUid((byEntity as EntityPlayer)?.PlayerUID);
 
-            var x = (int)(blockSel.Position.X + (blockSel.DidOffset ? 0 : blockSel.Face.Normali.X) + 0.5f);
+            var x = blockSel.FullPosition.X;
             var y = blockSel.Position.Y + (blockSel.DidOffset ? 0 : blockSel.Face.Normali.Y);
-            var z = (int)(blockSel.Position.Z + (blockSel.DidOffset ? 0 : blockSel.Face.Normali.Z) + 0.5f);
+            var z = blockSel.FullPosition.Z;
 
-            var blockPos = new BlockPos(x,y,z);
+            var blockPos = new BlockPos((int)x, y, (int)z);
             if (!byEntity.World.Claims.TryAccess(player, blockPos, EnumBlockAccessFlags.BuildOrBreak))
             {
                 slot.MarkDirty();
@@ -37,16 +37,14 @@ namespace Vintagestory.GameContent
 
             if (entity != null)
             {
-                entity.ServerPos.X = x;
-                entity.ServerPos.Y = y;
-                entity.ServerPos.Z = z;
-                entity.ServerPos.Yaw = byEntity.SidedPos.Yaw + GameMath.PIHALF;
+                entity.Pos.X = x;
+                entity.Pos.Y = y;
+                entity.Pos.Z = z;
+                entity.Pos.Yaw = byEntity.Pos.Yaw + GameMath.PIHALF;
                 if (player?.PlayerUID != null)
                 {
                     entity.WatchedAttributes.SetString("ownerUid", player.PlayerUID);
                 }
-
-                entity.Pos.SetFrom(entity.ServerPos);
 
                 byEntity.World.PlaySoundAt(new AssetLocation("sounds/block/torch"), entity, player);
 

@@ -22,7 +22,7 @@ namespace Vintagestory.GameContent
             }
             if (ela - prevela <= 4000) return;
 
-            
+
             slot.Itemstack.Attributes.SetLong("lastPlayerMs", ela);
             api.World.PlaySoundAt(new AssetLocation("sounds/instrument/elkcall"), byEntity, (byEntity as EntityPlayer)?.Player, 0.75f, 32, 0.5f);
 
@@ -57,7 +57,7 @@ namespace Vintagestory.GameContent
 
             var tm = entity.GetBehavior<EntityBehaviorTaskAI>().TaskManager;
             var aitcto = tm.AllTasks.FirstOrDefault(t => t is AiTaskComeToOwner) as AiTaskComeToOwner;
-            if (entity.ServerPos.DistanceTo(byEntity.ServerPos) > aitcto.TeleportMaxRange) // Do nothing outside max teleport range
+            if (entity.Pos.DistanceTo(byEntity.Pos) > aitcto.TeleportMaxRange) // Do nothing outside max teleport range
             {
                 return;
             }
@@ -68,7 +68,7 @@ namespace Vintagestory.GameContent
                 if (mount.IsMountedBy(plr.Entity)) return;
                 if (mount.AnyMounted())
                 {
-                    entity.GetBehavior<EntityBehaviorRideable>()?.UnmnountPassengers(); // You are not my owner, get lost!
+                    entity.GetBehavior<EntityBehaviorRideable>()?.UnmountPassengers(); // You are not my owner, get lost!
                 }
             }
 

@@ -58,7 +58,7 @@ namespace Vintagestory.GameContent
 
             int rotVariant = 1 + GameMath.MurmurHash3Mod(Pos.X, Pos.Y, Pos.Z, 4);
             BlockTapestry tBlock = Block as BlockTapestry;
-            meshData = tBlock?.genMesh(rotten, type, rotVariant).Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, Block.Shape.rotateY * GameMath.DEG2RAD, 0);
+            meshData = tBlock?.genMesh(rotten, type, rotVariant).Rotate(0, Block.Shape.rotateY * GameMath.DEG2RAD, 0);
         }
         
 

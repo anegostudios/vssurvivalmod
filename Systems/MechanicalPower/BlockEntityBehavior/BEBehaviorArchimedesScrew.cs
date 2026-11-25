@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Client;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -12,7 +12,6 @@ namespace Vintagestory.GameContent.Mechanics
     {
         ICoreClientAPI capi;
         float resistance;
-
 
         public BEBehaviorMPArchimedesScrew(BlockEntity blockentity) : base(blockentity)
         {
@@ -28,8 +27,7 @@ namespace Vintagestory.GameContent.Mechanics
             }
 
             AxisSign = new int[] { 0, 1, 0 };
-
-            resistance = properties["resistance"].AsFloat(0.015f);
+            resistance = properties["resistance"].AsFloat(0.003f);
         }
 
         public override float GetResistance()
@@ -49,7 +47,7 @@ namespace Vintagestory.GameContent.Mechanics
                 Shape shape = API.Common.Shape.TryGet(capi, cshape.Base);
                 capi.Tesselator.TesselateShape(Block, shape, out MeshData mesh);
 
-                mesh.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), cshape.rotateX * GameMath.DEG2RAD, cshape.rotateY * GameMath.DEG2RAD, cshape.rotateZ * GameMath.DEG2RAD);
+                mesh.Rotate(cshape.rotateX * GameMath.DEG2RAD, cshape.rotateY * GameMath.DEG2RAD, cshape.rotateZ * GameMath.DEG2RAD);
 
                 return mesh;
             });

@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -45,6 +45,11 @@ namespace Vintagestory.GameContent
         public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             if (byEntity.Attributes.GetInt("aimingCancel") == 1) return false;
+
+            if (byEntity.World.Side == EnumAppSide.Client && byEntity.Controls.LeftMouseDown)
+            {
+                byEntity.RequestedHandUseCancelReason = EnumItemUseCancelReason.PlayerTriggered;
+            }
 
             if (byEntity.World is IClientWorldAccessor)
             {
@@ -96,7 +101,7 @@ namespace Vintagestory.GameContent
             ((EntityThrownSnowball)entity).Damage = damage;
             ((EntityThrownSnowball)entity).ProjectileStack = stack;
 
-            EntityProjectile.SpawnThrownEntity(entity, byEntity, 0.75, 0.1, 0.2);
+            EntityProjectile.SpawnProjectile(entity, byEntity, 0.5, 0.75, 0.1, 0.4, -0.21, 20);
             byEntity.StartAnimation("throw");
 
             if (byEntity is EntityPlayer) RefillSlotIfEmpty(slot, byEntity, (itemstack) => itemstack.Collectible is ItemSnowball );
@@ -110,6 +115,11 @@ namespace Vintagestory.GameContent
 
         public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot)
         {
+            if (((ICoreClientAPI)api).World.Player.Entity.Attributes.GetInt("aiming") != 0)
+            {
+                return [new WorldInteraction { ActionLangCode = "general-cancel", MouseButton = EnumMouseButton.Left }];
+            }
+
             return new WorldInteraction[] {
                 new WorldInteraction()
                 {

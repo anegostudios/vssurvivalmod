@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -108,16 +108,16 @@ namespace Vintagestory.GameContent
 
         private void reloadTradingList()
         {
+            wasImported = false;
+
             if (TradeProps != null)
             {
+                foreach (var slot in Inventory.SellingSlots) slot.Itemstack = null;
+                foreach (var slot in Inventory.BuyingSlots) slot.Itemstack = null;
                 RefreshBuyingSellingInventory();
                 WatchedAttributes.SetDouble("lastRefreshTotalDays", World.Calendar.TotalDays - World.Rand.NextDouble() * 6);
                 Inventory.MoneySlot.Itemstack = null;
                 Inventory.GiveToTrader((int)TradeProps.Money.nextFloat(1f, World.Rand));
-            }
-            else
-            {
-                //World.Logger.Warning("Trader TradeProps not set during trader entity spawn. Won't have any items for sale/purchase.");
             }
         }
 
@@ -137,16 +137,27 @@ namespace Vintagestory.GameContent
             {
                 setupTaskBlocker();
                 if (wasImported) reloadTradingList();
+
+                if (WatchedAttributes.HasAttribute("tradingPlayerUID"))
+                {
+                    WatchedAttributes.RemoveAttribute("tradingPlayerUID");
+                }
             }
         }
 
         protected void setupTaskBlocker()
         {
             var taskAi = GetBehavior<EntityBehaviorTaskAI>();
-            if (taskAi != null) taskAi.TaskManager.OnShouldExecuteTask += (task) => interactingWithPlayer.Count == 0;
+            if (taskAi != null) taskAi.TaskManager.OnShouldExecuteTask += (task) =>
+            {
+                return interactingWithPlayer.Count == 0;
+            };
 
             var actAi = GetBehavior<EntityBehaviorActivityDriven>();
-            if (actAi != null) actAi.OnShouldRunActivitySystem += () => interactingWithPlayer.Count > 0 ? EnumInteruptionType.TradeRequested : EnumInteruptionType.None;
+            if (actAi != null) actAi.OnShouldRunActivitySystem += () =>
+            {
+                return interactingWithPlayer.Count > 0 ? EnumInteruptionType.TradeRequested : EnumInteruptionType.None;
+            };
         }
 
         protected void RefreshBuyingSellingInventory(float refreshChance = 1.1f)
@@ -267,10 +278,28 @@ namespace Vintagestory.GameContent
         {
             if (value == "opentrade")
             {
-                if (Alive && triggeringEntity.Pos.SquareDistanceTo(this.Pos) <= 7) {
+                if (Alive && triggeringEntity.Pos.SquareDistanceTo(this.Pos) <= EntityBehaviorConversable.BeginTalkRangeSq)
+                {
+                    if (WatchedAttributes.HasAttribute("tradingPlayerUID"))
+                    {
+                        if (Api is ICoreClientAPI capi)
+                        {
+                            capi.TriggerIngameError(this, "alreadyTrading",Lang.Get("trader-trading"));
+                        }
+
+                        return 0;
+                    }
+
                     ConversableBh.Dialog?.TryClose();
                     TryOpenTradeDialog(triggeringEntity);
-                    interactingWithPlayer.Add(triggeringEntity as EntityPlayer);
+                    if (triggeringEntity is EntityPlayer plr)
+                    {
+                        interactingWithPlayer.Add(plr);
+                        if (Api is ICoreServerAPI)
+                        {
+                            WatchedAttributes.SetString("tradingPlayerUID", plr.PlayerUID);
+                        }
+                    }
                 } else
                 {
                     if (World.Side == EnumAppSide.Server) {
@@ -287,7 +316,7 @@ namespace Vintagestory.GameContent
         void TryOpenTradeDialog(EntityAgent forEntity)
         {
             if (World.Side != EnumAppSide.Client) return;
-            
+
             EntityPlayer entityplr = forEntity as EntityPlayer;
             IPlayer player = World.PlayerByUid(entityplr.PlayerUID);
 
@@ -302,7 +331,9 @@ namespace Vintagestory.GameContent
                     player.InventoryManager.OpenInventory(Inventory);
 
                     dlg = new GuiDialogTrader(Inventory, this, World.Api as ICoreClientAPI);
+                    dlg.OnClosed += Dlg_OnClosed;
                     dlg.TryOpen();
+
                 }
                 else
                 {
@@ -316,23 +347,46 @@ namespace Vintagestory.GameContent
             }
         }
 
-
-
-        public override void OnReceivedClientPacket(IServerPlayer player, int packetid, byte[] data)
+        private void Dlg_OnClosed()
         {
-            base.OnReceivedClientPacket(player, packetid, data);
+            dlg = null;
+            var capi = Api as ICoreClientAPI;
+            interactingWithPlayer.Remove(capi.World.Player.Entity);
+            capi.Network.SendEntityPacket(EntityId, PlayerStoppedInteracting);
+        }
 
-            if (packetid < 1000)
+        public override void OnReceivedClientPacket(IServerPlayer player, int packetId, SerializedData packetData, ref CachedAccessPerms perms)
+        {
+            base.OnReceivedClientPacket(player, packetId, packetData, ref perms);
+
+            switch (packetId)
             {
-                Inventory.InvNetworkUtil.HandleClientPacket(player, packetid, data);
-                return;
-            }
-            if (packetid == 1000)
-            {
-                EnumTransactionResult result = Inventory.TryBuySell(player);
-                if (result == EnumTransactionResult.Success)
-                {
-                    (Api as ICoreServerAPI).WorldManager.GetChunk(ServerPos.AsBlockPos)?.MarkModified();
+                case < 1000:
+                    if(!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.None, true, "trader"))
+                    {
+                        Inventory.InvNetworkUtil.SendInventoryRollback(player, packetId, packetData);
+                        break;
+                    }
+
+                    Inventory.InvNetworkUtil.HandleClientPacket(player, packetId, packetData);
+
+                    break;
+
+
+                case 1000:
+                    if(!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.None, true, "trader"))
+                    {
+                        // Rennorb 23.06.2026 ux: I don't think anything needs to be reverted here. 
+                        break;
+                    }
+
+                    if (Inventory.TryBuySell(player) != EnumTransactionResult.Success)
+                    {
+                        break;
+                    }
+
+
+                    (Api as ICoreServerAPI).WorldManager.GetChunk(Pos.AsBlockPos)?.MarkModified();
 
                     AnimManager.StopAnimation("idle");
                     AnimManager.StartAnimation(new AnimationMetaData() { Animation = "nod", Code = "nod", Weight = 10, EaseOutSpeed = 10000, EaseInSpeed = 10000 });
@@ -340,30 +394,60 @@ namespace Vintagestory.GameContent
                     TreeAttribute tree = new TreeAttribute();
                     Inventory.ToTreeAttributes(tree);
                     (Api as ICoreServerAPI).Network.BroadcastEntityPacket(EntityId, 1234, tree.ToBytes());
-                }
-            }
-            if (packetid == 1001)
-            {
-                player.InventoryManager.OpenInventory(Inventory);
+
+                    break;
+
+
+                case 1001:
+                    if(!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.None, true, "trader"))
+                    {
+                        // No reverting needed. Just don't open the inventory.
+                        break;
+                    }
+
+                    player.InventoryManager.OpenInventory(Inventory);
+
+                    break;
+
+
+                case PlayerStoppedInteracting:
+                    // No perms check here, this is always allowed.
+
+                    interactingWithPlayer.Remove(player.Entity);
+                    if (WatchedAttributes.GetString("tradingPlayerUID") == player.PlayerUID)
+                    {
+                        WatchedAttributes.RemoveAttribute("tradingPlayerUID");
+                    }
+
+                    break;
             }
         }
 
-        public override void OnReceivedServerPacket(int packetid, byte[] data)
+        public override void OnReceivedServerPacket(int packetId, SerializedData packetData)
         {
-            base.OnReceivedServerPacket(packetid, data);
+            base.OnReceivedServerPacket(packetId, packetData);
 
-            if (packetid == PlayerStoppedInteracting)
+            switch(packetId)
             {
-                dlg?.TryClose();
-                interactingWithPlayer.Remove((Api as ICoreClientAPI).World.Player.Entity);
-                (Api as ICoreClientAPI).World.Player.InventoryManager.CloseInventoryAndSync(Inventory);
-            }
+                case PlayerStoppedInteracting:
+                    dlg?.TryClose();
+                    interactingWithPlayer.Remove((Api as ICoreClientAPI).World.Player.Entity);
+                    (Api as ICoreClientAPI).World.Player.InventoryManager.CloseInventoryAndSync(Inventory);
 
-            if (packetid == 1234)
-            {
-                TreeAttribute tree = new TreeAttribute();
-                tree.FromBytes(data);
-                Inventory.FromTreeAttributes(tree);
+                    break;
+
+
+                case 1234:
+                {
+                    var reader = packetData.AsBinaryReader();
+
+                    var tree = new TreeAttribute();
+                    tree.FromBytes(ref reader);
+
+                    Inventory.FromTreeAttributes(tree);
+
+                    break;
+                }
             }
         }
 
@@ -416,9 +500,13 @@ namespace Vintagestory.GameContent
                 {
                     var eplr = interactingWithPlayer[i];
 
-                    if (!Alive || eplr.Pos.SquareDistanceTo(Pos) > 5)
+                    if (!Alive || eplr.Pos.SquareDistanceTo(Pos) > EntityBehaviorConversable.BeginTalkRangeSq)
                     {
                         interactingWithPlayer.Remove(eplr);
+                        if (WatchedAttributes.GetString("tradingPlayerUID") == eplr.PlayerUID)
+                        {
+                            WatchedAttributes.RemoveAttribute("tradingPlayerUID");
+                        }
                         Inventory.Close(eplr.Player);
                         i--;
                     }
@@ -432,9 +520,9 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void FromBytes(BinaryReader reader, bool forClient)
+        public override void FromBytes(ref BinarySpanReader reader, bool forClient)
         {
-            base.FromBytes(reader, forClient);
+            base.FromBytes(ref reader, forClient);
 
             if (Inventory == null)
             {
@@ -442,11 +530,20 @@ namespace Vintagestory.GameContent
             }
 
             Inventory.FromTreeAttributes(GetOrCreateTradeStore());
+
+            if (WatchedAttributes.GetBool("wasImported", false))
+            {
+                wasImported = true;
+                WatchedAttributes.RemoveAttribute("wasImported");
+            }
         }
 
         public override void ToBytes(BinaryWriter writer, bool forClient)
         {
             Inventory.ToTreeAttributes(GetOrCreateTradeStore());
+
+            if (wasImported) WatchedAttributes.SetBool("wasImported", true);
+            else WatchedAttributes.RemoveAttribute("wasImported");
 
             base.ToBytes(writer, forClient);
         }
@@ -464,7 +561,5 @@ namespace Vintagestory.GameContent
 
             return WatchedAttributes["traderInventory"] as ITreeAttribute;
         }
-
     }
-
 }

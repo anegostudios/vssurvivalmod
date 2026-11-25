@@ -1,4 +1,5 @@
-﻿using System;
+using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -14,11 +15,16 @@ namespace Vintagestory.GameContent
 {
     public class BlockEntityFirepit : BlockEntityOpenableContainer, IHeatSource, IFirePit, ITemperatureSensitive
     {
+        protected const int FuelId = 0;
+        protected const int InputId = 1;
+        protected const int OutputId = 2;
+
         internal InventorySmelting inventory;
 
         // Temperature before the half second tick
         public float prevFurnaceTemperature = 20;
-
+        // flag to determine whether static or dynamic rendering is used
+        private bool prevForceStatic = false;
         // Current temperature of the furnace
         public float furnaceTemperature = 20;
         // Current temperature of the ore (Degree Celsius * deg
@@ -53,6 +59,12 @@ namespace Vintagestory.GameContent
         public bool IsHot => IsBurning;
         public float emptyFirepitBurnTimeMulBonus = 4f;
 
+        byte tickAccumulator;
+        bool isExtinct;
+        bool CanHeatInput;
+        bool CanHeatOutput;
+        int inputMaxTemp;
+        int outputMaxTemp;
 
         #region Config
 
@@ -103,36 +115,77 @@ namespace Vintagestory.GameContent
         public BlockEntityFirepit()
         {
             inventory = new InventorySmelting(null, null);
-            inventory.SlotModified += OnSlotModifid;
+            inventory.SlotModified += OnSlotModified;
         }
 
 
-
+        ICoreClientAPI capi;
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
 
             inventory.pos = Pos;
             inventory.LateInitialize("smelting-" + Pos.X + "/" + Pos.Y + "/" + Pos.Z, api);
-            
-            RegisterGameTickListener(OnBurnTick, 100);
-            RegisterGameTickListener(On500msTick, 500);
 
-            if (api is ICoreClientAPI)
+            if (!Block.Code.Path.Contains("construct"))   // Firepit under contruction does not require to be ticked; when construction is finished the block will be exchanged
             {
-                renderer = new FirepitContentsRenderer(api as ICoreClientAPI, Pos);
-                (api as ICoreClientAPI).Event.RegisterRenderer(renderer, EnumRenderStage.Opaque, "firepit");
+                OnConstructionCompleted();
+                UpdateExtinctStatus();
+            }
 
+            if (api is ICoreClientAPI capi)
+            {
+                this.capi = capi;
+                renderer = new FirepitContentsRenderer(capi, Pos);
+                capi.Event.RegisterRenderer(renderer, EnumRenderStage.Opaque, "firepit");
+                capi.Event.RegisterEventBusListener(OnSetTransform, 0.5, "onsettransform");
                 UpdateRenderer();
             }
         }
 
+        public override void OnExchanged(Block block)
+        {
+            base.OnExchanged(block);
+            UpdateExtinctStatus();
+        }
+
+        public void UpdateExtinctStatus()
+        {
+            isExtinct = Block.Variant["burnstate"] == "extinct";
+        }
+
+        public void OnConstructionCompleted()
+        {
+            RegisterGameTickListener(On100msTick, 100);
+        }
+
+        protected void OnSetTransform(string eventName, ref EnumHandling handling, IAttribute data)
+        {
+            var target = (data as TreeAttribute).GetString("target");
+
+            if (target != "infirepitTransform") return;
+
+            if (Pos.DistanceTo(capi.World.Player.Entity.Pos.XYZ) > 20) return; // Just for nearby shelves to reduce chunk redraws
+
+            var hslot = capi.World.Player.InventoryManager.ActiveHotbarSlot;
+            var collObj = hslot.Itemstack.Collectible;
+
+            var tf = ModelTransform.CreateFromTreeAttribute(data as TreeAttribute);
+            if (collObj?.Attributes?.KeyExists("inFirePitProps") != true)
+            {
+                if (collObj.Attributes == null) collObj.Attributes = new JsonObject(new JObject());
+                collObj.Attributes.Token["inFirePitProps"]["transform"] = JToken.FromObject(tf);
+            }
+
+            renderer.Transform = tf;
+        }
 
 
-        private void OnSlotModifid(int slotid)
+        private void OnSlotModified(int slotid)
         {
             Block = Api.World.BlockAccessor.GetBlock(Pos);
 
+            UpdateCachedStackAttributes(slotid);
             UpdateRenderer();
             MarkDirty(Api.Side == EnumAppSide.Server); // Save useless triple-remesh by only letting the server decide when to redraw
             shouldRedraw = true;
@@ -145,12 +198,53 @@ namespace Vintagestory.GameContent
             Api.World.BlockAccessor.GetChunkAtBlockPos(Pos)?.MarkModified();
         }
 
+        private void UpdateCachedStackAttributes(int slotid)
+        {
+            // We cache certain properties of the input and output itemstacks, for performance - otherwise all these have to be read every tick
+            if (slotid == InputId)
+            {
+                var stack = inputStack;
+                JsonObject allowHeating = stack?.ItemAttributes?["allowHeating"];
+                CanHeatInput = allowHeating != null && allowHeating.AsBool();
+
+                if (stack != null)
+                {
+                    CombustibleProperties combustibleProps = stack.Collectible.GetCombustibleProperties(Api.World, stack, null);
+                    var maxTemperatureAttribute = stack.ItemAttributes?["maxTemperature"];
+                    inputMaxTemp = Math.Max(combustibleProps == null ? 0 : combustibleProps.MaxTemperature, maxTemperatureAttribute == null ? 0 : maxTemperatureAttribute.AsInt(0));
+                }
+            }
+            else if (slotid == OutputId)
+            {
+                var stack = outputStack;
+                JsonObject allowHeating = stack?.ItemAttributes?["allowHeating"];
+                CanHeatOutput = allowHeating != null && allowHeating.AsBool();
+
+                if (stack != null)
+                {
+                    CombustibleProperties combustibleProps = stack.Collectible.GetCombustibleProperties(Api.World, stack, null);
+                    var maxTemperatureAttribute = stack.ItemAttributes?["maxTemperature"];
+                    outputMaxTemp = Math.Max(combustibleProps == null ? 0 : combustibleProps.MaxTemperature, maxTemperatureAttribute == null ? 0 : maxTemperatureAttribute.AsInt(0));
+                }
+            }
+        }
 
         public bool IsSmoldering => canIgniteFuel;
 
         public bool IsBurning
         {
             get { return this.fuelBurnTime > 0; }
+        }
+
+
+        private void On100msTick(float dt)
+        {
+            OnBurnTick(dt);
+            if (++tickAccumulator >= 5)
+            {
+                tickAccumulator = 0;
+                On500msTick(dt);
+            }
         }
 
 
@@ -170,8 +264,6 @@ namespace Vintagestory.GameContent
 
         private void OnBurnTick(float dt)
         {
-            if (Block.Code.Path.Contains("construct")) return;
-
             // Only tick on the server and merely sync to client
             if (Api is ICoreClientAPI)
             {
@@ -198,51 +290,55 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            // Too cold to ignite fuel after 2 hours
-            if (!IsBurning && Block.Variant["burnstate"] == "extinct" && Api.World.Calendar.TotalHours - extinguishedTotalHours > 2)
-            {
-                canIgniteFuel = false;
-                setBlockState("cold");
-            }
-
             // Furnace is burning: Heat furnace
             if (IsBurning)
             {
                 furnaceTemperature = changeTemperature(furnaceTemperature, maxTemperature, dt);
             }
+            else
+            {
+                // Too cold to ignite fuel after 2 hours
+                if (isExtinct && Api.World.Calendar.TotalHours - extinguishedTotalHours > 2)
+                {
+                    canIgniteFuel = false;
+                    setBlockState("cold");
+                }
+            }
+
+            bool canSmeltInput = this.canSmeltInput();
 
             // Ore follows furnace temperature
-            if (canHeatInput())
+            if (CanHeatInput || canSmeltInput)
             {
                 heatInput(dt);
-            } else
+            }
+            else
             {
                 inputStackCookingTime = 0;
             }
 
-            if (canHeatOutput())
+            if (CanHeatOutput)
             {
                 heatOutput(dt);
             }
 
 
             // Finished smelting? Turn to smelted item
-            if (canSmeltInput() && inputStackCookingTime > maxCookingTime())
+            if (canSmeltInput && inputStackCookingTime > maxCookingTime())
             {
                 smeltItems();
-            }
-
-
-            // Furnace is not burning and can burn: Ignite the fuel
-            if (!IsBurning && canIgniteFuel && canSmelt())
-            {
-                igniteFuel();
             }
 
 
             // Furnace is not burning: Cool down furnace and ore also turn of fire
             if (!IsBurning)
             {
+                // Furnace is not burning and can burn: Ignite the fuel
+                if (canIgniteFuel && canSmelt())
+                {
+                    igniteFuel();
+                }
+
                 furnaceTemperature = changeTemperature(furnaceTemperature, enviromentTemperature(), dt);
             }
 
@@ -296,10 +392,8 @@ namespace Vintagestory.GameContent
             CombustibleProperties fuelCopts = fuelCombustibleOpts;
             if (fuelCopts == null) return false;
 
-            bool smeltableInput = canHeatInput();
-
             return
-                    (BurnsAllFuell || smeltableInput)
+                    (BurnsAllFuell || CanHeatInput)
                     // Require fuel
                     && fuelCopts.BurnTemperature * HeatModifier > 0
             ;
@@ -312,18 +406,19 @@ namespace Vintagestory.GameContent
             float oldTemp = InputStackTemp;
             float nowTemp = oldTemp;
             float meltingPoint = inputSlot.Itemstack.Collectible.GetMeltingPoint(Api.World, inventory, inputSlot);
+            float stackSize = inputSlot.Itemstack.StackSize;
 
             // Only Heat ore. Cooling happens already in the itemstack
             if (oldTemp < furnaceTemperature)
             {
                 float f = (1 + GameMath.Clamp((furnaceTemperature - oldTemp) / 30, 0, 1.6f)) * dt;
-                if (nowTemp >= meltingPoint) f /= 11;
+                if (nowTemp >= meltingPoint) f /= 11; // Technically inconsistent - slows down heating of all items when only one is being smelted. But the overall effect is good.
 
                 float newTemp = changeTemperature(oldTemp, furnaceTemperature, f);
-                int maxTemp = Math.Max(inputStack.Collectible.CombustibleProps == null ? 0 : inputStack.Collectible.CombustibleProps.MaxTemperature, inputStack.ItemAttributes?["maxTemperature"] == null ? 0 : inputStack.ItemAttributes["maxTemperature"].AsInt(0));
-                if (maxTemp > 0)
+                newTemp = (newTemp + (stackSize - 1) * oldTemp) / stackSize;
+                if (inputMaxTemp > 0)
                 {
-                    newTemp = Math.Min(maxTemp, newTemp);
+                    newTemp = Math.Min(inputMaxTemp, newTemp);
                 }
 
                 if (oldTemp != newTemp)
@@ -355,10 +450,9 @@ namespace Vintagestory.GameContent
             if (oldTemp < furnaceTemperature)
             {
                 float newTemp = changeTemperature(oldTemp, furnaceTemperature, 2 * dt);
-                int maxTemp = Math.Max(outputStack.Collectible.CombustibleProps == null ? 0 : outputStack.Collectible.CombustibleProps.MaxTemperature, outputStack.ItemAttributes?["maxTemperature"] == null ? 0 : outputStack.ItemAttributes["maxTemperature"].AsInt(0));
-                if (maxTemp > 0)
+                if (outputMaxTemp > 0)
                 {
-                    newTemp = Math.Min(maxTemp, newTemp);
+                    newTemp = Math.Min(outputMaxTemp, newTemp);
                 }
 
                 if (oldTemp != newTemp)
@@ -368,7 +462,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public void CoolNow(float amountRel)
+        public void CoolNow(float amountRel, OnStackToCool onStackToCoolCallback)
         {
             Api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), Pos, -0.5, null, false, 16);
 
@@ -418,13 +512,14 @@ namespace Vintagestory.GameContent
         {
             if (stack == null) return enviromentTemperature();
 
-            if (inventory.CookingSlots.Length > 0)
+            var cookingSlots = inventory.CookingSlots;
+            if (cookingSlots.Length > 0)
             {
                 bool haveStack = false;
                 float lowestTemp = 0;
-                for (int i = 0; i < inventory.CookingSlots.Length; i++)
+                for (int i = 0; i < cookingSlots.Length; i++)
                 {
-                    ItemStack cookingStack = inventory.CookingSlots[i].Itemstack;
+                    ItemStack cookingStack = cookingSlots[i].Itemstack;
                     if (cookingStack != null)
                     {
                         float stackTemp = cookingStack.Collectible.GetTemperature(Api.World, cookingStack);
@@ -446,11 +541,13 @@ namespace Vintagestory.GameContent
         void SetTemp(ItemStack stack, float value)
         {
             if (stack == null) return;
-            if (inventory.CookingSlots.Length > 0)
+            var cookingSlots = inventory.CookingSlots;
+            if (cookingSlots.Length > 0)
             {
-                for (int i = 0; i < inventory.CookingSlots.Length; i++)
+                for (int i = 0; i < cookingSlots.Length; i++)
                 {
-                    inventory.CookingSlots[i].Itemstack?.Collectible.SetTemperature(Api.World, inventory.CookingSlots[i].Itemstack, value);
+                    var itemstack = cookingSlots[i].Itemstack;
+                    itemstack?.Collectible.SetTemperature(Api.World, itemstack, value);
                 }
             }
             else
@@ -478,7 +575,7 @@ namespace Vintagestory.GameContent
 
         public void igniteWithFuel(IItemStack stack)
         {
-            CombustibleProperties fuelCopts = stack.Collectible.CombustibleProps;
+            CombustibleProperties fuelCopts = stack.Collectible.GetCombustibleProperties(Api.World, stack as ItemStack, null);
 
             maxFuelBurnTime = fuelBurnTime = fuelCopts.BurnDuration * BurnDurationModifier;
             maxTemperature = (int)(fuelCopts.BurnTemperature * HeatModifier);
@@ -500,39 +597,35 @@ namespace Vintagestory.GameContent
             this.Block = block;
         }
 
-
-
+        // Retained for mod compatibility - the casing is wrong for historic reasons
         public bool canHeatInput()
         {
-            return
-                canSmeltInput() || (inputStack?.ItemAttributes?["allowHeating"] != null && inputStack.ItemAttributes["allowHeating"].AsBool())
-            ;
+            return CanHeatInput;
         }
 
+        // Retained for mod compatibility - the casing is wrong for historic reasons
         public bool canHeatOutput()
         {
-            return
-                outputStack?.ItemAttributes?["allowHeating"] != null && outputStack.ItemAttributes["allowHeating"].AsBool();
-            ;
+            return CanHeatOutput;
         }
 
         public bool canSmeltInput()
         {
-            if (inputStack == null) return false;
+            CollectibleObject input = inputStack?.Collectible;
+            if (input == null) return false;
 
-            if (inputStack.Collectible.OnSmeltAttempt(inventory)) MarkDirty(true);
+            if (input.OnSmeltAttempt(inventory)) MarkDirty(true);
 
-            return
-                inputStack.Collectible.CanSmelt(Api.World, inventory, inputSlot.Itemstack, outputSlot.Itemstack)
-                && (inputStack.Collectible.CombustibleProps == null || !inputStack.Collectible.CombustibleProps.RequiresContainer)
-            ;
+            if (!input.CanSmelt(Api.World, inventory, inputSlot.Itemstack, outputSlot.Itemstack)) return false;
+
+            CombustibleProperties combustibleProps = input.GetCombustibleProperties(Api.World, inputStack, null);
+            return combustibleProps == null || !combustibleProps.RequiresContainer;
         }
 
 
         public void smeltItems()
         {
             inputStack.Collectible.DoSmelt(Api.World, inventory, inputSlot, outputSlot);
-            InputStackTemp = enviromentTemperature();
             inputStackCookingTime = 0;
             MarkDirty(true);
             inputSlot.MarkDirty();
@@ -559,14 +652,9 @@ namespace Vintagestory.GameContent
 
 
 
-        public override void OnReceivedClientPacket(IPlayer player, int packetid, byte[] data)
+        public override void OnReceivedServerPacket(int packetId, SerializedData packetData)
         {
-            base.OnReceivedClientPacket(player, packetid, data);
-        }
-
-        public override void OnReceivedServerPacket(int packetid, byte[] data)
-        {
-            if (packetid == (int)EnumBlockEntityPacketId.Close)
+            if (packetId == (int)EnumBlockEntityPacketId.Close)
             {
                 (Api.World as IClientWorldAccessor).Player.InventoryManager.CloseInventory(Inventory);
                 invDialog?.TryClose();
@@ -586,8 +674,9 @@ namespace Vintagestory.GameContent
             if (Api != null)
             {
                 Inventory.AfterBlocksLoaded(Api.World);
+                UpdateCachedStackAttributes(InputId);
+                UpdateCachedStackAttributes(OutputId);
             }
-
 
             furnaceTemperature = tree.GetFloat("furnaceTemperature");
             maxTemperature = tree.GetInt("maxTemperature");
@@ -597,6 +686,8 @@ namespace Vintagestory.GameContent
             extinguishedTotalHours = tree.GetDouble("extinguishedTotalHours");
             canIgniteFuel = tree.GetBool("canIgniteFuel", true);
             cachedFuel = tree.GetFloat("cachedFuel", 0);
+
+            UpdateExtinctStatus();
 
             if (Api?.Side == EnumAppSide.Client)
             {
@@ -620,23 +711,44 @@ namespace Vintagestory.GameContent
         {
             if (renderer == null) return;
 
-            ItemStack contentStack = inputStack == null ? outputStack : inputStack;
+            bool forceStatic = ForceStaticMesh();
 
-            bool useOldRenderer =
-                renderer.ContentStack != null &&
-                renderer.contentStackRenderer != null &&
-                contentStack?.Collectible is IInFirepitRendererSupplier &&
-                renderer.ContentStack.Equals(Api.World, contentStack, GlobalConstants.IgnoredStackAttributes)
-            ;
+            // If the mode has changed, we re-tessellate the block
+            if (forceStatic != prevForceStatic)
+            {
+                MarkDirty(true);
+                prevForceStatic = forceStatic;
+            }
+
+            // if we need static rendering of the pot mesh
+            if (forceStatic)
+            {
+                // Remove the dynamic renderer if there was one
+                if (renderer.contentStackRenderer != null)
+                {
+                    renderer.contentStackRenderer.Dispose();
+                    renderer.contentStackRenderer = null;
+                }
+                renderer.SetContents(null, null);
+                return;
+            }
+
+            ItemStack contentStack = inputStack ?? outputStack;
+
+            IInFirepitRendererSupplier rendererSupplier = contentStack?.Collectible.GetCollectibleInterface<IInFirepitRendererSupplier>();
+            bool useOldRenderer = renderer.ContentStack != null &&
+                                  renderer.contentStackRenderer != null &&
+                                  rendererSupplier != null &&
+                                  renderer.ContentStack.Equals(Api.World, contentStack, GlobalConstants.IgnoredStackAttributes);
 
             if (useOldRenderer) return; // Otherwise the cooking sounds restarts all the time
 
             renderer.contentStackRenderer?.Dispose();
             renderer.contentStackRenderer = null;
 
-            if (contentStack?.Collectible is IInFirepitRendererSupplier)
+            if (rendererSupplier != null)
             {
-                IInFirepitRenderer childrenderer = (contentStack?.Collectible as IInFirepitRendererSupplier).GetRendererWhenInFirepit(contentStack, this, contentStack == outputStack);
+                IInFirepitRenderer childrenderer = rendererSupplier.GetRendererWhenInFirepit(contentStack, this, contentStack == outputStack);
                 if (childrenderer != null)
                 {
                     renderer.SetChildRenderer(contentStack, childrenderer);
@@ -645,7 +757,8 @@ namespace Vintagestory.GameContent
             }
 
             InFirePitProps props = GetRenderProps(contentStack);
-            if (contentStack?.Collectible != null && !(contentStack?.Collectible is IInFirepitMeshSupplier) && props != null)
+            IInFirepitMeshSupplier meshSupplier = contentStack?.Collectible.GetCollectibleInterface<IInFirepitMeshSupplier>();
+            if (contentStack?.Collectible != null && meshSupplier == null && props != null)
             {
                 renderer.SetContents(contentStack, props.Transform);
             }
@@ -729,17 +842,17 @@ namespace Vintagestory.GameContent
 
         public ItemSlot fuelSlot
         {
-            get { return inventory[0]; }
+            get { return inventory[FuelId]; }
         }
 
         public ItemSlot inputSlot
         {
-            get { return inventory[1]; }
+            get { return inventory[InputId]; }
         }
 
         public ItemSlot outputSlot
         {
-            get { return inventory[2]; }
+            get { return inventory[OutputId]; }
         }
 
         public ItemSlot[] otherCookingSlots
@@ -749,20 +862,20 @@ namespace Vintagestory.GameContent
 
         public ItemStack fuelStack
         {
-            get { return inventory[0].Itemstack; }
-            set { inventory[0].Itemstack = value; inventory[0].MarkDirty(); }
+            get { return inventory[FuelId].Itemstack; }
+            set { inventory[FuelId].Itemstack = value; inventory[FuelId].MarkDirty(); }
         }
 
         public ItemStack inputStack
         {
-            get { return inventory[1].Itemstack; }
-            set { inventory[1].Itemstack = value; inventory[1].MarkDirty(); }
+            get { return inventory[InputId].Itemstack; }
+            set { inventory[InputId].Itemstack = value; inventory[InputId].MarkDirty(); }
         }
 
         public ItemStack outputStack
         {
-            get { return inventory[2].Itemstack; }
-            set { inventory[2].Itemstack = value; inventory[2].MarkDirty(); }
+            get { return inventory[OutputId].Itemstack; }
+            set { inventory[OutputId].Itemstack = value; inventory[OutputId].MarkDirty(); }
         }
 
 
@@ -775,7 +888,8 @@ namespace Vintagestory.GameContent
         {
             ItemSlot slot = inventory[slotid];
             if (slot.Itemstack == null) return null;
-            return slot.Itemstack.Collectible.CombustibleProps;
+            CombustibleProperties combustibleProps = slot.Itemstack.Collectible.GetCombustibleProperties(Api.World, slot.Itemstack, null);
+            return combustibleProps;
         }
 
         #endregion
@@ -837,24 +951,67 @@ namespace Vintagestory.GameContent
 
         public EnumFirepitModel CurrentModel { get; private set; }
 
+        public bool ForceStaticMesh()
+        {
+            return inputStack != null && furnaceTemperature < 50 && inputStack?.Block?.Code.Path.Contains("claypot") == true;
+        }
+
+
+
+        private void AddPotStaticMesh(ITerrainMeshPool mesher, ITesselatorAPI tesselator, ItemStack potStack)
+        {
+            Block potBlock = potStack.Block;
+            if (potBlock == null) return;
+
+            // Unique keys for each pot type
+            string potKey = "pot-static-" + potBlock.Code;
+            string lidKey = "lid-static-" + potBlock.Code;
+
+            // Get or create a pot mesh
+            MeshData potMesh = ObjectCacheUtil.GetOrCreate(Api, potKey, () =>
+            {
+                tesselator.TesselateShape(potBlock, Shape.TryGet(Api, "shapes/block/clay/pot-opened-empty.json"), out var mesh);
+                mesh.Translate(0, 1 / 16f, 0);
+                return mesh;
+            });
+            mesher.AddMeshData(potMesh);
+
+            // Get or create a lid mesh
+            MeshData lidMesh = ObjectCacheUtil.GetOrCreate(Api, lidKey, () =>
+            {
+                tesselator.TesselateShape(potBlock, Shape.TryGet(Api, "shapes/block/clay/pot-part-lid.json"), out var mesh);
+                mesh.Translate(0, 6.5f / 16f, 0);
+                return mesh;
+            });
+            mesher.AddMeshData(lidMesh);
+        }
+
+
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
         {
             if (Block == null || Block.Code.Path.Contains("construct")) return false;
 
-            
-            ItemStack contentStack = inputStack == null ? outputStack : inputStack;
-            MeshData contentmesh = getContentMesh(contentStack, tesselator);
-            if (contentmesh != null)
+
+            if (ForceStaticMesh())
             {
-                mesher.AddMeshData(contentmesh);
+                // For the cold pot we use a static mesh with a lid
+                AddPotStaticMesh(mesher, tesselator, inputStack);
+                CurrentModel = EnumFirepitModel.Wide; // We indicate that there is a pot inside
+            }
+            else
+            {
+                ItemStack contentStack = inputStack ?? outputStack;
+                // Otherwise, the standard logic for getting the content mesh
+                MeshData contentMesh = getContentMesh(contentStack, tesselator);
+                if (contentMesh != null) mesher.AddMeshData(contentMesh);
+                // getContentMesh sets CurrentModel itself
             }
 
+            // The mesh of the block itself (fire/coals) is added as usual
             string burnState = Block.Variant["burnstate"];
             string contentState = CurrentModel.ToString().ToLowerInvariant();
             if (burnState == "cold" && fuelSlot.Empty) burnState = "extinct";
-            if (burnState == null) return true;
-
-            mesher.AddMeshData(getOrCreateMesh(burnState, contentState));
+            if (burnState != null) mesher.AddMeshData(getOrCreateMesh(burnState, contentState));
 
             return true;
         }
@@ -865,10 +1022,11 @@ namespace Vintagestory.GameContent
 
             if (contentStack == null) return null;
 
-            if (contentStack.Collectible is IInFirepitMeshSupplier)
+            IInFirepitMeshSupplier meshSupplier = contentStack.Collectible.GetCollectibleInterface<IInFirepitMeshSupplier>();
+            if (meshSupplier != null)
             {
                 EnumFirepitModel model = EnumFirepitModel.Normal;
-                MeshData mesh = (contentStack.Collectible as IInFirepitMeshSupplier).GetMeshWhenInFirepit(contentStack, Api.World, Pos, ref model);
+                MeshData mesh = meshSupplier.GetMeshWhenInFirepit(contentStack, Api.World, Pos, ref model);
                 this.CurrentModel = model;
 
                 if (mesh != null)
@@ -878,9 +1036,10 @@ namespace Vintagestory.GameContent
 
             }
             
-            if (contentStack.Collectible is IInFirepitRendererSupplier)
+            IInFirepitRendererSupplier rendererSupplier = contentStack.Collectible.GetCollectibleInterface<IInFirepitRendererSupplier>();
+            if (rendererSupplier != null)
             {
-                EnumFirepitModel model = (contentStack.Collectible as IInFirepitRendererSupplier).GetDesiredFirepitModel(contentStack, this, contentStack == outputStack);
+                EnumFirepitModel model = rendererSupplier.GetDesiredFirepitModel(contentStack, this, contentStack == outputStack);
                 this.CurrentModel = model;
                 return null;
             }
@@ -923,16 +1082,14 @@ namespace Vintagestory.GameContent
             renderer?.Dispose();
         }
 
-        InFirePitProps GetRenderProps(ItemStack contentStack)
+        public static InFirePitProps GetRenderProps(ItemStack contentStack)
         {
-            if (contentStack?.ItemAttributes?.KeyExists("inFirePitProps") == true)
+            InFirePitProps props = contentStack?.ItemAttributes?["inFirePitProps"].AsObject<InFirePitProps>();
+            if (props != null)
             {
-                InFirePitProps props = contentStack.ItemAttributes["inFirePitProps"].AsObject<InFirePitProps>();
                 props.Transform.EnsureDefaultValues();
-
-                return props;
             }
-            return null;
+            return props;
         }
 
 
@@ -962,3 +1119,4 @@ namespace Vintagestory.GameContent
         }
     }
 }
+

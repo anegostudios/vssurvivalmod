@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
@@ -150,6 +150,7 @@ namespace Vintagestory.GameContent
         /// </summary>
         public List<ClayFormingRecipe> ClayFormingRecipes = new List<ClayFormingRecipe>();
 
+        ICoreAPI api;
 
         public override double ExecuteOrder()
         {
@@ -158,18 +159,19 @@ namespace Vintagestory.GameContent
 
         public override void StartPre(ICoreAPI api)
         {
+            this.api = api;
             canRegister = true;
         }
 
         public override void Start(ICoreAPI api)
         {
-            CookingRecipes = api.RegisterRecipeRegistry<RecipeRegistryGeneric<CookingRecipe>>("cookingrecipes").Recipes;
-            MetalAlloys = api.RegisterRecipeRegistry<RecipeRegistryGeneric<AlloyRecipe>>("alloyrecipes").Recipes;
+            CookingRecipes = api.RegisterCustomRegistry<RecipeRegistryGeneric<CookingRecipe>>("cookingrecipes").Recipes;
+            MetalAlloys = api.RegisterCustomRegistry<RecipeRegistryGeneric<AlloyRecipe>>("alloyrecipes").Recipes;
 
-            SmithingRecipes = api.RegisterRecipeRegistry<RecipeRegistryGeneric<SmithingRecipe>>("smithingrecipes").Recipes;
-            KnappingRecipes = api.RegisterRecipeRegistry<RecipeRegistryGeneric<KnappingRecipe>>("knappingrecipes").Recipes;
-            ClayFormingRecipes = api.RegisterRecipeRegistry<RecipeRegistryGeneric<ClayFormingRecipe>>("clayformingrecipes").Recipes;
-            BarrelRecipes = api.RegisterRecipeRegistry<RecipeRegistryGeneric<BarrelRecipe>>("barrelrecipes").Recipes;
+            SmithingRecipes = api.RegisterCustomRegistry<RecipeRegistryGeneric<SmithingRecipe>>("smithingrecipes").Recipes;
+            KnappingRecipes = api.RegisterCustomRegistry<RecipeRegistryGeneric<KnappingRecipe>>("knappingrecipes").Recipes;
+            ClayFormingRecipes = api.RegisterCustomRegistry<RecipeRegistryGeneric<ClayFormingRecipe>>("clayformingrecipes").Recipes;
+            BarrelRecipes = api.RegisterCustomRegistry<RecipeRegistryGeneric<BarrelRecipe>>("barrelrecipes").Recipes;
         }
 
 
@@ -271,6 +273,17 @@ namespace Vintagestory.GameContent
         {
             if (!canRegister) throw new InvalidOperationException("Coding error: Can no long register cooking recipes. Register them during AssetsLoad/AssetsFinalize and with ExecuteOrder < 99999");
             recipe.RecipeId = SmithingRecipes.Count + 1;
+
+            if (recipe.Code == null)
+            {
+                api.Logger.Warning("Smithing recipe with output {0} has no code. For 1.23 all smithing recipes need to have a unique, unchanging code", recipe.Output.Code);
+            } else
+            {
+                if (SmithingRecipes.FirstOrDefault(r => r.Code == recipe.Code) != null)
+                {
+                    api.Logger.Warning("Smithing recipe with output {0} has a code that is already used by another recipe. For 1.23 all smithing recipes need to have a unique, unchanging code", recipe.Output.Code);
+                }
+            }
 
             SmithingRecipes.Add(recipe);
         }

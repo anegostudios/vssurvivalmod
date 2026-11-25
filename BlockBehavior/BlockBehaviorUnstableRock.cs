@@ -46,7 +46,7 @@ namespace Vintagestory.GameContent
             int radint = (int)Math.Round(radius) + 1;
 
             var rnd = sapi.World.Rand;
-            BlockPos tmpPos = new BlockPos();
+            BlockPos tmpPos = new BlockPos(pos.dimension);
 
             while (cnt-- > 0) 
             {
@@ -96,9 +96,6 @@ namespace Vintagestory.GameContent
     /// Makes a block potentially unstable, but can be held up using support beams. This behavior will only function if the "caveIns" world config is set to true.
     /// Uses the code "UnstableRock".
     /// </summary>
-    /// <example><code lang="json">
-    /// 
-    /// </code></example>
     [DocumentAsJson]
     [AddDocumentationProperty("UnstableRockStabilization", "The vertical stabilization that this block gives to nearby unstable rock blocks.", "System.Int32", "Optional", "0", true)]
     [AddDocumentationProperty("MaxCollapseDistance", "Obsolete. No longer used.", "System.Single", "Obsolete", "1", false)]
@@ -187,9 +184,9 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, ref EnumHandling handling)
+        public override void OnBlockBroken(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier, ref EnumHandling handling)
         {
-            base.OnBlockBroken(world, pos, byPlayer, ref handling);
+            base.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier, ref handling);
             checkCollapsibleNeighbours(world, pos);
         }
 
@@ -443,7 +440,7 @@ namespace Vintagestory.GameContent
         // Lets define: A block vertically suppported, if it has 4 or more solid blocks below it (or has a support beam below)
         public static int getVerticalSupportStrength(IWorldAccessor world, BlockPos npos)
         {
-            BlockPos tmppos = new BlockPos();
+            BlockPos tmppos = new BlockPos(npos.dimension);
             IBlockAccessor blockAccessor = world.BlockAccessor;
             for (int i = 1; i < 5; i++)
             {

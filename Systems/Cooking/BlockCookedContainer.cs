@@ -12,7 +12,7 @@ using Vintagestory.API.Util;
 namespace Vintagestory.GameContent
 {
 
-    public class BlockCookedContainer : BlockCookedContainerBase, IInFirepitRendererSupplier, IContainedMeshSource, IContainedInteractable, IGroundStoredParticleEmitter, IAttachableToEntity
+    public class BlockCookedContainer : BlockCookedContainerBase, IInFirepitRendererSupplier, IContainedMeshSource, IGroundStoredParticleEmitter, IAttachableToEntity
     {
         public static SimpleParticleProperties smokeHeld;
         public static SimpleParticleProperties foodSparks;
@@ -28,7 +28,7 @@ namespace Vintagestory.GameContent
         public int RequiresBehindSlots { get; set; } = 0;
         public bool IsAttachable(Entity toEntity, ItemStack itemStack) => attrAtta != null;
         string? IAttachableToEntity.GetCategoryCode(ItemStack stack) => attrAtta?.GetCategoryCode(stack);
-        CompositeShape? IAttachableToEntity.GetAttachedShape(ItemStack stack, string slotCode) => attrAtta?.GetAttachedShape(stack, slotCode);
+        CompositeShape? IAttachableToEntity.GetAttachedShape(ItemStack stack, Entity onentity, string slotCode) => attrAtta?.GetAttachedShape(stack, onentity, slotCode);
         string[]? IAttachableToEntity.GetDisableElements(ItemStack stack) => attrAtta?.GetDisableElements(stack);
         string[]? IAttachableToEntity.GetKeepElements(ItemStack stack) => attrAtta?.GetKeepElements(stack);
         string? IAttachableToEntity.GetTexturePrefixCode(ItemStack stack) => attrAtta?.GetTexturePrefixCode(stack);
@@ -133,15 +133,15 @@ namespace Vintagestory.GameContent
         }
 
 
-        public virtual string GetMeshCacheKey(ItemStack itemstack)
+        public virtual string GetMeshCacheKey(ItemSlot slot)
         {
-            return meshCache!.GetMealHashCode(itemstack).ToString();
+            return meshCache!.GetMealHashCode(slot.Itemstack, new Vec3f(0, yoff/16f, 0)).ToString();
         }
 
 
-        public MeshData GenMesh(ItemStack itemstack, ITextureAtlasAPI targetAtlas, BlockPos? forBlockPos = null)
+        public MeshData GenMesh(ItemSlot slot, ITextureAtlasAPI targetAtlas, BlockPos? forBlockPos)
         {
-            return meshCache!.GenMealInContainerMesh(this, GetCookingRecipe(api.World, itemstack), GetNonEmptyContents(api.World, itemstack), new Vec3f(0, yoff / 16f, 0));
+            return meshCache!.GenMealInContainerMesh(this, GetCookingRecipe(api.World, slot.Itemstack), GetNonEmptyContents(api.World, slot.Itemstack), new Vec3f(0, yoff / 16f, 0));
         }
 
         public override TransitionState[]? UpdateAndGetTransitionStates(IWorldAccessor world, ItemSlot inslot)
@@ -221,7 +221,7 @@ namespace Vintagestory.GameContent
             if (byEntity.World.Side == EnumAppSide.Client && GetTemperature(byEntity.World, slot.Itemstack) > 50 && byEntity.World.Rand.NextDouble() < 0.07)
             {
                 float sideWays = 0.35f;
-                
+
 
                 if ((byEntity as EntityPlayer)?.Player is IClientPlayer byPlayer && byPlayer.CameraMode != EnumCameraMode.FirstPerson)
                 {
@@ -256,16 +256,16 @@ namespace Vintagestory.GameContent
                     {
                         if (stacks[i] != null && stacks[i].StackSize > 0 && stacks[i].Collectible.Code.Path == "rot")
                         {
-                            world.SpawnItemEntity(stacks[i], entityItem.ServerPos.XYZ);
+                            world.SpawnItemEntity(stacks[i], entityItem.Pos.XYZ);
                         }
                     }
                 } else
                 {
                     ItemStack rndStack = stacks[world.Rand.Next(stacks.Length)];
-                    world.SpawnCubeParticles(entityItem.ServerPos.XYZ, rndStack, 0.3f, 25, 1, null);
+                    world.SpawnCubeParticles(entityItem.Pos.XYZ, rndStack, 0.3f, 25, 1, null);
                 }
 
-                Block emptyPotBlock = world.GetBlock(new AssetLocation(Attributes["emptiedBlockCode"].AsString()));
+                Block? emptyPotBlock = world.GetBlock(new AssetLocation(Attributes["emptiedBlockCode"].AsString()));
                 entityItem.Itemstack = new ItemStack(emptyPotBlock);
                 entityItem.WatchedAttributes.MarkPathDirty("itemstack");
             }
@@ -355,19 +355,19 @@ namespace Vintagestory.GameContent
 
             DummyInventory dummyInv = new DummyInventory(api);
 
-            ItemSlot slot = BlockCrock.GetDummySlotForFirstPerishableStack(api.World, stacks, null, dummyInv);
+            ItemSlot dummySlot = BlockCrock.GetDummySlotForFirstPerishableStack(api.World, stacks, null, dummyInv);
             dummyInv.OnAcquireTransitionSpeed += (transType, stack, mul) =>
             {
-                float val = mul * GetContainingTransitionModifierContained(world, inSlot, transType);
-
-                if (inSlot.Inventory != null) val *= inSlot.Inventory.GetTransitionSpeedMul(transType, cookedContStack);
-
-                return val;
+                float invMul = inSlot.Inventory?.GetTransitionSpeedMul(transType, cookedContStack) ?? 1;
+                if (transType != EnumTransitionType.Perish) invMul = 0;
+                return invMul * GetContainingTransitionModifierContained(world, inSlot, transType);
             };
-            slot.Itemstack?.Collectible.AppendPerishableInfoText(slot, dsc, world);
+            var perishState = dummySlot.Itemstack?.Collectible.UpdateAndGetTransitionStates(api.World, dummySlot)?.FirstOrDefault(state => state.Props.Type is EnumTransitionType.Perish);
+            if (perishState == null) return;
+            dummySlot.Itemstack?.Collectible.AppendPerishableInfoText(dummySlot, dsc, world, perishState, false);
         }
 
-        
+
 
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
@@ -435,8 +435,31 @@ namespace Vintagestory.GameContent
                         {
                             ServeIntoStack(gsslot, slot, byEntity.World);
                             gsslot.MarkDirty();
-                            begs.updateMeshes();
+                            begs.MarkMeshesDirty();
                             begs.MarkDirty(true);
+                        }
+
+                        handHandling = EnumHandHandling.PreventDefault;
+                        return;
+                    }
+                }
+
+                if (block.HasBehavior<BlockBehaviorDisplay>())
+                {
+                    if (!byEntity.Controls.ShiftKey) return;
+                    var behDisplay = block.GetBEBehavior<BEBehaviorDisplay>(blockSel.Position);
+                    if (blockSel?.SelectionBoxId == null || behDisplay?.InventoryInv[blockSel.SelectionBoxId] is not ItemSlot bdslot || bdslot.Empty)
+                    {
+                        return;
+                    }
+
+                    if (bdslot.Itemstack.ItemAttributes?.IsTrue("mealContainer") == true)
+                    {
+                        if (quantityServings > 0)
+                        {
+                            ServeIntoStack(bdslot, slot, byEntity.World);
+                            bdslot.MarkDirty();
+                            behDisplay.Blockentity.MarkDirty(true);
                         }
 
                         handHandling = EnumHandHandling.PreventDefault;
@@ -458,7 +481,7 @@ namespace Vintagestory.GameContent
         public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing, int rndIndex = -1)
         {
             if (capi.World.BlockAccessor.GetBlockEntity(pos) is not BlockEntityCookedContainer bem || bem.GetNonEmptyContentStacks() is not ItemStack[] stacks || stacks.Length == 0)
-            { 
+            {
                 return base.GetRandomColor(capi, pos, facing, rndIndex);
             }
 
@@ -494,7 +517,7 @@ namespace Vintagestory.GameContent
 
             return rndStack.Collectible.GetRandomColor(capi, stack);
         }
-        
+
 
         public IInFirepitRenderer GetRendererWhenInFirepit(ItemStack stack, BlockEntityFirepit firepit, bool forOutputSlot)
         {
@@ -515,14 +538,14 @@ namespace Vintagestory.GameContent
 
         public override bool OnSmeltAttempt(InventoryBase inventorySmelting)
         {
-            if (Attributes?["isDirtyPot"]?.AsBool(false) == true)
+            if (Attributes?["isDirtyPot"]?.AsBool(false) == true && inventorySmelting.Count > 1)
             {
                 InventorySmelting inv = (InventorySmelting)inventorySmelting;
                 int quantityServings = (int)((float)(inv[1].Itemstack?.Attributes.GetDecimal("quantityServings") ?? 0) + 0.001f);  // forgive some rounding errors, but otherwise round down
                 if (quantityServings > 0)
                 {
                     ItemStack[] myStacks = GetNonEmptyContents(api.World, inv[1].Itemstack);
-                    if (myStacks.Length > 0)
+                    if (myStacks.Length > 0 && inv.CookingSlots.Length > 0)
                     {
                         myStacks[0].StackSize = quantityServings;
                         inv.CookingSlots[0].Itemstack = myStacks[0];

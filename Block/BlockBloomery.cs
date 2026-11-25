@@ -16,16 +16,15 @@ namespace Vintagestory.GameContent
         {
             base.OnLoaded(api);
 
-            if (api.Side != EnumAppSide.Client) return;
-            ICoreClientAPI capi = api as ICoreClientAPI;
+            if (api is not ICoreClientAPI capi) return;
 
-            interactions = ObjectCacheUtil.GetOrCreate(api, "bloomeryBlockInteractions", () =>
+            interactions = ObjectCacheUtil.GetOrCreate(capi, "bloomeryBlockInteractions", () =>
             {
                 List<ItemStack> heatableStacklist = new List<ItemStack>();
                 List<ItemStack> fuelStacklist = new List<ItemStack>();
-                List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(api, false);
+                List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(capi, false);
 
-                foreach (CollectibleObject obj in api.World.Collectibles)
+                foreach (CollectibleObject obj in capi.World.Collectibles)
                 {
                     if (obj.CombustibleProps == null) continue;
                     if (obj.CombustibleProps.SmeltedStack != null && obj.CombustibleProps.MeltingPoint < 1500)
@@ -75,8 +74,8 @@ namespace Vintagestory.GameContent
                         MouseButton = EnumMouseButton.Right,
                         Itemstacks = canIgniteStacks.ToArray(),
                         GetMatchingStacks = (wi, bs, es) => {
-                            BlockEntityBloomery beb = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityBloomery;
-                            if (beb!= null && beb.CanIgnite() == true && !beb.IsBurning && api.World.BlockAccessor.GetBlock(bs.Position.UpCopy()).Code.Path.Contains("bloomerychimney"))
+                            BlockEntityBloomery beb = capi.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityBloomery;
+                            if (beb!= null && beb.CanIgnite() == true && !beb.IsBurning && capi.World.BlockAccessor.GetBlock(bs.Position.UpCopy()).Code.Path.Contains("bloomerychimney"))
                             {
                                 return wi.Itemstacks;
                             }
@@ -134,7 +133,7 @@ namespace Vintagestory.GameContent
                 if (aboveBlock.IsReplacableBy(hotbarstack.Block))
                 {
                     hotbarstack.Block.DoPlaceBlock(world, byPlayer, new BlockSelection() { Position = blockSel.Position.UpCopy(), Face = BlockFacing.UP }, hotbarstack);
-                    world.PlaySoundAt(Sounds?.Place, blockSel.Position, 0.5, byPlayer, true, 16, 1);
+                    if (Sounds != null) world.PlaySoundAt(Sounds.Place, blockSel.Position, 0.5, byPlayer);
 
                     if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
                     {

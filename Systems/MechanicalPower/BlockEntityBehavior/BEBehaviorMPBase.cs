@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+using System;
+using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -6,6 +7,7 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 
 #nullable disable
 
@@ -16,6 +18,12 @@ namespace Vintagestory.GameContent.Mechanics
         public bool invert;
         public float gearingRatio;
         private readonly BlockPos fromPos;
+        public BlockFacing turnDir;
+        public BlockFacing spurGearFace;   // Disc face when several spur meshes share OutFacing.
+        public LinkageAngleTransform AngleTransform;
+        public BEBehaviorMPBase LoadFrom;   // Who spread this path, so the receiver can connect to it for load
+
+        public BlockPos FromPos => fromPos;
 
         public MechPowerPath()
         {
@@ -32,30 +40,52 @@ namespace Vintagestory.GameContent.Mechanics
             this.fromPos = fromPos;
         }
 
+        public MechPowerPath(BlockFacing facing, float gearingRatioHere, BlockPos fromPos, bool inverted, LinkageAngleTransform angleTransform, BlockFacing turnDir = null, BlockFacing spurGearFace = null) : this(facing, gearingRatioHere, fromPos, inverted)
+        {
+            AngleTransform = angleTransform;
+            this.turnDir = turnDir;
+            this.spurGearFace = spurGearFace;
+        }
+
         public BlockFacing NetworkDir()
         {
-            return this.invert ? OutFacing.Opposite : OutFacing;
+            return turnDir ?? (this.invert ? OutFacing.Opposite : OutFacing);
         }
 
         public bool IsInvertedTowards(BlockPos testPos)
         {
             return fromPos == null ? invert : fromPos.AddCopy(this.NetworkDir()) != testPos;
         }
+
+        public MechPowerPath PropagatedClone(BlockFacing outfacing, bool inverted = false, BlockFacing turnDir = null, BlockPos fromPos = null)
+        {
+            return new MechPowerPath(outfacing, gearingRatio, fromPos, inverted, AngleTransform, turnDir);
+        }
     }
 
     public abstract class BEBehaviorMPBase : BlockEntityBehavior, IMechanicalPowerDevice
     {
+        // One network speed unit is five radians per second.
+        protected const double rpmPerSpeedUnit = 5 * 60 / Math.Tau;
+
 #if DEBUG
         /// <summary>
         /// Set to true to debug Mechanical Power network discovery etc..  The #if DEBUG is just in case: ensures this debugging log spam can never make it into a release build by accident.
         /// </summary>
-        private static readonly bool DEBUG = false;
+        protected static readonly bool DEBUG = false;
 #else
-        private static readonly bool DEBUG = false;
+        protected static readonly bool DEBUG = false;
 #endif
 
         protected MechanicalPowerMod manager;
         protected MechanicalNetwork network;
+
+        // A quantity-one copy of the stack this part was placed from.
+        ItemStack placedStack;
+        Dictionary<string, Vec2f> materialUvOffsets;
+
+        SoundAttributes? turnSound;
+        float turnSoundChanceMultiplier = 1 / 3f;
 
         public Vec4f lightRbs = new Vec4f();
 
@@ -64,7 +94,7 @@ namespace Vintagestory.GameContent.Mechanics
         public virtual Vec4f LightRgba { get { return lightRbs; } }
 
         /// <summary>
-        /// Return null to not a mechanical power instanced renderer for this block. When you change the shape, the renderer is also updated to reflect that change
+        /// Return null to not use a mechanical power instanced renderer for this block. When you change the shape, the renderer is also updated to reflect that change
         /// </summary>
         private CompositeShape shape = null;
         public virtual CompositeShape Shape
@@ -95,35 +125,52 @@ namespace Vintagestory.GameContent.Mechanics
 
         protected BlockFacing propagationDir = BlockFacing.NORTH;
         private float gearedRatio = 1.0f;
+        LinkageAngleTransform angleTransform;
         public float GearedRatio { get { return gearedRatio; } set { gearedRatio = value;} }
+        public LinkageAngleTransform AngleTransform => angleTransform;
+        public float OverheatValue { get; set; }
         public virtual float GetGearedRatio(BlockFacing face) { return gearedRatio; }
 
-        protected float lastKnownAngleRad = 0;
+        protected double lastKnownAngleRad = 0;
         public bool disconnected = false;
 
         public virtual float AngleRad
         {
             get
             {
-                if (network == null) return lastKnownAngleRad;
-
-                if (isRotationReversed())
-                {
-                    return (lastKnownAngleRad = GameMath.TWOPI - (network.AngleRad * this.gearedRatio) % GameMath.TWOPI);
-                }
-
-                return (lastKnownAngleRad = (network.AngleRad * this.gearedRatio) % GameMath.TWOPI);
+                lastKnownAngleRad = UnwrappedAngleRad;
+                return (float)GameMath.Mod(lastKnownAngleRad, Math.Tau);
             }
         }
 
-        public virtual bool isRotationReversed()
+        double UnwrappedAngleRad => IsRotationReversed() ? -UnreversedAngleRad : UnreversedAngleRad;
+
+        public float EffectiveGearedRatio => gearedRatio * (angleTransform?.GetSpeedFactor(network?.TotalAngleRad ?? 0) ?? 1);
+        public float CurrentSpeed => network?.Speed * EffectiveGearedRatio ?? 0;
+
+        /// <summary>
+        /// Shaft angle in radians before the facing's direction reversal, including complete turns.
+        /// </summary>
+        public double UnreversedAngleRad
+        {
+            get
+            {
+                if (network == null) return IsRotationReversed() ? -lastKnownAngleRad : lastKnownAngleRad;
+                if (angleTransform == null) return network.TotalAngleRad * gearedRatio;
+
+                double solvedAngle = angleTransform.GetAngle(network.TotalAngleRad, gearedRatio, IsRotationReversed());
+                return IsRotationReversed() ? -solvedAngle : solvedAngle;
+            }
+        }
+
+        public virtual bool IsRotationReversed()
         {
             if (propagationDir == null) return false;
 
             return propagationDir == BlockFacing.DOWN || propagationDir == BlockFacing.EAST || propagationDir == BlockFacing.SOUTH;
         }
 
-        public virtual bool isInvertedNetworkFor(BlockPos pos)
+        public virtual bool IsInvertedNetworkFor(BlockPos pos)
         {
             if (propagationDir == null || pos == null) return false;
             BlockPos testPos = this.Position.AddCopy(propagationDir);
@@ -148,8 +195,17 @@ namespace Vintagestory.GameContent.Mechanics
                 lightRbs = Api.World.BlockAccessor.GetLightRGBs(Blockentity.Pos);
                 if (NetworkId > 0)
                 {
-                    network = manager.GetOrCreateNetwork(NetworkId);
-                    JoinNetwork(network);
+                    JoinNetwork(manager.GetOrCreateNetwork(NetworkId));
+                }
+
+                updateMaterialUvOffsets();
+
+                JsonObject mechanicalPower = Block.Attributes?["mechanicalPower"];
+                turnSound = mechanicalPower?["turnSound"].AsObject<SoundAttributes?>(null, Block.Code.Domain, false);
+                if (turnSound != null)
+                {
+                    turnSoundChanceMultiplier = mechanicalPower!["turnSoundChanceMultiplier"].AsFloat(turnSoundChanceMultiplier);
+                    Blockentity.RegisterGameTickListener(onTurnSoundTick, 1000);
                 }
             }
 
@@ -161,6 +217,60 @@ namespace Vintagestory.GameContent.Mechanics
             if (api.Side == EnumAppSide.Server && OutFacingForNetworkDiscovery != null)
             {
                 CreateJoinAndDiscoverNetwork(OutFacingForNetworkDiscovery);
+            }
+        }
+
+        void onTurnSoundTick(float dt)
+        {
+            // Network speed rather than CurrentSpeed for gearing.
+            float speed = network?.Speed ?? 0;
+            if (Api.World.Rand.NextDouble() >= speed * turnSoundChanceMultiplier) return;
+
+            SoundAttributes sound = turnSound.Value;
+            var spitch = sound.Pitch.ToNatFloat();
+            spitch.avg += speed;
+            sound.Pitch = spitch;
+            Api.World.PlaySoundAt(sound, Position, 0);
+        }
+
+        public override void OnBlockPlaced(ItemStack byItemStack = null)
+        {
+            base.OnBlockPlaced(byItemStack);
+            if (byItemStack == null || (Block as BlockMPBase)?.UsesMaterialAttributes != true) return;
+
+            placedStack = byItemStack.Clone();
+            placedStack.StackSize = 1;
+            updateMaterialUvOffsets();
+            Blockentity.MarkDirty(true);
+        }
+
+        public ItemStack GetPlacedStack() => placedStack?.Collectible == null ? null : placedStack.Clone();
+
+        protected ItemStack PlacedStack => placedStack;
+
+        public virtual bool TryGetMaterialUvOffset(string textureCode, Vec2f offset)
+        {
+            if (materialUvOffsets?.TryGetValue(textureCode, out Vec2f materialOffset) == true)
+            {
+                offset.X = materialOffset.X;
+                offset.Y = materialOffset.Y;
+                return true;
+            }
+
+            offset.X = 0;
+            offset.Y = 0;
+            return false;
+        }
+
+        void updateMaterialUvOffsets()
+        {
+            if (Api is not ICoreClientAPI capi || Block is not BlockMPBase materialBlock || !materialBlock.UsesMaterialAttributes) return;
+
+            materialUvOffsets ??= [];
+            foreach (string textureCode in materialBlock.MaterialTextureCodes)
+            {
+                if (!materialUvOffsets.TryGetValue(textureCode, out Vec2f offset)) materialUvOffsets[textureCode] = offset = new Vec2f();
+                materialBlock.GetMaterialUvOffset(capi, placedStack, textureCode, offset);
             }
         }
 
@@ -176,7 +286,7 @@ namespace Vintagestory.GameContent.Mechanics
 
         public virtual void WasPlaced(BlockFacing connectedOnFacing)
         {
-            //Skip this if already called CreateJoinAndDiscoverNetwork in Initialize()
+            // Skip this if already called CreateJoinAndDiscoverNetwork in Initialize()
             if ((Api.Side == EnumAppSide.Client || OutFacingForNetworkDiscovery == null) && connectedOnFacing != null)
             {
                 if (!tryConnect(connectedOnFacing))
@@ -189,7 +299,18 @@ namespace Vintagestory.GameContent.Mechanics
 
         public bool tryConnect(BlockFacing toFacing)
         {
+            return tryConnect(toFacing, out _);
+        }
+
+        public bool tryConnect(BlockFacing toFacing, out Vec3i unloadedChunkPos)
+        {
+            return tryConnectToNetwork(toFacing, out unloadedChunkPos);
+        }
+
+        protected virtual bool tryConnectToNetwork(BlockFacing toFacing, out Vec3i unloadedChunkPos)
+        {
             MechanicalNetwork newNetwork;
+            unloadedChunkPos = null;
 
             if (Api == null) return false;
 
@@ -197,40 +318,67 @@ namespace Vintagestory.GameContent.Mechanics
             IMechanicalPowerBlock connectedToBlock = Api.World.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
             if (DEBUG) Api.Logger.Notification("tryConnect at " + this.Position + " towards " + toFacing + " " + pos);
 
-            if (connectedToBlock == null || !connectedToBlock.HasMechPowerConnectorAt(Api.World, pos, toFacing.Opposite)) return false;
+            if (connectedToBlock == null || !fitsConnector(connectedToBlock) || !connectedToBlock.HasMechPowerConnectorAt(Api.World, pos, toFacing.Opposite, Block as BlockMPBase)) return false;
+            BEBehaviorMPBase node = Api.World.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPBase>();
             newNetwork = connectedToBlock.GetNetwork(Api.World, pos);
             if (newNetwork != null)
             {
-                IMechanicalPowerDevice node = Api.World.BlockAccessor.GetBlockEntity(pos).GetBehavior<BEBehaviorMPBase>();
-
+                if (!node.isNetworkConnectedAt(toFacing.Opposite)) return false;
                 connectedToBlock.DidConnectAt(Api.World, pos, toFacing.Opposite);  //do this first to set the new Angled Gear block correctly prior to getting propagation direction
-                MechPowerPath curPath = new MechPowerPath(toFacing, node.GetGearedRatio(toFacing), pos, !node.IsPropagationDirection(Position, toFacing));
-                SetPropagationDirection(curPath);
+                float ratio = node.GetGearedRatio(toFacing);
+                if (ratio == 0) return false;
+                if (network?.HasPowerProducer == true && !newNetwork.HasPowerProducer && node.AngleTransform == null)
+                {
+                    return node.tryConnect(toFacing.Opposite, out unloadedChunkPos);
+                }
+
+                MechPowerPath curPath = new MechPowerPath(toFacing, ratio, pos, !node.IsPropagationDirection(Position, toFacing));
+                curPath.turnDir = node.GetPropagatingTurnDir(toFacing.Opposite);
+                curPath.AngleTransform = node.AngleTransform;
+
+                JoinNetwork(newNetwork, curPath);
+                newNetwork.ConnectLoad(node, this);
                 MechPowerPath[] paths = GetMechPowerExits(curPath);
-                JoinNetwork(newNetwork);
 
                 for (int i = 0; i < paths.Length; i++)
                 {
+                    if (paths[i].OutFacing == toFacing) continue;
                     if (DEBUG) Api.Logger.Notification("== spreading path " + (paths[i].invert ? "-" : "") + paths[i].OutFacing + "  " + paths[i].gearingRatio);
                     BlockPos exitPos = Position.AddCopy(paths[i].OutFacing);
 
-                    bool chunkLoaded = spreadTo(Api, newNetwork, exitPos, paths[i], out _);
+                    bool chunkLoaded = spreadTo(Api, newNetwork, exitPos, paths[i], out unloadedChunkPos);
                     if (!chunkLoaded)
                     {
-                        LeaveNetwork();
-                        return true;
+                        return false;
                     }
                 }
 
                 return true;
             }
-            else if (this.network != null)
+            else
             {
-                BEBehaviorMPBase node = Api.World.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPBase>();
-                if (node != null) return node.tryConnect(toFacing.Opposite);
+                if (this.network != null)
+                {
+                    if (node != null) return node.tryConnect(toFacing.Opposite, out unloadedChunkPos);
+                }
+                else if (node is BEBehaviorMPSpurGear spurGear && spurGear.ExternalSpurFaceCount > 1)
+                {
+                    spurGear.RefreshPowerConnections();
+                    return this.network != null;
+                }
             }
 
             return false;
+        }
+
+        protected virtual bool isNetworkConnectedAt(BlockFacing face)
+        {
+            return network != null;
+        }
+
+        bool fitsConnector(IMechanicalPowerBlock other)
+        {
+            return (Block as BlockMPBase)?.HasCompatibleConnector(other as BlockMPBase) != false;
         }
 
         public virtual void JoinNetwork(MechanicalNetwork network)
@@ -255,13 +403,50 @@ namespace Vintagestory.GameContent.Mechanics
             Blockentity.MarkDirty();
         }
 
+        public void JoinNetwork(MechanicalNetwork network, MechPowerPath path)
+        {
+            if (this.network != null && this.network != network) LeaveNetwork();
+            SetPropagationDirection(path);
+            JoinNetwork(network);
+        }
+
         public virtual void LeaveNetwork()
         {
             if (DEBUG) Api.Logger.Notification("Leaving network " + NetworkId + " at " + this.Position);
+            lastKnownAngleRad = UnwrappedAngleRad;
             network?.Leave(this);
             network = null;
             NetworkId = 0;
+            angleTransform = null;
+            GearingConflict = false;
             Blockentity.MarkDirty();
+        }
+
+        public List<MechanicalNetwork> GetConnectedNetworks()
+        {
+            List<MechanicalNetwork> networks = [];
+            if (Network != null) networks.Add(Network);
+
+            IBlockAccessor blockAccessor = Api.World.BlockAccessor;
+            BlockMPBase ownBlock = Block as BlockMPBase;
+            BlockPos pos = Position.Copy();
+            foreach (BlockFacing face in BlockFacing.ALLFACES)
+            {
+                face.IterateThruFacingOffsets(pos);
+                if (blockAccessor.GetBlock(pos) is not IMechanicalPowerBlock block
+                    || ownBlock?.HasMechPowerConnectorAt(Api.World, Position, face, block as BlockMPBase) != true
+                    || !block.HasMechPowerConnectorAt(Api.World, pos, face.Opposite, ownBlock)) continue;
+
+                MechanicalNetwork network = blockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorMPBase>()?.Network;
+                if (network != null) networks.AddIfNotPresent(network);
+            }
+
+            return networks;
+        }
+
+        public void RebuildNetworks(List<MechanicalNetwork> networks, MechanicalNetwork removedFromNetwork = null)
+        {
+            manager?.RebuildNetworks(networks, removedFromNetwork == null ? null : this);
         }
 
         public override void OnBlockBroken(IPlayer byPlayer = null)
@@ -300,32 +485,37 @@ namespace Vintagestory.GameContent.Mechanics
         {
             base.FromTreeAttributes(tree, worldAccessForResolve);
 
+            if (network == null && worldAccessForResolve.Side == EnumAppSide.Server)
+            {
+                propagationDir = BlockFacing.ALLFACES[tree.GetInt("turnDirFromFacing")];
+                gearedRatio = tree.GetFloat("g", gearedRatio);
+            }
+
             long nowNetworkId = tree.GetLong("networkid");
             if (worldAccessForResolve.Side == EnumAppSide.Client)
             {
+                bool networkChanged = NetworkId != nowNetworkId;
+                if (networkChanged && network != null) LeaveNetwork();
+
                 propagationDir = BlockFacing.ALLFACES[tree.GetInt("turnDirFromFacing")];
                 gearedRatio = tree.GetFloat("g");
+                angleTransform = LinkageAngleTransform.FromTreeAttributes(tree.GetTreeAttribute("linkageAngleTransform"));
 
-                if (NetworkId != nowNetworkId)   //don't ever change network settings from tree on server side - networkId is not data to be saved  (otherwise would mess up networks on chunk loading, if BE tree loaded after a BE has already had network assigned on the server by propagation from a neighbour)
+                if (networkChanged)
                 {
-                    NetworkId = 0;
-                    if (worldAccessForResolve.Side == EnumAppSide.Client)
+                    NetworkId = nowNetworkId;
+                    if (NetworkId != 0 && manager != null)
                     {
-                        NetworkId = nowNetworkId;
-                        if (NetworkId == 0)
-                        {
-                            LeaveNetwork();
-                            network = null;
-                        }
-                        else if (manager != null)
-                        {
-                            network = manager.GetOrCreateNetwork(NetworkId);
-                            JoinNetwork(network);
-                            Blockentity.MarkDirty();
-                        }
+                        JoinNetwork(manager.GetOrCreateNetwork(NetworkId));
                     }
                 }
             }
+
+            if (network == null) lastKnownAngleRad = tree.GetDecimal("angleRad", lastKnownAngleRad);
+
+            placedStack = tree.GetItemstack("mechanicalMaterialStack");
+            placedStack?.ResolveBlockOrItem(worldAccessForResolve);
+            updateMaterialUvOffsets();
 
             SetOrientations();
             updateShape(worldAccessForResolve);
@@ -333,7 +523,7 @@ namespace Vintagestory.GameContent.Mechanics
 
         protected virtual void updateShape(IWorldAccessor worldForResolve)
         {
-            Shape = Block?.Shape;
+            Shape = GetShape();
         }
 
 
@@ -344,14 +534,58 @@ namespace Vintagestory.GameContent.Mechanics
             tree.SetLong("networkid", NetworkId);
             tree.SetInt("turnDirFromFacing", propagationDir.Index);
             tree.SetFloat("g", gearedRatio);
+            tree.SetDouble("angleRad", UnwrappedAngleRad);
+            if (angleTransform == null)
+            {
+                tree.RemoveAttribute("linkageAngleTransform");
+            }
+            else
+            {
+                ITreeAttribute transformTree = new TreeAttribute();
+                angleTransform.ToTreeAttributes(transformTree);
+                tree["linkageAngleTransform"] = transformTree;
+            }
+
+            if (placedStack == null) tree.RemoveAttribute("mechanicalMaterialStack");
+            else tree.SetItemstack("mechanicalMaterialStack", placedStack);
         }
+
+        public override void OnLoadCollectibleMappings(IWorldAccessor worldForNewMappings, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed, bool resolveImports)
+        {
+            base.OnLoadCollectibleMappings(worldForNewMappings, oldBlockIdMapping, oldItemIdMapping, schematicSeed, resolveImports);
+            if (placedStack == null) return;
+
+            if (!placedStack.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForNewMappings))
+            {
+                placedStack = null;
+            }
+            else
+            {
+                placedStack.Collectible.OnLoadCollectibleMappings(worldForNewMappings, new DummySlot(placedStack), oldBlockIdMapping, oldItemIdMapping, resolveImports);
+            }
+            updateMaterialUvOffsets();
+        }
+
+        public override void OnStoreCollectibleMappings(Dictionary<int, AssetLocation> blockIdMapping, Dictionary<int, AssetLocation> itemIdMapping)
+        {
+            base.OnStoreCollectibleMappings(blockIdMapping, itemIdMapping);
+            placedStack?.Collectible?.OnStoreCollectibleMappings(Api.World, new DummySlot(placedStack), blockIdMapping, itemIdMapping);
+        }
+
+        protected virtual float? getSpeedForDisplay(IPlayer forPlayer) => CurrentSpeed;
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
         {
-            if (DEBUG || Api.World.EntityDebugMode)
+            float? speed = getSpeedForDisplay(forPlayer);
+            if (speed.HasValue) sb.AppendLine(Lang.Get("mechanical-speed-rpm", Math.Abs(speed.Value) * rpmPerSpeedUnit));
+
+            if (Api.World.EntityDebugMode)
             {
-                sb.AppendLine(string.Format("networkid: {0}  turnDir: {1}  {2}  {3:G3}", NetworkId, propagationDir, network?.TurnDir.ToString(), gearedRatio));
-                sb.AppendLine(string.Format("speed: {0:G4}  avail torque: {1:G4}  torque sum: {2:G4}  resist sum: {3:G4}", network?.Speed * this.GearedRatio, network?.TotalAvailableTorque / this.GearedRatio, network?.NetworkTorque / this.GearedRatio, network?.NetworkResistance / this.GearedRatio));
+                float effectiveRatio = EffectiveGearedRatio;
+                float inverseRatio = Math.Abs(effectiveRatio) > 0.000001f ? 1 / effectiveRatio : 0;
+                sb.AppendLine(string.Format("<font color='#ccc'>networkid: {0}  turnDir: {1}  {2}  {3:G3}</font>", NetworkId, propagationDir, network?.TurnDir.ToString(), gearedRatio));
+                sb.AppendLine(string.Format("<font color='#ccc'>speed: {0:G4}  avail torque: {1:G4}  torque sum: {2:G4}  resist sum: {3:G4}</font>", network?.Speed * effectiveRatio, network?.TotalAvailableTorque * inverseRatio, network?.NetworkTorque * inverseRatio, network?.NetworkResistance * inverseRatio));
+                sb.AppendLine(string.Format("<font color='#ccc'>local load: {0:G4}</font>", network?.GetLoad(this)));
             }
         }
 
@@ -380,16 +614,35 @@ namespace Vintagestory.GameContent.Mechanics
             }
             this.propagationDir = turnDir;
             this.GearedRatio = path.gearingRatio;
+            angleTransform = path.AngleTransform;
             if (DEBUG) Api.Logger.Notification("setting dir " + this.propagationDir + " " + this.Position);
+        }
+
+        public bool GearingConflict;
+
+        public bool HasGearingConflict(MechPowerPath path)
+        {
+            float expectedRatio = GetGearedRatio(path.OutFacing);
+            return !isPropagationDirectionConsistent(path)
+                   || Math.Abs(path.gearingRatio - expectedRatio) > 0.01f * Math.Max(1f, Math.Abs(expectedRatio));
+        }
+
+        protected virtual bool isPropagationDirectionConsistent(MechPowerPath path)
+        {
+            return propagationDir == path.NetworkDir();
         }
 
         public virtual float GetTorque(long tick, float speed, out float resistance)
         {
-            resistance = GetResistance();
+            resistance = GetResistance() + (GearingConflict ? 1000000f : 0f);
             return 0f;
         }
 
         public abstract float GetResistance();
+
+        public virtual float GetTorqueResponse(float speed, float nextSpeed) => 0f;
+
+        public virtual float GetRotationalInertia() => (Block as BlockMPBase)?.RotationalInertia ?? 1f;
 
         public virtual void DestroyJoin(BlockPos pos)
         {
@@ -398,32 +651,66 @@ namespace Vintagestory.GameContent.Mechanics
 
 #region Network Discovery
 
+        public virtual MechPowerPath GetNetworkDiscoveryPath()
+        {
+            return new MechPowerPath(GetPropagationDirectionInput(), gearedRatio, null, false, angleTransform);
+        }
+
+        public virtual MechanicalNetwork CreateJoinAndDiscoverNetwork(MechPowerPath path, double retainedAngle)
+        {
+            MechanicalNetwork newNetwork = manager.CreateNetwork(this);
+            newNetwork.TotalAngleRad = retainedAngle;
+            JoinNetwork(newNetwork, path);
+
+            List<MechPowerPath> paths = new(GetMechPowerExits(path));
+            BlockFacing inputFace = path.OutFacing.Opposite;
+            if (!paths.Exists(exit => exit.OutFacing == inputFace))
+            {
+                paths.Add(path.PropagatedClone(inputFace, !path.invert, path.NetworkDir()));
+            }
+
+            BlockPos exitPos = Position.Copy();
+            foreach (MechPowerPath exit in paths)
+            {
+                exitPos.Set(Position).Add(exit.OutFacing);
+                BlockMPBase neighbour = Api.World.BlockAccessor.GetBlock(exitPos) as BlockMPBase;
+                if (neighbour != null && (Block as IMechanicalPowerBlock)?.HasMechPowerConnectorAt(Api.World, Position, exit.OutFacing, neighbour) != true) continue;
+                if (spreadTo(Api, newNetwork, exitPos, exit, out Vec3i missingChunkPos)) continue;
+
+                newNetwork.AwaitChunkThenDiscover(missingChunkPos);
+                manager.testFullyLoaded(newNetwork);
+                break;
+            }
+
+            return newNetwork;
+        }
+
 
         public virtual MechanicalNetwork CreateJoinAndDiscoverNetwork(BlockFacing powerOutFacing)
         {
             BlockPos neibPos = Position.AddCopy(powerOutFacing);
             IMechanicalPowerBlock neibMechBlock = null;
             neibMechBlock = Api.World.BlockAccessor.GetBlock(neibPos) as IMechanicalPowerBlock;
+            if (neibMechBlock != null && (!fitsConnector(neibMechBlock) || !neibMechBlock.HasMechPowerConnectorAt(Api.World, neibPos, powerOutFacing.Opposite, Block as BlockMPBase))) neibMechBlock = null;    // neibMechBlock might be an axle or angled gears pointing the wrong way, so with no available connector -> not on the same network
 
             MechanicalNetwork neibNetwork = neibMechBlock == null ? null : neibMechBlock.GetNetwork(Api.World, neibPos);
 
             if (neibNetwork == null || !neibNetwork.Valid)
             {
                 MechanicalNetwork newNetwork = this.network;
-                if (newNetwork == null)
+                bool createdNetwork = newNetwork == null;
+                double retainedAngle = UnwrappedAngleRad;
+                if (createdNetwork)
                 {
+                    SetPropagationDirection(new MechPowerPath(powerOutFacing, 1));
                     newNetwork = manager.CreateNetwork(this);
+                    newNetwork.TotalAngleRad = IsRotationReversed() ? -retainedAngle : retainedAngle;
                     JoinNetwork(newNetwork);
                     if (DEBUG) Api.Logger.Notification("===setting inturn at " + Position + " " + powerOutFacing);
-                    SetPropagationDirection(new MechPowerPath(powerOutFacing, 1));
                 }
 
-                bool chunksLoaded = spreadTo(Api, newNetwork, neibPos, new MechPowerPath(GetPropagationDirection(), this.gearedRatio), out Vec3i missingChunkPos);
-                if (network == null)
-                {
-                    if (DEBUG) Api.Logger.Notification("Incomplete chunkloading, possible issues with mechanical network around block " + neibPos);
-                    return null;
-                }
+                MechPowerPath path = new(GetPropagationDirection(), gearedRatio, null, false, angleTransform);
+                bool chunksLoaded = spreadTo(Api, newNetwork, neibPos, path, out Vec3i missingChunkPos);
 
                 if (!chunksLoaded)
                 {
@@ -431,30 +718,31 @@ namespace Vintagestory.GameContent.Mechanics
                     manager.testFullyLoaded(network); // To trigger that allFullyLoaded gets false
                     return network;
                 }
-                else
+
+                IMechanicalPowerDevice node = Api.World.BlockAccessor.GetBlock(neibPos).GetInterface<IMechanicalPowerDevice>(Api.World, neibPos);
+                if (node?.Network == newNetwork)
                 {
-                    IMechanicalPowerDevice node = Api.World.BlockAccessor.GetBlockEntity(neibPos)?.GetBehavior<BEBehaviorMPBase>() as IMechanicalPowerDevice;
-                    if (node != null)
+                    BlockFacing facing = node.IsPropagationDirection(Position, powerOutFacing) ? powerOutFacing : powerOutFacing.Opposite;
+                    float ratio = node.GetGearedRatio(facing.Opposite);
+                    if (ratio != 0)
                     {
-                        BlockFacing facing = node.IsPropagationDirection(Position, powerOutFacing) ? powerOutFacing : powerOutFacing.Opposite;
-                        SetPropagationDirection(new MechPowerPath(facing, node.GetGearedRatio(facing.Opposite), neibPos));
+                        LinkageAngleTransform transform = node is ILinkageProducer producer ? producer.LinkageAngleTransform : (node as BEBehaviorMPBase)?.AngleTransform;
+                        SetPropagationDirection(new MechPowerPath(facing, ratio, neibPos, false, transform));
                     }
+                }
+
+                if (createdNetwork)
+                {
+                    newNetwork.TotalAngleRad = (IsRotationReversed() ? -retainedAngle : retainedAngle) / gearedRatio;
+                    newNetwork.DirectionHasReversed = false;
                 }
             }
             else
             {
-                BEBehaviorMPBase neib = Api.World.BlockAccessor.GetBlockEntity(neibPos).GetBehavior<BEBehaviorMPBase>();
-                if (OutFacingForNetworkDiscovery != null)
+                if (!tryConnect(powerOutFacing, out Vec3i missingChunkPos) && missingChunkPos != null)
                 {
-                    if (tryConnect(OutFacingForNetworkDiscovery))
-                    {
-                        this.gearedRatio = neib.GetGearedRatio(OutFacingForNetworkDiscovery);  //no need to set propagationDir, it's already been set by tryConnect
-                    }
-                }
-                else
-                {
-                    JoinNetwork(neibNetwork);
-                    SetPropagationDirection(new MechPowerPath(neib.propagationDir, neib.GetGearedRatio(neib.propagationDir), neibPos));
+                    network.AwaitChunkThenDiscover(missingChunkPos);
+                    manager.testFullyLoaded(network);
                 }
             }
 
@@ -467,18 +755,39 @@ namespace Vintagestory.GameContent.Mechanics
         public virtual bool JoinAndSpreadNetworkToNeighbours(ICoreAPI api, MechanicalNetwork network, MechPowerPath exitTurnDir, out Vec3i missingChunkPos)
         {
             missingChunkPos = null;
-            if (this.network?.networkId == network?.networkId) return true; // Already got the message
+            if (disconnected) return true;
+            if (this.network != null && !isNetworkConnectedAt(exitTurnDir.OutFacing.Opposite)) return true;
+            if (this.network?.networkId == network?.networkId)
+            {
+                if (network != null)
+                {
+                    if (HasGearingConflict(exitTurnDir))
+                    {
+                        GearingConflict = true;
+                    }
+                    if (!LinkageAngleTransform.Matches(angleTransform, exitTurnDir.AngleTransform))
+                    {
+                        GearingConflict = true;
+                    }
+                    network.ConnectLoad(exitTurnDir.LoadFrom, this);
+                }
+                return true;
+            }
 
             if (DEBUG) api.Logger.Notification("Spread to " + this.Position + " with direction " + exitTurnDir.OutFacing + (exitTurnDir.invert ? "-" : "") + " Network:" + network.networkId);
-            SetPropagationDirection(exitTurnDir);
-
-            JoinNetwork(network);
+            JoinNetwork(network, exitTurnDir);
+            network.ConnectLoad(exitTurnDir.LoadFrom, this);
             (Block as IMechanicalPowerBlock).DidConnectAt(api.World, Position, exitTurnDir.OutFacing.Opposite);
 
             MechPowerPath[] paths = GetMechPowerExits(exitTurnDir);
             for (int i = 0; i < paths.Length; i++)
             {
-                //if (paths[i].OutFacing == exitTurnDir.OutFacing.GetOpposite()) continue;   //currently commented out to force testing of path in both directions, though usually (maybe always) the OutFacing.getOpposite() sense will return quickly - anyhow, it seems to work with this commented out
+                paths = GetMechPowerExits(exitTurnDir);
+                bool returnsOverIncomingEdge = paths[i].OutFacing == exitTurnDir.OutFacing.Opposite;
+                bool sameSpurMesh = paths[i].spurGearFace == null
+                    || exitTurnDir.spurGearFace == null
+                    || paths[i].spurGearFace == exitTurnDir.spurGearFace;
+                if (returnsOverIncomingEdge && sameSpurMesh) continue;
                 if (DEBUG) api.Logger.Notification("-- spreading path " + (paths[i].invert ? "-" : "") + paths[i].OutFacing + "  " + paths[i].gearingRatio);
                 BlockPos exitPos = Position.AddCopy(paths[i].OutFacing);
                 bool chunkLoaded = spreadTo(api, network, exitPos, paths[i], out missingChunkPos);
@@ -503,13 +812,14 @@ namespace Vintagestory.GameContent.Mechanics
             if (beMechBase == null && api.World.BlockAccessor.GetChunkAtBlockPos(exitPos) == null)
             {
                 if (OutsideMap(api.World.BlockAccessor, exitPos)) return true;  //Network discovery should not fail if there cannot be a block in this position
-                missingChunkPos = new Vec3i(exitPos.X / GlobalConstants.ChunkSize, exitPos.Y / GlobalConstants.ChunkSize, exitPos.Z / GlobalConstants.ChunkSize);
+                missingChunkPos = new Vec3i(exitPos.X / GlobalConstants.ChunkSize, exitPos.InternalY / GlobalConstants.ChunkSize, exitPos.Z / GlobalConstants.ChunkSize);
                 return false;
             }
 
-            if (beMechBase != null && mechBlock.HasMechPowerConnectorAt(api.World, exitPos, propagatePath.OutFacing.Opposite))
+            if (beMechBase != null && fitsConnector(mechBlock) && mechBlock.HasMechPowerConnectorAt(api.World, exitPos, propagatePath.OutFacing.Opposite, Block as BlockMPBase))
             {
                 beMechBase.Api = api;
+                propagatePath.LoadFrom = this;
                 if (!beMechBase.JoinAndSpreadNetworkToNeighbours(api, network, propagatePath, out missingChunkPos))
                 {
                     return false;
@@ -533,10 +843,10 @@ namespace Vintagestory.GameContent.Mechanics
         /// </summary>
         /// <param name="entryDir"></param>
         /// <returns></returns>
-        protected virtual MechPowerPath[] GetMechPowerExits(MechPowerPath entryDir)
+        public virtual MechPowerPath[] GetMechPowerExits(MechPowerPath entryDir)
         {
             // Most blocks - like axles - have two power exits in opposite directions
-            return new MechPowerPath[] { entryDir, new MechPowerPath(entryDir.OutFacing.Opposite, entryDir.gearingRatio, Position, !entryDir.invert) };
+            return [entryDir, entryDir.PropagatedClone(entryDir.OutFacing.Opposite, !entryDir.invert, fromPos: Position)];
         }
 
         #endregion
@@ -546,8 +856,13 @@ namespace Vintagestory.GameContent.Mechanics
             base.OnPlacementBySchematic(api, blockAccessor, pos, replaceBlocks, centerrockblockid, layerBlock, resolveImports);
             foreach (var blockFacing in BlockFacing.ALLFACES)
             {
-                tryConnect(blockFacing);
+                if (tryConnect(blockFacing)) break;
             }
+        }
+
+        public virtual BlockFacing GetPropagatingTurnDir(BlockFacing toFacing)
+        {
+            return null;
         }
     }
 

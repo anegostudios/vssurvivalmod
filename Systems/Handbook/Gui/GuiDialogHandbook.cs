@@ -1,6 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -23,7 +24,7 @@ namespace Vintagestory.GameContent
         public float PosY;
     }
 
-    public delegate List<GuiHandbookPage> OnCreatePagesDelegate();
+    public delegate List<IFlatListItem> OnCreatePagesDelegate();
     public delegate void OnComposePageDelegate(GuiHandbookPage page, GuiComposer detailViewGui, ElementBounds textBounds, ActionConsumable<string> openDetailPageFor);
 
 
@@ -31,9 +32,9 @@ namespace Vintagestory.GameContent
     {
         public override double DrawOrder => 0.2; // Needs to be same as chest container guis so it can be on top of those dialogs if necessary
 
-        protected Dictionary<string, int> pageNumberByPageCode = new Dictionary<string, int>();
-        internal List<GuiHandbookPage> allHandbookPages = new List<GuiHandbookPage>();
-        protected List<IFlatListItem> shownHandbookPages = new List<IFlatListItem>();
+        protected Dictionary<string, GuiHandbookPage> pageElementByPageCode = [];
+        protected internal List<IFlatListItem> allHandbookListItems = [];
+        protected List<IFlatListItem> shownHandbookListItems = [];
 
         protected List<string> categoryCodes = new List<string>();
 
@@ -61,11 +62,11 @@ namespace Vintagestory.GameContent
 
             capi.Settings.AddWatcher<float>("guiScale", (float val) =>
             {
-                initOverviewGui();
-                FilterItems();
-                foreach (GuiHandbookPage elem in shownHandbookPages)
+                if (opened)
                 {
-                    elem.Dispose();
+                    Dispose();
+                    initOverviewGui();
+                    FilterItems();
                 }
             });
 
@@ -76,16 +77,16 @@ namespace Vintagestory.GameContent
         protected virtual void loadEntries()
         {
             capi.Logger.VerboseDebug("Starting initialising handbook");
-            pageNumberByPageCode.Clear();
-            shownHandbookPages.Clear();
-            allHandbookPages.Clear();
+            pageElementByPageCode.Clear();
+            shownHandbookListItems.Clear();
+            allHandbookListItems.Clear();
 
             HashSet<string> codes = initCustomPages();
             codes.Add("stack");
             this.categoryCodes = codes.ToList();
 
             loadingPagesAsync = true;
-            TyronThreadPool.QueueTask(LoadPages_Async);
+            TyronThreadPool.QueueTask(LoadPages_Async,"Handbook.LoadPages_Async");
 
             initOverviewGui();
             capi.Logger.VerboseDebug("Done creating handbook index GUI");
@@ -138,7 +139,7 @@ namespace Vintagestory.GameContent
                 .BeginChildElements(bgBounds)
                     .BeginClip(clipBounds)
                         .AddInset(insetBounds, 3)
-                        .AddFlatList(stackListBounds, onLeftClickListElement, shownHandbookPages, "stacklist")
+                        .AddNestedList(stackListBounds, onLeftClickListElement, shownHandbookListItems, "stacklist")
                     .EndClip()
                     .AddVerticalScrollbar(OnNewScrollbarvalueOverviewPage, scrollbarBounds, "scrollbar")
                     .AddIf(capi.IsSinglePlayer && !capi.OpenedToLan)
@@ -152,10 +153,12 @@ namespace Vintagestory.GameContent
 
             overviewGui.GetScrollbar("scrollbar").SetHeights(
                 (float)listHeight,
-                (float)overviewGui.GetFlatList("stacklist").insideBounds.fixedHeight
+                (float)overviewGui.GetNestedList("stacklist").insideBounds.fixedHeight
             );
 
-            overviewGui.GetTextInput("searchField").SetPlaceHolderText(Lang.Get("Search..."));
+            var searchInput = overviewGui.GetTextInput("searchField");
+            searchInput.SetPlaceHolderText(Lang.Get("Search..."));
+            searchInput.SetValue(currentSearchText);
 
             if (tabs.Length > 0)
             {
@@ -166,7 +169,7 @@ namespace Vintagestory.GameContent
             var btn = overviewGui.GetToggleButton("pausegame");
             if (btn != null) btn.SetValue(!capi.Settings.Bool["noHandbookPause"]);
 
-            overviewGui.FocusElement(overviewGui.GetTextInput("searchField").TabIndex);
+            overviewGui.FocusElement(searchInput.TabIndex);
         }
 
         protected virtual void onTogglePause(bool on)
@@ -242,8 +245,8 @@ namespace Vintagestory.GameContent
             ElementBounds tabBounds = ElementBounds.Fixed(-200, 35, 200, 545);
 
             BrowseHistoryElement curPage = browseHistory.Peek();
-            float posY = curPage.PosY;
 
+            capi.World.FrameProfiler.Mark("handbook-opendetailpage-1");
             detailViewGui?.Dispose();
             detailViewGui = capi.Gui
                 .CreateCompo("handbook-detail", dialogBounds)
@@ -254,9 +257,11 @@ namespace Vintagestory.GameContent
                     .BeginClip(clipBounds)
                         .AddInset(insetBounds, 3)
             ;
+            capi.World.FrameProfiler.Mark("handbook-opendetailpage-2");
 
             composePageHandler(curPage.Page, detailViewGui, textBounds, OpenDetailPageFor);
             var lastAddedElement = detailViewGui.LastAddedElement;
+            capi.World.FrameProfiler.Mark("handbook-opendetailpage-3");
 
             detailViewGui
                     .EndClip()
@@ -269,9 +274,20 @@ namespace Vintagestory.GameContent
                     .AddSmallButton(Lang.Get("handbook-overview"), OnButtonOverview, overviewButtonBounds)
                     .AddSmallButton(Lang.Get("general-close"), OnButtonClose, closeButtonBounds)
                 .EndChildElements()
-                .Compose()
             ;
+            detailViewGui.Compose();
+            capi.World.FrameProfiler.Mark("handbook-opendetailpage-compose");
 
+            float posY = curPage.PosY;
+            if (posY == 0)
+            {
+                float fullHeight = (float)lastAddedElement.Bounds.fixedHeight;
+                if (fullHeight > (float)listHeight)
+                {
+                    float searchRel = curPage.Page.GetSearchTextPosRel(currentSearchText);
+                    posY = Math.Max(0, (searchRel * 0.98f) * fullHeight);
+                }
+            }
             detailViewGui.GetScrollbar("scrollbar").SetHeights(
                 (float)listHeight, (float)lastAddedElement.Bounds.fixedHeight
             );
@@ -282,6 +298,8 @@ namespace Vintagestory.GameContent
 
             var btn = detailViewGui.GetToggleButton("pausegame");
             if (btn != null) btn.SetValue(!capi.Settings.Bool["noHandbookPause"]);
+
+            capi.World.FrameProfiler.Mark("handbook-opendetailpage-scrollbars");
         }
 
         protected virtual void OnDetailViewTabClicked(int index, GuiTab tab)
@@ -300,9 +318,8 @@ namespace Vintagestory.GameContent
         {
             capi.Gui.PlaySound("menubutton_press");
 
-            if (pageNumberByPageCode.TryGetValue(pageCode, out int num))
+            if (pageElementByPageCode.TryGetValue(pageCode, out var elem))
             {
-                GuiHandbookPage elem = allHandbookPages[num];
                 if (browseHistory.Count > 0 && elem == browseHistory.Peek().Page) return true;
 
                 browseHistory.Push(new BrowseHistoryElement()
@@ -311,6 +328,7 @@ namespace Vintagestory.GameContent
                     PosY = 0
                 });
                 initDetailGui();
+
                 return true;
             }
 
@@ -338,11 +356,23 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        protected void onLeftClickListElement(int index)
+        protected void onLeftClickListElement(List<IFlatListItem> elements, int index)
         {
+            if (elements[index] is INestedListItemWithChildren nestedListItem)
+            {
+                nestedListItem.IsExpanded = !nestedListItem.IsExpanded;
+                var stacklist = overviewGui.GetNestedList("stacklist");
+                stacklist.CalcTotalHeight();
+                overviewGui.GetScrollbar("scrollbar").SetHeights(
+                    (float)listHeight, (float)stacklist.insideBounds.fixedHeight
+                );
+
+                return;
+            }
+
             browseHistory.Push(new BrowseHistoryElement()
             {
-                Page = shownHandbookPages[index] as GuiHandbookPage
+                Page = elements[index] as GuiHandbookPage
             });
 
             initDetailGui();
@@ -351,7 +381,7 @@ namespace Vintagestory.GameContent
 
         protected void OnNewScrollbarvalueOverviewPage(float value)
         {
-            GuiElementFlatList stacklist = overviewGui.GetFlatList("stacklist");
+            GuiElementNestedList stacklist = overviewGui.GetNestedList("stacklist");
 
             stacklist.insideBounds.fixedY = 3 - value;
             stacklist.insideBounds.CalcWorldBounds();
@@ -414,14 +444,28 @@ namespace Vintagestory.GameContent
 
         protected void LoadPages_Async()
         {
-            allHandbookPages.AddRange(createPageHandlerAsync());
-            for (int i = 0; i < allHandbookPages.Count; i++)
-            {
-                var page = allHandbookPages[i];
-                pageNumberByPageCode[page.PageCode] = page.PageNumber = i;
-            }
+            allHandbookListItems.AddRange(createPageHandlerAsync());
+            loadPageElementsByPageCodes(allHandbookListItems);
 
             loadingPagesAsync = false;
+            if (!opened || overviewGui == null) return;
+            capi.Event.EnqueueMainThreadTask(FilterItems, "Handbook.FilterItems");
+        }
+
+        private void loadPageElementsByPageCodes(List<IFlatListItem> list)
+        {
+            foreach (var listItem in list)
+            {
+                switch (listItem)
+                {
+                    case GuiHandbookNestedListItem nestedItem:
+                        loadPageElementsByPageCodes(nestedItem.Children);
+                        break;
+                    case GuiHandbookPage page:
+                        pageElementByPageCode[page.PageCode] = page;
+                        break;
+                }
+            }
         }
 
         public void Search(string text)
@@ -450,94 +494,89 @@ namespace Vintagestory.GameContent
             FilterItems();
         }
 
-
-
         public void FilterItems()
         {
-            string text = currentSearchText?.ToLowerInvariant();
-            string[] texts;
-            bool logicalAnd = false;   // true if "and" is present; false if "or" or no logical operator is present
-            if (text == null)
-            {
-                texts = Array.Empty<string>();
-            }
-            else
-            {
-                if (text.Contains(" or ", StringComparison.Ordinal))
-                {
-                    texts = text.Split(new string[] { " or " }, StringSplitOptions.RemoveEmptyEntries).OrderBy(str => str.Length).ToArray();
-                }
-                else if (text.Contains(" and ", StringComparison.Ordinal))
-                {
-                    texts = text.Split(new string[] { " and " }, StringSplitOptions.RemoveEmptyEntries).OrderBy(str => str.Length).ToArray();
-                    logicalAnd = texts.Length > 1;
-                }
-                else
-                {
-                    texts = new string[] { text };
-                }
-                int countEmpty = 0;
-                for (int i = 0; i < texts.Length; i++)
-                {
-                    texts[i] = texts[i].ToSearchFriendly().Trim();      // Only remove diacritical marks etc after splitting on " or ", helps with languages such as Icelandic where "ör" is a word (a type of bow)
-                    if (texts[i].Length == 0) countEmpty++;
-                }
-                if (countEmpty > 0)
-                {
-                    string[] newTexts = new string[texts.Length - countEmpty];
-                    int j = 0;
-                    for (int i = 0; i < texts.Length; i++)
-                    {
-                        if (texts[i].Length == 0) continue;
-                        newTexts[j++] = texts[i];
-                    }
-                    texts = newTexts;
-                    logicalAnd = logicalAnd && texts.Length > 1;
-                }
-            }
-
-            List<WeightedHandbookPage> foundPages = new List<WeightedHandbookPage>();
-            shownHandbookPages.Clear();
+            shownHandbookListItems.Clear();
 
             if (!loadingPagesAsync)
             {
-                for (int i = 0; i < allHandbookPages.Count; i++)
-                {
-                    GuiHandbookPage page = allHandbookPages[i];
-                    if (currentCatgoryCode != null && page.CategoryCode != currentCatgoryCode) continue;
-                    if (page.IsDuplicate) continue;
+                string searchText = currentSearchText ?? string.Empty;
+                var regex = RegexFromSearchText(searchText);
+                var strictRegex = RegexFromSearchText(searchText, true);
 
-                    float weight = 1;
-                    bool matched = logicalAnd;    // Normally (for no logical operator or logical operator OR) no match unless any found; if it's logical AND then we have no match if any in texts are not found (and texts length cannot be 0)
-
-                    for (int j = 0; j < texts.Length; j++)
-                    {
-                        weight = page.GetTextMatchWeight(texts[j]);
-                        if (weight > 0)
-                        {
-                            if (!logicalAnd) { matched = true; break; }
-                        }
-                        else
-                        {
-                            if (logicalAnd) { matched = false; break; };
-                        }
-                    }
-                    if (!matched && texts.Length > 0) continue;
-
-                    foundPages.Add(new WeightedHandbookPage() { Page = page, Weight = weight });
-                }
-
-                foreach (var val in foundPages.OrderByDescending(wpage => wpage.Weight))
-                {
-                    shownHandbookPages.Add(val.Page);
-                }
+                filterItemsRecursive(allHandbookListItems, shownHandbookListItems, searchText, regex, strictRegex, out _);
             }
 
-            GuiElementFlatList stacklist = overviewGui.GetFlatList("stacklist");
+            GuiElementNestedList stacklist = overviewGui.GetNestedList("stacklist");
             stacklist.CalcTotalHeight();
             overviewGui.GetScrollbar("scrollbar").SetHeights(
                 (float)listHeight, (float)stacklist.insideBounds.fixedHeight
             );
+        }
+
+        private void filterItemsRecursive(List<IFlatListItem> elements, List<IFlatListItem> filteredElements, string searchText, Regex regex, Regex strictRegex, out List<WeightedHandbookListItem> weightedListItems)
+        {
+            weightedListItems = new List<WeightedHandbookListItem>();
+            bool filtered = !string.IsNullOrWhiteSpace(currentSearchText);
+            foreach (var element in elements)
+            {
+                if (element is INestedListItemWithChildren nestedListItem)
+                {
+                    nestedListItem.IsFiltered = filtered;
+                    nestedListItem.FilteredChildren.Clear();
+                    filterItemsRecursive(nestedListItem.Children, nestedListItem.FilteredChildren, searchText, regex, strictRegex, out var nestedWeightedListItems);
+                    nestedListItem.AddWeightedHandbookListItem(regex, strictRegex, ref weightedListItems, nestedWeightedListItems);
+                    continue;
+                }
+
+                if (element is not GuiHandbookPage page) continue;
+
+                if (currentCatgoryCode != null && page.CategoryCode != currentCatgoryCode || page.IsDuplicate) continue;
+
+                var pageText = page.GetPageText();
+                var titleMatches = CountMatches(pageText.Title, regex);
+                var strictTitleMatches = CountMatches(pageText.Title, strictRegex);
+                if (strictTitleMatches > 0 && !string.IsNullOrWhiteSpace(pageText.Title) &&
+                    pageText.Title.StartsWith(searchText, StringComparison.OrdinalIgnoreCase))
+                {
+                    strictTitleMatches++;
+                    titleMatches += searchText.Length * 50 / pageText.Title.Length;
+                }
+                var textMatches = CountMatches(pageText.Text, regex);
+                if (titleMatches > 0 || textMatches > 0)
+                    weightedListItems.Add(new WeightedHandbookListItem
+                    {
+                        ListItem = page,
+                        TitleMatches = titleMatches,
+                        StrictTitleMatches = strictTitleMatches,
+                        TitleLength = pageText.Title?.Length ?? 0,
+                        TextMatches = textMatches,
+                        SearchWeight = 1 + page.SearchWeightOffset
+                    });
+            };
+            if (searchText.Length > 0)
+            {
+                weightedListItems.Sort((a, b) =>
+                {
+                    // Start by comparing strict word matches in the title
+                    var strictSort = b.StrictTitleMatches - a.StrictTitleMatches;
+                    if (strictSort != 0) return strictSort;
+                    // Then for fuzzier matches in the title
+                    var titleSort = b.TitleMatches - a.TitleMatches;
+                    if (titleSort != 0) return titleSort;
+                    // Then we use the search weight to sort matches
+                    var weightSort = b.SearchWeight.CompareTo(a.SearchWeight);
+                    if (weightSort != 0) return weightSort;
+                    // Then for length of the title
+                    var lengthSort = a.TitleLength - b.TitleLength;
+                    if (lengthSort != 0) return lengthSort;
+
+                    // Then we will compare number of matches in the text and finally the search weight offset for just a bit extra
+                    return b.TextMatches - a.TextMatches;
+                });
+            }
+
+            foreach (var listItem in weightedListItems) filteredElements.Add(listItem.ListItem);
         }
 
         public override void OnRenderGUI(float deltaTime)
@@ -569,9 +608,9 @@ namespace Vintagestory.GameContent
 
         public override void Dispose()
         {
-            if (allHandbookPages != null)
+            if (allHandbookListItems != null)
             {
-                foreach (GuiHandbookPage elem in allHandbookPages)
+                foreach (IFlatListItem elem in allHandbookListItems)
                 {
                     elem?.Dispose();
                 }
@@ -580,7 +619,5 @@ namespace Vintagestory.GameContent
             overviewGui?.Dispose();
             detailViewGui?.Dispose();
         }
-
-
     }
 }

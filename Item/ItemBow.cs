@@ -5,6 +5,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -14,13 +15,17 @@ namespace Vintagestory.GameContent
 {
     public class ItemBow : Item
     {
+        const string NockedArrowKey = "nockedArrow";
+
         WorldInteraction[] interactions;
+        private TagSet arrowTag = TagSet.Empty;
 
         string aimAnimation;
 
         public override void OnLoaded(ICoreAPI api)
         {
             aimAnimation = Attributes["aimAnimation"].AsString();
+            if(arrowTag.IsEmpty) api.CollectibleTagRegistry.TryRegisterAndCreateTagSetAndLogIssues(out arrowTag, "arrow");
 
             if (api.Side != EnumAppSide.Client) return;
             ICoreClientAPI capi = api as ICoreClientAPI;
@@ -44,7 +49,6 @@ namespace Vintagestory.GameContent
                     {
                         ActionLangCode = "heldhelp-chargebow",
                         MouseButton = EnumMouseButton.Right,
-                        HotKeyCode = "dropitems",
                         Itemstacks = stacks.ToArray()
                     }
                 };
@@ -64,8 +68,10 @@ namespace Vintagestory.GameContent
             {
                 if (invslot is ItemSlotCreative) return true;
 
-                ItemStack stack = invslot.Itemstack;
-                if (stack != null && stack.Collectible != null && stack.Collectible.Code.PathStartsWith("arrow-") && stack.StackSize > 0)
+                var item = invslot.Itemstack?.Collectible;
+                if (item == null || invslot.StackSize <= 0) return true;
+
+                if (item.Code.PathStartsWith("arrow-") || item.GetTags(invslot.Itemstack).Overlaps(arrowTag))
                 {
                     slot = invslot;
                     return false;
@@ -83,8 +89,8 @@ namespace Vintagestory.GameContent
             if (handling == EnumHandHandling.PreventDefault) return;
 
             var controls = byEntity.MountedOn?.Controls ?? byEntity.Controls;
-            if (controls.CtrlKey 
-                && (entitySel?.SelectionBoxIndex ?? -1) >= 0 
+            if (controls.CtrlKey
+                && (entitySel?.SelectionBoxIndex ?? -1) >= 0
                 && entitySel.Entity?.GetBehavior<EntityBehaviorAttachable>() != null)
             {
                 return;
@@ -93,12 +99,16 @@ namespace Vintagestory.GameContent
             ItemSlot invslot = GetNextArrow(byEntity);
             if (invslot == null) return;
 
-            if (byEntity.World is IClientWorldAccessor)
-            {
-                slot.Itemstack.TempAttributes.SetInt("renderVariant", 1);
-            }
+            ItemStack nockedArrow = invslot.Itemstack.GetEmptyClone();
+            nockedArrow.StackSize = 1;
 
-            slot.Itemstack.Attributes.SetInt("renderVariant", 1);
+            var attributes = byEntity.World.Side == EnumAppSide.Client ? slot.Itemstack.TempAttributes : slot.Itemstack.Attributes;
+            attributes.SetItemstack(NockedArrowKey, nockedArrow);
+
+            if (byEntity.World.Side == EnumAppSide.Server)
+            {
+                (byEntity as EntityPlayer)?.Player?.InventoryManager.BroadcastHotbarSlot();
+            }
 
             // Not ideal to code the aiming controls this way. Needs an elegant solution - maybe an event bus?
             byEntity.Attributes.SetInt("aiming", 1);
@@ -114,17 +124,11 @@ namespace Vintagestory.GameContent
 
         public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
-            int renderVariant = GameMath.Clamp((int)Math.Ceiling(secondsUsed * 4), 0, 3);
-            int prevRenderVariant = slot.Itemstack.Attributes.GetInt("renderVariant", 0);
-
-            slot.Itemstack.TempAttributes.SetInt("renderVariant", renderVariant);
-            slot.Itemstack.Attributes.SetInt("renderVariant", renderVariant);
-
-            if (prevRenderVariant != renderVariant)
+            if (byEntity.World.Side == EnumAppSide.Client && byEntity.Controls.LeftMouseDown)
             {
-                (byEntity as EntityPlayer)?.Player?.InventoryManager.BroadcastHotbarSlot();
+                byEntity.RequestedHandUseCancelReason = EnumItemUseCancelReason.PlayerTriggered;
             }
-            
+
             return true;
         }
 
@@ -134,13 +138,13 @@ namespace Vintagestory.GameContent
             byEntity.Attributes.SetInt("aiming", 0);
             byEntity.AnimManager.StopAnimation(aimAnimation);
 
-            if (byEntity.World is IClientWorldAccessor)
-            {
-                slot.Itemstack?.TempAttributes.RemoveAttribute("renderVariant");
-            }
+            var attributes = byEntity.World.Side == EnumAppSide.Client ? slot.Itemstack?.TempAttributes : slot.Itemstack?.Attributes;
+            attributes?.RemoveAttribute(NockedArrowKey);
 
-            slot.Itemstack?.Attributes.SetInt("renderVariant", 0);
-            if (cancelReason != EnumItemUseCancelReason.Destroyed) (byEntity as EntityPlayer)?.Player?.InventoryManager.BroadcastHotbarSlot();
+            if (byEntity.World.Side == EnumAppSide.Server && cancelReason != EnumItemUseCancelReason.Destroyed)
+            {
+                (byEntity as EntityPlayer)?.Player?.InventoryManager.BroadcastHotbarSlot();
+            }
 
             if (cancelReason != EnumItemUseCancelReason.ReleasedMouse)
             {
@@ -158,12 +162,12 @@ namespace Vintagestory.GameContent
 
             if (byEntity.World.Side == EnumAppSide.Client)
             {
-                slot.Itemstack.TempAttributes.RemoveAttribute("renderVariant");
+                slot.Itemstack?.TempAttributes.RemoveAttribute(NockedArrowKey);
                 byEntity.AnimManager.StartAnimation("bowhit");
                 return;
             }
 
-            slot.Itemstack.Attributes.SetInt("renderVariant", 0);
+            slot.Itemstack?.Attributes.RemoveAttribute(NockedArrowKey);
             (byEntity as EntityPlayer)?.Player?.InventoryManager.BroadcastHotbarSlot();
 
             if (secondsUsed < 0.65f) return;
@@ -174,25 +178,17 @@ namespace Vintagestory.GameContent
             float damage = 0;
 
             // Bow damage
-            if (slot.Itemstack.Collectible.Attributes != null)
-            {
-                damage += slot.Itemstack.Collectible.Attributes["damage"].AsFloat(0);
-
-            }
+            damage += slot.Itemstack.ItemAttributes?["damage"].AsFloat(0) ?? 0;
 
             // Arrow damage
-            if (arrowSlot.Itemstack.Collectible.Attributes != null)
-            {
-                damage += arrowSlot.Itemstack.Collectible.Attributes["damage"].AsFloat(0);
-            }
+            damage += arrowSlot.Itemstack.ItemAttributes?["damage"].AsFloat(0) ?? 0;
 
             ItemStack stack = arrowSlot.TakeOut(1);
             arrowSlot.MarkDirty();
 
             byEntity.World.PlaySoundAt(new AssetLocation("sounds/bow-release"), byEntity, null, false, 8);
 
-            float breakChance = 0.5f;
-            if (stack.ItemAttributes != null) breakChance = stack.ItemAttributes["breakChanceOnImpact"].AsFloat(0.5f);
+            float breakChance = stack.ItemAttributes?["breakChanceOnImpact"].AsFloat(0.5f) ?? 0.5f;
 
             EntityProperties type = byEntity.World.GetEntityType(new AssetLocation(stack.ItemAttributes["arrowEntityCode"].AsString("arrow-" + stack.Collectible.Variant["material"])));
             Entity entityToSpawn = byEntity.World.ClassRegistry.CreateEntity(type);
@@ -208,26 +204,38 @@ namespace Vintagestory.GameContent
             float acc = Math.Max(0.001f, 1 - byEntity.Attributes.GetFloat("aimingAccuracy", 0));
             double rndpitch = byEntity.WatchedAttributes.GetDouble("aimingRandPitch", 1) * acc * 0.75f;
             double rndyaw = byEntity.WatchedAttributes.GetDouble("aimingRandYaw", 1) * acc * 0.75f;
-            
-            Vec3d pos = byEntity.ServerPos.XYZ.Add(0, byEntity.LocalEyePos.Y, 0);
-            Vec3d aheadPos = pos.AheadCopy(1, byEntity.SidedPos.Pitch + rndpitch, byEntity.SidedPos.Yaw + rndyaw);
+
+            Vec3d pos = byEntity.Pos.XYZ.Add(0, byEntity.LocalEyePos.Y, 0);
+            Vec3d aheadPos = pos.AheadCopy(1, byEntity.Pos.Pitch + rndpitch, byEntity.Pos.Yaw + rndyaw);
             Vec3d velocity = (aheadPos - pos) * byEntity.Stats.GetBlended("bowDrawingStrength");
 
 
-            entityToSpawn.ServerPos.SetPosWithDimension(byEntity.SidedPos.BehindCopy(0.21).XYZ.Add(0, byEntity.LocalEyePos.Y, 0));
-            entityToSpawn.ServerPos.Motion.Set(velocity);
-            entityToSpawn.Pos.SetFrom(entityToSpawn.ServerPos);
+            entityToSpawn.Pos.SetPosWithDimension(byEntity.Pos.BehindCopy(0.21).XYZ.Add(0, byEntity.LocalEyePos.Y, 0));
+            entityToSpawn.Pos.Motion.Set(velocity);
             entityToSpawn.World = byEntity.World;
             entityarrow.PreInitialize();
 
             byEntity.World.SpawnPriorityEntity(entityToSpawn);
 
-            slot.Itemstack.Collectible.DamageItem(byEntity.World, byEntity, slot);
+            slot.Itemstack.Collectible.DamageItem(byEntity.World, byEntity, slot, byEntity.Swimming ? 2 : 1);
             slot.MarkDirty();
 
             byEntity.AnimManager.StartAnimation("bowhit");
         }
 
+        public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
+        {
+            base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
+            if (target != EnumItemRenderTarget.HandTp && target != EnumItemRenderTarget.HandTpOff) return;
+
+            ItemStack nockedArrow = itemstack.TempAttributes.GetItemstack(NockedArrowKey) ?? itemstack.Attributes.GetItemstack(NockedArrowKey);
+            if (nockedArrow == null) return;
+            if (nockedArrow.Collectible == null && !nockedArrow.ResolveBlockOrItem(capi.World)) return;
+
+            renderinfo.AnimatedAttachmentStack = nockedArrow;
+            renderinfo.AnimatedAttachmentElement = "BowNock";
+            renderinfo.AnimatedAttachmentTransform = Attributes["nockedArrowTransform"].AsObject<ModelTransform>();
+        }
 
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
@@ -245,6 +253,11 @@ namespace Vintagestory.GameContent
 
         public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot)
         {
+            if (((ICoreClientAPI)api).World.Player.Entity.Attributes.GetInt("aiming") != 0)
+            {
+                return [new WorldInteraction { ActionLangCode = "general-cancel", MouseButton = EnumMouseButton.Left }];
+            }
+
             return interactions.Append(base.GetHeldInteractionHelp(inSlot));
         }
     }

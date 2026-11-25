@@ -1,12 +1,12 @@
-﻿using System;
-using System.IO;
-using System.Linq;
+using System;
 using System.Runtime.CompilerServices;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.GameContent;
+using Vintagestory.API.Util;
 
 #nullable disable
 
@@ -36,6 +36,8 @@ namespace Vintagestory.ServerMods
 
         public override void Start(ICoreAPI api)
         {
+            var loreContent = api.World.Config.GetAsString("loreContent", "true").ToBool(true);
+            if (!loreContent) return;
             api.Network.RegisterChannel("devastation").RegisterMessageType<DevaLocation>();
         }
 
@@ -43,7 +45,11 @@ namespace Vintagestory.ServerMods
         {
             this.api = api;
 
+            var loreContent = api.World.Config.GetAsString("loreContent", "true").ToBool(true);
+            if (!loreContent) return;
+
             api.Event.InitWorldGenerator(InitWorldGen, "standard");
+            api.Event.PreventTerrainHeightSmoothing(SuppressSmoothing);
             api.Event.PlayerJoin += Event_PlayerJoin;
 
             if (TerraGenConfig.DoDecorationPass)
@@ -53,6 +59,18 @@ namespace Vintagestory.ServerMods
             }
 
             distDistort = new SimplexNoise(new double[] { 14, 9, 6, 3 }, new double[] { 1 / 100.0, 1 / 50.0, 1 / 25.0, 1 / 12.5 }, api.World.SeaLevel + 20980);
+        }
+
+        public void SuppressSmoothing(int chunkX, int chunkZ, BoolRef prevent)
+        {
+            if (!prevent.GetValue() && devastationLocation != null)
+            {
+                var cpos = devastationLocation.CenterPos;
+                var devastationRadius = devastationLocation.GenerationRadius;
+                var rposx = chunkX * chunksize + chunksize / 2;
+                var rposz = chunkZ * chunksize + chunksize / 2;
+                if (cpos.HorDistanceSqTo(rposx, rposz) < devastationRadius * devastationRadius) prevent.SetValue(true);
+            }
         }
 
         private void Event_PlayerJoin(IServerPlayer byPlayer)
@@ -75,7 +93,8 @@ namespace Vintagestory.ServerMods
             distDistort = new SimplexNoise(new double[] { 14, 9, 6, 3 }, new double[] { 1 / 100.0, 1 / 50.0, 1 / 25.0, 1 / 12.5 }, api.World.SeaLevel + 20980);
             devastationDensity = new NormalizedSimplexNoise(new double[] { 14, 9, 6, 3 }, new double[] { 1 / 25.0, 1 / 12.5, 1 / 6.25, 1 / 3.25 }, api.World.SeaLevel + 20981);
 
-            modSys.storyStructureInstances.TryGetValue("devastationarea", out devastationLocation);
+            var modSys = api.ModLoader.GetModSystem<GenStoryStructures>();
+            modSys.Structures.values.TryGetValue("devastationarea", out devastationLocation);
             if (devastationLocation != null)
             {
                 Timeswitch ts = api.ModLoader.GetModSystem<Timeswitch>();
@@ -118,7 +137,7 @@ namespace Vintagestory.ServerMods
         private int GetBlockId(string code)
         {
             Block b = api.World.GetBlock(new AssetLocation(code));
-            return b == null ? GlobalConfig.defaultRockId : b.BlockId;
+            return b == null ? gcfg.defaultRockId : b.BlockId;
         }
 
         public BitmapRef BitmapCreateFromPng(IAsset asset)
@@ -203,8 +222,9 @@ namespace Vintagestory.ServerMods
                         var lY = (wgenheight + i) % chunksize;
                         var index3d = (chunksize * lY + dz) * chunksize + dx;
 
-                        chunks[chunkY].Data.SetBlockUnsafe(index3d, DevastationBlockIds[(int)Math.Round(density)]);
-                        chunks[chunkY].Data.SetFluid(index3d, 0);
+                        IChunkBlocks chunkData = chunks[chunkY].Data;
+                        chunkData.SetBlockUnsafe(index3d, DevastationBlockIds[(int)Math.Round(density)]);
+                        chunkData.SetFluid(index3d, 0);
                     }
 
                     // if height lower we are below surface
@@ -215,8 +235,9 @@ namespace Vintagestory.ServerMods
                             var chunkY = (wgenheight + i) / chunksize;
                             var lY = (wgenheight + i) % chunksize;
                             var index3d = (chunksize * lY + dz) * chunksize + dx;
-                            chunks[chunkY].Data.SetBlockUnsafe(index3d, 0);
-                            chunks[chunkY].Data.SetFluid(index3d, 0);
+                            IChunkBlocks chunkData = chunks[chunkY].Data;
+                            chunkData.SetBlockUnsafe(index3d, 0);
+                            chunkData.SetFluid(index3d, 0);
                         }
                     }
 
@@ -249,7 +270,7 @@ namespace Vintagestory.ServerMods
             return false;
         }
 
-        private BlockPos tmpPos = new BlockPos();
+        private BlockPos tmpPos = new BlockPos(Dimensions.NormalWorld);
         private bool HasDevastationSoil(IBlockAccessor blockAccessor, BlockPos startPos, int wdt, int len)
         {
             tmpPos.Set(startPos.X, startPos.Y + 1, startPos.Z);
@@ -282,6 +303,7 @@ namespace Vintagestory.ServerMods
         public override void Dispose()
         {
             DevastationBlockIds = null;
+            devastationLocation = null;
         }
 
 
@@ -308,7 +330,7 @@ namespace Vintagestory.ServerMods
         /// <param name="heightmap">The original world heightmap (before placement of devastation soil and cracks)</param>
         private void GenerateDim2ChunkColumn(int cx, int cz, ushort[] heightmap)
         {
-            int rockId = GlobalConfig.defaultRockId;
+            int rockId = gcfg.defaultRockId;
             int soilId = GetBlockId("soil-medium-none");
             int topsoilId = GetBlockId("soil-medium-normal");
             int grassId1 = GetBlockId("tallgrass-medium-free");
@@ -332,7 +354,7 @@ namespace Vintagestory.ServerMods
             // Simplified version of the algorithm in GenTerra
 
             // First set all the fully solid layers in bulk, as much as possible
-            chunkBlockData.SetBlockBulk(0, chunksize, chunksize, GlobalConfig.mantleBlockId);
+            chunkBlockData.SetBlockBulk(0, chunksize, chunksize, gcfg.mantleBlockId);
             int yBase = 1;
             for (; yBase < miny - 3; yBase++)
             {

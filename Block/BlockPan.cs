@@ -1,6 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -22,18 +23,21 @@ namespace Vintagestory.GameContent
         public bool ManMade;
     }
 
-    public class BlockPan : Block, ITexPositionSource, IContainedMeshSource
+    public class BlockPan : Block, ITexPositionSource, IContainedMeshSource, IHandBookPageCodeProvider
     {
         public Size2i AtlasSize { get; set; }
 
         ITexPositionSource ownTextureSource;
         TextureAtlasPosition matTexPosition;
+        TextureAtlasPosition attributeTexPosition;
 
         ILoadedSound sound;
         Dictionary<string, PanningDrop[]> dropsBySourceMat;
         AssetLocation shapeEmpty;
         AssetLocation shapeFull;
         WorldInteraction[] interactions;
+        float satietyUsedWhenPanning = 4f;
+        AssetLocation attributeTextureLoc;
 
         public override string GetHeldTpUseAnimation(ItemSlot activeHotbarSlot, Entity forEntity)
         {
@@ -48,14 +52,17 @@ namespace Vintagestory.GameContent
         {
             base.OnLoaded(api);
 
+            satietyUsedWhenPanning = Attributes["satietyUsedWhenPanning"].AsFloat(satietyUsedWhenPanning);
+
             dropsBySourceMat = Attributes["panningDrops"].AsObject<Dictionary<string, PanningDrop[]>>();
-            shapeEmpty = Attributes["shapeEmpty"].AsObject<AssetLocation>(defaultValue: "game:block/wood/pan/empty");
-            shapeFull = Attributes["shapeFull"].AsObject<AssetLocation>(defaultValue: "game:block/wood/pan/filled");
+            shapeEmpty = Attributes["shapeEmpty"].AsObject<AssetLocation>("game:block/wood/pan/empty");
+            shapeFull = Attributes["shapeFull"].AsObject<AssetLocation>("game:block/wood/pan/filled");
+            attributeTextureLoc = Attributes["attributeTexture"].AsObject<AssetLocation>("game:block/wood/debarked/{type}");
 
             shapeEmpty = shapeEmpty?.WithPathPrefix("shapes/")?.WithPathAppendix(".json");
             shapeFull = shapeFull?.WithPathPrefix("shapes/")?.WithPathAppendix(".json");
 
-            bool skipManmade = !api.World.Config.GetAsBool("loreContent");
+            bool skipManmade = !api.World.Config.GetAsBool("loreContent", true);
 
             if (skipManmade)
             {
@@ -161,8 +168,14 @@ namespace Vintagestory.GameContent
             get
             {
                 if (textureCode == "material") return matTexPosition;
+                if (attributeTexPosition != null && textureCode == "wood-generic") return attributeTexPosition;
                 return ownTextureSource[textureCode];
             }
+        }
+
+        public string GetPanType(ItemStack stack)
+        {
+            return stack?.Attributes?.GetString("panType", null);
         }
 
         public string GetBlockMaterialCode(ItemStack stack)
@@ -183,14 +196,14 @@ namespace Vintagestory.GameContent
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
             string blockMaterialCode = GetBlockMaterialCode(itemstack);
+            string panType = GetPanType(itemstack);
 
-            if (blockMaterialCode == null) return;
+            if (blockMaterialCode == null && panType == null) return;
 
-            string key = "pan-filled-" + blockMaterialCode + target;
-
+            string key = getMeshCacheKey(itemstack, blockMaterialCode, panType);
             renderinfo.ModelRef = ObjectCacheUtil.GetOrCreate(capi, key, () =>
             {
-                MeshData mesh = GenMesh(itemstack, capi.BlockTextureAtlas, null);
+                MeshData mesh = GenMesh(new DummySlot(itemstack), capi.BlockTextureAtlas, null);
                 return capi.Render.UploadMultiTextureMesh(mesh);
             });
         }
@@ -346,7 +359,7 @@ namespace Vintagestory.GameContent
                 RemoveMaterial(slot);
                 slot.MarkDirty();
 
-                byEntity.GetBehavior<EntityBehaviorHunger>()?.ConsumeSaturation(4f);
+                byEntity.GetBehavior<EntityBehaviorHunger>()?.ConsumeSaturation(satietyUsedWhenPanning);
             }
         }
 
@@ -402,7 +415,7 @@ namespace Vintagestory.GameContent
                     stack = stack.Clone();
                     if (player == null || !player.InventoryManager.TryGiveItemstack(stack, true))
                     {
-                        api.World.SpawnItemEntity(stack, byEntity.ServerPos.XYZ);
+                        api.World.SpawnItemEntity(stack, byEntity.Pos.XYZ);
                     }
                     break;
                 }
@@ -486,20 +499,23 @@ namespace Vintagestory.GameContent
             return interactions.Append(base.GetHeldInteractionHelp(inSlot));
         }
 
-        public MeshData GenMesh(ItemStack itemstack, ITextureAtlasAPI targetAtlas, BlockPos atBlockPos)
+        public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
-            string blockMaterialCode = GetBlockMaterialCode(itemstack);
+            base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
+            string panType = GetPanType(inSlot.Itemstack);
+            if (panType != null) dsc.AppendLine(Lang.Get("Material: {0}", Lang.Get("material-" + panType)));
+        }
+
+        public MeshData GenMesh(ItemSlot slot, ITextureAtlasAPI targetAtlas, BlockPos atBlockPos)
+        {
+            string blockMaterialCode = GetBlockMaterialCode(slot.Itemstack);
 
             ICoreClientAPI capi = api as ICoreClientAPI;
-            AssetLocation shapeloc = blockMaterialCode != null? shapeFull : shapeEmpty;
+            AssetLocation shapeloc = blockMaterialCode != null ? shapeFull : shapeEmpty;
 
-            Shape shape = Vintagestory.API.Common.Shape.TryGet(capi, shapeloc);
+            Shape shape = API.Common.Shape.TryGet(capi, shapeloc);
 
-            Block blockMat = null;
-            if (blockMaterialCode != null)
-            {
-                blockMat = capi.World.GetBlock(new AssetLocation(blockMaterialCode));
-            }
+            Block blockMat = blockMaterialCode != null ? capi.World.GetBlock(blockMaterialCode) : null;
 
             AtlasSize = capi.BlockTextureAtlas.Size;
 
@@ -508,25 +524,45 @@ namespace Vintagestory.GameContent
                 matTexPosition = capi.BlockTextureAtlas.GetPosition(blockMat, "up");
             }
 
+            string panType = GetPanType(slot.Itemstack);
+            if (panType != null)
+            {
+                var loc = attributeTextureLoc.Clone();
+                loc.Path = FillPlaceHolder(loc.Path, "type", panType);
+                capi.BlockTextureAtlas.GetOrInsertTexture(loc, out _, out attributeTexPosition);
+            }
+
             ownTextureSource = capi.Tesselator.GetTextureSource(this);
 
             MeshData meshdata;
-            if (blockMat == null) capi.Tesselator.TesselateBlock(this, out meshdata);
-            else capi.Tesselator.TesselateShape("filledpan", shape, out meshdata, this);
+            if (blockMat != null || attributeTexPosition != null)
+            {
+                capi.Tesselator.TesselateShape($"{shapeloc.GetName()}pan", shape, out meshdata, this);
+            }
+            else capi.Tesselator.TesselateBlock(this, out meshdata);
 
+            attributeTexPosition = null;
             return meshdata;
         }
 
-        public string GetMeshCacheKey(ItemStack itemstack)
+        private string getMeshCacheKey(ItemStack stack, string blockMaterialCode, string panType)
         {
-            string blockMaterialCode = GetBlockMaterialCode(itemstack);
+            string code = stack.Collectible.Code.ToShortString();
+            if (panType != null) code = $"{code}-{panType}";
+            return blockMaterialCode == null ? code : $"{code}-pan-filled-{blockMaterialCode}";
+        }
 
-            if (blockMaterialCode == null)
-            {
-                return itemstack.Collectible.Code;
-            }
+        public string GetMeshCacheKey(ItemSlot slot)
+        {
+            var stack = slot.Itemstack;
+            return getMeshCacheKey(stack, GetBlockMaterialCode(stack), GetPanType(stack));
+        }
 
-            return itemstack.Collectible.Code + "pan-filled-" + blockMaterialCode;
+        public string HandbookPageCodeForStack(IWorldAccessor world, ItemStack stack)
+        {
+            var cleanStack = stack.Clone();
+            cleanStack.Attributes.RemoveAttribute("materialBlockCode");
+            return GuiHandbookItemStackPage.PageCodeForStack(cleanStack);
         }
     }
 }

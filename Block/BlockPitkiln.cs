@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -56,24 +56,26 @@ namespace Vintagestory.GameContent
 
             Dictionary<string, BuildStageMaterial[]> resolvedMats = new Dictionary<string, BuildStageMaterial[]>();
 
-            List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(api, true);
-            ingiteInteraction = new WorldInteraction[] { new WorldInteraction()
-            {
-                ActionLangCode = "blockhelp-firepit-ignite",
-                MouseButton = EnumMouseButton.Right,
-                HotKeyCode = "shift",
-                Itemstacks = canIgniteStacks.ToArray(),
-                GetMatchingStacks = (wi, bs, es) =>
+            if (api is ICoreClientAPI capi) {
+                List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(capi, true);
+                ingiteInteraction = new WorldInteraction[] { new WorldInteraction()
                 {
-                    BlockEntityPitKiln beg = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityPitKiln;
-                    if (beg?.Lit != true && beg?.CanIgnite == true)
+                    ActionLangCode = "blockhelp-firepit-ignite",
+                    MouseButton = EnumMouseButton.Right,
+                    HotKeyCode = "shift",
+                    Itemstacks = canIgniteStacks.ToArray(),
+                    GetMatchingStacks = (wi, bs, es) =>
                     {
-                        return wi.Itemstacks;
+                        BlockEntityPitKiln beg = capi.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityPitKiln;
+                        if (beg?.Lit != true && beg?.CanIgnite == true)
+                        {
+                            return wi.Itemstacks;
+                        }
+                        return null;
                     }
-                    return null;
                 }
+                };
             }
-            };
 
 
 
@@ -136,7 +138,7 @@ namespace Vintagestory.GameContent
                     }
 
                     resostages[i] = new BuildStage() { ElementName = stages[i], Materials = stacks, MinHitboxY2 = miny2, MatCode = matcodes[i] };
-                    
+
                 }
 
                 BuildStagesByBlock[val.Key] = resostages;
@@ -162,27 +164,14 @@ namespace Vintagestory.GameContent
 
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
-            BlockEntity be = world.BlockAccessor.GetBlockEntity(blockSel.Position);
-            if (be is BlockEntityGroundStorage beg) 
-            { 
-                beg.OnPlayerInteractStart(byPlayer, blockSel);
-                return true;
-            }
-
-            return true;
-        }
-
-
-        public override EnumBlockMaterial GetBlockMaterial(IBlockAccessor blockAccessor, BlockPos pos, ItemStack stack = null)
-        {
-            return base.GetBlockMaterial(blockAccessor, pos, stack);
+            return GetBlockEntity<BlockEntityGroundStorage>(blockSel.Position)?.OnPlayerInteractStart(byPlayer, blockSel) ?? false;
         }
 
         public bool TryCreateKiln(IWorldAccessor world, IPlayer byPlayer, BlockPos pos)
         {
             ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
             if (hotbarSlot.Empty) return false;
-            
+
             BlockEntity be = world.BlockAccessor.GetBlockEntity(pos);
             if (be is BlockEntityGroundStorage beg)
             {
@@ -211,7 +200,8 @@ namespace Vintagestory.GameContent
                         ok = false;
                         break;
                     }
-                    if (block.CombustibleProps != null)
+                    var combustibleProps = block.GetCombustibleProperties(world, null, npos);
+                    if (combustibleProps != null)
                     {
                         capi?.TriggerIngameError(this, "notsolid", Lang.Get("Pit kilns need to be surrounded by solid, non-flammable blocks"));
                         ok = false;
@@ -261,7 +251,7 @@ namespace Vintagestory.GameContent
                 }
                 begs.MeshAngle = beg.MeshAngle;
                 begs.OnCreated(byPlayer);
-                begs.updateMeshes();
+                begs.MarkMeshesDirty();
                 begs.MarkDirty(true);
 
 
@@ -294,7 +284,7 @@ namespace Vintagestory.GameContent
             if (beb.Lit) return secondsIgniting > 2 ? EnumIgniteState.IgniteNow : EnumIgniteState.Ignitable;
             return EnumIgniteState.NotIgnitable;
         }
-        
+
 
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)

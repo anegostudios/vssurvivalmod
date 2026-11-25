@@ -1,5 +1,7 @@
 using ProtoBuf;
-using System.Numerics;
+using System;
+using System.Linq;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -9,7 +11,6 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 using static OpenTK.Graphics.OpenGL.GL;
-using static System.Net.Mime.MediaTypeNames;
 
 #nullable disable
 
@@ -32,14 +33,65 @@ namespace Vintagestory.GameContent
         Cancel = 12313
     }
 
-
+    /// <summary>
+    /// Adds writeable surface to entity.
+    /// <br/>Uses the "writingsurface" code
+    /// </summary>
+    /// <example><code lang="json">
+    ///"behaviors": [
+    /// "writingsurface": {
+    ///    "fontConfig": {
+    ///        "maxWidth": 208,
+    ///        "maxHeight": 96,
+    ///        "fontSize": 20,
+    ///        "textVoxelOffsetY": -1,
+    ///        "textVoxelOffsetZ": 0.25,
+    ///        "textVoxelHeight": 6,
+    ///        "fontName": "Almendra",
+    ///        "verticalAlign": "Middle",
+    ///        "boldFont": true,
+    ///        "maxLength": 50000
+    ///    },
+    ///    "writingSurfaces": [ "LPlaqueAP", "RPlaqueAP" ]
+    /// },
+    ///],
+    /// </code></example>
+    /// <example>
+    /// Inside a collectible used as a pigment...
+    /// <code lang="json">
+    ///"attributes": {
+    ///    "pigment": {
+    ///        "name": "Carbon black",
+    ///        "color": { "red": 25, "green": 24, "blue": 22 }
+    ///    }
+    ///    ...
+    ///},
+    /// </code></example>
+    [DocumentAsJson]
+    [AddDocumentationProperty("pigment", "Use on a collectible type. If set and the collectible is used to write on a writing surface with this behavior, its pigment color will be used for text color.", "Vintagestory.API.Datastructures.JsonObject", "Optional", "None", true)]
     public class EntityBehaviorWritingSurface : EntityBehavior, ITexPositionSource
     {
+        // Only used if none is set via the json attribute.
+        // Rennorb: This was introduced after the fact, so we need to set some sensible default. I arbitrarily chose 1K.
+        public const int DEFAULT_MAX_TEXT_LENGTH = 1024;
+
         protected MultiTextureMeshRef meshref;
         protected ICoreClientAPI capi;
         protected LoadedTexture loadedTexture;
 
+        /// <summary>
+        /// A list of shape element codes that can be written on.
+        /// </summary>
+        [DocumentAsJson("Required")]
+        protected string[] writingSurfaces;
+
+        /// <summary>
+        /// <!--<jsonalias>FontConfig</jsonalias>-->
+        /// Font settings of writeable surface, such as text position, font type and others
+        /// </summary>
+        [DocumentAsJson("Required")]
         protected TextAreaConfig signTextConfig;
+
         protected CairoFont font;
         
         protected EnumVerticalAlign verticalAlign;
@@ -74,12 +126,14 @@ namespace Vintagestory.GameContent
 
         public override void Initialize(EntityProperties properties, JsonObject attributes)
         {
+            signTextConfig = attributes["fontConfig"].AsObject<TextAreaConfig>();
+            if (signTextConfig.MaxLength == -1) signTextConfig.MaxLength = DEFAULT_MAX_TEXT_LENGTH;
+
             capi = entity.World.Api as ICoreClientAPI;
             if (capi != null)
             {
                 capi.Event.ReloadTextures += Event_ReloadTextures;
                 entity.WatchedAttributes.RegisterModifiedListener(SurfaceName + "_writingSurfaceText", entity.MarkShapeModified);
-                signTextConfig = attributes["fontConfig"].AsObject<TextAreaConfig>();
                 font = new CairoFont(signTextConfig.FontSize, signTextConfig.FontName, new double[] { 0, 0, 0, 0.8 });
                 if (signTextConfig.BoldFont) font.WithWeight(Cairo.FontWeight.Bold);
                 font.LineHeightMultiplier = 0.9f;
@@ -88,6 +142,8 @@ namespace Vintagestory.GameContent
                 TextHeight = signTextConfig.MaxHeight;
                 DefaultFontSize = signTextConfig.FontSize;
             }
+
+            writingSurfaces = attributes["writingSurfaces"].AsObject<string[]>();
         }
 
         private void Event_ReloadTextures()
@@ -100,7 +156,11 @@ namespace Vintagestory.GameContent
         public override void OnInteract(EntityAgent byEntity, ItemSlot itemslot, Vec3d hitPosition, EnumInteractMode mode, ref EnumHandling handled)
         {
             if (entity.World.Side == EnumAppSide.Server) return;
-            if (entity.GetBehavior<EntityBehaviorSelectionBoxes>()?.IsAPCode((byEntity as EntityPlayer).EntitySelection, "LPlaqueAP") != true) return;
+
+            if (writingSurfaces == null || entity.GetBehavior<EntityBehaviorSelectionBoxes>() is not EntityBehaviorSelectionBoxes selBoxes || !writingSurfaces.Any(apCode => selBoxes.IsAPCode((byEntity as EntityPlayer).EntitySelection, apCode)))
+            {
+                return;
+            }
 
             if (editDialog != null && editDialog.IsOpened()) return;
 
@@ -115,8 +175,8 @@ namespace Vintagestory.GameContent
                 Text = text;
 
                 capi.Network.SendEntityPacket(
-                    entity.EntityId, 
-                    (int)WritingSurfacePackets.Save, 
+                    entity.EntityId,
+                    (int)WritingSurfacePackets.Save,
                     SerializerUtil.Serialize(new TextDataPacket() { Text = text, FontSize = FontSize })
                 );
                 Color = tempColor;
@@ -130,37 +190,102 @@ namespace Vintagestory.GameContent
             capi.Network.SendEntityPacket(entity.EntityId, (int)WritingSurfacePackets.Open);
         }
 
-        public override void OnReceivedClientPacket(IServerPlayer player, int packetid, byte[] data, ref EnumHandling handled)
+        public override void OnReceivedClientPacket(IServerPlayer player, int packetId, SerializedData packetData, ref EnumHandling handled, ref Entity.CachedAccessPerms perms)
         {
-            base.OnReceivedClientPacket(player, packetid, data, ref handled);
-            
-            if (packetid == (int)WritingSurfacePackets.Open)
-            {
-                loadPigment(player.Entity);
-            }
+            base.OnReceivedClientPacket(player, packetId, packetData, ref handled, ref perms);
 
-            if (packetid == (int)WritingSurfacePackets.Cancel)
+            switch (packetId)
             {
-                player.Entity.TryGiveItemStack(tempStack);
-                tempStack = null;
-            }
+                case (int)WritingSurfacePackets.Open:
+                    if(!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "entity behavior writing surface"))
+                    {
+                        // No need to revert this, just discard the request.
+                        break;
+                    }
 
-            if (packetid == (int)WritingSurfacePackets.Save)
-            {
-                // 85% chance to get back the item
-                if (entity.World.Rand.NextDouble() < 0.85)
-                {
+                    loadPigment(player.Entity);
+
+                    break;
+
+
+                case (int)WritingSurfacePackets.Cancel:
+                    if(!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, false, "entity behavior writing surface")) // No range check here, we might have gotten moved away.
+                    {
+                        // No need to revert this, cannot get here without packet manipulation.
+                        break;
+                    }
+
                     player.Entity.TryGiveItemStack(tempStack);
-                }
-                tempStack = null;
+                    tempStack = null;
 
-                var pkg = SerializerUtil.Deserialize<TextDataPacket>(data);
-                this.Text = pkg.Text;
-                this.FontSize = pkg.FontSize;
+                    break;
 
-                entity.MarkShapeModified();
-                Color = tempColor;
+
+                case (int)WritingSurfacePackets.Save:
+                    void resetSignForThatPlayer()
+                    {
+                        // Revert the text change for that client:
+                        ((ICoreServerAPI)entity.Api).Network.SendEntityPacket(player, entity.EntityId, (int)WritingSurfacePackets.Cancel, SerializerUtil.Serialize(new TextDataPacket() {
+                            FontSize = this.FontSize,
+                            Text     = this.Text,
+                        }));
+
+                        // Don't forget to give the chalk item back:
+                        player.InventoryManager.TryGiveItemstack(tempStack);
+                        tempStack = null;
+                    }
+
+                    if (!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.Use, true, "entity behavior writing surface"))
+                    {
+                        resetSignForThatPlayer();
+                        break;
+                    }
+
+                    var pkg = packetData.Deserialize<TextDataPacket>();
+                    if (pkg.Text.Length > signTextConfig.MaxLength)
+                    {
+                        resetSignForThatPlayer();
+                        this.entity.Api.Logger.Audit("Player {0} tried to set excessive text (len = {1}) to a writing surface.", player.PlayerName, pkg.Text.Length);
+                        break;
+                    }
+
+                    this.Text = pkg.Text;
+                    this.FontSize = pkg.FontSize;
+
+                    entity.MarkShapeModified();
+                    Color = tempColor;
+
+
+                    // 85% chance to get back the item
+                    if (entity.World.Rand.NextDouble() < 0.85)
+                    {
+                        player.Entity.TryGiveItemStack(tempStack);
+                    }
+                    tempStack = null;
+
+                    break;
             }
+        }
+
+        public override void OnReceivedServerPacket(int packetId, SerializedData packetData, ref EnumHandling handled)
+        {
+            switch (packetId)
+            {
+                case (int)WritingSurfacePackets.Cancel:
+                {
+                    var pkg = packetData.Deserialize<TextDataPacket>();
+
+                    this.Text = pkg.Text;
+                    this.FontSize = pkg.FontSize;
+                    entity.MarkShapeModified();
+
+                    handled = EnumHandling.Handled;
+
+                    break;
+                }
+            }
+
+            base.OnReceivedServerPacket(packetId, packetData, ref handled);
         }
 
         private bool loadPigment(EntityAgent eagent)

@@ -28,7 +28,7 @@ namespace Vintagestory.GameContent
             }
 
             BlockPos onBlockPos = blockSel.Position;
-            
+
             IPlayer byPlayer = null;
             if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
             if (byPlayer == null) return;
@@ -78,9 +78,9 @@ namespace Vintagestory.GameContent
 
             Cuboidf[] collisionBoxes = byEntity.World.BlockAccessor.GetBlock(pos).GetCollisionBoxes(byEntity.World.BlockAccessor, pos);
 
-            if (collisionBoxes != null && collisionBoxes.Length > 0 && CollisionTester.AabbIntersect(collisionBoxes[0], pos.X, pos.Y, pos.Z, byPlayer.Entity.SelectionBox, byPlayer.Entity.SidedPos.XYZ))
+            if (collisionBoxes != null && collisionBoxes.Length > 0 && CollisionTester.AabbIntersect(collisionBoxes[0], pos.X, pos.Y, pos.Z, byPlayer.Entity.SelectionBox, byPlayer.Entity.Pos.XYZ))
             {
-                byPlayer.Entity.SidedPos.Y += collisionBoxes[0].Y2 - (byPlayer.Entity.SidedPos.Y - (int)byPlayer.Entity.SidedPos.Y);
+                byPlayer.Entity.Pos.Y += collisionBoxes[0].Y2 - (byPlayer.Entity.Pos.Y - (int)byPlayer.Entity.Pos.Y);
             }
 
             if (ok)
@@ -91,7 +91,7 @@ namespace Vintagestory.GameContent
             {
                 base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
             }
-            
+
 
         }
 

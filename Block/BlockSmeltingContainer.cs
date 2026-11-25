@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -41,11 +41,12 @@ namespace Vintagestory.GameContent
             ItemStack[] stacks = GetIngredients(world, cookingSlotsProvider);
             for (int i = 0; i < stacks.Length; i++)
             {
-                if (stacks[i]?.Collectible?.CombustibleProps == null) continue;
+                CombustibleProperties props = stacks[i]?.Collectible?.GetCombustibleProperties(world, stacks[i], null);
+                if (props == null) continue;
 
                 float singleDuration = stacks[i].Collectible.GetMeltingDuration(world, cookingSlotsProvider, inputSlot);
 
-                duration += singleDuration * stacks[i].StackSize / stacks[i].Collectible.CombustibleProps.SmeltedRatio;
+                duration += singleDuration * stacks[i].StackSize / props.SmeltedRatio;
             }
 
             return duration;
@@ -80,7 +81,7 @@ namespace Vintagestory.GameContent
 
             for (int i = 0; i < stacks.Length; i++)
             {
-                CombustibleProperties props = stacks[i]?.Collectible.CombustibleProps;
+                CombustibleProperties props = stacks[i]?.Collectible?.GetCombustibleProperties(world, stacks[i], null);
                 if (props != null && !props.RequiresContainer) return false;
             }
 
@@ -149,7 +150,7 @@ namespace Vintagestory.GameContent
 
                 for (int i = 0; i < stacks.Length; i++)
                 {
-                    CombustibleProperties props = stacks[i]?.Collectible.CombustibleProps;
+                    CombustibleProperties props = stacks[i]?.Collectible.GetCombustibleProperties(world, stacks[i], null);
                     if (props != null && !props.RequiresContainer) return null;
                 }
 
@@ -244,11 +245,12 @@ namespace Vintagestory.GameContent
                 ItemStack stack = stacks[i];
                 double stackSize = stack.StackSize;
 
-                if (stack.Collectible.CombustibleProps?.SmeltedStack != null && stack.Collectible.CombustibleProps.MeltingPoint > 0)
+                CombustibleProperties combustibleProps = stack.Collectible.GetCombustibleProperties(null, stack, null);
+                if (combustibleProps?.SmeltedStack != null && combustibleProps.MeltingPoint > 0)
                 {
-                    stackSize *= stack.Collectible.CombustibleProps.SmeltedStack.StackSize;
-                    stackSize /= stack.Collectible.CombustibleProps.SmeltedRatio;
-                    stack = stack.Collectible.CombustibleProps.SmeltedStack.ResolvedItemstack;
+                    stackSize *= combustibleProps.SmeltedStack.StackSize;
+                    stackSize /= combustibleProps.SmeltedRatio;
+                    stack = combustibleProps.SmeltedStack.ResolvedItemstack;
                 } else
                 {
                     return null;

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using Vintagestory.API.Common;
@@ -253,7 +253,7 @@ namespace Vintagestory.GameContent
             public bool Disposed => throw new NotImplementedException();
 
             public bool Empty { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
-			Dictionary<BlockPos, BlockEntity> IWorldChunk.BlockEntities { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+			Dictionary<int, BlockEntity> IWorldChunk.BlockEntities { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
 			public IChunkBlocks MaybeBlocks => throw new NotImplementedException();
 
@@ -336,7 +336,12 @@ namespace Vintagestory.GameContent
                 throw new NotImplementedException();
             }
 
-			public bool AddDecor(IBlockAccessor blockAccessor, BlockPos pos, int faceIndex, Block block)
+            public BlockEntity GetLocalBlockEntityAtBlockPos(FastBlockPos pos)
+            {
+                throw new NotImplementedException();
+            }
+
+            public bool AddDecor(IBlockAccessor blockAccessor, BlockPos pos, int faceIndex, Block block)
 			{
 				throw new NotImplementedException();
 			}

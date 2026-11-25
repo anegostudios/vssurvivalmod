@@ -10,8 +10,8 @@ namespace Vintagestory.GameContent.Mechanics
     {
         CustomMeshDataPartFloat matrixAndLightFloats1;
         CustomMeshDataPartFloat matrixAndLightFloats2;
-        MeshRef blockMeshRef1;
-        MeshRef blockMeshRef2;
+        MultiTextureMeshRef blockMeshRef1;
+        MultiTextureMeshRef blockMeshRef2;
 
         public TransmissionBlockRenderer(ICoreClientAPI capi, MechanicalPowerMod mechanicalPowerMod, Block textureSoureBlock, CompositeShape shapeLoc) : base(capi, mechanicalPowerMod)
         {
@@ -32,8 +32,7 @@ namespace Vintagestory.GameContent.Mechanics
             //blockMesh1.Rgba2 = null;
             //blockMesh2.Rgba2 = null;
 
-            // 16 floats matrix, 4 floats light rgbs
-            blockMesh1.CustomFloats = matrixAndLightFloats1 = new CustomMeshDataPartFloat((16 + 4) * 10100)
+            matrixAndLightFloats1 = new CustomMeshDataPartFloat((16 + 4) * 10100)
             {
                 Instanced = true,
                 InterleaveOffsets = new int[] { 0, 16, 32, 48, 64 },
@@ -41,8 +40,8 @@ namespace Vintagestory.GameContent.Mechanics
                 InterleaveStride = 16 + 4 * 16,
                 StaticDraw = false,
             };
-            blockMesh1.CustomFloats.SetAllocationSize((16 + 4) * 10100);
-            blockMesh2.CustomFloats = matrixAndLightFloats2 = new CustomMeshDataPartFloat((16 + 4) * 10100)
+            matrixAndLightFloats1.SetAllocationSize((16 + 4) * 10100);
+            matrixAndLightFloats2 = new CustomMeshDataPartFloat((16 + 4) * 10100)
             {
                 Instanced = true,
                 InterleaveOffsets = new int[] { 0, 16, 32, 48, 64 },
@@ -50,10 +49,10 @@ namespace Vintagestory.GameContent.Mechanics
                 InterleaveStride = 16 + 4 * 16,
                 StaticDraw = false,
             };
-            blockMesh2.CustomFloats.SetAllocationSize((16 + 4) * 10100);
+            matrixAndLightFloats2.SetAllocationSize((16 + 4) * 10100);
 
-            this.blockMeshRef1 = capi.Render.UploadMesh(blockMesh1);
-            this.blockMeshRef2 = capi.Render.UploadMesh(blockMesh2);
+            this.blockMeshRef1 = uploadInstancedMesh(blockMesh1, matrixAndLightFloats1);
+            this.blockMeshRef2 = uploadInstancedMesh(blockMesh2, matrixAndLightFloats2);
         }
 
 
@@ -81,14 +80,8 @@ namespace Vintagestory.GameContent.Mechanics
 
             if (quantityBlocks > 0)
             {
-                matrixAndLightFloats1.Count = quantityBlocks * 20;
-                updateMesh.CustomFloats = matrixAndLightFloats1;
-                capi.Render.UpdateMesh(blockMeshRef1, updateMesh);
-                capi.Render.RenderMeshInstanced(blockMeshRef1, quantityBlocks);
-                matrixAndLightFloats2.Count = quantityBlocks * 20;
-                updateMesh.CustomFloats = matrixAndLightFloats2;
-                capi.Render.UpdateMesh(blockMeshRef2, updateMesh);
-                capi.Render.RenderMeshInstanced(blockMeshRef2, quantityBlocks);
+                renderInstancedMesh(prog, blockMeshRef1, matrixAndLightFloats1, quantityBlocks);
+                renderInstancedMesh(prog, blockMeshRef2, matrixAndLightFloats2, quantityBlocks);
             }
         }
 

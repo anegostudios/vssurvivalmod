@@ -1,6 +1,6 @@
 using System;
+using System.Collections.Generic;
 using System.Text;
-using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
@@ -12,7 +12,8 @@ namespace Vintagestory.GameContent
     {
         Quadrants,
         Halves,
-        SingleCenter
+        SingleCenter,
+        Stacking4
     }
 
     public interface IShelvable
@@ -21,54 +22,164 @@ namespace Vintagestory.GameContent
         public ModelTransform? GetOnShelfTransform(ItemStack stack) => null;
     }
 
-    public class BlockEntityShelf : BlockEntityDisplay
+    public class BlockEntityShelf : BlockEntity
     {
-        InventoryGeneric inv;
-        public override InventoryBase Inventory => inv;
+        private const int OldShelfSlotCount = 8;
+        private const int OldShelfSlotsPerSurface = 4;
+        private const string OldShelfInventoryTreeName = "inventory";
+        private const string OldShelfInventoryId = "shelf-0";
+        private const string ShelfDisplayCategory = "shelf";
 
-        public override string InventoryClassName => "shelf";
+        private const float OldShelfLeftX = 4f;
+        private const float OldShelfRightX = 12f;
+        private const float OldShelfBackZ = 4f;
+        private const float OldShelfFrontZ = 10f;
+        private const float OldShelfCenterX = 8f;
+        private const float OldShelfCenterZ = 6.5f;
 
-        public override string AttributeTransformCode => "onshelfTransform";
-
-        static int slotCount = 8;
-
-        public BlockEntityShelf()
-        {
-            inv = new InventoryGeneric(slotCount, "shelf-0", null, null);
-        }
+        private bool migratedOldInventory;
 
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
+            SyncDisplayAngle(api.World);
 
-            // Must be added after Initialize(), so we can override the transition speed value
-            inv.OnAcquireTransitionSpeed += Inv_OnAcquireTransitionSpeed;
+            if (migratedOldInventory && api.Side == EnumAppSide.Server)
+            {
+                MarkDirty(true);
+            }
         }
 
-        private float Inv_OnAcquireTransitionSpeed(EnumTransitionType transType, ItemStack stack, float baseMul)
+        public override void OnBlockPlaced(ItemStack byItemStack = null)
         {
-            if (transType == EnumTransitionType.Dry || transType == EnumTransitionType.Melt) return container.Room?.ExitCount == 0 ? 2f : 0.5f;
-            if (Api == null) return 0;
+            base.OnBlockPlaced(byItemStack);
+            SyncDisplayAngle(Api?.World);
+        }
 
-            if (transType == EnumTransitionType.Ripen)
+        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
+        {
+            base.FromTreeAttributes(tree, worldAccessForResolve);
+            SyncDisplayAngle(worldAccessForResolve);
+            TryMigrateOldInventory(tree, worldAccessForResolve);
+        }
+
+        public override void ToTreeAttributes(ITreeAttribute tree)
+        {
+            SyncDisplayAngle();
+            base.ToTreeAttributes(tree);
+        }
+
+        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
+        {
+            BlockSelection blockSel = forPlayer.CurrentBlockSelection;
+            BEBehaviorDisplay display = GetBehavior<BEBehaviorDisplay>();
+
+            if (blockSel != null && blockSel.Position.Equals(Pos) && display != null)
             {
-                float perishRate = container.GetPerishRate();
-                return GameMath.Clamp((1 - perishRate - 0.5f) * 3, 0, 1);
+                var slotLoc = BlockBehaviorDisplay.decodeSlotid(blockSel.SelectionBoxId);
+                if (slotLoc?.IsPlacedItem == true)
+                {
+                    ItemSlot slot = display.InventoryInv[slotLoc.EncodedLocation];
+                    if (slot != null && !slot.Empty)
+                    {
+                        float ripenRate = GameMath.Clamp((1 - display.GetPerishRate() - 0.5f) * 3, 0, 1);
+                        sb.Append(PerishableInfoCompact(Api, slot, ripenRate));
+                        return;
+                    }
+                }
             }
 
-            return 1;
+            base.GetBlockInfo(forPlayer, sb);
 
+            if (blockSel == null || !blockSel.Position.Equals(Pos) || display == null) return;
+
+            float shelfRipenRate = GameMath.Clamp((1 - display.GetPerishRate() - 0.5f) * 3, 0, 1);
+            if (shelfRipenRate > 0)
+            {
+                sb.AppendLine(Lang.Get("Suitable spot for food ripening."));
+            }
+        }
+        // The block still stores the wall side in its code. Display uses meshAngleRad so the shelf mesh,
+        // placement grid and displayed item meshes all rotate from the same value.
+        private void SyncDisplayAngle(IWorldAccessor worldForResolve = null)
+        {
+            if (Block == null) return;
+
+            var display = GetBehavior<BEBehaviorDisplay>();
+            display?.SetMeshAngleRad(GetShelfAngleRad(), worldForResolve);
         }
 
-        internal bool OnInteract(IPlayer byPlayer, BlockSelection blockSel)
+        private void TryMigrateOldInventory(ITreeAttribute tree, IWorldAccessor worldForResolve)
         {
-            ItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
+            ITreeAttribute oldInvTree = tree.GetTreeAttribute(OldShelfInventoryTreeName);
+            BEBehaviorDisplay display = GetBehavior<BEBehaviorDisplay>();
+            BlockBehaviorDisplay displayBlock = Block?.GetBehavior<BlockBehaviorDisplay>();
+            if (oldInvTree == null || display == null || displayBlock == null || !display.InventoryInv.Empty) return;
 
-            if (slot.Empty) return TryTake(byPlayer, blockSel);
-            else if (TryUse(byPlayer, blockSel)) return true;
-            else if (GetShelvableLayout(slot.Itemstack) != null) return TryPut(byPlayer, blockSel);
+            InventoryGeneric oldInv = new InventoryGeneric(OldShelfSlotCount, OldShelfInventoryId, worldForResolve.Api, (id, inv) => new ItemSlotDisplay(inv, ShelfDisplayCategory));
+            oldInv.Pos = Pos;
+            oldInv.FromTreeAttributes(oldInvTree);
+            oldInv.ResolveBlocksOrItems();
 
-            return false;
+            List<(string slotId, ItemStack stack)> migratedStacks = new List<(string slotId, ItemStack stack)>();
+            for (int i = 0; i < oldInv.Count; i++)
+            {
+                if (oldInv[i].Empty) continue;
+
+                if (GetShelvableLayout(oldInv[i].Itemstack) is not EnumShelvableLayout layout) return;
+
+                int surfaceIndex = i >= OldShelfSlotsPerSurface ? 1 : 0;
+                PlacementSurface surface = displayBlock.PlacementSurfaces[surfaceIndex];
+                if (BlockBehaviorDisplay.GetDisplayableAttributes(oldInv[i], surface) == null) return;
+
+                string slotId = GetMigratedSlotId(i, surfaceIndex, layout);
+                if (migratedStacks.Exists(val => val.slotId == slotId)) return;
+
+                migratedStacks.Add((slotId, oldInv[i].Itemstack.Clone()));
+            }
+
+            if (migratedStacks.Count == 0) return;
+
+            for (int i = 0; i < migratedStacks.Count; i++)
+            {
+                display.InventoryInv.Allocate(migratedStacks[i].slotId);
+                display.InventoryInv[migratedStacks[i].slotId].Itemstack = migratedStacks[i].stack;
+            }
+
+            migratedOldInventory = true;
+            display.MarkDisplayDirty(worldForResolve);
+        }
+
+        private static string GetMigratedSlotId(int oldSlotId, int surfaceIndex, EnumShelvableLayout layout)
+        {
+            float x = (oldSlotId % OldShelfSlotsPerSurface) >= 2 ? OldShelfRightX : OldShelfLeftX;
+            float z = (oldSlotId % 2) == 0 ? OldShelfBackZ : OldShelfFrontZ;
+
+            if (layout == EnumShelvableLayout.SingleCenter)
+            {
+                x = OldShelfCenterX;
+                z = OldShelfCenterZ;
+            }
+            else if (layout == EnumShelvableLayout.Halves)
+            {
+                z = OldShelfCenterZ;
+            }
+
+            return new SlotLocation(x, 0, z)
+            {
+                PlacementSurfaceIndex = surfaceIndex
+            }.EncodedLocation;
+        }
+
+        private float GetShelfAngleRad()
+        {
+            return Block.LastCodePart() switch
+            {
+                "east" => 270 * GameMath.DEG2RAD,
+                "west" => 90 * GameMath.DEG2RAD,
+                "south" => 180 * GameMath.DEG2RAD,
+                _ => 0
+            };
         }
 
         public static EnumShelvableLayout? GetShelvableLayout(ItemStack? stack)
@@ -77,6 +188,7 @@ namespace Vintagestory.GameContent
 
             var attr = stack.Collectible?.Attributes;
             var layout = stack.Collectible?.GetCollectibleInterface<IShelvable>()?.GetShelvableType(stack);
+
             layout ??= attr?["shelvable"].AsString() switch
             {
                 "Quadrants" => EnumShelvableLayout.Quadrants,
@@ -84,289 +196,10 @@ namespace Vintagestory.GameContent
                 "SingleCenter" => EnumShelvableLayout.SingleCenter,
                 _ => null
             };
+
             layout ??= attr?["shelvable"].AsBool() == true ? EnumShelvableLayout.Quadrants : null;
 
             return layout;
-        }
-
-        public bool CanUse(ItemStack? stack, BlockSelection blockSel)
-        {
-            if (stack == null) return false;
-
-            var obj = stack.Collectible;
-            bool up = blockSel.SelectionBoxIndex > 1;
-            bool left = (blockSel.SelectionBoxIndex % 2) == 0;
-            var shelvableLayout = GetShelvableLayout(inv[up ? 4 : 0].Itemstack);
-            if (shelvableLayout is not EnumShelvableLayout.SingleCenter)
-            {
-                if (!left) shelvableLayout = GetShelvableLayout(inv[up ? 6 : 2].Itemstack);
-            }
-
-            int start = (up ? 4 : 0) + (shelvableLayout is EnumShelvableLayout.SingleCenter ? 0 : (left ? 0 : 2));
-            int end = start + (shelvableLayout is EnumShelvableLayout.Halves or EnumShelvableLayout.SingleCenter ? 1 : 2);
-
-            CollectibleObject invColl;
-            for (int i = end - 1; i >= start; i--)
-            {
-                if (!inv[i].Empty)
-                {
-                    invColl = inv[i].Itemstack.Collectible;
-
-                    if (obj?.Attributes?["mealContainer"]?.AsBool() == true || obj is IContainedInteractable or IBlockMealContainer)
-                    {
-                        return invColl is BlockCookedContainerBase;
-                    }
-
-                    if (obj?.Attributes?["canSealCrock"]?.AsBool() == true)
-                    {
-                        return invColl is BlockCrock;
-                    }
-                }
-            }
-
-            return false;
-        }
-
-        public bool CanPlace(ItemStack? stack, BlockSelection blockSel, out bool canTake)
-        {
-            bool up = blockSel.SelectionBoxIndex > 1;
-            bool left = (blockSel.SelectionBoxIndex % 2) == 0;
-
-            if (GetShelvableLayout(inv[up ? 4 : 0].Itemstack) is EnumShelvableLayout shelvableLayoutFullSlot &&
-                (shelvableLayoutFullSlot is EnumShelvableLayout.SingleCenter || (shelvableLayoutFullSlot is EnumShelvableLayout.Halves && left)) ||
-                (GetShelvableLayout(inv[up ? 6 : 2].Itemstack) is EnumShelvableLayout.Halves && !left))
-            {
-                canTake = true;
-                return false;
-            }
-
-            var shelvableLayout = GetShelvableLayout(stack);
-
-            int start = (up ? 4 : 0) + (shelvableLayout is EnumShelvableLayout.SingleCenter ? 0 : (left ? 0 : 2));
-            int end = start + (shelvableLayout is EnumShelvableLayout.Halves or EnumShelvableLayout.SingleCenter ? 1 : 2);
-
-            canTake = false;
-            bool canPlace = false;
-            for (int i = end - 1; i >= start; i--)
-            {
-                if (inv[i].Empty) canPlace = true;
-                else canTake = true;
-            }
-
-            return canPlace;
-        }
-
-        private bool TryUse(IPlayer player, BlockSelection blockSel)
-        {
-            bool up = blockSel.SelectionBoxIndex > 1;
-            bool left = (blockSel.SelectionBoxIndex % 2) == 0;
-            var shelvableLayout = GetShelvableLayout(inv[up ? 4 : 0].Itemstack);
-            if (shelvableLayout is not EnumShelvableLayout.SingleCenter)
-            {
-                if (!left) shelvableLayout = GetShelvableLayout(inv[up ? 6 : 2].Itemstack);
-            }
-
-            int start = (up ? 4 : 0) + (shelvableLayout is EnumShelvableLayout.SingleCenter ? 0 : (left ? 0 : 2));
-            int end = start + (shelvableLayout is EnumShelvableLayout.Halves or EnumShelvableLayout.SingleCenter ? 1 : 2);
-
-            for (int i = end - 1; i >= start; i--)
-            {
-                if (!player.Entity.Controls.ShiftKey)
-                {
-                    if (inv[i]?.Itemstack?.Collectible is IContainedInteractable collIci)
-                    {
-                        if (collIci.OnContainedInteractStart(this, inv[i], player, blockSel))
-                        {
-                            MarkDirty();
-                            return true;
-                        }
-                    }
-                }
-            }
-
-            return false;
-        }
-
-        private bool TryPut(IPlayer byPlayer, BlockSelection blockSel)
-        {
-            var heldSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
-
-            bool up = blockSel.SelectionBoxIndex > 1;
-            bool left = (blockSel.SelectionBoxIndex % 2) == 0;
-
-            int filledSlots = 0;
-            var shelvableLayout = GetShelvableLayout(heldSlot.Itemstack);
-
-            int start = (up ? 4 : 0) + (shelvableLayout is EnumShelvableLayout.SingleCenter ? 0 : (left ? 0 : 2));
-            int end = start + (shelvableLayout is EnumShelvableLayout.SingleCenter ? 4 : 2);
-
-            if (shelvableLayout is EnumShelvableLayout.Halves or EnumShelvableLayout.SingleCenter)
-            {
-                for (int i = start; i < end; i++)
-                {
-                    if (!inv[i].Empty)
-                    {
-                        var layout = GetShelvableLayout(inv[i].Itemstack);
-                        filledSlots += layout is EnumShelvableLayout.SingleCenter ? 4 : layout is EnumShelvableLayout.Halves ? 2 : 1;
-                    }
-                }
-            }
-
-            if (filledSlots > 0 && filledSlots < (shelvableLayout is EnumShelvableLayout.SingleCenter ? 4 : 2))
-            {
-                (Api as ICoreClientAPI)?.TriggerIngameError(this, "needsmorespace", Lang.Get("shelfhelp-needsmorespace-error"));
-                return false;
-            }
-
-            if (shelvableLayout is not EnumShelvableLayout.SingleCenter) shelvableLayout = GetShelvableLayout(inv[up ? 4 : 0].Itemstack);
-            if (shelvableLayout is not EnumShelvableLayout.SingleCenter && !left) shelvableLayout = GetShelvableLayout(inv[up ? 6 : 2].Itemstack);
-
-            start = (up ? 4 : 0) + (shelvableLayout is EnumShelvableLayout.SingleCenter ? 0 : (left ? 0 : 2));
-            end = start + (shelvableLayout is EnumShelvableLayout.Halves or EnumShelvableLayout.SingleCenter ? 1 : 2);
-
-            for (int i = start; i < end; i++)
-            {
-                if (inv[i].Empty)
-                {
-                    int moved = heldSlot.TryPutInto(Api.World, inv[i]);
-                    MarkDirty();
-                    (Api as ICoreClientAPI)?.World.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
-
-                    if (moved > 0)
-                    {
-                        Api.World.PlaySoundAt(inv[i].Itemstack?.Block?.Sounds?.Place ?? new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
-                        Api.World.Logger.Audit("{0} Put 1x{1} into Shelf at {2}.",
-                            byPlayer.PlayerName,
-                            inv[i].Itemstack?.Collectible.Code,
-                            Pos
-                        );
-                        return true;
-                    }
-
-                    return false;
-                }
-            }
-
-            (Api as ICoreClientAPI)?.TriggerIngameError(this, "shelffull", Lang.Get("shelfhelp-shelffull-error"));
-            return false;
-        }
-
-        private bool TryTake(IPlayer byPlayer, BlockSelection blockSel)
-        {
-            bool up = blockSel.SelectionBoxIndex > 1;
-            bool left = (blockSel.SelectionBoxIndex % 2) == 0;
-            var shelvableLayout = GetShelvableLayout(inv[up ? 4 : 0].Itemstack);
-            if (shelvableLayout is not EnumShelvableLayout.SingleCenter)
-            {
-                if (!left) shelvableLayout = GetShelvableLayout(inv[up ? 6 : 2].Itemstack);
-            }
-
-            int start = (up ? 4 : 0) + (shelvableLayout is EnumShelvableLayout.SingleCenter ? 0 : (left ? 0 : 2));
-            int end = start + (shelvableLayout is EnumShelvableLayout.SingleCenter ? 4 : 2);
-
-            for (int i = end - 1; i >= start; i--)
-            {
-                if (!inv[i].Empty)
-                {
-                    ItemStack? stack = inv[i].TakeOut(1);
-                    if (byPlayer.InventoryManager.TryGiveItemstack(stack))
-                    {
-                        AssetLocation? sound = stack?.Block?.Sounds?.Place;
-                        Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
-                    }
-
-                    if (stack?.StackSize > 0)
-                    {
-                        Api.World.SpawnItemEntity(stack, Pos);
-                    }
-                    Api.World.Logger.Audit("{0} Took 1x{1} from Shelf at {2}.",
-                        byPlayer.PlayerName,
-                        stack?.Collectible.Code,
-                        Pos
-                    );
-
-                    (Api as ICoreClientAPI)?.World.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
-                    MarkDirty();
-
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        protected override float[][] genTransformationMatrices()
-        {
-            float[][] tfMatrices = new float[slotCount][];
-
-            for (int index = 0; index < slotCount; index++)
-            {
-                var shelvableType = GetShelvableLayout(inv[index].Itemstack);
-
-                float x = ((index % 4) >= 2) ? 12 / 16f : 4 / 16f;
-                float y = index >= 4 ? 10 / 16f : 2 / 16f;
-                float z = (index % 2 == 0) ? 4 / 16f : 10 / 16f;
-
-                if (index is 0 or 4 && shelvableType is EnumShelvableLayout.SingleCenter) x = 0.5f;
-                if (index is 0 or 2 or 4 or 6 && shelvableType is EnumShelvableLayout.Halves or EnumShelvableLayout.SingleCenter) z = 0.4f;
-
-                tfMatrices[index] =
-                    new Matrixf()
-                    .Translate(0.5f, 0, 0.5f)
-                    .RotateYDeg(Block.Shape.rotateY)
-                    .Translate(x - 0.5f, y, z - 0.5f)
-                    .Translate(-0.5f, 0, -0.5f)
-                    .Values
-                ;
-            }
-
-            return tfMatrices;
-        }
-
-
-        public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
-        {
-            base.FromTreeAttributes(tree, worldForResolving);
-
-            // Do this last!!!
-            RedrawAfterReceivingTreeAttributes(worldForResolving);     // Redraw on client after we have completed receiving the update from server
-        }
-
-        #region Block info
-
-        public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)
-        {
-            base.GetBlockInfo(forPlayer, sb);
-
-
-            float ripenRate = GameMath.Clamp(((1 - container.GetPerishRate()) - 0.5f) * 3, 0, 1);
-            if (ripenRate > 0)
-            {
-                sb.Append(Lang.Get("Suitable spot for food ripening."));
-            }
-
-            sb.AppendLine();
-
-            bool up = forPlayer.CurrentBlockSelection != null && forPlayer.CurrentBlockSelection.SelectionBoxIndex > 1;
-
-            for (int j = 3; j >= 0; j--)
-            {
-                int i = j + (up ? 4 : 0);
-                i ^= 2;   //Display shelf contents text for items from left-to-right, not right-to-left
-
-                if (inv[i].Empty) continue;
-
-                ItemStack? stack = inv[i].Itemstack;
-
-                if (stack?.Collectible.TransitionableProps != null && stack.Collectible.TransitionableProps.Length > 0)
-                {
-                    sb.Append(PerishableInfoCompact(Api, inv[i], ripenRate));
-                }
-                else
-                {
-                    sb.AppendLine(stack?.Collectible.GetCollectibleInterface<IContainedCustomName>()?.GetContainedInfo(inv[i]) ?? stack?.GetName() ?? Lang.Get("unknown"));
-                }
-            }
         }
 
         public static string PerishableInfoCompact(ICoreAPI Api, ItemSlot contentSlot, float ripenRate, bool withStackName = true)
@@ -381,90 +214,97 @@ namespace Vintagestory.GameContent
             }
 
             TransitionState[]? transitionStates = contentSlot.Itemstack.Collectible.UpdateAndGetTransitionStates(Api.World, contentSlot);
+            if (transitionStates == null) return dsc.ToString();
 
             bool nowSpoiling = false;
-
-            if (transitionStates != null)
+            bool appendLine = false;
+            for (int i = 0; i < transitionStates.Length; i++)
             {
-                bool appendLine = false;
-                for (int i = 0; i < transitionStates.Length; i++)
+                TransitionState state = transitionStates[i];
+
+                TransitionableProperties prop = state.Props;
+                float perishRate = contentSlot.Itemstack.Collectible.GetTransitionRateMul(Api.World, contentSlot, prop.Type);
+
+                if (perishRate <= 0) continue;
+
+                float transitionLevel = state.TransitionLevel;
+                float freshHoursLeft = state.FreshHoursLeft / perishRate;
+
+                switch (prop.Type)
                 {
-                    TransitionState state = transitionStates[i];
+                    case EnumTransitionType.Perish:
 
-                    TransitionableProperties prop = state.Props;
-                    float perishRate = contentSlot.Itemstack.Collectible.GetTransitionRateMul(Api.World, contentSlot, prop.Type);
+                        appendLine = true;
 
-                    if (perishRate <= 0) continue;
+                        if (transitionLevel > 0)
+                        {
+                            nowSpoiling = true;
+                            dsc.Append(", " + Lang.Get("{0}% spoiled", (int)Math.Round(transitionLevel * 100)));
+                        }
+                        else
+                        {
+                            double hoursPerday = Api.World.Calendar.HoursPerDay;
 
-                    float transitionLevel = state.TransitionLevel;
-                    float freshHoursLeft = state.FreshHoursLeft / perishRate;
-
-                    switch (prop.Type)
-                    {
-                        case EnumTransitionType.Perish:
-
-                            appendLine = true;
-
-                            if (transitionLevel > 0)
+                            if (freshHoursLeft / hoursPerday >= Api.World.Calendar.DaysPerYear)
                             {
-                                nowSpoiling = true;
-                                dsc.Append(", " + Lang.Get("{0}% spoiled", (int)Math.Round(transitionLevel * 100)));
+                                dsc.Append(", " + Lang.Get("fresh for {0} years", Math.Round(freshHoursLeft / hoursPerday / Api.World.Calendar.DaysPerYear, 1)));
+                            }
+                            else if (freshHoursLeft > hoursPerday)
+                            {
+                                dsc.Append(", " + Lang.Get("fresh for {0} days", Math.Round(freshHoursLeft / hoursPerday, 1)));
                             }
                             else
                             {
-                                double hoursPerday = Api.World.Calendar.HoursPerDay;
-
-                                if (freshHoursLeft / hoursPerday >= Api.World.Calendar.DaysPerYear)
-                                {
-                                    dsc.Append(", " + Lang.Get("fresh for {0} years", Math.Round(freshHoursLeft / hoursPerday / Api.World.Calendar.DaysPerYear, 1)));
-                                }
-                                else if (freshHoursLeft > hoursPerday)
-                                {
-                                    dsc.Append(", " + Lang.Get("fresh for {0} days", Math.Round(freshHoursLeft / hoursPerday, 1)));
-                                }
-                                else
-                                {
-                                    dsc.Append(", " + Lang.Get("fresh for {0} hours", Math.Round(freshHoursLeft, 1)));
-                                }
+                                dsc.Append(", " + Lang.Get("fresh for {0} hours", Math.Round(freshHoursLeft, 1)));
                             }
-                            break;
+                        }
+                        break;
 
-                        case EnumTransitionType.Ripen:
-                            if (nowSpoiling) break;
+                    case EnumTransitionType.Ripen:
+                        if (nowSpoiling) break;
 
-                            appendLine = true;
+                        appendLine = true;
 
-                            if (transitionLevel > 0)
+                        if (transitionLevel > 0)
+                        {
+                            dsc.Append(", " + Lang.Get("{1:0.#} days left to ripen ({0}%)", (int)Math.Round(transitionLevel * 100), (state.TransitionHours - state.TransitionedHours) / Api.World.Calendar.HoursPerDay / ripenRate));
+                        }
+                        else
+                        {
+                            double hoursPerday = Api.World.Calendar.HoursPerDay;
+
+                            if (freshHoursLeft / hoursPerday >= Api.World.Calendar.DaysPerYear)
                             {
-                                dsc.Append(", " + Lang.Get("{1:0.#} days left to ripen ({0}%)", (int)Math.Round(transitionLevel * 100), (state.TransitionHours - state.TransitionedHours) / Api.World.Calendar.HoursPerDay / ripenRate));
+                                dsc.Append(", " + Lang.Get("will ripen in {0} years", Math.Round(freshHoursLeft / hoursPerday / Api.World.Calendar.DaysPerYear, 1)));
+                            }
+                            else if (freshHoursLeft > hoursPerday)
+                            {
+                                dsc.Append(", " + Lang.Get("will ripen in {0} days", Math.Round(freshHoursLeft / hoursPerday, 1)));
                             }
                             else
                             {
-                                double hoursPerday = Api.World.Calendar.HoursPerDay;
-
-                                if (freshHoursLeft / hoursPerday >= Api.World.Calendar.DaysPerYear)
-                                {
-                                    dsc.Append(", " + Lang.Get("will ripen in {0} years", Math.Round(freshHoursLeft / hoursPerday / Api.World.Calendar.DaysPerYear, 1)));
-                                }
-                                else if (freshHoursLeft > hoursPerday)
-                                {
-                                    dsc.Append(", " + Lang.Get("will ripen in {0} days", Math.Round(freshHoursLeft / hoursPerday, 1)));
-                                }
-                                else
-                                {
-                                    dsc.Append(", " + Lang.Get("will ripen in {0} hours", Math.Round(freshHoursLeft, 1)));
-                                }
+                                dsc.Append(", " + Lang.Get("will ripen in {0} hours", Math.Round(freshHoursLeft, 1)));
                             }
-                            break;
-                    }
+                        }
+                        break;
                 }
-
-                if (appendLine) dsc.AppendLine();
             }
+
+            if (appendLine) dsc.AppendLine();
 
             return dsc.ToString();
         }
 
-        #endregion
+        public override void OnLoadCollectibleMappings(IWorldAccessor world, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed, bool resolveImports)
+        {
+            var display = GetBehavior<BEBehaviorDisplay>();
+            display.OnLoadCollectibleMappings(world, oldBlockIdMapping, oldItemIdMapping, schematicSeed, resolveImports);
+        }
+
+        public override void OnStoreCollectibleMappings(Dictionary<int, AssetLocation> blockIdMapping, Dictionary<int, AssetLocation> itemIdMapping)
+        {
+            var display = GetBehavior<BEBehaviorDisplay>();
+            display.OnStoreCollectibleMappings(blockIdMapping, itemIdMapping);
+        }
     }
 }

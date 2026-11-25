@@ -27,23 +27,29 @@ namespace Vintagestory.GameContent
 
         public AiTaskButterflyChase(EntityAgent entity, EntityButterfly chaseTarget) : base(entity, JsonObject.FromJson("{}"), JsonObject.FromJson("{}"))
         {
-            
+
             chaseTime = (float)entity.World.Rand.NextDouble() * 7 + 6;
             targetEntity = chaseTarget;
-            targetPos.Set(targetEntity.ServerPos.X, targetEntity.ServerPos.Y, targetEntity.ServerPos.Z);
+            targetPos.Set(targetEntity.Pos.X, targetEntity.Pos.Y, targetEntity.Pos.Z);
 
             this.taskConfig = JsonObject.FromJson("{}");
         }
 
+        protected override void SetDefaultValues()
+        {
+            base.SetDefaultValues();
+            ExecutionChance = 0.03;
+        }
+
         public override bool ShouldExecute()
         {
-            if (entity.World.Rand.NextDouble() > 0.03) return false;
+            if (entity.World.Rand.NextDouble() > ExecutionChance) return false;
             if (cooldownUntilMs > entity.World.ElapsedMilliseconds) return false;
             if (entity.FeetInLiquid) return false;
             if (cooldownUntilTotalHours > entity.World.Calendar.TotalHours) return false;
-            if (!PreconditionsSatisifed()) return false;
+            if (!PreconditionsSatisfied()) return false;
 
-            targetEntity = (EntityButterfly)entity.World.GetNearestEntity(entity.ServerPos.XYZ, seekingRange, seekingRange, (e) => {
+            targetEntity = (EntityButterfly)entity.World.GetNearestEntity(entity.Pos.XYZ, seekingRange, seekingRange, (e) => {
                 if (!e.Alive || e.EntityId == this.entity.EntityId) return false;
 
                 if (e is EntityButterfly)
@@ -57,13 +63,13 @@ namespace Vintagestory.GameContent
             if (targetEntity != null)
             {
                 chaseTime = (float)entity.World.Rand.NextDouble() * 7 + 6;
-                targetPos.Set(targetEntity.ServerPos.X, targetEntity.ServerPos.Y, targetEntity.ServerPos.Z);
+                targetPos.Set(targetEntity.Pos.X, targetEntity.Pos.Y, targetEntity.Pos.Z);
 
                 // Tell the other butterfly to chase us
                 AiTaskManager manager = targetEntity.GetBehavior<EntityBehaviorTaskAI>().TaskManager;
                 AiTaskButterflyChase othertask = manager.GetTask<AiTaskButterflyChase>();
                 othertask.targetEntity = this.entity as EntityButterfly;
-                othertask.targetPos.Set(entity.ServerPos.X, entity.ServerPos.Y, entity.ServerPos.Z);
+                othertask.targetPos.Set(entity.Pos.X, entity.Pos.Y, entity.Pos.Z);
                 othertask.chaseTime = (float)entity.World.Rand.NextDouble() * 7 + 6;
 
                 manager.ExecuteTask<AiTaskButterflyChase>();
@@ -104,7 +110,7 @@ namespace Vintagestory.GameContent
 
             if (targetEntity == null) return false;
 
-            targetPos.Set(targetEntity.ServerPos.X, targetEntity.ServerPos.Y + (fleeState ? 1 : 0), targetEntity.ServerPos.Z);
+            targetPos.Set(targetEntity.Pos.X, targetEntity.Pos.Y + (fleeState ? 1 : 0), targetEntity.Pos.Z);
 
             return (chaseTime -= dt) >= 0;
         }

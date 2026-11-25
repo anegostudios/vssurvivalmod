@@ -19,6 +19,7 @@ namespace Vintagestory.GameContent
         public override string PageCode => pageCode;
 
         public override string CategoryCode => categoryCode;
+        public override float SearchWeightOffset => 1f;
 
         public override void Dispose() { Texture?.Dispose(); Texture = null; }
 
@@ -29,7 +30,7 @@ namespace Vintagestory.GameContent
 
         public GuiHandbookTextPage()
         {
-            
+
         }
 
         public void Init(ICoreClientAPI capi)
@@ -38,7 +39,7 @@ namespace Vintagestory.GameContent
             {
                 Text = Lang.Get(Text);
             }
-            
+
             comps = VtmlUtil.Richtextify(capi, Text, CairoFont.WhiteSmallText().WithLineHeightMultiplier(1.2));
 
             titleCached = Lang.Get(Title).ToSearchFriendly();
@@ -55,14 +56,13 @@ namespace Vintagestory.GameContent
             Texture = new TextTextureUtil(capi).GenTextTexture(Lang.Get(Title), CairoFont.WhiteSmallText());
         }
 
-        public override float GetTextMatchWeight(string searchText)
+        public override PageText GetPageText()
         {
-            if (titleCached.Equals(searchText, StringComparison.InvariantCultureIgnoreCase)) return 4;
-            if (titleCached.StartsWith(searchText + " ", StringComparison.InvariantCultureIgnoreCase)) return 3.5f;
-            if (titleCached.StartsWith(searchText, StringComparison.InvariantCultureIgnoreCase)) return 3f;
-            if (titleCached.CaseInsensitiveContains(searchText)) return 2.75f;
-            if (Text.CaseInsensitiveContains(searchText)) return 1.25f;
-            return 0;
+            return new PageText
+            {
+                Title = titleCached,
+                Text = Text,
+            };
         }
 
         public override void RenderListEntryTo(ICoreClientAPI capi, float dt, double x, double y, double cellWidth, double cellHeight)
@@ -78,7 +78,7 @@ namespace Vintagestory.GameContent
             capi.Render.Render2DTexturePremultipliedAlpha(
                 Texture.TextureId,
                 (x + pad),
-                y + size / 4 - GuiElement.scaled(3),
+                y + size / 2 - Texture.Height / 2,
                 Texture.Width,
                 Texture.Height,
                 50

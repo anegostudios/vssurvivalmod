@@ -1,5 +1,7 @@
-﻿using Vintagestory.API.Common;
+using Vintagestory.API.Client;
+using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 #nullable disable
 
@@ -25,18 +27,31 @@ namespace Vintagestory.GameContent
                 ItemStack stack = new ItemStack(byEntity.World.GetItem(new AssetLocation("strawdummy")));
                 if (!byEntity.TryGiveItemStack(stack))
                 {
-                    byEntity.World.SpawnItemEntity(stack, ServerPos.XYZ);
+                    byEntity.World.SpawnItemEntity(stack, Pos.XYZ);
                 }
                 byEntity.World.Logger.Audit("{0} Took 1x{1} at {2}.",
                     byEntity.GetName(),
                     stack.Collectible.Code,
-                    ServerPos.AsBlockPos
+                    Pos.AsBlockPos
                 );
                 Die();
                 return;
             }
 
             base.OnInteract(byEntity, slot, hitPosition, mode);
+        }
+
+        public override WorldInteraction[] GetInteractionHelp(IClientWorldAccessor world, EntitySelection es, IClientPlayer player)
+        {
+            return [
+                new WorldInteraction()
+                {
+                    ActionLangCode = "entityhelp-strawdummy-pickup",
+                    MouseButton = EnumMouseButton.Right,
+                    HotKeyCode = "shift"
+                },
+                ..base.GetInteractionHelp(world, es, player)
+            ];
         }
 
     }

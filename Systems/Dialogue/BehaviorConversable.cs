@@ -1,8 +1,6 @@
-using ProperVersion;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Numerics;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -40,9 +38,9 @@ namespace Vintagestory.GameContent
 
     public class EntityBehaviorConversable : EntityBehavior
     {
-        public static int BeginConvoPacketId = 1213;
-        public static int SelectAnswerPacketId = 1214;
-        public static int CloseConvoPacketId = 1215;
+        public const int BeginConvoPacketId = 1213;
+        public const int SelectAnswerPacketId = 1214;
+        public const int CloseConvoPacketId = 1215;
 
         public Dictionary<string, DialogueController> ControllerByPlayer = new Dictionary<string, DialogueController>();
         public GuiDialogueDialog Dialog;
@@ -125,7 +123,7 @@ namespace Vintagestory.GameContent
                         entity.GetName(),
                         quantity,
                         itemstack.Collectible.Code,
-                        entity.SidedPos.AsBlockPos
+                        entity.Pos.AsBlockPos
                     );
                 }
             }
@@ -143,7 +141,7 @@ namespace Vintagestory.GameContent
                     for (int i = 0; i < cfg.Codes.Length; i++) {
                         if ((rnd -= cfg.Codes[i].Weight) <= 0)
                         {
-                            TrySpawnEntity((triggeringEntity as EntityPlayer)?.Player, cfg.Codes[i].Code, cfg.Range, cfg);
+                            TrySpawnEntity((triggeringEntity as EntityPlayer)?.Player, cfg.Codes[i].Code, cfg);
                             break;
                         }
                     }
@@ -168,7 +166,7 @@ namespace Vintagestory.GameContent
                             entity.GetName(),
                             jstack.Quantity,
                             jstack.Code,
-                            entity.SidedPos.AsBlockPos
+                            entity.Pos.AsBlockPos
                         );
                     }
                 }
@@ -185,10 +183,23 @@ namespace Vintagestory.GameContent
                         var d = slot.Itemstack.Collectible.GetRemainingDurability(slot.Itemstack);
                         var max = slot.Itemstack.Collectible.GetMaxDurability(slot.Itemstack);
 
-                        bool repairable = value == "repairheldtool" ? (slot.Itemstack.Collectible.Tool != null) : (slot.Itemstack.Collectible.FirstCodePart() == "armor");
+                        bool repairable = value == "repairheldtool" ? (slot.Itemstack.Collectible.GetTool(slot) != null) : (slot.Itemstack.Collectible.FirstCodePart() == "armor");
 
                         if (repairable && d < max) {
-                            slot.Itemstack.Collectible.SetDurability(slot.Itemstack, Math.Min(max, d + rpcfg.Amount));
+                            slot.Itemstack.Attributes.SetString("lastRepairedBy", entity.GetName());
+                            var repairedCnt = slot.Itemstack.Attributes.GetInt("timesRepaired");
+                            slot.Itemstack.Attributes.SetInt("timesRepaired", repairedCnt + 1);
+
+                            int newDura = Math.Min(max, d + rpcfg.Amount);
+
+                            var cbbuffable = slot.Itemstack.Collectible.GetBehavior<CollectibleBehaviorBuffable>();
+                            if (cbbuffable != null && cbbuffable.GetItemBuffs(slot.Itemstack).Count > 0)
+                            {
+                                newDura = (int)Math.Min(max, d + rpcfg.Amount / (float)(repairedCnt/2 + 1));
+                            }
+
+                            slot.Itemstack.Collectible.SetDurability(slot.Itemstack, newDura);
+
                             slot.MarkDirty();
                         }
                     }
@@ -218,14 +229,7 @@ namespace Vintagestory.GameContent
                         EntitiesArgParser test = new EntitiesArgParser("test", world.Api, true);
                         TextCommandCallingArgs packedArgs = new TextCommandCallingArgs()
                         {
-                            Caller = new Caller()
-                            {
-                                Type = EnumCallerType.Console,
-                                CallerRole = "admin",
-                                CallerPrivileges = new string[] { "*" },
-                                FromChatGroupId = GlobalConstants.ConsoleGroup,
-                                Pos = new Vec3d(0.5, 0.5, 0.5)
-                            },
+                            Caller = Caller.FromConsole(pos: new Vec3d(0.5, 0.5, 0.5)),
                             RawArgs = new CmdArgs(arg)
                         };
                         EnumParseResult result = test.TryProcess(packedArgs);
@@ -256,7 +260,7 @@ namespace Vintagestory.GameContent
             return -1;
         }
 
-        private void TrySpawnEntity(IPlayer forplayer, string entityCode, float range, DlgSpawnEntityConfig cfg)
+        private void TrySpawnEntity(IPlayer forplayer, string entityCode, DlgSpawnEntityConfig cfg)
         {
             var etype = entity.World.GetEntityType(AssetLocation.Create(entityCode, entity.Code.Domain));
             if (etype == null)
@@ -265,16 +269,17 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            var centerpos = entity.ServerPos;
+            var centerpos = entity.Pos;
+            var range = cfg.Range;
             var minpos = centerpos.Copy().Add(-range, 0, -range).AsBlockPos;
             var maxpos = centerpos.Copy().Add(range, 0, range).AsBlockPos;
 
 
-            var spawnpos = findSpawnPos(forplayer, etype, minpos, maxpos, false, 4);
+            var spawnpos = findSpawnPos(forplayer, etype, minpos, maxpos, false, cfg.MinDistance);
 
             if (spawnpos == null)
             {
-                spawnpos = findSpawnPos(forplayer, etype, minpos, maxpos, true, 1);
+                spawnpos = findSpawnPos(forplayer, etype, minpos, maxpos, true, cfg.MinDistance);
             }
 
             if (spawnpos == null)
@@ -285,8 +290,14 @@ namespace Vintagestory.GameContent
             if (spawnpos != null)
             {
                 var spawnentity = entity.Api.ClassRegistry.CreateEntity(etype);
-                spawnentity.ServerPos.SetPos(spawnpos);
+                spawnentity.Pos.SetPos(spawnpos);
+                if (cfg.Trained)
+                {
+                    spawnentity.WatchedAttributes.SetInt("remainingSaddleBreaksRequired", 0);
+                    spawnentity.WatchedAttributes.SetDouble("training", 1.0);
+                }
                 entity.World.SpawnEntity(spawnentity);
+                entity.World.Logger.Audit($"Spawned {entityCode} at {spawnpos} ({range}/{cfg.MinDistance}) by {entity.Code} for {forplayer.PlayerName}");
 
                 if (cfg.GiveStacks != null)
                 {
@@ -301,20 +312,24 @@ namespace Vintagestory.GameContent
                         }
                     }
                 }
+
+                return;
             }
+
+            entity.World.Logger.Audit($"Failed to spawn {entityCode} at {centerpos.X}, {centerpos.Y}, {centerpos.Z} ({range}/{cfg.MinDistance}) by {entity.Code} for {forplayer.PlayerName}");
         }
 
         private Vec3d findSpawnPos(IPlayer forplayer, EntityProperties etype, BlockPos minpos, BlockPos maxpos, bool rainheightmap, int mindistance)
         {
             bool spawned = false;
-            BlockPos tmp = new BlockPos();
+            BlockPos tmp = new BlockPos(minpos.dimension);
             var ba = entity.World.BlockAccessor;
             const int chunksize = GlobalConstants.ChunkSize;
             var collisionTester = entity.World.CollisionTester;
             var sapi = entity.Api as ICoreServerAPI;
             Vec3d okspawnpos = null;
 
-            var epos = entity.ServerPos.XYZ;
+            var epos = entity.Pos.XYZ;
 
             ba.WalkBlocks(minpos, maxpos, (block, x, y, z) =>
             {
@@ -324,14 +339,20 @@ namespace Vintagestory.GameContent
                 int lz = z % chunksize;
                 int lx = x % chunksize;
                 var mc = ba.GetMapChunkAtBlockPos(tmp.Set(x, y, z));
-                int ty = rainheightmap ? mc.RainHeightMap[lz * chunksize + lx] : (mc.WorldGenTerrainHeightMap[lz * chunksize + lx]+1);
+                int ty = rainheightmap ? mc.RainHeightMap[lz * chunksize + lx] : mc.WorldGenTerrainHeightMap[lz * chunksize + lx];
 
-                Vec3d spawnpos = new Vec3d(x + 0.5, ty + 0.1, z + 0.5);
+                Vec3d spawnpos = new Vec3d(x + 0.5, ty + 1.1, z + 0.5);
                 Cuboidf collisionBox = etype.SpawnCollisionBox.OmniNotDownGrowBy(0.1f);
-                if (!collisionTester.IsColliding(ba, collisionBox, spawnpos, false))
+                var colBlock = collisionTester.GetCollidingBlock(ba, collisionBox, spawnpos, false);
+
+                // allow entities like elks to spawn in winter on snow or grass with snow (since those have a collision box)
+                if (colBlock == null|| colBlock is BlockSnowLayer ||
+                    (colBlock is BlockPlant &&
+                     colBlock.BlockMaterial == EnumBlockMaterial.Snow))
                 {
-                    var resp = sapi.World.Claims.TestAccess(forplayer, spawnpos.AsBlockPos, EnumBlockAccessFlags.BuildOrBreak);
-                    if (resp == EnumWorldAccessResponse.Granted)
+                    var claim = sapi.World.Claims.Get(spawnpos.AsBlockPos);
+                    // allow an entity to spawn inside the trader claim if it satisfies the min distance
+                    if (claim == null || claim.Length == 0 || claim.Any(c => c.AllowTraverseEveryone))
                     {
                         spawned = true;
                         okspawnpos = spawnpos;
@@ -414,7 +435,10 @@ namespace Vintagestory.GameContent
             var bhtaskAi = entity.GetBehavior<EntityBehaviorTaskAI>();
             if (bhtaskAi != null)
             {
-                bhtaskAi.TaskManager.OnShouldExecuteTask += (task) => ControllerByPlayer.Count == 0 || task is AiTaskIdle || task is AiTaskSeekEntity || task is AiTaskGotoEntity;
+                bhtaskAi.TaskManager.OnShouldExecuteTask += (task) =>
+                {
+                    return ControllerByPlayer.Count == 0 || task is AiTaskIdle || task is AiTaskSeekEntity || task is AiTaskGotoEntity;
+                };
             }
 
             var bhActivityDriven = entity.GetBehavior<EntityBehaviorActivityDriven>();
@@ -600,7 +624,7 @@ namespace Vintagestory.GameContent
 
 
         public string[] remainStationaryAnimations = new string[] { "sit-idle", "sit-write", "sit-tinker", "sitfloor", "sitedge", "sitchair", "sitchairtable", "eatsittable", "bowl-eatsittable" };
-        private bool remainStationaryOnCall()
+        protected bool remainStationaryOnCall()
         {
             var eagent = entity as EntityAgent;
             return
@@ -609,7 +633,12 @@ namespace Vintagestory.GameContent
             ;
         }
 
-        private bool beginConvoClient()
+
+        /// <summary>
+        /// Returns false if no dialog can be opened or is opened
+        /// </summary>
+        /// <returns></returns>
+        protected bool beginConvoClient()
         {
             ICoreClientAPI capi = entity.World.Api as ICoreClientAPI;
             EntityPlayer entityplr = capi.World.Player.Entity;
@@ -634,7 +663,6 @@ namespace Vintagestory.GameContent
             else
             {
                 capi.TriggerIngameError(this, "onlyonedialog", Lang.Get("Can only trade with one trader at a time"));
-                return false;
             }
 
 
@@ -648,26 +676,47 @@ namespace Vintagestory.GameContent
             (world.Api as ICoreClientAPI).Network.SendEntityPacket(entity.EntityId, CloseConvoPacketId);
         }
 
-        public override void OnReceivedClientPacket(IServerPlayer player, int packetid, byte[] data, ref EnumHandling handled)
+        public override void OnReceivedClientPacket(IServerPlayer player, int packetId, SerializedData packetData, ref EnumHandling handled, ref Entity.CachedAccessPerms perms)
         {
-            base.OnReceivedClientPacket(player, packetid, data, ref handled);
+            base.OnReceivedClientPacket(player, packetId, packetData, ref handled, ref perms);
 
-            if (packetid == BeginConvoPacketId)
+            switch (packetId)
             {
-                beginConvoServer(player);
-            }
+                case BeginConvoPacketId:
+                    if(!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.None, true, "entity behavior conversable"))
+                    {
+                        // Rennorb 23.06.2026 ux: Should we send the client something here? Probably needs some clientside code to make this completely smooth.
+                        break;
+                    }
 
-            if (packetid == SelectAnswerPacketId)
-            {
-                int id = SerializerUtil.Deserialize<int>(data);
-                var controller = GetOrCreateController(player.Entity);
+                    beginConvoServer(player);
 
-                controller.PlayerSelectAnswerById(id);
-            }
+                    break;
 
-            if (packetid == CloseConvoPacketId)
-            {
-                ControllerByPlayer.Remove(player.PlayerUID);
+
+                case SelectAnswerPacketId:
+                {
+                    if(!perms.IsInteractingPlayerAllowedTo(EnumBlockAccessFlags.None, true, "entity behavior conversable"))
+                    {
+                        // No need to revert this, just discard the request.
+                        break;
+                    }
+
+                    int id = packetData.Deserialize<int>();
+                    var controller = GetOrCreateController(player.Entity);
+
+                    controller.PlayerSelectAnswerById(id);
+
+                    break;
+                }
+
+
+                case CloseConvoPacketId:
+                    // No perms check, always allowed.
+
+                    ControllerByPlayer.Remove(player.PlayerUID);
+
+                    break;
             }
         }
 
@@ -677,22 +726,28 @@ namespace Vintagestory.GameContent
             controller.ContinueExecute();
         }
 
-        public override void OnReceivedServerPacket(int packetid, byte[] data, ref EnumHandling handled)
+        public override void OnReceivedServerPacket(int packetId, SerializedData packetData, ref EnumHandling handled)
         {
-            base.OnReceivedServerPacket(packetid, data, ref handled);
+            base.OnReceivedServerPacket(packetId, packetData, ref handled);
 
-            if (packetid == BeginConvoPacketId)
+            if (packetId == BeginConvoPacketId)
             {
                 ICoreClientAPI capi = entity.World.Api as ICoreClientAPI;
                 EntityPlayer entityplr = capi.World.Player.Entity;
 
-                if (entityplr.Pos.SquareDistanceTo(entity.Pos) > StopTalkRangeSq || Dialog?.IsOpened() == true || !beginConvoClient())
+                bool inrange = entityplr.Pos.SquareDistanceTo(entity.Pos) <= StopTalkRangeSq;
+
+                // Begin the convo if we are in range and not already in convo
+                if (inrange && Dialog == null) beginConvoClient();
+
+                // If we can't make sure the server knows about it
+                if (!ControllerByPlayer.ContainsKey(entityplr.PlayerUID) || Dialog == null)
                 {
                     capi.Network.SendEntityPacket(this.entity.EntityId, CloseConvoPacketId);
                 }
             }
 
-            if (packetid == CloseConvoPacketId)
+            if (packetId == CloseConvoPacketId)
             {
                 ControllerByPlayer.Clear();
                 Dialog?.TryClose();
@@ -706,5 +761,7 @@ namespace Vintagestory.GameContent
         public WeightedCode[] Codes;
         public float Range;
         public JsonItemStack[] GiveStacks;
+        public int MinDistance;
+        public bool Trained;
     }
 }

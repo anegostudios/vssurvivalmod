@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
@@ -25,7 +25,7 @@ namespace Vintagestory.GameContent
             sapi.Event.OnTrySpawnEntity += Event_OnTrySpawnEntity;
         }
 
-        BlockPos tmpPos = new BlockPos();
+        BlockPos tmpPos = new BlockPos(API.Config.Dimensions.NormalWorld);   // Entity spawning only occurs in the normal world (currently)
 
         private bool Event_OnTrySpawnEntity(IBlockAccessor blockAccessor, ref EntityProperties properties, Vec3d spawnPosition, long herdId)
         {
@@ -44,6 +44,7 @@ namespace Vintagestory.GameContent
     {
         //double sitHeight = 1;
         public double windMotion;
+        private Vec3d tempWinPos;
         int cnt = 0;
 
         static EntityButterfly() {
@@ -59,31 +60,71 @@ namespace Vintagestory.GameContent
         public override void Initialize(EntityProperties properties, ICoreAPI api, long InChunkIndex3d)
         {
             base.Initialize(properties, api, InChunkIndex3d);
-            
-            if (api.Side == EnumAppSide.Client)
-            {
-                WatchedAttributes.RegisterModifiedListener("windWaveIntensity", () =>
-                {
-                    (Properties.Client.Renderer as EntityShapeRenderer).WindWaveIntensity = WatchedAttributes.GetDouble("windWaveIntensity");
-                });
-            }
-
 
             float temperature = api.World.BlockAccessor.GetClimateAt(Pos.AsBlockPos, EnumGetClimateMode.ForSuppliedDate_TemperatureOnly, api.World.Calendar.TotalDays).Temperature;
             if (temperature < 0)
             {
                 Die(EnumDespawnReason.Removed);
             }
+
+            if (api is ICoreServerAPI)
+            {
+                tempWinPos = Pos.XYZ;
+            }
         }
 
+        public override void OnEntityLoaded()
+        {
+            base.OnEntityLoaded();
+            RegisterWindWaveIntensityListener();
+        }
+
+        public override void OnEntitySpawn()
+        {
+            base.OnEntitySpawn();
+            RegisterWindWaveIntensityListener();
+        }
+
+        private void RegisterWindWaveIntensityListener()
+        {
+            if (Api.Side == EnumAppSide.Client)
+            {
+                WatchedAttributes.RegisterModifiedListener("windWaveIntensity", () =>
+                {
+                    (Properties.Client.Renderer as EntityShapeRenderer).WindWaveIntensity = WatchedAttributes.GetDouble("windWaveIntensity");
+                });
+            }
+        }
 
         float flapPauseDt = 0;
 
         public override void OnGameTick(float dt)
         {
-            if (World.Side == EnumAppSide.Server)
+            if (Api is ICoreServerAPI)
             {
                 base.OnGameTick(dt);
+
+                if (cnt++ > 30)
+                {
+                    tempWinPos.Set(Pos);
+                    var height = Math.Max(0, Pos.Y - World.BlockAccessor.GetRainMapHeightAt((int)tempWinPos.X, (int)tempWinPos.Z));
+                    if (height > 1.5 &&
+                        World.BlockAccessor.GetLightLevel((int)tempWinPos.X, (int)tempWinPos.Y, (int)tempWinPos.Z, EnumLightLevelType.OnlySunLight) > 14)
+                    {
+                        windMotion = Api.ModLoader.GetModSystem<WeatherSystemBase>().WeatherDataSlowAccess.GetWindSpeed(tempWinPos);
+                    }
+                    else
+                    {
+                        windMotion = 0;
+                    }
+                    cnt = 0;
+                }
+                if (!AnimManager.ActiveAnimationsByAnimCode.ContainsKey("rest") &&
+                    Math.Abs(windMotion) > 0.4 &&
+                    Math.Abs(Pos.Motion.X) < 1)
+                {
+                    Pos.Motion.X += Math.Clamp((windMotion - 0.2) / 200.0, -0.004, 0.004);
+                }
                 return;
             }
 
@@ -98,7 +139,7 @@ namespace Vintagestory.GameContent
 
             if (!AnimManager.ActiveAnimationsByAnimCode.ContainsKey("feed") && !AnimManager.ActiveAnimationsByAnimCode.ContainsKey("rest"))
             {
-                if (ServerPos.Y < Pos.Y - 0.05 && !Collided && !FeetInLiquid)
+                if (Pos.Y < Pos.Y - 0.05 && !Collided && !FeetInLiquid)
                 {
                     SetAnimation("glide", 1);
                 }
@@ -107,11 +148,11 @@ namespace Vintagestory.GameContent
                     StopAnimation("glide");
                 }
 
-                if ((ServerPos.Y > Pos.Y - 0.02 || Collided) && !FeetInLiquid)
+                if ((Pos.Y > Pos.Y - 0.02 || Collided) && !FeetInLiquid)
                 {
                     SetAnimation("fly", 2.5f);
                 }
-                
+
                 if (FeetInLiquid && flapPauseDt <= 0 && Api.World.Rand.NextDouble() < 0.06)
                 {
                     flapPauseDt = 2 + 6 * (float)Api.World.Rand.NextDouble();
@@ -146,30 +187,8 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            
+
             base.OnGameTick(dt);
-
-            if (cnt++ > 30)
-            {
-                float affectedness = World.BlockAccessor.GetLightLevel(SidedPos.XYZ.AsBlockPos, EnumLightLevelType.OnlySunLight) < 14 ? 1 : 0;
-                windMotion = Api.ModLoader.GetModSystem<WeatherSystemBase>().WeatherDataSlowAccess.GetWindSpeed(SidedPos.XYZ) * affectedness;
-                cnt = 0;
-            }
-
-            if (AnimManager.ActiveAnimationsByAnimCode.ContainsKey("fly"))
-            {
-                SidedPos.X += Math.Max(0, (windMotion - 0.2) / 20.0);
-            }
-
-            // What is this for? It seems to interfere with AiTaskButterflyWander Yaw setting causing them to circle in place 
-            /*if (ServerPos.SquareDistanceTo(Pos.XYZ) > 0.01 && !FeetInLiquid)
-            {
-                float desiredYaw = (float)Math.Atan2(ServerPos.X - Pos.X, ServerPos.Z - Pos.Z);
-
-                float yawDist = GameMath.AngleRadDistance(SidedPos.Yaw, desiredYaw);
-                Pos.Yaw += GameMath.Clamp(yawDist, -35 * dt, 35 * dt);
-                Pos.Yaw = Pos.Yaw % GameMath.TWOPI;
-            }*/
         }
 
 
@@ -185,7 +204,7 @@ namespace Vintagestory.GameContent
                 };
 
                 AnimManager.ActiveAnimationsByAnimCode.Clear();
-                AnimManager.ActiveAnimationsByAnimCode[animMeta.Animation] = animMeta;
+                AnimManager.ActiveAnimationsByAnimCode[animMeta.Animation.ToLowerInvariant()] = animMeta;
                 return;
             }
 
@@ -235,7 +254,7 @@ namespace Vintagestory.GameContent
 
                         animmeta.AnimationSpeed = activeAnimationSpeeds[i];
 
-                        AnimManager.ActiveAnimationsByAnimCode[anim.Code] = animmeta;
+                        AnimManager.ActiveAnimationsByAnimCode[anim.Code.ToLowerInvariant()] = animmeta;
 
                         found = true;
                     }
@@ -253,11 +272,6 @@ namespace Vintagestory.GameContent
             {
                 (Properties.Client.Renderer as EntityShapeRenderer).AddRenderFlags = 0;
             }
-
-            
-
         }
-
-        
     }
 }

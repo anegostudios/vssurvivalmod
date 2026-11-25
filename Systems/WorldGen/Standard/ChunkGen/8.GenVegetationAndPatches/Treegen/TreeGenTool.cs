@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
@@ -19,8 +19,8 @@ namespace Vintagestory.ServerMods
 
     internal class TreeGenTool : ToolBase
     {
-        private readonly IRandom _rand;
-        private TreeGeneratorsUtil _treeGenerators;
+        private readonly LCGRandom rand;
+        private TreeGeneratorsUtil treeGenerators;
 
         public float MinTreeSize
         {
@@ -58,7 +58,7 @@ namespace Vintagestory.ServerMods
 
         public TreeGenTool(WorldEditWorkspace workspace, IBlockAccessorRevertable blockAccess) : base(workspace, blockAccess)
         {
-            _rand = new NormalRandom();
+            rand = new LCGRandom();
             if (!workspace.FloatValues.ContainsKey("std.treeToolMinTreeSize")) MinTreeSize = 0.7f;
             if (!workspace.FloatValues.ContainsKey("std.treeToolMaxTreeSize")) MaxTreeSize = 1.3f;
             if (!workspace.StringValues.ContainsKey("std.treeToolTreeVariant")) TreeVariant = null;
@@ -77,9 +77,9 @@ namespace Vintagestory.ServerMods
         {
             var player = (IServerPlayer)callerArgs.Caller.Player;
             var args = callerArgs.RawArgs;
-            if (_treeGenerators == null)
+            if (treeGenerators == null)
             {
-                _treeGenerators = new TreeGeneratorsUtil(worldEdit.sapi);
+                treeGenerators = new TreeGeneratorsUtil(worldEdit.sapi);
             }
 
             string cmd = args.PopWord();
@@ -145,11 +145,11 @@ namespace Vintagestory.ServerMods
 
                     bool numeric = int.TryParse(variant, NumberStyles.Any, GlobalConstants.DefaultCultureInfo, out index);
 
-                    _treeGenerators.ReloadTreeGenerators();
+                    treeGenerators.ReloadTreeGenerators();
 
                     if (numeric)
                     {
-                        var val = _treeGenerators.GetGenerator(index);
+                        var val = treeGenerators.GetGenerator(index);
                         if (val.Key == null)
                         {
                             WorldEdit.WorldEdit.Bad(player, "No such tree variant found.");
@@ -161,7 +161,7 @@ namespace Vintagestory.ServerMods
 
                     } else
                     {
-                        if (variant != null && _treeGenerators.GetGenerator(new AssetLocation(variant)) != null)
+                        if (variant != null && treeGenerators.GetGenerator(new AssetLocation(variant)) != null)
                         {
                             TreeVariant = variant;
                             WorldEdit.WorldEdit.Good(player, "Tree variant " + variant + " set.");
@@ -179,9 +179,9 @@ namespace Vintagestory.ServerMods
 
         public override void OnInteractStart(WorldEdit.WorldEdit worldEdit, BlockSelection blockSelection)
         {
-            if (_treeGenerators == null)
+            if (treeGenerators == null)
             {
-                _treeGenerators = new TreeGeneratorsUtil(worldEdit.sapi);
+                treeGenerators = new TreeGeneratorsUtil(worldEdit.sapi);
             }
 
             if (TreeVariant == null)
@@ -193,17 +193,18 @@ namespace Vintagestory.ServerMods
 
             ba.ReadFromStagedByDefault = true;
 
-            _treeGenerators.ReloadTreeGenerators();
-            var gen = _treeGenerators.GetGenerator(new AssetLocation(TreeVariant));
+            treeGenerators.ReloadTreeGenerators();
+            var gen = treeGenerators.GetGenerator(new AssetLocation(TreeVariant));
 
             var treeParams = new TreeGenParams()
             {
                 skipForestFloor = WithForestFloor == 0,
-                size = MinTreeSize + (float)_rand.NextDouble() * (MaxTreeSize - MinTreeSize),
+                size = MinTreeSize + (float)rand.NextDouble() * (MaxTreeSize - MinTreeSize),
                 vinesGrowthChance = VinesGrowthChance
             };
 
-            gen.GrowTree(ba, blockSelection.Position, treeParams, _rand);
+            rand.SetWorldSeed(rand.NextInt());
+            gen.GrowTree(ba, blockSelection.Position, treeParams, rand);
 
             ba.Commit();
         }

@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Common;
+using Vintagestory.API.Common;
 
 #nullable disable
 
@@ -22,7 +22,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public void CoolNow(float amountRel)
+        public void CoolNow(float amountRel, OnStackToCool onStackToCoolCallback)
         {
             if (Api.World.Rand.NextDouble() < amountRel * 5)
             {

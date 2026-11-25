@@ -1,5 +1,6 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -10,6 +11,21 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// A block entity behavior for a trapdoor. Requires <see cref="BlockBehaviorTrapDoor"/> on a block to work.
+    /// Defined with the "TrapDoor" code.
+    /// </summary>
+    /// <example><code lang="json">
+    ///"entityBehaviors": [
+    /// { "name": "TrapDoor" }
+    ///],
+    ///...
+    ///"behaviors": [
+    /// { "name": "TrapDoor" }
+    ///],
+    /// </code></example>
+    [DocumentAsJson]
+    [AddDocumentationProperty("easingSpeed", "Affects animation speed of trapdoor opening or closing", "System.Single", "Optional", "10", true)]
     public class BEBehaviorTrapDoor : BEBehaviorAnimatable, IInteractable, IRotatable
     {
         protected bool opened;
@@ -50,6 +66,14 @@ namespace Vintagestory.GameContent
             doorBh = blockentity.Block.GetBehavior<BlockBehaviorTrapDoor>();
         }
 
+        protected override BlockEntityAnimationUtil CreateAnimationUtil(ICoreAPI api)
+        {
+            float easingSpeed = Block.Attributes?["easingSpeed"].AsFloat(10) ?? 10;
+            return api.Side == EnumAppSide.Client
+                ? new BlockEntityAnimationUtil(api, Blockentity, BlockEntityAnimationUtil.CalculateSettleDuration(easingSpeed))
+                : base.CreateAnimationUtil(api);
+        }
+
         public override void Initialize(ICoreAPI api, JsonObject properties)
         {
             base.Initialize(api, properties);
@@ -75,7 +99,7 @@ namespace Vintagestory.GameContent
                 }
                 if (doorBh.animatableOrigMesh != null)
                 {
-                    animUtil.InitializeAnimator(doorBh.animatableDictKey, doorBh.animatableOrigMesh, doorBh.animatableShape, null);
+                    animUtil.InitializeAnimator(doorBh.animatableDictKey, doorBh.animatableOrigMesh, doorBh.animatableShape, null, shareSourceMesh: true);
                     UpdateMeshAndAnimations();
                 }
             }
@@ -90,6 +114,7 @@ namespace Vintagestory.GameContent
             Matrixf mat = getTfMatrix();
             mesh.MatrixTransform(mat.Values);
             animUtil.renderer.CustomTransform = mat.Values;
+            animUtil.RefreshStaticMesh();
         }
 
         private Matrixf getTfMatrix(float rotz=0)
@@ -183,7 +208,7 @@ namespace Vintagestory.GameContent
             var bh = Blockentity.Block.GetBehavior<BlockBehaviorTrapDoor>();
             var sound = opened ? bh?.OpenSound : bh?.CloseSound;
 
-            Api.World.PlaySoundAt(sound, be.Pos.X + 0.5f, be.Pos.Y + 0.5f, be.Pos.Z + 0.5f, byPlayer, EnumSoundType.Sound, pitch);
+            Api.World.PlaySoundAt(sound, be.Pos.X + 0.5f, be.Pos.InternalY + 0.5f, be.Pos.Z + 0.5f, byPlayer, EnumSoundType.Sound, pitch);
 
             be.MarkDirty(true);
 

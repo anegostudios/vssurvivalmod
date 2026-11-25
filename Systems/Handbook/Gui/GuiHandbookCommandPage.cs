@@ -1,7 +1,5 @@
-﻿using Vintagestory.API.Client;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using System;
-using Vintagestory.API.Util;
 
 #nullable disable
 
@@ -14,6 +12,7 @@ namespace Vintagestory.GameContent
         public string TextCacheTitle;
         public string TextCacheAll;
         public float searchWeightOffset;
+        public override float SearchWeightOffset => searchWeightOffset;
         public LoadedTexture Texture;
 
 
@@ -53,8 +52,8 @@ namespace Vintagestory.GameContent
 
             capi.Render.Render2DTexturePremultipliedAlpha(
                 Texture.TextureId,
-                x + size, 
-                y + size - GuiElement.scaled(3),
+                x + size,
+                y + size / 2 - Texture.Height / 2,
                 Texture.Width,
                 Texture.Height,
                 50
@@ -77,15 +76,25 @@ namespace Vintagestory.GameContent
             return VtmlUtil.Richtextify(capi, "<font size=\"24\"><strong>" + Command.CallSyntax + "</strong></font>\n\n" + TextCacheAll, CairoFont.WhiteSmallText());
         }
 
-        public override float GetTextMatchWeight(string searchText)
+        public override PageText GetPageText()
         {
-            string title = TextCacheTitle;
-            if (title.Equals(searchText, StringComparison.InvariantCultureIgnoreCase)) return searchWeightOffset + 3;
-            if (title.StartsWith(searchText + " ", StringComparison.InvariantCultureIgnoreCase)) return searchWeightOffset + 2.75f + Math.Max(0, 15 - title.Length) / 100f;
-            if (title.StartsWith(searchText, StringComparison.InvariantCultureIgnoreCase)) return searchWeightOffset + 2.5f + Math.Max(0, 15 - title.Length) / 100f;
-            if (title.CaseInsensitiveContains(searchText)) return searchWeightOffset + 2;
-            if (TextCacheAll.CaseInsensitiveContains(searchText)) return searchWeightOffset + 1;
-            return 0;
+            return new PageText {
+                Title = TextCacheTitle,
+                Text = TextCacheAll,
+            };
+        }
+
+        public override float GetSearchTextPosRel(string searchText)
+        {
+            if (string.IsNullOrEmpty(searchText) || string.IsNullOrEmpty(TextCacheAll)) return 0;
+
+            var regex = GuiDialog.RegexFromSearchText(searchText);
+            if (regex == null || (TextCacheTitle != null && regex.Count(TextCacheTitle) > 0)) return 0;
+
+            string[] matches = regex.Split(TextCacheAll);
+            if (matches.Length < 2) return 0;
+
+            return (float)matches[0].Length / TextCacheAll.Length;
         }
     }
 

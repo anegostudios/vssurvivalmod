@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Common;
+using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 
 #nullable disable
@@ -47,7 +47,7 @@ namespace Vintagestory.GameContent
         {
             BakingProperties bakeprops = BakingProperties.ReadFrom(stack);
             this.BrowningPoint = bakeprops.Temp ?? 160;
-            this.TimeToBake = stack.Collectible.CombustibleProps?.MeltingDuration * 10f ?? 150f;
+            this.TimeToBake = stack.Collectible.GetCombustibleProperties(null, stack, null)?.MeltingDuration * 10f ?? 150f;
             this.BakedLevel = bakeprops.LevelFrom;
             this.CurHeightMul = bakeprops.StartScaleY;
             this.temp = 20f;

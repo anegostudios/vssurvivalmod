@@ -1,24 +1,75 @@
 ﻿using System.Collections.Generic;
+using Newtonsoft.Json;
 using Vintagestory.API.Server;
-
-#nullable disable
 
 namespace Vintagestory.ServerMods
 {
-    public class TiledDungeonConfig
+    public class TiledDungeonConfig : WorldGenStructuresConfigBase
     {
-        public TiledDungeon[] Dungeons;
+        public int minDistance;
+        public int storyStructMinDistance;
+        [JsonIgnore]
+        public int MinDistanceSq;
+        [JsonIgnore]
+        public int StoryStructMinDistanceSq;
 
-        public Dictionary<string, TiledDungeon> DungeonsByCode;
+        public TiledDungeon[] Dungeons = null!;
+
+        public Dictionary<string, TiledDungeon> DungeonsByCode = new Dictionary<string, TiledDungeon>();
+        public Dictionary<int, Dictionary<int, int>>? resolvedRockTypeRemaps;
 
         public void Init(ICoreServerAPI api)
         {
-            DungeonsByCode = new Dictionary<string, TiledDungeon>();
+            MinDistanceSq = minDistance * minDistance;
+            StoryStructMinDistanceSq= storyStructMinDistance * storyStructMinDistance;
 
+            var blockLayerConfig = BlockLayerConfig.GetInstance(api);
+            ResolveRemaps(api, blockLayerConfig.RockStrata);
             for (var i = 0; i < Dungeons.Length; i++)
             {
-                Dungeons[i].Init(api);
-                DungeonsByCode[Dungeons[i].Code] = Dungeons[i];
+                var tiledDungeon = Dungeons[i];
+                if(tiledDungeon.Code == null)
+                {
+                    api.Logger.Error("Dungeon code at index: " + i + " is not specified. Will skip initialization");
+                    continue;
+                }
+                tiledDungeon.Init(api);
+                DungeonsByCode[tiledDungeon.Code] = tiledDungeon;
+
+                // For rocktyped dungeons
+                foreach (var tile in tiledDungeon.Tiles)
+                {
+                    if (tile.RockTypeRemapGroup != null)
+                    {
+                        resolvedRockTypeRemaps = resolvedRocktypeRemapGroups[tile.RockTypeRemapGroup];
+                    }
+                    else if(tiledDungeon.RockTypeRemapGroup != null)
+                    {
+                        resolvedRockTypeRemaps =  resolvedRocktypeRemapGroups[tiledDungeon.RockTypeRemapGroup!];
+                    }
+                    if (tile.RockTypeRemaps != null)
+                    {
+                        if (resolvedRockTypeRemaps != null)
+                        {
+                            var ownRemaps = ResolveRockTypeRemaps(tile.RockTypeRemaps, blockLayerConfig.RockStrata, api);
+                            foreach (var val in resolvedRockTypeRemaps)
+                            {
+                                ownRemaps[val.Key] = val.Value;
+                            }
+
+                            resolvedRockTypeRemaps = ownRemaps;
+                        }
+                        else
+                        {
+                            resolvedRockTypeRemaps = ResolveRockTypeRemaps(tile.RockTypeRemaps, blockLayerConfig.RockStrata, api);
+                        }
+                    }
+                }
+            }
+
+            foreach (var dungeon in Dungeons)
+            {
+                dungeon.resolvedRockTypeRemaps = resolvedRockTypeRemaps;
             }
         }
     }

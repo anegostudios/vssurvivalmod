@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -55,7 +55,7 @@ namespace Vintagestory.GameContent
                 EntitiesArgParser parser = new EntitiesArgParser("target", vas.Entity.Api, true);
                 TextCommandCallingArgs args = new TextCommandCallingArgs()
                 {
-                    Caller = new Caller() { Entity = vas.Entity, Pos = vas.Entity.ServerPos.XYZ, Type = EnumCallerType.Entity },
+                    Caller = Caller.FromEntity(vas.Entity),
                     RawArgs = new CmdArgs(entitySelector)
                 };
                 var result = parser.TryProcess(args);

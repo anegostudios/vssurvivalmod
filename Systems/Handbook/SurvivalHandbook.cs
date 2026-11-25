@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -9,7 +11,12 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public delegate void InitCustomPagesDelegate(List<GuiHandbookPage> pages);
+    public interface IHandbookListGrouping
+    {
+        string[] GetListGroupingForHandbook(ItemStack stack, string[]? listGroupCodesFromAttributes);
+    }
+
+    public delegate void InitCustomPagesDelegate(List<IFlatListItem> pages);
 
     public class ModSystemSurvivalHandbook : ModSystem
     {
@@ -18,7 +25,7 @@ namespace Vintagestory.GameContent
 
         public event InitCustomPagesDelegate OnInitCustomPages;
 
-        internal void TriggerOnInitCustomPages(List<GuiHandbookPage> pages)
+        internal void TriggerOnInitCustomPages(List<IFlatListItem> pages)
         {
             OnInitCustomPages?.Invoke(pages);
         }
@@ -71,44 +78,56 @@ namespace Vintagestory.GameContent
 
         private void Event_LevelFinalize()
         {
-            var allstacks = SetupBehaviorAndGetItemStacks();
-            this.allstacks = allstacks.ToArray();
+            ObjectCacheUtil.GetOrCreate(capi, "handbookallstacks", SetupBehaviorAndGetItemStacks().ToArray);
 
             dialog = new GuiDialogSurvivalHandbook(capi, onCreatePagesAsync, onComposePage);
             capi.Logger.VerboseDebug("Done initialising handbook");
         }
 
-        private List<GuiHandbookPage> onCreatePagesAsync()
+        private List<IFlatListItem> onCreatePagesAsync()
         {
-            var pages = new List<GuiHandbookPage>();
+            bool doGroupings = capi.Settings.Bool["handbookGroupings"];
+
+            // This stuff ought to happen via interface, not hardcoded loads
+
+            var listItems = new List<IFlatListItem>();
             foreach (var recipe in capi.GetCookingRecipes())
             {
                 if (capi.IsShuttingDown) break;
 
                 if (recipe.CooksInto == null)
                 {
-                    GuiHandbookMealRecipePage elem = new GuiHandbookMealRecipePage(capi, recipe, allstacks)
+                    GuiHandbookMealRecipePage elem = new GuiHandbookMealRecipePage(capi, recipe)
                     {
                         Visible = true
                     };
 
-                    pages.Add(elem);
+                    CreateCachedMealRecipeStacks(recipe);
+
+                    listItems.Add(elem);
                 }
             }
 
-            foreach (var recipe in BlockPie.GetHandbookRecipes(capi, allstacks))
+            CookingRecipe[] pieRecipes = ObjectCacheUtil.GetOrCreate(capi, "handbookpierecipes", () =>
+            {
+                return BlockPie.GetHandbookRecipes(capi, ObjectCacheUtil.TryGet<ItemStack[]>(capi, "handbookallstacks")).ToArray();
+            });
+            foreach (var recipe in pieRecipes)
             {
                 if (capi.IsShuttingDown) break;
 
-                GuiHandbookMealRecipePage elem = new GuiHandbookMealRecipePage(capi, recipe, allstacks, 6, true)
+                GuiHandbookMealRecipePage elem = new GuiHandbookMealRecipePage(capi, recipe, 6, true)
                 {
                     Visible = true
                 };
 
-                pages.Add(elem);
+                CreateCachedMealRecipeStacks(recipe);
+
+                listItems.Add(elem);
             }
 
-            foreach (ItemStack stack in allstacks)
+            Dictionary<string, INestedListItemWithChildren> nestedListItemsByCode = [];
+            foreach (ItemStack stack in ObjectCacheUtil.TryGet<ItemStack[]>(capi, "handbookallstacks"))
             {
                 if (capi.IsShuttingDown) break;
 
@@ -117,19 +136,35 @@ namespace Vintagestory.GameContent
                     Visible = true
                 };
 
-                pages.Add(elem);
+                string[]? listGroupCodes = stack.ItemAttributes?["handbook"]?["listGroupCode"]?.AsArray<string>();
+                listGroupCodes = !doGroupings ? null : stack.Collectible.GetCollectibleInterface<IHandbookListGrouping>()?.GetListGroupingForHandbook(stack, listGroupCodes) ?? listGroupCodes;
+                if (listGroupCodes != null)
+                {
+                    INestedListItemWithChildren[] nestedListItems = new INestedListItemWithChildren[listGroupCodes.Length];
+                    for (int i = 0; i < listGroupCodes.Length; i++)
+                    {
+                        if (!nestedListItemsByCode.TryGetValue(listGroupCodes[i], out var nestedListItem))
+                        {
+                            nestedListItemsByCode[listGroupCodes[i]] = nestedListItem = new GuiHandbookNestedListItem(listGroupCodes[i]);
+                            if (i == 0) listItems.Add(nestedListItem);
+                            else nestedListItems[i - 1].Children.Add(nestedListItem);
+                        }
+
+                        nestedListItems[i] = nestedListItem;
+                        if (i == listGroupCodes.Length - 1) nestedListItem.Children.Add(elem);
+                    }
+                }
+                else listItems.Add(elem);
             }
 
-            return pages;
+            return listItems;
         }
 
         private void onComposePage(GuiHandbookPage page, GuiComposer detailViewGui, ElementBounds textBounds, ActionConsumable<string> openDetailPageFor)
         {
-            page.ComposePage(detailViewGui, textBounds, allstacks, openDetailPageFor);
+            page.ComposePage(detailViewGui, textBounds, ObjectCacheUtil.TryGet<ItemStack[]>(capi, "handbookallstacks"), openDetailPageFor);
         }
 
-
-        protected ItemStack[] allstacks;
         protected List<ItemStack> SetupBehaviorAndGetItemStacks()
         {
             List<ItemStack> allstacks = new List<ItemStack>();
@@ -155,6 +190,44 @@ namespace Vintagestory.GameContent
             return allstacks;
         }
 
+        protected void CreateCachedMealRecipeStacks(CookingRecipe recipe)
+        {
+            ObjectCacheUtil.GetOrCreate(capi, "valstacksbying-" + recipe.Code, () =>
+            {
+                Dictionary<CookingRecipeIngredient, HashSet<ItemStack>> valStacksByIng = [];
+
+                foreach (var ingredient in recipe.Ingredients)
+                {
+                    HashSet<ItemStack> ingredientStacks = [];
+
+                    ingredient.Resolve(capi.World, "handbook meal recipes");
+                    foreach (var astack in ObjectCacheUtil.TryGet<ItemStack[]>(capi, "handbookallstacks"))
+                    {
+                        if (ingredient.GetMatchingStack(astack) is not CookingRecipeStack vstack) continue;
+
+                        ItemStack stack = astack.Clone();
+                        stack.StackSize = vstack.StackSize;
+
+                        if (BlockLiquidContainerBase.GetContainableProps(stack) is WaterTightContainableProps props)
+                        {
+                            // Use ceil to make sure recipe matching works. Truncation breaks it.
+                            // e.g. 1 * 104 * 0.2 = 20.8 -> 21
+                            // Only 20 means CookingRecipe.Matches will fail because it truncates the ratio
+                            stack.StackSize = (int)Math.Ceiling(stack.StackSize * props.ItemsPerLitre * ingredient.PortionSizeLitres);
+                        }
+
+                        ingredientStacks.Add(stack);
+                    }
+
+                    if (ingredient.MinQuantity <= 0) ingredientStacks.Add(null);
+
+                    valStacksByIng.Add(ingredient.Clone(), ingredientStacks);
+                }
+
+                return valStacksByIng;
+            });
+        }
+
 
         private bool OnSurvivalHandbookHotkey(KeyCombination key)
         {
@@ -178,7 +251,7 @@ namespace Vintagestory.GameContent
 
                 if (stack != null)
                 {
-                    string pageCode = stack.Collectible.GetCollectibleInterface<IHandBookPageCodeProvider>()?.HandbookPageCodeForStack(capi.World, stack) ?? 
+                    string pageCode = stack.Collectible.GetCollectibleInterface<IHandBookPageCodeProvider>()?.HandbookPageCodeForStack(capi.World, stack) ??
                                       GuiHandbookItemStackPage.PageCodeForStack(stack);
 
                     if (!dialog.OpenDetailPageFor(pageCode))

@@ -1,5 +1,8 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using System.Runtime.Serialization;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -37,20 +40,49 @@ namespace Vintagestory.GameContent
         Messy12
     }
 
+    [JsonConverter(typeof(StringEnumConverter))]
+    public enum EnumGroundStorageRotationMode
+    {
+        /// <summary>
+        /// Rotate only on the 90 Degree angles
+        /// </summary>
+        [EnumMember(Value = "90deg")]
+        Deg90,
+        /// <summary>
+        /// Rotate on 45 degree angles
+        /// </summary>
+        [EnumMember(Value = "45deg")]
+        Deg45,
+        /// <summary>
+        /// Rotate on 22.5 degree angles
+        /// </summary>
+        [EnumMember(Value = "22.5deg")]
+        Deg22Dot5,
+        /// <summary>
+        /// Rotate on 22.5 degree angles, but exclude 45 degree angles
+        /// </summary>
+        [EnumMember(Value = "22.5degnot45deg")]
+        Deg22Dot5NotDeg45
+    }
+
 
     public class GroundStorageProperties
     {
         public EnumGroundStorageLayout Layout = EnumGroundStorageLayout.SingleCenter;
+        public EnumGroundStorageRotationMode CenterRotationMode = EnumGroundStorageRotationMode.Deg90;
+        public EnumGroundStorageRotationMode? QuadrantRotationMode = null;
         public int WallOffY = 1;
         public AssetLocation PlaceRemoveSound = new AssetLocation("sounds/player/build");
         public bool RandomizeSoundPitch;
         public bool RandomizeCenterRotation;
         public AssetLocation StackingModel;
 
-        [Obsolete("Use ModelItemsToStackSizeRatio instead, which is now a float instead of int?")]
-        public int? TessQuantityElements { set { ModelItemsToStackSizeRatio = value ?? 0; } get { return (int)ModelItemsToStackSizeRatio; } }
+        public int CuboidsPerModel = 1;
+        public int ItemsPerModel = 1;
 
+        [Obsolete("Use CuboidsPerModel and ItemsPerModel instead")]
         public float ModelItemsToStackSizeRatio = 1;
+
         public Dictionary<string, AssetLocation> StackingTextures;
         public int MaxStackingHeight = -1;
         public int StackingCapacity = 1;
@@ -66,18 +98,23 @@ namespace Vintagestory.GameContent
         public float CbScaleYByLayer = 0;
 
         public int MaxFireable = 9999;
+        public float BurnHoursPerItem = 0;
 
         public GroundStorageProperties Clone()
         {
             return new GroundStorageProperties()
             {
                 Layout = Layout,
+                CenterRotationMode = CenterRotationMode,
+                QuadrantRotationMode = QuadrantRotationMode,
                 WallOffY = WallOffY,
                 PlaceRemoveSound = PlaceRemoveSound,
                 RandomizeSoundPitch = RandomizeSoundPitch,
                 RandomizeCenterRotation = RandomizeCenterRotation,
-                StackingCapacity = StackingCapacity,
                 StackingModel = StackingModel,
+                CuboidsPerModel = CuboidsPerModel,
+                ItemsPerModel = ItemsPerModel,
+                StackingCapacity = StackingCapacity,
                 StackingTextures = StackingTextures,
                 MaxStackingHeight = MaxStackingHeight,
                 TransferQuantity = TransferQuantity,
@@ -86,6 +123,7 @@ namespace Vintagestory.GameContent
                 SelectionBox = SelectionBox,
                 CbScaleYByLayer = CbScaleYByLayer,
                 MaxFireable = MaxFireable,
+                BurnHoursPerItem = BurnHoursPerItem,
                 CtrlKey = CtrlKey,
                 UpSolid = UpSolid
             };
@@ -95,9 +133,9 @@ namespace Vintagestory.GameContent
 
     public class CollectibleBehaviorGroundStorable : CollectibleBehavior
     {
-        public GroundStorageProperties StorageProps { 
-            get; 
-            protected set; 
+        public GroundStorageProperties StorageProps {
+            get;
+            protected set;
         }
 
         public CollectibleBehaviorGroundStorable(CollectibleObject collObj) : base(collObj)
@@ -109,9 +147,22 @@ namespace Vintagestory.GameContent
             base.Initialize(properties);
 
             StorageProps = properties.AsObject<GroundStorageProperties>(null, collObj.Code.Domain);
+            if (!properties["itemsPerModel"].Exists)
+            {
+                StorageProps.ItemsPerModel = StorageProps.TransferQuantity;
+            }
+            if (!properties["cuboidsPerModel"].Exists)
+            {
 #pragma warning disable CS0618 // Type or member is obsolete
+                StorageProps.CuboidsPerModel = (int)Math.Round(StorageProps.ItemsPerModel * StorageProps.ModelItemsToStackSizeRatio);
+            }
             if (StorageProps.SprintKey) StorageProps.CtrlKey = true;
 #pragma warning restore CS0618 // Type or member is obsolete
+        }
+
+        public virtual GroundStorageProperties GetStorageProperties(ItemStack stack)
+        {
+            return StorageProps;
         }
 
 
@@ -128,7 +179,7 @@ namespace Vintagestory.GameContent
             {
                 new WorldInteraction
                 {
-                    HotKeyCodes = StorageProps.CtrlKey ? new string[] {"ctrl", "shift" } : new string[] {"shift"},
+                    HotKeyCodes = GetStorageProperties(inSlot.Itemstack)?.CtrlKey ?? false ? new string[] {"ctrl", "shift" } : new string[] {"shift"},
                     ActionLangCode = "heldhelp-place",
                     MouseButton = EnumMouseButton.Right
                 }

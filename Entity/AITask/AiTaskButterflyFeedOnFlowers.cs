@@ -1,3 +1,5 @@
+using Newtonsoft.Json;
+using System;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
@@ -18,10 +20,11 @@ namespace Vintagestory.GameContent
         float moveSpeed = 0.03f;
         float targetDistance = 0.07f;
 
-        double searchFrequency = 0.05f;
+        [JsonProperty, Obsolete("Use ExecutionChance instead")]
+        double searchFrequency { set => ExecutionChance = value; }
 
-        bool awaitReached = true;       
-        BlockPos tmpPos = new BlockPos();
+        bool awaitReached = true;
+        BlockPos tmpPos = new BlockPos(API.Config.Dimensions.WillSetLater);
 
         double feedTime;
 
@@ -33,11 +36,13 @@ namespace Vintagestory.GameContent
 
             moveSpeed = taskConfig["movespeed"].AsFloat(0.03f);
 
-            searchFrequency = taskConfig["searchFrequency"].AsFloat(0.07f);
-
             awaitReached = taskConfig["awaitReached"].AsBool(true);
+        }
 
-
+        protected override void SetDefaultValues()
+        {
+            base.SetDefaultValues();
+            ExecutionChance = 0.07;
         }
 
         public override void OnEntityDespawn(EntityDespawnData reason)
@@ -55,12 +60,13 @@ namespace Vintagestory.GameContent
 
         public override bool ShouldExecute()
         {
-            if (rand.NextDouble() > searchFrequency) return false;
+            if (rand.NextDouble() > ExecutionChance) return false;
 
             double dx = rand.NextDouble() * 4 - 2;
             double dz = rand.NextDouble() * 4 - 2;
 
-            tmpPos.Set((int)(entity.ServerPos.X + dx), 0, (int)(entity.ServerPos.Z + dz));
+            tmpPos.Set((int)(entity.Pos.X + dx), 0, (int)(entity.Pos.Z + dz));
+            tmpPos.SetDimension(entity.Pos.Dimension);
             tmpPos.Y = entity.World.BlockAccessor.GetTerrainMapheightAt(tmpPos) + 1;
 
             Block block = entity.World.BlockAccessor.GetBlock(tmpPos);
@@ -79,7 +85,7 @@ namespace Vintagestory.GameContent
                 MainTarget = tmpPos.ToVec3d().Add(block.TopMiddlePos.X, topPos, block.TopMiddlePos.Z);
                 return true;
             }
-            
+
             return false;
         }
 
@@ -94,7 +100,7 @@ namespace Vintagestory.GameContent
             feedTime = 3 + rand.NextDouble() * 10;
         }
 
-        public override bool 
+        public override bool
             ContinueExecute(float dt)
         {
             //Check if time is still valid for task.
@@ -102,7 +108,7 @@ namespace Vintagestory.GameContent
 
             if (taskState==1)
             {
-                entity.ServerPos.Motion.Set(0, 0, 0);
+                entity.Pos.Motion.Set(0, 0, 0);
                 entity.AnimManager.StartAnimation("feed");
                 taskState = 2;
             }

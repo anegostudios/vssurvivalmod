@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using Cairo;
 using Vintagestory.API.Client;
 using System;
@@ -115,9 +115,17 @@ namespace Vintagestory.GameContent
 
                 if (mx > Bounds.absX && mx <= Bounds.absX + Bounds.InnerWidth && my >= y - ypad && my <= y + scaled(unscaledCellHeight) - ypad)
                 {
-                    api.Gui.PlaySound("menubutton_press");
-                    onLeftClick?.Invoke(i);
-                    args.Handled = true;
+                    api.World.FrameProfiler.Enter("guielement-clicked");
+                    try
+                    {
+                        api.Gui.PlaySound("menubutton_press");
+                        onLeftClick?.Invoke(i);
+                        args.Handled = true;
+                    }
+                    finally
+                    {
+                        api.World.FrameProfiler.Leave();
+                    }
                     return;
                 }
                 

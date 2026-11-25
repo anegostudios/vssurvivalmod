@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -16,12 +17,15 @@ namespace Vintagestory.GameContent.Mechanics
     /// </summary>
     public class BEClutch : BlockEntity, IMechanicalPowerRenderable
     {
-        private static double DEGREES15 = Math.PI / 12;
-        private static double DEGREES30 = 2 * DEGREES15;
-        private static float REVERSEANGLE = GameMath.TWOPI; // * 17f / 16f;
+        const double degrees15 = Math.PI / 12;
+        const double engagedAngle = 2 * degrees15;
+        const float reverseAngle = GameMath.TWOPI; // * 17f / 16f;
+        const float angledGearPhaseOffset = GameMath.PI / 8f;
         protected MechanicalPowerMod manager;
         public bool Engaged { get; protected set; }
+        public ItemStack PlacedStack { get; private set; }
         private BlockPos transmissionPos;
+        private BlockPos axleLookupPos;
         public BlockFacing Facing { get; protected set; }
 
         public virtual BlockPos Position { get { return Pos; } }
@@ -56,17 +60,13 @@ namespace Vintagestory.GameContent.Mechanics
             }
         }
 
-        BlockEntityAnimationUtil animUtil
-        {
-            get { return GetBehavior<BEBehaviorAnimatable>().animUtil; }
-        }
-
         public override void Initialize(ICoreAPI api)
         {
             base.Initialize(api);
             Shape = Block.Shape;
             Facing = BlockFacing.FromCode(Block.Variant["side"]);
             this.transmissionPos = Pos.AddCopy(Facing);
+            axleLookupPos = new BlockPos(Pos.dimension);
 
             manager = Api.ModLoader.GetModSystem<MechanicalPowerMod>();
             manager.AddDeviceForRender(this);
@@ -97,17 +97,43 @@ namespace Vintagestory.GameContent.Mechanics
             }
         }
 
+        public override void OnBlockPlaced(ItemStack byItemStack = null)
+        {
+            base.OnBlockPlaced(byItemStack);
+            if (byItemStack == null) return;
+
+            PlacedStack = byItemStack.Clone();
+            PlacedStack.StackSize = 1;
+            MarkDirty(true);
+        }
+
+        float? getNeighbourAngleRad()
+        {
+            var neighbour = Api.World.BlockAccessor.GetBlockEntity(transmissionPos);
+            var trans = neighbour?.GetBehavior<BEBehaviorMPTransmission>();
+            if (trans != null) return trans.AngleRad;
+
+            var gearBeh = neighbour?.GetBehavior<BEBehaviorMPAngledGears>();
+            BlockFacing shaftFace = gearBeh?.GetCollinearGearFace();
+            if (shaftFace == null) return null;
+
+            axleLookupPos.Set(transmissionPos).Add(shaftFace);
+            var axleBeh = Api.World.BlockAccessor.GetBlockEntity(axleLookupPos)?.GetBehavior<BEBehaviorMPBase>();
+            float displayed = axleBeh?.AngleRad ?? gearBeh.GetMultiGearAngleRad(shaftFace);
+            return (displayed + gearBeh.GetMultiGearRenderAngleOffset(shaftFace) + angledGearPhaseOffset) % GameMath.TWOPI;
+        }
+
         public float RotationNeighbour()
         {
-            if (armAngle > DEGREES15)
+            if (armAngle > degrees15)
             {
-                BEBehaviorMPTransmission be = Api.World.BlockAccessor.GetBlockEntity(transmissionPos)?.GetBehavior<BEBehaviorMPTransmission>();
-                if (be != null)
+                float? rawAngle = getNeighbourAngleRad();
+                if (rawAngle.HasValue)
                 {
-                    float transmissionAngle = (this.Facing == BlockFacing.EAST || this.Facing == BlockFacing.NORTH ? REVERSEANGLE - be.AngleRad : be.AngleRad) % GameMath.TWOPI + drumAngleOffset;
-                    if (armAngle < DEGREES30)
+                    float transmissionAngle = (this.Facing == BlockFacing.EAST || this.Facing == BlockFacing.NORTH ? reverseAngle - rawAngle.Value : rawAngle.Value) % GameMath.TWOPI + drumAngleOffset;
+                    if (armAngle < engagedAngle)
                     {
-                        float angleAdjust = catchUpAngle * (float) (2D - armAngle / DEGREES15);
+                        float angleAdjust = catchUpAngle * (float) (2D - armAngle / degrees15);
                         drumSpeed = transmissionAngle - angleAdjust - drumAngle;
                         drumAngle = transmissionAngle - angleAdjust;
                     }
@@ -121,10 +147,10 @@ namespace Vintagestory.GameContent.Mechanics
             }
             else if (this.Engaged)
             {
-                BEBehaviorMPTransmission be = Api.World.BlockAccessor.GetBlockEntity(transmissionPos)?.GetBehavior<BEBehaviorMPTransmission>();
-                if (be != null)
+                float? rawAngle = getNeighbourAngleRad();
+                if (rawAngle.HasValue)
                 {
-                    float transmissionAngle = (this.Facing == BlockFacing.EAST || this.Facing == BlockFacing.NORTH ? REVERSEANGLE - be.AngleRad : be.AngleRad) % GameMath.TWOPI;
+                    float transmissionAngle = (this.Facing == BlockFacing.EAST || this.Facing == BlockFacing.NORTH ? reverseAngle - rawAngle.Value : rawAngle.Value) % GameMath.TWOPI;
                     float targetSpeed = transmissionAngleLast == -0.000001f ? 0f : transmissionAngle - transmissionAngleLast;
                     transmissionAngleLast = transmissionAngle;
 
@@ -162,17 +188,18 @@ namespace Vintagestory.GameContent.Mechanics
 
         private void OnClientGameTick(float dt)
         {
+            dt *= 4;
             if (Engaged)
             {
-                if (armAngle < DEGREES30)
+                if (armAngle < engagedAngle)
                 {
-                    armAngle += DEGREES15 * dt;
-                    if (armAngle > DEGREES30) armAngle = DEGREES30;
+                    armAngle += degrees15 * dt;
+                    if (armAngle > engagedAngle) armAngle = engagedAngle;
                 }
             }
             else if (armAngle > 0d)
             {
-                armAngle -= DEGREES15 * dt;
+                armAngle -= degrees15 * dt;
                 if (armAngle < 0d) armAngle = 0d;
             }
         }
@@ -197,21 +224,22 @@ namespace Vintagestory.GameContent.Mechanics
                 default:
                     break;
             }
-            capi.Tesselator.TesselateShape(Block, shape, out MeshData mesh, new Vec3f(0, rotateY, 0));
+            capi.Tesselator.TesselateShape(Block.Code + " rest", shape, out MeshData mesh, ((BlockClutch)Block).GetMaterialTextureSource(capi, shape, Block.Code + " rest", PlacedStack), new Vec3f(0, rotateY, 0));
             mesher.AddMeshData(mesh);
             return true;
         }
 
         public bool OnInteract(IPlayer byPlayer)
         {
-            BEBehaviorMPTransmission be = Api.World.BlockAccessor.GetBlockEntity(transmissionPos)?.GetBehavior<BEBehaviorMPTransmission>();
+            var neighbour = Api.World.BlockAccessor.GetBlockEntity(transmissionPos);
+            BEBehaviorMPTransmission be = neighbour?.GetBehavior<BEBehaviorMPTransmission>();
+            BEBehaviorMPAngledGears gearHub = neighbour?.GetBehavior<BEBehaviorMPAngledGears>();
+            if (gearHub?.IsCollinearHub != true) gearHub = null;
             if (!Engaged && be != null && be.engaged) return true;
             Engaged = !Engaged;
             Api.World.PlaySoundAt(new AssetLocation("sounds/effect/woodswitch.ogg"), Pos, 0, byPlayer);
-            if (be != null)
-            {
-                be.CheckEngaged(Api.World.BlockAccessor, true);
-            }
+            be?.CheckEngaged(Api.World.BlockAccessor, true);
+            gearHub?.CheckEngagedByClutch(Api.World.BlockAccessor, true);
 
             MarkDirty(true);
             return true;
@@ -233,8 +261,10 @@ namespace Vintagestory.GameContent.Mechanics
         {
             base.FromTreeAttributes(tree, worldAccessForResolve);
 
+            PlacedStack = tree.GetItemstack("placedStack");
+            PlacedStack?.ResolveBlockOrItem(worldAccessForResolve);
             Engaged = tree.GetBool("engaged");
-            if (Engaged && armAngle == 0d) armAngle = DEGREES30; 
+            if (Engaged && armAngle == 0d) armAngle = engagedAngle;
         }
 
         public override void ToTreeAttributes(ITreeAttribute tree)
@@ -242,6 +272,26 @@ namespace Vintagestory.GameContent.Mechanics
             base.ToTreeAttributes(tree);
 
             tree.SetBool("engaged", Engaged);
+            if (PlacedStack == null) tree.RemoveAttribute("placedStack");
+            else tree.SetItemstack("placedStack", PlacedStack);
+        }
+
+        public override void OnLoadCollectibleMappings(IWorldAccessor worldForNewMappings, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed, bool resolveImports)
+        {
+            base.OnLoadCollectibleMappings(worldForNewMappings, oldBlockIdMapping, oldItemIdMapping, schematicSeed, resolveImports);
+            if (PlacedStack == null) return;
+            if (!PlacedStack.FixMapping(oldBlockIdMapping, oldItemIdMapping, worldForNewMappings))
+            {
+                PlacedStack = null;
+                return;
+            }
+            PlacedStack.Collectible.OnLoadCollectibleMappings(worldForNewMappings, new DummySlot(PlacedStack), oldBlockIdMapping, oldItemIdMapping, resolveImports);
+        }
+
+        public override void OnStoreCollectibleMappings(Dictionary<int, AssetLocation> blockIdMapping, Dictionary<int, AssetLocation> itemIdMapping)
+        {
+            base.OnStoreCollectibleMappings(blockIdMapping, itemIdMapping);
+            PlacedStack?.Collectible?.OnStoreCollectibleMappings(Api.World, new DummySlot(PlacedStack), blockIdMapping, itemIdMapping);
         }
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)

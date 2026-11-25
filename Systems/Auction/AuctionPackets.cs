@@ -1,4 +1,4 @@
-﻿using ProtoBuf;
+using ProtoBuf;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -63,13 +63,8 @@ namespace Vintagestory.GameContent
         [OnDeserialized]
         protected void OnDeserializedMethod(StreamingContext context)
         {
-            using (MemoryStream ms = new MemoryStream(ItemStackSerialized))
-            {
-                using (BinaryReader reader = new BinaryReader(ms))
-                {
-                    ItemStack = new ItemStack(reader);
-                }
-            }
+            var reader = new BinarySpanReader(ItemStackSerialized);
+            ItemStack = new ItemStack(ref reader);
         }
 
         [ProtoBeforeSerialization]

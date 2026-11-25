@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -104,7 +104,7 @@ namespace Vintagestory.GameContent
             var beh = world.BlockAccessor.GetBlockEntity(pos)?.GetBehavior<BEBehaviorTrapDoor>();
             if (beh != null)
             {
-                decalMesh.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, beh.RotRad, 0);
+                decalMesh.Rotate(0, beh.RotRad, 0);
             }
         }
 
@@ -160,8 +160,8 @@ namespace Vintagestory.GameContent
 
             if (beh.Opened)
             {
-                decalModelData = decalModelData.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 90 * GameMath.DEG2RAD, 0, 0);
-                decalModelData = decalModelData.Scale(new Vec3f(0.5f, 0.5f, 0.5f), 1, -1f, 1);
+                decalModelData = decalModelData.Rotate(90 * GameMath.DEG2RAD, 0, 0);
+                decalModelData = decalModelData.Scale(1, -1f, 1);
             }
             base.GetDecal(world, pos, decalTexSource, ref decalModelData, ref blockModelData, ref handled);
         }
@@ -220,6 +220,26 @@ namespace Vintagestory.GameContent
                 return -1;
             }
             return 1;
+        }
+
+        public override bool SideIsSolid(BlockPos pos, int faceIndex, ref EnumHandling handled)
+        {
+            handled = EnumHandling.PreventSubsequent;
+
+            var beh = block.GetBEBehavior<BEBehaviorTrapDoor>(pos);
+            if (beh == null) return false;
+
+            return beh.IsSideSolid(BlockFacing.ALLFACES[faceIndex]);
+        }
+
+        public override bool SideIsSolid(IBlockAccessor blockAccess, BlockPos pos, int faceIndex, ref EnumHandling handled)
+        {
+            handled = EnumHandling.PreventSubsequent;
+
+            var beh = block.GetBEBehavior<BEBehaviorTrapDoor>(pos);
+            if (beh == null) return false;
+
+            return beh.IsSideSolid(BlockFacing.ALLFACES[faceIndex]);
         }
     }
 }

@@ -1,8 +1,6 @@
-﻿using System.Linq;
-using System.Numerics;
+using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -148,6 +146,8 @@ namespace Vintagestory.GameContent
             if (handling == EnumHandHandling.PreventDefault) return;
             if (blockSel == null) return;
 
+            if (byEntity.World.BlockAccessor.GetBlockEntity<BlockEntityForge>(blockSel.Position) != null) return;
+
             var player = (byEntity as EntityPlayer)?.Player;
 
             if (!byEntity.World.Claims.TryAccess(player, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
@@ -231,6 +231,7 @@ namespace Vintagestory.GameContent
             var newblock = api.World.GetBlock(newcode);
 
             api.World.BlockAccessor.ExchangeBlock(newblock.Id, blockSel.Position);
+            if (api.Side == EnumAppSide.Client) api.World.BlockAccessor.RedrawNeighbouringChunk(blockSel.Position);
 
             api.World.PlaySoundAt(newblock.Sounds.Place, blockSel.Position, 0, byPlayer);
             (api.World as IClientWorldAccessor)?.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
@@ -243,6 +244,7 @@ namespace Vintagestory.GameContent
             api.World.PlaySoundAt(block.Sounds.Place, blockSel.Position, 0, byPlayer);
             (api.World as IClientWorldAccessor)?.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
             iwre.Rotate(byPlayer.Entity, blockSel, dir);
+            (api.World as IClientWorldAccessor)?.BlockAccessor.RedrawNeighbouringChunk(blockSel.Position);
         }
     }
 }

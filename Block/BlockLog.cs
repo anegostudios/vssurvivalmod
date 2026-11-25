@@ -1,30 +1,31 @@
-﻿using System.Text;
+using System.Text;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 
 #nullable disable
 
+using Vintagestory.ServerMods;
+
 namespace Vintagestory.GameContent
 {
-    public class BlockLog : Block
+    public class BlockLog : Block, IBlockLog, ICustomChiselMaterialName
     {
-
-
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos)
         {
             return Drops[0].ResolvedItemstack.Clone();
         }
 
 
-        public override void AddMiningTierInfo(StringBuilder sb)
+        public override void AddMiningTierInfo(StringBuilder sb, IWorldAccessor world, BlockPos pos)
         {
             if (Code.PathStartsWith("log-grown"))
             {
                 // stone axe can cut normal wood (woodtier 3) cannot cut tropical woods except Kapok (which is soft); copper/scrap axe cannot cut ebony
                 int woodTier = Attributes?["treeFellingGroupSpreadIndex"].AsInt(0) ?? 0;
-                woodTier += RequiredMiningTier - 4;
-                if (woodTier < RequiredMiningTier) woodTier = RequiredMiningTier;
+                int requiredMiningTier = GetRequiredMiningTier(world, pos);
+                woodTier += requiredMiningTier - 4;
+                if (woodTier < requiredMiningTier) woodTier = requiredMiningTier;
 
                 string tierName = "?";
                 if (woodTier < miningTierNames.Length)
@@ -36,8 +37,13 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                base.AddMiningTierInfo(sb);
+                base.AddMiningTierInfo(sb, world, pos);
             }
+        }
+
+        string ICustomChiselMaterialName.GetName(ItemStack itemStack)
+        {
+            return Lang.Get("chiselmaterialnamewithorientation-"+ Variant["rotation"], itemStack.GetName());
         }
     }
 }

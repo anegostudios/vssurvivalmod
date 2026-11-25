@@ -1,6 +1,8 @@
-﻿using System;
+using System;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
+using Vintagestory.API.MathTools;
 
 #nullable disable
 
@@ -8,25 +10,44 @@ namespace Vintagestory.GameContent.Mechanics
 {
     public class BEBehaviorMPConsumer : BEBehaviorMPBase
     {
-        protected float resistance = 0.1f;
+        bool passThrough;
+
+        public float Resistance = 0.1f;
 
         public Action OnConnected;
         public Action OnDisconnected;
 
-        public float TrueSpeed { get { return System.Math.Abs(Network?.Speed * GearedRatio ?? 0f); }}
+        public float TrueSpeed => Math.Abs(CurrentSpeed);
 
-        public BEBehaviorMPConsumer(BlockEntity blockentity) : base(blockentity)
-        {
-        }
+        public BEBehaviorMPConsumer(BlockEntity blockentity) : base(blockentity) { }
 
         public override void Initialize(ICoreAPI api, JsonObject properties)
         {
+            passThrough = properties["passThrough"].AsBool();
             base.Initialize(api, properties);
 
-            Shape = properties["mechPartShape"].AsObject<CompositeShape>(null);
+            Shape = properties["mechPartShape"].AsObject(Shape);
             Shape?.Base.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
 
-            resistance = properties["resistance"].AsFloat(0.1f);
+            Resistance = properties["resistance"].AsFloat(0.1f);
+
+            var orientations = Block.Variant["side"];
+            switch (orientations)
+            {
+                case "north":
+                    AxisSign = new int[] { 0, 0, -1 };
+                    break;
+                case "east":
+                    AxisSign = new int[] { -1, 0, 0 };
+                    break;
+                case "west":
+                    AxisSign = new int[] { -1, 0, 0 };
+                    break;
+                case "south":
+                    AxisSign = new int[] { 0, 0, -1 };
+                    break;
+            }
+
         }
 
 
@@ -44,13 +65,21 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override float GetResistance()
         {
-            return resistance;
+            return Resistance;
         }
 
-        protected override MechPowerPath[] GetMechPowerExits(MechPowerPath fromExitTurnDir)
+        public override MechPowerPath[] GetMechPowerExits(MechPowerPath fromExitTurnDir)
         {
-            // This but' a dead end, baby!
-            return Array.Empty<MechPowerPath>();
+            // Consumers are usually dead ends, but ones with a through-shaft can carry power out the other side.
+            if (passThrough) return base.GetMechPowerExits(fromExitTurnDir);
+            return [];
         }
+
+        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
+        {
+            if (Block == null) return false;
+            return true;
+        }
+
     }
 }

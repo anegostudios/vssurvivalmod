@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Common;
@@ -11,12 +12,12 @@ public class RemapAnimationManager : AnimationManager
 
     public string IdleAnimation = "crawlidle";
 
-    public RemapAnimationManager()
+    public RemapAnimationManager(Entity entity) : base(entity)
     {
 
     }
 
-    public RemapAnimationManager(Dictionary<string, string> remaps)
+    public RemapAnimationManager(Entity entity, Dictionary<string, string> remaps) : base(entity)
     {
         this.Remaps = remaps;
     }
@@ -90,7 +91,8 @@ public class EntityDrifter : EntityHumanoid
 
         if (EntityId % oddsToAlter == 0)
         {
-            float[] collisionBox = properties.Attributes["alternativeCollisionBox"].AsArray([0.9f, 0.6f]);
+            float[]? collisionBox = properties.Attributes["alternativeCollisionBox"].AsArray([0.9f, 0.6f]);
+            ArgumentNullException.ThrowIfNull(collisionBox);
 
             Dictionary<string, string> animationsRemapping = new()
             {
@@ -107,7 +109,8 @@ public class EntityDrifter : EntityHumanoid
 
             if (properties.Attributes.KeyExists("animationsRemapping"))
             {
-                animationsRemapping = properties.Attributes["animationsRemapping"].AsObject<Dictionary<string, string>>();
+                animationsRemapping = properties.Attributes["animationsRemapping"].AsObject<Dictionary<string, string>>()!;
+                ArgumentNullException.ThrowIfNull(animationsRemapping);
             }
 
             AnimationMetaData? dieAnimationMetaData = properties.Client.Animations.FirstOrDefault(a => a.Code == dieAnimationCode);
@@ -144,7 +147,7 @@ public class EntityDrifter : EntityHumanoid
 
             properties.CanClimb = alternativeCanClimb;
 
-            AnimManager = new RemapAnimationManager(animationsRemapping) { IdleAnimation = alternativeIdleAnimationCode };
+            AnimManager = new RemapAnimationManager(this, animationsRemapping) { IdleAnimation = alternativeIdleAnimationCode };
         }
         else
         {

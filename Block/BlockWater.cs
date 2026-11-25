@@ -1,6 +1,7 @@
 using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
@@ -14,12 +15,13 @@ namespace Vintagestory.GameContent
         public string Flow { get; set; }
         public Vec3i FlowNormali { get; set; }
         public bool IsLava => false;
+        public virtual bool HasNormalWaves => true;
         public int Height { get; set; }
 
-        bool freezable;
-        Block iceBlock;
-        float freezingPoint = -4;
-        bool isBoiling;
+        protected bool freezable;
+        protected Block iceBlock;
+        protected float freezingPoint = -4;
+        protected bool isBoiling;
 
         public override void OnLoaded(ICoreAPI api)
         {
@@ -27,6 +29,12 @@ namespace Vintagestory.GameContent
             Flow = Variant["flow"] is string f ? string.Intern(f) : null;
             FlowNormali = Flow != null ? Cardinal.FromInitial(Flow)?.Normali : null;
             Height = Variant["height"] is string h ? h.ToInt() : 7;
+            int fspeed = Attributes["flowSpeed"].AsInt(1);
+            if (fspeed > 1)
+            {
+                FlowNormali = FlowNormali?.Clone().Mul(fspeed);
+            }
+
 
             freezable = Flow == "still" && Height == 7;
             if (Attributes != null)
@@ -48,7 +56,7 @@ namespace Vintagestory.GameContent
         public override float GetAmbientSoundStrength(IWorldAccessor world, BlockPos pos)
         {
             // Play water wave sound when above is air and below is a solid block
-            return (world.BlockAccessor.GetBlockId(pos.X, pos.Y + 1, pos.Z) == 0 && world.BlockAccessor.IsSideSolid(pos.X, pos.Y - 1, pos.Z, BlockFacing.UP)) ? 1 : 0;
+            return (world.BlockAccessor.GetBlockAbove(pos, 1).Id == 0 && world.BlockAccessor.IsSideSolid(pos.X, pos.Y - 1, pos.Z, BlockFacing.UP)) ? 1 : 0;
         }
 
         public override void OnAsyncClientParticleTick(IAsyncParticleManager manager, BlockPos pos, float windAffectednessAtPos, float secondsTicking)
@@ -91,6 +99,7 @@ namespace Vintagestory.GameContent
 
         public override void OnServerGameTick(IWorldAccessor world, BlockPos pos, object extra = null)
         {
+            if (iceBlock == null) return;
             world.BlockAccessor.SetBlock(iceBlock.Id, pos, BlockLayersAccess.Fluid);
         }
 
@@ -100,27 +109,47 @@ namespace Vintagestory.GameContent
 
             if (entityItem.World.Side == EnumAppSide.Server)
             {
-                Vec3d pos = entityItem.ServerPos.XYZ;
-
-                WaterTightContainableProps props = BlockLiquidContainerBase.GetContainableProps(entityItem.Itemstack);
-                float litres = (float)entityItem.Itemstack.StackSize / (props?.ItemsPerLitre ?? 1f);
-
-                entityItem.World.SpawnCubeParticles(pos, entityItem.Itemstack, 0.75f, Math.Min(100, (int)(2 * litres)), 0.45f);
-                entityItem.World.PlaySoundAt(new AssetLocation("sounds/environment/smallsplash"), (float)pos.X, (float)pos.Y, (float)pos.Z, null);
-
-                BlockEntityFarmland bef = api.World.BlockAccessor.GetBlockEntity(pos.AsBlockPos) as BlockEntityFarmland;
-                if (bef != null)
-                {
-                    bef.WaterFarmland(Height / 6f, false);
-                    bef.MarkDirty(true);
-                }
+                splashLiquid(entityItem.Itemstack, entityItem.Pos.XYZ);
             }
-
-            
 
             base.OnGroundIdle(entityItem);
         }
 
+        private void splashLiquid(ItemStack stack, Vec3d pos)
+        {
+            WaterTightContainableProps props = BlockLiquidContainerBase.GetContainableProps(stack);
+            float litres = (float)stack.StackSize / (props?.ItemsPerLitre ?? 1f);
+
+            api.World.SpawnCubeParticles(pos, stack, 0.75f, Math.Min(100, (int)(2 * litres)), 0.45f);
+            api.World.PlaySoundAt(new AssetLocation("sounds/environment/smallsplash"), (float)pos.X, (float)pos.Y, (float)pos.Z, null);
+
+            BlockEntityFarmland bef = api.World.BlockAccessor.GetBlockEntity(pos.AsBlockPos) as BlockEntityFarmland;
+            if (bef != null)
+            {
+                bef.WaterFarmland(Height / 6f, false);
+                bef.MarkDirty(true);
+            }
+        }
+
+        public override void OnCollected(ItemStack stack, Entity entity)
+        {
+            base.OnCollected(stack, entity);
+        }
+
+        public override int GetRandomColor(ICoreClientAPI capi, ItemStack stack)
+        {
+            var props = BlockLiquidContainerBase.GetContainableProps(stack);
+            if (props != null)
+            {
+                props.WhenFilled?.Stack?.Resolve(api.World, "get random color resolve");
+                if (props.WhenFilled.Stack.ResolvedItemStack != null)
+                {
+                    return props.WhenFilled.Stack.ResolvedItemStack.Collectible.GetRandomColor(capi, props.WhenFilled.Stack.ResolvedItemStack);
+                }
+            }
+            var pos = capi.World.Player.Entity.Pos;
+            return capi.World.ApplyColorMapOnRgba(ClimateColorMap, SeasonColorMap, base.GetRandomColor(capi, stack), (int)pos.X, (int)pos.Y, (int)pos.Z);
+        }
 
 
         public override bool CanPlaceBlock(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref string failureCode)
@@ -171,5 +200,11 @@ namespace Vintagestory.GameContent
             if (creatureType == EnumAICreatureType.SeaCreature && !isBoiling) return 0;
             return isBoiling && creatureType != EnumAICreatureType.HeatProofCreature ? 99999f : 5f;
         }
+
+        public override void DetermineTopMiddlePos()
+        {
+            TopMiddlePos.Y = (Height + 1) / 8f;
+        }
+
     }
 }

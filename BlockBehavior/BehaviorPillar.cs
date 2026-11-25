@@ -1,5 +1,6 @@
-﻿using Vintagestory.API;
+using Vintagestory.API;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
@@ -27,13 +28,16 @@ namespace Vintagestory.GameContent
 	///]
     /// </code></example>
     [DocumentAsJson]
-    public class BlockBehaviorPillar : BlockBehavior
+    public class BlockBehaviorPillar : BlockBehavior, ILookAwarePlacement, ICustomChiselMaterialName
     {
         /// <summary>
         /// Swaps placement between horizontal and vertical.
         /// </summary>
         [DocumentAsJson("Optional", "False")]
-        bool invertedPlacement;
+        protected bool invertedPlacement;
+
+        [DocumentAsJson("Optional", "rotation")]
+        protected string rotationVariantCode = "rotation";
 
         public BlockBehaviorPillar(Block block) : base(block)
         {
@@ -44,12 +48,25 @@ namespace Vintagestory.GameContent
             base.Initialize(properties);
 
             invertedPlacement = properties["invertedPlacement"].AsBool(false);
+            rotationVariantCode = properties["rotationVariantCode"].AsString("rotation");
         }
 
         public override bool TryPlaceBlock(IWorldAccessor world, IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel, ref EnumHandling handling, ref string failureCode)
         {
             handling = EnumHandling.PreventDefault;
 
+            Block orientedBlock = GetLookAwareBlockVariant(byPlayer, itemstack, blockSel);
+            if (orientedBlock.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
+            {
+                orientedBlock.DoPlaceBlock(world, byPlayer, blockSel, itemstack);
+                return true;
+            }
+
+            return false;
+        }
+
+        public Block GetLookAwareBlockVariant(IPlayer byPlayer, ItemStack itemstack, BlockSelection blockSel)
+        {
             string rotation = null;
             switch (blockSel.Face.Axis)
             {
@@ -65,21 +82,15 @@ namespace Vintagestory.GameContent
                 if (blockSel.Face.IsVertical)
                 {
                     rotation = horVer[0].Axis == EnumAxis.X ? "we" : "ns";
-                } else
+                }
+                else
                 {
                     rotation = "ud";
                 }
             }
 
-            Block orientedBlock = world.BlockAccessor.GetBlock(block.CodeWithParts(rotation));
-
-            if (orientedBlock.CanPlaceBlock(world, byPlayer, blockSel, ref failureCode))
-            {
-                orientedBlock.DoPlaceBlock(world, byPlayer, blockSel, itemstack);
-                return true;
-            }
-
-            return false;
+            Block orientedBlock = byPlayer.Entity.World.BlockAccessor.GetBlock(block.CodeWithParts(rotation));
+            return orientedBlock;
         }
 
         public override ItemStack OnPickBlock(IWorldAccessor world, BlockPos pos, ref EnumHandling handling)
@@ -100,6 +111,11 @@ namespace Vintagestory.GameContent
             if (block.LastCodePart() == "we") index++;
 
             return block.CodeWithParts(angles[index % 2]);
+        }
+
+        string ICustomChiselMaterialName.GetName(ItemStack itemStack)
+        {
+            return Lang.Get("chiselmaterialnamewithorientation-" + block.Variant[rotationVariantCode], itemStack.GetName());
         }
     }
 }

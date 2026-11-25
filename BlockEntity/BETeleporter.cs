@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -51,26 +52,21 @@ namespace Vintagestory.GameContent
 
         public virtual void OnEntityCollide(Entity entity)
         {
-            if (!tpingEntities.TryGetValue(entity.EntityId, out TeleportingEntity tpe))
+            // if the mountable is empty do not try to TP
+            if (entity.GetInterface<IMountable>()?.Seats.Any(s => s.Passenger != null) == false)
             {
-                tpingEntities[entity.EntityId] = tpe = new TeleportingEntity()
-                {
-                    Entity = entity
-                };
+                return;
+            }
+            if (!tpingEntities.TryGetValue(entity.EntityId, out var tpe))
+            {
+                tpingEntities[entity.EntityId] = tpe = new TeleportingEntity { Entity = entity };
             }
 
             tpe.LastCollideMs = Api.World.ElapsedMilliseconds;
 
-
-            if (Api.Side == EnumAppSide.Client)
-            {
-                lastEntityCollideMs = Api.World.ElapsedMilliseconds;
-
-                if ((Api as ICoreClientAPI).World.Player.Entity == entity)
-                {
-                    lastOwnPlayerCollideMs = Api.World.ElapsedMilliseconds;
-                }
-            }
+            if (Api.World is not IClientWorldAccessor cWorld) return;
+            lastEntityCollideMs = cWorld.ElapsedMilliseconds;
+            if (cWorld.Player.Entity == entity) lastOwnPlayerCollideMs = cWorld.ElapsedMilliseconds;
         }
 
         protected virtual void HandleTeleportingServer(float dt)
@@ -88,23 +84,31 @@ namespace Vintagestory.GameContent
             foreach (var val in tpingEntities)
             {
                 if (val.Value == null) throw new Exception("BETeleporterBase: val.Value is null, it shouldn't be!");
-                if (val.Value.Entity == null) throw new Exception("BETeleporterBase: val.Value.Entity is null, it shouldn't be!");
-                if (val.Value.Entity.Teleporting) continue;
+                var entity = val.Value.Entity;
+                if (entity == null) throw new Exception("BETeleporterBase: val.Value.Entity is null, it shouldn't be!");
+                if (entity.Teleporting) continue;
 
                 val.Value.SecondsPassed += Math.Min(0.5f, dt);
 
                 if (Api.World.ElapsedMilliseconds - val.Value.LastCollideMs > 100)
                 {
                     // round the position since the entity is placed at y.12506xxxx and the teleporter collisionbox is y.125 so without it GetCollidingBlock does round y to 5 decimals, and so we get a null block back and assume they left the tl and abort teleporting
-                    tmpPosVec.Set(val.Value.Entity.Pos);
-                    tmpPosVec.Y = Math.Round(tmpPosVec.Y, 3); 
+                    tmpPosVec.Set(entity.Pos);
+                    tmpPosVec.Y = Math.Round(tmpPosVec.Y, 3);
                     // Make sure its not just server lag
-                    Block block = Api.World.CollisionTester.GetCollidingBlock(Api.World.BlockAccessor, val.Value.Entity.CollisionBox, tmpPosVec, true);
+                    Block block = Api.World.CollisionTester.GetCollidingBlock(Api.World.BlockAccessor, entity.CollisionBox, tmpPosVec, true);
                     if (block == null || block.GetType() != Block.GetType())
                     {
                         toremove.Add(val.Key);
                         continue;
                     }
+                }
+
+                // if the mountable is now empty do not try to TP
+                if (entity.GetInterface<IMountable>()?.Seats.Any(s => s.Passenger != null) == false)
+                {
+                    toremove.Add(val.Key);
+                    continue;
                 }
 
                 if (val.Value.SecondsPassed > 0.1 && !somebodyIsTeleporting)
@@ -113,7 +117,7 @@ namespace Vintagestory.GameContent
                     MarkDirty();
                 }
 
-                var tpTarget = GetTarget(val.Value.Entity);
+                var tpTarget = GetTarget(entity);
 
                 if (val.Value.SecondsPassed > 1.5 && tpTarget != null)
                 {
@@ -139,20 +143,34 @@ namespace Vintagestory.GameContent
                 {
                     var targetPos = tpTarget.Clone();
                     if (tpLocationIsOffset) targetPos.Add(Pos.X, Pos.Y, Pos.Z);
-                    val.Value.Entity.TeleportTo(targetPos); // Fugly, need some better exit pos thing
+                    var entityPos = entity.Pos.XYZFast;
+                    entity.TeleportTo(targetPos); // Fugly, need some better exit pos thing
                     toremove.Add(val.Key);
 
-                    Entity e = val.Value.Entity;
-                    if (e is EntityPlayer)
+                    var mountable = entity.GetInterface<IMountable>();
+                    if (entity is EntityPlayer player)
                     {
-                        Api.World.Logger.Audit("Teleporting player {0} from {1} to {2}", (e as EntityPlayer).GetBehavior<EntityBehaviorNameTag>().DisplayName, e.Pos.AsBlockPos, tpTarget);
+                        Api.World.Logger.Audit("Teleporting player {0} from {1} to {2}", player.GetBehavior<EntityBehaviorNameTag>()?.DisplayName, entityPos, tpTarget);
+                    }
+                    else if (mountable?.AnyMounted() == true)
+                    {
+                        var names = mountable.Seats.Select(s =>
+                        {
+                            if (s.Passenger is EntityPlayer eplr)
+                            {
+                                return eplr.GetBehavior<EntityBehaviorNameTag>()?.DisplayName;
+                            }
+
+                            return s.Passenger.Code.ToString() + $" ({s.Passenger.EntityId})";
+                        });
+                        Api.World.Logger.Audit("Teleporting entity {0} ({1}) with [{2}] mounted from {3} to {4}", entity.Code, entity.EntityId, string.Join(',', names), entityPos, tpTarget);
                     }
                     else
                     {
-                        Api.World.Logger.Audit("Teleporting entity {0} from {1} to {2}", e.Code, e.Pos.AsBlockPos, tpTarget);
+                        Api.World.Logger.Audit("Teleporting entity {0} ({1}) from {2} to {3}", entity.Code, entity.EntityId, entityPos, tpTarget);
                     }
 
-                    didTeleport(val.Value.Entity);
+                    didTeleport(entity);
 
                     somebodyIsTeleporting = false;
                     somebodyDidTeleport = true;
@@ -220,24 +238,12 @@ namespace Vintagestory.GameContent
 
             if (api.Side == EnumAppSide.Server)
             {
-                ICoreServerAPI sapi = api as ICoreServerAPI;
-
                 tpLocation = manager.GetOrCreateLocation(Pos);
 
                 RegisterGameTickListener(OnServerGameTick, 50);
             } else
             {
                 RegisterGameTickListener(OnClientGameTick, 50);
-
-                teleportingSound = (api as ICoreClientAPI).World.LoadSound(new SoundParams()
-                {
-                    Location = new AssetLocation("sounds/block/teleporter.ogg"),
-                    ShouldLoop = true,
-                    Position = Pos.ToVec3f(),
-                    RelativePosition = false,
-                    DisposeOnFinish = false,
-                    Volume = 0.5f
-                });
             }
 
             ownBlock = Block as BlockTeleporter;
@@ -260,7 +266,7 @@ namespace Vintagestory.GameContent
 
         protected virtual void HandleSoundClient(float dt)
         {
-            var capi = Api as ICoreClientAPI;
+            var capi = (ICoreClientAPI)Api;
 
             long msEllapsed = capi.World.ElapsedMilliseconds - lastEntityCollideMs;
 
@@ -275,19 +281,28 @@ namespace Vintagestory.GameContent
                 teleSoundPitch = Math.Min(6, teleSoundPitch + dt);
             }
 
-            if (teleportingSound != null)
-            {
-                teleportingSound.SetVolume(teleSoundVolume);
-                teleportingSound.SetPitch(teleSoundPitch);
+            if (teleportingSound == null && teleSoundVolume <= 0) return;
 
-                if (teleportingSound.IsPlaying)
-                {
-                    if (teleSoundVolume <= 0) teleportingSound.Stop();
-                }
-                else
-                {
-                    if (teleSoundVolume > 0) teleportingSound.Start();
-                }
+            teleportingSound ??= capi.World.LoadSound(new SoundParams()
+            {
+                Location = new AssetLocation("sounds/block/teleporter.ogg"),
+                ShouldLoop = true,
+                Position = Pos.ToVec3f(),
+                RelativePosition = false,
+                DisposeOnFinish = false,
+                Volume = teleSoundVolume
+            });
+
+            teleportingSound.SetVolume(teleSoundVolume);
+            teleportingSound.SetPitch(teleSoundPitch);
+
+            if (teleportingSound.IsPlaying)
+            {
+                if (teleSoundVolume <= 0) teleportingSound.Stop();
+            }
+            else
+            {
+                if (teleSoundVolume > 0) teleportingSound.Start();
             }
         }
 

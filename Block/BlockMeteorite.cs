@@ -10,7 +10,7 @@ namespace Vintagestory.GameContent
 {
     public class BlockMeteorite : Block
     {
-        BlockPos tmpPos = new BlockPos();
+        BlockPos tmpPos = new BlockPos(API.Config.Dimensions.NormalWorld);    // Worldgen only runs in normal world, currently
 
         public override bool TryPlaceBlockForWorldGen(IBlockAccessor blAcc, BlockPos pos, BlockFacing onBlockFace, IRandom worldgenRand, BlockPatchAttributes attributes = null)
         {

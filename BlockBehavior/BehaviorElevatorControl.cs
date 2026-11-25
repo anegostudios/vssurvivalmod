@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Vintagestory.API;
 using Vintagestory.API.Client;
@@ -56,6 +57,10 @@ public class BlockBehaviorElevatorControl : BlockBehavior
         handling = EnumHandling.PreventSubsequent;
         if (byPlayer.Entity.Api.Side == EnumAppSide.Server)
         {
+            if (byPlayer.Entity.Pos.InternalY < blockSel.Position.InternalY - 1)
+            {
+                return false;
+            }
             var beBehaviorElevatorControl = block.GetBEBehavior<BEBehaviorElevatorControl>(blockSel.Position);
             if (byPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative && byPlayer.Entity.Controls.Sneak)
             {
@@ -70,8 +75,7 @@ public class BlockBehaviorElevatorControl : BlockBehavior
         return true;
     }
 
-    public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer,
-        ref EnumHandling handling)
+    public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer, ref EnumHandling handling)
     {
         var isCreative = forPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative;
         var interactions = new List<WorldInteraction>();
@@ -91,5 +95,11 @@ public class BlockBehaviorElevatorControl : BlockBehavior
             MouseButton = EnumMouseButton.Right
         });
         return interactions.ToArray();
+    }
+
+    public override int GetPlacedBlockInteractionHelpCount(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer, ref EnumHandling handling)
+    {
+        var isCreative = forPlayer.WorldData.CurrentGameMode == EnumGameMode.Creative;
+        return isCreative ? 2 : 1;
     }
 }

@@ -51,7 +51,7 @@ namespace Vintagestory.API.Common
                 return;
             }
 
-            if (itemstack.Collectible.Attributes?.IsTrue("barrelMoveToLiquidSlot") == true || (stackable && itemstack.Collectible.Attributes?["waterTightContainerProps"].Exists == true))
+            if (itemstack.Collectible.Attributes?.IsTrue("barrelMoveToLiquidSlot") == true || (stackable && BlockLiquidContainerBase.GetContainableProps(itemstack) != null))
             {
                 if (stackable)
                 {
@@ -80,10 +80,11 @@ namespace Vintagestory.API.Common
 
         protected override void ActivateSlotRightClick(ItemSlot sourceSlot, ref ItemStackMoveOperation op)
         {
-            ItemSlotLiquidOnly liquidSlot = inventory[1] as ItemSlotLiquidOnly;
+            ItemSlotLiquidOnly liquidSlot = (ItemSlotLiquidOnly)inventory[1];
             IWorldAccessor world = inventory.Api.World;
 
-            if (sourceSlot?.Itemstack?.Collectible is ILiquidSink sink && !liquidSlot.Empty && sink.AllowHeldLiquidTransfer)
+            var sink = sourceSlot?.Itemstack?.Collectible?.GetCollectibleInterface<ILiquidSink>();
+            if (sink != null && !liquidSlot.Empty && sink.AllowHeldLiquidTransfer)
             {
                 ItemStack liqSlotStack = liquidSlot.Itemstack;
                 var curTargetLiquidStack = sink.GetContent(sourceSlot.Itemstack);
@@ -132,10 +133,11 @@ namespace Vintagestory.API.Common
 
             IWorldAccessor world = inventory.Api.World;
 
-            if (sourceSlot.Itemstack.Collectible is ILiquidSource source && source.AllowHeldLiquidTransfer)
+            var source = sourceSlot.Itemstack.Collectible.GetCollectibleInterface<ILiquidSource>();
+            if (source != null && source.AllowHeldLiquidTransfer)
             {
                 ItemSlotLiquidOnly liquidSlot = inventory[1] as ItemSlotLiquidOnly;
-                
+
                 ItemStack bucketContents = source.GetContent(sourceSlot.Itemstack);
                 bool stackable = !liquidSlot.Empty && liquidSlot.Itemstack.Equals(world, bucketContents, GlobalConstants.IgnoredStackAttributes);
 
@@ -162,7 +164,7 @@ namespace Vintagestory.API.Common
 
                         takenContentStack.StackSize *= bucketStack.StackSize;
                         takenContentStack.StackSize += liquidSlot.StackSize;
-                        
+
                         liquidSlot.Itemstack = takenContentStack;
                         liquidSlot.MarkDirty();
                         op.MovedQuantity = moveQuantity;
@@ -170,8 +172,6 @@ namespace Vintagestory.API.Common
                         var pos = op.ActingPlayer?.Entity?.Pos;
                         if (pos != null) op.World.PlaySoundAt(lprops?.FillSound ?? "sounds/effect/water-fill.ogg", pos.X, pos.InternalY, pos.Z);
                     }
-
-                    return;
                 }
 
                 return;

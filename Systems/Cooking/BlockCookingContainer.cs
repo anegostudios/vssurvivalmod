@@ -6,10 +6,11 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockCookingContainer : Block, IInFirepitRendererSupplier, IAttachableToEntity, IContainedCustomName
+    public class BlockCookingContainer : Block, IInFirepitRendererSupplier, IAttachableToEntity, IContainedCustomName, IContainedInteractable
     {
         public int MaxServingSize = 6;
         Cuboidi? attachmentArea;
@@ -20,7 +21,7 @@ namespace Vintagestory.GameContent
         public int RequiresBehindSlots { get; set; } = 0;
         public bool IsAttachable(Entity toEntity, ItemStack itemStack) => attrAtta != null;
         string? IAttachableToEntity.GetCategoryCode(ItemStack stack) => attrAtta?.GetCategoryCode(stack);
-        CompositeShape? IAttachableToEntity.GetAttachedShape(ItemStack stack, string slotCode) => attrAtta?.GetAttachedShape(stack, slotCode);
+        CompositeShape? IAttachableToEntity.GetAttachedShape(ItemStack stack, Entity onentity, string slotCode) => attrAtta?.GetAttachedShape(stack, onentity, slotCode);
         string[]? IAttachableToEntity.GetDisableElements(ItemStack stack) => attrAtta?.GetDisableElements(stack);
         string[]? IAttachableToEntity.GetKeepElements(ItemStack stack) => attrAtta?.GetKeepElements(stack);
         string? IAttachableToEntity.GetTexturePrefixCode(ItemStack stack) => attrAtta?.GetTexturePrefixCode(stack);
@@ -94,11 +95,12 @@ namespace Vintagestory.GameContent
                 var stack = stacks[i];
                 int portionSize = stack.StackSize;
 
-                if (stack.Collectible?.CombustibleProps == null)
+                var combustibleProps = stack.Collectible?.GetCombustibleProperties(world, stack, null);
+                if (combustibleProps == null)
                 {
-                    if (stack.Collectible?.Attributes?["waterTightContainerProps"].Exists == true)
+                    var props = BlockLiquidContainerBase.GetContainableProps(stack);
+                    if (props != null)
                     {
-                        var props = BlockLiquidContainerBase.GetContainableProps(stack);
                         portionSize = (int)(stack.StackSize / props?.ItemsPerLitre ?? 1);
                     }
 
@@ -107,7 +109,7 @@ namespace Vintagestory.GameContent
                 }
 
                 float singleDuration = stack.Collectible.GetMeltingDuration(world, cookingSlotsProvider, inputSlot);
-                duration += singleDuration * portionSize / stack.Collectible.CombustibleProps.SmeltedRatio;
+                duration += singleDuration * portionSize / combustibleProps.SmeltedRatio;
             }
 
             duration = Math.Max(40, duration / 3);
@@ -143,7 +145,7 @@ namespace Vintagestory.GameContent
             ItemStack[] stacks = GetCookingStacks(cookingSlotsProvider);
             CookingRecipe? recipe = GetMatchingCookingRecipe(world, stacks, out int quantityServings);
 
-            Block block = world.GetBlock(CodeWithVariant("type", "cooked"));
+            Block? block = world.GetBlock(CodeWithVariant("type", "cooked"));
 
             if (recipe == null) return;
 
@@ -197,6 +199,7 @@ namespace Vintagestory.GameContent
                 {
                     cookingSlotsProvider.Slots[i].Itemstack = null;
                 }
+                ArgumentNullException.ThrowIfNull(block);
                 ((BlockCookedContainer)block).SetContents(recipe.Code, quantityServings, outputStack, stacks);
 
                 outputSlot.Itemstack = outputStack;
@@ -206,7 +209,8 @@ namespace Vintagestory.GameContent
 
         internal float PutMeal(BlockPos pos, ItemStack[] itemStack, string recipeCode, float quantityServings)
         {
-            Block block = api.World.GetBlock(CodeWithVariant("type", "cooked"));
+            Block? block = api.World.GetBlock(CodeWithVariant("type", "cooked"));
+            ArgumentNullException.ThrowIfNull(block);
             api.World.BlockAccessor.SetBlock(block.Id, pos);
 
             float servingsToTransfer = Math.Min(quantityServings, this.Attributes["servingCapacity"].AsInt(1));
@@ -251,9 +255,10 @@ namespace Vintagestory.GameContent
                     if (quantity == -1) return Lang.Get("mealcreation-recipeerror", outputName?.ToLower() ?? Lang.Get("unknown"));
                     quantity *= recipe.CooksInto.Quantity;
 
-                    if (outStack?.Collectible.Attributes?["waterTightContainerProps"].Exists == true)
+                    var props = BlockLiquidContainerBase.GetContainableProps(outStack);
+                    if (props != null)
                     {
-                        float litreFloat = quantity / BlockLiquidContainerBase.GetContainableProps(outStack)?.ItemsPerLitre ?? 1;
+                        float litreFloat = quantity / props?.ItemsPerLitre ?? 1;
                         string litres;
 
                         if (litreFloat < 0.1)
@@ -371,6 +376,50 @@ namespace Vintagestory.GameContent
         public string GetContainedInfo(ItemSlot inSlot)
         {
             return Lang.GetWithFallback("contained-empty-container", "{0} (Empty)", inSlot.GetStackName());
+        }
+
+        public bool OnContainedInteractStart(BlockEntity be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        {
+            if (!byPlayer.WorldData.EntityControls.ShiftKey) return false;
+
+            var handSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
+            if (handSlot.Empty) return false;
+
+            if (handSlot.Itemstack.Block is not BlockCookedContainerBase mealContainer) return false;
+
+            if (mealContainer.GetQuantityServings(be.Api.World, handSlot.Itemstack) > 0)
+            {
+                mealContainer.ServeIntoStack(slot, handSlot, be.Api.World);
+                slot.MarkDirty();
+                (be as BlockEntityDisplay)?.MarkMeshesDirty();
+                be.MarkDirty(true);
+                return true;
+            }
+
+            return false;
+        }
+
+        public WorldInteraction[] GetContainedInteractionHelp(BlockEntity be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        {
+            bool notProtected = true;
+
+            if (be.Api.World.Claims != null && be.Api.World is IClientWorldAccessor clientWorld && clientWorld.Player?.WorldData.CurrentGameMode == EnumGameMode.Survival)
+            {
+                EnumWorldAccessResponse resp = clientWorld.Claims.TestAccess(clientWorld.Player, blockSel.Position, EnumBlockAccessFlags.Use);
+                if (resp != EnumWorldAccessResponse.Granted) notProtected = false;
+            }
+
+            if (notProtected) return
+            [
+                new() {
+                    ActionLangCode = "blockhelp-cookingcontainer-putfood",
+                    MouseButton = EnumMouseButton.Right,
+                    HotKeyCode = "shift",
+                    Itemstacks = BlockCookedContainerBase.TooltipMealStacks(api)
+                }
+            ];
+
+            return [];
         }
     }
 }

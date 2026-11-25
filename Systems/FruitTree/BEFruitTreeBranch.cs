@@ -14,20 +14,19 @@ namespace Vintagestory.GameContent
     {
         public int SideGrowth = 0;
         public Vec3i ParentOff;
-        
+
         public int GrowTries;
         public double lastGrowthAttemptTotalDays;
 
-        MeshData branchMesh;
-        Cuboidf[] colSelBoxes;
+        protected MeshData branchMesh;
+        protected Cuboidf[] colSelBoxes;
 
         /// <summary>
         /// A value of 0..1. Zero being just a single leaves block, 1 being fully grown tree
         /// </summary>
         public float? FastForwardGrowth;
 
-
-        bool initialized;
+        protected bool initialized;
 
         public override void Initialize(ICoreAPI api)
         {
@@ -45,6 +44,7 @@ namespace Vintagestory.GameContent
             {
                 lastGrowthAttemptTotalDays = Api.World.Calendar.TotalDays - 20 - ((float)FastForwardGrowth * 600);
                 InitTreeRoot(TreeType, true);
+                GetBehavior<FruitTreeRootBH>()?.GenRandomVernalizedHours();
                 FastForwardGrowth = null;
             }
 
@@ -111,8 +111,8 @@ namespace Vintagestory.GameContent
                     }
                 }
             }
-            
-            
+
+
             updateProperties();
 
             initCustomBehaviors(parentPlantStack, callInitialize);
@@ -211,7 +211,7 @@ namespace Vintagestory.GameContent
             {  "branch-w-end", new int[] { 0, 5, 2, 4, 3, 1 } },
             {  "branch-e-end", new int[] { 0, 5, 2, 4, 3, 1 } }
         };
-        
+
 
         public void updateProperties()
         {
@@ -308,7 +308,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            
+
 
             capi.Tesselator.TesselateShape("fruittreebranch", nowTesselatingShape, out mesh, this, new Vec3f(cshape.rotateX, cshape.rotateY, cshape.rotateZ), 0, 0, 0, null, selectiveElements?.ToArray());
 
@@ -324,7 +324,7 @@ namespace Vintagestory.GameContent
             return (SideGrowth + "-" + PartType + "-" + FoliageState + "-" + GrowthDir.Index + "-" + shapekey + "-" + TreeType).GetHashCode();
         }
 
-        
+
 
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
@@ -437,6 +437,6 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        
+
     }
 }

@@ -1,4 +1,4 @@
-﻿using Cairo;
+using Cairo;
 using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -11,7 +11,7 @@ namespace Vintagestory.GameContent
 {
     public class AuctionCellEntry : GuiElement, IGuiElementCell
     {
-        public bool Visible => true;
+        public bool Visible { get; set; } = true;
         ElementBounds IGuiElementCell.Bounds => this.Bounds;
 
 
@@ -39,6 +39,9 @@ namespace Vintagestory.GameContent
         float accum1Sec;
         string prevExpireText;
 
+        public WeightedAuction weightedAuction;
+        public bool skipHeightCalcOnce;
+
         public AuctionCellEntry(ICoreClientAPI capi, InventoryBase inventoryAuction, ElementBounds bounds, Auction auction, Action<int> onClick) : base(capi, bounds)
         {
             iconSize = (float)scaled(unscaledIconSize);
@@ -51,14 +54,10 @@ namespace Vintagestory.GameContent
             double offY = (unScaledCellHeight - font.UnscaledFontsize) / 2;
 
             scissorBounds = ElementBounds.FixedSize(unscaledIconSize, unscaledIconSize).WithParent(Bounds);
-            var stackNameTextBounds = ElementBounds.Fixed(0, offY, 270, 25).WithParent(Bounds).FixedRightOf(scissorBounds, 10);
-            var priceTextBounds = ElementBounds.Fixed(0, offY, 75, 25).WithParent(Bounds).FixedRightOf(stackNameTextBounds, 10);
-            var expireTextBounds = ElementBounds.Fixed(0, 0, 160, 25).WithParent(Bounds).FixedRightOf(priceTextBounds, 10);
-            var sellerTextBounds = ElementBounds.Fixed(0, offY, 110, 25).WithParent(Bounds).FixedRightOf(expireTextBounds, 10);
-
-
-
-
+            var stackNameTextBounds = ElementBounds.Fixed(0, offY, 270, 25).WithParent(Bounds).FixedRightOf(scissorBounds);
+            var priceTextBounds = ElementBounds.Fixed(0, offY, 85, 25).WithParent(Bounds).FixedRightOf(stackNameTextBounds);
+            var expireTextBounds = ElementBounds.Fixed(0, 0, 200, 25).WithParent(Bounds).FixedRightOf(priceTextBounds);
+            var sellerTextBounds = ElementBounds.Fixed(0, offY, 155, 25).WithParent(Bounds).FixedRightOf(expireTextBounds);
 
             stackNameTextElem = new GuiElementRichtext(capi, VtmlUtil.Richtextify(capi, dummySlot.Itemstack.GetName(), font), stackNameTextBounds);
 
@@ -66,14 +65,13 @@ namespace Vintagestory.GameContent
             ItemStack gearStack = capi.ModLoader.GetModSystem<ModSystemAuction>().SingleCurrencyStack;
             var comps = new RichTextComponentBase[] {
                 new RichTextComponent(capi, "" + auction.Price, font) { PaddingRight = 10, VerticalAlign = EnumVerticalAlign.Top },
-                new ItemstackTextComponent(capi, gearStack, fl * 2.5f, 0, EnumFloat.Inline) { VerticalAlign = EnumVerticalAlign.Top, offX = -scaled(fl * 0.5f), offY = -scaled(fl * 0.75f) } 
+                new ItemstackTextComponent(capi, gearStack, fl * 2.5f, 0, EnumFloat.Inline) { VerticalAlign = EnumVerticalAlign.Top, offX = -scaled(fl * 0.5f), offY = -scaled(fl * 0.75f) }
             };
 
             priceTextElem = new GuiElementRichtext(capi, comps, priceTextBounds);
             expireTextElem = new GuiElementRichtext(capi, VtmlUtil.Richtextify(capi, prevExpireText = auction.GetExpireText(capi), font.Clone().WithFontSize(14)), expireTextBounds);
             expireTextElem.BeforeCalcBounds();
             expireTextBounds.fixedY = 5 + (25 - expireTextElem.TotalHeight / RuntimeEnv.GUIScale) / 2;
-
 
             sellerTextElem = new GuiElementRichtext(capi, VtmlUtil.Richtextify(capi, auction.SellerName, font.Clone().WithOrientation(EnumTextOrientation.Right)), sellerTextBounds);
 
@@ -104,7 +102,7 @@ namespace Vintagestory.GameContent
             surface.Dispose();
         }
 
-        
+
         public void OnRenderInteractiveElements(ICoreClientAPI api, float deltaTime)
         {
             if (!composed) Recompose();
@@ -136,8 +134,8 @@ namespace Vintagestory.GameContent
             MouseOverCursor = expireTextElem.MouseOverCursor;
 
             sellerTextElem.RenderInteractiveElements(deltaTime);
-            
-            
+
+
 
             // 5. Hover overlay
             int dx = api.Input.MouseX;
@@ -184,6 +182,11 @@ namespace Vintagestory.GameContent
 
         public void UpdateCellHeight()
         {
+            if (skipHeightCalcOnce)
+            {
+                skipHeightCalcOnce = false;
+                return;
+            }
             Bounds.CalcWorldBounds();
             scissorBounds.CalcWorldBounds();
 
@@ -219,6 +222,8 @@ namespace Vintagestory.GameContent
             stackNameTextElem.Dispose();
             priceTextElem.Dispose();
             expireTextElem.Dispose();
+            sellerTextElem?.Dispose();
+            hoverTexture?.Dispose();
         }
 
     }

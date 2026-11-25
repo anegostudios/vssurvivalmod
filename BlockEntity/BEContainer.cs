@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Common;
@@ -60,13 +60,12 @@ namespace Vintagestory.GameContent
                 {
                     Inventory[i].Itemstack = stacks[i]?.Clone();
                 }
-
             }
         }
 
         public override void OnBlockBroken(IPlayer byPlayer = null)
         {
-            if (Api is ICoreServerAPI sapi)
+            if (Api is ICoreServerAPI)
             {
                 if (!Inventory.Empty)
                 {
@@ -76,8 +75,10 @@ namespace Vintagestory.GameContent
                         if (slot.Itemstack == null) continue;
                         sb.Append(slot.Itemstack.StackSize).Append("x ").Append(slot.Itemstack.Collectible?.Code).Append(", ");
                     }
-                    sapi.Logger.Audit(sb.ToString());
+
+                    Api.Logger.Audit(sb.ToString());
                 }
+
                 Inventory.DropAll(Pos.ToVec3d().Add(0.5, 0.5, 0.5));
             }
 
@@ -169,6 +170,16 @@ namespace Vintagestory.GameContent
         public virtual void DropContents(Vec3d atPos)
         {
 
+        }
+
+        public virtual void CheckInventoryClearedMidTick()
+        {
+
+        }
+
+        protected virtual void Dispose()
+        {
+            GetBehavior<BEBehaviorContainedBagInventory>()?.Dispose();
         }
     }
 }

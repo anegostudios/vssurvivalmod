@@ -1,9 +1,11 @@
+using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 
 namespace Vintagestory.GameContent
 {
@@ -15,26 +17,26 @@ namespace Vintagestory.GameContent
     public class CookingRecipeStack : JsonItemStack
     {
         /// <summary>
-        /// <!--<jsonoptional>Optional</jsonoptional><jsondefault>None</jsondefault>-->
         /// The hierachy/path of the shape element inside the recipe's shape file. Will be enabled/disabled in the final meal if this itemstack is used.
         /// </summary>
-        [DocumentAsJson] public string? ShapeElement;
+        [DocumentAsJson("Optional", "None")]
+        public string? ShapeElement;
 
         /// <summary>
-        /// <!--<jsonoptional>Optional</jsonoptional><jsondefault>None</jsondefault>-->
         /// Overrides a texture mapping for the shape element. Uses two strings, the first being the original texture code, and the second being a new texture code.
         /// </summary>
-        [DocumentAsJson] public string[]? TextureMapping;
+        [DocumentAsJson("Optional", "None")]
+        public string[]? TextureMapping;
 
         /// <summary>
-        /// <!--<jsonoptional>Optional</jsonoptional><jsondefault>None</jsondefault>-->
         /// A cooked version of the ingredient stack that also satisfies this recipe.
         /// </summary>
-        [DocumentAsJson] public JsonItemStack? CookedStack;
+        [DocumentAsJson("Optional", "None")]
+        public JsonItemStack? CookedStack;
 
-        public override void FromBytes(BinaryReader reader, IClassRegistryAPI instancer)
+        public override void FromBytes(ref BinarySpanReader reader, IClassRegistryAPI instancer)
         {
-            base.FromBytes(reader, instancer);
+            base.FromBytes(ref reader, instancer);
 
             if (!reader.ReadBoolean())
             {
@@ -48,8 +50,8 @@ namespace Vintagestory.GameContent
 
             if (!reader.ReadBoolean())
             {
-                CookedStack = new JsonItemStack();
-                CookedStack.FromBytes(reader, instancer);
+                CookedStack = new JsonItemStack { Code = null! };
+                CookedStack.FromBytes(ref reader, instancer);
             }
         }
 
@@ -111,48 +113,53 @@ namespace Vintagestory.GameContent
     public class CookingRecipeIngredient
     {
         /// <summary>
-        /// <!--<jsonoptional>Required</jsonoptional>-->
         /// The code for the recipe ingredient. Should be unique in the recipe, but isn't specifically used for anything.
         /// </summary>
-        [DocumentAsJson] required public string Code;
+        [DocumentAsJson("Required")]
+        required public string Code;
 
         /// <summary>
-        /// <!--<jsonoptional>Required</jsonoptional>-->
         /// The minimum quantity required for the given ingredient.
         /// </summary>
-        [DocumentAsJson] public int MinQuantity;
+        [DocumentAsJson("Required")]
+        public int MinQuantity;
 
         /// <summary>
-        /// <!--<jsonoptional>Required</jsonoptional>-->
         /// The maximum quantity required for the given ingredient.
         /// </summary>
-        [DocumentAsJson] public int MaxQuantity;
+        [DocumentAsJson("Required")]
+        public int MaxQuantity;
 
         /// <summary>
-        /// <!--<jsonoptional>Optional</jsonoptional><jsondefault>0</jsondefault>-->
         /// If this ingredient is a liquid, how many litres of it do we need for it to be a valid ingredient?
         /// </summary>
-        [DocumentAsJson] public float PortionSizeLitres;
+        [DocumentAsJson("Optional", "0")]
+        public float PortionSizeLitres;
 
         /// <summary>
-        /// <!--<jsonoptional>Required</jsonoptional>-->
         /// The string to use when displaying the ingredient name in the recipe book.
         /// </summary>
-        [DocumentAsJson] public string TypeName = "unknown";
+        [DocumentAsJson("Required")]
+        public string TypeName = "unknown";
 
         /// <summary>
-        /// <!--<jsonoptional>Required</jsonoptional>-->
         /// A list of item stacks that satisfy this ingredient.
         /// </summary>
-        [DocumentAsJson] required public CookingRecipeStack[] ValidStacks;
+        [DocumentAsJson("Required")]
+        required public CookingRecipeStack[] ValidStacks;
 
         /// <summary>
         /// The world accessor for the ingredient.
         /// </summary>
         public IWorldAccessor? world;
 
+        [Obsolete("Prefer using the BinarySpanReader overload.")]
         [MemberNotNull(nameof(Code), nameof(ValidStacks))]
         public virtual void FromBytes(BinaryReader reader, IClassRegistryAPI instancer)
+            => reader.UnsafeActAsBinarySpanReader(instancer, FromBytes);
+
+        [MemberNotNull(nameof(Code), nameof(ValidStacks))]
+        public virtual void FromBytes(ref BinarySpanReader reader, IClassRegistryAPI instancer)
         {
             Code = reader.ReadString();
             MinQuantity = reader.ReadInt32();
@@ -164,10 +171,9 @@ namespace Vintagestory.GameContent
             ValidStacks = new CookingRecipeStack[q];
             for (int i = 0; i < q; i++)
             {
-                ValidStacks[i] = new CookingRecipeStack();
-                ValidStacks[i].FromBytes(reader, instancer);
+                ValidStacks[i] = new CookingRecipeStack { Code = null! };
+                ValidStacks[i].FromBytes(ref reader, instancer);
             }
-
         }
 
         public virtual void ToBytes(BinaryWriter writer)

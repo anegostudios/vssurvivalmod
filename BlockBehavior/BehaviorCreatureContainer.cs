@@ -8,6 +8,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
@@ -28,7 +29,7 @@ namespace Vintagestory.GameContent
     [DocumentAsJson]
     public class BlockBehaviorCreatureContainer : BlockBehavior
     {
-        public double CreatureSurvivalDays = 1;
+        public double CreatureSurvivalDays = 2;
         ICoreAPI api;
 
         public BlockBehaviorCreatureContainer(Block block) : base(block)
@@ -53,7 +54,7 @@ namespace Vintagestory.GameContent
         }
 
         static Dictionary<string, MultiTextureMeshRef> containedMeshrefs = new Dictionary<string, MultiTextureMeshRef>();
-        
+
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
             if (HasAnimal(itemstack))
@@ -248,7 +249,7 @@ namespace Vintagestory.GameContent
                 if (slot.Empty) slot.Itemstack = leftOverBaskets;
                 else if (!byEntity.TryGiveItemStack(leftOverBaskets))
                 {
-                    byEntity.World.SpawnItemEntity(leftOverBaskets, byEntity.ServerPos.XYZ);
+                    byEntity.World.SpawnItemEntity(leftOverBaskets, byEntity.Pos.XYZ);
                 }
 
                 slot.MarkDirty();
@@ -278,6 +279,8 @@ namespace Vintagestory.GameContent
 
             var stack = slot.Itemstack;
 
+            entity.WatchedAttributes.SetLong("logicalId", entity.LogicalId);
+
             using (MemoryStream ms = new MemoryStream())
             {
                 BinaryWriter writer = new BinaryWriter(ms);
@@ -288,13 +291,13 @@ namespace Vintagestory.GameContent
                 stack.Attributes.SetBytes("animalSerialized", ms.ToArray());
 
                 double totalDaysReleased = entity.Attributes.GetDouble("totalDaysReleased");
-                double catchedDays = totalDaysReleased - entity.Attributes.GetDouble("totalDaysCaught");
+                double caughtDays = totalDaysReleased - entity.Attributes.GetDouble("totalDaysCaught");
                 double releasedDays = entity.World.Calendar.TotalDays - totalDaysReleased;
 
                 // A released creature should recover from being in a basket, at twice the speed that it can survive in a basket
                 // If it can survive 1 day in a basket
                 // It should fully recover after 0.5 days
-                double unrecoveredDays = Math.Max(0, catchedDays - releasedDays * 2);
+                double unrecoveredDays = Math.Max(0, caughtDays - releasedDays * 2);
 
                 stack.Attributes.SetDouble("totalDaysCaught", entity.World.Calendar.TotalDays - unrecoveredDays);
             }
@@ -302,7 +305,7 @@ namespace Vintagestory.GameContent
             entity.Die(EnumDespawnReason.PickedUp);
         }
 
-        public static bool ReleaseCreature(ItemSlot slot, BlockSelection blockSel, Entity byEntity) 
+        public static bool ReleaseCreature(ItemSlot slot, BlockSelection blockSel, Entity byEntity)
         {
             IWorldAccessor world = byEntity.World;
 
@@ -319,42 +322,38 @@ namespace Vintagestory.GameContent
             if (type == null) return false;
             var stack = slot.Itemstack;
 
-            using (MemoryStream ms = new MemoryStream(slot.Itemstack.Attributes.GetBytes("animalSerialized")))
+            var reader = new BinarySpanReader(slot.Itemstack.Attributes.GetBytes("animalSerialized"));
+            entity.FromBytes(ref reader, false, ((IServerWorldAccessor)world).RemappedEntities);
+
+            Vec3d spawnPos = blockSel.FullPosition;
+
+            Cuboidf collisionBox = type.SpawnCollisionBox.OmniNotDownGrowBy(0.1f);
+            if (world.CollisionTester.IsColliding(world.BlockAccessor, collisionBox, spawnPos, false)) return false;
+
+            entity.Pos.X = blockSel.Position.X + (blockSel.DidOffset ? 0 : blockSel.Face.Normali.X) + 0.5f;
+            entity.Pos.Y = blockSel.Position.Y + (blockSel.DidOffset ? 0 : blockSel.Face.Normali.Y);
+            entity.Pos.Z = blockSel.Position.Z + (blockSel.DidOffset ? 0 : blockSel.Face.Normali.Z) + 0.5f;
+            entity.Pos.Yaw = (float)world.Rand.NextDouble() * 2 * GameMath.PI;
+
+            entity.PositionBeforeFalling.Set(entity.Pos.X, entity.Pos.Y, entity.Pos.Z);
+            entity.Attributes.SetString("origin", "playerplaced");
+            entity.Attributes.SetDouble("totalDaysCaught", stack.Attributes.GetDouble("totalDaysCaught"));
+            entity.Attributes.SetDouble("totalDaysReleased", world.Calendar.TotalDays);
+
+            world.SpawnEntity(entity);
+            if (GetStillAliveDays(world, slot.Itemstack) < 0)
             {
-                BinaryReader reader = new BinaryReader(ms);
-                entity.FromBytes(reader, false, ((IServerWorldAccessor)world).RemappedEntities);
-
-                Vec3d spawnPos = blockSel.FullPosition;
-
-                Cuboidf collisionBox = type.SpawnCollisionBox.OmniNotDownGrowBy(0.1f);
-                if (world.CollisionTester.IsColliding(world.BlockAccessor, collisionBox, spawnPos, false)) return false;
-
-                entity.ServerPos.X = blockSel.Position.X + (blockSel.DidOffset ? 0 : blockSel.Face.Normali.X) + 0.5f;
-                entity.ServerPos.Y = blockSel.Position.Y + (blockSel.DidOffset ? 0 : blockSel.Face.Normali.Y);
-                entity.ServerPos.Z = blockSel.Position.Z + (blockSel.DidOffset ? 0 : blockSel.Face.Normali.Z) + 0.5f;
-                entity.ServerPos.Yaw = (float)world.Rand.NextDouble() * 2 * GameMath.PI;
-
-                entity.Pos.SetFrom(entity.ServerPos);
-                entity.PositionBeforeFalling.Set(entity.ServerPos.X, entity.ServerPos.Y, entity.ServerPos.Z);
-                entity.Attributes.SetString("origin", "playerplaced");
-                entity.Attributes.SetDouble("totalDaysCaught", stack.Attributes.GetDouble("totalDaysCaught"));
-                entity.Attributes.SetDouble("totalDaysReleased", world.Calendar.TotalDays);
-
-                world.SpawnEntity(entity);
-                if (GetStillAliveDays(world, slot.Itemstack) < 0)
+                (world.Api as ICoreServerAPI).Event.EnqueueMainThreadTask(() =>
                 {
-                    (world.Api as ICoreServerAPI).Event.EnqueueMainThreadTask(() =>
-                    {
-                        entity.Properties.ResolvedSounds = null;
-                        entity.Die(EnumDespawnReason.Death, new DamageSource() { CauseEntity = byEntity, Type = EnumDamageType.Hunger });
-                    }, "die");
-                }
-
-                stack.Attributes.RemoveAttribute("classname");
-                stack.Attributes.RemoveAttribute("creaturecode");
-                stack.Attributes.RemoveAttribute("animalSerialized");
-                stack.Attributes.RemoveAttribute("totalDaysCaught");
+                    entity.Die(EnumDespawnReason.Death, new DamageSource() { CauseEntity = byEntity, Type = EnumDamageType.Hunger });
+                    entity.Properties.ResolvedSounds = null;
+                }, "die");
             }
+
+            stack.Attributes.RemoveAttribute("classname");
+            stack.Attributes.RemoveAttribute("creaturecode");
+            stack.Attributes.RemoveAttribute("animalSerialized");
+            stack.Attributes.RemoveAttribute("totalDaysCaught");
 
             return true;
         }

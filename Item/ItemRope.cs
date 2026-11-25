@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Client;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
@@ -25,20 +25,6 @@ namespace Vintagestory.GameContent
     {
         ClothManager cm;
         SkillItem[] toolModes;
-
-        public override void TryMergeStacks(ItemStackMergeOperation op)
-        {
-            var sinkId = op.SinkSlot.Itemstack.Attributes.GetInt("clothId");
-            var srcId = op.SourceSlot.Itemstack.Attributes.GetInt("clothId");
-
-            if (sinkId != 0 || srcId != 0)
-            {
-                op.MovableQuantity = 0;
-                return;
-            }
-
-            base.TryMergeStacks(op);
-        }
 
         public override void OnLoaded(ICoreAPI api)
         {
@@ -121,6 +107,12 @@ namespace Vintagestory.GameContent
 
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
+            if (byEntity.Controls.ShiftKey && byEntity.Controls.CtrlKey)
+            {
+                base.OnHeldInteractStart(slot, byEntity, blockSel, entitySel, firstEvent, ref handling);
+                return;
+            }
+
             handling = EnumHandHandling.PreventDefault;
 
             int clothId = slot.Itemstack.Attributes.GetInt("clothId");
@@ -132,15 +124,19 @@ namespace Vintagestory.GameContent
             }
 
             ClothPoint[] pEnds = sys?.Ends;
+            IPlayer byPlayer = (byEntity as EntityPlayer)?.Player;
 
             // Place new rope
             if (sys == null)
             {
                 if (blockSel != null && api.World.BlockAccessor.GetBlock(blockSel.Position).HasBehavior<BlockBehaviorRopeTieable>())
                 {
-                    sys = attachToBlock(byEntity, blockSel.Position, slot, null);
-                } else
-                if (entitySel != null)
+                    if (byPlayer == null || byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+                    {
+                        sys = attachToBlock(byEntity, blockSel.Position, slot, null);
+                    }
+                }
+                else if (entitySel != null)
                 {
                     sys = attachToEntity(byEntity, entitySel, slot, null, out bool relayRopeInteractions);
                     if (relayRopeInteractions) {
@@ -154,13 +150,16 @@ namespace Vintagestory.GameContent
                 if (sys != null) splitStack(slot, byEntity);
 
 
-            // Modify existing rope
-            } else
+            }
+            else // Modify existing rope
             {
                 // Remove rope from world (looking at block it is currently attached to)
                 if (blockSel != null && (blockSel.Position.Equals(pEnds[0].PinnedToBlockPos) || blockSel.Position.Equals(pEnds[1].PinnedToBlockPos)))
                 {
-                    detach(sys, slot, byEntity, null, blockSel.Position);
+                    if (byPlayer == null || byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+                    {
+                        detach(sys, slot, byEntity, null, blockSel.Position);
+                    }
                     return;
                 }
 
@@ -174,8 +173,11 @@ namespace Vintagestory.GameContent
                 // Connect rope to something else
                 if (blockSel != null && api.World.BlockAccessor.GetBlock(blockSel.Position).HasBehavior<BlockBehaviorRopeTieable>())
                 {
-                    sys = attachToBlock(byEntity, blockSel.Position, slot, sys);
-                    pEnds = sys?.Ends;
+                    if (byPlayer == null || byEntity.World.Claims.TryAccess(byPlayer, blockSel.Position, EnumBlockAccessFlags.BuildOrBreak))
+                    {
+                        sys = attachToBlock(byEntity, blockSel.Position, slot, sys);
+                        pEnds = sys?.Ends;
+                    }
                 }
                 else if (entitySel != null)
                 {
@@ -216,20 +218,20 @@ namespace Vintagestory.GameContent
 
                 if (!byEntity.TryGiveItemStack(split))
                 {
-                    api.World.SpawnItemEntity(split, byEntity.ServerPos.XYZ);
+                    api.World.SpawnItemEntity(split, byEntity.Pos.XYZ);
                 }
             }
         }
 
         private ClothSystem createRope(ItemSlot slot, EntityAgent byEntity, Vec3d targetPos)
         {
-            ClothSystem sys;
-
-            sys = ClothSystem.CreateRope(api, cm, byEntity.Pos.XYZ, targetPos, null);
+            ClothSystem sys = ClothSystem.CreateRope(api, cm, byEntity.Pos.XYZ, targetPos, null);
 
             Vec3d lpos = new Vec3d(0, byEntity.LocalEyePos.Y - 0.3f, 0);
-            Vec3d aheadPos = lpos.AheadCopy(0.1f, byEntity.SidedPos.Pitch, byEntity.SidedPos.Yaw).AheadCopy(0.4f, byEntity.SidedPos.Pitch, byEntity.SidedPos.Yaw - GameMath.PIHALF);
-            EntityPos pos = byEntity.SidedPos;
+            Vec3d aheadPos = lpos
+                .AheadCopy(0.1f, byEntity.Pos.Pitch, byEntity.Pos.Yaw)
+                .AheadCopy(0.4f, byEntity.Pos.Pitch, byEntity.Pos.Yaw - GameMath.PIHALF)
+            ;
 
             sys.FirstPoint.PinTo(byEntity, aheadPos.ToVec3f());
             cm.RegisterCloth(sys);
@@ -271,10 +273,9 @@ namespace Vintagestory.GameContent
             relayRopeInteractions = false;
             Entity toEntity = toEntitySel.Entity;
 
-            var ebho = toEntity.GetBehavior<EntityBehaviorOwnable>();
-            if (ebho != null && !ebho.IsOwner(byEntity))
+            if (EntityUtil.RestrictedByOwnership(toEntity, byEntity))
             {
-                (toEntity.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "requiersownership", Lang.Get("mount-interact-requiresownership"));
+                (toEntity.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "requiresownership", Lang.Get("mount-interact-requiresownership"));
                 return null;
             }
 
@@ -311,7 +312,7 @@ namespace Vintagestory.GameContent
 
             if (sys == null)
             {
-                sys = createRope(slot, byEntity, toEntity.SidedPos.XYZ);
+                sys = createRope(slot, byEntity, toEntity.Pos.XYZ);
                 bh.Attach(sys, sys.LastPoint);
             }
             else
@@ -441,7 +442,7 @@ namespace Vintagestory.GameContent
                     if (p != null)
                     {
                         Vec3d lpos = new Vec3d(0, entity.LocalEyePos.Y - 0.3f, 0);
-                        Vec3d aheadPos = lpos.AheadCopy(0.1f, entity.SidedPos.Pitch, entity.SidedPos.Yaw).AheadCopy(0.4f, entity.SidedPos.Pitch, entity.SidedPos.Yaw - GameMath.PIHALF);
+                        Vec3d aheadPos = lpos.AheadCopy(0.1f, entity.Pos.Pitch, entity.Pos.Yaw).AheadCopy(0.4f, entity.Pos.Pitch, entity.Pos.Yaw - GameMath.PIHALF);
 
                         p.PinTo(entity, aheadPos.ToVec3f());
 

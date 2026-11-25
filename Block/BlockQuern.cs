@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Client;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
@@ -10,6 +10,7 @@ using Vintagestory.GameContent.Mechanics;
 
 namespace Vintagestory.GameContent
 {
+
     public class BlockQuern : BlockMPBase
     {
 
@@ -28,7 +29,7 @@ namespace Vintagestory.GameContent
             return ok;
         }
 
-        public override bool DoParticalSelection(IWorldAccessor world, BlockPos pos)
+        public override bool DoPartialSelection(IWorldAccessor world, BlockPos pos)
         {
             return true;
         }
@@ -119,7 +120,7 @@ namespace Vintagestory.GameContent
 
         }
 
-        public override bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face)
+        public override bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face, BlockMPBase forBlock)
         {
             return face == BlockFacing.UP || face == BlockFacing.DOWN;
         }
@@ -137,7 +138,7 @@ namespace Vintagestory.GameContent
                     var mpc = GetBEBehavior<BEBehaviorMPConsumer>(pos);
                     if (mpc != null)
                     {
-                        entity.SidedPos.Yaw += frameTime * mpc.TrueSpeed * 2.5f * (mpc.isRotationReversed() ? -1 : 1);
+                        entity.Pos.Yaw += frameTime * mpc.TrueSpeed * 2.5f * (mpc.IsRotationReversed() ? -1 : 1);
                     }
                 }
                 else
@@ -147,7 +148,7 @@ namespace Vintagestory.GameContent
                     var capi = api as ICoreClientAPI;
                     if (capi.World.Player.Entity.EntityId == entity.EntityId)
                     {
-                        var sign = mpc.isRotationReversed() ? -1 : 1;
+                        var sign = mpc.IsRotationReversed() ? -1 : 1;
                         if (capi.World.Player.CameraMode != EnumCameraMode.Overhead)
                         {
                             capi.Input.MouseYaw += frameTime * mpc.TrueSpeed * 2.5f * sign;

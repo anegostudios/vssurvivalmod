@@ -1,5 +1,5 @@
-﻿using System;
-using System.Drawing;
+using System;
+using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
@@ -9,17 +9,60 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Grow antlers on entity and drop them seasonally.
+    /// <br/>Uses the "antlergrowth" code
+    /// </summary>
+    /// <example><code lang="json">
+    ///"behaviors": [
+    /// {
+    ///     "code": "antlergrowth",
+    ///     "variants": ["01", "02", "03", "04", "05", "06", "07", "08"],
+    ///     "beginGrowMonth": 7,
+    ///     "growDurationMonths": 6.5,
+    ///     "grownDurationMonths": 2,
+    ///     "shedDurationMonths": 0.5,
+    ///     "noItemDrop": false
+    /// },
+    ///],
+    /// </code></example>
+    [DocumentAsJson]
+    [AddDocumentationProperty("overrideType", "If set, it gets used in VariantGroups instead of \"type\" variant", "System.String", "Optional", "type", false)]
+    [AddDocumentationProperty("variants", "All antler types listed under \"type\" or overrideType variant", "System.String[]", "Required", "", false)]
     public class EntityBehaviorAntlerGrowth : EntityBehaviorContainer, IHarvestableDrops
     {
         InventoryGeneric creatureInv;
+
         Item[] variants;
+
+        /// <summary>
+        /// The month when the creature begins to regrow antlers
+        /// </summary>
+        [DocumentAsJson("Optional", "-1")]
         float beginGrowMonth;
+
+        /// <summary>
+        /// Amount of months until full growth. Must be less than 12 months
+        /// </summary>
+        [DocumentAsJson("Optional", "0")]
         float growDurationMonths;
+
+        /// <summary>
+        /// Amount of months the antler can be at full growth until shedding
+        /// </summary>
+        [DocumentAsJson("Optional", "0")]
         float grownDurationMonths;
+
+        /// <summary>
+        /// Amount of months the antler can shed. Higher values allows players to find them for longer. A value of 0 will make antlers never drop
+        /// </summary>
+        [DocumentAsJson("Recommended", "0")]
         float shedDurationMonths;
+
         /// <summary>
         /// If true, the creature sheds its antlers but drops no mountable antler item for the player to find, eg. water deer has tiny "fangs"
         /// </summary>
+        [DocumentAsJson("Optional", "false")]
         bool noItemDrop;
 
         int MaxGrowth
@@ -40,6 +83,7 @@ namespace Vintagestory.GameContent
 
         public EntityBehaviorAntlerGrowth(Entity entity) : base(entity)
         {
+            creatureInv = new InventoryGeneric(1, InventoryClassName + "-" + entity.EntityId, entity.Api, (id, inv) => new ItemSlot(inv));
         }
 
         public override void Initialize(EntityProperties properties, JsonObject attributes)
@@ -51,9 +95,11 @@ namespace Vintagestory.GameContent
             {
                 variants = new Item[variantnames.Length];
                 string entityType = attributes["overrideType"]?.ToString() ?? entity.Properties.Variant["type"];
+                string itemBaseName = attributes["itemBaseName"].AsString() ?? "antler-" + entityType;
+
                 for (int i = 0; i < variantnames.Length; i++)
                 {
-                    AssetLocation loc = new AssetLocation("antler-" + entityType + "-" + variantnames[i]);
+                    AssetLocation loc = new AssetLocation(itemBaseName + "-" + variantnames[i]);
                     if ((variants[i] = entity.Api.World.GetItem(loc)) == null)
                     {
                         entity.Api.Logger.Warning("Missing antler item of code " + loc.ToShortString() + " for creature " + entity.Code.ToShortString());
@@ -67,7 +113,6 @@ namespace Vintagestory.GameContent
             shedDurationMonths = attributes["shedDurationMonths"].AsFloat();
             noItemDrop = attributes["noItemDrop"].AsBool(false);
 
-            creatureInv = new InventoryGeneric(1, InventoryClassName + "-" + entity.EntityId, entity.Api, (id, inv) => new ItemSlot(inv));
             loadInv();
         }
 
@@ -107,6 +152,12 @@ namespace Vintagestory.GameContent
             if (accum3s > 3)
             {
                 accum3s = 0;
+
+                if (entity.WatchedAttributes.HasAttribute("overrideAntlerStage"))
+                {
+                    SetAntler(entity.WatchedAttributes.GetInt("overrideAntlerStage"));
+                    return;
+                }
 
                 if (beginGrowMonth >= 0)
                 {
@@ -212,7 +263,7 @@ namespace Vintagestory.GameContent
 
         public ItemStack[] GetHarvestableDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer)
         {
-            return new ItemStack[] { creatureInv[0].Itemstack };
+            return noItemDrop ? [] : [ creatureInv[0].Itemstack ];
         }
 
         public override bool TryGiveItemStack(ItemStack itemstack, ref EnumHandling handling)

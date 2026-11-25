@@ -1,6 +1,7 @@
-﻿using System.IO;
+using System.IO;
 using Vintagestory.API;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 
 #nullable disable
 
@@ -24,20 +25,20 @@ namespace Vintagestory.GameContent
     {
 
         /// <summary>
-        /// <!--<jsonoptional>Required</jsonoptional>-->
         /// The minimum ratio of this metal to be used in the alloy, between 0 and 1.
         /// </summary>
-        [DocumentAsJson] public float MinRatio;
+        [DocumentAsJson("Required")]
+        public float MinRatio;
 
         /// <summary>
-        /// <!--<jsonoptional>Required</jsonoptional>-->
         /// The maximum ratio of this metal to be used in the alloy, between 0 and 1.
         /// </summary>
-        [DocumentAsJson] public float MaxRatio;
+        [DocumentAsJson("Required")]
+        public float MaxRatio;
 
-        public override void FromBytes(BinaryReader reader, IClassRegistryAPI instancer)
+        public override void FromBytes(ref BinarySpanReader reader, IClassRegistryAPI instancer)
         {
-            base.FromBytes(reader, instancer);
+            base.FromBytes(ref reader, instancer);
             MinRatio = reader.ReadSingle();
             MaxRatio = reader.ReadSingle();
         }

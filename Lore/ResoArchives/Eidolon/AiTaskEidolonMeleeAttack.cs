@@ -44,13 +44,13 @@ namespace Vintagestory.GameContent
             }, EnumEntitySearchType.Creatures);
 
 
-            
+
         }
 
         protected override bool hasDirectContact(Entity targetEntity, float minDist, float minVerDist)
         {
-            Cuboidd targetBox = targetEntity.SelectionBox.ToDouble().Translate(targetEntity.ServerPos.X, targetEntity.ServerPos.Y, targetEntity.ServerPos.Z);
-            tmpPos.Set(entity.ServerPos).Add(0, entity.SelectionBox.Y2 / 2, 0).Ahead(entity.SelectionBox.XSize / 2, 0, entity.ServerPos.Yaw);
+            Cuboidd targetBox = targetEntity.SelectionBox.ToDouble().Translate(targetEntity.Pos.X, targetEntity.Pos.Y, targetEntity.Pos.Z);
+            tmpPos.Set(entity.Pos).Add(0, entity.SelectionBox.Y2 / 2, 0).Ahead(entity.SelectionBox.XSize / 2, 0, entity.Pos.Yaw);
             double dist = targetBox.ShortestDistanceFrom(tmpPos);
             double vertDist = Math.Abs(targetBox.ShortestVerticalDistanceFrom(tmpPos.Y));
             if (dist >= minDist || vertDist >= minVerDist) return false;

@@ -1,6 +1,8 @@
+using System;
 using System.Collections.Generic;
-using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 
 #nullable disable
 
@@ -9,8 +11,19 @@ namespace Vintagestory.GameContent
     public class EntityBoatSeat : EntityRideableSeat
     {
         public override EnumMountAngleMode AngleMode => config.AngleMode;
+        protected override bool ApplyEntityRenderAnglesToSeatPosition => false;
         Dictionary<string, string> animations => (Entity as EntityBoat).MountAnimations;
         public string actionAnim;
+
+        public override EntityPos SeatPosition
+        {
+            get
+            {
+                EntityPos pos = base.SeatPosition;
+                ((EntityBoat)Entity).ApplySwayToPosition(pos);
+                return pos;
+            }
+        }
 
         public override AnimationMetaData SuggestedAnimation
         {
@@ -28,10 +41,22 @@ namespace Vintagestory.GameContent
         }
 
 
+        #region Rider hunger
+
+        public float RiderSatietyLossPerSteeringSecond;
+        public float RiderSatietyLossPerPaddlingSecond;
+
+        #endregion
 
         public EntityBoatSeat(IMountable mountablesupplier, string seatId, SeatConfig config) : base(mountablesupplier, seatId, config)
         {
             RideableClassName = "boat";
+
+            var hungerProps = config?.Attributes?["riderSatLoss"];
+            if (hungerProps?.Exists != true) return;
+
+            RiderSatietyLossPerSteeringSecond = hungerProps["perSteerSec"].AsFloat();
+            RiderSatietyLossPerPaddlingSecond = hungerProps["perPaddleSec"].AsFloat();
         }
 
         public override bool CanMount(EntityAgent entityAgent)
@@ -51,8 +76,58 @@ namespace Vintagestory.GameContent
             entityAgent.AnimManager.StartAnimation(config.Animation ?? animations["idle"]);
         }
 
+        public override bool CanUnmount(EntityAgent entityAgent)
+        {
+            return !DoTeleportOnUnmount || !entityAgent.Alive || TryGetExitPosition(entityAgent, out _);
+        }
+
+        /// <summary>
+        /// Uses the seat facing to find standing room, regardless of where the passenger looks.
+        /// Seat attributes.unmountForwardOffset sets the distance in blocks (default 0.9).
+        /// </summary>
+        public bool TryGetExitPosition(EntityAgent entityAgent, out EntityPos exitPos)
+        {
+            var boat = (EntityBoat)Entity;
+            var transform = boat.GetKinematicColliderTransform();
+            exitPos = SeatPosition.Copy();
+            double localYaw = exitPos.Yaw - boat.Pos.Yaw + config.MountRotation.Y * GameMath.DEG2RAD;
+            double distance = config.Attributes?["unmountForwardOffset"].AsDouble(0.9) ?? 0.9;
+            // Boat forward motion uses the opposite of the entity view vector.
+            transform.TransformDirection(Math.Sin(localYaw) * distance, 0, Math.Cos(localYaw) * distance, out double dx, out double dy, out double dz);
+            exitPos.Add(dx, dy, dz);
+
+            var world = entityAgent.World;
+            var playerBox = entityAgent.OriginCollisionBox;
+            var colliderBehavior = boat.GetBehavior<EntityBehaviorKinematicCollider>();
+            if (world.CollisionScene.TryGetCollider(colliderBehavior?.ColliderId ?? 0, out var collider))
+            {
+                collider = collider.WithTransform(boat.Pos.Dimension, transform);
+                if (!collider.CanCarryEntities || !new CollisionQueryFilter(CollisionLayer.Entity).Matches(collider)) return false;
+
+                // Search below the seat so overhead colliders cannot become the exit floor... Like the spars.
+                double startY = exitPos.Y + 0.01 - playerBox.Y1;
+                var box = playerBox.ToDouble().Translate(exitPos.X, startY, exitPos.Z);
+                double drop = playerBox.Height;
+                if (!collider.TrySweepAABB(box, 0, -drop, 0, out double fraction)) return false;
+                exitPos.Y = startY - drop * fraction + 0.001;
+                box.SetAndTranslate(playerBox, exitPos.X, exitPos.Y, exitPos.Z);
+                if (collider.Intersects(box)) return false;
+            }
+
+            if (world.CollisionTester.IsColliding(world.BlockAccessor, playerBox, exitPos.XYZ, exitPos.Dimension, false)) return false;
+            return !world.CollisionScene.IntersectsAny(playerBox.ToDouble().Translate(exitPos.X, exitPos.Y, exitPos.Z), exitPos.Dimension, false, new CollisionQueryFilter(CollisionLayer.Entity, excludedOwnerEntityId: boat.EntityId));
+        }
+
         public override void DidUnmount(EntityAgent entityAgent)
         {
+            EntityPos exitPos = null;
+            bool standUp = DoTeleportOnUnmount && TryGetExitPosition(entityAgent, out exitPos);
+            if (standUp)
+            {
+                entityAgent.Pos.SetPos(exitPos);
+                entityAgent.Pos.Motion.Set(0, 0, 0);
+            }
+
             if (Passenger != null)
             {
                 Passenger.AnimManager?.StopAnimation(animations["ready"]);
@@ -60,67 +135,26 @@ namespace Vintagestory.GameContent
                 Passenger.AnimManager?.StopAnimation(animations["backwards"]);
                 Passenger.AnimManager?.StopAnimation(animations["idle"]);
                 Passenger.AnimManager?.StopAnimation(config.Animation);
-                Passenger.SidedPos.Roll = 0;
+                Passenger.Pos.Roll = 0;
             }
 
             base.DidUnmount(entityAgent);
+
+            if (standUp)
+            {
+                var colliderBehavior = Entity.GetBehavior<EntityBehaviorKinematicCollider>();
+                bool carried = entityAgent.GetBehavior<EntityBehaviorControlledPhysics>()?.TryStandOnCollider(colliderBehavior?.ColliderId ?? 0, ((EntityBoat)Entity).GetKinematicColliderTransform(), resetMountedCollisionBox: true) == true;
+                entityAgent.OnGround = carried;
+                entityAgent.Swimming = false;
+                entityAgent.FeetInLiquid = false;
+                if (!carried) entityAgent.Pos.Motion.Set(Entity.Pos.Motion);
+                entityAgent.PhysicsUpdateWatcher?.Invoke(0, entityAgent.Pos.XYZ);
+            }
         }
 
         protected override void tryTeleportToFreeLocation()
         {
-            var world = Passenger.World;
-            var ba = Passenger.World.BlockAccessor;
-
-            double shortestDistance = 99;
-            Vec3d shortestTargetPos = null;
-
-            // var entityBoat = this.Entity;
-            /*var ebox = entityBoat.CollisionBox.ToDouble().Translate(entityBoat.ServerPos.XYZ);
-            var passengerBox = Passenger.CollisionBox.ToDouble().Translate(Passenger.ServerPos.XYZ);*/
-             //&& !ebox.Intersects(passengerBox)
-
-            for (int dx = -4; dx <= 4; dx++)
-            {
-                for (int dy = 0; dy < 2; dy++)
-                {
-                    for (int dz = -4; dz <= 4; dz++)
-                    {
-                        var targetPos = Passenger.ServerPos.XYZ.AsBlockPos.ToVec3d().Add(dx + 0.5, dy + 0.1, dz + 0.5);
-                        var block = ba.GetBlockRaw((int)targetPos.X, (int)(targetPos.Y - 0.15), (int)targetPos.Z, BlockLayersAccess.MostSolid);
-                        var upfblock = ba.GetBlockRaw((int)targetPos.X, (int)(targetPos.Y), (int)targetPos.Z, BlockLayersAccess.Fluid);
-                        if (upfblock.Id == 0 && block.SideSolid[BlockFacing.UP.Index] && !world.CollisionTester.IsColliding(ba, Passenger.CollisionBox, targetPos, false))
-                        {
-                            var dist = targetPos.DistanceTo(Passenger.ServerPos.XYZ);
-                            if (dist < shortestDistance)
-                            {
-                                shortestDistance = dist;
-                                shortestTargetPos = targetPos;
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (shortestTargetPos != null)
-            {
-                this.Passenger.TeleportTo(shortestTargetPos);
-                return;
-            }
-
-            bool found = false;
-            for (int dx = -1; !found && dx <= 1; dx++)
-            {
-                for (int dz = -1; !found && dz <= 1; dz++)
-                {
-                    var targetPos = Passenger.ServerPos.XYZ.AsBlockPos.ToVec3d().Add(dx + 0.5, 1.1, dz + 0.5);
-                    if (!world.CollisionTester.IsColliding(ba, Passenger.CollisionBox, targetPos, false))
-                    {
-                        this.Passenger.TeleportTo(targetPos);
-                        found = true;
-                        break;
-                    }
-                }
-            }
+            // Might not be needed anymore, needs more testing.
         }
     }
 

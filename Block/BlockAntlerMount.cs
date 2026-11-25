@@ -77,28 +77,8 @@ namespace Vintagestory.GameContent
 
         public override bool DoPlaceBlock(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ItemStack byItemStack)
         {
-            // bool result = true;
-            // bool preventDefault = false;
-            //
-            // foreach (BlockBehavior behavior in BlockBehaviors)
-            // {
-            //     EnumHandling handled = EnumHandling.PassThrough;
-            //
-            //     bool behaviorResult = behavior.DoPlaceBlock(world, byPlayer, blockSel, byItemStack, ref handled);
-            //
-            //     if (handled != EnumHandling.PassThrough)
-            //     {
-            //         result &= behaviorResult;
-            //         preventDefault = true;
-            //     }
-            //
-            //     if (handled == EnumHandling.PreventSubsequent) break;
-            // }
-            //
-            // if (preventDefault) return result;
             bool val = base.DoPlaceBlock(world, byPlayer, blockSel, byItemStack);
 
-            // world.BlockAccessor.SetBlock(BlockId, blockSel.Position, byItemStack);
             if (val)
             {
                 var bect = world.BlockAccessor.GetBlockEntity(blockSel.Position).GetBehavior<BEBehaviorShapeMaterialFromAttributes>();
@@ -122,6 +102,7 @@ namespace Vintagestory.GameContent
 
             return val;
         }
+
 
         public override void GetDecal(IWorldAccessor world, BlockPos pos, ITexPositionSource decalTexSource, ref MeshData decalModelData, ref MeshData blockModelData)
         {

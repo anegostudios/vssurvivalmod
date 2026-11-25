@@ -1,4 +1,5 @@
-﻿using ProtoBuf;
+using ProtoBuf;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
@@ -249,11 +250,11 @@ namespace Vintagestory.GameContent
         }
 
 
-        private void ModSystemTutorial_OnInitCustomPages(List<GuiHandbookPage> pages)
+        private void ModSystemTutorial_OnInitCustomPages(List<IFlatListItem> listItems)
         {
             foreach (var val in Tutorials)
             {
-                pages.Add(new GuiHandbookTutorialPage(capi, "tutorial-" + val.Key));
+                listItems.Add(new GuiHandbookTutorialPage(capi, "tutorial-" + val.Key));
             }
         }
 
@@ -278,14 +279,14 @@ namespace Vintagestory.GameContent
 
         private void onCollectedItemstack(ItemStackReceivedPacket packet)
         {
-            ItemStack stack = new ItemStack(packet.stackbytes);
+            ItemStack stack = new ItemStack(packet.stackbytes.AsSpan());
             stack.ResolveBlockOrItem(api.World);
             onStateUpdate((step) => step.OnItemStackReceived(stack, packet.eventname));
         }
 
         private void onBlockPlaced(BlockPlacedPacket packet)
         {
-            ItemStack stack = packet.withStackInHands == null ? null : new ItemStack(packet.withStackInHands);
+            ItemStack stack = packet.withStackInHands == null ? null : new ItemStack(packet.withStackInHands.AsSpan());
             stack?.ResolveBlockOrItem(api.World);
             onStateUpdate((step) => step.OnBlockPlaced(packet.pos, api.World.Blocks[packet.blockId], stack));
         }

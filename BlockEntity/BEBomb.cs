@@ -72,20 +72,6 @@ namespace Vintagestory.GameContent
             base.Initialize(api);
 
             RegisterGameTickListener(OnTick, 50);
-            
-
-            if (fuseSound == null && api.Side == EnumAppSide.Client)
-            {
-                fuseSound = ((IClientWorldAccessor)api.World).LoadSound(new SoundParams()
-                {
-                    Location = new AssetLocation("sounds/effect/fuse"),
-                    ShouldLoop = true,
-                    Position = Pos.ToVec3f().Add(0.5f, 0.25f, 0.5f),
-                    DisposeOnFinish = false,
-                    Volume = 0.1f,
-                    Range = 16,
-                });
-            }
 
             blastRadius = Block.Attributes["blastRadius"].AsInt(4);
             injureRadius = Block.Attributes["injureRadius"].AsInt(8);
@@ -167,7 +153,20 @@ namespace Vintagestory.GameContent
         {
             if (lit) return;
 
-            if (Api.Side == EnumAppSide.Client) fuseSound.Start();
+            if (fuseSound == null && Api is ICoreClientAPI capi)
+            {
+                fuseSound = capi.World.LoadSound(new SoundParams()
+                {
+                    Location = new AssetLocation("sounds/effect/fuse"),
+                    ShouldLoop = true,
+                    Position = Pos.ToVec3f().Add(0.5f, 0.25f, 0.5f),
+                    DisposeOnFinish = false,
+                    Volume = 0.1f,
+                    Range = 16,
+                });
+                fuseSound.Start();
+            }
+
             lit = true;
             RemainingSeconds = FuseTimeSeconds;
             ignitedByPlayerUid = byPlayer?.PlayerUID;
@@ -183,7 +182,7 @@ namespace Vintagestory.GameContent
 
             if (!lit && Api?.Side == EnumAppSide.Client)
             {
-                fuseSound.Stop();
+                fuseSound?.Stop();
             }
         }
 

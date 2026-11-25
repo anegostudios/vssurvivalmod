@@ -16,12 +16,11 @@ namespace Vintagestory.GameContent
         {
             base.OnLoaded(api);
 
-            if (api.Side != EnumAppSide.Client) return;
-            ICoreClientAPI capi = api as ICoreClientAPI;
+            if (api is not ICoreClientAPI capi) return;
 
-            interactions = ObjectCacheUtil.GetOrCreate(api, "bombInteractions", () =>
+            interactions = ObjectCacheUtil.GetOrCreate(capi, "bombInteractions", () =>
             {
-                List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(api, false);
+                List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(capi, false);
 
                 return new WorldInteraction[] {
                     new WorldInteraction()
@@ -30,7 +29,7 @@ namespace Vintagestory.GameContent
                         ActionLangCode = "blockhelp-bomb-ignite",
                         Itemstacks = canIgniteStacks.ToArray(),
                         GetMatchingStacks = (wi, bs, es) => {
-                            BlockEntityBomb bebomb = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityBomb;
+                            BlockEntityBomb bebomb = capi.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityBomb;
                             return bebomb == null || bebomb.IsLit ? null : wi.Itemstacks;
                         }
                     }

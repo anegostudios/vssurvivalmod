@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Common;
+using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using System;
 using System.Text;
@@ -8,6 +8,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Config;
 using System.Collections.Generic;
 using System.Collections;
+using Vintagestory.API.Datastructures;
 
 #nullable disable
 
@@ -37,7 +38,7 @@ namespace Vintagestory.GameContent
                 {
                     dict[this.Code] = renderinfo.ModelRef = CreateOverlaidMeshRef(capi, Shape, stepParentShapes);
                 }
-                
+
             }
 
             base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
@@ -98,6 +99,12 @@ namespace Vintagestory.GameContent
 
             capi.Tesselator.TesselateShape(meta, shape, out var meshdata);
 
+            // Remove "weak frost" flag, which is used for entity rendering only. It overlaps with a wind mode so it causes held items to move in the wind
+            for (int i = 0; i < meshdata.VerticesCount; i++)
+            {
+                meshdata.Flags[i] &= ~EnumWindBitModeMask.Fruit;
+            }
+
             return capi.Render.UploadMultiTextureMesh(meshdata);
         }
 
@@ -131,6 +138,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
+            ITreeAttribute spawnerTree = slot.Itemstack.Attributes.GetTreeAttribute("spawner");
             if (!(byEntity is EntityPlayer) || player.WorldData.CurrentGameMode != EnumGameMode.Creative)
             {
                 slot.TakeOut(1);
@@ -154,14 +162,13 @@ namespace Vintagestory.GameContent
 
             if (entity != null)
             {
-                entity.ServerPos.X = blockSel.Position.X + (blockSel.DidOffset ? 0 : blockSel.Face.Normali.X) + 0.5f;
-                entity.ServerPos.Y = blockSel.Position.Y + (blockSel.DidOffset ? 0 : blockSel.Face.Normali.Y);
-                entity.ServerPos.Z = blockSel.Position.Z + (blockSel.DidOffset ? 0 : blockSel.Face.Normali.Z) + 0.5f;
-                entity.ServerPos.Yaw = byEntity.Pos.Yaw + GameMath.PI;
-                entity.ServerPos.Dimension = blockSel.Position.dimension;
+                entity.Pos.X = blockSel.Position.X + (blockSel.DidOffset ? 0 : blockSel.Face.Normali.X) + 0.5f;
+                entity.Pos.Y = blockSel.Position.Y + (blockSel.DidOffset ? 0 : blockSel.Face.Normali.Y);
+                entity.Pos.Z = blockSel.Position.Z + (blockSel.DidOffset ? 0 : blockSel.Face.Normali.Z) + 0.5f;
+                entity.Pos.Yaw = byEntity.Pos.Yaw + GameMath.PI;
+                entity.Pos.Dimension = blockSel.Position.dimension;
 
-                entity.Pos.SetFrom(entity.ServerPos);
-                entity.PositionBeforeFalling.Set(entity.ServerPos.X, entity.ServerPos.Y, entity.ServerPos.Z);
+                entity.PositionBeforeFalling.Set(entity.Pos.X, entity.Pos.Y, entity.Pos.Z);
 
                 entity.Attributes.SetString("origin", "playerplaced");
 
@@ -174,23 +181,18 @@ namespace Vintagestory.GameContent
                     }
                 }
 
+                entity.WatchedAttributes.SetBool("noSpawnAnim", true);
+                if (spawnerTree != null)
+                {
+                    entity.WatchedAttributes["spawner"] = spawnerTree;
+                }
                 byEntity.World.SpawnEntity(entity);
+                entity.WatchedAttributes.RemoveAttribute("spawner");
+
                 handHandling = EnumHandHandling.PreventDefaultAction;
             }
         }
-
-        public override string GetHeldTpIdleAnimation(ItemSlot activeHotbarSlot, Entity byEntity, EnumHand hand)
-        {
-            EntityProperties type = byEntity.World.GetEntityType(new AssetLocation(Code.Domain, CodeEndWithoutParts(1)));
-            if (type == null) return base.GetHeldTpIdleAnimation(activeHotbarSlot, byEntity, hand);
-
-            float size = Math.Max(type.CollisionBoxSize.X, type.CollisionBoxSize.Y);
-
-            if (size > 1) return "holdunderarm";
-            return "holdbothhands";
-        }
-
-        public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot)
+         public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot)
         {
             return new WorldInteraction[] {
                 new WorldInteraction()

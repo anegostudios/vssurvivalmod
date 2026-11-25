@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using ProtoBuf;
@@ -19,7 +20,7 @@ namespace Vintagestory.GameContent
         OpenLidOthers = 5001
     }
 
-    [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
+    [ProtoContract]
     public class OpenContainerLidPacket
     {
         [ProtoMember(1)]
@@ -59,17 +60,16 @@ namespace Vintagestory.GameContent
             return ms.ToArray();
         }
 
-        public static BlockEntityContainerOpen FromBytes(byte[] data)
+        public static BlockEntityContainerOpen FromBytes(SerializedData data)
         {
             var inst = new BlockEntityContainerOpen();
 
-            using var ms = new MemoryStream(data);
-            var reader = new BinaryReader(ms);
+            var reader = data.AsBinaryReader();
             inst.BlockEntity = reader.ReadString();
             inst.DialogTitle = reader.ReadString();
             inst.Columns = reader.ReadByte();
             inst.Tree = new TreeAttribute();
-            inst.Tree.FromBytes(reader);
+            inst.Tree.FromBytes(ref reader);
 
             return inst;
         }
@@ -82,8 +82,8 @@ namespace Vintagestory.GameContent
     {
         protected GuiDialogBlockEntity invDialog;
 
-        public virtual AssetLocation OpenSound { get; set; } = new AssetLocation("sounds/block/chestopen");
-        public virtual AssetLocation CloseSound { get; set; } = new AssetLocation("sounds/block/chestclose");
+        public SoundAttributes OpenSound = new SoundAttributes(AssetLocation.Create("sounds/block/chestopen"), true);
+        public SoundAttributes CloseSound = new SoundAttributes(AssetLocation.Create("sounds/block/chestclose"), true);
 
         public abstract bool OnPlayerRightClick(IPlayer byPlayer, BlockSelection blockSel);
 
@@ -101,12 +101,8 @@ namespace Vintagestory.GameContent
             Inventory.OnInventoryOpened += OnInventoryOpened;
             Inventory.OnInventoryClosed += OnInventoryClosed;
 
-            var os = Block.Attributes?["openSound"]?.AsString();
-            var cs = Block.Attributes?["closeSound"]?.AsString();
-            var opensound = os == null ? null : AssetLocation.Create(os, Block.Code.Domain);
-            var closesound = cs == null ? null : AssetLocation.Create(cs, Block.Code.Domain);
-            OpenSound = opensound ?? OpenSound;
-            CloseSound = closesound ?? CloseSound;
+            OpenSound = Block.Attributes?["openSound"].AsObject<SoundAttributes?>(null, Block.Code.Domain, true) ?? OpenSound;
+            CloseSound = Block.Attributes?["closeSound"].AsObject<SoundAttributes?>(null, Block.Code.Domain, true) ?? CloseSound;
         }
 
         protected void OnInventoryOpened(IPlayer player)
@@ -141,56 +137,71 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void OnReceivedClientPacket(IPlayer player, int packetid, byte[] data)
+        public override void OnReceivedClientPacket(IServerPlayer player, int packetId, SerializedData data, ref CachedAccessPerms perms)
         {
-            if (packetid == (int)EnumBlockEntityPacketId.Close)
+            switch (packetId)
             {
-                player.InventoryManager?.CloseInventory(Inventory);
-                data = SerializerUtil.Serialize(new OpenContainerLidPacket(player.Entity.EntityId, false));
-                ((ICoreServerAPI)Api).Network.BroadcastBlockEntityPacket(
-                    Pos,
-                    (int)EnumBlockContainerPacketId.OpenLidOthers,
-                    data,
-                    (IServerPlayer)player
-                );
+                case < (int)EnumBlockEntityPacketId.Open:
+                    if (!perms.TryAccessingBlockAtPos(EnumBlockAccessFlags.Use, true, "openable container"))
+                    {
+                        Inventory.InvNetworkUtil.SendInventoryRollback(player, packetId, data);
+                        break;
+                    }
+
+                    Inventory.InvNetworkUtil.HandleClientPacket(player, packetId, data);
+                    // Tell server to save this chunk to disk again
+                    Api.World.BlockAccessor.GetChunkAtBlockPos(Pos).MarkModified();
+
+                    break;
+
+
+                case (int)EnumBlockEntityPacketId.Open:
+                {
+                    if (!perms.TryAccessingBlockAtPos(EnumBlockAccessFlags.Use, true, "openable container"))
+                    {
+                        // No reverting, just don't open it.
+                        break;
+                    }
+
+                    player.InventoryManager?.OpenInventory(Inventory);
+                    var responseData = SerializerUtil.Serialize(new OpenContainerLidPacket(player.Entity.EntityId, true));
+                    ((ICoreServerAPI)Api).Network.BroadcastBlockEntityPacket(
+                        new(Pos),
+                        (int)EnumBlockContainerPacketId.OpenLidOthers,
+                        new SerializedData(responseData),
+                        player
+                    );
+
+                    break;
+                }
+
+
+                case (int)EnumBlockEntityPacketId.Close:
+                {
+                    // No perms check here, closing is always allowed.
+
+                    player.InventoryManager?.CloseInventory(Inventory);
+                    var responseData = SerializerUtil.Serialize(new OpenContainerLidPacket(player.Entity.EntityId, false));
+                    ((ICoreServerAPI)Api).Network.BroadcastBlockEntityPacket(
+                        new(Pos),
+                        (int)EnumBlockContainerPacketId.OpenLidOthers,
+                        new SerializedData(responseData),
+                        player
+                    );
+
+                    break;
+                }
             }
 
-
-            if (!Api.World.Claims.TryAccess(player, Pos, EnumBlockAccessFlags.Use))
-            {
-                Api.World.Logger.Audit("Player {0} sent an inventory packet to openable container at {1} but has no claim access. Rejected.", player.PlayerName, Pos);
-                return;
-            }
-
-            if (packetid < 1000)
-            {
-                Inventory.InvNetworkUtil.HandleClientPacket(player, packetid, data);
-
-                // Tell server to save this chunk to disk again
-                Api.World.BlockAccessor.GetChunkAtBlockPos(Pos).MarkModified();
-
-                return;
-            }
-
-            if (packetid == (int)EnumBlockEntityPacketId.Open)
-            {
-                player.InventoryManager?.OpenInventory(Inventory);
-                data = SerializerUtil.Serialize(new OpenContainerLidPacket(player.Entity.EntityId, true));
-                ((ICoreServerAPI)Api).Network.BroadcastBlockEntityPacket(
-                    Pos,
-                    (int)EnumBlockContainerPacketId.OpenLidOthers,
-                    data,
-                    (IServerPlayer)player
-                );
-            }
-
+            // Rennorb 20.06.2026 explain: Why not call the base here?
+            // base.OnReceivedClientPacket(player, packetId, data, ref perms);
         }
 
-        public override void OnReceivedServerPacket(int packetid, byte[] data)
+        public override void OnReceivedServerPacket(int packetId, SerializedData packetData)
         {
             IClientWorldAccessor clientWorld = (IClientWorldAccessor)Api.World;
 
-            if (packetid == (int)EnumBlockContainerPacketId.OpenInventory)
+            if (packetId == (int)EnumBlockContainerPacketId.OpenInventory)
             {
                 if (invDialog != null)
                 {
@@ -200,27 +211,22 @@ namespace Vintagestory.GameContent
                     return;
                 }
 
-                var blockContainer = BlockEntityContainerOpen.FromBytes(data);
+                var blockContainer = BlockEntityContainerOpen.FromBytes(packetData);
                 Inventory.FromTreeAttributes(blockContainer.Tree);
                 Inventory.ResolveBlocksOrItems();
 
                 invDialog = new GuiDialogBlockEntityInventory(blockContainer.DialogTitle, Inventory, Pos, blockContainer.Columns, Api as ICoreClientAPI);
 
                 Block block = Api.World.BlockAccessor.GetBlock(Pos);
-                string os = block.Attributes?["openSound"]?.AsString();
-                string cs = block.Attributes?["closeSound"]?.AsString();
-                AssetLocation opensound = os == null ? null : AssetLocation.Create(os, block.Code.Domain);
-                AssetLocation closesound = cs == null ? null : AssetLocation.Create(cs, block.Code.Domain);
-
-                invDialog.OpenSound = opensound ?? this.OpenSound;
-                invDialog.CloseSound = closesound ?? this.CloseSound;
+                invDialog.OpenSound = block.Attributes?["openSound"]?.AsObject<SoundAttributes?>(null, Block.Code.Domain, true) ?? this.OpenSound;
+                invDialog.CloseSound = block.Attributes?["closeSound"]?.AsObject<SoundAttributes?>(null, Block.Code.Domain, true) ?? this.CloseSound;
 
                 invDialog.TryOpen();
             }
 
-            if (packetid == (int)EnumBlockContainerPacketId.OpenLidOthers)
+            if (packetId == (int)EnumBlockContainerPacketId.OpenLidOthers)
             {
-                var containerPacket = SerializerUtil.Deserialize<OpenContainerLidPacket>(data);
+                var containerPacket = packetData.Deserialize<OpenContainerLidPacket>();
 
                 if(this is BlockEntityGenericTypedContainer genericContainer)
                 {
@@ -240,7 +246,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (packetid == (int)EnumBlockEntityPacketId.Close)
+            if (packetId == (int)EnumBlockEntityPacketId.Close)
             {
                 clientWorld.Player.InventoryManager.CloseInventory(Inventory);
                 if (invDialog?.IsOpened() == true) invDialog?.TryClose();
@@ -262,8 +268,9 @@ namespace Vintagestory.GameContent
             Dispose();
         }
 
-        public virtual void Dispose()
+        protected override void Dispose()
         {
+            base.Dispose();
             if (invDialog?.IsOpened() == true) invDialog?.TryClose();
             invDialog?.Dispose();
 

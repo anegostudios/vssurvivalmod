@@ -54,7 +54,7 @@ namespace Vintagestory.GameContent
 
             return false;
         }
-        
+
 
 
         internal bool Construct(ItemSlot slot, IWorldAccessor world, BlockPos pos, IPlayer player)
@@ -77,7 +77,7 @@ namespace Vintagestory.GameContent
                 {
                     pile.inventory[0].Itemstack = slot.TakeOut(player.Entity.Controls.CtrlKey ? pile.BulkTakeQuantity : pile.DefaultTakeQuantity);
                 }
-                
+
                 pile.MarkDirty();
                 world.BlockAccessor.MarkBlockDirty(pos);
                 world.PlaySoundAt(new AssetLocation("sounds/block/ingot"), pos, pile.inventory[0].Itemstack.StackSize / pile.MaxStackSize - 0.5, player, false);
@@ -88,10 +88,10 @@ namespace Vintagestory.GameContent
                 GetCollisionBoxes(world.BlockAccessor, pos)[0],
                 pos.X, pos.Y, pos.Z,
                 player.Entity.SelectionBox,
-                player.Entity.SidedPos.XYZ
+                player.Entity.Pos.XYZ
             ))
             {
-                player.Entity.SidedPos.Y += GetCollisionBoxes(world.BlockAccessor, pos)[0].Y2;
+                player.Entity.Pos.Y += GetCollisionBoxes(world.BlockAccessor, pos)[0].Y2;
             }
 
             (player as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);

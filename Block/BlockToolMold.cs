@@ -1,6 +1,7 @@
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -32,10 +33,10 @@ namespace Vintagestory.GameContent
                 JsonItemStack ojstack = Attributes["drop"].AsObject<JsonItemStack>();
                 if (ojstack != null)
                 {
-                    MetalProperty metals = capi.Assets.TryGet("worldproperties/block/metal.json").ToObject<MetalProperty>();
-                    for (int i = 0; i < metals.Variants.Length; i++)
+                    var metals = api.ModLoader.GetModSystem<SurvivalCoreSystem>().metalsByCode.Values.ToArray();
+                    for (int i = 0; i < metals.Length; i++)
                     {
-                        string metaltype = metals.Variants[i].Code.Path;
+                        string metaltype = metals[i].Code.Path;
                         JsonItemStack jstack = ojstack.Clone();
                         jstack.Code.Path = jstack.Code.Path.Replace("{metal}", metaltype);
 
@@ -73,24 +74,8 @@ namespace Vintagestory.GameContent
 
             interactions = ObjectCacheUtil.GetOrCreate(api, Variant["tooltype"] + "moldBlockInteractions", () =>
             {
-                List<ItemStack> smeltedContainerStacks = new List<ItemStack>();
-                List<ItemStack> chiselStacks = new List<ItemStack>();
-
-                foreach (CollectibleObject obj in api.World.Collectibles)
-                {
-                    if (obj is BlockSmeltedContainer)
-                    {
-                        smeltedContainerStacks.Add(new ItemStack(obj));
-                    }
-                }
-
-                foreach (CollectibleObject obj in api.World.Collectibles)
-                {
-                    if (obj.Tool is EnumTool.Chisel)
-                    {
-                        chiselStacks.Add(new ItemStack(obj));
-                    }
-                }
+                ItemStack[] smeltedContainerStacks = [.. api.World.Blocks.Where(block => block is BlockSmeltedContainer)
+                                                                         .Select(block => new ItemStack(block))];
 
                 return new WorldInteraction[] {
                     new WorldInteraction()
@@ -98,7 +83,7 @@ namespace Vintagestory.GameContent
                         ActionLangCode = "blockhelp-toolmold-pour",
                         HotKeyCode = "shift",
                         MouseButton = EnumMouseButton.Right,
-                        Itemstacks = smeltedContainerStacks.ToArray(),
+                        Itemstacks = smeltedContainerStacks,
                         GetMatchingStacks = (wi, bs, es) =>
                         {
                             BlockEntityToolMold betm = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityToolMold;
@@ -132,7 +117,7 @@ namespace Vintagestory.GameContent
                         ActionLangCode = "blockhelp-toolmold-chiselmoldforbits",
                         HotKeyCode = null,
                         MouseButton = EnumMouseButton.Left,
-                        Itemstacks = chiselStacks.ToArray(),
+                        Itemstacks = ObjectCacheUtil.GetToolStacks(api, EnumTool.Chisel),
                         GetMatchingStacks = (wi, bs, es) =>
                         {
                             BlockEntityToolMold betm = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityToolMold;

@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Client;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
@@ -19,7 +19,7 @@ namespace Vintagestory.GameContent
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
-            this.type = string.Intern(Code.Path.Substring(0, Code.Path.IndexOf('-')));
+            this.type = Code.Path.Substring(0, Code.Path.IndexOf('-')).DeDuplicate();
             this.open = Variant["state"] == "opened";
         }
 

@@ -1,4 +1,4 @@
-﻿using ProtoBuf;
+using ProtoBuf;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -109,7 +109,6 @@ namespace Vintagestory.GameContent
                .RegisterMessageType(typeof(DidTeleport))
                .SetMessageHandler<TeleporterLocation>(OnSetLocationReceived)
             ;
-
         }
 
         private TextCommandResult handleSetTlPos(TextCommandCallingArgs args)
@@ -143,6 +142,12 @@ namespace Vintagestory.GameContent
 
         private void OnSetLocationReceived(IServerPlayer fromPlayer, TeleporterLocation networkMessage)
         {
+            if (fromPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative) {
+                sapi.World.Logger.Audit("Player {0} tried to set teleporter parameters for {1} ({2}) while not being in creative mode!", fromPlayer, networkMessage.SourcePos, networkMessage.SourceName);
+                return;
+            }
+
+            // Rennorb 26.06.2026 correctness explain: Do we not need to update the dictionary key here?
             Locations[networkMessage.SourcePos].SourcePos = networkMessage.SourcePos;
             Locations[networkMessage.SourcePos].TargetPos = networkMessage.TargetPos;
             Locations[networkMessage.SourcePos].SourceName = networkMessage.SourceName;
@@ -168,7 +173,7 @@ namespace Vintagestory.GameContent
                 sapi.World.Logger.Error("Failed loading tp locations:");
                 sapi.World.Logger.Error(e);
             }
-            
+
         }
 
 
@@ -231,7 +236,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        
+
 
         private string OnGetValuesDialog(string elementCode)
         {

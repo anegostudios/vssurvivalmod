@@ -13,7 +13,7 @@ using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockSmeltedContainer : Block, IGroundStoredParticleEmitter
+    public class BlockSmeltedContainer : Block, IGroundStoredParticleEmitter, IHeldParticleEmitter
     {
         public static SimpleParticleProperties smokeHeld;
         public static SimpleParticleProperties smokePouring;
@@ -79,21 +79,64 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnHeldIdle(ItemSlot slot, EntityAgent byEntity)
+        public virtual void SpawnHeldParticles(ItemStack stack, EntityAgent byEntity, Vec3d worldPos, float dt)
         {
-            if (byEntity.World is IClientWorldAccessor && byEntity.World.Rand.NextDouble() < 0.02)
+            if (stack.Attributes.GetLong("nowPouringEntityId") == byEntity.EntityId)
             {
-                KeyValuePair<ItemStack, int> contents = GetContents(byEntity.World, slot.Itemstack);
+                // Looks silly in first person because the pouring particles drip onto the floor in front of the molds
+                // due to picking distance being 4 blocks
+                var capi = api.World as ICoreClientAPI;
+                if (capi != null && byEntity.EntityId == capi.World.Player.Entity.EntityId && (capi.World.Player.CameraMode != EnumCameraMode.FirstPerson || capi.Settings.Bool["immersiveFpMode"])) return;
 
-                if (contents.Key != null && !HasSolidifed(slot.Itemstack, contents.Key, byEntity.World))
+                // ~25% chance per frame at 60 FPS
+                if (byEntity.World.Rand.NextDouble() < 15 * dt)
                 {
-                    Vec3d pos =
-                        byEntity.Pos.XYZ.Add(byEntity.LocalEyePos.X, byEntity.LocalEyePos.Y - 0.5f, byEntity.LocalEyePos.Z)
-                        .Ahead(0.3f, byEntity.Pos.Pitch, byEntity.Pos.Yaw)
-                        .Ahead(0.47f, 0, byEntity.Pos.Yaw + GameMath.PIHALF)
-                    ;
+                    var player = (byEntity as EntityPlayer)?.Player;
+                    float bodyYaw = byEntity.BodyYaw;
 
-                    smokeHeld.MinPos = pos.AddCopy(-0.05, -0.05, -0.05);
+                    bigMetalSparks.GravityEffect = 0.5f;
+                    bigMetalSparks.Bounciness = 0.6f;
+                    bigMetalSparks.MinQuantity = 1;
+                    bigMetalSparks.AddQuantity = 1;
+                    bigMetalSparks.MinPos = worldPos;
+                    bigMetalSparks.AddPos.Set(0, 0, 0);
+                    bigMetalSparks.MinSize = 0.75f;
+
+                    float dx = (float)Math.Sin(bodyYaw + GameMath.PIHALF) / 2f;
+                    float dz = (float)Math.Cos(bodyYaw + GameMath.PIHALF) / 2f;
+
+                    bigMetalSparks.MinVelocity.Set(-0.1f + dx, -1, -0.1f + dz);
+                    bigMetalSparks.AddVelocity.Set(0.2f + dz, 1, 0.2f + dz);
+                    byEntity.World.SpawnParticles(bigMetalSparks, player);
+
+                    byEntity.World.SpawnParticles(
+                        4,
+                        ColorUtil.ToRgba(50, 180, 180, 180),
+                        worldPos,
+                        worldPos.AddCopy(dx / 5f, -0.3, dz / 5f),
+                        new Vec3f(-0.5f, 0f, -0.5f),
+                        new Vec3f(0.5f, 0f, 0.5f),
+                        1.5f,
+                        -0.05f,
+                        0.4f,
+                        EnumParticleModel.Quad,
+                        player
+                    );
+                }
+
+                return;
+            }
+
+            if (byEntity.Controls.HandUse != EnumHandInteract.None || byEntity.ServerControls.HandUse != EnumHandInteract.None) return;
+
+            // Runs approximately once per second at any frame rate.
+            if (byEntity.World.Rand.NextDouble() < dt)
+            {
+                KeyValuePair<ItemStack, int> contents = GetContents(byEntity.World, stack);
+
+                if (contents.Key != null && !HasSolidifed(stack, contents.Key, byEntity.World))
+                {
+                    smokeHeld.MinPos = worldPos.AddCopy(-0.05, -0.05, -0.05);
                     byEntity.World.SpawnParticles(smokeHeld);
                 }
             }
@@ -123,7 +166,7 @@ namespace Vintagestory.GameContent
                     handHandling = EnumHandHandling.PreventDefault;
                     return;
                 }
-                
+
 
                 if (HasSolidifed(slot.Itemstack, contents.Key, byEntity.World))
                 {
@@ -160,7 +203,7 @@ namespace Vintagestory.GameContent
         {
             if (blockSel == null) return false;
 
-            ILiquidMetalSink be = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position) as ILiquidMetalSink; 
+            ILiquidMetalSink be = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position) as ILiquidMetalSink;
             if (be == null) return false;
 
             if (!be.CanReceiveAny) return false;
@@ -183,7 +226,7 @@ namespace Vintagestory.GameContent
 
                 if ((int)(30 * secondsUsed) % 3 == 1)
                 {
-                    Vec3d pos = 
+                    Vec3d pos =
                         byEntity.Pos.XYZ
                         .Ahead(0.1f, byEntity.Pos.Pitch, byEntity.Pos.Yaw)
                         .Ahead(1.0f, byEntity.Pos.Pitch, byEntity.Pos.Yaw - GameMath.PIHALF)
@@ -232,12 +275,12 @@ namespace Vintagestory.GameContent
 
                 int transferedAmount = Math.Min(2, contents.Value);
 
-                
+
                 be.ReceiveLiquidMetal(contents.Key, ref transferedAmount, temp);
 
                 int newAmount = Math.Max(0, contents.Value - (2 - transferedAmount));
                 slot.Itemstack.Attributes.SetInt("units", newAmount);
-                
+
 
                 if (newAmount <= 0 && byEntity.World is IServerWorldAccessor)
                 {
@@ -251,96 +294,10 @@ namespace Vintagestory.GameContent
 
                 return true;
             }
-            
+
             return true;
         }
 
-
-        public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
-        {
-            base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
-
-            if (target == EnumItemRenderTarget.HandTp || target == EnumItemRenderTarget.HandTpOff)
-            {
-                long eid = itemstack.Attributes.GetLong("nowPouringEntityId");
-                if (eid != 0)
-                {
-                    var entity = capi.World.GetEntityById(eid) as EntityAgent;
-                    if (entity == null) return;
-
-                    if (eid != capi.World.Player.Entity.EntityId || capi.World.Player.CameraMode != EnumCameraMode.FirstPerson || capi.Settings.Bool["immersiveFpMode"])
-                    {
-                        SpawnPouringParticles(entity);
-                    }
-                }
-            }
-        }
-
-        void SpawnPouringParticles(EntityAgent byEntity)
-        {
-            EntityPlayer eplr = byEntity as EntityPlayer;
-            var player = eplr.Player;
-
-            AttachmentPointAndPose apap = byEntity.AnimManager.Animator.GetAttachmentPointPose("RightHand");
-            if (apap != null && api.World.Rand.NextDouble() < 0.25)
-            {
-                AttachmentPoint ap = apap.AttachPoint;
-
-                float bodyYaw = eplr.BodyYaw;
-                float rotX = eplr.Properties.Client.Shape != null ? eplr.Properties.Client.Shape.rotateX : 0;
-                float rotY = eplr.Properties.Client.Shape != null ? eplr.Properties.Client.Shape.rotateY : 0;
-                float rotZ = eplr.Properties.Client.Shape != null ? eplr.Properties.Client.Shape.rotateZ : 0;
-                float bodyPitch = eplr.WalkPitch;
-
-                float ry = bodyYaw + (90 + rotY) * GameMath.DEG2RAD;
-
-                var mat = new Matrixf()
-                    .RotateX(eplr.SidedPos.Roll + rotX * GameMath.DEG2RAD)
-                    .RotateY(ry)
-                    .RotateZ(bodyPitch + rotZ * GameMath.DEG2RAD)
-                    .Scale(eplr.Properties.Client.Size, eplr.Properties.Client.Size, eplr.Properties.Client.Size)
-                    .Translate(-0.5f, 0, -0.5f)
-                    .RotateX(eplr.sidewaysSwivelAngle)
-                    .Translate(ap.PosX / 16f, ap.PosY / 16f, ap.PosZ / 16f)
-                    .Mul(apap.AnimModelMatrix)
-                    .RotateY(-ry)
-                    .Translate(-0.15f, -0.45f, -0.1f)
-                    .RotateY(ry)
-                ;
-
-                float[] pos = new float[4] { 0, 0f, 0, 1 };
-                float[] endVec = Mat4f.MulWithVec4(mat.Values, pos);
-
-                bigMetalSparks.GravityEffect = 0.5f;
-                bigMetalSparks.Bounciness = 0.6f;
-                bigMetalSparks.MinQuantity = 1;
-                bigMetalSparks.AddQuantity = 1;
-                bigMetalSparks.MinPos = new Vec3d(eplr.Pos.X + endVec[0], eplr.Pos.InternalY + endVec[1], eplr.Pos.Z + endVec[2]);
-                bigMetalSparks.AddPos.Set(0, 0, 0);
-                bigMetalSparks.MinSize = 0.75f;
-
-                float dx = (float)Math.Sin(bodyYaw + GameMath.PIHALF) / 2f;
-                float dz = (float)Math.Cos(bodyYaw + GameMath.PIHALF) / 2f;
-
-                bigMetalSparks.MinVelocity.Set(-0.1f + dx, -1, -0.1f + dz);
-                bigMetalSparks.AddVelocity.Set(0.2f + dz, 1, 0.2f + dz);
-                byEntity.World.SpawnParticles(bigMetalSparks, eplr?.Player);
-
-                byEntity.World.SpawnParticles(
-                    4,
-                    ColorUtil.ToRgba(50, 180, 180, 180),
-                    bigMetalSparks.MinPos,
-                    bigMetalSparks.MinPos.AddCopy(dx / 5f, -0.3, dz / 5f),
-                    new Vec3f(-0.5f, 0f, -0.5f),
-                    new Vec3f(0.5f, 0f, 0.5f),
-                    1.5f,
-                    -0.05f,
-                    0.4f,
-                    EnumParticleModel.Quad,
-                    eplr.Player
-                );
-            }
-        }
 
         public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
@@ -348,7 +305,7 @@ namespace Vintagestory.GameContent
             slot.MarkDirty();
 
             if (blockSel == null) return;
-                 
+
             ILiquidMetalSink be = byEntity.World.BlockAccessor.GetBlockEntity(blockSel.Position) as ILiquidMetalSink;
             be?.OnPourOver();
         }
@@ -365,7 +322,7 @@ namespace Vintagestory.GameContent
             return GetDrops(world, pos, null)[0];
         }
 
-        
+
         public override BlockDropItemStack[] GetDropsForHandbook(ItemStack handbookStack, IPlayer forPlayer)
         {
             return GetHandbookDropsFromBreakDrops(handbookStack, forPlayer);
@@ -436,7 +393,7 @@ namespace Vintagestory.GameContent
                     dsc.Append(Lang.Get("metalwork-toocold"));
                 }
             }
-            
+
             base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
         }
 
@@ -445,7 +402,7 @@ namespace Vintagestory.GameContent
         {
             if (ownStack?.Collectible == null || contentstack == null) return false;
 
-            return ownStack.Collectible.GetTemperature(world, ownStack) < 0.9 * contentstack.Collectible.GetMeltingPoint(world, null, null);
+            return ownStack.Collectible.GetTemperature(world, ownStack) < 0.9 * contentstack.Collectible.GetMeltingPoint(world, null, new DummySlot(contentstack));
         }
 
         public void SetContents(ItemStack stack, ItemStack output, int units)

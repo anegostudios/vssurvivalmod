@@ -1,4 +1,4 @@
-﻿using Cairo;
+using Cairo;
 using System;
 using System.IO;
 using Vintagestory.API.Client;
@@ -70,8 +70,8 @@ namespace Vintagestory.GameContent
                     .AddStaticText(Lang.Get("Northwest"), CairoFont.WhiteDetailText(), line = line.BelowCopy(0, textLineY).WithFixedWidth(width))
                     .AddTextInput(input = input.BelowCopy(0, inputLineY).WithFixedWidth(width), OnTextChangedDlg, CairoFont.WhiteSmallText(), "text7")
 
-                    .AddSmallButton(Lang.Get("Cancel"), OnButtonCancel, input = input.BelowCopy(0, 20).WithFixedSize(100, 20).WithAlignment(EnumDialogArea.LeftFixed).WithFixedPadding(10, 2), EnumButtonStyle.Normal)
-                    .AddSmallButton(Lang.Get("Save"), OnButtonSave, input = input.FlatCopy().WithFixedSize(100, 20).WithAlignment(EnumDialogArea.RightFixed).WithFixedPadding(10, 2), EnumButtonStyle.Normal)
+                    .AddSmallButton(Lang.Get("general-cancel"), OnButtonCancel, input = input.BelowCopy(0, 20).WithFixedSize(100, 20).WithAlignment(EnumDialogArea.LeftFixed).WithFixedPadding(10, 2), EnumButtonStyle.Normal)
+                    .AddSmallButton(Lang.Get("general-save"), OnButtonSave, input = input.FlatCopy().WithFixedSize(100, 20).WithAlignment(EnumDialogArea.RightFixed).WithFixedPadding(10, 2), EnumButtonStyle.Normal)
                 .EndChildElements()
                 .Compose()
             ;
@@ -80,6 +80,7 @@ namespace Vintagestory.GameContent
             {
                 GuiElementTextInput texinput = SingleComposer.GetTextInput("text" + i);
                 texinput.SetValue(textByCardinalDirection[i]);
+                texinput.SetMaxLength(BlockEntitySignPost.MaxTextLengthPerSign);
             }
         }
 

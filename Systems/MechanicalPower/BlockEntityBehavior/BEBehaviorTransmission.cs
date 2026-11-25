@@ -1,4 +1,5 @@
-﻿using System.Text;
+using System;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -11,11 +12,10 @@ namespace Vintagestory.GameContent.Mechanics
 {
     public class BEBehaviorMPTransmission : BEBehaviorMPBase
     {
-        public bool engaged;
         protected float[] rotPrev = new float[2];
-
-        BlockFacing[] orients = new BlockFacing[2];
-        string orientations;
+        protected BlockFacing[] orients = new BlockFacing[2];
+        protected string orientations;
+        public bool engaged;
 
         public override CompositeShape Shape
         {
@@ -23,9 +23,9 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 string side = Block.Variant["orientation"];
 
-                CompositeShape shape = new CompositeShape() { 
-                    Base = new AssetLocation("shapes/block/wood/mechanics/transmission-leftgear.json"), Overlays = new CompositeShape[] { 
-                           new CompositeShape() { Base = new AssetLocation("shapes/block/wood/mechanics/transmission-rightgear.json") } } 
+                CompositeShape shape = new CompositeShape() {
+                    Base = new AssetLocation("shapes/block/wood/mechanics/transmission-leftgear.json"), Overlays = new CompositeShape[] {
+                           new CompositeShape() { Base = new AssetLocation("shapes/block/wood/mechanics/transmission-rightgear.json") } }
                 };
 
                 if (side == "ns")
@@ -36,15 +36,10 @@ namespace Vintagestory.GameContent.Mechanics
 
                 return shape;
             }
-            set
-            {
-
-            }
+            set { }
         }
 
-        public BEBehaviorMPTransmission(BlockEntity blockentity) : base(blockentity)
-        {
-        }
+        public BEBehaviorMPTransmission(BlockEntity blockentity) : base(blockentity) { }
 
         public override void Initialize(ICoreAPI api, JsonObject properties)
         {
@@ -66,7 +61,6 @@ namespace Vintagestory.GameContent.Mechanics
                     break;
             }
 
-            //CheckEngaged(api.World.BlockAccessor, false);
             if (this.engaged) ChangeState(true);
         }
 
@@ -88,7 +82,7 @@ namespace Vintagestory.GameContent.Mechanics
             }
         }
 
-        protected override MechPowerPath[] GetMechPowerExits(MechPowerPath fromExitTurnDir)
+        public override MechPowerPath[] GetMechPowerExits(MechPowerPath fromExitTurnDir)
         {
             if (!engaged) return System.Array.Empty<MechPowerPath>();
 
@@ -107,15 +101,6 @@ namespace Vintagestory.GameContent.Mechanics
                 CreateJoinAndDiscoverNetwork(orients[0]);
                 CreateJoinAndDiscoverNetwork(orients[1]);
                 this.tryConnect(orients[0]);
-
-                ////Test for connection on opposite side as well
-                //pos = Position.AddCopy(orients[1]);
-                //block = Api.World.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
-                //if (block != null && this.network != block.GetNetwork(Api.World, pos))
-                //{
-                //    block.DidConnectAt(Api.World, pos, orients[0]);
-                //    this.WasPlaced(orients[1]);
-                //}
                 Blockentity.MarkDirty(true);
             }
             else
@@ -131,7 +116,7 @@ namespace Vintagestory.GameContent.Mechanics
         {
             BlockPos pos = Position.AddCopy(orients[side]);
             IMechanicalPowerBlock block = Api.World.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
-            if (block?.HasMechPowerConnectorAt(Api.World, pos, orients[side].Opposite) != true)
+            if (block?.HasMechPowerConnectorAt(Api.World, pos, orients[side].Opposite, Block as BlockMPBase) != true)
             {
                 block = null;
             }
@@ -153,11 +138,13 @@ namespace Vintagestory.GameContent.Mechanics
             }
             else
             {
-                rot = node.Network.AngleRad * node.GearedRatio;
+                double angle = node is BEBehaviorMPBase behavior
+                    ? behavior.UnreversedAngleRad
+                    : node.Network.TotalAngleRad * node.GearedRatio;
                 bool invert = node.GetPropagationDirection() != orients[side];
                 if (side == 1) invert = !invert;
-                if (invert) rot = GameMath.TWOPI - rot;
-                rotPrev[side] = rot;
+                if (invert) angle = Math.Tau - angle;
+                rotPrev[side] = rot = (float)GameMath.Mod(angle, Math.Tau);
             }
             return rot;
         }

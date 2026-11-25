@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -170,7 +170,7 @@ namespace Vintagestory.GameContent
         {
             if (oreSlot.Itemstack == null) return null;
 
-            CombustibleProperties compustibleOpts = oreSlot.Itemstack.Collectible.CombustibleProps;
+            CombustibleProperties compustibleOpts = oreSlot.Itemstack.Collectible.GetCombustibleProperties(Api.World, oreSlot.Itemstack, null);
 
             if (compustibleOpts == null) return null;
 
@@ -188,7 +188,7 @@ namespace Vintagestory.GameContent
         public int getSmeltedRatio(IItemStack oreStack)
         {
             if (oreStack == null) return 0;
-            CombustibleProperties compustibleOpts = oreStack.Collectible.CombustibleProps;
+            CombustibleProperties compustibleOpts = oreStack.Collectible.GetCombustibleProperties(Api.World, oreStack as ItemStack, null);
 
             return compustibleOpts.SmeltedStack.ResolvedItemstack.StackSize;
         }
@@ -211,50 +211,56 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        public override void OnReceivedClientPacket(IPlayer player, int packetid, byte[] data)
+        public override void OnReceivedClientPacket(IServerPlayer player, int packetId, SerializedData packetData, ref CachedAccessPerms perms)
         {
-            if (packetid < 1000)
+            switch (packetId)
             {
-                Inventory.InvNetworkUtil.HandleClientPacket(player, packetid, data);
+                case < (int)EnumBlockStovePacket.OpenGUI:
+                    if (!perms.TryAccessingBlockAtPos(EnumBlockAccessFlags.Use, true, "blast furnace"))
+                    {
+                        Inventory.InvNetworkUtil.SendInventoryRollback(player, packetId, packetData);
+                        break;
+                    }
 
-                // Tell server to save this chunk to disk again
-                Api.World.BlockAccessor.GetChunkAtBlockPos(Pos).MarkModified();
+                    Inventory.InvNetworkUtil.HandleClientPacket(player, packetId, packetData);
+                    // Tell server to save this chunk to disk again
+                    Api.World.BlockAccessor.GetChunkAtBlockPos(Pos).MarkModified();
 
-                return;
+                    break;
+
+
+                case (int)EnumBlockStovePacket.CloseGUI:
+                    // No permission checks here, closing the ui is always allowed.
+
+                    player.InventoryManager?.CloseInventory(Inventory);
+
+                    break;
             }
 
-            if (packetid == (int)EnumBlockStovePacket.CloseGUI)
-            {
-                if (player.InventoryManager != null)
-                {
-                    player.InventoryManager.CloseInventory(Inventory);
-                }
-            }
+            // Rennorb 20.06.2026 explain: Why not call the base here?
+            // base.OnReceivedClientPacket(player, packetId, data, ref perms);
         }
 
-        public override void OnReceivedServerPacket(int packetid, byte[] data)
+        public override void OnReceivedServerPacket(int packetId, SerializedData packetData)
         {
-            if (packetid == (int)EnumBlockStovePacket.OpenGUI)
+            if (packetId == (int)EnumBlockStovePacket.OpenGUI)
             {
-                using (MemoryStream ms = new MemoryStream(data))
-                {
-                    BinaryReader reader = new BinaryReader(ms);
+                var reader = packetData.AsBinaryReader();
 
-                    string dialogClassName = reader.ReadString();
-                    string dialogTitle = reader.ReadString();
+                string dialogClassName = reader.ReadString();
+                string dialogTitle = reader.ReadString();
 
-                    TreeAttribute tree = new TreeAttribute();
-                    tree.FromBytes(reader);
-                    Inventory.FromTreeAttributes(tree);
-                    Inventory.ResolveBlocksOrItems();
+                TreeAttribute tree = new TreeAttribute();
+                tree.FromBytes(ref reader);
+                Inventory.FromTreeAttributes(tree);
+                Inventory.ResolveBlocksOrItems();
 
-                    IClientWorldAccessor clientWorld = (IClientWorldAccessor)Api.World;
+                IClientWorldAccessor clientWorld = (IClientWorldAccessor)Api.World;
 
-                    //clientWorld.OpenDialog(dialogClassName, dialogTitle, Inventory);
-                }
+                //clientWorld.OpenDialog(dialogClassName, dialogTitle, Inventory);
             }
 
-            if (packetid == (int)EnumBlockEntityPacketId.Close)
+            if (packetId == (int)EnumBlockEntityPacketId.Close)
             {
                 IClientWorldAccessor clientWorld = (IClientWorldAccessor)Api.World;
                 clientWorld.Player.InventoryManager.CloseInventory(Inventory);

@@ -1,8 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using Vintagestory.API;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.Server;
 
 #nullable disable
@@ -46,23 +47,23 @@ namespace Vintagestory.GameContent
     public class AlloyRecipe : IByteSerializable
     {
         /// <summary>
-        /// <!--<jsonoptional>Required</jsonoptional>-->
         /// The ingredients for this alloy, defined as an item stack with a minimum and maximum range.
         /// </summary>
-        [DocumentAsJson] public MetalAlloyIngredient[] Ingredients;
+        [DocumentAsJson("Required")]
+        public MetalAlloyIngredient[] Ingredients;
 
         /// <summary>
-        /// <!--<jsonoptional>Required</jsonoptional>-->
         /// The output for the alloy.
         /// </summary>
-        [DocumentAsJson] public JsonItemStack Output;
+        [DocumentAsJson("Required")]
+        public JsonItemStack Output;
 
 
         ///<summary>
-        /// <!--<jsonoptional>Optional</jsonoptional><jsondefault>true</jsondefault>-->
         /// Should this recipe be loaded in the game?
         ///</summary>
-        [DocumentAsJson] public bool Enabled = true;
+        [DocumentAsJson("Optional", "True")]
+        public bool Enabled = true;
 
         /// <summary>
         /// Makes a check to see if the input for the recipe is valid.
@@ -145,10 +146,11 @@ namespace Vintagestory.GameContent
                 ItemStack stack = inputStacks[i];
                 float stackSize = stack.StackSize;
 
-                if (useSmeltedWhereApplicable && stack.Collectible.CombustibleProps?.SmeltedStack != null) 
+                CombustibleProperties combustibleProps = stack.Collectible.GetCombustibleProperties(null, stack, null);
+                if (useSmeltedWhereApplicable && combustibleProps?.SmeltedStack != null) 
                 {
-                    stackSize /= stack.Collectible.CombustibleProps.SmeltedRatio;
-                    stack = stack.Collectible.CombustibleProps.SmeltedStack.ResolvedItemstack;
+                    stackSize /= combustibleProps.SmeltedRatio;
+                    stack = combustibleProps.SmeltedStack.ResolvedItemstack;
                 }
 
                 bool exists = false;
@@ -215,21 +217,19 @@ namespace Vintagestory.GameContent
         /// <summary>
         /// Deserializes the alloy
         /// </summary>
-        /// <param name="reader"></param>
-        /// <param name="resolver"></param>
-        public void FromBytes(BinaryReader reader, IWorldAccessor resolver)
+        public void FromBytes(ref BinarySpanReader reader, IWorldAccessor resolver)
         {
             Ingredients = new MetalAlloyIngredient[reader.ReadInt32()];
 
             for (int i = 0; i < Ingredients.Length; i++)
             {
-                Ingredients[i] = new MetalAlloyIngredient();
-                Ingredients[i].FromBytes(reader, resolver.ClassRegistry);
+                Ingredients[i] = new MetalAlloyIngredient { Code = null! };
+                Ingredients[i].FromBytes(ref reader, resolver.ClassRegistry);
                 Ingredients[i].Resolve(resolver, "[FromBytes]");
             }
 
-            Output = new JsonItemStack();
-            Output.FromBytes(reader, resolver.ClassRegistry);
+            Output = new JsonItemStack { Code = null! };
+            Output.FromBytes(ref reader, resolver.ClassRegistry);
             Output.Resolve(resolver, "[FromBytes]");
         }
 

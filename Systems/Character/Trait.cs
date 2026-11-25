@@ -17,6 +17,11 @@ namespace Vintagestory.GameContent
         public string Code;
         public EnumTraitType Type;
         public Dictionary<string, double> Attributes;
+
+        /// <summary>
+        /// Attribute code to the desired blend-type.
+        /// </summary>
+        public Dictionary<string, EnumStatBlendType> AttributeBlendTypes;
     }
 
     public class CharacterClass

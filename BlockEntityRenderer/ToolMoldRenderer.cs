@@ -17,7 +17,7 @@ namespace Vintagestory.GameContent
         public Matrixf ModelMat = new Matrixf();
 
         public double RenderOrder => 0.5;
-        public int RenderRange => 24;   
+        public int RenderRange => 24;
 
         /// <summary>
         /// 0..1
@@ -94,7 +94,7 @@ namespace Vintagestory.GameContent
                 prog.AverageColor = ColorUtil.ToRGBAVec4f(api.BlockTextureAtlas.GetAverageColor((stack.Item?.FirstTexture ?? stack.Block.FirstTextureInventory).Baked.TextureSubId));
                 prog.TempGlowMode = 1;
             }
-            
+
 
             Vec4f lightrgbs = api.World.BlockAccessor.GetLightRGBs(pos.X, pos.Y, pos.Z);
             float[] glowColor = ColorUtil.GetIncandescenceColorAsColor4f((int)Temperature);
@@ -102,7 +102,7 @@ namespace Vintagestory.GameContent
 
             prog.RgbaLightIn = lightrgbs;
             prog.RgbaGlowIn = new Vec4f(glowColor[0], glowColor[1], glowColor[2], extraGlow / 255f);
-            
+
             prog.ExtraGlow = extraGlow;
 
             int texid = api.Render.GetOrLoadTexture(TextureName);
@@ -118,16 +118,16 @@ namespace Vintagestory.GameContent
                 .Translate(-0.5f, 0f, -0.5f)
                 .Translate(1 - rect.X1 / 16f, 1.01f / 16f + Math.Max(0, Level / 16f - 0.0625f / 3), 1 - rect.Z1 / 16f)
                 .RotateX(90 * GameMath.DEG2RAD)
-                .Scale(0.5f * rect.Width / 16f, 0.5f * rect.Length / 16f, 0.5f)
+                .Scale(rect.HalfExtentX / 16f, rect.HalfExtentZ / 16f, 0.5f)
                 .Translate(-1, -1, 0)
                 .Values
             ;
 
             prog.ViewMatrix = rpi.CameraMatrixOriginf;
             prog.ProjectionMatrix = rpi.CurrentProjectionMatrix;
-            
+
             rpi.RenderMesh(quadModelRefs[voxelY]);
-            
+
             prog.Stop();
 
             rpi.GlEnableCullFace();
@@ -141,7 +141,7 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < quadModelRefs.Length; i++)
             {
                 quadModelRefs[i]?.Dispose();
-            }            
+            }
         }
     }
 }

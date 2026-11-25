@@ -1,8 +1,9 @@
-﻿using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Linq;
 using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -74,7 +75,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        
+
 
         private void RenderRecipeOutLine()
         {
@@ -104,7 +105,10 @@ namespace Vintagestory.GameContent
 
             if (linewidth != 1.6f) rpi.LineWidth = 1.6f;
 
-            rpi.GLDepthMask(false);   // Helps prevent HUD failing to draw at the start of the next frame, on macOS.  This may be the last GL settings call before the frame is finalised.  The block outline renderer sets this to false prior to rendering its mesh.
+            if (RuntimeEnv.OS != OS.Mac) return;
+            // Only on Mac we have to reverse some things to make things render properly
+            rpi.GLDisableDepthTest();
+            rpi.GlToggleBlend(false);
         }
 
 

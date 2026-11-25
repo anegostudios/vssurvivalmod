@@ -4,27 +4,109 @@ using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 using System;
+using Vintagestory.API;
 
 #nullable disable
 
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Font settings for signs and other writeable surfaces
+    /// </summary>
+    /// <example><code lang="json">
+    /// "fontConfig": {
+    ///     "maxWidth": 208,
+    ///     "maxHeight": 96,
+    ///     "fontSize": 20,
+    ///     "textVoxelOffsetY": -1,
+    ///     "textVoxelOffsetZ": 0.25,
+    ///     "textVoxelHeight": 6,
+    ///     "fontName": "Almendra",
+    ///     "verticalAlign": "Middle",
+    ///     "boldFont": true,
+    ///     "maxLength": 1000
+    /// }
+    /// </code></example>
+    [DocumentAsJson]
     public class TextAreaConfig
     {
+        /// <summary>
+        /// Maximum width of the text area window in pixels
+        /// </summary>
+        [DocumentAsJson("Optional", "160")]
         public int MaxWidth = 160;
+
+        /// <summary>
+        /// Maximum height of the text area window in pixels
+        /// </summary>
+        [DocumentAsJson("Optional", "165")]
         public int MaxHeight = 165;
+
+        /// <summary>
+        /// Font size of the text
+        /// </summary>
+        [DocumentAsJson("Optional", "20")]
         public float FontSize = 20;
+
+        /// <summary>
+        /// Whether to use bold font for the text
+        /// </summary>
+        [DocumentAsJson("Optional", "false")]
         public bool BoldFont = false;
+
+        /// <summary>
+        /// Aligning of vertical position of the text
+        /// </summary>
+        [DocumentAsJson("Optional", "Top")]
         public EnumVerticalAlign VerticalAlign = EnumVerticalAlign.Top;
+
+        /// <summary>
+        /// Font family name of the text
+        /// </summary>
+        [DocumentAsJson("Optional", "sans-serif")]
         public string FontName = GuiStyle.StandardFontName;
 
+        /// <summary>
+        /// Offset in voxels on the X axis. Each block is 16x16x16 voxels
+        /// </summary>
+        [DocumentAsJson("Optional", "0")]
         public float textVoxelOffsetX;
+
+        /// <summary>
+        /// Offset in voxels on the Y axis. Each block is 16x16x16 voxels
+        /// </summary>
+        [DocumentAsJson("Optional", "0")]
         public float textVoxelOffsetY;
+
+        /// <summary>
+        /// Offset in voxels on the Z axis. Each block is 16x16x16 voxels
+        /// </summary>
+        [DocumentAsJson("Optional", "0")]
         public float textVoxelOffsetZ;
+
+        /// <summary>
+        /// Text area width in voxels. Each block is 16x16x16 voxels
+        /// </summary>
+        [DocumentAsJson("Optional", "14")]
         public float textVoxelWidth = 14f;
+
+        /// <summary>
+        /// Text area height in voxels. Each block is 16x16x16 voxels
+        /// </summary>
+        [DocumentAsJson("Optional", "6.5")]
         public float textVoxelHeight = 6.5f;
 
+        /// <summary>
+        /// Whether to add scrollbar to the text area window
+        /// </summary>
+        [DocumentAsJson("Optional", "false")]
         public bool WithScrollbar = false;
+
+        /// <summary>
+        /// The total number of characters allowed. -1 means no limit.
+        /// </summary>
+        [DocumentAsJson("Optional", "-1")]
+        public int MaxLength = -1;
 
         public TextAreaConfig CopyWithFontSize(float fontSize)
         {
@@ -41,7 +123,8 @@ namespace Vintagestory.GameContent
                 textVoxelOffsetY = textVoxelOffsetY,
                 textVoxelOffsetZ = textVoxelOffsetZ,
                 WithScrollbar = WithScrollbar,
-                VerticalAlign = VerticalAlign
+                VerticalAlign = VerticalAlign,
+                MaxLength = MaxLength,
             };
         }
     }
@@ -64,6 +147,7 @@ namespace Vintagestory.GameContent
             {
                 signConfig = this.Attributes.AsObject<TextAreaConfig>(signConfig);
             }
+            signConfig.MaxLength = BlockEntitySign.MaxTextLength;
 
             if (api.Side != EnumAppSide.Client) return;
             AfterSignRenderer.Registered = false;
@@ -113,6 +197,8 @@ namespace Vintagestory.GameContent
         {
             BlockPos supportingPos = bs.Position.AddCopy(bs.Face.Opposite);
             Block supportingBlock = world.BlockAccessor.GetBlock(supportingPos);
+
+            //if (supportingBlock.HasBehavior<BlockBehaviorCabinetDoors>()) { failureCode = "__ignore__"; return false; }
 
             if (bs.Face.IsHorizontal && (supportingBlock.CanAttachBlockAt(world.BlockAccessor, this, supportingPos, bs.Face) || supportingBlock.GetAttributes(world.BlockAccessor, supportingPos)?.IsTrue("partialAttachable") == true))
             {

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -27,6 +27,8 @@ namespace Vintagestory.GameContent
         public ModelTransform TpTransform { get { return group.TpTf; } set { group.TpTf = value; } }
         public ModelTransform GroundTransform { get { return group.GroundTf; } set { group.GroundTf = value; } }
         public string RotInterval { get { return group.RotInterval; } set { group.RotInterval = value; } }
+
+        public EnumBlockMaterial Material { get; set; } = EnumBlockMaterial.Wood;
 
         public string FirstTexture { get; set; }
         public TextureAtlasPosition TexPos { get; set; }
@@ -68,6 +70,7 @@ namespace Vintagestory.GameContent
         }
         public Shape ShapeResolved { get; set; }
         public Shape ShapeResolved2 { get; set; }
+        public Shape ShapeLOD2Resolved { get; set; }
 
         public string HashKey => Code + "-" + Type1 + "-" + Type2 + "-" + Variant;
 

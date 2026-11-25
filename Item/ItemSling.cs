@@ -5,6 +5,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -15,9 +16,12 @@ namespace Vintagestory.GameContent
     public class ItemSling : Item
     {
         WorldInteraction[] interactions;
+        private TagSet munitionTag = TagSet.Empty;
 
         public override void OnLoaded(ICoreAPI api)
         {
+            if(munitionTag.IsEmpty) api.CollectibleTagRegistry.TryRegisterAndCreateTagSetAndLogIssues(out munitionTag, "sling-munition");
+
             if (api.Side != EnumAppSide.Client) return;
             ICoreClientAPI capi = api as ICoreClientAPI;
 
@@ -59,7 +63,10 @@ namespace Vintagestory.GameContent
             {
                 if (invslot is ItemSlotCreative) return true;
 
-                if (invslot.Itemstack != null && invslot.Itemstack.Collectible is ItemStone)
+                var item = invslot.Itemstack?.Collectible;
+                if (item == null || invslot.StackSize <= 0) return true;
+
+                if (item is ItemStone || item.GetTags(invslot.Itemstack).Overlaps(munitionTag))
                 {
                     slot = invslot;
                     return false;
@@ -71,8 +78,23 @@ namespace Vintagestory.GameContent
             return slot;
         }
 
+        private void ResetSlingAiming(ItemSlot slot, EntityAgent byEntity)
+        {
+            byEntity.Attributes.SetInt("aiming", 0);
+            byEntity.AnimManager.StopAnimation("slingaimbalearic");
+
+            if (byEntity.World is IClientWorldAccessor)
+            {
+                slot.Itemstack.TempAttributes.RemoveAttribute("renderVariant");
+            }
+
+            slot.Itemstack.Attributes.SetInt("renderVariant", 0);
+        }
+
         public override void OnHeldInteractStart(ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, bool firstEvent, ref EnumHandHandling handling)
         {
+            if (byEntity.Swimming) return;
+
             ItemSlot invslot = GetNextMunition(byEntity);
             if (invslot == null) return;
 
@@ -97,6 +119,19 @@ namespace Vintagestory.GameContent
 
         public override bool OnHeldInteractStep(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
+            if (byEntity.Swimming)
+            {
+                ResetSlingAiming(slot, byEntity);
+                byEntity.Attributes.SetInt("aimingCancel", 1);
+                (byEntity as EntityPlayer)?.Player?.InventoryManager.BroadcastHotbarSlot();
+                return false;
+            }
+
+            if (byEntity.World.Side == EnumAppSide.Client && byEntity.Controls.LeftMouseDown)
+            {
+                byEntity.RequestedHandUseCancelReason = EnumItemUseCancelReason.PlayerTriggered;
+            }
+
             int renderVariant = GameMath.Clamp((int)Math.Ceiling(secondsUsed * 4), 0, 3);
             int prevRenderVariant = slot.Itemstack.Attributes.GetInt("renderVariant", 0);
 
@@ -114,15 +149,7 @@ namespace Vintagestory.GameContent
 
         public override bool OnHeldInteractCancel(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel, EnumItemUseCancelReason cancelReason)
         {
-            byEntity.Attributes.SetInt("aiming", 0);
-            byEntity.AnimManager.StopAnimation("slingaimbalearic");
-
-            if (byEntity.World is IClientWorldAccessor)
-            {
-                slot.Itemstack.TempAttributes.RemoveAttribute("renderVariant");
-            }
-
-            slot.Itemstack.Attributes.SetInt("renderVariant", 0);
+            ResetSlingAiming(slot, byEntity);
             if (cancelReason != EnumItemUseCancelReason.Destroyed) (byEntity as EntityPlayer)?.Player?.InventoryManager.BroadcastHotbarSlot();
 
             if (cancelReason != EnumItemUseCancelReason.ReleasedMouse)
@@ -136,6 +163,13 @@ namespace Vintagestory.GameContent
         public override void OnHeldInteractStop(float secondsUsed, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, EntitySelection entitySel)
         {
             if (byEntity.Attributes.GetInt("aimingCancel") == 1) return;
+            if (byEntity.Swimming)
+            {
+                ResetSlingAiming(slot, byEntity);
+                (byEntity as EntityPlayer)?.Player?.InventoryManager.BroadcastHotbarSlot();
+                return;
+            }
+
             byEntity.Attributes.SetInt("aiming", 0);
             byEntity.AnimManager.StopAnimation("slingaimbalearic");
 
@@ -148,47 +182,54 @@ namespace Vintagestory.GameContent
                 }
                 slot.Itemstack?.Attributes.SetInt("renderVariant", 0);
             }, 450);
-            
+
             (byEntity as EntityPlayer)?.Player?.InventoryManager.BroadcastHotbarSlot();
 
             if (secondsUsed < 0.75f) return;
 
-            ItemSlot arrowSlot = GetNextMunition(byEntity);
-            if (arrowSlot == null) return;
+            ItemSlot munitionSlot = GetNextMunition(byEntity);
+            if (munitionSlot == null) return;
 
             float damage = 0;
 
             // Sling damage
-            if (slot.Itemstack.Collectible.Attributes != null)
-            {
-                damage += slot.Itemstack.Collectible.Attributes["damage"].AsFloat(0);
-            }
+            damage += slot.Itemstack.ItemAttributes?["damage"].AsFloat(0) ?? 0;
 
-            // Stone damage
-            if (arrowSlot.Itemstack.Collectible.Attributes != null)
-            {
-                damage += arrowSlot.Itemstack.Collectible.Attributes["damage"].AsFloat(0);
-            }
+            // Munition damage
+            var munition = munitionSlot.Itemstack.Collectible.GetBehavior<CollectibleBehaviorAmmunition>();
+            damage += munition?.Config.Damage ?? munitionSlot.Itemstack.ItemAttributes?["damage"].AsFloat(0) ?? 0;
 
-            if (byEntity != null) damage *= byEntity.Stats.GetBlended("rangedWeaponsDamage");
+            // Entity ranged damage multiplier
+            damage *= byEntity?.Stats.GetBlended("rangedWeaponsDamage") ?? 1;
 
-            ItemStack stack = arrowSlot.TakeOut(1);
-            arrowSlot.MarkDirty();
+            ItemStack stack = munitionSlot.TakeOut(1);
+            munitionSlot.MarkDirty();
 
-            IPlayer byPlayer = null;
-            if (byEntity is EntityPlayer) byPlayer = byEntity.World.PlayerByUid(((EntityPlayer)byEntity).PlayerUID);
             if (api.Side == EnumAppSide.Server) byEntity.World.PlaySoundAt(new AssetLocation("sounds/tool/sling1"), byEntity, null, false, 8, 0.25f);
 
+            float dropChance = munition?.Config.DropOnImpactChance ?? (1 - (stack.ItemAttributes?["breakChanceOnImpact"].AsFloat(0.5f) ?? 0.5f));
 
-            EntityProperties type = byEntity.World.GetEntityType(new AssetLocation("thrownstone-" + stack.Collectible.Variant["rock"]));
-            Entity entity = byEntity.World.ClassRegistry.CreateEntity(type);
-            IProjectile projectile = entity as IProjectile;
+            string code = munition?.MunitionProjectileCode ?? "thrownitem";
+            EntityProperties type = byEntity.World.GetEntityType(code);
+            var munitionEntity = byEntity.World.ClassRegistry.CreateEntity(type);
+            if (munitionEntity is not IProjectile projectile)
+            {
+                byEntity.World.Logger.Warning($"Sling munition entity type code {code} does not exist or does not implement IProjectile, will not spawn projectile");
+                return;
+            }
+
             projectile.FiredBy = byEntity;
             projectile.Damage = damage;
+            projectile.DamageType = EnumDamageType.BluntAttack;
+            projectile.DamageTier = Attributes["damageTier"].AsInt(0);
             projectile.ProjectileStack = stack;
+            projectile.DropOnImpactChance = dropChance;
+            projectile.IgnoreInvFrames = Attributes["ignoreInvFrames"].AsBool(false);
             projectile.WeaponStack = slot.Itemstack;
+            projectile.Collectible = munition?.Config.Collectible ?? true;
 
-            EntityProjectile.SpawnThrownEntity(entity, byEntity, 0.75, 0, 0, byEntity.Stats.GetBlended("bowDrawingStrength") * 0.8f);
+            double speed = 0.8 * byEntity.Stats.GetBlended("bowDrawingStrength");
+            EntityProjectile.SpawnProjectile(munitionEntity, byEntity, speed, 0.75, -0.2, 0.1, 0.4, 20);
 
             slot.Itemstack.Collectible.DamageItem(byEntity.World, byEntity, slot);
 
@@ -205,12 +246,17 @@ namespace Vintagestory.GameContent
             if (inSlot.Itemstack.Collectible.Attributes == null) return;
 
             float dmg = inSlot.Itemstack.Collectible.Attributes["damage"].AsFloat(0);
-            if (dmg != 0) dsc.AppendLine(Lang.Get("sling-piercingdamage", dmg));
+            if (dmg != 0) dsc.AppendLine(Lang.Get("sling-bluntdamage", dmg));
         }
 
 
         public override WorldInteraction[] GetHeldInteractionHelp(ItemSlot inSlot)
         {
+            if (((ICoreClientAPI)api).World.Player.Entity.Attributes.GetInt("aiming") != 0)
+            {
+                return [new WorldInteraction { ActionLangCode = "general-cancel", MouseButton = EnumMouseButton.Left }];
+            }
+
             return interactions.Append(base.GetHeldInteractionHelp(inSlot));
         }
     }

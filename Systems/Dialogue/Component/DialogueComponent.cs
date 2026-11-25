@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
@@ -118,7 +118,7 @@ namespace Vintagestory.GameContent
                     if (hotbarslot.Empty) return false;
                     var d = hotbarslot.Itemstack.Collectible.GetRemainingDurability(hotbarslot.Itemstack);
                     var max = hotbarslot.Itemstack.Collectible.GetMaxDurability(hotbarslot.Itemstack);
-                    return hotbarslot.Itemstack.Collectible.Tool != null && d < max;
+                    return hotbarslot.Itemstack.Collectible.GetTool(hotbarslot) != null && d < max;
                 }
                 else if (isValue == "damagedarmor")
                 {

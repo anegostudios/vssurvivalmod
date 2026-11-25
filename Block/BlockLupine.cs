@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Common;
+using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
 #nullable disable
@@ -47,7 +47,10 @@ namespace Vintagestory.GameContent
                 npos.Set(pos).Add(worldGenRand.NextInt(5) - 2, 0, worldGenRand.NextInt(5) - 2);
                 npos.Y = blockAccessor.GetTerrainMapheightAt(npos) + 1;
 
-                Block nblock = blockAccessor.GetBlock(npos);
+                Block liquidBlock = blockAccessor.GetBlock(npos, BlockLayersAccess.Fluid);
+                if (liquidBlock.Id != 0) continue;   // Fixes bug where lupines could be generated underwater near lake & river banks
+
+                Block nblock = blockAccessor.GetBlock(npos, BlockLayersAccess.Solid);
 
                 if ((nblock.IsReplacableBy(block) || nblock is BlockLupine) && CanPlantStay(blockAccessor, npos))
                 {

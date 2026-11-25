@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -9,23 +10,21 @@ using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
-#nullable disable
-
 namespace Vintagestory.GameContent
 {
     public class MicroBlockSounds : BlockSounds
     {
-        //public override AssetLocation Ambient { get => base.Ambient; set => base.Ambient = value; }
-        public override AssetLocation Break { get => block.Sounds.Break; set { } }
-        public override AssetLocation Hit { get => block.Sounds.Hit; set { } }
-        public override AssetLocation Inside { get => block.Sounds.Inside; set { } }
-        public override AssetLocation Place { get => block.Sounds.Place; set { } }
-        public override AssetLocation Walk { get => block.Sounds.Walk ; set { } }
-        public override Dictionary<EnumTool, BlockSounds> ByTool { get => block.Sounds.ByTool; set { } }
+        public override SoundAttributes Break { get => block.Sounds.Break; set { } }
+        public override SoundAttributes Hit { get => block.Sounds.Hit; set { } }
+        public override SoundAttributes Inside { get => block.Sounds.Inside; set { } }
+        public override SoundAttributes Place { get => block.Sounds.Place; set { } }
+        public override SoundAttributes Walk { get => block.Sounds.Walk ; set { } }
+        public override Dictionary<EnumTool, BlockSounds>? ByTool { get => block.Sounds.ByTool; set { } }
 
 
-        public BlockEntityMicroBlock be;
-        public Block defaultBlock;
+        public BlockEntityMicroBlock be = null!;
+        public Block defaultBlock = null!;
+        
 
         public MicroBlockSounds() { }
 
@@ -33,16 +32,17 @@ namespace Vintagestory.GameContent
         {
             this.be = be;
             this.defaultBlock = defaultBlock;
-            Ambient = defaultBlock.Sounds.Ambient;
+            this.Ambient = block.Sounds.Ambient;
         }
 
         Block block
         {
             get
             {
-                var blocks = be.Api.World.Blocks;
+                var blocks = be.Api?.World.Blocks;
+                if (blocks == null) return defaultBlock;
 
-                if (!(defaultBlock is BlockChisel) && (defaultBlock as BlockMicroBlock).IsSoilNonSoilMix(be))
+                if (!(defaultBlock is BlockChisel) && ((BlockMicroBlock)defaultBlock).IsSoilNonSoilMix(be))
                 {
                     return blocks[be.BlockIds.First(blockid => blocks[blockid].BlockMaterial == EnumBlockMaterial.Soil || blocks[blockid].BlockMaterial == EnumBlockMaterial.Gravel || blocks[blockid].BlockMaterial == EnumBlockMaterial.Sand)];
                 }
@@ -59,14 +59,15 @@ namespace Vintagestory.GameContent
         }
     }
 
-    public class BlockMicroBlock : Block
+#nullable disable
+
+    public class BlockMicroBlock : Block, IContainedMeshSource, IDisplayableProps
     {
+        protected bool IsSnowCovered;
+        protected ICoreClientAPI capi;
+
         public int snowLayerBlockId;
-
-        bool IsSnowCovered;
-
         public ThreadLocal<MicroBlockSounds> MBSounds = new ThreadLocal<MicroBlockSounds>(() => new MicroBlockSounds());
-
         public static int BlockLayerMetaBlockId;
 
         public override void OnLoaded(ICoreAPI api)
@@ -87,6 +88,8 @@ namespace Vintagestory.GameContent
             snowLayerBlockId = api.World.GetBlock(new AssetLocation("snowlayer-1")).Id;
 
             IsSnowCovered = this.Id != notSnowCovered.Id;
+
+            capi = api as ICoreClientAPI;
         }
 
         public override void OnUnloaded(ICoreAPI api)
@@ -235,7 +238,7 @@ namespace Vintagestory.GameContent
             return IsSnowCovered ? 0.5f : 0;
         }
 
-        public override bool DoParticalSelection(IWorldAccessor world, BlockPos pos)
+        public override bool DoPartialSelection(IWorldAccessor world, BlockPos pos)
         {
             return true;
         }
@@ -317,7 +320,7 @@ namespace Vintagestory.GameContent
 
 
 
-        public override bool MatchesForCrafting(ItemStack inputStack, GridRecipe gridRecipe, CraftingRecipeIngredient ingredient)
+        public override bool MatchesForCrafting(ItemStack inputStack, IRecipeBase gridRecipe, IRecipeIngredient ingredient)
         {
             int len = (inputStack.Attributes["materials"] as StringArrayAttribute)?.value?.Length ?? 0;
 
@@ -326,7 +329,7 @@ namespace Vintagestory.GameContent
             return base.MatchesForCrafting(inputStack, gridRecipe, ingredient);
         }
 
-        public override void OnCreatedByCrafting(ItemSlot[] allInputslots, ItemSlot outputSlot, GridRecipe byRecipe)
+        public override void OnCreatedByCrafting(ItemSlot[] allInputslots, ItemSlot outputSlot, IRecipeBase byRecipe)
         {
             List<int> matids = new List<int>();
             List<int> matquantities = new List<int>();
@@ -341,27 +344,76 @@ namespace Vintagestory.GameContent
                     outputSlot.Itemstack.Attributes = val.Itemstack.Attributes.Clone();
                 }
 
+                int[] mq = (val.Itemstack.Attributes?["availMaterialQuantities"] as IntArrayAttribute)?.value;
                 int[] mats = (val.Itemstack.Attributes?["materials"] as IntArrayAttribute)?.value;
-                if (mats != null) matids.AddRange(mats);
 
-                string[] smats = (val.Itemstack.Attributes?["materials"] as StringArrayAttribute)?.value;
-                if (smats != null)
+                if (mats != null)
                 {
-                    foreach (var code in smats)
+                    for (int i = 0; i < mats.Length; i++)
                     {
-                        Block block = api.World.GetBlock(new AssetLocation(code));
-                        if (block != null) matids.Add(block.Id);
+                        if (matids.Contains(mats[i])) continue;
+                        
+                        matids.Add(mats[i]);
+                        if (mq != null) matquantities.Add(mq[i]);
+                    }                    
+                }
+                else
+                {
+                    // Old format
+                    string[] smats = (val.Itemstack.Attributes?["materials"] as StringArrayAttribute)?.value;
+                    if (smats != null)
+                    {
+                        for (int i = 0; i < smats.Length; i++)
+                        {
+                            string code = smats[i];
+                            Block block = api.World.GetBlock(new AssetLocation(code));
+                            if (block != null && !matids.Contains(block.Id))
+                            {
+                                matids.Add(block.Id);
+                                if (mq != null) matquantities.Add(mq[i]);
+                            }
+                        }
                     }
                 }
-
-                int[] mq = (val.Itemstack.Attributes?["availMaterialQuantities"] as IntArrayAttribute)?.value;
-                if (mq != null) matquantities.AddRange(mq);
             }
 
             outputSlot.Itemstack.Attributes["materials"] = new IntArrayAttribute(matids.ToArray());
             outputSlot.Itemstack.Attributes["availMaterialQuantities"] = new IntArrayAttribute(matquantities.ToArray());
 
             base.OnCreatedByCrafting(allInputslots, outputSlot, byRecipe);
+        }
+
+        public override bool ConsumeCraftingIngredients(ItemSlot[] slots, ItemSlot outputSlot, IRecipeBase matchingRecipe)
+        {
+            if (matchingRecipe.Name == "chiseledblockcombine")
+            {
+                var consumedMaterials = (int[])((outputSlot.Itemstack.Attributes["materials"] as IntArrayAttribute).value.Clone());
+
+                foreach (var slot in slots)
+                {
+                    if (slot.Empty) continue;
+                    var providedMaterials = (slot.Itemstack.Attributes["materials"] as IntArrayAttribute).value;
+                    foreach (var blockId in consumedMaterials)
+                    {
+                        if (providedMaterials.Contains(blockId))
+                        {
+                            //providedMaterials = providedMaterials.Remove(blockId); - i don't remember why i did it this way :|
+                            //consumedMaterials = consumedMaterials.Remove(blockId);
+                            slot.TakeOut(1);
+                            break;
+                        }
+                    }
+
+                    /*if (providedMaterials.Length == 0)
+                    {
+                        slot.ItemStack = null;
+                    }*/
+                }
+
+                return true;
+            }
+
+            return base.ConsumeCraftingIngredients(slots, outputSlot, matchingRecipe);
         }
 
         public override int GetLightAbsorption(IBlockAccessor blockAccessor, BlockPos pos)
@@ -580,7 +632,7 @@ namespace Vintagestory.GameContent
 
                 if (removed)
                 {
-                    world.PlaySoundAt(block.Sounds?.GetBreakSound(byPlayer), pos, 0, byPlayer);
+                    if (block.Sounds != null) world.PlaySoundAt(block.Sounds.GetBreakSound(byPlayer), pos, 0, byPlayer);
                     SpawnBlockBrokenParticles(pos);
                     be.MarkDirty(true);
                     return true;
@@ -605,6 +657,17 @@ namespace Vintagestory.GameContent
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
             MicroBlockModelCache cache = capi.ModLoader.GetModSystem<MicroBlockModelCache>();
+
+            if (target is EnumItemRenderTarget.HandTp)
+            {
+                uint[] voxelCuboids = (itemstack.Attributes["cuboids"] as IntArrayAttribute)?.AsUint;
+                if (voxelCuboids != null)
+                {
+                    Cuboidf dimensions = BlockEntityMicroBlock.GetEncompassingHitbox(voxelCuboids.ToList());
+                    renderinfo.Transform.Translation = new FastVec3f(-2.1f + dimensions.MidX / 16f - 0.5f, -1.8f - dimensions.MidY/16f + 0.5f, -1.5f + dimensions.MidZ / 16f - 0.5f);
+                }
+            }
+
             renderinfo.ModelRef = cache.GetOrCreateMeshRef(itemstack);
         }
 
@@ -613,8 +676,7 @@ namespace Vintagestory.GameContent
             BlockEntityMicroBlock be = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
             if (be != null)
             {
-                blockModelData = be.GenMesh(); // Must gen mesh here, we might run into race conditions otherwise
-                decalModelData = be.CreateDecalMesh(decalTexSource);
+                be.CreateDecalMeshes(decalTexSource, out blockModelData, out decalModelData);
                 return;
             }
 
@@ -722,9 +784,9 @@ namespace Vintagestory.GameContent
         public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
         {
             var tree = inSlot.Itemstack.Attributes;
-            string blockName = tree.GetString("blockName", null);
+            string blockName = tree.GetString("blockName");
 
-            int nind = blockName.IndexOf('\n');
+            int nind = blockName?.IndexOf('\n') ?? 0;
             if (nind > 0)
             {
                 dsc.AppendLine(blockName.Substring(nind + 1));
@@ -744,7 +806,7 @@ namespace Vintagestory.GameContent
             return base.GetPlacedBlockName(world, pos);
         }
 
-        public override void PerformSnowLevelUpdate(IBulkBlockAccessor ba, BlockPos pos, Block newBlock, float snowLevel)
+        public override void PerformSnowLevelUpdate(IBlockAccessor ba, BlockPos pos, Block newBlock, float snowLevel)
         {
             if (newBlock.Id != Id && (BlockMaterial == EnumBlockMaterial.Snow || BlockId == 0 || FirstCodePart() == newBlock.FirstCodePart()))
             {
@@ -769,6 +831,57 @@ namespace Vintagestory.GameContent
                 }
             }
             inSlot.Itemstack.Attributes["materials"] = new IntArrayAttribute(blockIds);
+        }
+
+        public virtual MeshData GenMesh(ItemSlot slot, ITextureAtlasAPI targetAtlas, BlockPos atBlockPos)
+        {
+            return api.ModLoader.GetModSystem<MicroBlockModelCache>().GenMesh(slot.Itemstack);
+        }
+
+        public virtual string GetMeshCacheKey(ItemSlot slot)
+        {
+            int[] BlockIds = BlockEntityMicroBlock.MaterialIdsFromAttributes(slot.Itemstack.Attributes, api.World);
+            uint[] VoxelCuboids = (slot.Itemstack.Attributes["cuboids"] as IntArrayAttribute)?.AsUint;
+            string key = "chiseled-";
+            key += "blockids:-" + string.Join("-", BlockIds);
+            key += "cuboids:-" + string.Join("-", VoxelCuboids);
+            return key;
+        }
+
+        public virtual DisplayableAttributes GetDisplayableProps(ItemSlot inSlot, string displayType)
+        {
+            uint[] voxelCuboids = (inSlot.Itemstack.Attributes["cuboids"] as IntArrayAttribute)?.AsUint;
+            if (voxelCuboids == null) return null;
+
+            Cuboidf dimensions = BlockEntityMicroBlock.GetEncompassingHitbox(voxelCuboids.ToList());
+
+            ModelTransform transform = new ModelTransform()
+            {
+                Origin = new FastVec3f(0.5f, 0f, 0.5f),
+                Translation = new FastVec3f(0.5f - dimensions.MidX / 16f, -dimensions.Y1 / 16f, 0.5f - dimensions.MidZ / 16f)
+            }.EnsureDefaultValues();
+
+            return new DisplayableAttributes()
+            {
+                Size = new Size3f(dimensions.XSize, dimensions.YSize, dimensions.ZSize),
+                Transform = transform
+            };
+        }
+
+
+        public override float GetAmbientSoundStrength(IWorldAccessor world, BlockPos pos)
+        {
+            var be = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
+            if (world.Blocks[be.GetMajorityMaterialId()].BlockMaterial == EnumBlockMaterial.Glass)
+            {
+                var conds = capi.World.Player.Entity.selfClimateCond;
+                if (conds != null && conds.Rainfall > 0.1f && conds.Temperature > 3f && (world.BlockAccessor.GetRainMapHeightAt(pos) <= pos.Y || world.BlockAccessor.GetDistanceToRainFall(pos, 3, 1) <= 2))
+                {
+                    return conds.Rainfall;
+                }
+            }
+
+            return 0;
         }
     }
 }

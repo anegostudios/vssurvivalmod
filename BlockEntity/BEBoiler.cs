@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -12,6 +12,24 @@ namespace Vintagestory.GameContent
     {
         public JsonItemStack DistilledStack;
         public float Ratio;
+
+        public DistillationProps Clone()
+        {
+            return new DistillationProps()
+            {
+                DistilledStack = DistilledStack?.Clone(),
+                Ratio = Ratio
+            };
+        }
+
+        public static DistillationProps ReadFrom(ItemStack stack, IWorldAccessor worldForResolving)
+        {
+            if (stack == null) return null;
+
+            var props = stack.ItemAttributes?["distillationProps"]?.AsObject<DistillationProps>(null, stack.Collectible.Code.Domain);
+            props?.DistilledStack?.Resolve(worldForResolving, "distillation props distilled stack");
+            return props;
+        }
     }
 
     public class BlockEntityBoiler : BlockEntityLiquidContainer, IFirePit
@@ -129,7 +147,7 @@ namespace Vintagestory.GameContent
         public DistillationProps DistProps {
             get
             {
-                return InputStack?.ItemAttributes?["distillationProps"].AsObject<DistillationProps>();
+                return DistillationProps.ReadFrom(InputStack, Api.World);
             }
         }
 
@@ -158,10 +176,10 @@ namespace Vintagestory.GameContent
             ItemSlot hotbarSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
 
             bool addGrass = hotbarSlot.Itemstack?.Collectible is ItemDryGrass && firepitStage == 0;
-            bool addFireWood = hotbarSlot.Itemstack?.Collectible is ItemFirewood && firepitStage >= 1 && firepitStage <= 4;
+            bool addFirewood = hotbarSlot.Itemstack?.Collectible is ItemFirewood && firepitStage >= 1 && firepitStage <= 4;
             bool reignite = hotbarSlot.Itemstack?.Collectible is ItemFirewood && (firepitStage >= 5 && fuelHours <= 6f);
 
-            if (addGrass || addFireWood || reignite)
+            if (addGrass || addFirewood || reignite)
             {
                 if (!reignite) firepitStage++;
                 else if (firepitStage == 7) firepitStage = 5;
@@ -175,7 +193,7 @@ namespace Vintagestory.GameContent
 
 
             if (addGrass) return true;
-            if (addFireWood || reignite)
+            if (addFirewood || reignite)
             {
                 fuelHours = Math.Max(2, fuelHours + 2);
                 return true;

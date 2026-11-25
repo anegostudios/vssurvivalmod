@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -44,7 +44,7 @@ namespace Vintagestory.GameContent
 
         public override void Start(EntityActivity act)
         {
-            BlockPos targetPos = getTarget(vas.Entity.Api, vas.Entity.ServerPos.XYZ);
+            BlockPos targetPos = getTarget(vas.Entity.Api, vas.Entity.Pos.XYZ);
 
             ExecutionHasFailed = targetPos == null;
 
@@ -53,12 +53,12 @@ namespace Vintagestory.GameContent
                 Vec3f targetVec = new Vec3f();
 
                 targetVec.Set(
-                    (float)(targetPos.X + 0.5 - vas.Entity.ServerPos.X),
-                    (float)(targetPos.Y + 0.5 - vas.Entity.ServerPos.Y),
-                    (float)(targetPos.Z + 0.5 - vas.Entity.ServerPos.Z)
+                    (float)(targetPos.X + 0.5 - vas.Entity.Pos.X),
+                    (float)(targetPos.Y + 0.5 - vas.Entity.Pos.Y),
+                    (float)(targetPos.Z + 0.5 - vas.Entity.Pos.Z)
                 );
 
-                vas.Entity.ServerPos.Yaw = (float)Math.Atan2(targetVec.X, targetVec.Z);
+                vas.Entity.Pos.Yaw = (float)Math.Atan2(targetVec.X, targetVec.Z);
 
                 var block = vas.Entity.Api.World.BlockAccessor.GetBlock(targetPos);
 
@@ -71,7 +71,7 @@ namespace Vintagestory.GameContent
                 };
 
                 var args = activateArgs == null ? null : TreeAttribute.FromJson(activateArgs) as ITreeAttribute;
-                block.Activate(vas.Entity.World, new Caller() { Entity = vas.Entity, Type = EnumCallerType.Entity, Pos = vas.Entity.Pos.XYZ }, blockSel, args);
+                block.Activate(vas.Entity.World, Caller.FromEntity(vas.Entity), blockSel, args);
             }
         }
 

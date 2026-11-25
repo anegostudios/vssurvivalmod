@@ -1,4 +1,4 @@
-﻿using ProtoBuf;
+using ProtoBuf;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -56,13 +56,24 @@ namespace Vintagestory.GameContent
         [ProtoMember(8), DefaultValue(true)]
         public bool SpawnOnlyAfterImport = true;
 
+        [ProtoMember(20), DefaultValue(-30)]
+        public float MinTemp = -30;
+        [ProtoMember(21), DefaultValue(40)]
+        public float MaxTemp = 40;
+        [ProtoMember(22), DefaultValue(0)]
+        public float MinRain = 0;
+        [ProtoMember(23), DefaultValue(1)]
+        public float MaxRain = 1;
+        [ProtoMember(24), DefaultValue(0)]
+        public int ClimateMode = 0; // 0 = ignore climate conditions, 1 = runtime values, 2 = worldgen values
+
 
         // Runtime data
         [ProtoMember(9), DefaultValue(false)]
         public bool WasImported = false;
         [ProtoMember(10), DefaultValue(0)]
         public int InitialQuantitySpawned = 0;
-        [ProtoMember(11)]
+        [ProtoMember(11), DefaultValue(0)]
         public int MinPlayerRange = 0;
         [ProtoMember(13)]
         public int InternalCapacity;
@@ -76,7 +87,7 @@ namespace Vintagestory.GameContent
         public double LastSpawnTotalHours;
         [ProtoMember(18)]
         public EnumSpawnRangeMode SpawnRangeMode;
-        [ProtoMember(19)]
+        [ProtoMember(19), DefaultValue(-1)]
         public int MaxPlayerRange = -1;
 
         [ProtoAfterDeserialization]
@@ -122,6 +133,12 @@ namespace Vintagestory.GameContent
             tree.SetDouble("internalCharge", InternalCharge);
             tree.SetDouble("rechargePerHour", RechargePerHour);
             tree.SetDouble("lastChargeUpdateTotalHours", LastChargeUpdateTotalHours);
+
+            tree.SetFloat("minTemp", MinTemp);
+            tree.SetFloat("maxTemp", MaxTemp);
+            tree.SetFloat("minRain", MinRain);
+            tree.SetFloat("maxRain", MaxRain);
+            tree.SetInt("climateMode", ClimateMode);
         }
 
         public void FromTreeAttributes(ITreeAttribute tree)
@@ -149,21 +166,23 @@ namespace Vintagestory.GameContent
             InternalCharge = tree.GetDouble("internalCharge");
             RechargePerHour = tree.GetDouble("rechargePerHour");
             LastChargeUpdateTotalHours = tree.GetDouble("lastChargeUpdateTotalHours");
+
+            MinTemp = tree.GetFloat("minTemp", -30);
+            MaxTemp = tree.GetFloat("maxTemp", 40);
+            MinRain = tree.GetFloat("minRain", 0);
+            MaxRain = tree.GetFloat("maxRain", 1);
+            ClimateMode = tree.GetInt("climateMode", 0);
+
         }
     }
 
     public class BlockEntitySpawner : BlockEntity
     {
         public BESpawnerData Data = new BESpawnerData().initDefaults();
-
         protected HashSet<long> spawnedEntities = new HashSet<long>();
-
-
         protected GuiDialogSpawner dlg;
         protected CollisionTester collisionTester = new CollisionTester();
-
         protected bool requireSpawnOnWallSide;
-
 
         public BlockEntitySpawner()
         {
@@ -229,7 +248,13 @@ namespace Vintagestory.GameContent
             ICoreServerAPI sapi = Api as ICoreServerAPI;
 
             int rnd = sapi.World.Rand.Next(Data.EntityCodes.Length);
-            EntityProperties type = Api.World.GetEntityType(new AssetLocation(Data.EntityCodes[rnd]));
+
+            var tree = new TreeAttribute();
+            tree.SetString("type", new AssetLocation(Data.EntityCodes[rnd]));
+            tree.SetBlockPos("pos", Pos);
+            sapi.Event.PushEvent("onattemptspawnerspawn", tree);
+
+            EntityProperties type = Api.World.GetEntityType(tree.GetString("type"));
 
             if (Data.InternalCapacity > 0 && Data.InternalCharge < 1) return;
             if (Data.LastSpawnTotalHours + Data.InGameHourInterval > Api.World.Calendar.TotalHours && Data.InitialSpawnQuantity <= 0) return;
@@ -239,12 +264,30 @@ namespace Vintagestory.GameContent
             if (Data.SpawnRangeMode > 0)
             {
                 IPlayer player = Api.World.NearestPlayer(Pos.X, Pos.InternalY, Pos.Z);
-                if (player?.Entity?.ServerPos == null) return;
-                double distanceSq = player.Entity.ServerPos.SquareDistanceTo(Pos.ToVec3d());
+                if (player?.Entity?.Pos == null) return;
+                double distanceSq = player.Entity.Pos.SquareDistanceTo(Pos.ToVec3d());
 
                 if (Data.SpawnRangeMode == EnumSpawnRangeMode.WhenInRange && distanceSq > Data.MinPlayerRange * Data.MinPlayerRange) return;
                 if (Data.SpawnRangeMode == EnumSpawnRangeMode.WhenOutsideOfRange && distanceSq < Data.MaxPlayerRange * Data.MaxPlayerRange) return;
                 if (Data.SpawnRangeMode == EnumSpawnRangeMode.WithinMinMaxRange && (distanceSq < Data.MinPlayerRange * Data.MinPlayerRange || distanceSq > Data.MaxPlayerRange * Data.MaxPlayerRange)) return;
+            }
+
+            if (Data.ClimateMode > 0)
+            {
+                var mode = Data.ClimateMode == 1 ? EnumGetClimateMode.NowValues : EnumGetClimateMode.WorldGenValues;
+                var climate = Api.World.BlockAccessor.GetClimateAt(Pos, mode);
+                if (climate == null) return;
+
+                if (climate.Temperature < Data.MinTemp || climate.Temperature > Data.MaxTemp)
+                {
+                    if (mode == EnumGetClimateMode.WorldGenValues) decrementSpawnCount(); // self destruct if stuff can never spawn here
+                    return;
+                }
+                if (climate.Rainfall < Data.MinRain || climate.Rainfall > Data.MaxRain)
+                {
+                    if (mode == EnumGetClimateMode.WorldGenValues) decrementSpawnCount(); // self destruct if stuff can never spawn here
+                    return;
+                }
             }
 
             if (type == null) return;
@@ -286,13 +329,13 @@ namespace Vintagestory.GameContent
             int q = Data.GroupSize;
             long herdId = 0;
             Vec3d spawnPos = new Vec3d();
-            BlockPos spawnBlockPos = new BlockPos();
+            BlockPos spawnBlockPos = new BlockPos(Pos.dimension);
 
             while (q-- > 0)
             {
                 for (int tries = 0; tries < 15; tries++)
                 {
-                    spawnPos.Set(Pos).Add(
+                    spawnPos.SetWithDimension(Pos).Add(
                         0.5 + Data.SpawnArea.MinX + Api.World.Rand.NextDouble() * Data.SpawnArea.SizeX,
                         Data.SpawnArea.MinY + Api.World.Rand.NextDouble() * Data.SpawnArea.SizeY,
                         0.5 + Data.SpawnArea.MinZ + Api.World.Rand.NextDouble() * Data.SpawnArea.SizeZ
@@ -356,17 +399,21 @@ namespace Vintagestory.GameContent
                             Data.InitialQuantitySpawned--;
                         }
 
-                        // Self destruct, if configured so
-                        if (Data.RemoveAfterSpawnCount > 0)
-                        {
-                            Data.RemoveAfterSpawnCount--;
-                            if (Data.RemoveAfterSpawnCount == 0)
-                            {
-                                Api.World.BlockAccessor.SetBlock(0, Pos);
-                            }
-                        }
-
+                        decrementSpawnCount();
                         return;
+                    }
+                }
+            }
+
+            void decrementSpawnCount()
+            {
+                // Self destruct, if configured so
+                if (Data.RemoveAfterSpawnCount > 0)
+                {
+                    Data.RemoveAfterSpawnCount--;
+                    if (Data.RemoveAfterSpawnCount == 0)
+                    {
+                        Api.World.BlockAccessor.SetBlock(0, Pos);
                     }
                 }
             }
@@ -431,9 +478,8 @@ namespace Vintagestory.GameContent
             EntityAgent agent = entity as EntityAgent;
             if (agent != null) agent.HerdId = herdid;
 
-            entity.ServerPos.SetPosWithDimension(spawnPosition);
-            entity.ServerPos.SetYaw((float)Api.World.Rand.NextDouble() * GameMath.TWOPI);
-            entity.Pos.SetFrom(entity.ServerPos);
+            entity.Pos.SetPosWithDimension(spawnPosition);
+            entity.Pos.SetYaw((float)Api.World.Rand.NextDouble() * GameMath.TWOPI);
             entity.Attributes.SetString("origin", "entityspawner");
             Api.World.SpawnEntity(entity);
 
@@ -491,11 +537,11 @@ namespace Vintagestory.GameContent
             dlg.OnClosed += () => { dlg?.Dispose(); dlg = null; };
         }
 
-        public override void OnReceivedServerPacket(int packetid, byte[] bytes)
+        public override void OnReceivedServerPacket(int packetId, SerializedData packetData)
         {
-            if (packetid == 1000)
+            if (packetId == 1000)
             {
-                Data = SerializerUtil.Deserialize<BESpawnerData>(bytes);
+                Data = packetData.Deserialize<BESpawnerData>();
                 if (dlg?.IsOpened() == true)
                 {
                     dlg.UpdateFromServer(Data);
@@ -503,11 +549,17 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override void OnReceivedClientPacket(IPlayer fromPlayer, int packetid, byte[] bytes)
+        public override void OnReceivedClientPacket(IServerPlayer fromPlayer, int packetId, SerializedData packetData, ref CachedAccessPerms perms)
         {
-            if (packetid == 1001)
+            if (packetId == 1001)
             {
-                Data = SerializerUtil.Deserialize<BESpawnerData>(bytes);
+                if (fromPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
+                {
+                    Api.Logger.Audit($"{fromPlayer.PlayerName} not in creative mode tried to set spawner data at {Pos}");
+                    return;
+                }
+
+                Data = packetData.Deserialize<BESpawnerData>();
                 MarkDirty();
             }
         }

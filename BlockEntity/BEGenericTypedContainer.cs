@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Vintagestory.API.Client;
@@ -92,6 +92,20 @@ namespace Vintagestory.GameContent
             }
         }
 
+        public override bool OnPlacementBySchematicCustom(ICoreServerAPI sapi, IBlockAccessor worldAccessor, ITreeAttribute schematicTreeData)
+        {
+            var result = false;
+            foreach (var slot in Inventory)
+            {
+                if (slot.Itemstack != null)
+                {
+                    result |= slot.Itemstack.Collectible.OnPlacementBySchematicCustom(sapi, slot, schematicTreeData);
+                }
+            }
+
+            return result;
+        }
+
         public override void OnBlockPlaced(ItemStack byItemStack = null)
         {
             if (byItemStack?.Attributes != null)
@@ -175,7 +189,7 @@ namespace Vintagestory.GameContent
             tree.SetFloat("meshAngle", MeshAngle);
         }
 
-        protected virtual void InitInventory(Block block)
+        public virtual void InitInventory(Block block)
         {
             if (block?.Attributes != null)
             {
@@ -191,11 +205,11 @@ namespace Vintagestory.GameContent
 
                 if (block.Attributes["typedOpenSound"][type].Exists)
                 {
-                    OpenSound = AssetLocation.Create(block.Attributes["typedOpenSound"][type].AsString(OpenSound.ToShortString()), block.Code.Domain);
+                    OpenSound = block.Attributes["typedOpenSound"][type].AsObject<SoundAttributes?>(null, Block.Code.Domain, true) ?? this.OpenSound;
                 }
                 if (block.Attributes["typedCloseSound"][type].Exists)
                 {
-                    CloseSound = AssetLocation.Create(block.Attributes["typedCloseSound"][type].AsString(CloseSound.ToShortString()), block.Code.Domain);
+                    CloseSound = block.Attributes["typedCloseSound"][type].AsObject<SoundAttributes?>(null, Block.Code.Domain, true) ?? this.CloseSound;
                 }
             }
 
@@ -293,7 +307,17 @@ namespace Vintagestory.GameContent
             if (LidOpenEntityId.Count == 0)
             {
                 CloseLid();
+
+                if (Inventory.Empty && player.WorldData.CurrentGameMode == EnumGameMode.Survival &&
+                    Block.Attributes["changeIntoWhenEmpty"][type].AsObject<JsonItemStack>() is { } jstack)
+                {
+                    Api.World.PlaySoundAt(new AssetLocation("sounds/effect/toolbreak"), Pos, 0.5, player);
+
+                    jstack.Resolve(Api.World, $"Container {Block.Code} changeIntoWhenEmpty");
+                    Api.World.BlockAccessor.SetBlock(jstack.ResolvedItemstack.Block.Id, Pos, jstack.ResolvedItemstack);
+                }
             }
+
             inventory.PutLocked = retrieveOnly;
 
             // This is already handled elsewhere and also causes a stackoverflowexception, but seems needed somehow?
@@ -310,7 +334,7 @@ namespace Vintagestory.GameContent
                 inventory.PutLocked = false;
             }
 
-            if (inventory.PutLocked && inventory.Empty) return false;
+            //if (inventory.PutLocked && inventory.Empty) return false;
 
             if (Api.World is IServerWorldAccessor)
             {
@@ -325,9 +349,9 @@ namespace Vintagestory.GameContent
                 byPlayer.InventoryManager.OpenInventory(inventory);
                 data = SerializerUtil.Serialize(new OpenContainerLidPacket(byPlayer.Entity.EntityId, LidOpenEntityId.Count > 0));
                 ((ICoreServerAPI)Api).Network.BroadcastBlockEntityPacket(
-                    Pos,
+                    new(Pos),
                     (int)EnumBlockContainerPacketId.OpenLidOthers,
-                    data,
+                    new SerializedData(data),
                     (IServerPlayer)byPlayer
                 );
             }
@@ -374,7 +398,7 @@ namespace Vintagestory.GameContent
             }
 
             string meshKey = type + block.Subtype + "-" + rndTexNum;
-            if (meshes.TryGetValue(meshKey, out MeshData mesh))
+            if (meshes.TryGetValue(meshKey, out MeshData mesh) && mesh != null)
             {
                 if (animUtil != null && animUtil.renderer == null)
                 {
@@ -423,7 +447,7 @@ namespace Vintagestory.GameContent
                     if (ownMesh == null) return false;
                 }
 
-                mesher.AddMeshData(ownMesh.Clone().Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, MeshAngle, 0));
+                mesher.AddMeshData(ownMesh.Clone().Rotate(0, MeshAngle, 0));
             }
 
             return true;

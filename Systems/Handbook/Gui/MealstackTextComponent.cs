@@ -1,9 +1,11 @@
 using Cairo;
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 using Vintagestory.GameContent;
 
 namespace Vintagestory.API.Client
@@ -39,10 +41,6 @@ namespace Vintagestory.API.Client
 
         ItemStack? ingredient;
 
-        ItemStack[] allstacks;
-
-        Dictionary<CookingRecipeIngredient, HashSet<ItemStack?>>? cachedValidStacks;
-
         int slots;
         bool isPie;
         public bool RandomBowlBlock { get; set; } = true;
@@ -55,19 +53,25 @@ namespace Vintagestory.API.Client
         /// <param name="unscaledSize"></param>
         /// <param name="floatType"></param>
         /// <param name="onMealClicked"></param>
-        public MealstackTextComponent(ICoreClientAPI capi, ref Dictionary<CookingRecipeIngredient, HashSet<ItemStack?>>? cachedValidStacks, ItemStack mealBlock, CookingRecipe recipe, double unscaledSize, EnumFloat floatType, ItemStack[] allstacks, Action<CookingRecipe>? onMealClicked = null, int slots = 4, bool isPie = false, ItemStack? ingredient = null) : base(capi)
+        public MealstackTextComponent(ICoreClientAPI capi, ItemStack mealBlock, CookingRecipe recipe, double unscaledSize, EnumFloat floatType, Action<CookingRecipe>? onMealClicked = null, int slots = 4, bool isPie = false, ItemStack? ingredient = null) : base(capi)
         {
             dummySlot = new DummySlot(mealBlock);
-            this.cachedValidStacks = cachedValidStacks;
 
             if (dummySlot.Itemstack?.Collectible is IBlockMealContainer meal)
             {
-                if (isPie) dummySlot.Itemstack.Attributes.SetString("topCrustType", BlockPie.TopCrustTypes[capi.World.Rand.Next(BlockPie.TopCrustTypes.Length)].Code);
-                meal.SetContents(recipe.Code!, dummySlot.Itemstack, isPie ? BlockPie.GenerateRandomPie(capi, ref cachedValidStacks, recipe, ingredient) : recipe.GenerateRandomMeal(capi, ref cachedValidStacks, allstacks, slots, ingredient), 1);
+                if (isPie) dummySlot.Itemstack.Attributes.SetString("topCrustType", BlockPie.GetRandomCrustType(capi.World));
+                var cachedValidStacks = ObjectCacheUtil.TryGet<Dictionary<CookingRecipeIngredient, HashSet<ItemStack?>>?>(capi, "valstacksbying-" + recipe.Code);
+                meal.SetContents(recipe.Code!, dummySlot.Itemstack, isPie ? BlockPie.GenerateRandomPie(capi, ref cachedValidStacks, recipe, ingredient) : recipe.GenerateRandomMeal(capi, ref cachedValidStacks, ObjectCacheUtil.TryGet<ItemStack[]>(capi, "handbookallstacks"), slots, ingredient));
+
+                if (dummySlot.Itemstack.Collectible is BlockPie)
+                {
+                    dummySlot.Itemstack.Attributes.SetInt("pieSize", 4);
+                    dummySlot.Itemstack.Attributes.SetInt("bakeLevel", 2);
+                    dummySlot.Itemstack.Attributes.SetString("topCrustType", BlockPie.GetRandomCrustType(capi.World));
+                }
             }
 
             this.ingredient = ingredient;
-            this.allstacks = allstacks;
             this.slots = slots;
             this.isPie = isPie;
             this.recipe = recipe;
@@ -100,9 +104,9 @@ namespace Vintagestory.API.Client
             {
                 ctx.SetSourceRGBA(1, 1, 1, 0.2);
                 ctx.Rectangle(
-                    BoundsPerLine[0].X, 
+                    BoundsPerLine[0].X,
                     BoundsPerLine[0].Y,  /* - BoundsPerLine[0].Ascent / 2 */ /* why /2??? */ /* why this ascent at all???? wtf? */
-                    BoundsPerLine[0].Width, 
+                    BoundsPerLine[0].Width,
                     BoundsPerLine[0].Height
                 );
                 ctx.Fill();
@@ -116,23 +120,21 @@ namespace Vintagestory.API.Client
             LineRectangled bounds = BoundsPerLine[0];
             bool mouseover = bounds.PointInside(relx, rely);
 
-            IBlockMealContainer? mealBlock = dummySlot.Itemstack?.Collectible as IBlockMealContainer;
-            if (mealBlock == null) return;
+            if (dummySlot.Itemstack?.Collectible is not IBlockMealContainer mealBlock) return;
 
             if (!mouseover && (secondsVisible -= deltaTime) <= 0)
             {
                 secondsVisible = 1;
-                if (RandomBowlBlock)
-                {
-                    if (isPie) dummySlot.Itemstack?.Attributes.SetString("topCrustType", BlockPie.TopCrustTypes[capi.World.Rand.Next(BlockPie.TopCrustTypes.Length)].Code);
-                    else dummySlot.Itemstack = new(BlockMeal.RandomMealBowl(capi));
-                }
-                mealBlock.SetContents(recipe.Code!, dummySlot.Itemstack!, isPie ? BlockPie.GenerateRandomPie(capi, ref cachedValidStacks, recipe, ingredient) : recipe.GenerateRandomMeal(capi, ref cachedValidStacks, allstacks, slots, ingredient), 1);
+                if (RandomBowlBlock && !isPie) dummySlot.Itemstack = new(BlockMeal.RandomMealBowl(capi));
+
+                var cachedValidStacks = ObjectCacheUtil.TryGet<Dictionary<CookingRecipeIngredient, HashSet<ItemStack?>>?>(capi, "valstacksbying-" + recipe.Code);
+                mealBlock.SetContents(recipe.Code!, dummySlot.Itemstack!, isPie ? BlockPie.GenerateRandomPie(capi, ref cachedValidStacks, recipe, ingredient) : recipe.GenerateRandomMeal(capi, ref cachedValidStacks, ObjectCacheUtil.TryGet<ItemStack[]>(capi, "handbookallstacks"), slots, ingredient));
+                if (isPie) dummySlot.Itemstack!.Attributes.SetString("topCrustType", BlockPie.GetRandomCrustType(capi.World));
             }
 
             ElementBounds scibounds = ElementBounds.FixedSize((int)(bounds.Width / RuntimeEnv.GUIScale), (int)(bounds.Height / RuntimeEnv.GUIScale));
             scibounds.ParentBounds = capi.Gui.WindowBounds;
-            
+
             scibounds.CalcWorldBounds();
             scibounds.absFixedX = renderX + bounds.X + renderOffset.X;
             scibounds.absFixedY = renderY + bounds.Y + renderOffset.Y /*- BoundsPerLine[0].Ascent / 2 - why???? */;
@@ -141,10 +143,10 @@ namespace Vintagestory.API.Client
 
             api.Render.PushScissor(scibounds, true);
 
-            api.Render.RenderItemstackToGui(dummySlot, 
-                renderX + bounds.X + bounds.Width * 0.5f + renderOffset.X + offX, 
-                renderY + bounds.Y + bounds.Height * 0.5f + renderOffset.Y + offY /*- BoundsPerLine[0].Ascent / 2 - why?????*/, 
-                100 + renderOffset.Z, (float)GuiElement.scaled(unscaledSize) * renderSize, 
+            api.Render.RenderItemstackToGui(dummySlot,
+                renderX + bounds.X + bounds.Width * 0.5f + renderOffset.X + offX,
+                renderY + bounds.Y + bounds.Height * 0.5f + renderOffset.Y + offY /*- BoundsPerLine[0].Ascent / 2 - why?????*/,
+                100 + renderOffset.Z, (float)GuiElement.scaled(unscaledSize) * renderSize,
                 ColorUtil.WhiteArgb, true, false, ShowStackSize
             );
 

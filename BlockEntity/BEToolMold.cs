@@ -214,7 +214,7 @@ namespace Vintagestory.GameContent
 
                     if (Block.Sounds?.Place != null)
                     {
-                        Api.World.PlaySoundAt(Block.Sounds.Place, Pos, -0.5, byPlayer, false);
+                        Api.World.PlaySoundAt(Block.Sounds.Place, Pos, -0.5, byPlayer);
                     }
 
                     handled = true;
@@ -324,6 +324,7 @@ namespace Vintagestory.GameContent
                 FillLevel += amountToFill;
                 amount -= amountToFill;
                 UpdateRenderer();
+                MarkDirty();
                 return;
             }
 
@@ -331,7 +332,7 @@ namespace Vintagestory.GameContent
 
         public void OnPourOver()
         {
-            MarkDirty(true);
+            MarkDirty();
         }
 
         public override void OnBlockRemoved()
@@ -479,6 +480,9 @@ namespace Vintagestory.GameContent
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolve)
         {
+            bool wasShattered = Shattered;
+            float previousMeshAngle = MeshAngle;
+
             base.FromTreeAttributes(tree, worldForResolve);
 
             MetalContent = tree.GetItemstack("contents");
@@ -491,7 +495,8 @@ namespace Vintagestory.GameContent
 
             UpdateRenderer();
 
-            if (Api?.Side == EnumAppSide.Client)
+            // Fill level and temperature are handled by the separate liquid renderer.
+            if (Api?.Side == EnumAppSide.Client && (wasShattered != Shattered || previousMeshAngle != MeshAngle))
             {
                 Api.World.BlockAccessor.MarkBlockDirty(Pos);
             }
@@ -555,7 +560,7 @@ namespace Vintagestory.GameContent
             MarkDirty(true);
         }
 
-        public void CoolNow(float amountRel)
+        public void CoolNow(float amountRel, OnStackToCool onStackToCoolCallback)
         {
             float breakchance = Math.Max(0, amountRel - 0.6f) * Math.Max(Temperature - 250f, 0) / 5000f;
 
@@ -671,7 +676,7 @@ namespace Vintagestory.GameContent
                 var matrix = new Matrixf().Identity()
                                           .Translate(0.5f, 1.0f / 16f + Math.Max(0, renderer.Level / 16f - 0.0625f / 3), 0.5f)
                                           .RotateX(90 * GameMath.DEG2RAD)
-                                          .Scale(0.5f * size.Width / 16f, 0.5f * size.Length / 16f, 0.5f)
+                                          .Scale(size.HalfExtentX / 16f, size.HalfExtentZ / 16f, 0.5f)
                                           .Values;
 
                 modeldata.MatrixTransform(matrix);

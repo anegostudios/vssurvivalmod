@@ -213,7 +213,7 @@ namespace Vintagestory.GameContent
 
         public event InitCustomPagesDelegate OnInitCustomPages;
 
-        internal void TriggerOnInitCustomPages(List<GuiHandbookPage> pages)
+        internal void TriggerOnInitCustomPages(List<IFlatListItem> pages)
         {
             OnInitCustomPages?.Invoke(pages);
         }
@@ -245,7 +245,7 @@ namespace Vintagestory.GameContent
 
         private void sendSyntaxPacket(IServerPlayer byPlayer)
         {
-            var cmdsyntaxPacket = genCmdSyntaxPacket(new Caller() { Player = byPlayer, Type = EnumCallerType.Player });
+            var cmdsyntaxPacket = genCmdSyntaxPacket(Caller.FromPlayer(byPlayer));
             sapi.Network.GetChannel("commandhandbook").SendPacket(cmdsyntaxPacket, byPlayer);
         }
 
@@ -297,13 +297,15 @@ namespace Vintagestory.GameContent
         private TextCommandResult onCmd(TextCommandCallingArgs args)
         {
             var sb = new StringBuilder();
-
-            foreach (var page in dialog.allHandbookPages)
+            sb.AppendLine("<div style=\"position: relative;\"><div style=\"position: absolute;left: 30%;max-width: 40%;\">");
+            foreach (var element in dialog.allHandbookListItems)
             {
+                if (element is not GuiHandbookPage page) continue;
                 sb.Append($"<h3>{page.PageCode}</h3>");
                 sb.Append(((GuiHandbookCommandPage)page).TextCacheAll.Replace("\n","\n</br>").Replace("<strong>", "<b>").Replace("</strong>", "</b>"));
             }
-
+            sb.AppendLine("</div></div>");
+            GamePaths.EnsurePathExists(GamePaths.ModConfig);
             File.WriteAllText(Path.Combine(GamePaths.ModConfig,"cmds.html"),sb.ToString());
             return TextCommandResult.Success("exported all cmds");
         }
@@ -355,25 +357,25 @@ namespace Vintagestory.GameContent
         }
 
 
-        private List<GuiHandbookPage> onCreatePagesAsync()
+        private List<IFlatListItem> onCreatePagesAsync()
         {
-            var pages = new List<GuiHandbookPage>();
+            var listItems = new List<IFlatListItem>();
 
             foreach (var val in IChatCommandApi.GetOrdered(capi.ChatCommands))
             {
                 if (capi.IsShuttingDown) break;
                 var cmd = val.Value;
 
-                pages.Add(new GuiHandbookCommandPage(cmd, cmd.CommandPrefix + val.Key, "client", cmd.RootAliases?.Contains(val.Key) == true));
+                listItems.Add(new GuiHandbookCommandPage(cmd, cmd.CommandPrefix + val.Key, "client", cmd.RootAliases?.Contains(val.Key) == true));
             }
 
             foreach (var cmd in serverCommandsSyntaxClient.Commands)
             {
                 if (capi.IsShuttingDown) break;
-                pages.Add(new GuiHandbookCommandPage(cmd, cmd.FullnameAlias, "server"));
+                listItems.Add(new GuiHandbookCommandPage(cmd, cmd.FullnameAlias, "server"));
             }
 
-            return pages;
+            return listItems;
         }
 
         private void onComposePage(GuiHandbookPage page, GuiComposer detailViewGui, ElementBounds textBounds, ActionConsumable<string> openDetailPageFor)

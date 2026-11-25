@@ -23,7 +23,7 @@ namespace Vintagestory.GameContent
     /// It only grows on soil that has a sun light level of 7 or higher when there is an adjacent grass block near it. The
     /// adjacent grass block can be at a y level between 1 below it to 1 above it. 
     /// </summary>
-    public class BlockSoil : BlockWithGrassOverlay
+    public class BlockSoil : BlockWithGrassOverlay, IBlockSoil
     {
         protected List<AssetLocation> tallGrassCodes = new List<AssetLocation>();
         protected string[] growthStages = new string[] { "none", "verysparse", "sparse", "normal" };
@@ -282,7 +282,7 @@ namespace Vintagestory.GameContent
 
                 if (trfDist + yDist <= posRand)
                 {
-                    int blockId = bl.GetBlockId(posRand, climate.Temperature, climate.WorldgenRainfall, climate.Fertility, topblockid, pos, mapheight);
+                    int blockId = bl.GetBlockId(posRand, climate.Temperature, climate.WorldgenRainfall, climate.Fertility, topblockid, pos, mapheight, climate.Biome);
 
                     Block block = world.Blocks[blockId];
                     if (block is BlockSoil blockSoil)
@@ -305,10 +305,19 @@ namespace Vintagestory.GameContent
 
         public override int GetRandomColor(ICoreClientAPI capi, BlockPos pos, BlockFacing facing, int rndIndex = -1)
         {
-            if (facing == BlockFacing.UP && Variant["grasscoverage"] != "none")
+            if (ParticlesTextureCode != null && facing == BlockFacing.UP)
             {
-                return capi.World.ApplyColorMapOnRgba(ClimateColorMap, SeasonColorMap, capi.BlockTextureAtlas.GetRandomColor(Textures["specialSecondTexture"].Baked.TextureSubId, rndIndex), pos.X, pos.Y, pos.Z);
+                var subid = Textures[ParticlesTextureCode].Baked.TextureSubId;
+
+                if (rndIndex == -1 /* Otherwise worldmap gets extremely noisy */ && capi.World.Rand.NextDouble() > currentStage / 4.0)
+                {
+                    subid = Textures["down"].Baked.TextureSubId;
+                    return capi.BlockTextureAtlas.GetRandomColor(subid, rndIndex);
+                }
+
+                return capi.World.ApplyColorMapOnRgba(ClimateColorMap, SeasonColorMap, capi.BlockTextureAtlas.GetRandomColor(subid, rndIndex), pos.X, pos.Y, pos.Z);
             }
+
             return base.GetRandomColor(capi, pos, facing, rndIndex);
         }
 

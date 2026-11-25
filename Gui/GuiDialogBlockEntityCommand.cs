@@ -8,7 +8,7 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    [ProtoContract()]
+    [ProtoContract]
     public class BlockEntityCommandPacket
     {
         [ProtoMember(1)]
@@ -31,7 +31,7 @@ namespace Vintagestory.GameContent
 
             // 1.2. Name and Hotkey
             double halfWidth = innerWidth / 2 - 5;
-            
+
             // 1.3. Commands text
             ElementBounds commmandsBounds = ElementBounds.Fixed(0, 30, innerWidth, 30);
 
@@ -123,7 +123,7 @@ namespace Vintagestory.GameContent
 
         private void OnCommandCodeChanged(string t1)
         {
-            
+
         }
 
 
@@ -141,7 +141,7 @@ namespace Vintagestory.GameContent
             TryClose();
         }
 
-        
+
         public override string ToggleKeyCombinationCode
         {
             get { return null; }

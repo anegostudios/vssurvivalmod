@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -10,15 +11,17 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+using Vintagestory.Datastructures;
 
-#nullable disable
+#nullable disable annotations
 
 namespace Vintagestory.GameContent
 {
     public class BlockEntityKnappingSurface : BlockEntity
     {
+        const int NO_RECIPE = -1;
         // Permanent data
-        int selectedRecipeId = -1;
+        int selectedRecipeId = NO_RECIPE;
         public bool[,] Voxels = new bool[16, 16];
         public ItemStack BaseMaterial;
 
@@ -58,9 +61,11 @@ namespace Vintagestory.GameContent
             {
                 workitemRenderer = new KnappingRenderer(Pos, capi);
 
-                RegenMeshAndSelectionBoxes();
-                capi.Event.ColorsPresetChanged += RegenMeshAndSelectionBoxes;
+                RegenMesh();
+                capi.Event.ColorsPresetChanged += RegenMesh;
             }
+
+            RegenSelectionBoxes();
         }
 
 
@@ -167,7 +172,7 @@ namespace Vintagestory.GameContent
             {
                 Voxels = new bool[16, 16];
                 ItemStack outstack = SelectedRecipe.Output.ResolvedItemstack.Clone();
-                selectedRecipeId = -1;
+                selectedRecipeId = NO_RECIPE;
 
                 if (outstack.StackSize == 1 && outstack.Class == EnumItemClass.Block)
                 {
@@ -374,33 +379,47 @@ namespace Vintagestory.GameContent
             }
         }
 
-
+        #nullable enable annotations
         public void RegenMeshAndSelectionBoxes()
         {
-            if (workitemRenderer != null && BaseMaterial != null)
-            {
-                BaseMaterial.ResolveBlockOrItem(Api.World);
-                workitemRenderer.Material = BaseMaterial.Collectible.FirstCodePart(1);
-                if (workitemRenderer.Material == null)
-                {
-                    workitemRenderer.Material = BaseMaterial.Collectible.FirstCodePart(0);
-                }
-                workitemRenderer.RegenMesh(Voxels, SelectedRecipe);
-            }
-
-            List<Cuboidf> boxes = new List<Cuboidf>();
-            
-
-            for (int x = 0; x < 16; x++)
-            {
-                for (int z = 0; z < 16; z++)
-                {
-                    boxes.Add(new Cuboidf(x / 16f, 0 / 16f, z / 16f, x / 16f + 1 / 16f, 0 / 16f + 1 / 16f, z / 16f + 1 / 16f));
-                }
-            }
-
-            selectionBoxes = boxes.ToArray();
+            RegenMesh();
+            RegenSelectionBoxes();
         }
+
+        public void RegenMesh()
+        {
+            if (workitemRenderer == null || BaseMaterial == null)
+            {
+                return;
+            }
+
+            BaseMaterial.ResolveBlockOrItem(Api.World);
+            workitemRenderer.Material = BaseMaterial.Collectible.FirstCodePart(1);
+            workitemRenderer.Material ??= BaseMaterial.Collectible.FirstCodePart(0);
+            workitemRenderer.RegenMesh(Voxels, SelectedRecipe);
+        }
+
+        static Cuboidf[]? staticSelectionBoxes = null;
+        public void RegenSelectionBoxes()
+        {
+            if (staticSelectionBoxes == null)
+            {
+                var boxes = new Cuboidf[16 * 16];
+                for (int x = 0; x < 16; x++)
+                {
+                    for (int z = 0; z < 16; z++)
+                    {
+                        boxes[x * 16 + z] = new Cuboidf(x / 16f, 0 / 16f, z / 16f, x / 16f + 1 / 16f, 0 / 16f + 1 / 16f, z / 16f + 1 / 16f);
+                    }
+                }
+                staticSelectionBoxes = boxes;
+            }
+
+            var newBoxes = new Cuboidf[16 * 16];
+            Array.Copy(staticSelectionBoxes, newBoxes, staticSelectionBoxes.Length);
+            selectionBoxes = newBoxes;
+        }
+        #nullable disable annotations
 
 
         public void CreateInitialWorkItem()
@@ -425,7 +444,7 @@ namespace Vintagestory.GameContent
 
             dlg?.TryClose();
             dlg?.Dispose();
-            if (Api is ICoreClientAPI capi) capi.Event.ColorsPresetChanged -= RegenMeshAndSelectionBoxes;
+            if (Api is ICoreClientAPI capi) capi.Event.ColorsPresetChanged -= RegenMesh;
         }
 
 
@@ -433,7 +452,7 @@ namespace Vintagestory.GameContent
         {
             base.FromTreeAttributes(tree, worldForResolving);
             deserializeVoxels(tree.GetBytes("voxels"));
-            selectedRecipeId = tree.GetInt("selectedRecipeId", -1);
+            selectedRecipeId = tree.GetInt("selectedRecipeId", NO_RECIPE);
             BaseMaterial = tree.GetItemstack("baseMaterial");
 
             if (Api?.World != null)
@@ -516,61 +535,117 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnReceivedClientPacket(IPlayer player, int packetid, byte[] data)
+        public override void OnReceivedClientPacket(IServerPlayer player, int packetId, SerializedData packetData, ref CachedAccessPerms perms)
         {
-            if (packetid == (int)EnumClayFormingPacket.CancelSelect)
+            switch (packetId)
             {
-                if (BaseMaterial != null)
+                case (int)EnumClayFormingPacket.SelectRecipe:
                 {
-                    Api.World.SpawnItemEntity(BaseMaterial, Pos);
-                }
-                Api.World.BlockAccessor.SetBlock(0, Pos);
-                Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
-            }
+                    if (!perms.TryAccessingBlockAtPos(EnumBlockAccessFlags.Use, true, "knapping surface"))
+                    {
+                        // Revert selection for that player:
+                        ((ICoreServerAPI)Api).Network.SendBlockEntityPacket(player, Pos, (int)EnumClayFormingPacket.CancelSelect);
+                        break;
+                    }
 
-            if (packetid == (int)EnumClayFormingPacket.SelectRecipe)
-            {
-                int recipeid = SerializerUtil.Deserialize<int>(data);
-                KnappingRecipe recipe = Api.GetKnappingRecipes().FirstOrDefault(r => r.RecipeId == recipeid);
+                    int recipeId = packetData.Deserialize<int>();
+                    KnappingRecipe recipe = Api.GetKnappingRecipes().FirstOrDefault(r => r.RecipeId == recipeId);
 
-                if (recipe == null)
-                {
-                    Api.World.Logger.Error("Client tried to selected knapping recipe with id {0}, but no such recipe exists!");
-                    return;
-                }
+                    if (recipe == null)
+                    {
+                        Api.World.Logger.Error("Client tried to selected knapping recipe with id {0}, but no such recipe exists!");
+                        break;
+                    }
 
-                selectedRecipeId = recipe.RecipeId;
+                    selectedRecipeId = recipe.RecipeId;
 
-                // Tell server to save this chunk to disk again
-                MarkDirty();
-                Api.World.BlockAccessor.GetChunkAtBlockPos(Pos).MarkModified();
-            }
+                    // Tell server to save this chunk to disk again
+                    MarkDirty();
+                    Api.World.BlockAccessor.GetChunkAtBlockPos(Pos).MarkModified();
 
-            if (packetid == (int)EnumClayFormingPacket.OnUserOver)
-            {
-                Vec3i voxelPos;
-                bool mouseMode;
-                BlockFacing facing;
-                using (MemoryStream ms = new MemoryStream(data))
-                {
-                    BinaryReader reader = new BinaryReader(ms);
-                    voxelPos = new Vec3i(reader.ReadInt32(), reader.ReadInt32(), reader.ReadInt32());
-                    mouseMode = reader.ReadBoolean();
-                    facing = BlockFacing.ALLFACES[reader.ReadInt16()];
-
+                    break;
                 }
 
-             //   api.World.Logger.Notification("ok got use over packet from {0} at pos {1}", player.PlayerName, voxelPos);
 
-                OnUseOver(player, voxelPos, facing, mouseMode);
+                case (int)EnumClayFormingPacket.CancelSelect:
+                    if (selectedRecipeId != NO_RECIPE)
+                    {
+                        break;
+                    }
+
+                    if (!perms.TryAccessingBlockAtPos(EnumBlockAccessFlags.Use, false, "knapping surface")) // Do not validate picking range in case we got transported out of range.
+                    {
+                        // No need to revert here, this cannot happen without packet manipulation.
+                        break;
+                    }
+
+                    // Rennorb 19.06.2026 security: Potentially griefable: surfaces do not track who placed them, therefore a second player could steal the rock by sending the cancel packet.
+                    if (BaseMaterial != null)
+                    {
+                        Api.World.SpawnItemEntity(BaseMaterial, Pos);
+                    }
+                    Api.World.BlockAccessor.SetBlock(0, Pos);
+                    Api.World.BlockAccessor.TriggerNeighbourBlockUpdate(Pos);
+
+                    break;
+
+
+                case (int)EnumClayFormingPacket.OnUserOver:
+                {
+                    if (!perms.TryAccessingBlockAtPos(EnumBlockAccessFlags.Use, true, "knapping surface"))
+                    {
+                        // Rennorb 20.06.2026 ux: Revert block state for that player.
+                        break;
+                    }
+
+                    var reader = packetData.AsBinaryReader();
+                    var voxelPos = new Vec3i(
+                        reader.ReadInt32LE(),
+                        reader.ReadInt32LE(),
+                        reader.ReadInt32LE()
+                    );
+                    var mouseMode = reader.ReadBoolean();
+                    var facing = BlockFacing.ALLFACES[reader.ReadInt16LE()];
+
+                    // api.World.Logger.Notification("ok got use over packet from {0} at pos {1}", player.PlayerName, voxelPos);
+
+                    OnUseOver(player, voxelPos, facing, mouseMode);
+
+                    break;
+                }
             }
+
+            // Rennorb 20.06.2026 explain: Why not call the base here?
+            // base.OnReceivedClientPacket(player, packetId, data, ref perms);
+        }
+
+        public override void OnReceivedServerPacket(int packetId, SerializedData packetData)
+        {
+            switch(packetId)
+            {
+                case (int)EnumClayFormingPacket.CancelSelect:
+                    selectedRecipeId = NO_RECIPE;
+                    CreateInitialWorkItem();
+                    RegenMeshAndSelectionBoxes();
+                    break;
+            }
+
+            base.OnReceivedServerPacket(packetId, packetData);
         }
 
         GuiDialog dlg;
+
+        bool CanDoRecipe(IClientWorldAccessor world, IRecipeBase recipe, ItemStack ingredient)
+        {
+            DummySlot slot = new(ingredient);
+            return world.Api.Event.TriggerMatchesRecipe(world.Player, recipe, [slot]);
+        }
+
         public void OpenDialog(IClientWorldAccessor world, BlockPos pos, ItemStack baseMaterial)
         {
             List<KnappingRecipe> recipes = Api.GetKnappingRecipes()
                .Where(r => r.Ingredient.SatisfiesAsIngredient(baseMaterial))
+               .Where(r => CanDoRecipe(world, r, baseMaterial))
                .OrderBy(r => r.Output.ResolvedItemstack.Collectible.Code) // Cannot sort by name, thats language dependent!
                .ToList()
             ;
@@ -617,10 +692,7 @@ namespace Vintagestory.GameContent
             base.OnBlockUnloaded();
 
             workitemRenderer?.Dispose();
-            if (Api is ICoreClientAPI capi) capi.Event.ColorsPresetChanged -= RegenMeshAndSelectionBoxes;
+            if (Api is ICoreClientAPI capi) capi.Event.ColorsPresetChanged -= RegenMesh;
         }
-
-
     }
-
 }

@@ -19,8 +19,6 @@ namespace Vintagestory.GameContent
             isBlisterSteel = Variant["metal"] == "blistersteel";
         }
 
-
-
         public string GetMetalType()
         {
             return LastCodePart();
@@ -100,8 +98,9 @@ namespace Vintagestory.GameContent
             return workItemStack;
         }
 
+        public static int VoxelCount = 42;
 
-        public virtual int VoxelCountForHandbook(ItemStack stack) => 42;
+        public virtual int VoxelCountForHandbook(ItemStack stack) => VoxelCount;
 
         public static void CreateVoxelsFromIngot(ICoreAPI api, ref byte[,,] voxels, bool isBlisterSteel = false)
         {

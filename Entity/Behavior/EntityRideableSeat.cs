@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -6,29 +7,25 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
-#nullable disable
-
 namespace Vintagestory.GameContent
 {
 
     public class EntityRideableSeat : EntitySeat
     {
         public override EnumMountAngleMode AngleMode => EnumMountAngleMode.FixateYaw;
-        public override AnimationMetaData SuggestedAnimation =>
-            CanControl ?
-            (mountedEntity as EntityBehaviorRideable).curAnim :
-            (mountedEntity as EntityBehaviorRideable).curAnimPassanger;
+        public override AnimationMetaData SuggestedAnimation => (mountedEntity as EntityBehaviorRideable)?.CurrentControlMeta?.GetSeatAnimation(this);
 
         protected EntityPos seatPos = new EntityPos();
         protected Matrixf modelmat = new Matrixf();
         protected string RideableClassName = "rideableanimal";
+        protected virtual bool ApplyEntityRenderAnglesToSeatPosition => true;
 
         public override Vec3f LocalEyePos
         {
             get
             {
                 modelmat.Identity();
-                AttachmentPointAndPose apap = Entity.AnimManager?.Animator?.GetAttachmentPointPose(config.APName);
+                AttachmentPointAndPose? apap = Entity.AnimManager?.Animator?.GetAttachmentPointPose(config.APName);
                 if (apap != null)
                 {
                     modelmat.RotateY(GameMath.PIHALF + Entity.Pos.Yaw);
@@ -46,6 +43,97 @@ namespace Vintagestory.GameContent
         {
             get
             {
+                // Backwards compatibility
+                if (config.MountOffset != null) return oldSeatPosition;
+
+                modelmat.Identity();
+                float pitchApplied = 0.55f;
+                AttachmentPointAndPose? apap = Entity.AnimManager?.Animator?.GetAttachmentPointPose(config.APName);
+                if (apap != null)
+                {
+                    var esr = Entity.Properties.Client.Renderer as EntityShapeRenderer;
+
+                    // For whatever reason an entity will face south when Yaw=0, even though the shapes are modelled facing west
+                    // So we need to temporarily correct for that to make the offsets match what's shown in the model editor, not be rotated
+                    modelmat.RotateY(Entity.Pos.Yaw + GameMath.PIHALF);
+
+                    // Doing the offset now means the hitbox is offset to match, and that the rotation point is not offset.
+                    // This is deliberate because elk riders need their rotation origin to be well inside of the player hitbox
+                    if (config.RiderOffset != null) modelmat.Translate(config.RiderOffset);
+
+                    // Matches EntityShapeRenderer.loadModelMatrix(), which translates up to the entity's middle before applying step pitch
+                    modelmat.Translate(0, Entity.SelectionBox.Y2 / 2, 0);
+                    // The pitch returned in the entity position will also affect the translation, so we do it only partway here.
+                    // Note this is not mathematically correct - sin (x/2) + sin(x/2) != sin(x) - but works as a good enough approximation
+                    modelmat.RotateZ((float)mountedEntity.StepPitch * (1 - pitchApplied));
+
+                    if (esr != null && ApplyEntityRenderAnglesToSeatPosition)
+                    {
+                        modelmat.RotateX(esr.nowSwivelRad + esr.xangle);
+                        modelmat.RotateY(esr.yangle);
+                        modelmat.RotateZ(esr.zangle);
+                    }
+                    modelmat.Translate(0, -Entity.SelectionBox.Y2 / 2, 0);
+
+                    float mountScale = Entity.Properties.Client.Size;
+                    modelmat.Scale(mountScale, mountScale, mountScale);
+
+                    // Shapes are modelled with a center at 0.5, 0, 0.5, so move from that to the origin
+                    modelmat.Translate(-0.5f, 0, -0.5f);
+
+                    apap.MulUncentered(modelmat);
+
+                    // Rotate back to undo the correction
+                    modelmat.RotateY(-GameMath.PIHALF);
+                }
+
+                var translation = modelmat.TransformVector(new Vec4f(0, 0f, 0, 1));
+                seatPos.SetFrom(mountedEntity.Position).Add(translation.X, translation.Y, translation.Z);
+
+                seatPos.Roll = 0;
+                seatPos.Yaw = Entity.Pos.Yaw;
+                seatPos.Pitch = (float)mountedEntity.StepPitch * pitchApplied;
+                // Deliberately leaves out the rotation from animating the attachment point, because we don't actually want to exactly match the elk's motions
+                if (apap != null)
+                {
+                    seatPos.Roll += (float)apap.AttachPoint.RotationX * GameMath.DEG2RAD;
+                    seatPos.Yaw += (float)apap.AttachPoint.RotationY * GameMath.DEG2RAD;
+                    seatPos.Pitch += (float)apap.AttachPoint.RotationZ * GameMath.DEG2RAD;
+                }
+
+                return seatPos;
+            }
+        }
+
+        public override Matrixf RenderTransform
+        {
+            get
+            {
+                // Backwards compatibility
+                if (config.MountOffset != null) return oldRenderTransform;
+
+                modelmat.Identity();
+
+                float riderScale = Passenger?.Properties?.Client?.Size ?? 1;
+                if (config.RiderOffset != null && riderScale != 1)
+                {
+                    // Already applied 1x the offset when calculating SeatPos, now apply any extra needed based on the player's render scale
+                    modelmat.Translate(config.RiderOffset.Clone().Mul(riderScale - 1));
+                }
+
+                modelmat.RotateX(config.MountRotation.X * GameMath.DEG2RAD);
+                // MountRotation.Y is already accounted for as part of the rider's yaw, so skip that
+                modelmat.RotateZ(config.MountRotation.Z * GameMath.DEG2RAD);
+
+                return modelmat;
+            }
+        }
+
+        // Kept for backwards compatibility with Vintage Story 1.21 and 1.20
+        private EntityPos oldSeatPosition
+        {
+            get
+            {
                 loadAttachPointTransform();
                 var rotvec = modelmat.TransformVector(new Vec4f(0, 0f, 0, 1));
                 seatPos.SetFrom(mountedEntity.Position).Add(rotvec.X, rotvec.Y, rotvec.Z);
@@ -58,7 +146,8 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override Matrixf RenderTransform
+        // Kept for backwards compatibility with Vintage Story 1.21 and 1.20
+        private Matrixf oldRenderTransform
         {
             get
             {
@@ -73,12 +162,11 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public override float FpHandPitchFollow => 0.2f;
-
+        // Kept for backwards compatibility with Vintage Story 1.21 and 1.20
         private void loadAttachPointTransform()
         {
             modelmat.Identity();
-            AttachmentPointAndPose apap = Entity.AnimManager?.Animator?.GetAttachmentPointPose(config.APName);
+            AttachmentPointAndPose? apap = Entity.AnimManager?.Animator?.GetAttachmentPointPose(config.APName);
             if (apap != null)
             {
                 var esr = Entity.Properties.Client.Renderer as EntityShapeRenderer;
@@ -102,24 +190,50 @@ namespace Vintagestory.GameContent
             }
         }
 
+
+
+
+        public override float FpHandPitchFollow => 0.2f;
+
+        #region Rider hunger
+
+        public float RiderSatietyLossPerSecond;
+        public float RiderSatietyLossPerMovementSecond;
+        public float RiderSatietyLossPerSprintSecond;
+        public float RiderSatietyLossPerJump;
+
+        #endregion
         public EntityRideableSeat(IMountable mountablesupplier, string seatId, SeatConfig config) : base(mountablesupplier, seatId, config)
         {
+            var hungerProps = config?.Attributes?["riderSatLoss"];
+            if (hungerProps?.Exists != true) return;
+
+            RiderSatietyLossPerSecond = hungerProps["perSec"].AsFloat();
+            RiderSatietyLossPerMovementSecond = hungerProps["perMoveSec"].AsFloat();
+            RiderSatietyLossPerSprintSecond = hungerProps["perSprintSec"].AsFloat();
+            RiderSatietyLossPerJump = hungerProps["perJump"].AsFloat();
         }
 
         public override bool CanMount(EntityAgent entityAgent)
         {
             if (entityAgent is not EntityPlayer player) return false;
 
-            var ebho = Entity.GetBehavior<EntityBehaviorOwnable>();
-            if (ebho != null && !ebho.IsOwner(player) && config.Controllable)
+            var rideable = Entity.GetBehavior<EntityBehaviorRideable>();
+            if (rideable != null && Entity.WatchedAttributes.GetInt("generation") < rideable.MinGeneration)
             {
-                (player.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "requiersownership", Lang.Get("mount-interact-requiresownership"));
+                (player.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "toowildtoride", Lang.Get("mount-interact-toowildtoride"));
+                return false;
+            }
+
+            if (config.Controllable && EntityUtil.RestrictedByOwnership(Entity, entityAgent))
+            {
+                (player.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "requiresownership", Lang.Get("mount-interact-requiresownership"));
                 return false;
             }
             return true;
         }
 
-        public static IMountableSeat GetMountable(IWorldAccessor world, TreeAttribute tree)
+        public static IMountableSeat? GetMountable(IWorldAccessor world, TreeAttribute tree)
         {
             Entity entityAnimal = world.GetEntityById(tree.GetLong("entityIdMount"));
             var bh = entityAnimal?.GetBehavior<EntityBehaviorSeatable>();
@@ -140,7 +254,6 @@ namespace Vintagestory.GameContent
             if (Entity != null)
             {
                 Entity.GetBehavior<EntityBehaviorTaskAI>()?.TaskManager.StopTasks();
-                Entity.StartAnimation("idle");
 
                 var capi = entityAgent.Api as ICoreClientAPI;
                 if (capi != null && capi.World.Player.Entity.EntityId == entityAgent.EntityId) // Isself
@@ -155,6 +268,7 @@ namespace Vintagestory.GameContent
             ebh = Entity as IMountableListener;
             ebh?.DidMount(entityAgent);
 
+            ArgumentNullException.ThrowIfNull(Entity);
             Entity.Api.Event.TriggerEntityMounted(entityAgent, this);
         }
 
@@ -199,14 +313,14 @@ namespace Vintagestory.GameContent
                 rightPos = tmp;
             }
 
-            var block = ba.GetMostSolidBlock((int)rightPos.X, (int)(rightPos.Y - 0.1), (int)rightPos.Z);
+            var block = ba.GetBlockRaw((int)rightPos.X, (int)(rightPos.Y - 0.1), (int)rightPos.Z, BlockLayersAccess.MostSolid);
             if (block.SideSolid[BlockFacing.UP.Index] && !world.CollisionTester.IsColliding(ba, Passenger.CollisionBox, rightPos, false))
             {
                 Passenger.TeleportTo(rightPos);
                 return;
             }
 
-            block = ba.GetMostSolidBlock((int)leftPos.X, (int)(leftPos.Y - 0.1), (int)leftPos.Z);
+            block = ba.GetBlockRaw((int)leftPos.X, (int)(leftPos.Y - 0.1), (int)leftPos.Z, BlockLayersAccess.MostSolid);
             if (block.SideSolid[BlockFacing.UP.Index] && !world.CollisionTester.IsColliding(ba, Passenger.CollisionBox, leftPos, false))
             {
                 Passenger.TeleportTo(leftPos);

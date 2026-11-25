@@ -1,4 +1,4 @@
-﻿using ProtoBuf;
+using ProtoBuf;
 using System.Collections.Generic;
 using System.IO;
 using Vintagestory.API.Client;
@@ -79,16 +79,14 @@ namespace Vintagestory.GameContent
             ItemSlot slot = fromPlayer.InventoryManager.GetInventory(networkMessage.InventoryId)?[networkMessage.SlotId];
             if (slot == null || slot.Empty) return;
 
-            if (!(slot.Itemstack.Collectible is ItemLootRandomizer))
+            if (slot.Itemstack.Collectible is not ItemLootRandomizer)
             {
                 fromPlayer.SendIngameError("noprivilege", "Not a loot randomizer");
                 return;
             }
 
-            using (MemoryStream ms = new MemoryStream(networkMessage.attributes))
-            {
-                slot.Itemstack.Attributes.FromBytes(new BinaryReader(ms));
-            }
+            var reader = new BinarySpanReader(networkMessage.attributes);
+            slot.Itemstack.Attributes.FromBytes(ref reader);
         }
 
         

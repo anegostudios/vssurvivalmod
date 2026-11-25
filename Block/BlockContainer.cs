@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Vintagestory.API.Common;
@@ -20,7 +20,7 @@ namespace Vintagestory.GameContent
         {
             return 1;
         }
-        
+
 
         public virtual void SetContents(ItemStack containerStack, ItemStack[] stacks)
         {
@@ -62,7 +62,7 @@ namespace Vintagestory.GameContent
         public override bool Equals(ItemStack thisStack, ItemStack otherStack, params string[] ignoreAttributeSubTrees)
         {
             ResolveUcontents(api.World, thisStack);
-            if (otherStack.Collectible is BlockContainer) ResolveUcontents(api.World, otherStack);
+            if (otherStack?.Collectible is BlockContainer) ResolveUcontents(api.World, otherStack);
 
             return base.Equals(thisStack, otherStack, ignoreAttributeSubTrees);
         }
@@ -154,7 +154,7 @@ namespace Vintagestory.GameContent
             {
                 EnumHandling handled = EnumHandling.PassThrough;
 
-                behavior.OnBlockBroken(world, pos, byPlayer, ref handled);
+                behavior.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier, ref handled);
                 if (handled == EnumHandling.PreventDefault) preventDefault = true;
                 if (handled == EnumHandling.PreventSubsequent) return;
             }
@@ -235,17 +235,11 @@ namespace Vintagestory.GameContent
 
             dummyInv.OnAcquireTransitionSpeed += (transType, stack, mulByConfig) =>
             {
-                float mul = mulByConfig;
-
-                if (inslot.Inventory != null)
-                {
-                    mul = inslot.Inventory.InvokeTransitionSpeedDelegates(transType, stack, mulByConfig);
-                }
-
+                float mul = inslot.Inventory?.InvokeTransitionSpeedDelegates(transType, stack, mulByConfig) ?? 1;
                 return mul * GetContainingTransitionModifierContained(api.World, inslot, transType);
             };
 
-            
+
 
             return dummySlot;
         }
@@ -280,11 +274,8 @@ namespace Vintagestory.GameContent
             ItemSlot slot = BlockCrock.GetDummySlotForFirstPerishableStack(api.World, stacks, null, dummyInv);
             dummyInv.OnAcquireTransitionSpeed += (transType, stack, mul) =>
             {
-                float val = mul * GetContainingTransitionModifierContained(world, inSlot, transType);
-
-                if (inSlot.Inventory != null) val *= inSlot.Inventory.GetTransitionSpeedMul(transType, inSlot.Itemstack);
-
-                return val;
+                float invMul = inSlot.Inventory?.GetTransitionSpeedMul(transType, inSlot.Itemstack) ?? 1;
+                return invMul * GetContainingTransitionModifierContained(world, inSlot, transType);
             };
 
             return BlockEntityShelf.PerishableInfoCompact(api, slot, 0, false).Replace("\r\n", "");

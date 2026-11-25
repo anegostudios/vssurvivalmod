@@ -1,5 +1,4 @@
-﻿using System;
-using System.Text;
+using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -8,15 +7,16 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+using Vintagestory.Common.Collectible.Block;
 
 #nullable disable
 
 namespace Vintagestory.GameContent
 {
-    public class BlockEntityCoalPile : BlockEntityItemPile, ITexPositionSource, IHeatSource
+    public class BlockEntityCoalPile : BlockEntityItemPile, ITexPositionSource, IHeatSource, IExternalTickable, IFallingBlockMeshSource
     {
-        static SimpleParticleProperties smokeParticles;
-        static SimpleParticleProperties smallMetalSparks;
+        public static SimpleParticleProperties smokeParticles;
+        public static SimpleParticleProperties smallMetalSparks;
 
         static BlockEntityCoalPile()
         {
@@ -43,9 +43,9 @@ namespace Vintagestory.GameContent
                 0.2f, 1,
                 ColorUtil.ToRgba(255, 255, 150, 0),
                 new Vec3d(), new Vec3d(),
-                new Vec3f(-2f, 2f, -2f),
-                new Vec3f(2f, 5f, 2f),
-                0.04f,
+                new Vec3f(-3f, 0.5f, -3f),
+                new Vec3f(3f, 3f, 3f),
+                0.1f,
                 1f,
                 0.2f, 0.25f,
                 EnumParticleModel.Cube
@@ -77,17 +77,13 @@ namespace Vintagestory.GameContent
 
         public float BurnHoursPerLayer = 4f;
 
-        public bool IsBurning
-        {
-            get { return burning; }
-        }
+        public bool IsBurning => burning;
 
-        public bool CanIgnite
-        {
-            get { return !burning; }
-        }
+        public bool CanIgnite => !burning;
 
-        public int BurnTemperature => inventory[0].Itemstack.Collectible.CombustibleProps.BurnTemperature;
+        public int BurnTemperature => inventory[0].Itemstack?.Collectible.GetCombustibleProperties(Api.World, inventory[0].Itemstack, null)?.BurnTemperature ?? 0;
+
+        public bool IsExternallyTicked { get; set; }
 
         public BlockEntityCoalPile()
         {
@@ -119,8 +115,7 @@ namespace Vintagestory.GameContent
             if (!burning) return;
 
             burning = false;
-            UnregisterGameTickListener(listenerId);
-            listenerId = 0;
+            UnregisterTickListener();
             MarkDirty(true);
             Api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), Pos, 0, null, false, 16);
         }
@@ -153,7 +148,10 @@ namespace Vintagestory.GameContent
                 listenerId = RegisterGameTickListener(onBurningTickClient, 100);
             } else
             {
-                listenerId = RegisterGameTickListener(onBurningTickServer, 10000);
+                if (!IsExternallyTicked)
+                {
+                    RegisterServerTickListener();
+                }
             }
         }
 
@@ -164,6 +162,7 @@ namespace Vintagestory.GameContent
             smokeParticles.AddQuantity = 0;
             smokeParticles.MinPos.Set(pos.X, pos.Y - 0.1f, pos.Z);
             smokeParticles.AddPos.Set(addX, 0, addZ);
+
 
             smallMetalSparks.MinPos.Set(pos.X, pos.Y, pos.Z);
             smallMetalSparks.AddPos.Set(addX, 0.1f, addZ);
@@ -201,11 +200,32 @@ namespace Vintagestory.GameContent
         {
             double totalHoursPassed = startTotalHours - burnStartTotalHours;
             double burnHourTimeLeft = inventory[0].StackSize / 2f * BurnHoursPerLayer;
-            return (float)(burnHourTimeLeft - totalHoursPassed);
+            return (float)Math.Max(0, Math.Min(totalHoursPassed , burnHourTimeLeft));
         }
 
+        public void UnregisterTickListener()
+        {
+            if (listenerId != 0)
+            {
+                UnregisterGameTickListener(listenerId);
+                listenerId = 0;
+            }
+        }
 
-        private void onBurningTickServer(float dt)
+        public void RegisterServerTickListener()
+        {
+            if (listenerId == 0 && IsBurning)
+            {
+                listenerId = RegisterGameTickListener(OnBurningTickServer, 10000);
+            }
+        }
+
+        public void OnExternalTick(float dt)
+        {
+            OnBurningTickServer(dt);
+        }
+
+        private void OnBurningTickServer(float dt)
         {
             facings.Shuffle(Api.World.Rand);
 
@@ -233,8 +253,7 @@ namespace Vintagestory.GameContent
                     {
                         inventory[0].Itemstack = new ItemStack(Api.World.GetItem(new AssetLocation("coke")), (int)(inventory[0].StackSize * cokeConversionRate));
                         burning = false;
-                        UnregisterGameTickListener(listenerId);
-                        listenerId = 0;
+                        UnregisterTickListener();
                         MarkDirty(true);
                     } else
                     {
@@ -363,16 +382,12 @@ namespace Vintagestory.GameContent
             burning = tree.GetBool("burning");
             burnStartTotalHours = tree.GetDouble("lastTickTotalHours");
             isCokable = tree.GetBool("isCokable");
+            IsExternallyTicked = tree.GetBool("isExternallyTicked");
 
             if (!burning)
             {
-                if (listenerId != 0)
-                {
-                    UnregisterGameTickListener(listenerId);
-                    listenerId = 0;
-                }
+                UnregisterTickListener();
                 ambientSound?.Stop();
-                listenerId = 0;
             }
 
             if (Api != null && Api.Side == EnumAppSide.Client && !wasBurning && burning)
@@ -388,6 +403,7 @@ namespace Vintagestory.GameContent
             tree.SetBool("burning", burning);
             tree.SetDouble("lastTickTotalHours", burnStartTotalHours);
             tree.SetBool("isCokable", isCokable);
+            tree.SetBool("isExternallyTicked", IsExternallyTicked);
         }
 
 
@@ -452,7 +468,7 @@ namespace Vintagestory.GameContent
                     entityblock.maxSpawnHeightForParticles = 0.3f;
                     entityblock.DoRemoveBlock = false; // We want to split the pile, not remove it
                     world.SpawnEntity(entityblock);
-                    entityblock.ServerPos.Y -= 0.25f;
+                    entityblock.Pos.Y -= 0.25f;
                     entityblock.Pos.Y -= 0.25f;
 
                     inventory[0].Itemstack = remainingStack;
@@ -495,21 +511,33 @@ namespace Vintagestory.GameContent
         public void GetDecalMesh(ITexPositionSource decalTexSource, out MeshData meshdata)
         {
             int size = Layers * 2;
-
             Shape shape = capi.TesselatorManager.GetCachedShape(new AssetLocation("block/basic/layers/" + GameMath.Clamp(size, 2, 16) + "voxel"));
             capi.Tesselator.TesselateShape("coalpile", shape, out meshdata, decalTexSource);
         }
 
+        public string GetCacheKey(EntityBlockFalling fallingBlock)
+        {
+            return Block.Code + "falling" + 2;
+        }
+
+        public void OnFallingBlockTesselation(EntityBlockFalling fallingBlock, ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
+        {
+            tesselate(mesher, 2);
+        }
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
+        {
+            int size = Layers * 2;
+            tesselate(mesher, size);
+            return true;
+        }
+
+        private void tesselate(ITerrainMeshPool mesher, int size)
         {
             lock (inventoryLock)
             {
                 if (!inventory[0].Empty)
                 {
-                    int size = Layers * 2;
-                    if (mesher is EntityBlockFallingRenderer) size = 2; // Haxy solution >.>
-
                     Shape shape = capi.TesselatorManager.GetCachedShape(new AssetLocation("block/basic/layers/" + GameMath.Clamp(size, 2, 16) + "voxel"));
                     capi.Tesselator.TesselateShape("coalpile", shape, out MeshData meshdata, this);
 
@@ -524,12 +552,7 @@ namespace Vintagestory.GameContent
                     mesher.AddMeshData(meshdata);
                 }
             }
-
-            return true;
         }
-
-
-
 
         public override void OnBlockRemoved()
         {

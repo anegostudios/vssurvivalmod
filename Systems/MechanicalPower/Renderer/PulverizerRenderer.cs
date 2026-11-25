@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -12,19 +13,14 @@ namespace Vintagestory.GameContent.Mechanics
         // this is pretty lame, make not hardcoded
         public static string[] metals = new string[] { "nometal", "tinbronze", "bismuthbronze", "blackbronze", "iron", "meteoriciron", "steel" };
 
-        CustomMeshDataPartFloat matrixAndLightFloatsAxle;
-        CustomMeshDataPartFloat[] matrixAndLightFloatsLPounder = new CustomMeshDataPartFloat[metals.Length];
-        CustomMeshDataPartFloat[] matrixAndLightFloatsRPounder = new CustomMeshDataPartFloat[metals.Length];
-
-        readonly MeshRef toggleMeshref;
-        readonly MeshRef[] lPoundMeshrefs = new MeshRef[metals.Length];
-        readonly MeshRef[] rPounderMeshrefs = new MeshRef[metals.Length];
+        readonly Dictionary<CollectibleObject, MaterialMeshPool> togglePools = [];
+        readonly Dictionary<(CollectibleObject, int), MaterialMeshPool> lPounderPools = [];
+        readonly Dictionary<(CollectibleObject, int), MaterialMeshPool> rPounderPools = [];
+        readonly Block textureSourceBlock;
+        readonly Vec3f rotation;
         readonly Vec3f axisCenter = new Vec3f(0.5f, 0.5f, 0.5f);
-
-
-        int quantityAxles = 0;
-        int[] quantityLPounders = new int[metals.Length];
-        int[] quantityRPounders = new int[metals.Length];
+        readonly float[] lightAndTransform = new float[InstanceDataSize];
+        readonly Vec2f materialUvOffset = new();
 
         public Size2i AtlasSize => capi.BlockTextureAtlas.Size;
 
@@ -46,88 +42,81 @@ namespace Vintagestory.GameContent.Mechanics
 
         public PulverizerRenderer(ICoreClientAPI capi, MechanicalPowerMod mechanicalPowerMod, Block textureSoureBlock, CompositeShape shapeLoc) : base(capi, mechanicalPowerMod)
         {
-
-            // 16 floats matrix, 4 floats light rgbs
-            int count = (16 + 4) * 200;
-
-
-            AssetLocation loc = new AssetLocation("shapes/block/wood/mechanics/pulverizer-moving.json");
-            Shape shape = API.Common.Shape.TryGet(capi, loc);
-            Vec3f rot = new Vec3f(shapeLoc.rotateX, shapeLoc.rotateY + 90F, shapeLoc.rotateZ);
-            capi.Tesselator.TesselateShape(textureSoureBlock, shape, out MeshData toggleMesh, rot);
-            toggleMesh.CustomFloats = matrixAndLightFloatsAxle = createCustomFloats(count);
-            toggleMeshref = capi.Render.UploadMesh(toggleMesh);
-
-
-            AssetLocation locPounderL = new AssetLocation("shapes/block/wood/mechanics/pulverizer-pounder-l.json");
-            AssetLocation locPounderR = new AssetLocation("shapes/block/wood/mechanics/pulverizer-pounder-r.json"); 
-            
-            Shape shapel = API.Common.Shape.TryGet(capi, locPounderL);
-            Shape shaper = API.Common.Shape.TryGet(capi, locPounderR);
-
+            this.textureSourceBlock = textureSoureBlock;
+            rotation = new Vec3f(shapeLoc.rotateX, shapeLoc.rotateY + 90F, shapeLoc.rotateZ);
             texSource = capi.Tesselator.GetTextureSource(textureSoureBlock);
-
-            
-
-            for (int i = 0; i < metals.Length; i++)
-            {
-                metal = metals[i];
-
-                matrixAndLightFloatsLPounder[i] = createCustomFloats(count);
-                matrixAndLightFloatsRPounder[i] = createCustomFloats(count);
-
-                capi.Tesselator.TesselateShape("pulverizer-pounder-l", shapel, out MeshData lPounderMesh, this, rot);
-                capi.Tesselator.TesselateShape("pulverizer-pounder-r", shaper, out MeshData rPounderMesh, this, rot);
-                lPounderMesh.CustomFloats = matrixAndLightFloatsLPounder[i];
-                rPounderMesh.CustomFloats = matrixAndLightFloatsRPounder[i];
-                lPoundMeshrefs[i] = capi.Render.UploadMesh(lPounderMesh);
-                rPounderMeshrefs[i] = capi.Render.UploadMesh(rPounderMesh);
-            }
-
+        }
+        
+        static MechanicalMaterialProperties getPartMaterial(CollectibleObject part)
+        {
+            return part.GetCollectibleBehavior<CollectibleBehaviorMechanicalMaterial>(true)?.MaterialProperties;
         }
 
-        private CustomMeshDataPartFloat createCustomFloats(int count)
+        MaterialMeshPool getTogglePool(ItemStack toggle)
         {
-            CustomMeshDataPartFloat result = new CustomMeshDataPartFloat(count)
+            if (togglePools.TryGetValue(toggle.Collectible, out MaterialMeshPool pool)) return pool;
+
+            pool = createMaterialMeshPool(textureSourceBlock, capi.TesselatorManager.GetCachedShape(((Item)toggle.Collectible).Shape.Base), rotation, materialProperties: getPartMaterial(toggle.Collectible));
+            togglePools[toggle.Collectible] = pool;
+            return pool;
+        }
+
+        MaterialMeshPool getPounderPool(Dictionary<(CollectibleObject, int), MaterialMeshPool> pools, string side, ItemStack pounder, int metalIndex)
+        {
+            if (pools.TryGetValue((pounder.Collectible, metalIndex), out MaterialMeshPool pool)) return pool;
+
+            string shapeCode = pounder.Collectible.Attributes?["pulverizerShapes"][side].AsString()
+                               ?? throw new InvalidOperationException($"Pounder {pounder.Collectible.Code} has no pulverizerShapes {side} shape");
+            Shape shape = API.Common.Shape.TryGet(capi, AssetLocation.Create(shapeCode, pounder.Collectible.Code.Domain).WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json"));
+
+            // The caps faces resolve their metal through this texture source.
+            metal = metals[metalIndex];
+            pool = uploadMaterialMeshPool(tesselateMaterialPieces(textureSourceBlock, shape, rotation, materialProperties: getPartMaterial(pounder.Collectible), textureSource: this));
+            pools[(pounder.Collectible, metalIndex)] = pool;
+            return pool;
+        }
+
+        void addInstance(MaterialMeshPool pool, ItemStack part)
+        {
+            MechanicalMaterialProperties materialProperties = getPartMaterial(part.Collectible);
+            foreach (var piece in pool.Pieces)
             {
-                Instanced = true,
-                InterleaveOffsets = new int[] { 0, 16, 32, 48, 64 },
-                InterleaveSizes = new int[] { 4, 4, 4, 4, 4 },
-                InterleaveStride = 16 + 4 * 16,
-                StaticDraw = false,
-            };
-            result.SetAllocationSize(count);
-            return result;
+                materialUvOffset.X = materialUvOffset.Y = 0;
+                if (piece.MaterialTextureCode != null) materialProperties?.GetMaterialUvOffset(capi, part, piece.MaterialTextureCode, materialUvOffset);
+                setMaterialInstance(piece.Floats.Values, pool.Count, lightAndTransform, materialUvOffset);
+            }
+            pool.Count++;
         }
 
         protected override void UpdateLightAndTransformMatrix(int index, Vec3f distToCamera, float rotation, IMechanicalPowerRenderable dev)
         {
             BEBehaviorMPPulverizer bhpu = dev as BEBehaviorMPPulverizer;
 
-            float rot = bhpu.bepu.hasAxle ? dev.AngleRad : 0;
+            float rot = bhpu.bepu.ToggleStack != null ? dev.AngleRad : 0;
             float axX = -Math.Abs(dev.AxisSign[0]);
             float axZ = -Math.Abs(dev.AxisSign[2]);
 
             // Axle
-            if (bhpu.bepu.hasAxle)
+            if (bhpu.bepu.ToggleStack != null)
             {
                 float rotX = rot * axX;
                 float rotZ = rot * axZ;
-                UpdateLightAndTransformMatrix(matrixAndLightFloatsAxle.Values, quantityAxles, distToCamera, dev.LightRgba, rotX, rotZ, axisCenter, 0f);
-                quantityAxles++;
+                UpdateLightAndTransformMatrix(lightAndTransform, 0, distToCamera, dev.LightRgba, rotX, rotZ, axisCenter, 0f);
+                addInstance(getTogglePool(bhpu.bepu.ToggleStack), bhpu.bepu.ToggleStack);
             }
 
             //if ((dev.Block as BlockPulverizer).InvertPoundersOnRender) rot = -rot; - creates inverted animation. This should instead rather cause tons of resistance 
-            if (bhpu.isRotationReversed()) rot = -rot;
+            if (bhpu.IsRotationReversed()) rot = -rot;
 
             // Pounder-left
             int metalIndexLeft = bhpu.bepu.CapMetalIndexL;
-            if (bhpu.bepu.hasLPounder && metalIndexLeft >= 0)
+            if (bhpu.bepu.LeftPounderStack != null && metalIndexLeft >= 0)
             {
                 bool leftEmpty = bhpu.bepu.Inventory[1].Empty;
 
-                float progress = GetProgress(bhpu.bepu.hasAxle ? rot - 0.45f + GameMath.PIHALF / 2f : 0f, 0f);
-                UpdateLightAndTransformMatrix(matrixAndLightFloatsLPounder[metalIndexLeft].Values, quantityLPounders[metalIndexLeft], distToCamera, dev.LightRgba, 0f, 0f, axisCenter, Math.Max(progress / 6f + 0.0071f, leftEmpty ? -1 : 1 / 32f));
+                float progress = GetProgress(bhpu.bepu.ToggleStack != null ? rot - 0.45f + GameMath.PIHALF / 2f : 0f, 0f);
+                UpdateLightAndTransformMatrix(lightAndTransform, 0, distToCamera, dev.LightRgba, 0f, 0f, axisCenter, Math.Max(progress / 6f + 0.0071f, leftEmpty ? -1 : 1 / 32f));
+                addInstance(getPounderPool(lPounderPools, "left", bhpu.bepu.LeftPounderStack, metalIndexLeft), bhpu.bepu.LeftPounderStack);
 
                 if (progress < bhpu.prevProgressLeft && progress < 0.25f)
                 {
@@ -139,19 +128,18 @@ namespace Vintagestory.GameContent.Mechanics
                 }
                 else bhpu.leftDir = 1;
                 bhpu.prevProgressLeft = progress;
-
-                quantityLPounders[metalIndexLeft]++;
             }
 
 
             // Pounder-right
             int metalIndexRight = bhpu.bepu.CapMetalIndexR;
-            if (bhpu.bepu.hasRPounder && metalIndexRight >= 0)
+            if (bhpu.bepu.RightPounderStack != null && metalIndexRight >= 0)
             {
                 bool rightEmpty = bhpu.bepu.Inventory[0].Empty;
 
-                float progress = GetProgress(bhpu.bepu.hasAxle ? rot - 0.45f : 0f, 0f);
-                UpdateLightAndTransformMatrix(matrixAndLightFloatsRPounder[metalIndexRight].Values, quantityRPounders[metalIndexRight], distToCamera, dev.LightRgba, 0f, 0f, axisCenter, Math.Max(progress / 6f + 0.0071f, rightEmpty ? -1 : 1 / 32f));
+                float progress = GetProgress(bhpu.bepu.ToggleStack != null ? rot - 0.45f : 0f, 0f);
+                UpdateLightAndTransformMatrix(lightAndTransform, 0, distToCamera, dev.LightRgba, 0f, 0f, axisCenter, Math.Max(progress / 6f + 0.0071f, rightEmpty ? -1 : 1 / 32f));
+                addInstance(getPounderPool(rPounderPools, "right", bhpu.bepu.RightPounderStack, metalIndexRight), bhpu.bepu.RightPounderStack);
 
                 if (progress < bhpu.prevProgressRight && progress < 0.25f)
                 {
@@ -163,8 +151,6 @@ namespace Vintagestory.GameContent.Mechanics
                 }
                 else bhpu.rightDir = 1;
                 bhpu.prevProgressRight = progress;
-
-                quantityRPounders[metalIndexRight]++;
             }
         }
 
@@ -201,8 +187,7 @@ namespace Vintagestory.GameContent.Mechanics
             if (rotX != 0f) Quaterniond.RotateX(quat, quat, rotX);
             if (rotZ != 0f) Quaterniond.RotateZ(quat, quat, rotZ);
 
-            for (int i = 0; i < quat.Length; i++) qf[i] = (float)quat[i];
-            Mat4f.Mul(tmpMat, tmpMat, Mat4f.FromQuat(rotMat, qf));
+            Mat4f.MulQuat(tmpMat, quat);
 
             Mat4f.Translate(tmpMat, tmpMat, -axis.X, -axis.Y, -axis.Z);
 
@@ -220,60 +205,24 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override void OnRenderFrame(float deltaTime, IShaderProgram prog)
         {
-            quantityAxles = 0;
-            for (int i = 0; i < metals.Length; i++)
-            {
-                quantityLPounders[i] = 0;
-                quantityRPounders[i] = 0;
-            }
+            foreach (MaterialMeshPool pool in togglePools.Values) pool.Count = 0;
+            foreach (MaterialMeshPool pool in lPounderPools.Values) pool.Count = 0;
+            foreach (MaterialMeshPool pool in rPounderPools.Values) pool.Count = 0;
 
             UpdateCustomFloatBuffer();
 
-            // axles
-            if (quantityAxles > 0)
-            {
-                matrixAndLightFloatsAxle.Count = quantityAxles * 20;
-                updateMesh.CustomFloats = matrixAndLightFloatsAxle;
-                capi.Render.UpdateMesh(toggleMeshref, updateMesh);
-                capi.Render.RenderMeshInstanced(toggleMeshref, quantityAxles);
-            }
-
-
-            // pounders
-            for (int i = 0; i < metals.Length; i++)
-            {
-                int qLpounder = quantityLPounders[i];
-                int qRpounder = quantityRPounders[i];
-
-                if (qLpounder > 0)
-                {
-                    matrixAndLightFloatsLPounder[i].Count = qLpounder * 20;
-                    updateMesh.CustomFloats = matrixAndLightFloatsLPounder[i];
-                    capi.Render.UpdateMesh(lPoundMeshrefs[i], updateMesh);
-                    capi.Render.RenderMeshInstanced(lPoundMeshrefs[i], qLpounder);
-                }
-
-                if (qRpounder > 0)
-                {
-                    matrixAndLightFloatsRPounder[i].Count = qRpounder * 20;
-                    updateMesh.CustomFloats = matrixAndLightFloatsRPounder[i];
-                    capi.Render.UpdateMesh(rPounderMeshrefs[i], updateMesh);
-                    capi.Render.RenderMeshInstanced(rPounderMeshrefs[i], qRpounder);
-                }
-            }
+            foreach (MaterialMeshPool pool in togglePools.Values) renderMaterialMeshPool(prog, pool);
+            foreach (MaterialMeshPool pool in lPounderPools.Values) renderMaterialMeshPool(prog, pool);
+            foreach (MaterialMeshPool pool in rPounderPools.Values) renderMaterialMeshPool(prog, pool);
         }
 
         public override void Dispose()
         {
             base.Dispose();
 
-            toggleMeshref?.Dispose();
-
-            for (int i = 0; i < metals.Length; i++)
-            {
-                lPoundMeshrefs[i]?.Dispose();
-                rPounderMeshrefs[i]?.Dispose();
-            }
+            foreach (MaterialMeshPool pool in togglePools.Values) disposeMaterialMeshPool(pool);
+            foreach (MaterialMeshPool pool in lPounderPools.Values) disposeMaterialMeshPool(pool);
+            foreach (MaterialMeshPool pool in rPounderPools.Values) disposeMaterialMeshPool(pool);
         }
     }
 }

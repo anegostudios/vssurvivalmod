@@ -151,16 +151,6 @@ namespace Vintagestory.GameContent
             detailViewGui.AddRichtext(comps, textBounds, "richtext");
         }
 
-        public override float GetTextMatchWeight(string text)
-        {
-            /*string title = TextCacheTitle;
-            if (title.Equals(searchText, StringComparison.InvariantCultureIgnoreCase)) return 3;
-            if (title.StartsWith(searchText, StringComparison.InvariantCultureIgnoreCase)) return 2.5f;
-            if (title.CaseInsensitiveContains(searchText)) return 2;
-            if (TextCacheAll.CaseInsensitiveContains(searchText)) return 1;*/
-            return 0;
-        }
-
 
         public override void Dispose()
         {

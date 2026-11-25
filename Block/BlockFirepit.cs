@@ -1,7 +1,8 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -11,9 +12,11 @@ namespace Vintagestory.GameContent
 {
     public class BlockFirepit : Block, IIgnitable, ISmokeEmitter
     {
-
-        public int Stage { get {
-            switch (LastCodePart())
+        public int Stage
+        {
+            get
+            {
+                switch (LastCodePart())
                 {
                     case "construct1":
                         return 1;
@@ -25,7 +28,8 @@ namespace Vintagestory.GameContent
                         return 4;
                 }
                 return 5;
-        } }
+            }
+        }
 
         public string NextStageCodePart
         {
@@ -48,14 +52,17 @@ namespace Vintagestory.GameContent
 
 
         public bool IsExtinct;
-
-        AdvancedParticleProperties[] ringParticles;
-        Vec3f[] basePos;
-        WorldInteraction[] interactions;
+        protected AdvancedParticleProperties[] ringParticles;
+        protected Vec3f[] basePos;
+        protected WorldInteraction[] interactions;
+        ICoreClientAPI capi;
 
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
+
+            capi = api as ICoreClientAPI;
+            capi?.Event.RegisterEventBusListener(OnGetTransform, 0.5, "ongettransform");
 
             IsExtinct = LastCodePart() != "lit";
 
@@ -71,7 +78,7 @@ namespace Vintagestory.GameContent
                     new Cuboidf(x1: 0.125f, y1: 0, z1: 0.125f, x2: 0.875f, y2: 0.5f, z2: 0.3125f),
                     new Cuboidf(x1: 0.125f, y1: 0, z1: 0.7125f, x2: 0.875f, y2: 0.5f, z2: 0.875f)
                 };
-               
+
                 for (int i = 0; i < ParticleProperties.Length; i++)
                 {
                     for (int j = 0; j < 4; j++)
@@ -82,26 +89,27 @@ namespace Vintagestory.GameContent
                         basePos[i * 4 + j] = new Vec3f(0,0,0);
 
                         props.PosOffset[0].avg = box.MidX;
-                        props.PosOffset[0].var = box.Width/2;
+                        props.PosOffset[0].var = box.HalfExtentX;
 
                         props.PosOffset[1].avg = 0.1f;
                         props.PosOffset[1].var = 0.05f;
 
                         props.PosOffset[2].avg = box.MidZ;
-                        props.PosOffset[2].var = box.Length / 2;
+                        props.PosOffset[2].var = box.HalfExtentZ;
 
                         props.Quantity.avg /= 4f;
                         props.Quantity.var /= 4f;
 
                         ringParticles[i * 4 + j] = props;
-                    }   
+                    }
                 }
             }
 
+            if (capi is null) return;
 
-            interactions = ObjectCacheUtil.GetOrCreate(api, "firepitInteractions-"+Stage, () =>
+            interactions = ObjectCacheUtil.GetOrCreate(capi, "firepitInteractions-"+Stage, () =>
             {
-                List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(api, true);
+                List<ItemStack> canIgniteStacks = BlockBehaviorCanIgnite.CanIgniteStacks(capi, true);
 
                 return new WorldInteraction[]
                 {
@@ -120,7 +128,7 @@ namespace Vintagestory.GameContent
                         MouseButton = EnumMouseButton.Right,
                         Itemstacks = canIgniteStacks.ToArray(),
                         GetMatchingStacks = (wi, bs, es) => {
-                            BlockEntityFirepit bef = api.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityFirepit;
+                            BlockEntityFirepit bef = capi.World.BlockAccessor.GetBlockEntity(bs.Position) as BlockEntityFirepit;
                             if (bef?.fuelSlot != null && !bef.fuelSlot.Empty && !bef.IsBurning)
                             {
                                 return wi.Itemstacks;
@@ -138,15 +146,40 @@ namespace Vintagestory.GameContent
             });
         }
 
+        private void OnGetTransform(string eventName, ref EnumHandling handling, IAttribute data)
+        {
+            var tree = data as TreeAttribute;
+            if (tree.GetString("target") != "infirepitTransform") return;
+
+            ItemSlot slot = capi.World.Player.InventoryManager.ActiveHotbarSlot;
+
+            var props = BlockEntityFirepit.GetRenderProps(slot.Itemstack);
+            if (props?.Transform == null) return;
+
+            handling = EnumHandling.PreventDefault;
+            tree.SetBool("preventDefault", true);
+            props.Transform.ToTreeAttribute(tree);
+        }
+
 
         public override void OnEntityInside(IWorldAccessor world, Entity entity, BlockPos pos)
         {
+            bool preventDefault = false;
+            foreach (BlockBehavior behavior in BlockBehaviors)
+            {
+                EnumHandling handled = EnumHandling.PassThrough;
+
+                behavior.OnEntityInside(world, entity, pos, ref handled);
+                if (handled == EnumHandling.PreventDefault) preventDefault = true;
+                if (handled == EnumHandling.PreventSubsequent) return;
+            }
+
+            if (preventDefault) return;
+
             if (world.Rand.NextDouble() < 0.05 && GetBlockEntity<BlockEntityFirepit>(pos)?.IsBurning == true)
             {
                 entity.ReceiveDamage(new DamageSource() { Source = EnumDamageSource.Block, SourceBlock = this, Type = EnumDamageType.Fire, SourcePos = pos.ToVec3d() }, 0.5f);
             }
-
-            base.OnEntityInside(world, entity, pos);
         }
 
 
@@ -226,7 +259,7 @@ namespace Vintagestory.GameContent
             if (stage == 5)
             {
                 BlockEntityFirepit bef = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityFirepit;
-                
+
                 if (bef!=null && stack?.Block != null && stack.Block.HasBehavior<BlockBehaviorCanIgnite>() && bef.GetIgnitableState(0) == EnumIgniteState.Ignitable)
                 {
                     return false;
@@ -238,14 +271,15 @@ namespace Vintagestory.GameContent
 
                     if (byPlayer.Entity.Controls.ShiftKey)
                     {
-                        if (stack.Collectible.CombustibleProps != null && stack.Collectible.CombustibleProps.MeltingPoint > 0)
+                        CombustibleProperties combustibleProps = stack.Collectible.GetCombustibleProperties(world, stack, null);
+                        if (combustibleProps != null && combustibleProps.MeltingPoint > 0)
                         {
                             ItemStackMoveOperation op = new ItemStackMoveOperation(world, EnumMouseButton.Left, 0, EnumMergePriority.DirectMerge, 1);
                             byPlayer.InventoryManager.ActiveHotbarSlot.TryPutInto(bef.inputSlot, ref op);
                             if (op.MovedQuantity > 0) activated = true;
                         }
 
-                        if (stack.Collectible.CombustibleProps != null && stack.Collectible.CombustibleProps.BurnTemperature > 0)
+                        if (combustibleProps != null && combustibleProps.BurnTemperature > 0)
                         {
                             ItemStackMoveOperation op = new ItemStackMoveOperation(world, EnumMouseButton.Left, 0, EnumMergePriority.DirectMerge, 1);
                             byPlayer.InventoryManager.ActiveHotbarSlot.TryPutInto(bef.fuelSlot, ref op);
@@ -276,7 +310,7 @@ namespace Vintagestory.GameContent
                                 blockPot.ServeIntoStack(targetSlot, potSlot, world);
                                 if (!byPlayer.InventoryManager.TryGiveItemstack(targetSlot.Itemstack, true))
                                 {
-                                    world.SpawnItemEntity(targetSlot.Itemstack, byPlayer.Entity.ServerPos.XYZ);
+                                    world.SpawnItemEntity(targetSlot.Itemstack, byPlayer.Entity.Pos.XYZ);
                                 }
                             }
                             else blockPot.ServeIntoStack(targetSlot, potSlot, world);
@@ -359,9 +393,10 @@ namespace Vintagestory.GameContent
             if (stage == 4)
             {
                 BlockEntity be = world.BlockAccessor.GetBlockEntity(pos);
-                if (be is BlockEntityFirepit)
+                if (be is BlockEntityFirepit beFirepit)
                 {
-                    ((BlockEntityFirepit)be).inventory[0].Itemstack = new ItemStack(obj, 4);
+                    beFirepit.OnConstructionCompleted();
+                    beFirepit.fuelSlot.Itemstack = new ItemStack(obj, 4);
                 }
             }
 
@@ -374,12 +409,6 @@ namespace Vintagestory.GameContent
         {
             var beg = world.BlockAccessor.GetBlockEntity<BlockEntityGroundStorage>(pos);
             return beg != null && beg.Inventory[0]?.Itemstack?.Collectible is ItemFirewood;
-        }
-
-        public static int GetFireWoodQuanity(IWorldAccessor world, BlockPos pos)
-        {
-            var beg = world.BlockAccessor.GetBlockEntity<BlockEntityGroundStorage>(pos);
-            return beg?.Inventory[0]?.StackSize ?? 0;
         }
 
         public override WorldInteraction[] GetPlacedBlockInteractionHelp(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer)

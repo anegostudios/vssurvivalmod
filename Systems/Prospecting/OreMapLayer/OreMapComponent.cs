@@ -21,17 +21,30 @@ namespace Vintagestory.GameContent
 
         public static float IconScale = 0.85f;
         public string filterByOreCode;
+        public PropickReading Reading => reading;
 
         public OreMapComponent(int waypointIndex, PropickReading reading, OreMapLayer wpLayer, ICoreClientAPI capi, string filterByOreCode) : base(capi)
         {
             this.waypointIndex = waypointIndex;
             this.reading = reading;
             this.oreLayer = wpLayer;
+            this.filterByOreCode =  filterByOreCode;
 
+            GetComponentColor();
+        }
+
+        private void GetComponentColor() {
             int col = GuiStyle.DamageColorGradient[(int)Math.Min(99, reading.HighestReading * 150)];
-            if (filterByOreCode != null) col = GuiStyle.DamageColorGradient[(int)Math.Min(99, reading.OreReadings[filterByOreCode].TotalFactor * 150)];
 
-            this.color = new Vec4f();
+            if (filterByOreCode != null) {
+                if (reading.OreReadings.TryGetValue(filterByOreCode, out var oreReading)) {
+                    col = GuiStyle.DamageColorGradient[(int)Math.Min(99, oreReading.TotalFactor * 150)];
+                } else {
+                    // Or throw ?
+                    capi.Logger.Warning("Ore Map filter element has unhandled non-dictionary value: {0}", filterByOreCode);
+                }
+            }
+
             ColorUtil.ToRGBAVec4f(col, ref color);
             color.W = 1;
         }
@@ -53,8 +66,8 @@ namespace Vintagestory.GameContent
             prog.Uniform("noTexture", 0f);
 
             LoadedTexture tex = oreLayer.oremapTexture;
-            float hover = (mouseOver ? 6 : 0) - 1.5f * Math.Max(1, 1 / map.ZoomLevel);
-            
+            float hover = (mouseOver ? 6 : 0) - 1.5f * Math.Max(1, 1 / map.ScaledZoomLevel);
+
             if (tex != null)
             {
                 prog.BindTexture2D("tex2d", tex.TextureId, 0);
@@ -91,7 +104,7 @@ namespace Vintagestory.GameContent
         {
             Vec2f viewPos = new Vec2f();
             mapElem.TranslateWorldPosToViewPos(reading.Position, ref viewPos);
-            
+
             double x = viewPos.X + mapElem.Bounds.renderX;
             double y = viewPos.Y + mapElem.Bounds.renderY;
             double dX = args.X - x;
@@ -106,7 +119,7 @@ namespace Vintagestory.GameContent
             }
         }
 
-        
+
         public override void OnMouseUpOnElement(MouseEvent args, GuiElementMap mapElem)
         {
             if (args.Button == EnumMouseButton.Right)

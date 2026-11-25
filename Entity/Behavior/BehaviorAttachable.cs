@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
+using System.Security.Claims;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -57,19 +60,96 @@ namespace Vintagestory.GameContent
         }
     }
 
-    // An entity can provide seats and slots
-    // A slot however if filled with a chair can also provide a seat
-    // Or a slot can also be configured to be usable as a seat if empty
+    /// <summary>
+    /// An entity can provide seats and slots
+    /// <br/>A slot however if filled with a chair can also provide a seat
+    /// <br/>Or a slot can also be configured to be usable as a seat if empty
+    /// </summary>
+    /// <example><code lang="json">
+    ///"wearableSlots": [
+    ///    {
+    ///        "code": "head",
+    ///        "forCategoryCodes": [ "bridle" ],
+    ///        "attachmentPointCode": "HeadAP"
+    ///    },
+    ///    {
+    ///        "code": "face",
+    ///        "forCategoryCodes": [ "face" ],
+    ///        "attachmentPointCode": "FaceAP"
+    ///    },
+    ///    {
+    ///        "code": "neck",
+    ///        "forCategoryCodes": [ "lantern" ],
+    ///        "attachmentPointCode": "NeckAP"
+    ///    },
+    /// ...
+    /// ]
+    /// </code></example>
+    /// <example>
+    /// Inside a collectible to be worn...
+    /// <code lang="json">
+    ///"attributes": {
+    ///    "attachableToEntity": {
+    ///        "categoryCode": "pillion",
+    ///        "attachedShape": { "base": "item/wearable/hooved/pillion1" },
+    ///        "seatConfig": {
+    ///            "bodyYawLimit": 0,
+    ///            "controllable": false,
+    ///            "mountOffset": {
+    ///                "x": -0.25,
+    ///                "y": -0.45,
+    ///                "z": -0.25
+    ///            },
+    ///            "MountRotation": { "y": 0.0 },
+    ///            "eyeOffsetX": 0.2
+    ///        }
+    ///    },
+    ///    ...
+    ///},
+    /// </code></example>
+    [DocumentAsJson]
     public class WearableSlotConfig
     {
+        /// <summary>
+        /// The config for the seat, stored in the attached collectible's JSON.
+        /// <br/>Requires a specific setup, see the example.
+        /// </summary>
+        [DocumentAsJson("Required", "", true)]
         public SeatConfig SeatConfig;
+
+        /// <summary>
+        /// Unique identifier for this slot
+        /// </summary>
+        [DocumentAsJson("Required")]
         public string Code;
+
+        /// <summary>
+        /// Allows items with specified category codes to be placed in this slot
+        /// </summary>
+        [DocumentAsJson("Recommended")]
         public string[] ForCategoryCodes;
+
+        /// <summary>
+        /// Allows to combine multiple slots into one bigger slot
+        /// </summary>
+        [DocumentAsJson("Optional", "None")]
         public string[] BehindSlots; // Needed so that the Elk can occupy 2 spaces
 
+        /// <summary>
+        /// Attachment point code of the shape element to attach to
+        /// </summary>
+        [DocumentAsJson("Required")]
         public string AttachmentPointCode;
+
+        [DocumentAsJson("Optional", "None")]
         public Dictionary<string, StepParentElementTo> StepParentTo;
+
         public string ProvidesSeatId = null;
+
+        /// <summary>
+        /// Skips the attach interaction if set to True and the slot is empty when the attach key is not pressed, allowing mount and other interactions to trigger instead
+        /// </summary>
+        [DocumentAsJson("Optional", "False")]
         public bool EmptyInteractPassThrough { get; set; }
 
         public bool CanHold(string code)
@@ -86,14 +166,32 @@ namespace Vintagestory.GameContent
 
 
 
-
+    /// <summary>
+    /// Allows to attach specific items to entity.
+    /// <br/>Requires <see cref="EntityBehaviorSelectionBoxes"/>
+    /// <br/>Uses the "attachable" code
+    /// </summary>
+    [DocumentAsJson]
+    [AddDocumentationProperty("interactPassthrough",
+    "Use this on a collectible type. If True, skips the attach interaction for this item when it is attached and the attach key is not pressed, allowing the interaction to pass through to mount or other entity interactions",
+    "System.Boolean", "Optional", "False", true)]
     public class EntityBehaviorAttachable : EntityBehaviorContainer, ICustomInteractionHelpPositioning
     {
-        protected WearableSlotConfig[] wearableSlots;
+        /// <summary>
+        /// Attachable slots. Should be in the same order as selectionBoxes of <see cref="EntityBehaviorSelectionBoxes"/>
+        /// </summary>
+        [DocumentAsJson("Required")]
+        internal WearableSlotConfig[] wearableSlots;
         public override InventoryBase Inventory => inv;
         protected InventoryGeneric inv;
 
         public override string InventoryClassName => "wearablesInv";
+
+        /// <summary>
+        /// Whether to use shift instead of ctrl key to attach/detach items
+        /// </summary>
+        [DocumentAsJson("Optional", "false")]
+        public bool UseShiftAttach;
 
         public EntityBehaviorAttachable(Entity entity) : base(entity) { }
 
@@ -118,6 +216,7 @@ namespace Vintagestory.GameContent
             loadInv();
 
             entity.WatchedAttributes.RegisterModifiedListener("wearablesInv", wearablesModified);
+            UseShiftAttach = attributes["useShiftAttach"].AsBool();
 
             base.Initialize(properties, attributes);
         }
@@ -165,7 +264,8 @@ namespace Vintagestory.GameContent
                 if (attrseatconfig != null)
                 {
                     attrseatconfig.SeatId = "attachableseat-" + i;
-                    attrseatconfig.APName = slotcfg.AttachmentPointCode;
+                    attrseatconfig.APName ??= slotcfg.AttachmentPointCode;
+                    attrseatconfig.SelectionBox ??= slotcfg.AttachmentPointCode;
 
                     slotcfg.SeatConfig = attrseatconfig;
 
@@ -183,18 +283,18 @@ namespace Vintagestory.GameContent
 
         public override bool TryGiveItemStack(ItemStack itemstack, ref EnumHandling handling)
         {
-            int index = 0;
-            DummySlot sourceslot = new DummySlot(itemstack);
-            foreach (var slot in inv)
+            var selectionBehavior = entity.GetBehavior<EntityBehaviorSelectionBoxes>();
+            if (selectionBehavior != null)
             {
-                var targetSlot = GetSlotFromSelectionBoxIndex(index);
-                if (targetSlot != null && TryAttach(sourceslot, index, null))
+                DummySlot sourceslot = new DummySlot(itemstack);
+                for (int i = 0; i < selectionBehavior.selectionBoxes.Length; ++i)
                 {
-                    handling = EnumHandling.PreventDefault;
-                    return true;
+                    if (TryAttach(sourceslot, i, null))
+                    {
+                        handling = EnumHandling.PreventDefault;
+                        return true;
+                    }
                 }
-
-                index++;
             }
 
             return base.TryGiveItemStack(itemstack, ref handling);
@@ -211,6 +311,7 @@ namespace Vintagestory.GameContent
             handled = EnumHandling.PreventSubsequent;
 
             var controls = byEntity.MountedOn?.Controls ?? byEntity.Controls;
+            var attachKey = UseShiftAttach ? controls.ShiftKey : controls.CtrlKey;
 
             if (mode == EnumInteractMode.Interact && !controls.CtrlKey)
             {
@@ -240,7 +341,7 @@ namespace Vintagestory.GameContent
             }
 
 
-            if (mode != EnumInteractMode.Interact || !controls.CtrlKey)
+            if (mode != EnumInteractMode.Interact || !attachKey)
             {
                 handled = EnumHandling.PassThrough; // Can't attack an elk with a falx otherwise
                 return;
@@ -267,11 +368,11 @@ namespace Vintagestory.GameContent
 
         private void onAttachmentToggled(EntityAgent byEntity, ItemSlot itemslot)
         {
-            var sound = itemslot.Itemstack?.Block?.Sounds.Place ?? new AssetLocation("sounds/player/build");
-            Api.World.PlaySoundAt(sound, entity, (byEntity as EntityPlayer).Player, true, 16);
+            var sound = itemslot.Itemstack?.Block?.Sounds.Place ?? GlobalConstants.DefaultBuildSound;
+            Api.World.PlaySoundAt(sound, entity, (byEntity as EntityPlayer).Player);
             entity.MarkShapeModified();
             // Tell server to save this chunk to disk again
-            entity.World.BlockAccessor.GetChunkAtBlockPos(entity.ServerPos.AsBlockPos).MarkModified();
+            entity.World.BlockAccessor.GetChunkAtBlockPos(entity.Pos.AsBlockPos).MarkModified();
         }
 
         private bool TryRemoveAttachment(EntityAgent byEntity, int selectionBoxIndex)
@@ -302,10 +403,9 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
-            var ebho = entity.GetBehavior<EntityBehaviorOwnable>();
-            if (ebho != null && !ebho.IsOwner(byEntity))
+            if (EntityUtil.RestrictedByOwnership(entity, byEntity))
             {
-                (entity.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "requiersownership", Lang.Get("mount-interact-requiresownership"));
+                (entity.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "requiresownership", Lang.Get("mount-interact-requiresownership"));
                 return false;
             }
 
@@ -318,7 +418,7 @@ namespace Vintagestory.GameContent
                 if (Api.Side == EnumAppSide.Server && !wasEmptyAlready)
                 {
                     slot.Itemstack.StackSize = 1;
-                    Api.World.Logger.Audit("{0} removed from a {1} at {2}, slot {4}: {3}", byEntity?.GetName(), entity.Code.ToShortString(), entity.ServerPos.AsBlockPos, slot.Itemstack?.ToString(), slotIndex);
+                    Api.World.Logger.Audit("{0} removed from a {1} at {2}, slot {4}: {3}", byEntity?.GetName(), entity.Code.ToShortString(), entity.Pos.AsBlockPos, slot.Itemstack?.ToString(), slotIndex);
                 }
 
                 slot.Itemstack = null;
@@ -335,6 +435,8 @@ namespace Vintagestory.GameContent
             if (iatta == null || !iatta.IsAttachable(entity, itemslot.Itemstack)) return false;
 
             int slotIndex = GetSlotIndexFromSelectionBoxIndex(selectionBoxIndex);
+            if (slotIndex < 0) return false;
+
             ItemSlot targetSlot = inv[slotIndex];
             string code = iatta.GetCategoryCode(itemslot.Itemstack);
             WearableSlotConfig slotConfig = wearableSlots[slotIndex];
@@ -391,11 +493,9 @@ namespace Vintagestory.GameContent
                 }
             }
 
-
-            var ebho = entity.GetBehavior<EntityBehaviorOwnable>();
-            if (ebho != null && !ebho.IsOwner(byEntity))
+            if (EntityUtil.RestrictedByOwnership(entity, byEntity))
             {
-                (entity.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "requiersownership", Lang.Get("mount-interact-requiresownership"));
+                (entity.World.Api as ICoreClientAPI)?.TriggerIngameError(this, "requiresownership", Lang.Get("mount-interact-requiresownership"));
                 return false;
             }
 
@@ -410,7 +510,7 @@ namespace Vintagestory.GameContent
 
             if (entity.World.Side == EnumAppSide.Server)
             {
-                string auditLog = String.Format("{0} attached to a {1} at {2}, slot {4}: {3}", byEntity?.GetName(), entity.Code.ToShortString(), entity.ServerPos.AsBlockPos, itemslot.Itemstack.ToString(), slotIndex);
+                string auditLog = String.Format("{0} attached to a {1} at {2}, slot {4}: {3}", byEntity?.GetName(), entity.Code.ToShortString(), entity.Pos.AsBlockPos, itemslot.Itemstack.ToString(), slotIndex);
                 var moved = itemslot.TryPutInto(entity.World, targetSlot) > 0;
                 if (moved)
                 {
@@ -476,24 +576,46 @@ namespace Vintagestory.GameContent
             base.OnEntityDespawn(despawn);
         }
 
-
-        public override void OnReceivedClientPacket(IServerPlayer player, int packetid, byte[] data, ref EnumHandling handled)
+        [Obsolete("Use the SerializedData overload.")] // Rennorb 03.07.2026: We call this for at least one more version to give mods time.
+        public override void OnReceivedClientPacket(IServerPlayer player, int packetId, byte[] packetData, ref EnumHandling handled)
         {
             int i = 0;
             foreach (var slot in inv)
             {
-                var iai = slot.Itemstack?.Collectible.GetCollectibleInterface<IAttachedInteractions>();
-                iai?.OnReceivedClientPacket(slot, i, entity, player, packetid, data, ref handled, storeInv);
+                if (slot.Itemstack != null)
+                {
+                    var iai = slot.Itemstack.Collectible.GetCollectibleInterface<IAttachedInteractions>();
+                    iai?.OnReceivedClientPacket(slot, i, entity, player, packetId, packetData, ref handled, storeInv);
+                    if (handled == EnumHandling.PreventSubsequent) break;
+                }
+
                 i++;
-                if (handled == EnumHandling.PreventSubsequent) break;
+            }
+        }
+
+
+        public override void OnReceivedClientPacket(IServerPlayer player, int packetId, SerializedData packetData, ref EnumHandling handled, ref Entity.CachedAccessPerms perms)
+        {
+            int i = 0;
+            foreach (var slot in inv)
+            {
+                if (slot.Itemstack != null)
+                {
+                    var iai = slot.Itemstack.Collectible.GetCollectibleInterface<IAttachedInteractions>();
+                    iai?.OnReceivedClientPacket(slot, i, entity, player, packetId, packetData, ref handled, ref perms, storeInv);
+                    if (handled == EnumHandling.PreventSubsequent) break;
+                }
+
+                i++;
             }
         }
 
         public override WorldInteraction[] GetInteractionHelp(IClientWorldAccessor world, EntitySelection es, IClientPlayer player, ref EnumHandling handled)
         {
-            if (es.SelectionBoxIndex > 0)
+            int slotIndex = GetSlotIndexFromSelectionBoxIndex(es.SelectionBoxIndex - 1);
+            if (slotIndex >= 0)
             {
-                return AttachableInteractionHelp.GetOrCreateInteractionHelp(world.Api, this, wearableSlots, es.SelectionBoxIndex - 1, GetSlotFromSelectionBoxIndex(es.SelectionBoxIndex - 1));
+                return AttachableInteractionHelp.GetOrCreateInteractionHelp(world.Api, this, wearableSlots, slotIndex, inv[slotIndex]);
             }
 
             return base.GetInteractionHelp(world, es, player, ref handled);
@@ -600,7 +722,7 @@ namespace Vintagestory.GameContent
                     ActionLangCode = slot.Empty ? "attachableentity-attach" : "attachableentity-detach",
                     Itemstacks = slot.Empty ? stacks.ToArray() : null,
                     MouseButton = EnumMouseButton.Right,
-                    HotKeyCode = "ctrl"
+                    HotKeyCode = eba.UseShiftAttach ? "shift" : "ctrl"
                 }
             };
         }

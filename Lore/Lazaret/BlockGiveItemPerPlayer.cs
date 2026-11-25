@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API;
 using Vintagestory.API.Client;
@@ -48,6 +48,11 @@ namespace Vintagestory.GameContent
                     MouseButton = EnumMouseButton.Right,
                 }
             };
+        }
+
+        public override int GetPlacedBlockInteractionHelpCount(IWorldAccessor world, BlockSelection selection, IPlayer forPlayer, ref EnumHandling handling)
+        {
+            return 1;
         }
     }
 

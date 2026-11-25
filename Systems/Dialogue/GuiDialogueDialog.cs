@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Client;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
@@ -77,8 +77,6 @@ namespace Vintagestory.GameContent
         {
             ClearComposers();
 
-            CairoFont font = CairoFont.WhiteMediumText().WithFont(GuiStyle.DecorativeFontName).WithColor(GuiStyle.DiscoveryTextColor).WithStroke(GuiStyle.DialogBorderColor, 2).WithOrientation(EnumTextOrientation.Center);
-
             ElementBounds bgBounds = ElementBounds.Fill.WithFixedPadding(GuiStyle.ElementToDialogPadding);
             bgBounds.BothSizing = ElementSizing.FitToChildren;
             ElementBounds dialogBounds = ElementStdBounds
@@ -97,7 +95,7 @@ namespace Vintagestory.GameContent
             ElementBounds leftButton = ElementBounds.Fixed(EnumDialogArea.LeftFixed, 0, 0, 0, 0).WithFixedPadding(8, 5);
 
             string traderName = npcEntity.GetBehavior<EntityBehaviorNameTag>()?.DisplayName;
-            string dlgTitle = Lang.Get("tradingwindow-" + npcEntity.Code.Path, traderName);
+            string dlgTitle = Lang.GetMatching("tradingwindow-" + npcEntity.Code.Path, traderName);
 
             SingleComposer =
                 capi.Gui
@@ -153,7 +151,7 @@ namespace Vintagestory.GameContent
             textElem.Bounds.fixedY = 0 - value;
             textElem.Bounds.CalcWorldBounds();
         }
-        
+
         public override void OnFinalizeFrame(float dt)
         {
             base.OnFinalizeFrame(dt);

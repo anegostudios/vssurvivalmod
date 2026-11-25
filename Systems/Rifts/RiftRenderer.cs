@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Config;
@@ -111,7 +111,7 @@ namespace Vintagestory.GameContent
             float bf = 200 + (float)GameMath.Sin(capi.InWorldEllapsedMilliseconds / 24000.0) * 100;
             
             prog.Uniform("counterSmooth", bf);
-            prog.Uniform("invFrameSize", new Vec2f(1f / width, 1f / height));
+            prog.Uniform("invFrameSize", 1f / width, 1f / height);
             int riftIndex = 0;
 
             cnt = (cnt + 1) % 3;

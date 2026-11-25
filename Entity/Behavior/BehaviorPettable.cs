@@ -1,4 +1,5 @@
-﻿using Vintagestory.API.Common;
+using Vintagestory.API;
+using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -7,6 +8,20 @@ using Vintagestory.API.MathTools;
 
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Allows entity to be petted.
+    /// <br/>Uses the "pettable" code
+    /// </summary>
+    /// <example><code lang="json">
+    ///"behaviors": [
+    /// {
+    ///     "code": "pettable",
+    ///     "minGeneration": 2
+    /// },
+    ///],
+    /// </code></example>
+    [DocumentAsJson]
+    [AddDocumentationProperty("minGeneration", "Specifies the minimum generation required for the entity to be allowed to be petted", "System.Int32", "Optional", "1", false)]
     public class EntityBehaviorPettable : EntityBehavior, IPettable
     {
         long lastPetTotalMs;

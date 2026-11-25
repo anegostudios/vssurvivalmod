@@ -31,23 +31,6 @@ namespace Vintagestory.GameContent
 
             moveSpeedMul = properties["animSpeedMul"].AsFloat(1);
 
-            string soundloc = properties["activeSound"].AsString();
-            if (soundloc != null && api is ICoreClientAPI capi)
-            {
-                var loc = AssetLocation.Create(soundloc, Block.Code.Domain).WithPathPrefixOnce("sounds/");
-                activeSound = capi.World.LoadSound(new SoundParams()
-                {
-                    Location = loc,
-                    DisposeOnFinish = false,
-                    ShouldLoop = true,
-                    SoundType = EnumSoundType.Ambient,
-                    Volume = 0.25f,
-                    Range = 16,
-                    RelativePosition = false,
-                    Position = this.Pos.ToVec3f().Add(0.5f, 0.5f, 0.5f)
-                });
-            }
-
             modSys = api.ModLoader.GetModSystem<ModSystemControlPoints>();
 
             animControlPoint = modSys[controlpointcode];
@@ -101,8 +84,30 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                activeSound?.Start();
-                activeSound?.FadeIn(2, null);
+                if (Api is ICoreClientAPI capi)
+                {
+                    if (activeSound == null)
+                    {
+                        string soundloc = properties["activeSound"].AsString();
+                        if (soundloc != null)
+                        {
+                            var loc = AssetLocation.Create(soundloc, Block.Code.Domain).WithPathPrefixOnce("sounds/");
+                            activeSound = capi.World.LoadSound(new SoundParams()
+                            {
+                                Location = loc,
+                                DisposeOnFinish = false,
+                                ShouldLoop = true,
+                                SoundType = EnumSoundType.Ambient,
+                                Volume = 0.25f,
+                                Range = 16,
+                                RelativePosition = false,
+                                Position = this.Pos.ToVec3f().Add(0.5f, 0.5f, 0.5f)
+                            });
+                        }
+                    }
+                    activeSound?.Start();
+                    activeSound?.FadeIn(2, null);
+                }
             }
 
             Blockentity.MarkDirty(true);
@@ -116,13 +121,15 @@ namespace Vintagestory.GameContent
             activeSound?.Dispose();
         }
 
+        public override void OnBlockRemoved()
+        {
+            base.OnBlockRemoved();
+            activeSound?.Dispose();
+        }
+
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder dsc)
         {
             base.GetBlockInfo(forPlayer, dsc);
         }
-
-
     }
-
-
 }

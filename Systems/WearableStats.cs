@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
@@ -24,7 +23,7 @@ namespace Vintagestory.GameContent
             { 1, new EnumCharacterDressType[] { EnumCharacterDressType.UpperBody, EnumCharacterDressType.UpperBodyOver, EnumCharacterDressType.Shoulder, EnumCharacterDressType.Arm, EnumCharacterDressType.Hand } },
             { 2, new EnumCharacterDressType[] { EnumCharacterDressType.LowerBody, EnumCharacterDressType.Foot } }
         };
-        
+
         public override bool ShouldLoad(EnumAppSide forSide)
         {
             return true;
@@ -33,6 +32,11 @@ namespace Vintagestory.GameContent
         public override void Start(ICoreAPI api)
         {
             this.api = api;
+        }
+
+        public override void AssetsFinalize(ICoreAPI api)
+        {
+            ProtectionModifiers.LoadDamageReductionTable(api);
         }
 
 
@@ -94,10 +98,9 @@ namespace Vintagestory.GameContent
 
             foreach (var slot in inv)
             {
-                ItemWearable item;
-                if (slot.Empty || (item = slot.Itemstack.Collectible as ItemWearable) == null) continue;
+                if (slot.Empty || slot.Itemstack.Collectible.GetCollectibleInterface<IWearableStatsSupplier>() is not IWearableStatsSupplier wearableStats) continue;
 
-                AssetLocation[] soundlocs = item.FootStepSounds;
+                AssetLocation[] soundlocs = wearableStats.GetFootStepSounds(slot);
                 if (soundlocs == null || soundlocs.Length == 0) continue;
 
                 AssetLocation loc = soundlocs[api.World.Rand.Next(soundlocs.Length)];
@@ -152,7 +155,9 @@ namespace Vintagestory.GameContent
             }
 
             // Apply full damage if no armor is in this slot
-            if (armorSlot.Empty || !(armorSlot.Itemstack.Item is ItemWearable) || armorSlot.Itemstack.Collectible.GetRemainingDurability(armorSlot.Itemstack) <= 0)
+            if (armorSlot.Empty
+                || !(armorSlot.Itemstack.Collectible.GetCollectibleInterface<IWearableStatsSupplier>() is IWearableStatsSupplier wearableStats && wearableStats.IsArmorType(armorSlot))
+                || armorSlot.Itemstack.Collectible.GetRemainingDurability(armorSlot.Itemstack) <= 0)
             {
                 EnumCharacterDressType[] dressTargets = clothingDamageTargetsByAttackTacket[attackTarget];
                 EnumCharacterDressType target = dressTargets[api.World.Rand.Next(dressTargets.Length)];
@@ -175,44 +180,37 @@ namespace Vintagestory.GameContent
                         api.World.PlaySoundAt(ripSound, player.Entity);
                     }
 
-                    (targetslot.Itemstack.Collectible as ItemWearable)?.ChangeCondition(targetslot, diff);
+                    targetslot.Itemstack.Collectible.GetCollectibleInterface<IWearable>()?.ChangeCondition(targetslot, diff);
                 }
 
                 return damage;
             }
 
-            ProtectionModifiers protMods = (armorSlot.Itemstack.Item as ItemWearable).ProtectionModifiers;
 
-            int weaponTier = dmgSource.DamageTier;
-            float flatDmgProt = protMods.FlatDamageReduction;
-            float percentProt = protMods.RelativeProtection;
+            ProtectionModifiers protMods;
+            string hitToken = "";
 
-            for (int tier = 1; tier <= weaponTier; tier++)
+            ICustomArmor combinedArmor = armorSlot.Itemstack.Collectible.GetCollectibleInterface<ICustomArmor>();
+            if (combinedArmor != null)
             {
-                bool aboveTier = tier > protMods.ProtectionTier;
-
-                float flatLoss = aboveTier ? protMods.PerTierFlatDamageReductionLoss[1] : protMods.PerTierFlatDamageReductionLoss[0];
-                float percLoss = aboveTier ? protMods.PerTierRelativeProtectionLoss[1] : protMods.PerTierRelativeProtectionLoss[0];
-
-                if (aboveTier && protMods.HighDamageTierResistant)
-                {
-                    flatLoss /= 2;
-                    percLoss /= 2;
-                }
-
-                flatDmgProt -= flatLoss;
-                percentProt *= 1 - percLoss;
+                protMods = combinedArmor.GetProtectionModifiers(armorSlot, out hitToken);
+            }
+            else
+            {
+                protMods = armorSlot.Itemstack.Collectible.GetCollectibleInterface<IWearableStatsSupplier>().GetProtectionModifiers(armorSlot);
             }
 
-            // Durability loss is the one before the damage reductions
-            float durabilityLoss = 0.5f + damage * Math.Max(0.5f, (weaponTier - protMods.ProtectionTier) * 3);
-            int durabilityLossInt = GameMath.RoundRandom(api.World.Rand, durabilityLoss);
+            protMods.Apply(ref damage, out int durabilityLossInt, player.Entity, dmgSource);
 
-            // Now reduce the damage
-            damage = Math.Max(0, damage - flatDmgProt);
-            damage *= 1 - Math.Max(0, percentProt);
-
-            armorSlot.Itemstack.Collectible.DamageItem(api.World, player.Entity, armorSlot, durabilityLossInt);
+            if (combinedArmor != null)
+            {
+                combinedArmor.DamageArmor(api.World, player.Entity, armorSlot, durabilityLossInt, hitToken);
+            }
+            else
+            {
+                armorSlot.Itemstack.Collectible.DamageItem(api.World, player.Entity, armorSlot, durabilityLossInt);
+            }
+            
 
             if (armorSlot.Empty)
             {
@@ -262,9 +260,9 @@ namespace Vintagestory.GameContent
 
                 if (projectile)
                 {
-                    var dx = dmgSource.SourceEntity.SidedPos.Motion.X;
-                    var dy = dmgSource.SourceEntity.SidedPos.Motion.Y;
-                    var dz = dmgSource.SourceEntity.SidedPos.Motion.Z;
+                    var dx = dmgSource.SourceEntity.Pos.Motion.X;
+                    var dy = dmgSource.SourceEntity.Pos.Motion.Y;
+                    var dz = dmgSource.SourceEntity.Pos.Motion.Z;
                     verticalAttack = Math.Sqrt(dx * dx + dz * dz) * 1.2f < Math.Abs(dy);
                 }
 
@@ -287,16 +285,16 @@ namespace Vintagestory.GameContent
                         totaldmgabsorb += flatdmgabsorb;
                     }
 
-                    (player as IServerPlayer)?.SendMessage(GlobalConstants.DamageLogChatGroup, Lang.Get("{0:0.#} of {1:0.#} damage blocked by shield ({2} use)", Math.Min(totaldmgabsorb, damage), damage, usetype), EnumChatType.Notification);
+                    (player as IServerPlayer)?.SendMessage(GlobalConstants.DamageLogChatGroup, Lang.Get("absorbed-damageamount-of-total-damageamount-blocked-by-shield-in-mode", Math.Min(totaldmgabsorb, damage), damage, usetype), EnumChatType.Notification);
                     damage = Math.Max(0, damage - totaldmgabsorb);
 
                     string key = "blockSound" + ((unabsorbedDamage > 6) ? "Heavy" : "Light");
                     var loc = shieldSlot.Itemstack.ItemAttributes["shield"][key].AsString("held/shieldblock-wood-light");
                     var sloc = AssetLocation.Create(loc, shieldSlot.Itemstack.Collectible.Code.Domain).WithPathPrefixOnce("sounds/").WithPathAppendixOnce(".ogg");
                     api.World.PlaySoundAt(sloc, player, null);
-                    
+
                     if (rndval < chance) (api as ICoreServerAPI).Network.BroadcastEntityPacket(player.Entity.EntityId, (int)EntityServerPacketId.PlayPlayerAnim, SerializerUtil.Serialize("shieldBlock" + ((i == 0) ? "L" : "R")));
-                    
+
 
                     if (api.Side == EnumAppSide.Server)
                     {
@@ -317,37 +315,20 @@ namespace Vintagestory.GameContent
 
             foreach (var slot in inv)
             {
-                if (slot.Empty || !(slot.Itemstack.Item is ItemWearable)) continue;
-                StatModifiers statmod = (slot.Itemstack.Item as ItemWearable).StatModifers;
+                if (slot.Empty || slot.Itemstack.Collectible.GetCollectibleInterface<IWearableStatsSupplier>() is not IWearableStatsSupplier wearableStats) continue;
+                StatModifiers statmod = wearableStats.GetStatModifiers(slot);
                 if (statmod == null) continue;
 
                 // No positive effects when broken
                 bool broken = slot.Itemstack.Collectible.GetRemainingDurability(slot.Itemstack) == 0;
 
-                allmod.canEat &= statmod.canEat;
-                allmod.healingeffectivness += broken ? Math.Min(0, statmod.healingeffectivness) : statmod.healingeffectivness;
-                allmod.hungerrate += broken ? Math.Max(0, statmod.hungerrate) : statmod.hungerrate;
-
-                if (statmod.walkSpeed < 0)
-                {
-                    allmod.walkSpeed += statmod.walkSpeed * walkSpeedmul;
-                } else
-                {
-                    allmod.walkSpeed += broken ? 0 : statmod.walkSpeed;
-                }
-                
-                allmod.rangedWeaponsAcc += broken ? Math.Min(0, statmod.rangedWeaponsAcc) : statmod.rangedWeaponsAcc;
-                allmod.rangedWeaponsSpeed += broken ? Math.Min(0, statmod.rangedWeaponsSpeed) : statmod.rangedWeaponsSpeed;
+                allmod.AddFrom(statmod, broken, walkSpeedDebufMultiplier: walkSpeedmul);
             }
 
             EntityPlayer entity = player.Entity;
-            entity.Stats
-                .Set("walkspeed", "wearablemod", allmod.walkSpeed, true)
-                .Set("healingeffectivness", "wearablemod", allmod.healingeffectivness, true)
-                .Set("hungerrate", "wearablemod", allmod.hungerrate, true)
-                .Set("rangedWeaponsAcc", "wearablemod", allmod.rangedWeaponsAcc, true)
-                .Set("rangedWeaponsSpeed", "wearablemod", allmod.rangedWeaponsSpeed, true)
-            ;
+
+            allmod.Apply(entity.Stats, "wearablemod");
+
             entity.walkSpeed = entity.Stats.GetBlended("walkspeed");
 
             entity.WatchedAttributes.SetBool("canEat", allmod.canEat);

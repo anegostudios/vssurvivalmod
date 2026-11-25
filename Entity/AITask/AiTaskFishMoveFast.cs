@@ -1,3 +1,4 @@
+using Newtonsoft.Json;
 using System;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
@@ -15,7 +16,6 @@ namespace Vintagestory.GameContent
         public Vec3d MainTarget;
         bool done;
         float moveSpeed = 0.06f;
-        float wanderChance = 0.04f;
         float? preferredLightLevel;
         float targetDistance = 0.12f;
 
@@ -23,6 +23,8 @@ namespace Vintagestory.GameContent
         NatFloat wanderRangeHorizontal = NatFloat.createStrongerInvexp(3, 40);
         NatFloat wanderRangeVertical = NatFloat.createStrongerInvexp(3, 10);
 
+        [JsonProperty, Obsolete("Use ExecutionChance instead")]
+        double wanderChance { get => ExecutionChance; set => ExecutionChance = value; }
 
         public float WanderRangeMul
         {
@@ -45,8 +47,6 @@ namespace Vintagestory.GameContent
 
             moveSpeed = taskConfig["movespeed"].AsFloat(0.03f);
 
-            wanderChance = taskConfig["wanderChance"].AsFloat(0.015f);
-
             wanderRangeMin = taskConfig["wanderRangeMin"].AsFloat(3);
             wanderRangeMax = taskConfig["wanderRangeMax"].AsFloat(30);
             wanderRangeHorizontal = NatFloat.createStrongerInvexp(wanderRangeMin, wanderRangeMax);
@@ -56,13 +56,19 @@ namespace Vintagestory.GameContent
             if (preferredLightLevel < 0) preferredLightLevel = null;
         }
 
+        protected override void SetDefaultValues()
+        {
+            base.SetDefaultValues();
+            ExecutionChance = 0.015;
+        }
+
 
         public Vec3d loadNextWanderTarget()
         {
             int tries = 9;
             Vec4d bestTarget = null;
             Vec4d curTarget = new Vec4d();
-            BlockPos tmpPos = new BlockPos(entity.ServerPos.Dimension);
+            BlockPos tmpPos = new BlockPos(entity.Pos.Dimension);
 
             if (FailedConsecutivePathfinds > 10)
             {
@@ -84,9 +90,9 @@ namespace Vintagestory.GameContent
                 dy = wanderRangeVertical.nextFloat() * (rand.Next(2) * 2 - 1) * wRangeMul;
                 dz = wanderRangeHorizontal.nextFloat() * (rand.Next(2) * 2 - 1) * wRangeMul;
 
-                curTarget.X = entity.ServerPos.X + dx;
-                curTarget.Y = entity.ServerPos.InternalY + dy;
-                curTarget.Z = entity.ServerPos.Z + dz;
+                curTarget.X = entity.Pos.X + dx;
+                curTarget.Y = entity.Pos.InternalY + dy;
+                curTarget.Z = entity.Pos.Z + dz;
                 curTarget.W = 1;
 
                 Block block;
@@ -128,7 +134,7 @@ namespace Vintagestory.GameContent
         public override bool ShouldExecute()
         {
             if (!entity.Swimming) return false;
-            if (rand.NextDouble() > wanderChance && !entity.CollidedHorizontally && !entity.CollidedVertically) return false;
+            if (rand.NextDouble() > ExecutionChance && !entity.CollidedHorizontally && !entity.CollidedVertically) return false;
 
             MainTarget = loadNextWanderTarget();
 
@@ -152,7 +158,7 @@ namespace Vintagestory.GameContent
 
             base.ContinueExecute(dt);
 
-            if (MainTarget.HorizontalSquareDistanceTo(entity.ServerPos.X, entity.ServerPos.Z) < 0.5)
+            if (MainTarget.HorizontalSquareDistanceTo(entity.Pos.X, entity.Pos.Z) < 0.5)
             {
                 pathTraverser.Stop();
                 return false;

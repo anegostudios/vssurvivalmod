@@ -46,7 +46,7 @@ namespace Vintagestory.GameContent
 
             bool mountablefound = false;
 
-            searchMountable(vas.Entity.ServerPos.XYZ, (seat, pos) =>
+            searchMountable(vas.Entity.Pos.XYZ, (seat, pos) =>
             {
                 mountablefound = true;
                 if (vas.Entity.TryMount(seat))
@@ -86,7 +86,7 @@ namespace Vintagestory.GameContent
                 {
                     var seat = block.GetInterface<IMountableSeat>(vas.Entity.World, pos);
                     if (seat != null)
-                        if (onblock(seat, pos)) 
+                        if (onblock(seat, pos))
                             return false;
                 }
                 return true;

@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Common;
+using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
@@ -12,10 +12,12 @@ namespace Vintagestory.GameContent
         public override bool ShouldLoad(EnumAppSide forSide) => forSide == EnumAppSide.Server;
 
         ICoreServerAPI api;
+        int fireBlockId;
 
         public override void StartServerSide(ICoreServerAPI api)
         {
             this.api = api;
+            fireBlockId = api.World.GetBlock("fire")!.BlockId;
             api.ModLoader.GetModSystem<WeatherSystemServer>().OnLightningImpactEnd += ModSystemFireFromLightning_OnLightningImpactEnd;
         }
 
@@ -26,27 +28,20 @@ namespace Vintagestory.GameContent
             if (api.World.Config.GetBool("lightningFires", false))
             {
                 var rnd = api.World.Rand;
-                var npos = impactPos.AsBlockPos.Add(rnd.Next(2) - 1, rnd.Next(2) - 1, rnd.Next(2) - 1);
-                var block = api.World.BlockAccessor.GetBlock(npos);
-                if (block.CombustibleProps != null)
-                {
-                    foreach (var facing in BlockFacing.ALLFACES)
-                    {
-                        BlockPos bpos = npos.AddCopy(facing);
-                        block = api.World.BlockAccessor.GetBlock(bpos);
+                var blockAccess = api.World.BlockAccessor;
+                var npos = impactPos.AsBlockPos.Add(rnd.Next(3) - 1, rnd.Next(3) - 1, rnd.Next(3) - 1);
+                if (blockAccess.GetBlock(npos).GetCombustibleProperties(api.World, null, npos) == null) return;
 
-                        if (block.BlockId == 0)
-                        {
-                            double wetness = api.ModLoader.GetModSystem<WeatherSystemBase>().GetEnvironmentWetness(bpos, 10);
-                            
-                            if (wetness < 0.01) // If there was medium rain for half a day over the last 10 days, this would result in a wetness of 0.025
-                            {
-                                api.World.BlockAccessor.SetBlock(api.World.GetBlock(new AssetLocation("fire")).BlockId, bpos);
-                                BlockEntity befire = api.World.BlockAccessor.GetBlockEntity(bpos);
-                                befire?.GetBehavior<BEBehaviorBurning>()?.OnFirePlaced(facing, null);
-                            }
-                        }
-                    }
+                foreach (var facing in BlockFacing.ALLFACES)
+                {
+                    facing.IterateThruFacingOffsets(npos); // This must be the first command in the loop, to ensure all facings will be properly looped through regardless of any 'continue;' statements
+                    if (blockAccess.GetBlock(npos).BlockId != 0) continue;
+
+                    // If there was medium rain for half a day over the last 10 days, this would result in a wetness of 0.025
+                    if (api.ModLoader.GetModSystem<WeatherSystemBase>().GetEnvironmentWetness(npos, 10) >= 0.01) continue;
+
+                    blockAccess.SetBlock(fireBlockId, npos);
+                    blockAccess.GetBlockEntity(npos)?.GetBehavior<BEBehaviorBurning>()?.OnFirePlaced(facing, null);
                 }
             }
         }

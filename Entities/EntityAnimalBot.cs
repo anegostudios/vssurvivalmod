@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.IO;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -55,7 +55,7 @@ namespace Vintagestory.GameContent
             {
                 entity.linepathTraverser.NavigateTo(Target, GotoSpeed, OnDone, OnDone);
             }
-            
+
 
             if (AnimSpeed != 0.02f)
             {
@@ -185,10 +185,10 @@ namespace Vintagestory.GameContent
         {
             if (AnimSpeed != 1 || !entity.AnimManager.StartAnimation(AnimCode))
             {
-                entity.AnimManager.StartAnimation(new AnimationMetaData() { 
-                    Animation = AnimCode, 
-                    Code = AnimCode, 
-                    AnimationSpeed = AnimSpeed 
+                entity.AnimManager.StartAnimation(new AnimationMetaData() {
+                    Animation = AnimCode,
+                    Code = AnimCode,
+                    AnimationSpeed = AnimSpeed
                 }.Init());
             }
         }
@@ -252,12 +252,12 @@ namespace Vintagestory.GameContent
 
         public void Start()
         {
-            entity.ServerPos.Yaw = yaw;
+            entity.Pos.Yaw = yaw;
         }
 
         public void Stop()
         {
-            
+
         }
 
         public void FromAttribute(ITreeAttribute tree)
@@ -303,6 +303,11 @@ namespace Vintagestory.GameContent
 
             linepathTraverser = new StraightLineTraverser(this);
             wppathTraverser = new WaypointsTraverser(this);
+
+            if (commandQueueActive)
+            {
+                StartExecuteCommands();
+            }
         }
 
         public void StartExecuteCommands(bool enqueue = true)
@@ -392,15 +397,16 @@ namespace Vintagestory.GameContent
                 }
 
                 WatchedAttributes.SetBool("loop", LoopCommands);
+                WatchedAttributes.SetBool("commandQueueActive", commandQueueActive);
             }
 
             base.ToBytes(writer, forClient);
         }
 
 
-        public override void FromBytes(BinaryReader reader, bool forClient)
+        public override void FromBytes(ref BinarySpanReader reader, bool forClient)
         {
-            base.FromBytes(reader, forClient);
+            base.FromBytes(ref reader, forClient);
 
             if (!forClient)
             {
@@ -438,6 +444,7 @@ namespace Vintagestory.GameContent
                 }
 
                 LoopCommands = WatchedAttributes.GetBool("loop");
+                commandQueueActive = WatchedAttributes.GetBool("commandQueueActive");
             }
         }
     }

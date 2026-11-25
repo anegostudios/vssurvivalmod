@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.ServiceModel.Channels;
@@ -14,16 +14,16 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class BlockLantern : Block, ITexPositionSource, IAttachableToEntity
+    public class BlockLantern : Block, ITexPositionSource, IAttachableToEntity, IContainedMeshSource, IContainedInteractable, IHandbookListGrouping
     {
-        IAttachableToEntity attrAtta;
+        protected IAttachableToEntity attrAtta;
         #region IAttachableToEntity
         public int RequiresBehindSlots { get; set; } = 0;
         string IAttachableToEntity.GetCategoryCode(ItemStack stack) => attrAtta?.GetCategoryCode(stack);
-        CompositeShape IAttachableToEntity.GetAttachedShape(ItemStack stack, string slotCode) => attrAtta.GetAttachedShape(stack, slotCode);
-        string[] IAttachableToEntity.GetDisableElements(ItemStack stack) => attrAtta.GetDisableElements(stack);
-        string[] IAttachableToEntity.GetKeepElements(ItemStack stack) => attrAtta.GetKeepElements(stack);
-        string IAttachableToEntity.GetTexturePrefixCode(ItemStack stack) => attrAtta.GetTexturePrefixCode(stack);
+        CompositeShape IAttachableToEntity.GetAttachedShape(ItemStack stack, Entity onentity, string slotCode) => attrAtta?.GetAttachedShape(stack, onentity, slotCode);
+        string[] IAttachableToEntity.GetDisableElements(ItemStack stack) => attrAtta?.GetDisableElements(stack);
+        string[] IAttachableToEntity.GetKeepElements(ItemStack stack) => attrAtta?.GetKeepElements(stack);
+        string IAttachableToEntity.GetTexturePrefixCode(ItemStack stack) => attrAtta?.GetTexturePrefixCode(stack);
 
         void IAttachableToEntity.CollectTextures(ItemStack itemstack, Shape intoShape, string texturePrefixCode, Dictionary<string, CompositeTexture> intoDict)
         {
@@ -37,15 +37,42 @@ namespace Vintagestory.GameContent
             intoShape.Textures["material"] = this.Textures[material].Base;
             intoShape.Textures["lining"] = this.Textures[(lining == null || lining == "plain") ? material : lining].Base;
             intoShape.Textures["material-deco"] = this.Textures["deco-" + material].Base;
+            intoShape.Textures["material-grid"] = this.Textures["grid-" + material].Base;
         }
+
+
+
+        public MeshData GenMesh(ItemSlot slot, ITextureAtlasAPI targetAtlas, BlockPos atBlockPos)
+        {
+            string material = slot.Itemstack.Attributes.GetString("material");
+            string lining = slot.Itemstack.Attributes.GetString("lining");
+            string glass = slot.Itemstack.Attributes.GetString("glass", "quartz");
+
+            string key = material + "-" + lining + "-" + glass;
+            AssetLocation shapeloc = Shape.Base.CopyWithPathPrefixAndAppendixOnce("shapes/", ".json");
+            Shape shape = API.Common.Shape.TryGet(api, shapeloc);
+
+            return GenMesh(api as ICoreClientAPI, material, lining, glass, shape);
+        }
+
+        public string GetMeshCacheKey(ItemSlot slot)
+        {
+            string material = slot.Itemstack.Attributes.GetString("material");
+            string lining = slot.Itemstack.Attributes.GetString("lining");
+            string glass = slot.Itemstack.Attributes.GetString("glass", "quartz");
+            return Code + "-" + material + "-" + lining + "-" + glass;
+        }
+
+
+
 
         public bool IsAttachable(Entity toEntity, ItemStack itemStack) => true;
         #endregion
 
         public Size2i AtlasSize { get; set; }
-        string curMat, curLining;
-        ITexPositionSource glassTextureSource;
-        ITexPositionSource tmpTextureSource;
+        protected string curMat, curLining;
+        protected ITexPositionSource glassTextureSource;
+        protected ITexPositionSource tmpTextureSource;
 
         public TextureAtlasPosition this[string textureCode]
         {
@@ -53,6 +80,7 @@ namespace Vintagestory.GameContent
             {
                 if (textureCode == "material") return tmpTextureSource[curMat];
                 if (textureCode == "material-deco") return tmpTextureSource["deco-" + curMat];
+                if (textureCode == "material-grid") return tmpTextureSource["grid-" + curMat];
                 if (textureCode == "lining") return tmpTextureSource[curLining == "plain" ? curMat : curLining];
                 if (textureCode == "glass") return glassTextureSource["material"];
                 return tmpTextureSource[textureCode];
@@ -119,9 +147,11 @@ namespace Vintagestory.GameContent
             return base.GetLightHsv(blockAccessor, pos, stack);
         }
 
+        public virtual string baseCacheKey => "blockLantern" + Variant["size"];
+
         public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
         {
-            Dictionary<string, MultiTextureMeshRef> meshrefs = ObjectCacheUtil.GetOrCreate(capi, "blockLanternGuiMeshRefs", () =>
+            Dictionary<string, MultiTextureMeshRef> meshrefs = ObjectCacheUtil.GetOrCreate(capi, baseCacheKey + "GuiMeshRefs", () =>
             {
                 return new Dictionary<string, MultiTextureMeshRef>();
             });
@@ -251,7 +281,7 @@ namespace Vintagestory.GameContent
             {
                 EnumHandling handled = EnumHandling.PassThrough;
 
-                behavior.OnBlockBroken(world, pos, byPlayer, ref handled);
+                behavior.OnBlockBroken(world, pos, byPlayer, dropQuantityMultiplier, ref handled);
                 if (handled == EnumHandling.PreventDefault) preventDefault = true;
                 if (handled == EnumHandling.PreventSubsequent) return;
             }
@@ -292,8 +322,8 @@ namespace Vintagestory.GameContent
         {
             if (!byPlayer.Entity.Controls.ShiftKey)
             {
-                BELantern bel = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BELantern;
-                if (bel.Interact(byPlayer))
+                BELantern bel = world.BlockAccessor.GetBlockEntity<BELantern>(blockSel.Position);
+                if (bel != null && bel.Interact(byPlayer))
                 {
                     return true;
                 }
@@ -387,6 +417,81 @@ namespace Vintagestory.GameContent
             return stacks;
         }
 
-        
+
+        public bool OnContainedInteractStart(BlockEntity be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)
+        {
+            string lining = slot.Itemstack.Attributes.GetString("lining");
+            string glass = slot.Itemstack.Attributes.GetString("glass");
+            ItemSlot handSlot = byPlayer.InventoryManager.ActiveHotbarSlot;
+            if (handSlot.Empty) return false;
+
+            CollectibleObject obj = handSlot.Itemstack.Collectible;
+            Block oldGlassBlock = be.Api.World.GetBlock(AssetLocation.Create("glass-" + glass));
+            if (oldGlassBlock != null && obj.FirstCodePart() == "glass" && obj.Variant.ContainsKey("color"))
+            {
+                if (glass != "quartz" && byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
+                {
+                    ItemStack stack = new ItemStack(oldGlassBlock);
+                    if (!byPlayer.InventoryManager.TryGiveItemstack(stack, true))
+                    {
+                        be.Api.World.SpawnItemEntity(stack, be.Pos.ToVec3d().Add(0.5, 0, 0.5));
+                    }
+
+                    be.Api.World.Logger.Audit("{0} Replaced glass {1} with {2} for Lantern in Ground Storage at {3}.",
+                        byPlayer.PlayerName,
+                        stack.Collectible.Code,
+                        obj.Code,
+                        be.Pos
+                    );
+                }
+
+                slot.Itemstack.Attributes.SetString("glass", obj.Variant["color"]);
+                glass = obj.Variant["color"];
+                if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative && glass != "quartz") handSlot.TakeOut(1);
+
+                (byPlayer as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+                be.Api.World.PlaySoundAt(oldGlassBlock?.Sounds.Place ?? GlobalConstants.DefaultBuildSound, be.Pos, -0.4, byPlayer);
+
+                (be as BlockEntityGroundStorage)?.LightUpdate(slot.Itemstack);
+
+                be.MarkDirty(true);
+                return true;
+            }
+
+            if (lining == null || lining == "plain" && obj is ItemMetalPlate && obj.Variant["metal"] is "gold" or "silver" or "electrum")
+            {
+                slot.Itemstack.Attributes.SetString("lining", obj.Variant["metal"]);
+                (byPlayer as IClientPlayer)?.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
+                be.Api.World.PlaySoundAt(new AssetLocation("sounds/block/plate"), be.Pos, -0.4, byPlayer);
+
+                handSlot.TakeOut(1);
+                be.MarkDirty(true);
+                return true;
+            }
+
+            return false;
+        }
+
+        public string[] GetListGroupingForHandbook(ItemStack stack, string[] listGroupCodesFromAttributes)
+        {
+            if (listGroupCodesFromAttributes == null || listGroupCodesFromAttributes.Length == 0) return listGroupCodesFromAttributes;
+
+            string material = stack.Attributes.GetString("material");
+            string lining = stack.Attributes.GetString("lining");
+            string glass = stack.Attributes.GetString("glass", "quartz");
+            var variants = new API.Datastructures.OrderedDictionary<string, string>();
+            if (material != null) variants.Add("material", material);
+            if (lining != null) variants.Add("lining", lining);
+            if (glass != null) variants.Add("glass", glass);
+
+            if (variants.Count == 0) return listGroupCodesFromAttributes;
+
+            for (int i = 0; i < listGroupCodesFromAttributes.Length; i++)
+            {
+                listGroupCodesFromAttributes[i] = FillPlaceHolderOptimized(listGroupCodesFromAttributes[i], variants);
+            }
+
+            return listGroupCodesFromAttributes;
+        }
     }
 }

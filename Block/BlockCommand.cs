@@ -1,4 +1,4 @@
-﻿using System.Linq;
+using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -13,7 +13,7 @@ namespace Vintagestory.GameContent
         public override bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel)
         {
             BlockEntityGuiConfigurableCommands bec = world.BlockAccessor.GetBlockEntity(blockSel.Position) as BlockEntityGuiConfigurableCommands;
-            if (bec?.OnInteract(new Caller() { Player = byPlayer }) == false)
+            if (bec?.OnInteract(Caller.FromPlayer(byPlayer)) == false)
             {
                 return base.OnBlockInteractStart(world, byPlayer, blockSel);
             }

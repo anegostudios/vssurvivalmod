@@ -142,7 +142,7 @@ namespace Vintagestory.ServerMods
                 blocksByName[block.GetHeldItemName(new ItemStack(block))] = block;
             }
 
-            int graniteBlockId = api.World.GetBlock(new AssetLocation("rock-granite")).Id;
+            int graniteBlockId = api.World.GetBlock(new AssetLocation("rock-granite"))!.Id;
 
             for (int x = startx; x < endx; x++)
             {
@@ -202,7 +202,7 @@ namespace Vintagestory.ServerMods
 
             if ((parts[0] == "clayplanter" || parts[0] == "flowerpot") && parts.Length >= 3)
             {
-                Block potblock = api.World.GetBlock(new AssetLocation(parts[0] + "-" + parts[1]));
+                Block? potblock = api.World.GetBlock(new AssetLocation(parts[0] + "-" + parts[1]));
                 potblock ??= api.World.GetBlock(new AssetLocation(parts[0] + "-blue-fired"));
 
                 if (potblock == null) return;
@@ -248,7 +248,7 @@ namespace Vintagestory.ServerMods
 
             if ((parts[0] == "clayplanter" || parts[1] == "flowerpot") && parts.Length >= 3)
             {
-                Block potblock = api.World.GetBlock(new AssetLocation(parts[0] + "-" + parts[1]));
+                Block? potblock = api.World.GetBlock(new AssetLocation(parts[0] + "-" + parts[1]));
                 potblock ??= api.World.GetBlock(new AssetLocation(parts[0] + "-blue-fired"));
 
                 if (potblock == null) return;

@@ -1,5 +1,3 @@
-using System;
-using System.Drawing.Imaging;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;

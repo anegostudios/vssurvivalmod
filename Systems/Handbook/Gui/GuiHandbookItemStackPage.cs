@@ -18,8 +18,8 @@ namespace Vintagestory.GameContent
         public string TextCacheTitle;
         public string TextCacheAll;
         public float searchWeightOffset;
+        public override float SearchWeightOffset => searchWeightOffset;
 
-        
 
         public override string PageCode => PageCodeForStack(Stack);
 
@@ -95,8 +95,8 @@ namespace Vintagestory.GameContent
 
             capi.Render.Render2DTexturePremultipliedAlpha(
                 Texture.TextureId,
-                (x + size + GuiElement.scaled(25)), 
-                y + size / 4 - GuiElement.scaled(3),
+                (x + size + GuiElement.scaled(25)),
+                y + size / 2 - Texture.Height / 2,
                 Texture.Width,
                 Texture.Height,
                 50
@@ -119,15 +119,13 @@ namespace Vintagestory.GameContent
             return Stack.Collectible.GetBehavior<CollectibleBehaviorHandbookTextAndExtraInfo>()?.GetHandbookInfo(dummySlot, capi, allStacks, openDetailPageFor) ?? Array.Empty<RichTextComponentBase>();
         }
 
-        public override float GetTextMatchWeight(string searchText)
+        public override PageText GetPageText()
         {
-            string title = TextCacheTitle;
-            if (title.Equals(searchText, StringComparison.InvariantCultureIgnoreCase)) return searchWeightOffset + 3;
-            if (title.StartsWith(searchText + " ", StringComparison.InvariantCultureIgnoreCase)) return searchWeightOffset + 2.75f + Math.Max(0, 15 - title.Length) / 100f;
-            if (title.StartsWith(searchText, StringComparison.InvariantCultureIgnoreCase)) return searchWeightOffset + 2.5f + Math.Max(0, 15 - title.Length) / 100f;
-            if (title.CaseInsensitiveContains(searchText)) return searchWeightOffset + 2;
-            if (TextCacheAll.CaseInsensitiveContains(searchText)) return searchWeightOffset + 1;
-            return 0;
+            return new PageText
+            {
+                Title = TextCacheTitle,
+                Text = TextCacheAll,
+            };
         }
     }
 

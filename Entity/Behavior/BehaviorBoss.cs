@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -9,6 +10,21 @@ using Vintagestory.API.Datastructures;
 
 namespace Vintagestory.GameContent;
 
+/// <summary>
+/// Stores some properties of boss for use in other behaviors.
+/// <br/>Uses the "boss" code
+/// </summary>
+/// <example><code lang="json">
+/// "behaviors": [
+///  {
+///      "code": "boss",
+///      "bossHpBarRange": 30,
+///      "musicTrack": "theresonancearchives-eidolon",
+///  }
+/// ]
+/// </code></example>
+[DocumentAsJson]
+[AddDocumentationProperty("musicTrack", "The file path to music track", "System.String", "Optional", "None", false)]
 public class EntityBehaviorBoss : EntityBehavior
 {
     AssetLocation musicTrackLocation;
@@ -31,8 +47,19 @@ public class EntityBehaviorBoss : EntityBehavior
             playtrack = value;
         }
     }
+
+    /// <summary>
+    /// From how far away the boss health bar is visible
+    /// </summary>
+    [DocumentAsJson("Optional", "30")]
     public float BossHpbarRange { get; set; }
+
+    /// <summary>
+    /// Currently unused
+    /// </summary>
+    [DocumentAsJson("Unused")]
     public bool ShowHealthBarBetweenDimensions { get; set; } = false;
+
     public virtual string BossName => Lang.Get(entity.Code.Domain + ":item-creature-" + entity.Code.Path);
 
     public EntityBehaviorBoss(Entity entity) : base(entity)

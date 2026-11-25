@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Text;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -20,13 +21,44 @@ namespace Vintagestory.GameContent
         Dead
     }
 
+    /// <summary>
+    /// Allows entity to enter mortally wounded state upon depleting a set portion of its health. Makes creature immobile and unable to regenerate health. Can be recovered when healed by a player.
+    /// <br/>Uses the "mortallywoundable" code
+    /// </summary>
+    /// <example><code lang="json">
+    ///"behaviors": [
+    /// {
+    ///     "code": "mortallywoundable",
+    ///     "whenBelowHealth": 6
+    /// },
+    ///],
+    /// </code></example>
+    [DocumentAsJson]
     public class EntityBehaviorMortallyWoundable : EntityBehavior
     {
+        /// <summary>
+        /// How long the creature can stay in mortally wounded state before it dies
+        /// </summary>
+        [DocumentAsJson("Optional", "24")]
         float remainAliveHours;
 
+        /// <summary>
+        /// <!--<jsonalias>RemainingHealth</jsonalias>-->
+        /// How many health points are left upon entering mortally wounded state before creature actually dies. Currently unused
+        /// </summary>
+        [DocumentAsJson("Optional", "10")]
         float damageRequiredForFullDeath;
+
+        /// <summary>
+        /// How many health points the creature should have to exit mortally wounded state
+        /// </summary>
+        [DocumentAsJson("Optional", "15")]
         float healingRequiredForRescue;
 
+        /// <summary>
+        /// Below how many health points the creature should enter mortally wounded state
+        /// </summary>
+        [DocumentAsJson("Optional", "5")]
         float whenBelowHealth;
 
         EntityBehaviorHealth ebh;
@@ -220,7 +252,7 @@ namespace Vintagestory.GameContent
             entity.GetBehavior<EntityBehaviorTaskAI>().TaskManager.StopTasks();
             (entity as EntityAgent).Controls.StopAllMovement();
 
-            entity.GetBehavior<EntityBehaviorRideable>()?.UnmnountPassengers();
+            entity.GetBehavior<EntityBehaviorRideable>()?.UnmountPassengers();
 
             entity.AnimManager?.StartAnimation("wounded-idle");
 
@@ -257,15 +289,25 @@ namespace Vintagestory.GameContent
 
         public override WorldInteraction[] GetInteractionHelp(IClientWorldAccessor world, EntitySelection es, IClientPlayer player, ref EnumHandling handled)
         {
-            var wis = base.GetInteractionHelp(world, es, player, ref handled);
-            if (HealthState == EnumEntityHealthState.MortallyWounded && entity.Alive)
+            if (HealthState != EnumEntityHealthState.MortallyWounded || !entity.Alive)
             {
-                double hoursleft = MortallyWoundedTotalHours + remainAliveHours - entity.World.Calendar.TotalHours;
-                if (hoursleft > 0)
-                {
-                    if (wis == null) wis = Array.Empty<WorldInteraction>();
-                    wis = wis.Append(EntityBehaviorPlayerRevivable.GetReviveInteractionHelp(world.Api));
-                }
+                return base.GetInteractionHelp(world, es, player, ref handled);
+            }
+
+            var wis = base.GetInteractionHelp(world, es, player, ref handled);
+            double hoursleft = MortallyWoundedTotalHours + remainAliveHours - entity.World.Calendar.TotalHours;
+            if (hoursleft > 0)
+            {
+                wis ??= [];
+                wis = wis.Append(
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "heldhelp-heal",
+                        MouseButton = EnumMouseButton.Right,
+                        HotKeyCode = "ctrl",
+                        Itemstacks = EntityBehaviorHealth.GetAllHealingItems(world.Api)
+                    }
+                );
             }
 
             return wis;

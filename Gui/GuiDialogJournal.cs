@@ -1,4 +1,3 @@
-using OpenTK.Windowing.GraphicsLibraryFramework;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -9,7 +8,6 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 
 #nullable disable
-using static System.Net.Mime.MediaTypeNames;
 
 namespace Vintagestory.GameContent
 {

@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -73,10 +73,12 @@ namespace Vintagestory.GameContent
                 {
                     int id = elems[i].Id;
                     var lcomp = new LinkTextComponent(api as ICoreClientAPI, answerNumber + ". " + text, font, (comp) => SelectAnswerById(id));
+                    lcomp.Underline = false;
+
                     comps.Add(lcomp);
                     comps.Add(new RichTextComponent(api as ICoreClientAPI, "\r\n", font));
 
-                    lcomp.Font.WithColor(usedAnswers?.Contains(id) == true ? GuiStyle.ColorParchment : GuiStyle.ColorTime1).WithOrientation(EnumTextOrientation.Right);
+                    lcomp.Font.WithColor(usedAnswers?.Contains(id) == true ? GuiStyle.ColorParchment : GuiStyle.ColorTime1).WithOrientation(EnumTextOrientation.Left);
                     answerNumber++;
                 }
                 else

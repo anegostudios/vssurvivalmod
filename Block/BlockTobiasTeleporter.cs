@@ -30,10 +30,7 @@ public class BlockTobiasTeleporter : Block
     public override void OnEntityCollide(IWorldAccessor world, Entity entity, BlockPos pos, BlockFacing facing, Vec3d collideSpeed, bool isImpact)
     {
         base.OnEntityCollide(world, entity, pos, facing, collideSpeed, isImpact);
-
-        var be = world.BlockAccessor.GetBlockEntity(pos) as BlockEntityTobiasTeleporter;
-        if (be == null) return;
-        be.OnEntityCollide(entity);
+        GetBlockEntity<BlockEntityTobiasTeleporter>(pos)?.OnEntityCollide(entity);
     }
 
     public static Vec3d GetTeleportOffset(string side)

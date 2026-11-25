@@ -1,4 +1,4 @@
-﻿using Vintagestory.API;
+using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
@@ -70,20 +70,20 @@ namespace Vintagestory.GameContent
             {
                 var open = SerializerUtil.Serialize(new OpenContainerLidPacket(caller.Entity.EntityId, true));
                 ((ICoreServerAPI)world.Api).Network.BroadcastBlockEntityPacket(
-                    blockSel.Position,
+                    new(blockSel.Position),
                     (int)EnumBlockContainerPacketId.OpenLidOthers,
-                    open
+                    new SerializedData(open)
                 );
-                (world.Api as ICoreServerAPI).World.PlaySoundAt(container.OpenSound, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z);
+                (world.Api as ICoreServerAPI).World.PlaySoundAt(container.OpenSound, blockSel.Position, 0);
                 world.Api.Event.RegisterCallback((d) =>
                 {
                     var close = SerializerUtil.Serialize(new OpenContainerLidPacket(caller.Entity.EntityId, false));
                     ((ICoreServerAPI)world.Api).Network.BroadcastBlockEntityPacket(
-                        blockSel.Position,
+                        new(blockSel.Position),
                         (int)EnumBlockContainerPacketId.OpenLidOthers,
-                        close
+                        new SerializedData(close)
                     );
-                    (world.Api as ICoreServerAPI).World.PlaySoundAt(container.CloseSound, blockSel.Position.X, blockSel.Position.Y, blockSel.Position.Z);
+                    (world.Api as ICoreServerAPI).World.PlaySoundAt(container.CloseSound, blockSel.Position, 0);
                 }, timeOut);
             }
         }

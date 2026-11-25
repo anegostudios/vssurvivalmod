@@ -22,15 +22,24 @@ namespace Vintagestory.GameContent
         }
     }
 
-    public class EntityBehaviorSeatable : EntityBehavior, IVariableSeatsMountable
+    public class EntityBehaviorSeatable : EntityBehavior, IVariableSeatsMountable, IRenderer
     {
         public IMountableSeat[] Seats { get; set; }
         public SeatConfig[] SeatConfigs;
-        public EntityPos Position => entity.SidedPos;
+        public EntityPos Position => entity.Pos;
         public double StepPitch => (entity.Properties.Client?.Renderer as EntityShapeRenderer)?.stepPitch ?? 0;
         ICoreAPI Api => entity.Api;
 
         bool interactMountAnySeat;
+
+
+        #region Rider hunger
+
+        public float RiderSatietyLossPerSecond = 0.12f;
+        public float RiderSatietyLossPerMovementSecond = 0.12f;
+
+        #endregion
+
 
         public event CanSitDelegate CanSit;
 
@@ -59,6 +68,8 @@ namespace Vintagestory.GameContent
             SeatConfigs = attributes["seats"].AsObject<SeatConfig[]>();
 
             interactMountAnySeat = attributes["interactMountAnySeat"].AsBool(false);
+            RiderSatietyLossPerSecond = attributes["riderSatLossPerSec"].AsFloat(RiderSatietyLossPerSecond);
+            RiderSatietyLossPerMovementSecond = attributes["riderSatLossPerMoveSec"].AsFloat(RiderSatietyLossPerMovementSecond);
 
             int i = 0;
             foreach (var seatConfig in SeatConfigs)
@@ -109,6 +120,29 @@ namespace Vintagestory.GameContent
         }
 
 
+        double IRenderer.RenderOrder => 0.026;
+        int IRenderer.RenderRange => 9999;
+
+        void IRenderer.OnRenderFrame(float deltaTime, EnumRenderStage stage)
+        {
+            if (((ICoreClientAPI)Api).IsGamePaused) return;
+            foreach (var seat in Seats)
+            {
+                seat.Passenger?.Pos.SetPos(seat.SeatPosition);
+            }
+        }
+
+        public override void OnEntityDespawn(EntityDespawnData despawn)
+        {
+            (Api as ICoreClientAPI)?.Event.UnregisterRenderer(this, EnumRenderStage.Before);
+            base.OnEntityDespawn(despawn);
+        }
+
+        void IDisposable.Dispose()
+        {
+            (Api as ICoreClientAPI)?.Event.UnregisterRenderer(this, EnumRenderStage.Before);
+        }
+
         public bool TryMount(EntityAgent carriedCreature)
         {
             if (carriedCreature != null)
@@ -127,7 +161,7 @@ namespace Vintagestory.GameContent
             return false;
         }
 
-        
+
 
         public override void OnInteract(EntityAgent byEntity, ItemSlot itemslot, Vec3d hitPosition, EnumInteractMode mode, ref EnumHandling handled)
         {
@@ -163,12 +197,12 @@ namespace Vintagestory.GameContent
                 string apname = apap.AttachPoint.Code;
 
                 var seat = Seats.FirstOrDefault((seat) => seat.Config.APName == apname || seat.Config.SelectionBox == apname);
-                if (seat != null && CanSitOn(seat, seleBox - 1) && byEntity.TryMount(seat))
+                if (seat != null && CanSitOn(seat) && byEntity.TryMount(seat))
                 {
                     handled = EnumHandling.PreventSubsequent;
                     if (Api.Side == EnumAppSide.Server)
                     {
-                        Api.World.Logger.Audit("{0} mounts/embarks a {1} at {2}.", byEntity?.GetName(), entity.Code.ToShortString(), entity.ServerPos.AsBlockPos);
+                        Api.World.Logger.Audit("{0} mounts/embarks a {1} ({2}) at {3}.", byEntity?.GetName(), entity.Code.ToShortString(), entity.EntityId, entity.Pos.AsBlockPos);
                     }
                     return;
                 }
@@ -185,7 +219,7 @@ namespace Vintagestory.GameContent
         private bool allowSit(EntityAgent byEntity)
         {
             if (CanSit == null) return true;
-            
+
             ICoreClientAPI capi = Api as ICoreClientAPI;
             foreach (CanSitDelegate dele in CanSit.GetInvocationList())
             {
@@ -199,7 +233,7 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            return true;            
+            return true;
         }
 
         private void mountAnySeat(EntityAgent byEntity, out EnumHandling handled)
@@ -215,7 +249,7 @@ namespace Vintagestory.GameContent
                 {
                     if (Api.Side == EnumAppSide.Server)
                     {
-                        Api.World.Logger.Audit("{0} mounts/embarks a {1} at {2}.", byEntity?.GetName(), entity.Code.ToShortString(), entity.ServerPos.AsBlockPos);
+                        Api.World.Logger.Audit("{0} mounts/embarks a {1} ({2}) at {3}.", byEntity?.GetName(), entity.Code.ToShortString(), entity.EntityId, entity.Pos.AsBlockPos);
                     }
                     return;
                 }
@@ -229,23 +263,23 @@ namespace Vintagestory.GameContent
                 {
                     if (Api.Side == EnumAppSide.Server)
                     {
-                        Api.World.Logger.Audit("{0} mounts/embarks a {1} at {2}.", byEntity?.GetName(), entity.Code.ToShortString(), entity.ServerPos.AsBlockPos);
+                        Api.World.Logger.Audit("{0} mounts/embarks a {1} ({2}) at {3}.", byEntity?.GetName(), entity.Code.ToShortString(), entity.EntityId, entity.Pos.AsBlockPos);
                     }
                     return;
                 }
             }
         }
 
-        public bool CanSitOn(IMountableSeat seat, int selectionBoxIndex = -1)
+        public bool CanSitOn(IMountableSeat seat)
         {
             if (seat.Passenger != null) return false;
             var bha = entity.GetBehavior<EntityBehaviorAttachable>();
             if (bha != null)
             {
-                var slot = bha.GetSlotConfigFromAPName(seat.Config.APName);
+                var slot = bha.GetSlotConfigFromAPName(seat.Config.APName) ?? bha.GetSlotConfigFromAPName(seat.Config.SelectionBox);
                 if (slot?.Empty == false)
                 {
-                    return 
+                    return
                         slot.Itemstack.ItemAttributes?["isSaddle"].AsBool(false) == true ||  // Can only sit if in this slot there is a saddle
                         slot.Itemstack.ItemAttributes?["attachableToEntity"]["seatConfig"].Exists == true ||
                         slot.Itemstack.ItemAttributes?["attachableToEntity"]["seatConfigBySlotCode"].Exists == true
@@ -279,6 +313,7 @@ namespace Vintagestory.GameContent
         {
             int index = Seats.IndexOf(s => s.SeatId == seatId);
             if (index < 0) return;
+            (Seats[index].Passenger as EntityAgent)?.TryUnmount(true);
             Seats = Seats.RemoveAt(index);
             entity.WatchedAttributes.MarkAllDirty();
         }
@@ -317,7 +352,7 @@ namespace Vintagestory.GameContent
                 Seats[i] = CreateSeat((stree["seatid"] as StringAttribute).value, null);
                 Seats[i].PassengerEntityIdForInit = (stree["passenger"] as LongAttribute).value;
             }
-        } 
+        }
 
         private void UpdatePassenger()
         {
@@ -382,7 +417,7 @@ namespace Vintagestory.GameContent
             base.OnEntityDeath(damageSourceForDeath);
 
             foreach (var seat in Seats) {
-                (seat?.Passenger as EntityAgent)?.TryUnmount();
+                (seat?.Passenger as EntityAgent)?.TryUnmount(true);
             }
         }
     }
@@ -431,7 +466,7 @@ namespace Vintagestory.GameContent
                 };
             }
 
-            if (eba.CanSitOn(seat, slotIndex))
+            if (eba.CanSitOn(seat))
             {
                 return new WorldInteraction[]
                 {

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -98,8 +98,18 @@ namespace Vintagestory.GameContent
         {
             Matrixf matrixf = new Matrixf();
             matrixf.RotateY(i * GameMath.PIHALF);
-            if (i == 2) matrixf.Translate(0, 0, -1);
-            if (i == 3) matrixf.Translate(1, 0, -1);
+            switch (i)
+            {
+                case 1:
+                    matrixf.Translate(-1f, 0f, 0f);
+                    break;
+                case 2:
+                    matrixf.Translate(-1f, 0f, -1f);
+                    break;
+                case 3:
+                    matrixf.Translate(0f, 0f, -1f);
+                    break;
+            }
 
             List<BlockPos> list = new List<BlockPos>();
             var vec1 = matrixf.TransformVector(new Vec4f(startlist[0].X, startlist[0].Y, startlist[0].Z, 1));
@@ -133,7 +143,7 @@ namespace Vintagestory.GameContent
                 waterEdgeByFacing.Add(rotateList(waterEdgeListN, i));
             }
 
-            return ObjectCacheUtil.GetOrCreate(byPlayer.Entity.Api, "rollerOrient-" + byPlayer.PlayerUID, () => 0); 
+            return ObjectCacheUtil.GetOrCreate(byPlayer.Entity.Api, "rollerOrient-" + byPlayer.PlayerUID, () => 0);
         }
 
         public override SkillItem[] GetToolModes(ItemSlot slot, IClientPlayer forPlayer, BlockSelection blockSel)
@@ -170,14 +180,9 @@ namespace Vintagestory.GameContent
 
             EntityProperties type = byEntity.World.GetEntityType(new AssetLocation("boatconstruction-sailed-" + material));
             var entity = byEntity.World.ClassRegistry.CreateEntity(type);
-            entity.ServerPos.SetPos(blockSel.Position.ToVec3d().AddCopy(0.5, 1, 0.5));
-            entity.ServerPos.Yaw = -GameMath.PIHALF + orient * GameMath.PIHALF;
+            entity.Pos.SetPos(blockSel.Position.ToVec3d().AddCopy(0.5, 1, 0.5));
+            entity.Pos.Yaw = -GameMath.PIHALF + orient * GameMath.PIHALF;
 
-            if (orient == 1) entity.ServerPos.Z -= 1;
-            if (orient == 2) entity.ServerPos.X -= 1;
-            if (orient == 3) entity.ServerPos.Z += 1;
-
-            entity.Pos.SetFrom(entity.ServerPos);
             byEntity.World.SpawnEntity(entity);
 
             api.World.PlaySoundAt(new AssetLocation("sounds/block/planks"), byEntity, player);
@@ -223,7 +228,7 @@ namespace Vintagestory.GameContent
             BlockPos minlPos = waterEdgeList[0].AddCopy(0, 1, 0).Add(cpos);
             BlockPos maxlPos = waterEdgeList[1].AddCopy(-1, 0, -1).Add(cpos);
             WalkBlocks(minlPos, maxlPos, (block, x, y, z) => {
-                //api.World.SpawnParticles(1, ColorUtil.WhiteArgb, new Vec3d(x+0.5, y+0.5, z+0.5), new Vec3d(x + 0.5, y + 0.5, z + 0.5), new Vec3f(), new Vec3f(), 1, 0, 0.2f);   
+                //api.World.SpawnParticles(1, ColorUtil.WhiteArgb, new Vec3d(x+0.5, y+0.5, z+0.5), new Vec3d(x + 0.5, y + 0.5, z + 0.5), new Vec3f(), new Vec3f(), 1, 0, 0.2f);
                 if (!block.IsLiquid()) placeable = false;
             }, BlockLayersAccess.Fluid);
 
@@ -242,13 +247,14 @@ namespace Vintagestory.GameContent
             int maxy = maxPos.InternalY;
             int maxz = maxPos.Z;
 
+            BlockPos tmpPos = new BlockPos(minPos.dimension);
             for (int x = minx; x <= maxx; x++)
             {
                 for (int y = miny; y <= maxy; y++)
                 {
                     for (int z = minz; z <= maxz; z++)
                     {
-                        var block = ba.GetBlock(x, y, z);
+                        var block = ba.GetBlock(tmpPos.Set(x, y, z));
                         onBlock(block, x, y, z);
                     }
                 }

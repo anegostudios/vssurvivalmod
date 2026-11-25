@@ -1,17 +1,26 @@
 using System.Collections.Generic;
+using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
-#nullable disable
-
 namespace Vintagestory.GameContent;
 
+/// <summary>
+/// Used in combination with the <see cref="BlockBehaviorElevatorControl"/> to create an elevator.
+/// Defined with the "ElevatorControl" code, and has no properties.
+/// </summary>
+/// <example><code lang="json">
+///"entityBehaviors": [
+///	{ "name": "ElevatorControl" }
+///],
+/// </code></example>
+[DocumentAsJson]
 public class BEBehaviorElevatorControl: BlockEntityBehavior
 {
-    private ModsystemElevator elevatorModSystem;
-    public string NetworkCode { get; set; }
+    private ModsystemElevator elevatorModSystem = null!;
+    public string? NetworkCode { get; set; }
 
     public int Offset { get; set; } = -1;
 
@@ -25,7 +34,7 @@ public class BEBehaviorElevatorControl: BlockEntityBehavior
         if (resetToHere)
         {
             var elevatorSystem = elevatorModSystem.GetElevator(NetworkCode);
-            elevatorSystem?.Entity.Attributes.SetInt("maxHeight", position.Y + Offset);
+            elevatorSystem?.Entity?.Attributes.SetInt("maxHeight", position.Y + Offset);
         }
         else
         {

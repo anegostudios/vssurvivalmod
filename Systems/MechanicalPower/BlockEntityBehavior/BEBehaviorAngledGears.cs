@@ -1,4 +1,6 @@
-﻿using System.Text;
+using System;
+using System.Collections.Generic;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -10,7 +12,7 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent.Mechanics
 {
-    public class BEBehaviorMPAngledGears : BEBehaviorMPBase
+    public class BEBehaviorMPAngledGears : BEBehaviorMPBase, IRotatable
     {
         public BlockFacing axis1 = null;
         public BlockFacing axis2 = null;
@@ -20,6 +22,55 @@ namespace Vintagestory.GameContent.Mechanics
         public BlockFacing orientation = null;
         public bool newlyPlaced = false;
 
+        const float multiGearPhaseStepDeg = 11.75f;
+
+        readonly FaceMountedGearStacks<BlockAngledGears> gearStacks = new("angledGear");
+        public int GearFaces => gearStacks.GetFaces().Value();
+        public bool HasGear(BlockFacing face) => gearStacks.Has(face);
+        public BlockAngledGears GetGearBlock(BlockFacing face) => gearStacks.GetBlock(face);
+        public ItemStack GetFirstGearDrop() => gearStacks.GetFirstDrop();
+        public ItemStack[] GetGearDrops() => gearStacks.GetDrops();
+        public void GetGearMaterialUvOffset(ICoreClientAPI capi, BlockFacing face, string textureCode, Vec2f offset) => gearStacks.GetMaterialUvOffset(capi, face, textureCode, offset);
+
+        public bool TryAddGear(BlockFacing face, ItemStack gearStack)
+        {
+            if (!gearStacks.TryAdd(face, gearStack)) return false;
+
+            Blockentity.MarkDirty(true);
+            return true;
+        }
+
+        public ItemStack RemoveGear(BlockFacing face)
+        {
+            ItemStack drop = gearStacks.GetDrop(face);
+            if (drop == null) return null;
+
+            gearStacks.Remove(face);
+            Blockentity.MarkDirty(true);
+            return drop;
+        }
+
+        public int GearCount => gearStacks.Count;
+
+        public bool IsMultiGearJammed
+        {
+            get
+            {
+                bool hasX = HasGear(BlockFacing.EAST) || HasGear(BlockFacing.WEST);
+                bool hasY = HasGear(BlockFacing.UP) || HasGear(BlockFacing.DOWN);
+                bool hasZ = HasGear(BlockFacing.NORTH) || HasGear(BlockFacing.SOUTH);
+                if (hasX && hasY && hasZ) return true;
+                if (!multiEngaged) return false;
+
+                bool collinearX = HasGear(BlockFacing.EAST) && HasGear(BlockFacing.WEST);
+                bool collinearY = HasGear(BlockFacing.UP) && HasGear(BlockFacing.DOWN);
+                bool collinearZ = HasGear(BlockFacing.NORTH) && HasGear(BlockFacing.SOUTH);
+                return collinearX && (hasY || hasZ)
+                    || collinearY && (hasX || hasZ)
+                    || collinearZ && (hasX || hasY);
+            }
+        }
+
         public override float AngleRad
         {
             get
@@ -27,7 +78,7 @@ namespace Vintagestory.GameContent.Mechanics
                 float angle = base.AngleRad;
 
                 bool flip = propagationDir == BlockFacing.DOWN || propagationDir == BlockFacing.WEST;
-                if (propagationDir == this.orientation && propagationDir != BlockFacing.NORTH && propagationDir != BlockFacing.SOUTH && propagationDir != BlockFacing.UP) flip = !flip;
+                if (propagationDir == this.orientation && propagationDir != BlockFacing.NORTH && propagationDir != BlockFacing.SOUTH) flip = !flip;
                 //if (flip) return /*lastKnownAngleRad = - why do i do this? it creates massive jitter*/ GameMath.TWOPI - angle;
 
                 return flip ? GameMath.TWOPI - angle : angle;
@@ -40,35 +91,39 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override void Initialize(ICoreAPI api, JsonObject properties)
         {
+            if (Block is BlockAngledGearMulti && tryGetClutchEngaged(api.World.BlockAccessor, out bool engaged))
+            {
+                multiEngaged = engaged;
+            }
+
             base.Initialize(api, properties);
 
-            if (api.Side == EnumAppSide.Client)
+            if (largeGear != null && this.orientation != null)
             {
-                Blockentity.RegisterGameTickListener(onEverySecond, 1000);
-            }
-
-            if (largeGear != null)
-            {
-                if (largeGear.AngledGearNotAlreadyAdded(this.Position))  // during chunk loading it's random whether the angled gear or the large gear gets initialised first
+                if (largeGear.AngledGearNotAlreadyAdded(this.Position))
+                {
+                    // during chunk loading it's random whether the angled gear or the large gear gets initialised first
                     this.tryConnect(this.orientation.Opposite);
-            }
-        }
-
-        private void onEverySecond(float dt)
-        {
-            float speed = network == null ? 0 : network.Speed;
-
-            if (Api.World.Rand.NextDouble() < speed / 3f)
-            {
-                Api.World.PlaySoundAt(new AssetLocation("sounds/block/woodcreak"), Position.X + 0.5, Position.Y + 0.5, Position.Z + 0.5, null, 0.75f + speed);
+                }
             }
         }
 
         public override void SetOrientations()
         {
+            if (Block is BlockAngledGearMulti)
+            {
+                this.orientation = null;
+                this.turnDir1 = null;
+                this.turnDir2 = null;
+                this.axis1 = null;
+                this.axis2 = null;
+                AxisSign = [0, 0, 0];
+                return;
+            }
+
             string orientations = (Block as BlockAngledGears).Orientation;
 
-            //This applies only when the BE is being updated when the gear orientations change after a neighbour block breaks
+            // This applies only when the BE is being updated when the gear orientations change after a neighbour block breaks
             if (this.turnDir1 != null)
             {
                 if (propagationDir == turnDir1) propagationDir = turnDir2.Opposite;
@@ -114,6 +169,18 @@ namespace Vintagestory.GameContent.Mechanics
 
                 case "d":
                     AxisSign = new int[3] { 0, 1, 0 };
+                    this.orientation = BlockFacing.DOWN;
+                    axis1 = BlockFacing.DOWN;
+                    break;
+
+                case "uu":
+                    AxisSign = [0, 1, 0];   // Sign flipped so the cage gear co-rotates with its axle.
+                    this.orientation = BlockFacing.UP;
+                    axis1 = BlockFacing.UP;
+                    break;
+
+                case "dd":
+                    AxisSign = [0, -1, 0];
                     this.orientation = BlockFacing.DOWN;
                     axis1 = BlockFacing.DOWN;
                     break;
@@ -221,44 +288,44 @@ namespace Vintagestory.GameContent.Mechanics
                     break;
             }
 
-            if (Api != null) CheckLargeGearJoin();
+            if (Api != null) checkLargeGearJoin();
         }
 
-        protected void CheckLargeGearJoin()
+        protected void checkLargeGearJoin()
         {
-            if (Api == null) return;
+            if (Block is BlockAngledGearMulti) return;
 
             string orientations = (Block as BlockAngledGears).Orientation;
             if (orientations.Length == 2 && orientations[0] == orientations[1])
             {
                 BlockPos largeGearPos = this.Position.AddCopy(this.orientation.Opposite);
-                BlockEntity be = this.Api?.World.BlockAccessor.GetBlockEntity(largeGearPos);
+                BlockEntity be = Api.World.BlockAccessor.GetBlockEntity(largeGearPos);
                 if (be != null) SetLargeGear(be);
             }
         }
 
         public void SetLargeGear(BlockEntity be)
         {
-            if (largeGear == null) largeGear = be.GetBehavior<BEBehaviorMPLargeGear3m>();
+            largeGear ??= be.GetBehavior<BEBehaviorMPLargeGear3m>();
         }
 
         public void AddToLargeGearNetwork(BEBehaviorMPLargeGear3m largeGear, BlockFacing outFacing)
         {
-            this.JoinNetwork(largeGear.Network);
-            this.SetPropagationDirection(new MechPowerPath(outFacing, largeGear.GearedRatio * largeGear.ratio, null, largeGear.GetPropagationDirection() == BlockFacing.DOWN));
+            this.JoinNetwork(largeGear.Network, new MechPowerPath(outFacing, largeGear.GearedRatio * largeGear.ratio, null, largeGear.IsRimInverted(), largeGear.AngleTransform));
+            largeGear.Network?.ConnectLoad(largeGear, this);
         }
 
-        public override bool isInvertedNetworkFor(BlockPos pos)
+        public override bool IsInvertedNetworkFor(BlockPos pos)
         {
             return this.orientation != null && this.orientation != propagationDir;
         }
 
-        public float LargeGearAngleRad(float unchanged)
+        public float GetLargeGearAngleRad(float unchanged)
         {
             if (largeGear == null)
             {
                 BlockPos largeGearPos = this.Position.AddCopy(this.orientation.Opposite);
-                BlockEntity be = this.Api.World?.BlockAccessor.GetBlockEntity(largeGearPos);
+                BlockEntity be = Api.World.BlockAccessor.GetBlockEntity(largeGearPos);
                 if (be != null) SetLargeGear(be);
                 if (largeGear == null) return unchanged;
             }
@@ -266,33 +333,41 @@ namespace Vintagestory.GameContent.Mechanics
             return dir * largeGear.GetSmallgearAngleRad() % GameMath.TWOPI;
         }
 
-        internal void CreateNetworkFromHere()
-        {
-            if (Api.Side == EnumAppSide.Server)
-            {
-                CreateJoinAndDiscoverNetwork(this.orientation);
-                CreateJoinAndDiscoverNetwork(this.orientation.Opposite);
-            }
-        }
-
-        public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tesselator)
-        {
-            return base.OnTesselation(mesher, tesselator);
-        }
-
         public override void SetPropagationDirection(MechPowerPath path)
         {
-            BlockFacing turnDir = path.NetworkDir();
-            if (this.turnDir1 != null)
+            if (Block is BlockAngledGearMulti)
+            {
+                networkInputFace = getMultiGearInputFace(path);
+            }
 
-            // Rotate the input turn direction if it's an angled gear   (this helps later blocks to know which sense the network is turning)
-            if (turnDir == turnDir1) turnDir = turnDir2.Opposite;
-            else if (turnDir == turnDir2) turnDir = turnDir1.Opposite;
-            else if (turnDir == turnDir2.Opposite) turnDir = turnDir1;
-            else if (turnDir == turnDir1.Opposite) turnDir = turnDir2;
-            path = new MechPowerPath(turnDir, path.gearingRatio, null, false);
-            
-            base.SetPropagationDirection(path);
+            BlockFacing turnDir = path.NetworkDir();
+            if (turnDir1 != null)
+            {
+                if (turnDir == turnDir1) turnDir = turnDir2.Opposite;
+                else if (turnDir == turnDir2) turnDir = turnDir1.Opposite;
+                else if (turnDir == turnDir2.Opposite) turnDir = turnDir1;
+                else if (turnDir == turnDir1.Opposite) turnDir = turnDir2;
+            }
+
+            base.SetPropagationDirection(new MechPowerPath(turnDir, path.gearingRatio, null, false, path.AngleTransform));
+        }
+
+        public override void LeaveNetwork()
+        {
+            base.LeaveNetwork();
+            networkInputFace = null;
+        }
+
+        protected override bool isPropagationDirectionConsistent(MechPowerPath path)
+        {
+            if (Block is not BlockAngledGearMulti) return IsPropagationDirection(path.FromPos, path.NetworkDir());
+
+            BlockFacing inputFace = getNetworkInputFace();
+            BlockFacing arrivalFace = getMultiGearInputFace(path);
+            BlockFacing expectedDir = arrivalFace == inputFace || !hasDifferentAxisGear(inputFace)
+                ? propagationDir
+                : getExitSense(arrivalFace, propagationDir, inputFace);
+            return expectedDir == path.NetworkDir();
         }
 
         public override BlockFacing GetPropagationDirectionInput()
@@ -308,8 +383,24 @@ namespace Vintagestory.GameContent.Mechanics
             return propagationDir;
         }
 
+        public override MechPowerPath GetNetworkDiscoveryPath()
+        {
+            if (Block is not BlockAngledGearMulti) return base.GetNetworkDiscoveryPath();
+            return new MechPowerPath(getNetworkInputFace().Opposite, GearedRatio, null, false, AngleTransform, propagationDir);
+        }
+
         public override bool IsPropagationDirection(BlockPos fromPos, BlockFacing test)
         {
+            if (Block is BlockAngledGearMulti && propagationDir != null)
+            {
+                BlockFacing exitFace = test.Opposite;
+                BlockFacing inputFace = getNetworkInputFace();
+                if (inputFace != null && HasGear(exitFace) && exitFace != inputFace && hasDifferentAxisGear(inputFace))
+                {
+                    return getExitSense(exitFace, propagationDir, inputFace) == test;
+                }
+            }
+
             if (this.turnDir1 != null)
             {
                 if (propagationDir == turnDir1) return propagationDir == test || test == turnDir2.Opposite;
@@ -323,6 +414,12 @@ namespace Vintagestory.GameContent.Mechanics
 
         public override void WasPlaced(BlockFacing connectedOnFacing)
         {
+            if (Block is BlockAngledGearMulti)
+            {
+                if (connectedOnFacing != null) tryConnect(connectedOnFacing);
+                return;
+            }
+
             // Skip this if already called CreateJoinAndDiscoverNetwork in Initialize()
             if ((Api.Side == EnumAppSide.Client || OutFacingForNetworkDiscovery == null) && connectedOnFacing != null)
             {
@@ -349,22 +446,282 @@ namespace Vintagestory.GameContent.Mechanics
         public override void ToTreeAttributes(ITreeAttribute tree)
         {
             base.ToTreeAttributes(tree);
+            if (Block is not BlockAngledGearMulti) return;
+
+            gearStacks.ToTreeAttributes(tree);
+            tree.SetBool("multiEngaged", multiEngaged);
+            tree.SetInt("networkInputFace", networkInputFace?.Index ?? -1);
         }
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
         {
             base.FromTreeAttributes(tree, worldAccessForResolve);
+            if (Block is not BlockAngledGearMulti) return;
+
+            gearStacks.FromTreeAttributes(tree, worldAccessForResolve);
+            multiEngaged = tree.GetBool("multiEngaged", false);
+
+            // The input face is discovered network state, so only the client takes it from the tree.
+            if (worldAccessForResolve.Side == EnumAppSide.Client)
+            {
+                int inputFaceIndex = tree.GetInt("networkInputFace", -1);
+                networkInputFace = inputFaceIndex < 0 ? null : BlockFacing.ALLFACES[inputFaceIndex];
+            }
+        }
+
+        public override void OnLoadCollectibleMappings(IWorldAccessor worldForNewMappings, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, int schematicSeed, bool resolveImports)
+        {
+            base.OnLoadCollectibleMappings(worldForNewMappings, oldBlockIdMapping, oldItemIdMapping, schematicSeed, resolveImports);
+            if (Block is BlockAngledGearMulti) gearStacks.OnLoadCollectibleMappings(worldForNewMappings, oldBlockIdMapping, oldItemIdMapping, resolveImports);
+        }
+
+        public override void OnStoreCollectibleMappings(Dictionary<int, AssetLocation> blockIdMapping, Dictionary<int, AssetLocation> itemIdMapping)
+        {
+            base.OnStoreCollectibleMappings(blockIdMapping, itemIdMapping);
+            if (Block is BlockAngledGearMulti) gearStacks.OnStoreCollectibleMappings(Api.World, blockIdMapping, itemIdMapping);
+        }
+
+        public void OnTransformed(IWorldAccessor worldAccessor, ITreeAttribute tree, int degreeRotation, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, EnumAxis? flipAxis)
+        {
+            if (Block is BlockAngledGearMulti) gearStacks.OnTransformed(tree, degreeRotation, flipAxis);
+        }
+
+        public override void OnBlockBroken(IPlayer byPlayer = null)
+        {
+            List<MechanicalNetwork> networks = Block is BlockAngledGearMulti ? GetConnectedNetworks() : null;
+            MechanicalNetwork ownNetwork = Network;
+            base.OnBlockBroken(byPlayer);
+            if (networks != null) RebuildNetworks(networks, ownNetwork);
         }
 
         public override float GetResistance()
         {
+            if (Block is BlockAngledGearMulti && IsMultiGearJammed) return 1000000f;
+            if (Block is BlockAngledGearMulti) return 0.0005f * Math.Max(1, GearCount);
             return 0.0005f;
         }
 
-        protected override MechPowerPath[] GetMechPowerExits(MechPowerPath fromExitTurnDir)
+        public override float GetRotationalInertia()
         {
+            if (Block is not BlockAngledGearMulti) return base.GetRotationalInertia();
+
+            float inertia = 0;
+            BlockFacing inputFace = getNetworkInputFace();
+            foreach (BlockFacing face in BlockFacing.ALLFACES)
+            {
+                if (inputFace != null && !hasMultiGearConnection(inputFace, face)) continue;
+                BlockAngledGears gear = gearStacks.GetBlock(face);
+                if (gear != null) inertia += gear.RotationalInertia;
+            }
+            return inertia;
+        }
+
+        // Opposite gears only pass power when a perpendicular clutch is engaged.
+        bool multiEngaged;
+        // The gear face the current network actually arrived through. Rotation direction cannot tell the two collinear faces apart
+        BlockFacing networkInputFace;
+
+        public BlockFacing GetCollinearGearFace()
+        {
+            if (Block is not BlockAngledGearMulti) return null;
+            foreach (BlockFacing face in BlockFacing.ALLFACES)
+            {
+                if (HasGear(face) && HasGear(face.Opposite)) return face;
+            }
+            return null;
+        }
+
+        public bool IsCollinearHub => GetCollinearGearFace() != null;
+
+        public void CheckEngagedByClutch(IBlockAccessor access, bool updateNetwork)
+        {
+            if (!tryGetClutchEngaged(access, out bool clutchEngaged) || clutchEngaged == multiEngaged) return;
+
+            multiEngaged = clutchEngaged;
+            Blockentity.MarkDirty(true);
+            if (!updateNetwork) return;
+            if (!multiEngaged)
+            {
+                manager?.OnNodeRemoved(this);
+                return;
+            }
+
+            BlockAngledGearMulti.RefreshPowerConnections(Api.World, Position);
+        }
+
+        bool tryGetClutchEngaged(IBlockAccessor access, out bool engaged)
+        {
+            engaged = false;
+            BlockFacing axisDir = GetCollinearGearFace();
+            if (axisDir == null) return true;
+
+            bool unknown = false;
+            BlockPos clutchPos = Position.Copy();
+            foreach (BlockFacing side in BlockFacing.ALLFACES)
+            {
+                side.IterateThruFacingOffsets(clutchPos);
+                if (!side.IsAdjacent(axisDir)) continue;
+
+                if (access.GetChunkAtBlockPos(clutchPos) == null)
+                {
+                    unknown = true;
+                    continue;
+                }
+                if (access.GetBlock(clutchPos) is not BlockClutch) continue;
+
+                BEClutch clutch = access.GetBlockEntity(clutchPos) as BEClutch;
+                if (clutch == null)
+                {
+                    unknown = true;
+                    continue;
+                }
+
+                BlockFacing facing = clutch.Facing ?? BlockFacing.FromCode(clutch.Block.Variant["side"]);
+                if (facing == side.Opposite && clutch.Engaged)
+                {
+                    engaged = true;
+                    return true;
+                }
+            }
+
+            return !unknown;
+        }
+
+        public float GetMultiGearAngleRad(BlockFacing face)
+        {
+            if (Block is not BlockAngledGearMulti || !HasGear(face) || IsMultiGearJammed) return 0f;
+            BlockFacing netDir = propagationDir;
+            BlockFacing inputFace = getNetworkInputFace();
+            if (inputFace == null) return 0f;
+            if (!hasDifferentAxisGear(inputFace)) return face == inputFace ? AngleRad : 0f;
+            BlockFacing sense = face == inputFace ? netDir : getExitSense(face, netDir, inputFace);
+            return getSpin(sense) == getSpin(netDir) ? AngleRad : GameMath.TWOPI - AngleRad;
+        }
+        public float GetMultiGearRenderAngleOffset(BlockFacing face)
+        {
+            BlockFacing referenceFace = getReferenceFace(face);
+            float? meshPhaseDeg = GetGearBlock(face)?.MeshPhaseDeg;
+            if (meshPhaseDeg == null) return multiGearPhaseStepDeg * GameMath.DEG2RAD * referenceFace.Index;
+
+            foreach (BlockFacing otherFace in BlockFacing.ALLFACES)
+            {
+                if (otherFace.IsAdjacent(face) && HasGear(otherFace) && getReferenceFace(otherFace).Index < referenceFace.Index) return meshPhaseDeg.Value * GameMath.DEG2RAD;
+            }
+            return 0f;
+        }
+
+        BlockFacing getReferenceFace(BlockFacing face)
+        {
+            return HasGear(face.Opposite) && face.Opposite.Index < face.Index ? face.Opposite : face;
+        }
+
+        BlockFacing getMultiGearInputFace(BlockFacing netDir)
+        {
+            if (netDir == null) return null;
+            if (HasGear(netDir.Opposite)) return netDir.Opposite;
+            if (HasGear(netDir)) return netDir;
+            return null;
+        }
+
+        BlockFacing getNetworkInputFace()
+        {
+            return networkInputFace ?? getMultiGearInputFace(propagationDir);
+        }
+
+        BlockFacing getMultiGearInputFace(MechPowerPath path)
+        {
+            if (path?.OutFacing == null) return null;
+
+            if (path.FromPos != null)
+            {
+                BlockFacing face = path.FromPos.FacingFrom(Position);
+                if (HasGear(face)) return face;
+            }
+
+            if (HasGear(path.OutFacing.Opposite)) return path.OutFacing.Opposite;
+            if (HasGear(path.OutFacing)) return path.OutFacing;
+            return null;
+        }
+
+        static int getSpin(BlockFacing facing)
+        {
+            return facing == BlockFacing.UP || facing == BlockFacing.SOUTH || facing == BlockFacing.WEST ? 1 : -1;
+        }
+
+        BlockFacing getExitSense(BlockFacing exitFace, BlockFacing netDir, BlockFacing inputFace)
+        {
+            bool flip = netDir == inputFace;
+            // An opposite gear is driven through the perpendicular idler.
+            if (exitFace == inputFace.Opposite) flip = !flip;
+            return flip ? exitFace.Opposite : exitFace;
+        }
+
+        bool hasDifferentAxisGear(BlockFacing inputFace)
+        {
+            foreach (BlockFacing face in BlockFacing.ALLFACES)
+            {
+                if (HasGear(face) && face.IsAdjacent(inputFace)) return true;
+            }
+            return false;
+        }
+
+        bool hasMultiGearConnection(BlockFacing inputFace, BlockFacing outputFace)
+        {
+            if (!HasGear(inputFace) || !HasGear(outputFace)) return false;
+            if (inputFace == outputFace || hasDifferentAxisGear(inputFace)) return true;
+            return multiEngaged && outputFace == inputFace.Opposite;
+        }
+
+        protected override bool isNetworkConnectedAt(BlockFacing face)
+        {
+            if (Block is not BlockAngledGearMulti) return base.isNetworkConnectedAt(face);
+
+            BlockFacing inputFace = getNetworkInputFace();
+            return inputFace != null && hasMultiGearConnection(inputFace, face);
+        }
+
+        MechPowerPath[] getMultiGearExits(MechPowerPath fromExitTurnDir)
+        {
+            BlockFacing inputSide = getMultiGearInputFace(fromExitTurnDir);
+            if (inputSide == null) return [];
+
+            if (!hasDifferentAxisGear(inputSide))
+            {
+                if (!hasMultiGearConnection(inputSide, inputSide.Opposite)) return [];
+                return base.GetMechPowerExits(fromExitTurnDir);
+            }
+
+            BlockFacing netDir = fromExitTurnDir.NetworkDir();
+            List<MechPowerPath> paths = [];
+            foreach (BlockFacing face in BlockFacing.ALLFACES)
+            {
+                if (!HasGear(face) || face == inputSide) continue;
+                BlockFacing exitSense = getExitSense(face, netDir, inputSide);
+                paths.Add(new MechPowerPath(face, GearedRatio, null, exitSense == face.Opposite, fromExitTurnDir.AngleTransform));
+            }
+            return paths.ToArray();
+        }
+
+        public override BlockFacing GetPropagatingTurnDir(BlockFacing toFacing)
+        {
+            if (Block is BlockAngledGearMulti && propagationDir != null)
+            {
+                BlockFacing inputFace = getNetworkInputFace();
+                if (inputFace != null && HasGear(toFacing) && toFacing != inputFace && hasDifferentAxisGear(inputFace))
+                {
+                    return getExitSense(toFacing, propagationDir, inputFace);
+                }
+            }
+
+            return base.GetPropagatingTurnDir(toFacing);
+        }
+
+        public override MechPowerPath[] GetMechPowerExits(MechPowerPath fromExitTurnDir)
+        {
+            if (Block is BlockAngledGearMulti) return getMultiGearExits(fromExitTurnDir);
+
             // This method could be called from another (earlier in the loading chunk) block's Initialise() method, i.e. before this itself is initialised.
-            if (this.orientation == null) this.SetOrientations();  
+            if (this.orientation == null) this.SetOrientations();
 
             string orientations = (Block as BlockAngledGears).Orientation;
             if (orientations.Length < 2 || orientations[0] != orientations[1])
@@ -389,7 +746,7 @@ namespace Vintagestory.GameContent.Mechanics
                     BlockFacing pathFacing = connectors[i];
 
                     // An angled gear's output side rotates in the opposite sense from the input side
-                    paths[i] = new MechPowerPath(pathFacing, this.GearedRatio, null, pathFacing == inputSide ? invert : !invert);   
+                    paths[i] = new MechPowerPath(pathFacing, this.GearedRatio, null, pathFacing == inputSide ? invert : !invert, fromExitTurnDir.AngleTransform);
                 }
                 return paths;
             }
@@ -397,10 +754,30 @@ namespace Vintagestory.GameContent.Mechanics
             {
                 // Alternative code for a small gear connected to a Large Gear - essentially pass through
                 MechPowerPath[] paths = new MechPowerPath[2];
-                paths[0] = new MechPowerPath(this.orientation.Opposite, this.GearedRatio, null, this.orientation == fromExitTurnDir.OutFacing ? !fromExitTurnDir.invert : fromExitTurnDir.invert);
-                paths[1] = new MechPowerPath(this.orientation, this.GearedRatio, null, this.orientation == fromExitTurnDir.OutFacing ? fromExitTurnDir.invert : !fromExitTurnDir.invert);
+                paths[0] = fromExitTurnDir.PropagatedClone(this.orientation.Opposite, this.orientation == fromExitTurnDir.OutFacing ? !fromExitTurnDir.invert : fromExitTurnDir.invert);
+                paths[1] = fromExitTurnDir.PropagatedClone(this.orientation, this.orientation == fromExitTurnDir.OutFacing ? fromExitTurnDir.invert : !fromExitTurnDir.invert);
                 return paths;
             }
+        }
+
+        protected override float? getSpeedForDisplay(IPlayer forPlayer)
+        {
+            if (Block is not BlockAngledGearMulti) return base.getSpeedForDisplay(forPlayer);
+            if (IsMultiGearJammed) return 0;
+
+            int index = forPlayer?.CurrentBlockSelection?.SelectionBoxIndex ?? -1;
+            foreach (BlockFacing face in BlockFacing.ALLFACES)
+            {
+                if (!HasGear(face)) continue;
+                if (index-- != 0) continue;
+
+                BEBehaviorMPBase support = Api.World.BlockAccessor.GetBlockEntity(Position.AddCopy(face))?.GetBehavior<BEBehaviorMPBase>();
+                if (support != null) return support.CurrentSpeed;
+
+                BlockFacing inputFace = getNetworkInputFace();
+                return inputFace != null && (face == inputFace || hasDifferentAxisGear(inputFace)) ? CurrentSpeed : 0;
+            }
+            return null;
         }
 
         public override void GetBlockInfo(IPlayer forPlayer, StringBuilder sb)

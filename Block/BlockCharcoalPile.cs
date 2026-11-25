@@ -93,10 +93,5 @@ namespace Vintagestory.GameContent
                 topBlock.OnBlockBroken(world, topPos, byPlayer);
             }
         }
-
-        public override float RandomSoundPitch(IWorldAccessor world)
-        {
-            return (float)world.Rand.NextDouble() * 0.24f + 0.88f;
-        }
     }
 }

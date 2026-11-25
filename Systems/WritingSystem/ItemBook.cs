@@ -26,7 +26,7 @@ namespace Vintagestory.GameContent
             rolledShape = Attributes["rolledShape"].AsString();
         }
 
-        public MeshData GenMesh(ItemStack itemstack, ITextureAtlasAPI targetAtlas, BlockPos atBlockPos)
+        public MeshData GenMesh(ItemSlot slot, ITextureAtlasAPI targetAtlas, BlockPos atBlockPos = null)
         {
             if (Attributes.KeyExists("rolledShape") != true) return null;
 
@@ -42,9 +42,9 @@ namespace Vintagestory.GameContent
 
 
 
-        public string GetMeshCacheKey(ItemStack itemstack)
+        public string GetMeshCacheKey(ItemSlot slot)
         {
-            return itemstack.Collectible.Code + "-" + rolledShape;
+            return slot.Itemstack.Collectible.Code + "-" + rolledShape;
         }
     }
 
@@ -85,7 +85,8 @@ namespace Vintagestory.GameContent
                         ActionLangCode = "heldhelp-read",
                         ShouldApply =  (wi, bs, es) => {
                             var slot = capi.World.Player.InventoryManager.ActiveHotbarSlot;
-                            return isReadable(slot) && (slot.Itemstack.Attributes.HasAttribute("text") || slot.Itemstack.Attributes.HasAttribute("textCodes"));
+                            var stackAttr = slot.Itemstack?.Attributes;
+                            return isReadable(slot) && stackAttr != null && (stackAttr.HasAttribute("text") || stackAttr.HasAttribute("textCodes"));
                         }
                     },
                     new WorldInteraction
@@ -95,7 +96,7 @@ namespace Vintagestory.GameContent
                         ActionLangCode = "heldhelp-write",
                         GetMatchingStacks =  (wi, bs, es) => {
                             var inSlot = capi.World.Player.InventoryManager.ActiveHotbarSlot;
-                            string signedby = inSlot.Itemstack.Attributes.GetString("signedby");
+                            string signedby = inSlot.Itemstack?.Attributes.GetString("signedby");
                             return signedby != null ? null : wi.Itemstacks;
                         }
                     }

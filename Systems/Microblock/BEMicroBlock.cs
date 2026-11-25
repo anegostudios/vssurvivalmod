@@ -141,6 +141,10 @@ namespace Vintagestory.GameContent
         public float VolumeRel => totalVoxels / (16f * 16f * 16f);
 
 
+        /// <summary>
+        /// Used only in the genShape command
+        /// </summary>
+        /// <returns></returns>
         public Shape GenShape()
         {
             Shape shape = new Shape();
@@ -161,6 +165,8 @@ namespace Vintagestory.GameContent
 
                 var block = Api.World.Blocks[BlockIds[cwm.Material]];
 
+#pragma warning disable CS0618 // Type or member is obsolete - elem.Faces, but that's OK here, we are setting faces in order to serialize the shape in genShape command
+
                 elem.Faces = new Dictionary<string, ShapeElementFace>();
                 foreach (var facing in BlockFacing.ALLFACES)
                 {
@@ -176,6 +182,8 @@ namespace Vintagestory.GameContent
 
                     elem.Faces[facing.Code] = new ShapeElementFace() { Texture = texCode, Uv = new float[4] { 0,0,16,16 } };
                 }
+
+#pragma warning restore CS0618
 
                 shape.Elements[i] = elem;
             }
@@ -642,9 +650,12 @@ namespace Vintagestory.GameContent
             {
                 if (val is IRotatable bhrot)
                 {
-                    bhrot.OnTransformed(worldAccessor ,tree, byDegrees, oldBlockIdMapping, oldItemIdMapping, flipAroundAxis);
+                    bhrot.OnTransformed(worldAccessor, tree, byDegrees, oldBlockIdMapping, oldItemIdMapping, flipAroundAxis);
                 }
             }
+
+            // Causes sideAlmostSolid to get rebuilt when the schematic is placed
+            tree.RemoveAttribute("sideAlmostSolid");
         }
 
 
@@ -740,7 +751,9 @@ namespace Vintagestory.GameContent
 
         public bool DoEmitSideAo(int facing)
         {
-            return (emitSideAo & (1 << facing)) != 0;
+            // Returns true if this side *or any of its neighbouring sides* emits AO, needed to give correct results in TCTCache AO calculation, not used anywhere else in vanilla
+            int opposite = API.Client.Tesselation.TileSideEnum.GetOpposite(facing);
+            return (emitSideAo & 0x3F - (1 << opposite)) != 0;
         }
 
         public bool DoEmitSideAoByFlag(int flag)
@@ -760,6 +773,7 @@ namespace Vintagestory.GameContent
         protected void RebuildCuboidList(BoolArray16x16x16 Voxels, byte[,,] VoxelMaterial)
         {
             BoolArray16x16x16 VoxelVisited = new BoolArray16x16x16();
+            int prevEmitSideAo = emitSideAo;
             emitSideAo = 0x3F;
             sidecenterSolid = new SmallBoolArray(SmallBoolArray.OnAllSides);
             float voxelCount = 0;
@@ -886,6 +900,8 @@ namespace Vintagestory.GameContent
                 emitSideAo = 0;
             }
 
+            if (Api.Side == EnumAppSide.Client) RedrawNeighbourChunkIfAoChanged(prevEmitSideAo);
+
             this.sizeRel = voxelCount / (16f * 16f * 16f);
 
             foreach (var val in Behaviors)
@@ -899,6 +915,18 @@ namespace Vintagestory.GameContent
             if (DisplacesLiquid())
             {
                 Api.World.BlockAccessor.SetBlock(0, Pos, BlockLayersAccess.Fluid);
+            }
+        }
+
+        private void RedrawNeighbourChunkIfAoChanged(int prevEmitSideAo)
+        {
+            prevEmitSideAo ^= emitSideAo;  // This is now the changed bits
+            if (prevEmitSideAo == 0) return;  // No change
+
+            for (int i = 0; i < BlockFacing.NumberOfFaces; i++)
+            {
+                if ((prevEmitSideAo & 1) != 0) Api.World.BlockAccessor.RedrawNeighbouringChunk(Pos, BlockFacing.ALLFACES[i]);
+                prevEmitSideAo >>= 1;
             }
         }
 
@@ -1050,6 +1078,7 @@ namespace Vintagestory.GameContent
 
             VoxelCuboids = new List<uint>(GetVoxelCuboids(tree));
 
+            int prevEmitSideAo = emitSideAo;
             byte[] sideAo = tree.GetBytes("emitSideAo", singleByte255);
             if (sideAo.Length > 0)
             {
@@ -1081,6 +1110,7 @@ namespace Vintagestory.GameContent
                 {
                     Mesh = GenMesh();
                     Api.World.BlockAccessor.MarkBlockModified(Pos); // not sure why this one is needed
+                    RedrawNeighbourChunkIfAoChanged(prevEmitSideAo);
                 }
 
                 const int chunksize = GlobalConstants.ChunkSize;
@@ -1105,6 +1135,7 @@ namespace Vintagestory.GameContent
             else
             {
                 // From 1.15.0 until 1.15.5 we forgot to store sideAlmostSolid
+                // This is now also used to rebuild the side solid after transforming a packed schematic
                 if (!tree.HasAttribute("sideAlmostSolid"))
                 {
                     if (Api == null) this.Api = worldAccessForResolve.Api; // Needed for LightHsv property, I hope this does not break things >.>
@@ -1351,7 +1382,8 @@ namespace Vintagestory.GameContent
 
         public MeshData GenMesh()
         {
-            if (BlockIds == null) return null;
+            var blockIds = this.BlockIds;
+            if (blockIds == null) return null;
             GenRotatedMaterialIds();
 
             var mesh = CreateMesh(Api as ICoreClientAPI, VoxelCuboids, BlockIdsRotated, DecorIdsRotated, DecorRotations, OriginalVoxelCuboids, Pos);
@@ -1364,7 +1396,26 @@ namespace Vintagestory.GameContent
                 }
             }
             withColorMapData = false;
-            for (int i = 0; !withColorMapData && i < BlockIds.Length; i++) withColorMapData |= Api.World.Blocks[BlockIds[i]].ClimateColorMapResolved != null;
+            for (int i = 0; i < blockIds.Length; i++)
+            {
+                if (Api.World.Blocks[blockIds[i]].ClimateColorMapResolved != null)
+                {
+                    withColorMapData = true;
+                    break;
+                }
+            }
+            if (!withColorMapData && DecorIds != null)
+            {
+                var decorIds = this.DecorIds;
+                for (int i = 0; i < decorIds.Length; i++)
+                {
+                    if (Api.World.Blocks[decorIds[i]].ClimateColorMapResolved != null)
+                    {
+                        withColorMapData = true;
+                        break;
+                    }
+                }
+            }
 
             return mesh;
         }
@@ -1455,6 +1506,11 @@ namespace Vintagestory.GameContent
 
         public unsafe static MeshData CreateMesh(ICoreClientAPI capi, List<uint> voxelCuboids, int[] blockIds, int[] decorIds, int decorRotations, uint[] originalVoxelCuboids, BlockPos pos = null)
         {
+            return CreateMesh(capi, voxelCuboids, blockIds, decorIds, decorRotations, originalVoxelCuboids, pos, null, default);
+        }
+
+        private unsafe static MeshData CreateMesh(ICoreClientAPI capi, List<uint> voxelCuboids, int[] blockIds, int[] decorIds, int decorRotations, uint[] originalVoxelCuboids, BlockPos pos, List<float> decalUvs, VoxelMaterial decalMaterial)
+        {
             var mesh = new MeshData(24, 36).WithColorMaps().WithRenderpasses().WithXyzFaces();
 
             if (voxelCuboids == null || blockIds == null)
@@ -1519,6 +1575,8 @@ namespace Vintagestory.GameContent
                 genFaceInfo.subPixelPaddingx = capi.BlockTextureAtlas.SubPixelPaddingX;
                 genFaceInfo.subPixelPaddingy = capi.BlockTextureAtlas.SubPixelPaddingY;
                 genFaceInfo.AnyFrostable = hasFrostable;
+                genFaceInfo.decalUvs = decalUvs;
+                genFaceInfo.decalMaterial = decalMaterial;
 
                 GenPlaneInfo genPlaneInfo = default;
                 genPlaneInfo.blockMaterials = blockMatList;
@@ -1611,62 +1669,23 @@ namespace Vintagestory.GameContent
             return Math.Abs(edge - d) / 16f;
         }
 
-        public MeshData CreateDecalMesh(ITexPositionSource decalTexSource)
+        public void CreateDecalMeshes(ITexPositionSource decalTexSource, out MeshData blockMesh, out MeshData decalMesh)
         {
-            return CreateDecalMesh(Api as ICoreClientAPI, VoxelCuboids, decalTexSource, OriginalVoxelCuboids);
-        }
-        public unsafe static MeshData CreateDecalMesh(ICoreClientAPI capi, List<uint> voxelCuboids, ITexPositionSource decalTexSource, uint[] originalVoxelCuboids)
-        {
-            var mesh = new MeshData(24, 36).WithColorMaps().WithRenderpasses().WithXyzFaces();
-            if (voxelCuboids == null)
+            if (BlockIds == null || VoxelCuboids == null)
             {
-                return mesh;
+                blockMesh = new MeshData(4, 6);
+                decalMesh = new MeshData(4, 6);
+                return;
             }
 
-            var matList = getOrCreateBlockMatRefList();
-            matList.Clear();
-            matList.Add(VoxelMaterial.FromTexSource(capi, decalTexSource, true, true));
+            GenRotatedMaterialIds();
+            var capi = (ICoreClientAPI)Api;
+            var decalUvs = new List<float>();
+            var decalMaterial = VoxelMaterial.FromTexSource(capi, decalTexSource, true, true);
 
-            int* origVoxelBounds = stackalloc int[6];
-            FromUint(originalVoxelCuboids[0],
-                out origVoxelBounds[BlockFacing.indexWEST], out origVoxelBounds[BlockFacing.indexDOWN], out origVoxelBounds[BlockFacing.indexNORTH],
-                out origVoxelBounds[BlockFacing.indexEAST], out origVoxelBounds[BlockFacing.indexUP], out origVoxelBounds[BlockFacing.indexSOUTH],
-                out _
-            );
-
-            var count = voxelCuboids.Count;
-            var voxels = getOrCreateCuboidInfoArray();
-            fixed (VoxelInfo* ptr = voxels)
-            {
-                Unsafe.InitBlockUnaligned(ptr, 255, (uint)(sizeof(VoxelInfo) * voxels.Length));
-
-                int x0, y0, z0, x1, y1, z1;
-                for (int i = 0; i < count; i++)
-                {
-                    FromUint(voxelCuboids[i], out x0, out y0, out z0, out x1, out y1, out z1, out _);
-                    FillCuboidEdges(ptr, x0, y0, z0, x1, y1, z1, 0);
-                }
-
-                GenFaceInfo genFaceInfo = default;
-                genFaceInfo.capi = capi;
-                genFaceInfo.targetMesh = mesh;
-                genFaceInfo.originalBounds = origVoxelBounds;
-                genFaceInfo.subPixelPaddingx = capi.BlockTextureAtlas.SubPixelPaddingX;
-                genFaceInfo.subPixelPaddingy = capi.BlockTextureAtlas.SubPixelPaddingY;
-
-                GenPlaneInfo genPlaneInfo = default;
-                genPlaneInfo.blockMaterials = matList;
-                genPlaneInfo.voxels = ptr;
-                genPlaneInfo.materialIndex = 0;
-
-                for (int i = 0; i < count; i++)
-                {
-                    FromUint(voxelCuboids[i], out x0, out y0, out z0, out x1, out y1, out z1, out _);
-                    GenCuboidMesh(ref genFaceInfo, ref genPlaneInfo, x0, y0, z0, x1, y1, z1);
-                }
-            }
-
-            return mesh;
+            blockMesh = CreateMesh(capi, VoxelCuboids, BlockIdsRotated, null, 0, OriginalVoxelCuboids, Pos, decalUvs, decalMaterial);
+            decalMesh = blockMesh.Clone();
+            decalMesh.Uv = decalUvs.ToArray();
         }
 
 
@@ -1871,16 +1890,15 @@ namespace Vintagestory.GameContent
                     case EnumChunkRenderPass.BlendNoCull:
                         return false;
                     case EnumChunkRenderPass.Meta:
-                    case EnumChunkRenderPass.TopSoil:
                     case EnumChunkRenderPass.Transparent:
                         selfOpaque = false;
                         break;
                 }
+
                 bool otherOpaque = true;
                 switch (other.RenderPass)
                 {
                     case EnumChunkRenderPass.Meta:
-                    case EnumChunkRenderPass.TopSoil:
                     case EnumChunkRenderPass.Transparent:
                     case EnumChunkRenderPass.BlendNoCull:
                         otherOpaque = false;
@@ -1938,6 +1956,8 @@ namespace Vintagestory.GameContent
                 UpdateNeighbour(world, pos);
             }
             BlockFacing.FinishIteratingAllFaces(pos);
+            // This is needed because attachment can change without changing the face's ambient occlusion
+            world.BlockAccessor.RedrawNeighbouringChunk(pos);
         }
 
         private static void UpdateNeighbour(IWorldAccessor world, BlockPos pos)
@@ -1966,6 +1986,8 @@ namespace Vintagestory.GameContent
             public int face;
             public BlockFacing facing;
             public bool AnyFrostable;
+            public List<float> decalUvs;
+            public VoxelMaterial decalMaterial;
 
             public float subPixelPaddingx;
             public float subPixelPaddingy;
@@ -2055,6 +2077,13 @@ namespace Vintagestory.GameContent
                 {
                     int ind = vertOffset + i;
                     GetRelativeUV(ind * 2, out float uRel, out float vRel);
+                    if (decalUvs != null)
+                    {
+                        // Use the same face and vertex order as the real block UVs.
+                        var decalPos = isOutside ? decalMaterial.Texture[face] : decalMaterial.TextureInside[face];
+                        decalUvs.Add(decalPos.x1 - subPixelPaddingx + uRel * (decalPos.x2 - decalPos.x1));
+                        decalUvs.Add(decalPos.y1 - subPixelPaddingy + vRel * (decalPos.y2 - decalPos.y1));
+                    }
                     targetMesh.AddVertexWithFlagsSkipColor(
                         CubeVertices[ind * 3] * halfSizeX + centerX,
                         CubeVertices[ind * 3 + 1] * halfSizeY + centerY,
@@ -2483,6 +2512,28 @@ namespace Vintagestory.GameContent
             MarkDirty(true, null);
 
             return exchanged;
+        }
+
+        public static Cuboidf GetEncompassingHitbox(List<uint> VoxelCuboids)
+        {
+            CuboidWithMaterial cwm = new CuboidWithMaterial();
+            Cuboidf box = new Cuboidf(16, 16, 16, 0, 0, 0);
+            for (int i = 0; i < VoxelCuboids.Count; i++)
+            {
+                FromUint(VoxelCuboids[i], cwm);
+                box.X1 = Math.Min(box.X1, cwm.X1);
+                box.Y1 = Math.Min(box.Y1, cwm.Y1);
+                box.Z1 = Math.Min(box.Z1, cwm.Z1);
+                box.X2 = Math.Max(box.X2, cwm.X2);
+                box.Y2 = Math.Max(box.Y2, cwm.Y2);
+                box.Z2 = Math.Max(box.Z2, cwm.Z2);
+            }
+            return box;
+        }
+
+        public Cuboidf GetEncompassingHitbox()
+        {
+            return GetEncompassingHitbox(VoxelCuboids);
         }
     }
 

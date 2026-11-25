@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -74,10 +74,10 @@ namespace Vintagestory.GameContent
 
         private MeshData getMesh(ITesselatorAPI tesselator)
         {
-            Dictionary<string, MeshData> lanternMeshes = ObjectCacheUtil.GetOrCreate(Api, "blockLanternBlockMeshes", () => new Dictionary<string, MeshData>());
-
             BlockLantern block = Api.World.BlockAccessor.GetBlock(Pos) as BlockLantern;
             if (block == null) return null;
+
+            Dictionary<string, MeshData> lanternMeshes = ObjectCacheUtil.GetOrCreate(Api, block.baseCacheKey + "meshes", () => new Dictionary<string, MeshData>());
 
             string orient = block.LastCodePart();
 
@@ -109,7 +109,7 @@ namespace Vintagestory.GameContent
             string part = Block.LastCodePart();
             if (part == "up" || part == "down")
             {
-                mesh = mesh.Clone().Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, MeshAngle, 0);
+                mesh = mesh.Clone().Rotate(0, MeshAngle, 0);
             }
 
             mesher.AddMeshData(mesh);
@@ -134,11 +134,12 @@ namespace Vintagestory.GameContent
             if (slot.Empty) return false;
 
             CollectibleObject obj = slot.Itemstack.Collectible;
-            if (obj.FirstCodePart() == "glass" && obj.Variant.ContainsKey("color"))
+            Block oldGlassBlock = Api.World.GetBlock(AssetLocation.Create("glass-" + glass));
+            if (oldGlassBlock != null && obj.FirstCodePart() == "glass" && obj.Variant.ContainsKey("color"))
             {
                 if (glass != "quartz" && byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
                 {
-                    ItemStack stack = new ItemStack(Api.World.GetBlock(new AssetLocation("glass-" + glass)));
+                    ItemStack stack = new ItemStack(oldGlassBlock);
                     if (!byPlayer.InventoryManager.TryGiveItemstack(stack, true))
                     {
                         Api.World.SpawnItemEntity(stack, Pos.ToVec3d().Add(0.5, 0, 0.5));
@@ -155,7 +156,7 @@ namespace Vintagestory.GameContent
                 if (byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative && glass != "quartz") slot.TakeOut(1);
 
                 if (Api.Side == EnumAppSide.Client) (byPlayer as IClientPlayer).TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
-                Api.World.PlaySoundAt(Api.World.GetBlock(new AssetLocation("glass-" + glass)).Sounds.Place, Pos, -0.4, byPlayer);
+                Api.World.PlaySoundAt(oldGlassBlock?.Sounds.Place ?? GlobalConstants.DefaultBuildSound, Pos, -0.4, byPlayer);
 
                 setLightColor(origlightHsv, lightHsv, glass);
                 Api.World.BlockAccessor.ExchangeBlock(Block.Id, Pos); // Forces a lighting update

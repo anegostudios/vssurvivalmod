@@ -1,5 +1,6 @@
-﻿using System.Linq;
+using System.Linq;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
 #nullable disable
@@ -11,12 +12,22 @@ namespace Vintagestory.GameContent.Mechanics
     {
         BlockFacing orientation;
         public bool InvertPoundersOnRender { get; set; }
+        public TagSet ToggleTag { get; private set; }
+        public TagSet PounderTag { get; private set; }
+        public TagSet PounderCapTag { get; private set; }
 
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
             this.orientation = BlockFacing.FromFirstLetter(Variant["side"][0]);
             InvertPoundersOnRender = orientation == BlockFacing.WEST || orientation == BlockFacing.SOUTH;
+
+            api.CollectibleTagRegistry.TryRegisterAndCreateTagSetAndLogIssues(out var toggleTag, "pulverizer-toggle");
+            api.CollectibleTagRegistry.TryRegisterAndCreateTagSetAndLogIssues(out var pounderTag, "pulverizer-pounder");
+            api.CollectibleTagRegistry.TryRegisterAndCreateTagSetAndLogIssues(out var pounderCapTag, "pulverizer-pounder-cap");
+            ToggleTag = toggleTag;
+            PounderTag = pounderTag;
+            PounderCapTag = pounderCapTag;
         }
 
         public bool IsOrientedTo(BlockFacing facing)
@@ -35,7 +46,7 @@ namespace Vintagestory.GameContent.Mechanics
             return base.OnBlockInteractStart(world, byPlayer, blockSel);
         }
 
-        public override bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face)
+        public override bool HasMechPowerConnectorAt(IWorldAccessor world, BlockPos pos, BlockFacing face, BlockMPBase forBlock)
         {
             return orientation != face && orientation != face.Opposite;
         }
@@ -54,7 +65,7 @@ namespace Vintagestory.GameContent.Mechanics
                 IMechanicalPowerBlock block = world.BlockAccessor.GetBlock(pos) as IMechanicalPowerBlock;
                 if (block != null)
                 {
-                    if (block.HasMechPowerConnectorAt(world, pos, face.Opposite))
+                    if (block.HasMechPowerConnectorAt(world, pos, face.Opposite, this))
                     {
                         AssetLocation loc = new AssetLocation(FirstCodePart() + "-" + face.GetCCW().Code);
                         Block toPlaceBlock = world.GetBlock(loc);
@@ -135,17 +146,6 @@ namespace Vintagestory.GameContent.Mechanics
         public override void DidConnectAt(IWorldAccessor world, BlockPos pos, BlockFacing face)
         {
             
-        }
-
-        public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1f)
-        {
-            ItemStack pulvFrame = new ItemStack(world.BlockAccessor.GetBlock(CodeWithParts("north")));
-            BEPulverizer bep = world.BlockAccessor.GetBlockEntity(pos) as BEPulverizer;
-            if (bep != null)
-            {
-                return bep.getDrops(world, pulvFrame);
-            }
-            return new ItemStack[] { pulvFrame };
         }
     }
 }

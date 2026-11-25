@@ -1,33 +1,32 @@
-﻿using System;
+using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
-
-#nullable disable
 
 namespace Vintagestory.GameContent
 {
     public class AnvilWorkItemRenderer : IRenderer
     {
+        public double RenderOrder => 0.5;
+        public int RenderRange => 24;
+
+
+        private Vec3f origin = new(0, 0, 0);
+        private Matrixf ModelMat = new();
         private ICoreClientAPI api;
         private BlockPos pos;
+        private MultiTextureMeshRef? workItemMeshRef;
+        private MeshRef? recipeOutlineMeshRef;
+        private ItemStack? ingot;
+        private Vec4f outLineColorMul = new(1, 1, 1, 1);
+        private SurvivalCoreSystem coreMod;
+        private BlockEntityAnvil beAnvil;
+        private Vec4f glowRgb = new();
 
-        MeshRef workItemMeshRef;
-        MeshRef recipeOutlineMeshRef;
 
-        ItemStack ingot;
-        int texId;
-
-        Vec4f outLineColorMul = new Vec4f(1, 1, 1, 1);
-        protected Matrixf ModelMat = new Matrixf();
-
-        SurvivalCoreSystem coreMod;
-
-        BlockEntityAnvil beAnvil;
-        Vec4f glowRgb = new Vec4f();
-        protected Vec3f origin = new Vec3f(0, 0, 0);
 
         public AnvilWorkItemRenderer(BlockEntityAnvil beAnvil, BlockPos pos, ICoreClientAPI capi)
         {
@@ -38,19 +37,18 @@ namespace Vintagestory.GameContent
             coreMod = capi.ModLoader.GetModSystem<SurvivalCoreSystem>();
         }
 
-        public double RenderOrder
+        public void Dispose()
         {
-            get { return 0.5; }
-        }
+            api.Event.UnregisterRenderer(this, EnumRenderStage.Opaque);
+            api.Event.UnregisterRenderer(this, EnumRenderStage.AfterFinalComposition);
 
-        public int RenderRange
-        {
-            get { return 24; }
+            recipeOutlineMeshRef?.Dispose();
+            workItemMeshRef?.Dispose();
         }
 
         public void OnRenderFrame(float deltaTime, EnumRenderStage stage)
         {
-            if (workItemMeshRef == null) return;
+            if (workItemMeshRef == null || ingot == null) return;
             if (stage == EnumRenderStage.AfterFinalComposition)
             {
                 if (api.World.Player?.InventoryManager?.ActiveHotbarSlot?.Itemstack?.Collectible is ItemHammer)
@@ -75,21 +73,20 @@ namespace Vintagestory.GameContent
 
             rpi.GlDisableCullFace();
 
-            IShaderProgram prog = coreMod.anvilShaderProg;
+            IShaderProgram prog = coreMod.smithingWorkItemShader;
             prog.Use();
-            rpi.BindTexture2d(texId);
             prog.Uniform("rgbaAmbientIn", rpi.AmbientColor);
-
             prog.Uniform("rgbaFogIn", rpi.FogColor);
             prog.Uniform("fogMinIn", rpi.FogMin);
-            prog.Uniform("dontWarpVertices", (int)0);
-            prog.Uniform("addRenderFlags", (int)0);
+            prog.Uniform("dontWarpVertices", 0);
+            prog.Uniform("addRenderFlags", 0);
             prog.Uniform("fogDensityIn", rpi.FogDensity);
             prog.Uniform("rgbaTint", ColorUtil.WhiteArgbVec);
             prog.Uniform("rgbaLightIn", lightrgbs);
             prog.Uniform("rgbaGlowIn", glowRgb);
             prog.Uniform("extraGlow", extraGlow);
-            
+            prog.Uniform("tempGlowMode", 0);
+
             prog.UniformMatrix("modelMatrix", ModelMat
                 .Identity()
                 .Translate(pos.X - camPos.X, pos.Y - camPos.Y, pos.Z - camPos.Z)
@@ -99,10 +96,31 @@ namespace Vintagestory.GameContent
             prog.UniformMatrix("projectionMatrix", rpi.CurrentProjectionMatrix);
 
 
-            rpi.RenderMesh(workItemMeshRef);
+            rpi.RenderMultiTextureMesh(workItemMeshRef, "tex");
 
             prog.UniformMatrix("modelMatrix", rpi.CurrentModelviewMatrix);
             prog.Stop();
+        }
+
+        public void RegenMesh(ItemStack workitemStack, byte[,,] voxels, bool[,,] recipeToOutlineVoxels)
+        {
+            workItemMeshRef?.Dispose();
+            workItemMeshRef = null;
+            ingot = workitemStack;
+
+            if (workitemStack == null) return;
+
+            ObjectCacheUtil.Delete(api, "" + workitemStack.Attributes.GetInt("meshRefId"));
+            workitemStack.Attributes.RemoveAttribute("meshRefId");
+
+            if (recipeToOutlineVoxels != null)
+            {
+                RegenOutlineMesh(recipeToOutlineVoxels, voxels);
+            }
+
+            MeshData workItemMesh = ItemWorkItem.GenMesh(api, workitemStack, voxels);
+
+            workItemMeshRef = api.Render.UploadMultiTextureMesh(workItemMesh);
         }
 
 
@@ -133,36 +151,15 @@ namespace Vintagestory.GameContent
 
             if (linewidth != 1.6f) rpi.LineWidth = 1.6f;
 
-            rpi.GLDepthMask(false);   // Helps prevent HUD failing to draw at the start of the next frame, on macOS.  This may be the last GL settings call before the frame is finalised.  The block outline renderer sets this to false prior to rendering its mesh.
+            if (RuntimeEnv.OS != OS.Mac) return;
+            // Only on Mac we have to reverse some things to make things render properly
+            rpi.GLDisableDepthTest();
+            rpi.GlToggleBlend(false);
         }
-
-
-
-        public void RegenMesh(ItemStack workitemStack, byte[,,] voxels, bool[,,] recipeToOutlineVoxels)
-        {
-            workItemMeshRef?.Dispose();
-            workItemMeshRef = null;
-            this.ingot = workitemStack;
-
-            if (workitemStack == null) return;
-
-            ObjectCacheUtil.Delete(api, "" + workitemStack.Attributes.GetInt("meshRefId"));
-            workitemStack.Attributes.RemoveAttribute("meshRefId");
-
-            if (recipeToOutlineVoxels != null)
-            {
-                RegenOutlineMesh(recipeToOutlineVoxels, voxels);
-            }
-
-            MeshData workItemMesh = ItemWorkItem.GenMesh(api, workitemStack, voxels, out texId);
-
-            workItemMeshRef = api.Render.UploadMesh(workItemMesh);
-        }
-
 
         private void RegenOutlineMesh(bool[,,] recipeToOutlineVoxels, byte[,,] voxels)
         {
-            MeshData recipeOutlineMesh = new MeshData(24, 36, false, false, true, false);
+            MeshData recipeOutlineMesh = new(24, 36, false, false, true, false);
             recipeOutlineMesh.SetMode(EnumDrawMode.Lines);
 
             int greenCol = api.ColorPreset.GetColor("anvilColorGreen");
@@ -193,7 +190,7 @@ namespace Vintagestory.GameContent
                         if (!requireMetalHere && mat == EnumVoxelMaterial.Empty) continue;
 
                         float px = x / 16f;
-                        float py = 10/16f + y / 16f;
+                        float py = 10 / 16f + y / 16f;
                         float pz = z / 16f;
 
                         for (int i = 0; i < greenVoxelMesh.xyz.Length; i += 3)
@@ -216,16 +213,6 @@ namespace Vintagestory.GameContent
             {
                 recipeOutlineMeshRef = api.Render.UploadMesh(recipeOutlineMesh);
             }
-        }
-
-
-        public void Dispose()
-        {
-            api.Event.UnregisterRenderer(this, EnumRenderStage.Opaque);
-            api.Event.UnregisterRenderer(this, EnumRenderStage.AfterFinalComposition);
-
-            recipeOutlineMeshRef?.Dispose();
-            workItemMeshRef?.Dispose();
         }
     }
 }

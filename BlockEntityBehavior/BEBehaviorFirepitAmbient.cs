@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -7,6 +8,16 @@ using Vintagestory.API.Datastructures;
 
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Makes this block play ambient firepit sounds or music depending on specific conditions.
+    /// Defined with the "FirepitAmbient" code, and has no properties.
+    /// </summary>
+    /// <example><code lang="json">
+    ///"entityBehaviors": [
+    ///	{ "name": "FirepitAmbient" }
+    ///],
+    /// </code></example>
+    [DocumentAsJson]
     public class BEBehaviorFirepitAmbient : BlockEntityBehavior
     {
         protected ILoadedSound ambientSound;

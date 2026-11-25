@@ -77,15 +77,20 @@ namespace Vintagestory.GameContent
             seekEntityCodesBeginsWith = beginswith.ToArray();
 
 
-            cooldownUntilTotalHours = entity.World.Calendar.TotalHours + mincooldownHours + entity.World.Rand.NextDouble() * (maxcooldownHours - mincooldownHours);
+            cooldownUntilTotalHours = entity.World.Calendar.TotalHours + MinCooldownHours + entity.World.Rand.NextDouble() * (MaxCooldownHours - MinCooldownHours);
+        }
+
+        protected override void SetDefaultValues()
+        {
+            base.SetDefaultValues();
+            ExecutionChance = 0.05;
         }
 
         public override bool ShouldExecute()
         {
-            if (entity.World.Rand.NextDouble() > 0.05) return false;
-            if (cooldownUntilMs > entity.World.ElapsedMilliseconds) return false;
-            if (cooldownUntilTotalHours > entity.World.Calendar.TotalHours) return false;
-            if (!PreconditionsSatisifed()) return false;
+            if (entity.World.Rand.NextDouble() > ExecutionChance) return false;
+            if (IsOnCooldown()) return false;
+            if (!PreconditionsSatisfied()) return false;
 
             float range = seekingRange;
             bool listening = entity.GetBehavior<EntityBehaviorTaskAI>().TaskManager.IsTaskActive("listen");
@@ -97,7 +102,7 @@ namespace Vintagestory.GameContent
                 range *= 1.25f;
             }
 
-            targetEntity = entity.World.GetNearestEntity(entity.ServerPos.XYZ, range, range, (e) => {
+            targetEntity = entity.World.GetNearestEntity(entity.Pos.XYZ, range, range, (e) => {
                 if (!e.Alive || e.EntityId == this.entity.EntityId) return false;
 
                 if (e is EntityPlayer eplr && eplr.Player?.WorldData.CurrentGameMode != EnumGameMode.Creative && (e as EntityPlayer).Player?.WorldData.CurrentGameMode != EnumGameMode.Spectator)
@@ -152,7 +157,7 @@ namespace Vintagestory.GameContent
 
             if (spawnAccum > nextSpawnIntervalMs/1000f)
             {
-                float playerScaling = sapi.World.GetPlayersAround(entity.ServerPos.XYZ, 15, 10, (plr) => plr.Entity.Alive).Length * sapi.Server.Config.SpawnCapPlayerScaling;
+                float playerScaling = sapi.World.GetPlayersAround(entity.Pos.XYZ, 15, 10, (plr) => plr.Entity.Alive).Length * sapi.Server.Config.SpawnCapPlayerScaling;
 
                 trySpawnCreatures(GameMath.RoundRandom(sapi.World.Rand, spawnMaxQuantity * playerScaling), spawnRange);
 
@@ -193,7 +198,7 @@ namespace Vintagestory.GameContent
         {
             Vec3d centerPos = entity.Pos.XYZ;
             Vec3d spawnPos = new Vec3d();
-            BlockPos spawnPosi = new BlockPos();    // Omit dimension, because dimension will come from the InternalY being used in centerPos and spawnPos
+            BlockPos spawnPosi = new BlockPos(API.Config.Dimensions.WillSetLater);    // Omit dimension, because dimension will come from the InternalY being used in centerPos and spawnPos
 
             for (int i = 0; i < spawnedEntities.Count; i++)
             {
@@ -229,7 +234,7 @@ namespace Vintagestory.GameContent
                         spawnPos.Y--;
                     }
 
-                    if (!sapi.World.BlockAccessor.IsValidPos((int)spawnPos.X, (int)spawnPos.Y, (int)spawnPos.Z)) continue;
+                    if (!sapi.World.BlockAccessor.IsValidPos(spawnPosi)) continue;
                     Cuboidf collisionBox = type.SpawnCollisionBox.OmniNotDownGrowBy(0.1f);
                     if (collisionTester.IsColliding(sapi.World.BlockAccessor, collisionBox, spawnPos, false)) continue;
 
@@ -237,7 +242,7 @@ namespace Vintagestory.GameContent
                     spawned++;
                 }
             }
-            
+
         }
 
         private void DoSpawn(EntityProperties entityType, Vec3d spawnPosition, long herdid)
@@ -247,10 +252,9 @@ namespace Vintagestory.GameContent
             EntityAgent agent = entity as EntityAgent;
             if (agent != null) agent.HerdId = herdid;
 
-            entity.ServerPos.SetPosWithDimension(spawnPosition);
-            entity.ServerPos.SetYaw((float)sapi.World.Rand.NextDouble() * GameMath.TWOPI);
-            entity.Pos.SetFrom(entity.ServerPos);
-            entity.PositionBeforeFalling.Set(entity.ServerPos.X, entity.ServerPos.Y, entity.ServerPos.Z);
+            entity.Pos.SetPosWithDimension(spawnPosition);
+            entity.Pos.SetYaw((float)sapi.World.Rand.NextDouble() * GameMath.TWOPI);
+            entity.PositionBeforeFalling.Set(entity.Pos.X, entity.Pos.Y, entity.Pos.Z);
 
             entity.Attributes.SetString("origin", "bellalarm");
 

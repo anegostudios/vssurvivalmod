@@ -220,7 +220,7 @@ namespace Vintagestory.GameContent
                     for (int i = 0; i < shatteredDrops.Length; i++)
                     {
                         shatteredDrops[i].Resolve(Api.World, "shatteredDrops[" + i + "] for", mold.Block.Code);
-                        ItemStack stack = shatteredDrops[i].GetNextItemStack();
+                        ItemStack? stack = shatteredDrops[i].GetNextItemStack();
                         if (stack == null) continue;
 
                         molds.Add(stack);
@@ -405,7 +405,7 @@ namespace Vintagestory.GameContent
 
                 if (placeSound != null)
                 {
-                    Api.World.PlaySoundAt(placeSound, Pos, -0.5, byPlayer, false);
+                    Api.World.PlaySoundAt(placeSound ?? new SoundAttributes(), Pos, -0.5, byPlayer);
                 }
 
                 return true;
@@ -435,9 +435,9 @@ namespace Vintagestory.GameContent
                 byPlayer.InventoryManager.ActiveHotbarSlot.MarkDirty();
             }
 
-            if (MoldRight.Block.Sounds?.Place is AssetLocation assetLoc)
+            if (MoldRight.Block.Sounds?.Place != null)
             {
-                Api.World.PlaySoundAt(assetLoc, Pos, -0.5, byPlayer, false);
+                Api.World.PlaySoundAt(MoldRight.Block.Sounds.Place, Pos, -0.5, byPlayer);
             }
 
             if (Api.Side == EnumAppSide.Client) GenMeshes();
@@ -481,7 +481,7 @@ namespace Vintagestory.GameContent
         {
             if (lastPouringMarkdirtyMs + 500 < Api.World.ElapsedMilliseconds)
             {
-                MarkDirty(true);
+                MarkDirty();
                 lastPouringMarkdirtyMs = Api.World.ElapsedMilliseconds + 500;
             }
 
@@ -504,12 +504,13 @@ namespace Vintagestory.GameContent
                 SelectedFillLevel += amountToFill;
                 amount -= amountToFill;
                 UpdateIngotRenderer();
+                MarkDirty();
             }
         }
 
         public void OnPourOver()
         {
-            MarkDirty(true);
+            MarkDirty();
         }
 
 
@@ -614,6 +615,7 @@ namespace Vintagestory.GameContent
         {
             tmpTextureSource = capi?.Tesselator.GetTextureSource(block);
             var cshape = block.Attributes["shatteredShape"].AsObject<CompositeShape>();
+            ArgumentNullException.ThrowIfNull(cshape);
             cshape.Base.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/");
             return Shape.TryGet(Api, cshape.Base);
         }
@@ -667,6 +669,7 @@ namespace Vintagestory.GameContent
                 modeldata.Rgba.Fill((byte)255);
                 modeldata.Flags = new int[4 * 4];
 
+                ArgumentNullException.ThrowIfNull(ingotRenderer);
                 var matrix = new Matrixf().Identity()
                                           .Translate(0.5f, 1 / 16f + (IsRightSideSelected ? ingotRenderer.LevelRight : ingotRenderer.LevelLeft) / 850f, 0.5f)
                                           .RotateX(90 * GameMath.DEG2RAD)
@@ -679,12 +682,14 @@ namespace Vintagestory.GameContent
             else if (SelectedShattered)
             {
                 var cshape = (SelectedMold?.Block ?? Block).Attributes["shatteredShape"].AsObject<CompositeShape>();
+                ArgumentNullException.ThrowIfNull(cshape);
+                ArgumentNullException.ThrowIfNull(capi);
                 cshape.Base.WithPathAppendixOnce(".json").WithPathPrefixOnce("shapes/");
                 capi.Tesselator.TesselateShape("shatteredmold", Shape.TryGet(Api, cshape.Base), out mesh, texPositionSource);
             }
             else
             {
-
+                ArgumentNullException.ThrowIfNull(capi);
                 var shape = Shape.TryGet(Api, "shapes/block/clay/mold/ingot.json");
                 capi.Tesselator.TesselateShape((SelectedMold?.Block ?? Block).Code.ToString(), shape, out mesh, texPositionSource);
             }
@@ -698,6 +703,13 @@ namespace Vintagestory.GameContent
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldForResolving)
         {
+            int previousQuantityMolds = QuantityMolds;
+            bool wasShatteredLeft = ShatteredLeft;
+            bool wasShatteredRight = ShatteredRight;
+            float previousMeshAngle = MeshAngle;
+            var previousMoldLeft = MoldLeft?.Block;
+            var previousMoldRight = MoldRight?.Block;
+
             base.FromTreeAttributes(tree, worldForResolving);
 
             ContentsLeft = tree.GetItemstack("contentsLeft");
@@ -727,7 +739,10 @@ namespace Vintagestory.GameContent
 
             UpdateIngotRenderer();
 
-            if (Api?.Side == EnumAppSide.Client)
+            // Fill levels and temperatures are handled by the separate ingot renderer.
+            if (Api?.Side == EnumAppSide.Client && (
+                previousQuantityMolds != QuantityMolds || wasShatteredLeft != ShatteredLeft || wasShatteredRight != ShatteredRight ||
+                previousMeshAngle != MeshAngle || previousMoldLeft != MoldLeft?.Block || previousMoldRight != MoldRight?.Block))
             {
                 GenMeshes();
                 Api.World.BlockAccessor.MarkBlockDirty(Pos);
@@ -814,7 +829,7 @@ namespace Vintagestory.GameContent
             MarkDirty(true);
         }
 
-        public void CoolNow(float amountRel)
+        public void CoolNow(float amountRel, OnStackToCool onStackToCoolCallback)
         {
             float leftbreakchance = Math.Max(0, amountRel - 0.6f) * Math.Max(TemperatureLeft - 250f, 0) / 5000f;
             float rightbreakchance = Math.Max(0, amountRel - 0.6f) * Math.Max(TemperatureRight - 250f, 0) / 5000f;

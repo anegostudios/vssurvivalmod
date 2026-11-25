@@ -1,5 +1,6 @@
 using System;
 using System.Text;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -11,9 +12,26 @@ using Vintagestory.API.Server;
 
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Plays random animation from predefined list of idle animations when entity isn't moving or mounted on another entity.
+    /// <br/>Uses the "idleanimations" code
+    /// </summary>
+    /// <example><code lang="json">
+    ///"behaviors": [
+    /// {
+    ///     "code": "idleanimations"
+    /// },
+    ///],
+    /// </code></example>
+    [DocumentAsJson]
     public class EntityBehaviorIdleAnimations : EntityBehavior
     {
         float secondsIdleAccum;
+
+        /// <summary>
+        /// Predefined list of idle animations that get played randomly when entity is idle
+        /// </summary>
+        [DocumentAsJson("Required", "", true)]
         string[] randomIdleAnimations;
 
         EntityAgent eagent;
@@ -41,7 +59,7 @@ namespace Vintagestory.GameContent
             if (!triesToMove && !eagent.Controls.IsFlying && !eagent.Controls.Gliding && eagent.RightHandItemSlot?.Empty == true && !eagent.Swimming && bhtiredness?.IsSleeping != true)
             {
                 secondsIdleAccum += dt;
-                if (secondsIdleAccum > 20 && eagent.World.Rand.NextDouble() < 0.004)
+                if (eagent.World.Rand.NextDouble() < 0.0015)
                 {
                     eagent.StartAnimation(randomIdleAnimations[eagent.World.Rand.Next(randomIdleAnimations.Length)]);
                     secondsIdleAccum = 0;

@@ -31,9 +31,9 @@ namespace Vintagestory.GameContent
             ModSystemBlockReinforcement bre = world.Api.ModLoader.GetModSystem<ModSystemBlockReinforcement>();
             if (bre.IsLockedForInteract(blockSel.Position, byPlayer))
             {
-                if (world.Side == EnumAppSide.Client)
+                if (world.Api is ICoreClientAPI capi)
                 {
-                    (world.Api as ICoreClientAPI).TriggerIngameError(this, "locked", Lang.Get("ingameerror-locked"));
+                    capi.TriggerIngameError(this, "locked", Lang.Get("ingameerror-locked"));
                 }
 
                 handling = EnumHandling.PreventSubsequent;
@@ -63,6 +63,34 @@ namespace Vintagestory.GameContent
                 return false;
             }
 
+            if (bed?.LockedByKey == true)
+            {
+                var handItemStack = byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack;
+                var capi = world.Api as ICoreClientAPI;
+                if (handItemStack?.Item is ItemDoorKey)
+                {
+                    var doorKeyRoomCode = handItemStack.Attributes.GetString("roomCode");
+                    var doorKeyId = handItemStack.Attributes.GetString("keyId");
+                    if (bed.RoomCode == doorKeyRoomCode && bed.KeyId == doorKeyId)
+                    {
+                        world.PlaySoundAt(new SoundAttributes("sounds/tool/padlock.ogg", false), byPlayer, byPlayer);
+                        bed.LockedByKey = false;
+                        blockEntity.MarkDirty();
+                        handling = EnumHandling.PreventSubsequent;
+                        return true;
+                    }
+
+                    capi?.TriggerIngameError(this, "wrongkey", Lang.Get("ingameerror-locked-wrongkey"));
+                    handling = EnumHandling.PreventSubsequent;
+                    return false;
+                }
+
+                capi?.TriggerIngameError(this, "locked", Lang.Get("ingameerror-locked"));
+
+                handling = EnumHandling.PreventSubsequent;
+                return false;
+            }
+
             var bedbl = blockEntity?.GetBehavior<BEBehaviorDoorBarLock>();
             if (bedbl != null)
             {
@@ -70,6 +98,5 @@ namespace Vintagestory.GameContent
             }
             return base.OnBlockInteractStart(world, byPlayer, blockSel, ref handling);
         }
-
     }
 }

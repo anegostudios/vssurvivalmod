@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,7 +6,6 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
-using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
@@ -15,6 +14,25 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
+    public class ItemSlotAuction : ItemSlotSurvival
+    {
+        public ItemSlotAuction(InventoryBase inventory) : base(inventory)
+        {
+            StorageType = EnumItemStorageFlags.General | EnumItemStorageFlags.Backpack | EnumItemStorageFlags.Outfit | EnumItemStorageFlags.Metallurgy | EnumItemStorageFlags.Jewellery | EnumItemStorageFlags.Alchemy | EnumItemStorageFlags.Agriculture;
+        }
+
+        public override bool CanHold(ItemSlot sourceSlot)
+        {
+            var bag = sourceSlot.Itemstack?.Collectible.GetCollectibleInterface<IHeldBag>() ?? null;
+
+            if (bag != null && !bag.IsEmpty(sourceSlot.Itemstack))
+            {
+                return false;
+            }
+            return base.CanHold(sourceSlot);
+        }
+    }
+
     public enum EnumAuctionState
     {
         Active = 0,
@@ -25,6 +43,9 @@ namespace Vintagestory.GameContent
 
     public class ModSystemAuction : ModSystem
     {
+        public const int PriceMax = 10_000;
+        public const int DurationWeeksMax = 25;
+        public const int DurationWeeksMin = 5;
         protected ICoreAPI api;
         protected ICoreServerAPI sapi;
         protected ICoreClientAPI capi;
@@ -44,20 +65,24 @@ namespace Vintagestory.GameContent
         public float debtClient;
 
         /// <summary>
-        /// For modders, change this value if you want to increase/reduce delivery costs
+        /// Loaded from worldconfig, multiplier for the delivery price.
         /// </summary>
         public float DeliveryPriceMul = 1f;
 
         /// <summary>
-        /// For modders, change this value if you want to increase auction times, does not affect cost
+        /// Loaded from worldconfig
         /// </summary>
-        public int DurationWeeksMul = 6;
+        public int DurationWeeksMul = 5;
 
         /// <summary>
         /// The % cut the trader takes from the profits (default is 0.1 which is 10%)
         /// </summary>
         public float SalesCutRate = 0.1f;
 
+        /// <summary>
+        /// The amount of auctions a player can have concurrently
+        /// </summary>
+        public int MaxAuctionsPerPlayer = 100;
 
 
         public int DeliveryCostsByDistance(Vec3d src, Vec3d dst)
@@ -98,8 +123,9 @@ namespace Vintagestory.GameContent
         public void loadPricingConfig()
         {
             DeliveryPriceMul = api.World.Config.GetFloat("auctionHouseDeliveryPriceMul", 1);
-            DurationWeeksMul = api.World.Config.GetInt("auctionHouseDurationWeeksMul", 3);
+            DurationWeeksMul = api.World.Config.GetInt("auctionHouseDurationWeeksMul", 5);
             SalesCutRate = api.World.Config.GetFloat("auctionHouseSalesCutRate", 0.1f);
+            MaxAuctionsPerPlayer = api.World.Config.GetInt("maxAuctionsPerPlayer", 100);
         }
 
         #region Client
@@ -245,14 +271,14 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public void DidEnterAuctionHouse()
+        public void DidEnterAuctionHouse(Entity traderEntity)
         {
-            clientCh.SendPacket(new AuctionActionPacket() { Action = EnumAuctionAction.EnterAuctionHouse });
+            clientCh.SendPacket(new AuctionActionPacket() { Action = EnumAuctionAction.EnterAuctionHouse, AtAuctioneerEntityId = traderEntity.EntityId });
         }
 
-        public void DidLeaveAuctionHouse()
+        public void DidLeaveAuctionHouse(Entity traderEntity)
         {
-            clientCh.SendPacket(new AuctionActionPacket() { Action = EnumAuctionAction.LeaveAuctionHouse });
+            clientCh.SendPacket(new AuctionActionPacket() { Action = EnumAuctionAction.LeaveAuctionHouse, AtAuctioneerEntityId = traderEntity.EntityId });
         }
 
         public void PlaceAuctionClient(Entity traderEntity, int price, int durationWeeks = 1)
@@ -319,7 +345,7 @@ namespace Vintagestory.GameContent
                 if (activeAuctions > 0) { sb.AppendLine(Lang.Get("{0} active auctions", activeAuctions)); }
                 if (soldAuctions > 0) { sb.AppendLine(Lang.Get("{0} sold auctions", soldAuctions)); }
                 if (expiredAuctions > 0) { sb.AppendLine(Lang.Get("{0} expired auctions", expiredAuctions)); }
-                if (enroutePurchasedAuctions > 0) { sb.AppendLine(Lang.Get("{0} purchased auctions en-route", readyPurchasedAuctions)); }
+                if (enroutePurchasedAuctions > 0) { sb.AppendLine(Lang.Get("{0} purchased auctions en-route", enroutePurchasedAuctions)); }
                 if (readyPurchasedAuctions > 0) { sb.AppendLine(Lang.Get("{0} purchased auctions ready for pick-up", readyPurchasedAuctions)); }
 
                 byPlayer.SendMessage(GlobalConstants.GeneralChatGroup, sb.ToString(), EnumChatType.Notification);
@@ -343,103 +369,152 @@ namespace Vintagestory.GameContent
             switch (pkt.Action)
             {
                 case EnumAuctionAction.EnterAuctionHouse:
+                {
+                    var auctioneer = sapi.World.GetEntityById(pkt.AtAuctioneerEntityId);
+                    if (!fromPlayer.IsInInteractionRangeOf(auctioneer, slack: 0)) return;
 
-                    if (!createAuctionSlotByPlayer.ContainsKey(fromPlayer.PlayerUID))
+                    InventoryGeneric ainv;
+                    if (!createAuctionSlotByPlayer.TryGetValue(fromPlayer.PlayerUID, out ainv))
                     {
-                        var ainv = createAuctionSlotByPlayer[fromPlayer.PlayerUID] = new InventoryGeneric(1, "auctionslot-" + fromPlayer.PlayerUID, sapi);
+                        ainv = createAuctionSlotByPlayer[fromPlayer.PlayerUID] = new InventoryGeneric(1, "auctionslot-" + fromPlayer.PlayerUID, sapi, (idx, inv) => new ItemSlotAuction(inv));
                         // a negative weight prevents the auction slot from being consider as a suitable slot when shift clicking an item in the hotbar, that is because the default weight is 0 and it checks for >= 0
                         // this one here is for good measure but the important one in on the client side in the GuiDialogTrader constructor
                         ainv.OnGetSuitability = (s, t, isMerge) => -1f;
                         ainv.OnInventoryClosed += (plr) => ainv.DropAll(plr.Entity.Pos.XYZ);
                     }
 
-                    fromPlayer.InventoryManager.OpenInventory(createAuctionSlotByPlayer[fromPlayer.PlayerUID]);
+                    fromPlayer.InventoryManager.OpenInventory(ainv);
 
                     sendAuctions(auctions.Values, null, true, fromPlayer);
 
                     break;
+                }
+
                 case EnumAuctionAction.LeaveAuctionHouse:
+                    // No need to check IsInInteractionRangeOf here, this will only work if the other events were in range either way
+                    // and we might be just outside the range when this gets received because hte player is currently walking away.
                     Event_PlayerDisconnect(fromPlayer);
                     break;
+
                 case EnumAuctionAction.PurchaseAuction:
-                    {
-                        var auctioneerEntity = sapi.World.GetEntityById(pkt.AtAuctioneerEntityId);
-                        PurchaseAuction(pkt.AuctionId, fromPlayer.Entity, auctioneerEntity, pkt.WithDelivery, out string failureCode);
-                        serverCh.SendPacket(new AuctionActionResponsePacket() { Action = pkt.Action, AuctionId = pkt.AuctionId, ErrorCode = failureCode }, fromPlayer);
-                        break;
-                    }
+                {
+                    var auctioneer = sapi.World.GetEntityById(pkt.AtAuctioneerEntityId);
+                    if (!fromPlayer.IsInInteractionRangeOf(auctioneer, slack: 0)) return;
+
+                    PurchaseAuction(pkt.AuctionId, fromPlayer.Entity, auctioneer, pkt.WithDelivery, out string failureCode);
+                    serverCh.SendPacket(new AuctionActionResponsePacket() { Action = pkt.Action, AuctionId = pkt.AuctionId, ErrorCode = failureCode }, fromPlayer);
+                    break;
+                }
+
                 case EnumAuctionAction.RetrieveAuction:
+                {
+                    var auctioneer = sapi.World.GetEntityById(pkt.AtAuctioneerEntityId);
+                    if (!fromPlayer.IsInInteractionRangeOf(auctioneer, slack: 0)) return;
+
+                    auctions.TryGetValue(pkt.AuctionId, out var auction);
+                    var state = auction?.State;
+                    ItemStack stack = RetrieveAuction(pkt.AuctionId, pkt.AtAuctioneerEntityId, fromPlayer.Entity, out string failureCode);
+                    if (stack != null)
                     {
-                        ItemStack stack = RetrieveAuction(pkt.AuctionId, pkt.AtAuctioneerEntityId, fromPlayer.Entity, out string failureCode);
-                        if (stack != null)
+                        var amount = stack.StackSize;
+                        if (!fromPlayer.InventoryManager.TryGiveItemstack(stack, true))
                         {
-                            if (!fromPlayer.InventoryManager.TryGiveItemstack(stack, true))
-                            {
-                                sapi.World.SpawnItemEntity(stack, fromPlayer.Entity.Pos.XYZ);
-                            }
-
-                            sapi.World.Logger.Audit("{0} Got 1x{1} from Auction at {2}.",
-                                fromPlayer.PlayerName,
-                                stack.Collectible.Code,
-                                fromPlayer.Entity.Pos
-                            );
+                            sapi.World.SpawnItemEntity(stack, fromPlayer.Entity.Pos.XYZ);
                         }
-                        serverCh.SendPacket(new AuctionActionResponsePacket() { Action = pkt.Action, AuctionId = pkt.AuctionId, ErrorCode = failureCode, MoneyReceived = stack?.Collectible.Attributes?["currency"].Exists == true }, fromPlayer);
 
+                        string action;
+                        bool sold = state is EnumAuctionState.Sold or EnumAuctionState.SoldRetrieved;
+                        if (state == EnumAuctionState.Expired)
+                        {
+                            action = "Reclaimed selling Goods";
+                        }
+                        else if (sold && auction.SellerUid == fromPlayer.PlayerUID)
+                        {
+                            action = "Collected funds";
+                        }
+                        else if (sold && auction.SellerUid != fromPlayer.PlayerUID)
+                        {
+                            action = "Retrieved";
+                        }
+                        else
+                        {
+                            action = "Got";
+                        }
+                        sapi.World.Logger.Audit("{0} {1} {2}x{3} from {4} Auction at {5} Id: {6}.",
+                            fromPlayer.PlayerName,
+                            action,
+                            amount,
+                            stack.Collectible.Code,
+                            state,
+                            fromPlayer.Entity.Pos.AsBlockPos,
+                            pkt.AuctionId
+                        );
+                    }
+                    serverCh.SendPacket(new AuctionActionResponsePacket() { Action = pkt.Action, AuctionId = pkt.AuctionId, ErrorCode = failureCode, MoneyReceived = stack?.Collectible.Attributes?["currency"].Exists == true }, fromPlayer);
+                    break;
+                }
 
+                case EnumAuctionAction.PlaceAuction:
+                {
+                    var auctioneer = sapi.World.GetEntityById(pkt.AtAuctioneerEntityId);
+                    if (!fromPlayer.IsInInteractionRangeOf(auctioneer, slack: 0)) return;
 
+                    if (!createAuctionSlotByPlayer.TryGetValue(fromPlayer.PlayerUID, out var inv)) break;
+
+                    if (inv.Empty)
+                    {
+                        serverCh.SendPacket(new AuctionActionResponsePacket() { Action = pkt.Action, AuctionId = pkt.AuctionId, ErrorCode = "emptyauctionslot" }, fromPlayer);
                         break;
                     }
-                case EnumAuctionAction.PlaceAuction:
 
-                    if (createAuctionSlotByPlayer.TryGetValue(fromPlayer.PlayerUID, out var inv))
+                    if (pkt.Price < 1)
                     {
-                        if (inv.Empty)
-                        {
-                            serverCh.SendPacket(new AuctionActionResponsePacket() { Action = pkt.Action, AuctionId = pkt.AuctionId, ErrorCode = "emptyauctionslot" }, fromPlayer);
-                            break;
-                        }
-
-                        pkt.DurationWeeks = Math.Max(1, pkt.DurationWeeks);
-
-                        var auctioneerEntity = sapi.World.GetEntityById(pkt.AtAuctioneerEntityId);
-                        PlaceAuction(inv[0], inv[0].StackSize, pkt.Price, pkt.DurationWeeks * 7 * 24, pkt.DurationWeeks / DurationWeeksMul, fromPlayer.Entity, auctioneerEntity, out string failureCode);
-
-                        if (failureCode != null)
-                        {
-                            inv.DropAll(fromPlayer.Entity.Pos.XYZ);
-                        }
-
-                        auctionsData.DebtToTraderByPlayer.TryGetValue(fromPlayer.PlayerUID, out float debt);
-
-                        serverCh.SendPacket(new AuctionActionResponsePacket() { Action = pkt.Action, AuctionId = pkt.AuctionId, ErrorCode = failureCode }, fromPlayer);
-                        serverCh.SendPacket(new DebtPacket() { TraderDebt = debt }, fromPlayer);
+                        serverCh.SendPacket(new AuctionActionResponsePacket() { Action = pkt.Action, AuctionId = pkt.AuctionId, ErrorCode = "atleast1gear" }, fromPlayer);
+                        break;
                     }
+
+                    if (pkt.Price > PriceMax)
+                    {
+                        serverCh.SendPacket(new AuctionActionResponsePacket() { Action = pkt.Action, AuctionId = pkt.AuctionId, ErrorCode = "lessthan10000gears" }, fromPlayer);
+                        break;
+                    }
+
+                    pkt.DurationWeeks = Math.Clamp(pkt.DurationWeeks, DurationWeeksMin, DurationWeeksMax);
+                    PlaceAuction(inv[0], inv[0].StackSize, pkt.Price, pkt.DurationWeeks * 7 * 24, pkt.DurationWeeks / DurationWeeksMul, fromPlayer.Entity, auctioneer, out string failureCode);
+
+                    if (failureCode != null)
+                    {
+                        inv.DropAll(fromPlayer.Entity.Pos.XYZ);
+                    }
+
+                    auctionsData.DebtToTraderByPlayer.TryGetValue(fromPlayer.PlayerUID, out float debt);
+
+                    serverCh.SendPacket(new AuctionActionResponsePacket() { Action = pkt.Action, AuctionId = pkt.AuctionId, ErrorCode = failureCode }, fromPlayer);
+                    serverCh.SendPacket(new DebtPacket() { TraderDebt = debt }, fromPlayer);
 
                     break;
+                }
             }
         }
 
         /// <summary>
-        /// Returns all not yet expired auctions
-        /// </summary>
-        /// <returns></returns>
-        public List<Auction> GetActiveAuctions()
-        {
-            return auctions.Values.Where(ac => ac.State == EnumAuctionState.Active || ac.State == EnumAuctionState.Sold).ToList();
-        }
-
-        /// <summary>
-        /// Returns all own auctions, active or expired
+        /// Returns own auctions which are not yet bought.
+        /// Bought auctions will count towards the buyers limit
         /// </summary>
         /// <param name="player"></param>
         /// <returns></returns>
-        public List<Auction> GetAuctionsFrom(IPlayer player)
+        public List<Auction> GetAuctionsForLimitFrom(IPlayer player)
         {
             List<Auction> auctions = new List<Auction>();
             foreach (var auction in this.auctions.Values)
             {
-                if (auction.SellerName == player.PlayerUID)
+                if (auction.State != EnumAuctionState.Sold &&
+                    auction.SellerUid == player.PlayerUID)
+                {
+                    auctions.Add(auction);
+                }
+                if (auction.State == EnumAuctionState.Sold &&
+                    auction.BuyerUid == player.PlayerUID)
                 {
                     auctions.Add(auction);
                 }
@@ -483,7 +558,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            if (GetAuctionsFrom((sellerEntity as EntityPlayer).Player).Count > 30)
+            if (GetAuctionsForLimitFrom(((EntityPlayer)sellerEntity).Player).Count >= MaxAuctionsPerPlayer)
             {
                 failureCode = "toomanyauctions";
                 return;
@@ -504,14 +579,15 @@ namespace Vintagestory.GameContent
 
 
             failureCode = null;
-            InventoryTrader.DeductFromEntity(sapi, sellerEntity, depositCost);
-            (auctioneerEntity as EntityTradingHumanoid).Inventory?.GiveToTrader(depositCost);
-
-            long id = ++auctionsData.nextAuctionId;
 
             string sellerName = sellerEntity.GetBehavior<EntityBehaviorNameTag>()?.DisplayName;
             if (sellerName == null) sellerName = sellerEntity.Properties.Code.ToShortString();
+            long id = ++auctionsData.nextAuctionId;
 
+            sapi.Logger.Audit($"{sellerName} placed an auction of {quantity}x{slot.Itemstack.Collectible.Code} for {price} RG, deposit {depositCost} RG lasting {durationHours}h Id: {id}");
+
+            InventoryTrader.DeductFromEntity(sapi, sellerEntity, depositCost);
+            (auctioneerEntity as EntityTradingHumanoid).Inventory?.GiveToTrader(depositCost);
 
             string uid = (sellerEntity as EntityPlayer)?.PlayerUID ?? "";
             auctionsData.DebtToTraderByPlayer.TryGetValue(uid, out float debt);
@@ -553,7 +629,7 @@ namespace Vintagestory.GameContent
                 }
 
                 // Already purchased
-                if (auction.BuyerName != null)
+                if (auction.BuyerName != null || auction.State != EnumAuctionState.Active)
                 {
                     failureCode = "alreadypurchased";
                     return;
@@ -564,17 +640,19 @@ namespace Vintagestory.GameContent
 
                 int totalcost = auction.Price + deliveryCosts;
 
-                if (monehs < totalcost)
+                if (monehs < totalcost || totalcost < 0)
                 {
                     failureCode = "notenoughgears";
                     return;
                 }
 
-                InventoryTrader.DeductFromEntity(sapi, buyerEntity, totalcost);
-                (auctioneerEntity as EntityTradingHumanoid).Inventory?.GiveToTrader((int)(auction.Price * SalesCutRate + deliveryCosts));
-
                 string buyerName = buyerEntity.GetBehavior<EntityBehaviorNameTag>()?.DisplayName;
                 if (buyerName == null) buyerName = buyerEntity.Properties.Code.ToShortString();
+
+                sapi.Logger.Audit($"{buyerName} bought an auction of {auction.ItemStack.StackSize}x{auction.ItemStack.Collectible.Code} for {totalcost} RG from {auction.SellerName} Id: {auction.AuctionId}");
+
+                InventoryTrader.DeductFromEntity(sapi, buyerEntity, totalcost);
+                (auctioneerEntity as EntityTradingHumanoid).Inventory?.GiveToTrader((int)(auction.Price * SalesCutRate + deliveryCosts));
 
                 auction.BuyerName = buyerName;
                 auction.WithDelivery = withDelivery;
@@ -594,17 +672,17 @@ namespace Vintagestory.GameContent
             return;
         }
 
-        public void DeleteActiveAuction(long auctionId)
-        {
-            auctions.Remove(auctionId);
-            sendAuctions(null, new long[] { auctionId });
-        }
-
         public ItemStack RetrieveAuction(long auctionId, long atAuctioneerEntityId, EntityPlayer reqEntity, out string failureCode)
         {
             if (!auctions.TryGetValue(auctionId, out var auction))
             {
                 failureCode = "nosuchauction";
+                return null;
+            }
+
+            if (!auction.WithDelivery && auction.SrcAuctioneerEntityId != atAuctioneerEntityId && auction.SrcAuctioneerEntityPos.DistanceTo(reqEntity.Pos.XYZ) > 100)
+            {
+                failureCode = "wrongtrader";
                 return null;
             }
 
@@ -630,12 +708,6 @@ namespace Vintagestory.GameContent
                     auction.RetrievableTotalHours = sapi.World.Calendar.TotalHours + 6;
                     failureCode = null;
                     sendAuctions(new Auction[] { auction }, null);
-                    return null;
-                }
-
-                if (!auction.WithDelivery && (auction.SrcAuctioneerEntityId != atAuctioneerEntityId && auction.SrcAuctioneerEntityPos.DistanceTo(reqEntity.Pos.XYZ) > 100))
-                {
-                    failureCode = "wrongtrader";
                     return null;
                 }
 

@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -20,8 +20,6 @@ namespace Vintagestory.GameContent
 
         public override void OnLoaded(ICoreAPI api)
         {
-            CanStep = false; // Prevent creatures from walking stalagmites/-ctites
-
             ThicknessInt = int.Parse(Variant["thickness"]);
             base.OnLoaded(api);
         }
@@ -79,7 +77,7 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < 5 + worldGenRand.NextInt(25); i++)
             {
                 if (pos.Y < 15) continue; // Too hot for stalactites
-                if (modSys != null && modSys.GetIntersectingStructure(pos, ModStdWorldGen.SkipStalagHashCode) != null) continue;
+                if (modSys != null && modSys.GetIntersectingStructure(pos.X, pos.Z, ModStdWorldGen.StalagHashCode) != null) continue;
 
                 didplace |= TryGenStalag(blockAccessor, pos, worldGenRand.NextInt(4), worldGenRand);
                 pos.X += worldGenRand.NextInt(9) - 4;

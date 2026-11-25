@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -36,8 +36,10 @@ namespace Vintagestory.GameContent
         public Dictionary<long, Cuboidf[]> SelBoxesByHashkey { get; set; } = null;
         public AssetLocation ShapePath { get; set; }
         public Shape ShapeResolved { get; set; }
+        public Shape ShapeLOD2Resolved { get; set; }
         public string HashKey => Code;
         public bool RandomizeYSize { get; set; } = true;
+        public bool CreativeInv { get; set; } = true;
 
         [Obsolete("Use RandomizeYSize instead")]
         public bool Randomize
@@ -52,6 +54,8 @@ namespace Vintagestory.GameContent
         public string TextureFlipGroupCode { get; set; }
         public Dictionary<string, bool> SideAttachable { get; set; }
         public BlockDropItemStack[] Drops { get; set; }
+
+        public EnumBlockMaterial Material { get; set; } = EnumBlockMaterial.Stone;
         public int Reparability { get; set; }
 
         public string HeldReadyAnim { get; set; }
@@ -96,7 +100,8 @@ namespace Vintagestory.GameContent
                 TextureFlipGroupCode = this.TextureFlipGroupCode,
                 SideAttachable = this.SideAttachable?.ToDictionary(kv => kv.Key, kv => kv.Value),
                 Drops = this.Drops?.Select(drop => drop.Clone()).ToArray(),
-                Reparability = this.Reparability
+                Reparability = this.Reparability,
+                Material = Material
             };
         }
     }
@@ -114,7 +119,6 @@ namespace Vintagestory.GameContent
         public override void OnLoaded(ICoreAPI api)
         {
             base.OnLoaded(api);
-
             api.Event.RegisterEventBusListener(onExpClang, 0.5, "expclang");
         }
 
@@ -167,7 +171,15 @@ namespace Vintagestory.GameContent
                         ct.ShapePath.WithPathPrefixOnce(basePath).WithPathAppendixOnce(".json");
                     }
                 }
-                
+
+                if (ct.Drops != null)
+                {
+                    foreach (var drop in ct.Drops)
+                    {
+                        drop.Resolve(api.World, "clutter block drop", Code);
+                    }
+                }
+
                 var jstack = new JsonItemStack()
                 {
                     Code = this.Code,
@@ -176,7 +188,11 @@ namespace Vintagestory.GameContent
                 };
 
                 jstack.Resolve(api.World, ClassType + " type");
-                stacks.Add(jstack);
+
+                if (ct.CreativeInv)
+                {
+                    stacks.Add(jstack);
+                }
             }
 
             this.CreativeInventoryStacks = new CreativeTabAndStackList[]
@@ -272,6 +288,16 @@ namespace Vintagestory.GameContent
             return dsc.ToString();
         }
 
+
+
+
+        public override ItemStack[] GetDrops(IWorldAccessor world, BlockPos pos, IPlayer byPlayer, float dropQuantityMultiplier = 1)
+        {
+            var bect = GetBEBehavior<BEBehaviorShapeFromAttributes>(pos);
+            var cprops = GetTypeProps(bect?.Type, null, bect);
+
+            return cprops?.Drops?.Select(drop => drop.GetNextItemStack(dropQuantityMultiplier)).ToArray() ?? base.GetDrops(world, pos, byPlayer, dropQuantityMultiplier);
+        }
     }
 
 }

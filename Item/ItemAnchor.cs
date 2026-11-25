@@ -1,9 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
@@ -21,7 +22,7 @@ namespace Vintagestory.GameContent
             loweredShape = Attributes["loweredAnchorShape"].AsObject<CompositeShape>();
         }
 
-        public CompositeShape GetAttachedShape(ItemStack stack, string slotCode)
+        public CompositeShape GetAttachedShape(ItemStack stack, Entity onentity, string slotCode)
         {
             return stack.Attributes.GetBool("lowered") ? loweredShape : Shape;
         }
@@ -56,7 +57,7 @@ namespace Vintagestory.GameContent
         public void OnEntityDespawn(ItemSlot itemslot, int slotIndex, Entity onEntity, EntityDespawnData despawn) { }
 
 
-        public void OnReceivedClientPacket(ItemSlot itemslot, int slotIndex, Entity onEntity, IServerPlayer player, int packetid, byte[] data, ref EnumHandling handled, Action onRequireSave) { }
+        public void OnReceivedClientPacket(ItemSlot itemslot, int slotIndex, Entity onEntity, IServerPlayer player, int packetId, SerializedData packetData, ref EnumHandling handled, ref Entity.CachedAccessPerms perms, Action onRequireSave) { }
 
         public bool OnTryAttach(ItemSlot itemslot, int slotIndex, Entity toEntity) { return true; }
 

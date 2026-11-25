@@ -355,7 +355,7 @@ namespace Vintagestory.ServerMods
             Block targetBlock = editable ? chiselBlock : microblock;
 
             var ba = sapi.World.BlockAccessor;
-
+            var modSystemBlockReinforcement = sapi.ModLoader.GetModSystem<ModSystemBlockReinforcement>();
 
             int cnt = WalkMicroBlocks(startPos, endPos, (be) =>
             {
@@ -363,12 +363,17 @@ namespace Vintagestory.ServerMods
                 Block block = ba.GetBlock(pos);
                 if (block is BlockMicroBlock && block.Id != targetBlock.Id)
                 {
+                    var reinforcment = modSystemBlockReinforcement?.GetReinforcment(pos);
                     TreeAttribute tree = new TreeAttribute();
                     be.ToTreeAttributes(tree);
                     sapi.World.BlockAccessor.SetBlock(targetBlock.Id, pos);
 
                     be = sapi.World.BlockAccessor.GetBlockEntity(pos) as BlockEntityMicroBlock;
                     be.FromTreeAttributes(tree, sapi.World);
+                    if (reinforcment != null)
+                    {
+                        modSystemBlockReinforcement.SetReinforcement(reinforcment, pos);
+                    }
 
                     return true;
                 }

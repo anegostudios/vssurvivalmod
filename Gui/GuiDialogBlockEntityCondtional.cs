@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Client;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
@@ -129,14 +129,7 @@ namespace Vintagestory.GameContent
             ICommandArgumentParser test = s.StartsWith("isBlock") ? new IsBlockArgParser("cond", capi, true) : new EntitiesArgParser("test", capi, true);
             TextCommandCallingArgs packedArgs = new TextCommandCallingArgs()
             {
-                Caller = new Caller()
-                {
-                    Type = EnumCallerType.Console,
-                    CallerRole = "admin",
-                    CallerPrivileges = new string[] { "*" },
-                    FromChatGroupId = GlobalConstants.ConsoleGroup,
-                    Pos = new Vec3d(0.5, 0.5, 0.5)
-                },
+                Caller = Caller.FromConsole(pos: new Vec3d(0.5, 0.5, 0.5)),
                 RawArgs = new CmdArgs(s)
             };
             EnumParseResult result = test.TryProcess(packedArgs);

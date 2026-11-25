@@ -2,6 +2,7 @@ using Newtonsoft.Json;
 using ProtoBuf;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -17,7 +18,7 @@ using Vintagestory.ServerMods;
 
 namespace Vintagestory.GameContent
 {
-    
+
     public class MobExtraSpawnsTemp
     {
         public TempStormMobConfig temporalStormSpawns;
@@ -67,7 +68,7 @@ namespace Vintagestory.GameContent
         }
     }
 
-    
+
 
     public enum EnumTempStormStrength
     {
@@ -88,17 +89,34 @@ namespace Vintagestory.GameContent
         public string Waning;
     }
 
-    [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
+    [ProtoContract]
     public class TemporalStormRunTimeData
     {
+        [ProtoMember(6), DefaultValue("default")]
         public string spawnPatternCode="default";
-        public bool nowStormActive;       
+
+        [ProtoMember(4)]
+        public bool nowStormActive;
+
+        [ProtoMember(8), DefaultValue(99)]
         public int stormDayNotify = 99;
+
+        [ProtoMember(9)]
         public float stormGlitchStrength;
+
+        [ProtoMember(7)]
         public double stormActiveTotalDays = 0;
+
+        [ProtoMember(3), DefaultValue(5)]
         public double nextStormTotalDays = 5;
+
+        [ProtoMember(2)]
         public EnumTempStormStrength nextStormStrength = 0;
+
+        [ProtoMember(1)]
         public double nextStormStrDouble;
+
+        [ProtoMember(5)]
         public Dictionary<string, int> rareSpawnCount;
     }
 
@@ -226,7 +244,7 @@ namespace Vintagestory.GameContent
                 .WithDescription("Tells you the amount of days until the next storm")
                 .RequiresPrivilege(Privilege.controlserver)
                 .HandleWith(OnCmdNextStorm)
-                
+
                 .BeginSubCommand("now")
                     .WithDescription("Start next temporal storm now")
                     .HandleWith(_ =>
@@ -377,7 +395,7 @@ namespace Vintagestory.GameContent
                     serverChannel.BroadcastPacket(data);
                     return;
                 }
-                
+
                 if (!data.nowStormActive)
                 {
                     data.stormActiveTotalDays = api.World.Calendar.TotalDays + stormActiveDays;
@@ -434,6 +452,7 @@ namespace Vintagestory.GameContent
         private void prepareNextStorm()
         {
             if (config == null) return;
+            if (mobConfig == null) return;
 
             double addStrength = Math.Min(config.StrengthIncreaseCap, config.StrengthIncrease * api.World.Calendar.TotalDays / config.Frequency.avg);
 
@@ -504,7 +523,7 @@ namespace Vintagestory.GameContent
         private void trySpawnForPlayer(IPlayer plr, int range, float stormStr, EntityPartitioning part)
         {
             Vec3d spawnPos = new Vec3d();
-            BlockPos spawnPosi = new BlockPos();
+            BlockPos spawnPosi = new BlockPos(Dimensions.NormalWorld);
 
             var rareSpawns = mobConfig.rareSpawns.Variants.Shuffle(api.World.Rand);
             var spawnPattern = mobConfig.spawnsByStormStrength.spawnPatterns[data.spawnPatternCode];
@@ -514,7 +533,7 @@ namespace Vintagestory.GameContent
             Dictionary<string, int> rareSpawnCounts = new Dictionary<string, int>();
             Dictionary<string, int> mainSpawnCountsByGroup = new Dictionary<string, int>();
 
-            var plrPos = plr.Entity.ServerPos.XYZ;
+            var plrPos = plr.Entity.Pos.XYZ;
             part.WalkEntities(plrPos, range + 30, (e) =>
             {
                 foreach (var vg in variantGroups)
@@ -530,8 +549,8 @@ namespace Vintagestory.GameContent
                 {
                     if (rareSpawns[i].Code.Equals(e.Code)) {
                         rareSpawnCounts.TryGetValue(rareSpawns[i].GroupCode, out int cnt);
-                        rareSpawnCounts[rareSpawns[i].GroupCode] = cnt + 1; 
-                        break; 
+                        rareSpawnCounts[rareSpawns[i].GroupCode] = cnt + 1;
+                        break;
                     }
                 }
                 return true;
@@ -592,13 +611,14 @@ namespace Vintagestory.GameContent
                         spawnPos.Set((int)plrPos.X + rndx + 0.5, (int)plrPos.Y + rndy + 0.001, (int)plrPos.Z + rndz + 0.5);
                         spawnPosi.Set((int)spawnPos.X, (int)spawnPos.Y, (int)spawnPos.Z);
 
-                        while (api.World.BlockAccessor.GetBlock(spawnPosi.X, spawnPosi.Y - 1, spawnPosi.Z).Id == 0 && spawnPos.Y > 0)
+                        while (api.World.BlockAccessor.GetBlockBelow(spawnPosi).Id == 0)
                         {
                             spawnPosi.Y--;
                             spawnPos.Y--;
+                            if (spawnPos.Y <= 0) break;
                         }
 
-                        if (!api.World.BlockAccessor.IsValidPos((int)spawnPos.X, (int)spawnPos.Y, (int)spawnPos.Z)) continue;
+                        if (spawnPos.Y <= 0 || !api.World.BlockAccessor.IsValidPos(spawnPosi)) continue;
                         Cuboidf collisionBox = type.SpawnCollisionBox.OmniNotDownGrowBy(0.1f);
                         if (collisionTester.IsColliding(api.World.BlockAccessor, collisionBox, spawnPos, false)) continue;
 
@@ -616,10 +636,9 @@ namespace Vintagestory.GameContent
             EntityAgent agent = entity as EntityAgent;
             if (agent != null) agent.HerdId = herdid;
 
-            entity.ServerPos.SetPosWithDimension(spawnPosition);
-            entity.ServerPos.SetYaw((float)api.World.Rand.NextDouble() * GameMath.TWOPI);
-            entity.Pos.SetFrom(entity.ServerPos);
-            entity.PositionBeforeFalling.Set(entity.ServerPos.X, entity.ServerPos.Y, entity.ServerPos.Z);
+            entity.Pos.SetPosWithDimension(spawnPosition);
+            entity.Pos.SetYaw((float)api.World.Rand.NextDouble() * GameMath.TWOPI);
+            entity.PositionBeforeFalling.Set(entity.Pos.X, entity.Pos.Y, entity.Pos.Z);
 
             entity.Attributes.SetString("origin", "timedistortion");
 
@@ -662,13 +681,15 @@ namespace Vintagestory.GameContent
                             break;
                         }
                     }
+                    if (index != -1) break;
                 }
 
                 if (index == -1) return true;
 
                 EntityProperties[] resolvedVariantGroups = null;
+
                 // Get Target group
-                var spawnPattern = mobConfig.spawnsByStormStrength.spawnPatterns[data.spawnPatternCode];
+                var spawnPattern = mobConfig.spawnsByStormStrength.spawnPatterns[data.stormActiveTotalDays > 0 ? data.spawnPatternCode : "default"];
                 float sumWeight = spawnPattern.GroupWeights.Sum(w => w.Value);
                 var rndval = sapi.World.Rand.NextDouble() * sumWeight;
                 foreach (var w in spawnPattern.GroupWeights)
@@ -677,6 +698,7 @@ namespace Vintagestory.GameContent
                     if (rndval <= 0)
                     {
                         resolvedVariantGroups = mobConfig.spawnsByStormStrength.resolvedVariantGroups[w.Key];
+                        break;
                     }
                 }
 
@@ -707,7 +729,7 @@ namespace Vintagestory.GameContent
                 if (worldConfigStorminess != null && configs.ContainsKey(worldConfigStorminess))
                 {
                     config = configs[worldConfigStorminess];
-                } else 
+                } else
                 {
                     string playstyle = sapi.WorldManager.SaveGame.PlayStyle;
                     if (playstyle == "surviveandbuild" || playstyle == "wildernesssurvival")
@@ -721,7 +743,15 @@ namespace Vintagestory.GameContent
 
                 sapi.Event.OnEntityDeath += Event_OnEntityDeath;
 
-                mobConfig = sapi.Assets.Get("config/mobextraspawns.json").ToObject<MobExtraSpawnsTemp>().temporalStormSpawns;
+                var asset = sapi.Assets.TryGet("config/mobextraspawns.json");
+                if (asset == null) {
+                    sapi.Logger.Warning("config/mobextraspawns.json file missing. Temporal stability system will be disabled.");
+                    stormsEnabled = false;
+                    temporalStabilityEnabled = false;
+                    return;
+                }
+
+                mobConfig = asset.ToObject<MobExtraSpawnsTemp>().temporalStormSpawns;
                 var rdi = mobConfig.spawnsByStormStrength.resolvedVariantGroups = new Dictionary<string, EntityProperties[]>();
 
                 foreach (var val in mobConfig.spawnsByStormStrength.variantGroups)
@@ -808,7 +838,7 @@ namespace Vintagestory.GameContent
                     }
                 }
 
-                double sqdist = byPlayer.Entity.ServerPos.SquareDistanceTo(spawnPosition);
+                double sqdist = byPlayer.Entity.Pos.SquareDistanceTo(spawnPosition);
 
                 // Force a maximum distance
                 if (mod < 0.5)
@@ -822,7 +852,7 @@ namespace Vintagestory.GameContent
 
             if (sc.MinLightLevel > herelightLevel || sc.MaxLightLevel < herelightLevel) return false;
 
-            return byPlayer.Entity.ServerPos.SquareDistanceTo(spawnPosition) > sc.MinDistanceToPlayer * sc.MinDistanceToPlayer;
+            return byPlayer.Entity.Pos.SquareDistanceTo(spawnPosition) > sc.MinDistanceToPlayer * sc.MinDistanceToPlayer;
         }
 
         private float NearestRiftDistance(Vec3d pos)
@@ -857,7 +887,7 @@ namespace Vintagestory.GameContent
             noiseval = GameMath.Clamp(noiseval, 0, 1.5f);
 
             float extraStr = 1.5f * GetGlitchEffectExtraStrength();
-            
+
             var stability = GameMath.Clamp(noiseval - extraStr, 0, 1.5f);
 
             if (OnGetTemporalStability != null)

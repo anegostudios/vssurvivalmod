@@ -1,7 +1,8 @@
-﻿using System.IO;
+using System.IO;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
 
@@ -30,7 +31,6 @@ namespace Vintagestory.GameContent
         };
 
         public EntityTalkUtil talkUtil;
-        EntityBehaviorConversable ConversableBh => GetBehavior<EntityBehaviorConversable>();
 
 
         public string Personality
@@ -47,7 +47,7 @@ namespace Vintagestory.GameContent
 
         public EntityTrader()
         {
-            AnimManager = new PersonalizedAnimationManager();
+            AnimManager = new PersonalizedAnimationManager(this);
         }
 
         public override void Initialize(EntityProperties properties, ICoreAPI api, long InChunkIndex3d)
@@ -76,18 +76,21 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void OnReceivedServerPacket(int packetid, byte[] data)
+        public override void OnReceivedServerPacket(int packetId, SerializedData packetData)
         {
-            base.OnReceivedServerPacket(packetid, data);
+            base.OnReceivedServerPacket(packetId, packetData);
 
-            if (packetid == (int)EntityServerPacketId.Hurt)
+            switch((EntityServerPacketId)packetId)
             {
-                if (!Alive) return;
-                talkUtil.Talk(EnumTalkType.Hurt);
-            }
-            if (packetid == (int)EntityServerPacketId.Death)
-            {
-                talkUtil.Talk(EnumTalkType.Death);
+                case EntityServerPacketId.Hurt:
+                    if (!Alive) return;
+                    talkUtil.Talk(EnumTalkType.Hurt);
+                    break;
+
+
+                case EntityServerPacketId.Death:
+                    talkUtil.Talk(EnumTalkType.Death);
+                    break;
             }
         }
 
@@ -97,10 +100,21 @@ namespace Vintagestory.GameContent
         {
             base.OnGameTick(dt);
 
-
-            if (Alive && AnimManager.ActiveAnimationsByAnimCode.Count == 0)
+            if (Alive)
             {
-                AnimManager.StartAnimation(new AnimationMetaData() { Code = "idle", Animation = "idle", EaseOutSpeed = 10000, EaseInSpeed = 10000 });
+                bool almostDone = true;
+                if (AnimManager.Animator != null)
+                {
+                    foreach (var anim in AnimManager.Animator.Animations)
+                    {
+                        if (anim.Active) almostDone &= anim.AnimProgress >= 0.95f;
+                    }
+                }
+
+                if (almostDone)
+                {
+                    AnimManager.StartAnimation(new AnimationMetaData() { Code = "idle", Animation = "idle", EaseOutSpeed = 10, EaseInSpeed = 10 });
+                }
             }
 
             if (World.Side == EnumAppSide.Client) {
@@ -109,9 +123,9 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override void FromBytes(BinaryReader reader, bool forClient)
+        public override void FromBytes(ref BinarySpanReader reader, bool forClient)
         {
-            base.FromBytes(reader, forClient);
+            base.FromBytes(ref reader, forClient);
             (AnimManager as PersonalizedAnimationManager).Personality = this.Personality;
         }
 
@@ -122,13 +136,13 @@ namespace Vintagestory.GameContent
 
             if (Attributes.HasAttribute("spawnX"))
             {
-                ServerPos.X = Attributes.GetDouble("spawnX");
-                ServerPos.Y = Attributes.GetDouble("spawnY");
-                ServerPos.Z = Attributes.GetDouble("spawnZ");
+                Pos.X = Attributes.GetDouble("spawnX");
+                Pos.Y = Attributes.GetDouble("spawnY");
+                Pos.Z = Attributes.GetDouble("spawnZ");
             }
         }
 
-        public override void PlayEntitySound(string type, IPlayer dualCallByPlayer = null, bool randomizePitch = true, float range = 24)
+        public override void PlayEntitySound(string type, IPlayer dualCallByPlayer = null)
         {
             if (type == "hurt" && World.Side == EnumAppSide.Server)
             {
@@ -141,7 +155,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
-            base.PlayEntitySound(type, dualCallByPlayer, randomizePitch, range);
+            base.PlayEntitySound(type, dualCallByPlayer);
         }
     }
 }

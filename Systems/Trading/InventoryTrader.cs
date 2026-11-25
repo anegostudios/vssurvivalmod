@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Vintagestory.API.Common;
@@ -112,6 +112,11 @@ namespace Vintagestory.GameContent
 
         public override object ActivateSlot(int slotId, ItemSlot mouseSlot, ref ItemStackMoveOperation op)
         {
+            if (traderEntity.WatchedAttributes.GetString("tradingPlayerUID") != op.ActingPlayer.PlayerUID)
+            {
+                return null;
+            }
+
             // Player clicked an item from the selling list, move to buying cart
             if (slotId <= 15)
             {
@@ -287,15 +292,17 @@ namespace Vintagestory.GameContent
 
 
             // 2. Take care of the money first
-            if (!HandleMoneyTransaction(buyingPlayer)) return EnumTransactionResult.Failure;
+            if (!HandleMoneyTransaction(buyingPlayer, out var deduct)) return EnumTransactionResult.Failure;
 
+            var sell = new List<string>();
+            var buy = new List<string>();
 
             // 3. Now hand over buying cart contents
             for (int i = 0; i < 4; i++)
             {
                 ItemSlotTrade slot = GetBuyingCartSlot(i);
                 if (slot.Itemstack == null) continue;
-
+                buy.Add($"{slot.Itemstack.StackSize}x{slot.Itemstack.Collectible.Code}");
                 GiveOrDrop(buyingPlayer.Entity, slot.Itemstack);
 
                 slot.TradeItem.Stock -= slot.Itemstack.StackSize / slot.TradeItem.Stack.StackSize;
@@ -313,6 +320,7 @@ namespace Vintagestory.GameContent
                 if (tradeItem == null) continue;
 
                 int q = slot.Itemstack.StackSize / tradeItem.Stack.StackSize;
+                sell.Add($"{q}x{slot.Itemstack.Collectible.Code}");
 
                 tradeItem.Stock -= q;
                 var stack = slot.TakeOut(q * tradeItem.Stack.StackSize);
@@ -321,6 +329,12 @@ namespace Vintagestory.GameContent
 
                 slot.MarkDirty();
             }
+
+            var sold = sell.Count > 0 ? "sold " + string.Join(",", sell) : string.Empty;
+            var bought = buy.Count > 0 ? "bought " + string.Join(",", buy) : string.Empty;
+            var filler = sell.Count > 0 && buy.Count > 0 ? " and ": string.Empty;
+            var rg = deduct > 0 ? $"payed {deduct}" : $"received {-deduct}" ;
+            Api.Logger.Audit($"{buyingPlayer.PlayerName} {sold}{filler}{bought} at trader {traderEntity.Pos.AsBlockPos} and {rg} RG");
 
             return EnumTransactionResult.Success;
         }
@@ -333,17 +347,19 @@ namespace Vintagestory.GameContent
             for (int i = 0; i < 4; i++)
             {
                 ItemSlotTrade slot = GetBuyingCartSlot(i);
-                if (slot.Itemstack == null) continue;
+                var slotStack = slot.Itemstack;
+                var slotTradeItem = slot.TradeItem;
+                if (slotStack == null || slotTradeItem?.Stack == null) continue;
 
-                ItemSlotTrade tradeSlot = GetSellingConditionsSlot(slot.Itemstack);
+                ItemSlotTrade tradeSlot = GetSellingConditionsSlot(slotStack);
 
                 int tradeslotid = GetSlotId(tradeSlot);
                 if (!Stocks.TryGetValue(tradeslotid, out int stock))
                 {
-                    stock = slot.TradeItem.Stock;
+                    stock = slotTradeItem.Stock;
                 }
 
-                Stocks[tradeslotid] = stock - slot.Itemstack.StackSize / slot.TradeItem.Stack.StackSize;
+                Stocks[tradeslotid] = stock - slotStack.StackSize / slotTradeItem.Stack.StackSize;
 
                 if (Stocks[tradeslotid] < 0)
                 {
@@ -439,27 +455,26 @@ namespace Vintagestory.GameContent
             return true;
         }
 
-        bool HandleMoneyTransaction(IPlayer buyingPlayer)
+        bool HandleMoneyTransaction(IPlayer buyingPlayer, out int deduct)
         {
+            deduct = 0;
             int playerAssets = GetPlayerAssets(buyingPlayer.Entity);
             int traderAssets = GetTraderAssets();
             int totalCost = GetTotalCost();
             int totalGain = GetTotalGain();
-
             // Player does not have enough money
             if (playerAssets - totalCost + totalGain < 0) return false;
 
             // Trader does not have enough money
             if (traderAssets + totalCost - totalGain < 0) return false;
 
-
-            int deduct = totalCost - totalGain;
+            deduct = totalCost - totalGain;
 
             if (deduct > 0)
             {
                 DeductFromEntity(Api, buyingPlayer.Entity, deduct);
                 GiveToTrader(deduct);
-            } else
+            } else if(deduct < 0)
             {
                 GiveOrDrop(buyingPlayer.Entity, new ItemStack(Api.World.GetItem(new AssetLocation("gear-rusty"))), -deduct, null);
                 DeductFromTrader(-deduct);
@@ -483,7 +498,7 @@ namespace Vintagestory.GameContent
 
         public void DeductFromTrader(int units)
         {
-            MoneySlot.Itemstack.StackSize -= units;
+            MoneySlot.Itemstack?.StackSize -= units;
             if (MoneySlot.StackSize <= 0) MoneySlot.Itemstack = null;
             MoneySlot.MarkDirty();
         }
@@ -719,6 +734,7 @@ namespace Vintagestory.GameContent
             {
                 ItemSlotTrade slot = GetBuyingSlot(i);
                 if (slot.Itemstack == null) continue;
+                if (slot.TradeItem.Stock == 0) continue;
 
                 string[] ignoredAttributes = slot.TradeItem.AttributesToIgnore == null ? ignoredAttrs : ignoredAttrs.Append(slot.TradeItem.AttributesToIgnore.Split(','));
                 if (slot.Itemstack.Equals(Api.World, forStack, ignoredAttributes) || slot.Itemstack.Satisfies(forStack))
@@ -757,7 +773,7 @@ namespace Vintagestory.GameContent
                 slots[i + 16].Itemstack = null;
 
                 // Drop selling cart contents
-                Api.World.SpawnItemEntity(slots[i + 36].Itemstack, traderEntity.ServerPos.XYZ);
+                Api.World.SpawnItemEntity(slots[i + 36].Itemstack, traderEntity.Pos.XYZ);
                 slots[i + 36].Itemstack = null;
             }
 

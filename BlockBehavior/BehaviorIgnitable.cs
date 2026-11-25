@@ -1,4 +1,4 @@
-﻿using Vintagestory.API;
+using Vintagestory.API;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
@@ -43,8 +43,6 @@ namespace Vintagestory.GameContent
         /// <param name="secondsIgniting"></param>
         /// <returns>true when this block is ignitable</returns>
         EnumIgniteState OnTryIgniteStack(EntityAgent byEntity, BlockPos pos, ItemSlot slot, float secondsIgniting);
-
-
     }
 
     /// <summary>

@@ -33,7 +33,7 @@ namespace Vintagestory.GameContent
 
         public virtual bool ConditionSatisfied(Entity e)
         {
-            var pos = e.ServerPos;
+            var pos = e.Pos;
             var offset = 0;
 
             if (vas != null)

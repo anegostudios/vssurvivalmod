@@ -6,6 +6,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Util;
 
@@ -73,7 +74,7 @@ namespace Vintagestory.GameContent
             capi = api;
         }
 
-        protected ConcurrentDictionary<int, ItemStackRenderCacheItem> itemStackRenders = new ConcurrentDictionary<int, ItemStackRenderCacheItem>();
+        protected ConcurrentDictionary<int, ItemStackRenderCacheItem> itemStackRenders = new ConcurrentDictionary<int, ItemStackRenderCacheItem>(2, 16);
 
 
         public void RequestLabelTexture(int labelColor, BlockPos pos, ItemStack labelStack, Action<int> onLabelTextureReady)
@@ -120,7 +121,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        ConcurrentDictionary<int, bool> mipmapRegenQueued = new ConcurrentDictionary<int, bool>();
+        ConcurrentDictionary<int, bool> mipmapRegenQueued = new ConcurrentDictionary<int, bool>(2, 16);
 
         // Delay recreation of mipmaps by 2 frames so we don't spam mipmap regens when many crates get loaded at once
         private void regenMipMapsOnce(int atlasNumber)
@@ -183,7 +184,7 @@ namespace Vintagestory.GameContent
         public override int GetQuantitySlots(ItemStack bagstack)
         {
             if (collObj is not BlockCrate crate) return 0;
-            
+
             string type = bagstack.Attributes.GetString("type") ?? crate.Props.DefaultType;
             int quantity = crate.Props[type].QuantitySlots;
             return quantity;
@@ -290,8 +291,8 @@ namespace Vintagestory.GameContent
         protected void didMoveItems(ItemStack stack, IPlayer byPlayer)
         {
             (Api as ICoreClientAPI)?.World.Player.TriggerFpAnimation(EnumHandInteract.HeldItemInteract);
-            AssetLocation sound = stack?.Block?.Sounds?.Place;
-            Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
+            SoundAttributes? sound = stack?.Block?.Sounds?.Place;
+            Api.World.PlaySoundAt(sound ?? GlobalConstants.DefaultBuildSound, byPlayer.Entity, byPlayer);
         }
     }
 
@@ -312,8 +313,6 @@ namespace Vintagestory.GameContent
         public string SubtypeInventory => Props?.VariantByGroupInventory == null ? "" : Variant[Props.VariantByGroupInventory];
 
         public int RequiresBehindSlots { get; set; } = 0;
-
-        private Vec3f origin = new Vec3f(0.5f, 0.5f, 0.5f);
 
         #region IAttachableToEntity
 
@@ -372,7 +371,7 @@ namespace Vintagestory.GameContent
             return shape;
         }
 
-        public CompositeShape GetAttachedShape(ItemStack stack, string slotCode)
+        public CompositeShape GetAttachedShape(ItemStack stack, Entity onentity, string slotCode)
         {
             return null;
         }
@@ -412,7 +411,7 @@ namespace Vintagestory.GameContent
         }
 
 
-        public override bool DoParticalSelection(IWorldAccessor world, BlockPos pos)
+        public override bool DoPartialSelection(IWorldAccessor world, BlockPos pos)
         {
             return true;
         }
@@ -462,9 +461,9 @@ namespace Vintagestory.GameContent
 
 
                     string type = bect.type;
-                    string rotatatableInterval = Props[type].RotatatableInterval;
+                    string rotatableInterval = Props[type].RotatatableInterval;
 
-                    if (rotatatableInterval == "22.5degnot45deg")
+                    if (rotatableInterval == "22.5degnot45deg")
                     {
                         float rounded90degRad = ((int)Math.Round(angleHor / GameMath.PIHALF)) * GameMath.PIHALF;
                         float deg45rad = GameMath.PIHALF / 4;
@@ -479,10 +478,17 @@ namespace Vintagestory.GameContent
                             bect.MeshAngle = rounded90degRad;
                         }
                     }
-                    if (rotatatableInterval == "22.5deg")
+                    if (rotatableInterval == "22.5deg")
                     {
                         float deg22dot5rad = GameMath.PIHALF / 4;
                         float roundRad = ((int)Math.Round(angleHor / deg22dot5rad)) * deg22dot5rad;
+                        bect.MeshAngle = roundRad;
+                    }
+
+                    if (rotatableInterval == "45deg")
+                    {
+                        float deg45rad = GameMath.PIHALF / 2;
+                        float roundRad = ((int)Math.Round(angleHor / deg45rad)) * deg45rad;
                         bect.MeshAngle = roundRad;
                     }
                 }
@@ -641,7 +647,15 @@ namespace Vintagestory.GameContent
 
             if (contentSource != null)
             {
-                Shape shape = API.Common.Shape.TryGet(api, "shapes/block/wood/crate/contents.json");
+                JsonObject inCrateShapeAttr = contentStack?.ItemAttributes?["inCrateShape"];
+
+                var loc = AssetLocation.Create("shapes/block/wood/crate/contents.json", Code.Domain);
+                if (inCrateShapeAttr != null && inCrateShapeAttr.Exists)
+                {
+                    loc = AssetLocation.Create(inCrateShapeAttr.AsString(), contentStack.Collectible.Code.Domain).WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json");
+                }
+
+                Shape shape = API.Common.Shape.TryGet(api, loc);
                 capi.Tesselator.TesselateShape("cratecontents", shape, out MeshData contentMesh, contentSource, rotation);
                 contentMesh.Translate(0, fillHeight * 1.1f, 0);
                 return contentMesh;
@@ -656,8 +670,8 @@ namespace Vintagestory.GameContent
             if (be != null)
             {
 
-                decalModelData.Rotate(origin, 0, be.MeshAngle, 0);
-                decalModelData.Scale(origin, 15f / 16, 1f, 15f / 16);
+                decalModelData.Rotate(0, be.MeshAngle, 0);
+                decalModelData.Scale(15f / 16, 1f, 15f / 16);
                 return;
             }
 

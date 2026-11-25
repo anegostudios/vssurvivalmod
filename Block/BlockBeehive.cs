@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Common;
+using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
@@ -21,18 +21,17 @@ namespace Vintagestory.GameContent
 
             if (entity != null)
             {
-                entity.ServerPos.X = pos.X + 0.5f;
-                entity.ServerPos.Y = pos.Y + 0.5f;
-                entity.ServerPos.Z = pos.Z + 0.5f;
-                entity.ServerPos.Yaw = (float)world.Rand.NextDouble() * 2 * GameMath.PI;
-                entity.Pos.SetFrom(entity.ServerPos);
+                entity.Pos.X = pos.X + 0.5f;
+                entity.Pos.Y = pos.Y + 0.5f;
+                entity.Pos.Z = pos.Z + 0.5f;
+                entity.Pos.Yaw = (float)world.Rand.NextDouble() * 2 * GameMath.PI;
 
                 entity.Attributes.SetString("origin", "brokenbeehive");
                 world.SpawnEntity(entity);
             }
         }
 
-        BlockPos atPos = new BlockPos();
+        BlockPos atPos = new BlockPos(API.Config.Dimensions.NormalWorld);     // Only used for worldgen, and we (currently) only worldgen in the normal world
 
         Cuboidf[] nocoll = System.Array.Empty<Cuboidf>();
 

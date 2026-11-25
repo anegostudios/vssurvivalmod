@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using Vintagestory.API.Common;
+using Vintagestory.API.Common.Entities;
 
 #nullable disable
 
@@ -11,6 +12,8 @@ namespace Vintagestory.GameContent
         public HashSet<string> PersonalizedAnimations = new HashSet<string>(new string[] { "welcome", "idle", "walk", "run", "attack", "laugh", "hurt", "nod", "idle2" });
 
         public bool All;
+
+        public PersonalizedAnimationManager(Entity entity) : base(entity) { }
 
         public override bool StartAnimation(string configCode)
         {

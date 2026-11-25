@@ -1,23 +1,36 @@
-﻿using ProtoBuf;
+using ProtoBuf;
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Server;
 
 #nullable disable
 
 namespace Vintagestory.GameContent
 {
+    [ProtoContract]
+    public class BeamPlacePacket
+    {
+        [ProtoMember(1)]
+        public bool begin; // true for begin, false for end
+        [ProtoMember(2)]
+        public BlockSelection Blocksel;
+        [ProtoMember(3)]
+        public bool PartialEnds;
+        //[ProtoMember(4)]
+        //public int BlockId; - why did I add this? It lets a client create any block they want!
+    }
+
     public class ModSystemSupportBeamPlacer : ModSystem, IRenderer
     {
         public override bool ShouldLoad(EnumAppSide forSide) => true;
 
         protected Dictionary<string, MeshData[]> origBeamMeshes = new Dictionary<string, MeshData[]>();
         Dictionary<string, BeamPlacerWorkSpace> workspaceByPlayer = new Dictionary<string, BeamPlacerWorkSpace>();
-        
+
         ICoreAPI api;
         ICoreClientAPI capi;
         public Matrixf ModelMat = new Matrixf();
@@ -28,6 +41,7 @@ namespace Vintagestory.GameContent
         public override void Start(ICoreAPI api)
         {
             this.api = api;
+            api.Network.RegisterChannel("beamplacer").RegisterMessageType<BeamPlacePacket>();
         }
 
         public override void StartClientSide(ICoreClientAPI api)
@@ -36,6 +50,26 @@ namespace Vintagestory.GameContent
             api.Event.RegisterRenderer(this, EnumRenderStage.Opaque, "beamplacer");
         }
 
+        public override void StartServerSide(ICoreServerAPI api)
+        {
+            api.Network.GetChannel("beamplacer").SetMessageHandler<BeamPlacePacket>(OnCompletePlaceClient);
+            base.StartServerSide(api);
+        }
+
+        private void OnCompletePlaceClient(IServerPlayer fromPlayer, BeamPlacePacket packet)
+        {
+            var ws = getWorkSpace(fromPlayer.Entity);
+            fromPlayer.Entity.BlockSelection = packet.Blocksel;
+
+            if (packet.begin)
+            {
+                beginPlace(ws, fromPlayer.InventoryManager.ActiveHotbarSlot.Itemstack.Block /*api.World.Blocks[packet.BlockId]*/, fromPlayer.Entity, packet.Blocksel, packet.PartialEnds);
+            }
+            else
+            {
+                completePlace(ws, fromPlayer.Entity, fromPlayer.InventoryManager.ActiveHotbarSlot);
+            }
+        }
 
         public bool CancelPlace(BlockSupportBeam blockSupportBeam, EntityAgent byEntity)
         {
@@ -63,13 +97,10 @@ namespace Vintagestory.GameContent
 
         public void OnInteract(Block block, ItemSlot slot, EntityAgent byEntity, BlockSelection blockSel, bool partialEnds)
         {
-            if (blockSel == null)
-            {
-                return;
-            }
+            if (blockSel == null) return;
+            if (api.Side == EnumAppSide.Server) return; // Server is handled by custom packet
 
             var ws = getWorkSpace(byEntity);
-
             if (!ws.nowBuilding)
             {
                 beginPlace(ws, block, byEntity, blockSel, partialEnds);
@@ -123,6 +154,13 @@ namespace Vintagestory.GameContent
             ws.nowBuilding = true;
             ws.block = block;
             ws.onFacing = blockSel.Face;
+
+            capi?.Network.GetChannel("beamplacer").SendPacket(new BeamPlacePacket() { 
+                Blocksel = blockSel, 
+                begin = true,
+                //BlockId = block.Id,
+                PartialEnds = partialEnds
+            });
         }
 
 
@@ -132,13 +170,12 @@ namespace Vintagestory.GameContent
             var be = api.World.BlockAccessor.GetBlockEntity(ws.startPos);
             var beh = be?.GetBehavior<BEBehaviorSupportBeam>();
 
-            var eplr = (byEntity as EntityPlayer);
+            var eplr = byEntity as EntityPlayer;
 
             Vec3f nowEndOffset = getEndOffset(eplr.Player, ws);
 
             if (nowEndOffset.DistanceTo(ws.startOffset) < 0.01f)
             {
-
                 return;
             }
 
@@ -163,8 +200,7 @@ namespace Vintagestory.GameContent
                     int len = (int)Math.Ceiling(nowEndOffset.DistanceTo(ws.startOffset));
                     if (slot.StackSize < len)
                     {
-                        (api as ICoreClientAPI)?.TriggerIngameError(this, "notenoughitems",
-                            Lang.Get("You need {0} beams to place a beam at this lenth", len));
+                        (api as ICoreClientAPI)?.TriggerIngameError(this, "notenoughitems", Lang.Get("You need {0} beams to place a beam at this lenth", len));
                         return;
                     }
                 }
@@ -186,7 +222,12 @@ namespace Vintagestory.GameContent
                 slot.MarkDirty();
             }
 
+            if (beh == null) return;    // If we did not find the be or behavior, we cannot add the beam, so don't send a client packet to the server nor markDirty
+
             beh.AddBeam(ws.startOffset, nowEndOffset, ws.onFacing, ws.block);
+
+            capi?.Network.GetChannel("beamplacer").SendPacket(new BeamPlacePacket() { Blocksel = eplr.BlockSelection, begin = false });
+
             be.MarkDirty(true);
         }
 
@@ -271,7 +312,7 @@ namespace Vintagestory.GameContent
         {
             Vec3f nowEndOffset;
             Vec3d vec;
-            
+
             if (player.CurrentBlockSelection != null)
             {
                 var blockSel = player.CurrentBlockSelection;
@@ -279,7 +320,7 @@ namespace Vintagestory.GameContent
             }
             else
             {
-                vec = player.Entity.SidedPos.AheadCopy(2).XYZ.Add(player.Entity.LocalEyePos).Sub(ws.startPos);
+                vec = player.Entity.Pos.AheadCopy(2).XYZ.Add(player.Entity.LocalEyePos).Sub(ws.startPos);
             }
 
             nowEndOffset = snapToGrid(vec, ws.GridSize);
@@ -326,7 +367,7 @@ namespace Vintagestory.GameContent
             ws.currentMeshRef = capi.Render.UploadMultiTextureMesh(mesh);
         }
 
-        public static MeshData generateMesh(Vec3f start, Vec3f end, BlockFacing facing, MeshData[] origMeshes, float slumpPerMeter)
+        public static MeshData generateMesh(Vec3f start, Vec3f end, BlockFacing facing, MeshData[] origMeshes, float slumpPerMeter, float scale=1)
         {
             var outMesh = new MeshData(4, 6).WithRenderpasses().WithXyzFaces().WithColorMaps();
 
@@ -336,19 +377,10 @@ namespace Vintagestory.GameContent
             double dY = end.Y - start.Y;
             double dZ = end.Z - start.Z;
             double len = Math.Sqrt(dZ * dZ + dY * dY + dX * dX);
-            double horlen = Math.Sqrt(dZ * dZ + dX * dX);
 
             var normalize = 1 / Math.Max(1, len);
             var dir = new Vec3f((float)(dX * normalize), (float)(dY * normalize), (float)(dZ * normalize));
-            float yaw = (float)Math.Atan2(-dX, -dZ) + GameMath.PIHALF;
-            float basepitch = (float)Math.Atan2(horlen, -dY) + GameMath.PIHALF;
-
-            // Sin and Cos are both 1 at 45 deg.
-            float yawExtend = Math.Abs((float)(Math.Sin(yaw) * Math.Cos(yaw)));
-            float pitchExtend = Math.Abs((float)(Math.Sin(basepitch) * Math.Cos(basepitch)));
-
-            float distTo45Deg = Math.Max(yawExtend, pitchExtend);
-            float extend = 1 / 16f * distTo45Deg * 4;
+            GetBeamTransform(dX, dY, dZ, out float yaw, out float basepitch, out float extend);
 
             float slump = 0;
             len += extend;
@@ -367,7 +399,7 @@ namespace Vintagestory.GameContent
                 if (origMeshes.Length > 1 && len < 18 / 16f) { sectionLen = len; r += 1; }
 
                 // 4 sections
-                // 4 voxels long: Choose for len until 6 voxels. 6/16 = 0.375   => all until 0.375*4 has to round to 0. Remove to voxels -> 0.375 becomes 0.25. 0.25*4 => 1. 
+                // 4 voxels long: Choose for len until 6 voxels. 6/16 = 0.375   => all until 0.375*4 has to round to 0. Remove to voxels -> 0.375 becomes 0.25. 0.25*4 => 1.
                 // 8 voxels long: Choose for len until 10 voxels
                 // 12 voxels long: Choose for len until 14 voxels
                 // 16 voxels long: above 14
@@ -380,10 +412,19 @@ namespace Vintagestory.GameContent
                 Mat4f.Translate(mat, mat, sectionStart.X, sectionStart.Y + slump, sectionStart.Z);
                 Mat4f.RotateY(mat, mat, yaw);
                 Mat4f.RotateZ(mat, mat, pitch);
-                Mat4f.Scale(mat, mat, new float[] { xscale, 1, 1 });
+                
+                if (scale > 1) Mat4f.Translate(mat, mat, 0.01f, 0, 0);
+
+                Mat4f.Scale(mat, mat, new float[] { scale, scale, scale });
+                Mat4f.Scale(mat, mat, new float[] { xscale / scale, 1, 1 });
                 Mat4f.Translate(mat, mat, -1f, -0.125f, -0.5f);
 
-                
+                if (scale != 1f)
+                {
+                    Mat4f.Translate(mat, mat, new float[] { (1 - scale) / 2, (1 - scale) / 2, (1 - scale) / 2 });
+                    Mat4f.Scale(mat, mat, new float[] { scale, scale, scale });
+                }
+
                 var mesh = origMeshes[index].Clone();
                 mesh.MatrixTransform(mat);
 
@@ -393,29 +434,20 @@ namespace Vintagestory.GameContent
             return outMesh;
         }
 
-        public static float[] GetAlignMatrix(IVec3 startPos, IVec3 endPos, BlockFacing facing)
+        /// <summary>
+        /// Calculates the shared orientation and end extension for a straight support beam.
+        /// </summary>
+        public static void GetBeamTransform(double deltaX, double deltaY, double deltaZ, out float yaw, out float pitch, out float endExtension)
         {
-            double dX = startPos.XAsDouble - endPos.XAsDouble;
-            double dY = startPos.YAsDouble - endPos.YAsDouble;
-            double dZ = startPos.ZAsDouble - endPos.ZAsDouble;
-            double len = Math.Sqrt(dZ * dZ + dY * dY + dX * dX);
-            double horlen = Math.Sqrt(dZ * dZ + dX * dX);
+            double horizontalLength = Math.Sqrt(deltaZ * deltaZ + deltaX * deltaX);
+            yaw = (float)Math.Atan2(-deltaX, -deltaZ) + GameMath.PIHALF;
+            pitch = (float)Math.Atan2(horizontalLength, -deltaY) + GameMath.PIHALF;
 
-            float yaw = (float)Math.Atan2(dX, dZ) + GameMath.PIHALF;
-            float pitch = (float)Math.Atan2(horlen, dY) + GameMath.PIHALF;
-
-            float[] mat = new float[16];
-            Mat4f.Identity(mat);
-            Mat4f.Translate(mat, mat, (float)startPos.XAsDouble, (float)startPos.YAsDouble, (float)startPos.ZAsDouble);
-            Mat4f.RotateY(mat, mat, yaw);
-            Mat4f.RotateZ(mat, mat, pitch);
-            Mat4f.Scale(mat, mat, new float[] { (float)len, 1, 1 });
-            Mat4f.Translate(mat, mat, -1f, -0.125f, -0.5f);
-            return mat;
+            // Sin and cos are both 1 at 45 degrees.
+            float yawExtension = Math.Abs((float)(Math.Sin(yaw) * Math.Cos(yaw)));
+            float pitchExtension = Math.Abs((float)(Math.Sin(pitch) * Math.Cos(pitch)));
+            endExtension = 4 / 16f * Math.Max(yawExtension, pitchExtension);
         }
-
-
-
 
         BeamPlacerWorkSpace getWorkSpace(EntityAgent forEntity)
         {
@@ -497,7 +529,7 @@ namespace Vintagestory.GameContent
 
         private bool isBeamStableAt(Vec3d start)
         {
-            return 
+            return
                 BlockBehaviorUnstableRock.getVerticalSupportStrength(api.World, start.AsBlockPos) > 0 ||
                 BlockBehaviorUnstableRock.getVerticalSupportStrength(api.World, start.Add(-1/16.0, 0, -1 / 16.0).AsBlockPos) > 0 ||
                 BlockBehaviorUnstableRock.getVerticalSupportStrength(api.World, start.Add(1 / 16.0, 0, 1 / 16.0).AsBlockPos) > 0
@@ -566,4 +598,3 @@ namespace Vintagestory.GameContent
         }
     }
 }
- 

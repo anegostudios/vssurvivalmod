@@ -1,7 +1,6 @@
-using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
@@ -12,6 +11,19 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
+    /// <summary>
+    /// Allows a player to be revived for a short period (30 in-game minutes by default) after their health is fully depleted,
+    /// when another player interacts with them using a collectible that has the <see cref="BehaviorHealingItem"/> behavior. 
+    /// <br/>Uses the "playerrevivable" code
+    /// </summary>
+    /// <example><code lang="json">
+    /// "behaviors": [
+    ///   {
+    ///     "code": "playerrevivable"
+    ///   }
+    /// ]
+    /// </code></example>
+    [DocumentAsJson]
     public class EntityBehaviorPlayerRevivable : EntityBehavior
     {
         EntityPlayer entityPlayer;
@@ -44,6 +56,7 @@ namespace Vintagestory.GameContent
                 return;
             }
 
+            entityPlayer.Attributes.SetBool("noSatietyRestoreOnRevive", true);
             entityPlayer.Revive();
             entityPlayer.LastReviveTotalHours = entityPlayer.World.Calendar.TotalHours - 2; // No respawn glow
         }
@@ -54,37 +67,20 @@ namespace Vintagestory.GameContent
             var wis = base.GetInteractionHelp(world, es, player, ref handled);
             if (!entity.Alive && entityPlayer.RevivableIngameHoursLeft() > 0)
             {
-                if (wis == null) wis = Array.Empty<WorldInteraction>();
-                wis = wis.Append(GetReviveInteractionHelp(world.Api));
+                wis ??= [];
+                wis = wis.Append(
+                    new WorldInteraction()
+                    {
+                        ActionLangCode = "reviveplayer",
+                        MouseButton = EnumMouseButton.Right,
+                        HotKeyCode = "ctrl",
+                        Itemstacks = EntityBehaviorHealth.GetAllHealingItems(world.Api),
+                        RequireFreeHand = true
+                    }
+                );
             }
 
             return wis;
-        }
-
-        public static WorldInteraction GetReviveInteractionHelp(ICoreAPI api)
-        {
-            var pstacks = ObjectCacheUtil.GetOrCreate<ItemStack[]>(api, "poulticeStacks", () =>
-            {
-                var poulticeStacks = new List<ItemStack>();
-                foreach (Item item in api.World.Items)
-                {
-                    if (item.HasBehavior<BehaviorHealingItem>() || item is ItemPoultice)
-                    {
-                        poulticeStacks.Add(new ItemStack(item));
-                    }
-                }
-
-                return poulticeStacks.ToArray();
-            });
-
-            return new WorldInteraction()
-            {
-                ActionLangCode = "reviveplayer",
-                MouseButton = EnumMouseButton.Right,
-                HotKeyCode = "ctrl",
-                Itemstacks = pstacks,
-                RequireFreeHand = true
-            };
         }
 
         public override string PropertyName()

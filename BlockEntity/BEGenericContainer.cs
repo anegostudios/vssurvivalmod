@@ -102,10 +102,10 @@ namespace Vintagestory.GameContent
 
             inventory.OnInventoryClosed += OnInvClosed;
             inventory.OnInventoryOpened += OnInvOpened;
-            inventory.SlotModified += OnSlotModifid;
+            inventory.SlotModified += OnSlotModified;
         }
 
-        private void OnSlotModifid(int slot)
+        private void OnSlotModified(int slot)
         {
             Api.World.BlockAccessor.GetChunkAtBlockPos(Pos)?.MarkModified();
         }

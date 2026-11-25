@@ -1,4 +1,5 @@
 using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -11,6 +12,7 @@ using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
+using Vintagestory.Datastructures;
 
 #nullable disable
 
@@ -24,9 +26,11 @@ namespace Vintagestory.GameContent
 
         }
 
+        const int NO_RECIPE = -1;
+
         // Permanent data
         ItemStack workItemStack;
-        int selectedRecipeId = -1;
+        int selectedRecipeId = NO_RECIPE;
         ClayFormingRecipe selectedRecipe;
         public int AvailableVoxels;
         public bool[,,] Voxels = new bool[16, 16, 16];
@@ -240,10 +244,11 @@ namespace Vintagestory.GameContent
                 Voxels = new bool[16, 16, 16];
                 AvailableVoxels = 0;
                 ItemStack outstack = SelectedRecipe.Output.ResolvedItemstack.Clone();
-                selectedRecipeId = -1;
+                selectedRecipeId = NO_RECIPE;
                 selectedRecipe = null;
 
-                if (outstack.Collectible.GetBehavior<CollectibleBehaviorGroundStorable>()?.StorageProps is GroundStorageProperties gsprops)
+                GroundStorageProperties gsprops = outstack.Collectible.GetBehavior<CollectibleBehaviorGroundStorable>()?.GetStorageProperties(outstack);
+                if (gsprops != null)
                 {
                     Api.World.BlockAccessor.SetBlock(Api.World.GetBlock("groundstorage").BlockId, Pos);
                     int stackSize = outstack.StackSize;
@@ -598,7 +603,7 @@ namespace Vintagestory.GameContent
             workItemStack = tree.GetItemstack("workItemStack");
             baseMaterial = tree.GetItemstack("baseMaterial");
             AvailableVoxels = tree.GetInt("availableVoxels");
-            setSelectedRecipe(tree.GetInt("selectedRecipeId", -1));
+            setSelectedRecipe(tree.GetInt("selectedRecipeId", NO_RECIPE));
 
             if (Api != null && workItemStack != null)
             {
@@ -687,7 +692,7 @@ namespace Vintagestory.GameContent
         {
             if (selectedRecipeId == newId && (selectedRecipe != null || newId < 0)) return;
 
-            if (newId == -1) selectedRecipe = null;
+            if (newId == NO_RECIPE) selectedRecipe = null;
             else selectedRecipe = Api != null ? Api.GetClayformingRecipes().FirstOrDefault(r => r.RecipeId == newId) : null;
 
             selectedRecipeId = newId;
@@ -696,80 +701,128 @@ namespace Vintagestory.GameContent
 
         public void SendUseOverPacket(IPlayer byPlayer, Vec3i voxelPos, BlockFacing facing, bool mouseMode)
         {
-            byte[] data;
+            var ms = new MemoryStream();
+            var writer = new BinaryWriter(ms);
+            writer.Write(voxelPos.X);
+            writer.Write(voxelPos.Y);
+            writer.Write(voxelPos.Z);
+            writer.Write(mouseMode);
+            writer.Write((ushort)facing.Index);
 
-            using (MemoryStream ms = new MemoryStream())
-            {
-                BinaryWriter writer = new BinaryWriter(ms);
-                writer.Write(voxelPos.X);
-                writer.Write(voxelPos.Y);
-                writer.Write(voxelPos.Z);
-                writer.Write(mouseMode);
-                writer.Write((ushort)facing.Index);
-                data = ms.ToArray();
-            }
-
-            ((ICoreClientAPI)Api).Network.SendBlockEntityPacket(
-                Pos,
-                (int)EnumClayFormingPacket.OnUserOver,
-                data
-            );
+            ((ICoreClientAPI)Api).Network.SendBlockEntityPacket(Pos, (int)EnumClayFormingPacket.OnUserOver, ms.ToArray());
         }
 
 
-        public override void OnReceivedClientPacket(IPlayer player, int packetid, byte[] data)
+        public override void OnReceivedClientPacket(IServerPlayer player, int packetId, SerializedData packetData, ref CachedAccessPerms perms)
         {
-            if (packetid == (int)EnumClayFormingPacket.CancelSelect)
+            switch (packetId)
             {
-                if (baseMaterial != null)
+                case (int)EnumClayFormingPacket.SelectRecipe:
                 {
-                    Api.World.SpawnItemEntity(baseMaterial, Pos);
+                    if (!perms.TryAccessingBlockAtPos(EnumBlockAccessFlags.Use, true, "clay form"))
+                    {
+                        // Revert selection for that player:
+                        ((ICoreServerAPI)Api).Network.SendBlockEntityPacket(player, Pos, (int)EnumClayFormingPacket.CancelSelect);
+                        break;
+                    }
+
+                    int recipeId = packetData.Deserialize<int>();
+                    ClayFormingRecipe recipe = Api.GetClayformingRecipes().FirstOrDefault(r => r.RecipeId == recipeId);
+
+                    if (recipe == null)
+                    {
+                        Api.World.Logger.Error("Client tried to selected clayforming recipe with id {0}, but no such recipe exists!");
+                        selectedRecipe = null;
+                        selectedRecipeId = NO_RECIPE;
+                        break;
+                    }
+
+                    selectedRecipe = recipe;
+                    selectedRecipeId = recipe.RecipeId;
+                    // Tell server to save this chunk to disk again
+                    MarkDirty();
+                    Api.World.BlockAccessor.GetChunkAtBlockPos(Pos).MarkModified();
+
+                    break;
                 }
-                Api.World.BlockAccessor.SetBlock(0, Pos);
+
+
+                case (int)EnumClayFormingPacket.OnUserOver:
+                {
+                    if (!perms.TryAccessingBlockAtPos(EnumBlockAccessFlags.Use, true, "clay form"))
+                    {
+                        player.InventoryManager.ActiveHotbarSlot.MarkDirty();
+                        break;
+                    }
+
+                    var reader = packetData.AsBinaryReader();
+                    var voxelPos = new Vec3i(
+                        reader.ReadInt32LE(),
+                        reader.ReadInt32LE(),
+                        reader.ReadInt32LE()
+                    );
+                    var mouseMode = reader.ReadBoolean();
+                    var facing = BlockFacing.ALLFACES[reader.ReadUInt16LE()];
+
+                    Api.World.FrameProfiler.Enter("clayforming");
+                    OnUseOver(player, voxelPos, facing, mouseMode);
+                    Api.World.FrameProfiler.Leave();
+
+                    break;
+                }
+
+
+                case (int)EnumClayFormingPacket.CancelSelect:
+                    if (selectedRecipeId == NO_RECIPE)
+                    {
+                        break;
+                    }
+
+                    if (!perms.TryAccessingBlockAtPos(EnumBlockAccessFlags.Use, false, "clay form")) // Do not validate picking range in case we got transported out of range.
+                    {
+                        // No need to revert here, this cannot happen without packet manipulation.
+                        break;
+                    }
+
+                    // Rennorb 19.06.2026 security: Potentially griefable: surfaces do not track who placed them, therefore a second player could steal the rock by sending the cancel packet.
+                    if (baseMaterial != null)
+                    {
+                        Api.World.SpawnItemEntity(baseMaterial, Pos);
+                    }
+                    Api.World.BlockAccessor.SetBlock(0, Pos);
+
+                    break;
             }
 
-            if (packetid == (int)EnumClayFormingPacket.SelectRecipe)
-            {
-                int recipeid = SerializerUtil.Deserialize<int>(data);
-                ClayFormingRecipe recipe = Api.GetClayformingRecipes().FirstOrDefault(r => r.RecipeId == recipeid);
+            // Rennorb 20.06.2026 explain: Why not call the base here?
+            // base.OnReceivedClientPacket(player, packetId, data, ref perms);
+        }
 
-                if (recipe == null)
-                {
-                    Api.World.Logger.Error("Client tried to selected clayforming recipe with id {0}, but no such recipe exists!");
+        public override void OnReceivedServerPacket(int packetId, SerializedData packetData)
+        {
+            switch(packetId)
+            {
+                case (int)EnumClayFormingPacket.CancelSelect:
                     selectedRecipe = null;
-                    selectedRecipeId = -1;
-                    return;
-                }
-
-                selectedRecipe = recipe;
-                selectedRecipeId = recipe.RecipeId;
-                // Tell server to save this chunk to disk again
-                MarkDirty();
-                Api.World.BlockAccessor.GetChunkAtBlockPos(Pos).MarkModified();
+                    selectedRecipeId = NO_RECIPE;
+                    // Rennorb 21.06.2026 ux: This does not quite work to properly reset the client to a blank work item.
+                    //  The Green outlines are still there, but the interaction works properly (client can chose new recipe).
+                    CreateInitialWorkItem();
+                    RegenMeshAndSelectionBoxes(0);
+                    break;
             }
 
-            if (packetid == (int)EnumClayFormingPacket.OnUserOver)
-            {
-                Vec3i voxelPos;
-                bool mouseMode;
-                BlockFacing facing;
-                using (MemoryStream ms = new MemoryStream(data))
-                {
-                    BinaryReader reader = new BinaryReader(ms);
-                    voxelPos = new Vec3i(reader.ReadInt32(), reader.ReadInt32(), reader.ReadInt32());
-                    mouseMode = reader.ReadBoolean();
-                    facing = BlockFacing.ALLFACES[reader.ReadInt16()];
-
-                }
-
-                Api.World.FrameProfiler.Enter("clayforming");
-                OnUseOver(player, voxelPos, facing, mouseMode);
-                Api.World.FrameProfiler.Leave();
-            }
+            base.OnReceivedServerPacket(packetId, packetData);
         }
 
 
         GuiDialog dlg;
+
+        bool CanDoRecipe(IClientWorldAccessor world, IRecipeBase recipe, ItemStack ingredient)
+        {
+            DummySlot slot = new(ingredient);
+            return world.Api.Event.TriggerMatchesRecipe(world.Player, recipe, [slot]);
+        }
 
         public void OpenDialog(IClientWorldAccessor world, BlockPos pos, ItemStack ingredient)
         {
@@ -782,6 +835,7 @@ namespace Vintagestory.GameContent
 
             List<ClayFormingRecipe> recipes = Api.GetClayformingRecipes()
                 .Where(r => r.Ingredient.SatisfiesAsIngredient(ingredient))
+                .Where(r => CanDoRecipe(world, r, ingredient))
                 .OrderBy(r => r.Output.ResolvedItemstack.Collectible.Code) // Cannot sort by name, thats language dependent!
                 .ToList();
             ;

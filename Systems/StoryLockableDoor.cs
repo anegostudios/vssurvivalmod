@@ -49,12 +49,23 @@ public class StoryLockableDoor : ModSystem
                 .EndSubCommand()
             .EndSubCommand()
 
-            .BeginSubCommand("per-player-looable-reset")
+            .BeginSubCommand("per-player-lootable-reset")
             .WithAlias("pplr")
                 .RequiresPrivilege(Privilege.controlserver)
                 .WithDescription("Reset storage to be lootable again by everyone")
                 .WithArgs(api.ChatCommands.Parsers.WorldPosition("pos"))
                 .HandleWith(OnPerPlayerInvRes)
+            .EndSubCommand();
+
+        sapi.ChatCommands.GetOrCreate("dev")
+            .BeginSubCommand("doorlock")
+                .WithDescription("Manage locked doors")
+                .RequiresPrivilege(Privilege.controlserver)
+                .BeginSubCommand("set")
+                    .WithDescription("Lock a door to a key type for dungeons")
+                    .WithArgs(sapi.ChatCommands.Parsers.WorldPosition("target"), sapi.ChatCommands.Parsers.OptionalWord("roomCode"), sapi.ChatCommands.Parsers.OptionalWord("keyid"))
+                    .HandleWith(OnDoorLockCmd)
+                .EndSubCommand()
             .EndSubCommand();
     }
 
@@ -97,6 +108,31 @@ public class StoryLockableDoor : ModSystem
         else
         {
             bed.StoryLockedCode = args[1] as string;
+        }
+        blockEntity!.MarkDirty();
+        return TextCommandResult.Success($"Story lock for door set to: {bed.StoryLockedCode}");
+    }
+
+    private TextCommandResult OnDoorLockCmd(TextCommandCallingArgs args)
+    {
+        var pos = args[0] as Vec3d;
+        var blockEntity = sapi!.World.BlockAccessor.GetBlockEntity(pos!.AsBlockPos);
+        var bed = blockEntity?.GetBehavior<BEBehaviorDoor>();
+        if (bed == null)
+        {
+            return TextCommandResult.Success("Target block is not a Door");
+        }
+        if (args.Parsers[1].IsMissing)
+        {
+            bed.LockedByKey= false;
+            bed.RoomCode = null;
+            bed.KeyId = null;
+        }
+        else
+        {
+            bed.LockedByKey = true;
+            bed.RoomCode = args[1] as string;
+            bed.KeyId = args[2] as string;
         }
         blockEntity!.MarkDirty();
         return TextCommandResult.Success($"Story lock for door set to: {bed.StoryLockedCode}");

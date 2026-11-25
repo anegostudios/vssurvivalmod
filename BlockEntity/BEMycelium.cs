@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -16,16 +16,15 @@ namespace Vintagestory.GameContent
         public float DieWhenTempBelow = 0;
         public bool DieAfterFruiting = true;
     }
+
     public class MyceliumSystem : ModSystem
     {
-        ICoreAPI api;
+        ICoreServerAPI sapi;
 
         public static LCGRandom lcgrnd;
         public static NormalRandom rndn;
         public override void StartServerSide(ICoreServerAPI api)
         {
-            base.StartServerSide(api);
-
             api.ChatCommands.GetOrCreate("debug")
                 .BeginSubCommand("myc")
                     .BeginSubCommand("regrow")
@@ -37,20 +36,20 @@ namespace Vintagestory.GameContent
 
             api.Event.SaveGameLoaded += Event_SaveGameLoaded;
 
-            this.api = api;
+            sapi = api;
         }
 
         private void Event_SaveGameLoaded()
         {
-            lcgrnd = new LCGRandom(api.World.Seed);
-            rndn = new NormalRandom(api.World.Seed);
+            lcgrnd = new LCGRandom(sapi.World.SeedWorldgen);
+            rndn = new NormalRandom(sapi.World.SeedWorldgen);
         }
 
         private TextCommandResult OnCmd(TextCommandCallingArgs args)
         {
             BlockPos pos = args.Caller.Entity.Pos.XYZ.AsBlockPos;
 
-            BlockEntityMycelium bemc = api.World.BlockAccessor.GetBlockEntity(pos.DownCopy()) as BlockEntityMycelium;
+            BlockEntityMycelium bemc = sapi.World.BlockAccessor.GetBlockEntity(pos.DownCopy()) as BlockEntityMycelium;
             if (bemc == null)
             {
                 return TextCommandResult.Success("No mycelium below you");
@@ -79,8 +78,6 @@ namespace Vintagestory.GameContent
         double fruitingDays = 20;
         double growingDays = 20;
         int growRange = 7;
-
-
 
         public override void Initialize(ICoreAPI api)
         {
@@ -167,6 +164,7 @@ namespace Vintagestory.GameContent
             DestroyGrownMushrooms();
             growMushrooms(Api.World.BlockAccessor, MyceliumSystem.rndn);
         }
+
         private void DestroyGrownMushrooms()
         {
             mushroomsDiedTotalDays = Api.World.Calendar.TotalDays;
@@ -234,7 +232,7 @@ namespace Vintagestory.GameContent
             if (mushroomBlock == null) return;
 
             int cnt = 2 + rnd.NextInt(11);
-            BlockPos pos = new BlockPos();
+            BlockPos pos = new BlockPos(Pos.dimension);
             const int chunkSize = GlobalConstants.ChunkSize;
             List<Vec3i> offsets = new List<Vec3i>();
 
@@ -292,7 +290,7 @@ namespace Vintagestory.GameContent
         private void generateSideGrowingMushrooms(IBlockAccessor blockAccessor, IRandom rnd)
         {
             int cnt = 1 + rnd.NextInt(5);
-            BlockPos mpos = new BlockPos();
+            BlockPos mpos = new BlockPos(Pos.dimension);
             List<Vec3i> offsets = new List<Vec3i>();
 
             while (cnt-- > 0)

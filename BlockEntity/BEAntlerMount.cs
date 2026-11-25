@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Collections.Generic;
+using System.Text;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -8,7 +9,7 @@ using Vintagestory.API.MathTools;
 namespace Vintagestory.GameContent
 {
 
-    public class BlockEntityAntlerMount : BlockEntityDisplay
+    public class BlockEntityAntlerMount : BlockEntityDisplay, IRotatable
     {
         public override InventoryBase Inventory => inv;
         public override string InventoryClassName => "antlermount";
@@ -55,11 +56,11 @@ namespace Vintagestory.GameContent
 
             if (shelvable)
             {
-                AssetLocation? sound = slot.Itemstack?.Block?.Sounds?.Place;
+                SoundAttributes? sound = slot.Itemstack?.Block?.Sounds?.Place;
                 var stackCode = slot.Itemstack?.Collectible.Code;
                 if (TryPut(slot))
                 {
-                    Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
+                    Api.World.PlaySoundAt(sound ?? GlobalConstants.DefaultBuildSound, byPlayer.Entity, byPlayer);
 
                     Api.World.Logger.Audit("{0} Put 1x{1} on to AntlerMount at {2}.",
                         byPlayer.PlayerName,
@@ -96,8 +97,8 @@ namespace Vintagestory.GameContent
                 ItemStack stack = inv[invIndex].TakeOut(1);
                 if (byPlayer.InventoryManager.TryGiveItemstack(stack))
                 {
-                    AssetLocation? sound = stack.Block?.Sounds?.Place;
-                    Api.World.PlaySoundAt(sound != null ? sound : new AssetLocation("sounds/player/build"), byPlayer.Entity, byPlayer, true, 16);
+                    SoundAttributes? sound = stack.Block?.Sounds?.Place;
+                    Api.World.PlaySoundAt(sound ?? GlobalConstants.DefaultBuildSound, byPlayer.Entity, byPlayer);
                 }
 
                 if (stack.StackSize > 0)
@@ -169,6 +170,12 @@ namespace Vintagestory.GameContent
             {
                 sb.AppendLine(slot.Itemstack.GetName());
             }
+        }
+
+        public void OnTransformed(IWorldAccessor worldAccessor, ITreeAttribute tree, int degreeRotation, Dictionary<int, AssetLocation> oldBlockIdMapping, Dictionary<int, AssetLocation> oldItemIdMapping, EnumAxis? flipAxis)
+        {
+            bh ??= GetBehavior<BEBehaviorShapeMaterialFromAttributes>();
+            bh?.OnTransformed(worldAccessor, tree, degreeRotation, oldBlockIdMapping, oldItemIdMapping, flipAxis);
         }
     }
 }

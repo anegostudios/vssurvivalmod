@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
@@ -85,9 +85,10 @@ namespace Vintagestory.GameContent.Mechanics
             }
 
             //Exponentially increase hammer resistance if the network is turning faster - should almost always prevent helvehammering at crazy speeds;
-            float speed = this.network == null ? 0f : Math.Abs(this.network.Speed * this.GearedRatio);
-            float speedLimiter = 5f * (float) Math.Exp(speed * 2.8 - 5.0);
-            return hasHammer ? 0.125f + speedLimiter : 0.0005f;
+            //float speed = this.network == null ? 0f : Math.Abs(this.network.Speed * this.GearedRatio);
+            //float speedLimiter = 5f * (float) Math.Exp(speed * 2.8 - 5.0);
+            // tyron 5dec 2025: disabled. Causes the mechanical network speed to oscillate heavily
+            return hasHammer ? 0.125f /*+ speedLimiter*/ : 0.0005f;
         }
 
         public override void JoinNetwork(MechanicalNetwork network)
@@ -96,7 +97,7 @@ namespace Vintagestory.GameContent.Mechanics
 
             //Speed limit when joining a toggle to an existing network: this is to prevent crazy bursts of Helvehammer speed on first connection if the network was spinning fast (with low resistances)
             // (if the network has enough torque to drive faster than this - which is going to be uncommon - then the network speed can increase after the toggle is joined to the network)
-            float speed = network == null ? 0f : Math.Abs(network.Speed * this.GearedRatio) * 1.6f;
+            float speed = Math.Abs(CurrentSpeed) * 1.6f;
             if (speed > 1f)
             {
                 network.Speed /= speed;
@@ -120,14 +121,27 @@ namespace Vintagestory.GameContent.Mechanics
 
         MeshData getStandMesh(string orient)
         {
-            return ObjectCacheUtil.GetOrCreate(Api, Block.Code + "-" + orient + "-stand", () =>
+            BlockMPBase toggleBlock = Block as BlockMPBase;
+            ItemStack stack = PlacedStack;
+            string materialKey = toggleBlock?.GetMaterialKey(stack);
+            string cacheKey = materialKey == null ? $"{Block.Code}-{orient}-stand" : $"{Block.Code}-{orient}-stand-{materialKey}";
+            return ObjectCacheUtil.GetOrCreate(Api, cacheKey, () =>
             {
                 Shape shape = API.Common.Shape.TryGet(capi, toggleStandLoc);
-                capi.Tesselator.TesselateShape(Block, shape, out MeshData mesh);
+                MeshData mesh;
+                if (materialKey == null)
+                {
+                    capi.Tesselator.TesselateShape(Block, shape, out mesh);
+                }
+                else
+                {
+                    string sourceForLogging = $"{Block.Code} stand";
+                    capi.Tesselator.TesselateShape(sourceForLogging, shape, out mesh, toggleBlock.GetMaterialTextureSource(capi, shape, sourceForLogging, stack));
+                }
 
                 if (orient == "ns")
                 {
-                    mesh.Rotate(new Vec3f(0.5f, 0.5f, 0.5f), 0, GameMath.PIHALF, 0);
+                    mesh.Rotate(0, GameMath.PIHALF, 0);
                 }
 
                 return mesh;

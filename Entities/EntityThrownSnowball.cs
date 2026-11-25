@@ -1,6 +1,8 @@
+using CompactExifLib;
 using System.IO;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 
@@ -42,17 +44,26 @@ namespace Vintagestory.GameContent
         float IProjectile.Damage { get => Damage; set => Damage = value; }
         int IProjectile.DamageTier { get => DamageTier; set => DamageTier = value; }
         EnumDamageType IProjectile.DamageType { get; set; }
+        bool IProjectile.ApplyUnderwaterPenalty { get; set; } = true;
         bool IProjectile.IgnoreInvFrames { get; set; }
         ItemStack IProjectile.ProjectileStack { get => ProjectileStack; set => ProjectileStack = value; }
         ItemStack IProjectile.WeaponStack { get; set; }
         float IProjectile.DropOnImpactChance { get; set; }
         bool IProjectile.DamageStackOnImpact { get; set; }
-        bool IProjectile.NonCollectible { get => NonCollectible; set => NonCollectible = value; }
+        bool IProjectile.Collectible { get => NonCollectible; set => NonCollectible = value; }
         bool IProjectile.EntityHit { get; }
         float IProjectile.Weight { get => Properties.Weight; set => Properties.Weight = value; }
         bool IProjectile.Stuck { get => stuck; set => stuck = value; }
 
         void IProjectile.PreInitialize() { }
+
+        void IProjectile.SetFromConfig(IProjectileJsonConfig config)
+        {
+            Damage = config.Damage;
+            DamageTier = config.DamageTier;
+            NonCollectible = config.Collectible;
+            ((IProjectile)this).ApplyUnderwaterPenalty = config.ApplyUnderwaterPenalty ?? (((IProjectile)this).DamageType != EnumDamageType.PiercingAttack);
+        }
         #endregion
 
         public override void Initialize(EntityProperties properties, ICoreAPI api, long InChunkIndex3d)
@@ -74,7 +85,7 @@ namespace Vintagestory.GameContent
             base.OnGameTick(dt);
             if (ShouldDespawn) return;
 
-            EntityPos pos = SidedPos;
+            EntityPos pos = Pos;
 
             stuck = Collided;
             if (stuck)
@@ -96,13 +107,13 @@ namespace Vintagestory.GameContent
 
             if (World is IServerWorldAccessor)
             {
-                Entity entity = World.GetNearestEntity(ServerPos.XYZ, 5f, 5f, (e) => {
+                Entity entity = World.GetNearestEntity(Pos.XYZ, 5f, 5f, (e) => {
                     if (e.EntityId == this.EntityId || (FiredBy != null && e.EntityId == FiredBy.EntityId && World.ElapsedMilliseconds - msLaunch < 500) || !e.IsInteractable)
                     {
                         return false;
                     }
 
-                    double dist = e.SelectionBox.ToDouble().Translate(e.ServerPos.X, e.ServerPos.Y, e.ServerPos.Z).ShortestDistanceFrom(ServerPos.X, ServerPos.Y, ServerPos.Z);
+                    double dist = e.SelectionBox.ToDouble().Translate(e.Pos.X, e.Pos.Y, e.Pos.Z).ShortestDistanceFrom(Pos.X, Pos.Y, Pos.Z);
                     return dist < 0.5f;
                 });
 
@@ -118,7 +129,7 @@ namespace Vintagestory.GameContent
                     }, Damage);
 
                     World.PlaySoundAt(new AssetLocation("sounds/block/snow"), this, null, false, 32);
-                    World.SpawnCubeParticles(SidedPos.XYZ.AddCopy(SidedPos.Motion.X, SidedPos.Motion.Y, SidedPos.Motion.Z), ProjectileStack, 0.2f, 12, 1.2f);
+                    World.SpawnCubeParticles(Pos.XYZ.AddCopy(Pos.Motion.X, Pos.Motion.Y, Pos.Motion.Z), ProjectileStack, 0.2f, 12, 1.2f);
 
                     Die();
                     return;
@@ -132,7 +143,7 @@ namespace Vintagestory.GameContent
 
         public override void OnCollided()
         {
-            EntityPos pos = SidedPos;
+            EntityPos pos = Pos;
 
             if (!beforeCollided && World is IServerWorldAccessor)
             {
@@ -148,7 +159,7 @@ namespace Vintagestory.GameContent
 
                     if (strength > 0.1f && World.Rand.NextDouble() > 1 - HorizontalImpactBreakChance)
                     {
-                        World.SpawnCubeParticles(SidedPos.XYZ.OffsetCopy(0, 0.2, 0), ProjectileStack, 0.5f, ImpactParticleCount, ImpactParticleSize, null, new Vec3f(xdir * (float)motionBeforeCollide.X * 8, 0, zdir * (float)motionBeforeCollide.Z * 8));
+                        World.SpawnCubeParticles(Pos.XYZ.OffsetCopy(0, 0.2, 0), ProjectileStack, 0.5f, ImpactParticleCount, ImpactParticleSize, null, new Vec3f(xdir * (float)motionBeforeCollide.X * 8, 0, zdir * (float)motionBeforeCollide.Z * 8));
                         Die();
                     }
                 }
@@ -159,13 +170,13 @@ namespace Vintagestory.GameContent
 
                     if (strength > 0.1f && World.Rand.NextDouble() > 1 - VerticalImpactBreakChance)
                     {
-                        World.SpawnCubeParticles(SidedPos.XYZ.OffsetCopy(0, 0.2, 0), ProjectileStack, 0.5f, ImpactParticleCount, ImpactParticleSize, null, new Vec3f((float)motionBeforeCollide.X * 8, (float)-motionBeforeCollide.Y * 6, (float)motionBeforeCollide.Z * 8));
+                        World.SpawnCubeParticles(Pos.XYZ.OffsetCopy(0, 0.2, 0), ProjectileStack, 0.5f, ImpactParticleCount, ImpactParticleSize, null, new Vec3f((float)motionBeforeCollide.X * 8, (float)-motionBeforeCollide.Y * 6, (float)motionBeforeCollide.Z * 8));
                         Die();
                     }
                 }
 
                 World.PlaySoundAt(new AssetLocation("sounds/block/snow"), this, null, false, 32, strength);
-                World.SpawnCubeParticles(SidedPos.XYZ.OffsetCopy(0, 0.25, 0), ProjectileStack, 0.5f, ImpactParticleCount, ImpactParticleSize, null, new Vec3f((float)motionBeforeCollide.X * 8, (float)-motionBeforeCollide.Y * 6, (float)motionBeforeCollide.Z * 8));
+                World.SpawnCubeParticles(Pos.XYZ.OffsetCopy(0, 0.25, 0), ProjectileStack, 0.5f, ImpactParticleCount, ImpactParticleSize, null, new Vec3f((float)motionBeforeCollide.X * 8, (float)-motionBeforeCollide.Y * 6, (float)motionBeforeCollide.Z * 8));
 
                 // Resend position to client
                 WatchedAttributes.MarkAllDirty();
@@ -193,12 +204,12 @@ namespace Vintagestory.GameContent
             ProjectileStack.ToBytes(writer);
         }
 
-        public override void FromBytes(BinaryReader reader, bool fromServer)
+        public override void FromBytes(ref BinarySpanReader reader, bool fromServer)
         {
-            base.FromBytes(reader, fromServer);
+            base.FromBytes(ref reader, fromServer);
             beforeCollided = reader.ReadBoolean();
 
-            ProjectileStack = World == null ? new ItemStack(reader) : new ItemStack(reader, World);
+            ProjectileStack = World == null ? new ItemStack(ref reader) : new ItemStack(ref reader, World);
         }
     }
 }
