@@ -918,7 +918,7 @@ namespace Vintagestory.GameContent
                 if (juiceableLitresLeft >= 0.01 && mashStack.Collectible.Code.Path != "rot")
                 {
                     string juicename = jprops.LiquidStack.ResolvedItemstack.GetName().ToLowerInvariant();
-                    dsc.AppendLine(Lang.GetWithFallback("fruitpress-litreswhensqueezed", "Mash produces {0:0.##} litres of juice when squeezed", juiceableLitresLeft, juicename));
+                    dsc.AppendLine(Lang.Get("fruitpress-litreswhensqueezed", juiceableLitresLeft, juicename));
                 }
                 else
                 {

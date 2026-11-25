@@ -1,4 +1,4 @@
-﻿using Vintagestory.API.Client;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 
@@ -127,8 +127,6 @@ namespace Vintagestory.GameContent
 
             return 0;
         }
-
-
 
         BlockPos GetControllerBlockPositionOrNull(BlockPos pos)
         {

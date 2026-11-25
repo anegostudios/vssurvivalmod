@@ -19,7 +19,6 @@ namespace Vintagestory.GameContent
         public BESpawnerData spawnerData = new BESpawnerData();
         BlockPos blockEntityPos;
         bool updating;
-        List<string> codes = new List<string>();
 
         public GuiDialogSpawner(BlockPos blockEntityPos, ICoreClientAPI capi) : base("Spawner config", capi)
         {
@@ -145,7 +144,6 @@ namespace Vintagestory.GameContent
                 .AddNumberInput(tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, -10).WithFixedSize(75, 29), null, CairoFont.WhiteDetailText(), "chargeCapacity")
                 .AddNumberInput(tmpBoundsDim3.RightCopy(100, 0).WithFixedSize(75, 29), null, CairoFont.WhiteDetailText(), "rechargePerHour")
 
-
                 .AddStaticText("Climate conditions", CairoFont.WhiteDetailText(), tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, 10).WithFixedSize(200, 29))
                 .AddDropDown(
                     new string[] { "0", "1", "2" },
@@ -162,15 +160,22 @@ namespace Vintagestory.GameContent
                 .AddStaticText("MaxTemp", CairoFont.WhiteDetailText(), tmpBoundsDim2 = tmpBoundsDim2.RightCopy(10, 7).WithFixedSize(80, 29))
                 .AddNumberInput(tmpBoundsDim2 = tmpBoundsDim2.RightCopy(5, -7).WithFixedSize(60, 29), OnDimensionsChanged, CairoFont.WhiteDetailText(), "maxTemp")
 
+                .AddStaticText("Spawner destroy chance % on Import", CairoFont.WhiteDetailText(), tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, 80).WithFixedSize(300, 29))
+                .AddNumberInput(tmpBoundsDim3 = tmpBoundsDim3.BelowCopy(0, -10).WithFixedSize(60, 29), OnDestroyChanceChanged, CairoFont.WhiteDetailText(), "destroySpawnerChance")
 
-                .AddSmallButton("Close", OnButtonClose, closeButtonBounds.FixedUnder(tmpBoundsDim2, 20))
-                .AddSmallButton("Save", OnButtonSave, saveButtonBounds.FixedUnder(tmpBoundsDim2, 20))
+                .AddSmallButton("Close", OnButtonClose, closeButtonBounds.FixedUnder(tmpBoundsDim3, 20))
+                .AddSmallButton("Save", OnButtonSave, saveButtonBounds.FixedUnder(tmpBoundsDim3, 20))
                 .Compose()
             ;
 
             UpdateFromServer(this.spawnerData);
         }
 
+        private void OnDestroyChanceChanged(string val)
+        {
+            if (updating) return;
+            spawnerData.DestroySpawnerChance = SingleComposer.GetNumberInput("destroySpawnerChance").GetValue() / 100f;
+        }
 
         private void OnDimensionsChanged(string val)
         {
@@ -230,7 +235,7 @@ namespace Vintagestory.GameContent
             SingleComposer.GetNumberInput("maxRain").SetValue(data.MaxRain);
             SingleComposer.GetNumberInput("minTemp").SetValue(data.MinTemp);
             SingleComposer.GetNumberInput("maxTemp").SetValue(data.MaxTemp);
-
+            SingleComposer.GetNumberInput("destroySpawnerChance").SetValue(data.DestroySpawnerChance * 100);
 
             updating = false;
         }
@@ -273,6 +278,7 @@ namespace Vintagestory.GameContent
             spawnerData.MinTemp = SingleComposer.GetNumberInput("minTemp").GetValue();
             spawnerData.MaxTemp = SingleComposer.GetNumberInput("maxTemp").GetValue();
             spawnerData.ClimateMode = (int)SingleComposer.GetDropDown("climateMode").SelectedIndices[0];
+            spawnerData.DestroySpawnerChance = SingleComposer.GetNumberInput("destroySpawnerChance").GetValue() / 100f;
 
             byte[] data = SerializerUtil.Serialize(spawnerData);
             capi.Network.SendBlockEntityPacket(blockEntityPos, 1001, data);

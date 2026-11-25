@@ -355,10 +355,10 @@ namespace Vintagestory.GameContent
 
             if (HasSolidifed(itemStack, contents.Key, api.World))
             {
-                return Lang.GetWithFallback("crucible-smelted-solid", "Crucible (Contains solidified {0})", contentsLocalized, base.GetHeldItemName(itemStack));
+                return Lang.Get("crucible-smelted-solid", contentsLocalized, base.GetHeldItemName(itemStack));
             } else
             {
-                return Lang.GetWithFallback("crucible-smelted-molten", "Crucible (Contains molten {0})", contentsLocalized, base.GetHeldItemName(itemStack));
+                return Lang.Get("crucible-smelted-molten", contentsLocalized, base.GetHeldItemName(itemStack));
             }
         }
 

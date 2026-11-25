@@ -34,7 +34,6 @@ namespace Vintagestory.GameContent
         public float RotateYRad;
         protected bool opened;
         protected bool invertHandles;
-        protected MeshData mesh;
         protected Cuboidf[] boxesClosed, boxesOpened;
 
         public BlockFacing facingWhenClosed { get { return BlockFacing.HorizontalFromYaw(RotateYRad); } }
@@ -103,7 +102,7 @@ namespace Vintagestory.GameContent
         {
             float easingSpeed = Block.Attributes?["easingSpeed"].AsFloat(10) ?? 10;
             return api.Side == EnumAppSide.Client
-                ? new BlockEntityAnimationUtil(api, Blockentity, BlockEntityAnimationUtil.CalculateSettleDuration(easingSpeed))
+                ? new BlockEntityAnimationUtil(api, Blockentity, BlockEntityAnimationUtil.GetSettleDurationFromEasing(easingSpeed))
                 : base.CreateAnimationUtil(api);
         }
 
@@ -119,10 +118,30 @@ namespace Vintagestory.GameContent
             }
         }
 
-        public Vec3i getAdjacentOffset(int right, int back = 0, int up = 0)
+        public virtual void OnBlockPlaced(ItemStack byItemStack, IPlayer byPlayer, BlockSelection blockSel)
         {
-            return getAdjacentOffset(right, back, up, RotateYRad, invertHandles);
+            if (byItemStack == null) return; // Placed by worldgen
+
+            RotateYRad = getRotateYRad(byPlayer, blockSel);
+            SetupRotationsAndColSelBoxes(true);
         }
+
+
+        public bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref EnumHandling handling)
+        {
+            if (!doorBh.handopenable && byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
+            {
+                (Api as ICoreClientAPI).TriggerIngameError(this, "nothandopenable", Lang.Get("This door cannot be opened by hand."));
+                return true;
+            }
+
+            ToggleDoorState(byPlayer, !opened);
+            handling = EnumHandling.PreventDefault;
+            return true;
+        }
+
+
+        public Vec3i getAdjacentOffset(int right, int back = 0, int up = 0) => getAdjacentOffset(right, back, up, RotateYRad, invertHandles);
 
         public static Vec3i getAdjacentOffset(int right, int back, int up, float rotateYRad, bool invertHandles)
         {
@@ -138,7 +157,6 @@ namespace Vintagestory.GameContent
         {
             if (initalSetup)
             {
-
                 if (BlockBehaviorDoor.HasCombinableLeftDoor(Api.World, RotateYRad, Pos, doorBh.width, out BEBehaviorDoor otherDoor, out int offset))
                 {
                     if (otherDoor.LeftDoor == null && otherDoor.RightDoor == null && otherDoor.facingWhenClosed == facingWhenClosed)
@@ -217,47 +235,11 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            if (Api.Side == EnumAppSide.Client)
-            {
-                if (doorBh.animatableOrigMesh == null)
-                {
-                    string animkey = Block.Shape.ToString();
-                    doorBh.animatableOrigMesh = animUtil.CreateMesh(animkey, null, out Shape shape, null);
-                    doorBh.animatableShape = shape;
-                    doorBh.animatableDictKey = animkey;
-                }
-
-                if (doorBh.animatableOrigMesh != null)
-                {
-                    animUtil.InitializeAnimator(doorBh.animatableDictKey, doorBh.animatableOrigMesh, doorBh.animatableShape, null, shareSourceMesh: true);
-                    UpdateMeshAndAnimations();
-                }
-            }
-
             UpdateHitBoxes();
         }
 
-        protected virtual void UpdateMeshAndAnimations()
-        {
-            mesh = doorBh.animatableOrigMesh.Clone();
-            float rot = invertHandles ? -RotateYRad : RotateYRad;
-            animUtil.renderer.rotationDeg.Y = rot * GameMath.RAD2DEG;
-            animUtil.renderer.ScaleX = invertHandles ? -1 : 1;
-            animUtil.renderer.backfaceCulling = !invertHandles;
-            if (RotateYRad != 0)
-            {
-                mesh = mesh.Rotate(0, rot, 0);
-            }
 
-            if (invertHandles)
-            {
-                // We need a full matrix transform for this to update the normals as well
-                Matrixf matf = new Matrixf();
-                matf.Translate(0.5f, 0.5f, 0.5f).Scale(-1, 1, 1).Translate(-0.5f, -0.5f, -0.5f);
-                mesh.MatrixTransform(matf.Values);
-            }
-            animUtil.RefreshStaticMesh();
-        }
+       
 
         protected virtual void UpdateHitBoxes()
         {
@@ -282,13 +264,6 @@ namespace Vintagestory.GameContent
             this.boxesOpened = boxesopened;
         }
 
-        public virtual void OnBlockPlaced(ItemStack byItemStack, IPlayer byPlayer, BlockSelection blockSel)
-        {
-            if (byItemStack == null) return; // Placed by worldgen
-
-            RotateYRad = getRotateYRad(byPlayer, blockSel);
-            SetupRotationsAndColSelBoxes(true);
-        }
 
         public static float getRotateYRad(IPlayer byPlayer, BlockSelection blockSel)
         {
@@ -304,19 +279,6 @@ namespace Vintagestory.GameContent
         public bool IsSideSolid(BlockFacing facing)
         {
             return (!opened && facing == facingWhenClosed) || (opened && facing == facingWhenOpened);
-        }
-
-        public bool OnBlockInteractStart(IWorldAccessor world, IPlayer byPlayer, BlockSelection blockSel, ref EnumHandling handling)
-        {
-            if (!doorBh.handopenable && byPlayer.WorldData.CurrentGameMode != EnumGameMode.Creative)
-            {
-                (Api as ICoreClientAPI).TriggerIngameError(this, "nothandopenable", Lang.Get("This door cannot be opened by hand."));
-                return true;
-            }
-
-            ToggleDoorState(byPlayer, !opened);
-            handling = EnumHandling.PreventDefault;
-            return true;
         }
 
         public void ToggleDoorState(IPlayer byPlayer, bool opened)
@@ -390,14 +352,64 @@ namespace Vintagestory.GameContent
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
         {
+            ensureAnimatorInitialized();
+
             bool skipMesh = base.OnTesselation(mesher, tessThreadTesselator);
             if (!skipMesh)
             {
-                if (mesh == null) UpdateMeshAndAnimations();
-                mesher.AddMeshData(mesh);
+                mesher.AddMeshData(doorBh.animatableOrigMesh, GetTfMatrix(invertHandles));
             }
             return true;
         }
+
+        private void ensureAnimatorInitialized()
+        {
+            if (animUtil.Initialized) return;
+
+            // Created only once per block type, so no need to worry about this one performance wise
+            if (doorBh.animatableOrigMesh == null)
+            {
+                string animkey = Block.Shape.ToString();
+                doorBh.animatableOrigMesh = animUtil.CreateMesh(animkey, null, out Shape shape, null);
+                doorBh.animatableShape = shape;
+                doorBh.animatableDictKey = animkey;
+            }
+
+            animUtil.InitializeAnimator(doorBh.animatableDictKey, doorBh.animatableOrigMesh, doorBh.animatableShape, null, true, ApplyPlacement);
+
+            // This happens offthread. Fix potential race condition where Dispose() runs first, and only then this runs
+            if (animUtil.Disposed) {
+                animUtil.renderer?.Dispose();
+            }
+        }
+
+        protected virtual void UpdateMeshAndAnimations()
+        {
+            var renderer = animUtil?.renderer;
+            if (renderer == null) return;
+
+            ApplyPlacement(renderer);
+            animUtil.RefreshStaticMesh();
+        }
+
+        private void ApplyPlacement(AnimatableRenderer renderer)
+        {
+            bool mirrored = invertHandles;
+            renderer.CustomTransform = GetTfMatrix(mirrored);
+            renderer.backfaceCulling = !mirrored;
+        }
+
+        private float[] GetTfMatrix(bool mirrored)
+        {
+            float rotation = mirrored ? -RotateYRad : RotateYRad;
+            return new Matrixf()
+                .Translate(0.5f, 0, 0.5f)
+                .Scale(mirrored ? -1 : 1, 1, 1)
+                .RotateY(rotation)
+                .Translate(-0.5f, 0, -0.5f)
+                .Values;
+        }
+
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
         {

@@ -1031,7 +1031,7 @@ namespace Vintagestory.GameContent
                     if (!currentblock.DisplacesLiquids(blockAcc, pos))
                     {
                         blockAcc.SetBlock(waterBlock.BlockId, secondPos, BlockLayersAccess.Fluid);
-                        ((IServerWorldAccessor)byEntity.World).TriggerDidPlaceBlock(((EntityPlayer)byEntity).Player, currentblock.BlockId, new BlockSelection(){Position = secondPos}, new ItemStack(waterBlock));
+                        (byEntity.World as IServerWorldAccessor)?.TriggerDidPlaceBlock(((EntityPlayer)byEntity).Player, currentblock.BlockId, new BlockSelection(){Position = secondPos}, new ItemStack(waterBlock));
                         blockAcc.TriggerNeighbourBlockUpdate(secondPos);
                         waterBlock.OnNeighbourBlockChange(byEntity.World, secondPos, pos);
                         blockAcc.MarkBlockDirty(secondPos);   // Maybe unnecessary to call this server side as this code will be called client-side anyhow

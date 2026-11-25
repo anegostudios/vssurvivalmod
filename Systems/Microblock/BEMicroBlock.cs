@@ -52,7 +52,7 @@ namespace Vintagestory.GameContent
 
             var shape = be.GenShape();
             var text = JsonUtil.ToPrettyString<Shape>(shape);
-            text = 
+            text =
                 text
                 .Replace("Textures", "textures")
                 .Replace("Elements", "elements")
@@ -178,9 +178,9 @@ namespace Vintagestory.GameContent
                         block.Textures.TryGetValue("all", out ctex);
                     }
 
-                    shape.Textures[texCode] = ctex.Base.Path.Replace("*","1");
+                    shape.Textures[texCode] = ctex.Base.Path.Replace("*", "1");
 
-                    elem.Faces[facing.Code] = new ShapeElementFace() { Texture = texCode, Uv = new float[4] { 0,0,16,16 } };
+                    elem.Faces[facing.Code] = new ShapeElementFace() { Texture = texCode, Uv = new float[4] { 0, 0, 16, 16 } };
                 }
 
 #pragma warning restore CS0618
@@ -379,9 +379,10 @@ namespace Vintagestory.GameContent
         {
             base.GetBlockInfo(forPlayer, dsc);
 
-            
-            if (BlockName?.IndexOf('\n') > 0) {
-                dsc.AppendLine(Lang.Get(BlockName.Substring(BlockName.IndexOf('\n') + 1))); 
+
+            if (BlockName?.IndexOf('\n') > 0)
+            {
+                dsc.AppendLine(Lang.Get(BlockName.Substring(BlockName.IndexOf('\n') + 1)));
             }
             else
             {
@@ -1044,7 +1045,8 @@ namespace Vintagestory.GameContent
 
                 selectionBoxesStd = selectionBoxesStdTmp.Where(ele => ele != null).ToArray();
                 selectionBoxesMetaMode = selBoxesMetaModeTmp.ToArray();
-            } else
+            }
+            else
             {
                 for (int i = 0; i < VoxelCuboids.Count; i++)
                 {
@@ -1371,7 +1373,7 @@ namespace Vintagestory.GameContent
                 var material = (VoxelCuboids[j] >> 24) & 0xFFu;
                 if (material >= index)
                 {
-                    VoxelCuboids[j] = (uint)((VoxelCuboids[j] & ~(255 << 24)) | ((material-1) << 24));
+                    VoxelCuboids[j] = (uint)((VoxelCuboids[j] & ~(255 << 24)) | ((material - 1) << 24));
                 }
             }
         }
@@ -1445,7 +1447,7 @@ namespace Vintagestory.GameContent
                 if (DecorIdsRotated == null || DecorIdsRotated.Length < DecorIds.Length) DecorIdsRotated = new int[DecorIds.Length];
                 for (var i = 0; i < 4; i++)
                 {
-                    DecorIdsRotated[i] = DecorIds[GameMath.Mod(i + rotationY/90, 4)];
+                    DecorIdsRotated[i] = DecorIds[GameMath.Mod(i + rotationY / 90, 4)];
                 }
 
                 DecorIdsRotated[4] = DecorIds[4];
@@ -1477,6 +1479,8 @@ namespace Vintagestory.GameContent
         public static RefList<VoxelMaterial> tmpBlockMaterials;
         [ThreadStatic]
         public static RefList<VoxelMaterial> tmpDecorMaterials;
+        [ThreadStatic]
+        private static MeshData tmpMesh;
 
         private static readonly SizeConverter ConvertPlaneX = ConvertPlaneXImpl;
         private static readonly SizeConverter ConvertPlaneY = ConvertPlaneYImpl;
@@ -1511,13 +1515,55 @@ namespace Vintagestory.GameContent
 
         private unsafe static MeshData CreateMesh(ICoreClientAPI capi, List<uint> voxelCuboids, int[] blockIds, int[] decorIds, int decorRotations, uint[] originalVoxelCuboids, BlockPos pos, List<float> decalUvs, VoxelMaterial decalMaterial)
         {
-            var mesh = new MeshData(24, 36).WithColorMaps().WithRenderpasses().WithXyzFaces();
-
             if (voxelCuboids == null || blockIds == null)
             {
-                return mesh;
+                return CreateEmptyMesh();
             }
 
+            bool hasTopSoil = false;
+            for (int i = 0; i < blockIds.Length; i++)
+            {
+                var block = capi.World.GetBlock(blockIds[i]);
+                hasTopSoil |= block.RenderPass == EnumChunkRenderPass.TopSoil;
+            }
+
+            CustomMeshDataPartShort topSoilUvs;
+            if (tmpMesh == null)
+            {
+                tmpMesh = CreateEmptyMesh();
+                topSoilUvs = CreateTopSoilUvs(0);
+                if (hasTopSoil) tmpMesh.CustomShorts = topSoilUvs;
+            }
+            else
+            {
+                topSoilUvs = tmpMesh.CustomShorts;
+                if (!hasTopSoil) tmpMesh.CustomShorts = null;
+            }
+
+            try // Just in case BuildMesh() throws. Then we can still tesselate other microblocks
+            {
+                BuildMesh(capi, voxelCuboids, blockIds, decorIds, decorRotations, originalVoxelCuboids, pos, decalUvs, decalMaterial, tmpMesh);
+                return tmpMesh.CloneWithCompactCustomData();
+            } finally
+            {
+                tmpMesh.CustomShorts = topSoilUvs;
+                tmpMesh.Clear();
+            }
+        }
+
+        private static MeshData CreateEmptyMesh() => new MeshData(24, 36).WithColorMaps().WithRenderpasses().WithXyzFaces();
+
+        private static CustomMeshDataPartShort CreateTopSoilUvs(int count) => new CustomMeshDataPartShort(count)
+        {
+            InterleaveOffsets = new int[] { 0 },
+            InterleaveSizes = new int[] { 2 },
+            InterleaveStride = 4,
+            Conversion = DataConversion.NormalizedFloat
+        };
+
+        private unsafe static void BuildMesh(ICoreClientAPI capi, List<uint> voxelCuboids, int[] blockIds, int[] decorIds, int decorRotations,
+            uint[] originalVoxelCuboids, BlockPos pos, List<float> decalUvs, VoxelMaterial decalMaterial, MeshData mesh)
+        {
             var blockMatList = getOrCreateBlockMatRefList();
             blockMatList.Clear();
 
@@ -1533,21 +1579,16 @@ namespace Vintagestory.GameContent
                 }
             }
 
-            bool hasTopSoil = false;
             bool hasFrostable = false;
             int matIndex = blockMatList.Count;
             for (int i = 0; i < blockIds.Length; i++)
             {
                 var block = capi.World.GetBlock(blockIds[i]);
                 blockMatList.Add(VoxelMaterial.FromBlock(capi, block, pos, true));
-
-                hasTopSoil |= block.RenderPass == EnumChunkRenderPass.TopSoil;
                 hasFrostable |= block.Frostable;
             }
-            if (hasTopSoil) mesh.CustomShorts = new CustomMeshDataPartShort() { InterleaveOffsets = new int[] { 0 }, InterleaveSizes = new int[] { 2 }, InterleaveStride = 4, Conversion = DataConversion.NormalizedFloat };
 
             RefList<VoxelMaterial> decorMatList = loadDecor(capi, voxelCuboids, decorIds, pos, mesh, decorRotations);
-
 
             // stackalloc to force the array onto the stack, not the heap
             // original bounds info are required to figure out if we need to use inside or outside texture
@@ -1558,7 +1599,6 @@ namespace Vintagestory.GameContent
                 out _
             );
 
-            var count = voxelCuboids.Count;
             fixed (VoxelInfo* voxelsPtr = voxels)
             {
                 int x0, y0, z0, x1, y1, z1, material;
@@ -1590,8 +1630,6 @@ namespace Vintagestory.GameContent
                     GenCuboidMesh(ref genFaceInfo, ref genPlaneInfo, x0, y0, z0, x1, y1, z1);
                 }
             }
-
-            return mesh;
         }
 
         private static unsafe RefList<VoxelMaterial> loadDecor(ICoreClientAPI capi, List<uint> voxelCuboids, int[] decorIds, BlockPos pos, MeshData mesh, int decorRotations)
@@ -2107,13 +2145,7 @@ namespace Vintagestory.GameContent
                 }
                 targetMesh.AddXyzFace(facing.MeshDataIndex);
                 targetMesh.AddTextureId(tpos.atlasTextureId);
-                if (AnyFrostable)
-                {
-                    targetMesh.AddColorMapIndex(blockMat.ClimateMapIndex, blockMat.SeasonMapIndex, blockMat.Frostable);
-                } else
-                {
-                    targetMesh.AddColorMapIndex(blockMat.ClimateMapIndex, blockMat.SeasonMapIndex);
-                }
+                AddFaceColorMap(in blockMat, blockMat.Frostable);
                 targetMesh.AddRenderPass((short)blockMat.RenderPass);
 
 
@@ -2185,10 +2217,25 @@ namespace Vintagestory.GameContent
                     }
                     targetMesh.AddXyzFace(facing.MeshDataIndex);
                     targetMesh.AddTextureId(decortpos.atlasTextureId);
-                    targetMesh.AddColorMapIndex(decorMat.ClimateMapIndex, decorMat.SeasonMapIndex);
+                    AddFaceColorMap(in decorMat, false);
                     targetMesh.AddRenderPass((short)decorMat.RenderPass);
                 }
 
+            }
+
+            private void AddFaceColorMap(in VoxelMaterial material, bool frostable)
+            {
+                var mesh = targetMesh;
+                int index = mesh.ColorMapIdsCount;
+                mesh.AddColorMapIndex(material.ClimateMapIndex, material.SeasonMapIndex);
+                if (AnyFrostable)
+                {
+                    if (mesh.FrostableBits == null || index >= mesh.FrostableBits.Length)
+                    {
+                        Array.Resize(ref mesh.FrostableBits, mesh.ClimateColorMapIds.Length);
+                    }
+                    mesh.FrostableBits[index] = frostable;
+                }
             }
 
             /// <summary>
@@ -2207,22 +2254,22 @@ namespace Vintagestory.GameContent
                 {
                     case 0:
                         u = (uc - 1f) * uSize + 1f - uOffset;
-                        v =       -vc * vSize + 1f - vOffset;
+                        v = -vc * vSize + 1f - vOffset;
                         break;
                     case 1:
                         u = (uc - 1f) * uSize + 1f - uOffset;
-                        v =       -vc * vSize + 1f - vOffset;
+                        v = -vc * vSize + 1f - vOffset;
                         break;
                     case 2:
-                        u =  uc * uSize + uOffset;
+                        u = uc * uSize + uOffset;
                         v = -vc * vSize + 1f - vOffset;
                         break;
                     case 3:
-                        u =  uc * uSize + uOffset;
+                        u = uc * uSize + uOffset;
                         v = -vc * vSize + 1f - vOffset;
                         break;
                     case 4:
-                        u =       -uc * uSize + 1f - uOffset;
+                        u = -uc * uSize + 1f - uOffset;
                         v = (vc - 1f) * vSize + 1f - vOffset;
                         break;
                     case 5:
@@ -2235,10 +2282,10 @@ namespace Vintagestory.GameContent
 
         }
 
-    /// <summary>
-    /// Is coordinate agnostic, can iterate over any of the 6 planes
-    /// </summary>
-    public unsafe ref struct GenPlaneInfo
+        /// <summary>
+        /// Is coordinate agnostic, can iterate over any of the 6 planes
+        /// </summary>
+        public unsafe ref struct GenPlaneInfo
         {
             public RefList<VoxelMaterial> blockMaterials;
             public RefList<VoxelMaterial> decorMaterials;
@@ -2405,7 +2452,7 @@ namespace Vintagestory.GameContent
             }
 
             if (!resolveImports) return;
-            
+
             int newMatIndex = -1;
             int len = BlockIds.Length;
             for (int i = 0; i < len; i++)

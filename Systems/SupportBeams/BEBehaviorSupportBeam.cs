@@ -34,15 +34,13 @@ namespace Vintagestory.GameContent
 
         bool dropWhenBroken;
 
-        public BEBehaviorSupportBeam(BlockEntity blockentity) : base(blockentity)
-        {
-        }
+        public BEBehaviorSupportBeam(BlockEntity blockentity) : base(blockentity) { }
 
         public override void Initialize(ICoreAPI api, JsonObject properties)
         {
             base.Initialize(api, properties);
 
-            sbp = api.ModLoader.GetModSystem<ModSystemSupportBeamPlacer>();
+            sbp = ObjectCacheUtil.GetOrCreate(api, "beamPlacerModSystemInst", () => api.ModLoader.GetModSystem<ModSystemSupportBeamPlacer>());
 
             if (Beams != null) {
                 foreach (var beam in Beams)
@@ -68,8 +66,6 @@ namespace Vintagestory.GameContent
                 PlaceIndex = nextPlaceIndex++
             });
             refreshCollider();
-            collBoxes = null;
-            selBoxes = null;
 
             sbp.OnBeamAdded(start.ToVec3d().Add(Pos), end.ToVec3d().Add(Pos));
         }
@@ -78,34 +74,16 @@ namespace Vintagestory.GameContent
         {
             if (Api is ICoreClientAPI capi && capi.World.Player.InventoryManager.ActiveHotbarSlot?.Itemstack?.Collectible is BlockSupportBeam) return null;
 
-            if (Beams == null) return null;
-            if (collBoxes != null) return collBoxes;
-
-            List<Cuboidf> cuboids = new();
-            for (int i = 0; i < Beams.Length; i++)
-            {
-                // Straight beams already have an exact collider in the collision scene.
-                if (Beams[i].SlumpPerMeter != 0) cuboids.Add(getBeamAnchorBox(Beams[i]));
-            }
-
-            return collBoxes = cuboids.ToArray();
+            if (collBoxes == null) generateColSelBoxes();
+            return collBoxes;
         }
 
         public Cuboidf[] GetSelectionBoxes()
         {
             if (Api is ICoreClientAPI capi && BlockSupportBeam.IsPlacingThroughBeams(capi.World.Player)) return null;
 
-            if (selBoxes != null) return selBoxes;
-
-            if (Beams == null) return null;
-
-            Cuboidf[] boxes = new Cuboidf[Beams.Length];
-            for (int i = 0; i < Beams.Length; i++)
-            {
-                boxes[i] = getBeamBox(Beams[i], forSelection: true) ?? getBeamAnchorBox(Beams[i]);
-            }
-
-            return selBoxes = boxes;
+            if (selBoxes == null) generateColSelBoxes();
+            return selBoxes;
         }
 
 
@@ -122,6 +100,8 @@ namespace Vintagestory.GameContent
                 bool refreshCollision = Api != null && worldAccessForResolve != null;
                 if (refreshCollision) unregisterCollider();
 
+                collBoxes = null;
+                selBoxes = null;
                 Beams = SerializerUtil.Deserialize<PlacedBeam[]>(bytes);
                 if (Beams != null)
                 {
@@ -142,12 +122,10 @@ namespace Vintagestory.GameContent
                             var beam = Beams[i];
                             beam.Block = Api.World.GetBlock(beam.BlockId);
                         }
-                        if (refreshCollision) refreshCollider();
                     }
                 }
 
-                collBoxes = null;
-                selBoxes = null;
+                if (refreshCollision) refreshCollider();
             }
         }
 
@@ -198,6 +176,8 @@ namespace Vintagestory.GameContent
                     worldForNewMappings.Logger.Warning("Cannot load support beam block id mapping @ {1}, block id {0} not found block registry. Will not display correctly.", Beams[i].BlockId, Blockentity.Pos);
                 }
             }
+
+            refreshCollider();
         }
 
         public override void OnStoreCollectibleMappings(Dictionary<int, AssetLocation> blockIdMapping, Dictionary<int, AssetLocation> itemIdMapping)
@@ -305,7 +285,7 @@ namespace Vintagestory.GameContent
             }
 
             ToTreeAttributes(tree);
-            if (Api != null) refreshCollider();
+            refreshCollider();
         }
 
         public override void OnBlockBroken(IPlayer byPlayer = null)
@@ -359,8 +339,6 @@ namespace Vintagestory.GameContent
             }
 
             Blockentity.MarkDirty(true);
-            collBoxes = null;
-            selBoxes = null;
         }
 
         public bool ExchangeWith(ItemSlot fromSlot, ItemSlot toSlot)
@@ -389,19 +367,8 @@ namespace Vintagestory.GameContent
 
         private void refreshCollider()
         {
-            beamCollisionBoxes.Clear();
-            beamSelectionBoxIndices.Clear();
-            if (Beams != null)
-            {
-                for (int i = 0; i < Beams.Length; i++)
-                {
-                    Cuboidd collisionBox = getBeamCollisionBox(Beams[i]);
-                    if (collisionBox == null) continue;
-
-                    beamCollisionBoxes.Add(collisionBox);
-                    beamSelectionBoxIndices.Add(i);
-                }
-            }
+            generateColSelBoxes();
+            if (Api == null) return;
 
             if (beamCollisionBoxes.Count == 0)
             {
@@ -419,53 +386,92 @@ namespace Vintagestory.GameContent
             }
         }
 
-        private Cuboidd getBeamCollisionBox(PlacedBeam beam)
+        private void generateColSelBoxes()
         {
-            RotatedCuboidf collisionBox = getBeamBox(beam, forSelection: false);
-            return collisionBox?.OffsetCopyDouble(Pos.X, Pos.Y, Pos.Z);
-        }
+            beamCollisionBoxes.Clear();
+            beamSelectionBoxIndices.Clear();
+            if (Beams == null)
+            {
+                collBoxes = null;
+                selBoxes = null;
+                return;
+            }
 
-        private RotatedCuboidf getBeamBox(PlacedBeam beam, bool forSelection)
-        {
-            // A single rotated box cannot follow a curved beam.
-            if (beam.SlumpPerMeter != 0) return null;
+            // Slumped beams get a 1.22 style small col/sel box at its origin point
+            int slumpedBeams = 0;
+            for (int i = 0; i < Beams.Length; i++)
+            {
+                if (Beams[i].SlumpPerMeter != 0) slumpedBeams++;
+            }
 
-            FastVec3f offset = forSelection ? getMeshOffset(beam) : default;
-            var start = beam.Start.AddCopy(offset.X, offset.Y, offset.Z);
-            float length = beam.Start.DistanceTo(beam.End);
-            if (length <= 0) return null;
+            collBoxes = slumpedBeams == 0 ? Array.Empty<Cuboidf>() : new Cuboidf[slumpedBeams];
+            selBoxes = new Cuboidf[Beams.Length];
 
-            ModSystemSupportBeamPlacer.GetBeamTransform(
-                beam.End.X - beam.Start.X,
-                beam.End.Y - beam.Start.Y,
-                beam.End.Z - beam.Start.Z,
-                out float yaw,
-                out float pitch,
-                out float endExtension
-            );
-            float[] rotation = Quaternionf.Create();
-            Quaternionf.RotateY(rotation, rotation, yaw);
-            Quaternionf.RotateZ(rotation, rotation, pitch);
+            int anchorIndex = 0;
+            double x = Pos.X, y = Pos.Y, z = Pos.Z;
+            for (int i = 0; i < Beams.Length; i++)
+            {
+                var beam = Beams[i];
+                // A single rotated box cannot follow a curved beam
+                if (beam.SlumpPerMeter != 0)
+                {
+                    selBoxes[i] = collBoxes[anchorIndex++] = getBeamAnchorBox(beam);
+                    continue;
+                }
 
-            // Match the cross section and model origin used by generateMesh().
-            Cuboidd modelBounds = (beam.Block as BlockSupportBeam)?.BeamShapeBounds;
-            float minY = modelBounds == null ? -beamHalfWidth : (float)modelBounds.Y1 - 0.125f;
-            float maxY = modelBounds == null ? beamHalfWidth : (float)modelBounds.Y2 - 0.125f;
-            float minZ = modelBounds == null ? -beamHalfWidth : (float)modelBounds.Z1 - 0.5f;
-            float maxZ = modelBounds == null ? beamHalfWidth : (float)modelBounds.Z2 - 0.5f;
-            float inset = forSelection ? 0 : beamCollisionInset;
-            float insetY = Math.Min(inset, (maxY - minY) / 4);
-            float insetZ = Math.Min(inset, (maxZ - minZ) / 4);
-            float insetX = Math.Min(inset, (length + 2 * endExtension) / 4);
+                float length = beam.Start.DistanceTo(beam.End);
+                if (length <= 0)
+                {
+                    selBoxes[i] = getBeamAnchorBox(beam);
+                    continue;
+                }
 
-            return new RotatedCuboidf(
-                start.X - length - endExtension + insetX,
-                start.Y + minY + insetY,
-                start.Z + minZ + insetZ,
-                start.X + endExtension - insetX,
-                start.Y + maxY - insetY,
-                start.Z + maxZ - insetZ
-            ).SetRotationCenter(start).SetRotationQuaternion(rotation);
+                ModSystemSupportBeamPlacer.GetBeamTransform(
+                    beam.End.X - beam.Start.X,
+                    beam.End.Y - beam.Start.Y,
+                    beam.End.Z - beam.Start.Z,
+                    out float yaw,
+                    out float pitch,
+                    out float endExtension
+                );
+                float[] rotation = Quaternionf.Create();
+                Quaternionf.RotateY(rotation, rotation, yaw);
+                Quaternionf.RotateZ(rotation, rotation, pitch);
+
+                // Match the cross section and model origin used by generateMesh().
+                Cuboidd modelBounds = (beam.Block as BlockSupportBeam)?.BeamShapeBounds;
+                float minY = modelBounds == null ? -beamHalfWidth : (float)modelBounds.Y1 - 0.125f;
+                float maxY = modelBounds == null ? beamHalfWidth : (float)modelBounds.Y2 - 0.125f;
+                float minZ = modelBounds == null ? -beamHalfWidth : (float)modelBounds.Z1 - 0.5f;
+                float maxZ = modelBounds == null ? beamHalfWidth : (float)modelBounds.Z2 - 0.5f;
+                float insetY = Math.Min(beamCollisionInset, (maxY - minY) / 4);
+                float insetZ = Math.Min(beamCollisionInset, (maxZ - minZ) / 4);
+                float insetX = Math.Min(beamCollisionInset, (length + 2 * endExtension) / 4);
+
+                var start = beam.Start;
+                FastVec3f offset = getMeshOffset(beam);
+                var selectionStart = start.AddCopy(offset.X, offset.Y, offset.Z);
+                selBoxes[i] = new RotatedCuboidf(
+                    selectionStart.X - length - endExtension,
+                    selectionStart.Y + minY,
+                    selectionStart.Z + minZ,
+                    selectionStart.X + endExtension,
+                    selectionStart.Y + maxY,
+                    selectionStart.Z + maxZ
+                ).SetRotationCenter(selectionStart).SetRotationQuaternion(rotation);
+
+                beamCollisionBoxes.Add(new RotatedCuboidd().Set(
+                    start.X - length - endExtension + insetX + x,
+                    start.Y + minY + insetY + y,
+                    start.Z + minZ + insetZ + z,
+                    start.X + endExtension - insetX + x,
+                    start.Y + maxY - insetY + y,
+                    start.Z + maxZ - insetZ + z,
+                    new Vec3d(start.X + x, start.Y + y, start.Z + z),
+                    RotatedCuboidMath.FromFloatQuaternion(rotation)
+                ));
+                beamSelectionBoxIndices.Add(i);
+            }
         }
 
         private Cuboidf getBeamAnchorBox(PlacedBeam beam)

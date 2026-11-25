@@ -111,17 +111,16 @@ namespace Vintagestory.ServerMods
         public Dictionary<string, int>? SkipGenerationCategories;
         public Dictionary<int, int>? SkipGenerationFlags;
 
-        public void Init(ICoreServerAPI api)
+        public void Init(ICoreServerAPI api, WorldGenStructuresConfig? structureConfig = null)
         {
             totalChance = 0;
 
             var blockLayerConfig = BlockLayerConfig.GetInstance(api);
-            blockLayerConfig.ResolveBlockIds(api);
 
             if (surface != null)
             {
                 var asset = api.Assets.GetManyInCategory("worldgen", "dungeontiles/" + surface + ".json").FirstOrDefault();
-                Surface = WorldGenStructureBase.LoadSchematic<BlockSchematicPartial>(api, asset, blockLayerConfig, null, null, 0, true);
+                Surface = WorldGenStructureBase.LoadSchematic<BlockSchematicPartial>(api, asset, blockLayerConfig, structureConfig, null, 0, true);
                 if (!TilesByCode.TryAdd(surface, new DungeonTile() { ResolvedSchematics = new[] { Surface }, Code = surface }))
                 {
                     api.Logger.Error($"Dungeon {Code} has a surface with duplicate tile code: {surface}. Tile will be skipped.");
@@ -131,7 +130,7 @@ namespace Vintagestory.ServerMods
             if (start != null)
             {
                 var assetStart = api.Assets.GetManyInCategory("worldgen", "dungeontiles/" + start + ".json").FirstOrDefault();
-                Start = WorldGenStructureBase.LoadSchematic<BlockSchematicPartial>(api, assetStart, blockLayerConfig, null, null, 0, true);
+                Start = WorldGenStructureBase.LoadSchematic<BlockSchematicPartial>(api, assetStart, blockLayerConfig, structureConfig, null, 0, true);
                 if (!TilesByCode.TryAdd(start, new DungeonTile() { ResolvedSchematics = new[] { Start }, Code = start }))
                 {
                     api.Logger.Error($"Dungeon {Code} has a start with duplicate tile code: {start}. Tile will be skipped.");
@@ -144,7 +143,7 @@ namespace Vintagestory.ServerMods
                 foreach (var e in this.ends)
                 {
                     var assetEnd = api.Assets.GetManyInCategory("worldgen", "dungeontiles/" + e + ".json").FirstOrDefault();
-                    var blockSchematicPartials = WorldGenStructureBase.LoadSchematic<BlockSchematicPartial>(api, assetEnd, blockLayerConfig, null, null, 0, true);
+                    var blockSchematicPartials = WorldGenStructureBase.LoadSchematic<BlockSchematicPartial>(api, assetEnd, blockLayerConfig, structureConfig, null, 0, true);
                     ends.Add(blockSchematicPartials);
 
                     if (!TilesByCode.TryAdd(e, new DungeonTile() { ResolvedSchematics = new[] { blockSchematicPartials }, Code = e }))
@@ -156,7 +155,7 @@ namespace Vintagestory.ServerMods
                 EndSchematics = ends.ToArray();
             }
 
-            StairCase?.Init(api);
+            StairCase?.Init(api, structureConfig);
 
             if (RequiredLandform != null && RequiredLandform.Any(l => l.Code == null || l.Type == null))
             {
@@ -172,7 +171,7 @@ namespace Vintagestory.ServerMods
                     continue;
                 }
 
-                tile.Init(api, blockLayerConfig);
+                tile.Init(api, blockLayerConfig, structureConfig);
 
                 if (tile.TileGenerator != null)
                 {
@@ -229,6 +228,11 @@ namespace Vintagestory.ServerMods
                 }
             }
 
+            InitSkipGenerationFlags(api);
+        }
+
+        internal void InitSkipGenerationFlags(ICoreServerAPI api)
+        {
             if (SkipGenerationCategories != null)
             {
                 SkipGenerationFlags = new Dictionary<int, int>();
@@ -246,9 +250,9 @@ namespace Vintagestory.ServerMods
 
         public void SetKeyAttributes(TreeAttribute attr, BlockPos startPos)
         {
+            attr.SetString("keyId", $"{startPos.X},{startPos.Y},{startPos.Z}");
             if (KeyCountByRoomCode == null) return;
 
-            attr.SetString("keyId", $"{startPos.X},{startPos.Y},{startPos.Z}");
             var treeAttribute = new TreeAttribute();
             foreach (var (name, count) in KeyCountByRoomCode)
             {

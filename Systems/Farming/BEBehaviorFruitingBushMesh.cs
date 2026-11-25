@@ -18,7 +18,9 @@ public class BEBehaviorFruitingBushMesh : BlockEntityBehavior, ITexPositionSourc
         {
             if (stemOnly && textureCode.StartsWith("flowerberrysteminside"))
             {
-                textureCode = "stemcenter" + textureCode.Substring("flowerberrysteminside".Length);
+                string suffix = textureCode.Substring("flowerberrysteminside".Length);
+                string insideCode = "steminside" + suffix;
+                textureCode = textureMapping.ContainsKey(insideCode) ? insideCode : "stemcenter" + suffix;
             }
             if (stemOnly && textureCode.StartsWith("flowerberrystemcenter"))
             {
@@ -155,20 +157,82 @@ public class BEBehaviorFruitingBushMesh : BlockEntityBehavior, ITexPositionSourc
             randomVariant += "-" + variant;
             cshape = cshape.BakedAlternates[variant];
         }
-        cache = false;
         stemOnly = berryStage == "stem";
         if (!cache)
         {
             return createMesh(texSource, hasBerriesOrFlowers, isYoung, berryStage, healthState, textureVariant, cshape);
         }
 
-        return ObjectCacheUtil.GetOrCreate(capi, cacheKeyPrefix +meshCacheKey, () =>
+        string cacheKey = cacheKeyPrefix + meshCacheKey + "-" + BState.Growthstate + "-" + healthState;
+        return ObjectCacheUtil.GetOrCreate(capi, cacheKey, () =>
         {
             return createMesh(texSource, hasBerriesOrFlowers, isYoung, berryStage, healthState, textureVariant, cshape);
         });
     }
 
-    protected static Dictionary<string, CompositeTexture> ResolveTextureMapping(JsonObject mapping, JsonObject templates)
+    public static MeshData CreateRipeMeshForInventory(ICoreClientAPI capi, Block block)
+    {
+        var cshape = block.Shape;
+        var shape = capi.Assets.Get<Shape>(cshape.Base.Clone().WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json"));
+        var texSource = new ShapeTextureSource(capi, shape, block.Code.ToString())
+        {
+            textures = createTextureMapping(capi, block, false, "ripe", "healthy", true, 0)
+        };
+
+        capi.Tesselator.TesselateShape("ripe mesh", shape, out var mesh, texSource, cshape.RotateXYZCopy);
+
+        if (block.ClimateColorMap != null)
+        {
+            int tint = capi.World.ApplyColorMapOnRgba(block.ClimateColorMap, null, ColorUtil.WhiteArgb, 180, 138, false);
+            byte[] tintBytes = ColorUtil.ToBGRABytes(tint);
+            for (int face = 0; face < mesh.ColorMapIdsCount; face++)
+            {
+                if (mesh.ClimateColorMapIds[face] == 0) continue;
+
+                int faceIndex = face * 4 * 4;
+                for (int v = 0; v < 4; v++)
+                {
+                    int colorIndex = faceIndex + v * 4;
+                    for (int channel = 0; channel < 3; channel++)
+                    {
+                        mesh.Rgba[colorIndex + channel] = (byte)(mesh.Rgba[colorIndex + channel] * tintBytes[channel] / 255);
+                    }
+                }
+            }
+        }
+
+        return mesh;
+    }
+
+
+    private MeshData createMesh(ITexPositionSource texSource, bool hasBerriesOrFlowers, bool isYoung, string berryStage, string healthState, int textureVariant, CompositeShape cshape)
+    {
+        string[]? ignoreElements = null;
+        textureMapping = createTextureMapping(capi, Block, isYoung, berryStage, healthState, hasBerriesOrFlowers, textureVariant);
+
+        var loc = cshape.Base.Clone();
+        var shape = capi.Assets.Get<Shape>(loc.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json"));
+
+        if (BState.Growthstate == EnumFruitingBushGrowthState.Dormant && Block.Variant["type"] != "strawberry") ignoreElements = ignoreElements.Append(["Leaves/*"]);
+
+        capi.Tesselator.TesselateShape(new TesselationMetaData()
+        {
+            TexSource = texSource,
+            UsesColorMap = true,
+            IgnoreElements = ignoreElements,
+            Rotation = cshape.RotateXYZCopy
+        }, shape, out var bushMesh);
+
+        for (int i = 0; i < bushMesh.ColorMapIdsCount; i++)
+        {
+            if (bushMesh.ClimateColorMapIds[i] > 0) bushMesh.ClimateColorMapIds[i] = (byte)(Block.ClimateColorMapResolved.RectIndex + 1);
+            if (bushMesh.SeasonColorMapIds[i] > 0) bushMesh.SeasonColorMapIds[i] = (byte)(Block.SeasonColorMapResolved.RectIndex + 1);
+        }
+
+        return bushMesh;
+    }
+
+    protected static Dictionary<string, CompositeTexture> resolveTextureMapping(JsonObject mapping, JsonObject templates)
     {
         var textures = new Dictionary<string, CompositeTexture>();
         foreach (var entry in mapping)
@@ -195,14 +259,12 @@ public class BEBehaviorFruitingBushMesh : BlockEntityBehavior, ITexPositionSourc
         return textures;
     }
 
-    private MeshData createMesh(ITexPositionSource texSource, bool hasBerriesOrFlowers, bool isYoung, string berryStage, string healthState, int textureVariant, CompositeShape cshape)
+
+    private static Dictionary<string, CompositeTexture> createTextureMapping(ICoreClientAPI capi, Block block, bool isYoung, string berryStage, string healthState, bool hasBerriesOrFlowers, int textureVariant)
     {
-        string[]? ignoreElements = null;
+        var textures = resolveTextureMapping(block.Attributes[isYoung ? "youngTextureMapping" : "textureMapping"], block.Attributes["textureTemplates"]);
 
-        textureMapping = ResolveTextureMapping(
-            Block.Attributes[isYoung ? "youngTextureMapping" : "textureMapping"], Block.Attributes["textureTemplates"]);
-
-        foreach ((string key, CompositeTexture ct) in textureMapping)
+        foreach ((string key, CompositeTexture ct) in textures)
         {
             var compositeTexture = ct;
 
@@ -235,32 +297,12 @@ public class BEBehaviorFruitingBushMesh : BlockEntityBehavior, ITexPositionSourc
                 int id = GameMath.Mod(textureVariant, alternatesLength + 1);
                 if (id > 0)
                 {
-                    textureMapping[key] = compositeTexture.Alternates[id - 1];
+                    textures[key] = compositeTexture.Alternates[id - 1];
                 }
             }
 
         }
 
-        var loc = cshape.Base.Clone();
-        var shape = capi.Assets.Get<Shape>(loc.WithPathPrefixOnce("shapes/").WithPathAppendixOnce(".json"));
-
-        if (BState.Growthstate == EnumFruitingBushGrowthState.Dormant && Block.Variant["type"] != "strawberry") ignoreElements = ignoreElements.Append(["Leaves/*"]);
-
-        capi.Tesselator.TesselateShape(new TesselationMetaData()
-        {
-            TexSource = texSource,
-            UsesColorMap = true,
-            IgnoreElements = ignoreElements,
-            Rotation = cshape.RotateXYZCopy
-        }, shape, out var bushMesh);
-
-        for (int i = 0; i < bushMesh.ColorMapIdsCount; i++)
-        {
-            if (bushMesh.ClimateColorMapIds[i] > 0) bushMesh.ClimateColorMapIds[i] = (byte)(Block.ClimateColorMapResolved.RectIndex + 1);
-            if (bushMesh.SeasonColorMapIds[i] > 0) bushMesh.SeasonColorMapIds[i] = (byte)(Block.SeasonColorMapResolved.RectIndex + 1);
-        }
-
-        return bushMesh;
+        return textures;
     }
-
 }

@@ -9,7 +9,6 @@ using Vintagestory.API.Datastructures;
 
 namespace Vintagestory.GameContent
 {
-
     public class EntityBehaviorVillagerInv : EntityBehaviorContainer
     {
         InventoryGeneric inv;
@@ -25,6 +24,9 @@ namespace Vintagestory.GameContent
 
         public override string PropertyName() => "villagerinv";
 
+        // These slots are rendered as held items, not step parented onto the villager
+        protected override bool ShouldAddGearToShape(ItemSlot slot) => slot != inv[0] && slot != inv[1];
+
         public override void Initialize(EntityProperties properties, JsonObject attributes)
         {
             Api = entity.World.Api;
@@ -39,6 +41,7 @@ namespace Vintagestory.GameContent
     {
         EntityBehaviorVillagerInv ebhv;
         private HumanoidOutfits humanoidOutfits;
+        ModSystemWearableGearCache wearablesCache;
 
         public override ItemSlot RightHandItemSlot => ebhv?.Inventory[0];
         public override ItemSlot LeftHandItemSlot => ebhv?.Inventory[1];
@@ -231,8 +234,10 @@ namespace Vintagestory.GameContent
         {
             if (disableElements != null) entityShape.RemoveElements(disableElements);
 
+            wearablesCache ??= Api.ModLoader.GetModSystem<ModSystemWearableGearCache>();
+
             AssetLocation shapePath = cshape.Base.CopyWithPathPrefixAndAppendixOnce("shapes/", ".json");
-            Shape gearshape = Shape.TryGet(Api, shapePath);
+            Shape gearshape = wearablesCache.GetOrLoadClonedShape(shapePath);
             if (gearshape == null)
             {
                 Api.World.Logger.Warning("Compositshape {0} (code: {2}) defined but not found or errored, was supposed to be at {1}. Part will be invisible.", cshape.Base, shapePath, prefixcode);

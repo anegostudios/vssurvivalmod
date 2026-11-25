@@ -257,7 +257,7 @@ namespace Vintagestory.GameContent
                         Api.Logger.Audit("{0} tried to set excessive text (len = {1}) when renaming a block at {2}", player.PlayerName, packet.Text.Length, Pos);
                         break;
                     }
-                    Api.Logger.Audit("{0} changed chiselblock name from '{1}' to '{2}' at {3}", player.PlayerName, BlockName.Replace("\n","\\n"), packet.Text.Replace("\n","\\n"), Pos);
+                    Api.Logger.Audit("{0} changed chiselblock name from '{1}' to '{2}' at {3}", player.PlayerName, BlockName?.Replace("\n","\\n"), packet.Text.Replace("\n","\\n"), Pos);
                     BlockName = packet.Text;
                     MarkDirty(true, player);
                     // Tell server to save this chunk to disk again

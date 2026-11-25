@@ -365,7 +365,7 @@ namespace Vintagestory.GameContent
 
             if (stacks.Length == 0)
             {
-                return Lang.GetWithFallback("contained-empty-container", "{0} (Empty)", inSlot.GetStackName());
+                return Lang.Get("contained-empty-container", inSlot.GetStackName());
             }
 
             if (inSlot.Itemstack?.Block is not Block contBlock) return Lang.Get("unknown");

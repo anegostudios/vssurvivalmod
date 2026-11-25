@@ -116,10 +116,10 @@ namespace Vintagestory.ServerMods
 
             var code = (string)args[0];
             var tiles = (int)args[1];
-            var dungeon = Tcfg.Dungeons.FirstOrDefault(td => td.Code == code);
-
-            if (dungeon == null) return TextCommandResult.Error("No such dungeon defined");
-
+            if (!Tcfg.TryGetDungeon(code, out var dungeon)) 
+            {
+                return TextCommandResult.Error("No such dungeon defined");
+            }
             var dungeonsToGen = (int)args[2];
             BlockPos pos;
             if (args.Parsers[3].IsMissing)
@@ -254,9 +254,11 @@ namespace Vintagestory.ServerMods
             Init();
 
             var code = (string)args[0];
-            var dungeon = Tcfg.Dungeons.FirstOrDefault(td => td.Code == code);
+            if (!Tcfg.TryGetDungeon(code, out var dungeon)) 
+            {
+                return TextCommandResult.Error("No such dungeon defined");
+            }
 
-            if (dungeon == null) return TextCommandResult.Error("No such dungeon defined");
             var rot = (bool)args[1] ? 4 : 1;
 
             var pos = args.Caller.Pos.AsBlockPos;
@@ -362,10 +364,10 @@ namespace Vintagestory.ServerMods
                         Tcfg.RocktypeRemapGroups.TryAdd(remap.Key, remap.Value);
                     }
                 }
-                dungeons.AddRange(conf.Dungeons);
+                dungeons.AddRange(conf.MaybeDungeons);
             }
 
-            Tcfg.Dungeons = dungeons.ToArray();
+            Tcfg.MaybeDungeons = dungeons.ToArray();
             Tcfg.Init(sapi);
         }
 
@@ -396,10 +398,10 @@ namespace Vintagestory.ServerMods
 
             var code = (string)args[0 + argOffset];
             var tiles = (int)args[1 + argOffset];
-            var dungeon = Tcfg.Dungeons.FirstOrDefault(td => td.Code == code);
-
-            if (dungeon == null) return TextCommandResult.Error("No such dungeon defined");
-
+            if (!Tcfg.TryGetDungeon(code, out var dungeon))
+            {
+                return TextCommandResult.Error("No such dungeon defined");
+            }
             BlockPos pos;
             if (args.Parsers[2 + argOffset].IsMissing)
             {

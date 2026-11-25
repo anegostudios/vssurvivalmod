@@ -86,6 +86,7 @@ namespace Vintagestory.GameContent
             Block layerBlock, bool resolveImports)
         {
             base.OnPlacementBySchematic(api, blockAccessor, pos, replaceBlocks, centerrockblockid, layerBlock, resolveImports);
+            // inventory.Pos = Pos; usefull for debugging key spawning to log or mark positions in OnPlacementBySchematicCustom
             if (inventory is InventoryPerPlayer ipp)
             {
                 ipp.OnPlacementBySchematic();

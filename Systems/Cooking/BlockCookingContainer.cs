@@ -375,7 +375,7 @@ namespace Vintagestory.GameContent
 
         public string GetContainedInfo(ItemSlot inSlot)
         {
-            return Lang.GetWithFallback("contained-empty-container", "{0} (Empty)", inSlot.GetStackName());
+            return Lang.Get("contained-empty-container", inSlot.GetStackName());
         }
 
         public bool OnContainedInteractStart(BlockEntity be, ItemSlot slot, IPlayer byPlayer, BlockSelection blockSel)

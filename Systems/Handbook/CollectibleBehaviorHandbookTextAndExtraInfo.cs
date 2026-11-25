@@ -1134,6 +1134,14 @@ namespace Vintagestory.GameContent
                     foreach (var rec in ingredientBase.Value)       // This is a small number of recipes whose ingredients actually match the current stack (subject to checking Attributes)
                     {
                         if (rec is not GridRecipe recval) continue;     // Here we only want the GridRecipes
+
+                        // And the recipe must have a valid output, and there's no need to crash the game just from looking in the handbook
+                        if (recval.Output.ResolvedItemStack == null)
+                        {
+                            Api.World.Logger.Warning($"Missing or errored output result for recipe '{recval.Name}'");
+                            continue;
+                        }
+
                         foreach (var ingred in recval.RecipeIngredients)
                         {
                             if (ingred.SatisfiesAsIngredient(stack, false))       // Check again that the ingredient satisfies: this checks Attributes as well

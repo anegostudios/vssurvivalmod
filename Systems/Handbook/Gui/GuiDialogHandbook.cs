@@ -88,8 +88,11 @@ namespace Vintagestory.GameContent
             loadingPagesAsync = true;
             TyronThreadPool.QueueTask(LoadPages_Async,"Handbook.LoadPages_Async");
 
-            initOverviewGui();
-            capi.Logger.VerboseDebug("Done creating handbook index GUI");
+            if (opened)
+            {
+                initOverviewGui();
+                capi.Logger.VerboseDebug("Done creating handbook index GUI");
+            }
         }
 
 

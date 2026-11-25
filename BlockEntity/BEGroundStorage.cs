@@ -84,8 +84,7 @@ namespace Vintagestory.GameContent
         /// <summary>
         /// For Stacking layout only, cache each uploaded mesh so that it can be reused by the GroundStorageRenderer
         /// </summary>
-        private Dictionary<string, MultiTextureMeshRef> UploadedMeshCache =>
-            ObjectCacheUtil.GetOrCreate(Api, "groundStorageUMC", () => new Dictionary<string, MultiTextureMeshRef>());
+        private Dictionary<string, MultiTextureMeshRef> UploadedMeshCache => ObjectCacheUtil.GetOrCreate(Api, "groundStorageUMC", () => new Dictionary<string, MultiTextureMeshRef>());
 
         private bool burning;
         private double burnStartTotalHours;
@@ -1501,7 +1500,7 @@ namespace Vintagestory.GameContent
                     {
                         return mesh;
                     }
-                    /// if the key is not in the cache, then we need to re-upload the mesh and re-populate MeshRefs
+                    // if the key is not in the cache, then we need to re-upload the mesh and re-populate MeshRefs
                 }
 
                 if (mesh == null)
@@ -1523,19 +1522,23 @@ namespace Vintagestory.GameContent
                     } else
                     {
                         capi.Tesselator.TesselateShape("storagePile", nowTesselatingShape, out mesh, this, null, 0, 0, 0, StorageProps.CuboidsPerModel * ItemModelCount);
-                    }
-
-                    
+                    }   
                 }
 
                 MeshCache[key] = mesh;
 
-                if (UploadedMeshCache.TryGetValue(key, out var mr)) mr.Dispose();
+                // Must not dispose a meshref here. This would invalidate it also for other ground storage BEs
+                //if (UploadedMeshCache.TryGetValue(key, out var mr)) mr.Dispose();
+
                 if (Environment.CurrentManagedThreadId != RuntimeEnv.MainThreadId)
                 {
                     Api.Event.EnqueueMainThreadTask(() =>
                     {
-                        var newMeshRef = capi.Render.UploadMultiTextureMesh(mesh);
+                        MultiTextureMeshRef newMeshRef;
+                        if (!UploadedMeshCache.TryGetValue(key, out newMeshRef)) // Since this tesselation is enqueued in a separate thread we may have 2 enqueues for the same mesh, so we do need to check again
+                        {
+                            newMeshRef = capi.Render.UploadMultiTextureMesh(mesh);
+                        }
                         UploadedMeshCache[key] = newMeshRef;
                         MeshRefs[index] = newMeshRef;
                         Api.World.BlockAccessor.MarkBlockDirty(Pos);
@@ -1544,9 +1547,13 @@ namespace Vintagestory.GameContent
                     return null;
                 }
 
-                var newMeshRef = capi.Render.UploadMultiTextureMesh(mesh);
+                MultiTextureMeshRef newMeshRef;
+                if (!UploadedMeshCache.TryGetValue(key, out newMeshRef))
+                {
+                    newMeshRef = capi.Render.UploadMultiTextureMesh(mesh);
+                }
                 UploadedMeshCache[key] = newMeshRef;
-                MeshRefs[index] = newMeshRef; ;
+                MeshRefs[index] = newMeshRef;
                 return mesh;
             }
 
@@ -1594,7 +1601,12 @@ namespace Vintagestory.GameContent
             Api.World.PlaySoundAt(new AssetLocation("sounds/effect/extinguish"), Pos, 0, null, false, 16);
         }
 
-        public float GetHoursLeft(double currentTotalHours)
+        /// <summary>
+        /// Returns the amount of hours this coal pile has been lit until given timestamp
+        /// </summary>
+        /// <param name="currentTotalHours"></param>
+        /// <returns></returns>
+        public float GetLitHoursUntil(double currentTotalHours)
         {
             double totalHoursPassed = currentTotalHours - burnStartTotalHours;
             double burnHourTimeLeft = inventory[0].StackSize * burnHoursPerItem;

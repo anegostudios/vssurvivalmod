@@ -13,23 +13,15 @@ namespace Vintagestory.GameContent
         public int BlocksRemoved = 0;
         public double TreePlantedTotalDays;
         public double LastRootTickTotalDays;
-
         public Dictionary<string, FruitTreeProperties> propsByType = new Dictionary<string, FruitTreeProperties>();
-
         RoomRegistry roomreg;
-
         BlockEntity be => Blockentity;
-
         BlockEntityFruitTreeBranch bebr => be as BlockEntityFruitTreeBranch;
         ItemStack parentPlantStack;
-
         BlockFruitTreeBranch blockBranch;
-
         double stateUpdateIntervalDays = 1 / 3.0;
-
         public double nonFloweringYoungDays = 30;
         private float greenhouseTempBonus;
-
         public bool IsYoung => Api?.World.Calendar.TotalDays - TreePlantedTotalDays < nonFloweringYoungDays;
 
 

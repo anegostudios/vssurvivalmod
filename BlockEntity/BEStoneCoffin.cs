@@ -39,9 +39,10 @@ namespace Vintagestory.GameContent
         InventoryStoneCoffin inv;
         ICoreClientAPI capi;
 
+        float receivesHeatSmooth;
+        bool stopParticleSpawn;
         bool receivesHeat;
         bool sufficientFuelHeat;
-        float receivesHeatSmooth; // 0..1
         double progress; // 0..1
         double totalHoursLastUpdate;
         bool processComplete;
@@ -51,6 +52,7 @@ namespace Vintagestory.GameContent
         int tempStoneCoffin;
         BlockPos[] particlePositions = new BlockPos[8];
 
+        public bool ReceivesHeat => receivesHeat;
         public override InventoryBase Inventory => inv;
         public override string InventoryClassName => "stonecoffin";
 
@@ -64,8 +66,11 @@ namespace Vintagestory.GameContent
 
         public BlockPos[] FuelPositions;
 
+        static AdvancedParticleProperties[] FireParticleProps;
+
         public BlockEntityStoneCoffin()
         {
+            FireParticleProps ??= Entity.FireParticleProps.DeepClone();
             inv = new InventoryStoneCoffin(2, null, null);
         }
 
@@ -76,15 +81,6 @@ namespace Vintagestory.GameContent
             inv.LateInitialize(InventoryClassName + "-" + Pos, api);
 
             capi = api as ICoreClientAPI;
-
-            if (api.Side == EnumAppSide.Client)
-            {
-                RegisterGameTickListener(onClientTick50ms, 50);
-            } else
-            {
-                RegisterGameTickListener(onServerTick1s, 1000);
-            }
-
 
             ms = Block.Attributes["multiblockStructure"].AsObject<MultiblockStructure>();
             msOpp = Block.Attributes["multiblockStructure"].AsObject<MultiblockStructure>();
@@ -120,7 +116,17 @@ namespace Vintagestory.GameContent
             var coalPilePos = Pos.DownCopy(2);
             var otherCoalPilePos = coalPilePos.AddCopy(blockScs.Orientation.Opposite);
             FuelPositions = [coalPilePos, otherCoalPilePos];
+
+            if (api.Side == EnumAppSide.Server)
+            {
+                RegisterGameTickListener(onServerTick1s, 1000);
+            }
+            else
+            {
+                capi.Event.RegisterAsyncParticleSpawner(OnAsyncParticleTick);
+            }
         }
+
 
         public bool Interact(IPlayer byPlayer, bool preferThis)
         {
@@ -368,6 +374,8 @@ namespace Vintagestory.GameContent
         {
             var currentTotalHours = Api.World.Calendar.TotalHours;
 
+            var beforeSufficientFuelHeat = sufficientFuelHeat;
+
             var minHeatHours = float.MaxValue;
             sufficientFuelHeat = true;
             foreach (var fuelPosition in FuelPositions)
@@ -379,15 +387,24 @@ namespace Vintagestory.GameContent
                     // if one of the fuel spots is not loaded we do not start ticking the coffin and also do not tick the fuel
                     return;
                 }
+
                 if (be is IExternalTickable xt)
                 {
                     xt.SetExternallyTicked();
                 }
-                if (be is BlockEntityCoalPile becp && becp.IsBurning)
+                if (be is BlockEntityCoalPile becp)
                 {
-                    heatHours = becp.GetHoursLeft(currentTotalHours);
+                    if (becp.IsBurning)
+                    {
+                        heatHours = becp.GetLitHoursUntil(currentTotalHours);
+                    }
+
                     sufficientFuelHeat &= becp.BurnTemperature >= 800;
+                } else
+                {
+                    sufficientFuelHeat = false;
                 }
+
                 // Api.Logger.Notification($"hh: {heatHours:F3}");
 
                 minHeatHours = Math.Min(minHeatHours, heatHours);
@@ -419,7 +436,7 @@ namespace Vintagestory.GameContent
                 StructureComplete = true;
             }
 
-            if (beforeReceiveHeat != receivesHeat || beforeStructureComplete != StructureComplete)
+            if (beforeReceiveHeat != receivesHeat || beforeStructureComplete != StructureComplete || beforeSufficientFuelHeat != sufficientFuelHeat)
             {
                 MarkDirty();
             }
@@ -500,20 +517,20 @@ namespace Vintagestory.GameContent
             ;
         }
 
-        private void onClientTick50ms(float dt)
+        private bool OnAsyncParticleTick(float dt, IAsyncParticleManager manager)
         {
-            if (!receivesHeat) return;
-
-            receivesHeatSmooth = GameMath.Clamp(receivesHeatSmooth + (receivesHeat ? dt / 10 : -dt / 3), 0, 1);
-
-            if (receivesHeatSmooth == 0) return;
+            receivesHeatSmooth = GameMath.Clamp(receivesHeatSmooth + (receivesHeat && !stopParticleSpawn ? dt / 10 : -dt / 3), 0, 1);
+            if (receivesHeatSmooth == 0)
+            {
+                if (stopParticleSpawn) return false;
+                return true;
+            }
 
             Random rnd = Api.World.Rand;
-
-            for (int i = 0; i < Entity.FireParticleProps.Length; i++)
+            for (int i = 0; i < FireParticleProps.Length; i++)
             {
-                int index = Math.Min(Entity.FireParticleProps.Length - 1, Api.World.Rand.Next(Entity.FireParticleProps.Length + 1));
-                AdvancedParticleProperties particles = Entity.FireParticleProps[index];
+                int index = Math.Min(FireParticleProps.Length - 1, Api.World.Rand.Next(FireParticleProps.Length + 1));
+                AdvancedParticleProperties particles = FireParticleProps[index];
 
                 for (int j = 0; j < particlePositions.Length; j++)
                 {
@@ -544,10 +561,11 @@ namespace Vintagestory.GameContent
                     particles.PosOffset[0].var = 0.49f;
                     particles.PosOffset[2].var = 0.49f;
 
-
-                    Api.World.SpawnParticles(particles);
+                    manager.Spawn(particles);
                 }
             }
+
+            return true;
         }
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
@@ -563,6 +581,7 @@ namespace Vintagestory.GameContent
             processComplete = tree.GetBool("processComplete");
             StructureComplete = tree.GetBool("structureComplete");
             tempStoneCoffin = tree.GetInt("tempStoneCoffin");
+            sufficientFuelHeat = tree.GetBool("sufficientFuelHeat");
 
             if (worldAccessForResolve.Api.Side == EnumAppSide.Client)
             {
@@ -585,15 +604,18 @@ namespace Vintagestory.GameContent
             tree.SetBool("processComplete", processComplete);
             tree.SetBool("structureComplete", StructureComplete);
             tree.SetInt("tempStoneCoffin", tempStoneCoffin);
+            tree.SetBool("sufficientFuelHeat", sufficientFuelHeat);
         }
 
         public override void OnBlockRemoved()
         {
             base.OnBlockRemoved();
 
-            if (Api is ICoreClientAPI _capi)
+            stopParticleSpawn = true;
+
+            if (Api is ICoreClientAPI capi)
             {
-                msHighlighted?.ClearHighlights(Api.World, capi.World.Player);
+                msHighlighted?.ClearHighlights(Api.World, this.capi.World.Player);
             }
 
             if (Api is ICoreServerAPI sapi)
@@ -612,6 +634,8 @@ namespace Vintagestory.GameContent
         public override void OnBlockUnloaded()
         {
             base.OnBlockUnloaded();
+
+            stopParticleSpawn = true;
 
             if (Api?.Side == EnumAppSide.Client)
             {

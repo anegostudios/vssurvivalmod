@@ -38,12 +38,13 @@ namespace Vintagestory.ServerMods
         [JsonProperty]
         public string GroupMaxName;
 
-        public void Init(ICoreServerAPI api, BlockLayerConfig blockLayerConfig)
+        public void Init(ICoreServerAPI api, BlockLayerConfig blockLayerConfig, WorldGenStructuresConfig structureConfig = null)
         {
             if (TileGenerator != null)
             {
                 TileGenerator.Code = $"TileGenerator-{Code}";
-                TileGenerator.Init(api);
+                TileGenerator.Init(api, structureConfig);
+
                 var schematics = new List<BlockSchematicPartial[]>();
                 foreach (var t in TileGenerator.Tiles)
                 {
@@ -53,7 +54,7 @@ namespace Vintagestory.ServerMods
             }
             else
             {
-                ResolvedSchematics = LoadSchematicsWithRotations<BlockSchematicPartial>(api, this, blockLayerConfig, null, null, "dungeontiles/", true);
+                ResolvedSchematics = LoadSchematicsWithRotations<BlockSchematicPartial>(api, this, blockLayerConfig, structureConfig, null, "dungeontiles/", true);
             }
 
             ShuffledIndices = new int[ResolvedSchematics.Length];

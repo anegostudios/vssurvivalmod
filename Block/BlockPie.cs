@@ -35,7 +35,7 @@ namespace Vintagestory.GameContent
     /// [1-4]: Filling
     /// [5]: Crust dough or topping
     /// </summary>
-    public class BlockPie : BlockMeal, IBakeableCallback, IShelvable
+    public class BlockPie : BlockMeal, IBakeableCallback, IDisplayableProps, IShelvable
     {
         /// <summary>
         /// The pie's cooking stage; "raw", "partbaked", "perfect", or "charred"

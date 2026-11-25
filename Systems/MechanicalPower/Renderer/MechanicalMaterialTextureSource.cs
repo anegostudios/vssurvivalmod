@@ -140,10 +140,13 @@ namespace Vintagestory.GameContent.Mechanics
         {
             ITextureAtlasAPI atlas = capi.BlockTextureAtlas;
             Size2i atlasSize = atlas.Size;
+
             // Copy through a separate texture to avoid framebuffer feedback, which is still undefined on OpenGL 4.1.
-            RawTexture tileTexture = new() { Width = tileWidth, Height = tileHeight, MinFilter = EnumTextureFilter.Nearest, MagFilter = EnumTextureFilter.Nearest };
-            capi.Render.GenTexture(tileTexture);
-            using LoadedTexture tileCopy = new(capi, tileTexture.TextureId, tileWidth, tileHeight);
+            int width = tileWidth * columns;
+            int height = tileHeight * ((tiles.Length - 1) / columns + 1);
+            RawTexture stagingTexture = new() { Width = width, Height = height, MinFilter = EnumTextureFilter.Nearest, MagFilter = EnumTextureFilter.Nearest };
+            capi.Render.GenTexture(stagingTexture);
+            using LoadedTexture paletteCopy = new(capi, stagingTexture.TextureId, width, height);
 
             for (int i = 0; i < tiles.Length; i++)
             {
@@ -155,24 +158,24 @@ namespace Vintagestory.GameContent.Mechanics
                     MathF.Round(sourcePos.y1 * atlasSize.Height),
                     tileWidth,
                     tileHeight,
-                    tileCopy,
-                    0,
-                    0,
-                    -1
-                );
-                atlas.RenderTextureIntoAtlas(
-                    palettePos.atlasTextureId,
-                    tileCopy,
-                    0,
-                    0,
-                    tileWidth,
-                    tileHeight,
-                    palettePos.x1 * atlasSize.Width + i % columns * tileWidth,
-                    palettePos.y1 * atlasSize.Height + i / columns * tileHeight,
+                    paletteCopy,
+                    i % columns * tileWidth,
+                    i / columns * tileHeight,
                     -1
                 );
             }
 
+            atlas.RenderTextureIntoAtlas(
+                palettePos.atlasTextureId,
+                paletteCopy,
+                0,
+                0,
+                width,
+                height,
+                palettePos.x1 * atlasSize.Width,
+                palettePos.y1 * atlasSize.Height,
+                -1
+            );
             atlas.RegenMipMaps(palettePos.atlasNumber);
         }
 

@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using Newtonsoft.Json;
 using Vintagestory.API.Server;
 
@@ -13,28 +15,46 @@ namespace Vintagestory.ServerMods
         [JsonIgnore]
         public int StoryStructMinDistanceSq;
 
-        public TiledDungeon[] Dungeons = null!;
+        /// <summary>
+        /// Dungeon definitions, initialized on first retrieval through TryGetDungeon().
+        /// </summary>
+        [JsonProperty("dungeons")]
+        public TiledDungeon[] MaybeDungeons = null!;
 
-        public Dictionary<string, TiledDungeon> DungeonsByCode = new Dictionary<string, TiledDungeon>();
+        private readonly Dictionary<string, Lazy<TiledDungeon>> dungeonsByCode = new();
         public Dictionary<int, Dictionary<int, int>>? resolvedRockTypeRemaps;
+
+        public bool TryGetDungeon(string code, [NotNullWhen(true)] out TiledDungeon? dungeon)
+        {
+            dungeon = dungeonsByCode.GetValueOrDefault(code)?.Value;
+            return dungeon != null;
+        }
 
         public void Init(ICoreServerAPI api)
         {
+            dungeonsByCode.Clear();
             MinDistanceSq = minDistance * minDistance;
             StoryStructMinDistanceSq= storyStructMinDistance * storyStructMinDistance;
 
             var blockLayerConfig = BlockLayerConfig.GetInstance(api);
             ResolveRemaps(api, blockLayerConfig.RockStrata);
-            for (var i = 0; i < Dungeons.Length; i++)
+            for (var i = 0; i < MaybeDungeons.Length; i++)
             {
-                var tiledDungeon = Dungeons[i];
+                var tiledDungeon = MaybeDungeons[i];
                 if(tiledDungeon.Code == null)
                 {
                     api.Logger.Error("Dungeon code at index: " + i + " is not specified. Will skip initialization");
                     continue;
                 }
-                tiledDungeon.Init(api);
-                DungeonsByCode[tiledDungeon.Code] = tiledDungeon;
+                tiledDungeon.InitSkipGenerationFlags(api);
+                dungeonsByCode[tiledDungeon.Code] = new Lazy<TiledDungeon>(() =>
+                {
+                    tiledDungeon.Init(api, new WorldGenStructuresConfig
+                    {
+                        LoadedSchematicsCache = new Dictionary<string, BlockSchematicStructure[]>()
+                    });
+                    return tiledDungeon;
+                });
 
                 // For rocktyped dungeons
                 foreach (var tile in tiledDungeon.Tiles)
@@ -67,7 +87,7 @@ namespace Vintagestory.ServerMods
                 }
             }
 
-            foreach (var dungeon in Dungeons)
+            foreach (var dungeon in MaybeDungeons)
             {
                 dungeon.resolvedRockTypeRemaps = resolvedRockTypeRemaps;
             }

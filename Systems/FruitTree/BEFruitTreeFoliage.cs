@@ -77,7 +77,7 @@ namespace Vintagestory.GameContent
         {
             if (sticksMesh == null) return true;
 
-            mesher.AddMeshData(leavesMesh);
+            mesher.AddMeshData(leavesMesh, GetFoliageRotationMatrix());
 
             mesher.AddMeshData(CopyRndSticksMesh(sticksMesh));
             return true;

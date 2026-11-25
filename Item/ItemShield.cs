@@ -89,7 +89,7 @@ namespace Vintagestory.GameContent
                 var activeProjectileProtChance = shieldAttributes["protectionChance"]["active-projectile"].AsFloat();
                 var passiveProjectileProtChance = shieldAttributes["protectionChance"]["passive-projectile"].AsFloat();
                 var projectileDamageAbsorption = shieldAttributes["projectileDamageAbsorption"].AsFloat();
-                dsc.AppendLine("<strong>" + Lang.GetWithFallback("shield-projectile-protection", "Projectile protection") + "</strong>");
+                dsc.AppendLine("<strong>" + Lang.Get("shield-projectile-protection") + "</strong>");
                 dsc.AppendLine(Lang.Get("shield-stats", (int)(100 * activeProjectileProtChance), (int)(100 * passiveProjectileProtChance), projectileDamageAbsorption));
                 dsc.AppendLine();
             }
@@ -98,7 +98,7 @@ namespace Vintagestory.GameContent
             var activeProtChance = shieldAttributes["protectionChance"]["active"].AsFloat();
             var passiveProtChance = shieldAttributes["protectionChance"]["passive"].AsFloat();
 
-            dsc.AppendLine("<strong>" + Lang.GetWithFallback("shield-melee-protection", "Melee attack protection") + "</strong>");
+            dsc.AppendLine("<strong>" + Lang.Get("shield-melee-protection") + "</strong>");
             dsc.AppendLine(Lang.Get("shield-stats", (int)(100 * activeProtChance), (int)(100 * passiveProtChance), damageAbsorption));
             dsc.AppendLine();
         }

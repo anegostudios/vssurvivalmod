@@ -892,7 +892,7 @@ namespace Vintagestory.GameContent
             var emptyCode = contBlock.Attributes?["eatenBlock"].AsString();
             string emptyName = new ItemStack(emptyCode == null ? contBlock : api.World.GetBlock(emptyCode)).GetName();
 
-            if (stacks.Length == 0) return Lang.GetWithFallback("contained-empty-container", "{0} (Empty)", emptyName);
+            if (stacks.Length == 0) return Lang.Get("contained-empty-container", emptyName);
 
             string? outputName = recipe?.GetOutputName(api.World, stacks).UcFirst() ?? stacks[0].GetName();
             float servings = inSlot.Itemstack?.Attributes.GetFloat("quantityServings", 1) ?? 1;

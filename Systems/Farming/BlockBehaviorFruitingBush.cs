@@ -1,7 +1,9 @@
 using System.Collections.Generic;
+using System.Text;
 using Vintagestory.API;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 
@@ -17,11 +19,26 @@ public class NpkNutrients {
 
 public class BlockBehaviorFruitingBushMesh : BlockBehavior
 {
+    private MultiTextureMeshRef? ripeItemMeshRef;
+
     public BlockBehaviorFruitingBushMesh(Block block) : base(block)
     {
     }
 
-    
+    public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)
+    {
+        base.OnBeforeRender(capi, itemstack, target, ref renderinfo);
+        ripeItemMeshRef ??= capi.Render.UploadMultiTextureMesh(BEBehaviorFruitingBushMesh.CreateRipeMeshForInventory(capi, block));
+        renderinfo.ModelRef = ripeItemMeshRef;
+    }
+
+    public override void OnUnloaded(ICoreAPI api)
+    {
+        ripeItemMeshRef?.Dispose();
+        ripeItemMeshRef = null;
+        base.OnUnloaded(api);
+    }
+
     public override void GetDecal(IWorldAccessor world, BlockPos pos, ITexPositionSource decalTexSource, ref MeshData decalModelData, ref MeshData blockModelData)
     {
         block.GetBEBehavior<BEBehaviorFruitingBushMesh>(pos)?.GetDecal(world, pos, decalTexSource, ref decalModelData, ref blockModelData);
@@ -119,6 +136,12 @@ public class BlockBehaviorFruitingBush : BlockBehavior
         }
         handling = EnumHandling.PassThrough;
         return beh.GetRipeDrops(byPlayer);
+    }
+
+    public override void GetHeldItemInfo(ItemSlot inSlot, StringBuilder dsc, IWorldAccessor world, bool withDebugInfo)
+    {
+        dsc.AppendLine(Lang.Get("Fruiting bush"));
+        base.GetHeldItemInfo(inSlot, dsc, world, withDebugInfo);
     }
 
 }

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Vintagestory.API.Client;
@@ -76,6 +77,17 @@ namespace Vintagestory.GameContent
         protected ICoreClientAPI capi;
         protected MeshData sticksMesh;
         protected MeshData leavesMesh;
+
+        private static readonly float[][] foliageRotationMatrices = {
+            Matrixf.Create().Translate(0.5f, 0.5f, 0.5f).RotateY(-22.5f * GameMath.DEG2RAD).Translate(-0.5f, -0.5f, -0.5f).Values,
+            null, // The middle variant needs no transformation.
+            Matrixf.Create().Translate(0.5f, 0.5f, 0.5f).RotateY(22.5f * GameMath.DEG2RAD).Translate(-0.5f, -0.5f, -0.5f).Values
+        };
+
+        protected float[] GetFoliageRotationMatrix()
+        {
+            return foliageRotationMatrices[GameMath.MurmurHash3Mod(Pos.X, Pos.Y, Pos.Z, 3)];
+        }
 
 
         public int[] LeafParticlesColor;
@@ -239,8 +251,7 @@ namespace Vintagestory.GameContent
                     selectiveElements.Add("leaves/*");
                 }
 
-                float rndydeg = GameMath.MurmurHash3Mod(Pos.X, Pos.Y, Pos.Z, 3) * 22.5f - 22.5f;
-                capi.Tesselator.TesselateShape("fruittreefoliage", nowTesselatingShape, out meshes[1], this, new Vec3f(shapeData.CShape.rotateX, shapeData.CShape.rotateY + rndydeg, shapeData.CShape.rotateZ), 0, 0, 0, null, selectiveElements.ToArray());
+                capi.Tesselator.TesselateShape("fruittreefoliage", nowTesselatingShape, out meshes[1], this, new Vec3f(shapeData.CShape.rotateX, shapeData.CShape.rotateY, shapeData.CShape.rotateZ), 0, 0, 0, null, selectiveElements.ToArray());
 
                 sticksMesh = meshes[0];
                 foliageMesh = meshes[1];
@@ -264,7 +275,6 @@ namespace Vintagestory.GameContent
                     if ((fruitingSide & (1 << i)) > 0) selectiveElements.Add("fruits-" + f + "/*");
                 }
 
-                float rndydeg = GameMath.MurmurHash3Mod(Pos.X, Pos.Y, Pos.Z, 3) * 22.5f - 22.5f;
                 capi.Tesselator.TesselateShape("fruittreefoliage", nowTesselatingShape, out var fruitMesh, this, new Vec3f(shapeData.CShape.rotateX, shapeData.CShape.rotateY, shapeData.CShape.rotateZ), 0, 0, 0, null, selectiveElements.ToArray());
 
                 foliageMesh.AddMeshData(fruitMesh);
@@ -278,7 +288,12 @@ namespace Vintagestory.GameContent
 
         protected virtual int getHashCodeLeaves()
         {
-            return (GrowthDir.Code[0] + "-" + TreeType + "-" + FoliageState + "-" + fruitingSide + "-" + (GameMath.MurmurHash3Mod(Pos.X, Pos.Y, Pos.Z, 3) * 22.5f - 22.5f)).GetHashCode();
+            if (FoliageState == EnumFoliageState.Fruiting || FoliageState == EnumFoliageState.Ripe)
+            {
+                return HashCode.Combine(GrowthDir.Code[0], TreeType, FoliageState, fruitingSide);
+            }
+
+            return HashCode.Combine(GrowthDir.Code[0], TreeType, FoliageState, -1);
         }
 
         long listenerId = 0;

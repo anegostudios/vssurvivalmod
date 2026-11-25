@@ -59,7 +59,7 @@ namespace Vintagestory.ServerMods
             regionSize = sapi.World.BlockAccessor.RegionSize;
             mapSizeX = sapi.World.BlockAccessor.MapSizeX;
             DungeonSkipGenerationFlags.Clear();
-            foreach (var dungeon in tcfg.Dungeons)
+            foreach (var dungeon in tcfg.MaybeDungeons)
             {
                 if (dungeon.SkipGenerationFlags != null)
                 {
@@ -326,7 +326,7 @@ namespace Vintagestory.ServerMods
 
             DungeonProvider.dungeonPlaceTasksByRegion[mapRegionIndex] = new List<DungeonPlaceTask>();
 
-            var dungeons = tiledDungeonsSys.Tcfg.Dungeons.Where(d => d.Worldgen).ToList();
+            var dungeons = tiledDungeonsSys.Tcfg.MaybeDungeons.Where(d => d.Worldgen).ToList();
 
             var dungeIndices = new int[dungeons.Count];
             for (int l = 0; l < dungeIndices.Length; l++) dungeIndices[l] = l;
@@ -347,6 +347,9 @@ namespace Vintagestory.ServerMods
                 if (spawnPos.HorDistanceSqTo(posx, posz) < dungeon.MinSpawnDistance * dungeon.MinSpawnDistance) continue;
 
                 if (IsInOcean(mapRegion, posx, posz)) continue;
+
+                // Make sure init() is called
+                if (!tiledDungeonsSys.Tcfg.TryGetDungeon(dungeon.Code, out dungeon)) continue;
 
                 if (!HasSuitableLandforms(dungeon, mapRegion, posx, posz)) continue;
 
@@ -520,10 +523,17 @@ namespace Vintagestory.ServerMods
                     var data = new SchematicPlacementData(worldgenBlockAccessor, sapi.World);
                     data.Set(request.Chunks, request.ChunkX, request.ChunkZ, EnumReplaceMode.ReplaceAll, null, GlobalConfig.ReplaceMetaBlocks);
 
+                    if (dungePlaceTasks.Count > 0)
+                    {
+                        data.Attributes = new TreeAttribute();
+                        // the key ID is the start pos of the first tile we generated in TryPregenerateTiledDungeon and is set via SetKeyAttributes
+                        data.Attributes.SetString("keyId", $"{dungePlaceTasks[0].DungeonBoundaries.X1},{dungePlaceTasks[0].DungeonBoundaries.Y1},{dungePlaceTasks[0].DungeonBoundaries.Z1}");
+                    }
+
                     foreach (var placeTask in dungePlaceTasks)
                     {
                         if (!placeTask.DungeonBoundaries.Intersects(cuboid)) continue;
-                        if (!tiledDungeonsSys.Tcfg.DungeonsByCode.TryGetValue(placeTask.Code, out var dungeon)) return; // Ignore dungeons that no longer exist in assets
+                        if (!tiledDungeonsSys.Tcfg.TryGetDungeon(placeTask.Code, out var dungeon)) return; // Ignore dungeons that no longer exist in assets
 
                         Block? rockBlock = null;
                         // get the rockblock for the first generating chunk and reuse that for each room
@@ -552,12 +562,6 @@ namespace Vintagestory.ServerMods
                         data.RockBlock = rockBlock;
 
                         generateDungeonPartial(dungeon, placeTask, data);
-
-                        if (placeTask.StairsConnector == null) continue;
-
-                        var connector = placeTask.StairsConnector.Value;
-                        // restore the facing from serialization
-                        connector.Facing ??= BlockFacing.ALLFACES[connector.FacingInt];
 
                         // pregenrate the surface connection and then store it
                         // this needs to be done here since now we have the final terrain height
@@ -746,8 +750,6 @@ namespace Vintagestory.ServerMods
                 if (schematic == null) continue;
 
                 data.Set(placeTask.Pos, dungeon.resolvedRockTypeRemaps, dungeon.replacewithblocklayersBlockids);
-                data.Attributes ??= new TreeAttribute();
-                data.Attributes.SetString("keyId", placeTask.Pos.ToString());
 
                 var placed = schematic.PlacePartial(data);
                 if (placed > 0)

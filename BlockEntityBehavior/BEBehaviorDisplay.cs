@@ -225,13 +225,15 @@ public class BEBehaviorDisplay : BEBehaviorContainer, ILongInteractable, IIntera
             handling = EnumHandling.PreventDefault;
             return true;
         }
+
         if (blockSel.SelectionBoxId == null) return false;
         ItemSlot slot = byPlayer.InventoryManager.ActiveHotbarSlot;
+        if (slot == null) return false;
 
         if (TryUse(byPlayer, blockSel, ref handling)) return true;
         if (slot.Empty) return TryTake(byPlayer, blockSel, ref handling);
         string selectedSlotId = getSelectedNonEmptySlotId(blockSel);
-        if (selectedSlotId != null && byPlayer.InventoryManager.ActiveHotbarSlot.Itemstack?.Collectible.GetTool(byPlayer.InventoryManager.ActiveHotbarSlot) == EnumTool.Wrench)
+        if (selectedSlotId != null && byPlayer.InventoryManager.ActiveTool == EnumTool.Wrench)
         {
             return TryRotate(selectedSlotId, byPlayer, blockSel, ref handling);
         }

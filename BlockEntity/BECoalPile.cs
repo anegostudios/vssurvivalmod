@@ -196,7 +196,12 @@ namespace Vintagestory.GameContent
         long listenerId;
         static BlockFacing[] facings = (BlockFacing[])BlockFacing.ALLFACES.Clone();
 
-        public float GetHoursLeft(double startTotalHours)
+        /// <summary>
+        /// Returns the amount of hours this coal pile has been lit until given timestamp
+        /// </summary>
+        /// <param name="startTotalHours"></param>
+        /// <returns></returns>
+        public float GetLitHoursUntil(double startTotalHours)
         {
             double totalHoursPassed = startTotalHours - burnStartTotalHours;
             double burnHourTimeLeft = inventory[0].StackSize / 2f * BurnHoursPerLayer;

@@ -90,6 +90,10 @@ namespace Vintagestory.GameContent
         [ProtoMember(19), DefaultValue(-1)]
         public int MaxPlayerRange = -1;
 
+        [ProtoMember(25), DefaultValue(0f)]
+        public float DestroySpawnerChance = 0f;
+
+
         [ProtoAfterDeserialization]
         void afterDeserialization()
         {
@@ -139,6 +143,7 @@ namespace Vintagestory.GameContent
             tree.SetFloat("minRain", MinRain);
             tree.SetFloat("maxRain", MaxRain);
             tree.SetInt("climateMode", ClimateMode);
+            tree.SetFloat("destroySpawnerChance", DestroySpawnerChance);
         }
 
         public void FromTreeAttributes(ITreeAttribute tree)
@@ -172,7 +177,7 @@ namespace Vintagestory.GameContent
             MinRain = tree.GetFloat("minRain", 0);
             MaxRain = tree.GetFloat("maxRain", 1);
             ClimateMode = tree.GetInt("climateMode", 0);
-
+            DestroySpawnerChance = tree.GetFloat("destroySpawnerChance", 0f);
         }
     }
 
@@ -200,6 +205,12 @@ namespace Vintagestory.GameContent
 
             if (api.Side == EnumAppSide.Server)
             {
+                if (Data.WasImported && Data.DestroySpawnerChance > 0 && api.World.Rand.NextDouble() < Data.DestroySpawnerChance)
+                {
+                    api.World.BlockAccessor.SetBlock(0, Pos);
+                    return;
+                }
+
                 RegisterGameTickListener(OnGameTick, 2000);
                 if (Data.InternalCapacity > 0)
                 {

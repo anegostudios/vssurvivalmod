@@ -523,8 +523,8 @@ namespace Vintagestory.GameContent
                 string matkey = "material-" + MetalContent?.Collectible.Variant["metal"];
                 string mat = Lang.HasTranslation(matkey) ? Lang.Get(matkey) : MetalContent?.GetName();
                 string temp = Temperature < 21 ? Lang.Get("Cold") : Lang.Get("{0}°C", (int)Temperature);
-                string contents = Lang.GetWithFallback("metalmold-blockinfo-unitsofmetal", "{0}/{4} units of {1} {2} ({3})", FillLevel, state, mat, temp, requiredUnits);
-                dsc.AppendLine((MetalContent != null ? contents : Lang.GetWithFallback("metalmold-blockinfo-emptymold", "0/{0} units of metal", requiredUnits)) + "\n");
+                string contents = Lang.Get("metalmold-blockinfo-unitsofmetal", FillLevel, state, mat, temp, requiredUnits);
+                dsc.AppendLine((MetalContent != null ? contents : Lang.Get("metalmold-blockinfo-emptymold", requiredUnits)) + "\n");
             }
             else if (GetStateAwareMoldedStacks()?[0] is ItemStack shatteredStack)
             {

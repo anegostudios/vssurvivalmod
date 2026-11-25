@@ -8,6 +8,7 @@ using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
+using Vintagestory.API.Util;
 using Vintagestory.Common.Collectible.Block;
 
 #nullable disable
@@ -24,6 +25,7 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
 
     private bool receivesHeat;
     private float receivesHeatSmooth; // 0..1
+    private bool stopParticleSpawn;
     public double TotalHoursLastUpdate;
     public double TotalHoursHeatReceived;
     public bool StructureComplete;
@@ -55,6 +57,7 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
     /// </summary>
     public static int ItemTemperatureGainPerHour = 500;
 
+    private static AdvancedParticleProperties[] fireParticleProps;
     private static AdvancedParticleProperties smokeParticles = new AdvancedParticleProperties()
     {
         HsvaColor =
@@ -93,15 +96,6 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
 
     public void Init()
     {
-        if (Api.Side == EnumAppSide.Client)
-        {
-            RegisterGameTickListener(OnClientTick50ms, 50);
-        }
-        else
-        {
-            RegisterGameTickListener(OnServerTick1s, 1000);
-        }
-
         int rotYDeg = 0;
 
         switch (Orientation.Code)
@@ -143,22 +137,31 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
         particlePositions[9] = downCenter.UpCopy(3);
 
         beBehaviorDoor = GetBehavior<BEBehaviorDoor>();
+
+        if (Api is ICoreClientAPI capi)
+        {
+            fireParticleProps ??= Entity.FireParticleProps.DeepClone();
+            capi.Event.RegisterAsyncParticleSpawner(OnAsyncParticleTick);
+        }
+        else
+        {
+            RegisterGameTickListener(OnServerTick1s, 1000);
+        }
     }
 
-    private void OnClientTick50ms(float dt)
+    private bool OnAsyncParticleTick(float dt, IAsyncParticleManager manager)
     {
-        receivesHeatSmooth = GameMath.Clamp(receivesHeatSmooth + (receivesHeat ? dt / 10 : -dt / 3), 0, 1);
-
-        if (receivesHeatSmooth == 0) return;
+        receivesHeatSmooth = GameMath.Clamp(receivesHeatSmooth + (receivesHeat && !stopParticleSpawn ? dt / 10 : -dt / 3), 0, 1);
+        if (receivesHeatSmooth == 0) return !stopParticleSpawn;
 
         var rnd = Api.World.Rand;
-        for (int i = 0; i < Entity.FireParticleProps.Length; i++)
+        for (int i = 0; i < fireParticleProps.Length; i++)
         {
-            int index = Math.Min(Entity.FireParticleProps.Length - 1, Api.World.Rand.Next(Entity.FireParticleProps.Length + 1));
+            int index = Math.Min(fireParticleProps.Length - 1, rnd.Next(fireParticleProps.Length + 1));
 
             for (int j = 0; j < particlePositions.Length; j++)
             {
-                var particles = Entity.FireParticleProps[index];
+                var particles = fireParticleProps[index];
                 var pos = particlePositions[j];
 
                 if (j == 9)
@@ -184,9 +187,11 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
                 particles.PosOffset[0].var = 0.49f;
                 particles.PosOffset[2].var = 0.49f;
 
-                Api.World.SpawnParticles(particles);
+                manager.Spawn(particles);
             }
         }
+
+        return true;
     }
 
     private void OnServerTick1s(float dt)
@@ -232,12 +237,12 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
             }
             if (blockEntity is BlockEntityCoalPile becp && becp.IsBurning)
             {
-                heatHours = becp.GetHoursLeft(currentTotalHours);
+                heatHours = becp.GetLitHoursUntil(currentTotalHours);
                 forceStandardSmelt |= ForcesStandardSmelt(Api, becp.inventory[0].Itemstack);
             }
             else if (blockEntity is BlockEntityGroundStorage gs && gs.IsBurning)
             {
-                heatHours = gs.GetHoursLeft(currentTotalHours);
+                heatHours = gs.GetLitHoursUntil(currentTotalHours);
                 forceStandardSmelt |= ForcesStandardSmelt(Api, gs.Inventory[0].Itemstack);
             }
             // Api.Logger.Notification($"hh {j}: {heatHours:F3}");
@@ -565,6 +570,7 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
 
     public override void OnBlockRemoved()
     {
+        stopParticleSpawn = true;
         base.OnBlockRemoved();
 
         if (Api is ICoreClientAPI capi)
@@ -588,6 +594,7 @@ public class BlockEntityBeeHiveKiln : BlockEntity, IRotatable
 
     public override void OnBlockUnloaded()
     {
+        stopParticleSpawn = true;
         base.OnBlockUnloaded();
 
         if (Api is ICoreClientAPI capi)

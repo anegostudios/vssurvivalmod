@@ -12,21 +12,13 @@ using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
-    public class SlotLocation : Vec3f
+    public class SlotLocation(float x, float y, float z) : Vec3f(x, y, z)
     {
         public int PlacementSurfaceIndex;
         public bool IsPlacedItem;
+        public string EncodedLocation => Y > 0 ? $"{PlacementSurfaceIndex}-{X}-{Y}-{Z}" : $"{PlacementSurfaceIndex}-{X}-{Z}";
 
-        public SlotLocation(float x, float y, float z) : base(x, y, z) { }
-
-        public string EncodedLocation => Y > 0
-            ? string.Format(GlobalConstants.DefaultCultureInfo, "{0}-{1}-{2}-{3}", PlacementSurfaceIndex, X, Z, Y)
-            : string.Format(GlobalConstants.DefaultCultureInfo, "{0}-{1}-{2}", PlacementSurfaceIndex, X, Z);
-
-        public SlotLocation UpCopy()
-        {
-            return new SlotLocation(X, Y + 1, Z) { PlacementSurfaceIndex = PlacementSurfaceIndex, IsPlacedItem = IsPlacedItem };
-        }
+        public SlotLocation UpCopy() => new (X, Y + 1, Z) { PlacementSurfaceIndex = PlacementSurfaceIndex, IsPlacedItem = IsPlacedItem };
     }
 
     public class PlacementSurface

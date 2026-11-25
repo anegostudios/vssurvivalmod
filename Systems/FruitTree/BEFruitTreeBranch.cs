@@ -281,7 +281,6 @@ namespace Vintagestory.GameContent
                 return mesh;
             }
 
-
             var cshape = Block?.Attributes?["shapes"][shapekey].AsObject<CompositeShape>(null, Block.Code.Domain);
             if (cshape == null) return null;
 
@@ -307,8 +306,6 @@ namespace Vintagestory.GameContent
                     }
                 }
             }
-
-
 
             capi.Tesselator.TesselateShape("fruittreebranch", nowTesselatingShape, out mesh, this, new Vec3f(cshape.rotateX, cshape.rotateY, cshape.rotateZ), 0, 0, 0, null, selectiveElements?.ToArray());
 
@@ -431,7 +428,7 @@ namespace Vintagestory.GameContent
 
             if (leavesMesh != null)
             {
-                mesher.AddMeshData(leavesMesh);
+                mesher.AddMeshData(leavesMesh, GetFoliageRotationMatrix());
             }
 
             return true;

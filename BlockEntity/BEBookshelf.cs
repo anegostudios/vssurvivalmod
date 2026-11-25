@@ -24,9 +24,6 @@ namespace Vintagestory.GameContent
 
         InventoryGeneric inv;
         Block block = null!;
-        MeshData? mesh;
-
-        float[]? mat;
         private BEBehaviorShapeMaterialFromAttributes? bh;
 
         public string? Type => bh?.Type;
@@ -49,12 +46,6 @@ namespace Vintagestory.GameContent
         {
             if (Api == null || Type == null || Block is not BlockBookshelf bookshelf) return;
 
-            if (Api.Side == EnumAppSide.Client)
-            {
-                mesh = bookshelf.GetOrCreateMesh(Type, Material!);
-                mat = Matrixf.Create().Translate(0.5f, 0.5f, 0.5f).RotateY(MeshAngleRad).Translate(-0.5f, -0.5f, -0.5f).Values;
-            }
-
             if (!bookshelf.UsableSlots.ContainsKey(Type))
             {
                 bh!.Type = bookshelf.UsableSlots.First().Key;
@@ -76,7 +67,7 @@ namespace Vintagestory.GameContent
             block = api.World.BlockAccessor.GetBlock(Pos);
             base.Initialize(api);
 
-            if (mesh == null && Type != null)
+            if (Type != null)
             {
                 initShelf();
             }

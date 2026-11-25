@@ -216,7 +216,7 @@ namespace Vintagestory.GameContent
             float litres = GetCurrentLitres(inSlot.Itemstack);
             ItemStack contentStack = GetContent(inSlot.Itemstack);
 
-            if (litres <= 0) return Lang.GetWithFallback("contained-empty-container", "{0} (Empty)", inSlot.Itemstack.GetName());
+            if (litres <= 0) return Lang.Get("contained-empty-container", inSlot.Itemstack.GetName());
 
             string incontainername = Lang.Get(contentStack.Collectible.Code.Domain + ":incontainer-" + contentStack.Class.ToString().ToLowerInvariant() + "-" + contentStack.Collectible.Code.Path);
 

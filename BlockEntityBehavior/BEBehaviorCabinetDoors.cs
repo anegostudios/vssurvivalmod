@@ -72,7 +72,7 @@ public class BEBehaviorCabinetDoors : BEBehaviorAnimatable, IInteractable
     protected override BlockEntityAnimationUtil CreateAnimationUtil(ICoreAPI api)
     {
         return api.Side == EnumAppSide.Client
-            ? new BlockEntityAnimationUtil(api, Blockentity, BlockEntityAnimationUtil.CalculateSettleDuration(DoorEaseOutSpeed))
+            ? new BlockEntityAnimationUtil(api, Blockentity, BlockEntityAnimationUtil.GetSettleDurationFromEasing(DoorEaseOutSpeed))
             : base.CreateAnimationUtil(api);
     }
 
@@ -183,9 +183,9 @@ public class BEBehaviorCabinetDoors : BEBehaviorAnimatable, IInteractable
             if (worldAccessForResolve.Side == EnumAppSide.Client) Blockentity.MarkDirty(true);
         }
 
-        if (animUtil?.renderer is { } renderer && renderer.rotationDeg.Y != getDoorRotationDeg())
+        if (animUtil?.renderer != null && animUtil.renderer.rotationDeg.Y != getDoorRotationDeg())
         {
-            renderer.rotationDeg.Y = getDoorRotationDeg();
+            animUtil.renderer.rotationDeg.Y = getDoorRotationDeg();
             animUtil.RefreshStaticMesh();
             selectionBoxesOpened = selectionBoxesClosed = null;
         }
@@ -248,7 +248,7 @@ public class BEBehaviorCabinetDoors : BEBehaviorAnimatable, IInteractable
         float angleRad = Blockentity.GetBehavior<IRotatablePlaceable>()?.MeshAngleRad ?? 0;
         var mat =
             new Matrixf()
-           .Translate(0.5f, 0, 0.5f)
+            .Translate(0.5f, 0, 0.5f)
             .RotateYDeg(Block.Shape.rotateY)
             .RotateY(angleRad)
             .Translate(-0.5f, 0, -0.5f)
@@ -281,8 +281,14 @@ public class BEBehaviorCabinetDoors : BEBehaviorAnimatable, IInteractable
         var texSource = new TypedTextureSource(capi, capi.BlockTextureAtlas, doorStack!.Collectible.Code.Domain, titem.TextureMapping, materials);
 
         doorMesh = animUtil.CreateMesh(animkey, shape, out Shape animatableShape, texSource, new TesselationMetaData() {  });
-        animUtil.InitializeAnimator(dictKey, doorMesh, animatableShape, rot, shareSourceMesh: true);
+        animUtil.InitializeAnimator(dictKey, doorMesh, animatableShape, rot, true);
         updateAnimationState();
+
+        // This happens offthread. Fix potential race condition where Dispose() runs first, and only then this runs
+        if (animUtil.Disposed)
+        {
+            animUtil.renderer?.Dispose();
+        }
     }
 
     public Cuboidf[]? GetSelectionBoxes()

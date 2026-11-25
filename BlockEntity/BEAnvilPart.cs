@@ -103,7 +103,7 @@ namespace Vintagestory.GameContent
             {
                 if (triggerMessage && Api is ICoreClientAPI capi)
                 {
-                    capi.TriggerIngameError(this, "bottomtoocold", Lang.GetWithFallback("weldanvil-bottomtoocold", "Bottom half to cold to weld, reheat the part on the forge."));
+                    capi.TriggerIngameError(this, "bottomtoocold", Lang.Get("weldanvil-bottomtoocold"));
                 }
                 return false;
             }
@@ -112,7 +112,7 @@ namespace Vintagestory.GameContent
             {
                 if (triggerMessage && Api is ICoreClientAPI capi)
                 {
-                    capi.TriggerIngameError(this, "fluxmissing", Lang.GetWithFallback("weldanvil-fluxmissing", "Must apply powdered borax as next step."));
+                    capi.TriggerIngameError(this, "fluxmissing", Lang.Get("weldanvil-fluxmissing"));
                 }
                 return false;
             }
@@ -121,7 +121,7 @@ namespace Vintagestory.GameContent
             {
                 if (triggerMessage && Api is ICoreClientAPI capi)
                 {
-                    capi.TriggerIngameError(this, "tophalfmissing", Lang.GetWithFallback("weldanvil-tophalfmissing", "Add the top half anvil first."));
+                    capi.TriggerIngameError(this, "tophalfmissing", Lang.Get("weldanvil-tophalfmissing"));
                 }
                 return false;
             }
@@ -130,7 +130,7 @@ namespace Vintagestory.GameContent
             {
                 if (triggerMessage && Api is ICoreClientAPI capi)
                 {
-                    capi.TriggerIngameError(this, "toptoocold", Lang.GetWithFallback("weldanvil-toptoocold", "Top half to cold to weld, reheat the part on the forge."));
+                    capi.TriggerIngameError(this, "toptoocold", Lang.Get("weldanvil-toptoocold"));
                 }
                 return false;
             }
@@ -147,7 +147,7 @@ namespace Vintagestory.GameContent
 
             if (inv[0].Itemstack?.Collectible.GetTemperature(Api.World, inv[0].Itemstack) < 800)
             {
-                (Api as ICoreClientAPI)?.TriggerIngameError(this, "bottomtoocold", Lang.GetWithFallback("weldanvil-bottomtoocold", "Bottom half to cold to weld, reheat the part on the forge."));
+                (Api as ICoreClientAPI)?.TriggerIngameError(this, "bottomtoocold", Lang.Get("weldanvil-bottomtoocold"));
                 return false;
             }
 
@@ -162,7 +162,7 @@ namespace Vintagestory.GameContent
 
                 }
 
-                (Api as ICoreClientAPI)?.TriggerIngameError(this, "fluxmissing", Lang.GetWithFallback("weldanvil-fluxmissing", "Must apply powdered borax as next step."));
+                (Api as ICoreClientAPI)?.TriggerIngameError(this, "fluxmissing", Lang.Get("weldanvil-fluxmissing"));
                 return false;
             }
 

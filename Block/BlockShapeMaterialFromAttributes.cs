@@ -19,6 +19,7 @@ public class BlockShapeMaterialFromAttributes : Block, IHandbookGrouping
     private string[] materials = null!;
     public Dictionary<string, CompositeTexture> TexturesBSMFA = null!;
     public CompositeShape Cshape = null!;
+    private Dictionary<string, MeshData> meshes = null!;
 
     public virtual string MeshKey { get; } = "BSMFA";
     public virtual string MeshKeyInventory => MeshKey + "Inventory";
@@ -27,6 +28,10 @@ public class BlockShapeMaterialFromAttributes : Block, IHandbookGrouping
     {
         base.OnLoaded(api);
         LoadTypes();
+        if (api.Side == EnumAppSide.Client)
+        {
+            meshes = ObjectCacheUtil.GetOrCreate(api, MeshKey, () => new Dictionary<string, MeshData>());
+        }
     }
 
     public override void OnUnloaded(ICoreAPI api)
@@ -34,9 +39,12 @@ public class BlockShapeMaterialFromAttributes : Block, IHandbookGrouping
         var meshes = ObjectCacheUtil.TryGet<Dictionary<string, MeshData>>(api, MeshKey);
         if (meshes?.Count > 0)
         {
-            foreach (var (_, meshref) in meshes)
+            lock (meshes)
             {
-                meshref.Dispose();
+                foreach (var (_, meshref) in meshes)
+                {
+                    meshref.Dispose();
+                }
             }
 
             ObjectCacheUtil.Delete(api, MeshKey);
@@ -101,28 +109,33 @@ public class BlockShapeMaterialFromAttributes : Block, IHandbookGrouping
 
     public virtual MeshData GetOrCreateMesh(string? type, string? material, string? cachekeyextra = null, ITexPositionSource? overrideTexturesource = null)
     {
-        var cMeshes = ObjectCacheUtil.GetOrCreate(api, MeshKey, () => new Dictionary<string, MeshData>());
+        var cMeshes = meshes;
         ICoreClientAPI capi = (ICoreClientAPI)api;
 
         string key = type + "-" + material + cachekeyextra;
-        if (overrideTexturesource != null || !cMeshes.TryGetValue(key, out var mesh))
+
+        // Inventory rendering and chunk tessellation share this cache
+        lock (cMeshes)
         {
-            var rcshape = Cshape.Clone();
-            rcshape.Base.Path = rcshape.Base.Path.Replace("{type}", type).Replace("{material}", material);
-            mesh = capi.TesselatorManager.CreateMesh(
-                Code +" block",
-                rcshape,
-                (shape, name) => new ShapeTextureSource(capi, shape, name, TexturesBSMFA, (p) => p.Replace("{type}", type).Replace("{material}", material)),
-                overrideTexturesource
-            );
-
-            if (overrideTexturesource == null)
+            if (overrideTexturesource != null || !cMeshes.TryGetValue(key, out var mesh))
             {
-                cMeshes[key] = mesh;
-            }
-        }
+                var rcshape = Cshape.Clone();
+                rcshape.Base.Path = rcshape.Base.Path.Replace("{type}", type).Replace("{material}", material);
+                mesh = capi.TesselatorManager.CreateMesh(
+                    Code +" block",
+                    rcshape,
+                    (shape, name) => new ShapeTextureSource(capi, shape, name, TexturesBSMFA, (p) => p.Replace("{type}", type).Replace("{material}", material)),
+                    overrideTexturesource
+                );
 
-        return mesh;
+                if (overrideTexturesource == null)
+                {
+                    cMeshes[key] = mesh;
+                }
+            }
+
+            return mesh;
+        }
     }
 
     public override void OnBeforeRender(ICoreClientAPI capi, ItemStack itemstack, EnumItemRenderTarget target, ref ItemRenderInfo renderinfo)

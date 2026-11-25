@@ -5,6 +5,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
+using Vintagestory.API.Util;
 
 namespace Vintagestory.GameContent
 {
@@ -79,11 +80,14 @@ namespace Vintagestory.GameContent
                 var slotLoc = BlockBehaviorDisplay.decodeSlotid(blockSel.SelectionBoxId);
                 if (slotLoc?.IsPlacedItem == true)
                 {
-                    ItemSlot slot = display.InventoryInv[slotLoc.EncodedLocation];
-                    if (slot != null && !slot.Empty)
+                    ItemSlot? slot = display.InventoryInv[slotLoc.EncodedLocation];
+                    if (slot?.Itemstack?.Collectible != null)
                     {
+                        var obj = slot.Itemstack.Collectible;
                         float ripenRate = GameMath.Clamp((1 - display.GetPerishRate() - 0.5f) * 3, 0, 1);
-                        sb.Append(PerishableInfoCompact(Api, slot, ripenRate));
+                        var transitionableProps = obj.GetTransitionableProperties(Api.World, slot.Itemstack, forPlayer.Entity);
+                        if (transitionableProps?.Length > 0) sb.Append(PerishableInfoCompact(Api, slot!, ripenRate));
+                        else sb.AppendLine(obj.GetCollectibleInterface<IContainedCustomName>()?.GetContainedInfo(slot) ?? slot.GetStackName() ?? Lang.Get("unknown"));
                         return;
                     }
                 }
@@ -101,7 +105,7 @@ namespace Vintagestory.GameContent
         }
         // The block still stores the wall side in its code. Display uses meshAngleRad so the shelf mesh,
         // placement grid and displayed item meshes all rotate from the same value.
-        private void SyncDisplayAngle(IWorldAccessor worldForResolve = null)
+        private void SyncDisplayAngle(IWorldAccessor? worldForResolve = null)
         {
             if (Block == null) return;
 
@@ -111,9 +115,9 @@ namespace Vintagestory.GameContent
 
         private void TryMigrateOldInventory(ITreeAttribute tree, IWorldAccessor worldForResolve)
         {
-            ITreeAttribute oldInvTree = tree.GetTreeAttribute(OldShelfInventoryTreeName);
+            ITreeAttribute? oldInvTree = tree.GetTreeAttribute(OldShelfInventoryTreeName);
             BEBehaviorDisplay display = GetBehavior<BEBehaviorDisplay>();
-            BlockBehaviorDisplay displayBlock = Block?.GetBehavior<BlockBehaviorDisplay>();
+            BlockBehaviorDisplay? displayBlock = Block?.GetBehavior<BlockBehaviorDisplay>();
             if (oldInvTree == null || display == null || displayBlock == null || !display.InventoryInv.Empty) return;
 
             InventoryGeneric oldInv = new InventoryGeneric(OldShelfSlotCount, OldShelfInventoryId, worldForResolve.Api, (id, inv) => new ItemSlotDisplay(inv, ShelfDisplayCategory));

@@ -9,8 +9,6 @@ namespace Vintagestory.GameContent;
 
 public class BEBehaviorShapeMaterialFromAttributes : BlockEntityBehavior, IRotatable
 {
-    private MeshData? mesh;
-
     private float[] mat = null!;
     public string? Type { get; set; }
     public string? Material { get; private set; }
@@ -27,7 +25,7 @@ public class BEBehaviorShapeMaterialFromAttributes : BlockEntityBehavior, IRotat
     {
         base.Initialize(api, properties);
 
-        if (mesh == null && Type != null)
+        if (Type != null)
         {
             Init();
         }
@@ -39,7 +37,6 @@ public class BEBehaviorShapeMaterialFromAttributes : BlockEntityBehavior, IRotat
 
         if (Api.Side == EnumAppSide.Client)
         {
-            mesh = (Block as BlockShapeMaterialFromAttributes)?.GetOrCreateMesh(Type, Material);
             mat = Matrixf.Create().Translate(0.5f, 0.5f, 0.5f).Rotate(MeshAngleX, MeshAngleY, MeshAngleZ)
                 .Translate(-0.5f, -0.5f, -0.5f)
                 .Values;
@@ -86,7 +83,11 @@ public class BEBehaviorShapeMaterialFromAttributes : BlockEntityBehavior, IRotat
 
     public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
     {
-        mesher.AddMeshData(mesh, mat);
+        if (Type != null && Material != null && Block is BlockShapeMaterialFromAttributes block)
+        {
+            MeshData mesh = block.GetOrCreateMesh(Type, Material);
+            mesher.AddMeshData(mesh, mat);
+        }
         return true;
     }
 

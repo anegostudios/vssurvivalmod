@@ -42,6 +42,7 @@ namespace Vintagestory.GameContent
             {
                 for (int i = 0; i < sourceMesh.FlagsCount; i++)
                 {
+                    if (VertexFlags.IsUnshadedNormal(sourceMesh.Flags[i])) continue;
                     sourceMesh.Flags[i] = (sourceMesh.Flags[i] & ~VertexFlags.NormalBitMask) | BlockFacing.UP.NormalPackedFlags;
                 }
             }

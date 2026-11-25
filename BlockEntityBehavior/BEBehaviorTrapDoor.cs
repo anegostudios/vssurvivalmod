@@ -29,7 +29,6 @@ namespace Vintagestory.GameContent
     public class BEBehaviorTrapDoor : BEBehaviorAnimatable, IInteractable, IRotatable
     {
         protected bool opened;
-        protected MeshData mesh;
         protected Cuboidf[] boxesClosed, boxesOpened;
 
         public int AttachedFace;
@@ -70,7 +69,7 @@ namespace Vintagestory.GameContent
         {
             float easingSpeed = Block.Attributes?["easingSpeed"].AsFloat(10) ?? 10;
             return api.Side == EnumAppSide.Client
-                ? new BlockEntityAnimationUtil(api, Blockentity, BlockEntityAnimationUtil.CalculateSettleDuration(easingSpeed))
+                ? new BlockEntityAnimationUtil(api, Blockentity, BlockEntityAnimationUtil.GetSettleDurationFromEasing(easingSpeed))
                 : base.CreateAnimationUtil(api);
         }
 
@@ -78,7 +77,7 @@ namespace Vintagestory.GameContent
         {
             base.Initialize(api, properties);
 
-            SetupRotationsAndColSelBoxes(false);
+            UpdateHitBoxes();
 
             if (opened && animUtil != null && !animUtil.activeAnimationsByAnimCode.ContainsKey("opened"))
             {
@@ -86,35 +85,18 @@ namespace Vintagestory.GameContent
             }
         }
 
-        protected void SetupRotationsAndColSelBoxes(bool initalSetup)
-        {
-            if (Api.Side == EnumAppSide.Client)
-            {
-                if (doorBh.animatableOrigMesh == null)
-                {
-                    string animkey = "trapdoor-" + Blockentity.Block.Variant["style"];
-                    doorBh.animatableOrigMesh = animUtil.CreateMesh(animkey, null, out Shape shape, null);
-                    doorBh.animatableShape = shape;
-                    doorBh.animatableDictKey = animkey;
-                }
-                if (doorBh.animatableOrigMesh != null)
-                {
-                    animUtil.InitializeAnimator(doorBh.animatableDictKey, doorBh.animatableOrigMesh, doorBh.animatableShape, null, shareSourceMesh: true);
-                    UpdateMeshAndAnimations();
-                }
-            }
-
-            UpdateHitBoxes();
-        }
-
         protected virtual void UpdateMeshAndAnimations()
         {
-            mesh = doorBh.animatableOrigMesh.Clone();
+            var renderer = animUtil?.renderer;
+            if (renderer == null) return;
 
-            Matrixf mat = getTfMatrix();
-            mesh.MatrixTransform(mat.Values);
-            animUtil.renderer.CustomTransform = mat.Values;
+            ApplyPlacement(renderer);
             animUtil.RefreshStaticMesh();
+        }
+
+        private void ApplyPlacement(AnimatableRenderer renderer)
+        {
+            renderer.CustomTransform = getTfMatrix().Values;
         }
 
         private Matrixf getTfMatrix(float rotz=0)
@@ -176,7 +158,7 @@ namespace Vintagestory.GameContent
 
             if (blockSel.Face == BlockFacing.WEST || blockSel.Face == BlockFacing.SOUTH) RotDeg *= -1; // Why?
 
-            SetupRotationsAndColSelBoxes(true);
+            UpdateHitBoxes();
         }
 
         public bool IsSideSolid(BlockFacing facing)
@@ -235,12 +217,35 @@ namespace Vintagestory.GameContent
 
         public override bool OnTesselation(ITerrainMeshPool mesher, ITesselatorAPI tessThreadTesselator)
         {
+            ensureAnimatorInitialized();
             bool skipMesh = base.OnTesselation(mesher, tessThreadTesselator);
             if (!skipMesh)
             {
-                mesher.AddMeshData(mesh);
+                mesher.AddMeshData(doorBh.animatableOrigMesh, getTfMatrix().Values);
             }
             return true;
+        }
+
+        private void ensureAnimatorInitialized()
+        {
+            if (animUtil.Initialized) return;
+
+            // Created only once per block type, so no need to worry about this one performance wise
+            if (doorBh.animatableOrigMesh == null)
+            {
+                string animkey = "trapdoor-" + Blockentity.Block.Variant["style"];
+                doorBh.animatableOrigMesh = animUtil.CreateMesh(animkey, null, out Shape shape, null);
+                doorBh.animatableShape = shape;
+                doorBh.animatableDictKey = animkey;
+            }
+
+            animUtil.InitializeAnimator(doorBh.animatableDictKey, doorBh.animatableOrigMesh, doorBh.animatableShape, null, true, ApplyPlacement);
+
+            // This happens offthread. Fix potential race condition where Dispose() runs first, and only then this runs
+            if (animUtil.Disposed)
+            {
+                animUtil.renderer?.Dispose();
+            }
         }
 
         public override void FromTreeAttributes(ITreeAttribute tree, IWorldAccessor worldAccessForResolve)
